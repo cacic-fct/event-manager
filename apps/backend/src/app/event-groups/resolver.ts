@@ -47,6 +47,7 @@ const EVENT_GROUP_CLONE_SOURCE_SELECT = {
       secondPageText: true,
       isActive: true,
       issuedTo: true,
+      certificateTypeLabel: true,
       certificateFields: true,
     },
   },
@@ -408,6 +409,7 @@ export class EventGroupsResolver {
       secondPageText: string | null;
       isActive: boolean;
       issuedTo: Prisma.CertificateConfigCreateInput['issuedTo'];
+      certificateTypeLabel: string | null;
       certificateFields: Prisma.JsonValue;
     }>,
     eventGroupId: string,
@@ -424,6 +426,7 @@ export class EventGroupsResolver {
           secondPageText: config.secondPageText,
           isActive: config.isActive,
           issuedTo: config.issuedTo,
+          certificateTypeLabel: config.certificateTypeLabel,
           certificateFields:
             config.certificateFields === null
               ? Prisma.DbNull

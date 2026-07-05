@@ -493,6 +493,7 @@ describe('CertificateIssuingService', () => {
       secondPageText: null,
       isActive: true,
       issuedTo: 'ATTENDEE',
+      certificateTypeLabel: 'Participação',
       certificateFields: null,
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
       createdById: null,
@@ -862,6 +863,8 @@ describe('CertificateIssuingService', () => {
     expect(renderedData.templateData.second_page_content).toContain('Palestras:');
     expect(renderedData.templateData.second_page_content).toContain('Palestra Principal');
     expect(renderedData.templateData.second_page_content).not.toContain('Texto manual ignorado');
+    expect(renderedData.templateData.certificateType).toBe('Participação');
+    expect(renderedData.templateData.certificate_type).toBe('Participação');
   });
 
   it('uses custom second page text when event autofill is disabled', () => {
@@ -922,6 +925,7 @@ describe('CertificateIssuingService', () => {
           ...mappedCertificateRecord.config,
           scope: CertificateScope.EVENT_GROUP,
           issuedTo: CertificateIssuedTo.LECTURER,
+          certificateTypeLabel: null,
           certificateFields,
           certificateTemplate: {
             certificateFields: {
@@ -956,9 +960,56 @@ describe('CertificateIssuingService', () => {
     expect(render({ __lecturerEventCategory: 'MINICURSO' }).participation_type).toBe(
       'Certificamos a participação como ministrante de:',
     );
+    expect(render({ __lecturerEventCategory: 'MINICURSO' }).certificateType).toBe('Ministrante');
     expect(render({ __lecturerEventCategory: 'OTHER' }).participation_type).toBe(
       'Certificamos a participação como palestrante/ministrante de:',
     );
+    expect(render({ __lecturerEventCategory: 'OTHER' }).certificateType).toBe('Palestrante/ministrante');
+  });
+
+  it('uses configured custom certificate type labels for other lecturer and manual certificates', () => {
+    const service = new CertificateIssuingService({} as never, {} as never, {} as never);
+    const render = (config: Record<string, unknown>) =>
+      (
+        service as unknown as {
+          buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+        }
+      ).buildRenderedData(
+        {
+          ...mappedCertificateRecord.config,
+          ...config,
+          scope: CertificateScope.EVENT,
+          event: {
+            id: 'event-1',
+            name: 'Evento de teste',
+          },
+        },
+        {
+          person: {
+            id: 'person-valid',
+            name: 'Valid Person',
+            email: null,
+            identityDocument: null,
+            academicId: null,
+          },
+          events: [],
+        },
+        new Date('2026-01-05T00:00:00.000Z'),
+      ).templateData;
+
+    expect(
+      render({
+        issuedTo: CertificateIssuedTo.LECTURER,
+        certificateFields: { __lecturerEventCategory: 'OTHER' },
+        certificateTypeLabel: 'Mediador',
+      }).certificateType,
+    ).toBe('Mediador');
+    expect(
+      render({
+        issuedTo: CertificateIssuedTo.OTHER,
+        certificateTypeLabel: 'Convidado especial',
+      }).certificateType,
+    ).toBe('Convidado especial');
   });
 
   it('uses current template field definition defaults when config fields are unchanged', () => {

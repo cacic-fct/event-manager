@@ -55,7 +55,10 @@
             <mat-list-item
               (click)="workspace.selectTarget(group)"
               [class.selected-list-item]="workspace.selectedTarget()?.id === group.id">
-              <span matListItemTitle>{{ group.name }}</span>
+              <span matListItemTitle class="list-title">
+                <app-twemoji [emoji]="group.emoji" />
+                <span>{{ group.name }}</span>
+              </span>
               <span matListItemLine>
                 {{
                   group.shouldIssuePartialCertificate
@@ -242,7 +245,9 @@
 
             <mat-form-field>
               <mat-label>Emitir para</mat-label>
-              <mat-select [formField]="workspace.certificateConfigForm.issuedTo">
+              <mat-select
+                [formField]="workspace.certificateConfigForm.issuedTo"
+                (selectionChange)="workspace.onCertificateIssuedToChanged($event.value)">
                 <mat-option value="ATTENDEE">Participantes</mat-option>
                 <mat-option value="LECTURER_PALESTRA">Palestrantes</mat-option>
                 <mat-option value="LECTURER_MINICURSO">Ministrantes</mat-option>
@@ -250,6 +255,13 @@
                 <mat-option value="OTHER">Manual</mat-option>
               </mat-select>
             </mat-form-field>
+
+            @if (workspace.shouldShowCertificateTypeLabel()) {
+              <mat-form-field>
+                <mat-label>Tipo exibido no verso</mat-label>
+                <input matInput [formField]="workspace.certificateConfigForm.certificateTypeLabel" />
+              </mat-form-field>
+            }
           </div>
 
           <div class="checkbox-grid">

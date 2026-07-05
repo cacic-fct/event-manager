@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
+import { Permission, WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
 import { WorkspaceEventGroupsService } from './workspace-event-groups.service';
 import { WorkspaceEventsService } from './workspace-events.service';
 import { WorkspaceMajorEventsService } from './workspace-major-events.service';
@@ -37,6 +37,9 @@ export class WorkspaceShellService {
 
       if (canReadEvents) {
         loads.push(this.eventsService.loadEvents());
+        if (this.permissions.has(Permission.MajorEvent.Read)) {
+          loads.push(this.eventsService.loadMajorEventsForEvent());
+        }
       }
 
       if (this.permissions.canReadTab(WorkspacePermissionTab.Places)) {

@@ -13,11 +13,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
-import { Event, EventType, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
+import { Event, EventType, MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspaceEventsService } from '../../../shared/services/workspace-events.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
-import { isFrozenEvent } from '../../../shared/frozen-resource';
+import { isFrozenEvent, isFrozenMajorEvent } from '../../../shared/frozen-resource';
 import { EventFilterPanelComponent } from '../shared/event-filter-panel.component';
 
 @Component({
@@ -95,6 +95,25 @@ export class WorkspaceEventsTabComponent {
 
   protected canCloneEvent(): boolean {
     return this.permissions.hasAll([Permission.Event.Read, Permission.Event.Create]);
+  }
+
+  protected canAssignMajorEvent(majorEvent: MajorEvent): boolean {
+    return (
+      this.canEditEvent(this.workspace.selectedEvent()) &&
+      (!isFrozenMajorEvent(majorEvent) || this.permissions.has(Permission.Frozen.Update))
+    );
+  }
+
+  protected majorEventAssignmentTooltip(majorEvent: MajorEvent): string {
+    if (!this.canEditEvent(this.workspace.selectedEvent())) {
+      return 'Você não tem permissão para alterar este evento.';
+    }
+
+    if (isFrozenMajorEvent(majorEvent) && !this.permissions.has(Permission.Frozen.Update)) {
+      return 'Este grande evento está congelado e exige permissão para alterar recursos antigos.';
+    }
+
+    return `Usar ${majorEvent.name}`;
   }
 
   protected draftEventActionLabel(): string {

@@ -232,6 +232,7 @@ export interface CertificateConfig {
   secondPageText?: string | null;
   isActive: boolean;
   issuedTo: CertificateIssuedTo;
+  certificateTypeLabel?: string | null;
   certificateFieldsJson?: string | null;
   createdAt: string;
   createdById?: string | null;
@@ -878,6 +879,7 @@ export interface CertificateConfigInput {
   secondPageText?: string | null;
   isActive?: boolean;
   issuedTo?: CertificateIssuedTo;
+  certificateTypeLabel?: string | null;
   certificateFieldsJson?: string | null;
 }
 

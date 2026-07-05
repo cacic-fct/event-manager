@@ -1,4 +1,4 @@
-import { ICalEventClass } from 'ical-generator';
+import { ICalEventClass, ICalEventTransparency } from 'ical-generator';
 import {
   buildCalendar,
   buildPublicEventUrl,
@@ -83,12 +83,14 @@ describe('calendar iCal builder', () => {
       description: 'Eventos públicos.',
       entries: [mapEventToCalendarEntry(event, 'https://eventos.cacic.dev.br/app/event/event-1')],
       eventClass: ICalEventClass.PUBLIC,
+      transparency: ICalEventTransparency.OPAQUE,
       ttlSeconds: 3600,
     });
 
     expect(content).toContain('X-WR-CALNAME:Calendário CACiC');
     expect(content).toContain('SUMMARY:Oficina de TypeScript');
     expect(content).toContain('CLASS:PUBLIC');
+    expect(content).toContain('TRANSP:OPAQUE');
     expect(slugifyFileName('Calendário CACiC: Oficina nº 1')).toBe('calendario-cacic-oficina-n-1');
   });
 });

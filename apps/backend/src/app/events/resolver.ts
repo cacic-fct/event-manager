@@ -191,6 +191,7 @@ const EVENT_CLONE_SOURCE_SELECT = {
       secondPageText: true,
       isActive: true,
       issuedTo: true,
+      certificateTypeLabel: true,
       certificateFields: true,
     },
   },
@@ -941,6 +942,7 @@ export class EventsResolver {
       secondPageText: string | null;
       isActive: boolean;
       issuedTo: Prisma.CertificateConfigCreateInput['issuedTo'];
+      certificateTypeLabel: string | null;
       certificateFields: Prisma.JsonValue;
     }>,
     eventId: string,
@@ -957,6 +959,7 @@ export class EventsResolver {
           secondPageText: config.secondPageText,
           isActive: config.isActive,
           issuedTo: config.issuedTo,
+          certificateTypeLabel: config.certificateTypeLabel,
           certificateFields:
             config.certificateFields === null
               ? Prisma.DbNull

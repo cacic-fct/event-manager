@@ -2,6 +2,43 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { MajorEventsResolver } from './resolver';
 
 describe('MajorEventsResolver', () => {
+  it('filters current major-event lookups by end date when requested', async () => {
+    const endDateFrom = new Date('2026-07-05T12:00:00.000Z');
+    const prisma = {
+      $queryRaw: jest.fn().mockResolvedValue([{ exists: false }]),
+      majorEvent: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const typesenseSearch = {
+      isEnabled: jest.fn(() => false),
+    };
+    const authorizationPolicy = {
+      accessibleMajorEventIds: jest.fn().mockResolvedValue(null),
+    };
+    const resolver = new MajorEventsResolver(
+      prisma as never,
+      typesenseSearch as never,
+      {} as never,
+      authorizationPolicy as never,
+    );
+
+    await expect(
+      resolver.majorEvents({ req: { user: { sub: 'admin-1' } } } as never, undefined, undefined, undefined, endDateFrom),
+    ).resolves.toEqual([]);
+
+    expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          endDate: {
+            gte: endDateFrom,
+          },
+        },
+      }),
+    );
+  });
+
   it('clones reusable major-event payment, subscription, and certificate settings only', async () => {
     const source = {
       id: 'major-source',

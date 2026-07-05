@@ -115,6 +115,7 @@ const MAJOR_EVENT_CERTIFICATE_CONFIG_CLONE_SELECT = {
     secondPageText: true,
     isActive: true,
     issuedTo: true,
+    certificateTypeLabel: true,
     certificateFields: true,
   },
 } satisfies Prisma.CertificateConfigFindManyArgs;
@@ -148,6 +149,8 @@ export class MajorEventsResolver {
     startDateFrom?: Date,
     @Args('startDateUntil', { type: () => Date, nullable: true })
     startDateUntil?: Date,
+    @Args('endDateFrom', { type: () => Date, nullable: true })
+    endDateFrom?: Date,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
@@ -177,6 +180,11 @@ export class MajorEventsResolver {
       if (startDateUntil) {
         where.startDate.lte = startDateUntil;
       }
+    }
+    if (endDateFrom) {
+      where.endDate = {
+        gte: endDateFrom,
+      };
     }
 
     let prioritizedIds: string[] = [];
@@ -918,6 +926,7 @@ export class MajorEventsResolver {
       secondPageText: string | null;
       isActive: boolean;
       issuedTo: Prisma.CertificateConfigCreateInput['issuedTo'];
+      certificateTypeLabel: string | null;
       certificateFields: Prisma.JsonValue;
     }>,
     majorEventId: string,
@@ -934,6 +943,7 @@ export class MajorEventsResolver {
           secondPageText: config.secondPageText,
           isActive: config.isActive,
           issuedTo: config.issuedTo,
+          certificateTypeLabel: config.certificateTypeLabel,
           certificateFields:
             config.certificateFields === null
               ? Prisma.DbNull

@@ -12,6 +12,7 @@ export class MajorEventApiService {
     query?: string;
     startDateFrom?: string;
     startDateUntil?: string;
+    endDateFrom?: string;
     skip?: number;
     take?: number;
   }) {
@@ -21,6 +22,7 @@ export class MajorEventApiService {
           $query: String
           $startDateFrom: DateTime
           $startDateUntil: DateTime
+          $endDateFrom: DateTime
           $skip: Int
           $take: Int
         ) {
@@ -28,6 +30,7 @@ export class MajorEventApiService {
             query: $query
             startDateFrom: $startDateFrom
             startDateUntil: $startDateUntil
+            endDateFrom: $endDateFrom
             skip: $skip
             take: $take
           ) {

@@ -21,6 +21,9 @@ import {
 import { CertificateTargetsService } from './certificate-targets.service';
 import { CertificateValidationService } from './certificate-validation.service';
 
+const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
+type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
+
 @Injectable()
 export class CertificateConfigsService {
   constructor(
@@ -154,6 +157,11 @@ export class CertificateConfigsService {
     const secondPageText = this.validation.normalizeOptionalText(input.secondPageText);
     const certificateFields = this.validation.normalizeCertificateFieldsJson(input.certificateFieldsJson);
     const issuedTo = input.issuedTo ?? CertificateIssuedTo.ATTENDEE;
+    const certificateTypeLabel = this.resolveCertificateTypeLabel(
+      issuedTo,
+      certificateFields === undefined ? null : certificateFields,
+      input.certificateTypeLabel,
+    );
 
     this.validation.assertScopeTargetConsistency(scope, {
       majorEventId,
@@ -183,6 +191,7 @@ export class CertificateConfigsService {
         secondPageText: secondPageText === undefined ? undefined : secondPageText,
         isActive: input.isActive ?? true,
         issuedTo,
+        certificateTypeLabel,
         ...(certificateFields === undefined
           ? {}
           : certificateFields === null
@@ -253,6 +262,17 @@ export class CertificateConfigsService {
         ? undefined
         : this.validation.normalizeCertificateFieldsJson(input.certificateFieldsJson);
     const nextIssuedTo = input.issuedTo;
+    const mergedIssuedTo = nextIssuedTo ?? existingConfig.issuedTo;
+    const mergedCertificateFields =
+      nextCertificateFields === undefined
+        ? existingConfig.certificateFields
+        : nextCertificateFields === null
+          ? null
+          : nextCertificateFields;
+    const nextCertificateTypeLabel =
+      input.certificateTypeLabel !== undefined || nextIssuedTo !== undefined || nextCertificateFields !== undefined
+        ? this.resolveCertificateTypeLabel(mergedIssuedTo, mergedCertificateFields, input.certificateTypeLabel)
+        : undefined;
 
     const shouldUpdateScopeOrTargets =
       input.scope !== undefined ||
@@ -278,6 +298,7 @@ export class CertificateConfigsService {
       ...(nextSecondPageText === undefined ? {} : { secondPageText: nextSecondPageText }),
       ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
       ...(nextIssuedTo === undefined ? {} : { issuedTo: nextIssuedTo }),
+      ...(nextCertificateTypeLabel === undefined ? {} : { certificateTypeLabel: nextCertificateTypeLabel }),
       ...(nextCertificateFields === undefined
         ? {}
         : nextCertificateFields === null
@@ -395,5 +416,41 @@ export class CertificateConfigsService {
     if (duplicate) {
       throw new ConflictException(`A certificate config named "${name}" already exists for this target.`);
     }
+  }
+
+  private resolveCertificateTypeLabel(
+    issuedTo: CertificateIssuedTo,
+    certificateFields: Prisma.InputJsonValue | Prisma.JsonValue | null,
+    rawCustomLabel?: string | null,
+  ): string | null {
+    if (issuedTo === CertificateIssuedTo.ATTENDEE) {
+      return 'Participação';
+    }
+
+    if (issuedTo === CertificateIssuedTo.LECTURER) {
+      const lecturerEventCategory = this.parseLecturerEventCategory(certificateFields);
+      if (lecturerEventCategory === 'PALESTRA') {
+        return 'Palestrante';
+      }
+
+      if (lecturerEventCategory === 'MINICURSO') {
+        return 'Ministrante';
+      }
+
+      return this.validation.normalizeOptionalText(rawCustomLabel) ?? 'Palestrante/ministrante';
+    }
+
+    return this.validation.normalizeOptionalText(rawCustomLabel) ?? 'Manual';
+  }
+
+  private parseLecturerEventCategory(
+    certificateFields: Prisma.InputJsonValue | Prisma.JsonValue | null,
+  ): LecturerEventCategory | null {
+    if (!certificateFields || typeof certificateFields !== 'object' || Array.isArray(certificateFields)) {
+      return null;
+    }
+
+    const value = (certificateFields as Record<string, unknown>)[LECTURER_EVENT_CATEGORY_FIELD];
+    return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER' ? value : null;
   }
 }

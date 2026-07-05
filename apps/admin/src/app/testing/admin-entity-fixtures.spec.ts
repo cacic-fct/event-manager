@@ -150,6 +150,7 @@ describe('admin entity fixtures', () => {
         certificateTemplate: expect.objectContaining({ name: 'Modelo CACiC' }),
         shouldAutofillSecondPage: false,
         secondPageText: 'Texto complementar',
+        certificateTypeLabel: undefined,
       }),
     );
   });

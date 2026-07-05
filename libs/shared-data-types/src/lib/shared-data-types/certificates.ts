@@ -93,6 +93,9 @@ export class CertificateConfig {
   issuedTo!: CertificateIssuedTo;
 
   @Field(() => String, { nullable: true })
+  certificateTypeLabel?: string | null;
+
+  @Field(() => String, { nullable: true })
   certificateFieldsJson?: string | null;
 
   @Field(() => Date)

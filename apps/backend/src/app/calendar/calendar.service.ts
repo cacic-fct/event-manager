@@ -1,4 +1,4 @@
-import { ICalEventClass } from 'ical-generator';
+import { ICalEventClass, ICalEventTransparency } from 'ical-generator';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { subHours, subYears } from 'date-fns';
 import { PrismaService } from '../prisma/prisma.service';
@@ -349,6 +349,7 @@ export class CalendarService {
         description: groupedEntry ? groupedEntry.description : (event.shortDescription ?? event.description ?? null),
         entries: [entry],
         eventClass: ICalEventClass.PUBLIC,
+        transparency: ICalEventTransparency.OPAQUE,
         ttlSeconds: 60 * 60,
       }),
       fileName: `${slugifyFileName(calendarName ?? event.name) || 'evento'}.ics`,
@@ -405,7 +406,8 @@ export class CalendarService {
         entries: events.map((event) =>
           mapEventToCalendarEntry(event, buildPublicEventUrl(publicAppOrigin, event.id)),
         ),
-        eventClass: ICalEventClass.PRIVATE,
+        eventClass: ICalEventClass.PUBLIC,
+        transparency: ICalEventTransparency.OPAQUE,
         ttlSeconds: 60 * 60,
       }),
       fileName: 'calendario-cacic-eventos.ics',
@@ -461,7 +463,8 @@ export class CalendarService {
         name: `CACiC Eventos Admin - ${settings.user.name}`,
         description: 'Eventos, grupos e grandes eventos administrados por este usuário.',
         entries,
-        eventClass: ICalEventClass.PRIVATE,
+        eventClass: ICalEventClass.PUBLIC,
+        transparency: ICalEventTransparency.OPAQUE,
         ttlSeconds: 60 * 60,
       }),
       fileName: 'calendario-admin-cacic-eventos.ics',
@@ -495,7 +498,8 @@ export class CalendarService {
         name: 'CACiC Eventos Admin - Super-admins',
         description: 'Feed compartilhado de todos os eventos, grupos e grandes eventos administráveis.',
         entries,
-        eventClass: ICalEventClass.PRIVATE,
+        eventClass: ICalEventClass.PUBLIC,
+        transparency: ICalEventTransparency.TRANSPARENT,
         ttlSeconds: 60 * 60,
       }),
       fileName: 'calendario-super-admin-cacic-eventos.ics',

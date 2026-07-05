@@ -1,4 +1,4 @@
-import ical, { ICalCalendarMethod, ICalEventClass, ICalEventStatus } from 'ical-generator';
+import ical, { ICalCalendarMethod, ICalEventClass, ICalEventStatus, ICalEventTransparency } from 'ical-generator';
 import type { ICalLocation } from 'ical-generator';
 import { PUBLIC_EVENT_GROUP_RANGE_EVENT_TAKE } from './calendar-feed.constants';
 import {
@@ -14,6 +14,7 @@ export function buildCalendar(input: {
   description: string | null;
   entries: CalendarEntry[];
   eventClass: ICalEventClass;
+  transparency: ICalEventTransparency;
   ttlSeconds: number;
 }): string {
   const calendar = ical({
@@ -40,6 +41,7 @@ export function buildCalendar(input: {
       lastModified: entry.lastModified,
       status: ICalEventStatus.CONFIRMED,
       class: input.eventClass,
+      transparency: input.transparency,
       url: entry.url ?? undefined,
     });
   }

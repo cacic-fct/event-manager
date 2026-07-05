@@ -7,12 +7,14 @@ import { compareIsoDateDesc } from '@cacic-fct/shared-utils';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
+import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
 import {
   Event,
   EventDraft,
   EventGroup,
   EventInput,
+  MajorEvent,
   Person,
   PlacePresetInput,
 } from '@cacic-fct/event-manager-admin-contracts';
@@ -62,6 +64,10 @@ type EventGroupResolution =
   | { status: 'none' }
   | { status: 'found'; group: EventGroup }
   | { status: 'unresolved' };
+type MajorEventResolution =
+  | { status: 'none' }
+  | { status: 'found'; majorEvent: MajorEvent }
+  | { status: 'unresolved' };
 
 @Injectable({
   providedIn: 'root',
@@ -70,6 +76,7 @@ export class WorkspaceEventsService {
   private readonly api = inject(EventApiService);
   private readonly publicationApi = inject(PublicationApiService);
   private readonly eventGroupsApi = inject(EventGroupApiService);
+  private readonly majorEventsApi = inject(MajorEventApiService);
   private readonly eventPeople = inject(WorkspaceEventPeopleService);
   private readonly snackbar = inject(MatSnackBar);
   private readonly formState = inject(WorkspaceEventFormStateService);
@@ -95,6 +102,8 @@ export class WorkspaceEventsService {
   readonly selectedEventGroupAllowsCertificates = signal<boolean | null>(true);
   readonly selectedEventGroupAllowsNonPayingCertificates = signal<boolean | null>(true);
   readonly selectedEventGroupAllowsNonSubscribedCertificates = signal<boolean | null>(true);
+  readonly selectedMajorEventName = signal('');
+  readonly majorEventSearchResults = signal<MajorEvent[]>([]);
   readonly eventGroupSearchResults = signal<EventGroup[]>([]);
   readonly lecturerSearchResults = signal<Person[]>([]);
   readonly attendanceCollectorSearchResults = signal<Person[]>([]);
@@ -106,6 +115,7 @@ export class WorkspaceEventsService {
 
   readonly eventFiltersForm = this.formState.createEventFiltersForm();
   readonly eventForm = this.formState.createEventForm();
+  readonly majorEventLookupForm = this.formState.createLookupForm();
   readonly eventGroupLookupForm = this.formState.createLookupForm();
   readonly lecturerLookupForm = this.formState.createLookupForm(true);
   readonly attendanceCollectorLookupForm = this.formState.createLookupForm(true);
@@ -115,6 +125,11 @@ export class WorkspaceEventsService {
       control: this.eventFiltersForm,
       destroyRef: this.destroyRef,
       search: () => this.loadEvents(),
+    });
+    bindLiveSearch({
+      control: this.majorEventLookupForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchMajorEventsForEvent(),
     });
     bindLiveSearch({
       control: this.eventGroupLookupForm.controls.query,
@@ -146,6 +161,15 @@ export class WorkspaceEventsService {
     const events = applyPagedResult(items, this.eventsPagination);
     this.events.set(events);
     await this.loadDraftsForEvents(events.map((eventItem) => eventItem.id));
+  }
+
+  async loadMajorEventsForEvent(): Promise<void> {
+    if (!this.permissions.has(Permission.MajorEvent.Read)) {
+      this.majorEventSearchResults.set([]);
+      return;
+    }
+
+    await this.searchMajorEventsForEvent();
   }
 
   async applyEventFilters(): Promise<void> {
@@ -212,6 +236,7 @@ export class WorkspaceEventsService {
     this.selectedEventDraft.set(null);
     this.eventLecturers.set([]);
     this.eventAttendanceCollectors.set([]);
+    this.selectedMajorEventName.set('');
     this.eventGroupSearchResults.set([]);
     this.groupLecturerSuggestions.set([]);
     this.attendanceCollectorSearchResults.set([]);
@@ -221,6 +246,13 @@ export class WorkspaceEventsService {
       },
       { emitEvent: false },
     );
+    this.majorEventLookupForm.reset(
+      {
+        query: '',
+      },
+      { emitEvent: false },
+    );
+    void this.loadMajorEventsForEvent();
     this.selectedEventGroupName.set('');
     this.selectedEventGroupAllowsCertificates.set(true);
     this.selectedEventGroupAllowsNonPayingCertificates.set(true);
@@ -483,6 +515,35 @@ export class WorkspaceEventsService {
     this.eventGroupSearchResults.set(await firstValueFrom(this.eventGroupsApi.listEventGroups({ query, take: 20 })));
   }
 
+  async searchMajorEventsForEvent(): Promise<void> {
+    if (!this.permissions.has(Permission.MajorEvent.Read)) {
+      this.majorEventSearchResults.set([]);
+      return;
+    }
+
+    const query = this.majorEventLookupForm.controls.query.value.trim();
+    const filters = query
+      ? { query, take: 50 }
+      : {
+          endDateFrom: new Date().toISOString(),
+          take: 50,
+        };
+    this.majorEventSearchResults.set(await firstValueFrom(this.majorEventsApi.listMajorEvents(filters)));
+  }
+
+  assignMajorEventToEvent(majorEvent: MajorEvent): void {
+    this.eventForm.controls.majorEventId.setValue(majorEvent.id);
+    this.applySelectedMajorEvent(majorEvent, { hasMajorEvent: true });
+    this.majorEventLookupForm.controls.query.setValue(majorEvent.name, { emitEvent: false });
+  }
+
+  clearMajorEventFromEvent(): void {
+    this.eventForm.controls.majorEventId.setValue('');
+    this.applySelectedMajorEvent(null, { hasMajorEvent: false });
+    this.majorEventLookupForm.controls.query.setValue('', { emitEvent: false });
+    void this.loadMajorEventsForEvent();
+  }
+
   assignEventGroupToEvent(group: EventGroup): void {
     this.eventForm.controls.eventGroupId.setValue(group.id);
     this.applySelectedEventGroup(group, { hasEventGroup: true });
@@ -524,6 +585,20 @@ export class WorkspaceEventsService {
       (this.selectedEventGroupName() || this.eventGroupSearchResults().find((group) => group.id === groupId)?.name) ??
       this.selectedEvent()?.eventGroup?.name ??
       groupId
+    );
+  }
+
+  majorEventNameById(majorEventId: string): string {
+    if (!majorEventId) {
+      return 'Nenhum grande evento selecionado';
+    }
+
+    return (
+      (this.selectedMajorEventName() ||
+        this.majorEventSearchResults().find((majorEvent) => majorEvent.id === majorEventId)?.name) ??
+      this.selectedEvent()?.majorEvent?.name ??
+      this.majorEvents().find((majorEvent) => majorEvent.id === majorEventId)?.name ??
+      majorEventId
     );
   }
 
@@ -958,6 +1033,7 @@ export class WorkspaceEventsService {
 
   private async populateEventForm(eventItem: Event): Promise<void> {
     const asHours = (eventItem.creditMinutes ?? 0) / 60;
+    const selectedMajorEvent = this.resolveSelectedMajorEvent(eventItem);
     const selectedEventGroup = await this.resolveSelectedEventGroup(eventItem);
     this.eventForm.reset({
       id: eventItem.id,
@@ -1002,6 +1078,11 @@ export class WorkspaceEventsService {
       buttonLink: eventItem.buttonLink ?? '',
     });
     this.syncOnlineAttendanceControls();
+    this.majorEventLookupForm.controls.query.setValue(
+      selectedMajorEvent.status === 'found' ? selectedMajorEvent.majorEvent.name : '',
+      { emitEvent: false },
+    );
+    this.applySelectedMajorEvent(selectedMajorEvent);
     this.eventGroupLookupForm.controls.query.setValue(
       selectedEventGroup.status === 'found' ? selectedEventGroup.group.name : '',
       { emitEvent: false },
@@ -1009,6 +1090,41 @@ export class WorkspaceEventsService {
     this.applySelectedEventGroup(selectedEventGroup);
     this.eventGroupSearchResults.set([]);
     this.syncCertificateControl();
+  }
+
+  private resolveSelectedMajorEvent(eventItem: Event): MajorEventResolution {
+    if (!eventItem.majorEventId) {
+      return { status: 'none' };
+    }
+
+    if (eventItem.majorEvent?.id === eventItem.majorEventId) {
+      return { status: 'found', majorEvent: eventItem.majorEvent as MajorEvent };
+    }
+
+    const majorEvent = this.majorEventSearchResults().find((item) => item.id === eventItem.majorEventId);
+    if (majorEvent) {
+      return { status: 'found', majorEvent };
+    }
+
+    return { status: 'unresolved' };
+  }
+
+  private applySelectedMajorEvent(majorEvent: MajorEvent | null, options: { hasMajorEvent: boolean }): void;
+  private applySelectedMajorEvent(resolution: MajorEventResolution): void;
+  private applySelectedMajorEvent(
+    value: MajorEvent | MajorEventResolution | null,
+    options?: { hasMajorEvent: boolean },
+  ): void {
+    const resolution: MajorEventResolution =
+      options != null
+        ? value == null
+          ? options.hasMajorEvent
+            ? { status: 'unresolved' }
+            : { status: 'none' }
+          : { status: 'found', majorEvent: value as MajorEvent }
+        : (value as MajorEventResolution);
+
+    this.selectedMajorEventName.set(resolution.status === 'found' ? resolution.majorEvent.name : '');
   }
 
   private async resolveSelectedEventGroup(eventItem: Event): Promise<EventGroupResolution> {

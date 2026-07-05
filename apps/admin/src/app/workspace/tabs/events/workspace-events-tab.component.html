@@ -259,18 +259,6 @@
               </mat-select>
             </mat-form-field>
 
-            <mat-form-field>
-              <mat-label>Grande evento</mat-label>
-              <mat-select formControlName="majorEventId">
-                <mat-option value="">Nenhum</mat-option>
-                @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
-                  <mat-option [value]="majorEvent.id">
-                    {{ majorEvent.name }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-
             <mat-form-field class="span-2">
               <mat-label>Descrição curta</mat-label>
               <input matInput formControlName="shortDescription" />
@@ -280,6 +268,63 @@
               <mat-label>Descrição</mat-label>
               <textarea matInput rows="3" formControlName="description"></textarea>
             </mat-form-field>
+          </div>
+        </section>
+
+        <section class="surface field-group" [formGroup]="workspace.majorEventLookupForm">
+          <div class="surface-heading">
+            <h4>Grande evento</h4>
+            @if (canEditEvent(workspace.selectedEvent())) {
+              <button mat-button type="button" (click)="workspace.clearMajorEventFromEvent()">
+                <mat-icon>link_off</mat-icon>
+                Remover vínculo
+              </button>
+            }
+          </div>
+
+          <div class="compact-form">
+            <mat-form-field>
+              <mat-label>Buscar grande evento</mat-label>
+              <input matInput formControlName="query" />
+              <mat-hint>Sem busca, lista grandes eventos atuais e futuros.</mat-hint>
+            </mat-form-field>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="!permissions.has(Permission.MajorEvent.Read)"
+              (click)="workspace.searchMajorEventsForEvent()">
+              <mat-icon>search</mat-icon>
+              Buscar
+            </button>
+          </div>
+
+          <div class="inline-list">
+            @for (majorEvent of workspace.majorEventSearchResults(); track majorEvent.id) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!canAssignMajorEvent(majorEvent)"
+                [matTooltip]="majorEventAssignmentTooltip(majorEvent)"
+                (click)="workspace.assignMajorEventToEvent(majorEvent)">
+                <mat-icon>add_link</mat-icon>
+                Usar {{ majorEvent.name }} {{ majorEvent.startDate | date: 'dd/MM/yyyy' }}
+              </button>
+            } @empty {
+              <span class="empty-note">
+                {{
+                  permissions.has(Permission.MajorEvent.Read)
+                    ? 'Nenhum grande evento listado.'
+                    : 'Listar grandes eventos exige permissão de Grande evento · Visualizar.'
+                }}
+              </span>
+            }
+          </div>
+
+          <div class="surface-heading">
+            <h4>Grande evento selecionado</h4>
+            <span>
+              {{ workspace.majorEventNameById(workspace.eventForm.controls.majorEventId.value) }}
+            </span>
           </div>
         </section>
 
@@ -620,6 +665,8 @@
                 <mat-icon>close</mat-icon>
                 {{ collector.name }}
               </button>
+            } @else {
+              <span class="linked-person">{{ collector.name }}</span>
             }
           } @empty {
             <span class="empty-note">Nenhum coletor vinculado.</span>

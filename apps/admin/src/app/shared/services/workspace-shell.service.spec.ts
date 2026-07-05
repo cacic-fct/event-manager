@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
+import { Permission, WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
 import { WorkspaceEventGroupsService } from './workspace-event-groups.service';
 import { WorkspaceEventsService } from './workspace-events.service';
@@ -16,8 +16,9 @@ describe('WorkspaceShellService', () => {
   let permissions: {
     evaluateWorkspacePermissions: ReturnType<typeof vi.fn>;
     canReadTab: ReturnType<typeof vi.fn>;
+    has: ReturnType<typeof vi.fn>;
   };
-  let eventsService: { loadEvents: ReturnType<typeof vi.fn> };
+  let eventsService: { loadEvents: ReturnType<typeof vi.fn>; loadMajorEventsForEvent: ReturnType<typeof vi.fn> };
   let majorEventsService: { loadMajorEvents: ReturnType<typeof vi.fn> };
   let eventGroupsService: { loadEventGroups: ReturnType<typeof vi.fn> };
   let peopleService: { searchPeople: ReturnType<typeof vi.fn> };
@@ -32,8 +33,12 @@ describe('WorkspaceShellService', () => {
     permissions = {
       evaluateWorkspacePermissions: vi.fn().mockResolvedValue(undefined),
       canReadTab: vi.fn((tab: WorkspacePermissionTab) => readableTabs.has(tab)),
+      has: vi.fn(() => false),
     };
-    eventsService = { loadEvents: vi.fn().mockResolvedValue(undefined) };
+    eventsService = {
+      loadEvents: vi.fn().mockResolvedValue(undefined),
+      loadMajorEventsForEvent: vi.fn().mockResolvedValue(undefined),
+    };
     majorEventsService = { loadMajorEvents: vi.fn().mockResolvedValue(undefined) };
     eventGroupsService = { loadEventGroups: vi.fn().mockResolvedValue(undefined) };
     peopleService = { searchPeople: vi.fn().mockResolvedValue(undefined) };
@@ -72,6 +77,7 @@ describe('WorkspaceShellService', () => {
 
     expect(permissions.evaluateWorkspacePermissions).toHaveBeenCalledTimes(1);
     expect(eventsService.loadEvents).toHaveBeenCalledTimes(1);
+    expect(eventsService.loadMajorEventsForEvent).not.toHaveBeenCalled();
     expect(placePresetsService.loadPlacePresets).toHaveBeenCalledTimes(1);
     expect(certificatesService.loadInitialData).toHaveBeenCalledTimes(1);
     expect(mergeCandidatesService.scanMergeCandidates).toHaveBeenCalledWith(false);
@@ -79,6 +85,17 @@ describe('WorkspaceShellService', () => {
     expect(eventGroupsService.loadEventGroups).not.toHaveBeenCalled();
     expect(peopleService.searchPeople).not.toHaveBeenCalled();
     expect(ui.loading()).toBe(false);
+  });
+
+  it('preloads event-editor major-event choices when the user can read major events', async () => {
+    readableTabs = new Set([WorkspacePermissionTab.Events]);
+    permissions.has.mockImplementation((scope: Permission) => scope === Permission.MajorEvent.Read);
+
+    await service.loadInitialData();
+
+    expect(eventsService.loadEvents).toHaveBeenCalledTimes(1);
+    expect(eventsService.loadMajorEventsForEvent).toHaveBeenCalledTimes(1);
+    expect(majorEventsService.loadMajorEvents).not.toHaveBeenCalled();
   });
 
   it('clears the shell loading state when a preload fails', async () => {

@@ -49,6 +49,7 @@ type CertificateConfigFormModel = {
   secondPageText: string;
   isActive: boolean;
   issuedTo: CertificateIssuedToOption;
+  certificateTypeLabel: string;
   certificateFields: Record<string, string>;
 };
 type CertificateFieldDefinition = {
@@ -90,6 +91,9 @@ export class WorkspaceCertificatesService {
   readonly personSearchResults = signal<Person[]>([]);
   readonly certificateFieldDefinitions = signal<CertificateFieldDefinition[]>([]);
   readonly shouldShowSecondPageText = computed(() => !this.certificateConfigModel().shouldAutofillSecondPage);
+  readonly shouldShowCertificateTypeLabel = computed(() =>
+    this.requiresCustomCertificateTypeLabel(this.certificateConfigModel().issuedTo),
+  );
   private certificateFieldValuesJson: string | null | undefined;
 
   private selectedCertificateTemplate(
@@ -292,6 +296,10 @@ export class WorkspaceCertificatesService {
         config.issuedTo,
         this.parseLecturerEventCategory(config.certificateFieldsJson),
       ),
+      certificateTypeLabel: this.buildCertificateTypeLabel(
+        this.buildIssuedToOption(config.issuedTo, this.parseLecturerEventCategory(config.certificateFieldsJson)),
+        config.certificateTypeLabel,
+      ) ?? '',
       certificateFields: {},
     });
     this.syncCertificateFieldsForm(config.certificateFieldsJson, config.certificateTemplateId);
@@ -333,6 +341,13 @@ export class WorkspaceCertificatesService {
     this.syncCertificateFieldsForm(undefined, templateId);
   }
 
+  onCertificateIssuedToChanged(issuedTo: CertificateIssuedToOption): void {
+    this.certificateConfigForm.issuedTo().value.set(issuedTo);
+    this.certificateConfigForm.certificateTypeLabel().value.set(
+      this.requiresCustomCertificateTypeLabel(issuedTo) ? '' : (this.buildCertificateTypeLabel(issuedTo) ?? ''),
+    );
+  }
+
   async saveCertificateConfig(): Promise<void> {
     await this.persistCertificateConfig({ showSnackbar: true });
   }
@@ -343,8 +358,9 @@ export class WorkspaceCertificatesService {
     const success = await submit(this.certificateConfigForm, async (field) => {
       const raw = field().value();
       const fieldErrors = this.validateCertificateFields(raw.certificateFields);
-      if (fieldErrors.length > 0) {
-        return fieldErrors;
+      const certificateTypeErrors = this.validateCertificateTypeLabel(raw.issuedTo, raw.certificateTypeLabel);
+      if (fieldErrors.length > 0 || certificateTypeErrors.length > 0) {
+        return [...fieldErrors, ...certificateTypeErrors];
       }
 
       const selectedTarget = this.selectedTarget();
@@ -605,6 +621,7 @@ export class WorkspaceCertificatesService {
       secondPageText: raw.shouldAutofillSecondPage ? null : raw.secondPageText.trim() || null,
       isActive: raw.isActive,
       issuedTo: this.normalizeIssuedTo(raw.issuedTo),
+      certificateTypeLabel: this.buildCertificateTypeLabel(raw.issuedTo, raw.certificateTypeLabel),
       certificateFieldsJson: this.buildCertificateFieldsJson(
         raw.certificateFields,
         this.parseIssuedToLecturerEventCategory(raw.issuedTo),
@@ -729,6 +746,7 @@ export class WorkspaceCertificatesService {
       secondPageText: '',
       isActive: true,
       issuedTo: 'ATTENDEE',
+      certificateTypeLabel: 'Participação',
       certificateFields: {},
     };
   }
@@ -821,6 +839,43 @@ export class WorkspaceCertificatesService {
 
   private normalizeIssuedTo(issuedTo: CertificateIssuedToOption): CertificateIssuedTo {
     return issuedTo === 'LECTURER_PALESTRA' || issuedTo === 'LECTURER_MINICURSO' ? 'LECTURER' : issuedTo;
+  }
+
+  private buildCertificateTypeLabel(issuedTo: CertificateIssuedToOption, customLabel?: string | null): string | null {
+    if (issuedTo === 'ATTENDEE') {
+      return 'Participação';
+    }
+
+    if (issuedTo === 'LECTURER_PALESTRA') {
+      return 'Palestrante';
+    }
+
+    if (issuedTo === 'LECTURER_MINICURSO') {
+      return 'Ministrante';
+    }
+
+    return customLabel?.trim() || null;
+  }
+
+  private requiresCustomCertificateTypeLabel(issuedTo: CertificateIssuedToOption): boolean {
+    return issuedTo === 'LECTURER' || issuedTo === 'OTHER';
+  }
+
+  private validateCertificateTypeLabel(
+    issuedTo: CertificateIssuedToOption,
+    certificateTypeLabel: string,
+  ): Array<{ kind: string; message: string; fieldTree: FieldTree<unknown> }> {
+    if (!this.requiresCustomCertificateTypeLabel(issuedTo) || certificateTypeLabel.trim()) {
+      return [];
+    }
+
+    return [
+      {
+        kind: 'required',
+        message: 'Campo obrigatório.',
+        fieldTree: this.certificateConfigForm.certificateTypeLabel as FieldTree<unknown>,
+      },
+    ];
   }
 
   private parseIssuedToLecturerEventCategory(issuedTo: CertificateIssuedToOption): LecturerEventCategory | undefined {

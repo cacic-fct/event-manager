@@ -302,6 +302,18 @@
   margin: 0.75rem 0;
 }
 
+.linked-person {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  max-width: 100%;
+  padding: 0 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 1.125rem;
+  color: var(--mat-sys-on-surface);
+  overflow-wrap: anywhere;
+}
+
 .permission-option {
   height: auto;
   min-height: 4.5rem;

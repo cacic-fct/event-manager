@@ -467,7 +467,8 @@ describe('CalendarService', () => {
     expect(download.content.match(/BEGIN:VEVENT/g) ?? []).toHaveLength(1);
     expect(download.content).toContain('SUMMARY:Oficina antiga de TypeScript');
     expect(download.content).toContain('DTSTART:20260101T130000Z');
-    expect(download.content).toContain('CLASS:PRIVATE');
+    expect(download.content).toContain('CLASS:PUBLIC');
+    expect(download.content).toContain('TRANSP:OPAQUE');
   });
 
   it('maps missing current admin feed settings to a disabled state', async () => {
@@ -892,7 +893,8 @@ describe('CalendarService', () => {
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/events/admin-event-1');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/groups/group-1');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/major-events/major-1');
-    expect(download.content).toContain('CLASS:PRIVATE');
+    expect(download.content).toContain('CLASS:PUBLIC');
+    expect(download.content).toContain('TRANSP:OPAQUE');
   });
 
   it('keeps event-only scoped grants from leaking event group calendar entries', async () => {
@@ -1240,6 +1242,8 @@ describe('CalendarService', () => {
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/events/event-1');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/groups/group-1');
     expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/major-events/major-1');
+    expect(download.content).toContain('CLASS:PUBLIC');
+    expect(download.content).toContain('TRANSP:TRANSPARENT');
     expect(prisma.superAdminCalendarFeedSettings.updateMany).not.toHaveBeenCalled();
   });
 

@@ -423,6 +423,7 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   secondPageText
   isActive
   issuedTo
+  certificateTypeLabel
   certificateFieldsJson
   createdAt
   deletedAt

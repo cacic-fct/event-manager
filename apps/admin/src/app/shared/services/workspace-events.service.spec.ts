@@ -7,6 +7,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { of } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
+import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { EventInput } from '@cacic-fct/event-manager-admin-contracts';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { PublicationApiService } from '../../graphql/publishing-api.service';
@@ -39,6 +40,9 @@ describe('WorkspaceEventsService', () => {
   let publicationApi: {
     setPublicationState: ReturnType<typeof vi.fn>;
   };
+  let majorEventApi: {
+    listMajorEvents: ReturnType<typeof vi.fn>;
+  };
   let router: {
     navigate: ReturnType<typeof vi.fn>;
   };
@@ -68,6 +72,9 @@ describe('WorkspaceEventsService', () => {
     publicationApi = {
       setPublicationState: vi.fn(() => of({ ok: true })),
     };
+    majorEventApi = {
+      listMajorEvents: vi.fn(() => of([createAdminMajorEvent({ id: 'major-event-1', name: 'SECOMPP' })])),
+    };
     router = {
       navigate: vi.fn(),
     };
@@ -78,6 +85,7 @@ describe('WorkspaceEventsService', () => {
         WorkspaceUiService,
         { provide: EventApiService, useValue: api },
         { provide: PublicationApiService, useValue: publicationApi },
+        { provide: MajorEventApiService, useValue: majorEventApi },
         { provide: EventGroupApiService, useValue: { getEventGroup: vi.fn() } },
         { provide: PeopleApiService, useValue: { listPeopleSummaries: vi.fn(() => of([])) } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
@@ -89,7 +97,7 @@ describe('WorkspaceEventsService', () => {
           useValue: {
             canEdit: vi.fn(() => true),
             hasAll: vi.fn(() => true),
-            has: vi.fn((scope: Permission) => scope === Permission.Event.Update),
+            has: vi.fn((scope: Permission) => scope === Permission.Event.Update || scope === Permission.MajorEvent.Read),
           },
         },
         {
@@ -114,6 +122,10 @@ describe('WorkspaceEventsService', () => {
       shouldCollectAttendance: true,
       locationDescription: '',
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('creates an event draft and keeps the event unpublished on draft save', async () => {
@@ -195,5 +207,39 @@ describe('WorkspaceEventsService', () => {
     expect(api.applyEventDraft).toHaveBeenCalledWith('event-draft-1');
     expect(api.getEvent).toHaveBeenCalledWith('event-1');
     expect(service.selectedEventDraft()).toBeNull();
+  });
+
+  it('loads current and future major events by default for the event editor lookup', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-07-05T12:00:00.000Z'));
+
+    await service.loadMajorEventsForEvent();
+
+    expect(majorEventApi.listMajorEvents).toHaveBeenCalledWith({
+      endDateFrom: '2026-07-05T12:00:00.000Z',
+      take: 50,
+    });
+    expect(service.majorEventSearchResults()).toEqual([
+      expect.objectContaining({ id: 'major-event-1', name: 'SECOMPP' }),
+    ]);
+  });
+
+  it('searches major events without a date boundary so past major events can be selected', async () => {
+    const pastMajorEvent = createAdminMajorEvent({
+      id: 'major-event-past',
+      name: 'SECOMPP 2024',
+      startDate: '2024-07-01T12:00:00.000Z',
+      endDate: '2024-07-05T12:00:00.000Z',
+    });
+    majorEventApi.listMajorEvents.mockReturnValue(of([pastMajorEvent]));
+    service.majorEventLookupForm.controls.query.setValue('SECOMPP 2024', { emitEvent: false });
+
+    await service.searchMajorEventsForEvent();
+
+    expect(majorEventApi.listMajorEvents).toHaveBeenCalledWith({
+      query: 'SECOMPP 2024',
+      take: 50,
+    });
+    expect(service.majorEventSearchResults()).toEqual([pastMajorEvent]);
   });
 });

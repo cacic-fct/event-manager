@@ -102,6 +102,7 @@ describe('WorkspaceCertificatesService', () => {
   it('posts template defaults as stored certificate fields', async () => {
     await service.saveCertificateConfig();
 
+    expect(lastPayload?.certificateTypeLabel).toBe('Participação');
     expect(lastPayload?.certificateFieldsJson).toBe(
       JSON.stringify({
         'top-text': 'Certificamos a participação de',
@@ -176,14 +177,41 @@ describe('WorkspaceCertificatesService', () => {
   it('persists current recipient type before issuing pending certificates', async () => {
     service.selectCertificateConfig(createAdminCertificateConfig({ id: 'config-1' }, certificateTemplate));
     service.certificateConfigForm.issuedTo().value.set('LECTURER');
+    service.certificateConfigForm.certificateTypeLabel().value.set('Mediador');
 
     await service.issueMissedCertificates();
 
     expect(api.updateCertificateConfig).toHaveBeenCalledWith(
       'config-1',
-      expect.objectContaining({ issuedTo: 'LECTURER' }),
+      expect.objectContaining({ issuedTo: 'LECTURER', certificateTypeLabel: 'Mediador' }),
     );
     expect(api.issueMissedCertificates).toHaveBeenCalledWith('config-1');
+  });
+
+  it('maps recipient selections to certificate type labels', async () => {
+    service.onCertificateIssuedToChanged('LECTURER_PALESTRA');
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload).toEqual(
+      expect.objectContaining({
+        issuedTo: 'LECTURER',
+        certificateTypeLabel: 'Palestrante',
+        certificateFieldsJson: expect.stringContaining('__lecturerEventCategory'),
+      }),
+    );
+
+    service.onCertificateIssuedToChanged('LECTURER');
+    service.certificateConfigForm.certificateTypeLabel().value.set('Painelista');
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload).toEqual(
+      expect.objectContaining({
+        issuedTo: 'LECTURER',
+        certificateTypeLabel: 'Painelista',
+      }),
+    );
   });
 
   it('sends custom second page text only when event autofill is disabled', async () => {

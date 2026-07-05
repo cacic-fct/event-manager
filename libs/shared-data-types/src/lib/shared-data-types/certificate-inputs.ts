@@ -38,6 +38,9 @@ export class CertificateConfigCreateInput {
   issuedTo?: CertificateIssuedTo;
 
   @Field(() => String, { nullable: true })
+  certificateTypeLabel?: string;
+
+  @Field(() => String, { nullable: true })
   certificateFieldsJson?: string;
 }
 
@@ -75,6 +78,9 @@ export class CertificateConfigUpdateInput {
 
   @Field(() => CertificateIssuedTo, { nullable: true })
   issuedTo?: CertificateIssuedTo;
+
+  @Field(() => String, { nullable: true })
+  certificateTypeLabel?: string;
 
   @Field(() => String, { nullable: true })
   certificateFieldsJson?: string;

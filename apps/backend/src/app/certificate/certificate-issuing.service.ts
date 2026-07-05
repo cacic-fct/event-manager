@@ -467,6 +467,7 @@ export class CertificateIssuingService {
       configId: config.id,
       configName: config.name,
       configText: config.certificateText ?? null,
+      certificateTypeLabel: this.buildCertificateTypeLabel(config),
       shouldAutofillSecondPage: config.shouldAutofillSecondPage,
       secondPageText: config.secondPageText ?? null,
       person: {
@@ -545,6 +546,7 @@ export class CertificateIssuingService {
     const otherEvents = sortedEvents.filter(
       (event) => event.type !== EventType.MINICURSO && event.type !== EventType.PALESTRA,
     );
+    const certificateTypeLabel = this.buildCertificateTypeLabel(config);
 
     const contentLines: string[] = [];
     const minicursoLines = this.buildMinicursoLines(minicursos);
@@ -631,6 +633,8 @@ export class CertificateIssuingService {
       url: verificationUrl,
       identity_document: formattedDocument,
       identityDocument: formattedDocument,
+      certificate_type: certificateTypeLabel,
+      certificateType: certificateTypeLabel,
       certificateID: '{certificateID}',
       name_small: recipient.person.name,
       document: `Documento: ${formattedDocument}`,
@@ -753,6 +757,29 @@ export class CertificateIssuingService {
     }
 
     return 'Certificamos a participação como palestrante de:';
+  }
+
+  private buildCertificateTypeLabel(config: CertificateConfigRecord): string {
+    const customLabel = config.certificateTypeLabel?.trim();
+
+    if (config.issuedTo === CertificateIssuedTo.ATTENDEE) {
+      return 'Participação';
+    }
+
+    if (config.issuedTo !== CertificateIssuedTo.LECTURER) {
+      return customLabel || 'Manual';
+    }
+
+    const lecturerEventCategory = this.parseLecturerEventCategory(config.certificateFields);
+    if (lecturerEventCategory === 'PALESTRA') {
+      return 'Palestrante';
+    }
+
+    if (lecturerEventCategory === 'MINICURSO') {
+      return 'Ministrante';
+    }
+
+    return customLabel || 'Palestrante/ministrante';
   }
 
   private parseLecturerEventCategory(certificateFields: Prisma.JsonValue | null): LecturerEventCategory | null {
