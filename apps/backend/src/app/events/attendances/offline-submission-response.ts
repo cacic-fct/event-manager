@@ -2,6 +2,7 @@ import {
   OfflineEventAttendanceSubmission,
   OfflineEventAttendanceSubmissionStatus,
 } from '@cacic-fct/shared-data-types';
+import { classifyOfflineAttendanceMessage } from './offline-attendance-resolution';
 
 export type OfflineSubmissionResponseSource = {
   id: string;
@@ -76,6 +77,7 @@ export function mapOfflineSubmissionForResponse(
     submittedByFullName: actorNameById.get(submission.submittedById),
     stagedReason: submission.stagedReason ?? undefined,
     resolutionError: submission.resolutionError ?? undefined,
+    resolutionIssue: classifyOfflineAttendanceMessage(submission.resolutionError ?? submission.stagedReason),
     collectedLatitude: submission.collectedLatitude ?? undefined,
     collectedLongitude: submission.collectedLongitude ?? undefined,
     collectedAccuracyMeters: submission.collectedAccuracyMeters ?? undefined,

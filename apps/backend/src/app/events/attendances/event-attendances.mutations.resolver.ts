@@ -6,9 +6,10 @@ import {
   EventAttendanceScannerCodeInput,
   EventAttendanceUpdateInput,
   OfflineEventAttendanceSubmission,
+  OfflineEventAttendanceSubmissionUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
 import { AttendanceCreationMethod, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
@@ -17,6 +18,7 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { normalizeOptionalString } from '../../current-user/events/attendance-collection-context';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT, GraphqlContext } from './event-attendances.shared';
 import {
@@ -24,6 +26,8 @@ import {
   offlineSubmissionActorIds,
   offlineSubmissionActorNameMap,
 } from './offline-submission-response';
+import { errorMessage } from './offline-attendance-resolution';
+import { parseStoredScannerUserId, scannerUserIdForStorage } from './user-scanner-code';
 
 const EVENT_ATTENDANCE_AUDIT_SELECT = {
   personId: true,
@@ -248,11 +252,14 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
-    const person = await this.findSinglePersonForManualInput(input.value);
+    const explicitPersonId = normalizeOptionalString(input.personId);
+    const personId = explicitPersonId
+      ? await this.resolveActiveMergedPersonId(explicitPersonId)
+      : (await this.findSinglePersonForManualInput(input.value)).id;
     return this.createAttendanceWithMetadata(
       {
         eventId: input.eventId,
-        personId: person.id,
+        personId,
         createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
         createdById: this.getActorId(context),
         committedById: this.getActorId(context),
@@ -490,6 +497,74 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     return this.getOfflineSubmissionForResponse(submission.id);
   }
 
+  @Mutation(() => OfflineEventAttendanceSubmission, { name: 'updateOfflineEventAttendanceSubmission' })
+  async updateOfflineEventAttendanceSubmission(
+    @Args('submissionId', { type: () => String }) submissionId: string,
+    @Args('input', { type: () => OfflineEventAttendanceSubmissionUpdateInput })
+    input: OfflineEventAttendanceSubmissionUpdateInput,
+    @Context() context: GraphqlContext,
+  ): Promise<OfflineEventAttendanceSubmission> {
+    const submission = await this.prisma.offlineEventAttendanceSubmission.findUnique({
+      where: {
+        id: submissionId,
+      },
+      include: {
+        event: true,
+        person: true,
+      },
+    });
+    if (!submission) {
+      throw new NotFoundException(`Offline attendance submission ${submissionId} was not found.`);
+    }
+    if (submission.status !== 'PENDING') {
+      throw new ConflictException('Esta presença off-line já foi revisada.');
+    }
+
+    await this.assertCanReviewOfflineSubmission(submission.eventId, context);
+    await this.frozenResources.assertEventMutable(submission.eventId, this.getUser(context), 'edit');
+    const data = await this.buildOfflineSubmissionCorrectionData(submission, input);
+
+    await this.prisma.$transaction(async (tx) => {
+      const reviewUpdate = await tx.offlineEventAttendanceSubmission.updateMany({
+        where: {
+          id: submission.id,
+          status: 'PENDING',
+        },
+        data,
+      });
+      if (reviewUpdate.count !== 1) {
+        throw new ConflictException('Esta presença off-line já foi revisada.');
+      }
+
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+          entityId: `offline:${submission.id}`,
+          entityLabel: submission.id,
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: {
+            personId: submission.personId,
+            createdByMethod: submission.createdByMethod,
+            scannerCode: submission.scannerCode,
+            manualValue: submission.manualValue,
+            resolutionError: submission.resolutionError,
+          },
+          after: data,
+          scope: {
+            permission: Permission.EventAttendance.Update,
+            eventId: submission.eventId,
+          },
+          summary: 'Presença off-line corrigida pelo painel administrativo.',
+        },
+        tx,
+      );
+    });
+
+    await this.dashboardInsights.invalidateCachedInsights();
+    return this.getOfflineSubmissionForResponse(submission.id);
+  }
+
   private normalizeSubmissionBatch(submissionIds: readonly string[]): string[] {
     const normalizedIds = [...new Set(submissionIds.map((id) => id.trim()).filter(Boolean))];
     if (normalizedIds.length === 0) {
@@ -621,6 +696,80 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     return this.resolveMergedPersonId(personId);
   }
 
+  private async buildOfflineSubmissionCorrectionData(
+    submission: {
+      personId: string | null;
+      createdByMethod: AttendanceCreationMethod;
+      scannerCode: string | null;
+      manualValue: string | null;
+    },
+    input: OfflineEventAttendanceSubmissionUpdateInput,
+  ): Promise<Prisma.OfflineEventAttendanceSubmissionUncheckedUpdateManyInput> {
+    const createdByMethod = (input.createdByMethod ?? submission.createdByMethod) as AttendanceCreationMethod;
+    const scannerCode =
+      createdByMethod === AttendanceCreationMethod.SCANNER
+        ? this.scannerCodeForOfflineCorrection(input.scannerCode, submission.scannerCode)
+        : null;
+    const manualValue =
+      createdByMethod === AttendanceCreationMethod.MANUAL_INPUT
+        ? normalizeOptionalString(input.manualValue ?? submission.manualValue) ?? null
+        : null;
+    const explicitPersonId = normalizeOptionalString(input.personId);
+
+    if (explicitPersonId) {
+      try {
+        return {
+          createdByMethod,
+          scannerCode,
+          manualValue,
+          personId: await this.resolveActiveMergedPersonId(explicitPersonId),
+          stagedReason: null,
+          resolutionError: null,
+        };
+      } catch (error: unknown) {
+        if (!(error instanceof HttpException) || ![400, 404, 409].includes(error.getStatus())) {
+          throw error;
+        }
+
+        return {
+          createdByMethod,
+          scannerCode,
+          manualValue,
+          personId: null,
+          resolutionError: errorMessage(error),
+        };
+      }
+    }
+
+    try {
+      const personId = await this.resolveOfflineSubmissionPerson({
+        createdByMethod,
+        scannerCode,
+        manualValue,
+      });
+      return {
+        createdByMethod,
+        scannerCode,
+        manualValue,
+        personId: await this.resolveActiveMergedPersonId(personId),
+        stagedReason: null,
+        resolutionError: null,
+      };
+    } catch (error: unknown) {
+      if (!(error instanceof HttpException) || ![400, 404, 409].includes(error.getStatus())) {
+        throw error;
+      }
+
+      return {
+        createdByMethod,
+        scannerCode,
+        manualValue,
+        personId: null,
+        resolutionError: errorMessage(error),
+      };
+    }
+  }
+
   private async resolveOfflineSubmissionPerson(submission: {
     createdByMethod: AttendanceCreationMethod;
     scannerCode: string | null;
@@ -628,7 +777,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   }): Promise<string> {
     switch (submission.createdByMethod) {
       case AttendanceCreationMethod.SCANNER: {
-        const userId = submission.scannerCode ? this.parseUserAztecCode(submission.scannerCode) : null;
+        const userId = submission.scannerCode ? parseStoredScannerUserId(submission.scannerCode) : null;
         if (!userId) {
           throw new BadRequestException('Código Aztec incompatível.');
         }
@@ -656,6 +805,17 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     }
   }
 
+  private scannerCodeForOfflineCorrection(
+    inputScannerCode: string | null | undefined,
+    storedScannerCode: string | null,
+  ): string | null {
+    if (inputScannerCode !== undefined) {
+      return scannerUserIdForStorage(inputScannerCode);
+    }
+
+    return storedScannerCode ? parseStoredScannerUserId(storedScannerCode) : null;
+  }
+
   private async resolveMergedPersonId(personId: string): Promise<string> {
     const person = await this.prisma.people.findUnique({
       where: {
@@ -671,6 +831,24 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     }
 
     return person.mergedIntoId ?? person.id;
+  }
+
+  private async resolveActiveMergedPersonId(personId: string): Promise<string> {
+    const resolvedPersonId = await this.resolveMergedPersonId(personId);
+    const person = await this.prisma.people.findFirst({
+      where: {
+        id: resolvedPersonId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (!person) {
+      throw new NotFoundException(`Person ${personId} was not found.`);
+    }
+
+    return person.id;
   }
 
   private async getOfflineSubmissionForResponse(submissionId: string): Promise<OfflineEventAttendanceSubmission> {

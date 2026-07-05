@@ -17,7 +17,9 @@ import {
   getAuthenticatedUser,
   normalizeOptionalString,
   parseUserAztecCode,
+  scannerUserIdForStorage,
 } from './attendance-collection-context';
+import { classifyOfflineAttendanceMessage } from '../../events/attendances/offline-attendance-resolution';
 import { findSinglePersonForManualInput, getRequiredAttendanceLocationData } from './attendance-collection-records';
 import { notifyOfflineAttendanceReviewQueued } from './attendance-collection-offline-notifications';
 
@@ -173,7 +175,7 @@ export class OfflineAttendanceSubmissions {
             eventId: item.eventId,
             personId: resolvedPerson.personId,
             createdByMethod: item.createdByMethod,
-            scannerCode: normalizeOptionalString(item.code),
+            scannerCode: this.scannerCodeForStorage(item),
             manualValue: normalizeOptionalString(item.value),
             collectedAt: item.collectedAt,
             authorUserId: metadata.createdById,
@@ -216,7 +218,7 @@ export class OfflineAttendanceSubmissions {
         stagedReason: metadata.stagedReason,
         resolutionError: resolvedPerson.errorMessage ?? null,
         personId: resolvedPerson.personId,
-        scannerCode: normalizeOptionalString(item.code) ?? null,
+        scannerCode: this.scannerCodeForStorage(item),
         manualValue: normalizeOptionalString(item.value) ?? null,
         collectedLatitude: locationData.collectedLatitude,
         collectedLongitude: locationData.collectedLongitude,
@@ -235,6 +237,10 @@ export class OfflineAttendanceSubmissions {
       changed: update.count === 1,
       queuedForReview: false,
     };
+  }
+
+  private scannerCodeForStorage(item: OfflineAttendanceItem): string | null {
+    return item.createdByMethod === AttendanceCreationMethod.SCANNER ? scannerUserIdForStorage(item.code) : null;
   }
 
   private where(submittedById: string, clientId: string) {
@@ -286,6 +292,7 @@ export class OfflineAttendanceSubmissions {
       authorEmail: submission.authorEmail ?? undefined,
       stagedReason: submission.stagedReason ?? undefined,
       resolutionError: submission.resolutionError ?? undefined,
+      resolutionIssue: classifyOfflineAttendanceMessage(submission.resolutionError ?? submission.stagedReason),
       collectedLatitude: submission.collectedLatitude ?? undefined,
       collectedLongitude: submission.collectedLongitude ?? undefined,
       collectedAccuracyMeters: submission.collectedAccuracyMeters ?? undefined,

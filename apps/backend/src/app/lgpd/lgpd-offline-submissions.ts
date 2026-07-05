@@ -1,4 +1,6 @@
 import { Prisma } from '@prisma/client';
+import { getBrazilianPhoneCandidates } from '../common/brazilian-phone';
+import { parseStoredScannerUserId } from '../events/attendances/user-scanner-code';
 import { ANONYMIZED_AUDIT_VALUE } from './lgpd-audit-anonymization';
 import { DataSubjectResolution } from './lgpd-records';
 
@@ -14,7 +16,7 @@ export function buildOfflineSubmissionSubjectWhere(
     conditions.push({ submittedById: { in: dataSubject.userIds } });
     conditions.push({ committedById: { in: dataSubject.userIds } });
     conditions.push({ rejectedById: { in: dataSubject.userIds } });
-    conditions.push({ scannerCode: { in: dataSubject.userIds.map((userId) => `user:${userId}`) } });
+    conditions.push({ scannerCode: { in: scannerSubjectValues(dataSubject.userIds) } });
   }
   for (const email of dataSubject.emails) {
     conditions.push({ authorEmail: { equals: email, mode: 'insensitive' } });
@@ -28,8 +30,7 @@ export function buildOfflineSubmissionSubjectWhere(
 }
 
 export function parseScannerUserId(scannerCode: string): string | null {
-  const [kind, userId, ...extraParts] = scannerCode.split(':');
-  return kind === 'user' && userId && extraParts.length === 0 ? userId : null;
+  return parseStoredScannerUserId(scannerCode);
 }
 
 export function getOfflineManualSubjectValueCandidates(dataSubject: DataSubjectResolution): string[] {
@@ -144,6 +145,10 @@ export function caseInsensitiveKey(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function scannerSubjectValues(userIds: readonly string[]): string[] {
+  return [...new Set(userIds.flatMap((userId) => [userId, `user:${userId}`]))];
+}
+
 function addPhoneManualValueCandidates(values: Map<string, string>, phone?: string | null): void {
   const normalizedPhone = phone?.trim();
   if (!normalizedPhone) {
@@ -151,7 +156,7 @@ function addPhoneManualValueCandidates(values: Map<string, string>, phone?: stri
   }
 
   addManualValueCandidate(values, normalizedPhone);
-  for (const candidate of getBrazilianPhoneCandidates(normalizedPhone.replace(/\D/g, ''))) {
+  for (const candidate of getBrazilianPhoneCandidates(normalizedPhone)) {
     addManualValueCandidate(values, candidate);
   }
 }
@@ -178,45 +183,6 @@ function addIdentityDocumentManualValueCandidates(
       values,
       `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`,
     );
-  }
-}
-
-function getBrazilianPhoneCandidates(digits: string): string[] {
-  if (!digits) {
-    return [];
-  }
-
-  const candidates = new Set<string>();
-  const withoutCountry = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
-  const withCountry = withoutCountry.length >= 10 ? `55${withoutCountry}` : digits;
-  for (const candidate of [digits, withoutCountry, withCountry, `+${withCountry}`]) {
-    candidates.add(candidate);
-  }
-  addBrazilianPhoneDisplayCandidates(candidates, withoutCountry);
-  return [...candidates];
-}
-
-function addBrazilianPhoneDisplayCandidates(candidates: Set<string>, withoutCountry: string): void {
-  if (withoutCountry.length !== 10 && withoutCountry.length !== 11) {
-    return;
-  }
-
-  const areaCode = withoutCountry.slice(0, 2);
-  const localNumber = withoutCountry.slice(2);
-  const prefixLength = localNumber.length === 9 ? 5 : 4;
-  const prefix = localNumber.slice(0, prefixLength);
-  const suffix = localNumber.slice(prefixLength);
-  const localDisplay = `${prefix}-${suffix}`;
-  for (const candidate of [
-    `(${areaCode}) ${localDisplay}`,
-    `(${areaCode})${localDisplay}`,
-    `${areaCode} ${localDisplay}`,
-    `${areaCode}${localDisplay}`,
-    `55 ${areaCode} ${localDisplay}`,
-    `+55 ${areaCode} ${localDisplay}`,
-    `+55 (${areaCode}) ${localDisplay}`,
-  ]) {
-    candidates.add(candidate);
   }
 }
 

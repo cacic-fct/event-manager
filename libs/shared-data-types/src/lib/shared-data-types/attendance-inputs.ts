@@ -35,6 +35,9 @@ export class EventAttendanceManualInput {
   @Field(() => String)
   value!: string;
 
+  @Field(() => String, { nullable: true })
+  personId?: string;
+
   @Field(() => AttendanceCollectionLocationInput, { nullable: true })
   location?: AttendanceCollectionLocationInput;
 }
@@ -79,6 +82,30 @@ export class CommitOfflineEventAttendancesInput {
 }
 
 @InputType()
+export class OfflineEventAttendanceSubmissionUpdateInput {
+  @Field(() => OfflineAttendanceCreationMethod, { nullable: true })
+  createdByMethod?: OfflineAttendanceCreationMethod;
+
+  @Field(() => String, { nullable: true })
+  scannerCode?: string;
+
+  @Field(() => String, { nullable: true })
+  manualValue?: string;
+
+  @Field(() => String, { nullable: true })
+  personId?: string;
+}
+
+@InputType()
+export class EventAttendanceCsvImportResolutionInput {
+  @Field(() => String)
+  value!: string;
+
+  @Field(() => String)
+  personId!: string;
+}
+
+@InputType()
 export class EventAttendanceCsvImportInput {
   @Field(() => String)
   eventId!: string;
@@ -88,6 +115,9 @@ export class EventAttendanceCsvImportInput {
 
   @Field(() => String)
   selectedHeader!: string;
+
+  @Field(() => [EventAttendanceCsvImportResolutionInput], { nullable: true })
+  resolutions?: EventAttendanceCsvImportResolutionInput[];
 }
 
 @InputType()

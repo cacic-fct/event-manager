@@ -382,6 +382,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
           clientId: 'queue-1',
           eventId: 'event-1',
           personId: 'person-1',
+          scannerCode: 'user-1',
           authorUserId: 'collector-user',
           submittedById: 'collector-user',
           collectedLatitude: -22.12,
@@ -397,6 +398,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
           clientId: 'queue-1',
           eventId: 'event-1',
           personId: 'person-1',
+          scannerCode: 'user-1',
           authorUserId: 'collector-user',
           submittedById: 'collector-user',
           collectedAt: new Date('2026-05-20T12:30:00.000Z'),
@@ -493,6 +495,13 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     ]);
 
     expect(prisma.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledTimes(1);
+    expect(prisma.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scannerCode: 'user-1',
+        }),
+      }),
+    );
     expect(notifications.notifyOfflineAttendanceReviewQueued).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
@@ -607,6 +616,54 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     ]);
 
     expect(prisma.offlineEventAttendanceSubmission.create).not.toHaveBeenCalled();
+  });
+
+  it('stages unprefixed offline scanner payloads as invalid without storing them as user IDs', async () => {
+    const { resolver, prisma } = createCollectionResolver({
+      collector: collectorPerson(),
+      people: [{ id: 'person-1' }],
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-invalid-scanner',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.SCANNER,
+              code: 'user-1',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+              authorUserId: 'offline-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        clientId: 'queue-invalid-scanner',
+        eventId: 'event-1',
+        status: 'STAGED',
+        stagedSubmission: expect.objectContaining({
+          scannerCode: undefined,
+          resolutionIssue: 'INVALID_SCANNER_CODE',
+          resolutionError: 'Código Aztec incompatível.',
+        }),
+      }),
+    ]);
+
+    expect(prisma.offlineEventAttendanceSubmission.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          clientId: 'queue-invalid-scanner',
+          personId: null,
+          scannerCode: null,
+          resolutionError: 'Código Aztec incompatível.',
+        }),
+      }),
+    );
   });
 
   it('commits expired offline attendances directly for users with attendance collection permission', async () => {
@@ -730,6 +787,96 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     expect(prisma.offlineEventAttendanceSubmission.create).not.toHaveBeenCalled();
   });
 
+  it('stages duplicate-person offline manual inputs for admin correction', async () => {
+    const { resolver, prisma } = createCollectionResolver({
+      collector: collectorPerson(),
+      people: [
+        { id: 'person-1', mergedIntoId: null },
+        { id: 'person-2', mergedIntoId: null },
+      ],
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-duplicate-person',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+              value: 'duplicate@example.com',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+              authorUserId: 'offline-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        clientId: 'queue-duplicate-person',
+        eventId: 'event-1',
+        status: 'STAGED',
+        stagedSubmission: expect.objectContaining({
+          personId: undefined,
+          resolutionIssue: 'DUPLICATE_PERSON',
+          resolutionError: expect.stringContaining('Pessoa tem registros duplicados'),
+        }),
+      }),
+    ]);
+    expect(prisma.offlineEventAttendanceSubmission.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          clientId: 'queue-duplicate-person',
+          personId: null,
+          manualValue: 'duplicate@example.com',
+          resolutionError: expect.stringContaining('Pessoa tem registros duplicados'),
+        }),
+      }),
+    );
+  });
+
+  it('stages offline identity conflicts for permissioned senders instead of returning terminal conflicts', async () => {
+    const { resolver, authorizationPolicy } = createCollectionResolver({
+      collector: null,
+      people: [
+        { id: 'person-1', mergedIntoId: null },
+        { id: 'person-2', mergedIntoId: null },
+      ],
+      grantsAttendancePermission: true,
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'queue-admin-duplicate-person',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+              value: 'duplicate@example.com',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+              authorUserId: 'offline-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        clientId: 'queue-admin-duplicate-person',
+        eventId: 'event-1',
+        status: 'STAGED',
+        stagedSubmission: expect.objectContaining({
+          resolutionIssue: 'DUPLICATE_PERSON',
+        }),
+      }),
+    ]);
+    expect(authorizationPolicy.assertAttendanceCollectorForEvent).not.toHaveBeenCalled();
+  });
+
   it('finds manual input matches by normalized phone and resolves merged people', async () => {
     const { resolver, prisma } = createCollectionResolver({
       collector: collectorPerson({ userId: 'fallback-user' }),
@@ -742,19 +889,36 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       { request: { user: { sub: undefined } } } as never,
     );
 
+    const expectedPhoneAliases = [
+      '5518999990000',
+      '18999990000',
+      '+5518999990000',
+      '(18) 99999-0000',
+      '(18)99999-0000',
+      '18 99999-0000',
+      '1899999-0000',
+      '55 18 99999-0000',
+      '+55 18 99999-0000',
+      '+55 (18) 99999-0000',
+    ];
     expect(prisma.people.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           OR: expect.arrayContaining([
             {
               phone: {
-                in: ['5518999990000', '18999990000', '+5518999990000'],
+                in: expect.arrayContaining(expectedPhoneAliases),
               },
             },
           ]),
         }),
       }),
     );
+    const peopleFindManyArgs = prisma.people.findMany.mock.calls[0][0] as Prisma.PersonFindManyArgs;
+    const phoneFilter = peopleFindManyArgs.where?.OR?.find((filter) => 'phone' in filter) as
+      | { phone: { in: string[] } }
+      | undefined;
+    expect(phoneFilter?.phone.in).toHaveLength(expectedPhoneAliases.length);
   });
 
   it('rejects manual input with duplicate active people or missing precise location', async () => {

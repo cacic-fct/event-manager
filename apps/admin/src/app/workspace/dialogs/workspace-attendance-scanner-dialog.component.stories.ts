@@ -7,6 +7,7 @@ import { expect, userEvent, within } from 'storybook/test';
 import { of } from 'rxjs';
 import { ScannerFeedbackService } from '@cacic-fct/shared-angular/aztec-scanner';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
+import { PeopleApiService } from '../../graphql/people-api.service';
 import type { AttendanceCategory, EventAttendance, EventAttendanceScannerFeedItem } from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspaceAttendanceScannerDialogComponent } from './workspace-attendance-scanner-dialog.component';
 
@@ -110,6 +111,7 @@ class WorkspaceAttendanceScannerDialogStoryHostComponent {
         { provide: MAT_DIALOG_DATA, useValue: { eventId: this.eventId() } },
         { provide: MatDialogRef, useValue: dialogRefMock },
         { provide: AttendanceApiService, useValue: attendanceApi },
+        { provide: PeopleApiService, useValue: { listPeopleSummaries: () => of([]) } },
         { provide: ScannerFeedbackService, useValue: { show: () => undefined } },
       ],
     }),

@@ -5,7 +5,7 @@ import { MatListModule } from '@angular/material/list';
 import { EventAttendanceCsvImportResult } from '@cacic-fct/event-manager-admin-contracts';
 
 const MATCH_TYPE_LABELS: Record<string, string> = {
-  IDENTITY_DOCUMENT: 'documento de identidade',
+  IDENTITY_DOCUMENT: 'documento ou telefone',
   EMAIL: 'e-mail',
   FULL_NAME: 'nome completo',
 };

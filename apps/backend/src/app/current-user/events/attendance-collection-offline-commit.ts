@@ -2,7 +2,7 @@ import {
   CommitOfflineEventAttendancesInput,
   OfflineEventAttendanceCommitResult,
 } from '@cacic-fct/shared-data-types';
-import { BadRequestException, ConflictException, ForbiddenException, HttpException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException } from '@nestjs/common';
 import { AttendanceCreationMethod } from '@prisma/client';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
@@ -13,6 +13,7 @@ import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { NovuNotificationsService } from '../../notifications/novu-notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { classifyOfflineAttendanceError } from '../../events/attendances/offline-attendance-resolution';
 import { recordAttendanceCreate } from './attendance-collection-audit';
 import { ATTENDANCE_COLLECTION_PERMISSIONS } from './attendance-collection-events';
 import {
@@ -135,8 +136,7 @@ export class OfflineAttendanceCommitter {
       };
     } catch (error: unknown) {
       if (
-        !canCommitWithPermission &&
-        await this.shouldStage(item.eventId, sender.id, error, context)
+        await this.shouldStage(item.eventId, sender.id, error, context, canCommitWithPermission)
       ) {
         try {
           const stagedSubmission = await this.submissions.stage(item, context, {
@@ -209,16 +209,18 @@ export class OfflineAttendanceCommitter {
     senderPersonId: string,
     error: unknown,
     context: GraphqlContext,
+    canCommitWithPermission: boolean,
   ): Promise<boolean> {
     if (!(error instanceof HttpException)) {
       return false;
     }
 
-    if (error instanceof ConflictException && errorMessage(error).includes('Presença já registrada')) {
+    const resolution = classifyOfflineAttendanceError(error);
+    if (!resolution.stageable || resolution.issue === 'DUPLICATE_ATTENDANCE') {
       return false;
     }
 
-    if (![400, 403, 404].includes(error.getStatus())) {
+    if (![400, 403, 404, 409].includes(error.getStatus())) {
       return false;
     }
 
@@ -233,6 +235,10 @@ export class OfflineAttendanceCommitter {
     });
     if (!event) {
       return false;
+    }
+
+    if (canCommitWithPermission) {
+      return true;
     }
 
     try {

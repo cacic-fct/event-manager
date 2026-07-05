@@ -40,11 +40,17 @@ describe('people lookup helpers', () => {
     expect(buildPeopleCandidateLookupFilters(' 123.456.789-00 ', 10)).toEqual([
       { identityDocument: '12345678900', take: 10 },
       { identityDocument: '123.456.789-00', take: 10 },
+      { phone: '12345678900', take: 10 },
+      { phone: '123.456.789-00', take: 10 },
       { query: '123.456.789-00', take: 10 },
     ]);
     expect(buildPeopleCandidateLookupFilters('ada@example.com', 10)).toEqual([
       { email: 'ada@example.com', take: 10 },
       { query: 'ada@example.com', take: 10 },
+    ]);
+    expect(buildPeopleCandidateLookupFilters('user:account-1', 10)).toEqual([
+      { userId: 'account-1', take: 10 },
+      { query: 'user:account-1', take: 10 },
     ]);
   });
 

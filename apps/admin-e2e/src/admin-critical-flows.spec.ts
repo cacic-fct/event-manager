@@ -89,6 +89,21 @@ test('attendance management loads event attendance and major event attendance de
   await expect(page.getByRole('heading', { name: 'Presenças do evento' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Regulares' })).toBeVisible();
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Presenças off-line em revisão' })).toBeVisible();
+  await expect(page.getByText('Pessoa não encontrada')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Corrigir presença off-line' }).click();
+  const correctionDialog = page.getByRole('dialog', { name: 'Corrigir presença off-line' });
+  await expect(correctionDialog).toBeVisible();
+  await expect(correctionDialog.getByLabel('Dado original')).toBeVisible();
+  await expect(correctionDialog.getByLabel('Dado original').getByText('ada@exmaple.com')).toBeVisible();
+  await expect(correctionDialog.getByLabel('Buscar pessoa')).toHaveValue('ada@exmaple.com');
+  await expect(correctionDialog.getByRole('button', { name: 'Salvar correção' })).toBeVisible();
+  await correctionDialog.getByRole('button', { name: 'Executar busca de pessoa' }).click();
+  await correctionDialog.getByRole('button', { name: /Ada Lovelace/ }).click();
+  await correctionDialog.getByRole('button', { name: 'Salvar correção' }).click();
+  await expect(correctionDialog).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'Presenças off-line em revisão' })).toBeHidden();
 
   await page.goto('/admin/attendances/major-event/major-event-1');
 

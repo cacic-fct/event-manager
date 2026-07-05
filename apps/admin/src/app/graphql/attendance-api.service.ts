@@ -7,6 +7,7 @@ import {
   EventAttendance,
   EventAttendanceScannerFeedItem,
   EventAttendanceCsvImportResult,
+  EventAttendanceCsvImportResolution,
   MajorEventSubscriptionCsvImportResult,
   MajorEventUserAttendance,
   OfflineEventAttendanceSubmission,
@@ -17,6 +18,7 @@ import {
   MAJOR_EVENT_USER_ATTENDANCE_FIELDS,
   OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS,
   OFFLINE_EVENT_ATTENDANCE_REJECTION_FIELDS,
+  OFFLINE_EVENT_ATTENDANCE_SUBMISSION_FIELDS,
   PERSON_EXPORT_FIELDS,
   PERSON_SEARCH_FIELDS,
 } from './graphql-query-fragments';
@@ -53,7 +55,12 @@ export class AttendanceApiService {
       .pipe(map((data) => data.createEventAttendanceFromAztecCode));
   }
 
-  importEventAttendancesFromCsv(input: { eventId: string; csvContent: string; selectedHeader: string }) {
+  importEventAttendancesFromCsv(input: {
+    eventId: string;
+    csvContent: string;
+    selectedHeader: string;
+    resolutions?: EventAttendanceCsvImportResolution[];
+  }) {
     return this.graphqlHttp
       .request<{
         importEventAttendancesFromCsv: EventAttendanceCsvImportResult;
@@ -67,6 +74,12 @@ export class AttendanceApiService {
             failedCount
             failedValues
             inferredMatchType
+            ambiguousValues {
+              value
+              candidates {
+                ${PERSON_SEARCH_FIELDS}
+              }
+            }
           }
         }`,
         { input },
@@ -148,39 +161,36 @@ export class AttendanceApiService {
       .request<{ offlineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(
         `query OfflineEventAttendanceSubmissions($eventId: String!) {
           offlineEventAttendanceSubmissions(eventId: $eventId) {
-            id
-            clientId
-            eventId
-            status
-            createdByMethod
-            scannerCode
-            manualValue
-            collectedAt
-            authorUserId
-            authorName
-            authorEmail
-            submittedById
-            submittedByFullName
-            submittedAt
-            stagedReason
-            resolutionError
-            collectedLatitude
-            collectedLongitude
-            collectedAccuracyMeters
-            event {
-              id
-              name
-              emoji
-              startDate
-            }
-            person {
-              ${PERSON_EXPORT_FIELDS}
-            }
+            ${OFFLINE_EVENT_ATTENDANCE_SUBMISSION_FIELDS}
           }
         }`,
         { eventId },
       )
       .pipe(map((data) => data.offlineEventAttendanceSubmissions));
+  }
+
+  updateOfflineEventAttendanceSubmission(
+    submissionId: string,
+    input: {
+      createdByMethod?: Extract<OfflineEventAttendanceSubmission['createdByMethod'], 'SCANNER' | 'MANUAL_INPUT'> | null;
+      scannerCode?: string | null;
+      manualValue?: string | null;
+      personId?: string | null;
+    },
+  ) {
+    return this.graphqlHttp
+      .request<{ updateOfflineEventAttendanceSubmission: OfflineEventAttendanceSubmission }>(
+        `mutation UpdateOfflineEventAttendanceSubmission(
+          $submissionId: String!
+          $input: OfflineEventAttendanceSubmissionUpdateInput!
+        ) {
+          updateOfflineEventAttendanceSubmission(submissionId: $submissionId, input: $input) {
+            ${OFFLINE_EVENT_ATTENDANCE_SUBMISSION_FIELDS}
+          }
+        }`,
+        { submissionId, input },
+      )
+      .pipe(map((data) => data.updateOfflineEventAttendanceSubmission));
   }
 
   approveOfflineEventAttendanceSubmission(submissionId: string) {
@@ -314,7 +324,7 @@ export class AttendanceApiService {
       .pipe(map((data) => data.createEventAttendanceFromScannerCode));
   }
 
-  createEventAttendanceFromManualInput(input: { eventId: string; value: string }) {
+  createEventAttendanceFromManualInput(input: { eventId: string; value: string; personId?: string }) {
     return this.graphqlHttp
       .request<{ createEventAttendanceFromManualInput: EventAttendance }>(
         `mutation CreateEventAttendanceFromManualInput($input: EventAttendanceManualInput!) {

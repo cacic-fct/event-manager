@@ -334,7 +334,7 @@ describe('LGPD helper modules', () => {
           {
             id: 'offline-1',
             personId: 'person-1',
-            scannerCode: 'user:subject-user',
+            scannerCode: 'subject-user',
             manualValue: 'subject@example.com',
             authorUserId: 'subject-user',
             authorName: 'Subject User',
@@ -360,7 +360,7 @@ describe('LGPD helper modules', () => {
     expect(buildOfflineSubmissionSubjectWhere(dataSubject)).toEqual({
       OR: expect.arrayContaining([
         { personId: { in: ['person-1'] } },
-        { scannerCode: { in: ['user:subject-user'] } },
+        { scannerCode: { in: ['subject-user', 'user:subject-user'] } },
         {
           manualValue: {
             in: expect.arrayContaining(['subject@example.com', '52998224725']),

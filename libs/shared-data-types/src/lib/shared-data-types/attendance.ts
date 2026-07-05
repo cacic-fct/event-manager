@@ -5,6 +5,7 @@ import {
   AttendanceCreationMethod,
   AttendanceImportMatchType,
   OfflineEventAttendanceCommitStatus,
+  OfflineEventAttendanceResolutionIssue,
   OfflineEventAttendanceSubmissionStatus,
   SubscriptionStatus,
 } from './enums';
@@ -148,6 +149,9 @@ export class OfflineEventAttendanceSubmission {
   @Field(() => String, { nullable: true })
   resolutionError?: string;
 
+  @Field(() => OfflineEventAttendanceResolutionIssue, { nullable: true })
+  resolutionIssue?: OfflineEventAttendanceResolutionIssue;
+
   @Field(() => Float, { nullable: true })
   collectedLatitude?: number;
 
@@ -264,6 +268,15 @@ export class MajorEventUserAttendance {
 }
 
 @ObjectType()
+export class EventAttendanceCsvImportAmbiguousValue {
+  @Field(() => String)
+  value!: string;
+
+  @Field(() => [Person])
+  candidates!: Person[];
+}
+
+@ObjectType()
 export class EventAttendanceCsvImportResult {
   @Field(() => Int)
   createdCount!: number;
@@ -279,6 +292,9 @@ export class EventAttendanceCsvImportResult {
 
   @Field(() => AttendanceImportMatchType)
   inferredMatchType!: AttendanceImportMatchType;
+
+  @Field(() => [EventAttendanceCsvImportAmbiguousValue])
+  ambiguousValues!: EventAttendanceCsvImportAmbiguousValue[];
 }
 
 @ObjectType()

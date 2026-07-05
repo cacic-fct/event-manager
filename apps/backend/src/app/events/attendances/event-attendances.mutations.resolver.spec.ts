@@ -235,7 +235,353 @@ describe('EventAttendancesMutationsResolver', () => {
       }),
     );
   });
+
+  it('approves scanner offline submissions that store the raw keycloak user id', async () => {
+    const submission = offlineSubmissionFixture({
+      personId: null,
+      scannerCode: 'user-1',
+      resolutionError: 'Person for user user-1 was not found.',
+    });
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findFirst.mockResolvedValue({ id: 'person-1' });
+    prisma.people.findUnique.mockResolvedValue({ id: 'person-1', mergedIntoId: null });
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      personId: 'person-1',
+      status: 'COMMITTED',
+      committedAt: new Date('2026-05-21T13:00:00.000Z'),
+      committedById: 'admin-user',
+      rejectedAt: null,
+      rejectedById: null,
+      rejectionReason: null,
+      stagedReason: null,
+      resolutionError: null,
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    tx.eventAttendance.findUnique.mockResolvedValue(null);
+    tx.eventAttendance.findUniqueOrThrow.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await resolver.approveOfflineEventAttendanceSubmission('submission-1', { req: { user: { sub: 'admin-user' } } } as never);
+
+    expect(prisma.people.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          userId: 'user-1',
+        }),
+      }),
+    );
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personId: 'person-1',
+        }),
+      }),
+    );
+    expect(tx.eventAttendance.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          eventId: 'event-1',
+          personId: 'person-1',
+          createdByMethod: AttendanceCreationMethod.SCANNER,
+        }),
+      }),
+    );
+  });
+
+  it('updates pending offline submissions with corrected manual data', async () => {
+    const submission = offlineSubmissionFixture({
+      personId: null,
+      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+      manualValue: 'ada@exmaple.com',
+      resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+    });
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findMany.mockResolvedValue([{ id: 'person-1', mergedIntoId: null }]);
+    prisma.people.findUnique.mockResolvedValue({ id: 'person-1', mergedIntoId: null });
+    prisma.people.findFirst.mockResolvedValue({ id: 'person-1' });
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      personId: 'person-1',
+      manualValue: 'ada@example.com',
+      resolutionError: null,
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.updateOfflineEventAttendanceSubmission(
+        'submission-1',
+        { createdByMethod: 'MANUAL_INPUT', manualValue: 'ada@example.com' },
+        { req: { user: { sub: 'admin-user' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'submission-1',
+        personId: 'person-1',
+        resolutionIssue: 'UNKNOWN',
+      }),
+    );
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'submission-1',
+          status: 'PENDING',
+        },
+        data: expect.objectContaining({
+          createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+          manualValue: 'ada@example.com',
+          scannerCode: null,
+          personId: 'person-1',
+          resolutionError: null,
+        }),
+      }),
+    );
+  });
+
+  it('keeps inferred offline corrections retryable when the merged person is deleted', async () => {
+    const submission = offlineSubmissionFixture({
+      personId: null,
+      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+      manualValue: 'ada@exmaple.com',
+      resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+    });
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findMany.mockResolvedValue([{ id: 'old-person', mergedIntoId: 'merged-person' }]);
+    prisma.people.findUnique.mockResolvedValue({ id: 'merged-person', mergedIntoId: null });
+    prisma.people.findFirst.mockResolvedValue(null);
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      personId: null,
+      manualValue: 'ada@example.com',
+      resolutionError: 'Person merged-person was not found.',
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.updateOfflineEventAttendanceSubmission(
+        'submission-1',
+        { createdByMethod: 'MANUAL_INPUT', manualValue: 'ada@example.com' },
+        { req: { user: { sub: 'admin-user' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'submission-1',
+        personId: undefined,
+        resolutionIssue: 'PERSON_NOT_FOUND',
+      }),
+    );
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personId: null,
+          resolutionError: 'Person merged-person was not found.',
+        }),
+      }),
+    );
+  });
+
+  it('updates pending offline submissions with an explicit active person', async () => {
+    const submission = offlineSubmissionFixture({
+      personId: null,
+      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+      manualValue: 'ada@exmaple.com',
+      stagedReason: 'Nenhuma pessoa encontrada para o dado informado.',
+      resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+    });
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findUnique.mockResolvedValue({ id: 'person-2', mergedIntoId: null });
+    prisma.people.findFirst.mockResolvedValue({ id: 'person-2' });
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      personId: 'person-2',
+      person: { id: 'person-2', name: 'Pessoa corrigida' },
+      stagedReason: null,
+      resolutionError: null,
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.updateOfflineEventAttendanceSubmission(
+        'submission-1',
+        { personId: 'person-2' },
+        { req: { user: { sub: 'admin-user' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'submission-1',
+        personId: 'person-2',
+        resolutionIssue: 'UNKNOWN',
+      }),
+    );
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personId: 'person-2',
+          stagedReason: null,
+          resolutionError: null,
+        }),
+      }),
+    );
+  });
+
+  it('keeps explicit-person corrections retryable when the person is stale or missing', async () => {
+    const submission = offlineSubmissionFixture({
+      personId: null,
+      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+      manualValue: 'ada@exmaple.com',
+      resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+    });
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findUnique.mockResolvedValue(null);
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      personId: null,
+      resolutionError: 'Person missing-person was not found.',
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.updateOfflineEventAttendanceSubmission(
+        'submission-1',
+        { personId: 'missing-person' },
+        { req: { user: { sub: 'admin-user' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'submission-1',
+        personId: undefined,
+        resolutionIssue: 'PERSON_NOT_FOUND',
+      }),
+    );
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personId: null,
+          resolutionError: 'Person missing-person was not found.',
+        }),
+      }),
+    );
+  });
+
+  it('updates scanner-based offline submissions with an explicit active person', async () => {
+    const submission = offlineSubmissionFixture({
+      personId: null,
+      createdByMethod: AttendanceCreationMethod.SCANNER,
+      scannerCode: 'user:typo',
+      resolutionError: 'Person for user typo was not found.',
+    });
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findUnique.mockResolvedValue({ id: 'person-2', mergedIntoId: null });
+    prisma.people.findFirst.mockResolvedValue({ id: 'person-2' });
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      personId: 'person-2',
+      person: { id: 'person-2', name: 'Pessoa corrigida' },
+      resolutionError: null,
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.updateOfflineEventAttendanceSubmission(
+        'submission-1',
+        { createdByMethod: 'SCANNER', scannerCode: 'user:typo', personId: 'person-2' },
+        { req: { user: { sub: 'admin-user' } } } as never,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ personId: 'person-2' }));
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          createdByMethod: AttendanceCreationMethod.SCANNER,
+          scannerCode: 'typo',
+          manualValue: null,
+          personId: 'person-2',
+          resolutionError: null,
+        }),
+      }),
+    );
+  });
+
+  it('saves unresolved offline submission corrections for another admin pass', async () => {
+    const submission = offlineSubmissionFixture({
+      personId: null,
+      createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+      manualValue: 'typo@example.com',
+      resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+    });
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
+    prisma.people.findMany.mockResolvedValue([]);
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
+      ...submission,
+      manualValue: 'still-typo@example.com',
+      resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+    });
+    const tx = createTxMock();
+    tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+
+    await expect(
+      resolver.updateOfflineEventAttendanceSubmission(
+        'submission-1',
+        { createdByMethod: 'MANUAL_INPUT', manualValue: 'still-typo@example.com' },
+        { req: { user: { sub: 'admin-user' } } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'submission-1',
+        personId: undefined,
+        resolutionIssue: 'PERSON_NOT_FOUND',
+      }),
+    );
+    expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          personId: null,
+          resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+        }),
+      }),
+    );
+  });
 });
+
+function offlineSubmissionFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'submission-1',
+    clientId: 'queue-1',
+    eventId: 'event-1',
+    personId: 'person-1',
+    status: 'PENDING',
+    createdByMethod: AttendanceCreationMethod.SCANNER,
+    scannerCode: 'user:user-1',
+    manualValue: null,
+    collectedAt: new Date('2026-05-21T12:00:00.000Z'),
+    authorUserId: 'offline-user',
+    submittedById: 'collector-user',
+    collectedLatitude: -22.1,
+    collectedLongitude: -51.4,
+    collectedAccuracyMeters: 12,
+    committedAt: null,
+    committedById: null,
+    rejectedAt: null,
+    rejectedById: null,
+    rejectionReason: null,
+    stagedReason: null,
+    resolutionError: null,
+    event: { id: 'event-1', name: 'Evento' },
+    person: { id: 'person-1', name: 'Pessoa' },
+    ...overrides,
+  };
+}
 
 function createFullPrisma() {
   return {

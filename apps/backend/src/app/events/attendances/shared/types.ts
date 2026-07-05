@@ -7,10 +7,17 @@ export type PersonMatch = {
   name: string;
   email: string | null;
   secondaryEmails: string[];
+  phone?: string | null;
   identityDocument: string | null;
   academicId: string | null;
+  userId?: string | null;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type ImportValueMatchResult = {
+  personByValue: Map<string, PersonMatch>;
+  ambiguousPeopleByValue: Map<string, PersonMatch[]>;
 };
 
 export type SubscriptionImportPersonData = {

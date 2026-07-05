@@ -159,6 +159,25 @@ registerEnumType(OfflineEventAttendanceSubmissionStatus, {
   name: 'OfflineEventAttendanceSubmissionStatus',
 });
 
+export const OfflineEventAttendanceResolutionIssue = {
+  COLLECTION_WINDOW_EXPIRED: 'COLLECTION_WINDOW_EXPIRED',
+  DUPLICATE_ATTENDANCE: 'DUPLICATE_ATTENDANCE',
+  DUPLICATE_PERSON: 'DUPLICATE_PERSON',
+  EVENT_DELETED: 'EVENT_DELETED',
+  EVENT_LOCKED: 'EVENT_LOCKED',
+  INVALID_SCANNER_CODE: 'INVALID_SCANNER_CODE',
+  LOCATION_IMPRECISE: 'LOCATION_IMPRECISE',
+  LOCATION_MISSING: 'LOCATION_MISSING',
+  PERSON_NOT_FOUND: 'PERSON_NOT_FOUND',
+  UNSUPPORTED_METHOD: 'UNSUPPORTED_METHOD',
+  UNKNOWN: 'UNKNOWN',
+} as const;
+export type OfflineEventAttendanceResolutionIssue =
+  (typeof OfflineEventAttendanceResolutionIssue)[keyof typeof OfflineEventAttendanceResolutionIssue];
+registerEnumType(OfflineEventAttendanceResolutionIssue, {
+  name: 'OfflineEventAttendanceResolutionIssue',
+});
+
 export const SubscriptionCreationMethod = {
   ADMIN_DASHBOARD: 'ADMIN_DASHBOARD',
   SELF_SUBSCRIPTION: 'SELF_SUBSCRIPTION',

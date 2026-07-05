@@ -19,6 +19,9 @@ type AdminE2EEventFormFixture = AdminE2ENamedFixture & {
   links: Record<string, unknown>[];
   elementsJson: string;
 };
+type AdminE2EGraphqlState = {
+  offlineEventAttendanceSubmission: Record<string, unknown> | null;
+};
 
 export const adminE2EReadPermissions = [
   'event#read',
@@ -77,6 +80,9 @@ export async function mockAdminApi(
 ): Promise<void> {
   let currentUser = options.user;
   const permissions = options.permissions ?? adminE2EReadPermissions;
+  const graphqlState: AdminE2EGraphqlState = {
+    offlineEventAttendanceSubmission: createAdminE2EOfflineEventAttendanceSubmission(),
+  };
 
   await page.route('https://unleash.cacic.dev.br/api/frontend/**', (route) =>
     route.fulfill({
@@ -139,7 +145,7 @@ export async function mockAdminApi(
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: graphqlData(route.request().postDataJSON() as unknown, options.dashboardInsights),
+          data: graphqlData(route.request().postDataJSON() as unknown, options.dashboardInsights, graphqlState),
         }),
       });
       return;
@@ -503,6 +509,44 @@ export function createAdminE2EEventAttendance(overrides: Record<string, unknown>
   };
 }
 
+export function createAdminE2EOfflineEventAttendanceSubmission(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const event = createAdminE2EEvent();
+
+  return {
+    id: 'offline-attendance-1',
+    clientId: 'offline-client-1',
+    eventId: event.id,
+    event,
+    personId: null,
+    person: null,
+    status: 'PENDING',
+    createdByMethod: 'MANUAL_INPUT',
+    scannerCode: null,
+    manualValue: 'ada@exmaple.com',
+    collectedAt: '2026-05-21T17:20:00.000Z',
+    authorUserId: 'collector-user',
+    authorName: 'Coletora Offline',
+    authorEmail: 'coletora@example.edu',
+    submittedById: 'admin-1',
+    submittedByFullName: 'Admin Teste',
+    submittedAt: '2026-05-21T18:00:00.000Z',
+    stagedReason: 'Coleta enviada para revisão administrativa.',
+    resolutionError: 'Nenhuma pessoa encontrada para o dado informado.',
+    resolutionIssue: 'PERSON_NOT_FOUND',
+    collectedLatitude: -22.1211,
+    collectedLongitude: -51.4086,
+    collectedAccuracyMeters: 12,
+    committedAt: null,
+    committedById: null,
+    committedByFullName: null,
+    rejectedAt: null,
+    rejectedById: null,
+    rejectedByFullName: null,
+    rejectionReason: null,
+    ...overrides,
+  };
+}
+
 export function createAdminE2EEventForm(overrides: Partial<AdminE2EEventFormFixture> = {}): AdminE2EEventFormFixture {
   const event = createAdminE2EEvent();
 
@@ -604,7 +648,11 @@ export function createAdminE2EMajorEventUserAttendance(overrides: Record<string,
   };
 }
 
-function graphqlData(body: unknown, dashboardInsights: AdminE2EDashboardInsights | undefined): Record<string, unknown> {
+function graphqlData(
+  body: unknown,
+  dashboardInsights: AdminE2EDashboardInsights | undefined,
+  state: AdminE2EGraphqlState,
+): Record<string, unknown> {
   const query = isRecord(body) && typeof body['query'] === 'string' ? body['query'] : '';
   const variables = isRecord(body) && isRecord(body['variables']) ? body['variables'] : {};
   const event = createAdminE2EEvent({ id: 'event-1' });
@@ -669,6 +717,10 @@ function graphqlData(body: unknown, dashboardInsights: AdminE2EDashboardInsights
 
   if (query.includes('query ListEventAttendanceCollectors')) {
     return { eventAttendanceCollectors: [] };
+  }
+
+  if (query.includes('query ListPeopleSummaries')) {
+    return { people: [createAdminE2EPerson()] };
   }
 
   if (query.includes('query ListMajorEvents')) {
@@ -768,7 +820,28 @@ function graphqlData(body: unknown, dashboardInsights: AdminE2EDashboardInsights
   }
 
   if (query.includes('query OfflineEventAttendanceSubmissions')) {
-    return { offlineEventAttendanceSubmissions: [] };
+    return {
+      offlineEventAttendanceSubmissions: state.offlineEventAttendanceSubmission
+        ? [state.offlineEventAttendanceSubmission]
+        : [],
+    };
+  }
+
+  if (query.includes('mutation UpdateOfflineEventAttendanceSubmission')) {
+    const input = isRecord(variables['input']) ? variables['input'] : {};
+    const personId = typeof input['personId'] === 'string' ? input['personId'] : 'person-1';
+    const person = createAdminE2EPerson({ id: personId });
+    const updatedSubmission = createAdminE2EOfflineEventAttendanceSubmission({
+      personId,
+      person,
+      manualValue: 'ada@example.edu',
+      resolutionError: null,
+      resolutionIssue: null,
+    });
+    state.offlineEventAttendanceSubmission = null;
+    return {
+      updateOfflineEventAttendanceSubmission: updatedSubmission,
+    };
   }
 
   if (query.includes('query ListMajorEventUserAttendances')) {

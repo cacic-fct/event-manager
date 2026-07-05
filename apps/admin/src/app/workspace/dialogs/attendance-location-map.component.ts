@@ -21,7 +21,7 @@ type MapInstance = {
 @Component({
   selector: 'app-attendance-location-map',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<div #mapTarget class="map-preview" [attr.aria-label]="ariaLabel()"></div>`,
+  template: `<div #mapTarget class="map-preview" role="img" [attr.aria-label]="ariaLabel()"></div>`,
   styles: `
     :host {
       display: block;
@@ -53,6 +53,7 @@ export class AttendanceLocationMapComponent implements OnDestroy {
   private map: MapInstance | null = null;
   private hasRendered = false;
   private renderVersion = 0;
+  private lastRenderKey: string | null = null;
 
   private readonly location = computed(() => {
     const latitude = this.latitude();
@@ -91,7 +92,16 @@ export class AttendanceLocationMapComponent implements OnDestroy {
     const location = this.location();
 
     if (!target || !location) {
+      this.lastRenderKey = null;
       this.destroyMap();
+      return;
+    }
+
+    const renderKey = [location.latitude, location.longitude, this.accuracyMeters() ?? '', this.markerLabel()].join('|');
+
+    if (this.map && this.lastRenderKey === renderKey) {
+      ++this.renderVersion;
+      requestAnimationFrame(() => this.map?.updateSize());
       return;
     }
 
@@ -192,6 +202,7 @@ export class AttendanceLocationMapComponent implements OnDestroy {
       });
     }
 
+    this.lastRenderKey = renderKey;
     requestAnimationFrame(() => this.map?.updateSize());
   }
 

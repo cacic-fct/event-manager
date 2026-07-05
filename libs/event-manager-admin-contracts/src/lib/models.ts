@@ -593,6 +593,18 @@ export interface EventAttendance {
 }
 
 export type OfflineEventAttendanceSubmissionStatus = 'PENDING' | 'COMMITTED' | 'REJECTED';
+export type OfflineEventAttendanceResolutionIssue =
+  | 'COLLECTION_WINDOW_EXPIRED'
+  | 'DUPLICATE_ATTENDANCE'
+  | 'DUPLICATE_PERSON'
+  | 'EVENT_DELETED'
+  | 'EVENT_LOCKED'
+  | 'INVALID_SCANNER_CODE'
+  | 'LOCATION_IMPRECISE'
+  | 'LOCATION_MISSING'
+  | 'PERSON_NOT_FOUND'
+  | 'UNSUPPORTED_METHOD'
+  | 'UNKNOWN';
 
 export interface OfflineEventAttendanceSubmission {
   id: string;
@@ -614,6 +626,7 @@ export interface OfflineEventAttendanceSubmission {
   submittedAt: string;
   stagedReason?: string | null;
   resolutionError?: string | null;
+  resolutionIssue?: OfflineEventAttendanceResolutionIssue | null;
   collectedLatitude?: number | null;
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
@@ -711,6 +724,17 @@ export interface EventAttendanceCsvImportResult {
   failedCount: number;
   failedValues: string[];
   inferredMatchType: AttendanceImportMatchType;
+  ambiguousValues: EventAttendanceCsvImportAmbiguousValue[];
+}
+
+export interface EventAttendanceCsvImportAmbiguousValue {
+  value: string;
+  candidates: Person[];
+}
+
+export interface EventAttendanceCsvImportResolution {
+  value: string;
+  personId: string;
 }
 
 export interface MajorEventSubscriptionCsvColumnMapping {

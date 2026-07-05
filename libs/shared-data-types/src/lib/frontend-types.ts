@@ -7,6 +7,18 @@ export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
 export type SubscriptionCreationMethod = 'ADMIN_DASHBOARD' | 'SELF_SUBSCRIPTION' | 'UNKNOWN';
 export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
 export type OfflineEventAttendanceSubmissionStatus = 'PENDING' | 'COMMITTED' | 'REJECTED';
+export type OfflineEventAttendanceResolutionIssue =
+  | 'COLLECTION_WINDOW_EXPIRED'
+  | 'DUPLICATE_ATTENDANCE'
+  | 'DUPLICATE_PERSON'
+  | 'EVENT_DELETED'
+  | 'EVENT_LOCKED'
+  | 'INVALID_SCANNER_CODE'
+  | 'LOCATION_IMPRECISE'
+  | 'LOCATION_MISSING'
+  | 'PERSON_NOT_FOUND'
+  | 'UNSUPPORTED_METHOD'
+  | 'UNKNOWN';
 export type SubscriptionStatus =
   | 'WAITING_RECEIPT_UPLOAD'
   | 'RECEIPT_UNDER_REVIEW'
@@ -345,6 +357,7 @@ export interface OfflineEventAttendanceSubmission {
   submittedAt: string;
   stagedReason?: string | null;
   resolutionError?: string | null;
+  resolutionIssue?: OfflineEventAttendanceResolutionIssue | null;
   collectedLatitude?: number | null;
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
