@@ -22,7 +22,7 @@ interface OpenMeteoResponse {
 
 const WEATHER_QUEUE = 'weather';
 const TIME_ZONE = 'America/Sao_Paulo';
-const ATTRIBUTION = 'Weather data by Open-Meteo.com';
+const ATTRIBUTION = 'Open-Meteo.com';
 
 @Injectable()
 export class WeatherService {

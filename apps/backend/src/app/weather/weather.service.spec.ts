@@ -66,7 +66,7 @@ describe('WeatherService', () => {
         materialIcon: 'rainy',
         forecastTime: '2026-05-22T12:00:00.000Z',
         fetchedAt: '2026-05-21T12:00:00.000Z',
-        attribution: 'Weather data by Open-Meteo.com',
+        attribution: 'Open-Meteo.com',
       }),
     );
 
