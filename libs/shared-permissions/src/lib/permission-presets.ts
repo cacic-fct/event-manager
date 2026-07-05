@@ -6,8 +6,17 @@ export type EventManagerPermissionPreset = {
   description: string;
   icon: string;
   preferredScope: EventManagerPermissionGrantScope;
+  allowedScopes: readonly EventManagerPermissionGrantScope[];
   permissions: PermissionRequirement;
 };
+
+const GLOBAL_SCOPE_ONLY = [EventManagerPermissionGrantScope.Global] as const;
+const MAJOR_EVENT_SCOPE_ONLY = [EventManagerPermissionGrantScope.MajorEvent] as const;
+const EVENT_TARGET_SCOPES = [
+  EventManagerPermissionGrantScope.Event,
+  EventManagerPermissionGrantScope.MajorEvent,
+  EventManagerPermissionGrantScope.EventGroup,
+] as const;
 
 export const EVENT_MANAGER_PERMISSION_PRESETS = [
   {
@@ -16,6 +25,7 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
     description: 'Gerencia grande evento, eventos, inscrições, presenças, certificados e recibos no escopo escolhido.',
     icon: 'admin_panel_settings',
     preferredScope: EventManagerPermissionGrantScope.MajorEvent,
+    allowedScopes: MAJOR_EVENT_SCOPE_ONLY,
     permissions: [
       Permission.MajorEvent.Read,
       Permission.MajorEvent.Update,
@@ -50,11 +60,36 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
     ],
   },
   {
+    id: 'event-structure-manager',
+    label: 'Gestor de estrutura de eventos',
+    description: 'Organiza grande evento, grupos, eventos e ministrantes sem permissões financeiras ou operacionais.',
+    icon: 'account_tree',
+    preferredScope: EventManagerPermissionGrantScope.MajorEvent,
+    allowedScopes: MAJOR_EVENT_SCOPE_ONLY,
+    permissions: [
+      Permission.MajorEvent.Read,
+      Permission.MajorEvent.Update,
+      Permission.EventGroup.Read,
+      Permission.EventGroup.Create,
+      Permission.EventGroup.Update,
+      Permission.EventGroup.Delete,
+      Permission.Event.Read,
+      Permission.Event.Create,
+      Permission.Event.Update,
+      Permission.Event.Delete,
+      Permission.EventLecturer.Read,
+      Permission.EventLecturer.Create,
+      Permission.EventLecturer.Update,
+      Permission.EventLecturer.Delete,
+    ],
+  },
+  {
     id: 'form-manager',
     label: 'Gestor de formulários',
     description: 'Cria, vincula, publica, acompanha respostas e exporta formulários no escopo escolhido.',
     icon: 'list_alt',
     preferredScope: EventManagerPermissionGrantScope.MajorEvent,
+    allowedScopes: MAJOR_EVENT_SCOPE_ONLY,
     permissions: [
       Permission.EventForm.Read,
       Permission.EventForm.Create,
@@ -68,11 +103,25 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
     ],
   },
   {
+    id: 'receipt-reader',
+    label: 'Consulta de comprovantes',
+    description: 'Consulta inscrições e comprovantes de pagamento sem aprovar, rejeitar ou desfazer validações.',
+    icon: 'receipt_long',
+    preferredScope: EventManagerPermissionGrantScope.MajorEvent,
+    allowedScopes: MAJOR_EVENT_SCOPE_ONLY,
+    permissions: [
+      Permission.MajorEvent.Read,
+      Permission.Subscription.Read,
+      Permission.Receipt.Read,
+    ],
+  },
+  {
     id: 'major-event-receipt-validator',
     label: 'Validador de comprovantes',
     description: 'Valida, rejeita e desfaz validações de comprovantes dentro de um grande evento.',
     icon: 'fact_check',
     preferredScope: EventManagerPermissionGrantScope.MajorEvent,
+    allowedScopes: MAJOR_EVENT_SCOPE_ONLY,
     permissions: [
       Permission.MajorEvent.Read,
       Permission.Subscription.Read,
@@ -84,11 +133,28 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
     ],
   },
   {
+    id: 'lecturer-manager',
+    label: 'Gestor de ministrantes',
+    description: 'Consulta eventos e gerencia vínculos de ministrantes no escopo escolhido.',
+    icon: 'record_voice_over',
+    preferredScope: EventManagerPermissionGrantScope.Event,
+    allowedScopes: EVENT_TARGET_SCOPES,
+    permissions: [
+      Permission.Event.Read,
+      Permission.MajorEvent.Read,
+      Permission.EventLecturer.Read,
+      Permission.EventLecturer.Create,
+      Permission.EventLecturer.Update,
+      Permission.EventLecturer.Delete,
+    ],
+  },
+  {
     id: 'attendance-coordinator',
     label: 'Coordenador de presenças',
     description: 'Gerencia coleta, importação, ajustes e coletores de presença no escopo escolhido.',
     icon: 'how_to_reg',
     preferredScope: EventManagerPermissionGrantScope.Event,
+    allowedScopes: EVENT_TARGET_SCOPES,
     permissions: [
       Permission.Event.Read,
       Permission.MajorEvent.Read,
@@ -103,11 +169,28 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
     ],
   },
   {
+    id: 'publication-editor',
+    label: 'Editor de publicação',
+    description: 'Atualiza dados publicados de grandes eventos, grupos e eventos sem excluir registros.',
+    icon: 'campaign',
+    preferredScope: EventManagerPermissionGrantScope.MajorEvent,
+    allowedScopes: MAJOR_EVENT_SCOPE_ONLY,
+    permissions: [
+      Permission.MajorEvent.Read,
+      Permission.MajorEvent.Update,
+      Permission.EventGroup.Read,
+      Permission.EventGroup.Update,
+      Permission.Event.Read,
+      Permission.Event.Update,
+    ],
+  },
+  {
     id: 'certificate-operator',
     label: 'Operador de certificados',
     description: 'Configura, emite, reemite e remove certificados no escopo escolhido.',
     icon: 'workspace_premium',
     preferredScope: EventManagerPermissionGrantScope.MajorEvent,
+    allowedScopes: EVENT_TARGET_SCOPES,
     permissions: [
       Permission.Certificate.Read,
       Permission.Certificate.Issue,
@@ -123,11 +206,31 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
     ],
   },
   {
+    id: 'readonly-operator',
+    label: 'Consulta operacional',
+    description: 'Consulta dados operacionais de eventos, inscrições, presenças, certificados, formulários e comprovantes.',
+    icon: 'visibility',
+    preferredScope: EventManagerPermissionGrantScope.MajorEvent,
+    allowedScopes: MAJOR_EVENT_SCOPE_ONLY,
+    permissions: [
+      Permission.MajorEvent.Read,
+      Permission.EventGroup.Read,
+      Permission.Event.Read,
+      Permission.EventForm.Read,
+      Permission.Subscription.Read,
+      Permission.EventAttendance.Read,
+      Permission.Certificate.Read,
+      Permission.CertificateConfig.Read,
+      Permission.Receipt.Read,
+    ],
+  },
+  {
     id: 'people-manager',
     label: 'Gestor de pessoas',
     description: 'Gerencia pessoas e resolução de duplicidades. Sempre global.',
     icon: 'group',
     preferredScope: EventManagerPermissionGrantScope.Global,
+    allowedScopes: GLOBAL_SCOPE_ONLY,
     permissions: [
       Permission.Person.Read,
       Permission.Person.Create,

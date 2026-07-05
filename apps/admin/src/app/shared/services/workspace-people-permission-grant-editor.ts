@@ -2,7 +2,6 @@ import {
   EVENT_MANAGER_PERMISSION_PRESETS,
   EventManagerPermissionGrantScope,
   Permission,
-  requiresGlobalPermissionGrantScope,
   parsePermission,
 } from '@cacic-fct/shared-permissions';
 import type { PermissionIncludedData } from '@cacic-fct/shared-permissions';
@@ -31,6 +30,7 @@ import {
   getPermissionGrantTargetDateLabel,
   getPermissionGrantTargetLabel as getGrantTargetLabel,
   getPermissionGrantValidityWindowLabel,
+  getPresetPreferredScope,
   getPresetScope as getPermissionPresetScope,
   hasSamePermissionGrantValidity,
   isSamePermissionGrantTarget,
@@ -238,6 +238,12 @@ export abstract class WorkspacePeoplePermissionGrantEditor extends WorkspacePeop
   }
 
   protected applyPermissionGrantScope(scope: EventManagerPermissionGrantScope): void {
+    const effectiveScope = this.getEffectivePermissionGrantScope(scope);
+    if (effectiveScope !== scope) {
+      this.permissionGrantForm.controls.scope.setValue(effectiveScope);
+      return;
+    }
+
     const scopeChanged = this.permissionGrantScope() !== scope;
     this.permissionGrantScope.set(scope);
     const targetControl = this.permissionGrantForm.controls.targetId;
@@ -276,16 +282,13 @@ export abstract class WorkspacePeoplePermissionGrantEditor extends WorkspacePeop
   }
 
   protected applyPermissionGrantScopeRestrictions(): void {
-    if (!this.permissionGrantRequiresGlobalScope()) {
+    const scope = this.getEffectivePermissionGrantScope(this.permissionGrantForm.controls.scope.value);
+    if (this.permissionGrantForm.controls.scope.value !== scope) {
+      this.permissionGrantForm.controls.scope.setValue(scope);
       return;
     }
 
-    if (this.permissionGrantForm.controls.scope.value !== EventManagerPermissionGrantScope.Global) {
-      this.permissionGrantForm.controls.scope.setValue(EventManagerPermissionGrantScope.Global);
-      return;
-    }
-
-    this.applyPermissionGrantScope(EventManagerPermissionGrantScope.Global);
+    this.applyPermissionGrantScope(scope);
   }
 
   protected applyPermissionGrantPresetSelection(presetId: string): void {
@@ -294,10 +297,16 @@ export abstract class WorkspacePeoplePermissionGrantEditor extends WorkspacePeop
       return;
     }
 
-    const scope = preset.permissions.some((permission) => requiresGlobalPermissionGrantScope(permission))
-      ? EventManagerPermissionGrantScope.Global
-      : preset.preferredScope;
+    const scope = getPresetPreferredScope(preset.id, this.permissionGrantForm.controls.scope.value);
     this.permissionGrantForm.controls.scope.setValue(scope);
+  }
+
+  private getEffectivePermissionGrantScope(scope: EventManagerPermissionGrantScope): EventManagerPermissionGrantScope {
+    if (this.permissionGrantRequiresGlobalScope()) {
+      return EventManagerPermissionGrantScope.Global;
+    }
+
+    return getPermissionPresetScope(this.permissionGrantForm.controls.presetId.value, scope);
   }
 
   protected resetPermissionGrantForm(options: { clearDrafts?: boolean } = {}): void {

@@ -21,6 +21,7 @@ type AdminE2EEventFormFixture = AdminE2ENamedFixture & {
 };
 type AdminE2EGraphqlState = {
   offlineEventAttendanceSubmission: Record<string, unknown> | null;
+  permissionGrants: Record<string, unknown>[];
 };
 
 export const adminE2EReadPermissions = [
@@ -36,6 +37,8 @@ export const adminE2EReadPermissions = [
   'certificate#read',
   'certificate-config#read',
   'place-preset#read',
+  'permission-grant#read',
+  'person#read',
 ];
 
 export const adminE2ECriticalFlowPermissions = [
@@ -59,6 +62,10 @@ export const adminE2ECriticalFlowPermissions = [
   'event-attendance#import',
   'event-attendance#update',
   'event-attendance#delete',
+  'permission-grant#create',
+  'permission-grant#update',
+  'permission-grant#delete',
+  'person#update',
 ];
 
 export async function preventSilentSso(page: Page): Promise<void> {
@@ -82,6 +89,7 @@ export async function mockAdminApi(
   const permissions = options.permissions ?? adminE2EReadPermissions;
   const graphqlState: AdminE2EGraphqlState = {
     offlineEventAttendanceSubmission: createAdminE2EOfflineEventAttendanceSubmission(),
+    permissionGrants: [createAdminE2EPermissionGrant()],
   };
 
   await page.route('https://unleash.cacic.dev.br/api/frontend/**', (route) =>
@@ -435,6 +443,40 @@ export function createAdminE2EPerson(overrides: Record<string, unknown> = {}): A
   };
 }
 
+export function createAdminE2ELinkedPerson(overrides: Record<string, unknown> = {}): AdminE2ENamedFixture {
+  return createAdminE2EPerson({
+    userId: 'user-1',
+    user: {
+      id: 'user-1',
+      name: 'Ada Lovelace',
+      email: 'ada@example.edu',
+      role: 'access',
+    },
+    ...overrides,
+  });
+}
+
+export function createAdminE2EPermissionGrant(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'grant-1',
+    userId: 'user-1',
+    personId: 'person-1',
+    permission: 'event#read',
+    scope: 'GLOBAL',
+    eventId: null,
+    majorEventId: null,
+    eventGroupId: null,
+    targetLabel: null,
+    validFrom: null,
+    validUntil: null,
+    createdAt: '2026-05-20T12:00:00.000Z',
+    createdById: 'admin-1',
+    updatedAt: '2026-05-20T12:00:00.000Z',
+    updatedById: 'admin-1',
+    ...overrides,
+  };
+}
+
 export function createAdminE2EEventSubscription(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   const event = createAdminE2EEvent();
   const person = createAdminE2EPerson();
@@ -658,6 +700,7 @@ function graphqlData(
   const event = createAdminE2EEvent({ id: 'event-1' });
   const majorEvent = createAdminE2EMajorEvent({ id: 'major-event-1' });
   const eventGroup = createAdminE2EEventGroup({ id: 'event-group-1' });
+  const linkedPerson = createAdminE2ELinkedPerson();
 
   if (query.includes('query WorkspaceDashboardInsights')) {
     return {
@@ -720,7 +763,60 @@ function graphqlData(
   }
 
   if (query.includes('query ListPeopleSummaries')) {
-    return { people: [createAdminE2EPerson()] };
+    return { people: [linkedPerson] };
+  }
+
+  if (query.includes('query GetPerson')) {
+    return { person: linkedPerson };
+  }
+
+  if (query.includes('query EventManagerPermissionGrants')) {
+    return {
+      eventManagerPermissionGrants: state.permissionGrants.filter((grant) => grant['userId'] === variables['userId']),
+    };
+  }
+
+  if (query.includes('query EventManagerPermissionGrantTargets')) {
+    return {
+      eventManagerPermissionGrantTargets: permissionGrantTargets(String(variables['scope'] ?? ''), {
+        event,
+        eventGroup,
+        majorEvent,
+      }),
+    };
+  }
+
+  if (query.includes('mutation CreateEventManagerPermissionGrant')) {
+    const input = isRecord(variables['input']) ? variables['input'] : {};
+    const grant = createAdminE2EPermissionGrant({
+      ...input,
+      id: `grant-${state.permissionGrants.length + 1}`,
+      targetLabel: permissionGrantTargetLabel(input, { event, eventGroup, majorEvent }),
+      createdAt: '2026-05-21T12:00:00.000Z',
+      updatedAt: '2026-05-21T12:00:00.000Z',
+    });
+    state.permissionGrants.push(grant);
+    return { createEventManagerPermissionGrant: grant };
+  }
+
+  if (query.includes('mutation UpdateEventManagerPermissionGrant')) {
+    const id = typeof variables['id'] === 'string' ? variables['id'] : 'grant-1';
+    const input = isRecord(variables['input']) ? variables['input'] : {};
+    const grant = createAdminE2EPermissionGrant({
+      ...(state.permissionGrants.find((item) => item['id'] === id) ?? {}),
+      ...input,
+      id,
+      targetLabel: permissionGrantTargetLabel(input, { event, eventGroup, majorEvent }),
+      updatedAt: '2026-05-21T12:30:00.000Z',
+    });
+    state.permissionGrants = state.permissionGrants.map((item) => (item['id'] === id ? grant : item));
+    return { updateEventManagerPermissionGrant: grant };
+  }
+
+  if (query.includes('mutation DeleteEventManagerPermissionGrant')) {
+    const id = typeof variables['id'] === 'string' ? variables['id'] : 'grant-1';
+    state.permissionGrants = state.permissionGrants.filter((grant) => grant['id'] !== id);
+    return { deleteEventManagerPermissionGrant: { deleted: true, id } };
   }
 
   if (query.includes('query ListMajorEvents')) {
@@ -874,6 +970,79 @@ function graphqlData(
   }
 
   return {};
+}
+
+function permissionGrantTargets(
+  scope: string,
+  records: {
+    event: Record<string, unknown>;
+    eventGroup: Record<string, unknown>;
+    majorEvent: Record<string, unknown>;
+  },
+): Record<string, unknown>[] {
+  if (scope === 'EVENT') {
+    return [
+      {
+        id: records.event['id'],
+        label: records.event['name'],
+        description: records.event['locationDescription'],
+        emoji: records.event['emoji'],
+        startDate: records.event['startDate'],
+        endDate: records.event['endDate'],
+      },
+    ];
+  }
+
+  if (scope === 'MAJOR_EVENT') {
+    return [
+      {
+        id: records.majorEvent['id'],
+        label: records.majorEvent['name'],
+        description: records.majorEvent['description'],
+        emoji: records.majorEvent['emoji'],
+        startDate: records.majorEvent['startDate'],
+        endDate: records.majorEvent['endDate'],
+      },
+    ];
+  }
+
+  if (scope === 'EVENT_GROUP') {
+    return [
+      {
+        id: records.eventGroup['id'],
+        label: records.eventGroup['name'],
+        description: null,
+        emoji: records.eventGroup['emoji'],
+        startDate: null,
+        endDate: null,
+      },
+    ];
+  }
+
+  return [];
+}
+
+function permissionGrantTargetLabel(
+  input: Record<string, unknown>,
+  records: {
+    event: Record<string, unknown>;
+    eventGroup: Record<string, unknown>;
+    majorEvent: Record<string, unknown>;
+  },
+): string | null {
+  if (input['scope'] === 'EVENT' && input['eventId'] === records.event['id']) {
+    return String(records.event['name']);
+  }
+
+  if (input['scope'] === 'MAJOR_EVENT' && input['majorEventId'] === records.majorEvent['id']) {
+    return String(records.majorEvent['name']);
+  }
+
+  if (input['scope'] === 'EVENT_GROUP' && input['eventGroupId'] === records.eventGroup['id']) {
+    return String(records.eventGroup['name']);
+  }
+
+  return null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

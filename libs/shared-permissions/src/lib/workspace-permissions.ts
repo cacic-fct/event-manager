@@ -59,16 +59,22 @@ export const WORKSPACE_TAB_PERMISSIONS = [
   {
     id: WorkspacePermissionTab.Events,
     label: 'Eventos',
-    read: [Permission.Event.Read, Permission.MajorEvent.Read, Permission.EventLecturer.Read],
+    read: [
+      Permission.Event.Read,
+      Permission.MajorEvent.Read,
+      Permission.EventLecturer.Read,
+      Permission.EventAttendanceCollector.Read,
+    ],
     edit: [
       Permission.Event.Create,
       Permission.Event.Update,
       Permission.EventLecturer.Create,
       Permission.EventLecturer.Update,
+      Permission.EventAttendanceCollector.Create,
       Permission.Person.Create,
       Permission.Person.Update,
     ],
-    delete: [Permission.Event.Delete, Permission.EventLecturer.Delete],
+    delete: [Permission.Event.Delete, Permission.EventLecturer.Delete, Permission.EventAttendanceCollector.Delete],
   },
   {
     id: WorkspacePermissionTab.MajorEvents,

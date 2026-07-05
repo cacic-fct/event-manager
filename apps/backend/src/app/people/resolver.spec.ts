@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, UnprocessableEntityException } from '@nestjs/common';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { PeopleResolver } from './resolver';
 
@@ -91,6 +91,33 @@ describe('PeopleResolver', () => {
     await expect(
       resolver.people(undefined, undefined, undefined, undefined, undefined, 0, 10, 'INVALID', false),
     ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects merge-managed fields on person creation outside merge operations', async () => {
+    const prisma = createPrisma();
+    const resolver = createResolver(prisma);
+
+    await expect(
+      resolver.createPerson(
+        { name: 'Ana Clara', mergedIntoId: 'target-person', externalRef: 'external-1' },
+        userContext(),
+      ),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(prisma.people.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects merge-managed fields on person updates outside merge operations', async () => {
+    const prisma = createPrisma();
+    const resolver = createResolver(prisma);
+
+    await expect(
+      resolver.updatePerson(
+        'person-1',
+        { mergedIntoId: 'target-person', externalRef: 'external-1' },
+        userContext(),
+      ),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    expect(prisma.people.update).not.toHaveBeenCalled();
   });
 
   it('lists event lecturer links as person linked data', async () => {
@@ -212,6 +239,7 @@ function createPrisma() {
       ),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
+      create: jest.fn(),
       update: jest.fn().mockResolvedValue(person({ deletedAt: new Date('2026-06-21T12:00:00.000Z') })),
     },
     certificate: linkedModel(),

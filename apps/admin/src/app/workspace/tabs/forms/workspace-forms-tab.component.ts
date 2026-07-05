@@ -53,7 +53,11 @@ export class WorkspaceFormsTabComponent implements OnDestroy {
   protected readonly permissions = inject(WorkspacePermissionsService);
   protected readonly Permission = Permission;
   protected readonly sigiloOptions: EventFormSigilo[] = ['PUBLIC', 'PARTIALLY_SECRET', 'SECRET', 'ANONYMOUS'];
-  protected readonly responseModeOptions: EventFormResponseMode[] = ['ONE_PER_TARGET', 'MULTIPLE_PER_TARGET', 'SINGLE_PER_FORM'];
+  protected readonly responseModeOptions: EventFormResponseMode[] = [
+    'ONE_PER_TARGET',
+    'MULTIPLE_PER_TARGET',
+    'SINGLE_PER_FORM',
+  ];
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -90,7 +94,7 @@ export class WorkspaceFormsTabComponent implements OnDestroy {
       case 'SECRET':
         return 'Apenas administradores veem quem respondeu e as respostas individuais.';
       case 'ANONYMOUS':
-        return 'Administradores auditam o envio, mas as respostas ficam sem pessoa e sem horário para terceiros.';
+        return 'Administradores veem quem respondeu, mas não é possível identificar quem enviou cada resposta.';
     }
   }
 

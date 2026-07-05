@@ -16,7 +16,10 @@ import {
   getPermissionGrantTargetDateLabel,
   getPermissionGrantTargetLabel,
   getPermissionGrantValidityWindowLabel,
+  getPresetAllowedScopes,
+  getPresetPreferredScope,
   getPresetScope,
+  isPresetScopeAllowed,
   normalizePermissionGrantValidity,
   normalizeSearchText,
   sortPermissionGrants,
@@ -111,6 +114,15 @@ describe('workspace people permission grant helpers', () => {
     expect(getPresetScope('form-manager', EventManagerPermissionGrantScope.Event)).toBe(
       EventManagerPermissionGrantScope.MajorEvent,
     );
+    expect(getPresetScope('attendance-coordinator', EventManagerPermissionGrantScope.MajorEvent)).toBe(
+      EventManagerPermissionGrantScope.MajorEvent,
+    );
+    expect(getPresetPreferredScope('attendance-coordinator', EventManagerPermissionGrantScope.MajorEvent)).toBe(
+      EventManagerPermissionGrantScope.Event,
+    );
+    expect(getPresetAllowedScopes('readonly-operator')).toEqual([EventManagerPermissionGrantScope.MajorEvent]);
+    expect(isPresetScopeAllowed('lecturer-manager', EventManagerPermissionGrantScope.EventGroup)).toBe(true);
+    expect(isPresetScopeAllowed('receipt-reader', EventManagerPermissionGrantScope.Event)).toBe(false);
   });
 
   it('formats labels, validity windows, target dates, and status from grant metadata', () => {

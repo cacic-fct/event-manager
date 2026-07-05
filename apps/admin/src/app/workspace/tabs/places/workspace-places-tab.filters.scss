@@ -1,13 +1,28 @@
 .filter-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  flex: 1 1 0;
   gap: 0.75rem;
   align-items: start;
-  min-width: min(100%, 28rem);
+  min-width: 0;
+}
+
+.filter-form mat-form-field {
+  min-width: 0;
+}
+
+.filter-form button,
+.panel-heading > button {
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 @media (max-width: 760px) {
   .filter-form {
     grid-template-columns: 1fr;
+  }
+
+  .filter-form button {
+    justify-self: start;
   }
 }

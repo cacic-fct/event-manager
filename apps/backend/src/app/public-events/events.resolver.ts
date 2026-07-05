@@ -565,6 +565,10 @@ export class PublicEventsResolver {
     @Parent() event: PublicEvent,
     @Context() context?: PublicEventsGraphqlContext,
   ): Promise<PublicLecturerProfile[]> {
+    if (event.displayLecturerProfile === false) {
+      return [];
+    }
+
     return this.getLecturerProfileLoader(context).load(event.id);
   }
 

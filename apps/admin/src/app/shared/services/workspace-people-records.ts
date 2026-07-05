@@ -116,8 +116,6 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
       phone: raw.phone.trim() || null,
       identityDocument: raw.identityDocument.trim() || null,
       academicId: raw.academicId.trim() || null,
-      mergedIntoId: raw.mergedIntoId.trim() || null,
-      externalRef: raw.externalRef.trim() || null,
     };
 
     try {
@@ -215,6 +213,15 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
         control.enable({ emitEvent: false });
       }
     }
+
+    const isCreatingPerson = this.isCreatingPerson();
+    if (isCreatingPerson) {
+      this.personForm.controls.id.disable({ emitEvent: false });
+    } else {
+      this.personForm.controls.id.enable({ emitEvent: false });
+    }
+    this.personForm.controls.mergedIntoId.disable({ emitEvent: false });
+    this.personForm.controls.externalRef.disable({ emitEvent: false });
   }
 
   protected getPersonUserId(person: Person | null): string | null {

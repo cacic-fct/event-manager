@@ -57,6 +57,7 @@ export function createPublicEventRecord(overrides: Record<string, unknown> = {})
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
     publiclyVisible: true,
+    displayLecturerProfile: true,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,

@@ -33,6 +33,7 @@ describe('shared permissions contract', () => {
   it('keeps split permission sets complete and deduplicated', () => {
     const catalog = new Set(EVENT_MANAGER_PERMISSION_CATALOG);
     const presetPermissions = EVENT_MANAGER_PERMISSION_PRESETS.flatMap((preset) => [...preset.permissions]);
+    const grantScopes = new Set(Object.values(EventManagerPermissionGrantScope));
     const workspacePermissions = [
       ...WORKSPACE_ENTRY_PERMISSIONS,
       ...WORKSPACE_TAB_PERMISSIONS.flatMap((tab) => [...tab.read, ...tab.edit, ...tab.delete]),
@@ -42,6 +43,15 @@ describe('shared permissions contract', () => {
 
     expect(EVENT_MANAGER_PERMISSION_CATALOG).toHaveLength(catalog.size);
     expect(presetPermissions.every((permission) => catalog.has(permission))).toBe(true);
+    expect(EVENT_MANAGER_PERMISSION_PRESETS.every((preset) => preset.allowedScopes.length > 0)).toBe(true);
+    expect(
+      EVENT_MANAGER_PERMISSION_PRESETS.every((preset) => preset.allowedScopes.includes(preset.preferredScope)),
+    ).toBe(true);
+    expect(
+      EVENT_MANAGER_PERMISSION_PRESETS.flatMap((preset) => [...preset.allowedScopes]).every((scope) =>
+        grantScopes.has(scope),
+      ),
+    ).toBe(true);
     expect(workspacePermissions.every((permission) => catalog.has(permission))).toBe(true);
     expect(EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS.every((permission) => catalog.has(permission))).toBe(true);
   });
@@ -107,8 +117,54 @@ describe('shared permissions contract', () => {
     expect(peopleManager).toEqual(
       expect.objectContaining({
         preferredScope: EventManagerPermissionGrantScope.Global,
+        allowedScopes: [EventManagerPermissionGrantScope.Global],
         permissions: expect.arrayContaining([Permission.Person.Delete, Permission.MergeCandidate.Merge]),
       }),
+    );
+    expect(EVENT_MANAGER_PERMISSION_PRESETS).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'event-structure-manager',
+          allowedScopes: [EventManagerPermissionGrantScope.MajorEvent],
+          permissions: expect.arrayContaining([
+            Permission.EventGroup.Create,
+            Permission.Event.Create,
+            Permission.EventLecturer.Update,
+          ]),
+        }),
+        expect.objectContaining({
+          id: 'receipt-reader',
+          allowedScopes: [EventManagerPermissionGrantScope.MajorEvent],
+          permissions: [Permission.MajorEvent.Read, Permission.Subscription.Read, Permission.Receipt.Read],
+        }),
+        expect.objectContaining({
+          id: 'lecturer-manager',
+          allowedScopes: [
+            EventManagerPermissionGrantScope.Event,
+            EventManagerPermissionGrantScope.MajorEvent,
+            EventManagerPermissionGrantScope.EventGroup,
+          ],
+          permissions: expect.arrayContaining([Permission.EventLecturer.Create, Permission.EventLecturer.Delete]),
+        }),
+        expect.objectContaining({
+          id: 'publication-editor',
+          allowedScopes: [EventManagerPermissionGrantScope.MajorEvent],
+          permissions: expect.arrayContaining([
+            Permission.MajorEvent.Update,
+            Permission.EventGroup.Update,
+            Permission.Event.Update,
+          ]),
+        }),
+        expect.objectContaining({
+          id: 'readonly-operator',
+          allowedScopes: [EventManagerPermissionGrantScope.MajorEvent],
+          permissions: expect.arrayContaining([
+            Permission.EventForm.Read,
+            Permission.EventAttendance.Read,
+            Permission.Receipt.Read,
+          ]),
+        }),
+      ]),
     );
     expect(DASHBOARD_PERMISSION_REQUIREMENTS).toEqual(
       expect.arrayContaining([Permission.Certificate.Issue, Permission.Receipt.Approve]),
@@ -143,6 +199,8 @@ describe('shared permissions contract', () => {
     expect(WORKSPACE_PERMISSION_EVALUATION_SET).toEqual(
       expect.arrayContaining([
         Permission.Event.Read,
+        Permission.EventAttendanceCollector.Create,
+        Permission.EventAttendanceCollector.Delete,
         Permission.Frozen.Update,
         Permission.PermissionGrant.Update,
         Permission.Receipt.Read,

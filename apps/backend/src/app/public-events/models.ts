@@ -93,6 +93,7 @@ export const PUBLIC_EVENT_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
   publishedAt: true,
@@ -681,6 +682,8 @@ export class PublicEvent {
     description: 'Whether this event is currently intended to appear in public event surfaces.',
   })
   publiclyVisible?: boolean | null;
+
+  displayLecturerProfile?: boolean | null;
 
   @Field(() => String, {
     nullable: true,

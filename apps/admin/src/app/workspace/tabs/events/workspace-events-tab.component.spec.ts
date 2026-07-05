@@ -10,6 +10,13 @@ import {
 import { WorkspaceEventsTabComponent } from './workspace-events-tab.component';
 
 describe('WorkspaceEventsTabComponent', () => {
+  it('allows removing linked attendance collectors when delete permission is granted', async () => {
+    await configureComponent('populated');
+    const { element } = createComponent();
+
+    expect(button(element, 'Bruno Santos')).not.toBeNull();
+  });
+
   it('shows linked attendance collectors without delete permission', async () => {
     await configureComponent('readonly');
     const { element } = createComponent();
@@ -24,6 +31,21 @@ describe('WorkspaceEventsTabComponent', () => {
 
     expect(element.textContent).toContain('Bruno Santos');
     expect(button(element, 'Bruno Santos')).toBeNull();
+  });
+
+  it('shows the lecturer profile visibility toggle with lecturer options', async () => {
+    await configureComponent('populated');
+    const { element } = createComponent();
+
+    expect(element.textContent).toContain('Exibir perfil de ministrante');
+  });
+
+  it('shows twemojis in major event and event group selection chips', async () => {
+    await configureComponent('populated');
+    const { element } = createComponent();
+
+    expect(button(element, 'Semana da Computação')?.querySelector('app-twemoji')).not.toBeNull();
+    expect(button(element, 'Grupo')?.querySelector('app-twemoji')).not.toBeNull();
   });
 
   async function configureComponent(mode: WorkspaceTabStoryMode): Promise<void> {

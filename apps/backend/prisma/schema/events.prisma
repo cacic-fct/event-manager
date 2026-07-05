@@ -76,6 +76,7 @@ model Event {
 
   // If event should be visible to users or if it's only for internal (admin) use
   publiclyVisible Boolean @default(true)
+  displayLecturerProfile Boolean @default(true)
 
   publicationState      PublicationState @default(DRAFT)
   scheduledPublishAt    DateTime?

@@ -12,6 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
@@ -31,6 +32,7 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
     MatListModule,
     MatSelectModule,
     MatSlideToggleModule,
+    MatTabsModule,
     MatTooltipModule,
     TwemojiComponent,
   ],

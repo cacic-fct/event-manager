@@ -282,6 +282,7 @@ export class PeopleResolver {
     @Args('input', { type: () => PersonCreateInput }) input: PersonCreateInput,
     @Context() context: GraphqlContext,
   ) {
+    this.ensureMergeManagedFieldsAreUnchanged(input);
     await this.ensureNoDuplicateIdentity(input);
 
     const person = await this.prisma.$transaction(async (tx) => {
@@ -340,6 +341,7 @@ export class PeopleResolver {
       throw new NotFoundException(`Person ${id} was not found.`);
     }
 
+    this.ensureMergeManagedFieldsAreUnchanged(input);
     this.ensureExternallyManagedFieldsAreUnchanged(input, existingPerson);
     await this.ensureNoDuplicateIdentity(input, id);
 
@@ -490,6 +492,19 @@ export class PeopleResolver {
     return before.name !== after.name || before.identityDocument !== after.identityDocument;
   }
 
+  private ensureMergeManagedFieldsAreUnchanged(input: PersonCreateInput | PersonUpdateInput): void {
+    const changedFields = [
+      input.mergedIntoId !== undefined ? 'mergedIntoId' : null,
+      input.externalRef !== undefined ? 'externalRef' : null,
+    ].filter((field): field is string => field !== null);
+
+    if (changedFields.length > 0) {
+      throw new UnprocessableEntityException(
+        `Person merge-managed fields can only be changed by person merge operations: ${changedFields.join(', ')}.`,
+      );
+    }
+  }
+
   private ensureExternallyManagedFieldsAreUnchanged(
     input: PersonUpdateInput,
     existingPerson: {
@@ -534,8 +549,6 @@ export class PeopleResolver {
       ...(input.identityDocument !== undefined ? { identityDocument: input.identityDocument } : {}),
       ...(input.academicId !== undefined ? { academicId: input.academicId } : {}),
       ...(input.userId !== undefined ? { userId: input.userId } : {}),
-      ...(input.mergedIntoId !== undefined ? { mergedIntoId: input.mergedIntoId } : {}),
-      ...(input.externalRef !== undefined ? { externalRef: input.externalRef } : {}),
     };
   }
 
@@ -550,8 +563,6 @@ export class PeopleResolver {
     if (input.identityDocument !== undefined) data.identityDocument = input.identityDocument;
     if (input.academicId !== undefined) data.academicId = input.academicId;
     if (input.userId !== undefined) data.userId = input.userId;
-    if (input.mergedIntoId !== undefined) data.mergedIntoId = input.mergedIntoId;
-    if (input.externalRef !== undefined) data.externalRef = input.externalRef;
 
     return data;
   }

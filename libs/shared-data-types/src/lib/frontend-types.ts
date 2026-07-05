@@ -178,6 +178,7 @@ export interface Event {
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
   publiclyVisible: boolean;
+  displayLecturerProfile: boolean;
   youtubeCode?: string | null;
   buttonText?: string | null;
   buttonLink?: string | null;
@@ -286,6 +287,7 @@ export interface PublicEvent {
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
   publiclyVisible?: boolean | null;
+  displayLecturerProfile?: boolean | null;
   youtubeCode?: string | null;
   buttonText?: string | null;
   buttonLink?: string | null;

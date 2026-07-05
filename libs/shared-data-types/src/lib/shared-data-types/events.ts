@@ -107,6 +107,9 @@ export class Event {
   @Field(() => Boolean)
   publiclyVisible!: boolean;
 
+  @Field(() => Boolean)
+  displayLecturerProfile!: boolean;
+
   @Field(() => PublicationState)
   publicationState!: PublicationState;
 

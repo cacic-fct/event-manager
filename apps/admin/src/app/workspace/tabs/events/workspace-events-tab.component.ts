@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,6 +27,7 @@ import { EventFilterPanelComponent } from '../shared/event-filter-panel.componen
   imports: [
     DatePipe,
     ReactiveFormsModule,
+    MatAutocompleteModule,
     MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
@@ -114,6 +116,31 @@ export class WorkspaceEventsTabComponent {
     }
 
     return `Usar ${majorEvent.name}`;
+  }
+
+  protected majorEventEmojiById(majorEventId: string | null | undefined): string | null {
+    if (!majorEventId) {
+      return null;
+    }
+
+    return (
+      this.workspace.majorEventSearchResults().find((majorEvent) => majorEvent.id === majorEventId)?.emoji ??
+      this.workspace.selectedEvent()?.majorEvent?.emoji ??
+      this.workspace.majorEvents().find((majorEvent) => majorEvent.id === majorEventId)?.emoji ??
+      null
+    );
+  }
+
+  protected eventGroupEmojiById(groupId: string | null | undefined): string | null {
+    if (!groupId) {
+      return null;
+    }
+
+    return (
+      this.workspace.eventGroupSearchResults().find((group) => group.id === groupId)?.emoji ??
+      this.workspace.selectedEvent()?.eventGroup?.emoji ??
+      null
+    );
   }
 
   protected draftEventActionLabel(): string {
@@ -215,4 +242,8 @@ export class WorkspaceEventsTabComponent {
     const hasResourcePermission = this.permissions.canDelete(scope);
     return hasResourcePermission && (!isFrozenEvent(selectedEvent) || this.permissions.has(Permission.Frozen.Delete));
   }
+
+  protected displayPlacePresetSuggestion = (placeId: string): string => {
+    return this.workspace.displayPlacePresetSuggestion(placeId);
+  };
 }

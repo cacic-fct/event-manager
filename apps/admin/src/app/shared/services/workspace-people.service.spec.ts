@@ -8,7 +8,7 @@ import {
   EventManagerPermissionGrantTarget,
   EventManagerPermissionGrantUpdateInput,
 } from '@cacic-fct/event-manager-admin-contracts';
-import { EventManagerPermissionGrantScope, Permission } from '@cacic-fct/shared-permissions';
+import { EVENT_MANAGER_PERMISSION_PRESETS, EventManagerPermissionGrantScope, Permission } from '@cacic-fct/shared-permissions';
 import { of } from 'rxjs';
 import { PermissionGrantsApiService } from '../../graphql/permission-grants-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
@@ -48,6 +48,14 @@ describe('WorkspacePeopleService', () => {
     startDate: '2026-07-01T12:00:00.000Z',
     endDate: null,
   };
+  const majorTarget: EventManagerPermissionGrantTarget = {
+    id: 'major-event-1',
+    label: 'Semana da Computação',
+    description: 'Grande evento',
+    emoji: 'computer',
+    startDate: '2026-07-01T12:00:00.000Z',
+    endDate: '2026-07-05T12:00:00.000Z',
+  };
 
   beforeEach(async () => {
     peopleApi = {
@@ -63,7 +71,7 @@ describe('WorkspacePeopleService', () => {
       ),
       deleteGrant: vi.fn(() => of({ deleted: true, id: 'grant-1' })),
       listTargets: vi.fn((scope: EventManagerPermissionGrantScope) =>
-        of(scope === EventManagerPermissionGrantScope.Event ? [target] : []),
+        of(scope === EventManagerPermissionGrantScope.Event ? [target] : scope === EventManagerPermissionGrantScope.MajorEvent ? [majorTarget] : []),
       ),
       listUserGrants: vi.fn(() => of([permissionGrant()])),
       updateGrant: vi.fn((id: string, input: EventManagerPermissionGrantUpdateInput) =>
@@ -145,6 +153,9 @@ describe('WorkspacePeopleService', () => {
     peopleApi.listPeopleSummaries.mockReturnValueOnce(of([createdPerson]));
 
     service.startNewPerson();
+    expect(service.personForm.controls.id.disabled).toBe(true);
+    expect(service.personForm.controls.mergedIntoId.disabled).toBe(true);
+    expect(service.personForm.controls.externalRef.disabled).toBe(true);
     service.personForm.setValue({
       id: '',
       name: '  Grace Hopper  ',
@@ -167,8 +178,6 @@ describe('WorkspacePeopleService', () => {
       phone: '+5518999990000',
       identityDocument: '12345678900',
       academicId: 'RA123',
-      mergedIntoId: null,
-      externalRef: 'external-1',
     });
     expect(service.selectedPerson()).toEqual(createdPerson);
     expect(service.personForm.getRawValue()).toEqual(
@@ -244,8 +253,79 @@ describe('WorkspacePeopleService', () => {
     expect(service.permissionGrantForm.controls.scope.value).toBe(EventManagerPermissionGrantScope.Global);
     expect(service.permissionGrantForm.controls.targetId.value).toBe('');
     expect(service.permissionGrantAvailableScopes()).toEqual([
-      expect.objectContaining({ scope: EventManagerPermissionGrantScope.Global }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.Global, disabled: false }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.Event, disabled: true }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.MajorEvent, disabled: true }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.EventGroup, disabled: true }),
     ]);
+  });
+
+  it('forces preset preferred scopes and disables incompatible scope choices', () => {
+    service.setPermissionGrantScope(EventManagerPermissionGrantScope.Global);
+
+    service.permissionGrantForm.controls.presetId.setValue('receipt-reader');
+
+    expect(service.permissionGrantScope()).toBe(EventManagerPermissionGrantScope.MajorEvent);
+    expect(service.permissionGrantForm.controls.scope.value).toBe(EventManagerPermissionGrantScope.MajorEvent);
+    expect(service.permissionGrantAvailableScopes()).toEqual([
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.Global, disabled: true }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.Event, disabled: true }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.MajorEvent, disabled: false }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.EventGroup, disabled: true }),
+    ]);
+
+    service.setPermissionGrantScope(EventManagerPermissionGrantScope.Event);
+
+    expect(service.permissionGrantScope()).toBe(EventManagerPermissionGrantScope.MajorEvent);
+    expect(service.permissionGrantForm.controls.scope.value).toBe(EventManagerPermissionGrantScope.MajorEvent);
+
+    service.permissionGrantForm.controls.presetId.setValue('attendance-coordinator');
+
+    expect(service.permissionGrantScope()).toBe(EventManagerPermissionGrantScope.Event);
+    expect(service.permissionGrantAvailableScopes()).toEqual([
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.Global, disabled: true }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.Event, disabled: false }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.MajorEvent, disabled: false }),
+      expect.objectContaining({ scope: EventManagerPermissionGrantScope.EventGroup, disabled: false }),
+    ]);
+  });
+
+  it('stages the new permission presets with their enforced scopes', () => {
+    service.selectedPerson.set(selectedPerson);
+    service.eventPermissionGrantTargets.set([target]);
+    service.majorEventPermissionGrantTargets.set([majorTarget]);
+
+    const presetCases = [
+      { id: 'event-structure-manager', scope: EventManagerPermissionGrantScope.MajorEvent, targetId: majorTarget.id },
+      { id: 'receipt-reader', scope: EventManagerPermissionGrantScope.MajorEvent, targetId: majorTarget.id },
+      { id: 'lecturer-manager', scope: EventManagerPermissionGrantScope.Event, targetId: target.id },
+      { id: 'publication-editor', scope: EventManagerPermissionGrantScope.MajorEvent, targetId: majorTarget.id },
+      { id: 'readonly-operator', scope: EventManagerPermissionGrantScope.MajorEvent, targetId: majorTarget.id },
+    ] as const;
+
+    for (const presetCase of presetCases) {
+      service.clearPermissionGrantDrafts();
+      service.permissionGrantForm.controls.presetId.setValue(presetCase.id);
+      service.selectPermissionGrantTarget(presetCase.targetId);
+
+      service.applySelectedPermissionPreset();
+
+      const preset = EVENT_MANAGER_PERMISSION_PRESETS.find((item) => item.id === presetCase.id);
+      expect(preset).toBeDefined();
+      expect(service.permissionGrantDrafts().map((draft) => draft.permission)).toEqual(preset?.permissions);
+      expect(service.permissionGrantDrafts()).toEqual(
+        preset?.permissions.map((permission) =>
+          expect.objectContaining({
+            userId: 'user-1',
+            personId: 'person-1',
+            permission,
+            scope: presetCase.scope,
+            eventId: presetCase.scope === EventManagerPermissionGrantScope.Event ? presetCase.targetId : null,
+            majorEventId: presetCase.scope === EventManagerPermissionGrantScope.MajorEvent ? presetCase.targetId : null,
+          }),
+        ),
+      );
+    }
   });
 
   it('persists staged permission grants through the permission grants API', async () => {

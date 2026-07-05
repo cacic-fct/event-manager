@@ -49,6 +49,7 @@ const eventFixture: Event = {
   onlineAttendanceStartDate: null,
   onlineAttendanceEndDate: null,
   publiclyVisible: true,
+  displayLecturerProfile: true,
   publicationState: 'PUBLISHED',
   scheduledPublishAt: null,
   publishedAt: '2026-06-20T12:00:00.000Z',

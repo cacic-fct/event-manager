@@ -300,6 +300,7 @@ export interface Event {
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
   publiclyVisible: boolean;
+  displayLecturerProfile: boolean;
   publicationState: PublicationState;
   scheduledPublishAt?: string | null;
   publishedAt?: string | null;
@@ -913,6 +914,7 @@ export interface EventInput {
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
   publiclyVisible?: boolean;
+  displayLecturerProfile?: boolean;
   youtubeCode?: string | null;
   buttonText?: string | null;
   buttonLink?: string | null;

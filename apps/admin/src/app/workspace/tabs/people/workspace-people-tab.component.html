@@ -136,55 +136,95 @@
           </div>
         </div>
 
-        <form [formGroup]="workspace.personForm" class="surface field-group">
-          <h4>Dados cadastrais</h4>
-          @if (workspace.hasExternallyManagedProfile()) {
-            <p class="empty-note">
-              Nome, e-mail principal, telefone, documento e matrícula são gerenciados pelo backend externo.
-            </p>
-          }
-          <div class="field-grid">
-            <mat-form-field>
-              <mat-label>ID</mat-label>
-              <input matInput formControlName="id" readonly />
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>Nome</mat-label>
-              <input matInput formControlName="name" [readonly]="workspace.hasExternallyManagedProfile()" />
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>E-mail principal</mat-label>
-              <input matInput formControlName="email" [readonly]="workspace.hasExternallyManagedProfile()" />
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>Telefone</mat-label>
-              <input matInput formControlName="phone" [readonly]="workspace.hasExternallyManagedProfile()" />
-            </mat-form-field>
-            <mat-form-field class="span-2">
-              <mat-label>E-mails secundários (separados por vírgula)</mat-label>
-              <input matInput formControlName="secondaryEmails" />
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>Documento</mat-label>
-              <input matInput formControlName="identityDocument" [readonly]="workspace.hasExternallyManagedProfile()" />
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>Matrícula (RA)</mat-label>
-              <input matInput formControlName="academicId" [readonly]="workspace.hasExternallyManagedProfile()" />
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>Unificada no ID</mat-label>
-              <input matInput formControlName="mergedIntoId" readonly />
-            </mat-form-field>
-            <mat-form-field>
-              <mat-label>Referência externa</mat-label>
-              <input matInput formControlName="externalRef" />
-            </mat-form-field>
-          </div>
-        </form>
+        <mat-tab-group animationDuration="0ms">
+          <mat-tab label="Cadastro">
+            <form [formGroup]="workspace.personForm" class="surface field-group">
+              <h4>Dados cadastrais</h4>
+              @if (workspace.hasExternallyManagedProfile()) {
+                <p class="empty-note">
+                  Nome, e-mail principal, telefone, documento e matrícula são obtidos pelo Account Manager e não podem
+                  ser editados.
+                </p>
+              }
+              <div class="field-grid">
+                <mat-form-field>
+                  <mat-label>ID</mat-label>
+                  <input matInput formControlName="id" readonly />
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Nome</mat-label>
+                  <input matInput formControlName="name" [readonly]="workspace.hasExternallyManagedProfile()" />
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>E-mail principal</mat-label>
+                  <input matInput formControlName="email" [readonly]="workspace.hasExternallyManagedProfile()" />
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Telefone</mat-label>
+                  <input matInput formControlName="phone" [readonly]="workspace.hasExternallyManagedProfile()" />
+                </mat-form-field>
+                <mat-form-field class="span-2">
+                  <mat-label>E-mails secundários (separados por vírgula)</mat-label>
+                  <input matInput formControlName="secondaryEmails" />
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Documento</mat-label>
+                  <input
+                    matInput
+                    formControlName="identityDocument"
+                    [readonly]="workspace.hasExternallyManagedProfile()" />
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Matrícula (RA)</mat-label>
+                  <input matInput formControlName="academicId" [readonly]="workspace.hasExternallyManagedProfile()" />
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Unificada no ID</mat-label>
+                  <input matInput formControlName="mergedIntoId" readonly />
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Referência externa</mat-label>
+                  <input matInput formControlName="externalRef" readonly />
+                </mat-form-field>
+              </div>
+            </form>
 
-        @if (workspace.selectedPerson()) {
-          <form [formGroup]="workspace.lecturerProfileForm" class="surface field-group">
+            @if (workspace.selectedPerson()) {
+              <section class="surface field-group">
+                <div class="surface-heading">
+                  <h4>Usuário vinculado</h4>
+                  <span>Somente leitura</span>
+                </div>
+
+                @if (workspace.selectedPerson()?.user) {
+                  <div class="field-grid">
+                    <p>
+                      <strong>ID:</strong>
+                      {{ workspace.selectedPerson()?.user?.id }}
+                    </p>
+                    <p>
+                      <strong>Nome:</strong>
+                      {{ workspace.selectedPerson()?.user?.name }}
+                    </p>
+                    <p>
+                      <strong>E-mail:</strong>
+                      {{ workspace.selectedPerson()?.user?.email }}
+                    </p>
+                    <p>
+                      <strong>Perfil:</strong>
+                      {{ workspace.selectedPerson()?.user?.role }}
+                    </p>
+                  </div>
+                } @else {
+                  <p class="empty-note">Nenhum usuário vinculado.</p>
+                }
+              </section>
+            }
+          </mat-tab>
+
+          @if (workspace.selectedPerson()) {
+            <mat-tab label="Ministrante">
+              <form [formGroup]="workspace.lecturerProfileForm" class="surface field-group">
             <div class="surface-heading">
               <div>
                 <h4>Perfil de ministrante</h4>
@@ -234,39 +274,11 @@
                 <textarea matInput formControlName="biography" rows="5"></textarea>
               </mat-form-field>
             </div>
-          </form>
+              </form>
+            </mat-tab>
 
-          <section class="surface field-group">
-            <div class="surface-heading">
-              <h4>Usuário vinculado</h4>
-              <span>Somente leitura</span>
-            </div>
-
-            @if (workspace.selectedPerson()?.user) {
-              <div class="field-grid">
-                <p>
-                  <strong>ID:</strong>
-                  {{ workspace.selectedPerson()?.user?.id }}
-                </p>
-                <p>
-                  <strong>Nome:</strong>
-                  {{ workspace.selectedPerson()?.user?.name }}
-                </p>
-                <p>
-                  <strong>E-mail:</strong>
-                  {{ workspace.selectedPerson()?.user?.email }}
-                </p>
-                <p>
-                  <strong>Perfil:</strong>
-                  {{ workspace.selectedPerson()?.user?.role }}
-                </p>
-              </div>
-            } @else {
-              <p class="empty-note">Nenhum usuário vinculado.</p>
-            }
-          </section>
-
-          <section class="surface field-group">
+            <mat-tab label="Permissões">
+              <section class="surface field-group">
             <div class="surface-heading">
               <div>
                 <h4>Permissões do Event Manager</h4>
@@ -407,7 +419,7 @@
                   <mat-label>Escopo da permissão</mat-label>
                   <mat-select formControlName="scope" aria-label="Escopo da permissão">
                     @for (scope of workspace.permissionGrantAvailableScopes(); track scope.scope) {
-                      <mat-option [value]="scope.scope">
+                      <mat-option [value]="scope.scope" [disabled]="scope.disabled">
                         <mat-icon>{{ scope.icon }}</mat-icon>
                         {{ scope.label }}
                       </mat-option>
@@ -628,10 +640,15 @@
                 }
               </mat-list>
             } @else {
-              <p class="empty-note">Vincule essa pessoa a um usuário antes de conceder permissões.</p>
+              <p class="empty-note">
+                Essa pessoa não possui um usuário vinculado.<br />
+                Solicite que a pessoa realize login no Event Manager para criar o usuário.
+              </p>
             }
-          </section>
-        }
+              </section>
+            </mat-tab>
+          }
+        </mat-tab-group>
       } @else {
         <div class="empty-state">
           <mat-icon>person_search</mat-icon>

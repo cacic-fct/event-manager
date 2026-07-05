@@ -126,6 +126,9 @@ export const PermissionManagement: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: /buscar/i }));
     await userEvent.click(await canvas.findByText(activeData.people[0].name));
 
+    await expect(await canvas.findByRole('tab', { name: 'Cadastro' })).toBeVisible();
+    await expect(await canvas.findByRole('tab', { name: 'Ministrante' })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Permissões' }));
     await expect(await canvas.findByText('Permissões do Event Manager')).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: /vínculos/i }));
     await expect(await screen.findByRole('heading', { name: 'Vínculos da pessoa' })).toBeVisible();
@@ -139,8 +142,16 @@ export const PermissionManagement: Story = {
     await expect(await canvas.findByLabelText('Escopo da permissão')).toBeVisible();
     await expect(await canvas.findByLabelText('Válida a partir de')).toBeVisible();
     await expect(await canvas.findByLabelText('Válida até')).toBeVisible();
-    await userEvent.click(await canvas.findByRole('button', { name: /^adicionar permissões$/i }));
+    await userEvent.click(await canvas.findByLabelText('Preset'));
+    await userEvent.click(await screen.findByRole('option', { name: /Consulta de comprovantes/ }));
+    await expect(await canvas.findByLabelText('Escopo da permissão')).toHaveTextContent('Grande evento');
+    await userEvent.click(await canvas.findByLabelText('Escopo da permissão'));
+    await expect(await screen.findByRole('option', { name: 'Evento' })).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(await canvas.findByText(activeData.majorEvents[0].name));
+    await userEvent.click(await canvas.findByRole('button', { name: /adicionar permissões do preset/i }));
     await expect(await canvas.findByText('Permissões em revisão')).toBeVisible();
+    await expect(await canvas.findByText('Comprovante · Visualizar')).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /salvar permissões/i })).toBeVisible();
     await expect(await canvas.findByRole('button', { name: /remover permissão da revisão/i })).toBeVisible();
 
@@ -165,6 +176,7 @@ export const EmptyPermissions: Story = {
     await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), 'ana');
     await userEvent.click(await canvas.findByRole('button', { name: /buscar/i }));
     await userEvent.click(await canvas.findByText(activeData.people[0].name));
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Permissões' }));
     await expect(await canvas.findByText('Nenhuma permissão concedida')).toBeVisible();
   },
 };

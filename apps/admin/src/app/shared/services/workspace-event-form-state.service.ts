@@ -51,6 +51,7 @@ export class WorkspaceEventFormStateService {
         onlineAttendanceStartDate: [''],
         onlineAttendanceEndDate: [''],
         publiclyVisible: [true],
+        displayLecturerProfile: [true],
         youtubeCode: [''],
         buttonText: [''],
         buttonLink: [''],

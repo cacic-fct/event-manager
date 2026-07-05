@@ -108,6 +108,7 @@ const EVENT_BASE_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
   publishedAt: true,
@@ -152,6 +153,7 @@ const EVENT_AUDIT_SELECT = {
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
   publiclyVisible: true,
+  displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
   publishedAt: true,
@@ -583,7 +585,12 @@ export class EventsResolver {
             onlineAttendanceEndDate: source.onlineAttendanceEndDate ?? undefined,
           }
         : {}),
-      ...(parts?.visibility ? { publiclyVisible: source.publiclyVisible } : {}),
+      ...(parts?.visibility
+        ? {
+            publiclyVisible: source.publiclyVisible,
+            displayLecturerProfile: source.displayLecturerProfile,
+          }
+        : {}),
       lecturerPersonIds: shouldCopyLecturers ? source.lecturers.map((lecturer) => lecturer.personId) : undefined,
     };
 

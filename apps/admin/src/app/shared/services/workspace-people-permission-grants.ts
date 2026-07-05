@@ -56,6 +56,7 @@ export type PermissionGrantScopeOption = {
   scope: EventManagerPermissionGrantScope;
   label: string;
   icon: string;
+  disabled?: boolean;
 };
 
 export type PermissionGrantDraft = EventManagerPermissionGrantInput & {
@@ -451,6 +452,18 @@ export function getPresetScope(
   presetId: string,
   fallbackScope: EventManagerPermissionGrantScope,
 ): EventManagerPermissionGrantScope {
+  const allowedScopes = getPresetAllowedScopes(presetId);
+  if (allowedScopes.includes(fallbackScope)) {
+    return fallbackScope;
+  }
+
+  return getPresetPreferredScope(presetId, fallbackScope);
+}
+
+export function getPresetPreferredScope(
+  presetId: string,
+  fallbackScope: EventManagerPermissionGrantScope,
+): EventManagerPermissionGrantScope {
   const preset = EVENT_MANAGER_PERMISSION_PRESETS.find((item) => item.id === presetId);
   if (!preset) {
     return fallbackScope;
@@ -460,7 +473,28 @@ export function getPresetScope(
     return EventManagerPermissionGrantScope.Global;
   }
 
-  return preset.preferredScope;
+  if ((preset.allowedScopes as readonly EventManagerPermissionGrantScope[]).includes(preset.preferredScope)) {
+    return preset.preferredScope;
+  }
+
+  return preset.allowedScopes[0] ?? fallbackScope;
+}
+
+export function getPresetAllowedScopes(presetId: string): readonly EventManagerPermissionGrantScope[] {
+  const preset = EVENT_MANAGER_PERMISSION_PRESETS.find((item) => item.id === presetId);
+  if (!preset) {
+    return PERMISSION_GRANT_SCOPES.map((scope) => scope.scope);
+  }
+
+  if (preset.permissions.some((permission) => requiresGlobalPermissionGrantScope(permission))) {
+    return [EventManagerPermissionGrantScope.Global];
+  }
+
+  return preset.allowedScopes;
+}
+
+export function isPresetScopeAllowed(presetId: string, scope: EventManagerPermissionGrantScope): boolean {
+  return getPresetAllowedScopes(presetId).includes(scope);
 }
 
 export function formatDateTime(value: string): string {

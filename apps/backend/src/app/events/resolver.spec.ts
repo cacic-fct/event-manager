@@ -326,6 +326,7 @@ describe('EventsResolver', () => {
       onlineAttendanceStartDate: new Date('2026-07-01T12:00:00.000Z'),
       onlineAttendanceEndDate: new Date('2026-07-01T14:00:00.000Z'),
       publiclyVisible: false,
+      displayLecturerProfile: false,
       youtubeCode: 'video',
       buttonText: 'Abrir',
       buttonLink: 'https://example.com',
@@ -429,6 +430,7 @@ describe('EventsResolver', () => {
           onlineAttendanceStartDate: source.onlineAttendanceStartDate,
           onlineAttendanceEndDate: source.onlineAttendanceEndDate,
           publiclyVisible: false,
+          displayLecturerProfile: false,
           lecturers: {
             create: [
               {

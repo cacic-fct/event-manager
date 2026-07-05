@@ -99,6 +99,7 @@ export function eventFromDraft(eventItem: Event, draft: EventDraft): Event {
       eventItem.onlineAttendanceEndDate ?? null,
     ),
     publiclyVisible: booleanValue(payload.publiclyVisible, eventItem.publiclyVisible),
+    displayLecturerProfile: booleanValue(payload.displayLecturerProfile, eventItem.displayLecturerProfile ?? true),
     youtubeCode: nullableStringValue(payload.youtubeCode, eventItem.youtubeCode ?? null),
     buttonText: nullableStringValue(payload.buttonText, eventItem.buttonText ?? null),
     buttonLink: nullableStringValue(payload.buttonLink, eventItem.buttonLink ?? null),

@@ -46,9 +46,11 @@ describe('WorkspaceEventsService', () => {
   let router: {
     navigate: ReturnType<typeof vi.fn>;
   };
+  let grantedPermissions: Set<Permission>;
 
   beforeEach(async () => {
     lastPayload = null;
+    grantedPermissions = new Set([Permission.Event.Update, Permission.MajorEvent.Read, Permission.PlacePreset.Read]);
     api = {
       createEvent: vi.fn((payload: EventInput) => {
         lastPayload = payload;
@@ -97,13 +99,14 @@ describe('WorkspaceEventsService', () => {
           useValue: {
             canEdit: vi.fn(() => true),
             hasAll: vi.fn(() => true),
-            has: vi.fn((scope: Permission) => scope === Permission.Event.Update || scope === Permission.MajorEvent.Read),
+            has: vi.fn((scope: Permission) => grantedPermissions.has(scope)),
           },
         },
         {
           provide: WorkspacePlacePresetsService,
           useValue: {
             placePresets: signal([]),
+            searchPlacePresets: vi.fn(() => Promise.resolve([])),
             ensurePresetForManualLocation: vi.fn(() => Promise.resolve()),
           },
         },
@@ -154,6 +157,16 @@ describe('WorkspaceEventsService', () => {
       targetType: 'EVENT',
       targetId: 'event-1',
       state: 'PUBLISHED',
+    });
+  });
+
+  it('saves the lecturer profile visibility toggle in event payloads', async () => {
+    service.eventForm.controls.displayLecturerProfile.setValue(false);
+
+    await service.saveEvent('DRAFT');
+
+    expect(lastPayload).toMatchObject({
+      displayLecturerProfile: false,
     });
   });
 
@@ -241,5 +254,124 @@ describe('WorkspaceEventsService', () => {
       take: 50,
     });
     expect(service.majorEventSearchResults()).toEqual([pastMajorEvent]);
+  });
+
+  it('selects an existing place preset when loaded event location values match it', async () => {
+    const placePresets = TestBed.inject(WorkspacePlacePresetsService);
+    placePresets.placePresets.set([
+      {
+        id: 'place-auditorio',
+        name: 'Auditório principal',
+        latitude: -22.12,
+        longitude: -51.4,
+        locationDescription: 'Auditório da FCT',
+        createdAt: '2026-05-21T12:00:00.000Z',
+        updatedAt: '2026-05-21T12:00:00.000Z',
+      },
+    ]);
+    api.getEvent.mockReturnValue(
+      of(
+        createAdminEvent({
+          id: 'event-1',
+          latitude: -22.12,
+          longitude: -51.4,
+          locationDescription: 'Auditório da FCT',
+        }),
+      ),
+    );
+
+    await service.selectEventById('event-1');
+
+    expect(service.eventForm.controls.locationPresetId.value).toBe('place-auditorio');
+  });
+
+  it('searches saved places before treating loaded event location values as custom', async () => {
+    const placePresets = TestBed.inject(WorkspacePlacePresetsService);
+    vi.mocked(placePresets.searchPlacePresets).mockResolvedValue([
+      {
+        id: 'place-auditorio',
+        name: 'Auditório principal',
+        latitude: -22.12,
+        longitude: -51.4,
+        locationDescription: 'Auditório da FCT',
+        createdAt: '2026-05-21T12:00:00.000Z',
+        updatedAt: '2026-05-21T12:00:00.000Z',
+      },
+    ]);
+    api.getEvent.mockReturnValue(
+      of(
+        createAdminEvent({
+          id: 'event-1',
+          latitude: -22.12,
+          longitude: -51.4,
+          locationDescription: 'Auditório da FCT',
+        }),
+      ),
+    );
+
+    await service.selectEventById('event-1');
+
+    expect(placePresets.searchPlacePresets).toHaveBeenCalledWith('Auditório da FCT', 8);
+    expect(service.eventForm.controls.locationPresetId.value).toBe('place-auditorio');
+  });
+
+  it('does not query place presets while loading events without place preset read permission', async () => {
+    grantedPermissions.delete(Permission.PlacePreset.Read);
+    const placePresets = TestBed.inject(WorkspacePlacePresetsService);
+    api.getEvent.mockReturnValue(
+      of(
+        createAdminEvent({
+          id: 'event-1',
+          latitude: -22.12,
+          longitude: -51.4,
+          locationDescription: 'Auditório da FCT',
+        }),
+      ),
+    );
+
+    await service.selectEventById('event-1');
+
+    expect(placePresets.searchPlacePresets).not.toHaveBeenCalled();
+    expect(service.eventForm.controls.locationPresetId.value).toBe('PERSONALIZADO');
+  });
+
+  it('marks the location as custom when a copied place preset is edited', () => {
+    const placePresets = TestBed.inject(WorkspacePlacePresetsService);
+    placePresets.placePresets.set([
+      {
+        id: 'place-auditorio',
+        name: 'Auditório principal',
+        latitude: -22.12,
+        longitude: -51.4,
+        locationDescription: 'Auditório da FCT',
+        createdAt: '2026-05-21T12:00:00.000Z',
+        updatedAt: '2026-05-21T12:00:00.000Z',
+      },
+    ]);
+
+    service.applyPlacePreset('place-auditorio');
+    service.eventForm.controls.locationDescription.setValue('Auditório da FCT - palco 2');
+
+    expect(service.eventForm.controls.locationPresetId.value).toBe('PERSONALIZADO');
+  });
+
+  it('loads place preset suggestions from the backend search service', async () => {
+    const placePresets = TestBed.inject(WorkspacePlacePresetsService);
+    const suggestion = {
+      id: 'place-lab',
+      name: 'Laboratório 1',
+      latitude: null,
+      longitude: null,
+      locationDescription: 'Lab de computadores',
+      createdAt: '2026-05-21T12:00:00.000Z',
+      updatedAt: '2026-05-21T12:00:00.000Z',
+    };
+    vi.mocked(placePresets.searchPlacePresets).mockResolvedValue([suggestion]);
+    service.eventForm.controls.locationDescription.setValue('lab', { emitEvent: false });
+
+    await service.searchPlacePresetSuggestions();
+
+    expect(placePresets.searchPlacePresets).toHaveBeenCalledWith('lab', 8);
+    expect(service.placePresetSuggestions()).toEqual([suggestion]);
   });
 });

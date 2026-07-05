@@ -321,6 +321,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: WorkspaceTabSt
     onlineAttendanceStartDate: [''],
     onlineAttendanceEndDate: [''],
     publiclyVisible: [true],
+    displayLecturerProfile: [true],
     youtubeCode: [''],
     buttonText: [''],
     buttonLink: [''],
@@ -358,6 +359,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: WorkspaceTabSt
       onlineAttendanceStartDate: localDateTime(selectedEvent.onlineAttendanceStartDate),
       onlineAttendanceEndDate: localDateTime(selectedEvent.onlineAttendanceEndDate),
       publiclyVisible: selectedEvent.publiclyVisible,
+      displayLecturerProfile: selectedEvent.displayLecturerProfile,
       youtubeCode: selectedEvent.youtubeCode ?? '',
       buttonText: selectedEvent.buttonText ?? '',
       buttonLink: selectedEvent.buttonLink ?? '',
@@ -395,6 +397,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: WorkspaceTabSt
     selectedEventGroupAllowsNonPayingCertificates: signal(false),
     selectedEventGroupAllowsNonSubscribedCertificates: signal(false),
     eventGroupSearchResults: signal(eventGroups),
+    placePresetSuggestions: signal(placePresets),
     lecturerSearchResults: signal(people),
     attendanceCollectorSearchResults: signal(people.slice(1)),
     groupLecturerSuggestions: signal(people.slice(2)),
@@ -412,7 +415,14 @@ function createEventsStoryService(formBuilder: FormBuilder, args: WorkspaceTabSt
     lecturerLookupForm: formBuilder.nonNullable.group({ query: ['ana', [Validators.required]] }),
     attendanceCollectorLookupForm: formBuilder.nonNullable.group({ query: ['bruno', [Validators.required]] }),
     placePresetsService: {
+      placePresets: signal(placePresets),
       sortedPlacePresets: computed(() => placePresets),
+      searchPlacePresets: async (query: string) =>
+        placePresets.filter((place) =>
+          `${place.name} ${place.locationDescription ?? ''}`.toLocaleLowerCase('pt-BR').includes(
+            query.toLocaleLowerCase('pt-BR'),
+          ),
+        ),
     },
     draftsForEvent: (eventId: string) => draftsByEventId[eventId] ?? [],
     applyEventFilters: async () => undefined,
@@ -440,6 +450,8 @@ function createEventsStoryService(formBuilder: FormBuilder, args: WorkspaceTabSt
     assignEventGroupToEvent: () => undefined,
     eventGroupNameById: (groupId: string) => eventGroups.find((group) => group.id === groupId)?.name ?? 'Nenhum grupo',
     applyPlacePreset: () => undefined,
+    displayPlacePresetSuggestion: (placeId: string) =>
+      placePresets.find((place) => place.id === placeId)?.locationDescription ?? '',
     randomizeOnlineAttendanceCode: () => undefined,
     searchLecturerCandidates: async () => undefined,
     createAndAddLecturer: async () => undefined,
@@ -565,6 +577,7 @@ function adaptEvent(
     onlineAttendanceStartDate: eventItem.onlineAttendanceStartDate,
     onlineAttendanceEndDate: eventItem.onlineAttendanceEndDate,
     publiclyVisible: Boolean(eventItem.publiclyVisible),
+    displayLecturerProfile: true,
     publicationState,
     scheduledPublishAt: publicationState === 'SCHEDULED' ? offsetDate(1) : null,
     publishedAt: publicationState === 'PUBLISHED' ? offsetDate(-1) : null,

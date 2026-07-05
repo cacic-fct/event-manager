@@ -302,19 +302,24 @@
             @for (majorEvent of workspace.majorEventSearchResults(); track majorEvent.id) {
               <button
                 mat-stroked-button
+                class="entity-choice-chip"
                 type="button"
                 [disabled]="!canAssignMajorEvent(majorEvent)"
                 [matTooltip]="majorEventAssignmentTooltip(majorEvent)"
                 (click)="workspace.assignMajorEventToEvent(majorEvent)">
-                <mat-icon>add_link</mat-icon>
-                Usar {{ majorEvent.name }} {{ majorEvent.startDate | date: 'dd/MM/yyyy' }}
+                <span class="entity-choice-chip__content">
+                  <mat-icon>add_link</mat-icon>
+                  <app-twemoji [emoji]="majorEvent.emoji" />
+                  <span class="entity-choice-chip__name">{{ majorEvent.name }}</span>
+                  <span class="entity-choice-chip__meta">{{ majorEvent.startDate | date: 'dd/MM/yyyy' }}</span>
+                </span>
               </button>
             } @empty {
               <span class="empty-note">
                 {{
                   permissions.has(Permission.MajorEvent.Read)
                     ? 'Nenhum grande evento listado.'
-                    : 'Listar grandes eventos exige permissão de Grande evento · Visualizar.'
+                    : 'Listar grandes eventos exige permissão de Grande evento - Visualizar.'
                 }}
               </span>
             }
@@ -322,7 +327,10 @@
 
           <div class="surface-heading">
             <h4>Grande evento selecionado</h4>
-            <span>
+            <span class="selected-entity">
+              @if (majorEventEmojiById(workspace.eventForm.controls.majorEventId.value); as majorEventEmoji) {
+                <app-twemoji [emoji]="majorEventEmoji" />
+              }
               {{ workspace.majorEventNameById(workspace.eventForm.controls.majorEventId.value) }}
             </span>
           </div>
@@ -353,9 +361,19 @@
           <div class="inline-list">
             @for (eventGroup of workspace.eventGroupSearchResults(); track eventGroup.id) {
               @if (canEditEvent(workspace.selectedEvent())) {
-                <button mat-stroked-button type="button" (click)="workspace.assignEventGroupToEvent(eventGroup)">
-                  <mat-icon>add_link</mat-icon>
-                  Usar {{ eventGroup.name }} {{ eventGroup.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                <button
+                  mat-stroked-button
+                  class="entity-choice-chip"
+                  type="button"
+                  (click)="workspace.assignEventGroupToEvent(eventGroup)">
+                  <span class="entity-choice-chip__content">
+                    <mat-icon>add_link</mat-icon>
+                    <app-twemoji [emoji]="eventGroup.emoji" />
+                    <span class="entity-choice-chip__name">{{ eventGroup.name }}</span>
+                    <span class="entity-choice-chip__meta">
+                      {{ eventGroup.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+                    </span>
+                  </span>
                 </button>
               }
             } @empty {
@@ -365,7 +383,10 @@
 
           <div class="surface-heading">
             <h4>Grupo selecionado</h4>
-            <span>
+            <span class="selected-entity">
+              @if (eventGroupEmojiById(workspace.eventForm.controls.eventGroupId.value); as eventGroupEmoji) {
+                <app-twemoji [emoji]="eventGroupEmoji" />
+              }
               {{ workspace.eventGroupNameById(workspace.eventForm.controls.eventGroupId.value) }}
             </span>
           </div>
@@ -435,7 +456,23 @@
 
             <mat-form-field class="span-2">
               <mat-label>Nome e descrição exibidos aos usuários</mat-label>
-              <input matInput formControlName="locationDescription" />
+              <input
+                matInput
+                formControlName="locationDescription"
+                [matAutocomplete]="placePresetAutocomplete" />
+              <mat-autocomplete
+                #placePresetAutocomplete="matAutocomplete"
+                [displayWith]="displayPlacePresetSuggestion"
+                (optionSelected)="workspace.applyPlacePreset($event.option.value)">
+                @for (place of workspace.placePresetSuggestions(); track place.id) {
+                  <mat-option [value]="place.id">
+                    <span>{{ place.locationDescription || place.name }}</span>
+                    @if (place.locationDescription && place.locationDescription !== place.name) {
+                      <small>{{ place.name }}</small>
+                    }
+                  </mat-option>
+                }
+              </mat-autocomplete>
             </mat-form-field>
 
             <mat-form-field class="span-2">
@@ -530,6 +567,10 @@
           <span>{{ workspace.eventLecturers().length }} vinculados</span>
         </div>
 
+        <div class="checkbox-grid" [formGroup]="workspace.eventForm">
+          <mat-checkbox formControlName="displayLecturerProfile"> Exibir perfil de ministrante </mat-checkbox>
+        </div>
+
         <form [formGroup]="workspace.lecturerLookupForm" class="compact-form">
           <mat-form-field>
             <mat-label>Buscar pessoa</mat-label>
@@ -573,7 +614,7 @@
               {{
                 permissions.has(Permission.Person.Read)
                   ? 'Busque uma pessoa pelo nome, e-mail ou CPF.'
-                  : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                  : 'Buscar pessoas exige permissão de Pessoa - Visualizar.'
               }}
             </span>
           }
@@ -649,7 +690,7 @@
               {{
                 permissions.has(Permission.Person.Read)
                   ? 'Busque uma pessoa pelo nome, e-mail ou CPF.'
-                  : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                  : 'Buscar pessoas exige permissão de Pessoa - Visualizar.'
               }}
             </span>
           }

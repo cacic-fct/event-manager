@@ -91,6 +91,9 @@ export class EventCreateInput {
   @Field(() => Boolean, { nullable: true })
   publiclyVisible?: boolean;
 
+  @Field(() => Boolean, { nullable: true })
+  displayLecturerProfile?: boolean;
+
   @Field(() => String, { nullable: true })
   youtubeCode?: string;
 
@@ -195,6 +198,9 @@ export class EventUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   publiclyVisible?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  displayLecturerProfile?: boolean;
 
   @Field(() => String, { nullable: true })
   youtubeCode?: string;

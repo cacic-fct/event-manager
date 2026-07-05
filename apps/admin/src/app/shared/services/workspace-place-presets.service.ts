@@ -71,6 +71,20 @@ export class WorkspacePlacePresetsService {
     this.placePresets.set(applyPagedResult(items, this.placePresetsPagination));
   }
 
+  async searchPlacePresets(query: string, take = 10): Promise<PlacePreset[]> {
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    return firstValueFrom(
+      this.api.listPlacePresets({
+        query: normalizedQuery,
+        take,
+      }),
+    );
+  }
+
   async resetFilters(): Promise<void> {
     this.filterForm.reset({ query: '' }, { emitEvent: false });
     resetPagination(this.placePresetsPagination);

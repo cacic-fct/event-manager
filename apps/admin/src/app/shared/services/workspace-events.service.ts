@@ -16,6 +16,7 @@ import {
   EventInput,
   MajorEvent,
   Person,
+  PlacePreset,
   PlacePresetInput,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
@@ -69,6 +70,8 @@ type MajorEventResolution =
   | { status: 'found'; majorEvent: MajorEvent }
   | { status: 'unresolved' };
 
+const CUSTOM_PLACE_PRESET_ID = 'PERSONALIZADO';
+
 @Injectable({
   providedIn: 'root',
 })
@@ -105,6 +108,7 @@ export class WorkspaceEventsService {
   readonly selectedMajorEventName = signal('');
   readonly majorEventSearchResults = signal<MajorEvent[]>([]);
   readonly eventGroupSearchResults = signal<EventGroup[]>([]);
+  readonly placePresetSuggestions = signal<PlacePreset[]>([]);
   readonly lecturerSearchResults = signal<Person[]>([]);
   readonly attendanceCollectorSearchResults = signal<Person[]>([]);
   readonly groupLecturerSuggestions = signal<Person[]>([]);
@@ -137,6 +141,11 @@ export class WorkspaceEventsService {
       search: () => this.searchEventGroupsForEvent(),
     });
     bindLiveSearch({
+      control: this.eventForm.controls.locationDescription,
+      destroyRef: this.destroyRef,
+      search: () => this.searchPlacePresetSuggestions(),
+    });
+    bindLiveSearch({
       control: this.lecturerLookupForm.controls.query,
       destroyRef: this.destroyRef,
       search: () => this.searchLecturerCandidates(),
@@ -147,8 +156,12 @@ export class WorkspaceEventsService {
       search: () => this.searchAttendanceCollectorCandidates(),
     });
     this.syncOnlineAttendanceControls();
+    this.syncLocationPresetControl();
     this.eventForm.controls.isOnlineAttendanceAllowed.valueChanges.subscribe(() => this.syncOnlineAttendanceControls());
     this.eventForm.controls.shouldIssueCertificate.valueChanges.subscribe(() => this.syncCertificateControl());
+    this.eventForm.controls.latitude.valueChanges.subscribe(() => this.syncLocationPresetControl());
+    this.eventForm.controls.longitude.valueChanges.subscribe(() => this.syncLocationPresetControl());
+    this.eventForm.controls.locationDescription.valueChanges.subscribe(() => this.syncLocationPresetControl());
   }
 
   async loadEvents(): Promise<void> {
@@ -240,6 +253,7 @@ export class WorkspaceEventsService {
     this.eventGroupSearchResults.set([]);
     this.groupLecturerSuggestions.set([]);
     this.attendanceCollectorSearchResults.set([]);
+    this.placePresetSuggestions.set([]);
     this.eventGroupLookupForm.reset(
       {
         query: '',
@@ -271,7 +285,7 @@ export class WorkspaceEventsService {
       latitude: '',
       longitude: '',
       locationDescription: '',
-      locationPresetId: 'PERSONALIZADO',
+      locationPresetId: CUSTOM_PLACE_PRESET_ID,
       majorEventId: '',
       eventGroupId: '',
       allowSubscription: false,
@@ -289,6 +303,7 @@ export class WorkspaceEventsService {
       onlineAttendanceStartDate: '',
       onlineAttendanceEndDate: '',
       publiclyVisible: true,
+      displayLecturerProfile: true,
       youtubeCode: '',
       buttonText: '',
       buttonLink: '',
@@ -560,9 +575,26 @@ export class WorkspaceEventsService {
     this.groupLecturerSuggestions.set([]);
   }
 
+  async searchPlacePresetSuggestions(): Promise<void> {
+    if (!this.permissions.has(Permission.PlacePreset.Read)) {
+      this.placePresetSuggestions.set([]);
+      return;
+    }
+
+    const query = this.eventForm.controls.locationDescription.value.trim();
+    if (!query) {
+      this.placePresetSuggestions.set([]);
+      this.syncLocationPresetControl();
+      return;
+    }
+
+    this.placePresetSuggestions.set(await this.placePresetsService.searchPlacePresets(query, 8));
+    this.syncLocationPresetControl();
+  }
+
   applyPlacePreset(placeId: string): void {
     this.eventForm.controls.locationPresetId.setValue(placeId);
-    if (placeId === 'PERSONALIZADO') {
+    if (placeId === CUSTOM_PLACE_PRESET_ID) {
       return;
     }
 
@@ -571,9 +603,22 @@ export class WorkspaceEventsService {
       return;
     }
 
-    this.eventForm.controls.latitude.setValue(place.latitude?.toString() ?? '');
-    this.eventForm.controls.longitude.setValue(place.longitude?.toString() ?? '');
-    this.eventForm.controls.locationDescription.setValue(place.locationDescription ?? place.name);
+    this.eventForm.controls.latitude.setValue(place.latitude?.toString() ?? '', { emitEvent: false });
+    this.eventForm.controls.longitude.setValue(place.longitude?.toString() ?? '', { emitEvent: false });
+    this.eventForm.controls.locationDescription.setValue(place.locationDescription ?? place.name, { emitEvent: false });
+    this.placePresetSuggestions.set([]);
+    this.syncLocationPresetControl();
+  }
+
+  displayPlacePresetSuggestion(placeId: string): string {
+    if (!placeId || placeId === CUSTOM_PLACE_PRESET_ID) {
+      return '';
+    }
+
+    const place = [...this.placePresetsService.placePresets(), ...this.placePresetSuggestions()].find(
+      (preset) => preset.id === placeId,
+    );
+    return place?.locationDescription || place?.name || '';
   }
 
   eventGroupNameById(groupId: string): string {
@@ -967,6 +1012,7 @@ export class WorkspaceEventsService {
         ? toOptionalIsoDateTime(raw.onlineAttendanceEndDate)
         : null,
       publiclyVisible: raw.publiclyVisible,
+      displayLecturerProfile: raw.displayLecturerProfile,
       youtubeCode: raw.youtubeCode.trim() || null,
       buttonText: raw.buttonText.trim() || null,
       buttonLink: raw.buttonLink.trim() || null,
@@ -982,7 +1028,7 @@ export class WorkspaceEventsService {
 
   private buildManualPlacePresetPayload(): PlacePresetInput | null {
     const raw = this.eventForm.getRawValue();
-    if (raw.locationPresetId !== 'PERSONALIZADO') {
+    if (raw.locationPresetId !== CUSTOM_PLACE_PRESET_ID) {
       return null;
     }
 
@@ -1035,6 +1081,7 @@ export class WorkspaceEventsService {
     const asHours = (eventItem.creditMinutes ?? 0) / 60;
     const selectedMajorEvent = this.resolveSelectedMajorEvent(eventItem);
     const selectedEventGroup = await this.resolveSelectedEventGroup(eventItem);
+    const selectedPlacePreset = await this.resolvePlacePresetForEvent(eventItem);
     this.eventForm.reset({
       id: eventItem.id,
       name: eventItem.name,
@@ -1049,7 +1096,7 @@ export class WorkspaceEventsService {
       latitude: eventItem.latitude?.toString() ?? '',
       longitude: eventItem.longitude?.toString() ?? '',
       locationDescription: eventItem.locationDescription ?? '',
-      locationPresetId: 'PERSONALIZADO',
+      locationPresetId: selectedPlacePreset?.id ?? CUSTOM_PLACE_PRESET_ID,
       majorEventId: eventItem.majorEventId ?? '',
       eventGroupId: eventItem.eventGroupId ?? '',
       allowSubscription: eventItem.allowSubscription,
@@ -1073,6 +1120,7 @@ export class WorkspaceEventsService {
       onlineAttendanceEndDate:
         eventItem.onlineAttendanceEndDate != null ? fromIsoToLocalInput(eventItem.onlineAttendanceEndDate) : '',
       publiclyVisible: eventItem.publiclyVisible,
+      displayLecturerProfile: eventItem.displayLecturerProfile ?? true,
       youtubeCode: eventItem.youtubeCode ?? '',
       buttonText: eventItem.buttonText ?? '',
       buttonLink: eventItem.buttonLink ?? '',
@@ -1090,6 +1138,69 @@ export class WorkspaceEventsService {
     this.applySelectedEventGroup(selectedEventGroup);
     this.eventGroupSearchResults.set([]);
     this.syncCertificateControl();
+    this.syncLocationPresetControl();
+  }
+
+  private syncLocationPresetControl(): void {
+    const nextPresetId = this.matchCurrentPlacePresetId() ?? CUSTOM_PLACE_PRESET_ID;
+
+    if (this.eventForm.controls.locationPresetId.value !== nextPresetId) {
+      this.eventForm.controls.locationPresetId.setValue(nextPresetId, { emitEvent: false });
+    }
+  }
+
+  private matchCurrentPlacePresetId(): string | null {
+    const raw = this.eventForm.getRawValue();
+    return (
+      this.matchPlacePreset({
+        latitude: raw.latitude ? Number(raw.latitude) : null,
+        longitude: raw.longitude ? Number(raw.longitude) : null,
+        locationDescription: raw.locationDescription,
+      })?.id ?? null
+    );
+  }
+
+  private matchPlacePreset(input: {
+    latitude?: number | null;
+    longitude?: number | null;
+    locationDescription?: string | null;
+  }): PlacePreset | null {
+    const description = normalizePlaceText(input.locationDescription);
+    if (!description) {
+      return null;
+    }
+
+    const latitude = input.latitude ?? null;
+    const longitude = input.longitude ?? null;
+    return (
+      this.allKnownPlacePresets().find(
+        (place) =>
+          normalizePlaceText(place.locationDescription ?? place.name) === description &&
+          (place.latitude ?? null) === latitude &&
+          (place.longitude ?? null) === longitude,
+      ) ?? null
+    );
+  }
+
+  private async resolvePlacePresetForEvent(
+    eventItem: Pick<Event, 'latitude' | 'longitude' | 'locationDescription'>,
+  ): Promise<PlacePreset | null> {
+    const localMatch = this.matchPlacePreset(eventItem);
+    if (localMatch || !eventItem.locationDescription?.trim() || !this.permissions.has(Permission.PlacePreset.Read)) {
+      return localMatch;
+    }
+
+    const suggestions = await this.placePresetsService.searchPlacePresets(eventItem.locationDescription, 8);
+    this.placePresetSuggestions.set(suggestions);
+    return this.matchPlacePreset(eventItem);
+  }
+
+  private allKnownPlacePresets(): PlacePreset[] {
+    const places = new Map<string, PlacePreset>();
+    for (const place of [...this.placePresetsService.placePresets(), ...this.placePresetSuggestions()]) {
+      places.set(place.id, place);
+    }
+    return [...places.values()];
   }
 
   private resolveSelectedMajorEvent(eventItem: Event): MajorEventResolution {
@@ -1189,5 +1300,8 @@ export class WorkspaceEventsService {
       this.selectedEventGroupAllowsNonSubscribedCertificates(),
     );
   }
+}
 
+function normalizePlaceText(value: string | null | undefined): string {
+  return (value ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 }

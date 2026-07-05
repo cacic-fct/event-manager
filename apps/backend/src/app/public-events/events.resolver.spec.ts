@@ -396,6 +396,21 @@ describe('PublicEventsResolver lecturer profiles', () => {
     );
   });
 
+  it('does not load lecturer profiles when the event disables public lecturer display', async () => {
+    const prisma = {
+      eventLecturer: {
+        findMany: jest.fn(),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(
+      resolver.lecturers({ id: 'event-1', displayLecturerProfile: false } as never),
+    ).resolves.toEqual([]);
+
+    expect(prisma.eventLecturer.findMany).not.toHaveBeenCalled();
+  });
+
   it('does not expose lecturers without a public lecturer profile', async () => {
     const prisma = {
       eventLecturer: {

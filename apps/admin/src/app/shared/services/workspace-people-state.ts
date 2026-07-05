@@ -24,6 +24,7 @@ import {
   PermissionGrantPresetPreviewGroup,
   getPermissionGrantSelectionLabel as getGrantSelectionLabel,
   getPermissionsIncludedData,
+  isPresetScopeAllowed,
   normalizeSearchText,
 } from './workspace-people-permission-grants';
 
@@ -127,9 +128,10 @@ export abstract class WorkspacePeopleState {
     this.permissionGrantSelectedPermissions().some((permission) => requiresGlobalPermissionGrantScope(permission)),
   );
   readonly permissionGrantAvailableScopes = computed(() =>
-    this.permissionGrantRequiresGlobalScope()
-      ? this.permissionGrantScopes.filter((scope) => scope.scope === EventManagerPermissionGrantScope.Global)
-      : this.permissionGrantScopes,
+    this.permissionGrantScopes.map((scope) => ({
+      ...scope,
+      disabled: this.isPermissionGrantScopeDisabled(scope.scope),
+    })),
   );
   readonly permissionGrantSelectionLabel = computed(() =>
     getGrantSelectionLabel(this.permissionGrantSelectedPermissions()),
@@ -164,6 +166,15 @@ export abstract class WorkspacePeopleState {
 
   readonly permissionGrantScopes = PERMISSION_GRANT_SCOPES;
   readonly peoplePermissionSearchFilterOptions = PEOPLE_PERMISSION_SEARCH_FILTER_OPTIONS;
+
+  isPermissionGrantScopeDisabled(scope: EventManagerPermissionGrantScope): boolean {
+    if (this.permissionGrantRequiresGlobalScope() && scope !== EventManagerPermissionGrantScope.Global) {
+      return true;
+    }
+
+    const presetId = this.permissionGrantPresetId();
+    return Boolean(presetId) && !isPresetScopeAllowed(presetId, scope);
+  }
 
   readonly personForm = this.formBuilder.nonNullable.group({
     id: [''],
