@@ -222,6 +222,11 @@ export class AttendancesApiService {
           currentUserEventAttendances {
             eventId
             attendedAt
+            event {
+              id
+              majorEventId
+              eventGroupId
+            }
           }
         }
 
@@ -309,17 +314,23 @@ export class AttendancesApiService {
       feedItem: this.getMajorEventFeedItem(majorEventId),
       organizerInfo: this.getOrganizerInfo('major-event', majorEventId),
     }).pipe(
-      map(({ details, feedItem, organizerInfo }) => ({
-        subscription: this.withDerivedNotSubscribedEvents(
-          details.currentUserMajorEventSubscription,
-          details.currentUserMajorEventEventSubscriptions ?? [],
-          details.publicEvents ?? [],
-        ),
-        majorEvent: feedItem?.majorEvent ?? null,
-        hasIssuedCertificate: feedItem?.participation.hasIssuedCertificate ?? false,
-        isLecturer: Boolean(feedItem?.participation.isLecturer || organizerInfo),
-        attendances: details.currentUserEventAttendances,
-      })),
+      map(({ details, feedItem, organizerInfo }) => {
+        const publicEvents = details.publicEvents ?? [];
+        const targetEventIds = new Set(publicEvents.map((event) => event.id));
+
+        return {
+          subscription: this.withDerivedNotSubscribedEvents(
+            details.currentUserMajorEventSubscription,
+            details.currentUserMajorEventEventSubscriptions ?? [],
+            publicEvents,
+          ),
+          majorEvent: feedItem?.majorEvent ?? null,
+          events: publicEvents,
+          hasIssuedCertificate: feedItem?.participation.hasIssuedCertificate ?? false,
+          isLecturer: Boolean(feedItem?.participation.isLecturer || organizerInfo),
+          attendances: details.currentUserEventAttendances.filter((attendance) => targetEventIds.has(attendance.eventId)),
+        };
+      }),
     );
   }
 
@@ -397,6 +408,8 @@ export class AttendancesApiService {
     }).pipe(
       map(({ details, certificates, organizerInfo }) => {
         const fallbackEvents = details.publicEvents ?? [];
+        const targetEvents = details.currentUserEventGroupSubscription?.events ?? fallbackEvents;
+        const targetEventIds = new Set(targetEvents.map((event) => event.id));
         const eventGroup = fallbackEvents[0]?.eventGroup ?? null;
 
         return {
@@ -405,7 +418,7 @@ export class AttendancesApiService {
           events: details.currentUserEventGroupSubscription ? [] : organizerInfo?.events.map((item) => item.event) ?? fallbackEvents,
           hasIssuedCertificate: certificates.length > 0,
           isLecturer: Boolean(organizerInfo),
-          attendances: details.currentUserEventAttendances,
+          attendances: details.currentUserEventAttendances.filter((attendance) => targetEventIds.has(attendance.eventId)),
         };
       }),
     );

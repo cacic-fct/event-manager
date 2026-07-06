@@ -10,6 +10,7 @@ export interface CurrentUserEventAttendance {
   eventId: string;
   attendedAt: string;
   createdAt?: string;
+  event?: Pick<PublicEvent, 'id' | 'majorEventId' | 'eventGroupId'> | null;
 }
 
 export interface CurrentUserMajorEventSubscription {
@@ -88,6 +89,7 @@ export interface SubscriptionsFeed {
 export interface MajorEventDetails {
   subscription: CurrentUserMajorEventSubscription | null;
   majorEvent?: PublicMajorEvent | null;
+  events?: PublicEvent[];
   hasIssuedCertificate?: boolean;
   isLecturer?: boolean;
   attendances: CurrentUserEventAttendance[];

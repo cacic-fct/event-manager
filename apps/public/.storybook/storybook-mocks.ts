@@ -54,6 +54,11 @@ const currentUserAttendances = events.slice(0, 3).map((event, index) => ({
   eventId: event.id,
   attendedAt: isoDaysFromNow(index - 2, 16),
   createdAt: isoDaysFromNow(index - 2, 16),
+  event: {
+    id: event.id,
+    majorEventId: event.majorEventId ?? null,
+    eventGroupId: event.eventGroupId ?? null,
+  },
 }));
 
 const currentUserCertificates = events.slice(0, 2).map((event, index) => ({
@@ -216,37 +221,175 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
   }
 
   if (query.includes('CurrentUserSubscriptionsFeed')) {
+    const standaloneSubscribedEvent = {
+      ...events[0],
+      id: 'feed-standalone-subscribed',
+      name: 'Oficina inscrita',
+      majorEventId: null,
+      majorEvent: null,
+      eventGroupId: null,
+      eventGroup: null,
+    };
+    const standaloneAttendedEvent = {
+      ...events[1],
+      id: 'feed-standalone-attended',
+      name: 'Oficina presente sem inscrição',
+      majorEventId: null,
+      majorEvent: null,
+      eventGroupId: null,
+      eventGroup: null,
+    };
+    const groupAttendedEvent = {
+      ...events[2],
+      id: 'feed-group-attended-event',
+      name: 'Aula prática do grupo',
+      majorEventId: null,
+      majorEvent: null,
+      eventGroupId: 'feed-group-attended',
+      eventGroup: {
+        id: 'feed-group-attended',
+        name: 'Grupo presente sem inscrição',
+        emoji: '🧪',
+        shouldIssueCertificate: true,
+        shouldIssueCertificateForEachEvent: false,
+        shouldIssuePartialCertificate: true,
+      },
+    };
+    const majorAttendedEvent = {
+      ...events[3],
+      id: 'feed-major-attended-event',
+      name: 'Atividade do grande evento',
+      majorEventId: 'feed-major-attended',
+      majorEvent: majorEvents[2],
+      eventGroupId: null,
+      eventGroup: null,
+    };
+
     return {
-      currentUserMajorEventFeed: majorEvents.slice(0, 2).map((majorEvent) => ({
-        id: `feed-${majorEvent.id}`,
-        majorEventId: majorEvent.id,
-        subscriptionStatus: 'CONFIRMED',
-        amountPaid: 2500,
-        paymentDate: isoDaysFromNow(-7, 11),
-        paymentTier: 'STUDENT',
-        majorEvent,
-        participation: {
-          isSubscribed: true,
-          isLecturer: false,
-          hasIssuedCertificate: true,
-        },
-      })),
-      currentUserSubscriptionFeed: {
-        items: events.slice(0, 4).map((event) => ({
-          type: 'SINGLE_EVENT',
-          subscriptionId: `subscription-${event.id}`,
-          eventId: event.id,
-          date: event.startDate,
-          createdAt: isoDaysFromNow(-5, 9),
-          event,
+      currentUserMajorEventFeed: [
+        {
+          id: `feed-${majorEvents[0].id}`,
+          majorEventId: majorEvents[0].id,
+          subscriptionStatus: 'CONFIRMED',
+          amountPaid: 2500,
+          paymentDate: isoDaysFromNow(-7, 11),
+          paymentTier: 'STUDENT',
+          majorEvent: majorEvents[0],
           participation: {
             isSubscribed: true,
-            isLecturer: event.id === 'event-2',
-            hasIssuedCertificate: event.id === 'event-1',
+            isLecturer: false,
+            hasIssuedCertificate: true,
           },
-        })),
+        },
+        {
+          id: 'feed-major-attended',
+          majorEventId: 'feed-major-attended',
+          majorEvent: {
+            ...majorEvents[2],
+            id: 'feed-major-attended',
+            name: 'Grande evento com presença',
+          },
+          participation: {
+            isSubscribed: false,
+            isLecturer: false,
+            hasIssuedCertificate: false,
+          },
+        },
+      ],
+      currentUserSubscriptionFeed: {
+        items: [
+          {
+            type: 'SINGLE_EVENT',
+            subscriptionId: `subscription-${standaloneSubscribedEvent.id}`,
+            eventId: standaloneSubscribedEvent.id,
+            date: standaloneSubscribedEvent.startDate,
+            createdAt: isoDaysFromNow(-5, 9),
+            event: standaloneSubscribedEvent,
+            participation: {
+              isSubscribed: true,
+              isLecturer: false,
+              hasIssuedCertificate: true,
+            },
+          },
+          {
+            type: 'SINGLE_EVENT',
+            eventId: standaloneAttendedEvent.id,
+            date: standaloneAttendedEvent.startDate,
+            createdAt: standaloneAttendedEvent.startDate,
+            event: standaloneAttendedEvent,
+            participation: {
+              isSubscribed: false,
+              isLecturer: false,
+              hasIssuedCertificate: false,
+            },
+          },
+          {
+            type: 'EVENT_GROUP',
+            eventGroupId: groupAttendedEvent.eventGroupId,
+            eventGroup: groupAttendedEvent.eventGroup,
+            date: groupAttendedEvent.startDate,
+            createdAt: groupAttendedEvent.startDate,
+            participation: {
+              isSubscribed: false,
+              isLecturer: false,
+              hasIssuedCertificate: false,
+            },
+          },
+          {
+            type: 'SINGLE_EVENT',
+            subscriptionId: `subscription-${events[4].id}`,
+            eventId: events[4].id,
+            date: events[4].startDate,
+            createdAt: isoDaysFromNow(-4, 9),
+            event: {
+              ...events[4],
+              name: 'Atividade como palestrante',
+              majorEventId: null,
+              majorEvent: null,
+              eventGroupId: null,
+              eventGroup: null,
+            },
+            participation: {
+              isSubscribed: true,
+              isLecturer: true,
+              hasIssuedCertificate: false,
+            },
+          },
+        ],
       },
-      currentUserEventAttendances: currentUserAttendances,
+      currentUserEventAttendances: [
+        ...currentUserAttendances,
+        {
+          eventId: standaloneAttendedEvent.id,
+          attendedAt: isoDaysFromNow(-2, 16),
+          createdAt: isoDaysFromNow(-2, 16),
+          event: {
+            id: standaloneAttendedEvent.id,
+            majorEventId: null,
+            eventGroupId: null,
+          },
+        },
+        {
+          eventId: groupAttendedEvent.id,
+          attendedAt: isoDaysFromNow(-1, 16),
+          createdAt: isoDaysFromNow(-1, 16),
+          event: {
+            id: groupAttendedEvent.id,
+            majorEventId: null,
+            eventGroupId: groupAttendedEvent.eventGroupId,
+          },
+        },
+        {
+          eventId: majorAttendedEvent.id,
+          attendedAt: isoDaysFromNow(-1, 18),
+          createdAt: isoDaysFromNow(-1, 18),
+          event: {
+            id: majorAttendedEvent.id,
+            majorEventId: 'feed-major-attended',
+            eventGroupId: null,
+          },
+        },
+      ],
     };
   }
 

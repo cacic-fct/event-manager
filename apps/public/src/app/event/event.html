@@ -124,6 +124,20 @@
   <p class="status-line">{{ subscriptionStatusLine(data) }}</p>
   }
 
+  @if (attendeeFormLinks().length > 0) {
+  <section class="form-actions" aria-label="Formulários disponíveis">
+    <h2>Formulários</h2>
+    <div class="actions">
+      @for (formLink of attendeeFormLinks(); track formLink.formId + formLink.targetType + formLink.targetId + formLink.linkId) {
+      <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
+        <mat-icon>{{ formLink.mode === 'results' ? 'bar_chart' : 'list_alt' }}</mat-icon>
+        {{ formLink.mode === 'results' ? 'Resultados: ' + formLink.name : formLink.name }}
+      </a>
+      }
+    </div>
+  </section>
+  }
+
   <section class="detail-grid">
     <div class="detail-section">
       <h2>Informações</h2>

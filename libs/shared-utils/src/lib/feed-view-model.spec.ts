@@ -64,6 +64,32 @@ describe('feed view model', () => {
     );
   });
 
+  it('maps attendance-only grouped items without loaded child events', () => {
+    const item: SubscribedEventGroupItem = {
+      __typename: 'SubscribedEventGroupItem',
+      id: 'group-item',
+      type: 'group',
+      startDate: '2026-06-26T09:00:00',
+      eventGroup: group(),
+      events: [],
+      participation: {
+        isSubscribed: false,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+      },
+    };
+
+    expect(
+      getSubscribedItemStatusLine(item, [
+        {
+          eventId: 'group-event',
+          attendedAt: '2026-06-26T09:30:00',
+          event: { id: 'group-event', eventGroupId: 'group-1' },
+        },
+      ]),
+    ).toBe('Presença registrada');
+  });
+
   it('keeps confirmed major-event subscriptions quiet but surfaces pending statuses', () => {
     expect(getMajorEventStatusLine(majorEventFeedItem('confirmed', '2026-06-26T09:00:00', 'CONFIRMED'))).toBe(
       'Inscrito',
@@ -77,6 +103,15 @@ describe('feed view model', () => {
         }),
       ),
     ).toBe('Aguardando envio de comprovante, Inscrito, Certificado emitido');
+    expect(
+      getMajorEventStatusLine(majorEventFeedItem('major-attended', '2026-06-26T09:00:00'), [
+        {
+          eventId: 'event-1',
+          attendedAt: '2026-06-26T09:30:00',
+          event: { id: 'event-1', majorEventId: 'major-attended' },
+        },
+      ]),
+    ).toBe('Presença registrada, Inscrito');
   });
 });
 

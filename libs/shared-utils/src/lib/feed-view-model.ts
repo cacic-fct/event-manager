@@ -74,6 +74,10 @@ export function getSubscribedItemStatusLine(item: SubscribedItem, attendances: C
 
   const attendedCount = item.events.filter((event) => attendanceByEventId.has(event.id)).length;
 
+  if (item.events.length === 0 && attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id)) {
+    return formatStatusLine(['Presença registrada', ...participationLabels]);
+  }
+
   if (attendedCount === 0) {
     return formatStatusLine(participationLabels);
   }
@@ -88,8 +92,14 @@ export function getMajorEventDateLine(subscription: CurrentUserMajorEventFeedIte
   return formatDateRange(subscription.majorEvent.startDate, subscription.majorEvent.endDate);
 }
 
-export function getMajorEventStatusLine(subscription: CurrentUserMajorEventFeedItem): string {
+export function getMajorEventStatusLine(
+  subscription: CurrentUserMajorEventFeedItem,
+  attendances: CurrentUserEventAttendance[] = [],
+): string {
+  const hasAttendance = attendances.some((attendance) => attendance.event?.majorEventId === subscription.majorEventId);
+
   return formatStatusLine([
+    hasAttendance ? 'Presença registrada' : undefined,
     subscription.subscriptionStatus && subscription.subscriptionStatus !== 'CONFIRMED'
       ? getSubscriptionStatusLabel(subscription.subscriptionStatus)
       : undefined,

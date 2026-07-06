@@ -56,7 +56,17 @@ describe('AttendancesApiService', () => {
             },
           ],
         },
-        currentUserEventAttendances: [{ eventId: 'event-1', attendedAt: '2026-07-01T12:30:00.000Z' }],
+        currentUserEventAttendances: [
+          {
+            eventId: 'event-1',
+            attendedAt: '2026-07-01T12:30:00.000Z',
+            event: {
+              id: 'event-1',
+              majorEventId: null,
+              eventGroupId: null,
+            },
+          },
+        ],
       },
     });
 
@@ -85,7 +95,17 @@ describe('AttendancesApiService', () => {
           participation: participationFixture(),
         },
       ],
-      attendances: [{ eventId: 'event-1', attendedAt: '2026-07-01T12:30:00.000Z' }],
+      attendances: [
+        {
+          eventId: 'event-1',
+          attendedAt: '2026-07-01T12:30:00.000Z',
+          event: {
+            id: 'event-1',
+            majorEventId: null,
+            eventGroupId: null,
+          },
+        },
+      ],
     });
   });
 

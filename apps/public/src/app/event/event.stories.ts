@@ -1,5 +1,5 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { PublicEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { publicStoryFixtureDate } from '@cacic-fct/event-manager-public-testing';
 import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
@@ -80,6 +80,7 @@ const lecturerWithoutContactContext = createStoryContext({
   lecturerWhatsapp: '',
   publishGoogleUserPicture: false,
 });
+const withAttendanceFormsContext = createStoryContext({ hasAttendance: true });
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
@@ -131,6 +132,20 @@ export const LecturerWithoutContact: Story = {
     await expect(await canvas.findByText('Ministrantes')).toBeVisible();
     await expect(canvas.queryByRole('link', { name: /ana@example.com/i })).toBeNull();
     await expect(canvas.queryByRole('link', { name: /whatsapp/i })).toBeNull();
+  },
+};
+
+export const WithAttendanceForms: Story = {
+  args: {
+    hasAttendance: true,
+  },
+  render: (args) => renderStory(args, withAttendanceFormsContext),
+  parameters: eventParameters(withAttendanceFormsContext),
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Formulários')).toBeVisible();
+    await expect(await canvas.findByRole('link', { name: /avaliação do evento/i })).toBeVisible();
   },
 };
 
@@ -223,6 +238,12 @@ function eventGraphqlData(query: string, args: EventStoryArgs) {
     };
   }
 
+  if (query.includes('CurrentUserEventForms')) {
+    return {
+      currentUserEventForms: args.hasAttendance ? [publicEventForm(event)] : [],
+    };
+  }
+
   if (query.includes('SubscribeCurrentUserStandaloneEvent') || query.includes('UnsubscribeCurrentUserStandaloneEvent')) {
     return {
       subscribeCurrentUserStandaloneEvent: event,
@@ -245,6 +266,63 @@ function currentUserEventSubscription(event: PublicEvent) {
     eventGroupSubscriptionId: null,
     createdAt: event.subscriptionStartDate ?? event.startDate,
     event,
+  };
+}
+
+function publicEventForm(event: PublicEvent): PublicEventForm {
+  return {
+    id: 'form-1',
+    name: 'Avaliação do evento',
+    description: 'Conte como foi sua experiência.',
+    elementsJson: JSON.stringify([
+      {
+        id: 'rating',
+        type: 'singleChoice',
+        title: 'Como você avalia a atividade?',
+        required: true,
+        options: [
+          { id: 'great', label: 'Ótima' },
+          { id: 'good', label: 'Boa' },
+        ],
+      },
+    ]),
+    sigilo: 'SECRET',
+    responseMode: 'ONE_PER_TARGET',
+    resultsPublic: false,
+    resultsLive: false,
+    allowResponseEdits: true,
+    publicationState: 'PUBLISHED',
+    links: [
+      {
+        id: 'link-1',
+        formId: 'form-1',
+        targetType: 'EVENT',
+        eventId: event.id,
+        majorEventId: null,
+        target: {
+          type: 'EVENT',
+          id: event.id,
+          name: event.name,
+          emoji: event.emoji,
+        },
+        audience: 'ATTENDEES',
+        insertInSubscriptionFlow: false,
+        requiredInSubscriptionFlow: false,
+        enforceRequiredAnswers: true,
+        displayOrder: 0,
+        availableFrom: null,
+        availableUntil: null,
+        notifyOnPublish: false,
+        allowLecturerManualPublish: false,
+        lastNotifiedAt: null,
+        responseCount: 0,
+        createdAt: '2026-07-01T10:00:00.000Z',
+        updatedAt: '2026-07-01T10:00:00.000Z',
+      },
+    ],
+    responseCount: 0,
+    createdAt: '2026-07-01T10:00:00.000Z',
+    updatedAt: '2026-07-01T10:00:00.000Z',
   };
 }
 

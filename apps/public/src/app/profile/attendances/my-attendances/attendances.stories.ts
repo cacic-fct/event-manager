@@ -42,3 +42,18 @@ export const OfflineFallback: Story = {
   globals: { theme: 'light', network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
+
+export const FilteredPresent: Story = {
+  args: {},
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    await exerciseStory(canvasElement);
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('combobox', { name: /filtrar resultados/i }));
+    const listbox = within(document.body);
+    await userEvent.click(await listbox.findByRole('option', { name: 'Presente' }));
+    await expect(await canvas.findByText(/Grande evento com presença/)).toBeVisible();
+    await expect(await canvas.findByText(/Oficina presente sem inscrição/)).toBeVisible();
+    await expect(await canvas.findByText(/Grupo presente sem inscrição/)).toBeVisible();
+  },
+};

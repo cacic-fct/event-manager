@@ -60,7 +60,7 @@ export function buildDetailViewModel(input: DetailViewModelInput): DetailViewMod
 export function buildEventDetail(details: EventDetails): DetailViewModel | null {
   const subscription = details.subscription;
   const event = subscription?.event ?? details.event;
-  if (!event || (!subscription && !details.hasIssuedCertificate && !details.isLecturer)) {
+  if (!event || (!subscription && !details.attendance && !details.hasIssuedCertificate && !details.isLecturer)) {
     return null;
   }
 
@@ -95,7 +95,7 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
   const subscription = details.subscription;
   const eventGroup = subscription?.eventGroup ?? details.eventGroup;
   const rawEvents = subscription?.events ?? details.events ?? [];
-  if (!eventGroup || (!subscription && !details.hasIssuedCertificate && !details.isLecturer)) {
+  if (!eventGroup || (!subscription && details.attendances.length === 0 && !details.hasIssuedCertificate && !details.isLecturer)) {
     return null;
   }
 
@@ -127,7 +127,9 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
       ? getGroupedStatusLine(eventItems)
       : details.isLecturer
         ? 'Ministrante'
-        : 'Certificado emitido',
+        : details.hasIssuedCertificate
+          ? 'Certificado emitido'
+          : getGroupedStatusLine(eventItems),
     isSubscribed,
     infoRows: eventGroupInfoRows(eventGroup, events),
     events: eventItems,
@@ -141,13 +143,15 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
 export function buildMajorEventDetail(details: MajorEventDetails): DetailViewModel | null {
   const subscription = details.subscription;
   const majorEvent = subscription?.majorEvent ?? details.majorEvent;
-  if (!majorEvent || (!subscription && !details.hasIssuedCertificate && !details.isLecturer)) {
+  if (!majorEvent || (!subscription && details.attendances.length === 0 && !details.hasIssuedCertificate && !details.isLecturer)) {
     return null;
   }
 
-  const selectedEvents = sortEvents(subscription?.selectedEvents ?? []);
-  const notSubscribedEvents = sortEvents(subscription?.notSubscribedEvents ?? []);
   const attendanceByEventId = getAttendanceByEventId(details.attendances);
+  const selectedEvents = sortEvents(
+    subscription?.selectedEvents ?? details.events?.filter((event) => attendanceByEventId.has(event.id)) ?? [],
+  );
+  const notSubscribedEvents = sortEvents(subscription?.notSubscribedEvents ?? []);
   const eventItems = selectedEvents.map((event) => buildEventItem(event, attendanceByEventId.get(event.id), true));
   const notSubscribedEventItems = notSubscribedEvents.map((event) =>
     buildEventItem(event, attendanceByEventId.get(event.id), false),
@@ -165,7 +169,9 @@ export function buildMajorEventDetail(details: MajorEventDetails): DetailViewMod
       ? getSubscriptionStatusLabel(subscription.subscriptionStatus)
       : details.isLecturer
         ? 'Ministrante'
-        : 'Certificado emitido',
+        : details.hasIssuedCertificate
+          ? 'Certificado emitido'
+          : getGroupedStatusLine(eventItems),
     subscriptionStatus: subscription?.subscriptionStatus,
     isSubscribed: Boolean(subscription),
     infoRows: majorEventInfoRows(majorEvent, subscription),
