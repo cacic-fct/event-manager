@@ -58,7 +58,7 @@ test('lists current-user subscriptions, standalone certificates, and downloads t
   await expect(page.getByText('Atividades complementares')).toBeVisible();
 
   await page.getByRole('button', { name: /Atividades complementares/ }).click();
-  await expect(page.getByRole('heading', { name: 'Certificados' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Certificados', exact: true })).toBeVisible();
   await expect(page.getByText('Certificado avulso')).toBeVisible();
   await page.getByRole('button', { name: 'Fechar' }).click();
 

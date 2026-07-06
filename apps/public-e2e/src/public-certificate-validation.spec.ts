@@ -13,7 +13,7 @@ test('validates a standalone certificate without rendering an activities section
 
   await expect(page.getByRole('heading', { name: 'Validar certificado' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Atividades complementares' })).toBeVisible();
-  await expect(page.getByText('Atividade complementar')).toBeVisible();
+  await expect(page.getByText('Atividade complementar', { exact: true })).toBeVisible();
   await expect(page.getByText('Certificamos a participação em atividade complementar.')).toBeVisible();
   await expect(page.getByText('Atividade validada sem vínculo com programação pública.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Atividades', exact: true })).toHaveCount(0);
