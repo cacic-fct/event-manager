@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import {
   Event,
@@ -50,6 +51,7 @@ export class WorkspaceFormsService {
   private readonly majorEventApi = inject(MajorEventApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly router = inject(Router);
   private readonly ui = inject(WorkspaceUiService);
 
   readonly loading = this.ui.loading;
@@ -123,6 +125,7 @@ export class WorkspaceFormsService {
     responseMode: ['ONE_PER_TARGET' as EventFormResponseMode],
     resultsPublic: [false],
     resultsLive: [false],
+    allowResponseEdits: [false],
     scheduledPublishAt: [''],
   });
 
@@ -182,6 +185,7 @@ export class WorkspaceFormsService {
   }
 
   createForm(): void {
+    void this.router.navigate(this.formsRoute());
     this.selectedForm.set(null);
     this.selectedResults.set(null);
     this.closeResultsStream();
@@ -199,6 +203,7 @@ export class WorkspaceFormsService {
       responseMode: 'ONE_PER_TARGET',
       resultsPublic: false,
       resultsLive: false,
+      allowResponseEdits: false,
       scheduledPublishAt: '',
     });
   }
@@ -208,13 +213,25 @@ export class WorkspaceFormsService {
   }
 
   async selectForm(form: EventForm): Promise<void> {
+    if (await this.selectFormById(form.id)) {
+      void this.router.navigate(['/forms', form.id]);
+    }
+  }
+
+  async selectFormById(formId: string, options: { skipIfCurrent?: boolean } = {}): Promise<boolean> {
+    if (options.skipIfCurrent && this.selectedForm()?.id === formId) {
+      return true;
+    }
+
     this.ui.loading.set(true);
     try {
-      const detail = await firstValueFrom(this.api.getForm(form.id));
+      const detail = await firstValueFrom(this.api.getForm(formId));
       this.patchSelectedForm(detail);
       await this.loadResults();
+      return true;
     } catch (error) {
       this.showError(error, 'Não foi possível abrir o formulário.');
+      return false;
     } finally {
       this.ui.loading.set(false);
     }
@@ -417,6 +434,7 @@ export class WorkspaceFormsService {
       responseMode: form.responseMode,
       resultsPublic: form.resultsPublic,
       resultsLive: form.resultsLive,
+      allowResponseEdits: form.allowResponseEdits,
       scheduledPublishAt: form.scheduledPublishAt ? this.toLocalInput(form.scheduledPublishAt) : '',
     });
     this.syncLiveResultsStream(form);
@@ -440,6 +458,7 @@ export class WorkspaceFormsService {
       responseMode: 'ONE_PER_TARGET',
       resultsPublic: false,
       resultsLive: false,
+      allowResponseEdits: false,
       scheduledPublishAt: '',
     });
   }
@@ -470,6 +489,17 @@ export class WorkspaceFormsService {
     return requestId === this.loadFormsRequestId;
   }
 
+  private formsRoute(): string[] {
+    const filter = this.targetFilter();
+    if (filter?.eventId) {
+      return ['/forms', 'event', filter.eventId];
+    }
+    if (filter?.majorEventId) {
+      return ['/forms', 'major-event', filter.majorEventId];
+    }
+    return ['/forms'];
+  }
+
   private toInput(): EventFormInput {
     const value = this.form.getRawValue();
     const base = {
@@ -481,6 +511,7 @@ export class WorkspaceFormsService {
       responseMode: value.responseMode,
       resultsPublic: value.resultsPublic,
       resultsLive: value.resultsPublic ? value.resultsLive : false,
+      allowResponseEdits: value.allowResponseEdits,
       links: this.links().map((link, index) => this.toLinkInput(link, index)),
     };
 

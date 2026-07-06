@@ -13,10 +13,12 @@ import { formRecord } from './event-form.spec-support';
 describe('event form publication and service support helpers', () => {
   it('publishes due forms and notifies available links through extracted helpers', async () => {
     const prisma = {
+      $transaction: jest.fn(async (callback: (tx: unknown) => unknown) => callback(prisma)),
       eventForm: {
         findMany: jest.fn()
           .mockResolvedValueOnce([{ id: 'form-1' }, { id: 'form-2' }])
           .mockResolvedValueOnce([formRecord({ id: 'form-3' })]),
+        findFirst: jest.fn((args: { where: { id: string } }) => Promise.resolve(formRecord({ id: args.where.id }))),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         findUniqueOrThrow: jest.fn((args: { where: { id: string } }) => Promise.resolve(formRecord({
           id: args.where.id,
@@ -72,9 +74,11 @@ describe('event form publication and service support helpers', () => {
   it('publishes one form and replaces links with subscription-flow constraints', async () => {
     const formNotifications = { notifyEligiblePeople: jest.fn().mockResolvedValue(1) };
     const prisma = {
+      $transaction: jest.fn(async (callback: (tx: unknown) => unknown) => callback(prisma)),
       eventForm: {
+        findFirst: jest.fn().mockResolvedValue(formRecord({ id: 'form-1', publicationState: PublicationState.SCHEDULED })),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: jest.fn().mockResolvedValue(formRecord({ id: 'form-1' })),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(formRecord({ id: 'form-1', publicationState: PublicationState.PUBLISHED })),
       },
     };
     const tx = {

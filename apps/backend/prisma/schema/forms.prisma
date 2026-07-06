@@ -45,6 +45,7 @@ model EventForm {
 
   resultsPublic Boolean @default(false)
   resultsLive   Boolean @default(false)
+  allowResponseEdits Boolean @default(false)
 
   publicationState      PublicationState @default(DRAFT)
   scheduledPublishAt    DateTime?
@@ -142,6 +143,7 @@ model EventFormResponse {
 
   submittedAt DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
 
   @@index([formId])
   @@index([linkId])
@@ -149,6 +151,7 @@ model EventFormResponse {
   @@index([majorEventId])
   @@index([personId])
   @@index([submittedAt])
+  @@index([deletedAt])
   @@map("event_form_responses")
 }
 

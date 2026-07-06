@@ -42,6 +42,13 @@ describe('AuthorizationPolicyService', () => {
     expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
   });
 
+  it('evaluates every catalog permission as granted for super admins without querying grants', async () => {
+    await expect(
+      service.evaluatePermissions(user([EventManagerKeycloakRole.SuperAdmin]), EVENT_MANAGER_PERMISSION_CATALOG),
+    ).resolves.toEqual(EVENT_MANAGER_PERMISSION_CATALOG);
+    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+  });
+
   it('authorizes global DB grants', async () => {
     prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
       grant({ permission: Permission.Event.Read, scope: EventManagerPermissionGrantScope.GLOBAL }),

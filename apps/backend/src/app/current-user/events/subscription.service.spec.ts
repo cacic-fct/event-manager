@@ -121,6 +121,76 @@ describe('CurrentUserEventSubscriptionService', () => {
     });
   });
 
+  it('archives event form responses when a user unsubscribes from a standalone event', async () => {
+    const event = {
+      id: 'event-1',
+      eventGroupId: null,
+      majorEventId: null,
+      allowSubscription: true,
+      subscriptionStartDate: null,
+      subscriptionEndDate: null,
+      startDate: new Date('2099-01-01T12:00:00.000Z'),
+      slots: null,
+    };
+    const subscription = {
+      id: 'subscription-1',
+      eventId: 'event-1',
+      personId: 'person-1',
+      eventGroupSubscriptionId: null,
+      createdAt: new Date('2026-07-06T12:00:00.000Z'),
+      createdById: null,
+      createdByMethod: 'SELF_SUBSCRIPTION',
+      deletedAt: null,
+    };
+    const tx = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(event),
+      },
+      eventSubscription: {
+        findFirst: jest.fn().mockResolvedValue(subscription),
+        update: jest.fn(),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const mapper = {
+      mapPublicEvent: jest.fn().mockReturnValue({ id: 'event-1' }),
+    };
+    const counters = {
+      refresh: jest.fn(),
+    };
+    const auditLog = {
+      record: jest.fn(),
+    };
+    const eventForms = {
+      submitSubscriptionFlowResponses: jest.fn(),
+      archiveResponsesForSubscriptionScope: jest.fn().mockResolvedValue(['form-1']),
+      emitResultsDeltas: jest.fn(),
+    };
+    const service = new CurrentUserEventSubscriptionService(
+      prisma as never,
+      mapper as never,
+      {} as never,
+      counters as never,
+      auditLog as never,
+      eventForms as never,
+    );
+
+    await expect(service.unsubscribeCurrentUserEvent('person-1', 'event-1')).resolves.toEqual({ id: 'event-1' });
+
+    expect(eventForms.archiveResponsesForSubscriptionScope).toHaveBeenCalledWith(
+      tx,
+      'person-1',
+      {
+        majorEventId: null,
+        selectedEventIds: new Set(['event-1']),
+      },
+      expect.any(Date),
+    );
+    expect(eventForms.emitResultsDeltas).toHaveBeenCalledWith(['form-1']);
+  });
+
   it('loads subscribed group events through active events', async () => {
     const prisma = {
       eventSubscription: {

@@ -36,7 +36,7 @@ describe('event form access helpers', () => {
         }),
         { accessibleTargets: targets },
       ),
-    ).toEqual({ formId: 'form-1', id: { in: [] } });
+    ).toEqual({ formId: 'form-1', deletedAt: null, id: { in: [] } });
     expect(
       resultResponseWhere(
         formRecord({
@@ -52,6 +52,7 @@ describe('event form access helpers', () => {
       ),
     ).toEqual({
       formId: 'form-1',
+      deletedAt: null,
       OR: expect.arrayContaining([
         { eventId: { in: ['event-1'] } },
         { majorEventId: { in: ['major-1'] } },
@@ -64,6 +65,7 @@ describe('event form access helpers', () => {
       }),
     ).toEqual({
       formId: 'form-1',
+      deletedAt: null,
       targetType: EventFormTargetType.EVENT,
       eventId: 'event-1',
       majorEventId: null,

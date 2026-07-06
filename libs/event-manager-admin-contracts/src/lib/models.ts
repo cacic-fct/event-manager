@@ -43,6 +43,9 @@ export type AuditLogEntityType =
   | 'EVENT_ATTENDANCE'
   | 'EVENT_ATTENDANCE_COLLECTOR'
   | 'EVENT_LECTURER'
+  | 'EVENT_FORM'
+  | 'EVENT_FORM_LINK'
+  | 'EVENT_FORM_RESPONSE'
   | 'CERTIFICATE_CONFIG'
   | 'CERTIFICATE'
   | 'MERGE_CANDIDATE'
@@ -385,6 +388,7 @@ export interface EventForm {
   responseMode: EventFormResponseMode;
   resultsPublic: boolean;
   resultsLive: boolean;
+  allowResponseEdits: boolean;
   publicationState: PublicationState;
   scheduledPublishAt?: string | null;
   publishedAt?: string | null;
@@ -1006,6 +1010,7 @@ interface EventFormInputBase {
   responseMode?: EventFormResponseMode | null;
   resultsPublic?: boolean | null;
   resultsLive?: boolean | null;
+  allowResponseEdits?: boolean | null;
   links?: EventFormLinkInput[] | null;
 }
 

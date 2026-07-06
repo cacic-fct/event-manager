@@ -53,6 +53,7 @@ describe('shared permissions contract', () => {
       ),
     ).toBe(true);
     expect(workspacePermissions.every((permission) => catalog.has(permission))).toBe(true);
+    expect(new Set(WORKSPACE_PERMISSION_EVALUATION_SET)).toEqual(catalog);
     expect(EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS.every((permission) => catalog.has(permission))).toBe(true);
   });
 
@@ -201,6 +202,8 @@ describe('shared permissions contract', () => {
         Permission.Event.Read,
         Permission.EventAttendanceCollector.Create,
         Permission.EventAttendanceCollector.Delete,
+        Permission.EventForm.Results,
+        Permission.EventForm.Export,
         Permission.Frozen.Update,
         Permission.PermissionGrant.Update,
         Permission.Receipt.Read,

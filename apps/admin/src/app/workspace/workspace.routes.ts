@@ -136,6 +136,9 @@ export const workspaceRoutes: Route[] = [
       ...guardedWorkspaceTabRoute(formsData.path, formsData, () =>
         import('./tabs/forms/workspace-forms-tab.component').then((m) => m.WorkspaceFormsTabComponent),
       ),
+      ...guardedWorkspaceTabRoute(`${formsData.path}/:formId`, formsData, () =>
+        import('./tabs/forms/workspace-forms-tab.component').then((m) => m.WorkspaceFormsTabComponent),
+      ),
       ...guardedWorkspaceTabRoute(`${formsData.path}/event/:eventId`, formsData, () =>
         import('./tabs/forms/workspace-forms-tab.component').then((m) => m.WorkspaceFormsTabComponent),
       ),

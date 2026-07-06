@@ -5,12 +5,33 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { Event } from './event';
 import { ActivatedRoute, convertToParamMap, Router, Params } from '@angular/router';
 import { signal } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
+import type { PublicEventForm, PublicEventFormResponse } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
-import { EventApiService } from './event-api.service';
+import { EventApiService, type EventPageData } from './event-api.service';
+import { PublicEventFormApiService } from '../forms/event-form-api.service';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 
-async function createEventComponentFixture(queryParamMap: Params = {}): Promise<ComponentFixture<Event>> {
+interface EventComponentFixtureOptions {
+  authenticated?: boolean;
+  eventPageData?: EventPageData;
+  eventApi?: Partial<EventApiService>;
+  formsApi?: Partial<PublicEventFormApiService>;
+  dialog?: Partial<MatDialog>;
+}
+
+async function createEventComponentFixture(
+  queryParamMap: Params = {},
+  options: EventComponentFixtureOptions = {},
+): Promise<ComponentFixture<Event>> {
+  const eventPageData = options.eventPageData ?? defaultEventPageData();
+  const dialog = {
+    open: vi.fn(() => ({
+      afterClosed: () => of({ confirmed: false, answers: [] }),
+    })),
+    ...options.dialog,
+  };
   TestBed.configureTestingModule({
     imports: [Event],
     providers: [
@@ -27,7 +48,7 @@ async function createEventComponentFixture(queryParamMap: Params = {}): Promise<
       {
         provide: AuthService,
         useValue: {
-          isAuthenticated: signal(false),
+          isAuthenticated: signal(options.authenticated ?? false),
           login: vi.fn(),
         },
       },
@@ -35,37 +56,18 @@ async function createEventComponentFixture(queryParamMap: Params = {}): Promise<
         provide: EventApiService,
         useValue: {
           getEventPageData: () =>
-            of({
-              event: {
-                id: 'event-1',
-                name: 'Evento teste',
-                startDate: '2026-05-03T10:00:00.000Z',
-                endDate: '2026-05-03T11:00:00.000Z',
-                emoji: '🎓',
-                type: 'OTHER',
-                allowSubscription: false,
-                lecturers: [
-                  {
-                    id: 'lecturer-profile-1',
-                    displayName: 'Ada Lovelace',
-                    biography: 'Pioneira em computação.',
-                    publishGoogleUserPicture: false,
-                    googleUserPicture: null,
-                    email: 'ada@example.com',
-                    whatsapp: '+5518999999999',
-                  },
-                ],
-              },
-              subscriptionSummary: {
-                eventId: 'event-1',
-                hasAvailableSlots: true,
-              },
-              weather: null,
-              currentUserSubscription: null,
-              currentUserAttendance: null,
-            }),
-          subscribeToEvent: vi.fn(),
+            of(eventPageData),
+          subscribeToEvent: vi.fn(() => of({ id: 'event-1' })),
           confirmAttendance: vi.fn(),
+          ...options.eventApi,
+        },
+      },
+      {
+        provide: PublicEventFormApiService,
+        useValue: {
+          listCurrentUserForms: vi.fn(() => of([])),
+          getCurrentUserResponse: vi.fn(() => of(null)),
+          ...options.formsApi,
         },
       },
       {
@@ -77,9 +79,121 @@ async function createEventComponentFixture(queryParamMap: Params = {}): Promise<
       },
     ],
   });
+  TestBed.overrideProvider(MatDialog, { useValue: dialog });
   await TestBed.compileComponents();
   const fixture = TestBed.createComponent(Event);
   return fixture;
+}
+
+function defaultEventPageData(overrides: Partial<EventPageData> = {}): EventPageData {
+  const event = {
+    id: 'event-1',
+    name: 'Evento teste',
+    creditMinutes: 60,
+    startDate: '2026-05-03T10:00:00.000Z',
+    endDate: '2026-05-03T11:00:00.000Z',
+    emoji: '🎓',
+    type: 'OTHER' as const,
+    description: null,
+    shortDescription: null,
+    latitude: null,
+    longitude: null,
+    locationDescription: null,
+    allowSubscription: false,
+    subscriptionStartDate: null,
+    subscriptionEndDate: null,
+    slots: null,
+    shouldIssueCertificate: true,
+    shouldCollectAttendance: false,
+    isOnlineAttendanceAllowed: false,
+    onlineAttendanceStartDate: null,
+    onlineAttendanceEndDate: null,
+    publiclyVisible: true,
+    youtubeCode: null,
+    buttonText: null,
+    buttonLink: null,
+    majorEventId: null,
+    eventGroupId: null,
+    majorEvent: null,
+    eventGroup: null,
+    lecturers: [
+      {
+        id: 'lecturer-profile-1',
+        displayName: 'Ada Lovelace',
+        biography: 'Pioneira em computação.',
+        publishGoogleUserPicture: false,
+        googleUserPicture: null,
+        email: 'ada@example.com',
+        whatsapp: '+5518999999999',
+      },
+    ],
+  };
+
+  return {
+    event,
+    subscriptionSummary: {
+      eventId: 'event-1',
+      hasAvailableSlots: true,
+    },
+    weather: null,
+    currentUserSubscription: null,
+    currentUserAttendance: null,
+    ...overrides,
+  };
+}
+
+function subscriptionFormFixture(): PublicEventForm {
+  return {
+    id: 'form-1',
+    name: 'Pesquisa de camiseta',
+    description: null,
+    elementsJson: JSON.stringify([
+      {
+        id: 'shirt-size',
+        type: 'singleChoice',
+        title: 'Tamanho da camiseta',
+        required: true,
+        options: [{ id: 'm', label: 'M' }],
+      },
+    ]),
+    sigilo: 'SECRET',
+    responseMode: 'ONE_PER_TARGET',
+    resultsPublic: false,
+    resultsLive: false,
+    allowResponseEdits: false,
+    publicationState: 'PUBLISHED',
+    links: [
+      {
+        id: 'link-1',
+        formId: 'form-1',
+        targetType: 'EVENT',
+        eventId: 'event-1',
+        majorEventId: null,
+        target: {
+          type: 'EVENT',
+          id: 'event-1',
+          name: 'Evento teste',
+          emoji: '🎓',
+        },
+        audience: 'SUBSCRIBERS_OR_ATTENDEES',
+        insertInSubscriptionFlow: true,
+        requiredInSubscriptionFlow: true,
+        enforceRequiredAnswers: true,
+        displayOrder: 0,
+        availableFrom: null,
+        availableUntil: null,
+        notifyOnPublish: false,
+        allowLecturerManualPublish: false,
+        lastNotifiedAt: null,
+        responseCount: 0,
+        createdAt: '2026-07-01T10:00:00.000Z',
+        updatedAt: '2026-07-01T10:00:00.000Z',
+      },
+    ],
+    responseCount: 0,
+    createdAt: '2026-07-01T10:00:00.000Z',
+    updatedAt: '2026-07-01T10:00:00.000Z',
+  };
 }
 
 describe('Event', () => {
@@ -148,6 +262,133 @@ describe('Event', () => {
     );
     expect(component.googlePictureUrl('https://lh3.googleusercontent.com/a-/ALV-UjV/s128/photo.jpg')).toBe(
       'https://lh3.googleusercontent.com/a-/ALV-UjV/s512/photo.jpg',
+    );
+  });
+
+  it('answers required subscription-flow forms before saving a standalone event subscription', async () => {
+    TestBed.resetTestingModule();
+    const listCurrentUserForms = vi.fn(() => of([subscriptionFormFixture()]));
+    const getCurrentUserResponse = vi.fn(() => of(null));
+    const open = vi.fn(() => ({
+      afterClosed: () =>
+        of({
+          confirmed: true,
+          answers: [
+            {
+              formId: 'form-1',
+              linkId: 'link-1',
+              targetType: 'EVENT' as const,
+              targetId: 'event-1',
+              answers: [{ elementId: 'shirt-size', value: 'm' }],
+            },
+          ],
+        }),
+    }));
+    const eventPageData = defaultEventPageData({
+      event: {
+        ...defaultEventPageData().event,
+        allowSubscription: true,
+        startDate: '2026-12-03T10:00:00.000Z',
+        endDate: '2026-12-03T11:00:00.000Z',
+      },
+    });
+    const subscribeToEvent = vi.fn(() => of(eventPageData.event));
+    const newFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        eventPageData,
+        eventApi: { subscribeToEvent },
+        formsApi: { listCurrentUserForms, getCurrentUserResponse },
+        dialog: { open: open as never },
+      },
+    );
+    await newFixture.whenStable();
+    const newComponent = newFixture.componentInstance;
+
+    newComponent.subscribe(eventPageData);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(listCurrentUserForms).toHaveBeenCalledWith({
+      targetType: 'EVENT',
+      eventId: 'event-1',
+      majorEventId: null,
+      subscriptionFlowOnly: true,
+    });
+    expect(open).toHaveBeenCalled();
+    expect(subscribeToEvent).toHaveBeenCalledWith('event-1', [
+      {
+        formId: 'form-1',
+        linkId: 'link-1',
+        targetType: 'EVENT',
+        eventId: 'event-1',
+        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+      },
+    ]);
+  });
+
+  it('keeps multiple-response subscription forms editable after an existing response', async () => {
+    TestBed.resetTestingModule();
+    const form = {
+      ...subscriptionFormFixture(),
+      responseMode: 'MULTIPLE_PER_TARGET' as const,
+      allowResponseEdits: false,
+    };
+    const existingResponse: PublicEventFormResponse = {
+      id: 'response-1',
+      formId: 'form-1',
+      linkId: 'link-1',
+      targetType: 'EVENT',
+      eventId: 'event-1',
+      majorEventId: null,
+      personId: 'person-1',
+      respondentName: 'Ada Lovelace',
+      respondentEmail: 'ada@example.com',
+      answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+      source: 'SUBSCRIPTION_FLOW',
+      submittedAt: '2026-07-06T12:00:00.000Z',
+      updatedAt: '2026-07-06T12:00:00.000Z',
+    };
+    const open = vi.fn(() => ({
+      afterClosed: () => of({ confirmed: false, answers: [] }),
+    }));
+    const eventPageData = defaultEventPageData({
+      event: {
+        ...defaultEventPageData().event,
+        allowSubscription: true,
+        startDate: '2026-12-03T10:00:00.000Z',
+        endDate: '2026-12-03T11:00:00.000Z',
+      },
+    });
+    const newFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        eventPageData,
+        formsApi: {
+          listCurrentUserForms: vi.fn(() => of([form])),
+          getCurrentUserResponse: vi.fn(() => of(existingResponse)),
+        },
+        dialog: { open: open as never },
+      },
+    );
+    await newFixture.whenStable();
+
+    newFixture.componentInstance.subscribe(eventPageData);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          forms: [
+            expect.objectContaining({
+              submitted: true,
+              editable: true,
+            }),
+          ],
+        }),
+      }),
     );
   });
 });

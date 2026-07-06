@@ -1,5 +1,6 @@
 import { NotFoundException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver, createUnionType } from '@nestjs/graphql';
+import { SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import {
   CurrentUserEventGroupSubscription,
   CurrentUserEventSubscription,
@@ -152,12 +153,14 @@ export class CurrentUserEventSubscriptionsResolver {
   @RateLimit(RATE_LIMIT_POLICIES.standaloneEventSubscription, [{ source: 'args', path: 'eventId' }])
   async subscribeCurrentUserStandaloneEvent(
     @Args('eventId', { type: () => String }) eventId: string,
+    @Args('formResponses', { type: () => [SubmitEventFormResponseInput], nullable: true })
+    formResponses: SubmitEventFormResponseInput[] | null | undefined,
     @Context() context: GraphqlContext,
   ): Promise<PublicEvent> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId, authenticatedUser);
+    return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId, authenticatedUser, formResponses);
   }
 
   @Mutation(() => PublicEvent, { name: 'unsubscribeCurrentUserStandaloneEvent' })

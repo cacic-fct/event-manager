@@ -23,12 +23,22 @@
       }
     </header>
 
-    @if (currentState.canAnswer) {
+    @if (currentState.canAnswer && currentState.canEditResponse) {
       <lib-event-form-renderer
         [elements]="currentState.elements"
         [initialAnswers]="currentState.answers"
         submitLabel="Salvar respostas"
         (formSubmitted)="submit(currentState, $event)" />
+    } @else if (currentState.response) {
+      <section class="empty-section" aria-live="polite">
+        <mat-icon>task_alt</mat-icon>
+        <p>Suas respostas já foram enviadas.</p>
+      </section>
+      <lib-event-form-renderer
+        [elements]="currentState.elements"
+        [initialAnswers]="currentState.answers"
+        [readOnly]="true"
+        [showSubmit]="false" />
     } @else {
       <section class="empty-section" aria-live="polite">
         <mat-icon>lock_clock</mat-icon>

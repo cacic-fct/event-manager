@@ -286,6 +286,14 @@ function changesForEntry(
       { field: 'creationMethod', label: 'Método', beforeValue: null, afterValue: 'Leitura por QR Code' },
       { field: 'committedByName', label: 'Registrado por', beforeValue: null, afterValue: faker.person.fullName() },
     ],
+    EVENT_FORM: [
+      { field: 'name', label: 'Nome', beforeValue: 'Pesquisa inicial', afterValue: entityLabel },
+      { field: 'publicationState', label: 'Publicação', beforeValue: 'Rascunho', afterValue: 'Publicado' },
+    ],
+    EVENT_FORM_RESPONSE: [
+      { field: 'source', label: 'Origem', beforeValue: null, afterValue: 'Formulário público' },
+      { field: 'submittedAt', label: 'Enviado em', beforeValue: null, afterValue: '28/06/2026 12:00' },
+    ],
     CERTIFICATE: [
       { field: 'issuedAt', label: 'Emitido em', beforeValue: null, afterValue: '26/06/2026 14:30' },
       { field: 'workloadMinutes', label: 'Carga horária', beforeValue: null, afterValue: `${60 + index * 5} minutos` },
@@ -343,6 +351,9 @@ function contextForEntity(entityType: AuditLogEntityType, entityId: string): Pic
     entityType === 'EVENT_ATTENDANCE' ||
     entityType === 'EVENT_ATTENDANCE_COLLECTOR' ||
     entityType === 'EVENT_LECTURER' ||
+    entityType === 'EVENT_FORM' ||
+    entityType === 'EVENT_FORM_LINK' ||
+    entityType === 'EVENT_FORM_RESPONSE' ||
     entityType === 'CERTIFICATE_CONFIG' ||
     entityType === 'CERTIFICATE'
   ) {

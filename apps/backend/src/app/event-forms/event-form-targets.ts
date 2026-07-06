@@ -176,6 +176,28 @@ export function responseTargetWhere(
   };
 }
 
+export function subscriptionScopeResponseTargetWhere(
+  scope: SubscriptionFlowTargetScope,
+): Prisma.EventFormResponseWhereInput[] {
+  const targets: Prisma.EventFormResponseWhereInput[] = [];
+  const selectedEventIds = [...scope.selectedEventIds];
+  if (scope.majorEventId) {
+    targets.push({
+      targetType: EventFormTargetType.MAJOR_EVENT,
+      majorEventId: scope.majorEventId,
+    });
+  }
+  if (selectedEventIds.length > 0) {
+    targets.push({
+      targetType: EventFormTargetType.EVENT,
+      eventId: {
+        in: selectedEventIds,
+      },
+    });
+  }
+  return targets;
+}
+
 export function toDbSigilo(value: ContractSigilo | EventFormSigilo): EventFormSigilo {
   return value as EventFormSigilo;
 }

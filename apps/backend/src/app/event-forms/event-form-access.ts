@@ -48,7 +48,7 @@ export function resultResponseWhere(
     accessibleTargets?: AccessibleEventTargets;
   },
 ): Prisma.EventFormResponseWhereInput {
-  const where: Prisma.EventFormResponseWhereInput = { formId: form.id };
+  const where: Prisma.EventFormResponseWhereInput = { formId: form.id, deletedAt: null };
   if (form.responseMode === EventFormResponseMode.SINGLE_PER_FORM) {
     if (options.target) {
       return {

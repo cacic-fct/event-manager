@@ -12,7 +12,7 @@ This package is the source of truth for permission names used by the backend and
 - `EventManagerPermissionGrantScope`: grant scopes supported by the DB-backed permission system.
 - `WorkspacePermissionTab`: stable tab identifiers used to connect admin navigation to tab permission requirements.
 - `WORKSPACE_TAB_PERMISSIONS`: permission requirements used by admin workspace tabs.
-- `WORKSPACE_PERMISSION_EVALUATION_SET`: permissions the frontend asks the backend to evaluate for the current user.
+- `WORKSPACE_PERMISSION_EVALUATION_SET`: complete catalog alias used by the frontend when asking the backend to evaluate the current user.
 - `EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS`: permissions that cannot be scoped to one event, event group, or major event.
 - Permission labels, icons, included-data descriptions, and presets used by the grant-management UI.
 

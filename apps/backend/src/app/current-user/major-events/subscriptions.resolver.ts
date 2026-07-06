@@ -469,6 +469,17 @@ export class CurrentUserMajorEventSubscriptionsResolver {
             deletedAt: now,
           },
         });
+        submittedFormIds.push(
+          ...(await this.eventForms.archiveResponsesForSubscriptionScope(
+            tx,
+            person.id,
+            {
+              majorEventId: null,
+              selectedEventIds: new Set(eventIdsToArchive),
+            },
+            now,
+          )),
+        );
       }
 
       const eventIdsToCreate =
@@ -509,10 +520,16 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         ...confirmationEventIds,
       ]);
       submittedFormIds.push(
-        ...(await this.eventForms.submitSubscriptionFlowResponses(tx, person.id, input.formResponses, {
-          majorEventId: input.majorEventId,
-          selectedEventIds: selectedEventIdSet,
-        })),
+        ...(await this.eventForms.submitSubscriptionFlowResponses(
+          tx,
+          person.id,
+          input.formResponses,
+          {
+            majorEventId: input.majorEventId,
+            selectedEventIds: selectedEventIdSet,
+          },
+          authenticatedUser,
+        )),
       );
 
       const updatedSubscription = await tx.majorEventSubscription.findFirst({

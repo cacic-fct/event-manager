@@ -478,6 +478,7 @@ export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventF
     responseMode: 'ONE_PER_TARGET',
     resultsPublic: false,
     resultsLive: false,
+    allowResponseEdits: false,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
     publishedAt: adminFixtureDate,
@@ -547,6 +548,7 @@ export function createAdminEventFormFromInput(input: EventFormInput): EventForm 
     responseMode: input.responseMode ?? 'ONE_PER_TARGET',
     resultsPublic: input.resultsPublic ?? false,
     resultsLive: input.resultsLive ?? false,
+    allowResponseEdits: input.allowResponseEdits ?? false,
     links:
       input.links?.map((link, index) => ({
         id: link.id ?? `form-link-${index + 1}`,

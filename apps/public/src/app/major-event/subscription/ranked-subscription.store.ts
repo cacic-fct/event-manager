@@ -467,6 +467,8 @@ export class RankedSubscriptionStore {
       requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
       enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
       initialAnswers: [],
+      submitted: false,
+      editable: true,
     }));
   }
 
@@ -483,6 +485,8 @@ export class RankedSubscriptionStore {
         map((response) => ({
           ...form,
           initialAnswers: parseFormAnswersJson(response?.answersJson),
+          submitted: Boolean(response),
+          editable: !response || form.form.responseMode === 'MULTIPLE_PER_TARGET' || form.form.allowResponseEdits,
         })),
       );
   }

@@ -43,7 +43,11 @@ export const eventFormInclude = {
       },
       _count: {
         select: {
-          responses: true,
+          responses: {
+            where: {
+              deletedAt: null,
+            },
+          },
         },
       },
     },
@@ -51,7 +55,11 @@ export const eventFormInclude = {
   },
   _count: {
     select: {
-      responses: true,
+      responses: {
+        where: {
+          deletedAt: null,
+        },
+      },
     },
   },
 } satisfies Prisma.EventFormInclude;
@@ -85,6 +93,6 @@ export type NormalizedTarget = {
 export type ResultViewer = 'admin' | 'lecturer' | 'public' | 'self';
 
 export type SubscriptionFlowTargetScope = {
-  majorEventId: string;
+  majorEventId: string | null;
   selectedEventIds: Set<string>;
 };

@@ -9,6 +9,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
 import { defer, Observable, switchMap } from 'rxjs';
+import { AuditRecordOptions } from '../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { GraphqlContext } from '../current-user/selects';
 import { EventFormEditorService } from './event-form-editor.service';
@@ -105,8 +106,18 @@ export class EventFormsService {
     personId: string,
     inputs: readonly SubmitEventFormResponseInput[] | null | undefined,
     scope: SubscriptionFlowTargetScope,
+    actor?: AuditRecordOptions['actor'],
   ): Promise<string[]> {
-    return this.responses.submitSubscriptionFlowResponses(tx, personId, inputs, scope);
+    return this.responses.submitSubscriptionFlowResponses(tx, personId, inputs, scope, actor);
+  }
+
+  async archiveResponsesForSubscriptionScope(
+    tx: Prisma.TransactionClient,
+    personId: string,
+    scope: SubscriptionFlowTargetScope,
+    deletedAt = new Date(),
+  ): Promise<string[]> {
+    return this.responses.archiveResponsesForSubscriptionScope(tx, personId, scope, deletedAt);
   }
 
   async emitResultsDeltas(formIds: readonly string[]): Promise<void> {

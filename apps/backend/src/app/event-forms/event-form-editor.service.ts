@@ -7,11 +7,13 @@ import {
   EventFormSigilo as ContractSigilo,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { Prisma } from '@prisma/client';
+import { AuditLogOperation, Prisma } from '@prisma/client';
 import { addDays } from 'date-fns';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { eventFormAuditRecord } from './event-form-audit';
 import { parseElementsJson } from './event-form-answer-normalization';
 import { toDraftModel, toEventFormModel } from './event-form-model.mapper';
 import { eventFormInclude } from './event-form-records';
@@ -39,6 +41,7 @@ export class EventFormEditorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   async saveForm(input: EventFormInput, user: AuthenticatedUser | undefined): Promise<EventFormModel> {
@@ -73,6 +76,7 @@ export class EventFormEditorService {
             responseMode: toDbResponseMode(input.responseMode ?? existing.responseMode),
             resultsPublic,
             resultsLive: resultsPublic ? (input.resultsLive ?? existing.resultsLive) : false,
+            allowResponseEdits: input.allowResponseEdits ?? existing.allowResponseEdits,
             updatedById: actorId,
           },
         });
@@ -80,10 +84,22 @@ export class EventFormEditorService {
           await replaceEventFormLinks(tx, existing.id, nextLinks, actorId);
         }
 
-        return tx.eventForm.findUniqueOrThrow({
+        const updated = await tx.eventForm.findUniqueOrThrow({
           where: { id: existing.id },
           include: eventFormInclude,
         });
+        await this.auditLog.record(
+          eventFormAuditRecord(
+            updated,
+            AuditLogOperation.UPDATE,
+            user,
+            existing,
+            updated,
+            `Formulário "${updated.name}" atualizado.`,
+          ),
+          tx,
+        );
+        return updated;
       });
 
       return toEventFormModel(updated);
@@ -108,6 +124,7 @@ export class EventFormEditorService {
           responseMode: toDbResponseMode(input.responseMode ?? ContractResponseMode.ONE_PER_TARGET),
           resultsPublic: input.resultsPublic ?? false,
           resultsLive: input.resultsPublic === true ? (input.resultsLive ?? false) : false,
+          allowResponseEdits: input.allowResponseEdits ?? false,
           createdById: actorId,
           updatedById: actorId,
         },
@@ -115,10 +132,22 @@ export class EventFormEditorService {
 
       await replaceEventFormLinks(tx, form.id, input.links ?? [], actorId);
 
-      return tx.eventForm.findUniqueOrThrow({
+      const created = await tx.eventForm.findUniqueOrThrow({
         where: { id: form.id },
         include: eventFormInclude,
       });
+      await this.auditLog.record(
+        eventFormAuditRecord(
+          created,
+          AuditLogOperation.CREATE,
+          user,
+          null,
+          created,
+          `Formulário "${created.name}" criado.`,
+        ),
+        tx,
+      );
+      return created;
     });
 
     return toEventFormModel(created);
@@ -195,19 +224,34 @@ export class EventFormEditorService {
     });
     await assertCanManageLinkedTargets(this.authorizationPolicy, user, formTargetInputs(form), Permission.EventForm.Delete);
 
-    const updated = await this.prisma.eventForm.update({
-      where: { id: form.id },
-      data: {
-        deletedAt: new Date(),
-        updatedById: user?.sub,
-        links: {
-          updateMany: {
-            where: { deletedAt: null },
-            data: { deletedAt: new Date(), updatedById: user?.sub },
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const deletedAt = new Date();
+      const deleted = await tx.eventForm.update({
+        where: { id: form.id },
+        data: {
+          deletedAt,
+          updatedById: user?.sub,
+          links: {
+            updateMany: {
+              where: { deletedAt: null },
+              data: { deletedAt, updatedById: user?.sub },
+            },
           },
         },
-      },
-      include: eventFormInclude,
+        include: eventFormInclude,
+      });
+      await this.auditLog.record(
+        eventFormAuditRecord(
+          form,
+          AuditLogOperation.DELETE,
+          user,
+          form,
+          deleted,
+          `Formulário "${form.name}" excluído.`,
+        ),
+        tx,
+      );
+      return deleted;
     });
 
     return toEventFormModel(updated);

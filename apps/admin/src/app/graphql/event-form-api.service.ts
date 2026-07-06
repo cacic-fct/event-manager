@@ -52,6 +52,7 @@ const EVENT_FORM_FIELDS = `
   responseMode
   resultsPublic
   resultsLive
+  allowResponseEdits
   publicationState
   scheduledPublishAt
   publishedAt

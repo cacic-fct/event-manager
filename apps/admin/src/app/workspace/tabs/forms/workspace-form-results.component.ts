@@ -58,7 +58,20 @@ type FormResultSummary = {
               </header>
 
               @if (question.buckets.length > 0) {
-                <div class="chart" #chart></div>
+                <div
+                  class="chart"
+                  #chart
+                  role="img"
+                  [attr.aria-label]="chartLabel(question)"
+                  [style.height.px]="chartHeight(question)"></div>
+                <ul class="bucket-list" aria-label="Resumo das respostas">
+                  @for (bucket of question.buckets; track bucket.label) {
+                    <li>
+                      <span>{{ bucket.label }}</span>
+                      <strong>{{ bucket.value }}</strong>
+                    </li>
+                  }
+                </ul>
               } @else if (question.textAnswers.length > 0) {
                 <ul class="text-answers">
                   @for (answer of question.textAnswers; track $index) {
@@ -126,8 +139,31 @@ type FormResultSummary = {
     }
 
     .chart {
-      min-height: 260px;
       width: 100%;
+    }
+
+    .bucket-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .bucket-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-top: 1px solid var(--mat-sys-outline-variant);
+      padding-top: 6px;
+      color: var(--mat-sys-on-surface-variant);
+      font-size: 0.875rem;
+    }
+
+    .bucket-list strong {
+      color: var(--mat-sys-on-surface);
+      font-weight: 600;
     }
 
     .text-answers {
@@ -148,6 +184,7 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly charts = new Map<string, ECharts>();
+  private readonly resizeObservers = new Map<string, { element: HTMLElement; observer: ResizeObserver }>();
 
   constructor() {
     effect(() => {
@@ -165,7 +202,11 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
     for (const chart of this.charts.values()) {
       chart.dispose();
     }
+    for (const { observer } of this.resizeObservers.values()) {
+      observer.disconnect();
+    }
     this.charts.clear();
+    this.resizeObservers.clear();
   }
 
   sigiloLabel(result: EventFormResults): string {
@@ -176,6 +217,16 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
       return 'respostas individuais ocultas';
     }
     return 'respostas individuais visíveis';
+  }
+
+  chartHeight(question: FormResultSummary['questions'][number]): number {
+    return Math.min(420, Math.max(220, question.buckets.length * 44 + 56));
+  }
+
+  chartLabel(question: FormResultSummary['questions'][number]): string {
+    const answers = question.buckets.map((bucket) => `${bucket.label}: ${bucket.value}`).join(', ');
+    const separator = /[.!?]$/.test(question.title.trim()) ? '' : '.';
+    return `${question.title}${separator} ${answers}`;
   }
 
   private renderCharts(): void {
@@ -191,6 +242,10 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
       if (!element) {
         return;
       }
+      this.observeChartElement(question.elementId, element);
+      if (element.clientWidth === 0 || element.clientHeight === 0) {
+        return;
+      }
 
       const existingChart = this.charts.get(question.elementId);
       if (existingChart && existingChart.getDom() !== element) {
@@ -198,8 +253,14 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
         this.charts.delete(question.elementId);
       }
       const chart = this.charts.get(question.elementId) ?? echarts.init(element);
+      const styles = getComputedStyle(element);
+      const textColor = styles.getPropertyValue('--mat-sys-on-surface').trim();
+      const mutedColor = styles.getPropertyValue('--mat-sys-on-surface-variant').trim();
+      const outlineColor = styles.getPropertyValue('--mat-sys-outline-variant').trim();
+      const primaryColor = styles.getPropertyValue('--mat-sys-primary').trim();
       this.charts.set(question.elementId, chart);
       chart.setOption({
+        color: primaryColor ? [primaryColor] : undefined,
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
@@ -214,10 +275,15 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
         xAxis: {
           type: 'value',
           minInterval: 1,
+          axisLabel: { color: mutedColor },
+          splitLine: { lineStyle: { color: outlineColor } },
         },
         yAxis: {
           type: 'category',
           data: question.buckets.map((bucket) => bucket.label),
+          axisLabel: { color: textColor },
+          axisLine: { lineStyle: { color: outlineColor } },
+          axisTick: { show: false },
         },
         series: [
           {
@@ -225,6 +291,7 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
             data: question.buckets.map((bucket) => bucket.value),
             itemStyle: {
               borderRadius: [0, 4, 4, 0],
+              color: primaryColor || undefined,
             },
           },
         ],
@@ -237,6 +304,35 @@ export class WorkspaceFormResultsComponent implements AfterViewInit, OnDestroy {
         this.charts.delete(questionId);
       }
     }
+    for (const [questionId, entry] of this.resizeObservers.entries()) {
+      if (!activeQuestionIds.has(questionId)) {
+        entry.observer.disconnect();
+        this.resizeObservers.delete(questionId);
+      }
+    }
+  }
+
+  private observeChartElement(questionId: string, element: HTMLElement): void {
+    if (!('ResizeObserver' in globalThis)) {
+      return;
+    }
+
+    const existing = this.resizeObservers.get(questionId);
+    if (existing?.element === element) {
+      return;
+    }
+    existing?.observer.disconnect();
+
+    const observer = new ResizeObserver(() => {
+      const chart = this.charts.get(questionId);
+      if (chart) {
+        chart.resize();
+      } else {
+        this.renderCharts();
+      }
+    });
+    observer.observe(element);
+    this.resizeObservers.set(questionId, { element, observer });
   }
 
   private parseSummary(value: string | null | undefined): FormResultSummary {

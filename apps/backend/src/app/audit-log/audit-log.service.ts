@@ -507,6 +507,9 @@ export class AuditLogService {
         return this.resolveEventAttendanceContext(entityId, entry);
       case AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR:
       case AuditLogEntityType.EVENT_LECTURER:
+      case AuditLogEntityType.EVENT_FORM:
+      case AuditLogEntityType.EVENT_FORM_LINK:
+      case AuditLogEntityType.EVENT_FORM_RESPONSE:
       case AuditLogEntityType.CERTIFICATE_CONFIG:
       case AuditLogEntityType.CERTIFICATE:
       case AuditLogEntityType.RECEIPT_VALIDATION:
