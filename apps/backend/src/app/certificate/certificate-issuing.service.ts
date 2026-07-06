@@ -103,6 +103,38 @@ export class CertificateIssuingService {
     return result.certificates.map(mapCertificate);
   }
 
+  async issueForExistingConfigRecipients(
+    sourceConfigId: string,
+    targetConfigId: string,
+    issuedById?: string,
+  ): Promise<Certificate[]> {
+    const normalizedSourceConfigId = this.validation.normalizeRequiredId('sourceConfigId', sourceConfigId);
+    const normalizedTargetConfigId = this.validation.normalizeRequiredId('targetConfigId', targetConfigId);
+    const sourceCertificates = await this.prisma.certificate.findMany({
+      where: {
+        configId: normalizedSourceConfigId,
+        deletedAt: null,
+        person: {
+          deletedAt: null,
+        },
+      },
+      select: {
+        personId: true,
+      },
+      orderBy: {
+        issuedAt: 'asc',
+      },
+    });
+    const personIds = [...new Set(sourceCertificates.map((certificate) => certificate.personId))];
+    const certificates: Certificate[] = [];
+
+    for (const personId of personIds) {
+      certificates.push(await this.issueForPerson(normalizedTargetConfigId, personId, issuedById));
+    }
+
+    return certificates;
+  }
+
   async reissueAllCertificates(issuedById?: string): Promise<CertificateReissueResult> {
     const configs = await this.prisma.certificateConfig.findMany({
       where: {

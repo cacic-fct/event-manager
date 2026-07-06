@@ -80,6 +80,13 @@ export class WorkspaceCertificatesTabComponent {
     );
   }
 
+  protected canCloneConfig(config: CertificateConfig): boolean {
+    return (
+      this.permissions.hasAll([Permission.CertificateConfig.Read, Permission.CertificateConfig.Create]) &&
+      (!this.configTargetFrozen(config) || this.permissions.has(Permission.Frozen.Update))
+    );
+  }
+
   protected canDeleteCertificate(certificate: Certificate): boolean {
     return (
       this.permissions.canDelete(Permission.Certificate.Delete) &&

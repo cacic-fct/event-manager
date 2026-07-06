@@ -2,6 +2,7 @@ import {
   Certificate,
   CertificateDownload,
   CertificateConfig,
+  CertificateConfigCloneInput,
   CertificateConfigCreateInput,
   CertificateConfigUpdateInput,
   CertificateFolder,
@@ -283,6 +284,45 @@ export class CertificatesResolver {
     return this.configsService.updateConfig(id, input);
   }
 
+  @Mutation(() => CertificateConfig, { name: 'cloneCertificateConfig' })
+  @RequirePermissions(Permission.CertificateConfig.Read)
+  async cloneCertificateConfig(
+    @Args('id', { type: () => String }) id: string,
+    @Args('input', { type: () => CertificateConfigCloneInput, nullable: true })
+    input: CertificateConfigCloneInput | null,
+    @Context() context: GraphqlContext,
+  ) {
+    const source = await this.configsService.getConfigById(id);
+    const user = this.getUser(context);
+    const scope = input?.scope ?? source.scope;
+    const targetId = this.getCertificateTargetId(scope, {
+      eventId: input?.eventId === undefined ? source.eventId : input.eventId,
+      eventGroupId: input?.eventGroupId === undefined ? source.eventGroupId : input.eventGroupId,
+      majorEventId: input?.majorEventId === undefined ? source.majorEventId : input.majorEventId,
+      folderId: input?.folderId === undefined ? source.folderId : input.folderId,
+    });
+    if (targetId) {
+      await this.frozenResources.assertCertificateTargetMutable(scope, targetId, user, 'edit');
+    }
+    await this.authorizationPolicy.assertPermissions(user, [Permission.CertificateConfig.Create], {
+      scope,
+      targetId,
+    });
+    if (input?.parts?.issuedPeople) {
+      await this.authorizationPolicy.assertPermissions(user, [Permission.Certificate.Issue], {
+        scope,
+        targetId,
+      });
+    }
+
+    const created = await this.configsService.cloneConfig(id, input);
+    if (input?.parts?.issuedPeople) {
+      await this.issuingService.issueForExistingConfigRecipients(id, created.id, this.getIssuedById(context));
+    }
+
+    return created;
+  }
+
   @Mutation(() => DeletionResult, { name: 'deleteCertificateConfig' })
   @RequirePermissions(Permission.CertificateConfig.Delete)
   async deleteCertificateConfig(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
@@ -341,6 +381,7 @@ export class CertificatesResolver {
       eventId?: string | null;
       eventGroupId?: string | null;
       majorEventId?: string | null;
+      folderId?: string | null;
     },
   ): string {
     if (scope === CertificateScope.EVENT && input.eventId) {
@@ -355,6 +396,10 @@ export class CertificatesResolver {
       return input.majorEventId;
     }
 
+    if (scope === CertificateScope.OTHER && input.folderId) {
+      return input.folderId;
+    }
+
     return '';
   }
 
@@ -367,7 +412,8 @@ export class CertificatesResolver {
       input.scope !== undefined ||
       input.eventId !== undefined ||
       input.eventGroupId !== undefined ||
-      input.majorEventId !== undefined;
+      input.majorEventId !== undefined ||
+      input.folderId !== undefined;
     if (!changesTarget) {
       return;
     }
@@ -378,6 +424,7 @@ export class CertificatesResolver {
       eventId: input.eventId === undefined ? existing.eventId : input.eventId,
       eventGroupId: input.eventGroupId === undefined ? existing.eventGroupId : input.eventGroupId,
       majorEventId: input.majorEventId === undefined ? existing.majorEventId : input.majorEventId,
+      folderId: input.folderId === undefined ? existing.folderId : input.folderId,
     });
     if (!targetId) {
       return;

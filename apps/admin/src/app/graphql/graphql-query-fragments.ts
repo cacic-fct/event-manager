@@ -443,18 +443,22 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   majorEvent {
     id
     name
+    emoji
+    startDate
     endDate
     createdAt
   }
   eventGroup {
     id
     name
+    emoji
     createdAt
   }
   event {
     id
     name
     emoji
+    startDate
     endDate
     createdAt
   }

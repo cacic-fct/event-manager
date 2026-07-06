@@ -274,10 +274,352 @@ describe('CertificateConfigsService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           scope: CertificateScope.EVENT,
+          majorEventId: null,
+          eventGroupId: null,
           eventId: 'event-1',
           folderId: null,
           issuedTo: CertificateIssuedTo.ATTENDEE,
           certificateTypeLabel: 'Participação',
+        }),
+      }),
+    );
+  });
+
+  it('clears stale event targets when moving an event config to a standalone folder', async () => {
+    const prisma = createPrisma({
+      certificateTemplate: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'template-1' }),
+      },
+      certificateFolder: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'folder-1' }),
+      },
+      certificateConfig: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(
+            createConfigRecord({
+              scope: CertificateScope.EVENT,
+              majorEventId: 'stale-major-event',
+              eventGroupId: 'stale-event-group',
+              eventId: 'event-1',
+              folderId: null,
+              folder: null,
+              issuedTo: CertificateIssuedTo.ATTENDEE,
+              certificateTypeLabel: 'Participação',
+            }),
+          )
+          .mockResolvedValueOnce(null),
+        update: jest.fn().mockResolvedValue(createConfigRecord()),
+      },
+    });
+    const targetsService = {
+      assertIssuableTarget: jest.fn(),
+    };
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      targetsService as never,
+    );
+
+    await expect(
+      service.updateConfig('config-1', {
+        scope: CertificateScope.OTHER,
+        folderId: 'folder-1',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        scope: CertificateScope.OTHER,
+        folderId: 'folder-1',
+      }),
+    );
+
+    expect(targetsService.assertIssuableTarget).not.toHaveBeenCalled();
+    expect(prisma.certificateConfig.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scope: CertificateScope.OTHER,
+          majorEventId: null,
+          eventGroupId: null,
+          eventId: null,
+          folderId: 'folder-1',
+          issuedTo: CertificateIssuedTo.OTHER,
+        }),
+      }),
+    );
+  });
+
+  it('clears stale target ids when moving between event scopes', async () => {
+    const prisma = createPrisma({
+      certificateTemplate: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'template-1' }),
+      },
+      certificateConfig: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(
+            createConfigRecord({
+              scope: CertificateScope.MAJOR_EVENT,
+              majorEventId: 'major-event-1',
+              eventGroupId: 'stale-event-group',
+              eventId: 'stale-event',
+              folderId: null,
+              folder: null,
+              issuedTo: CertificateIssuedTo.ATTENDEE,
+              certificateTypeLabel: 'Participação',
+            }),
+          )
+          .mockResolvedValueOnce(null),
+        update: jest.fn().mockResolvedValue(
+          createConfigRecord({
+            scope: CertificateScope.EVENT_GROUP,
+            majorEventId: null,
+            eventGroupId: 'event-group-1',
+            eventId: null,
+            folderId: null,
+            folder: null,
+            issuedTo: CertificateIssuedTo.ATTENDEE,
+            certificateTypeLabel: 'Participação',
+          }),
+        ),
+      },
+    });
+    const targetsService = {
+      assertIssuableTarget: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      targetsService as never,
+    );
+
+    await expect(
+      service.updateConfig('config-1', {
+        scope: CertificateScope.EVENT_GROUP,
+        eventGroupId: 'event-group-1',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        scope: CertificateScope.EVENT_GROUP,
+        eventGroupId: 'event-group-1',
+      }),
+    );
+
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT_GROUP,
+      'event-group-1',
+    );
+    expect(prisma.certificateConfig.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scope: CertificateScope.EVENT_GROUP,
+          majorEventId: null,
+          eventGroupId: 'event-group-1',
+          eventId: null,
+          folderId: null,
+        }),
+      }),
+    );
+  });
+
+  it('clones certificate configs with selected reusable parts and a copied name', async () => {
+    const source = createConfigRecord({
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+      folderId: null,
+      folder: null,
+      name: 'Certificado final',
+      certificateText: 'Texto público',
+      shouldAutofillSecondPage: false,
+      secondPageText: 'Verso livre',
+      isActive: false,
+      issuedTo: CertificateIssuedTo.LECTURER,
+      certificateTypeLabel: 'Palestrante',
+      certificateFields: {
+        cidade: 'Presidente Prudente',
+      },
+    });
+    const prisma = createPrisma({
+      certificateConfig: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(source)
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
+        create: jest.fn().mockResolvedValue(
+          createConfigRecord({
+            ...source,
+            id: 'config-copy',
+            name: 'Certificado final (cópia)',
+          }),
+        ),
+      },
+    });
+    const targetsService = {
+      assertIssuableTarget: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      targetsService as never,
+    );
+
+    await expect(
+      service.cloneConfig('config-1', {
+        parts: {
+          textContent: true,
+          recipientData: true,
+          activeState: true,
+        },
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'config-copy',
+        name: 'Certificado final (cópia)',
+      }),
+    );
+
+    expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'Certificado final (cópia)',
+          scope: CertificateScope.EVENT,
+          eventId: 'event-1',
+          certificateText: 'Texto público',
+          shouldAutofillSecondPage: false,
+          secondPageText: 'Verso livre',
+          isActive: false,
+          issuedTo: CertificateIssuedTo.LECTURER,
+          certificateTypeLabel: 'Palestrante',
+          certificateFields: {
+            cidade: 'Presidente Prudente',
+          },
+        }),
+      }),
+    );
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(CertificateScope.EVENT, 'event-1');
+  });
+
+  it('resets optional clone parts but keeps recipient data when copying issued people', async () => {
+    const source = createConfigRecord({
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+      folderId: null,
+      folder: null,
+      name: 'Certificado final',
+      certificateText: 'Texto público',
+      shouldAutofillSecondPage: false,
+      secondPageText: 'Verso livre',
+      isActive: false,
+      issuedTo: CertificateIssuedTo.LECTURER,
+      certificateTypeLabel: 'Palestrante',
+      certificateFields: {
+        cidade: 'Presidente Prudente',
+      },
+    });
+    const prisma = createPrisma({
+      certificateConfig: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(source)
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
+        create: jest.fn().mockResolvedValue(
+          createConfigRecord({
+            ...source,
+            id: 'config-copy',
+            name: 'Certificado final (cópia)',
+            certificateText: null,
+            secondPageText: null,
+            isActive: true,
+          }),
+        ),
+      },
+    });
+    const targetsService = {
+      assertIssuableTarget: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      targetsService as never,
+    );
+
+    await service.cloneConfig('config-1', {
+      parts: {
+        issuedPeople: true,
+      },
+    });
+
+    expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          certificateText: null,
+          shouldAutofillSecondPage: true,
+          secondPageText: null,
+          isActive: true,
+          issuedTo: CertificateIssuedTo.LECTURER,
+          certificateTypeLabel: 'Palestrante',
+          certificateFields: {
+            cidade: 'Presidente Prudente',
+          },
+        }),
+      }),
+    );
+  });
+
+  it('clones certificate configs to a selected destination target', async () => {
+    const source = createConfigRecord({
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+      folderId: null,
+      folder: null,
+      name: 'Certificado final',
+    });
+    const prisma = createPrisma({
+      certificateConfig: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(source)
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
+        create: jest.fn().mockResolvedValue(
+          createConfigRecord({
+            ...source,
+            id: 'config-copy',
+            scope: CertificateScope.EVENT_GROUP,
+            eventId: null,
+            eventGroupId: 'event-group-2',
+            name: 'Certificado final (cópia)',
+          }),
+        ),
+      },
+    });
+    const targetsService = {
+      assertIssuableTarget: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      targetsService as never,
+    );
+
+    await service.cloneConfig('config-1', {
+      scope: CertificateScope.EVENT_GROUP,
+      eventGroupId: 'event-group-2',
+    });
+
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT_GROUP,
+      'event-group-2',
+    );
+    expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scope: CertificateScope.EVENT_GROUP,
+          majorEventId: null,
+          eventGroupId: 'event-group-2',
+          eventId: null,
+          folderId: null,
         }),
       }),
     );

@@ -39,6 +39,13 @@ type NormalizedSubscriptionsFeed = Omit<SubscriptionsFeed, 'standaloneCertificat
   standaloneCertificateFolders: StandaloneCertificateFolderItem[];
 };
 
+const EMPTY_SUBSCRIPTIONS_FEED = {
+  majorEventItems: [],
+  eventItems: [],
+  standaloneCertificateFolders: [],
+  attendances: [],
+} satisfies NormalizedSubscriptionsFeed;
+
 @Component({
   selector: 'app-attendances',
   templateUrl: './attendances.html',
@@ -168,12 +175,7 @@ export class Attendances {
 
     if (!userId) {
       void this.offlineData.purgeUserData();
-      return of({
-        majorEventItems: [],
-        eventItems: [],
-        standaloneCertificateFolders: [],
-        attendances: [],
-      } satisfies SubscriptionsFeed);
+      return of(EMPTY_SUBSCRIPTIONS_FEED);
     }
 
     return this.api.getSubscriptionsFeed().pipe(
@@ -186,14 +188,7 @@ export class Attendances {
     const userId = this.auth.user()?.sub ?? (await this.offlineData.getLatestUserSnapshot())?.userId;
     const feed = userId ? await this.offlineData.getAttendanceFeed(userId) : null;
 
-    return (
-      feed ?? {
-        majorEventItems: [],
-        eventItems: [],
-        standaloneCertificateFolders: [],
-        attendances: [],
-      }
-    );
+    return feed ?? EMPTY_SUBSCRIPTIONS_FEED;
   }
 
   private normalizeFeed(feed: SubscriptionsFeed): NormalizedSubscriptionsFeed {
@@ -201,7 +196,8 @@ export class Attendances {
 
     return {
       ...sortedFeed,
-      standaloneCertificateFolders: sortedFeed.standaloneCertificateFolders ?? [],
+      standaloneCertificateFolders:
+        sortedFeed.standaloneCertificateFolders ?? EMPTY_SUBSCRIPTIONS_FEED.standaloneCertificateFolders,
     };
   }
 }

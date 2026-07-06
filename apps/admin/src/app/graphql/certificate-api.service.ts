@@ -4,6 +4,7 @@ import { GraphqlHttpService } from './graphql-http.service';
 import {
   Certificate,
   CertificateConfig,
+  CertificateConfigCloneInput,
   CertificateConfigInput,
   CertificateDownload,
   CertificateFolder,
@@ -283,6 +284,22 @@ export class CertificateApiService {
         { id, input },
       )
       .pipe(map((data) => data.updateCertificateConfig));
+  }
+
+  cloneCertificateConfig(id: string, input: CertificateConfigCloneInput) {
+    return this.graphqlHttp
+      .request<{ cloneCertificateConfig: CertificateConfig }>(
+        `mutation CloneCertificateConfig(
+          $id: String!
+          $input: CertificateConfigCloneInput
+        ) {
+          cloneCertificateConfig(id: $id, input: $input) {
+            ${CERTIFICATE_CONFIG_FIELDS}
+          }
+        }`,
+        { id, input },
+      )
+      .pipe(map((data) => data.cloneCertificateConfig));
   }
 
   deleteCertificateConfig(id: string) {

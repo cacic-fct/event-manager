@@ -209,6 +209,16 @@
                     <mat-icon>edit</mat-icon>
                   </button>
                 }
+                @if (canCloneConfig(config)) {
+                  <button
+                    matIconButton
+                    type="button"
+                    aria-label="Duplicar configuração"
+                    matTooltip="Duplicar"
+                    (click)="$event.stopPropagation(); workspace.cloneCertificateConfig(config)">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                }
                 @if (canDeleteConfig(config)) {
                   <button
                     matIconButton
@@ -280,6 +290,14 @@
                   <mat-icon>auto_awesome</mat-icon>
                   Lançar correções e Emitir pendentes
                 </button>
+              }
+              @if (workspace.selectedCertificateConfig(); as selectedConfig) {
+                @if (canCloneConfig(selectedConfig)) {
+                  <button mat-stroked-button type="button" (click)="workspace.cloneCertificateConfig(selectedConfig)">
+                    <mat-icon>content_copy</mat-icon>
+                    Duplicar
+                  </button>
+                }
               }
               <button mat-flat-button type="button" (click)="workspace.saveCertificateConfig()">
                 <mat-icon>save</mat-icon>

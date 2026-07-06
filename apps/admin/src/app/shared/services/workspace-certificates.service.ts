@@ -13,6 +13,7 @@ import { PeopleApiService } from '../../graphql/people-api.service';
 import {
   Certificate,
   CertificateConfig,
+  CertificateConfigCloneInput,
   CertificateConfigInput,
   CertificateFolder,
   CertificateFolderInput,
@@ -24,6 +25,7 @@ import {
   MajorEvent,
   Person,
 } from '@cacic-fct/event-manager-admin-contracts';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { bindLiveSearch } from '../live-search';
@@ -36,6 +38,11 @@ import {
   resetPagination,
 } from '../list-pagination';
 import { buildPeopleSearchFilters } from '../people-lookup';
+import {
+  CertificateConfigCloneDialogComponent,
+  CertificateConfigCloneDialogResult,
+} from '../../workspace/dialogs/certificate-config-clone-dialog.component';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 type WorkspaceCertificateScope = CertificateScope;
 type CertificateTargetType = 'event' | 'event-group' | 'major-event' | 'folder';
@@ -78,6 +85,7 @@ export class WorkspaceCertificatesService {
   private readonly snackbar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly permissions = inject(WorkspacePermissionsService);
 
   readonly issuableEvents = signal<Event[]>([]);
   readonly issuableEventGroups = signal<EventGroup[]>([]);
@@ -395,6 +403,46 @@ export class WorkspaceCertificatesService {
     await this.persistCertificateConfig({ showSnackbar: true });
   }
 
+  async cloneCertificateConfig(config: CertificateConfig): Promise<void> {
+    const result = await this.openCertificateConfigCloneDialog(config);
+    if (!result) {
+      return;
+    }
+
+    const input: CertificateConfigCloneInput = {
+      name: result.name,
+      scope: result.scope,
+      majorEventId: result.scope === 'MAJOR_EVENT' ? result.targetId : null,
+      eventGroupId: result.scope === 'EVENT_GROUP' ? result.targetId : null,
+      eventId: result.scope === 'EVENT' ? result.targetId : null,
+      folderId: result.scope === 'OTHER' ? result.targetId : null,
+      parts: {
+        textContent: Boolean(result.parts.textContent),
+        recipientData: Boolean(result.parts.recipientData),
+        activeState: Boolean(result.parts.activeState),
+        issuedPeople: Boolean(result.parts.issuedPeople),
+      },
+    };
+
+    try {
+      const created = await firstValueFrom(this.api.cloneCertificateConfig(config.id, input));
+      this.snackbar.open('Configuração de certificado duplicada.', 'Fechar', { duration: 2500 });
+      const destinationTarget = this.getCertificateConfigTarget(created);
+      if (destinationTarget) {
+        this.targetFiltersForm.controls.scope.setValue(created.scope, { emitEvent: false });
+        await this.applyTargetSelection(destinationTarget);
+      } else {
+        await this.loadCertificateConfigs();
+      }
+      this.selectCertificateConfig(created);
+      await this.loadCertificates();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar a configuração de certificado.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
+  }
+
   startNewFolder(): void {
     void this.router.navigate(['/certificates']);
     this.selectedTarget.set(null);
@@ -667,6 +715,23 @@ export class WorkspaceCertificatesService {
     return result === true;
   }
 
+  private async openCertificateConfigCloneDialog(
+    config: CertificateConfig,
+  ): Promise<CertificateConfigCloneDialogResult | null | undefined> {
+    const canCopyIssuedPeople = this.permissions.has(Permission.Certificate.Issue);
+    const dialogRef = this.dialog.open(CertificateConfigCloneDialogComponent, {
+      width: '52rem',
+      maxWidth: '95vw',
+      data: {
+        config,
+        defaultName: `${config.name} (cópia)`,
+        canCopyIssuedPeople,
+      },
+    });
+
+    return firstValueFrom(dialogRef.afterClosed());
+  }
+
   private async loadCertificates(): Promise<void> {
     const selectedTarget = this.selectedTarget();
     if (!selectedTarget) {
@@ -737,6 +802,38 @@ export class WorkspaceCertificatesService {
     }
 
     return firstValueFrom(this.majorEventsApi.getMajorEvent(targetId));
+  }
+
+  private getCertificateConfigTarget(config: CertificateConfig): IssuableTarget | null {
+    if (config.scope === 'EVENT' && config.eventId) {
+      return {
+        ...(config.event ?? {}),
+        id: config.eventId,
+        name: config.event?.name ?? config.eventId,
+      } as IssuableTarget;
+    }
+
+    if (config.scope === 'EVENT_GROUP' && config.eventGroupId) {
+      return {
+        ...(config.eventGroup ?? {}),
+        id: config.eventGroupId,
+        name: config.eventGroup?.name ?? config.eventGroupId,
+      } as IssuableTarget;
+    }
+
+    if (config.scope === 'MAJOR_EVENT' && config.majorEventId) {
+      return {
+        ...(config.majorEvent ?? {}),
+        id: config.majorEventId,
+        name: config.majorEvent?.name ?? config.majorEventId,
+      } as IssuableTarget;
+    }
+
+    if (config.scope === 'OTHER' && config.folder) {
+      return config.folder;
+    }
+
+    return null;
   }
 
   private targetTypeToScope(targetType: string): WorkspaceCertificateScope | null {

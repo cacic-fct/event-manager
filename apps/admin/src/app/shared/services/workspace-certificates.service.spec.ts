@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
@@ -8,6 +9,7 @@ import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { CertificateConfigInput } from '@cacic-fct/event-manager-admin-contracts';
+import { Permission } from '@cacic-fct/shared-permissions';
 import {
   createAdminCertificateConfig,
   createAdminCertificateConfigFromInput,
@@ -16,6 +18,7 @@ import {
   createAdminPerson,
 } from '../../testing/admin-entity-fixtures';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 describe('WorkspaceCertificatesService', () => {
   const certificateTemplate = createAdminCertificateTemplate({
@@ -39,6 +42,7 @@ describe('WorkspaceCertificatesService', () => {
   let api: {
     createCertificateConfig: ReturnType<typeof vi.fn>;
     createCertificateFolder: ReturnType<typeof vi.fn>;
+    cloneCertificateConfig: ReturnType<typeof vi.fn>;
     getCertificateFolder: ReturnType<typeof vi.fn>;
     issueMissedCertificates: ReturnType<typeof vi.fn>;
     listCertificateConfigs: ReturnType<typeof vi.fn>;
@@ -55,9 +59,17 @@ describe('WorkspaceCertificatesService', () => {
   let peopleApi: {
     listPeopleSummaries: ReturnType<typeof vi.fn>;
   };
+  let dialog: {
+    open: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     lastPayload = null;
+    dialog = {
+      open: vi.fn(() => ({
+        afterClosed: () => of(null),
+      })),
+    };
     api = {
       createCertificateConfig: vi.fn((payload: CertificateConfigInput) => {
         lastPayload = payload;
@@ -71,6 +83,9 @@ describe('WorkspaceCertificatesService', () => {
           createdAt: '2026-07-01T12:00:00.000Z',
           updatedAt: '2026-07-01T12:00:00.000Z',
         }),
+      ),
+      cloneCertificateConfig: vi.fn((id: string) =>
+        of(createAdminCertificateConfig({ id: `${id}-clone`, name: 'Certificate (cópia)' }, certificateTemplate)),
       ),
       getCertificateFolder: vi.fn(() => of(certificateFolderFixture())),
       issueMissedCertificates: vi.fn(() => of([])),
@@ -106,8 +121,15 @@ describe('WorkspaceCertificatesService', () => {
         { provide: EventGroupApiService, useValue: {} },
         { provide: MajorEventApiService, useValue: {} },
         { provide: PeopleApiService, useValue: peopleApi },
+        { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
+        {
+          provide: WorkspacePermissionsService,
+          useValue: {
+            has: vi.fn((permission: Permission) => permission === Permission.Certificate.Issue),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -287,6 +309,40 @@ describe('WorkspaceCertificatesService', () => {
         secondPageText: null,
       }),
     );
+  });
+
+  it('duplicates certificate configs with selected keep options', async () => {
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () =>
+        of({
+          name: 'Certificate (cópia)',
+          scope: 'EVENT_GROUP',
+          targetId: 'event-group-1',
+          parts: {
+            textContent: true,
+            recipientData: true,
+            activeState: false,
+            issuedPeople: true,
+          },
+        }),
+    });
+
+    await service.cloneCertificateConfig(createAdminCertificateConfig({ id: 'config-1', name: 'Certificate' }));
+
+    expect(api.cloneCertificateConfig).toHaveBeenCalledWith('config-1', {
+      name: 'Certificate (cópia)',
+      scope: 'EVENT_GROUP',
+      majorEventId: null,
+      eventGroupId: 'event-group-1',
+      eventId: null,
+      folderId: null,
+      parts: {
+        textContent: true,
+        recipientData: true,
+        activeState: false,
+        issuedPeople: true,
+      },
+    });
   });
 });
 

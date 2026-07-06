@@ -898,6 +898,23 @@ export interface CertificateConfigInput {
   certificateFieldsJson?: string | null;
 }
 
+export interface CertificateConfigClonePartsInput {
+  textContent?: boolean;
+  recipientData?: boolean;
+  activeState?: boolean;
+  issuedPeople?: boolean;
+}
+
+export interface CertificateConfigCloneInput {
+  name?: string;
+  scope?: CertificateScope;
+  majorEventId?: string | null;
+  eventGroupId?: string | null;
+  eventId?: string | null;
+  folderId?: string | null;
+  parts?: CertificateConfigClonePartsInput;
+}
+
 export interface CertificateFolderInput {
   name?: string;
   emoji?: string;
