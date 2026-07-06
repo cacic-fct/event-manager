@@ -76,7 +76,7 @@ export class RealtimeEventsService implements OnDestroy {
   }
 
   connect(): void {
-    if (!isPlatformBrowser(this.platformId) || this.source) {
+    if (!this.canUseEventSource() || this.source) {
       return;
     }
 
@@ -151,7 +151,7 @@ export class RealtimeEventsService implements OnDestroy {
   }
 
   private scheduleReconnect(): void {
-    if (!isPlatformBrowser(this.platformId)) {
+    if (!this.canUseEventSource()) {
       return;
     }
 
@@ -164,7 +164,7 @@ export class RealtimeEventsService implements OnDestroy {
   }
 
   private reconnect(): void {
-    if (!isPlatformBrowser(this.platformId) || !this.hasActiveWatchers()) {
+    if (!this.canUseEventSource() || !this.hasActiveWatchers()) {
       return;
     }
 
@@ -183,6 +183,10 @@ export class RealtimeEventsService implements OnDestroy {
 
   private hasActiveWatchers(): boolean {
     return this.globalWatchers > 0 || this.watchedMajorEventIds.size > 0 || this.watchedEventIds.size > 0;
+  }
+
+  private canUseEventSource(): boolean {
+    return isPlatformBrowser(this.platformId) && typeof EventSource !== 'undefined';
   }
 
   private buildUrl(): string {
