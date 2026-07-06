@@ -239,6 +239,11 @@ export const PUBLIC_CERTIFICATE_VALIDATION_FIELDS = `
   maskedIdentityDocument
   scope
   certificateName
+  issuedTo
+  certificateTypeLabel
+  certificateText
+  shouldAutofillSecondPage
+  secondPageText
   targetName
   targetEmoji
   totalCreditMinutes

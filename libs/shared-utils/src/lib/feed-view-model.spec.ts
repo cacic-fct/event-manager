@@ -20,6 +20,10 @@ describe('feed view model', () => {
         singleEventItem('older-event', '2026-06-05T09:00:00'),
         singleEventItem('newer-event', '2026-06-25T09:00:00'),
       ],
+      standaloneCertificateFolders: [
+        standaloneFolder('older-folder', 'Atividades antigas', '2026-06-05T09:00:00'),
+        standaloneFolder('newer-folder', 'Atividades recentes', '2026-06-25T09:00:00'),
+      ],
       attendances: [],
     };
 
@@ -27,6 +31,7 @@ describe('feed view model', () => {
 
     expect(sorted.majorEventItems.map((item) => item.id)).toEqual(['newer-major', 'older-major']);
     expect(sorted.eventItems.map((item) => item.id)).toEqual(['newer-event', 'older-event']);
+    expect(sorted.standaloneCertificateFolders.map((item) => item.id)).toEqual(['newer-folder', 'older-folder']);
     expect(feed.majorEventItems.map((item) => item.id)).toEqual(['older-major', 'newer-major']);
   });
 
@@ -148,4 +153,34 @@ function addOneHour(value: string): string {
   const hour = Number(time.slice(0, 2)) + 1;
 
   return `${date}T${String(hour).padStart(2, '0')}${time.slice(2)}`;
+}
+
+function standaloneFolder(id: string, name: string, issuedAt: string) {
+  return {
+    id,
+    name,
+    emoji: '🏅',
+    certificates: [
+      {
+        id: `${id}-certificate`,
+        configId: `${id}-config`,
+        issuedAt,
+        config: {
+          id: `${id}-config`,
+          name: 'Certificado avulso',
+          scope: 'OTHER' as const,
+          certificateTemplate: {
+            id: 'template-1',
+            name: 'Modelo',
+            version: 1,
+          },
+        },
+        certificateTemplate: {
+          id: 'template-1',
+          name: 'Modelo',
+          version: 1,
+        },
+      },
+    ],
+  };
 }

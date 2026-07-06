@@ -171,6 +171,7 @@ describe('shared utility coverage from public app', () => {
           participation: participationFixture(),
         },
       ],
+      standaloneCertificateFolders: [],
       attendances: [],
     });
 

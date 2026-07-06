@@ -38,14 +38,18 @@ describe('WorkspaceCertificatesService', () => {
   let service: WorkspaceCertificatesService;
   let api: {
     createCertificateConfig: ReturnType<typeof vi.fn>;
+    createCertificateFolder: ReturnType<typeof vi.fn>;
+    getCertificateFolder: ReturnType<typeof vi.fn>;
     issueMissedCertificates: ReturnType<typeof vi.fn>;
     listCertificateConfigs: ReturnType<typeof vi.fn>;
+    listCertificateFolders: ReturnType<typeof vi.fn>;
     listCertificateIssuableEventGroups: ReturnType<typeof vi.fn>;
     listCertificateIssuableEvents: ReturnType<typeof vi.fn>;
     listCertificateIssuableMajorEvents: ReturnType<typeof vi.fn>;
     listCertificateTemplates: ReturnType<typeof vi.fn>;
     listCertificates: ReturnType<typeof vi.fn>;
     updateCertificateConfig: ReturnType<typeof vi.fn>;
+    updateCertificateFolder: ReturnType<typeof vi.fn>;
   };
   let lastPayload: CertificateConfigInput | null;
   let peopleApi: {
@@ -59,8 +63,19 @@ describe('WorkspaceCertificatesService', () => {
         lastPayload = payload;
         return of(createAdminCertificateConfigFromInput(payload, certificateTemplate));
       }),
+      createCertificateFolder: vi.fn((payload: { name?: string; emoji?: string }) =>
+        of({
+          id: 'folder-created',
+          name: payload.name ?? 'Pasta',
+          emoji: payload.emoji ?? '🏅',
+          createdAt: '2026-07-01T12:00:00.000Z',
+          updatedAt: '2026-07-01T12:00:00.000Z',
+        }),
+      ),
+      getCertificateFolder: vi.fn(() => of(certificateFolderFixture())),
       issueMissedCertificates: vi.fn(() => of([])),
       listCertificateConfigs: vi.fn(() => of([])),
+      listCertificateFolders: vi.fn(() => of([certificateFolderFixture()])),
       listCertificateIssuableEventGroups: vi.fn(() => of([])),
       listCertificateIssuableEvents: vi.fn(() => of([])),
       listCertificateIssuableMajorEvents: vi.fn(() => of([])),
@@ -70,6 +85,14 @@ describe('WorkspaceCertificatesService', () => {
         lastPayload = payload;
         return of(createAdminCertificateConfigFromInput(payload, certificateTemplate, { id }));
       }),
+      updateCertificateFolder: vi.fn((id: string, payload: { name?: string; emoji?: string }) =>
+        of({
+          ...certificateFolderFixture(),
+          id,
+          name: payload.name ?? 'Pasta',
+          emoji: payload.emoji ?? '🏅',
+        }),
+      ),
     };
     peopleApi = {
       listPeopleSummaries: vi.fn(() => of([])),
@@ -121,6 +144,33 @@ describe('WorkspaceCertificatesService', () => {
 
     expect(api.listCertificateIssuableEvents).toHaveBeenCalledWith({ query: 'aula', skip: 0, take: 51 });
     expect(service.issuableEvents().map((eventItem) => eventItem.id)).toEqual(['event-1']);
+  });
+
+  it('searches folders and creates standalone manual certificate configs', async () => {
+    await service.onScopeChanged('OTHER');
+
+    expect(api.listCertificateFolders).toHaveBeenCalledWith({ query: undefined, skip: 0, take: 51 });
+    expect(service.certificateFolders().map((folder) => folder.id)).toEqual(['folder-1']);
+
+    await service.selectTarget(certificateFolderFixture());
+    service.certificateConfigForm.name().value.set('Certificado avulso');
+    service.certificateConfigForm.secondPageText().value.set('Texto manual do verso');
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload).toEqual(
+      expect.objectContaining({
+        name: 'Certificado avulso',
+        scope: 'OTHER',
+        folderId: 'folder-1',
+        majorEventId: null,
+        eventGroupId: null,
+        eventId: null,
+        issuedTo: 'OTHER',
+        shouldAutofillSecondPage: false,
+        secondPageText: 'Texto manual do verso',
+      }),
+    );
   });
 
   it('searches manual certificate people as the query changes', async () => {
@@ -239,3 +289,16 @@ describe('WorkspaceCertificatesService', () => {
     );
   });
 });
+
+function certificateFolderFixture() {
+  return {
+    id: 'folder-1',
+    name: 'Atividades complementares',
+    emoji: '🏅',
+    createdAt: '2026-07-01T12:00:00.000Z',
+    createdById: null,
+    updatedAt: '2026-07-01T12:00:00.000Z',
+    updatedById: null,
+    deletedAt: null,
+  };
+}

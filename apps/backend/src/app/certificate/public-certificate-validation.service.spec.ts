@@ -49,6 +49,71 @@ describe('PublicCertificateValidationService', () => {
     expect(hiddenResult?.sections).toEqual([]);
     expect(hiddenResult?.totalCreditMinutes).toBe(0);
   });
+
+  it('validates standalone certificates with folder target metadata and no credited events', async () => {
+    const issuedAt = new Date('2026-06-01T12:00:00.000Z');
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)),
+          config: {
+            name: 'Certificado avulso',
+            scope: CertificateScope.OTHER,
+            isActive: true,
+            issuedTo: CertificateIssuedTo.OTHER,
+            certificateText: 'Certificamos a atividade complementar.',
+            shouldAutofillSecondPage: false,
+            secondPageText: 'Texto livre do verso.',
+            certificateTypeLabel: 'Atividade complementar',
+            certificateFields: null,
+            event: null,
+            eventGroup: null,
+            majorEvent: null,
+            folder: {
+              id: 'folder-1',
+              name: 'Atividades complementares',
+              emoji: '🏅',
+            },
+          },
+        }),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    await expect(service.validateCertificate('standalone-certificate-1')).resolves.toEqual(
+      expect.objectContaining({
+        certificateName: 'Certificado avulso',
+        scope: CertificateScope.OTHER,
+        targetName: 'Atividades complementares',
+        targetEmoji: '🏅',
+        sections: [],
+        totalCreditMinutes: 0,
+      }),
+    );
+  });
+
+  it('does not validate certificates from inactive configs', async () => {
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    await expect(service.validateCertificate('disabled-certificate')).resolves.toBeNull();
+    expect(prisma.certificate.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'disabled-certificate',
+          deletedAt: null,
+          config: {
+            deletedAt: null,
+            isActive: true,
+          },
+        }),
+      }),
+    );
+  });
 });
 
 function validationService() {
@@ -70,11 +135,17 @@ function certificateRecord(issuedAt: Date, event: ReturnType<typeof eventRecord>
     config: {
       name: 'Certificado',
       scope: CertificateScope.EVENT,
+      isActive: true,
       issuedTo: CertificateIssuedTo.ATTENDEE,
+      certificateText: 'Certificamos a participação.',
+      shouldAutofillSecondPage: true,
+      secondPageText: null,
+      certificateTypeLabel: 'Participação',
       certificateFields: null,
       event,
       eventGroup: null,
       majorEvent: null,
+      folder: null,
     },
   };
 }

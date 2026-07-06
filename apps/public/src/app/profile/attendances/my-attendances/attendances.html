@@ -70,6 +70,32 @@
     }
   </section>
 
+  <section class="feed-section">
+    <div class="section-heading">
+      <h2>Certificados avulsos</h2>
+    </div>
+
+    @if (currentState.data.standaloneCertificateFolders.length === 0) {
+    <p class="empty-text">Nenhum certificado avulso disponível.</p>
+    } @else {
+    <mat-action-list>
+      @for (folder of currentState.data.standaloneCertificateFolders; track folder.id) {
+      <button
+        mat-list-item
+        type="button"
+        (click)="openStandaloneCertificates(folder)"
+        [attr.aria-label]="'Abrir certificados avulsos de ' + folder.name">
+        <div matListItemIcon class="emoji-frame">
+          <img class="twemoji" [src]="emoji.getTwemojiUrl(folder.emoji)" [alt]="folder.emoji" />
+        </div>
+        <div matListItemTitle>{{ folder.name }}</div>
+        <div matListItemLine>{{ standaloneCertificateLine(folder) }}</div>
+      </button>
+      }
+    </mat-action-list>
+    }
+  </section>
+
   <section class="certificate-download-section">
     <button
       mat-flat-button

@@ -411,6 +411,17 @@ export const CERTIFICATE_TEMPLATE_FIELDS = `
   deletedAt
 `;
 
+export const CERTIFICATE_FOLDER_FIELDS = `
+  id
+  name
+  emoji
+  createdAt
+  createdById
+  updatedAt
+  updatedById
+  deletedAt
+`;
+
 export const CERTIFICATE_CONFIG_FIELDS = `
   id
   name
@@ -418,6 +429,7 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   majorEventId
   eventGroupId
   eventId
+  folderId
   certificateTemplateId
   certificateText
   shouldAutofillSecondPage
@@ -445,6 +457,9 @@ export const CERTIFICATE_CONFIG_FIELDS = `
     emoji
     endDate
     createdAt
+  }
+  folder {
+    ${CERTIFICATE_FOLDER_FIELDS}
   }
   certificateTemplate {
     id
@@ -480,6 +495,9 @@ export const CERTIFICATE_FIELDS = `
       id
       endDate
       createdAt
+    }
+    folder {
+      ${CERTIFICATE_FOLDER_FIELDS}
     }
   }
   certificateTemplate {

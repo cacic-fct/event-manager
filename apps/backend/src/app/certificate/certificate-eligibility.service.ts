@@ -220,6 +220,10 @@ export class CertificateEligibilityService {
       });
     }
 
+    if (config.scope === CertificateScope.OTHER) {
+      return [];
+    }
+
     throw new BadRequestException(`Unsupported certificate scope ${config.scope}.`);
   }
 

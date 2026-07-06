@@ -4,7 +4,7 @@ import {
   createStoryPublicEventGroup,
   createStoryPublicMajorEvent,
 } from '@cacic-fct/event-manager-public-testing';
-import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { PublicCertificateValidation, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { http, HttpResponse } from 'msw';
 
 faker.seed(20260516);
@@ -78,6 +78,30 @@ const currentUserCertificates = events.slice(0, 2).map((event, index) => ({
   },
 }));
 
+const standaloneCertificates = [
+  {
+    id: 'standalone-certificate-1',
+    configId: 'standalone-config-1',
+    issuedAt: isoDaysFromNow(-2, 10),
+    config: {
+      id: 'standalone-config-1',
+      name: 'Certificado avulso',
+      scope: 'OTHER',
+      certificateText: faker.lorem.sentence(),
+      certificateTemplate: {
+        id: 'template-1',
+        name: 'Modelo CACiC',
+        version: 1,
+      },
+    },
+    certificateTemplate: {
+      id: 'template-1',
+      name: 'Modelo CACiC',
+      version: 1,
+    },
+  },
+];
+
 const thirdPartyLicensesText = [
   `${faker.company.name()} UI Toolkit`,
   'MIT License',
@@ -128,6 +152,105 @@ function certificateDownload(fileName = 'certificado-cacic.pdf') {
     fileName,
     mimeType: 'application/pdf',
     contentBase64: 'JVBERi0xLjQKJcTl8uXrp/Og0MTGCg==',
+  };
+}
+
+function publicCertificateValidation(variables: Record<string, unknown>): PublicCertificateValidation | null {
+  const certificateId = String(variables['certificateId'] ?? 'certificate-demo');
+  if (certificateId === 'certificate-disabled' || certificateId === 'certificate-missing') {
+    return null;
+  }
+
+  if (certificateId === 'certificate-standalone') {
+    return {
+      id: certificateId,
+      personName: 'Maria Storybook',
+      maskedIdentityDocument: '•••.123.456-••',
+      issuedAt: isoDaysFromNow(-3, 10),
+      scope: 'OTHER',
+      certificateName: 'Certificado avulso',
+      issuedTo: 'OTHER',
+      certificateTypeLabel: 'Atividade complementar',
+      certificateText: 'Certificamos a participação em atividade complementar registrada pela organização.',
+      shouldAutofillSecondPage: false,
+      secondPageText: 'Atividade validada sem vínculo com uma programação pública.',
+      targetName: 'Atividades complementares',
+      targetEmoji: '🏅',
+      totalCreditMinutes: 0,
+      sections: [],
+    };
+  }
+
+  if (certificateId === 'certificate-lecturer') {
+    const event = events[1];
+    return {
+      id: certificateId,
+      personName: 'Ana Palestrante',
+      maskedIdentityDocument: null,
+      issuedAt: isoDaysFromNow(-2, 11),
+      scope: 'EVENT',
+      certificateName: 'Certificado de palestra',
+      issuedTo: 'LECTURER',
+      certificateTypeLabel: 'Palestrante',
+      certificateText: 'Certificamos a contribuição como ministrante da atividade.',
+      shouldAutofillSecondPage: true,
+      secondPageText: null,
+      targetName: event.name,
+      targetEmoji: event.emoji,
+      totalCreditMinutes: event.creditMinutes ?? 0,
+      sections: [
+        {
+          title: 'Evento',
+          type: event.type,
+          creditMinutes: event.creditMinutes ?? 0,
+          events: [
+            {
+              id: event.id,
+              name: event.name,
+              emoji: event.emoji,
+              startDate: event.startDate,
+              endDate: event.endDate,
+              creditMinutes: event.creditMinutes,
+            },
+          ],
+        },
+      ],
+    };
+  }
+
+  const event = events[0];
+  return {
+    id: certificateId,
+    personName: faker.person.fullName(),
+    maskedIdentityDocument: '•••.456.789-••',
+    issuedAt: storyNow().toISOString(),
+    scope: 'EVENT',
+    certificateName: `Certificado ${event.name}`,
+    issuedTo: 'ATTENDEE',
+    certificateTypeLabel: 'Participação',
+    certificateText: 'Certificamos a participação na atividade descrita abaixo.',
+    shouldAutofillSecondPage: true,
+    secondPageText: null,
+    targetName: event.name,
+    targetEmoji: event.emoji,
+    totalCreditMinutes: event.creditMinutes ?? 0,
+    sections: [
+      {
+        title: 'Evento',
+        type: event.type,
+        creditMinutes: event.creditMinutes ?? 0,
+        events: [
+          {
+            id: event.id,
+            name: event.name,
+            emoji: event.emoji,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            creditMinutes: event.creditMinutes,
+          },
+        ],
+      },
+    ],
   };
 }
 
@@ -246,6 +369,14 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
           },
         })),
       },
+      currentUserStandaloneCertificateFolders: [
+        {
+          id: 'standalone-folder-1',
+          name: 'Atividades complementares',
+          emoji: '🏅',
+          certificates: standaloneCertificates,
+        },
+      ],
       currentUserEventAttendances: currentUserAttendances,
     };
   }
@@ -352,15 +483,7 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
 
   if (query.includes('publicCertificateValidation')) {
     return {
-      publicCertificateValidation: {
-        id: 'certificate-demo',
-        personName: faker.person.fullName(),
-        targetName: events[0].name,
-        issuedAt: storyNow().toISOString(),
-        creditMinutes: 120,
-        issuerName: 'CACiC FCT',
-        certificateText: faker.lorem.sentence(),
-      },
+      publicCertificateValidation: publicCertificateValidation(variables),
     };
   }
 

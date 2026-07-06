@@ -4,6 +4,9 @@ import {
   CertificateConfig,
   CertificateConfigCreateInput,
   CertificateConfigUpdateInput,
+  CertificateFolder,
+  CertificateFolderCreateInput,
+  CertificateFolderUpdateInput,
   CertificateReissueResult,
   CertificateScope,
   CertificateTemplate,
@@ -122,6 +125,23 @@ export class CertificatesResolver {
     return this.configsService.listTemplates(query, includeInactive, pagination.skip, pagination.take);
   }
 
+  @Query(() => [CertificateFolder], { name: 'certificateFolders' })
+  @RequirePermissions(Permission.CertificateConfig.Read)
+  certificateFolders(
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
+    @Args('take', { type: () => Int, nullable: true }) take?: number,
+  ) {
+    const pagination = resolvePagination(skip, take);
+    return this.configsService.listFolders(query, pagination.skip, pagination.take);
+  }
+
+  @Query(() => CertificateFolder, { name: 'certificateFolder' })
+  @RequirePermissions(Permission.CertificateConfig.Read)
+  certificateFolder(@Args('id', { type: () => String }) id: string) {
+    return this.configsService.getFolderById(id);
+  }
+
   @Query(() => [CertificateConfig], { name: 'certificateConfigs' })
   @RequirePermissions(Permission.CertificateConfig.Read)
   certificateConfigs(
@@ -218,6 +238,25 @@ export class CertificatesResolver {
       'edit',
     );
     return this.configsService.createConfig(input);
+  }
+
+  @Mutation(() => CertificateFolder, { name: 'createCertificateFolder' })
+  @RequirePermissions(Permission.CertificateConfig.Create)
+  createCertificateFolder(
+    @Args('input', { type: () => CertificateFolderCreateInput })
+    input: CertificateFolderCreateInput,
+  ) {
+    return this.configsService.createFolder(input);
+  }
+
+  @Mutation(() => CertificateFolder, { name: 'updateCertificateFolder' })
+  @RequirePermissions(Permission.CertificateConfig.Update)
+  updateCertificateFolder(
+    @Args('id', { type: () => String }) id: string,
+    @Args('input', { type: () => CertificateFolderUpdateInput })
+    input: CertificateFolderUpdateInput,
+  ) {
+    return this.configsService.updateFolder(id, input);
   }
 
   @Mutation(() => CertificateConfig, { name: 'updateCertificateConfig' })

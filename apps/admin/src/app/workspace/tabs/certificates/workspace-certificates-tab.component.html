@@ -3,8 +3,14 @@
     <aside class="panel panel-stack">
       <div class="panel-heading">
         <div>
-          <h3>Alvos</h3>
-          <p>Eventos, grupos e grandes eventos aptos à emissão.</p>
+          <h3>{{ workspace.isStandaloneScope() ? 'Pastas' : 'Alvos' }}</h3>
+          <p>
+            {{
+              workspace.isStandaloneScope()
+                ? 'Pastas usadas para organizar certificados avulsos.'
+                : 'Eventos, grupos e grandes eventos aptos à emissão.'
+            }}
+          </p>
         </div>
       </div>
 
@@ -15,6 +21,7 @@
             <mat-option value="EVENT">Evento</mat-option>
             <mat-option value="EVENT_GROUP">Grupo</mat-option>
             <mat-option value="MAJOR_EVENT">Grande evento</mat-option>
+            <mat-option value="OTHER">Certificados avulsos</mat-option>
           </mat-select>
         </mat-form-field>
 
@@ -30,8 +37,58 @@
         </button>
       </form>
 
+      @if (
+        workspace.isStandaloneScope() &&
+        permissions.hasAny([Permission.CertificateConfig.Create, Permission.CertificateConfig.Update])
+      ) {
+        <form [formGroup]="workspace.folderForm" class="compact-form">
+          <mat-form-field>
+            <mat-label>Emoji</mat-label>
+            <input matInput formControlName="emoji" maxlength="8" />
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>Nome da pasta</mat-label>
+            <input matInput formControlName="name" />
+          </mat-form-field>
+
+          @if (permissions.has(Permission.CertificateConfig.Create)) {
+            <button mat-stroked-button type="button" (click)="workspace.startNewFolder()">
+              <mat-icon>add</mat-icon>
+              Nova pasta
+            </button>
+          }
+          @if (
+            (workspace.folderForm.controls.id.value && permissions.has(Permission.CertificateConfig.Update)) ||
+            (!workspace.folderForm.controls.id.value && permissions.has(Permission.CertificateConfig.Create))
+          ) {
+            <button mat-flat-button type="button" (click)="workspace.saveCertificateFolder()">
+              <mat-icon>save</mat-icon>
+              Salvar pasta
+            </button>
+          }
+        </form>
+      }
+
       <mat-list class="result-list">
-        @if (workspace.targetFiltersForm.controls.scope.value === 'EVENT') {
+        @if (workspace.targetFiltersForm.controls.scope.value === 'OTHER') {
+          @for (folder of workspace.certificateFolders(); track folder.id) {
+            <mat-list-item
+              (click)="workspace.selectTarget(folder)"
+              [class.selected-list-item]="workspace.selectedTarget()?.id === folder.id">
+              <span matListItemTitle class="list-title">
+                <app-twemoji [emoji]="folder.emoji" />
+                <span>{{ folder.name }}</span>
+              </span>
+              <span matListItemLine>Certificados avulsos</span>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhuma pasta encontrada</span>
+              <span matListItemLine>Crie uma pasta para organizar certificados avulsos.</span>
+            </mat-list-item>
+          }
+        } @else if (workspace.targetFiltersForm.controls.scope.value === 'EVENT') {
           @for (eventItem of workspace.issuableEvents(); track eventItem.id) {
             <mat-list-item
               (click)="workspace.selectTarget(eventItem)"
@@ -203,7 +260,13 @@
         <div class="panel-heading">
           <div>
             <h3>{{ workspace.selectedTarget()?.name }}</h3>
-            <p>Edição de certificado e emissão manual.</p>
+            <p>
+              {{
+                workspace.isStandaloneScope()
+                  ? 'Configuração e emissão manual de certificados avulsos.'
+                  : 'Edição de certificado e emissão manual.'
+              }}
+            </p>
           </div>
 
           <div class="panel-actions">
@@ -212,10 +275,12 @@
               Limpar
             </button>
             @if (canEditSelectedTarget()) {
-              <button mat-stroked-button type="button" (click)="workspace.issueMissedCertificates()">
-                <mat-icon>auto_awesome</mat-icon>
-                Lançar correções e Emitir pendentes
-              </button>
+              @if (!workspace.isStandaloneScope()) {
+                <button mat-stroked-button type="button" (click)="workspace.issueMissedCertificates()">
+                  <mat-icon>auto_awesome</mat-icon>
+                  Lançar correções e Emitir pendentes
+                </button>
+              }
               <button mat-flat-button type="button" (click)="workspace.saveCertificateConfig()">
                 <mat-icon>save</mat-icon>
                 Salvar
@@ -243,18 +308,27 @@
               </mat-select>
             </mat-form-field>
 
-            <mat-form-field>
-              <mat-label>Emitir para</mat-label>
-              <mat-select
-                [formField]="workspace.certificateConfigForm.issuedTo"
-                (selectionChange)="workspace.onCertificateIssuedToChanged($event.value)">
-                <mat-option value="ATTENDEE">Participantes</mat-option>
-                <mat-option value="LECTURER_PALESTRA">Palestrantes</mat-option>
-                <mat-option value="LECTURER_MINICURSO">Ministrantes</mat-option>
-                <mat-option value="LECTURER"> Outro palestrante/ministrante </mat-option>
-                <mat-option value="OTHER">Manual</mat-option>
-              </mat-select>
-            </mat-form-field>
+            @if (workspace.isStandaloneScope()) {
+              <mat-form-field>
+                <mat-label>Emitir para</mat-label>
+                <mat-select value="OTHER" disabled>
+                  <mat-option value="OTHER">Manual</mat-option>
+                </mat-select>
+              </mat-form-field>
+            } @else {
+              <mat-form-field>
+                <mat-label>Emitir para</mat-label>
+                <mat-select
+                  [formField]="workspace.certificateConfigForm.issuedTo"
+                  (selectionChange)="workspace.onCertificateIssuedToChanged($event.value)">
+                  <mat-option value="ATTENDEE">Participantes</mat-option>
+                  <mat-option value="LECTURER_PALESTRA">Palestrantes</mat-option>
+                  <mat-option value="LECTURER_MINICURSO">Ministrantes</mat-option>
+                  <mat-option value="LECTURER"> Outro palestrante/ministrante </mat-option>
+                  <mat-option value="OTHER">Manual</mat-option>
+                </mat-select>
+              </mat-form-field>
+            }
 
             @if (workspace.shouldShowCertificateTypeLabel()) {
               <mat-form-field>
@@ -266,9 +340,11 @@
 
           <div class="checkbox-grid">
             <mat-checkbox [formField]="workspace.certificateConfigForm.isActive"> Ativa </mat-checkbox>
-            <mat-checkbox [formField]="workspace.certificateConfigForm.shouldAutofillSecondPage">
-              Preencher verso com dados dos eventos
-            </mat-checkbox>
+            @if (!workspace.isStandaloneScope()) {
+              <mat-checkbox [formField]="workspace.certificateConfigForm.shouldAutofillSecondPage">
+                Preencher verso com dados dos eventos
+              </mat-checkbox>
+            }
           </div>
 
           <div class="field-grid">
@@ -410,8 +486,14 @@
       } @else {
         <div class="empty-state">
           <mat-icon>workspace_premium</mat-icon>
-          <h3>Selecione um alvo</h3>
-          <p>Escolha um evento, grupo ou grande evento para configurar.</p>
+          <h3>{{ workspace.isStandaloneScope() ? 'Selecione uma pasta' : 'Selecione um alvo' }}</h3>
+          <p>
+            {{
+              workspace.isStandaloneScope()
+                ? 'Escolha ou crie uma pasta para configurar certificados avulsos.'
+                : 'Escolha um evento, grupo ou grande evento para configurar.'
+            }}
+          </p>
         </div>
       }
     </section>

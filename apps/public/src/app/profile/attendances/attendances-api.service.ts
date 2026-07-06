@@ -22,6 +22,7 @@ import type {
   EventDetails,
   EventGroupDetails,
   MajorEventDetails,
+  StandaloneCertificateFolderItem,
   SubscribedItem,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
@@ -36,6 +37,7 @@ export type {
   EventDetails,
   EventGroupDetails,
   MajorEventDetails,
+  StandaloneCertificateFolderItem,
   SubscribedItem,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
@@ -158,6 +160,7 @@ export class AttendancesApiService {
     return this.query<{
       currentUserMajorEventFeed: CurrentUserMajorEventFeedItem[];
       currentUserSubscriptionFeed: CurrentUserSubscriptionFeedResponse;
+      currentUserStandaloneCertificateFolders: StandaloneCertificateFolderItem[];
       currentUserEventAttendances: CurrentUserEventAttendance[];
     }>(
       `
@@ -223,6 +226,15 @@ export class AttendancesApiService {
             eventId
             attendedAt
           }
+
+          currentUserStandaloneCertificateFolders {
+            id
+            name
+            emoji
+            certificates {
+              ${CERTIFICATE_FIELDS}
+            }
+          }
         }
 
     `,
@@ -230,6 +242,7 @@ export class AttendancesApiService {
       map((data) => ({
         majorEventItems: data.currentUserMajorEventFeed,
         eventItems: this.mapSubscriptionFeedItems(data.currentUserSubscriptionFeed.items ?? []),
+        standaloneCertificateFolders: data.currentUserStandaloneCertificateFolders ?? [],
         attendances: data.currentUserEventAttendances,
       })),
     );

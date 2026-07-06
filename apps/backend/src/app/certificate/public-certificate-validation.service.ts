@@ -49,7 +49,12 @@ const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
     select: {
       name: true,
       scope: true,
+      isActive: true,
       issuedTo: true,
+      certificateText: true,
+      shouldAutofillSecondPage: true,
+      secondPageText: true,
+      certificateTypeLabel: true,
       certificateFields: true,
       event: {
         select: CERTIFICATE_VALIDATION_EVENT_SELECT,
@@ -69,6 +74,13 @@ const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
           emoji: true,
           deletedAt: true,
           publicationState: true,
+        },
+      },
+      folder: {
+        select: {
+          id: true,
+          name: true,
+          emoji: true,
         },
       },
     },
@@ -100,6 +112,10 @@ export class PublicCertificateValidationService {
       where: {
         id: normalizedCertificateId,
         deletedAt: null,
+        config: {
+          deletedAt: null,
+          isActive: true,
+        },
       },
       select: PUBLIC_CERTIFICATE_VALIDATION_SELECT,
     });
@@ -118,6 +134,11 @@ export class PublicCertificateValidationService {
       maskedIdentityDocument: this.maskCpf(certificate.person.identityDocument, certificate.person.isCPF),
       scope: certificate.config.scope as CertificateScope,
       certificateName: certificate.config.name,
+      issuedTo: certificate.config.issuedTo as CertificateIssuedTo,
+      certificateTypeLabel: certificate.config.certificateTypeLabel,
+      certificateText: certificate.config.certificateText,
+      shouldAutofillSecondPage: certificate.config.shouldAutofillSecondPage,
+      secondPageText: certificate.config.secondPageText,
       targetName: this.getTargetName(certificate, publiclyVisibleEvents),
       targetEmoji: this.getTargetEmoji(certificate),
       sections,
@@ -452,6 +473,10 @@ export class PublicCertificateValidationService {
       return undefined;
     }
 
+    if (certificate.config.scope === CertificateScope.OTHER) {
+      return certificate.config.folder?.name ?? undefined;
+    }
+
     return (
       certificate.config.majorEvent?.name ??
       certificate.config.eventGroup?.name ??
@@ -473,6 +498,10 @@ export class PublicCertificateValidationService {
       !this.isCertificateMajorEventPublic(certificate)
     ) {
       return undefined;
+    }
+
+    if (certificate.config.scope === CertificateScope.OTHER) {
+      return certificate.config.folder?.emoji ?? undefined;
     }
 
     return certificate.config.majorEvent?.emoji ?? certificate.config.event?.emoji ?? undefined;

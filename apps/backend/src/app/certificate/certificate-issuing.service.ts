@@ -444,6 +444,10 @@ export class CertificateIssuingService {
       return config.majorEvent?.name ?? null;
     }
 
+    if (config.scope === CertificateScope.OTHER) {
+      return config.folder?.name ?? null;
+    }
+
     return null;
   }
 
@@ -459,7 +463,9 @@ export class CertificateIssuingService {
         ? config.event
         : config.scope === CertificateScope.EVENT_GROUP
           ? config.eventGroup
-          : config.majorEvent;
+          : config.scope === CertificateScope.MAJOR_EVENT
+            ? config.majorEvent
+            : config.folder;
     const targetName = target?.name ?? '';
     return {
       scope: config.scope,

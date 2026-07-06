@@ -131,6 +131,25 @@ describe('FrozenResourceService', () => {
     );
   });
 
+  it('freezes standalone certificate configs by their creation date', async () => {
+    const service = new FrozenResourceService({
+      certificateConfig: {
+        findFirst: jest.fn().mockResolvedValue({
+          scope: CertificateScope.OTHER,
+          majorEventId: null,
+          eventGroupId: null,
+          eventId: null,
+          folderId: 'folder-1',
+          createdAt: new Date('2026-01-01T12:00:00.000Z'),
+        }),
+      },
+    } as unknown as PrismaService);
+
+    await expect(service.assertCertificateConfigMutable('config-1', buildUser([]), 'edit')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
   it('checks certificate config bypass after resolving the target context', async () => {
     const user = buildUser([]);
     const authorizationPolicy = {

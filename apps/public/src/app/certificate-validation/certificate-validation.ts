@@ -22,7 +22,7 @@ import type {
   PublicCertificateValidation,
   PublicCertificateValidationEvent,
 } from '@cacic-fct/event-manager-public-contracts';
-import { TURNSTILE_ACTIONS, formatCreditMinutes, formatDateRange } from '@cacic-fct/shared-utils';
+import { TURNSTILE_ACTIONS, formatCreditMinutes, formatDateRange, formatDateTime } from '@cacic-fct/shared-utils';
 import { Subscription, combineLatest, distinctUntilChanged, finalize, map } from 'rxjs';
 import { CertificateFileDownloadService } from '../shared/certificate-file-download.service';
 import { EmojiService } from '../shared/emoji.service';
@@ -139,7 +139,14 @@ export class CertificateValidation {
 
         if (!certificateId) {
           this.cancelPendingValidation();
-          this.state.set({ status: 'idle' });
+          this.state.set(
+            invalidId
+              ? {
+                  status: 'error',
+                  message: 'Certificado não encontrado.',
+                }
+              : { status: 'idle' },
+          );
           return;
         }
 
@@ -267,12 +274,37 @@ export class CertificateValidation {
     return formatDateRange(event.startDate, event.endDate);
   }
 
+  formatIssuedAt(certificate: PublicCertificateValidation): string {
+    return formatDateTime(certificate.issuedAt);
+  }
+
   formatCredit(creditMinutes: number | null | undefined): string {
     if (creditMinutes == null) {
       return 'Carga horária não informada';
     }
 
     return formatCreditMinutes(creditMinutes);
+  }
+
+  certificateTypeLabel(certificate: PublicCertificateValidation): string {
+    const customLabel = certificate.certificateTypeLabel?.trim();
+    if (customLabel) {
+      return customLabel;
+    }
+
+    if (certificate.issuedTo === 'LECTURER') {
+      return 'Ministrante';
+    }
+
+    if (certificate.issuedTo === 'ATTENDEE') {
+      return 'Participação';
+    }
+
+    return 'Certificado avulso';
+  }
+
+  hasActivitySections(certificate: PublicCertificateValidation): boolean {
+    return certificate.sections.some((section) => section.events.length > 0);
   }
 
   challengeMessage(source: ValidationSource): string {

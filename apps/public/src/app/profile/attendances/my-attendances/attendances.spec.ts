@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
@@ -9,6 +10,7 @@ import { CertificateFileDownloadService } from '../../../shared/certificate-file
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import { Attendances } from './attendances';
+import { CertificateDialog } from './certificate-dialog/certificate-dialog';
 
 describe('Attendances', () => {
   it('lists online subscriptions and stores the feed for offline use', async () => {
@@ -18,6 +20,7 @@ describe('Attendances', () => {
 
     expect(fixture.nativeElement.textContent).toContain('SECOMPP');
     expect(fixture.nativeElement.textContent).toContain('Oficina pública');
+    expect(fixture.nativeElement.textContent).toContain('Atividades complementares');
     expect(offlineData.replaceAttendanceFeed).toHaveBeenCalledWith('user-1', subscriptionsFeedFixture);
   });
 
@@ -72,6 +75,23 @@ describe('Attendances', () => {
     expect(snackBar.open).toHaveBeenCalledWith('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
     expect(component.isDownloadingCertificates()).toBe(false);
   });
+
+  it('opens standalone certificate folders in the certificate dialog', async () => {
+    const { component, dialog } = await createFixture();
+    const folder = subscriptionsFeedFixture.standaloneCertificateFolders[0];
+
+    component.openStandaloneCertificates(folder);
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      CertificateDialog,
+      expect.objectContaining({
+        data: {
+          title: 'Atividades complementares',
+          certificates: folder.certificates,
+        },
+      }),
+    );
+  });
 });
 
 async function createFixture({
@@ -96,6 +116,7 @@ async function createFixture({
   component: Attendances;
   fileDownload: { save: ReturnType<typeof vi.fn> };
   fixture: ComponentFixture<Attendances>;
+  dialog: { open: ReturnType<typeof vi.fn> };
   offlineData: {
     getAttendanceFeed: ReturnType<typeof vi.fn>;
     getLatestUserSnapshot: ReturnType<typeof vi.fn>;
@@ -124,6 +145,9 @@ async function createFixture({
     save: vi.fn(),
   };
   const snackBar = {
+    open: vi.fn(),
+  };
+  const dialog = {
     open: vi.fn(),
   };
 
@@ -160,8 +184,13 @@ async function createFixture({
         provide: MatSnackBar,
         useValue: snackBar,
       },
+      {
+        provide: MatDialog,
+        useValue: dialog,
+      },
     ],
   })
+    .overrideProvider(MatDialog, { useValue: dialog })
     .overrideProvider(MatSnackBar, { useValue: snackBar })
     .compileComponents();
 
@@ -171,6 +200,7 @@ async function createFixture({
   return {
     api,
     component: fixture.componentInstance,
+    dialog,
     fileDownload,
     fixture,
     offlineData,
@@ -231,6 +261,36 @@ const subscriptionsFeedFixture = {
         isLecturer: false,
         hasIssuedCertificate: true,
       },
+    },
+  ],
+  standaloneCertificateFolders: [
+    {
+      id: 'folder-1',
+      name: 'Atividades complementares',
+      emoji: '🏅',
+      certificates: [
+        {
+          id: 'standalone-certificate-1',
+          configId: 'standalone-config-1',
+          issuedAt: '2026-07-04T12:00:00.000Z',
+          config: {
+            id: 'standalone-config-1',
+            name: 'Certificado avulso',
+            scope: 'OTHER' as const,
+            certificateText: 'Certificamos a participação.',
+            certificateTemplate: {
+              id: 'template-1',
+              name: 'Modelo',
+              version: 1,
+            },
+          },
+          certificateTemplate: {
+            id: 'template-1',
+            name: 'Modelo',
+            version: 1,
+          },
+        },
+      ],
     },
   ],
   attendances: [{ eventId: 'event-1', attendedAt: '2026-07-01T12:30:00.000Z' }],

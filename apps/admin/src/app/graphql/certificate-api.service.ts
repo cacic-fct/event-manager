@@ -6,6 +6,8 @@ import {
   CertificateConfig,
   CertificateConfigInput,
   CertificateDownload,
+  CertificateFolder,
+  CertificateFolderInput,
   CertificateReissueResult,
   CertificateScope,
   CertificateTemplate,
@@ -18,6 +20,7 @@ import {
   CERTIFICATE_CONFIG_FIELDS,
   CERTIFICATE_DOWNLOAD_FIELDS,
   CERTIFICATE_FIELDS,
+  CERTIFICATE_FOLDER_FIELDS,
   CERTIFICATE_TEMPLATE_FIELDS,
   EVENT_CERTIFICATE_TARGET_FIELDS,
   EVENT_GROUP_CERTIFICATE_TARGET_FIELDS,
@@ -77,6 +80,36 @@ export class CertificateApiService {
         filters,
       )
       .pipe(map((data) => data.certificateIssuableMajorEvents));
+  }
+
+  listCertificateFolders(filters?: { query?: string; skip?: number; take?: number }) {
+    return this.graphqlHttp
+      .request<{ certificateFolders: CertificateFolder[] }>(
+        `query ListCertificateFolders(
+          $query: String
+          $skip: Int
+          $take: Int
+        ) {
+          certificateFolders(query: $query, skip: $skip, take: $take) {
+            ${CERTIFICATE_FOLDER_FIELDS}
+          }
+        }`,
+        filters,
+      )
+      .pipe(map((data) => data.certificateFolders));
+  }
+
+  getCertificateFolder(id: string) {
+    return this.graphqlHttp
+      .request<{ certificateFolder: CertificateFolder }>(
+        `query CertificateFolder($id: String!) {
+          certificateFolder(id: $id) {
+            ${CERTIFICATE_FOLDER_FIELDS}
+          }
+        }`,
+        { id },
+      )
+      .pipe(map((data) => data.certificateFolder));
   }
 
   listCertificateTemplates(filters?: { query?: string; includeInactive?: boolean; skip?: number; take?: number }) {
@@ -191,6 +224,35 @@ export class CertificateApiService {
         { input },
       )
       .pipe(map((data) => data.createCertificateConfig));
+  }
+
+  createCertificateFolder(input: CertificateFolderInput) {
+    return this.graphqlHttp
+      .request<{ createCertificateFolder: CertificateFolder }>(
+        `mutation CreateCertificateFolder($input: CertificateFolderCreateInput!) {
+          createCertificateFolder(input: $input) {
+            ${CERTIFICATE_FOLDER_FIELDS}
+          }
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.createCertificateFolder));
+  }
+
+  updateCertificateFolder(id: string, input: CertificateFolderInput) {
+    return this.graphqlHttp
+      .request<{ updateCertificateFolder: CertificateFolder }>(
+        `mutation UpdateCertificateFolder(
+          $id: String!
+          $input: CertificateFolderUpdateInput!
+        ) {
+          updateCertificateFolder(id: $id, input: $input) {
+            ${CERTIFICATE_FOLDER_FIELDS}
+          }
+        }`,
+        { id, input },
+      )
+      .pipe(map((data) => data.updateCertificateFolder));
   }
 
   updateCertificateConfig(id: string, input: CertificateConfigInput) {

@@ -15,7 +15,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { Certificate, CertificateConfig } from '@cacic-fct/event-manager-admin-contracts';
-import { isFrozenEvent, isFrozenEventGroup, isFrozenMajorEvent } from '../../../shared/frozen-resource';
+import {
+  isFrozenEvent,
+  isFrozenEventGroup,
+  isFrozenFromDates,
+  isFrozenMajorEvent,
+} from '../../../shared/frozen-resource';
 import { WorkspaceCertificatesService } from '../../../shared/services/workspace-certificates.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 
@@ -84,6 +89,10 @@ export class WorkspaceCertificatesTabComponent {
     }
 
     const scope = this.workspace.targetFiltersForm.controls.scope.value;
+    if (scope === 'OTHER') {
+      return false;
+    }
+
     if (scope === 'EVENT') {
       return isFrozenEvent(this.workspace.issuableEvents().find((eventItem) => eventItem.id === target.id));
     }
@@ -107,6 +116,10 @@ export class WorkspaceCertificatesTabComponent {
 
     if (config.majorEvent) {
       return isFrozenMajorEvent(config.majorEvent);
+    }
+
+    if (config.scope === 'OTHER') {
+      return isFrozenFromDates([config.createdAt]);
     }
 
     return this.selectedTargetFrozen();

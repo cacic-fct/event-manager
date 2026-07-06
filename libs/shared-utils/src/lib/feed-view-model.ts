@@ -23,6 +23,20 @@ export function sortSubscriptionsFeed(feed: SubscriptionsFeed): SubscriptionsFee
       compareIsoDateDesc(left.majorEvent.startDate, right.majorEvent.startDate),
     ),
     eventItems: [...feed.eventItems].sort((left, right) => compareIsoDateDesc(left.startDate, right.startDate)),
+    standaloneCertificateFolders: [...(feed.standaloneCertificateFolders ?? [])].sort((left, right) => {
+      const leftIssuedAt = left.certificates[0]?.issuedAt;
+      const rightIssuedAt = right.certificates[0]?.issuedAt;
+      const dateComparison =
+        leftIssuedAt && rightIssuedAt
+          ? compareIsoDateDesc(leftIssuedAt, rightIssuedAt)
+          : leftIssuedAt
+            ? -1
+            : rightIssuedAt
+              ? 1
+              : 0;
+
+      return dateComparison || left.name.localeCompare(right.name, 'pt-BR');
+    }),
   };
 }
 

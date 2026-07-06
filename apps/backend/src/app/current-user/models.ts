@@ -1,5 +1,6 @@
 import {
   AuthenticatedUser as AuthenticatedUserObject,
+  Certificate,
   Person,
   SubmitEventFormResponseInput,
   User,
@@ -183,6 +184,21 @@ export class CurrentUserEventParticipation {
 
   @Field(() => Boolean)
   hasIssuedCertificate!: boolean;
+}
+
+@ObjectType()
+export class CurrentUserStandaloneCertificateFolder {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  emoji!: string;
+
+  @Field(() => [Certificate])
+  certificates!: Certificate[];
 }
 
 @ObjectType()

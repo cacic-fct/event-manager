@@ -25,7 +25,10 @@ import { AttendancesApiService } from '../attendances-api.service';
 import { EmojiService } from '../../../shared/emoji.service';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
+import { CertificateDialog, CertificateDialogData } from './certificate-dialog/certificate-dialog';
+import type { StandaloneCertificateFolderItem } from '@cacic-fct/shared-utils';
 
 type FeedState =
   | { status: 'loading' }
@@ -44,6 +47,7 @@ type FeedState =
     RouterLink,
     MatToolbarModule,
     MatButtonModule,
+    MatDialogModule,
     MatSnackBarModule,
   ],
 })
@@ -54,6 +58,7 @@ export class Attendances {
   private readonly offlineData = inject(OfflinePublicDataAccessService);
   private readonly certificateFileDownload = inject(CertificateFileDownloadService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   readonly emoji = inject(EmojiService);
   readonly isDownloadingCertificates = signal(false);
 
@@ -112,6 +117,21 @@ export class Attendances {
     return getMajorEventStatusLine(subscription);
   }
 
+  standaloneCertificateLine(folder: StandaloneCertificateFolderItem): string {
+    const count = folder.certificates.length;
+    return count === 1 ? '1 certificado disponível' : `${count} certificados disponíveis`;
+  }
+
+  openStandaloneCertificates(folder: StandaloneCertificateFolderItem): void {
+    this.dialog.open<CertificateDialog, CertificateDialogData>(CertificateDialog, {
+      data: {
+        title: folder.name,
+        certificates: folder.certificates,
+      },
+      width: 'min(560px, 96vw)',
+    });
+  }
+
   downloadCertificatesArchive(): void {
     if (this.isDownloadingCertificates()) {
       return;
@@ -147,6 +167,7 @@ export class Attendances {
       return of({
         majorEventItems: [],
         eventItems: [],
+        standaloneCertificateFolders: [],
         attendances: [],
       } satisfies SubscriptionsFeed);
     }
@@ -165,6 +186,7 @@ export class Attendances {
       feed ?? {
         majorEventItems: [],
         eventItems: [],
+        standaloneCertificateFolders: [],
         attendances: [],
       }
     );
