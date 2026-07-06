@@ -9,6 +9,7 @@ import {
   type PublicEvent,
   type PublicEventSubscriptionSummary,
   type PublicEventWeather,
+  type SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
 import type { CurrentUserEventAttendance, CurrentUserEventSubscription } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
@@ -128,16 +129,19 @@ export class EventApiService {
     );
   }
 
-  subscribeToEvent(eventId: string): Observable<PublicEvent> {
+  subscribeToEvent(eventId: string, formResponses?: SubmitPublicEventFormResponseInput[]): Observable<PublicEvent> {
     return this.query<{ subscribeCurrentUserStandaloneEvent: PublicEvent }>(
       `
-        mutation SubscribeCurrentUserStandaloneEvent($eventId: String!) {
-          subscribeCurrentUserStandaloneEvent(eventId: $eventId) {
+        mutation SubscribeCurrentUserStandaloneEvent(
+          $eventId: String!
+          $formResponses: [SubmitEventFormResponseInput!]
+        ) {
+          subscribeCurrentUserStandaloneEvent(eventId: $eventId, formResponses: $formResponses) {
             id
           }
         }
       `,
-      { eventId },
+      { eventId, formResponses },
     ).pipe(map((data) => data.subscribeCurrentUserStandaloneEvent));
   }
 

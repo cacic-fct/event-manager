@@ -12,8 +12,15 @@ import {
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
-import type { PublicEvent, PublicLecturerProfile } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, MailtoService } from '@cacic-fct/shared-angular';
+import type {
+  EventFormTargetType,
+  PublicEvent,
+  PublicEventForm,
+  PublicEventFormLink,
+  PublicLecturerProfile,
+  SubmitPublicEventFormResponseInput,
+} from '@cacic-fct/event-manager-public-contracts';
+import { AuthService, MailtoService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
 import {
   formatDateRange,
   getEventTypeLabel,
@@ -21,7 +28,7 @@ import {
 } from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatDialogModule } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -29,13 +36,21 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { isAfter, isBefore, parseISO } from 'date-fns';
-import { Observable, catchError, combineLatest, finalize, map, of, startWith, switchMap } from 'rxjs';
+import { EMPTY, Observable, catchError, combineLatest, finalize, forkJoin, map, of, startWith, switchMap } from 'rxjs';
 import { EventApiService, EventPageData } from './event-api.service';
 import { EventLocationMap } from './components/event-location-map';
 import { EventSubscriptionRealtimeService } from './event-subscription-realtime.service';
 import { EmojiService } from '../shared/emoji.service';
 import { NetworkStatusService } from '../shared/network-status.service';
 import { RateLimitError, createRateLimitCooldown } from '../shared/rate-limit-error';
+import { PublicEventFormApiService } from '../forms/event-form-api.service';
+import {
+  ConfirmSubscriptionDialog,
+  type ConfirmSubscriptionDialogData,
+  type ConfirmSubscriptionDialogResult,
+  type SubscriptionFormAnswer,
+  type SubscriptionFormContext,
+} from '../major-event/subscription/confirm-subscription-dialog';
 
 type EventPageState =
   | { status: 'loading' }
@@ -64,7 +79,9 @@ type EventPageState =
 export class Event {
   private readonly api = inject(EventApiService);
   private readonly authService = inject(AuthService);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly formsApi = inject(PublicEventFormApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sanitizer = inject(DomSanitizer);
@@ -177,9 +194,35 @@ export class Event {
 
     this.isSubscribing.set(true);
 
-    this.api
-      .subscribeToEvent(data.event.id)
+    this.loadSubscriptionForms(data)
       .pipe(
+        switchMap((forms) => {
+          if (forms.length === 0) {
+            return this.api.subscribeToEvent(data.event.id);
+          }
+
+          return this.dialog
+            .open<ConfirmSubscriptionDialog, ConfirmSubscriptionDialogData, ConfirmSubscriptionDialogResult>(
+              ConfirmSubscriptionDialog,
+              {
+                data: {
+                  event: data.event,
+                  events: [data.event],
+                  forms,
+                },
+                width: 'min(720px, 96vw)',
+                maxHeight: '90vh',
+              },
+            )
+            .afterClosed()
+            .pipe(
+              switchMap((result) =>
+                result?.confirmed
+                  ? this.api.subscribeToEvent(data.event.id, this.toSubmitFormResponses(result.answers))
+                  : EMPTY,
+              ),
+            );
+        }),
         finalize(() => this.isSubscribing.set(false)),
         takeUntilDestroyed(this.destroyRef),
       )
@@ -471,6 +514,115 @@ export class Event {
 
   hasStandaloneSubscription(event: PublicEvent): boolean {
     return Boolean(event.allowSubscription) && !event.majorEventId;
+  }
+
+  private loadSubscriptionForms(data: EventPageData) {
+    const target = {
+      targetType: 'EVENT' as const,
+      targetId: data.event.id,
+      targetName: data.event.name,
+    };
+
+    return this.formsApi
+      .listCurrentUserForms({
+        targetType: target.targetType,
+        eventId: target.targetId,
+        majorEventId: null,
+        subscriptionFlowOnly: true,
+      })
+      .pipe(
+        map((forms) => {
+          const seen = new Set<string>();
+          return forms
+            .flatMap((form) => this.toSubscriptionFormContexts(form, target))
+            .filter((form) => {
+              const key = `${form.form.id}:${form.linkId ?? 'sem-vinculo'}:${form.targetType}:${form.targetId}`;
+              if (seen.has(key)) {
+                return false;
+              }
+              seen.add(key);
+              return true;
+            })
+            .sort((left, right) => this.formDisplayOrder(left) - this.formDisplayOrder(right));
+        }),
+        switchMap((forms) =>
+          forms.length > 0
+            ? forkJoin(forms.map((form) => this.loadExistingFormAnswer(form)))
+            : of([] satisfies SubscriptionFormContext[]),
+        ),
+      );
+  }
+
+  private toSubscriptionFormContexts(
+    form: PublicEventForm,
+    target: { targetType: EventFormTargetType; targetId: string; targetName: string },
+  ): SubscriptionFormContext[] {
+    const links = form.links.filter((item) => this.isEligibleSubscriptionFlowLink(item, target));
+    const matchingLinks = links.length > 0 ? links : [null];
+
+    return matchingLinks.map((link) => ({
+      form,
+      targetType: target.targetType,
+      targetId: target.targetId,
+      targetName: target.targetName,
+      linkId: link?.id ?? null,
+      requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
+      enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
+      initialAnswers: [],
+    }));
+  }
+
+  private loadExistingFormAnswer(form: SubscriptionFormContext) {
+    return this.formsApi
+      .getCurrentUserResponse({
+        formId: form.form.id,
+        linkId: form.linkId,
+        targetType: form.targetType,
+        eventId: form.targetId,
+        majorEventId: null,
+      })
+      .pipe(
+        map((response) => ({
+          ...form,
+          initialAnswers: parseFormAnswersJson(response?.answersJson),
+        })),
+      );
+  }
+
+  private formDisplayOrder(form: SubscriptionFormContext): number {
+    return form.form.links.find((link) => link.id === form.linkId)?.displayOrder ?? Number.MAX_SAFE_INTEGER;
+  }
+
+  private isEligibleSubscriptionFlowLink(
+    link: PublicEventFormLink,
+    target: { targetType: EventFormTargetType; targetId: string },
+  ): boolean {
+    if (
+      !link.insertInSubscriptionFlow ||
+      link.targetType !== target.targetType ||
+      (link.eventId ?? null) !== target.targetId ||
+      link.majorEventId != null
+    ) {
+      return false;
+    }
+
+    const now = Date.now();
+    const availableFrom = link.availableFrom ? Date.parse(link.availableFrom) : null;
+    const availableUntil = link.availableUntil ? Date.parse(link.availableUntil) : null;
+    return (
+      (availableFrom === null || Number.isNaN(availableFrom) || availableFrom <= now) &&
+      (availableUntil === null || Number.isNaN(availableUntil) || availableUntil > now)
+    );
+  }
+
+  private toSubmitFormResponses(formAnswers: SubscriptionFormAnswer[]): SubmitPublicEventFormResponseInput[] {
+    return formAnswers.map((answer) => ({
+      formId: answer.formId,
+      linkId: answer.linkId,
+      targetType: 'EVENT',
+      eventId: answer.targetId,
+      answersJson: JSON.stringify(answer.answers),
+    }));
   }
 
   private showError(error: unknown): void {

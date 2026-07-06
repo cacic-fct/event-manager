@@ -154,4 +154,45 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     });
     expect(mapper.mapCurrentUserEventSubscription).toHaveBeenCalledWith(subscription);
   });
+
+  it('passes standalone subscription form responses into the subscription transaction', async () => {
+    const formResponses = [
+      {
+        formId: 'form-1',
+        linkId: 'link-1',
+        targetType: 'EVENT' as const,
+        eventId: 'event-1',
+        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'M' }]),
+      },
+    ];
+    const currentUserContext = {
+      getAuthenticatedUser: jest.fn().mockReturnValue({ sub: 'user-1' }),
+      requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'person-1' }),
+    };
+    const eventSubscriptions = {
+      subscribeCurrentUserEvent: jest.fn().mockResolvedValue({ id: 'event-1' }),
+    };
+    const resolver = new CurrentUserEventSubscriptionsResolver(
+      {} as never,
+      currentUserContext as never,
+      {} as never,
+      eventSubscriptions as never,
+      frozenResources as never,
+    );
+
+    await expect(
+      resolver.subscribeCurrentUserStandaloneEvent(
+        'event-1',
+        formResponses,
+        { req: { user: { sub: 'user-1' } } } as never,
+      ),
+    ).resolves.toEqual({ id: 'event-1' });
+
+    expect(eventSubscriptions.subscribeCurrentUserEvent).toHaveBeenCalledWith(
+      'person-1',
+      'event-1',
+      { sub: 'user-1' },
+      formResponses,
+    );
+  });
 });

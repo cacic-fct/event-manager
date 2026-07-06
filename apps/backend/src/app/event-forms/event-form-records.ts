@@ -85,6 +85,6 @@ export type NormalizedTarget = {
 export type ResultViewer = 'admin' | 'lecturer' | 'public' | 'self';
 
 export type SubscriptionFlowTargetScope = {
-  majorEventId: string;
+  majorEventId: string | null;
   selectedEventIds: Set<string>;
 };

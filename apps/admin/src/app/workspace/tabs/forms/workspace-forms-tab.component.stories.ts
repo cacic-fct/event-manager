@@ -160,12 +160,21 @@ export const MajorEventFiltered: Story = {
     lecturerPublish: false,
   },
   globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseFormsStory(canvasElement),
+  play: async ({ canvasElement }) => exerciseFormsStory(canvasElement, { selectedFormPublished: false }),
 };
 
-async function exerciseFormsStory(canvasElement: HTMLElement): Promise<void> {
+async function exerciseFormsStory(
+  canvasElement: HTMLElement,
+  options: { selectedFormPublished?: boolean } = {},
+): Promise<void> {
   const canvas = within(canvasElement);
   await expect(canvas.getByRole('button', { name: /novo/i })).toBeVisible();
+  if (options.selectedFormPublished ?? true) {
+    await expect(canvas.queryByRole('button', { name: /^salvar$/i })).not.toBeInTheDocument();
+  } else {
+    await expect(canvas.getByRole('button', { name: /^salvar$/i })).toBeVisible();
+  }
+  await expect(canvas.getByRole('button', { name: /^publicar$/i })).toBeVisible();
   await userEvent.tab();
   const enabledButton = canvas
     .queryAllByRole('button')

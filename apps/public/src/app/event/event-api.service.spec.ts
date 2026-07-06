@@ -103,6 +103,47 @@ describe('EventApiService', () => {
 
     await expect(responsePromise).rejects.toThrow('Cannot query field "slotsAvailable" on type "PublicEvent".');
   });
+
+  it('submits standalone subscription form responses with the subscription mutation', async () => {
+    const responsePromise = firstValueFrom(
+      service.subscribeToEvent('event-1', [
+        {
+          formId: 'form-1',
+          linkId: 'link-1',
+          targetType: 'EVENT',
+          eventId: 'event-1',
+          answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'M' }]),
+        },
+      ]),
+    );
+    const request = httpTesting.expectOne('/api/graphql');
+    const query = String(request.request.body.query);
+
+    expect(query).toContain('mutation SubscribeCurrentUserStandaloneEvent');
+    expect(query).toContain('formResponses: $formResponses');
+    expect(request.request.body.variables).toEqual({
+      eventId: 'event-1',
+      formResponses: [
+        {
+          formId: 'form-1',
+          linkId: 'link-1',
+          targetType: 'EVENT',
+          eventId: 'event-1',
+          answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'M' }]),
+        },
+      ],
+    });
+
+    request.flush({
+      data: {
+        subscribeCurrentUserStandaloneEvent: {
+          id: 'event-1',
+        },
+      },
+    });
+
+    await expect(responsePromise).resolves.toEqual({ id: 'event-1' });
+  });
 });
 
 function eventFixture(): PublicEvent {

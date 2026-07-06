@@ -125,14 +125,16 @@
               <mat-icon>schedule</mat-icon>
               Agendar
             </button>
-            <button
-              mat-flat-button
-              type="button"
-              [disabled]="!canEditSelected() || workspace.loading() || workspace.form.invalid"
-              (click)="workspace.save()">
-              <mat-icon>save</mat-icon>
-              Salvar
-            </button>
+            @if (!workspace.selectedFormPublished()) {
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="!canEditSelected() || workspace.loading() || workspace.form.invalid"
+                (click)="workspace.save()">
+                <mat-icon>save</mat-icon>
+                Salvar
+              </button>
+            }
             <button
               mat-flat-button
               type="button"

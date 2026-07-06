@@ -2,13 +2,15 @@
 
 <mat-dialog-content>
   <header class="dialog-header">
+    @if (subscriptionTarget(); as target) {
     <div class="emoji-frame">
-      <img class="twemoji" [src]="emoji.getTwemojiUrl(data.majorEvent.emoji)" [alt]="data.majorEvent.emoji" />
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(target.emoji)" [alt]="target.emoji" />
     </div>
     <div>
       <p>Você está se inscrevendo em</p>
-      <h3>{{ data.majorEvent.name }}</h3>
+      <h3>{{ target.name }}</h3>
     </div>
+    }
   </header>
 
   <mat-list>

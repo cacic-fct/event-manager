@@ -46,7 +46,8 @@ export interface ConfirmSubscriptionDialogResult {
 }
 
 export interface ConfirmSubscriptionDialogData {
-  majorEvent: PublicMajorEvent;
+  majorEvent?: PublicMajorEvent;
+  event?: PublicEvent;
   events: PublicEvent[];
   forms: SubscriptionFormContext[];
 }
@@ -80,6 +81,7 @@ export class ConfirmSubscriptionDialog {
 
   readonly groupedEvents = computed(() => this.groupByMonthAndDay(this.data.events));
   readonly canConfirm = computed(() => this.data.forms.every((form) => !this.hasMissingRequired(form)));
+  readonly subscriptionTarget = computed(() => this.data.majorEvent ?? this.data.event ?? this.data.events[0]);
 
   confirm(): void {
     const answers = this.data.forms

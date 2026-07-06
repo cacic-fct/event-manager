@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareAsc } from 'date-fns';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -18,6 +19,7 @@ import { CurrentUserEventGroupSubscription } from '../models';
 import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE, PublicEvent } from '../../public-events/models';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
+import { EventFormsService } from '../../event-forms/event-forms.service';
 
 export type CurrentUserSubscribedItem =
   | {
@@ -48,6 +50,10 @@ export class CurrentUserEventSubscriptionService {
     private readonly auditLog: AuditLogService = {
       record: async () => undefined,
     } as unknown as AuditLogService,
+    private readonly eventForms: EventFormsService = {
+      submitSubscriptionFlowResponses: async () => [],
+      emitResultsDeltas: async () => undefined,
+    } as unknown as EventFormsService,
   ) {}
 
   getEventSubscriptionError(
@@ -93,8 +99,10 @@ export class CurrentUserEventSubscriptionService {
     personId: string,
     eventId: string,
     actor?: AuthenticatedUser,
+    formResponses?: readonly SubmitEventFormResponseInput[] | null,
   ): Promise<PublicEvent> {
     const result = await this.runSerializableSubscriptionTransaction(async (tx) => {
+      const submittedFormIds: string[] = [];
       const targetEvent = await tx.event.findFirst({
         where: {
           AND: [PUBLIC_EVENT_WHERE, { id: eventId }],
@@ -118,10 +126,17 @@ export class CurrentUserEventSubscriptionService {
       if (targetEvent.eventGroupId) {
         const groupSubscription = await this.subscribeCurrentUserEventGroupTx(tx, personId, targetEvent.eventGroupId, now);
         await this.recordEventGroupSubscriptionChange(groupSubscription, personId, actor, tx);
+        submittedFormIds.push(
+          ...(await this.eventForms.submitSubscriptionFlowResponses(tx, personId, formResponses, {
+            majorEventId: null,
+            selectedEventIds: new Set([targetEvent.id]),
+          })),
+        );
         return {
           event: targetEvent,
           createdSubscription: null,
           createdGroupSubscription: groupSubscription.createdGroupSubscription ? groupSubscription.subscription : null,
+          submittedFormIds,
         };
       }
 
@@ -168,12 +183,25 @@ export class CurrentUserEventSubscriptionService {
           },
           tx,
         );
-        return { event: targetEvent, createdSubscription, createdGroupSubscription: null };
+        submittedFormIds.push(
+          ...(await this.eventForms.submitSubscriptionFlowResponses(tx, personId, formResponses, {
+            majorEventId: null,
+            selectedEventIds: new Set([targetEvent.id]),
+          })),
+        );
+        return { event: targetEvent, createdSubscription, createdGroupSubscription: null, submittedFormIds };
       }
 
-      return { event: targetEvent, createdSubscription: null, createdGroupSubscription: null };
+      submittedFormIds.push(
+        ...(await this.eventForms.submitSubscriptionFlowResponses(tx, personId, formResponses, {
+          majorEventId: null,
+          selectedEventIds: new Set([targetEvent.id]),
+        })),
+      );
+      return { event: targetEvent, createdSubscription: null, createdGroupSubscription: null, submittedFormIds };
     });
 
+    await this.eventForms.emitResultsDeltas(result.submittedFormIds);
     return this.mapper.mapPublicEvent(result.event);
   }
 
