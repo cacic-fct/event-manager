@@ -1,3 +1,4 @@
+import { EVENT_MANAGER_PERMISSION_CATALOG } from './permission-catalog';
 import { Permission, type PermissionRequirement } from './permission-types';
 
 export const WorkspacePermissionTab = {
@@ -219,14 +220,4 @@ export const WORKSPACE_TAB_PERMISSIONS = [
   },
 ] as const satisfies readonly WorkspaceTabPermission[];
 
-export const WORKSPACE_PERMISSION_EVALUATION_SET = [
-  ...WORKSPACE_ENTRY_PERMISSIONS,
-  ...WORKSPACE_TAB_PERMISSIONS.flatMap((tab) => [...tab.read, ...tab.edit, ...tab.delete]),
-  Permission.Frozen.Update,
-  Permission.Frozen.Delete,
-  Permission.PermissionGrant.Read,
-  Permission.PermissionGrant.Create,
-  Permission.PermissionGrant.Update,
-  Permission.PermissionGrant.Delete,
-  Permission.Receipt.Read,
-] as const satisfies PermissionRequirement;
+export const WORKSPACE_PERMISSION_EVALUATION_SET = EVENT_MANAGER_PERMISSION_CATALOG;

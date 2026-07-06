@@ -109,6 +109,9 @@ describe('WorkspacePermissionsService', () => {
     const evaluationPromise = service.evaluateWorkspacePermissions();
     const request = httpTesting.expectOne('/api/auth/permissions/evaluate');
     expect(request.request.body.permissions).toContain(Permission.Subscription.Read);
+    expect(request.request.body.permissions).toContain(Permission.EventForm.Results);
+    expect(request.request.body.permissions).toContain(Permission.EventForm.Export);
+    expect(new Set(request.request.body.permissions)).toEqual(new Set(EVENT_MANAGER_PERMISSION_CATALOG));
     request.flush({ permissions: [Permission.EventAttendance.Read, Permission.Subscription.Read, 'unknown#value'] });
     await evaluationPromise;
 
