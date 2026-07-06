@@ -22,6 +22,17 @@ describe('PersonLinkedDataDialogComponent', () => {
     expect(component.groupPage('CERTIFICATE').page?.items).toEqual([resourcePage.items[0]]);
   });
 
+  it('renders lazy-loaded resources inside the expanded group', async () => {
+    const { component, fixture } = await createFixture();
+
+    await component.onGroupExpanded(summaryGroup, true);
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector('.resource-row');
+    expect(row?.textContent).toContain('Certificado de participação');
+    expect(row?.textContent).toContain('Grande evento: CACiC Tech Week');
+  });
+
   it('renders summary items immediately when they are available', async () => {
     const groupWithItems = {
       ...summaryGroup,

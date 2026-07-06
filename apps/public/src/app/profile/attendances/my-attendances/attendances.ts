@@ -1,8 +1,10 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 import {
@@ -30,6 +32,9 @@ import { CertificateFileDownloadService } from '../../../shared/certificate-file
 import { CertificateDialog, CertificateDialogData } from './certificate-dialog/certificate-dialog';
 import type { StandaloneCertificateFolderItem } from '@cacic-fct/shared-utils';
 
+type AttendanceFilter = 'subscribed' | 'present' | 'certificate' | 'lecturer';
+type AttendanceFilterSelection = AttendanceFilter | 'none';
+
 type FeedState =
   | { status: 'loading' }
   | { status: 'ready'; data: NormalizedSubscriptionsFeed }
@@ -38,6 +43,11 @@ type FeedState =
 type NormalizedSubscriptionsFeed = Omit<SubscriptionsFeed, 'standaloneCertificateFolders'> & {
   standaloneCertificateFolders: StandaloneCertificateFolderItem[];
 };
+
+interface AttendanceFilterOption {
+  value: AttendanceFilter;
+  label: string;
+}
 
 const EMPTY_SUBSCRIPTIONS_FEED = {
   majorEventItems: [],
@@ -55,6 +65,8 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
     MatIconModule,
     MatListModule,
     MatProgressBarModule,
+    MatFormFieldModule,
+    MatSelectModule,
     RouterLink,
     MatToolbarModule,
     MatButtonModule,
@@ -72,6 +84,13 @@ export class Attendances {
   private readonly dialog = inject(MatDialog);
   readonly emoji = inject(EmojiService);
   readonly isDownloadingCertificates = signal(false);
+  readonly selectedFilters = signal<AttendanceFilter[]>([]);
+  readonly filterOptions: AttendanceFilterOption[] = [
+    { value: 'subscribed', label: 'Inscrito' },
+    { value: 'present', label: 'Presente' },
+    { value: 'certificate', label: 'Certificado emitido' },
+    { value: 'lecturer', label: 'Palestrante' },
+  ];
 
   readonly feedState = toSignal(
     this.loadFeed().pipe(
@@ -91,6 +110,52 @@ export class Attendances {
     ),
     { initialValue: { status: 'loading' } satisfies FeedState },
   );
+
+  readonly filteredFeed = computed(() => {
+    const state = this.feedState();
+    if (state.status !== 'ready') {
+      return null;
+    }
+
+    const filters = this.selectedFilters();
+    return {
+      ...state.data,
+      majorEventItems: state.data.majorEventItems.filter((item) =>
+        this.matchesMajorEventFilters(item, state.data.attendances, filters),
+      ),
+      eventItems: state.data.eventItems.filter((item) =>
+        this.matchesEventItemFilters(item, state.data.attendances, filters),
+      ),
+    } satisfies SubscriptionsFeed;
+  });
+
+  readonly filterTriggerLabel = computed(() => {
+    const filters = this.selectedFilters();
+    if (filters.length === 0) {
+      return 'Sem filtro';
+    }
+
+    return this.filterOptions
+      .filter((option) => filters.includes(option.value))
+      .map((option) => option.label)
+      .join(', ');
+  });
+
+  readonly filteredResultSummary = computed(() => {
+    const state = this.feedState();
+    const feed = this.filteredFeed();
+    if (state.status !== 'ready' || !feed) {
+      return '';
+    }
+
+    const totalCount = state.data.majorEventItems.length + state.data.eventItems.length;
+    const visibleCount = feed.majorEventItems.length + feed.eventItems.length;
+    if (this.selectedFilters().length === 0) {
+      return `${totalCount} participações`;
+    }
+
+    return `${visibleCount} de ${totalCount} participações`;
+  });
 
   majorEventRoute(subscription: CurrentUserMajorEventFeedItem): string[] {
     return ['./major-event', subscription.majorEvent.id];
@@ -124,8 +189,37 @@ export class Attendances {
     return getMajorEventDateLine(subscription);
   }
 
-  majorEventStatusLine(subscription: CurrentUserMajorEventFeedItem): string {
-    return getMajorEventStatusLine(subscription);
+  majorEventStatusLine(subscription: CurrentUserMajorEventFeedItem, attendances: SubscriptionsFeed['attendances']): string {
+    return getMajorEventStatusLine(subscription, attendances);
+  }
+
+  updateFilters(values: readonly AttendanceFilterSelection[]): void {
+    if (values.includes('none')) {
+      this.selectedFilters.set([]);
+      return;
+    }
+
+    this.selectedFilters.set(values.filter((value): value is AttendanceFilter => value !== 'none'));
+  }
+
+  hasActiveFilters(): boolean {
+    return this.selectedFilters().length > 0;
+  }
+
+  majorEventsEmptyText(totalCount: number): string {
+    if (this.hasActiveFilters() && totalCount > 0) {
+      return 'Nenhum grande evento encontrado para os filtros selecionados.';
+    }
+
+    return 'Nenhuma participação em grande evento.';
+  }
+
+  eventItemsEmptyText(totalCount: number): string {
+    if (this.hasActiveFilters() && totalCount > 0) {
+      return 'Nenhum evento avulso ou grupo encontrado para os filtros selecionados.';
+    }
+
+    return 'Nenhum evento avulso ou grupo registrado.';
   }
 
   standaloneCertificateLine(folder: StandaloneCertificateFolderItem): string {
@@ -199,5 +293,63 @@ export class Attendances {
       standaloneCertificateFolders:
         sortedFeed.standaloneCertificateFolders ?? EMPTY_SUBSCRIPTIONS_FEED.standaloneCertificateFolders,
     };
+  }
+
+  private matchesMajorEventFilters(
+    item: CurrentUserMajorEventFeedItem,
+    attendances: SubscriptionsFeed['attendances'],
+    filters: readonly AttendanceFilter[],
+  ): boolean {
+    if (filters.length === 0) {
+      return true;
+    }
+
+    return filters.some((filter) => {
+      switch (filter) {
+        case 'subscribed':
+          return item.participation.isSubscribed;
+        case 'present':
+          return attendances.some((attendance) => attendance.event?.majorEventId === item.majorEventId);
+        case 'certificate':
+          return item.participation.hasIssuedCertificate;
+        case 'lecturer':
+          return item.participation.isLecturer;
+      }
+    });
+  }
+
+  private matchesEventItemFilters(
+    item: SubscribedItem,
+    attendances: SubscriptionsFeed['attendances'],
+    filters: readonly AttendanceFilter[],
+  ): boolean {
+    if (filters.length === 0) {
+      return true;
+    }
+
+    return filters.some((filter) => {
+      switch (filter) {
+        case 'subscribed':
+          return item.participation.isSubscribed;
+        case 'present':
+          return this.eventItemHasAttendance(item, attendances);
+        case 'certificate':
+          return item.participation.hasIssuedCertificate;
+        case 'lecturer':
+          return item.participation.isLecturer;
+      }
+    });
+  }
+
+  private eventItemHasAttendance(item: SubscribedItem, attendances: SubscriptionsFeed['attendances']): boolean {
+    if (item.__typename === 'SubscribedSingleEventItem') {
+      return attendances.some((attendance) => attendance.eventId === item.event.id);
+    }
+
+    if (item.events.some((event) => attendances.some((attendance) => attendance.eventId === event.id))) {
+      return true;
+    }
+
+    return attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id);
   }
 }

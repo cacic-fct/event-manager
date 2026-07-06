@@ -5,9 +5,10 @@ import { CurrentUserEventMapperService } from '../mapper.service';
 import {
   CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
   CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT,
+  PublicEventRecord,
 } from '../selects';
 import { CurrentUserEventParticipation, CurrentUserSubscriptionFeed, CurrentUserSubscriptionFeedItem } from '../models';
-import { PUBLIC_EVENT_GROUP_SELECT, PublicEvent } from '../../public-events/models';
+import { PUBLIC_EVENT_GROUP_SELECT, PUBLIC_EVENT_WHERE } from '../../public-events/models';
 
 @Injectable()
 export class CurrentUserSubscriptionFeedService {
@@ -24,6 +25,7 @@ export class CurrentUserSubscriptionFeedService {
       lecturerEventGroups,
       certificateEvents,
       certificateEventGroups,
+      attendanceEvents,
     ] = await Promise.all([
       this.prisma.eventSubscription.findMany({
         where: {
@@ -114,6 +116,7 @@ export class CurrentUserSubscriptionFeedService {
           event: {
             select: {
               startDate: true,
+              majorEventId: true,
               eventGroupId: true,
               eventGroup: {
                 select: PUBLIC_EVENT_GROUP_SELECT,
@@ -137,6 +140,7 @@ export class CurrentUserSubscriptionFeedService {
             event: {
               deletedAt: null,
               majorEventId: null,
+              eventGroupId: null,
             },
           },
         },
@@ -202,11 +206,31 @@ export class CurrentUserSubscriptionFeedService {
           issuedAt: 'desc',
         },
       }),
+      this.prisma.eventAttendance.findMany({
+        where: {
+          personId,
+          event: {
+            AND: [PUBLIC_EVENT_WHERE],
+          },
+        },
+        select: {
+          event: {
+            select: CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT.event.select,
+          },
+        },
+        orderBy: {
+          attendedAt: 'desc',
+        },
+      }),
     ]);
 
     const subscribedEventIds = new Set(singleEventSubscriptions.map((subscription) => subscription.eventId));
     const lecturerEventIds = new Set(lecturerEvents.map(({ event }) => event.id));
-    const certificateEventsById = new Map<string, PublicEvent>();
+    const attendanceEventsById = new Map<string, PublicEventRecord>();
+    for (const { event } of attendanceEvents) {
+      attendanceEventsById.set(event.id, event);
+    }
+    const certificateEventsById = new Map<string, PublicEventRecord>();
     for (const certificate of certificateEvents) {
       const event = certificate.config.event;
       if (event) {
@@ -236,12 +260,19 @@ export class CurrentUserSubscriptionFeedService {
       ),
     );
 
-    const eventsById = new Map<string, PublicEvent>();
+    const eventsById = new Map<string, PublicEventRecord>();
+    for (const [eventId, event] of attendanceEventsById) {
+      if (!event.eventGroupId && !event.majorEventId) {
+        eventsById.set(eventId, event);
+      }
+    }
     for (const { event } of lecturerEvents) {
       eventsById.set(event.id, event);
     }
     for (const [eventId, event] of certificateEventsById) {
-      eventsById.set(eventId, event);
+      if (!event.eventGroupId && !event.majorEventId) {
+        eventsById.set(eventId, event);
+      }
     }
 
     for (const [eventId, event] of eventsById) {
@@ -251,7 +282,7 @@ export class CurrentUserSubscriptionFeedService {
 
       items.push(
         this.mapper.mapCurrentUserEventFeedItem(
-          event,
+          this.mapper.mapPublicEvent(event),
           this.buildParticipation(eventId, {
             subscribedEventIds,
             lecturerEventIds,
@@ -276,6 +307,26 @@ export class CurrentUserSubscriptionFeedService {
     }
 
     const subscribedEventGroupIds = new Set(eventGroupSubscriptions.map((subscription) => subscription.eventGroupId));
+    const attendanceEventGroupsById = new Map<
+      string,
+      {
+        eventGroup: NonNullable<PublicEventRecord['eventGroup']>;
+        firstEventStartDate: Date;
+      }
+    >();
+    for (const event of attendanceEventsById.values()) {
+      if (!event.eventGroupId || !event.eventGroup || event.majorEventId || subscribedEventGroupIds.has(event.eventGroupId)) {
+        continue;
+      }
+
+      const current = attendanceEventGroupsById.get(event.eventGroupId);
+      if (!current || event.startDate < current.firstEventStartDate) {
+        attendanceEventGroupsById.set(event.eventGroupId, {
+          eventGroup: event.eventGroup,
+          firstEventStartDate: event.startDate,
+        });
+      }
+    }
     const lecturerEventGroupsById = new Map<
       string,
       {
@@ -284,7 +335,7 @@ export class CurrentUserSubscriptionFeedService {
       }
     >();
     for (const { event } of lecturerEventGroups) {
-      if (!event.eventGroupId || !event.eventGroup || subscribedEventGroupIds.has(event.eventGroupId)) {
+      if (!event.eventGroupId || !event.eventGroup || event.majorEventId || subscribedEventGroupIds.has(event.eventGroupId)) {
         continue;
       }
 
@@ -311,6 +362,25 @@ export class CurrentUserSubscriptionFeedService {
         participation: {
           isSubscribed: false,
           isLecturer: true,
+          hasIssuedCertificate: false,
+        },
+      });
+    }
+
+    for (const [eventGroupId, group] of attendanceEventGroupsById) {
+      if (lecturerEventGroupsById.has(eventGroupId) || certificateEventGroupIds.has(eventGroupId)) {
+        continue;
+      }
+
+      items.push({
+        type: 'EVENT_GROUP',
+        eventGroupId,
+        eventGroup: this.mapper.mapPublicEventGroup(group.eventGroup),
+        date: group.firstEventStartDate,
+        createdAt: group.firstEventStartDate,
+        participation: {
+          isSubscribed: false,
+          isLecturer: false,
           hasIssuedCertificate: false,
         },
       });

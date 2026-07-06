@@ -13,6 +13,7 @@ import { MoreInfo } from './more-info';
 interface MoreInfoStoryArgs extends PublicEventStoryControls {
   hasAttendance: boolean;
   hasIssuedCertificate: boolean;
+  isSubscribed: boolean;
   isLecturer: boolean;
 }
 
@@ -20,6 +21,7 @@ const defaultArgs: MoreInfoStoryArgs = {
   ...publicEventStoryDefaultControls,
   hasAttendance: true,
   hasIssuedCertificate: false,
+  isSubscribed: true,
   isLecturer: false,
 };
 
@@ -36,6 +38,7 @@ const meta: Meta<MoreInfoStoryArgs> = {
     ...publicEventStoryControlArgTypes,
     hasAttendance: { control: 'boolean' },
     hasIssuedCertificate: { control: 'boolean' },
+    isSubscribed: { control: 'boolean' },
     isLecturer: { control: 'boolean' },
   },
   parameters: {
@@ -72,6 +75,24 @@ export const Online: Story = {
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
+export const AttendanceOnly: Story = {
+  args: {
+    isSubscribed: false,
+    hasAttendance: true,
+    hasIssuedCertificate: false,
+    isLecturer: false,
+  },
+  render: (args) => renderStory(args, onlineContext),
+  parameters: storyParameters(onlineContext),
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    await exerciseStory(canvasElement);
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText(/Não inscrito/)).toBeVisible();
+    await expect(await canvas.findByText(/Presença registrada/)).toBeVisible();
+  },
+};
+
 export const OfflineFallback: Story = {
   args: {},
   globals: { theme: 'light', network: 'offline' },
@@ -106,12 +127,14 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs) {
   const event = buildEvent(args);
   if (query.includes('CurrentUserEventDetails')) {
     return {
-      currentUserEventSubscription: {
-        eventId: event.id,
-        eventGroupSubscriptionId: null,
-        createdAt: event.subscriptionStartDate ?? event.startDate,
-        event,
-      },
+      currentUserEventSubscription: args.isSubscribed
+        ? {
+            eventId: event.id,
+            eventGroupSubscriptionId: null,
+            createdAt: event.subscriptionStartDate ?? event.startDate,
+            event,
+          }
+        : null,
       currentUserEventAttendance: args.hasAttendance ? currentUserEventAttendance(event) : null,
       publicEvent: event,
       currentUserCertificates: [],

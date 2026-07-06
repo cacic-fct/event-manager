@@ -487,7 +487,7 @@ export class CurrentUserMajorEventSubscriptionService {
     personId: string,
     paymentInfoTableExists: boolean,
   ): Promise<CurrentUserMajorEventFeedItem[]> {
-    const [subscriptions, lecturerMajorEvents, certificates] = await Promise.all([
+    const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents] = await Promise.all([
       this.prisma.majorEventSubscription.findMany({
         where: {
           personId,
@@ -553,6 +553,30 @@ export class CurrentUserMajorEventSubscriptionService {
           issuedAt: 'desc',
         },
       }),
+      this.prisma.eventAttendance.findMany({
+        where: {
+          personId,
+          event: {
+            deletedAt: null,
+            majorEvent: {
+              ...PUBLIC_MAJOR_EVENT_WHERE,
+            },
+          },
+        },
+        select: {
+          event: {
+            select: {
+              majorEventId: true,
+              majorEvent: {
+                select: MAJOR_EVENT_BASE_SELECT,
+              },
+            },
+          },
+        },
+        orderBy: {
+          attendedAt: 'desc',
+        },
+      }),
     ]);
 
     const subscribedMajorEventIds = new Set(subscriptions.map((subscription) => subscription.majorEventId));
@@ -566,7 +590,6 @@ export class CurrentUserMajorEventSubscriptionService {
         .map(({ config }) => config.majorEventId)
         .filter((majorEventId): majorEventId is string => !!majorEventId),
     );
-
     const selectedEventsByMajorEventId = await this.getSelectedEventsByMajorEvent(personId, [
       ...subscribedMajorEventIds,
     ]);
@@ -625,6 +648,25 @@ export class CurrentUserMajorEventSubscriptionService {
           isSubscribed: false,
           isLecturer: lecturerMajorEventIds.has(config.majorEventId),
           hasIssuedCertificate: true,
+        },
+      });
+    }
+
+    for (const { event } of attendanceMajorEvents) {
+      if (!event.majorEventId || !event.majorEvent || itemsByMajorEventId.has(event.majorEventId)) {
+        continue;
+      }
+
+      itemsByMajorEventId.set(event.majorEventId, {
+        id: event.majorEventId,
+        majorEventId: event.majorEventId,
+        majorEvent: this.mapper.mapPublicMajorEvent(event.majorEvent),
+        selectedEvents: [],
+        notSubscribedEvents: [],
+        participation: {
+          isSubscribed: false,
+          isLecturer: lecturerMajorEventIds.has(event.majorEventId),
+          hasIssuedCertificate: certificateMajorEventIds.has(event.majorEventId),
         },
       });
     }

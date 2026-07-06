@@ -65,7 +65,17 @@ describe('AttendancesApiService', () => {
             certificates: [certificateFixture('standalone-certificate-1', '2026-07-04T12:00:00.000Z', 'OTHER')],
           },
         ],
-        currentUserEventAttendances: [{ eventId: 'event-1', attendedAt: '2026-07-01T12:30:00.000Z' }],
+        currentUserEventAttendances: [
+          {
+            eventId: 'event-1',
+            attendedAt: '2026-07-01T12:30:00.000Z',
+            event: {
+              id: 'event-1',
+              majorEventId: null,
+              eventGroupId: null,
+            },
+          },
+        ],
       },
     });
 
@@ -102,7 +112,17 @@ describe('AttendancesApiService', () => {
           certificates: [certificateFixture('standalone-certificate-1', '2026-07-04T12:00:00.000Z', 'OTHER')],
         },
       ],
-      attendances: [{ eventId: 'event-1', attendedAt: '2026-07-01T12:30:00.000Z' }],
+      attendances: [
+        {
+          eventId: 'event-1',
+          attendedAt: '2026-07-01T12:30:00.000Z',
+          event: {
+            id: 'event-1',
+            majorEventId: null,
+            eventGroupId: null,
+          },
+        },
+      ],
     });
   });
 
@@ -149,6 +169,80 @@ describe('AttendancesApiService', () => {
       certificateFixture('certificate-shared', '2026-06-02T12:00:00.000Z'),
       certificateFixture('certificate-older', '2026-06-01T12:00:00.000Z'),
     ]);
+  });
+
+  it('does not expose an attended child event as a standalone event detail', async () => {
+    const responsePromise = firstValueFrom(service.getEventDetails('child-event'));
+
+    flushGraphql('CurrentUserEventDetails', {
+      currentUserEventSubscription: null,
+      currentUserEventAttendance: {
+        eventId: 'child-event',
+        attendedAt: '2026-07-01T12:30:00.000Z',
+      },
+    });
+    flushGraphql('CurrentUserCertificates', {
+      currentUserCertificates: [],
+    });
+    flushGraphql('CurrentUserOrganizerInfo', {
+      currentUserOrganizerInfo: null,
+    });
+    flushGraphql('PublicEventForAttendanceDetails', {
+      publicEvent: {
+        ...eventFixture('child-event', 'Atividade do grande evento'),
+        majorEventId: 'major-1',
+        eventGroupId: null,
+      },
+    });
+
+    await expect(responsePromise).resolves.toEqual({
+      subscription: null,
+      event: null,
+      hasIssuedCertificate: false,
+      isLecturer: false,
+      attendance: null,
+    });
+  });
+
+  it('does not expose an attended major-event group as a standalone group detail', async () => {
+    const responsePromise = firstValueFrom(service.getEventGroupDetails('major-group'));
+
+    flushGraphql('CurrentUserEventGroupDetails', {
+      currentUserEventGroupSubscription: null,
+      currentUserEventAttendances: [
+        {
+          eventId: 'child-event',
+          attendedAt: '2026-07-01T12:30:00.000Z',
+        },
+      ],
+      publicEvents: [
+        {
+          ...eventFixture('child-event', 'Atividade em grupo de grande evento'),
+          majorEventId: 'major-1',
+          eventGroupId: 'major-group',
+          eventGroup: {
+            id: 'major-group',
+            name: 'Grupo do grande evento',
+            emoji: '🎓',
+          },
+        },
+      ],
+    });
+    flushGraphql('CurrentUserCertificates', {
+      currentUserCertificates: [],
+    });
+    flushGraphql('CurrentUserOrganizerInfo', {
+      currentUserOrganizerInfo: null,
+    });
+
+    await expect(responsePromise).resolves.toEqual({
+      subscription: null,
+      eventGroup: null,
+      events: [],
+      hasIssuedCertificate: false,
+      isLecturer: false,
+      attendances: [],
+    });
   });
 
   it('downloads all current-user certificates as an archive', async () => {
@@ -206,6 +300,9 @@ function eventFixture(id: string, name: string) {
     description: 'Atividade pública.',
     shortDescription: 'Atividade.',
     locationDescription: 'Auditório',
+    majorEventId: null,
+    eventGroupId: null,
+    eventGroup: null,
   };
 }
 
@@ -239,4 +336,15 @@ function certificateFixture(id: string, issuedAt: string, scope = 'EVENT') {
       version: 1,
     },
   };
+}
+
+function flushGraphql(operationName: string, data: object) {
+  const request = TestBed.inject(HttpTestingController).expectOne(
+    (candidate) =>
+      candidate.url === '/api/graphql' &&
+      typeof candidate.body === 'object' &&
+      String(candidate.body?.query).includes(operationName),
+  );
+
+  request.flush({ data });
 }

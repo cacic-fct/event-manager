@@ -97,7 +97,7 @@
   @if (detail.targetType !== 'event') {
   <section class="detail-section">
     @switch (detail.targetType) { @case ('major-event') {
-    <h2>Eventos inscritos</h2>
+    <h2>{{ majorEventEventsHeading(detail) }}</h2>
     } @case ('event-group') {
     <h2>Eventos do grupo</h2>
     } } @if (detail.events.length === 0) {

@@ -33,6 +33,25 @@ h2 {
   margin-top: 28px;
 }
 
+.filter-section {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.filter-section p {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+  white-space: nowrap;
+}
+
+.filter-field {
+  width: min(100%, 320px);
+}
+
 .certificate-download-section {
   display: flex;
   justify-content: flex-end;
@@ -89,4 +108,19 @@ mat-toolbar {
   position: sticky;
   top: 0;
   z-index: 1;
+}
+
+@media (max-width: 600px) {
+  .filter-section {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-section p {
+    white-space: normal;
+  }
+
+  .filter-field {
+    width: 100%;
+  }
 }

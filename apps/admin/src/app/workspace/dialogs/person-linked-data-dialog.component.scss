@@ -39,28 +39,35 @@
   overflow-wrap: anywhere;
 }
 
-.group-list,
+.resource-group-body,
 .resource-list {
   display: grid;
 }
 
 .group-list {
+  display: flex;
+  flex-direction: column;
   gap: 0.875rem;
   max-height: min(60vh, 38rem);
+  min-height: 0;
   overflow: auto;
   padding-right: 0.125rem;
 }
 
 .resource-group {
+  --mat-expansion-header-collapsed-state-height: 4.75rem;
+  --mat-expansion-header-expanded-state-height: 4.75rem;
+
   border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 8px;
   box-shadow: none;
+  flex: 0 0 auto;
   overflow: hidden;
 }
 
 .resource-group .mat-expansion-panel-header {
-  height: auto;
-  min-height: 4.75rem;
+  box-sizing: border-box;
+  min-height: var(--mat-expansion-header-collapsed-state-height);
   padding-block: 0.75rem;
 }
 
@@ -111,6 +118,10 @@
   height: 2.25rem;
   justify-content: center;
   width: 2.25rem;
+}
+
+.resource-group-body {
+  min-width: 0;
 }
 
 .group-toolbar {
@@ -188,7 +199,7 @@
   }
 
   .resource-group .mat-expansion-panel-header {
-    min-height: auto;
+    min-height: var(--mat-expansion-header-collapsed-state-height);
   }
 
   .resource-group .mat-content,
@@ -207,4 +218,8 @@
     justify-content: flex-start;
     text-align: left;
   }
+}
+
+:host ::ng-deep .resource-group.mat-expanded > .mat-expansion-panel-content-wrapper {
+  grid-template-rows: auto;
 }

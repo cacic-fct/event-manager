@@ -391,4 +391,135 @@ describe('Event', () => {
       }),
     );
   });
+
+  it('displays available forms for authenticated attendees without requiring a subscription', async () => {
+    TestBed.resetTestingModule();
+    const form = {
+      ...subscriptionFormFixture(),
+      links: [
+        {
+          ...subscriptionFormFixture().links[0],
+          insertInSubscriptionFlow: false,
+          availableFrom: '2026-07-01T10:00:00.000Z',
+          availableUntil: null,
+        },
+      ],
+    };
+    const listCurrentUserForms = vi.fn(() => of([form]));
+    const eventPageData = defaultEventPageData({
+      currentUserAttendance: {
+        eventId: 'event-1',
+        attendedAt: '2026-07-06T12:00:00.000Z',
+      },
+      currentUserSubscription: null,
+    });
+    const newFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        eventPageData,
+        formsApi: { listCurrentUserForms },
+      },
+    );
+    await newFixture.whenStable();
+    newFixture.detectChanges();
+    await newFixture.whenStable();
+
+    const compiled = newFixture.nativeElement as HTMLElement;
+
+    expect(listCurrentUserForms).toHaveBeenCalledWith({
+      targetType: 'EVENT',
+      eventId: 'event-1',
+      majorEventId: null,
+    });
+    expect(compiled.textContent).toContain('Formulários');
+    expect(compiled.textContent).toContain('Pesquisa de camiseta');
+    const [formLink] = newFixture.componentInstance.attendeeFormLinks();
+    expect(newFixture.componentInstance.formRoute(formLink)).toEqual(['/profile', 'forms', 'form-1']);
+    expect(newFixture.componentInstance.formQueryParams(formLink)).toEqual({
+      targetType: 'EVENT',
+      targetId: 'event-1',
+      linkId: 'link-1',
+    });
+  });
+
+  it('does not request event page forms for authenticated users without attendance', async () => {
+    TestBed.resetTestingModule();
+    const listCurrentUserForms = vi.fn(() => of([subscriptionFormFixture()]));
+    const newFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        eventPageData: defaultEventPageData({
+          currentUserAttendance: null,
+          currentUserSubscription: null,
+        }),
+        formsApi: { listCurrentUserForms },
+      },
+    );
+    await newFixture.whenStable();
+    newFixture.detectChanges();
+
+    expect(listCurrentUserForms).not.toHaveBeenCalled();
+    expect((newFixture.nativeElement as HTMLElement).textContent).not.toContain('Formulários');
+  });
+
+  it('shows released results and hides closed forms without released results for attendees', async () => {
+    TestBed.resetTestingModule();
+    const answerClosedForm = {
+      ...subscriptionFormFixture(),
+      id: 'form-closed',
+      name: 'Formulário encerrado',
+      resultsPublic: false,
+      resultsLive: false,
+      links: [
+        {
+          ...subscriptionFormFixture().links[0],
+          id: 'link-closed',
+          formId: 'form-closed',
+          availableFrom: '2026-07-01T10:00:00.000Z',
+          availableUntil: '2026-07-02T10:00:00.000Z',
+        },
+      ],
+    };
+    const releasedResultsForm = {
+      ...subscriptionFormFixture(),
+      id: 'form-results',
+      name: 'Avaliação publicada',
+      resultsPublic: true,
+      resultsLive: false,
+      links: [
+        {
+          ...subscriptionFormFixture().links[0],
+          id: 'link-results',
+          formId: 'form-results',
+          availableFrom: '2026-07-01T10:00:00.000Z',
+          availableUntil: '2026-07-02T10:00:00.000Z',
+        },
+      ],
+    };
+    const newFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        eventPageData: defaultEventPageData({
+          currentUserAttendance: {
+            eventId: 'event-1',
+            attendedAt: '2026-07-06T12:00:00.000Z',
+          },
+        }),
+        formsApi: {
+          listCurrentUserForms: vi.fn(() => of([answerClosedForm, releasedResultsForm])),
+        },
+      },
+    );
+    await newFixture.whenStable();
+    newFixture.detectChanges();
+    await newFixture.whenStable();
+
+    const text = (newFixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(text).not.toContain('Formulário encerrado');
+    expect(text).toContain('Resultados: Avaliação publicada');
+  });
 });

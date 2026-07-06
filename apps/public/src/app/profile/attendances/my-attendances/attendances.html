@@ -18,16 +18,32 @@
     <p>{{ currentState.message }}</p>
   </section>
   } @else {
+  @let visibleFeed = filteredFeed();
+  @if (visibleFeed) {
+  <section class="filter-section" aria-label="Filtros de participação">
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Filtrar resultados</mat-label>
+      <mat-select multiple [value]="selectedFilters()" (selectionChange)="updateFilters($event.value)">
+        <mat-select-trigger>{{ filterTriggerLabel() }}</mat-select-trigger>
+        <mat-option value="none">Sem filtro</mat-option>
+        @for (option of filterOptions; track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <p>{{ filteredResultSummary() }}</p>
+  </section>
+
   <section class="feed-section">
     <div class="section-heading">
       <h2>Grandes eventos</h2>
     </div>
 
-    @if (currentState.data.majorEventItems.length === 0) {
-    <p class="empty-text">Nenhuma inscrição em grande evento.</p>
+    @if (visibleFeed.majorEventItems.length === 0) {
+    <p class="empty-text">{{ majorEventsEmptyText(currentState.data.majorEventItems.length) }}</p>
     } @else {
     <mat-action-list>
-      @for ( subscription of currentState.data.majorEventItems; track subscription.id ) {
+      @for ( subscription of visibleFeed.majorEventItems; track subscription.id ) {
       <a
         mat-list-item
         [routerLink]="majorEventRoute(subscription)"
@@ -40,7 +56,7 @@
         </div>
         <div matListItemTitle>{{ subscription.majorEvent.name }}</div>
         <div matListItemLine>{{ majorEventDateLine(subscription) }}</div>
-        <div matListItemLine>{{ majorEventStatusLine(subscription) }}</div>
+        <div matListItemLine>{{ majorEventStatusLine(subscription, currentState.data.attendances) }}</div>
       </a>
       }
     </mat-action-list>
@@ -52,11 +68,11 @@
       <h2>Eventos</h2>
     </div>
 
-    @if (currentState.data.eventItems.length === 0) {
-    <p class="empty-text">Nenhum evento avulso ou grupo inscrito.</p>
+    @if (visibleFeed.eventItems.length === 0) {
+    <p class="empty-text">{{ eventItemsEmptyText(currentState.data.eventItems.length) }}</p>
     } @else {
     <mat-action-list>
-      @for (item of currentState.data.eventItems; track item.id) {
+      @for (item of visibleFeed.eventItems; track item.id) {
       <a mat-list-item [routerLink]="itemRoute(item)" [attr.aria-label]="'Abrir detalhes de ' + itemTitle(item)">
         <div matListItemIcon class="emoji-frame">
           <img class="twemoji" [src]="emoji.getTwemojiUrl(itemEmoji(item))" [alt]="itemEmoji(item)" />
@@ -106,5 +122,6 @@
       {{ isDownloadingCertificates() ? 'Preparando certificados' : 'Baixar todos os certificados' }}
     </button>
   </section>
+  }
   }
 </main>

@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type {
   EventFormTargetType,
   PublicEvent,
@@ -44,6 +44,7 @@ import { EmojiService } from '../shared/emoji.service';
 import { NetworkStatusService } from '../shared/network-status.service';
 import { RateLimitError, createRateLimitCooldown } from '../shared/rate-limit-error';
 import { PublicEventFormApiService } from '../forms/event-form-api.service';
+import { arePublicFormResultsReleased, isPublicFormLinkAvailable } from '../forms/event-form-availability';
 import {
   ConfirmSubscriptionDialog,
   type ConfirmSubscriptionDialogData,
@@ -56,6 +57,17 @@ type EventPageState =
   | { status: 'loading' }
   | { status: 'ready'; data: EventPageData }
   | { status: 'error'; message: string };
+
+type EventFormPageLink = {
+  formId: string;
+  linkId: string | null;
+  name: string;
+  targetType: EventFormTargetType;
+  targetId: string;
+  targetName: string;
+  mode: 'answer' | 'results';
+  displayOrder: number;
+};
 
 @Component({
   selector: 'app-event',
@@ -71,6 +83,7 @@ type EventPageState =
     MatSnackBarModule,
     MatToolbarModule,
     MatTooltipModule,
+    RouterLink,
   ],
   templateUrl: './event.html',
   styleUrl: './event.css',
@@ -116,6 +129,9 @@ export class Event {
 
   readonly eventState = toSignal(this.createEventState(), {
     initialValue: { status: 'loading' } satisfies EventPageState,
+  });
+  readonly attendeeFormLinks = toSignal(this.createAttendeeFormLinks(), {
+    initialValue: [] satisfies EventFormPageLink[],
   });
   readonly isPreview = computed(() => Boolean(this.previewToken()));
   readonly calendarDownloadUrl = computed(() => {
@@ -289,6 +305,18 @@ export class Event {
         returnUrl: this.router.url,
       },
     });
+  }
+
+  formRoute(link: EventFormPageLink): string[] {
+    return ['/profile', 'forms', link.formId];
+  }
+
+  formQueryParams(link: EventFormPageLink): { targetType: EventFormTargetType; targetId: string; linkId?: string } {
+    return {
+      targetType: link.targetType,
+      targetId: link.targetId,
+      ...(link.linkId ? { linkId: link.linkId } : {}),
+    };
   }
 
   copyId(id: string): void {
@@ -498,6 +526,22 @@ export class Event {
     );
   }
 
+  private createAttendeeFormLinks(): Observable<EventFormPageLink[]> {
+    return combineLatest([toObservable(this.eventState), toObservable(this.isAuthenticated), toObservable(this.isOnline)]).pipe(
+      switchMap(([currentState, authenticated, online]) => {
+        if (currentState.status !== 'ready' || !authenticated || !online || currentState.data.preview) {
+          return of([]);
+        }
+
+        if (!currentState.data.currentUserAttendance) {
+          return of([]);
+        }
+
+        return this.loadAttendeeFormLinks(currentState.data);
+      }),
+    );
+  }
+
   private reload(): void {
     this.reloadCounter.update((value) => value + 1);
   }
@@ -514,6 +558,72 @@ export class Event {
 
   hasStandaloneSubscription(event: PublicEvent): boolean {
     return Boolean(event.allowSubscription) && !event.majorEventId;
+  }
+
+  private loadAttendeeFormLinks(data: EventPageData): Observable<EventFormPageLink[]> {
+    const target = {
+      targetType: 'EVENT' as const,
+      targetId: data.event.id,
+      targetName: data.event.name,
+    };
+
+    return this.formsApi
+      .listCurrentUserForms({
+        targetType: target.targetType,
+        eventId: target.targetId,
+        majorEventId: null,
+      })
+      .pipe(
+        map((forms) => {
+          const seen = new Set<string>();
+          return forms
+            .flatMap((form) => this.toEventFormPageLinks(form, target))
+            .filter((link) => {
+              const key = `${link.formId}:${link.linkId ?? 'sem-vinculo'}:${link.targetType}:${link.targetId}`;
+              if (seen.has(key)) {
+                return false;
+              }
+              seen.add(key);
+              return true;
+            })
+            .sort((left, right) => left.displayOrder - right.displayOrder || left.name.localeCompare(right.name));
+        }),
+        catchError(() => of([])),
+      );
+  }
+
+  private toEventFormPageLinks(
+    form: PublicEventForm,
+    target: { targetType: EventFormTargetType; targetId: string; targetName: string },
+  ): EventFormPageLink[] {
+    return form.links.flatMap((link) => {
+      if (
+        link.targetType !== target.targetType ||
+        (link.eventId ?? null) !== target.targetId ||
+        link.majorEventId != null
+      ) {
+        return [];
+      }
+
+      const canAnswer = isPublicFormLinkAvailable(link);
+      const resultsReleased = arePublicFormResultsReleased(form, link);
+      if (!canAnswer && !resultsReleased) {
+        return [];
+      }
+
+      return [
+        {
+          formId: form.id,
+          linkId: link.id,
+          name: form.name,
+          targetType: target.targetType,
+          targetId: target.targetId,
+          targetName: target.targetName,
+          mode: !canAnswer && resultsReleased ? 'results' : 'answer',
+          displayOrder: link.displayOrder ?? Number.MAX_SAFE_INTEGER,
+        },
+      ];
+    });
   }
 
   private loadSubscriptionForms(data: EventPageData) {

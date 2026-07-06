@@ -119,6 +119,10 @@ export class MoreInfo {
     );
   }
 
+  majorEventEventsHeading(detail: DetailViewModel): string {
+    return detail.isSubscribed ? 'Eventos inscritos' : 'Eventos com participação';
+  }
+
   private loadDetailState(params: ParamMap): Observable<DetailState> {
     const eventType = parseEventTargetType(params.get('eventType'));
     const eventId = params.get('eventId')?.trim();

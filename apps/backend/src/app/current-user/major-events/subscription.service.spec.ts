@@ -295,6 +295,72 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
       },
     });
   });
+
+  it('adds attendance-only major events to the feed', async () => {
+    const majorEvent = {
+      id: 'major-attended',
+      name: 'Grande evento com presença',
+      emoji: '🎓',
+      startDate: new Date('2026-07-01T12:00:00.000Z'),
+      endDate: new Date('2026-07-03T20:00:00.000Z'),
+      certificateConfigs: [],
+      majorEventPrices: [],
+      rankedSubscriptionEnabled: false,
+      isPaymentRequired: false,
+    };
+    const prisma = {
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventLecturer: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            event: {
+              majorEventId: majorEvent.id,
+              majorEvent,
+            },
+          },
+        ]),
+      },
+    };
+    const mapper = {
+      mapPublicMajorEvent: jest.fn((item) => ({
+        id: item.id,
+        name: item.name,
+        emoji: item.emoji,
+        startDate: item.startDate,
+        endDate: item.endDate,
+      })),
+    };
+    service = new CurrentUserMajorEventSubscriptionService(prisma as never, mapper as never);
+
+    await expect(service.getCurrentUserMajorEventFeedItems('person-1', false)).resolves.toEqual([
+      {
+        id: 'major-attended',
+        majorEventId: 'major-attended',
+        majorEvent: {
+          id: 'major-attended',
+          name: 'Grande evento com presença',
+          emoji: '🎓',
+          startDate: majorEvent.startDate,
+          endDate: majorEvent.endDate,
+        },
+        selectedEvents: [],
+        notSubscribedEvents: [],
+        participation: {
+          isSubscribed: false,
+          isLecturer: false,
+          hasIssuedCertificate: false,
+        },
+      },
+    ]);
+  });
 });
 
 function rankedEvent(

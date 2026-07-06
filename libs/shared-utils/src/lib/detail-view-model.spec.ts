@@ -1,5 +1,5 @@
 import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
-import { buildEventGroupDetail, buildMajorEventDetail, getEventGroupCertificateTargets } from './detail-view-model';
+import { buildEventDetail, buildEventGroupDetail, buildMajorEventDetail, getEventGroupCertificateTargets } from './detail-view-model';
 
 describe('detail view model', () => {
   it('builds grouped event details with sorted events, certificate targets, and attendance summary', () => {
@@ -51,6 +51,45 @@ describe('detail view model', () => {
     expect(detail?.isSubscribed).toBe(false);
     expect(detail?.canViewOrganizerInfo).toBe(true);
     expect(detail?.certificateTargets).toEqual([]);
+  });
+
+  it('returns attendance-only standalone event details without requiring a subscription', () => {
+    const detail = buildEventDetail({
+      subscription: null,
+      event: event('attended-event'),
+      attendance: { eventId: 'attended-event', attendedAt: '2026-06-26T10:00:00' },
+    });
+
+    expect(detail?.statusLabel).toBe('Presença registrada às 26/06/2026, 10:00, Não inscrito');
+    expect(detail?.isSubscribed).toBe(false);
+  });
+
+  it('returns attendance-only event group details without requiring a subscription', () => {
+    const group = eventGroup();
+    const detail = buildEventGroupDetail({
+      subscription: null,
+      eventGroup: group,
+      events: [event('attended-event'), event('missed-event', '2026-06-27T09:00:00')],
+      attendances: [{ eventId: 'attended-event', attendedAt: '2026-06-26T10:00:00' }],
+    });
+
+    expect(detail?.statusLabel).toBe('Presente em 1 de 2 eventos');
+    expect(detail?.isSubscribed).toBe(false);
+    expect(detail?.events.map((item) => item.event.id)).toEqual(['attended-event', 'missed-event']);
+  });
+
+  it('returns attendance-only major event details with attended child events', () => {
+    const detail = buildMajorEventDetail({
+      subscription: null,
+      majorEvent: majorEvent(),
+      events: [event('attended-event'), event('missed-event', '2026-06-27T09:00:00')],
+      attendances: [{ eventId: 'attended-event', attendedAt: '2026-06-26T10:00:00' }],
+    });
+
+    expect(detail?.statusLabel).toBe('Presente');
+    expect(detail?.isSubscribed).toBe(false);
+    expect(detail?.events.map((item) => item.event.id)).toEqual(['attended-event']);
+    expect(detail?.notSubscribedEvents).toEqual([]);
   });
 
   it('falls back to a group certificate when per-event targets are disabled', () => {
