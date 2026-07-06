@@ -62,7 +62,13 @@ interface EventDayGroup {
     RouterLink,
   ],
   templateUrl: './workspace-receipt-validation.component.html',
-  styleUrls: ['../../workspace-tab.shared.scss', './workspace-receipt-validation.component.scss'],
+  styleUrls: [
+    '../../workspace-tab.layout.shared.scss',
+    '../../workspace-tab.lists-layout.shared.scss',
+    '../../workspace-tab.entity-permissions.shared.scss',
+    '../../workspace-tab.forms-feedback.shared.scss',
+    './workspace-receipt-validation.component.scss',
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkspaceReceiptValidationComponent {

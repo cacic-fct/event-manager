@@ -15,7 +15,12 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatIconModule, MatListModule, MatSelectModule],
   templateUrl: './workspace-merge-candidates-tab.component.html',
-  styleUrl: '../workspace-tab.shared.scss',
+  styleUrls: [
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
+  ],
 })
 export class WorkspaceMergeCandidatesTabComponent {
   readonly workspace = inject(WorkspaceMergeCandidatesService);

@@ -16,7 +16,12 @@ import { WorkspacePermissionsService } from '../../../shared/services/workspace-
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule, MatProgressBarModule],
   templateUrl: './workspace-global-operations-tab.component.html',
-  styleUrl: '../workspace-tab.shared.scss',
+  styleUrls: [
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
+  ],
 })
 export class WorkspaceGlobalOperationsTabComponent {
   private readonly certificatesApi = inject(CertificateApiService);

@@ -34,7 +34,13 @@ import { EventFilterPanelComponent } from '../shared/event-filter-panel.componen
     EventFilterPanelComponent,
   ],
   templateUrl: './workspace-event-subscriptions-subtab.component.html',
-  styleUrls: ['../workspace-tab.shared.scss', './workspace-subscription-subtabs.shared.scss'],
+  styleUrls: [
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
+    './workspace-subscription-subtabs.shared.scss',
+  ],
 })
 export class WorkspaceEventSubscriptionsSubtabComponent implements OnInit {
   readonly workspace = inject(WorkspaceSubscriptionsService);
