@@ -132,7 +132,9 @@ export const PermissionManagement: Story = {
     await expect(await canvas.findByText('Permissões do Event Manager')).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: /vínculos/i }));
     await expect(await screen.findByRole('heading', { name: 'Vínculos da pessoa' })).toBeVisible();
-    await expect(await screen.findByText('Certificados')).toBeVisible();
+    await userEvent.click(await screen.findByText('Certificados'));
+    await expect(await screen.findByText('Certificado de participação')).toBeVisible();
+    await userEvent.click(await screen.findByText('Vínculos com eventos'));
     await expect(await screen.findByText('Ministrante')).toBeVisible();
     await userEvent.click(await screen.findByRole('button', { name: 'Fechar' }));
 
@@ -236,8 +238,17 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
 
   if (query.includes('PersonLinkedDataSummary')) {
     const personId = String(variables['id'] ?? activeData.people[0].id);
+    const summary = linkedDataSummary(personId, personId === activeData.people[1]?.id ? 'empty' : 'active');
     return {
-      personLinkedDataSummary: linkedDataSummary(personId, personId === activeData.people[1]?.id ? 'empty' : 'active'),
+      personLinkedDataSummary: {
+        ...summary,
+        groups: summary.groups.map((group) => ({
+          type: group.type,
+          label: group.label,
+          icon: group.icon,
+          totalCount: group.totalCount,
+        })),
+      },
     };
   }
 
