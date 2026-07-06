@@ -23,9 +23,11 @@ test('people workspace manages Event Manager permission grants', async ({ page }
   await page.getByRole('tab', { name: 'Permissões' }).click();
 
   await expect(page.getByText('Permissões do Event Manager')).toBeVisible();
-  const existingGrant = page.getByRole('listitem').filter({ hasText: 'Global · Todos os eventos' });
+  const existingGrant = page.locator('.permission-grant-list mat-list-item').filter({
+    hasText: 'Global · Todos os eventos',
+  });
   await expect(existingGrant).toContainText('Visualizar');
-  await expect(page.getByText('Global · Todos os eventos · Ativa')).toBeVisible();
+  await expect(existingGrant).toContainText('Ativa');
 
   await page.getByRole('button', { name: 'Editar permissão' }).first().click();
   await expect(page.getByRole('button', { name: 'Salvar permissão' })).toBeVisible();
@@ -37,8 +39,15 @@ test('people workspace manages Event Manager permission grants', async ({ page }
   await expect(grantForm.getByLabel('Escopo da permissão')).toContainText('Grande evento');
 
   await grantForm.getByLabel('Escopo da permissão').click();
-  await expect(page.getByRole('option', { name: 'Evento' })).toHaveAttribute('aria-disabled', 'true');
-  await expect(page.getByRole('option', { name: 'Grande evento' })).toHaveAttribute('aria-disabled', 'false');
+  const scopeOptions = page.getByRole('listbox', { name: 'Escopo da permissão' });
+  await expect(scopeOptions.getByRole('option', { name: 'Evento', exact: true })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  await expect(scopeOptions.getByRole('option', { name: 'Grande evento', exact: true })).toHaveAttribute(
+    'aria-disabled',
+    'false',
+  );
   await page.keyboard.press('Escape');
 
   await expect(page.getByRole('listbox', { name: 'Buscar grande evento' })).toBeVisible();
@@ -49,12 +58,13 @@ test('people workspace manages Event Manager permission grants', async ({ page }
 
   await page.getByRole('button', { name: 'Adicionar permissões do preset' }).click();
   await expect(page.getByText('Permissões em revisão')).toBeVisible();
-  await expect(page.getByText(/Grande evento · Semana da Computação/)).toBeVisible();
-  await expect(page.getByText('Comprovante · Visualizar')).toBeVisible();
+  const permissionDraftList = page.locator('.permission-draft-list');
+  await expect(permissionDraftList).toContainText('Grande evento · Semana da Computação');
+  await expect(permissionDraftList).toContainText('Comprovante · Visualizar');
 
   await page.getByRole('button', { name: 'Salvar permissões', exact: true }).click();
   await expect(page.getByText('Permissões concedidas.')).toBeVisible();
-  await expect(page.getByText('Grande evento · Semana da Computação · Ativa')).toBeVisible();
+  await expect(page.locator('.permission-grant-list')).toContainText('Grande evento · Semana da Computação · Ativa');
 
   await page.getByRole('button', { name: 'Remover permissão' }).last().click();
   await expect(page.getByText('Permissão removida.')).toBeVisible();

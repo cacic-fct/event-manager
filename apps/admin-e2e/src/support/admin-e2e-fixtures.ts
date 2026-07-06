@@ -38,6 +38,7 @@ export const adminE2EReadPermissions = [
   'event-form#results',
   'event-form#export',
   'event-lecturer#read',
+  'event-attendance-collector#read',
   'event-group#read',
   'event-attendance#read',
   'subscription#read',
