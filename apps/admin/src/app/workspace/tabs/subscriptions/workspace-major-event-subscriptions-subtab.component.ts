@@ -37,7 +37,13 @@ import { WorkspaceSubscriptionsService } from '../../../shared/services/workspac
     TwemojiComponent,
   ],
   templateUrl: './workspace-major-event-subscriptions-subtab.component.html',
-  styleUrls: ['../workspace-tab.shared.scss', './workspace-subscription-subtabs.shared.scss'],
+  styleUrls: [
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
+    './workspace-subscription-subtabs.shared.scss',
+  ],
 })
 export class WorkspaceMajorEventSubscriptionsSubtabComponent {
   readonly pendingReceiptsCount = input.required<number>();

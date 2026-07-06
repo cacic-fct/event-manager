@@ -34,7 +34,12 @@ import { DatePipe } from '@angular/common';
     DatePipe,
   ],
   templateUrl: './workspace-event-groups-tab.component.html',
-  styleUrl: '../workspace-tab.shared.scss',
+  styleUrls: [
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
+  ],
 })
 export class WorkspaceEventGroupsTabComponent {
   readonly workspace = inject(WorkspaceEventGroupsService);

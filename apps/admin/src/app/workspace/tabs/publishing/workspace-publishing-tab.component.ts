@@ -59,7 +59,10 @@ import {
   ],
   templateUrl: './workspace-publishing-tab.component.html',
   styleUrls: [
-    '../workspace-tab.shared.scss',
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
     './workspace-publishing-tab.component.scss',
     './workspace-publishing-tree.component.scss',
     './workspace-publishing-detail.component.scss',

@@ -11,7 +11,13 @@ import { WorkspaceMajorEventAttendancesSubtabComponent } from './workspace-major
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatTabsModule, WorkspaceEventAttendancesSubtabComponent, WorkspaceMajorEventAttendancesSubtabComponent],
   templateUrl: './workspace-attendances-tab.component.html',
-  styleUrls: ['../workspace-tab.shared.scss', './workspace-attendances-tab.component.scss'],
+  styleUrls: [
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
+    './workspace-attendances-tab.component.scss',
+  ],
 })
 export class WorkspaceAttendancesTabComponent {
   private readonly route = inject(ActivatedRoute);

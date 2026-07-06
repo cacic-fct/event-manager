@@ -36,7 +36,10 @@ import { WorkspacePlacePresetsService } from '../../../shared/services/workspace
   ],
   templateUrl: './workspace-places-tab.component.html',
   styleUrls: [
-    '../workspace-tab.shared.scss',
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
     './workspace-places-tab.filters.scss',
     './workspace-places-tab.map.scss',
   ],

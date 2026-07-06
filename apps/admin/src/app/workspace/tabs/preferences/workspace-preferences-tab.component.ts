@@ -57,7 +57,12 @@ const STALE_ADMIN_ACCESS_DISABLED_REASON = 'STALE_ADMIN_ACCESS';
     MatTooltipModule,
   ],
   templateUrl: './workspace-preferences-tab.component.html',
-  styleUrl: '../workspace-tab.shared.scss',
+  styleUrls: [
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WorkspacePreferencesTabComponent {

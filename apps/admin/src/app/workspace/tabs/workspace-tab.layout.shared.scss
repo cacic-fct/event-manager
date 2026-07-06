@@ -1,0 +1,150 @@
+.section {
+  padding: 1rem 0;
+}
+
+.workspace-tab-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tab-header,
+.panel-heading,
+.surface-heading,
+.list-title,
+.item-title,
+.item-actions,
+.summary-grid {
+  display: flex;
+  gap: 1rem;
+}
+
+.tab-header,
+.panel-heading,
+.surface-heading {
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.tab-header {
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  padding-bottom: 1rem;
+}
+
+.tab-header h2,
+.panel-heading h3,
+.surface-heading h4,
+.surface h4 {
+  margin: 0;
+}
+
+.tab-header p,
+.panel-heading p,
+.empty-note,
+.muted,
+.meta-text,
+.surface-heading span {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.tab-header p,
+.panel-heading p {
+  margin: 0.25rem 0 0;
+}
+
+.tab-actions,
+.panel-actions,
+.actions,
+.inline-list,
+.compact-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tab-actions,
+.panel-actions {
+  justify-content: flex-end;
+}
+
+.editor-action-row {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.editor-action-group {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.editor-action-group--publication {
+  justify-content: flex-end;
+}
+
+.editor-action-group button {
+  max-width: 100%;
+}
+
+.tab-grid {
+  display: grid;
+  grid-template-columns: minmax(23rem, 0.95fr) minmax(34rem, 1.55fr);
+  gap: 1rem;
+}
+
+.tab-grid-wide {
+  grid-template-columns: minmax(28rem, 1fr) minmax(34rem, 1fr);
+}
+
+.panel,
+.surface {
+  min-width: 0;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-surface);
+}
+
+.panel {
+  padding: 1rem;
+}
+
+.surface {
+  padding: 0.875rem;
+}
+
+.surface-stack,
+.panel-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.result-list,
+.detail-list {
+  max-height: 34rem;
+  overflow: auto;
+}
+
+.result-list {
+  margin-top: 0.75rem;
+}
+
+.list-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}
+
+.list-pager-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+

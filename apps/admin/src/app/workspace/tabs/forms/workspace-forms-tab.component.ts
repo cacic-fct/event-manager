@@ -44,7 +44,13 @@ import { WorkspaceFormResultsComponent } from './workspace-form-results.componen
     WorkspaceFormResultsComponent,
   ],
   templateUrl: './workspace-forms-tab.component.html',
-  styleUrls: ['../workspace-tab.shared.scss', './workspace-forms-tab.component.scss'],
+  styleUrls: [
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
+    './workspace-forms-tab.component.scss',
+  ],
 })
 export class WorkspaceFormsTabComponent implements OnDestroy {
   readonly workspace = inject(WorkspaceFormsService);

@@ -15,7 +15,13 @@ import { WorkspaceMajorEventSubscriptionsSubtabComponent } from './workspace-maj
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatTabsModule, WorkspaceEventSubscriptionsSubtabComponent, WorkspaceMajorEventSubscriptionsSubtabComponent],
   templateUrl: './workspace-subscriptions-tab.component.html',
-  styleUrls: ['../workspace-tab.shared.scss', './workspace-subscription-subtabs.shared.scss'],
+  styleUrls: [
+    '../workspace-tab.layout.shared.scss',
+    '../workspace-tab.lists-layout.shared.scss',
+    '../workspace-tab.entity-permissions.shared.scss',
+    '../workspace-tab.forms-feedback.shared.scss',
+    './workspace-subscription-subtabs.shared.scss',
+  ],
 })
 export class WorkspaceSubscriptionsTabComponent {
   private readonly route = inject(ActivatedRoute);
