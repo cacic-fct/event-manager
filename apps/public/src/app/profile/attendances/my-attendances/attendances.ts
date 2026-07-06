@@ -32,8 +32,12 @@ import type { StandaloneCertificateFolderItem } from '@cacic-fct/shared-utils';
 
 type FeedState =
   | { status: 'loading' }
-  | { status: 'ready'; data: SubscriptionsFeed }
+  | { status: 'ready'; data: NormalizedSubscriptionsFeed }
   | { status: 'error'; message: string };
+
+type NormalizedSubscriptionsFeed = Omit<SubscriptionsFeed, 'standaloneCertificateFolders'> & {
+  standaloneCertificateFolders: StandaloneCertificateFolderItem[];
+};
 
 @Component({
   selector: 'app-attendances',
@@ -67,7 +71,7 @@ export class Attendances {
       map(
         (feed): FeedState => ({
           status: 'ready',
-          data: sortSubscriptionsFeed(feed),
+          data: this.normalizeFeed(feed),
         }),
       ),
       startWith({ status: 'loading' } satisfies FeedState),
@@ -190,5 +194,14 @@ export class Attendances {
         attendances: [],
       }
     );
+  }
+
+  private normalizeFeed(feed: SubscriptionsFeed): NormalizedSubscriptionsFeed {
+    const sortedFeed = sortSubscriptionsFeed(feed);
+
+    return {
+      ...sortedFeed,
+      standaloneCertificateFolders: sortedFeed.standaloneCertificateFolders ?? [],
+    };
   }
 }

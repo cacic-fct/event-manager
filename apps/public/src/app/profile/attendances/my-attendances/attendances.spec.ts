@@ -5,6 +5,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { of, throwError } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { NetworkStatusService } from '../../../shared/network-status.service';
@@ -51,6 +52,24 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Feed salvo');
   });
 
+  it('renders stale offline feeds without standalone certificate folders', async () => {
+    const { fixture } = await createFixture({
+      online: false,
+      latestUserSnapshot: { userId: 'offline-user' },
+      offlineFeed: {
+        majorEventItems: offlineSubscriptionsFeedFixture.majorEventItems,
+        eventItems: offlineSubscriptionsFeedFixture.eventItems,
+        attendances: offlineSubscriptionsFeedFixture.attendances,
+      },
+      user: null,
+    });
+
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('Feed salvo');
+    expect(fixture.nativeElement.textContent).toContain('Nenhum certificado avulso disponível.');
+  });
+
   it('purges offline user data and renders an empty feed when the online user is anonymous', async () => {
     const { fixture, api, offlineData } = await createFixture({ user: null });
 
@@ -78,7 +97,7 @@ describe('Attendances', () => {
 
   it('opens standalone certificate folders in the certificate dialog', async () => {
     const { component, dialog } = await createFixture();
-    const folder = subscriptionsFeedFixture.standaloneCertificateFolders[0];
+    const folder = subscriptionsFeedFixture.standaloneCertificateFolders![0];
 
     component.openStandaloneCertificates(folder);
 
@@ -104,9 +123,9 @@ async function createFixture({
 }: {
   latestUserSnapshot?: { userId: string } | null;
   online?: boolean;
-  onlineFeed?: typeof subscriptionsFeedFixture;
+  onlineFeed?: SubscriptionsFeed;
   onlineFeedError?: Error | null;
-  offlineFeed?: typeof subscriptionsFeedFixture | null;
+  offlineFeed?: SubscriptionsFeed | null;
   user?: { sub: string } | null;
 } = {}): Promise<{
   api: {
@@ -215,7 +234,7 @@ async function settle(fixture: ComponentFixture<Attendances>): Promise<void> {
   fixture.detectChanges();
 }
 
-const subscriptionsFeedFixture = {
+const subscriptionsFeedFixture: SubscriptionsFeed = {
   majorEventItems: [
     {
       id: 'major-subscription-1',
@@ -296,7 +315,7 @@ const subscriptionsFeedFixture = {
   attendances: [{ eventId: 'event-1', attendedAt: '2026-07-01T12:30:00.000Z' }],
 };
 
-const offlineSubscriptionsFeedFixture = {
+const offlineSubscriptionsFeedFixture: SubscriptionsFeed = {
   ...subscriptionsFeedFixture,
   majorEventItems: [
     {
