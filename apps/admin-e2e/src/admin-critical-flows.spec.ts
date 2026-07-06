@@ -17,6 +17,8 @@ test.beforeEach(async ({ page }) => {
 test('event workspace shows published event draft, scheduling, draft and publish actions', async ({ page }) => {
   await page.goto('/admin/events/event-1');
 
+  await page.getByRole('listitem').filter({ hasText: 'Oficina de Angular' }).click();
+
   await expect(page.getByRole('heading', { name: 'Editar evento' })).toBeVisible();
   await expect(page.getByText('Oficina de Angular', { exact: true }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'Escolher versão' })).toBeVisible();

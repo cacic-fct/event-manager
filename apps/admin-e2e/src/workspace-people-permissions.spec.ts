@@ -23,7 +23,8 @@ test('people workspace manages Event Manager permission grants', async ({ page }
   await page.getByRole('tab', { name: 'Permissões' }).click();
 
   await expect(page.getByText('Permissões do Event Manager')).toBeVisible();
-  await expect(page.getByRole('listitem').filter({ hasText: 'Evento · Visualizar' })).toBeVisible();
+  const existingGrant = page.getByRole('listitem').filter({ hasText: 'Global · Todos os eventos' });
+  await expect(existingGrant).toContainText('Visualizar');
   await expect(page.getByText('Global · Todos os eventos · Ativa')).toBeVisible();
 
   await page.getByRole('button', { name: 'Editar permissão' }).first().click();
