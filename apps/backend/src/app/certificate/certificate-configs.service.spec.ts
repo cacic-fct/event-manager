@@ -1,4 +1,6 @@
 import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
+import { ConflictException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { CertificateConfigsService } from './certificate-configs.service';
 import { CertificateValidationService } from './certificate-validation.service';
 
@@ -150,6 +152,28 @@ describe('CertificateConfigsService', () => {
     );
   });
 
+  it('converts concurrent folder-name conflicts to ConflictException', async () => {
+    const duplicateError = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+      code: 'P2002',
+      clientVersion: 'test',
+    });
+    const prisma = createPrisma({
+      certificateFolder: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockRejectedValue(duplicateError),
+      },
+    });
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      {} as never,
+    );
+
+    await expect(service.createFolder({ name: ' Complementares ', emoji: '🏅' })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
   it('creates OTHER configs as manual standalone certificates scoped to a folder', async () => {
     const prisma = createPrisma({
       certificateTemplate: {
@@ -204,39 +228,151 @@ describe('CertificateConfigsService', () => {
       }),
     );
   });
+
+  it('resets issuedTo and type label when moving a standalone config to an event target', async () => {
+    const prisma = createPrisma({
+      certificateTemplate: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'template-1' }),
+      },
+      certificateConfig: {
+        findFirst: jest.fn().mockResolvedValueOnce(createConfigRecord()).mockResolvedValueOnce(null),
+        update: jest.fn().mockResolvedValue(
+          createConfigRecord({
+            scope: CertificateScope.EVENT,
+            eventId: 'event-1',
+            folderId: null,
+            folder: null,
+            issuedTo: CertificateIssuedTo.ATTENDEE,
+            certificateTypeLabel: 'Participação',
+          }),
+        ),
+      },
+    });
+    const targetsService = {
+      assertIssuableTarget: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      targetsService as never,
+    );
+
+    await expect(
+      service.updateConfig('config-1', {
+        scope: CertificateScope.EVENT,
+        eventId: 'event-1',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        scope: CertificateScope.EVENT,
+        issuedTo: CertificateIssuedTo.ATTENDEE,
+        certificateTypeLabel: 'Participação',
+      }),
+    );
+
+    expect(prisma.certificateConfig.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scope: CertificateScope.EVENT,
+          eventId: 'event-1',
+          folderId: null,
+          issuedTo: CertificateIssuedTo.ATTENDEE,
+          certificateTypeLabel: 'Participação',
+        }),
+      }),
+    );
+  });
+
+  it('soft-deletes a folder and its active standalone configs and certificates', async () => {
+    const prisma = createPrisma({
+      certificateFolder: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      certificateConfig: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'config-1' }, { id: 'config-2' }]),
+        updateMany: jest.fn().mockResolvedValue({ count: 2 }),
+      },
+      certificate: {
+        updateMany: jest.fn().mockResolvedValue({ count: 3 }),
+      },
+    });
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      {} as never,
+    );
+
+    await expect(service.deleteFolder(' folder-1 ')).resolves.toEqual({
+      deleted: true,
+      id: 'folder-1',
+    });
+
+    expect(prisma.certificateFolder.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'folder-1',
+          deletedAt: null,
+        },
+      }),
+    );
+    expect(prisma.certificateConfig.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: {
+            in: ['config-1', 'config-2'],
+          },
+          deletedAt: null,
+        },
+      }),
+    );
+    expect(prisma.certificate.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          configId: {
+            in: ['config-1', 'config-2'],
+          },
+          deletedAt: null,
+        },
+      }),
+    );
+  });
 });
 
 function createPrisma(overrides: {
+  $transaction?: ReturnType<typeof basePrisma>['$transaction'];
   certificateTemplate?: Partial<ReturnType<typeof basePrisma>['certificateTemplate']>;
   certificateFolder?: Partial<ReturnType<typeof basePrisma>['certificateFolder']>;
   certificateConfig?: Partial<ReturnType<typeof basePrisma>['certificateConfig']>;
   certificate?: Partial<ReturnType<typeof basePrisma>['certificate']>;
 } = {}) {
-  const prisma = basePrisma();
-
-  return {
-    ...prisma,
+  const base = basePrisma();
+  const prisma = {
+    ...base,
     certificateTemplate: {
-      ...prisma.certificateTemplate,
+      ...base.certificateTemplate,
       ...overrides.certificateTemplate,
     },
     certificateFolder: {
-      ...prisma.certificateFolder,
+      ...base.certificateFolder,
       ...overrides.certificateFolder,
     },
     certificateConfig: {
-      ...prisma.certificateConfig,
+      ...base.certificateConfig,
       ...overrides.certificateConfig,
     },
     certificate: {
-      ...prisma.certificate,
+      ...base.certificate,
       ...overrides.certificate,
     },
   };
+  prisma.$transaction =
+    overrides.$transaction ?? jest.fn(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation(prisma));
+  return prisma;
 }
 
 function basePrisma() {
   return {
+    $transaction: jest.fn(),
     certificateTemplate: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
@@ -246,6 +382,7 @@ function basePrisma() {
       findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     certificateConfig: {
       findMany: jest.fn(),
@@ -310,7 +447,14 @@ function baseFolder() {
   };
 }
 
-function createConfigRecord() {
+function createConfigRecord(overrides: Partial<ReturnType<typeof baseConfigRecord>> = {}) {
+  return {
+    ...baseConfigRecord(),
+    ...overrides,
+  };
+}
+
+function baseConfigRecord() {
   const now = new Date('2026-06-03T12:00:00.000Z');
   return {
     id: 'config-1',

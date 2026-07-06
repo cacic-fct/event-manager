@@ -221,7 +221,7 @@ export class CertificatesResolver {
     })
     certificateId: string,
   ) {
-    return this.downloadService.downloadCertificate(certificateId);
+    return this.downloadService.downloadPublicCertificate(certificateId);
   }
 
   @Mutation(() => CertificateConfig, { name: 'createCertificateConfig' })
@@ -257,6 +257,17 @@ export class CertificatesResolver {
     input: CertificateFolderUpdateInput,
   ) {
     return this.configsService.updateFolder(id, input);
+  }
+
+  @Mutation(() => DeletionResult, { name: 'deleteCertificateFolder' })
+  @RequirePermissions(Permission.CertificateConfig.Delete)
+  async deleteCertificateFolder(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    const configs = await this.configsService.listConfigsByTarget(CertificateScope.OTHER, id);
+    for (const config of configs) {
+      await this.frozenResources.assertCertificateConfigMutable(config.id, this.getUser(context), 'delete');
+    }
+
+    return this.configsService.deleteFolder(id);
   }
 
   @Mutation(() => CertificateConfig, { name: 'updateCertificateConfig' })

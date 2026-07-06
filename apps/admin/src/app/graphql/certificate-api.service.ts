@@ -255,6 +255,20 @@ export class CertificateApiService {
       .pipe(map((data) => data.updateCertificateFolder));
   }
 
+  deleteCertificateFolder(id: string) {
+    return this.graphqlHttp
+      .request<{ deleteCertificateFolder: DeletionResult }>(
+        `mutation DeleteCertificateFolder($id: String!) {
+          deleteCertificateFolder(id: $id) {
+            id
+            deleted
+          }
+        }`,
+        { id },
+      )
+      .pipe(map((data) => data.deleteCertificateFolder));
+  }
+
   updateCertificateConfig(id: string, input: CertificateConfigInput) {
     return this.graphqlHttp
       .request<{ updateCertificateConfig: CertificateConfig }>(

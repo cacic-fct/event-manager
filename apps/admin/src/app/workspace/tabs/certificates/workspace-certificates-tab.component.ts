@@ -90,7 +90,8 @@ export class WorkspaceCertificatesTabComponent {
 
     const scope = this.workspace.targetFiltersForm.controls.scope.value;
     if (scope === 'OTHER') {
-      return false;
+      const config = this.workspace.selectedCertificateConfig();
+      return config ? this.configTargetFrozen(config) : false;
     }
 
     if (scope === 'EVENT') {

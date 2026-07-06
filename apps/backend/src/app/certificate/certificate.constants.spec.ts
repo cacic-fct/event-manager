@@ -20,8 +20,9 @@ describe('certificate constants', () => {
       scope: CertificateScope.MAJOR_EVENT,
       majorEventId: 'major-1',
     });
-    expect(buildConfigTargetWhere(CertificateScope.OTHER, 'ignored')).toEqual({
+    expect(buildConfigTargetWhere(CertificateScope.OTHER, 'folder-1')).toEqual({
       scope: CertificateScope.OTHER,
+      folderId: 'folder-1',
     });
   });
 

@@ -89,7 +89,7 @@ export interface StandaloneCertificateFolderItem {
 export interface SubscriptionsFeed {
   majorEventItems: CurrentUserMajorEventFeedItem[];
   eventItems: SubscribedItem[];
-  standaloneCertificateFolders: StandaloneCertificateFolderItem[];
+  standaloneCertificateFolders?: StandaloneCertificateFolderItem[];
   attendances: CurrentUserEventAttendance[];
 }
 

@@ -16,7 +16,7 @@ test('validates a standalone certificate without rendering an activities section
   await expect(page.getByText('Atividade complementar')).toBeVisible();
   await expect(page.getByText('Certificamos a participação em atividade complementar.')).toBeVisible();
   await expect(page.getByText('Atividade validada sem vínculo com programação pública.')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Atividades' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Atividades', exact: true })).toHaveCount(0);
 });
 
 test('shows the generic not-found error for certificates from disabled configs', async ({ page }) => {

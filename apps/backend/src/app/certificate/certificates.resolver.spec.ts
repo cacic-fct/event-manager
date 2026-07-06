@@ -105,6 +105,41 @@ describe('CertificatesResolver authorization', () => {
 
     expect(publicValidationService.validateCertificate).not.toHaveBeenCalled();
   });
+
+  it('uses the public-only certificate download path', async () => {
+    const { downloadService, resolver } = createResolver();
+    downloadService.downloadPublicCertificate.mockResolvedValue({
+      fileName: 'certificate.pdf',
+      mimeType: 'application/pdf',
+      contentBase64: 'pdf',
+    });
+
+    await expect(resolver.downloadPublicCertificate('certificate-1')).resolves.toEqual(
+      expect.objectContaining({
+        fileName: 'certificate.pdf',
+      }),
+    );
+
+    expect(downloadService.downloadPublicCertificate).toHaveBeenCalledWith('certificate-1');
+    expect(downloadService.downloadCertificate).not.toHaveBeenCalled();
+  });
+
+  it('checks active standalone configs for frozen delete before deleting a folder', async () => {
+    const { configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.listConfigsByTarget.mockResolvedValue([{ id: 'config-1' }, { id: 'config-2' }]);
+    configsService.deleteFolder.mockResolvedValue({ id: 'folder-1', deleted: true });
+
+    await expect(resolver.deleteCertificateFolder('folder-1', { req: { user } } as never)).resolves.toEqual({
+      id: 'folder-1',
+      deleted: true,
+    });
+
+    expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(CertificateScope.OTHER, 'folder-1');
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'delete');
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'delete');
+    expect(configsService.deleteFolder).toHaveBeenCalledWith('folder-1');
+  });
 });
 
 function createResolver() {
@@ -120,6 +155,7 @@ function createResolver() {
     createConfig: jest.fn(),
     updateConfig: jest.fn(),
     deleteConfig: jest.fn(),
+    deleteFolder: jest.fn(),
   };
   const issuingService = {
     listCertificatesByTarget: jest.fn(),
@@ -130,6 +166,7 @@ function createResolver() {
   };
   const downloadService = {
     downloadCertificate: jest.fn(),
+    downloadPublicCertificate: jest.fn(),
   };
   const publicValidationService = {
     validateCertificate: jest.fn(),
@@ -162,6 +199,7 @@ function createResolver() {
     authorizationPolicy,
     configsService,
     frozenResources,
+    downloadService,
     publicValidationService,
     resolver,
     targetsService,

@@ -88,13 +88,16 @@ export class CertificateConfigsService {
     const emoji = this.normalizeFolderEmoji(input.emoji);
     await this.ensureNoDuplicateFolderName(name);
 
-    const folder = await this.prisma.certificateFolder.create({
-      data: {
-        name,
-        emoji,
-      },
-      select: CERTIFICATE_FOLDER_SELECT,
-    });
+    const folder = await this.withFolderNameConflict(() =>
+      this.prisma.certificateFolder.create({
+        data: {
+          name,
+          emoji,
+        },
+        select: CERTIFICATE_FOLDER_SELECT,
+      }),
+      name,
+    );
 
     return mapCertificateFolder(folder);
   }
@@ -118,18 +121,82 @@ export class CertificateConfigsService {
 
     await this.ensureNoDuplicateFolderName(name, normalizedFolderId);
 
-    const updatedFolder = await this.prisma.certificateFolder.update({
-      where: {
-        id: normalizedFolderId,
-      },
-      data: {
-        ...(input.name === undefined ? {} : { name }),
-        ...(input.emoji === undefined ? {} : { emoji }),
-      },
-      select: CERTIFICATE_FOLDER_SELECT,
-    });
+    const updatedFolder = await this.withFolderNameConflict(() =>
+      this.prisma.certificateFolder.update({
+        where: {
+          id: normalizedFolderId,
+        },
+        data: {
+          ...(input.name === undefined ? {} : { name }),
+          ...(input.emoji === undefined ? {} : { emoji }),
+        },
+        select: CERTIFICATE_FOLDER_SELECT,
+      }),
+      name,
+    );
 
     return mapCertificateFolder(updatedFolder);
+  }
+
+  async deleteFolder(folderId: string): Promise<DeletionResult> {
+    const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
+    const deletedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.certificateFolder.updateMany({
+        where: {
+          id: normalizedFolderId,
+          deletedAt: null,
+        },
+        data: {
+          deletedAt,
+        },
+      });
+
+      if (count === 0) {
+        throw new NotFoundException(`Certificate folder ${normalizedFolderId} not found.`);
+      }
+
+      const configs = await tx.certificateConfig.findMany({
+        where: {
+          folderId: normalizedFolderId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+        },
+      });
+      const configIds = configs.map((config) => config.id);
+
+      if (configIds.length > 0) {
+        await tx.certificateConfig.updateMany({
+          where: {
+            id: {
+              in: configIds,
+            },
+            deletedAt: null,
+          },
+          data: {
+            deletedAt,
+          },
+        });
+        await tx.certificate.updateMany({
+          where: {
+            configId: {
+              in: configIds,
+            },
+            deletedAt: null,
+          },
+          data: {
+            deletedAt,
+          },
+        });
+      }
+    });
+
+    return {
+      deleted: true,
+      id: normalizedFolderId,
+    };
   }
 
   async listTemplates(
@@ -380,7 +447,12 @@ export class CertificateConfigsService {
         : this.validation.normalizeCertificateFieldsJson(input.certificateFieldsJson);
     this.assertStandaloneIssuedTo(mergedScope, input.issuedTo);
     const nextIssuedTo = input.issuedTo;
-    const mergedIssuedTo = mergedScope === CertificateScope.OTHER ? CertificateIssuedTo.OTHER : (nextIssuedTo ?? existingConfig.issuedTo);
+    const changedStandaloneMode =
+      (existingConfig.scope === CertificateScope.OTHER) !== (mergedScope === CertificateScope.OTHER);
+    const mergedIssuedTo =
+      mergedScope === CertificateScope.OTHER
+        ? CertificateIssuedTo.OTHER
+        : (nextIssuedTo ?? (changedStandaloneMode ? CertificateIssuedTo.ATTENDEE : existingConfig.issuedTo));
     const mergedCertificateFields =
       nextCertificateFields === undefined
         ? existingConfig.certificateFields
@@ -388,7 +460,10 @@ export class CertificateConfigsService {
           ? null
           : nextCertificateFields;
     const nextCertificateTypeLabel =
-      input.certificateTypeLabel !== undefined || nextIssuedTo !== undefined || nextCertificateFields !== undefined
+      input.certificateTypeLabel !== undefined ||
+      nextIssuedTo !== undefined ||
+      nextCertificateFields !== undefined ||
+      changedStandaloneMode
         ? this.resolveCertificateTypeLabel(mergedIssuedTo, mergedCertificateFields, input.certificateTypeLabel)
         : undefined;
 
@@ -417,7 +492,9 @@ export class CertificateConfigsService {
         : { shouldAutofillSecondPage: input.shouldAutofillSecondPage }),
       ...(nextSecondPageText === undefined ? {} : { secondPageText: nextSecondPageText }),
       ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
-      ...(nextIssuedTo === undefined && mergedScope !== CertificateScope.OTHER ? {} : { issuedTo: mergedIssuedTo }),
+      ...(nextIssuedTo === undefined && mergedScope !== CertificateScope.OTHER && !changedStandaloneMode
+        ? {}
+        : { issuedTo: mergedIssuedTo }),
       ...(nextCertificateTypeLabel === undefined ? {} : { certificateTypeLabel: nextCertificateTypeLabel }),
       ...(nextCertificateFields === undefined
         ? {}
@@ -586,8 +663,23 @@ export class CertificateConfigsService {
     if (!value) {
       throw new BadRequestException('Folder emoji cannot be empty.');
     }
+    if ([...value].length > 8) {
+      throw new BadRequestException('Folder emoji must be a short symbol.');
+    }
 
     return value;
+  }
+
+  private async withFolderNameConflict<T>(operation: () => Promise<T>, name: string): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(`A certificate folder named "${name}" already exists.`);
+      }
+
+      throw error;
+    }
   }
 
   private async ensureNoDuplicateName(

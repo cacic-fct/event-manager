@@ -482,6 +482,7 @@ export const CERTIFICATE_FIELDS = `
     id
     name
     scope
+    createdAt
     majorEvent {
       id
       endDate
