@@ -362,13 +362,26 @@ export class AttendancesApiService {
       organizerInfo: this.getOrganizerInfo('event', eventId),
       publicEvent: this.getPublicEvent(eventId).pipe(catchError(() => of(null))),
     }).pipe(
-      map(({ details, certificates, organizerInfo, publicEvent }) => ({
-        subscription: details.currentUserEventSubscription,
-        event: details.currentUserEventSubscription ? null : (publicEvent ?? organizerInfo?.events[0]?.event ?? null),
-        hasIssuedCertificate: certificates.length > 0,
-        isLecturer: Boolean(organizerInfo),
-        attendance: details.currentUserEventAttendance,
-      })),
+      map(({ details, certificates, organizerInfo, publicEvent }) => {
+        const subscription = this.isStandaloneEvent(details.currentUserEventSubscription?.event)
+          ? details.currentUserEventSubscription
+          : null;
+        const organizerEvent = organizerInfo?.events[0]?.event ?? null;
+        const fallbackEvent = this.isStandaloneEvent(publicEvent)
+          ? publicEvent
+          : this.isStandaloneEvent(organizerEvent)
+            ? organizerEvent
+            : null;
+        const detailEvent = subscription?.event ?? fallbackEvent;
+
+        return {
+          subscription,
+          event: subscription ? null : fallbackEvent,
+          hasIssuedCertificate: certificates.length > 0,
+          isLecturer: Boolean(organizerInfo && detailEvent),
+          attendance: detailEvent ? details.currentUserEventAttendance : null,
+        };
+      }),
     );
   }
 
@@ -407,17 +420,23 @@ export class AttendancesApiService {
       organizerInfo: this.getOrganizerInfo('event-group', eventGroupId),
     }).pipe(
       map(({ details, certificates, organizerInfo }) => {
-        const fallbackEvents = details.publicEvents ?? [];
-        const targetEvents = details.currentUserEventGroupSubscription?.events ?? fallbackEvents;
+        const subscribedEvents = details.currentUserEventGroupSubscription?.events ?? [];
+        const subscription =
+          details.currentUserEventGroupSubscription && this.isStandaloneEventGroup(subscribedEvents)
+            ? details.currentUserEventGroupSubscription
+            : null;
+        const publicEvents = this.isStandaloneEventGroup(details.publicEvents ?? []) ? (details.publicEvents ?? []) : [];
+        const organizerEvents = organizerInfo?.events.map((item) => item.event) ?? [];
+        const fallbackEvents = this.isStandaloneEventGroup(organizerEvents) ? organizerEvents : publicEvents;
+        const targetEvents = subscription?.events ?? fallbackEvents;
         const targetEventIds = new Set(targetEvents.map((event) => event.id));
-        const eventGroup = fallbackEvents[0]?.eventGroup ?? null;
 
         return {
-          subscription: details.currentUserEventGroupSubscription,
-          eventGroup: details.currentUserEventGroupSubscription ? null : eventGroup,
-          events: details.currentUserEventGroupSubscription ? [] : organizerInfo?.events.map((item) => item.event) ?? fallbackEvents,
+          subscription,
+          eventGroup: subscription ? null : (fallbackEvents[0]?.eventGroup ?? null),
+          events: subscription ? [] : fallbackEvents,
           hasIssuedCertificate: certificates.length > 0,
-          isLecturer: Boolean(organizerInfo),
+          isLecturer: Boolean(organizerInfo && (subscription || fallbackEvents.length > 0)),
           attendances: details.currentUserEventAttendances.filter((attendance) => targetEventIds.has(attendance.eventId)),
         };
       }),
@@ -601,6 +620,14 @@ export class AttendancesApiService {
       selectedEvents,
       notSubscribedEvents,
     };
+  }
+
+  private isStandaloneEvent(event: PublicEvent | null | undefined): event is PublicEvent {
+    return Boolean(event && !event.majorEventId && !event.eventGroupId);
+  }
+
+  private isStandaloneEventGroup(events: PublicEvent[]): boolean {
+    return events.length > 0 && events.every((event) => !event.majorEventId);
   }
 
   private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {

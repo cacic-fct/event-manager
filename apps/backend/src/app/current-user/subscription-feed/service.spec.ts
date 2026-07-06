@@ -40,6 +40,7 @@ describe('CurrentUserSubscriptionFeedService', () => {
         hasIssuedCertificate: false,
       })),
       mapPublicEventGroup: jest.fn((group) => group),
+      mapPublicEvent: jest.fn((event) => event),
       compareFeedDatesDescending: jest.fn(
         (firstDate: Date, firstCreatedAt: Date, secondDate: Date, secondCreatedAt: Date) =>
           secondDate.getTime() - firstDate.getTime() || secondCreatedAt.getTime() - firstCreatedAt.getTime(),
@@ -81,9 +82,101 @@ describe('CurrentUserSubscriptionFeedService', () => {
       }),
     );
   });
+
+  it('does not add non-standalone lecturer or certificate events as standalone feed rows', async () => {
+    const prisma = {
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventGroupSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventLecturer: {
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([
+            {
+              event: event('major-group-child', 'Palestra em grande evento', 'major-group', 'major-1'),
+            },
+          ]),
+      },
+      certificate: {
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              config: {
+                event: event('group-certificate-child', 'Certificado de atividade em grupo', 'group-1'),
+              },
+            },
+          ])
+          .mockResolvedValueOnce([]),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const mapper = {
+      mapCurrentUserSubscriptionFeedSingleEventItem: jest.fn(),
+      mapCurrentUserSubscriptionFeedEventGroupItem: jest.fn(),
+      mapCurrentUserEventFeedItem: jest.fn((item, participation) => ({
+        type: 'SINGLE_EVENT',
+        eventId: item.id,
+        event: item,
+        date: item.startDate,
+        createdAt: item.startDate,
+        participation,
+      })),
+      getSubscribedParticipation: jest.fn(() => ({
+        isSubscribed: true,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+      })),
+      mapPublicEventGroup: jest.fn((group) => group),
+      mapPublicEvent: jest.fn((event) => event),
+      compareFeedDatesDescending: jest.fn(
+        (firstDate: Date, firstCreatedAt: Date, secondDate: Date, secondCreatedAt: Date) =>
+          secondDate.getTime() - firstDate.getTime() || secondCreatedAt.getTime() - firstCreatedAt.getTime(),
+      ),
+    };
+    const service = new CurrentUserSubscriptionFeedService(prisma as never, mapper as never);
+
+    await expect(service.getCurrentUserSubscriptionFeed('person-1')).resolves.toEqual({
+      items: [],
+    });
+
+    expect(prisma.eventLecturer.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          event: expect.objectContaining({
+            majorEventId: null,
+            eventGroupId: {
+              not: null,
+            },
+          }),
+        }),
+      }),
+    );
+    expect(prisma.certificate.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          config: expect.objectContaining({
+            event: expect.objectContaining({
+              majorEventId: null,
+              eventGroupId: null,
+            }),
+          }),
+        }),
+      }),
+    );
+    expect(mapper.mapCurrentUserEventFeedItem).not.toHaveBeenCalled();
+  });
 });
 
-function event(id: string, name: string, eventGroupId: string | null = null) {
+function event(id: string, name: string, eventGroupId: string | null = null, majorEventId: string | null = null) {
   return {
     id,
     name,
@@ -91,7 +184,7 @@ function event(id: string, name: string, eventGroupId: string | null = null) {
     endDate: new Date(id === 'group-child' ? '2026-07-02T14:00:00.000Z' : '2026-07-01T14:00:00.000Z'),
     emoji: '🎓',
     type: 'OTHER',
-    majorEventId: null,
+    majorEventId,
     eventGroupId,
     eventGroup: eventGroupId
       ? {

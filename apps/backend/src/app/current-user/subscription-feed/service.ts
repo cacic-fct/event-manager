@@ -5,9 +5,10 @@ import { CurrentUserEventMapperService } from '../mapper.service';
 import {
   CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
   CURRENT_USER_SUBSCRIPTION_FEED_SINGLE_EVENT_SELECT,
+  PublicEventRecord,
 } from '../selects';
 import { CurrentUserEventParticipation, CurrentUserSubscriptionFeed, CurrentUserSubscriptionFeedItem } from '../models';
-import { PUBLIC_EVENT_GROUP_SELECT, PUBLIC_EVENT_WHERE, PublicEvent } from '../../public-events/models';
+import { PUBLIC_EVENT_GROUP_SELECT, PUBLIC_EVENT_WHERE } from '../../public-events/models';
 
 @Injectable()
 export class CurrentUserSubscriptionFeedService {
@@ -115,6 +116,7 @@ export class CurrentUserSubscriptionFeedService {
           event: {
             select: {
               startDate: true,
+              majorEventId: true,
               eventGroupId: true,
               eventGroup: {
                 select: PUBLIC_EVENT_GROUP_SELECT,
@@ -138,6 +140,7 @@ export class CurrentUserSubscriptionFeedService {
             event: {
               deletedAt: null,
               majorEventId: null,
+              eventGroupId: null,
             },
           },
         },
@@ -223,11 +226,11 @@ export class CurrentUserSubscriptionFeedService {
 
     const subscribedEventIds = new Set(singleEventSubscriptions.map((subscription) => subscription.eventId));
     const lecturerEventIds = new Set(lecturerEvents.map(({ event }) => event.id));
-    const attendanceEventsById = new Map<string, PublicEvent>();
+    const attendanceEventsById = new Map<string, PublicEventRecord>();
     for (const { event } of attendanceEvents) {
       attendanceEventsById.set(event.id, event);
     }
-    const certificateEventsById = new Map<string, PublicEvent>();
+    const certificateEventsById = new Map<string, PublicEventRecord>();
     for (const certificate of certificateEvents) {
       const event = certificate.config.event;
       if (event) {
@@ -257,7 +260,7 @@ export class CurrentUserSubscriptionFeedService {
       ),
     );
 
-    const eventsById = new Map<string, PublicEvent>();
+    const eventsById = new Map<string, PublicEventRecord>();
     for (const [eventId, event] of attendanceEventsById) {
       if (!event.eventGroupId && !event.majorEventId) {
         eventsById.set(eventId, event);
@@ -267,7 +270,9 @@ export class CurrentUserSubscriptionFeedService {
       eventsById.set(event.id, event);
     }
     for (const [eventId, event] of certificateEventsById) {
-      eventsById.set(eventId, event);
+      if (!event.eventGroupId && !event.majorEventId) {
+        eventsById.set(eventId, event);
+      }
     }
 
     for (const [eventId, event] of eventsById) {
@@ -277,7 +282,7 @@ export class CurrentUserSubscriptionFeedService {
 
       items.push(
         this.mapper.mapCurrentUserEventFeedItem(
-          event,
+          this.mapper.mapPublicEvent(event),
           this.buildParticipation(eventId, {
             subscribedEventIds,
             lecturerEventIds,
@@ -305,7 +310,7 @@ export class CurrentUserSubscriptionFeedService {
     const attendanceEventGroupsById = new Map<
       string,
       {
-        eventGroup: NonNullable<PublicEvent['eventGroup']>;
+        eventGroup: NonNullable<PublicEventRecord['eventGroup']>;
         firstEventStartDate: Date;
       }
     >();
@@ -330,7 +335,7 @@ export class CurrentUserSubscriptionFeedService {
       }
     >();
     for (const { event } of lecturerEventGroups) {
-      if (!event.eventGroupId || !event.eventGroup || subscribedEventGroupIds.has(event.eventGroupId)) {
+      if (!event.eventGroupId || !event.eventGroup || event.majorEventId || subscribedEventGroupIds.has(event.eventGroupId)) {
         continue;
       }
 
