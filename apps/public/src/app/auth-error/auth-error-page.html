@@ -1,0 +1,33 @@
+<main class="auth-error-page">
+  <section class="auth-error-panel" aria-labelledby="auth-error-title">
+    <lib-cacic-logo class="auth-error-logo" [fillColor]="logoFillColor()" aria-hidden="true" />
+
+    <div class="auth-error-copy">
+      <h1 id="auth-error-title">{{ content().title }}</h1>
+      <p>{{ content().description }}</p>
+    </div>
+
+    <button mat-flat-button type="button" class="retry-button" (click)="retryLogin()">
+      <mat-icon aria-hidden="true">login</mat-icon>
+      {{ content().actionLabel }}
+    </button>
+
+    <mat-expansion-panel class="technical-details">
+      <mat-expansion-panel-header>
+        <mat-panel-title>Detalhes técnicos</mat-panel-title>
+      </mat-expansion-panel-header>
+
+      <div class="technical-details-body">
+        <button
+          matIconButton
+          type="button"
+          aria-label="Copiar detalhes técnicos"
+          matTooltip="Copiar detalhes técnicos"
+          (click)="copyRawError()">
+          <mat-icon aria-hidden="true">content_copy</mat-icon>
+        </button>
+        <pre><code>{{ content().rawError }}</code></pre>
+      </div>
+    </mat-expansion-panel>
+  </section>
+</main>

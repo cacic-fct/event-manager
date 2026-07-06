@@ -153,21 +153,19 @@ describe('AuthController callback redirect validation', () => {
     expect(response.redirect).toHaveBeenCalledWith('https://sso.example/auth');
   });
 
-  it('requires the callback state to match the HTTP-only state cookie before token exchange', async () => {
+  it('redirects invalid callback state to the frontend recovery page before token exchange', async () => {
     const response = responseFixture();
 
-    await expect(
-      controller.callback(
-        requestFixture({
-          cookie: `${AUTH_STATE_COOKIE_NAME}=state-cookie`,
-        }),
-        response as never,
-        'code-1',
-        undefined,
-        'https://events.example.com/api/auth/callback',
-        'state-query',
-      ),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await controller.callback(
+      requestFixture({
+        cookie: `${AUTH_STATE_COOKIE_NAME}=state-cookie`,
+      }),
+      response as never,
+      'code-1',
+      undefined,
+      'https://events.example.com/api/auth/callback',
+      'state-query',
+    );
 
     expect(response.clearCookie).toHaveBeenCalledWith(AUTH_STATE_COOKIE_NAME, {
       httpOnly: true,
@@ -175,6 +173,33 @@ describe('AuthController callback redirect validation', () => {
       secure: false,
       path: '/api/auth/callback',
     });
+    expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('/app/auth/error?'));
+    expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('reason=login-expired'));
+    expect(response.redirect).toHaveBeenCalledWith(
+      expect.stringContaining('message=O+tempo+de+login+expirou.+Tente+novamente'),
+    );
+    expect(readRedirectRaw(response)).toContain('Invalid authorization state.');
+    expect(keycloakAuthService.exchangeCodeForTokens).not.toHaveBeenCalled();
+    expect(keycloakAuthService.createSession).not.toHaveBeenCalled();
+  });
+
+  it('redirects missing authorization code to the frontend recovery page after valid state consumption', async () => {
+    const response = responseFixture();
+
+    await controller.callback(
+      requestFixture({
+        cookie: `${AUTH_STATE_COOKIE_NAME}=state-1`,
+      }),
+      response as never,
+      undefined,
+      undefined,
+      'https://events.example.com/api/auth/callback',
+      'state-1',
+    );
+
+    expect(keycloakAuthService.consumeAuthorizationState).toHaveBeenCalledWith('state-1');
+    expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('/app/auth/error?'));
+    expect(readRedirectRaw(response)).toContain('Missing authorization code.');
     expect(keycloakAuthService.exchangeCodeForTokens).not.toHaveBeenCalled();
     expect(keycloakAuthService.createSession).not.toHaveBeenCalled();
   });
@@ -446,6 +471,11 @@ function responseFixture() {
     clearCookie: jest.fn(),
     redirect: jest.fn(),
   };
+}
+
+function readRedirectRaw(response: ReturnType<typeof responseFixture>): string {
+  const redirectTarget = String(response.redirect.mock.calls[0][0]);
+  return new URL(redirectTarget, 'https://events.example.com').searchParams.get('raw') ?? '';
 }
 
 function authenticatedUserFixture(): AuthenticatedUser {

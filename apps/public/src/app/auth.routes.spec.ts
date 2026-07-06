@@ -10,6 +10,13 @@ describe('public auth route wiring', () => {
 
     expect(preferencesRoute?.canActivate).toBeUndefined();
   });
+
+  it('exposes a public auth error recovery route', () => {
+    const authErrorRoute = appRoutes.find((route) => route.path === 'auth/error');
+
+    expect(authErrorRoute?.canActivate).toBeUndefined();
+    expect(authErrorRoute?.title).toBe('Erro de login');
+  });
 });
 
 function hasRoutePath(routes: typeof appRoutes, path: string): boolean {

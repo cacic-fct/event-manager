@@ -53,6 +53,11 @@ export const appRoutes: Route[] = [
     canActivate: [developmentOnlyGuard],
   },
   {
+    path: 'auth/error',
+    loadComponent: () => import('./auth-error/auth-error-page').then((m) => m.AuthErrorPage),
+    title: 'Erro de login',
+  },
+  {
     path: 'preview/:previewToken/event',
     loadComponent: () => import('./event/event').then((m) => m.Event),
     title: 'Pré-Visualização',
