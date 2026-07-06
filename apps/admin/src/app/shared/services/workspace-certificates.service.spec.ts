@@ -344,6 +344,49 @@ describe('WorkspaceCertificatesService', () => {
       },
     });
   });
+
+  it('refreshes target lists for the cloned certificate config scope before selecting it', async () => {
+    const folder = certificateFolderFixture();
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () =>
+        of({
+          name: 'Certificate (cópia)',
+          scope: 'OTHER',
+          targetId: folder.id,
+          parts: {
+            textContent: true,
+            recipientData: true,
+            activeState: true,
+            issuedPeople: false,
+          },
+        }),
+    });
+    api.cloneCertificateConfig.mockReturnValueOnce(
+      of(
+        createAdminCertificateConfig(
+          {
+            id: 'config-clone',
+            name: 'Certificate (cópia)',
+            scope: 'OTHER',
+            eventId: null,
+            folderId: folder.id,
+            folder,
+          },
+          certificateTemplate,
+        ),
+      ),
+    );
+
+    await service.cloneCertificateConfig(createAdminCertificateConfig({ id: 'config-1', name: 'Certificate' }));
+
+    expect(api.listCertificateFolders).toHaveBeenCalledWith({ query: undefined, skip: 0, take: 51 });
+    expect(service.targetFiltersForm.controls.scope.value).toBe('OTHER');
+    expect(service.certificateFolders().map((item) => item.id)).toEqual([folder.id]);
+    expect(service.selectedTarget()).toEqual({
+      id: folder.id,
+      name: folder.name,
+    });
+  });
 });
 
 function certificateFolderFixture() {

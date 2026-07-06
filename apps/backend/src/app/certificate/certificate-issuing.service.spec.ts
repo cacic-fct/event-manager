@@ -240,6 +240,47 @@ describe('CertificateIssuingService', () => {
     expect(upsertSpy).toHaveBeenCalledWith(config, recipient, 'admin-user');
   });
 
+  it('copies existing issued recipients in batches without failing the whole copy on one ineligible person', async () => {
+    const prisma = {
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([
+          { personId: 'person-1' },
+          { personId: 'person-2' },
+          { personId: 'person-2' },
+          { personId: 'person-3' },
+        ]),
+      },
+    };
+    const validation = {
+      normalizeRequiredId: jest.fn((_field: string, value: string) => value),
+    };
+    const service = new CertificateIssuingService(prisma as never, validation as never, {} as never);
+    const issueSpy = jest
+      .spyOn(service, 'issueForPerson')
+      .mockImplementation(async (_configId: string, personId: string) => {
+        if (personId === 'person-2') {
+          throw new Error('Person is not eligible.');
+        }
+
+        return {
+          ...mappedCertificateRecord,
+          id: `certificate-${personId}`,
+          personId,
+        };
+      });
+
+    await expect(service.issueForExistingConfigRecipients('source-config', 'target-config', 'admin-user')).resolves
+      .toEqual([
+        expect.objectContaining({ personId: 'person-1' }),
+        expect.objectContaining({ personId: 'person-3' }),
+      ]);
+
+    expect(issueSpy).toHaveBeenCalledTimes(3);
+    expect(issueSpy).toHaveBeenCalledWith('target-config', 'person-1', 'admin-user');
+    expect(issueSpy).toHaveBeenCalledWith('target-config', 'person-2', 'admin-user');
+    expect(issueSpy).toHaveBeenCalledWith('target-config', 'person-3', 'admin-user');
+  });
+
   it('creates certificates when no previous person/config certificate exists', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-23T12:00:00.000Z'));
     const notifications = {

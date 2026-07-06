@@ -72,6 +72,61 @@ describe('CertificatesResolver authorization', () => {
     );
   });
 
+  it('requires read permission on the source config target before cloning', async () => {
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config-1',
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+    });
+    configsService.cloneConfig.mockResolvedValue({
+      id: 'config-clone',
+      scope: CertificateScope.EVENT_GROUP,
+      eventGroupId: 'group-1',
+    });
+
+    await expect(
+      resolver.cloneCertificateConfig(
+        'config-1',
+        {
+          scope: CertificateScope.EVENT_GROUP,
+          eventGroupId: 'group-1',
+        },
+        { req: { user } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'config-clone',
+      }),
+    );
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      1,
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        scope: CertificateScope.EVENT,
+        targetId: 'event-1',
+      },
+    );
+    expect(frozenResources.assertCertificateTargetMutable).toHaveBeenCalledWith(
+      CertificateScope.EVENT_GROUP,
+      'group-1',
+      user,
+      'edit',
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      2,
+      user,
+      [Permission.CertificateConfig.Create],
+      {
+        scope: CertificateScope.EVENT_GROUP,
+        targetId: 'group-1',
+      },
+    );
+  });
+
   it('verifies Turnstile before public certificate validation lookup', async () => {
     const { publicValidationService, resolver, turnstile } = createResolver();
     const request = { ip: '203.0.113.10' };
@@ -153,6 +208,7 @@ function createResolver() {
     listConfigsByTarget: jest.fn(),
     getConfigById: jest.fn(),
     createConfig: jest.fn(),
+    cloneConfig: jest.fn(),
     updateConfig: jest.fn(),
     deleteConfig: jest.fn(),
     deleteFolder: jest.fn(),
@@ -160,6 +216,7 @@ function createResolver() {
   const issuingService = {
     listCertificatesByTarget: jest.fn(),
     issueForPerson: jest.fn(),
+    issueForExistingConfigRecipients: jest.fn(),
     issueMissedCertificates: jest.fn(),
     reissueAllCertificates: jest.fn(),
     deleteCertificate: jest.fn(),

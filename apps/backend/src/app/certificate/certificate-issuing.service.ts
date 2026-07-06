@@ -128,8 +128,16 @@ export class CertificateIssuingService {
     const personIds = [...new Set(sourceCertificates.map((certificate) => certificate.personId))];
     const certificates: Certificate[] = [];
 
-    for (const personId of personIds) {
-      certificates.push(await this.issueForPerson(normalizedTargetConfigId, personId, issuedById));
+    for (let index = 0; index < personIds.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+      const batch = personIds.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
+      const issuedBatch = await Promise.allSettled(
+        batch.map((personId) => this.issueForPerson(normalizedTargetConfigId, personId, issuedById)),
+      );
+      certificates.push(
+        ...issuedBatch
+          .filter((result): result is PromiseFulfilledResult<Certificate> => result.status === 'fulfilled')
+          .map((result) => result.value),
+      );
     }
 
     return certificates;

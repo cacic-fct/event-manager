@@ -294,6 +294,16 @@ export class CertificatesResolver {
   ) {
     const source = await this.configsService.getConfigById(id);
     const user = this.getUser(context);
+    const sourceTargetId = this.getCertificateTargetId(source.scope, {
+      eventId: source.eventId,
+      eventGroupId: source.eventGroupId,
+      majorEventId: source.majorEventId,
+      folderId: source.folderId,
+    });
+    await this.authorizationPolicy.assertPermissions(user, [Permission.CertificateConfig.Read], {
+      scope: source.scope,
+      targetId: sourceTargetId,
+    });
     const scope = input?.scope ?? source.scope;
     const targetId = this.getCertificateTargetId(scope, {
       eventId: input?.eventId === undefined ? source.eventId : input.eventId,

@@ -494,9 +494,11 @@ export class CertificateConfigsService {
         : {}),
       ...(input.certificateTemplateId === undefined ? {} : { certificateTemplateId: mergedTemplateId }),
       ...(nextText === undefined ? {} : { certificateText: nextText }),
-      ...(input.shouldAutofillSecondPage === undefined
-        ? {}
-        : { shouldAutofillSecondPage: input.shouldAutofillSecondPage }),
+      ...(changedStandaloneMode && mergedScope === CertificateScope.OTHER
+        ? { shouldAutofillSecondPage: false }
+        : input.shouldAutofillSecondPage === undefined
+          ? {}
+          : { shouldAutofillSecondPage: input.shouldAutofillSecondPage }),
       ...(nextSecondPageText === undefined ? {} : { secondPageText: nextSecondPageText }),
       ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
       ...(nextIssuedTo === undefined && mergedScope !== CertificateScope.OTHER && !changedStandaloneMode

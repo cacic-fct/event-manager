@@ -430,6 +430,7 @@ export class WorkspaceCertificatesService {
       const destinationTarget = this.getCertificateConfigTarget(created);
       if (destinationTarget) {
         this.targetFiltersForm.controls.scope.setValue(created.scope, { emitEvent: false });
+        await this.searchTargets();
         await this.applyTargetSelection(destinationTarget);
       } else {
         await this.loadCertificateConfigs();

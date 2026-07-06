@@ -306,6 +306,7 @@ describe('CertificateConfigsService', () => {
               folder: null,
               issuedTo: CertificateIssuedTo.ATTENDEE,
               certificateTypeLabel: 'Participação',
+              shouldAutofillSecondPage: true,
             }),
           )
           .mockResolvedValueOnce(null),
@@ -343,6 +344,7 @@ describe('CertificateConfigsService', () => {
           eventId: null,
           folderId: 'folder-1',
           issuedTo: CertificateIssuedTo.OTHER,
+          shouldAutofillSecondPage: false,
         }),
       }),
     );

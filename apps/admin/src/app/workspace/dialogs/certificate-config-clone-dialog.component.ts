@@ -217,6 +217,7 @@ export class CertificateConfigCloneDialogComponent {
   protected readonly targets = signal<CertificateCloneTargetOption[]>([]);
   protected readonly loading = signal(false);
   protected readonly selectedTargetId = signal<string | null>(this.getConfigTargetId(this.data.config));
+  private requestedTargetScope = this.data.config.scope;
   protected readonly form = new FormGroup({
     name: new FormControl(this.data.defaultName, {
       nonNullable: true,
@@ -274,6 +275,7 @@ export class CertificateConfigCloneDialogComponent {
   }
 
   private async loadTargets(scope: CertificateScope): Promise<void> {
+    this.requestedTargetScope = scope;
     this.loading.set(true);
     try {
       const targets =
@@ -304,9 +306,18 @@ export class CertificateConfigCloneDialogComponent {
                   emoji: folder.emoji,
                   dateLabel: `Criada em ${this.formatDate(folder.createdAt)}`,
                 }));
+      if (this.requestedTargetScope !== scope || this.form.controls.scope.value !== scope) {
+        return;
+      }
       this.targets.set(this.withCurrentTarget(scope, targets));
+    } catch {
+      if (this.requestedTargetScope === scope && this.form.controls.scope.value === scope) {
+        this.targets.set([]);
+      }
     } finally {
-      this.loading.set(false);
+      if (this.requestedTargetScope === scope && this.form.controls.scope.value === scope) {
+        this.loading.set(false);
+      }
     }
   }
 
@@ -368,7 +379,23 @@ export class CertificateConfigCloneDialogComponent {
   }
 
   private getConfigTargetId(config: CertificateConfig): string | null {
-    return config.eventId ?? config.eventGroupId ?? config.majorEventId ?? config.folderId ?? null;
+    if (config.scope === 'EVENT') {
+      return config.eventId ?? null;
+    }
+
+    if (config.scope === 'EVENT_GROUP') {
+      return config.eventGroupId ?? null;
+    }
+
+    if (config.scope === 'MAJOR_EVENT') {
+      return config.majorEventId ?? null;
+    }
+
+    if (config.scope === 'OTHER') {
+      return config.folderId ?? null;
+    }
+
+    return null;
   }
 
   private formatRange(startDate: string, endDate: string): string {
