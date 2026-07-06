@@ -45,6 +45,7 @@ export interface PublicEventForm {
   responseMode: EventFormResponseMode;
   resultsPublic: boolean;
   resultsLive: boolean;
+  allowResponseEdits: boolean;
   publicationState: PublicationState;
   links: PublicEventFormLink[];
   responseCount: number;

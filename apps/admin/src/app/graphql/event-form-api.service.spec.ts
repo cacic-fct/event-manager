@@ -101,6 +101,7 @@ function formFixture(overrides: Record<string, unknown> = {}) {
     responseMode: 'SINGLE_PER_TARGET',
     resultsPublic: false,
     resultsLive: false,
+    allowResponseEdits: false,
     publicationState: 'DRAFT',
     scheduledPublishAt: null,
     publishedAt: null,

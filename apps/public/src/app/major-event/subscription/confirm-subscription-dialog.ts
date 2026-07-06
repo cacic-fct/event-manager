@@ -30,6 +30,8 @@ export interface SubscriptionFormContext {
   requiredInSubscriptionFlow: boolean;
   enforceRequiredAnswers: boolean;
   initialAnswers: FormResponseAnswer[];
+  submitted: boolean;
+  editable: boolean;
 }
 
 export interface SubscriptionFormAnswer {
@@ -90,6 +92,7 @@ export class ConfirmSubscriptionDialog {
         answers: this.answersByKey()[this.formKey(form)] ?? [],
       }))
       .filter(({ form, answers }) => form.requiredInSubscriptionFlow || answers.length > 0)
+      .filter(({ form }) => !form.submitted || form.editable)
       .map(({ form, answers }) => ({
         formId: form.form.id,
         linkId: form.linkId,

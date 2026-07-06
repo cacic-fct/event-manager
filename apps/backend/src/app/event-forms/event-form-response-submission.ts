@@ -5,7 +5,9 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { type FormElement } from '@cacic-fct/form-contracts';
 import {
+  AuditLogOperation,
   EventFormAudience,
+  EventFormResponseSource,
   EventFormSigilo,
   EventFormTargetType,
   Prisma,
@@ -24,6 +26,7 @@ import {
   normalizeTarget,
   responseLookupWhere,
   responseTargetWhere,
+  subscriptionScopeResponseTargetWhere,
   toDbResponseSource,
 } from './event-form-targets';
 
@@ -33,7 +36,14 @@ export async function submitResponseForPerson(
   personId: string,
   input: SubmitEventFormResponseInput,
   options: { requireSubscriptionFlowLink: boolean },
-): Promise<{ formId: string; response: EventFormResponseRecord; sigilo: EventFormSigilo }> {
+): Promise<{
+  form: Awaited<ReturnType<typeof requirePublishedEventFormWithClient>>;
+  formId: string;
+  operation: AuditLogOperation;
+  previousResponse: EventFormResponseRecord | null;
+  response: EventFormResponseRecord;
+  sigilo: EventFormSigilo;
+}> {
   const target = normalizeTarget(input);
   const form = await requirePublishedEventFormWithClient(tx, input.formId);
   const link = await requireActiveLinkForTargetWithClient(tx, form.id, target, input.linkId ?? undefined);
@@ -55,14 +65,17 @@ export async function submitResponseForPerson(
   const existing = existingWhere
     ? await tx.eventFormResponse.findFirst({
         where: existingWhere,
-        select: {
-          id: true,
-        },
+        include: responseInclude,
         orderBy: {
           submittedAt: 'desc',
         },
       })
     : null;
+  const restoringArchivedSubscriptionFlowResponse =
+    Boolean(existing?.deletedAt) && options.requireSubscriptionFlowLink;
+  if (existing && !form.allowResponseEdits && !restoringArchivedSubscriptionFlowResponse) {
+    throw new BadRequestException('Este formulário não permite editar respostas já enviadas.');
+  }
 
   const response = existing
     ? await tx.eventFormResponse.update({
@@ -76,6 +89,7 @@ export async function submitResponseForPerson(
           majorEventId: target.majorEventId,
           answers: answers as unknown as Prisma.InputJsonValue,
           source: toDbResponseSource(responseSource),
+          deletedAt: null,
         },
         include: responseInclude,
       })
@@ -94,7 +108,10 @@ export async function submitResponseForPerson(
       });
 
   return {
+    form,
     formId: form.id,
+    operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+    previousResponse: existing,
     response,
     sigilo: form.sigilo,
   };
@@ -157,7 +174,10 @@ export async function assertRequiredSubscriptionFlowResponses(
       responseLookupWhere(link.form, personId, target) ??
       responseTargetWhere(link.formId, personId, target);
     const response = await tx.eventFormResponse.findFirst({
-      where: responseWhere,
+      where: {
+        ...responseWhere,
+        deletedAt: null,
+      },
       select: {
         id: true,
         answers: true,
@@ -171,4 +191,91 @@ export async function assertRequiredSubscriptionFlowResponses(
       assertStoredResponseHasCurrentRequiredAnswers(link.form, response.answers);
     }
   }
+}
+
+export async function archiveResponsesForSubscriptionScope(
+  tx: Prisma.TransactionClient,
+  personId: string,
+  scope: SubscriptionFlowTargetScope,
+  deletedAt = new Date(),
+): Promise<string[]> {
+  const targetWhere = subscriptionScopeResponseTargetWhere(scope);
+  if (targetWhere.length === 0) {
+    return [];
+  }
+
+  const responses = await tx.eventFormResponse.findMany({
+    where: {
+      personId,
+      deletedAt: null,
+      source: EventFormResponseSource.SUBSCRIPTION_FLOW,
+      OR: targetWhere,
+    },
+    select: {
+      id: true,
+      formId: true,
+    },
+  });
+  if (responses.length === 0) {
+    return [];
+  }
+
+  await tx.eventFormResponse.updateMany({
+    where: {
+      id: {
+        in: responses.map((response) => response.id),
+      },
+    },
+    data: {
+      deletedAt,
+    },
+  });
+
+  return uniqueFormIds(responses);
+}
+
+export async function restoreResponsesForSubscriptionScope(
+  tx: Prisma.TransactionClient,
+  personId: string,
+  scope: SubscriptionFlowTargetScope,
+): Promise<string[]> {
+  const targetWhere = subscriptionScopeResponseTargetWhere(scope);
+  if (targetWhere.length === 0) {
+    return [];
+  }
+
+  const responses = await tx.eventFormResponse.findMany({
+    where: {
+      personId,
+      deletedAt: {
+        not: null,
+      },
+      source: EventFormResponseSource.SUBSCRIPTION_FLOW,
+      OR: targetWhere,
+    },
+    select: {
+      id: true,
+      formId: true,
+    },
+  });
+  if (responses.length === 0) {
+    return [];
+  }
+
+  await tx.eventFormResponse.updateMany({
+    where: {
+      id: {
+        in: responses.map((response) => response.id),
+      },
+    },
+    data: {
+      deletedAt: null,
+    },
+  });
+
+  return uniqueFormIds(responses);
+}
+
+function uniqueFormIds(responses: readonly { formId: string }[]): string[] {
+  return [...new Set(responses.map((response) => response.formId))];
 }

@@ -74,6 +74,13 @@
         <div class="panel-actions editor-action-row">
           <div class="editor-action-group">
             @if (workspace.selectedForm(); as selectedForm) {
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="auditLog.openHistory('EVENT_FORM', selectedForm.id, selectedForm.name)">
+                <mat-icon>history</mat-icon>
+                Histórico
+              </button>
               @if (permissions.has(Permission.EventForm.Export)) {
                 <a mat-stroked-button [href]="workspace.exportUrl(selectedForm)" target="_blank" rel="noopener">
                   <mat-icon>download</mat-icon>
@@ -250,6 +257,11 @@
               formControlName="resultsPublic"
               matTooltip="Permite que o público autorizado veja resultados. Sem resultados ao vivo, eles aparecem só após o encerramento.">
               Publicar resultados para público autorizado
+            </mat-checkbox>
+            <mat-checkbox
+              formControlName="allowResponseEdits"
+              matTooltip="Permite que a pessoa altere uma resposta já enviada enquanto o vínculo do formulário estiver aberto.">
+              Permitir edição após envio enquanto aberto
             </mat-checkbox>
             <mat-checkbox
               formControlName="resultsLive"

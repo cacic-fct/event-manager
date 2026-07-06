@@ -208,6 +208,7 @@ export function createPublicEventForm(overrides: Partial<PublicEventForm> = {}):
     responseMode: 'ONE_PER_TARGET',
     resultsPublic: false,
     resultsLive: false,
+    allowResponseEdits: false,
     publicationState: 'PUBLISHED',
     links: overrides.links ?? [createPublicEventFormLink({ formId: id })],
     responseCount: 0,

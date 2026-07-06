@@ -44,8 +44,12 @@
       <lib-event-form-renderer
         [elements]="formElements(formContext.form)"
         [initialAnswers]="formContext.initialAnswers"
+        [readOnly]="formContext.submitted && !formContext.editable"
         [showSubmit]="false"
         (answersChange)="updateFormAnswers(formContext, $event)" />
+      @if (formContext.submitted && !formContext.editable) {
+      <p class="validation">Resposta já enviada. Este formulário não permite edição após o envio.</p>
+      }
       @if (hasMissingRequired(formContext)) {
       <p class="validation">Responda as perguntas obrigatórias para continuar.</p>
       }

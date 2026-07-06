@@ -33,6 +33,7 @@ export function toEventFormModel(form: EventFormRecord): EventFormModel {
     responseMode: form.responseMode,
     resultsPublic: form.resultsPublic,
     resultsLive: form.resultsLive,
+    allowResponseEdits: form.allowResponseEdits,
     publicationState: form.publicationState,
     scheduledPublishAt: form.scheduledPublishAt,
     publishedAt: form.publishedAt,

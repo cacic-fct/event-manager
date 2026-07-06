@@ -24,6 +24,7 @@ import {
   createAdminMajorEvent,
 } from '../../../testing/admin-entity-fixtures';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
+import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { EventFormLinkDraft, WorkspaceFormsService } from '../../../shared/services/workspace-forms.service';
 import { WorkspaceFormsTabComponent } from './workspace-forms-tab.component';
 
@@ -39,6 +40,7 @@ interface WorkspaceFormsStoryArgs {
   responseMode: EventFormResponseMode;
   resultsPublic: boolean;
   resultsLive: boolean;
+  allowResponseEdits: boolean;
   lecturerPublish: boolean;
 }
 
@@ -51,6 +53,7 @@ const defaultArgs: WorkspaceFormsStoryArgs = {
   responseMode: 'ONE_PER_TARGET',
   resultsPublic: false,
   resultsLive: false,
+  allowResponseEdits: false,
   lecturerPublish: true,
 };
 
@@ -90,6 +93,7 @@ const meta: Meta<WorkspaceFormsStoryArgs> = {
     },
     resultsPublic: { control: 'boolean' },
     resultsLive: { control: 'boolean' },
+    allowResponseEdits: { control: 'boolean' },
     lecturerPublish: { control: 'boolean' },
   },
   decorators: [
@@ -201,6 +205,10 @@ function createFormsStoryProviders(args: WorkspaceFormsStoryArgs) {
     {
       provide: WorkspaceFormsService,
       useFactory: () => createFormsStoryService(new FormBuilder(), args),
+    },
+    {
+      provide: WorkspaceAuditLogService,
+      useValue: { openHistory: () => undefined },
     },
   ];
 }
@@ -369,6 +377,7 @@ function buildForms(args: WorkspaceFormsStoryArgs, events: Event[], majorEvents:
       responseMode: args.responseMode,
       resultsPublic: args.mode === 'public-results' ? true : args.resultsPublic,
       resultsLive: args.mode === 'public-results' ? true : args.resultsLive,
+      allowResponseEdits: args.allowResponseEdits,
       publicationState: index === 1 ? 'SCHEDULED' : index === 2 ? 'DRAFT' : 'PUBLISHED',
       scheduledPublishAt: index === 1 ? '2026-07-12T18:00:00.000Z' : null,
       links: [
@@ -472,6 +481,7 @@ function createEditorForm(formBuilder: FormBuilder) {
     responseMode: ['ONE_PER_TARGET' as EventFormResponseMode],
     resultsPublic: [false],
     resultsLive: [false],
+    allowResponseEdits: [false],
     scheduledPublishAt: [''],
   });
 }
@@ -488,6 +498,7 @@ function patchForm(form: ReturnType<typeof createEditorForm>, selectedForm: Even
     responseMode: selectedForm?.responseMode ?? 'ONE_PER_TARGET',
     resultsPublic: selectedForm?.resultsPublic ?? false,
     resultsLive: selectedForm?.resultsLive ?? false,
+    allowResponseEdits: selectedForm?.allowResponseEdits ?? false,
     scheduledPublishAt: selectedForm?.scheduledPublishAt?.slice(0, 16) ?? '',
   });
 }

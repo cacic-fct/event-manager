@@ -52,6 +52,7 @@ export class CurrentUserEventSubscriptionService {
     } as unknown as AuditLogService,
     private readonly eventForms: EventFormsService = {
       submitSubscriptionFlowResponses: async () => [],
+      archiveResponsesForSubscriptionScope: async () => [],
       emitResultsDeltas: async () => undefined,
     } as unknown as EventFormsService,
   ) {}
@@ -127,10 +128,16 @@ export class CurrentUserEventSubscriptionService {
         const groupSubscription = await this.subscribeCurrentUserEventGroupTx(tx, personId, targetEvent.eventGroupId, now);
         await this.recordEventGroupSubscriptionChange(groupSubscription, personId, actor, tx);
         submittedFormIds.push(
-          ...(await this.eventForms.submitSubscriptionFlowResponses(tx, personId, formResponses, {
-            majorEventId: null,
-            selectedEventIds: new Set([targetEvent.id]),
-          })),
+          ...(await this.eventForms.submitSubscriptionFlowResponses(
+            tx,
+            personId,
+            formResponses,
+            {
+              majorEventId: null,
+              selectedEventIds: new Set([targetEvent.id]),
+            },
+            actor,
+          )),
         );
         return {
           event: targetEvent,
@@ -184,19 +191,31 @@ export class CurrentUserEventSubscriptionService {
           tx,
         );
         submittedFormIds.push(
-          ...(await this.eventForms.submitSubscriptionFlowResponses(tx, personId, formResponses, {
-            majorEventId: null,
-            selectedEventIds: new Set([targetEvent.id]),
-          })),
+          ...(await this.eventForms.submitSubscriptionFlowResponses(
+            tx,
+            personId,
+            formResponses,
+            {
+              majorEventId: null,
+              selectedEventIds: new Set([targetEvent.id]),
+            },
+            actor,
+          )),
         );
         return { event: targetEvent, createdSubscription, createdGroupSubscription: null, submittedFormIds };
       }
 
       submittedFormIds.push(
-        ...(await this.eventForms.submitSubscriptionFlowResponses(tx, personId, formResponses, {
-          majorEventId: null,
-          selectedEventIds: new Set([targetEvent.id]),
-        })),
+        ...(await this.eventForms.submitSubscriptionFlowResponses(
+          tx,
+          personId,
+          formResponses,
+          {
+            majorEventId: null,
+            selectedEventIds: new Set([targetEvent.id]),
+          },
+          actor,
+        )),
       );
       return { event: targetEvent, createdSubscription: null, createdGroupSubscription: null, submittedFormIds };
     });
@@ -210,7 +229,7 @@ export class CurrentUserEventSubscriptionService {
     eventId: string,
     actor?: AuthenticatedUser,
   ): Promise<PublicEvent> {
-    const event = await this.runSerializableSubscriptionTransaction(async (tx) => {
+    const result = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const targetEvent = await tx.event.findFirst({
         where: {
           id: eventId,
@@ -269,6 +288,15 @@ export class CurrentUserEventSubscriptionService {
           deletedAt: now,
         },
       });
+      const archivedFormIds = await this.eventForms.archiveResponsesForSubscriptionScope(
+        tx,
+        personId,
+        {
+          majorEventId: null,
+          selectedEventIds: new Set([targetEvent.id]),
+        },
+        now,
+      );
       await this.refreshEventSubscriptionCounters(tx, [targetEvent.id]);
       if (groupSubscription) {
         const currentGroupEventIds = await this.getEventGroupSubscriptionEventIds(tx, personId, groupSubscription.id);
@@ -304,10 +332,11 @@ export class CurrentUserEventSubscriptionService {
         );
       }
 
-      return targetEvent;
+      return { event: targetEvent, archivedFormIds };
     });
 
-    return this.mapper.mapPublicEvent(event);
+    await this.eventForms.emitResultsDeltas(result.archivedFormIds);
+    return this.mapper.mapPublicEvent(result.event);
   }
 
   async subscribeCurrentUserEventGroup(

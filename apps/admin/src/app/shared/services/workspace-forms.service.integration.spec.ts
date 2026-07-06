@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventFormApiService } from '../../graphql/event-form-api.service';
@@ -34,6 +35,9 @@ describe('WorkspaceFormsService integration', () => {
   let majorEventApi: {
     listMajorEvents: ReturnType<typeof vi.fn>;
   };
+  let router: {
+    navigate: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     const event = createAdminEvent({ id: 'event-1', name: 'Oficina de Angular' });
@@ -60,6 +64,9 @@ describe('WorkspaceFormsService integration', () => {
     majorEventApi = {
       listMajorEvents: vi.fn(() => of([majorEvent])),
     };
+    router = {
+      navigate: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       providers: [
@@ -69,6 +76,7 @@ describe('WorkspaceFormsService integration', () => {
         { provide: EventApiService, useValue: eventApi },
         { provide: MajorEventApiService, useValue: majorEventApi },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
+        { provide: Router, useValue: router },
       ],
     }).compileComponents();
 
@@ -90,6 +98,7 @@ describe('WorkspaceFormsService integration', () => {
     await service.selectForm(service.forms()[0]);
 
     expect(formApi.getForm).toHaveBeenCalledWith('form-1');
+    expect(router.navigate).toHaveBeenCalledWith(['/forms', 'form-1']);
     expect(formApi.results).toHaveBeenCalledWith('form-1');
     expect(service.form.controls.name.value).toBe('Pesquisa de camiseta');
     expect(service.form.controls.ownerType.value).toBe('EVENT');
@@ -103,6 +112,16 @@ describe('WorkspaceFormsService integration', () => {
       allowLecturerManualPublish: false,
     });
     expect(service.selectedResults()?.responseCount).toBe(1);
+  });
+
+  it('selects forms by direct route id without rewriting the URL', async () => {
+    await service.initialize();
+
+    await service.selectFormById('form-1', { skipIfCurrent: true });
+
+    expect(formApi.getForm).toHaveBeenCalledWith('form-1');
+    expect(router.navigate).not.toHaveBeenCalled();
+    expect(service.selectedForm()?.id).toBe('form-1');
   });
 
   it('ignores stale form list responses and keeps the latest search context', async () => {
@@ -219,6 +238,7 @@ describe('WorkspaceFormsService integration', () => {
       responseMode: 'MULTIPLE_PER_TARGET',
       resultsPublic: true,
       resultsLive: true,
+      allowResponseEdits: true,
     });
     service.updateLink('form-link-1', {
       targetType: 'MAJOR_EVENT',
@@ -243,6 +263,7 @@ describe('WorkspaceFormsService integration', () => {
       responseMode: 'MULTIPLE_PER_TARGET',
       resultsPublic: true,
       resultsLive: true,
+      allowResponseEdits: true,
     });
     expect(savedInput?.elementsJson).toContain('Tamanho da camiseta');
     expect(savedInput?.links?.[0]).toMatchObject({

@@ -118,6 +118,9 @@ export class EventForm {
   @Field(() => Boolean)
   resultsLive!: boolean;
 
+  @Field(() => Boolean)
+  allowResponseEdits!: boolean;
+
   @Field(() => PublicationState)
   publicationState!: PublicationState;
 
@@ -330,6 +333,9 @@ export class EventFormInput {
 
   @Field(() => Boolean, { nullable: true })
   resultsLive?: boolean | null;
+
+  @Field(() => Boolean, { nullable: true })
+  allowResponseEdits?: boolean | null;
 
   @Field(() => [EventFormLinkInput], { nullable: true })
   links?: EventFormLinkInput[] | null;

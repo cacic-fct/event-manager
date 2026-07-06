@@ -20,6 +20,7 @@ const PUBLIC_EVENT_FORM_FIELDS = `
   responseMode
   resultsPublic
   resultsLive
+  allowResponseEdits
   publicationState
   links {
     id

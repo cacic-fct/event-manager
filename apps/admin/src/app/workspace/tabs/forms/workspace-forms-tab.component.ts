@@ -11,7 +11,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, ParamMap } from '@angular/router';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventFormBuilderComponent, EventFormRendererComponent } from '@cacic-fct/shared-angular/event-forms';
 import {
@@ -22,6 +22,7 @@ import {
 } from '@cacic-fct/event-manager-admin-contracts';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 import { WorkspaceFormsService } from '../../../shared/services/workspace-forms.service';
+import { WorkspaceAuditLogService } from '../../../shared/services/workspace-audit-log.service';
 import { DeleteEventFormDialogComponent } from './delete-event-form-dialog.component';
 import { WorkspaceFormResultsComponent } from './workspace-form-results.component';
 
@@ -56,6 +57,7 @@ export class WorkspaceFormsTabComponent implements OnDestroy {
   readonly workspace = inject(WorkspaceFormsService);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
+  protected readonly auditLog = inject(WorkspaceAuditLogService);
   protected readonly permissions = inject(WorkspacePermissionsService);
   protected readonly Permission = Permission;
   protected readonly sigiloOptions: EventFormSigilo[] = ['PUBLIC', 'PARTIALLY_SECRET', 'SECRET', 'ANONYMOUS'];
@@ -67,10 +69,7 @@ export class WorkspaceFormsTabComponent implements OnDestroy {
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const eventId = params.get('eventId')?.trim();
-      const majorEventId = params.get('majorEventId')?.trim();
-      this.workspace.setTargetFilter(eventId ? { eventId } : majorEventId ? { majorEventId } : null);
-      void this.workspace.initialize();
+      void this.applyRouteParams(params);
     });
   }
 
@@ -206,5 +205,16 @@ export class WorkspaceFormsTabComponent implements OnDestroy {
           void this.workspace.delete();
         }
       });
+  }
+
+  private async applyRouteParams(params: ParamMap): Promise<void> {
+    const eventId = params.get('eventId')?.trim();
+    const majorEventId = params.get('majorEventId')?.trim();
+    const formId = params.get('formId')?.trim();
+    this.workspace.setTargetFilter(eventId ? { eventId } : majorEventId ? { majorEventId } : null);
+    await this.workspace.initialize();
+    if (formId) {
+      await this.workspace.selectFormById(formId, { skipIfCurrent: true });
+    }
   }
 }

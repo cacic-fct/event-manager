@@ -6,7 +6,7 @@ import { Event } from './event';
 import { ActivatedRoute, convertToParamMap, Router, Params } from '@angular/router';
 import { signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import type { PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
+import type { PublicEventForm, PublicEventFormResponse } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { EventApiService, type EventPageData } from './event-api.service';
@@ -160,6 +160,7 @@ function subscriptionFormFixture(): PublicEventForm {
     responseMode: 'ONE_PER_TARGET',
     resultsPublic: false,
     resultsLive: false,
+    allowResponseEdits: false,
     publicationState: 'PUBLISHED',
     links: [
       {
@@ -324,5 +325,70 @@ describe('Event', () => {
         answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
       },
     ]);
+  });
+
+  it('keeps multiple-response subscription forms editable after an existing response', async () => {
+    TestBed.resetTestingModule();
+    const form = {
+      ...subscriptionFormFixture(),
+      responseMode: 'MULTIPLE_PER_TARGET' as const,
+      allowResponseEdits: false,
+    };
+    const existingResponse: PublicEventFormResponse = {
+      id: 'response-1',
+      formId: 'form-1',
+      linkId: 'link-1',
+      targetType: 'EVENT',
+      eventId: 'event-1',
+      majorEventId: null,
+      personId: 'person-1',
+      respondentName: 'Ada Lovelace',
+      respondentEmail: 'ada@example.com',
+      answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+      source: 'SUBSCRIPTION_FLOW',
+      submittedAt: '2026-07-06T12:00:00.000Z',
+      updatedAt: '2026-07-06T12:00:00.000Z',
+    };
+    const open = vi.fn(() => ({
+      afterClosed: () => of({ confirmed: false, answers: [] }),
+    }));
+    const eventPageData = defaultEventPageData({
+      event: {
+        ...defaultEventPageData().event,
+        allowSubscription: true,
+        startDate: '2026-12-03T10:00:00.000Z',
+        endDate: '2026-12-03T11:00:00.000Z',
+      },
+    });
+    const newFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        eventPageData,
+        formsApi: {
+          listCurrentUserForms: vi.fn(() => of([form])),
+          getCurrentUserResponse: vi.fn(() => of(existingResponse)),
+        },
+        dialog: { open: open as never },
+      },
+    );
+    await newFixture.whenStable();
+
+    newFixture.componentInstance.subscribe(eventPageData);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          forms: [
+            expect.objectContaining({
+              submitted: true,
+              editable: true,
+            }),
+          ],
+        }),
+      }),
+    );
   });
 });

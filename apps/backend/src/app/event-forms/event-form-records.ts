@@ -43,7 +43,11 @@ export const eventFormInclude = {
       },
       _count: {
         select: {
-          responses: true,
+          responses: {
+            where: {
+              deletedAt: null,
+            },
+          },
         },
       },
     },
@@ -51,7 +55,11 @@ export const eventFormInclude = {
   },
   _count: {
     select: {
-      responses: true,
+      responses: {
+        where: {
+          deletedAt: null,
+        },
+      },
     },
   },
 } satisfies Prisma.EventFormInclude;

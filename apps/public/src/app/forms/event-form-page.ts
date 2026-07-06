@@ -44,6 +44,7 @@ type FormPageState =
       targetType: EventFormTargetType;
       targetId: string;
       canAnswer: boolean;
+      canEditResponse: boolean;
       resultsReleased: boolean;
       elements: ReturnType<typeof parseFormElementsJson>;
       answers: FormResponseAnswer[];
@@ -131,7 +132,9 @@ export class EventFormPage {
       )
       .subscribe({
         next: () => {
-          this.snackbar.open('Respostas salvas.', 'Fechar', { duration: 3000 });
+          this.snackbar.open(state.response ? 'Respostas atualizadas.' : 'Respostas salvas.', 'Fechar', {
+            duration: 3000,
+          });
           void this.router.navigate(['/profile', 'attendances']);
         },
         error: (error: unknown) => {
@@ -180,6 +183,7 @@ export class EventFormPage {
             targetType,
             targetId,
             canAnswer,
+            canEditResponse: false,
             resultsReleased,
             elements: parseFormElementsJson(form.elementsJson),
             answers: [],
@@ -196,6 +200,7 @@ export class EventFormPage {
                 targetType,
                 targetId,
                 canAnswer,
+                canEditResponse: !response || form.responseMode === 'MULTIPLE_PER_TARGET' || form.allowResponseEdits,
                 resultsReleased,
                 elements: parseFormElementsJson(form.elementsJson),
                 answers: parseFormAnswersJson(response?.answersJson),
