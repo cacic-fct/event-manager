@@ -14,6 +14,7 @@ import { PermissionGrantsApiService } from '../../graphql/permission-grants-api.
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { createAdminPerson } from '../../testing/admin-entity-fixtures';
 import { WorkspacePeopleService } from './workspace-people.service';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 describe('WorkspacePeopleService', () => {
   let service: WorkspacePeopleService;
@@ -33,6 +34,7 @@ describe('WorkspacePeopleService', () => {
   };
   let snackbar: { open: ReturnType<typeof vi.fn> };
   let router: { navigate: ReturnType<typeof vi.fn> };
+  let grantedPermissions: Set<Permission>;
 
   const selectedPerson = createAdminPerson({
     id: 'person-1',
@@ -84,6 +86,7 @@ describe('WorkspacePeopleService', () => {
     };
     snackbar = { open: vi.fn() };
     router = { navigate: vi.fn() };
+    grantedPermissions = new Set([Permission.PermissionGrant.Read]);
 
     await TestBed.configureTestingModule({
       providers: [
@@ -93,6 +96,12 @@ describe('WorkspacePeopleService', () => {
         { provide: MatSnackBar, useValue: snackbar },
         { provide: MatDialog, useValue: { open: vi.fn() } },
         { provide: Router, useValue: router },
+        {
+          provide: WorkspacePermissionsService,
+          useValue: {
+            has: (permission: Permission) => grantedPermissions.has(permission),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -135,6 +144,20 @@ describe('WorkspacePeopleService', () => {
       skip: 0,
       take: 51,
       permissionGrantFilter: 'ANY',
+    });
+  });
+
+  it('does not send permission grant filters without permission-grant read permission', async () => {
+    grantedPermissions.delete(Permission.PermissionGrant.Read);
+    service.peopleSearchForm.controls.permissionFilter.setValue('ANY_GRANTS', { emitEvent: false });
+
+    await service.searchPeople('ada');
+
+    expect(service.peoplePermissionSearchFilterOptions()).toEqual([{ value: 'ALL', label: 'Todas as pessoas' }]);
+    expect(peopleApi.listPeopleSummaries).toHaveBeenCalledWith({
+      query: 'ada',
+      skip: 0,
+      take: 51,
     });
   });
 

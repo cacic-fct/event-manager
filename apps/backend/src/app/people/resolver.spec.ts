@@ -1,13 +1,23 @@
-import { BadRequestException, ConflictException, UnprocessableEntityException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { PeopleResolver } from './resolver';
 
 describe('PeopleResolver', () => {
   it('filters people by active permission grants and lecturer profile presence', async () => {
     const prisma = createPrisma();
-    const resolver = createResolver(prisma);
+    const authorizationPolicy = createAuthorizationPolicy();
+    const resolver = createResolver(prisma, authorizationPolicy);
 
-    await resolver.people(undefined, undefined, undefined, undefined, undefined, 0, 10, 'ACTIVE', true);
+    await resolver.people(undefined, undefined, undefined, undefined, undefined, 0, 10, 'ACTIVE', true, userContext());
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(userContext().req.user, [
+      Permission.PermissionGrant.Read,
+    ]);
 
     expect(prisma.people.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -51,7 +61,7 @@ describe('PeopleResolver', () => {
     const prisma = createPrisma();
     const resolver = createResolver(prisma);
 
-    await resolver.people(undefined, undefined, undefined, undefined, undefined, 0, 10, 'ANY', false);
+    await resolver.people(undefined, undefined, undefined, undefined, undefined, 0, 10, 'ANY', false, userContext());
 
     expect(prisma.people.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -83,6 +93,20 @@ describe('PeopleResolver', () => {
         }),
       }),
     );
+  });
+
+  it('rejects permission grant filters without permission-grant read permission', async () => {
+    const prisma = createPrisma();
+    const authorizationPolicy = createAuthorizationPolicy();
+    authorizationPolicy.assertPermissions.mockRejectedValue(
+      new ForbiddenException('Missing Event Manager permission grants.'),
+    );
+    const resolver = createResolver(prisma, authorizationPolicy);
+
+    await expect(
+      resolver.people(undefined, undefined, undefined, undefined, undefined, 0, 10, 'ANY', false, userContext()),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.people.findMany).not.toHaveBeenCalled();
   });
 
   it('rejects invalid permission grant filters', async () => {
@@ -209,7 +233,10 @@ describe('PeopleResolver', () => {
   });
 });
 
-function createResolver(prisma: ReturnType<typeof createPrisma>): PeopleResolver {
+function createResolver(
+  prisma: ReturnType<typeof createPrisma>,
+  authorizationPolicy = createAuthorizationPolicy(),
+): PeopleResolver {
   return new PeopleResolver(
     prisma as never,
     {
@@ -219,10 +246,15 @@ function createResolver(prisma: ReturnType<typeof createPrisma>): PeopleResolver
     } as never,
     { refreshIssuedCertificatesForPerson: jest.fn() } as never,
     { record: jest.fn().mockResolvedValue(undefined) } as never,
-    {
-      evaluatePermissions: jest.fn().mockResolvedValue([Permission.Person.Delete]),
-    } as never,
+    authorizationPolicy as never,
   );
+}
+
+function createAuthorizationPolicy() {
+  return {
+    assertPermissions: jest.fn().mockResolvedValue(undefined),
+    evaluatePermissions: jest.fn().mockResolvedValue([Permission.Person.Delete]),
+  };
 }
 
 function createPrisma() {

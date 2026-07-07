@@ -1,4 +1,5 @@
 import { LecturerProfileInput, Person, PersonInput } from '@cacic-fct/event-manager-admin-contracts';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import {
   PersonLinkedDataDialogComponent,
@@ -327,6 +328,10 @@ export abstract class WorkspacePeopleRecords extends WorkspacePeopleState {
   }
 
   private getPermissionGrantApiFilter(filter: PeoplePermissionSearchFilter): PeopleSearchApiFilters {
+    if (!this.permissions.has(Permission.PermissionGrant.Read)) {
+      return {};
+    }
+
     switch (filter) {
       case 'ACTIVE_GRANTS':
         return { permissionGrantFilter: 'ACTIVE' };

@@ -80,6 +80,7 @@ export class PeopleResolver {
     @Args('permissionGrantFilter', { type: () => String, nullable: true })
     permissionGrantFilter?: string,
     @Args('hasLecturerProfile', { type: () => Boolean, nullable: true }) hasLecturerProfile?: boolean,
+    @Context() context?: GraphqlContext,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.PeopleWhereInput = {
@@ -104,6 +105,7 @@ export class PeopleResolver {
 
     const normalizedPermissionGrantFilter = this.normalizePermissionGrantFilter(permissionGrantFilter);
     if (normalizedPermissionGrantFilter) {
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.PermissionGrant.Read]);
       const permissionGrantWhere = this.buildPermissionGrantWhere(normalizedPermissionGrantFilter);
       this.addPeopleWhereCondition(where, {
         OR: [
@@ -567,7 +569,7 @@ export class PeopleResolver {
     return data;
   }
 
-  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
-    return context.req?.user ?? context.request?.user;
+  private getUser(context: GraphqlContext | undefined): AuthenticatedUser | undefined {
+    return context?.req?.user ?? context?.request?.user;
   }
 }

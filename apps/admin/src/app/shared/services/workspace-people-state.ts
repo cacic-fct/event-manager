@@ -14,6 +14,7 @@ import { Router } from '@angular/router';
 import { EventManagerPermissionGrant, EventManagerPermissionGrantTarget, Person } from '@cacic-fct/event-manager-admin-contracts';
 import { PermissionGrantsApiService } from '../../graphql/permission-grants-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { bindLiveSearch } from '../live-search';
 import { createWorkspaceListPagination } from '../list-pagination';
 import {
@@ -42,6 +43,7 @@ export const PEOPLE_PERMISSION_SEARCH_FILTER_OPTIONS: readonly {
 export abstract class WorkspacePeopleState {
   protected readonly api = inject(PeopleApiService);
   protected readonly permissionGrantsApi = inject(PermissionGrantsApiService);
+  protected readonly permissions = inject(WorkspacePermissionsService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   protected readonly formBuilder = inject(FormBuilder);
@@ -165,7 +167,11 @@ export abstract class WorkspacePeopleState {
   readonly permissionGrantDraftCount = computed(() => this.permissionGrantDrafts().length);
 
   readonly permissionGrantScopes = PERMISSION_GRANT_SCOPES;
-  readonly peoplePermissionSearchFilterOptions = PEOPLE_PERMISSION_SEARCH_FILTER_OPTIONS;
+  readonly peoplePermissionSearchFilterOptions = computed(() =>
+    this.permissions.has(Permission.PermissionGrant.Read)
+      ? PEOPLE_PERMISSION_SEARCH_FILTER_OPTIONS
+      : PEOPLE_PERMISSION_SEARCH_FILTER_OPTIONS.filter((option) => option.value === 'ALL'),
+  );
 
   isPermissionGrantScopeDisabled(scope: EventManagerPermissionGrantScope): boolean {
     if (this.permissionGrantRequiresGlobalScope() && scope !== EventManagerPermissionGrantScope.Global) {
