@@ -532,7 +532,7 @@ describe('EventFormsService', () => {
     expect(prisma.eventFormResponse.update).not.toHaveBeenCalled();
   });
 
-  it('restores archived subscription-flow responses with the same id during resubscribe', async () => {
+  it('blocks crafted subscription-flow edits to archived non-editable responses', async () => {
     const archivedAt = new Date('2026-07-06T12:00:00.000Z');
     prisma.eventForm.findFirst.mockResolvedValue(
       formRecord({
@@ -542,27 +542,7 @@ describe('EventFormsService', () => {
     );
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
     prisma.eventAttendance.findFirst.mockResolvedValue(null);
-    prisma.eventFormResponse.findFirst
-      .mockResolvedValueOnce(responseRecord({ deletedAt: archivedAt }))
-      .mockResolvedValueOnce(responseRecord());
-    prisma.eventFormResponse.update.mockResolvedValue(responseRecord());
-    prisma.eventFormResponse.findMany.mockResolvedValue([]);
-    prisma.eventFormLink.findMany.mockResolvedValue([
-      {
-        id: 'link-1',
-        formId: 'form-1',
-        targetType: EventFormTargetType.EVENT,
-        eventId: 'event-1',
-        majorEventId: null,
-        enforceRequiredAnswers: true,
-        form: {
-          id: 'form-1',
-          name: 'Pesquisa de camiseta',
-          responseMode: EventFormResponseMode.ONE_PER_TARGET,
-          elements: [],
-        },
-      },
-    ]);
+    prisma.eventFormResponse.findFirst.mockResolvedValue(responseRecord({ deletedAt: archivedAt }));
 
     await expect(
       service.submitSubscriptionFlowResponses(
@@ -574,7 +554,7 @@ describe('EventFormsService', () => {
             linkId: 'link-1',
             targetType: EventFormTargetType.EVENT,
             eventId: 'event-1',
-            answersJson: '[]',
+            answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'L' }]),
           },
         ],
         {
@@ -582,25 +562,43 @@ describe('EventFormsService', () => {
           selectedEventIds: new Set(['event-1']),
         },
       ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.eventFormResponse.update).not.toHaveBeenCalled();
+    expect(prisma.eventFormResponse.create).not.toHaveBeenCalled();
+    expect(auditLog.record).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.EVENT_FORM_RESPONSE,
+        operation: AuditLogOperation.UPDATE,
+      }),
+      prisma,
+    );
+  });
+
+  it('restores archived subscription-flow responses without submitted edits during resubscribe', async () => {
+    prisma.eventFormResponse.findMany.mockResolvedValue([{ id: 'response-1', formId: 'form-1' }]);
+    prisma.eventFormLink.findMany.mockResolvedValue([]);
+
+    await expect(
+      service.submitSubscriptionFlowResponses(prisma as never, 'person-1', [], {
+        majorEventId: null,
+        selectedEventIds: new Set(['event-1']),
+      }),
     ).resolves.toEqual(['form-1']);
 
-    expect(prisma.eventFormResponse.update).toHaveBeenCalledWith(
+    expect(prisma.eventFormResponse.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'response-1' },
-        data: expect.objectContaining({
+        where: {
+          id: {
+            in: ['response-1'],
+          },
+        },
+        data: {
           deletedAt: null,
-        }),
+        },
       }),
     );
-    expect(prisma.eventFormResponse.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          personId: 'person-1',
-          deletedAt: { not: null },
-          source: EventFormResponseSource.SUBSCRIPTION_FLOW,
-        }),
-      }),
-    );
+    expect(prisma.eventFormResponse.update).not.toHaveBeenCalled();
     expect(prisma.eventFormResponse.create).not.toHaveBeenCalled();
   });
 

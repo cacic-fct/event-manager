@@ -71,9 +71,7 @@ export async function submitResponseForPerson(
         },
       })
     : null;
-  const restoringArchivedSubscriptionFlowResponse =
-    Boolean(existing?.deletedAt) && options.requireSubscriptionFlowLink;
-  if (existing && !form.allowResponseEdits && !restoringArchivedSubscriptionFlowResponse) {
+  if (existing && !form.allowResponseEdits) {
     throw new BadRequestException('Este formulário não permite editar respostas já enviadas.');
   }
 
