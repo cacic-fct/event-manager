@@ -15,6 +15,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { authInterceptor } from '@cacic-fct/shared-angular/auth/interceptor';
 import type { AuthenticatedUser } from '@cacic-fct/shared-angular/auth/types';
+import { CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG } from '@cacic-fct/shared-angular/privacy/config';
 import { provideCacicObservability, startCacicAnalytics } from '@cacic-fct/shared-angular/observability';
 import { initializeCacicAccountPrivacyBestEffort } from '@cacic-fct/shared-angular/privacy/startup';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
@@ -54,6 +55,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([authInterceptor])),
     provideRouter(appRoutes),
     provideCacicAccountPrivacy({
+      ...CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG,
       apiBaseUrl: accountPrivacyApiBaseUrl,
     }),
     provideCacicObservability({

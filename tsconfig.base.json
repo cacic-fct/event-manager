@@ -44,6 +44,9 @@
       "@cacic-fct/shared-angular/privacy/cookie-banner-sync": [
         "./libs/shared-angular/src/lib/privacy/cookie-banner-sync.service.ts"
       ],
+      "@cacic-fct/shared-angular/privacy/config": [
+        "./libs/shared-angular/src/lib/privacy/account-privacy-provider.config.ts"
+      ],
       "@cacic-fct/shared-angular/privacy/startup": [
         "./libs/shared-angular/src/lib/privacy/account-privacy-startup.ts"
       ],
