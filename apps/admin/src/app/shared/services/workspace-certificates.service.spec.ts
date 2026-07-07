@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { of } from 'rxjs';
@@ -8,6 +9,7 @@ import { EventGroupApiService } from '../../graphql/event-group-api.service';
 import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import { CertificateConfigInput } from '@cacic-fct/event-manager-admin-contracts';
+import { Permission } from '@cacic-fct/shared-permissions';
 import {
   createAdminCertificateConfig,
   createAdminCertificateConfigFromInput,
@@ -16,6 +18,7 @@ import {
   createAdminPerson,
 } from '../../testing/admin-entity-fixtures';
 import { WorkspaceCertificatesService } from './workspace-certificates.service';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 describe('WorkspaceCertificatesService', () => {
   const certificateTemplate = createAdminCertificateTemplate({
@@ -38,29 +41,60 @@ describe('WorkspaceCertificatesService', () => {
   let service: WorkspaceCertificatesService;
   let api: {
     createCertificateConfig: ReturnType<typeof vi.fn>;
+    createCertificateFolder: ReturnType<typeof vi.fn>;
+    cloneCertificateConfig: ReturnType<typeof vi.fn>;
+    getCertificateFolder: ReturnType<typeof vi.fn>;
     issueMissedCertificates: ReturnType<typeof vi.fn>;
     listCertificateConfigs: ReturnType<typeof vi.fn>;
+    listCertificateFolders: ReturnType<typeof vi.fn>;
     listCertificateIssuableEventGroups: ReturnType<typeof vi.fn>;
     listCertificateIssuableEvents: ReturnType<typeof vi.fn>;
     listCertificateIssuableMajorEvents: ReturnType<typeof vi.fn>;
     listCertificateTemplates: ReturnType<typeof vi.fn>;
     listCertificates: ReturnType<typeof vi.fn>;
     updateCertificateConfig: ReturnType<typeof vi.fn>;
+    updateCertificateFolder: ReturnType<typeof vi.fn>;
   };
   let lastPayload: CertificateConfigInput | null;
   let peopleApi: {
     listPeopleSummaries: ReturnType<typeof vi.fn>;
   };
+  let dialog: {
+    open: ReturnType<typeof vi.fn>;
+  };
+  let permissions: {
+    has: ReturnType<typeof vi.fn>;
+    hasAll: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     lastPayload = null;
+    dialog = {
+      open: vi.fn(() => ({
+        afterClosed: () => of(null),
+      })),
+    };
     api = {
       createCertificateConfig: vi.fn((payload: CertificateConfigInput) => {
         lastPayload = payload;
         return of(createAdminCertificateConfigFromInput(payload, certificateTemplate));
       }),
+      createCertificateFolder: vi.fn((payload: { name?: string; emoji?: string }) =>
+        of({
+          id: 'folder-created',
+          name: payload.name ?? 'Pasta',
+          emoji: payload.emoji ?? '🏅',
+          createdAt: '2026-07-01T12:00:00.000Z',
+          updatedAt: '2026-07-01T12:00:00.000Z',
+        }),
+      ),
+      cloneCertificateConfig: vi.fn((id: string) =>
+        of(createAdminCertificateConfig({ id: `${id}-clone`, name: 'Certificate (cópia)' }, certificateTemplate)),
+      ),
+      getCertificateFolder: vi.fn(() => of(certificateFolderFixture())),
       issueMissedCertificates: vi.fn(() => of([])),
       listCertificateConfigs: vi.fn(() => of([])),
+      listCertificateFolders: vi.fn(() => of([certificateFolderFixture()])),
       listCertificateIssuableEventGroups: vi.fn(() => of([])),
       listCertificateIssuableEvents: vi.fn(() => of([])),
       listCertificateIssuableMajorEvents: vi.fn(() => of([])),
@@ -70,9 +104,24 @@ describe('WorkspaceCertificatesService', () => {
         lastPayload = payload;
         return of(createAdminCertificateConfigFromInput(payload, certificateTemplate, { id }));
       }),
+      updateCertificateFolder: vi.fn((id: string, payload: { name?: string; emoji?: string }) =>
+        of({
+          ...certificateFolderFixture(),
+          id,
+          name: payload.name ?? 'Pasta',
+          emoji: payload.emoji ?? '🏅',
+        }),
+      ),
     };
     peopleApi = {
       listPeopleSummaries: vi.fn(() => of([])),
+    };
+    permissions = {
+      has: vi.fn((permission: Permission) => permission === Permission.Certificate.Issue),
+      hasAll: vi.fn((requestedPermissions: Permission[]) => {
+        const grantedPermissions = new Set<Permission>([Permission.Certificate.Read, Permission.Certificate.Issue]);
+        return requestedPermissions.every((permission) => grantedPermissions.has(permission));
+      }),
     };
 
     await TestBed.configureTestingModule({
@@ -83,8 +132,13 @@ describe('WorkspaceCertificatesService', () => {
         { provide: EventGroupApiService, useValue: {} },
         { provide: MajorEventApiService, useValue: {} },
         { provide: PeopleApiService, useValue: peopleApi },
+        { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: { navigate: vi.fn() } },
+        {
+          provide: WorkspacePermissionsService,
+          useValue: permissions,
+        },
       ],
     }).compileComponents();
 
@@ -121,6 +175,33 @@ describe('WorkspaceCertificatesService', () => {
 
     expect(api.listCertificateIssuableEvents).toHaveBeenCalledWith({ query: 'aula', skip: 0, take: 51 });
     expect(service.issuableEvents().map((eventItem) => eventItem.id)).toEqual(['event-1']);
+  });
+
+  it('searches folders and creates standalone manual certificate configs', async () => {
+    await service.onScopeChanged('OTHER');
+
+    expect(api.listCertificateFolders).toHaveBeenCalledWith({ query: undefined, skip: 0, take: 51 });
+    expect(service.certificateFolders().map((folder) => folder.id)).toEqual(['folder-1']);
+
+    await service.selectTarget(certificateFolderFixture());
+    service.certificateConfigForm.name().value.set('Certificado avulso');
+    service.certificateConfigForm.secondPageText().value.set('Texto manual do verso');
+
+    await service.saveCertificateConfig();
+
+    expect(lastPayload).toEqual(
+      expect.objectContaining({
+        name: 'Certificado avulso',
+        scope: 'OTHER',
+        folderId: 'folder-1',
+        majorEventId: null,
+        eventGroupId: null,
+        eventId: null,
+        issuedTo: 'OTHER',
+        shouldAutofillSecondPage: false,
+        secondPageText: 'Texto manual do verso',
+      }),
+    );
   });
 
   it('searches manual certificate people as the query changes', async () => {
@@ -238,4 +319,148 @@ describe('WorkspaceCertificatesService', () => {
       }),
     );
   });
+
+  it('duplicates certificate configs with selected keep options', async () => {
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () =>
+        of({
+          name: 'Certificate (cópia)',
+          scope: 'EVENT_GROUP',
+          targetId: 'event-group-1',
+          parts: {
+            textContent: true,
+            recipientData: true,
+            activeState: false,
+            issuedPeople: true,
+          },
+        }),
+    });
+
+    await service.cloneCertificateConfig(createAdminCertificateConfig({ id: 'config-1', name: 'Certificate' }));
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          canCopyIssuedPeople: true,
+        }),
+      }),
+    );
+    expect(api.cloneCertificateConfig).toHaveBeenCalledWith('config-1', {
+      name: 'Certificate (cópia)',
+      scope: 'EVENT_GROUP',
+      majorEventId: null,
+      eventGroupId: 'event-group-1',
+      eventId: null,
+      folderId: null,
+      parts: {
+        textContent: true,
+        recipientData: true,
+        activeState: false,
+        issuedPeople: true,
+      },
+    });
+  });
+
+  it('lets the backend choose a unique clone name when the dialog name is unchanged', async () => {
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () =>
+        of({
+          name: null,
+          scope: 'EVENT_GROUP',
+          targetId: 'event-group-1',
+          parts: {
+            textContent: true,
+            recipientData: true,
+            activeState: true,
+            issuedPeople: false,
+          },
+        }),
+    });
+
+    await service.cloneCertificateConfig(createAdminCertificateConfig({ id: 'config-1', name: 'Certificate' }));
+
+    expect(api.cloneCertificateConfig).toHaveBeenCalledWith(
+      'config-1',
+      expect.not.objectContaining({
+        name: expect.anything(),
+      }),
+    );
+  });
+
+  it('does not enable issued people cloning without certificate read permission', async () => {
+    permissions.hasAll.mockReturnValueOnce(false);
+
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () => of(null),
+    });
+
+    await service.cloneCertificateConfig(createAdminCertificateConfig({ id: 'config-1', name: 'Certificate' }));
+
+    expect(permissions.hasAll).toHaveBeenCalledWith([Permission.Certificate.Read, Permission.Certificate.Issue]);
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          canCopyIssuedPeople: false,
+        }),
+      }),
+    );
+  });
+
+  it('refreshes target lists for the cloned certificate config scope before selecting it', async () => {
+    const folder = certificateFolderFixture();
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () =>
+        of({
+          name: 'Certificate (cópia)',
+          scope: 'OTHER',
+          targetId: folder.id,
+          parts: {
+            textContent: true,
+            recipientData: true,
+            activeState: true,
+            issuedPeople: false,
+          },
+        }),
+    });
+    api.cloneCertificateConfig.mockReturnValueOnce(
+      of(
+        createAdminCertificateConfig(
+          {
+            id: 'config-clone',
+            name: 'Certificate (cópia)',
+            scope: 'OTHER',
+            eventId: null,
+            folderId: folder.id,
+            folder,
+          },
+          certificateTemplate,
+        ),
+      ),
+    );
+
+    await service.cloneCertificateConfig(createAdminCertificateConfig({ id: 'config-1', name: 'Certificate' }));
+
+    expect(api.listCertificateFolders).toHaveBeenCalledWith({ query: undefined, skip: 0, take: 51 });
+    expect(service.targetFiltersForm.controls.scope.value).toBe('OTHER');
+    expect(service.certificateFolders().map((item) => item.id)).toEqual([folder.id]);
+    expect(service.selectedTarget()).toEqual({
+      id: folder.id,
+      name: folder.name,
+    });
+  });
 });
+
+function certificateFolderFixture() {
+  return {
+    id: 'folder-1',
+    name: 'Atividades complementares',
+    emoji: '🏅',
+    createdAt: '2026-07-01T12:00:00.000Z',
+    createdById: null,
+    updatedAt: '2026-07-01T12:00:00.000Z',
+    updatedById: null,
+    deletedAt: null,
+  };
+}

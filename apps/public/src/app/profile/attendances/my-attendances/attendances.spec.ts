@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
@@ -10,6 +11,7 @@ import { CertificateFileDownloadService } from '../../../shared/certificate-file
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import { Attendances } from './attendances';
+import { CertificateDialog } from './certificate-dialog/certificate-dialog';
 
 describe('Attendances', () => {
   it('lists online subscriptions and stores the feed for offline use', async () => {
@@ -19,6 +21,7 @@ describe('Attendances', () => {
 
     expect(fixture.nativeElement.textContent).toContain('SECOMPP');
     expect(fixture.nativeElement.textContent).toContain('Oficina pública');
+    expect(fixture.nativeElement.textContent).toContain('Atividades complementares');
     expect(offlineData.replaceAttendanceFeed).toHaveBeenCalledWith('user-1', subscriptionsFeedFixture);
   });
 
@@ -49,6 +52,24 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Feed salvo');
   });
 
+  it('renders stale offline feeds without standalone certificate folders', async () => {
+    const { fixture } = await createFixture({
+      online: false,
+      latestUserSnapshot: { userId: 'offline-user' },
+      offlineFeed: {
+        majorEventItems: offlineSubscriptionsFeedFixture.majorEventItems,
+        eventItems: offlineSubscriptionsFeedFixture.eventItems,
+        attendances: offlineSubscriptionsFeedFixture.attendances,
+      },
+      user: null,
+    });
+
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('Feed salvo');
+    expect(fixture.nativeElement.textContent).toContain('Nenhum certificado avulso disponível.');
+  });
+
   it('purges offline user data and renders an empty feed when the online user is anonymous', async () => {
     const { fixture, api, offlineData } = await createFixture({ user: null });
 
@@ -72,9 +93,10 @@ describe('Attendances', () => {
     expect(text).toContain('Grande evento com presença');
     expect(text).toContain('Evento presente sem inscrição');
     expect(text).toContain('Grupo presente sem inscrição');
+    expect(text).toContain('Grupo com evento filho presente');
     expect(text).not.toContain('Grande evento apenas inscrito');
     expect(text).not.toContain('Evento apenas inscrito');
-    expect(text).toContain('3 de 5 participações');
+    expect(text).toContain('4 de 6 participações');
   });
 
   it('downloads all certificates through the shared browser file service', async () => {
@@ -89,6 +111,26 @@ describe('Attendances', () => {
     });
     expect(snackBar.open).toHaveBeenCalledWith('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
     expect(component.isDownloadingCertificates()).toBe(false);
+  });
+
+  it('opens standalone certificate folders in the certificate dialog', async () => {
+    const { component, dialog } = await createFixture();
+    const folder = subscriptionsFeedFixture.standaloneCertificateFolders?.[0];
+    if (!folder) {
+      throw new Error('Expected standalone certificate fixture');
+    }
+
+    component.openStandaloneCertificates(folder);
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      CertificateDialog,
+      expect.objectContaining({
+        data: {
+          title: 'Atividades complementares',
+          certificates: folder.certificates,
+        },
+      }),
+    );
   });
 });
 
@@ -114,6 +156,7 @@ async function createFixture({
   component: Attendances;
   fileDownload: { save: ReturnType<typeof vi.fn> };
   fixture: ComponentFixture<Attendances>;
+  dialog: { open: ReturnType<typeof vi.fn> };
   offlineData: {
     getAttendanceFeed: ReturnType<typeof vi.fn>;
     getLatestUserSnapshot: ReturnType<typeof vi.fn>;
@@ -142,6 +185,9 @@ async function createFixture({
     save: vi.fn(),
   };
   const snackBar = {
+    open: vi.fn(),
+  };
+  const dialog = {
     open: vi.fn(),
   };
 
@@ -178,8 +224,13 @@ async function createFixture({
         provide: MatSnackBar,
         useValue: snackBar,
       },
+      {
+        provide: MatDialog,
+        useValue: dialog,
+      },
     ],
   })
+    .overrideProvider(MatDialog, { useValue: dialog })
     .overrideProvider(MatSnackBar, { useValue: snackBar })
     .compileComponents();
 
@@ -189,6 +240,7 @@ async function createFixture({
   return {
     api,
     component: fixture.componentInstance,
+    dialog,
     fileDownload,
     fixture,
     offlineData,
@@ -203,7 +255,7 @@ async function settle(fixture: ComponentFixture<Attendances>): Promise<void> {
   fixture.detectChanges();
 }
 
-const subscriptionsFeedFixture = {
+const subscriptionsFeedFixture: SubscriptionsFeed = {
   majorEventItems: [
     {
       id: 'major-subscription-1',
@@ -251,6 +303,36 @@ const subscriptionsFeedFixture = {
       },
     },
   ],
+  standaloneCertificateFolders: [
+    {
+      id: 'folder-1',
+      name: 'Atividades complementares',
+      emoji: '🏅',
+      certificates: [
+        {
+          id: 'standalone-certificate-1',
+          configId: 'standalone-config-1',
+          issuedAt: '2026-07-04T12:00:00.000Z',
+          config: {
+            id: 'standalone-config-1',
+            name: 'Certificado avulso',
+            scope: 'OTHER' as const,
+            certificateText: 'Certificamos a participação.',
+            certificateTemplate: {
+              id: 'template-1',
+              name: 'Modelo',
+              version: 1,
+            },
+          },
+          certificateTemplate: {
+            id: 'template-1',
+            name: 'Modelo',
+            version: 1,
+          },
+        },
+      ],
+    },
+  ],
   attendances: [
     {
       eventId: 'event-1',
@@ -264,7 +346,7 @@ const subscriptionsFeedFixture = {
   ],
 } satisfies SubscriptionsFeed;
 
-const offlineSubscriptionsFeedFixture = {
+const offlineSubscriptionsFeedFixture: SubscriptionsFeed = {
   ...subscriptionsFeedFixture,
   majorEventItems: [
     {
@@ -352,6 +434,32 @@ const filterableSubscriptionsFeedFixture = {
       },
     },
     {
+      __typename: 'SubscribedEventGroupItem',
+      id: 'group-child-attended',
+      type: 'group',
+      startDate: '2026-07-03T12:00:00.000Z',
+      eventGroup: {
+        id: 'group-child-attended',
+        name: 'Grupo com evento filho presente',
+        emoji: '🧪',
+      },
+      events: [
+        {
+          id: 'group-child-attended-event',
+          name: 'Atividade do grupo',
+          startDate: '2026-07-03T12:00:00.000Z',
+          endDate: '2026-07-03T14:00:00.000Z',
+          emoji: '💻',
+          type: 'OTHER',
+        },
+      ],
+      participation: {
+        isSubscribed: false,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+      },
+    },
+    {
       __typename: 'SubscribedSingleEventItem',
       id: 'event-subscribed',
       type: 'single',
@@ -386,6 +494,15 @@ const filterableSubscriptionsFeedFixture = {
       attendedAt: '2026-07-01T12:30:00.000Z',
       event: {
         id: 'event-attended',
+        majorEventId: null,
+        eventGroupId: null,
+      },
+    },
+    {
+      eventId: 'group-child-attended-event',
+      attendedAt: '2026-07-03T12:30:00.000Z',
+      event: {
+        id: 'group-child-attended-event',
         majorEventId: null,
         eventGroupId: null,
       },

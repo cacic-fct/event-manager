@@ -74,6 +74,30 @@ function ensureStorybookGlobalStyles(): void {
   document.head.append(style);
 }
 
+function ensureStorybookTurnstile(): void {
+  const targetWindow = window as typeof window & {
+    turnstile?: {
+      render: (
+        element: HTMLElement,
+        options: {
+          callback?: (token: string) => void;
+        },
+      ) => string;
+      reset: (widgetId: string) => void;
+      remove: (widgetId: string) => void;
+    };
+  };
+
+  targetWindow.turnstile ??= {
+    render: (_element, options) => {
+      window.setTimeout(() => options.callback?.('storybook-turnstile-token'), 0);
+      return 'storybook-turnstile-widget';
+    },
+    reset: () => undefined,
+    remove: () => undefined,
+  };
+}
+
 class StorybookAuthService {
   readonly user = () => ({
     sub: 'storybook-user',
@@ -240,6 +264,7 @@ const preview: Preview = {
       const network = context.globals['network'] === 'offline' ? 'offline' : 'online';
       const serviceWorker = context.globals['serviceWorker'] === 'enabled' ? 'enabled' : 'disabled';
       ensureStorybookGlobalStyles();
+      ensureStorybookTurnstile();
       applyBrowserGlobals(network, serviceWorker);
       applyColorScheme(theme);
       document.documentElement.dataset['storybookTheme'] = theme;

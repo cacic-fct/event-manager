@@ -268,6 +268,17 @@ const certificateTemplate = {
   deletedAt: null,
 };
 
+const certificateFolder = {
+  id: 'certificate-folder-1',
+  name: 'Atividades complementares',
+  emoji: '🏅',
+  createdAt: isoDaysFromNow(-15),
+  createdById: 'storybook-admin',
+  updatedAt: isoDaysFromNow(-2),
+  updatedById: 'storybook-admin',
+  deletedAt: null,
+};
+
 const certificateConfig = {
   id: 'config-1',
   name: 'Certificado de participacao',
@@ -275,10 +286,14 @@ const certificateConfig = {
   majorEventId: null,
   eventGroupId: null,
   eventId: 'event-1',
+  folderId: null,
   certificateTemplateId: certificateTemplate.id,
   certificateText: 'Certificamos a participacao no evento.',
+  shouldAutofillSecondPage: true,
+  secondPageText: null,
   isActive: true,
   issuedTo: 'ATTENDEE',
+  certificateTypeLabel: 'Participação',
   certificateFieldsJson: '{}',
   createdAt: isoDaysFromNow(-10),
   createdById: 'storybook-admin',
@@ -288,6 +303,7 @@ const certificateConfig = {
   majorEvent: null,
   eventGroup: null,
   event: events[0],
+  folder: null,
   certificateTemplate,
 };
 
@@ -765,6 +781,14 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
     return { certificateIssuableMajorEvents: majorEvents };
   }
 
+  if (query.includes('ListCertificateFolders')) {
+    return { certificateFolders: [certificateFolder] };
+  }
+
+  if (query.includes('query CertificateFolder')) {
+    return { certificateFolder };
+  }
+
   if (query.includes('ListCertificateTemplates')) {
     return { certificateTemplates: [certificateTemplate] };
   }
@@ -788,6 +812,10 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
 
   if (query.includes('CreateCertificateConfig') || query.includes('UpdateCertificateConfig')) {
     return { createCertificateConfig: certificateConfig, updateCertificateConfig: certificateConfig };
+  }
+
+  if (query.includes('CreateCertificateFolder') || query.includes('UpdateCertificateFolder')) {
+    return { createCertificateFolder: certificateFolder, updateCertificateFolder: certificateFolder };
   }
 
   if (query.includes('DeleteCertificateConfig')) {

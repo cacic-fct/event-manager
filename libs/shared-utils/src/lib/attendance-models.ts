@@ -80,9 +80,17 @@ export interface SubscribedEventGroupItem {
 
 export type SubscribedItem = SubscribedSingleEventItem | SubscribedEventGroupItem;
 
+export interface StandaloneCertificateFolderItem {
+  id: string;
+  name: string;
+  emoji: string;
+  certificates: Certificate[];
+}
+
 export interface SubscriptionsFeed {
   majorEventItems: CurrentUserMajorEventFeedItem[];
   eventItems: SubscribedItem[];
+  standaloneCertificateFolders?: StandaloneCertificateFolderItem[];
   attendances: CurrentUserEventAttendance[];
 }
 

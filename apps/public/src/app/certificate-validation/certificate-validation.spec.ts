@@ -82,6 +82,63 @@ describe('CertificateValidation', () => {
       queryParams: { certificateId: 'manual-certificate' },
     });
   });
+
+  it('keeps missing and inactive certificates behind the same generic not-found error', async () => {
+    const { api, component, fixture } = await createFixture({
+      routeParams: { certificateId: 'disabled-certificate' },
+    });
+    api.validateCertificate.mockReturnValue(of(null));
+
+    component.onTurnstileTokenChange('turnstile-token');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.state()).toEqual({
+      status: 'error',
+      message: 'Certificado não encontrado.',
+    });
+    expect(fixture.nativeElement.textContent).toContain('Certificado não encontrado.');
+    expect(component.validationForm.certificateId().errors().some((error) => error.kind === 'notFound')).toBe(true);
+  });
+
+  it('hides the activities section when the certificate has no linked activities', async () => {
+    const { component, fixture } = await createFixture();
+
+    component.state.set({
+      status: 'ready',
+      certificate: {
+        ...certificateFixture,
+        sections: [],
+        totalCreditMinutes: 0,
+      },
+    });
+    fixture.detectChanges();
+
+    expect(component.hasActivitySections({ ...certificateFixture, sections: [] })).toBe(false);
+    expect(fixture.nativeElement.textContent).not.toContain('Atividades');
+  });
+
+  it('renders configured certificate text and type metadata', async () => {
+    const { component, fixture } = await createFixture();
+
+    component.state.set({
+      status: 'ready',
+      certificate: {
+        ...certificateFixture,
+        issuedTo: 'LECTURER',
+        certificateTypeLabel: 'Palestrante',
+        certificateText: 'Certificamos a palestra ministrada.',
+        shouldAutofillSecondPage: false,
+        secondPageText: 'Atividade apresentada durante o evento.',
+      },
+    });
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Palestrante');
+    expect(text).toContain('Certificamos a palestra ministrada.');
+    expect(text).toContain('Atividade apresentada durante o evento.');
+  });
 });
 
 async function createFixture({
@@ -107,7 +164,9 @@ async function createFixture({
   };
   const router = {
     url: '/validate',
-    navigate: vi.fn((_commands: unknown[], extras?: { queryParams?: Params }) => {
+    navigate: vi.fn((commands: unknown[], extras?: { queryParams?: Params }) => {
+      const nextRouteCertificateId = commands[0] === '/validate' && typeof commands[1] === 'string' ? commands[1] : null;
+      paramMap.next(convertToParamMap(nextRouteCertificateId ? { certificateId: nextRouteCertificateId } : {}));
       queryParamMap.next(convertToParamMap(extras?.queryParams ?? {}));
       return Promise.resolve(true);
     }),
@@ -175,6 +234,11 @@ const certificateFixture = {
   maskedIdentityDocument: null,
   scope: 'EVENT',
   certificateName: 'Certificado',
+  issuedTo: 'ATTENDEE',
+  certificateTypeLabel: 'Participação',
+  certificateText: null,
+  shouldAutofillSecondPage: true,
+  secondPageText: null,
   targetName: 'Evento teste',
   targetEmoji: '🎓',
   totalCreditMinutes: 60,

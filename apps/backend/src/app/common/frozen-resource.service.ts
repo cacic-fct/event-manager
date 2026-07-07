@@ -226,6 +226,8 @@ export class FrozenResourceService {
         eventId: true,
         eventGroupId: true,
         majorEventId: true,
+        folderId: true,
+        createdAt: true,
       },
     });
 
@@ -236,7 +238,14 @@ export class FrozenResourceService {
     const targetId = config.eventId ?? config.eventGroupId ?? config.majorEventId;
     if (targetId) {
       await this.assertCertificateTargetMutable(config.scope, targetId, user, operation);
+      return;
     }
+
+    if (await this.canBypass(user, operation)) {
+      return;
+    }
+
+    this.assertDatesMutable([config.createdAt], operation);
   }
 
   async assertCertificateMutable(
@@ -315,6 +324,12 @@ export class FrozenResourceService {
                   ],
                 },
               },
+            },
+          },
+          {
+            scope: CertificateScope.OTHER,
+            createdAt: {
+              lt: cutoff,
             },
           },
         ],

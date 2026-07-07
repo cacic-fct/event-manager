@@ -46,7 +46,7 @@ test('opens a paid major event payment page and sends a receipt through the mock
   ]);
 });
 
-test('lists current-user subscriptions and downloads the certificate archive', async ({ page }) => {
+test('lists current-user subscriptions, standalone certificates, and downloads the certificate archive', async ({ page }) => {
   const api = await mockPublicApi(page);
 
   await page.goto('/app/profile/attendances');
@@ -54,6 +54,13 @@ test('lists current-user subscriptions and downloads the certificate archive', a
   await expect(page.getByRole('heading', { name: 'Minhas participações' })).toBeVisible();
   await expect(page.getByText('SECOMPP Pago')).toBeVisible();
   await expect(page.getByText('Oficina pública')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Certificados avulsos' })).toBeVisible();
+  await expect(page.getByText('Atividades complementares')).toBeVisible();
+
+  await page.getByRole('button', { name: /Atividades complementares/ }).click();
+  await expect(page.getByRole('heading', { name: 'Certificados', exact: true })).toBeVisible();
+  await expect(page.getByText('Certificado avulso')).toBeVisible();
+  await page.getByRole('button', { name: 'Fechar' }).click();
 
   await page.getByRole('button', { name: 'Baixar todos os certificados' }).click();
 
@@ -497,6 +504,36 @@ function subscriptionsFeedFixture(): Record<string, unknown> {
         },
       ],
     },
+    currentUserStandaloneCertificateFolders: [
+      {
+        id: 'folder-1',
+        name: 'Atividades complementares',
+        emoji: '🏅',
+        certificates: [
+          {
+            id: 'standalone-certificate-1',
+            configId: 'standalone-config-1',
+            issuedAt: '2027-08-02T14:00:00.000Z',
+            config: {
+              id: 'standalone-config-1',
+              name: 'Certificado avulso',
+              scope: 'OTHER',
+              certificateText: 'Certificamos a participação.',
+              certificateTemplate: {
+                id: 'template-1',
+                name: 'Modelo',
+                version: 1,
+              },
+            },
+            certificateTemplate: {
+              id: 'template-1',
+              name: 'Modelo',
+              version: 1,
+            },
+          },
+        ],
+      },
+    ],
     currentUserEventAttendances: [
       {
         eventId: 'standalone-event',

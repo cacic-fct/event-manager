@@ -72,8 +72,8 @@ export class CertificateValidationService {
   }
 
   assertSupportedScope(scope: CertificateScope): void {
-    if (scope === CertificateScope.OTHER) {
-      throw new BadRequestException('Certificate scope OTHER is not supported for issuing operations.');
+    if (!Object.values(CertificateScope).includes(scope)) {
+      throw new BadRequestException(`Unsupported certificate scope ${scope}.`);
     }
   }
 
@@ -100,6 +100,13 @@ export class CertificateValidationService {
     if (scope === CertificateScope.EVENT) {
       if (!hasEventId || hasMajorEventId || hasEventGroupId) {
         throw new BadRequestException('EVENT scope requires eventId and forbids majorEventId/eventGroupId.');
+      }
+      return;
+    }
+
+    if (scope === CertificateScope.OTHER) {
+      if (hasMajorEventId || hasEventGroupId || hasEventId) {
+        throw new BadRequestException('OTHER scope forbids majorEventId/eventGroupId/eventId.');
       }
     }
   }

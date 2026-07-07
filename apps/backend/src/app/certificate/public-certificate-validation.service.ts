@@ -37,6 +37,7 @@ const CERTIFICATE_VALIDATION_EVENT_SELECT = {
 const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
   id: true,
   issuedAt: true,
+  renderedData: true,
   personId: true,
   person: {
     select: {
@@ -49,7 +50,12 @@ const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
     select: {
       name: true,
       scope: true,
+      isActive: true,
       issuedTo: true,
+      certificateText: true,
+      shouldAutofillSecondPage: true,
+      secondPageText: true,
+      certificateTypeLabel: true,
       certificateFields: true,
       event: {
         select: CERTIFICATE_VALIDATION_EVENT_SELECT,
@@ -69,6 +75,13 @@ const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
           emoji: true,
           deletedAt: true,
           publicationState: true,
+        },
+      },
+      folder: {
+        select: {
+          id: true,
+          name: true,
+          emoji: true,
         },
       },
     },
@@ -100,6 +113,10 @@ export class PublicCertificateValidationService {
       where: {
         id: normalizedCertificateId,
         deletedAt: null,
+        config: {
+          deletedAt: null,
+          isActive: true,
+        },
       },
       select: PUBLIC_CERTIFICATE_VALIDATION_SELECT,
     });
@@ -118,6 +135,19 @@ export class PublicCertificateValidationService {
       maskedIdentityDocument: this.maskCpf(certificate.person.identityDocument, certificate.person.isCPF),
       scope: certificate.config.scope as CertificateScope,
       certificateName: certificate.config.name,
+      issuedTo: certificate.config.issuedTo as CertificateIssuedTo,
+      certificateTypeLabel: this.readRenderedNullableString(
+        certificate,
+        'certificateTypeLabel',
+        certificate.config.certificateTypeLabel,
+      ),
+      certificateText: this.readRenderedNullableString(certificate, 'configText', certificate.config.certificateText),
+      shouldAutofillSecondPage: this.readRenderedBoolean(
+        certificate,
+        'shouldAutofillSecondPage',
+        certificate.config.shouldAutofillSecondPage,
+      ),
+      secondPageText: this.readRenderedNullableString(certificate, 'secondPageText', certificate.config.secondPageText),
       targetName: this.getTargetName(certificate, publiclyVisibleEvents),
       targetEmoji: this.getTargetEmoji(certificate),
       sections,
@@ -360,6 +390,42 @@ export class PublicCertificateValidationService {
     return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER' ? value : null;
   }
 
+  private readRenderedNullableString(
+    certificate: PublicCertificateValidationRecord,
+    key: string,
+    fallback: string | null,
+  ): string | null {
+    const renderedData = this.getRenderedDataObject(certificate);
+    if (!Object.prototype.hasOwnProperty.call(renderedData, key)) {
+      return fallback;
+    }
+
+    const value = renderedData[key];
+    return typeof value === 'string' || value === null ? value : fallback;
+  }
+
+  private readRenderedBoolean(
+    certificate: PublicCertificateValidationRecord,
+    key: string,
+    fallback: boolean,
+  ): boolean {
+    const renderedData = this.getRenderedDataObject(certificate);
+    if (!Object.prototype.hasOwnProperty.call(renderedData, key)) {
+      return fallback;
+    }
+
+    const value = renderedData[key];
+    return typeof value === 'boolean' ? value : fallback;
+  }
+
+  private getRenderedDataObject(certificate: PublicCertificateValidationRecord): Prisma.JsonObject {
+    return certificate.renderedData &&
+      typeof certificate.renderedData === 'object' &&
+      !Array.isArray(certificate.renderedData)
+      ? certificate.renderedData
+      : {};
+  }
+
   private buildSections(
     certificate: PublicCertificateValidationRecord,
     events: CertificateValidationEventRecord[],
@@ -452,6 +518,10 @@ export class PublicCertificateValidationService {
       return undefined;
     }
 
+    if (certificate.config.scope === CertificateScope.OTHER) {
+      return certificate.config.folder?.name ?? undefined;
+    }
+
     return (
       certificate.config.majorEvent?.name ??
       certificate.config.eventGroup?.name ??
@@ -473,6 +543,10 @@ export class PublicCertificateValidationService {
       !this.isCertificateMajorEventPublic(certificate)
     ) {
       return undefined;
+    }
+
+    if (certificate.config.scope === CertificateScope.OTHER) {
+      return certificate.config.folder?.emoji ?? undefined;
     }
 
     return certificate.config.majorEvent?.emoji ?? certificate.config.event?.emoji ?? undefined;

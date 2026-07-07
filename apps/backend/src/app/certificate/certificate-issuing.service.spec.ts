@@ -1,4 +1,5 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
+import { BadRequestException } from '@nestjs/common';
 import { addMinutes } from 'date-fns';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
@@ -238,6 +239,99 @@ describe('CertificateIssuingService', () => {
     });
 
     expect(upsertSpy).toHaveBeenCalledWith(config, recipient, 'admin-user');
+  });
+
+  it('copies existing issued recipients in batches without failing the whole copy on one ineligible person', async () => {
+    const prisma = {
+      $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback({})),
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([
+          { personId: 'person-1' },
+          { personId: 'person-2' },
+          { personId: 'person-2' },
+          { personId: 'person-3' },
+        ]),
+      },
+    };
+    const validation = {
+      normalizeRequiredId: jest.fn((_field: string, value: string) => value),
+    };
+    const eligibilityService = {
+      getConfigById: jest.fn().mockResolvedValue(config),
+    };
+    const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
+    const recipientSpy = jest
+      .spyOn(service as never, 'resolveRecipientForConfig')
+      .mockImplementation(async (_config: unknown, _configId: string, personId: string) => {
+        if (personId === 'person-2') {
+          throw new BadRequestException(`Person ${personId} is not eligible for config target-config.`);
+        }
+
+        return {
+          person: {
+            ...mappedCertificateRecord.person,
+            id: personId,
+          },
+          events: [],
+        };
+      });
+    const upsertSpy = jest
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockImplementation(async (_config: unknown, recipient: { person: { id: string } }) => ({
+        certificate: {
+          ...mappedCertificateRecord,
+          id: `certificate-${recipient.person.id}`,
+          personId: recipient.person.id,
+        },
+        shouldNotify: false,
+      }));
+
+    await expect(service.issueForExistingConfigRecipients('source-config', 'target-config', 'admin-user')).resolves
+      .toEqual([
+        expect.objectContaining({ personId: 'person-1' }),
+        expect.objectContaining({ personId: 'person-3' }),
+      ]);
+
+    expect(recipientSpy).toHaveBeenCalledTimes(3);
+    expect(upsertSpy).toHaveBeenCalledTimes(2);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates unexpected failures before writing cloned recipient certificates', async () => {
+    const prisma = {
+      $transaction: jest.fn(),
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-1' }, { personId: 'person-2' }]),
+      },
+    };
+    const validation = {
+      normalizeRequiredId: jest.fn((_field: string, value: string) => value),
+    };
+    const eligibilityService = {
+      getConfigById: jest.fn().mockResolvedValue(config),
+    };
+    const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
+    const unexpectedError = new Error('PDF renderer unavailable');
+    jest
+      .spyOn(service as never, 'resolveRecipientForConfig')
+      .mockImplementation(async (_config: unknown, _configId: string, personId: string) => {
+        if (personId === 'person-2') {
+          throw unexpectedError;
+        }
+
+        return {
+          person: {
+            ...mappedCertificateRecord.person,
+            id: personId,
+          },
+          events: [],
+        };
+      });
+
+    await expect(service.issueForExistingConfigRecipients('source-config', 'target-config')).rejects.toBe(
+      unexpectedError,
+    );
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('creates certificates when no previous person/config certificate exists', async () => {

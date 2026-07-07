@@ -42,6 +42,24 @@ model CertificateTemplate {
   @@map("certificate_templates")
 }
 
+model CertificateFolder {
+  id    String @id @default(uuid(7))
+  name  String
+  emoji String @default("📁")
+
+  certificateConfigs CertificateConfig[]
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  deletedAt DateTime?
+
+  @@unique([name])
+  @@map("certificate_folders")
+}
+
 enum CertificateIssuedTo {
   ATTENDEE
   LECTURER
@@ -62,6 +80,9 @@ model CertificateConfig {
 
   eventId String?
   event   Event?  @relation(fields: [eventId], references: [id])
+
+  folderId String?
+  folder   CertificateFolder? @relation(fields: [folderId], references: [id])
 
   certificateTemplateId String
   certificateTemplate   CertificateTemplate @relation(fields: [certificateTemplateId], references: [id])
@@ -91,6 +112,7 @@ model CertificateConfig {
   @@index([majorEventId])
   @@index([eventGroupId])
   @@index([eventId])
+  @@index([folderId])
   @@index([certificateTemplateId])
   @@map("certificate_configs")
 }

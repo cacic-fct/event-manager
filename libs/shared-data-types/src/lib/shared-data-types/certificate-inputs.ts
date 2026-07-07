@@ -19,6 +19,9 @@ export class CertificateConfigCreateInput {
   @Field(() => String, { nullable: true })
   eventId?: string;
 
+  @Field(() => String, { nullable: true })
+  folderId?: string;
+
   @Field(() => String)
   certificateTemplateId!: string;
 
@@ -62,6 +65,9 @@ export class CertificateConfigUpdateInput {
   eventId?: string;
 
   @Field(() => String, { nullable: true })
+  folderId?: string;
+
+  @Field(() => String, { nullable: true })
   certificateTemplateId?: string;
 
   @Field(() => String, { nullable: true })
@@ -84,4 +90,61 @@ export class CertificateConfigUpdateInput {
 
   @Field(() => String, { nullable: true })
   certificateFieldsJson?: string;
+}
+
+@InputType()
+export class CertificateConfigClonePartsInput {
+  @Field(() => Boolean, { nullable: true })
+  textContent?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  recipientData?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  activeState?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  issuedPeople?: boolean;
+}
+
+@InputType()
+export class CertificateConfigCloneInput {
+  @Field(() => String, { nullable: true })
+  name?: string;
+
+  @Field(() => CertificateScope, { nullable: true })
+  scope?: CertificateScope;
+
+  @Field(() => String, { nullable: true })
+  majorEventId?: string;
+
+  @Field(() => String, { nullable: true })
+  eventGroupId?: string;
+
+  @Field(() => String, { nullable: true })
+  eventId?: string;
+
+  @Field(() => String, { nullable: true })
+  folderId?: string;
+
+  @Field(() => CertificateConfigClonePartsInput, { nullable: true })
+  parts?: CertificateConfigClonePartsInput;
+}
+
+@InputType()
+export class CertificateFolderCreateInput {
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  emoji!: string;
+}
+
+@InputType()
+export class CertificateFolderUpdateInput {
+  @Field(() => String, { nullable: true })
+  name?: string;
+
+  @Field(() => String, { nullable: true })
+  emoji?: string;
 }

@@ -157,6 +157,7 @@ describe('offline public data access integration', () => {
     const feed = {
       majorEventItems: [],
       eventItems: [],
+      standaloneCertificateFolders: [],
       attendances: [],
     };
     const detail = {

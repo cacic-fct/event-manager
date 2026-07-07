@@ -7,6 +7,7 @@ import { CertificateValidationService } from '../../certificate/certificate-vali
 import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserContextService } from '../context.service';
+import { CurrentUserStandaloneCertificateFolder } from '../models';
 import { GraphqlContext } from '../selects';
 
 @Resolver()
@@ -57,6 +58,62 @@ export class CurrentUserCertificatesResolver {
     });
 
     return certificates.map(mapCertificate);
+  }
+
+  @Query(() => [CurrentUserStandaloneCertificateFolder], { name: 'currentUserStandaloneCertificateFolders' })
+  async currentUserStandaloneCertificateFolders(
+    @Context() context: GraphqlContext,
+  ): Promise<CurrentUserStandaloneCertificateFolder[]> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    if (!person) {
+      return [];
+    }
+
+    const certificates = await this.prisma.certificate.findMany({
+      where: {
+        personId: person.id,
+        deletedAt: null,
+        config: {
+          deletedAt: null,
+          isActive: true,
+          scope: CertificateScope.OTHER,
+          folderId: {
+            not: null,
+          },
+          folder: {
+            deletedAt: null,
+          },
+        },
+      },
+      select: CERTIFICATE_SELECT,
+      orderBy: {
+        issuedAt: 'desc',
+      },
+    });
+
+    const folders = new Map<string, CurrentUserStandaloneCertificateFolder>();
+    for (const certificate of certificates) {
+      const folder = certificate.config.folder;
+      if (!folder) {
+        continue;
+      }
+
+      const existing = folders.get(folder.id);
+      if (existing) {
+        existing.certificates.push(mapCertificate(certificate));
+        continue;
+      }
+
+      folders.set(folder.id, {
+        id: folder.id,
+        name: folder.name,
+        emoji: folder.emoji,
+        certificates: [mapCertificate(certificate)],
+      });
+    }
+
+    return [...folders.values()].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
   }
 
   @Query(() => CertificateDownload, {
@@ -114,6 +171,13 @@ export class CurrentUserCertificatesResolver {
             majorEventId: true,
             eventGroupId: true,
             eventId: true,
+            folderId: true,
+            folder: {
+              select: {
+                name: true,
+                emoji: true,
+              },
+            },
           },
         },
       },
@@ -142,7 +206,11 @@ export class CurrentUserCertificatesResolver {
               ? certificate.config.majorEventId
               : certificate.config.scope === CertificateScope.EVENT_GROUP
                 ? certificate.config.eventGroupId
-                : certificate.config.eventId,
+                : certificate.config.scope === CertificateScope.EVENT
+                  ? certificate.config.eventId
+                  : certificate.config.folderId,
+          targetName: certificate.config.folder?.name ?? null,
+          targetEmoji: certificate.config.folder?.emoji ?? null,
           eventIds: this.readRenderedEventIds(certificate.renderedData),
         })),
       },

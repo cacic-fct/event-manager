@@ -27,20 +27,34 @@ import { AttendancesApiService } from '../attendances-api.service';
 import { EmojiService } from '../../../shared/emoji.service';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
+import { CertificateDialog, CertificateDialogData } from './certificate-dialog/certificate-dialog';
+import type { StandaloneCertificateFolderItem } from '@cacic-fct/shared-utils';
 
 type AttendanceFilter = 'subscribed' | 'present' | 'certificate' | 'lecturer';
 type AttendanceFilterSelection = AttendanceFilter | 'none';
 
 type FeedState =
   | { status: 'loading' }
-  | { status: 'ready'; data: SubscriptionsFeed }
+  | { status: 'ready'; data: NormalizedSubscriptionsFeed }
   | { status: 'error'; message: string };
+
+type NormalizedSubscriptionsFeed = Omit<SubscriptionsFeed, 'standaloneCertificateFolders'> & {
+  standaloneCertificateFolders: StandaloneCertificateFolderItem[];
+};
 
 interface AttendanceFilterOption {
   value: AttendanceFilter;
   label: string;
 }
+
+const EMPTY_SUBSCRIPTIONS_FEED = {
+  majorEventItems: [],
+  eventItems: [],
+  standaloneCertificateFolders: [],
+  attendances: [],
+} satisfies NormalizedSubscriptionsFeed;
 
 @Component({
   selector: 'app-attendances',
@@ -56,6 +70,7 @@ interface AttendanceFilterOption {
     RouterLink,
     MatToolbarModule,
     MatButtonModule,
+    MatDialogModule,
     MatSnackBarModule,
   ],
 })
@@ -66,6 +81,7 @@ export class Attendances {
   private readonly offlineData = inject(OfflinePublicDataAccessService);
   private readonly certificateFileDownload = inject(CertificateFileDownloadService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   readonly emoji = inject(EmojiService);
   readonly isDownloadingCertificates = signal(false);
   readonly selectedFilters = signal<AttendanceFilter[]>([]);
@@ -81,7 +97,7 @@ export class Attendances {
       map(
         (feed): FeedState => ({
           status: 'ready',
-          data: sortSubscriptionsFeed(feed),
+          data: this.normalizeFeed(feed),
         }),
       ),
       startWith({ status: 'loading' } satisfies FeedState),
@@ -206,6 +222,21 @@ export class Attendances {
     return 'Nenhum evento avulso ou grupo registrado.';
   }
 
+  standaloneCertificateLine(folder: StandaloneCertificateFolderItem): string {
+    const count = folder.certificates.length;
+    return count === 1 ? '1 certificado disponível' : `${count} certificados disponíveis`;
+  }
+
+  openStandaloneCertificates(folder: StandaloneCertificateFolderItem): void {
+    this.dialog.open<CertificateDialog, CertificateDialogData>(CertificateDialog, {
+      data: {
+        title: folder.name,
+        certificates: folder.certificates,
+      },
+      width: 'min(560px, 96vw)',
+    });
+  }
+
   downloadCertificatesArchive(): void {
     if (this.isDownloadingCertificates()) {
       return;
@@ -238,11 +269,7 @@ export class Attendances {
 
     if (!userId) {
       void this.offlineData.purgeUserData();
-      return of({
-        majorEventItems: [],
-        eventItems: [],
-        attendances: [],
-      } satisfies SubscriptionsFeed);
+      return of(EMPTY_SUBSCRIPTIONS_FEED);
     }
 
     return this.api.getSubscriptionsFeed().pipe(
@@ -255,13 +282,17 @@ export class Attendances {
     const userId = this.auth.user()?.sub ?? (await this.offlineData.getLatestUserSnapshot())?.userId;
     const feed = userId ? await this.offlineData.getAttendanceFeed(userId) : null;
 
-    return (
-      feed ?? {
-        majorEventItems: [],
-        eventItems: [],
-        attendances: [],
-      }
-    );
+    return feed ?? EMPTY_SUBSCRIPTIONS_FEED;
+  }
+
+  private normalizeFeed(feed: SubscriptionsFeed): NormalizedSubscriptionsFeed {
+    const sortedFeed = sortSubscriptionsFeed(feed);
+
+    return {
+      ...sortedFeed,
+      standaloneCertificateFolders:
+        sortedFeed.standaloneCertificateFolders ?? EMPTY_SUBSCRIPTIONS_FEED.standaloneCertificateFolders,
+    };
   }
 
   private matchesMajorEventFilters(
@@ -315,8 +346,9 @@ export class Attendances {
       return attendances.some((attendance) => attendance.eventId === item.event.id);
     }
 
-    if (item.events.some((event) => attendances.some((attendance) => attendance.eventId === event.id))) {
-      return true;
+    if (item.events.length > 0) {
+      const eventIds = new Set(item.events.map((event) => event.id));
+      return attendances.some((attendance) => eventIds.has(attendance.eventId));
     }
 
     return attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id);

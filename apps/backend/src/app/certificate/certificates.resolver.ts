@@ -2,8 +2,12 @@ import {
   Certificate,
   CertificateDownload,
   CertificateConfig,
+  CertificateConfigCloneInput,
   CertificateConfigCreateInput,
   CertificateConfigUpdateInput,
+  CertificateFolder,
+  CertificateFolderCreateInput,
+  CertificateFolderUpdateInput,
   CertificateReissueResult,
   CertificateScope,
   CertificateTemplate,
@@ -15,7 +19,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
-import { UseGuards } from '@nestjs/common';
+import { ForbiddenException, UseGuards } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -122,6 +126,35 @@ export class CertificatesResolver {
     return this.configsService.listTemplates(query, includeInactive, pagination.skip, pagination.take);
   }
 
+  @Query(() => [CertificateFolder], { name: 'certificateFolders' })
+  async certificateFolders(
+    @Context() context: GraphqlContext,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
+    @Args('take', { type: () => Int, nullable: true }) take?: number,
+  ) {
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
+      allowScopedCollection: true,
+    });
+    const pagination = resolvePagination(skip, take);
+    const folders = await this.configsService.listFolders(query, pagination.skip, pagination.take);
+    const user = this.getUser(context);
+    const accessibleFolders = await Promise.all(
+      folders.map(async (folder) => ({
+        folder,
+        canRead: await this.canAccessCertificateFolder(user, Permission.CertificateConfig.Read, folder.id),
+      })),
+    );
+
+    return accessibleFolders.filter((item) => item.canRead).map((item) => item.folder);
+  }
+
+  @Query(() => CertificateFolder, { name: 'certificateFolder' })
+  async certificateFolder(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.assertCertificateFolderPermission(context, Permission.CertificateConfig.Read, id);
+    return this.configsService.getFolderById(id);
+  }
+
   @Query(() => [CertificateConfig], { name: 'certificateConfigs' })
   @RequirePermissions(Permission.CertificateConfig.Read)
   certificateConfigs(
@@ -201,7 +234,7 @@ export class CertificatesResolver {
     })
     certificateId: string,
   ) {
-    return this.downloadService.downloadCertificate(certificateId);
+    return this.downloadService.downloadPublicCertificate(certificateId);
   }
 
   @Mutation(() => CertificateConfig, { name: 'createCertificateConfig' })
@@ -220,6 +253,42 @@ export class CertificatesResolver {
     return this.configsService.createConfig(input);
   }
 
+  @Mutation(() => CertificateFolder, { name: 'createCertificateFolder' })
+  @RequirePermissions(Permission.CertificateConfig.Create)
+  createCertificateFolder(
+    @Args('input', { type: () => CertificateFolderCreateInput })
+    input: CertificateFolderCreateInput,
+  ) {
+    return this.configsService.createFolder(input);
+  }
+
+  @Mutation(() => CertificateFolder, { name: 'updateCertificateFolder' })
+  async updateCertificateFolder(
+    @Args('id', { type: () => String }) id: string,
+    @Args('input', { type: () => CertificateFolderUpdateInput })
+    input: CertificateFolderUpdateInput,
+    @Context() context: GraphqlContext,
+  ) {
+    await this.assertCertificateFolderPermission(context, Permission.CertificateConfig.Update, id);
+    const configs = await this.configsService.listConfigsByTarget(CertificateScope.OTHER, id);
+    for (const config of configs) {
+      await this.frozenResources.assertCertificateConfigMutable(config.id, this.getUser(context), 'edit');
+    }
+
+    return this.configsService.updateFolder(id, input);
+  }
+
+  @Mutation(() => DeletionResult, { name: 'deleteCertificateFolder' })
+  async deleteCertificateFolder(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.assertCertificateFolderPermission(context, Permission.CertificateConfig.Delete, id);
+    const configs = await this.configsService.listConfigsByTarget(CertificateScope.OTHER, id);
+    for (const config of configs) {
+      await this.frozenResources.assertCertificateConfigMutable(config.id, this.getUser(context), 'delete');
+    }
+
+    return this.configsService.deleteFolder(id);
+  }
+
   @Mutation(() => CertificateConfig, { name: 'updateCertificateConfig' })
   @RequirePermissions(Permission.CertificateConfig.Update)
   async updateCertificateConfig(
@@ -231,6 +300,59 @@ export class CertificatesResolver {
     await this.frozenResources.assertCertificateConfigMutable(id, this.getUser(context), 'edit');
     await this.assertReplacementCertificateConfigTarget(id, input, context);
     return this.configsService.updateConfig(id, input);
+  }
+
+  @Mutation(() => CertificateConfig, { name: 'cloneCertificateConfig' })
+  @RequirePermissions(Permission.CertificateConfig.Read)
+  async cloneCertificateConfig(
+    @Args('id', { type: () => String }) id: string,
+    @Args('input', { type: () => CertificateConfigCloneInput, nullable: true })
+    input: CertificateConfigCloneInput | null,
+    @Context() context: GraphqlContext,
+  ) {
+    const source = await this.configsService.getConfigById(id);
+    const user = this.getUser(context);
+    const sourceTargetId = this.getCertificateTargetId(source.scope, {
+      eventId: source.eventId,
+      eventGroupId: source.eventGroupId,
+      majorEventId: source.majorEventId,
+      folderId: source.folderId,
+    });
+    await this.authorizationPolicy.assertPermissions(user, [Permission.CertificateConfig.Read], {
+      scope: source.scope,
+      targetId: sourceTargetId,
+    });
+    const scope = input?.scope ?? source.scope;
+    const targetId = this.getCertificateTargetId(scope, {
+      eventId: input?.eventId === undefined ? source.eventId : input.eventId,
+      eventGroupId: input?.eventGroupId === undefined ? source.eventGroupId : input.eventGroupId,
+      majorEventId: input?.majorEventId === undefined ? source.majorEventId : input.majorEventId,
+      folderId: input?.folderId === undefined ? source.folderId : input.folderId,
+    });
+    if (targetId) {
+      await this.frozenResources.assertCertificateTargetMutable(scope, targetId, user, 'edit');
+    }
+    await this.authorizationPolicy.assertPermissions(user, [Permission.CertificateConfig.Create], {
+      scope,
+      targetId,
+    });
+    if (input?.parts?.issuedPeople) {
+      await this.authorizationPolicy.assertPermissions(user, [Permission.Certificate.Read], {
+        scope: source.scope,
+        targetId: sourceTargetId,
+      });
+      await this.authorizationPolicy.assertPermissions(user, [Permission.Certificate.Issue], {
+        scope,
+        targetId,
+      });
+    }
+
+    const created = await this.configsService.cloneConfig(id, input);
+    if (input?.parts?.issuedPeople) {
+      await this.issuingService.issueForExistingConfigRecipients(id, created.id, this.getIssuedById(context));
+    }
+
+    return created;
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteCertificateConfig' })
@@ -285,12 +407,45 @@ export class CertificatesResolver {
     return context.req?.user ?? context.request?.user;
   }
 
+  private async assertCertificateFolderPermission(
+    context: GraphqlContext,
+    permission: Permission,
+    folderId: string,
+  ): Promise<void> {
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [permission], {
+      folderId,
+      scope: CertificateScope.OTHER,
+      targetId: folderId,
+    });
+  }
+
+  private async canAccessCertificateFolder(
+    user: AuthenticatedUser | undefined,
+    permission: Permission,
+    folderId: string,
+  ): Promise<boolean> {
+    try {
+      await this.authorizationPolicy.assertPermissions(user, [permission], {
+        folderId,
+        scope: CertificateScope.OTHER,
+        targetId: folderId,
+      });
+      return true;
+    } catch (error) {
+      if (!(error instanceof ForbiddenException)) {
+        throw error;
+      }
+      return false;
+    }
+  }
+
   private getCertificateTargetId(
     scope: CertificateScope,
     input: {
       eventId?: string | null;
       eventGroupId?: string | null;
       majorEventId?: string | null;
+      folderId?: string | null;
     },
   ): string {
     if (scope === CertificateScope.EVENT && input.eventId) {
@@ -305,6 +460,10 @@ export class CertificatesResolver {
       return input.majorEventId;
     }
 
+    if (scope === CertificateScope.OTHER && input.folderId) {
+      return input.folderId;
+    }
+
     return '';
   }
 
@@ -317,7 +476,8 @@ export class CertificatesResolver {
       input.scope !== undefined ||
       input.eventId !== undefined ||
       input.eventGroupId !== undefined ||
-      input.majorEventId !== undefined;
+      input.majorEventId !== undefined ||
+      input.folderId !== undefined;
     if (!changesTarget) {
       return;
     }
@@ -328,6 +488,7 @@ export class CertificatesResolver {
       eventId: input.eventId === undefined ? existing.eventId : input.eventId,
       eventGroupId: input.eventGroupId === undefined ? existing.eventGroupId : input.eventGroupId,
       majorEventId: input.majorEventId === undefined ? existing.majorEventId : input.majorEventId,
+      folderId: input.folderId === undefined ? existing.folderId : input.folderId,
     });
     if (!targetId) {
       return;

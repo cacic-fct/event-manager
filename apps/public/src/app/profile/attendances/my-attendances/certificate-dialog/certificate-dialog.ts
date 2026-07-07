@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -15,7 +15,8 @@ import { CacicAnalyticsService } from '@cacic-fct/shared-angular';
 
 export interface CertificateDialogData {
   title: string;
-  targets: CertificateTarget[];
+  targets?: CertificateTarget[];
+  certificates?: Certificate[];
 }
 
 type CertificateDialogState =
@@ -43,7 +44,10 @@ export class CertificateDialog {
   readonly downloadError = signal<string | null>(null);
 
   readonly state = toSignal(
-    this.api.getCurrentUserCertificatesForTargets(this.data.targets).pipe(
+    (this.data.certificates
+      ? of(this.data.certificates)
+      : this.api.getCurrentUserCertificatesForTargets(this.data.targets ?? [])
+    ).pipe(
       map(
         (certificates): CertificateDialogState => ({
           status: 'ready',
@@ -83,7 +87,7 @@ export class CertificateDialog {
     const currentState = this.state();
     const certificateIds =
       currentState.status === 'ready' ? currentState.certificates.map((certificate) => certificate.id) : [];
-    const targetIds = this.data.targets.map((target) => `${target.scope}:${target.targetId}`);
+    const targetIds = (this.data.targets ?? []).map((target) => `${target.scope}:${target.targetId}`);
     const httpError = this.downloadError() ?? (currentState.status === 'error' ? currentState.message : null);
 
     this.mailtoService.open({

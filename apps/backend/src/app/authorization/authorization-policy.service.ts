@@ -16,6 +16,7 @@ export type AuthorizationResourceContext = {
   eventId?: string;
   majorEventId?: string;
   eventGroupId?: string;
+  folderId?: string;
   subscriptionId?: string;
   receiptId?: string;
   receiptValidationActionId?: string;
@@ -35,9 +36,14 @@ type ResolvedGrantTarget = {
   eventIds: Set<string>;
   majorEventIds: Set<string>;
   eventGroupIds: Set<string>;
+  folderIds: Set<string>;
 };
 
-export type AccessibleEventGrantTargets = ResolvedGrantTarget;
+export type AccessibleEventGrantTargets = {
+  eventIds: Set<string>;
+  majorEventIds: Set<string>;
+  eventGroupIds: Set<string>;
+};
 
 type ActiveGrant = {
   permission: string;
@@ -445,6 +451,7 @@ export class AuthorizationPolicyService {
       eventIds: new Set(),
       majorEventIds: new Set(),
       eventGroupIds: new Set(),
+      folderIds: new Set(),
     };
 
     if (await this.addAuthoritativeResourceTarget(target, permission, context)) {
@@ -461,6 +468,10 @@ export class AuthorizationPolicyService {
 
     if (context.eventGroupId) {
       target.eventGroupIds.add(context.eventGroupId);
+    }
+
+    if (context.folderId) {
+      target.folderIds.add(context.folderId);
     }
 
     if (context.subscriptionId) {
@@ -657,6 +668,7 @@ export class AuthorizationPolicyService {
         eventId: true,
         eventGroupId: true,
         majorEventId: true,
+        folderId: true,
       },
     });
 
@@ -667,7 +679,7 @@ export class AuthorizationPolicyService {
     await this.addCertificateScopeTarget(
       target,
       config.scope,
-      config.eventId ?? config.eventGroupId ?? config.majorEventId ?? undefined,
+      config.eventId ?? config.eventGroupId ?? config.majorEventId ?? config.folderId ?? undefined,
     );
   }
 
@@ -684,6 +696,7 @@ export class AuthorizationPolicyService {
             eventId: true,
             eventGroupId: true,
             majorEventId: true,
+            folderId: true,
           },
         },
       },
@@ -696,7 +709,11 @@ export class AuthorizationPolicyService {
     await this.addCertificateScopeTarget(
       target,
       certificate.config.scope,
-      certificate.config.eventId ?? certificate.config.eventGroupId ?? certificate.config.majorEventId ?? undefined,
+      certificate.config.eventId ??
+        certificate.config.eventGroupId ??
+        certificate.config.majorEventId ??
+        certificate.config.folderId ??
+        undefined,
     );
   }
 
@@ -718,6 +735,9 @@ export class AuthorizationPolicyService {
         return;
       case CertificateScope.MAJOR_EVENT:
         target.majorEventIds.add(targetId);
+        return;
+      case CertificateScope.OTHER:
+        target.folderIds.add(targetId);
     }
   }
 
@@ -827,7 +847,12 @@ export class AuthorizationPolicyService {
   }
 
   private isEmptyGrantTarget(target: ResolvedGrantTarget): boolean {
-    return target.eventIds.size === 0 && target.majorEventIds.size === 0 && target.eventGroupIds.size === 0;
+    return (
+      target.eventIds.size === 0 &&
+      target.majorEventIds.size === 0 &&
+      target.eventGroupIds.size === 0 &&
+      target.folderIds.size === 0
+    );
   }
 
   private isAttendanceCollectionOpen(startDate: Date, endDate: Date): boolean {
@@ -858,6 +883,9 @@ export class AuthorizationPolicyService {
             break;
           case 'eventGroupId':
             context.eventGroupId ??= id;
+            break;
+          case 'folderId':
+            context.folderId ??= id;
             break;
           case 'subscriptionId':
             context.subscriptionId ??= id;

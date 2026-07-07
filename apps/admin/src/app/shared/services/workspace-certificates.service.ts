@@ -13,7 +13,10 @@ import { PeopleApiService } from '../../graphql/people-api.service';
 import {
   Certificate,
   CertificateConfig,
+  CertificateConfigCloneInput,
   CertificateConfigInput,
+  CertificateFolder,
+  CertificateFolderInput,
   CertificateIssuedTo,
   CertificateScope,
   CertificateTemplate,
@@ -22,6 +25,7 @@ import {
   MajorEvent,
   Person,
 } from '@cacic-fct/event-manager-admin-contracts';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { ConfirmationDialogComponent } from '../components/confirmation-dialog.component';
 import { getErrorMessage } from '../error-message';
 import { bindLiveSearch } from '../live-search';
@@ -34,12 +38,17 @@ import {
   resetPagination,
 } from '../list-pagination';
 import { buildPeopleSearchFilters } from '../people-lookup';
+import {
+  CertificateConfigCloneDialogComponent,
+  CertificateConfigCloneDialogResult,
+} from '../../workspace/dialogs/certificate-config-clone-dialog.component';
+import { WorkspacePermissionsService } from './workspace-permissions.service';
 
-type IssuableScope = Exclude<CertificateScope, 'OTHER'>;
-type CertificateTargetType = 'event' | 'event-group' | 'major-event';
+type WorkspaceCertificateScope = CertificateScope;
+type CertificateTargetType = 'event' | 'event-group' | 'major-event' | 'folder';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
 type CertificateIssuedToOption = CertificateIssuedTo | 'LECTURER_PALESTRA' | 'LECTURER_MINICURSO';
-type IssuableTarget = Event | EventGroup | MajorEvent;
+type IssuableTarget = Event | EventGroup | MajorEvent | CertificateFolder;
 type CertificateConfigFormModel = {
   id: string;
   name: string;
@@ -76,10 +85,12 @@ export class WorkspaceCertificatesService {
   private readonly snackbar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly permissions = inject(WorkspacePermissionsService);
 
   readonly issuableEvents = signal<Event[]>([]);
   readonly issuableEventGroups = signal<EventGroup[]>([]);
   readonly issuableMajorEvents = signal<MajorEvent[]>([]);
+  readonly certificateFolders = signal<CertificateFolder[]>([]);
   readonly targetsPagination = createWorkspaceListPagination();
   readonly selectedTarget = signal<{ id: string; name: string } | null>(null);
   readonly certificateTemplates = signal<CertificateTemplate[]>([]);
@@ -103,8 +114,14 @@ export class WorkspaceCertificatesService {
   }
 
   readonly targetFiltersForm = this.formBuilder.nonNullable.group({
-    scope: ['EVENT' as IssuableScope, [Validators.required]],
+    scope: ['EVENT' as WorkspaceCertificateScope, [Validators.required]],
     query: [''],
+  });
+
+  readonly folderForm = this.formBuilder.nonNullable.group({
+    id: [''],
+    name: ['', [Validators.required]],
+    emoji: ['📁', [Validators.required]],
   });
 
   readonly personLookupForm = this.formBuilder.nonNullable.group({
@@ -138,6 +155,10 @@ export class WorkspaceCertificatesService {
     await Promise.all([this.loadCertificateTemplates(), this.searchTargets()]);
   }
 
+  isStandaloneScope(): boolean {
+    return this.targetFiltersForm.controls.scope.value === 'OTHER';
+  }
+
   async loadCertificateTemplates(): Promise<void> {
     this.certificateTemplates.set(
       await firstValueFrom(
@@ -161,15 +182,25 @@ export class WorkspaceCertificatesService {
   }
 
   async searchTargets(): Promise<void> {
-    const scope = this.targetFiltersForm.controls.scope.value as IssuableScope;
+    const scope = this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope;
     const query = this.targetFiltersForm.controls.query.value.trim() || undefined;
     const pagination = pageVariables(this.targetsPagination.pageIndex());
+
+    if (scope === 'OTHER') {
+      const items = await firstValueFrom(this.api.listCertificateFolders({ query, ...pagination }));
+      this.certificateFolders.set(applyPagedResult(items, this.targetsPagination));
+      this.issuableEvents.set([]);
+      this.issuableEventGroups.set([]);
+      this.issuableMajorEvents.set([]);
+      return;
+    }
 
     if (scope === 'EVENT') {
       const items = await firstValueFrom(this.api.listCertificateIssuableEvents({ query, ...pagination }));
       this.issuableEvents.set(applyPagedResult(items, this.targetsPagination));
       this.issuableEventGroups.set([]);
       this.issuableMajorEvents.set([]);
+      this.certificateFolders.set([]);
       return;
     }
 
@@ -178,6 +209,7 @@ export class WorkspaceCertificatesService {
       this.issuableEventGroups.set(applyPagedResult(items, this.targetsPagination));
       this.issuableEvents.set([]);
       this.issuableMajorEvents.set([]);
+      this.certificateFolders.set([]);
       return;
     }
 
@@ -185,6 +217,7 @@ export class WorkspaceCertificatesService {
     this.issuableMajorEvents.set(applyPagedResult(items, this.targetsPagination));
     this.issuableEvents.set([]);
     this.issuableEventGroups.set([]);
+    this.certificateFolders.set([]);
   }
 
   async applyTargetFilters(): Promise<void> {
@@ -200,7 +233,7 @@ export class WorkspaceCertificatesService {
     await loadNextPage(this.targetsPagination, () => this.searchTargets());
   }
 
-  async onScopeChanged(scope: IssuableScope): Promise<void> {
+  async onScopeChanged(scope: WorkspaceCertificateScope): Promise<void> {
     void this.router.navigate(['/certificates']);
     this.targetFiltersForm.controls.scope.setValue(scope);
     this.selectedTarget.set(null);
@@ -208,6 +241,7 @@ export class WorkspaceCertificatesService {
     this.certificateConfigs.set([]);
     this.certificates.set([]);
     this.personSearchResults.set([]);
+    this.resetFolderForm();
     this.resetCertificateConfigForm();
     resetPagination(this.targetsPagination);
     await this.searchTargets();
@@ -216,7 +250,7 @@ export class WorkspaceCertificatesService {
   async selectTarget(target: IssuableTarget): Promise<void> {
     void this.router.navigate([
       '/certificates',
-      this.scopeToTargetType(this.targetFiltersForm.controls.scope.value as IssuableScope),
+      this.scopeToTargetType(this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope),
       target.id,
     ]);
     await this.applyTargetSelection(target);
@@ -259,6 +293,14 @@ export class WorkspaceCertificatesService {
       id: target.id,
       name: target.name,
     });
+    if (this.isStandaloneScope()) {
+      const folder = target as CertificateFolder;
+      this.folderForm.setValue({
+        id: folder.id,
+        name: folder.name,
+        emoji: folder.emoji,
+      });
+    }
     this.personLookupForm.reset({ query: '' }, { emitEvent: false });
     this.personSearchResults.set([]);
     this.selectedCertificateConfig.set(null);
@@ -273,7 +315,7 @@ export class WorkspaceCertificatesService {
     if (selectedTarget) {
       void this.router.navigate([
         '/certificates',
-        this.scopeToTargetType(this.targetFiltersForm.controls.scope.value as IssuableScope),
+        this.scopeToTargetType(this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope),
         selectedTarget.id,
         config.id,
       ]);
@@ -313,7 +355,7 @@ export class WorkspaceCertificatesService {
     if (selectedTarget) {
       void this.router.navigate([
         '/certificates',
-        this.scopeToTargetType(this.targetFiltersForm.controls.scope.value as IssuableScope),
+        this.scopeToTargetType(this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope),
         selectedTarget.id,
       ]);
     }
@@ -329,6 +371,7 @@ export class WorkspaceCertificatesService {
     this.selectedCertificateConfig.set(null);
     this.certificateConfigs.set([]);
     this.certificates.set([]);
+    this.resetFolderForm();
     resetPagination(this.certificateConfigsPagination);
     resetPagination(this.certificatesPagination);
     this.personSearchResults.set([]);
@@ -342,6 +385,14 @@ export class WorkspaceCertificatesService {
   }
 
   onCertificateIssuedToChanged(issuedTo: CertificateIssuedToOption): void {
+    if (this.isStandaloneScope()) {
+      this.certificateConfigForm.issuedTo().value.set('OTHER');
+      this.certificateConfigForm.certificateTypeLabel().value.set(
+        this.buildCertificateTypeLabel('OTHER', this.certificateConfigModel().certificateTypeLabel) ?? 'Manual',
+      );
+      return;
+    }
+
     this.certificateConfigForm.issuedTo().value.set(issuedTo);
     this.certificateConfigForm.certificateTypeLabel().value.set(
       this.requiresCustomCertificateTypeLabel(issuedTo) ? '' : (this.buildCertificateTypeLabel(issuedTo) ?? ''),
@@ -350,6 +401,87 @@ export class WorkspaceCertificatesService {
 
   async saveCertificateConfig(): Promise<void> {
     await this.persistCertificateConfig({ showSnackbar: true });
+  }
+
+  async cloneCertificateConfig(config: CertificateConfig): Promise<void> {
+    const result = await this.openCertificateConfigCloneDialog(config);
+    if (!result) {
+      return;
+    }
+
+    const input: CertificateConfigCloneInput = {
+      ...(result.name ? { name: result.name } : {}),
+      scope: result.scope,
+      majorEventId: result.scope === 'MAJOR_EVENT' ? result.targetId : null,
+      eventGroupId: result.scope === 'EVENT_GROUP' ? result.targetId : null,
+      eventId: result.scope === 'EVENT' ? result.targetId : null,
+      folderId: result.scope === 'OTHER' ? result.targetId : null,
+      parts: {
+        textContent: Boolean(result.parts.textContent),
+        recipientData: Boolean(result.parts.recipientData),
+        activeState: Boolean(result.parts.activeState),
+        issuedPeople: Boolean(result.parts.issuedPeople),
+      },
+    };
+
+    try {
+      const created = await firstValueFrom(this.api.cloneCertificateConfig(config.id, input));
+      this.snackbar.open('Configuração de certificado duplicada.', 'Fechar', { duration: 2500 });
+      const destinationTarget = this.getCertificateConfigTarget(created);
+      if (destinationTarget) {
+        this.targetFiltersForm.controls.scope.setValue(created.scope, { emitEvent: false });
+        await this.searchTargets();
+        await this.applyTargetSelection(destinationTarget);
+      } else {
+        await this.loadCertificateConfigs();
+      }
+      this.selectCertificateConfig(created);
+      await this.loadCertificates();
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar a configuração de certificado.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
+  }
+
+  startNewFolder(): void {
+    void this.router.navigate(['/certificates']);
+    this.selectedTarget.set(null);
+    this.selectedCertificateConfig.set(null);
+    this.certificateConfigs.set([]);
+    this.certificates.set([]);
+    this.personSearchResults.set([]);
+    this.resetFolderForm();
+    this.resetCertificateConfigForm();
+  }
+
+  async saveCertificateFolder(): Promise<void> {
+    if (this.folderForm.invalid) {
+      this.folderForm.markAllAsTouched();
+      this.snackbar.open('Informe nome e emoji da pasta.', 'Fechar', { duration: 2500 });
+      return;
+    }
+
+    const raw = this.folderForm.getRawValue();
+    const payload: CertificateFolderInput = {
+      name: raw.name.trim(),
+      emoji: raw.emoji.trim(),
+    };
+
+    try {
+      const savedFolder = raw.id
+        ? await firstValueFrom(this.api.updateCertificateFolder(raw.id, payload))
+        : await firstValueFrom(this.api.createCertificateFolder(payload));
+      this.snackbar.open(raw.id ? 'Pasta atualizada.' : 'Pasta criada.', 'Fechar', { duration: 2500 });
+      this.targetFiltersForm.controls.scope.setValue('OTHER', { emitEvent: false });
+      await this.searchTargets();
+      void this.router.navigate(['/certificates', 'folder', savedFolder.id]);
+      await this.applyTargetSelection(savedFolder);
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a pasta.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
   }
 
   private async persistCertificateConfig(options?: { showSnackbar?: boolean }): Promise<CertificateConfig | null> {
@@ -365,12 +497,15 @@ export class WorkspaceCertificatesService {
 
       const selectedTarget = this.selectedTarget();
       if (!selectedTarget) {
-        this.snackbar.open('Selecione um evento, grupo ou grande evento primeiro.', 'Fechar', {
+        const message = this.isStandaloneScope()
+          ? 'Selecione uma pasta primeiro.'
+          : 'Selecione um evento, grupo ou grande evento primeiro.';
+        this.snackbar.open(message, 'Fechar', {
           duration: 2500,
         });
         return {
           kind: 'targetRequired',
-          message: 'Selecione um evento, grupo ou grande evento primeiro.',
+          message,
         };
       }
 
@@ -535,10 +670,14 @@ export class WorkspaceCertificatesService {
     }
 
     const configs = await firstValueFrom(
-      this.api.listCertificateConfigs(this.targetFiltersForm.controls.scope.value as IssuableScope, selectedTarget.id, {
-        includeInactive: true,
-        ...pageVariables(this.certificateConfigsPagination.pageIndex()),
-      }),
+      this.api.listCertificateConfigs(
+        this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope,
+        selectedTarget.id,
+        {
+          includeInactive: true,
+          ...pageVariables(this.certificateConfigsPagination.pageIndex()),
+        },
+      ),
     );
     this.certificateConfigs.set(applyPagedResult(configs, this.certificateConfigsPagination));
 
@@ -578,6 +717,23 @@ export class WorkspaceCertificatesService {
     return result === true;
   }
 
+  private async openCertificateConfigCloneDialog(
+    config: CertificateConfig,
+  ): Promise<CertificateConfigCloneDialogResult | null | undefined> {
+    const canCopyIssuedPeople = this.permissions.hasAll([Permission.Certificate.Read, Permission.Certificate.Issue]);
+    const dialogRef = this.dialog.open(CertificateConfigCloneDialogComponent, {
+      width: '52rem',
+      maxWidth: '95vw',
+      data: {
+        config,
+        defaultName: `${config.name} (cópia)`,
+        canCopyIssuedPeople,
+      },
+    });
+
+    return firstValueFrom(dialogRef.afterClosed());
+  }
+
   private async loadCertificates(): Promise<void> {
     const selectedTarget = this.selectedTarget();
     if (!selectedTarget) {
@@ -587,7 +743,7 @@ export class WorkspaceCertificatesService {
 
     const certificates = await firstValueFrom(
       this.api.listCertificates(
-        this.targetFiltersForm.controls.scope.value as IssuableScope,
+        this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope,
         selectedTarget.id,
         {
           configId: this.selectedCertificateConfig()?.id,
@@ -607,7 +763,8 @@ export class WorkspaceCertificatesService {
   }
 
   private buildCertificateConfigPayload(targetId: string, raw = this.certificateConfigModel()): CertificateConfigInput {
-    const scope = this.targetFiltersForm.controls.scope.value as IssuableScope;
+    const scope = this.targetFiltersForm.controls.scope.value as WorkspaceCertificateScope;
+    const isStandalone = scope === 'OTHER';
 
     return {
       name: raw.name.trim(),
@@ -615,21 +772,25 @@ export class WorkspaceCertificatesService {
       majorEventId: scope === 'MAJOR_EVENT' ? targetId : null,
       eventGroupId: scope === 'EVENT_GROUP' ? targetId : null,
       eventId: scope === 'EVENT' ? targetId : null,
+      folderId: isStandalone ? targetId : null,
       certificateTemplateId: raw.certificateTemplateId.trim(),
       certificateText: raw.certificateText.trim() || null,
-      shouldAutofillSecondPage: raw.shouldAutofillSecondPage,
-      secondPageText: raw.shouldAutofillSecondPage ? null : raw.secondPageText.trim() || null,
+      shouldAutofillSecondPage: isStandalone ? false : raw.shouldAutofillSecondPage,
+      secondPageText: isStandalone || !raw.shouldAutofillSecondPage ? raw.secondPageText.trim() || null : null,
       isActive: raw.isActive,
-      issuedTo: this.normalizeIssuedTo(raw.issuedTo),
-      certificateTypeLabel: this.buildCertificateTypeLabel(raw.issuedTo, raw.certificateTypeLabel),
+      issuedTo: isStandalone ? 'OTHER' : this.normalizeIssuedTo(raw.issuedTo),
+      certificateTypeLabel: this.buildCertificateTypeLabel(
+        isStandalone ? 'OTHER' : raw.issuedTo,
+        raw.certificateTypeLabel,
+      ),
       certificateFieldsJson: this.buildCertificateFieldsJson(
         raw.certificateFields,
-        this.parseIssuedToLecturerEventCategory(raw.issuedTo),
+        isStandalone ? undefined : this.parseIssuedToLecturerEventCategory(raw.issuedTo),
       ),
     };
   }
 
-  private async getTargetByRoute(scope: IssuableScope, targetId: string): Promise<IssuableTarget> {
+  private async getTargetByRoute(scope: WorkspaceCertificateScope, targetId: string): Promise<IssuableTarget> {
     if (scope === 'EVENT') {
       return firstValueFrom(this.eventsApi.getEvent(targetId));
     }
@@ -638,10 +799,46 @@ export class WorkspaceCertificatesService {
       return firstValueFrom(this.eventGroupsApi.getEventGroup(targetId));
     }
 
+    if (scope === 'OTHER') {
+      return firstValueFrom(this.api.getCertificateFolder(targetId));
+    }
+
     return firstValueFrom(this.majorEventsApi.getMajorEvent(targetId));
   }
 
-  private targetTypeToScope(targetType: string): IssuableScope | null {
+  private getCertificateConfigTarget(config: CertificateConfig): IssuableTarget | null {
+    if (config.scope === 'EVENT' && config.eventId) {
+      return {
+        ...(config.event ?? {}),
+        id: config.eventId,
+        name: config.event?.name ?? config.eventId,
+      } as IssuableTarget;
+    }
+
+    if (config.scope === 'EVENT_GROUP' && config.eventGroupId) {
+      return {
+        ...(config.eventGroup ?? {}),
+        id: config.eventGroupId,
+        name: config.eventGroup?.name ?? config.eventGroupId,
+      } as IssuableTarget;
+    }
+
+    if (config.scope === 'MAJOR_EVENT' && config.majorEventId) {
+      return {
+        ...(config.majorEvent ?? {}),
+        id: config.majorEventId,
+        name: config.majorEvent?.name ?? config.majorEventId,
+      } as IssuableTarget;
+    }
+
+    if (config.scope === 'OTHER' && config.folder) {
+      return config.folder;
+    }
+
+    return null;
+  }
+
+  private targetTypeToScope(targetType: string): WorkspaceCertificateScope | null {
     if (targetType === 'event') {
       return 'EVENT';
     }
@@ -654,16 +851,24 @@ export class WorkspaceCertificatesService {
       return 'MAJOR_EVENT';
     }
 
+    if (targetType === 'folder') {
+      return 'OTHER';
+    }
+
     return null;
   }
 
-  private scopeToTargetType(scope: IssuableScope): CertificateTargetType {
+  private scopeToTargetType(scope: WorkspaceCertificateScope): CertificateTargetType {
     if (scope === 'EVENT') {
       return 'event';
     }
 
     if (scope === 'EVENT_GROUP') {
       return 'event-group';
+    }
+
+    if (scope === 'OTHER') {
+      return 'folder';
     }
 
     return 'major-event';
@@ -677,6 +882,17 @@ export class WorkspaceCertificatesService {
       certificateTemplateId: templateId,
     });
     this.syncCertificateFieldsForm(null, templateId);
+  }
+
+  private resetFolderForm(): void {
+    this.folderForm.reset(
+      {
+        id: '',
+        name: '',
+        emoji: '📁',
+      },
+      { emitEvent: false },
+    );
   }
 
   syncCertificateFieldsForm(
@@ -737,16 +953,17 @@ export class WorkspaceCertificatesService {
   }
 
   private createDefaultCertificateConfigModel(): CertificateConfigFormModel {
+    const isStandalone = this.isStandaloneScope();
     return {
       id: '',
       name: '',
       certificateTemplateId: '',
       certificateText: '',
-      shouldAutofillSecondPage: true,
+      shouldAutofillSecondPage: !isStandalone,
       secondPageText: '',
       isActive: true,
-      issuedTo: 'ATTENDEE',
-      certificateTypeLabel: 'Participação',
+      issuedTo: isStandalone ? 'OTHER' : 'ATTENDEE',
+      certificateTypeLabel: isStandalone ? 'Manual' : 'Participação',
       certificateFields: {},
     };
   }

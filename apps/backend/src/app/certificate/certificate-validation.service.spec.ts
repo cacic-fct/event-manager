@@ -36,6 +36,7 @@ describe('CertificateValidationService', () => {
   });
 
   it('accepts exactly one target for each supported scope', () => {
+    expect(() => service.assertSupportedScope(CertificateScope.OTHER)).not.toThrow();
     expect(() =>
       service.assertScopeTargetConsistency(CertificateScope.MAJOR_EVENT, { majorEventId: 'major-event-1' }),
     ).not.toThrow();
@@ -45,8 +46,7 @@ describe('CertificateValidationService', () => {
     expect(() => service.assertScopeTargetConsistency(CertificateScope.EVENT, { eventId: 'event-1' })).not.toThrow();
   });
 
-  it('rejects unsupported or inconsistent certificate scope targets', () => {
-    expect(() => service.assertSupportedScope(CertificateScope.OTHER)).toThrow(BadRequestException);
+  it('rejects inconsistent certificate scope targets', () => {
     expect(() =>
       service.assertScopeTargetConsistency(CertificateScope.MAJOR_EVENT, {
         majorEventId: 'major-event-1',
@@ -57,6 +57,11 @@ describe('CertificateValidationService', () => {
     expect(() =>
       service.assertScopeTargetConsistency(CertificateScope.EVENT, {
         majorEventId: 'major-event-1',
+        eventId: 'event-1',
+      }),
+    ).toThrow(BadRequestException);
+    expect(() =>
+      service.assertScopeTargetConsistency(CertificateScope.OTHER, {
         eventId: 'event-1',
       }),
     ).toThrow(BadRequestException);

@@ -22,6 +22,7 @@ import type {
   EventDetails,
   EventGroupDetails,
   MajorEventDetails,
+  StandaloneCertificateFolderItem,
   SubscribedItem,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
@@ -36,6 +37,7 @@ export type {
   EventDetails,
   EventGroupDetails,
   MajorEventDetails,
+  StandaloneCertificateFolderItem,
   SubscribedItem,
   SubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
@@ -158,6 +160,7 @@ export class AttendancesApiService {
     return this.query<{
       currentUserMajorEventFeed: CurrentUserMajorEventFeedItem[];
       currentUserSubscriptionFeed: CurrentUserSubscriptionFeedResponse;
+      currentUserStandaloneCertificateFolders: StandaloneCertificateFolderItem[];
       currentUserEventAttendances: CurrentUserEventAttendance[];
     }>(
       `
@@ -228,6 +231,15 @@ export class AttendancesApiService {
               eventGroupId
             }
           }
+
+          currentUserStandaloneCertificateFolders {
+            id
+            name
+            emoji
+            certificates {
+              ${CERTIFICATE_FIELDS}
+            }
+          }
         }
 
     `,
@@ -235,6 +247,7 @@ export class AttendancesApiService {
       map((data) => ({
         majorEventItems: data.currentUserMajorEventFeed,
         eventItems: this.mapSubscriptionFeedItems(data.currentUserSubscriptionFeed.items ?? []),
+        standaloneCertificateFolders: data.currentUserStandaloneCertificateFolders ?? [],
         attendances: data.currentUserEventAttendances,
       })),
     );
@@ -367,11 +380,7 @@ export class AttendancesApiService {
           ? details.currentUserEventSubscription
           : null;
         const organizerEvent = organizerInfo?.events[0]?.event ?? null;
-        const fallbackEvent = this.isStandaloneEvent(publicEvent)
-          ? publicEvent
-          : this.isStandaloneEvent(organizerEvent)
-            ? organizerEvent
-            : null;
+        const fallbackEvent = this.resolveStandaloneEvent(publicEvent, organizerEvent);
         const detailEvent = subscription?.event ?? fallbackEvent;
 
         return {
@@ -425,9 +434,8 @@ export class AttendancesApiService {
           details.currentUserEventGroupSubscription && this.isStandaloneEventGroup(subscribedEvents)
             ? details.currentUserEventGroupSubscription
             : null;
-        const publicEvents = this.isStandaloneEventGroup(details.publicEvents ?? []) ? (details.publicEvents ?? []) : [];
         const organizerEvents = organizerInfo?.events.map((item) => item.event) ?? [];
-        const fallbackEvents = this.isStandaloneEventGroup(organizerEvents) ? organizerEvents : publicEvents;
+        const fallbackEvents = this.resolveStandaloneEvents(details.publicEvents ?? [], organizerEvents);
         const targetEvents = subscription?.events ?? fallbackEvents;
         const targetEventIds = new Set(targetEvents.map((event) => event.id));
 
@@ -628,6 +636,33 @@ export class AttendancesApiService {
 
   private isStandaloneEventGroup(events: PublicEvent[]): boolean {
     return events.length > 0 && events.every((event) => !event.majorEventId);
+  }
+
+  private resolveStandaloneEvent(
+    publicEvent: PublicEvent | null | undefined,
+    organizerEvent: PublicEvent | null | undefined,
+  ): PublicEvent | null {
+    if (this.isStandaloneEvent(publicEvent)) {
+      return publicEvent;
+    }
+
+    if (this.isStandaloneEvent(organizerEvent)) {
+      return organizerEvent;
+    }
+
+    return null;
+  }
+
+  private resolveStandaloneEvents(publicEvents: PublicEvent[], organizerEvents: PublicEvent[]): PublicEvent[] {
+    if (this.isStandaloneEventGroup(organizerEvents)) {
+      return organizerEvents;
+    }
+
+    if (this.isStandaloneEventGroup(publicEvents)) {
+      return publicEvents;
+    }
+
+    return [];
   }
 
   private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {

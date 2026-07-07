@@ -1,7 +1,7 @@
 import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CertificatesResolver } from './certificates.resolver';
 
 describe('CertificatesResolver authorization', () => {
@@ -72,6 +72,234 @@ describe('CertificatesResolver authorization', () => {
     );
   });
 
+  it('requires read permission on the source config target before cloning', async () => {
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config-1',
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+    });
+    configsService.cloneConfig.mockResolvedValue({
+      id: 'config-clone',
+      scope: CertificateScope.EVENT_GROUP,
+      eventGroupId: 'group-1',
+    });
+
+    await expect(
+      resolver.cloneCertificateConfig(
+        'config-1',
+        {
+          scope: CertificateScope.EVENT_GROUP,
+          eventGroupId: 'group-1',
+        },
+        { req: { user } } as never,
+      ),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'config-clone',
+      }),
+    );
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      1,
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        scope: CertificateScope.EVENT,
+        targetId: 'event-1',
+      },
+    );
+    expect(frozenResources.assertCertificateTargetMutable).toHaveBeenCalledWith(
+      CertificateScope.EVENT_GROUP,
+      'group-1',
+      user,
+      'edit',
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      2,
+      user,
+      [Permission.CertificateConfig.Create],
+      {
+        scope: CertificateScope.EVENT_GROUP,
+        targetId: 'group-1',
+      },
+    );
+  });
+
+  it('requires certificate read permission on the source target before cloning issued people', async () => {
+    const { authorizationPolicy, configsService, issuingService, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config-1',
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+    });
+    configsService.cloneConfig.mockResolvedValue({
+      id: 'config-clone',
+      scope: CertificateScope.EVENT_GROUP,
+      eventGroupId: 'group-1',
+    });
+
+    await resolver.cloneCertificateConfig(
+      'config-1',
+      {
+        scope: CertificateScope.EVENT_GROUP,
+        eventGroupId: 'group-1',
+        parts: {
+          issuedPeople: true,
+        },
+      },
+      { req: { user } } as never,
+    );
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      2,
+      user,
+      [Permission.CertificateConfig.Create],
+      {
+        scope: CertificateScope.EVENT_GROUP,
+        targetId: 'group-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      3,
+      user,
+      [Permission.Certificate.Read],
+      {
+        scope: CertificateScope.EVENT,
+        targetId: 'event-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      4,
+      user,
+      [Permission.Certificate.Issue],
+      {
+        scope: CertificateScope.EVENT_GROUP,
+        targetId: 'group-1',
+      },
+    );
+    expect(issuingService.issueForExistingConfigRecipients).toHaveBeenCalledWith(
+      'config-1',
+      'config-clone',
+      'user-1',
+    );
+  });
+
+  it('uses the source target for clone authorization when input is omitted', async () => {
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config-1',
+      scope: CertificateScope.OTHER,
+      folderId: 'folder-1',
+    });
+    configsService.cloneConfig.mockResolvedValue({
+      id: 'config-clone',
+      scope: CertificateScope.OTHER,
+      folderId: 'folder-1',
+    });
+
+    await expect(resolver.cloneCertificateConfig('config-1', null, { req: { user } } as never)).resolves.toEqual(
+      expect.objectContaining({
+        id: 'config-clone',
+      }),
+    );
+
+    expect(frozenResources.assertCertificateTargetMutable).toHaveBeenCalledWith(
+      CertificateScope.OTHER,
+      'folder-1',
+      user,
+      'edit',
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      2,
+      user,
+      [Permission.CertificateConfig.Create],
+      {
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
+    expect(configsService.cloneConfig).toHaveBeenCalledWith('config-1', null);
+  });
+
+  it('filters certificate folders through folder-scoped read authorization', async () => {
+    const { authorizationPolicy, configsService, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.listFolders.mockResolvedValue([
+      { id: 'folder-1', name: 'Allowed' },
+      { id: 'folder-2', name: 'Denied' },
+    ]);
+    authorizationPolicy.assertPermissions.mockImplementation(async (_user, _permissions, context) => {
+      if (context?.targetId === 'folder-2') {
+        throw new ForbiddenException('Denied');
+      }
+    });
+
+    await expect(resolver.certificateFolders({ req: { user } } as never, 'cert', 0, 20)).resolves.toEqual([
+      { id: 'folder-1', name: 'Allowed' },
+    ]);
+
+    expect(configsService.listFolders).toHaveBeenCalledWith('cert', 0, 20);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        allowScopedCollection: true,
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        folderId: 'folder-1',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        folderId: 'folder-2',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-2',
+      },
+    );
+  });
+
+  it('rethrows non-authorization errors while filtering certificate folders', async () => {
+    const { authorizationPolicy, configsService, resolver } = createResolver();
+    const error = new Error('policy store unavailable');
+    configsService.listFolders.mockResolvedValue([{ id: 'folder-1', name: 'Allowed' }]);
+    authorizationPolicy.assertPermissions.mockResolvedValueOnce(undefined).mockRejectedValueOnce(error);
+
+    await expect(resolver.certificateFolders({ req: { user: { sub: 'user-1' } } } as never)).rejects.toBe(error);
+  });
+
+  it('requires folder-scoped read permission before loading one certificate folder', async () => {
+    const { authorizationPolicy, configsService, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getFolderById.mockResolvedValue({ id: 'folder-1', name: 'Standalone' });
+
+    await expect(resolver.certificateFolder('folder-1', { req: { user } } as never)).resolves.toEqual({
+      id: 'folder-1',
+      name: 'Standalone',
+    });
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        folderId: 'folder-1',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
+  });
+
   it('verifies Turnstile before public certificate validation lookup', async () => {
     const { publicValidationService, resolver, turnstile } = createResolver();
     const request = { ip: '203.0.113.10' };
@@ -105,6 +333,79 @@ describe('CertificatesResolver authorization', () => {
 
     expect(publicValidationService.validateCertificate).not.toHaveBeenCalled();
   });
+
+  it('uses the public-only certificate download path', async () => {
+    const { downloadService, resolver } = createResolver();
+    downloadService.downloadPublicCertificate.mockResolvedValue({
+      fileName: 'certificate.pdf',
+      mimeType: 'application/pdf',
+      contentBase64: 'pdf',
+    });
+
+    await expect(resolver.downloadPublicCertificate('certificate-1')).resolves.toEqual(
+      expect.objectContaining({
+        fileName: 'certificate.pdf',
+      }),
+    );
+
+    expect(downloadService.downloadPublicCertificate).toHaveBeenCalledWith('certificate-1');
+    expect(downloadService.downloadCertificate).not.toHaveBeenCalled();
+  });
+
+  it('checks active standalone configs for frozen delete before deleting a folder', async () => {
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.listConfigsByTarget.mockResolvedValue([{ id: 'config-1' }, { id: 'config-2' }]);
+    configsService.deleteFolder.mockResolvedValue({ id: 'folder-1', deleted: true });
+
+    await expect(resolver.deleteCertificateFolder('folder-1', { req: { user } } as never)).resolves.toEqual({
+      id: 'folder-1',
+      deleted: true,
+    });
+
+    expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(CertificateScope.OTHER, 'folder-1');
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Delete],
+      {
+        folderId: 'folder-1',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'delete');
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'delete');
+    expect(configsService.deleteFolder).toHaveBeenCalledWith('folder-1');
+  });
+
+  it('checks active standalone configs for frozen edit before updating a folder', async () => {
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.listConfigsByTarget.mockResolvedValue([{ id: 'config-1' }, { id: 'config-2' }]);
+    configsService.updateFolder.mockResolvedValue({ id: 'folder-1', name: 'Nova pasta' });
+
+    await expect(
+      resolver.updateCertificateFolder('folder-1', { name: 'Nova pasta' }, { req: { user } } as never),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'folder-1',
+      }),
+    );
+
+    expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(CertificateScope.OTHER, 'folder-1');
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Update],
+      {
+        folderId: 'folder-1',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'edit');
+    expect(configsService.updateFolder).toHaveBeenCalledWith('folder-1', { name: 'Nova pasta' });
+  });
 });
 
 function createResolver() {
@@ -115,21 +416,28 @@ function createResolver() {
   };
   const configsService = {
     listTemplates: jest.fn(),
+    listFolders: jest.fn(),
+    getFolderById: jest.fn(),
     listConfigsByTarget: jest.fn(),
     getConfigById: jest.fn(),
     createConfig: jest.fn(),
+    cloneConfig: jest.fn(),
     updateConfig: jest.fn(),
+    updateFolder: jest.fn(),
     deleteConfig: jest.fn(),
+    deleteFolder: jest.fn(),
   };
   const issuingService = {
     listCertificatesByTarget: jest.fn(),
     issueForPerson: jest.fn(),
+    issueForExistingConfigRecipients: jest.fn(),
     issueMissedCertificates: jest.fn(),
     reissueAllCertificates: jest.fn(),
     deleteCertificate: jest.fn(),
   };
   const downloadService = {
     downloadCertificate: jest.fn(),
+    downloadPublicCertificate: jest.fn(),
   };
   const publicValidationService = {
     validateCertificate: jest.fn(),
@@ -162,6 +470,8 @@ function createResolver() {
     authorizationPolicy,
     configsService,
     frozenResources,
+    issuingService,
+    downloadService,
     publicValidationService,
     resolver,
     targetsService,

@@ -1,7 +1,11 @@
 import {
   CertificateConfig,
+  CertificateConfigCloneInput,
   CertificateConfigCreateInput,
   CertificateConfigUpdateInput,
+  CertificateFolder,
+  CertificateFolderCreateInput,
+  CertificateFolderUpdateInput,
   CertificateIssuedTo,
   CertificateScope,
   CertificateTemplate,
@@ -12,9 +16,11 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
+  CERTIFICATE_FOLDER_SELECT,
   CERTIFICATE_CONFIG_SELECT,
   CERTIFICATE_TEMPLATE_SELECT,
   buildConfigTargetWhere,
+  mapCertificateFolder,
   mapCertificateConfig,
   mapCertificateTemplate,
 } from './certificate.constants';
@@ -35,6 +41,164 @@ export class CertificateConfigsService {
       searchCertificateTemplates: async () => ({ available: false, ids: [] }),
     } as unknown as TypesenseSearchService,
   ) {}
+
+  async listFolders(query?: string, skip?: number, take?: number): Promise<CertificateFolder[]> {
+    const normalizedQuery = query?.trim();
+    const folders = await this.prisma.certificateFolder.findMany({
+      where: {
+        deletedAt: null,
+        ...(normalizedQuery
+          ? {
+              name: {
+                contains: normalizedQuery,
+                mode: 'insensitive',
+              },
+            }
+          : {}),
+      },
+      select: CERTIFICATE_FOLDER_SELECT,
+      orderBy: {
+        name: 'asc',
+      },
+      skip,
+      take,
+    });
+
+    return folders.map(mapCertificateFolder);
+  }
+
+  async getFolderById(folderId: string): Promise<CertificateFolder> {
+    const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
+    const folder = await this.prisma.certificateFolder.findFirst({
+      where: {
+        id: normalizedFolderId,
+        deletedAt: null,
+      },
+      select: CERTIFICATE_FOLDER_SELECT,
+    });
+
+    if (!folder) {
+      throw new NotFoundException(`Certificate folder ${normalizedFolderId} not found.`);
+    }
+
+    return mapCertificateFolder(folder);
+  }
+
+  async createFolder(input: CertificateFolderCreateInput): Promise<CertificateFolder> {
+    const name = this.normalizeFolderName(input.name);
+    const emoji = this.normalizeFolderEmoji(input.emoji);
+    await this.ensureNoDuplicateFolderName(name);
+
+    const folder = await this.withFolderNameConflict(() =>
+      this.prisma.certificateFolder.create({
+        data: {
+          name,
+          emoji,
+        },
+        select: CERTIFICATE_FOLDER_SELECT,
+      }),
+      name,
+    );
+
+    return mapCertificateFolder(folder);
+  }
+
+  async updateFolder(folderId: string, input: CertificateFolderUpdateInput): Promise<CertificateFolder> {
+    const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
+    const existingFolder = await this.prisma.certificateFolder.findFirst({
+      where: {
+        id: normalizedFolderId,
+        deletedAt: null,
+      },
+      select: CERTIFICATE_FOLDER_SELECT,
+    });
+
+    if (!existingFolder) {
+      throw new NotFoundException(`Certificate folder ${normalizedFolderId} not found.`);
+    }
+
+    const name = input.name == null ? existingFolder.name : this.normalizeFolderName(input.name);
+    const emoji = input.emoji == null ? existingFolder.emoji : this.normalizeFolderEmoji(input.emoji);
+
+    await this.ensureNoDuplicateFolderName(name, normalizedFolderId);
+
+    const updatedFolder = await this.withFolderNameConflict(() =>
+      this.prisma.certificateFolder.update({
+        where: {
+          id: normalizedFolderId,
+        },
+        data: {
+          ...(input.name == null ? {} : { name }),
+          ...(input.emoji == null ? {} : { emoji }),
+        },
+        select: CERTIFICATE_FOLDER_SELECT,
+      }),
+      name,
+    );
+
+    return mapCertificateFolder(updatedFolder);
+  }
+
+  async deleteFolder(folderId: string): Promise<DeletionResult> {
+    const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
+    const deletedAt = new Date();
+    await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.certificateFolder.updateMany({
+        where: {
+          id: normalizedFolderId,
+          deletedAt: null,
+        },
+        data: {
+          deletedAt,
+        },
+      });
+
+      if (count === 0) {
+        throw new NotFoundException(`Certificate folder ${normalizedFolderId} not found.`);
+      }
+
+      const configs = await tx.certificateConfig.findMany({
+        where: {
+          folderId: normalizedFolderId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+        },
+      });
+      const configIds = configs.map((config) => config.id);
+
+      if (configIds.length > 0) {
+        await tx.certificateConfig.updateMany({
+          where: {
+            id: {
+              in: configIds,
+            },
+            deletedAt: null,
+          },
+          data: {
+            deletedAt,
+          },
+        });
+        await tx.certificate.updateMany({
+          where: {
+            configId: {
+              in: configIds,
+            },
+            deletedAt: null,
+          },
+          data: {
+            deletedAt,
+          },
+        });
+      }
+    });
+
+    return {
+      deleted: true,
+      id: normalizedFolderId,
+    };
+  }
 
   async listTemplates(
     query?: string,
@@ -151,12 +315,14 @@ export class CertificateConfigsService {
     const majorEventId = this.validation.normalizeOptionalId(input.majorEventId);
     const eventGroupId = this.validation.normalizeOptionalId(input.eventGroupId);
     const eventId = this.validation.normalizeOptionalId(input.eventId);
+    const folderId = this.validation.normalizeOptionalId(input.folderId);
     const name = this.validation.normalizeRequiredName(input.name);
     const templateId = this.validation.normalizeRequiredId('certificateTemplateId', input.certificateTemplateId);
     const certificateText = this.validation.normalizeOptionalText(input.certificateText);
     const secondPageText = this.validation.normalizeOptionalText(input.secondPageText);
     const certificateFields = this.validation.normalizeCertificateFieldsJson(input.certificateFieldsJson);
-    const issuedTo = input.issuedTo ?? CertificateIssuedTo.ATTENDEE;
+    this.assertStandaloneIssuedTo(scope, input.issuedTo);
+    const issuedTo = scope === CertificateScope.OTHER ? CertificateIssuedTo.OTHER : (input.issuedTo ?? CertificateIssuedTo.ATTENDEE);
     const certificateTypeLabel = this.resolveCertificateTypeLabel(
       issuedTo,
       certificateFields === undefined ? null : certificateFields,
@@ -168,14 +334,20 @@ export class CertificateConfigsService {
       eventGroupId,
       eventId,
     });
+    this.assertFolderTargetConsistency(scope, folderId);
     const targetId = this.resolveTargetId(scope, {
       majorEventId,
       eventGroupId,
       eventId,
+      folderId,
     });
 
     await this.ensureTemplateExists(templateId);
-    await this.targetsService.assertIssuableTarget(scope, targetId);
+    if (scope === CertificateScope.OTHER) {
+      await this.ensureFolderExists(targetId);
+    } else {
+      await this.targetsService.assertIssuableTarget(scope, targetId);
+    }
     await this.ensureNoDuplicateName(scope, targetId, name);
 
     const createdConfig = await this.prisma.certificateConfig.create({
@@ -185,9 +357,10 @@ export class CertificateConfigsService {
         majorEventId: majorEventId ?? null,
         eventGroupId: eventGroupId ?? null,
         eventId: eventId ?? null,
+        folderId: scope === CertificateScope.OTHER ? targetId : null,
         certificateTemplateId: templateId,
         certificateText: certificateText === undefined ? undefined : certificateText,
-        shouldAutofillSecondPage: input.shouldAutofillSecondPage ?? true,
+        shouldAutofillSecondPage: input.shouldAutofillSecondPage ?? scope !== CertificateScope.OTHER,
         secondPageText: secondPageText === undefined ? undefined : secondPageText,
         isActive: input.isActive ?? true,
         issuedTo,
@@ -220,17 +393,29 @@ export class CertificateConfigsService {
 
     const mergedScope = input.scope ?? existingConfig.scope;
     const mergedMajorEventId =
-      input.majorEventId === undefined
-        ? existingConfig.majorEventId
-        : (this.validation.normalizeOptionalId(input.majorEventId) ?? null);
+      mergedScope === CertificateScope.MAJOR_EVENT
+        ? input.majorEventId === undefined
+          ? existingConfig.majorEventId
+          : (this.validation.normalizeOptionalId(input.majorEventId) ?? null)
+        : null;
     const mergedEventGroupId =
-      input.eventGroupId === undefined
-        ? existingConfig.eventGroupId
-        : (this.validation.normalizeOptionalId(input.eventGroupId) ?? null);
+      mergedScope === CertificateScope.EVENT_GROUP
+        ? input.eventGroupId === undefined
+          ? existingConfig.eventGroupId
+          : (this.validation.normalizeOptionalId(input.eventGroupId) ?? null)
+        : null;
     const mergedEventId =
-      input.eventId === undefined
-        ? existingConfig.eventId
-        : (this.validation.normalizeOptionalId(input.eventId) ?? null);
+      mergedScope === CertificateScope.EVENT
+        ? input.eventId === undefined
+          ? existingConfig.eventId
+          : (this.validation.normalizeOptionalId(input.eventId) ?? null)
+        : null;
+    const mergedFolderId =
+      mergedScope === CertificateScope.OTHER
+        ? input.folderId === undefined
+          ? existingConfig.folderId
+          : (this.validation.normalizeOptionalId(input.folderId) ?? null)
+        : null;
     const mergedName =
       input.name === undefined ? existingConfig.name : this.validation.normalizeRequiredName(input.name);
     const mergedTemplateId =
@@ -243,14 +428,20 @@ export class CertificateConfigsService {
       eventGroupId: mergedEventGroupId,
       eventId: mergedEventId,
     });
+    this.assertFolderTargetConsistency(mergedScope, mergedFolderId);
     const mergedTargetId = this.resolveTargetId(mergedScope, {
       majorEventId: mergedMajorEventId,
       eventGroupId: mergedEventGroupId,
       eventId: mergedEventId,
+      folderId: mergedFolderId,
     });
 
     await this.ensureTemplateExists(mergedTemplateId);
-    await this.targetsService.assertIssuableTarget(mergedScope, mergedTargetId);
+    if (mergedScope === CertificateScope.OTHER) {
+      await this.ensureFolderExists(mergedTargetId);
+    } else {
+      await this.targetsService.assertIssuableTarget(mergedScope, mergedTargetId);
+    }
     await this.ensureNoDuplicateName(mergedScope, mergedTargetId, mergedName, normalizedConfigId);
 
     const nextText =
@@ -261,8 +452,14 @@ export class CertificateConfigsService {
       input.certificateFieldsJson === undefined
         ? undefined
         : this.validation.normalizeCertificateFieldsJson(input.certificateFieldsJson);
+    this.assertStandaloneIssuedTo(mergedScope, input.issuedTo);
     const nextIssuedTo = input.issuedTo;
-    const mergedIssuedTo = nextIssuedTo ?? existingConfig.issuedTo;
+    const changedStandaloneMode =
+      (existingConfig.scope === CertificateScope.OTHER) !== (mergedScope === CertificateScope.OTHER);
+    const mergedIssuedTo =
+      mergedScope === CertificateScope.OTHER
+        ? CertificateIssuedTo.OTHER
+        : (nextIssuedTo ?? (changedStandaloneMode ? CertificateIssuedTo.ATTENDEE : existingConfig.issuedTo));
     const mergedCertificateFields =
       nextCertificateFields === undefined
         ? existingConfig.certificateFields
@@ -270,7 +467,10 @@ export class CertificateConfigsService {
           ? null
           : nextCertificateFields;
     const nextCertificateTypeLabel =
-      input.certificateTypeLabel !== undefined || nextIssuedTo !== undefined || nextCertificateFields !== undefined
+      input.certificateTypeLabel !== undefined ||
+      nextIssuedTo !== undefined ||
+      nextCertificateFields !== undefined ||
+      changedStandaloneMode
         ? this.resolveCertificateTypeLabel(mergedIssuedTo, mergedCertificateFields, input.certificateTypeLabel)
         : undefined;
 
@@ -278,7 +478,8 @@ export class CertificateConfigsService {
       input.scope !== undefined ||
       input.majorEventId !== undefined ||
       input.eventGroupId !== undefined ||
-      input.eventId !== undefined;
+      input.eventId !== undefined ||
+      input.folderId !== undefined;
 
     const data: Prisma.CertificateConfigUpdateInput = {
       ...(input.name === undefined ? {} : { name: mergedName }),
@@ -288,16 +489,21 @@ export class CertificateConfigsService {
             majorEventId: mergedMajorEventId,
             eventGroupId: mergedEventGroupId,
             eventId: mergedEventId,
+            folderId: mergedFolderId,
           }
         : {}),
       ...(input.certificateTemplateId === undefined ? {} : { certificateTemplateId: mergedTemplateId }),
       ...(nextText === undefined ? {} : { certificateText: nextText }),
       ...(input.shouldAutofillSecondPage === undefined
-        ? {}
+        ? changedStandaloneMode
+          ? { shouldAutofillSecondPage: mergedScope === CertificateScope.OTHER ? false : true }
+          : {}
         : { shouldAutofillSecondPage: input.shouldAutofillSecondPage }),
       ...(nextSecondPageText === undefined ? {} : { secondPageText: nextSecondPageText }),
       ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
-      ...(nextIssuedTo === undefined ? {} : { issuedTo: nextIssuedTo }),
+      ...(nextIssuedTo === undefined && mergedScope !== CertificateScope.OTHER && !changedStandaloneMode
+        ? {}
+        : { issuedTo: mergedIssuedTo }),
       ...(nextCertificateTypeLabel === undefined ? {} : { certificateTypeLabel: nextCertificateTypeLabel }),
       ...(nextCertificateFields === undefined
         ? {}
@@ -319,6 +525,120 @@ export class CertificateConfigsService {
     });
 
     return mapCertificateConfig(updatedConfig);
+  }
+
+  async cloneConfig(configId: string, input: CertificateConfigCloneInput | null): Promise<CertificateConfig> {
+    const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
+    const source = await this.prisma.certificateConfig.findFirst({
+      where: {
+        id: normalizedConfigId,
+        deletedAt: null,
+      },
+      select: CERTIFICATE_CONFIG_SELECT,
+    });
+
+    if (!source) {
+      throw new NotFoundException(`Certificate config ${normalizedConfigId} not found.`);
+    }
+
+    const scope = input?.scope ?? source.scope;
+    const majorEventId =
+      scope === CertificateScope.MAJOR_EVENT
+        ? input?.majorEventId === undefined
+          ? source.scope === scope
+            ? source.majorEventId
+            : null
+          : (this.validation.normalizeOptionalId(input.majorEventId) ?? null)
+        : null;
+    const eventGroupId =
+      scope === CertificateScope.EVENT_GROUP
+        ? input?.eventGroupId === undefined
+          ? source.scope === scope
+            ? source.eventGroupId
+            : null
+          : (this.validation.normalizeOptionalId(input.eventGroupId) ?? null)
+        : null;
+    const eventId =
+      scope === CertificateScope.EVENT
+        ? input?.eventId === undefined
+          ? source.scope === scope
+            ? source.eventId
+            : null
+          : (this.validation.normalizeOptionalId(input.eventId) ?? null)
+        : null;
+    const folderId =
+      scope === CertificateScope.OTHER
+        ? input?.folderId === undefined
+          ? source.scope === scope
+            ? source.folderId
+            : null
+          : (this.validation.normalizeOptionalId(input.folderId) ?? null)
+        : null;
+
+    this.validation.assertSupportedScope(scope);
+    this.validation.assertScopeTargetConsistency(scope, {
+      majorEventId,
+      eventGroupId,
+      eventId,
+    });
+    this.assertFolderTargetConsistency(scope, folderId);
+    const targetId = this.resolveTargetId(scope, {
+      majorEventId,
+      eventGroupId,
+      eventId,
+      folderId,
+    });
+    if (scope === CertificateScope.OTHER) {
+      await this.ensureFolderExists(targetId);
+    } else {
+      await this.targetsService.assertIssuableTarget(scope, targetId);
+    }
+    const parts = input?.parts;
+    const shouldCopyRecipientData = Boolean(parts?.recipientData || parts?.issuedPeople);
+    const defaultIssuedTo = scope === CertificateScope.OTHER ? CertificateIssuedTo.OTHER : CertificateIssuedTo.ATTENDEE;
+    const issuedTo =
+      scope === CertificateScope.OTHER
+        ? CertificateIssuedTo.OTHER
+        : shouldCopyRecipientData
+          ? source.issuedTo
+          : defaultIssuedTo;
+    const certificateFields = shouldCopyRecipientData ? source.certificateFields : null;
+    const certificateTypeLabel = shouldCopyRecipientData
+      ? source.certificateTypeLabel
+      : this.resolveCertificateTypeLabel(issuedTo, certificateFields, undefined);
+    const name =
+      input?.name === undefined || input.name === null
+        ? await this.buildUniqueCloneName(scope, targetId, source.name)
+        : this.validation.normalizeRequiredName(input.name);
+
+    await this.ensureNoDuplicateName(scope, targetId, name);
+
+    const createdConfig = await this.prisma.certificateConfig.create({
+      data: {
+        name,
+        scope,
+        majorEventId,
+        eventGroupId,
+        eventId,
+        folderId,
+        certificateTemplateId: source.certificateTemplateId,
+        certificateText: parts?.textContent ? source.certificateText : null,
+        shouldAutofillSecondPage:
+          scope === CertificateScope.OTHER
+            ? false
+            : parts?.textContent
+              ? source.shouldAutofillSecondPage
+              : true,
+        secondPageText: parts?.textContent ? source.secondPageText : null,
+        isActive: parts?.activeState ? source.isActive : true,
+        issuedTo,
+        certificateTypeLabel,
+        certificateFields: this.toJsonCreateValue(certificateFields),
+      },
+      select: CERTIFICATE_CONFIG_SELECT,
+    });
+
+    return mapCertificateConfig(createdConfig);
   }
 
   async deleteConfig(configId: string): Promise<DeletionResult> {
@@ -369,12 +689,49 @@ export class CertificateConfigsService {
     }
   }
 
+  private async ensureFolderExists(folderId: string): Promise<void> {
+    const folder = await this.prisma.certificateFolder.findFirst({
+      where: {
+        id: folderId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!folder) {
+      throw new NotFoundException(`Certificate folder ${folderId} not found.`);
+    }
+  }
+
+  private async ensureNoDuplicateFolderName(name: string, excludeId?: string): Promise<void> {
+    const duplicate = await this.prisma.certificateFolder.findFirst({
+      where: {
+        deletedAt: null,
+        name: {
+          equals: name,
+          mode: 'insensitive',
+        },
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (duplicate) {
+      throw new ConflictException(`A certificate folder named "${name}" already exists.`);
+    }
+  }
+
   private resolveTargetId(
     scope: CertificateScope,
     targets: {
       majorEventId?: string | null;
       eventGroupId?: string | null;
       eventId?: string | null;
+      folderId?: string | null;
     },
   ): string {
     if (scope === CertificateScope.MAJOR_EVENT && targets.majorEventId) {
@@ -389,7 +746,63 @@ export class CertificateConfigsService {
       return targets.eventId;
     }
 
+    if (scope === CertificateScope.OTHER && targets.folderId) {
+      return targets.folderId;
+    }
+
     throw new BadRequestException(`Missing target id for scope ${scope}.`);
+  }
+
+  private assertFolderTargetConsistency(scope: CertificateScope, folderId?: string | null): void {
+    if (scope === CertificateScope.OTHER) {
+      if (!folderId) {
+        throw new BadRequestException('OTHER scope requires folderId.');
+      }
+      return;
+    }
+
+    if (folderId) {
+      throw new BadRequestException('folderId is only supported for OTHER scope.');
+    }
+  }
+
+  private assertStandaloneIssuedTo(scope: CertificateScope, issuedTo?: CertificateIssuedTo | null): void {
+    if (scope === CertificateScope.OTHER && issuedTo && issuedTo !== CertificateIssuedTo.OTHER) {
+      throw new BadRequestException('OTHER scope certificates must be issued to OTHER recipients.');
+    }
+  }
+
+  private normalizeFolderName(rawValue: string): string {
+    const value = rawValue.trim();
+    if (!value) {
+      throw new BadRequestException('Folder name cannot be empty.');
+    }
+
+    return value;
+  }
+
+  private normalizeFolderEmoji(rawValue: string): string {
+    const value = rawValue.trim();
+    if (!value) {
+      throw new BadRequestException('Folder emoji cannot be empty.');
+    }
+    if ([...value].length > 8) {
+      throw new BadRequestException('Folder emoji must be a short symbol.');
+    }
+
+    return value;
+  }
+
+  private async withFolderNameConflict<T>(operation: () => Promise<T>, name: string): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException(`A certificate folder named "${name}" already exists.`);
+      }
+
+      throw error;
+    }
   }
 
   private async ensureNoDuplicateName(
@@ -416,6 +829,45 @@ export class CertificateConfigsService {
     if (duplicate) {
       throw new ConflictException(`A certificate config named "${name}" already exists for this target.`);
     }
+  }
+
+  private async buildUniqueCloneName(scope: CertificateScope, targetId: string, sourceName: string): Promise<string> {
+    const baseName = `${sourceName} (cópia)`;
+    let name = baseName;
+    let copyIndex = 2;
+
+    while (await this.hasDuplicateName(scope, targetId, name)) {
+      name = `${baseName} ${copyIndex}`;
+      copyIndex += 1;
+    }
+
+    return name;
+  }
+
+  private async hasDuplicateName(scope: CertificateScope, targetId: string, name: string): Promise<boolean> {
+    const duplicate = await this.prisma.certificateConfig.findFirst({
+      where: {
+        deletedAt: null,
+        name: {
+          equals: name,
+          mode: 'insensitive',
+        },
+        ...buildConfigTargetWhere(scope, targetId),
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return Boolean(duplicate);
+  }
+
+  private toJsonCreateValue(value: Prisma.JsonValue | null): typeof Prisma.DbNull | Prisma.InputJsonValue {
+    if (value === null) {
+      return Prisma.DbNull;
+    }
+
+    return value as Prisma.InputJsonValue;
   }
 
   private resolveCertificateTypeLabel(

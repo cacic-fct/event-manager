@@ -26,6 +26,7 @@ describe('AttendancesApiService', () => {
 
     const request = httpTesting.expectOne('/api/graphql');
     expect(String(request.request.body.query)).toContain('CurrentUserSubscriptionsFeed');
+    expect(String(request.request.body.query)).toContain('currentUserStandaloneCertificateFolders');
 
     request.flush({
       data: {
@@ -56,6 +57,14 @@ describe('AttendancesApiService', () => {
             },
           ],
         },
+        currentUserStandaloneCertificateFolders: [
+          {
+            id: 'folder-1',
+            name: 'Atividades complementares',
+            emoji: '🏅',
+            certificates: [certificateFixture('standalone-certificate-1', '2026-07-04T12:00:00.000Z', 'OTHER')],
+          },
+        ],
         currentUserEventAttendances: [
           {
             eventId: 'event-1',
@@ -93,6 +102,14 @@ describe('AttendancesApiService', () => {
           },
           events: [],
           participation: participationFixture(),
+        },
+      ],
+      standaloneCertificateFolders: [
+        {
+          id: 'folder-1',
+          name: 'Atividades complementares',
+          emoji: '🏅',
+          certificates: [certificateFixture('standalone-certificate-1', '2026-07-04T12:00:00.000Z', 'OTHER')],
         },
       ],
       attendances: [
@@ -297,7 +314,7 @@ function participationFixture() {
   };
 }
 
-function certificateFixture(id: string, issuedAt: string) {
+function certificateFixture(id: string, issuedAt: string, scope = 'EVENT') {
   return {
     id,
     configId: 'config-1',
@@ -305,7 +322,7 @@ function certificateFixture(id: string, issuedAt: string) {
     config: {
       id: 'config-1',
       name: 'Participante',
-      scope: 'EVENT',
+      scope,
       certificateText: 'Certificamos a participação.',
       certificateTemplate: {
         id: 'template-1',

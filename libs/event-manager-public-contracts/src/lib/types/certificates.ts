@@ -1,4 +1,4 @@
-import type { CertificateScope, DateTimeString, EventType } from './common';
+import type { CertificateIssuedTo, CertificateScope, DateTimeString, EventType } from './common';
 
 export interface CertificateDownload {
   fileName: string;
@@ -29,6 +29,11 @@ export interface PublicCertificateValidation {
   maskedIdentityDocument?: string | null;
   scope: CertificateScope;
   certificateName: string;
+  issuedTo: CertificateIssuedTo;
+  certificateTypeLabel?: string | null;
+  certificateText?: string | null;
+  shouldAutofillSecondPage: boolean;
+  secondPageText?: string | null;
   targetName?: string | null;
   targetEmoji?: string | null;
   sections: PublicCertificateValidationEventSection[];

@@ -20,6 +20,10 @@ describe('feed view model', () => {
         singleEventItem('older-event', '2026-06-05T09:00:00'),
         singleEventItem('newer-event', '2026-06-25T09:00:00'),
       ],
+      standaloneCertificateFolders: [
+        standaloneFolder('older-folder', 'Atividades antigas', '2026-06-05T09:00:00'),
+        standaloneFolder('newer-folder', 'Atividades recentes', '2026-06-25T09:00:00'),
+      ],
       attendances: [],
     };
 
@@ -27,7 +31,29 @@ describe('feed view model', () => {
 
     expect(sorted.majorEventItems.map((item) => item.id)).toEqual(['newer-major', 'older-major']);
     expect(sorted.eventItems.map((item) => item.id)).toEqual(['newer-event', 'older-event']);
+    expect(sorted.standaloneCertificateFolders.map((item) => item.id)).toEqual(['newer-folder', 'older-folder']);
     expect(feed.majorEventItems.map((item) => item.id)).toEqual(['older-major', 'newer-major']);
+  });
+
+  it('sorts standalone certificate folders with issued folders first and then by localized name', () => {
+    const feed = {
+      majorEventItems: [],
+      eventItems: [],
+      standaloneCertificateFolders: [
+        standaloneFolder('no-date-b', 'Zootecnia', null),
+        standaloneFolder('dated', 'Curso emitido', '2026-06-10T09:00:00'),
+        standaloneFolder('no-date-a', 'Álgebra', null),
+      ],
+      attendances: [],
+    };
+
+    const sorted = sortSubscriptionsFeed(feed);
+
+    expect(sorted.standaloneCertificateFolders.map((folder) => folder.id)).toEqual([
+      'dated',
+      'no-date-a',
+      'no-date-b',
+    ]);
   });
 
   it('maps subscribed single-event metadata and attendance status', () => {
@@ -62,6 +88,25 @@ describe('feed view model', () => {
     expect(getSubscribedItemStatusLine(item, [{ eventId: 'first', attendedAt: '2026-06-26T09:30:00' }])).toBe(
       'Presença registrada em 1 de 2 eventos, Inscrito, Palestrante',
     );
+  });
+
+  it('uses the group start date when a grouped subscription has no child events', () => {
+    const item: SubscribedEventGroupItem = {
+      __typename: 'SubscribedEventGroupItem',
+      id: 'group-empty',
+      type: 'group',
+      startDate: '2026-06-26T09:00:00',
+      eventGroup: group(),
+      events: [],
+      participation: {
+        isSubscribed: false,
+        isLecturer: false,
+        hasIssuedCertificate: true,
+      },
+    };
+
+    expect(getSubscribedItemDateLine(item)).toBe('26/06/2026, 09:00');
+    expect(getSubscribedItemStatusLine(item, [])).toBe('Certificado emitido');
   });
 
   it('maps attendance-only grouped items without loaded child events', () => {
@@ -183,4 +228,36 @@ function addOneHour(value: string): string {
   const hour = Number(time.slice(0, 2)) + 1;
 
   return `${date}T${String(hour).padStart(2, '0')}${time.slice(2)}`;
+}
+
+function standaloneFolder(id: string, name: string, issuedAt: string | null) {
+  return {
+    id,
+    name,
+    emoji: '🏅',
+    certificates: issuedAt
+      ? [
+          {
+            id: `${id}-certificate`,
+            configId: `${id}-config`,
+            issuedAt,
+            config: {
+              id: `${id}-config`,
+              name: 'Certificado avulso',
+              scope: 'OTHER' as const,
+              certificateTemplate: {
+                id: 'template-1',
+                name: 'Modelo',
+                version: 1,
+              },
+            },
+            certificateTemplate: {
+              id: 'template-1',
+              name: 'Modelo',
+              version: 1,
+            },
+          },
+        ]
+      : [],
+  };
 }

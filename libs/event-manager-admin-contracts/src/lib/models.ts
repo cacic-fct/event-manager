@@ -218,6 +218,17 @@ export interface CertificateTemplate {
   deletedAt?: string | null;
 }
 
+export interface CertificateFolder {
+  id: string;
+  name: string;
+  emoji: string;
+  createdAt: string;
+  createdById?: string | null;
+  updatedAt: string;
+  updatedById?: string | null;
+  deletedAt?: string | null;
+}
+
 export interface CertificateConfig {
   id: string;
   name: string;
@@ -228,6 +239,8 @@ export interface CertificateConfig {
   eventGroup?: EventGroup | null;
   eventId?: string | null;
   event?: Event | null;
+  folderId?: string | null;
+  folder?: CertificateFolder | null;
   certificateTemplateId: string;
   certificateTemplate: CertificateTemplate;
   certificateText?: string | null;
@@ -878,6 +891,7 @@ export interface CertificateConfigInput {
   majorEventId?: string | null;
   eventGroupId?: string | null;
   eventId?: string | null;
+  folderId?: string | null;
   certificateTemplateId?: string;
   certificateText?: string | null;
   shouldAutofillSecondPage?: boolean;
@@ -886,6 +900,28 @@ export interface CertificateConfigInput {
   issuedTo?: CertificateIssuedTo;
   certificateTypeLabel?: string | null;
   certificateFieldsJson?: string | null;
+}
+
+export interface CertificateConfigClonePartsInput {
+  textContent?: boolean;
+  recipientData?: boolean;
+  activeState?: boolean;
+  issuedPeople?: boolean;
+}
+
+export interface CertificateConfigCloneInput {
+  name?: string;
+  scope?: CertificateScope;
+  majorEventId?: string | null;
+  eventGroupId?: string | null;
+  eventId?: string | null;
+  folderId?: string | null;
+  parts?: CertificateConfigClonePartsInput;
+}
+
+export interface CertificateFolderInput {
+  name?: string;
+  emoji?: string;
 }
 
 export interface EventInput {

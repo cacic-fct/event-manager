@@ -38,11 +38,27 @@ export class CertificateDownloadService {
   ) {}
 
   async downloadCertificate(certificateId: string): Promise<CertificateDownload> {
+    return this.renderCertificate(certificateId, false);
+  }
+
+  async downloadPublicCertificate(certificateId: string): Promise<CertificateDownload> {
+    return this.renderCertificate(certificateId, true);
+  }
+
+  private async renderCertificate(certificateId: string, publicOnly: boolean): Promise<CertificateDownload> {
     const normalizedCertificateId = this.validation.normalizeRequiredId('certificateId', certificateId);
     const certificate = await this.prisma.certificate.findFirst({
       where: {
         id: normalizedCertificateId,
         deletedAt: null,
+        ...(publicOnly
+          ? {
+              config: {
+                deletedAt: null,
+                isActive: true,
+              },
+            }
+          : {}),
       },
       select: {
         id: true,

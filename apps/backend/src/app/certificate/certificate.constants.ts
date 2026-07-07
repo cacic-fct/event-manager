@@ -1,4 +1,10 @@
-import { Certificate, CertificateConfig, CertificateScope, CertificateTemplate } from '@cacic-fct/shared-data-types';
+import {
+  Certificate,
+  CertificateConfig,
+  CertificateFolder,
+  CertificateScope,
+  CertificateTemplate,
+} from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
 
 export const MAJOR_EVENT_SELECT = {
@@ -131,6 +137,17 @@ export const CERTIFICATE_TEMPLATE_SELECT = {
   deletedAt: true,
 } satisfies Prisma.CertificateTemplateSelect;
 
+export const CERTIFICATE_FOLDER_SELECT = {
+  id: true,
+  name: true,
+  emoji: true,
+  createdAt: true,
+  createdById: true,
+  updatedAt: true,
+  updatedById: true,
+  deletedAt: true,
+} satisfies Prisma.CertificateFolderSelect;
+
 export const CERTIFICATE_CONFIG_SELECT = {
   id: true,
   name: true,
@@ -146,6 +163,10 @@ export const CERTIFICATE_CONFIG_SELECT = {
   eventId: true,
   event: {
     select: EVENT_SELECT,
+  },
+  folderId: true,
+  folder: {
+    select: CERTIFICATE_FOLDER_SELECT,
   },
   certificateTemplateId: true,
   certificateTemplate: {
@@ -202,6 +223,9 @@ export type PersonRecord = Prisma.PeopleGetPayload<{
 export type CertificateTemplateRecord = Prisma.CertificateTemplateGetPayload<{
   select: typeof CERTIFICATE_TEMPLATE_SELECT;
 }>;
+export type CertificateFolderRecord = Prisma.CertificateFolderGetPayload<{
+  select: typeof CERTIFICATE_FOLDER_SELECT;
+}>;
 export type CertificateConfigRecord = Prisma.CertificateConfigGetPayload<{
   select: typeof CERTIFICATE_CONFIG_SELECT;
 }>;
@@ -231,6 +255,13 @@ export function buildConfigTargetWhere(scope: CertificateScope, targetId: string
     };
   }
 
+  if (scope === CertificateScope.OTHER) {
+    return {
+      scope,
+      folderId: targetId,
+    };
+  }
+
   return {
     scope,
   };
@@ -255,6 +286,15 @@ export function mapCertificateTemplate(template: CertificateTemplateRecord): Cer
   };
 }
 
+export function mapCertificateFolder(folder: CertificateFolderRecord): CertificateFolder {
+  return {
+    ...folder,
+    createdById: folder.createdById ?? undefined,
+    updatedById: folder.updatedById ?? undefined,
+    deletedAt: folder.deletedAt ?? undefined,
+  };
+}
+
 export function mapCertificateConfig(config: CertificateConfigRecord): CertificateConfig {
   return {
     ...config,
@@ -264,6 +304,8 @@ export function mapCertificateConfig(config: CertificateConfigRecord): Certifica
     eventGroup: config.eventGroup ?? undefined,
     eventId: config.eventId ?? undefined,
     event: config.event ?? undefined,
+    folderId: config.folderId ?? undefined,
+    folder: config.folder ? mapCertificateFolder(config.folder) : undefined,
     certificateTemplate: mapCertificateTemplate(config.certificateTemplate),
     certificateText: config.certificateText ?? undefined,
     secondPageText: config.secondPageText ?? undefined,

@@ -31,10 +31,17 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
+const exerciseStandaloneStory = async (canvasElement: HTMLElement) => {
+  const canvas = within(canvasElement);
+  await expect(await canvas.findByText('Certificados avulsos')).toBeVisible();
+  await expect(await canvas.findByText('Atividades complementares')).toBeVisible();
+  await exerciseStory(canvasElement);
+};
+
 export const Online: Story = {
   args: {},
   globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  play: async ({ canvasElement }) => exerciseStandaloneStory(canvasElement),
 };
 
 export const OfflineFallback: Story = {

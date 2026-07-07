@@ -7,6 +7,33 @@ import { MajorEvent } from './major-events';
 import { Person } from './people';
 
 @ObjectType()
+export class CertificateFolder {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  emoji!: string;
+
+  @Field(() => Date)
+  createdAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  createdById?: string | null;
+
+  @Field(() => Date)
+  updatedAt!: Date;
+
+  @Field(() => String, { nullable: true })
+  updatedById?: string | null;
+
+  @Field(() => Date, { nullable: true })
+  deletedAt?: Date | null;
+}
+
+@ObjectType()
 export class CertificateTemplate {
   @Field(() => String)
   id!: string;
@@ -70,6 +97,12 @@ export class CertificateConfig {
 
   @Field(() => Event, { nullable: true })
   event?: Event | null;
+
+  @Field(() => String, { nullable: true })
+  folderId?: string | null;
+
+  @Field(() => CertificateFolder, { nullable: true })
+  folder?: CertificateFolder | null;
 
   @Field(() => String)
   certificateTemplateId!: string;
@@ -276,6 +309,34 @@ export class PublicCertificateValidation {
     description: 'Configured certificate name shown to users during validation.',
   })
   certificateName!: string;
+
+  @Field(() => CertificateIssuedTo, {
+    description: 'Recipient role represented by this certificate.',
+  })
+  issuedTo!: CertificateIssuedTo;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Human-readable certificate type label configured for this certificate.',
+  })
+  certificateTypeLabel?: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Additional certificate text configured by organizers, when available.',
+  })
+  certificateText?: string | null;
+
+  @Field(() => Boolean, {
+    description: 'Whether the certificate verso text was automatically generated from credited activities.',
+  })
+  shouldAutofillSecondPage!: boolean;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Custom verso text configured by organizers, when available.',
+  })
+  secondPageText?: string | null;
 
   @Field(() => String, {
     nullable: true,

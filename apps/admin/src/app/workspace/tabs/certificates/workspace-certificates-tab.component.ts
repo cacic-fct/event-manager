@@ -15,7 +15,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { Certificate, CertificateConfig } from '@cacic-fct/event-manager-admin-contracts';
-import { isFrozenEvent, isFrozenEventGroup, isFrozenMajorEvent } from '../../../shared/frozen-resource';
+import {
+  isFrozenEvent,
+  isFrozenEventGroup,
+  isFrozenFromDates,
+  isFrozenMajorEvent,
+} from '../../../shared/frozen-resource';
 import { WorkspaceCertificatesService } from '../../../shared/services/workspace-certificates.service';
 import { WorkspacePermissionsService } from '../../../shared/services/workspace-permissions.service';
 
@@ -75,6 +80,13 @@ export class WorkspaceCertificatesTabComponent {
     );
   }
 
+  protected canCloneConfig(config: CertificateConfig): boolean {
+    return (
+      this.permissions.hasAll([Permission.CertificateConfig.Read, Permission.CertificateConfig.Create]) &&
+      (!this.configTargetFrozen(config) || this.permissions.has(Permission.Frozen.Update))
+    );
+  }
+
   protected canDeleteCertificate(certificate: Certificate): boolean {
     return (
       this.permissions.canDelete(Permission.Certificate.Delete) &&
@@ -89,6 +101,11 @@ export class WorkspaceCertificatesTabComponent {
     }
 
     const scope = this.workspace.targetFiltersForm.controls.scope.value;
+    if (scope === 'OTHER') {
+      const config = this.workspace.selectedCertificateConfig();
+      return config ? this.configTargetFrozen(config) : false;
+    }
+
     if (scope === 'EVENT') {
       return isFrozenEvent(this.workspace.issuableEvents().find((eventItem) => eventItem.id === target.id));
     }
@@ -112,6 +129,10 @@ export class WorkspaceCertificatesTabComponent {
 
     if (config.majorEvent) {
       return isFrozenMajorEvent(config.majorEvent);
+    }
+
+    if (config.scope === 'OTHER') {
+      return isFrozenFromDates([config.createdAt]);
     }
 
     return this.selectedTargetFrozen();

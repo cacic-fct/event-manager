@@ -132,6 +132,33 @@ describe('CertificateEligibilityService', () => {
     ]);
   });
 
+  it('resolves standalone manual recipients without target events', async () => {
+    const service = new CertificateEligibilityService({
+      people: {
+        findFirst: jest.fn().mockResolvedValue(person),
+      },
+    } as never);
+
+    await expect(
+      service.resolveEligibleRecipients(
+        {
+          ...config,
+          scope: CertificateScope.OTHER,
+          issuedTo: CertificateIssuedTo.OTHER,
+          majorEventId: null,
+          eventGroupId: null,
+          eventId: null,
+        } as never,
+        person.id,
+      ),
+    ).resolves.toEqual([
+      {
+        person,
+        events: [],
+      },
+    ]);
+  });
+
   it('keeps every completed grouped event on major-event certificates', async () => {
     const eventGroup = {
       id: 'event-group-1',
