@@ -57,8 +57,9 @@ describe('AuthErrorPage', () => {
   it('renders the login-expired recovery copy and tucks raw details in a disclosure', async () => {
     const fixture = createFixture();
 
-    expect(text(fixture)).toContain('O tempo de login expirou. Tente novamente');
-    expect(text(fixture)).toContain('Tentar login novamente');
+    expect(text(fixture)).toContain('O tempo de login expirou.');
+    expect(text(fixture)).toContain('Entre novamente para continuar.');
+    expect(text(fixture)).toContain('Entrar com o Google');
     expect(text(fixture)).toContain('Detalhes técnicos');
     expect(text(fixture)).not.toContain('©');
   });
@@ -66,7 +67,7 @@ describe('AuthErrorPage', () => {
   it('starts login again without returning to the error page', async () => {
     const fixture = createFixture();
 
-    clickButton(fixture, 'Tentar login novamente');
+    clickButton(fixture, 'Entrar com o Google');
 
     expect(auth.login).toHaveBeenCalledWith({ returnTo: '/calendar' });
   });
@@ -75,7 +76,7 @@ describe('AuthErrorPage', () => {
     queryParamMap.next(convertToParamMap({ returnTo: '/profile', raw: '{"message":"expired"}' }));
     const fixture = createFixture();
 
-    clickButton(fixture, 'Tentar login novamente');
+    clickButton(fixture, 'Entrar com o Google');
 
     expect(auth.login).toHaveBeenCalledWith({ returnTo: '/profile' });
   });
@@ -84,7 +85,7 @@ describe('AuthErrorPage', () => {
     queryParamMap.next(convertToParamMap({ returnTo: '//evil.example', raw: '{"message":"expired"}' }));
     const fixture = createFixture();
 
-    clickButton(fixture, 'Tentar login novamente');
+    clickButton(fixture, 'Entrar com o Google');
 
     expect(auth.login).toHaveBeenCalledWith({ returnTo: '/calendar' });
   });
@@ -110,6 +111,8 @@ describe('AuthErrorPage', () => {
         matches: true,
         addEventListener: vi.fn(),
         removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
       })),
     });
 
