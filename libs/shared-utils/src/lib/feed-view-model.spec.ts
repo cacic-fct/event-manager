@@ -35,6 +35,27 @@ describe('feed view model', () => {
     expect(feed.majorEventItems.map((item) => item.id)).toEqual(['older-major', 'newer-major']);
   });
 
+  it('sorts standalone certificate folders with issued folders first and then by localized name', () => {
+    const feed = {
+      majorEventItems: [],
+      eventItems: [],
+      standaloneCertificateFolders: [
+        standaloneFolder('no-date-b', 'Zootecnia', null),
+        standaloneFolder('dated', 'Curso emitido', '2026-06-10T09:00:00'),
+        standaloneFolder('no-date-a', 'Álgebra', null),
+      ],
+      attendances: [],
+    };
+
+    const sorted = sortSubscriptionsFeed(feed);
+
+    expect(sorted.standaloneCertificateFolders.map((folder) => folder.id)).toEqual([
+      'dated',
+      'no-date-a',
+      'no-date-b',
+    ]);
+  });
+
   it('maps subscribed single-event metadata and attendance status', () => {
     const item = singleEventItem('event-1', '2026-06-26T09:00:00');
 
@@ -67,6 +88,25 @@ describe('feed view model', () => {
     expect(getSubscribedItemStatusLine(item, [{ eventId: 'first', attendedAt: '2026-06-26T09:30:00' }])).toBe(
       'Presença registrada em 1 de 2 eventos, Inscrito, Palestrante',
     );
+  });
+
+  it('uses the group start date when a grouped subscription has no child events', () => {
+    const item: SubscribedEventGroupItem = {
+      __typename: 'SubscribedEventGroupItem',
+      id: 'group-empty',
+      type: 'group',
+      startDate: '2026-06-26T09:00:00',
+      eventGroup: group(),
+      events: [],
+      participation: {
+        isSubscribed: false,
+        isLecturer: false,
+        hasIssuedCertificate: true,
+      },
+    };
+
+    expect(getSubscribedItemDateLine(item)).toBe('26/06/2026, 09:00');
+    expect(getSubscribedItemStatusLine(item, [])).toBe('Certificado emitido');
   });
 
   it('maps attendance-only grouped items without loaded child events', () => {
@@ -190,32 +230,34 @@ function addOneHour(value: string): string {
   return `${date}T${String(hour).padStart(2, '0')}${time.slice(2)}`;
 }
 
-function standaloneFolder(id: string, name: string, issuedAt: string) {
+function standaloneFolder(id: string, name: string, issuedAt: string | null) {
   return {
     id,
     name,
     emoji: '🏅',
-    certificates: [
-      {
-        id: `${id}-certificate`,
-        configId: `${id}-config`,
-        issuedAt,
-        config: {
-          id: `${id}-config`,
-          name: 'Certificado avulso',
-          scope: 'OTHER' as const,
-          certificateTemplate: {
-            id: 'template-1',
-            name: 'Modelo',
-            version: 1,
+    certificates: issuedAt
+      ? [
+          {
+            id: `${id}-certificate`,
+            configId: `${id}-config`,
+            issuedAt,
+            config: {
+              id: `${id}-config`,
+              name: 'Certificado avulso',
+              scope: 'OTHER' as const,
+              certificateTemplate: {
+                id: 'template-1',
+                name: 'Modelo',
+                version: 1,
+              },
+            },
+            certificateTemplate: {
+              id: 'template-1',
+              name: 'Modelo',
+              version: 1,
+            },
           },
-        },
-        certificateTemplate: {
-          id: 'template-1',
-          name: 'Modelo',
-          version: 1,
-        },
-      },
-    ],
+        ]
+      : [],
   };
 }

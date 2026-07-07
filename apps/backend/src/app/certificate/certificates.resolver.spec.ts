@@ -187,6 +187,44 @@ describe('CertificatesResolver authorization', () => {
     );
   });
 
+  it('uses the source target for clone authorization when input is omitted', async () => {
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config-1',
+      scope: CertificateScope.OTHER,
+      folderId: 'folder-1',
+    });
+    configsService.cloneConfig.mockResolvedValue({
+      id: 'config-clone',
+      scope: CertificateScope.OTHER,
+      folderId: 'folder-1',
+    });
+
+    await expect(resolver.cloneCertificateConfig('config-1', null, { req: { user } } as never)).resolves.toEqual(
+      expect.objectContaining({
+        id: 'config-clone',
+      }),
+    );
+
+    expect(frozenResources.assertCertificateTargetMutable).toHaveBeenCalledWith(
+      CertificateScope.OTHER,
+      'folder-1',
+      user,
+      'edit',
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      2,
+      user,
+      [Permission.CertificateConfig.Create],
+      {
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
+    expect(configsService.cloneConfig).toHaveBeenCalledWith('config-1', null);
+  });
+
   it('filters certificate folders through folder-scoped read authorization', async () => {
     const { authorizationPolicy, configsService, resolver } = createResolver();
     const user = { sub: 'user-1' };
@@ -230,6 +268,15 @@ describe('CertificatesResolver authorization', () => {
         targetId: 'folder-2',
       },
     );
+  });
+
+  it('rethrows non-authorization errors while filtering certificate folders', async () => {
+    const { authorizationPolicy, configsService, resolver } = createResolver();
+    const error = new Error('policy store unavailable');
+    configsService.listFolders.mockResolvedValue([{ id: 'folder-1', name: 'Allowed' }]);
+    authorizationPolicy.assertPermissions.mockResolvedValueOnce(undefined).mockRejectedValueOnce(error);
+
+    await expect(resolver.certificateFolders({ req: { user: { sub: 'user-1' } } } as never)).rejects.toBe(error);
   });
 
   it('requires folder-scoped read permission before loading one certificate folder', async () => {

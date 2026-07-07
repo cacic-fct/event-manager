@@ -363,9 +363,10 @@ export class CertificateValidation {
       .subscribe({
         next: (certificate) => {
           if (!certificate) {
-            void this.router.navigate(['/validate'], {
-              queryParams: { invalidId: certificateId },
-              replaceUrl: true,
+            this.notFoundCertificateId.set(certificateId);
+            this.state.set({
+              status: 'error',
+              message: 'Certificado não encontrado.',
             });
             return;
           }

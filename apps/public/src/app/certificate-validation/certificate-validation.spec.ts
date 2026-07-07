@@ -84,7 +84,7 @@ describe('CertificateValidation', () => {
   });
 
   it('keeps missing and inactive certificates behind the same generic not-found error', async () => {
-    const { api, component, fixture, router } = await createFixture({
+    const { api, component, fixture } = await createFixture({
       routeParams: { certificateId: 'disabled-certificate' },
     });
     api.validateCertificate.mockReturnValue(of(null));
@@ -93,11 +93,11 @@ describe('CertificateValidation', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(router.navigate).toHaveBeenCalledWith(['/validate'], {
-      queryParams: { invalidId: 'disabled-certificate' },
-      replaceUrl: true,
+    expect(component.state()).toEqual({
+      status: 'error',
+      message: 'Certificado não encontrado.',
     });
-    expect(component.state()).toEqual({ status: 'idle' });
+    expect(fixture.nativeElement.textContent).toContain('Certificado não encontrado.');
     expect(component.validationForm.certificateId().errors().some((error) => error.kind === 'notFound')).toBe(true);
   });
 
