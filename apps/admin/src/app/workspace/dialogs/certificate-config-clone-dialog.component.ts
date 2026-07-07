@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Observable } from 'rxjs';
 import {
   CertificateConfig,
   CertificateScope,
@@ -32,7 +32,7 @@ export type CertificateConfigCloneDialogData = {
 };
 
 export type CertificateConfigCloneDialogResult = {
-  name: string;
+  name?: string | null;
   scope: CertificateScope;
   targetId: string;
   parts: CertificateConfigClonePartsInput;
@@ -261,8 +261,9 @@ export class CertificateConfigCloneDialogComponent {
       return;
     }
 
+    const name = this.form.controls.name.value.trim();
     this.dialogRef.close({
-      name: this.form.controls.name.value.trim(),
+      name: name === this.data.defaultName ? null : name,
       scope: this.form.controls.scope.value,
       targetId,
       parts: {
@@ -295,35 +296,58 @@ export class CertificateConfigCloneDialogComponent {
   }
 
   private async fetchTargetsForScope(scope: CertificateScope): Promise<CertificateCloneTargetOption[]> {
+    const pageSize = 50;
     switch (scope) {
       case 'EVENT':
-        return (await firstValueFrom(this.api.listCertificateIssuableEvents({ take: 50 }))).map((eventItem) => ({
+        return (
+          await this.loadAllTargets((skip) => this.api.listCertificateIssuableEvents({ skip, take: pageSize }))
+        ).map((eventItem) => ({
           id: eventItem.id,
           name: eventItem.name,
           emoji: eventItem.emoji,
           dateLabel: this.formatRange(eventItem.startDate, eventItem.endDate),
         }));
       case 'EVENT_GROUP':
-        return (await firstValueFrom(this.api.listCertificateIssuableEventGroups({ take: 50 }))).map((group) => ({
+        return (
+          await this.loadAllTargets((skip) => this.api.listCertificateIssuableEventGroups({ skip, take: pageSize }))
+        ).map((group) => ({
           id: group.id,
           name: group.name,
           emoji: group.emoji,
           dateLabel: `Criado em ${this.formatDate(group.createdAt)}`,
         }));
       case 'MAJOR_EVENT':
-        return (await firstValueFrom(this.api.listCertificateIssuableMajorEvents({ take: 50 }))).map((majorEvent) => ({
+        return (
+          await this.loadAllTargets((skip) => this.api.listCertificateIssuableMajorEvents({ skip, take: pageSize }))
+        ).map((majorEvent) => ({
           id: majorEvent.id,
           name: majorEvent.name,
           emoji: majorEvent.emoji,
           dateLabel: this.formatRange(majorEvent.startDate, majorEvent.endDate),
         }));
       default:
-        return (await firstValueFrom(this.api.listCertificateFolders({ take: 50 }))).map((folder) => ({
-          id: folder.id,
-          name: folder.name,
-          emoji: folder.emoji,
-          dateLabel: `Criada em ${this.formatDate(folder.createdAt)}`,
-        }));
+        return (await this.loadAllTargets((skip) => this.api.listCertificateFolders({ skip, take: pageSize }))).map(
+          (folder) => ({
+            id: folder.id,
+            name: folder.name,
+            emoji: folder.emoji,
+            dateLabel: `Criada em ${this.formatDate(folder.createdAt)}`,
+          }),
+        );
+    }
+  }
+
+  private async loadAllTargets<T>(loadPage: (skip: number) => Observable<T[]>): Promise<T[]> {
+    const pageSize = 50;
+    const items: T[] = [];
+    let skip = 0;
+    while (true) {
+      const page = await firstValueFrom(loadPage(skip));
+      items.push(...page);
+      if (page.length < pageSize) {
+        return items;
+      }
+      skip += pageSize;
     }
   }
 

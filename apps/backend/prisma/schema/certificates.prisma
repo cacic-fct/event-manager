@@ -56,7 +56,7 @@ model CertificateFolder {
 
   deletedAt DateTime?
 
-  @@index([name])
+  @@unique([name])
   @@map("certificate_folders")
 }
 

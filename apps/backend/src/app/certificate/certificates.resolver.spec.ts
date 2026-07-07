@@ -330,6 +330,35 @@ describe('CertificatesResolver authorization', () => {
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'delete');
     expect(configsService.deleteFolder).toHaveBeenCalledWith('folder-1');
   });
+
+  it('checks active standalone configs for frozen edit before updating a folder', async () => {
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.listConfigsByTarget.mockResolvedValue([{ id: 'config-1' }, { id: 'config-2' }]);
+    configsService.updateFolder.mockResolvedValue({ id: 'folder-1', name: 'Nova pasta' });
+
+    await expect(
+      resolver.updateCertificateFolder('folder-1', { name: 'Nova pasta' }, { req: { user } } as never),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'folder-1',
+      }),
+    );
+
+    expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(CertificateScope.OTHER, 'folder-1');
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Update],
+      {
+        folderId: 'folder-1',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'edit');
+    expect(configsService.updateFolder).toHaveBeenCalledWith('folder-1', { name: 'Nova pasta' });
+  });
 });
 
 function createResolver() {
@@ -347,6 +376,7 @@ function createResolver() {
     createConfig: jest.fn(),
     cloneConfig: jest.fn(),
     updateConfig: jest.fn(),
+    updateFolder: jest.fn(),
     deleteConfig: jest.fn(),
     deleteFolder: jest.fn(),
   };

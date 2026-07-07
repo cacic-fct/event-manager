@@ -139,14 +139,7 @@ export class CertificateValidation {
 
         if (!certificateId) {
           this.cancelPendingValidation();
-          this.state.set(
-            invalidId
-              ? {
-                  status: 'error',
-                  message: 'Certificado não encontrado.',
-                }
-              : { status: 'idle' },
-          );
+          this.state.set({ status: 'idle' });
           return;
         }
 
@@ -293,7 +286,7 @@ export class CertificateValidation {
     }
 
     if (certificate.issuedTo === 'LECTURER') {
-      return 'Ministrante';
+      return 'Palestrante/ministrante';
     }
 
     if (certificate.issuedTo === 'ATTENDEE') {

@@ -270,6 +270,11 @@ export class CertificatesResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.assertCertificateFolderPermission(context, Permission.CertificateConfig.Update, id);
+    const configs = await this.configsService.listConfigsByTarget(CertificateScope.OTHER, id);
+    for (const config of configs) {
+      await this.frozenResources.assertCertificateConfigMutable(config.id, this.getUser(context), 'edit');
+    }
+
     return this.configsService.updateFolder(id, input);
   }
 

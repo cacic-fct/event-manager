@@ -362,6 +362,32 @@ describe('WorkspaceCertificatesService', () => {
     });
   });
 
+  it('lets the backend choose a unique clone name when the dialog name is unchanged', async () => {
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () =>
+        of({
+          name: null,
+          scope: 'EVENT_GROUP',
+          targetId: 'event-group-1',
+          parts: {
+            textContent: true,
+            recipientData: true,
+            activeState: true,
+            issuedPeople: false,
+          },
+        }),
+    });
+
+    await service.cloneCertificateConfig(createAdminCertificateConfig({ id: 'config-1', name: 'Certificate' }));
+
+    expect(api.cloneCertificateConfig).toHaveBeenCalledWith(
+      'config-1',
+      expect.not.objectContaining({
+        name: expect.anything(),
+      }),
+    );
+  });
+
   it('does not enable issued people cloning without certificate read permission', async () => {
     permissions.hasAll.mockReturnValueOnce(false);
 

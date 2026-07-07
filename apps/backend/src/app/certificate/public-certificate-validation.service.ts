@@ -37,6 +37,7 @@ const CERTIFICATE_VALIDATION_EVENT_SELECT = {
 const PUBLIC_CERTIFICATE_VALIDATION_SELECT = {
   id: true,
   issuedAt: true,
+  renderedData: true,
   personId: true,
   person: {
     select: {
@@ -135,10 +136,18 @@ export class PublicCertificateValidationService {
       scope: certificate.config.scope as CertificateScope,
       certificateName: certificate.config.name,
       issuedTo: certificate.config.issuedTo as CertificateIssuedTo,
-      certificateTypeLabel: certificate.config.certificateTypeLabel,
-      certificateText: certificate.config.certificateText,
-      shouldAutofillSecondPage: certificate.config.shouldAutofillSecondPage,
-      secondPageText: certificate.config.secondPageText,
+      certificateTypeLabel: this.readRenderedNullableString(
+        certificate,
+        'certificateTypeLabel',
+        certificate.config.certificateTypeLabel,
+      ),
+      certificateText: this.readRenderedNullableString(certificate, 'configText', certificate.config.certificateText),
+      shouldAutofillSecondPage: this.readRenderedBoolean(
+        certificate,
+        'shouldAutofillSecondPage',
+        certificate.config.shouldAutofillSecondPage,
+      ),
+      secondPageText: this.readRenderedNullableString(certificate, 'secondPageText', certificate.config.secondPageText),
       targetName: this.getTargetName(certificate, publiclyVisibleEvents),
       targetEmoji: this.getTargetEmoji(certificate),
       sections,
@@ -379,6 +388,42 @@ export class PublicCertificateValidationService {
 
     const value = certificateFields[LECTURER_EVENT_CATEGORY_FIELD];
     return value === 'PALESTRA' || value === 'MINICURSO' || value === 'OTHER' ? value : null;
+  }
+
+  private readRenderedNullableString(
+    certificate: PublicCertificateValidationRecord,
+    key: string,
+    fallback: string | null,
+  ): string | null {
+    const renderedData = this.getRenderedDataObject(certificate);
+    if (!Object.prototype.hasOwnProperty.call(renderedData, key)) {
+      return fallback;
+    }
+
+    const value = renderedData[key];
+    return typeof value === 'string' || value === null ? value : fallback;
+  }
+
+  private readRenderedBoolean(
+    certificate: PublicCertificateValidationRecord,
+    key: string,
+    fallback: boolean,
+  ): boolean {
+    const renderedData = this.getRenderedDataObject(certificate);
+    if (!Object.prototype.hasOwnProperty.call(renderedData, key)) {
+      return fallback;
+    }
+
+    const value = renderedData[key];
+    return typeof value === 'boolean' ? value : fallback;
+  }
+
+  private getRenderedDataObject(certificate: PublicCertificateValidationRecord): Prisma.JsonObject {
+    return certificate.renderedData &&
+      typeof certificate.renderedData === 'object' &&
+      !Array.isArray(certificate.renderedData)
+      ? certificate.renderedData
+      : {};
   }
 
   private buildSections(

@@ -174,6 +174,36 @@ describe('CertificateConfigsService', () => {
     );
   });
 
+  it('ignores nullable folder update fields instead of trimming them', async () => {
+    const existingFolder = createFolder({
+      name: 'Atividades complementares',
+      emoji: '🏅',
+    });
+    const prisma = createPrisma({
+      certificateFolder: {
+        findFirst: jest.fn().mockResolvedValueOnce(existingFolder).mockResolvedValueOnce(null),
+        update: jest.fn().mockResolvedValue(existingFolder),
+      },
+    });
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      {} as never,
+    );
+
+    await expect(service.updateFolder('folder-1', { name: null, emoji: null } as never)).resolves.toEqual(
+      expect.objectContaining({
+        name: 'Atividades complementares',
+        emoji: '🏅',
+      }),
+    );
+    expect(prisma.certificateFolder.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {},
+      }),
+    );
+  });
+
   it('creates OTHER configs as manual standalone certificates scoped to a folder', async () => {
     const prisma = createPrisma({
       certificateTemplate: {

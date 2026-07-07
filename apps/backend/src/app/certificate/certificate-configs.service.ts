@@ -117,8 +117,8 @@ export class CertificateConfigsService {
       throw new NotFoundException(`Certificate folder ${normalizedFolderId} not found.`);
     }
 
-    const name = input.name === undefined ? existingFolder.name : this.normalizeFolderName(input.name);
-    const emoji = input.emoji === undefined ? existingFolder.emoji : this.normalizeFolderEmoji(input.emoji);
+    const name = input.name == null ? existingFolder.name : this.normalizeFolderName(input.name);
+    const emoji = input.emoji == null ? existingFolder.emoji : this.normalizeFolderEmoji(input.emoji);
 
     await this.ensureNoDuplicateFolderName(name, normalizedFolderId);
 
@@ -128,8 +128,8 @@ export class CertificateConfigsService {
           id: normalizedFolderId,
         },
         data: {
-          ...(input.name === undefined ? {} : { name }),
-          ...(input.emoji === undefined ? {} : { emoji }),
+          ...(input.name == null ? {} : { name }),
+          ...(input.emoji == null ? {} : { emoji }),
         },
         select: CERTIFICATE_FOLDER_SELECT,
       }),

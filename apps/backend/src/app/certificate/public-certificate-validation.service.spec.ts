@@ -114,6 +114,40 @@ describe('PublicCertificateValidationService', () => {
       }),
     );
   });
+
+  it('uses issued rendered data for public certificate text fields', async () => {
+    const issuedAt = new Date('2026-06-01T12:00:00.000Z');
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...certificateRecord(issuedAt, eventRecord('visible-event', 'Evento publico', true, 90)),
+          renderedData: {
+            configText: 'Texto capturado na emissão.',
+            certificateTypeLabel: 'Tipo capturado',
+            shouldAutofillSecondPage: false,
+            secondPageText: 'Verso capturado.',
+          },
+          config: {
+            ...certificateRecord(issuedAt, eventRecord('visible-event', 'Evento publico', true, 90)).config,
+            certificateText: 'Texto editado depois.',
+            certificateTypeLabel: 'Tipo editado',
+            shouldAutofillSecondPage: true,
+            secondPageText: 'Verso editado.',
+          },
+        }),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    await expect(service.validateCertificate('certificate-1')).resolves.toEqual(
+      expect.objectContaining({
+        certificateText: 'Texto capturado na emissão.',
+        certificateTypeLabel: 'Tipo capturado',
+        shouldAutofillSecondPage: false,
+        secondPageText: 'Verso capturado.',
+      }),
+    );
+  });
 });
 
 function validationService() {
@@ -126,6 +160,12 @@ function certificateRecord(issuedAt: Date, event: ReturnType<typeof eventRecord>
   return {
     id: 'certificate-1',
     issuedAt,
+    renderedData: {
+      configText: 'Certificamos a participação.',
+      certificateTypeLabel: 'Participação',
+      shouldAutofillSecondPage: true,
+      secondPageText: null,
+    },
     personId: 'person-1',
     person: {
       name: 'Ada Lovelace',

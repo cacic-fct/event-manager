@@ -97,10 +97,8 @@ describe('CertificateValidation', () => {
       queryParams: { invalidId: 'disabled-certificate' },
       replaceUrl: true,
     });
-    expect(component.state()).toEqual({
-      status: 'error',
-      message: 'Certificado não encontrado.',
-    });
+    expect(component.state()).toEqual({ status: 'idle' });
+    expect(component.validationForm.certificateId().errors().some((error) => error.kind === 'notFound')).toBe(true);
   });
 
   it('hides the activities section when the certificate has no linked activities', async () => {

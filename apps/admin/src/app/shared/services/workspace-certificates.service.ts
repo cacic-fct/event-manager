@@ -410,7 +410,7 @@ export class WorkspaceCertificatesService {
     }
 
     const input: CertificateConfigCloneInput = {
-      name: result.name,
+      ...(result.name ? { name: result.name } : {}),
       scope: result.scope,
       majorEventId: result.scope === 'MAJOR_EVENT' ? result.targetId : null,
       eventGroupId: result.scope === 'EVENT_GROUP' ? result.targetId : null,

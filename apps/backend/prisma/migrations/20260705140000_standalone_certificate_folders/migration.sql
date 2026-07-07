@@ -16,7 +16,7 @@ CREATE TABLE "certificate_folders" (
 ALTER TABLE "certificate_configs" ADD COLUMN "folderId" TEXT;
 
 -- CreateIndex
-CREATE INDEX "certificate_folders_name_idx" ON "certificate_folders"("name");
+CREATE UNIQUE INDEX "certificate_folders_name_key" ON "certificate_folders"("name");
 
 -- CreateIndex
 CREATE INDEX "certificate_configs_folderId_idx" ON "certificate_configs"("folderId");
