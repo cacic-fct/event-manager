@@ -134,7 +134,7 @@ export class CurrentUserEventSubscriptionService {
             formResponses,
             {
               majorEventId: null,
-              selectedEventIds: new Set([targetEvent.id]),
+              selectedEventIds: new Set(groupSubscription.events.map((event) => event.id)),
             },
             actor,
           )),

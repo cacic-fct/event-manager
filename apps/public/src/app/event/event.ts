@@ -213,7 +213,7 @@ export class Event {
     this.loadSubscriptionForms(data)
       .pipe(
         switchMap((forms) => {
-          if (forms.length === 0) {
+          if (forms.contexts.length === 0) {
             return this.api.subscribeToEvent(data.event.id);
           }
 
@@ -223,8 +223,8 @@ export class Event {
               {
                 data: {
                   event: data.event,
-                  events: [data.event],
-                  forms,
+                  events: forms.events,
+                  forms: forms.contexts,
                 },
                 width: 'min(720px, 96vw)',
                 maxHeight: '90vh',
@@ -627,24 +627,26 @@ export class Event {
   }
 
   private loadSubscriptionForms(data: EventPageData) {
-    const target = {
-      targetType: 'EVENT' as const,
-      targetId: data.event.id,
-      targetName: data.event.name,
-    };
-
-    return this.formsApi
-      .listCurrentUserForms({
-        targetType: target.targetType,
-        eventId: target.targetId,
-        majorEventId: null,
-        subscriptionFlowOnly: true,
-      })
-      .pipe(
-        map((forms) => {
-          const seen = new Set<string>();
-          return forms
-            .flatMap((form) => this.toSubscriptionFormContexts(form, target))
+    return this.loadSubscriptionTargets(data).pipe(
+      switchMap((targets) =>
+        forkJoin(
+          targets.map((target) =>
+            this.formsApi
+              .listCurrentUserForms({
+                targetType: target.targetType,
+                eventId: target.targetId,
+                majorEventId: null,
+                subscriptionFlowOnly: true,
+              })
+              .pipe(map((forms) => forms.flatMap((form) => this.toSubscriptionFormContexts(form, target)))),
+          ),
+        ).pipe(map((contexts) => ({ events: targets.map((target) => target.event), contexts: contexts.flat() }))),
+      ),
+      map(({ events, contexts }) => {
+        const seen = new Set<string>();
+        return {
+          events,
+          contexts: contexts
             .filter((form) => {
               const key = `${form.form.id}:${form.linkId ?? 'sem-vinculo'}:${form.targetType}:${form.targetId}`;
               if (seen.has(key)) {
@@ -653,14 +655,43 @@ export class Event {
               seen.add(key);
               return true;
             })
-            .sort((left, right) => this.formDisplayOrder(left) - this.formDisplayOrder(right));
-        }),
-        switchMap((forms) =>
-          forms.length > 0
-            ? forkJoin(forms.map((form) => this.loadExistingFormAnswer(form)))
-            : of([] satisfies SubscriptionFormContext[]),
-        ),
-      );
+            .sort((left, right) => this.formDisplayOrder(left) - this.formDisplayOrder(right)),
+        };
+      }),
+      switchMap(({ events, contexts }) =>
+        contexts.length > 0
+          ? forkJoin(contexts.map((form) => this.loadExistingFormAnswer(form))).pipe(
+              map((loadedContexts) => ({ events, contexts: loadedContexts })),
+            )
+          : of({ events, contexts: [] satisfies SubscriptionFormContext[] }),
+      ),
+    );
+  }
+
+  private loadSubscriptionTargets(data: EventPageData) {
+    const currentEventTarget = {
+      targetType: 'EVENT' as const,
+      targetId: data.event.id,
+      targetName: data.event.name,
+      event: data.event,
+    };
+
+    if (!data.event.eventGroupId) {
+      return of([currentEventTarget]);
+    }
+
+    return this.api.listPublicEventGroupEvents(data.event.eventGroupId).pipe(
+      map((events) => {
+        const eligibleEvents = events.filter((event) => this.hasStandaloneSubscription(event));
+        const targets = eligibleEvents.length > 0 ? eligibleEvents : [data.event];
+        return targets.map((event) => ({
+          targetType: 'EVENT' as const,
+          targetId: event.id,
+          targetName: event.name,
+          event,
+        }));
+      }),
+    );
   }
 
   private toSubscriptionFormContexts(

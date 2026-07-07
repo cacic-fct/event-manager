@@ -522,4 +522,114 @@ describe('Event', () => {
     expect(text).not.toContain('Formulário encerrado');
     expect(text).toContain('Resultados: Avaliação publicada');
   });
+
+  it('loads subscription-flow forms for all eligible events in a grouped event subscription', async () => {
+    TestBed.resetTestingModule();
+    const groupEvent = {
+      ...defaultEventPageData().event,
+      id: 'event-2',
+      name: 'Evento irmão',
+      allowSubscription: true,
+      eventGroupId: 'group-1',
+      startDate: '2026-12-04T10:00:00.000Z',
+      endDate: '2026-12-04T11:00:00.000Z',
+    };
+    const eventPageData = defaultEventPageData({
+      event: {
+        ...defaultEventPageData().event,
+        allowSubscription: true,
+        eventGroupId: 'group-1',
+        startDate: '2026-12-03T10:00:00.000Z',
+        endDate: '2026-12-03T11:00:00.000Z',
+      },
+    });
+    const siblingForm = {
+      ...subscriptionFormFixture(),
+      id: 'form-2',
+      name: 'Termo obrigatório',
+      links: [
+        {
+          ...subscriptionFormFixture().links[0],
+          id: 'link-2',
+          formId: 'form-2',
+          eventId: 'event-2',
+          target: {
+            type: 'EVENT' as const,
+            id: 'event-2',
+            name: 'Evento irmão',
+            emoji: '🎓',
+          },
+        },
+      ],
+    };
+    const listPublicEventGroupEvents = vi.fn(() => of([eventPageData.event, groupEvent]));
+    const listCurrentUserForms = vi
+      .fn()
+      .mockReturnValueOnce(of([]))
+      .mockReturnValueOnce(of([siblingForm]));
+    const getCurrentUserResponse = vi.fn(() => of(null));
+    const subscribeToEvent = vi.fn(() => of(eventPageData.event));
+    const open = vi.fn(() => ({
+      afterClosed: () =>
+        of({
+          confirmed: true,
+          answers: [
+            {
+              formId: 'form-2',
+              linkId: 'link-2',
+              targetType: 'EVENT' as const,
+              targetId: 'event-2',
+              answers: [{ elementId: 'shirt-size', value: 'm' }],
+            },
+          ],
+        }),
+    }));
+    const newFixture = await createEventComponentFixture(
+      {},
+      {
+        authenticated: true,
+        eventPageData,
+        eventApi: { listPublicEventGroupEvents, subscribeToEvent },
+        formsApi: { listCurrentUserForms, getCurrentUserResponse },
+        dialog: { open: open as never },
+      },
+    );
+    await newFixture.whenStable();
+
+    newFixture.componentInstance.subscribe(eventPageData);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(listPublicEventGroupEvents).toHaveBeenCalledWith('group-1');
+    expect(listCurrentUserForms).toHaveBeenCalledWith({
+      targetType: 'EVENT',
+      eventId: 'event-1',
+      majorEventId: null,
+      subscriptionFlowOnly: true,
+    });
+    expect(listCurrentUserForms).toHaveBeenCalledWith({
+      targetType: 'EVENT',
+      eventId: 'event-2',
+      majorEventId: null,
+      subscriptionFlowOnly: true,
+    });
+    expect(open).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          events: [eventPageData.event, groupEvent],
+          forms: [expect.objectContaining({ form: siblingForm, targetId: 'event-2' })],
+        }),
+      }),
+    );
+    expect(subscribeToEvent).toHaveBeenCalledWith('event-1', [
+      {
+        formId: 'form-2',
+        linkId: 'link-2',
+        targetType: 'EVENT',
+        eventId: 'event-2',
+        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+      },
+    ]);
+  });
+
 });

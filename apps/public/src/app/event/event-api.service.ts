@@ -129,6 +129,19 @@ export class EventApiService {
     );
   }
 
+  listPublicEventGroupEvents(eventGroupId: string): Observable<PublicEvent[]> {
+    return this.query<{ publicEvents: PublicEvent[] }>(
+      `
+        query PublicEventGroupEvents($eventGroupId: String!) {
+          publicEvents(eventGroupId: $eventGroupId, take: 100) {
+            ${PUBLIC_EVENT_PAGE_FIELDS}
+          }
+        }
+      `,
+      { eventGroupId },
+    ).pipe(map((data) => data.publicEvents));
+  }
+
   subscribeToEvent(eventId: string, formResponses?: SubmitPublicEventFormResponseInput[]): Observable<PublicEvent> {
     return this.query<{ subscribeCurrentUserStandaloneEvent: PublicEvent }>(
       `

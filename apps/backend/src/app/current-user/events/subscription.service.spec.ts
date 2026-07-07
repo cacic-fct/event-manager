@@ -279,4 +279,83 @@ describe('CurrentUserEventSubscriptionService', () => {
       select: expect.any(Object),
     });
   });
+
+  it('enforces subscription-flow forms for every event subscribed through an event group', async () => {
+    const groupSubscription = {
+      id: 'group-subscription-1',
+      eventGroupId: 'group-1',
+      createdAt: new Date('2026-07-06T12:00:00.000Z'),
+      eventGroup: {},
+    };
+    const events = [
+      {
+        id: 'event-1',
+        eventGroupId: 'group-1',
+        majorEventId: null,
+        allowSubscription: true,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        startDate: new Date('2099-01-01T12:00:00.000Z'),
+        slots: null,
+      },
+      {
+        id: 'event-2',
+        eventGroupId: 'group-1',
+        majorEventId: null,
+        allowSubscription: true,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        startDate: new Date('2099-01-02T12:00:00.000Z'),
+        slots: null,
+      },
+    ];
+    const tx = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(events[0]),
+        findMany: jest.fn().mockResolvedValue(events),
+      },
+      eventGroupSubscription: {
+        findFirst: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(groupSubscription),
+      },
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce(events.map((event) => ({ event }))),
+        updateMany: jest.fn(),
+        createMany: jest.fn(),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const mapper = {
+      mapPublicEvent: jest.fn().mockReturnValue({ id: 'event-1' }),
+    };
+    const eventForms = {
+      submitSubscriptionFlowResponses: jest.fn().mockResolvedValue([]),
+      archiveResponsesForSubscriptionScope: jest.fn(),
+      emitResultsDeltas: jest.fn(),
+    };
+    const service = new CurrentUserEventSubscriptionService(
+      prisma as never,
+      mapper as never,
+      { refreshForEventPersons: jest.fn() } as never,
+      { refresh: jest.fn() } as never,
+      { record: jest.fn() } as never,
+      eventForms as never,
+    );
+
+    await service.subscribeCurrentUserEvent('person-1', 'event-1', undefined, []);
+
+    expect(eventForms.submitSubscriptionFlowResponses).toHaveBeenCalledWith(
+      tx,
+      'person-1',
+      [],
+      {
+        majorEventId: null,
+        selectedEventIds: new Set(['event-1', 'event-2']),
+      },
+      undefined,
+    );
+  });
+
 });
