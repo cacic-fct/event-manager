@@ -26,7 +26,7 @@ type Story = StoryObj<AuthErrorPage>;
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await expect(canvas.getByRole('heading', { name: /tempo de login expirou/i })).toBeVisible();
-  await expect(canvas.getByRole('button', { name: /tentar login novamente/i })).toBeVisible();
+  await expect(canvas.getByRole('button', { name: /entrar com o google/i })).toBeVisible();
   await userEvent.click(canvas.getByText('Detalhes técnicos'));
   await expect(canvas.getByText(/Invalid authorization state/i)).toBeVisible();
   await userEvent.hover(canvas.getByRole('button', { name: /copiar detalhes técnicos/i }));
