@@ -473,6 +473,7 @@ export class WorkspaceCertificatesService {
         ? await firstValueFrom(this.api.updateCertificateFolder(raw.id, payload))
         : await firstValueFrom(this.api.createCertificateFolder(payload));
       this.snackbar.open(raw.id ? 'Pasta atualizada.' : 'Pasta criada.', 'Fechar', { duration: 2500 });
+      this.targetFiltersForm.controls.scope.setValue('OTHER', { emitEvent: false });
       await this.searchTargets();
       void this.router.navigate(['/certificates', 'folder', savedFolder.id]);
       await this.applyTargetSelection(savedFolder);

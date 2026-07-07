@@ -319,6 +319,10 @@ export class CertificatesResolver {
       targetId,
     });
     if (input?.parts?.issuedPeople) {
+      await this.authorizationPolicy.assertPermissions(user, [Permission.Certificate.Read], {
+        scope: source.scope,
+        targetId: sourceTargetId,
+      });
       await this.authorizationPolicy.assertPermissions(user, [Permission.Certificate.Issue], {
         scope,
         targetId,

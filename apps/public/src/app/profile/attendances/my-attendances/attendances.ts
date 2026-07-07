@@ -346,10 +346,6 @@ export class Attendances {
       return attendances.some((attendance) => attendance.eventId === item.event.id);
     }
 
-    if (item.events.some((event) => attendances.some((attendance) => attendance.eventId === event.id))) {
-      return true;
-    }
-
     return attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id);
   }
 }

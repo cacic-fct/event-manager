@@ -1,4 +1,5 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
+import { BadRequestException } from '@nestjs/common';
 import { addMinutes } from 'date-fns';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
@@ -259,7 +260,7 @@ describe('CertificateIssuingService', () => {
       .spyOn(service, 'issueForPerson')
       .mockImplementation(async (_configId: string, personId: string) => {
         if (personId === 'person-2') {
-          throw new Error('Person is not eligible.');
+          throw new BadRequestException(`Person ${personId} is not eligible for config target-config.`);
         }
 
         return {
@@ -279,6 +280,34 @@ describe('CertificateIssuingService', () => {
     expect(issueSpy).toHaveBeenCalledWith('target-config', 'person-1', 'admin-user');
     expect(issueSpy).toHaveBeenCalledWith('target-config', 'person-2', 'admin-user');
     expect(issueSpy).toHaveBeenCalledWith('target-config', 'person-3', 'admin-user');
+  });
+
+  it('propagates unexpected failures when issuing certificates for existing recipients', async () => {
+    const prisma = {
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-1' }, { personId: 'person-2' }]),
+      },
+    };
+    const validation = {
+      normalizeRequiredId: jest.fn((_field: string, value: string) => value),
+    };
+    const service = new CertificateIssuingService(prisma as never, validation as never, {} as never);
+    const unexpectedError = new Error('PDF renderer unavailable');
+    jest.spyOn(service, 'issueForPerson').mockImplementation(async (_configId: string, personId: string) => {
+      if (personId === 'person-2') {
+        throw unexpectedError;
+      }
+
+      return {
+        ...mappedCertificateRecord,
+        id: `certificate-${personId}`,
+        personId,
+      };
+    });
+
+    await expect(service.issueForExistingConfigRecipients('source-config', 'target-config')).rejects.toBe(
+      unexpectedError,
+    );
   });
 
   it('creates certificates when no previous person/config certificate exists', async () => {

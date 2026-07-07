@@ -127,6 +127,66 @@ describe('CertificatesResolver authorization', () => {
     );
   });
 
+  it('requires certificate read permission on the source target before cloning issued people', async () => {
+    const { authorizationPolicy, configsService, issuingService, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config-1',
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+    });
+    configsService.cloneConfig.mockResolvedValue({
+      id: 'config-clone',
+      scope: CertificateScope.EVENT_GROUP,
+      eventGroupId: 'group-1',
+    });
+
+    await resolver.cloneCertificateConfig(
+      'config-1',
+      {
+        scope: CertificateScope.EVENT_GROUP,
+        eventGroupId: 'group-1',
+        parts: {
+          issuedPeople: true,
+        },
+      },
+      { req: { user } } as never,
+    );
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      2,
+      user,
+      [Permission.CertificateConfig.Create],
+      {
+        scope: CertificateScope.EVENT_GROUP,
+        targetId: 'group-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      3,
+      user,
+      [Permission.Certificate.Read],
+      {
+        scope: CertificateScope.EVENT,
+        targetId: 'event-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      4,
+      user,
+      [Permission.Certificate.Issue],
+      {
+        scope: CertificateScope.EVENT_GROUP,
+        targetId: 'group-1',
+      },
+    );
+    expect(issuingService.issueForExistingConfigRecipients).toHaveBeenCalledWith(
+      'config-1',
+      'config-clone',
+      'user-1',
+    );
+  });
+
   it('verifies Turnstile before public certificate validation lookup', async () => {
     const { publicValidationService, resolver, turnstile } = createResolver();
     const request = { ip: '203.0.113.10' };
@@ -256,6 +316,7 @@ function createResolver() {
     authorizationPolicy,
     configsService,
     frozenResources,
+    issuingService,
     downloadService,
     publicValidationService,
     resolver,

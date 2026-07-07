@@ -133,6 +133,13 @@ export class CertificateIssuingService {
       const issuedBatch = await Promise.allSettled(
         batch.map((personId) => this.issueForPerson(normalizedTargetConfigId, personId, issuedById)),
       );
+      const unexpectedError = issuedBatch.find(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected' && !this.isExpectedRecipientSkipError(result.reason),
+      );
+      if (unexpectedError) {
+        throw unexpectedError.reason;
+      }
       certificates.push(
         ...issuedBatch
           .filter((result): result is PromiseFulfilledResult<Certificate> => result.status === 'fulfilled')
@@ -141,6 +148,28 @@ export class CertificateIssuingService {
     }
 
     return certificates;
+  }
+
+  private isExpectedRecipientSkipError(error: unknown): boolean {
+    if (!(error instanceof BadRequestException)) {
+      return false;
+    }
+
+    const response = error.getResponse();
+    const message =
+      typeof response === 'string'
+        ? response
+        : typeof response === 'object' && response !== null && 'message' in response
+          ? response.message
+          : undefined;
+    const messages = Array.isArray(message) ? message : [message];
+
+    return messages.some(
+      (item) =>
+        typeof item === 'string' &&
+        item.startsWith('Person ') &&
+        (item.includes(' was not found.') || item.includes(' is not eligible for config ')),
+    );
   }
 
   async reissueAllCertificates(issuedById?: string): Promise<CertificateReissueResult> {

@@ -423,6 +423,62 @@ describe('CertificateConfigsService', () => {
     );
   });
 
+  it('restores second-page autofill default when leaving standalone scope without an explicit value', async () => {
+    const prisma = createPrisma({
+      certificateTemplate: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'template-1' }),
+      },
+      certificateConfig: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(
+            createConfigRecord({
+              scope: CertificateScope.OTHER,
+              folderId: 'folder-1',
+              shouldAutofillSecondPage: false,
+              issuedTo: CertificateIssuedTo.OTHER,
+            }),
+          )
+          .mockResolvedValueOnce(null),
+        update: jest.fn().mockResolvedValue(
+          createConfigRecord({
+            scope: CertificateScope.EVENT,
+            eventId: 'event-1',
+            folderId: null,
+            folder: null,
+            shouldAutofillSecondPage: true,
+            issuedTo: CertificateIssuedTo.ATTENDEE,
+            certificateTypeLabel: 'Participação',
+          }),
+        ),
+      },
+    });
+    const targetsService = {
+      assertIssuableTarget: jest.fn().mockResolvedValue(undefined),
+    };
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      targetsService as never,
+    );
+
+    await service.updateConfig('config-1', {
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+    });
+
+    expect(prisma.certificateConfig.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          scope: CertificateScope.EVENT,
+          eventId: 'event-1',
+          folderId: null,
+          shouldAutofillSecondPage: true,
+        }),
+      }),
+    );
+  });
+
   it('clones certificate configs with selected reusable parts and a copied name', async () => {
     const source = createConfigRecord({
       scope: CertificateScope.EVENT,

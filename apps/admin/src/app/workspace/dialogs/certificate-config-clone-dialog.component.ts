@@ -278,34 +278,7 @@ export class CertificateConfigCloneDialogComponent {
     this.requestedTargetScope = scope;
     this.loading.set(true);
     try {
-      const targets =
-        scope === 'EVENT'
-          ? (await firstValueFrom(this.api.listCertificateIssuableEvents({ take: 50 }))).map((eventItem) => ({
-              id: eventItem.id,
-              name: eventItem.name,
-              emoji: eventItem.emoji,
-              dateLabel: this.formatRange(eventItem.startDate, eventItem.endDate),
-            }))
-          : scope === 'EVENT_GROUP'
-            ? (await firstValueFrom(this.api.listCertificateIssuableEventGroups({ take: 50 }))).map((group) => ({
-                id: group.id,
-                name: group.name,
-                emoji: group.emoji,
-                dateLabel: `Criado em ${this.formatDate(group.createdAt)}`,
-              }))
-            : scope === 'MAJOR_EVENT'
-              ? (await firstValueFrom(this.api.listCertificateIssuableMajorEvents({ take: 50 }))).map((majorEvent) => ({
-                  id: majorEvent.id,
-                  name: majorEvent.name,
-                  emoji: majorEvent.emoji,
-                  dateLabel: this.formatRange(majorEvent.startDate, majorEvent.endDate),
-                }))
-              : (await firstValueFrom(this.api.listCertificateFolders({ take: 50 }))).map((folder) => ({
-                  id: folder.id,
-                  name: folder.name,
-                  emoji: folder.emoji,
-                  dateLabel: `Criada em ${this.formatDate(folder.createdAt)}`,
-                }));
+      const targets = await this.fetchTargetsForScope(scope);
       if (this.requestedTargetScope !== scope || this.form.controls.scope.value !== scope) {
         return;
       }
@@ -318,6 +291,39 @@ export class CertificateConfigCloneDialogComponent {
       if (this.requestedTargetScope === scope && this.form.controls.scope.value === scope) {
         this.loading.set(false);
       }
+    }
+  }
+
+  private async fetchTargetsForScope(scope: CertificateScope): Promise<CertificateCloneTargetOption[]> {
+    switch (scope) {
+      case 'EVENT':
+        return (await firstValueFrom(this.api.listCertificateIssuableEvents({ take: 50 }))).map((eventItem) => ({
+          id: eventItem.id,
+          name: eventItem.name,
+          emoji: eventItem.emoji,
+          dateLabel: this.formatRange(eventItem.startDate, eventItem.endDate),
+        }));
+      case 'EVENT_GROUP':
+        return (await firstValueFrom(this.api.listCertificateIssuableEventGroups({ take: 50 }))).map((group) => ({
+          id: group.id,
+          name: group.name,
+          emoji: group.emoji,
+          dateLabel: `Criado em ${this.formatDate(group.createdAt)}`,
+        }));
+      case 'MAJOR_EVENT':
+        return (await firstValueFrom(this.api.listCertificateIssuableMajorEvents({ take: 50 }))).map((majorEvent) => ({
+          id: majorEvent.id,
+          name: majorEvent.name,
+          emoji: majorEvent.emoji,
+          dateLabel: this.formatRange(majorEvent.startDate, majorEvent.endDate),
+        }));
+      default:
+        return (await firstValueFrom(this.api.listCertificateFolders({ take: 50 }))).map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+          emoji: folder.emoji,
+          dateLabel: `Criada em ${this.formatDate(folder.createdAt)}`,
+        }));
     }
   }
 
