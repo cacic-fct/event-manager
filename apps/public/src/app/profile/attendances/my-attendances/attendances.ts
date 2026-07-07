@@ -346,6 +346,11 @@ export class Attendances {
       return attendances.some((attendance) => attendance.eventId === item.event.id);
     }
 
+    if (item.events.length > 0) {
+      const eventIds = new Set(item.events.map((event) => event.id));
+      return attendances.some((attendance) => eventIds.has(attendance.eventId));
+    }
+
     return attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id);
   }
 }

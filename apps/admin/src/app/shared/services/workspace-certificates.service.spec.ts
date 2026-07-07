@@ -62,6 +62,10 @@ describe('WorkspaceCertificatesService', () => {
   let dialog: {
     open: ReturnType<typeof vi.fn>;
   };
+  let permissions: {
+    has: ReturnType<typeof vi.fn>;
+    hasAll: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     lastPayload = null;
@@ -112,6 +116,13 @@ describe('WorkspaceCertificatesService', () => {
     peopleApi = {
       listPeopleSummaries: vi.fn(() => of([])),
     };
+    permissions = {
+      has: vi.fn((permission: Permission) => permission === Permission.Certificate.Issue),
+      hasAll: vi.fn((requestedPermissions: Permission[]) => {
+        const grantedPermissions = new Set<Permission>([Permission.Certificate.Read, Permission.Certificate.Issue]);
+        return requestedPermissions.every((permission) => grantedPermissions.has(permission));
+      }),
+    };
 
     await TestBed.configureTestingModule({
       providers: [
@@ -126,9 +137,7 @@ describe('WorkspaceCertificatesService', () => {
         { provide: Router, useValue: { navigate: vi.fn() } },
         {
           provide: WorkspacePermissionsService,
-          useValue: {
-            has: vi.fn((permission: Permission) => permission === Permission.Certificate.Issue),
-          },
+          useValue: permissions,
         },
       ],
     }).compileComponents();
@@ -329,6 +338,14 @@ describe('WorkspaceCertificatesService', () => {
 
     await service.cloneCertificateConfig(createAdminCertificateConfig({ id: 'config-1', name: 'Certificate' }));
 
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          canCopyIssuedPeople: true,
+        }),
+      }),
+    );
     expect(api.cloneCertificateConfig).toHaveBeenCalledWith('config-1', {
       name: 'Certificate (cópia)',
       scope: 'EVENT_GROUP',
@@ -343,6 +360,26 @@ describe('WorkspaceCertificatesService', () => {
         issuedPeople: true,
       },
     });
+  });
+
+  it('does not enable issued people cloning without certificate read permission', async () => {
+    permissions.hasAll.mockReturnValueOnce(false);
+
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () => of(null),
+    });
+
+    await service.cloneCertificateConfig(createAdminCertificateConfig({ id: 'config-1', name: 'Certificate' }));
+
+    expect(permissions.hasAll).toHaveBeenCalledWith([Permission.Certificate.Read, Permission.Certificate.Issue]);
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          canCopyIssuedPeople: false,
+        }),
+      }),
+    );
   });
 
   it('refreshes target lists for the cloned certificate config scope before selecting it', async () => {

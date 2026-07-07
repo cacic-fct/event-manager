@@ -1,7 +1,7 @@
 import { CertificateScope } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CertificatesResolver } from './certificates.resolver';
 
 describe('CertificatesResolver authorization', () => {
@@ -187,6 +187,72 @@ describe('CertificatesResolver authorization', () => {
     );
   });
 
+  it('filters certificate folders through folder-scoped read authorization', async () => {
+    const { authorizationPolicy, configsService, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.listFolders.mockResolvedValue([
+      { id: 'folder-1', name: 'Allowed' },
+      { id: 'folder-2', name: 'Denied' },
+    ]);
+    authorizationPolicy.assertPermissions.mockImplementation(async (_user, _permissions, context) => {
+      if (context?.targetId === 'folder-2') {
+        throw new ForbiddenException('Denied');
+      }
+    });
+
+    await expect(resolver.certificateFolders({ req: { user } } as never, 'cert', 0, 20)).resolves.toEqual([
+      { id: 'folder-1', name: 'Allowed' },
+    ]);
+
+    expect(configsService.listFolders).toHaveBeenCalledWith('cert', 0, 20);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        allowScopedCollection: true,
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        folderId: 'folder-1',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        folderId: 'folder-2',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-2',
+      },
+    );
+  });
+
+  it('requires folder-scoped read permission before loading one certificate folder', async () => {
+    const { authorizationPolicy, configsService, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getFolderById.mockResolvedValue({ id: 'folder-1', name: 'Standalone' });
+
+    await expect(resolver.certificateFolder('folder-1', { req: { user } } as never)).resolves.toEqual({
+      id: 'folder-1',
+      name: 'Standalone',
+    });
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Read],
+      {
+        folderId: 'folder-1',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
+  });
+
   it('verifies Turnstile before public certificate validation lookup', async () => {
     const { publicValidationService, resolver, turnstile } = createResolver();
     const request = { ip: '203.0.113.10' };
@@ -240,7 +306,7 @@ describe('CertificatesResolver authorization', () => {
   });
 
   it('checks active standalone configs for frozen delete before deleting a folder', async () => {
-    const { configsService, frozenResources, resolver } = createResolver();
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
     const user = { sub: 'user-1' };
     configsService.listConfigsByTarget.mockResolvedValue([{ id: 'config-1' }, { id: 'config-2' }]);
     configsService.deleteFolder.mockResolvedValue({ id: 'folder-1', deleted: true });
@@ -251,6 +317,15 @@ describe('CertificatesResolver authorization', () => {
     });
 
     expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(CertificateScope.OTHER, 'folder-1');
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.CertificateConfig.Delete],
+      {
+        folderId: 'folder-1',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'delete');
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'delete');
     expect(configsService.deleteFolder).toHaveBeenCalledWith('folder-1');
@@ -265,6 +340,8 @@ function createResolver() {
   };
   const configsService = {
     listTemplates: jest.fn(),
+    listFolders: jest.fn(),
+    getFolderById: jest.fn(),
     listConfigsByTarget: jest.fn(),
     getConfigById: jest.fn(),
     createConfig: jest.fn(),

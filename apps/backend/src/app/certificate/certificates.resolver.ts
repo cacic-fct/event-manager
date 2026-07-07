@@ -19,7 +19,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
-import { UseGuards } from '@nestjs/common';
+import { ForbiddenException, UseGuards } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -127,19 +127,31 @@ export class CertificatesResolver {
   }
 
   @Query(() => [CertificateFolder], { name: 'certificateFolders' })
-  @RequirePermissions(Permission.CertificateConfig.Read)
-  certificateFolders(
+  async certificateFolders(
+    @Context() context: GraphqlContext,
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
+      allowScopedCollection: true,
+    });
     const pagination = resolvePagination(skip, take);
-    return this.configsService.listFolders(query, pagination.skip, pagination.take);
+    const folders = await this.configsService.listFolders(query, pagination.skip, pagination.take);
+    const user = this.getUser(context);
+    const accessibleFolders = await Promise.all(
+      folders.map(async (folder) => ({
+        folder,
+        canRead: await this.canAccessCertificateFolder(user, Permission.CertificateConfig.Read, folder.id),
+      })),
+    );
+
+    return accessibleFolders.filter((item) => item.canRead).map((item) => item.folder);
   }
 
   @Query(() => CertificateFolder, { name: 'certificateFolder' })
-  @RequirePermissions(Permission.CertificateConfig.Read)
-  certificateFolder(@Args('id', { type: () => String }) id: string) {
+  async certificateFolder(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.assertCertificateFolderPermission(context, Permission.CertificateConfig.Read, id);
     return this.configsService.getFolderById(id);
   }
 
@@ -251,18 +263,19 @@ export class CertificatesResolver {
   }
 
   @Mutation(() => CertificateFolder, { name: 'updateCertificateFolder' })
-  @RequirePermissions(Permission.CertificateConfig.Update)
-  updateCertificateFolder(
+  async updateCertificateFolder(
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => CertificateFolderUpdateInput })
     input: CertificateFolderUpdateInput,
+    @Context() context: GraphqlContext,
   ) {
+    await this.assertCertificateFolderPermission(context, Permission.CertificateConfig.Update, id);
     return this.configsService.updateFolder(id, input);
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteCertificateFolder' })
-  @RequirePermissions(Permission.CertificateConfig.Delete)
   async deleteCertificateFolder(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
+    await this.assertCertificateFolderPermission(context, Permission.CertificateConfig.Delete, id);
     const configs = await this.configsService.listConfigsByTarget(CertificateScope.OTHER, id);
     for (const config of configs) {
       await this.frozenResources.assertCertificateConfigMutable(config.id, this.getUser(context), 'delete');
@@ -387,6 +400,38 @@ export class CertificatesResolver {
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
     return context.req?.user ?? context.request?.user;
+  }
+
+  private async assertCertificateFolderPermission(
+    context: GraphqlContext,
+    permission: Permission,
+    folderId: string,
+  ): Promise<void> {
+    await this.authorizationPolicy.assertPermissions(this.getUser(context), [permission], {
+      folderId,
+      scope: CertificateScope.OTHER,
+      targetId: folderId,
+    });
+  }
+
+  private async canAccessCertificateFolder(
+    user: AuthenticatedUser | undefined,
+    permission: Permission,
+    folderId: string,
+  ): Promise<boolean> {
+    try {
+      await this.authorizationPolicy.assertPermissions(user, [permission], {
+        folderId,
+        scope: CertificateScope.OTHER,
+        targetId: folderId,
+      });
+      return true;
+    } catch (error) {
+      if (!(error instanceof ForbiddenException)) {
+        throw error;
+      }
+      return false;
+    }
   }
 
   private getCertificateTargetId(

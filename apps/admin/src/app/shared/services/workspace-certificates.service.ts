@@ -720,7 +720,7 @@ export class WorkspaceCertificatesService {
   private async openCertificateConfigCloneDialog(
     config: CertificateConfig,
   ): Promise<CertificateConfigCloneDialogResult | null | undefined> {
-    const canCopyIssuedPeople = this.permissions.has(Permission.Certificate.Issue);
+    const canCopyIssuedPeople = this.permissions.hasAll([Permission.Certificate.Read, Permission.Certificate.Issue]);
     const dialogRef = this.dialog.open(CertificateConfigCloneDialogComponent, {
       width: '52rem',
       maxWidth: '95vw',

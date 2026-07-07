@@ -380,11 +380,7 @@ export class AttendancesApiService {
           ? details.currentUserEventSubscription
           : null;
         const organizerEvent = organizerInfo?.events[0]?.event ?? null;
-        const fallbackEvent = this.isStandaloneEvent(publicEvent)
-          ? publicEvent
-          : this.isStandaloneEvent(organizerEvent)
-            ? organizerEvent
-            : null;
+        const fallbackEvent = this.resolveStandaloneEvent(publicEvent, organizerEvent);
         const detailEvent = subscription?.event ?? fallbackEvent;
 
         return {
@@ -438,9 +434,8 @@ export class AttendancesApiService {
           details.currentUserEventGroupSubscription && this.isStandaloneEventGroup(subscribedEvents)
             ? details.currentUserEventGroupSubscription
             : null;
-        const publicEvents = this.isStandaloneEventGroup(details.publicEvents ?? []) ? (details.publicEvents ?? []) : [];
         const organizerEvents = organizerInfo?.events.map((item) => item.event) ?? [];
-        const fallbackEvents = this.isStandaloneEventGroup(organizerEvents) ? organizerEvents : publicEvents;
+        const fallbackEvents = this.resolveStandaloneEvents(details.publicEvents ?? [], organizerEvents);
         const targetEvents = subscription?.events ?? fallbackEvents;
         const targetEventIds = new Set(targetEvents.map((event) => event.id));
 
@@ -641,6 +636,33 @@ export class AttendancesApiService {
 
   private isStandaloneEventGroup(events: PublicEvent[]): boolean {
     return events.length > 0 && events.every((event) => !event.majorEventId);
+  }
+
+  private resolveStandaloneEvent(
+    publicEvent: PublicEvent | null | undefined,
+    organizerEvent: PublicEvent | null | undefined,
+  ): PublicEvent | null {
+    if (this.isStandaloneEvent(publicEvent)) {
+      return publicEvent;
+    }
+
+    if (this.isStandaloneEvent(organizerEvent)) {
+      return organizerEvent;
+    }
+
+    return null;
+  }
+
+  private resolveStandaloneEvents(publicEvents: PublicEvent[], organizerEvents: PublicEvent[]): PublicEvent[] {
+    if (this.isStandaloneEventGroup(organizerEvents)) {
+      return organizerEvents;
+    }
+
+    if (this.isStandaloneEventGroup(publicEvents)) {
+      return publicEvents;
+    }
+
+    return [];
   }
 
   private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {

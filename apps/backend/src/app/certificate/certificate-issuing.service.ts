@@ -24,6 +24,7 @@ import { CertificateValidationService } from './certificate-validation.service';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
+type CertificateWriteClient = Pick<PrismaService, 'certificate'>;
 
 @Injectable()
 export class CertificateIssuingService {
@@ -70,26 +71,7 @@ export class CertificateIssuingService {
   async issueForPerson(configId: string, personId: string, issuedById?: string): Promise<Certificate> {
     const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     const normalizedPersonId = this.validation.normalizeRequiredId('personId', personId);
-
-    const person = await this.prisma.people.findFirst({
-      where: {
-        id: normalizedPersonId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-      },
-    });
-    if (!person) {
-      throw new BadRequestException(`Person ${normalizedPersonId} was not found.`);
-    }
-
-    const config = await this.eligibilityService.getConfigById(normalizedConfigId);
-    const recipients = await this.eligibilityService.resolveEligibleRecipients(config, normalizedPersonId);
-    const recipient = recipients.find((item) => item.person.id === normalizedPersonId);
-    if (!recipient) {
-      throw new BadRequestException(`Person ${normalizedPersonId} is not eligible for config ${normalizedConfigId}.`);
-    }
+    const { config, recipient } = await this.resolvePersonRecipient(normalizedConfigId, normalizedPersonId);
 
     const certificate = await this.upsertCertificateForRecipient(config, recipient, issuedById);
     return mapCertificate(certificate);
@@ -126,12 +108,16 @@ export class CertificateIssuingService {
       },
     });
     const personIds = [...new Set(sourceCertificates.map((certificate) => certificate.personId))];
-    const certificates: Certificate[] = [];
+    const config = await this.eligibilityService.getConfigById(normalizedTargetConfigId);
+    const recipients: EligibleCertificateRecipient[] = [];
 
     for (let index = 0; index < personIds.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
       const batch = personIds.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
       const issuedBatch = await Promise.allSettled(
-        batch.map((personId) => this.issueForPerson(normalizedTargetConfigId, personId, issuedById)),
+        batch.map(async (personId) => {
+          const normalizedPersonId = this.validation.normalizeRequiredId('personId', personId);
+          return this.resolveRecipientForConfig(config, normalizedTargetConfigId, normalizedPersonId);
+        }),
       );
       const unexpectedError = issuedBatch.find(
         (result): result is PromiseRejectedResult =>
@@ -140,14 +126,38 @@ export class CertificateIssuingService {
       if (unexpectedError) {
         throw unexpectedError.reason;
       }
-      certificates.push(
+      recipients.push(
         ...issuedBatch
-          .filter((result): result is PromiseFulfilledResult<Certificate> => result.status === 'fulfilled')
+          .filter((result): result is PromiseFulfilledResult<EligibleCertificateRecipient> => result.status === 'fulfilled')
           .map((result) => result.value),
       );
     }
 
-    return certificates;
+    const issuedCertificates = await this.prisma.$transaction(async (tx) => {
+      const certificates: { certificate: CertificateRecord; shouldNotify: boolean }[] = [];
+      for (let index = 0; index < recipients.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+        const batch = recipients.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
+        const issuedBatch = await Promise.all(
+          batch.map((recipient) =>
+            this.upsertCertificateForRecipientResult(config, recipient, issuedById, {
+              notify: false,
+              prisma: tx,
+            }),
+          ),
+        );
+        certificates.push(...issuedBatch);
+      }
+
+      return certificates;
+    });
+
+    await Promise.all(
+      issuedCertificates
+        .filter((issued) => issued.shouldNotify)
+        .map((issued) => this.notifyCertificateAvailable(issued.certificate)),
+    );
+
+    return issuedCertificates.map((issued) => mapCertificate(issued.certificate));
   }
 
   private isExpectedRecipientSkipError(error: unknown): boolean {
@@ -418,12 +428,69 @@ export class CertificateIssuingService {
     return refreshedCertificates.map(mapCertificate);
   }
 
+  private async resolvePersonRecipient(
+    configId: string,
+    personId: string,
+  ): Promise<{ config: CertificateConfigRecord; recipient: EligibleCertificateRecipient }> {
+    await this.assertPersonExists(personId);
+    const config = await this.eligibilityService.getConfigById(configId);
+    const recipient = await this.resolveRecipientForConfig(config, configId, personId, { personExists: true });
+
+    return { config, recipient };
+  }
+
+  private async resolveRecipientForConfig(
+    config: CertificateConfigRecord,
+    configId: string,
+    personId: string,
+    options: { personExists?: boolean } = {},
+  ): Promise<EligibleCertificateRecipient> {
+    if (!options.personExists) {
+      await this.assertPersonExists(personId);
+    }
+
+    const recipients = await this.eligibilityService.resolveEligibleRecipients(config, personId);
+    const recipient = recipients.find((item) => item.person.id === personId);
+    if (!recipient) {
+      throw new BadRequestException(`Person ${personId} is not eligible for config ${configId}.`);
+    }
+
+    return recipient;
+  }
+
+  private async assertPersonExists(personId: string): Promise<void> {
+    const person = await this.prisma.people.findFirst({
+      where: {
+        id: personId,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
+    });
+    if (!person) {
+      throw new BadRequestException(`Person ${personId} was not found.`);
+    }
+  }
+
   private async upsertCertificateForRecipient(
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
     issuedById?: string,
   ) {
-    const existingCertificate = await this.prisma.certificate.findUnique({
+    const result = await this.upsertCertificateForRecipientResult(config, recipient, issuedById);
+    return result.certificate;
+  }
+
+  private async upsertCertificateForRecipientResult(
+    config: CertificateConfigRecord,
+    recipient: EligibleCertificateRecipient,
+    issuedById?: string,
+    options: { notify?: boolean; prisma?: CertificateWriteClient } = {},
+  ): Promise<{ certificate: CertificateRecord; shouldNotify: boolean }> {
+    const prisma = options.prisma ?? this.prisma;
+    const shouldNotifyNow = options.notify ?? true;
+    const existingCertificate = await prisma.certificate.findUnique({
       where: {
         personId_configId: {
           personId: recipient.person.id,
@@ -443,14 +510,14 @@ export class CertificateIssuingService {
       !this.isSameJson(existingCertificate.renderedData, currentRenderedData);
 
     if (existingCertificate && !hasChanges) {
-      return existingCertificate;
+      return { certificate: existingCertificate, shouldNotify: false };
     }
 
     const issuedAt = hasChanges ? now : (existingCertificate?.issuedAt ?? now);
     const renderedData = this.buildRenderedData(config, recipient, issuedAt);
 
     if (!existingCertificate) {
-      const certificate = await this.prisma.certificate.create({
+      const certificate = await prisma.certificate.create({
         data: {
           personId: recipient.person.id,
           configId: config.id,
@@ -461,11 +528,13 @@ export class CertificateIssuingService {
         },
         select: CERTIFICATE_SELECT,
       });
-      await this.notifyCertificateAvailable(certificate);
-      return certificate;
+      if (shouldNotifyNow) {
+        await this.notifyCertificateAvailable(certificate);
+      }
+      return { certificate, shouldNotify: true };
     }
 
-    const certificate = await this.prisma.certificate.update({
+    const certificate = await prisma.certificate.update({
       where: {
         id: existingCertificate.id,
       },
@@ -480,8 +549,10 @@ export class CertificateIssuingService {
       },
       select: CERTIFICATE_SELECT,
     });
-    await this.notifyCertificateAvailable(certificate);
-    return certificate;
+    if (shouldNotifyNow) {
+      await this.notifyCertificateAvailable(certificate);
+    }
+    return { certificate, shouldNotify: true };
   }
 
   private async notifyCertificateAvailable(certificate: CertificateRecord): Promise<void> {

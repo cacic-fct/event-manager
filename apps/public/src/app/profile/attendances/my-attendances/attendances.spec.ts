@@ -93,9 +93,10 @@ describe('Attendances', () => {
     expect(text).toContain('Grande evento com presença');
     expect(text).toContain('Evento presente sem inscrição');
     expect(text).toContain('Grupo presente sem inscrição');
+    expect(text).toContain('Grupo com evento filho presente');
     expect(text).not.toContain('Grande evento apenas inscrito');
     expect(text).not.toContain('Evento apenas inscrito');
-    expect(text).toContain('3 de 5 participações');
+    expect(text).toContain('4 de 6 participações');
   });
 
   it('downloads all certificates through the shared browser file service', async () => {
@@ -433,6 +434,32 @@ const filterableSubscriptionsFeedFixture = {
       },
     },
     {
+      __typename: 'SubscribedEventGroupItem',
+      id: 'group-child-attended',
+      type: 'group',
+      startDate: '2026-07-03T12:00:00.000Z',
+      eventGroup: {
+        id: 'group-child-attended',
+        name: 'Grupo com evento filho presente',
+        emoji: '🧪',
+      },
+      events: [
+        {
+          id: 'group-child-attended-event',
+          name: 'Atividade do grupo',
+          startDate: '2026-07-03T12:00:00.000Z',
+          endDate: '2026-07-03T14:00:00.000Z',
+          emoji: '💻',
+          type: 'OTHER',
+        },
+      ],
+      participation: {
+        isSubscribed: false,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+      },
+    },
+    {
       __typename: 'SubscribedSingleEventItem',
       id: 'event-subscribed',
       type: 'single',
@@ -467,6 +494,15 @@ const filterableSubscriptionsFeedFixture = {
       attendedAt: '2026-07-01T12:30:00.000Z',
       event: {
         id: 'event-attended',
+        majorEventId: null,
+        eventGroupId: null,
+      },
+    },
+    {
+      eventId: 'group-child-attended-event',
+      attendedAt: '2026-07-03T12:30:00.000Z',
+      event: {
+        id: 'group-child-attended-event',
         majorEventId: null,
         eventGroupId: null,
       },
