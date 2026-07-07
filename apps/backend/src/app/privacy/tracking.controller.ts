@@ -42,7 +42,7 @@ export class TrackingController {
     }
 
     const settings = await this.accountManagerPrivacySync.getUserPrivacySettings(userId);
-    const analyticsAllowed = settings.settings.cookie_banner_accepted && settings.settings.analytics_tracking;
+    const analyticsAllowed = settings.settings.analytics_tracking !== false;
 
     return refreshCacicTrackingCookies(response, this.configService, {
       analyticsAllowed,

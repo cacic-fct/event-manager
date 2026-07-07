@@ -42,6 +42,10 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'auth/error',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'major-event',
     renderMode: RenderMode.Client,
   },

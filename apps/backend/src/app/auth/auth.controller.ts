@@ -53,6 +53,9 @@ const CACIC_TRACKING_COOKIE_NAMES = [
   'cacic-purr-quick',
 ] as const;
 
+const AUTH_ERROR_REDIRECT_PATH = '/app/auth/error';
+const INVALID_AUTHORIZATION_STATE_MESSAGE = 'Invalid authorization state.';
+
 type PermissionEvaluationBody = {
   permissions?: unknown;
 };
@@ -401,13 +404,31 @@ export class AuthController {
     @Query('state') state?: string,
   ): Promise<void> {
     const authorizationState = await this.consumeAuthorizationState(request, response, state);
+    if (!authorizationState) {
+      response.redirect(
+        this.getAuthorizationErrorRedirectUri(request, {
+          message: INVALID_AUTHORIZATION_STATE_MESSAGE,
+          error: 'Bad Request',
+          statusCode: 400,
+        }),
+      );
+      return;
+    }
+
     if (error) {
       response.redirect(this.getFailedAuthorizationRedirectUri(authorizationState));
       return;
     }
 
     if (!code) {
-      throw new BadRequestException('Missing authorization code.');
+      response.redirect(
+        this.getAuthorizationErrorRedirectUri(request, {
+          message: 'Missing authorization code.',
+          error: 'Bad Request',
+          statusCode: 400,
+        }),
+      );
+      return;
     }
 
     const tokenResponse = await this.keycloakAuthService.exchangeCodeForTokens(
@@ -694,17 +715,17 @@ export class AuthController {
     request: Request,
     response: Response,
     state?: string,
-  ): Promise<Awaited<ReturnType<KeycloakAuthService['consumeAuthorizationState']>>> {
+  ): Promise<Awaited<ReturnType<KeycloakAuthService['consumeAuthorizationState']>> | null> {
     const cookieState = this.readCookie(request, AUTH_STATE_COOKIE_NAME);
     this.clearAuthorizationStateCookie(response, request);
 
     if (!state || !cookieState || state !== cookieState) {
-      throw new BadRequestException('Invalid authorization state.');
+      return null;
     }
 
     const authorizationState = await this.keycloakAuthService.consumeAuthorizationState(state);
     if (!authorizationState) {
-      throw new BadRequestException('Invalid authorization state.');
+      return null;
     }
 
     return authorizationState;
@@ -893,6 +914,24 @@ export class AuthController {
     } catch {
       return uri;
     }
+  }
+
+  private getAuthorizationErrorRedirectUri(
+    _request: Request,
+    input: { message: string; error: string; statusCode: number },
+  ): string {
+    const url = new URL(AUTH_ERROR_REDIRECT_PATH, 'https://eventos.cacic.local');
+    const raw = JSON.stringify({
+      message: input.message,
+      error: input.error,
+      statusCode: input.statusCode,
+    });
+
+    url.searchParams.set('reason', 'login-expired');
+    url.searchParams.set('message', 'O tempo de login expirou. Tente novamente');
+    url.searchParams.set('raw', raw);
+
+    return `${url.pathname}${url.search}`;
   }
 
   private isSecureRequest(request: Request): boolean {

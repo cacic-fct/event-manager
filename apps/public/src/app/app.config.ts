@@ -22,6 +22,7 @@ import {
   provideCacicObservability,
   provideCloudflareTurnstile,
 } from '@cacic-fct/shared-angular';
+import { CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG } from '@cacic-fct/shared-angular/privacy/config';
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
 import { AnalyticsService } from './analytics/analytics.service';
@@ -125,6 +126,7 @@ export const appConfig: ApplicationConfig = {
       siteKey: turnstileSiteKey,
     }),
     provideCacicAccountPrivacy({
+      ...CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG,
       apiBaseUrl: accountPrivacyApiBaseUrl,
     }),
     provideCacicObservability({

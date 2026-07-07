@@ -6,9 +6,17 @@ import {
   type M2MPrivacySettingResponse,
   type M2MRecordCookieConsentResponse,
   type PrivacySettingRecord,
+  type PrivacySettings,
 } from '@cacic-fct/account-manager-m2m-contracts';
 import axios from 'axios';
 import { KeycloakM2mTokenService } from '../auth/keycloak-m2m-token.service';
+
+export function createEventManagerDefaultPrivacySettings(): PrivacySettings {
+  return {
+    ...createDefaultPrivacySettings(),
+    analytics_tracking: true,
+  };
+}
 
 @Injectable()
 export class AccountManagerPrivacySyncService {
@@ -103,7 +111,7 @@ export class AccountManagerPrivacySyncService {
     userId: string,
     settings: M2MPrivacySettingResponse[],
   ): PrivacySettingRecord {
-    const preferences = createDefaultPrivacySettings();
+    const preferences = createEventManagerDefaultPrivacySettings();
     let updatedAt: Date | null = null;
 
     for (const setting of settings) {

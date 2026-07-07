@@ -20,7 +20,7 @@ describe('TrackingController', () => {
     );
   });
 
-  it('refreshes shared tracking cookies from Account Manager privacy settings', async () => {
+  it('refreshes shared tracking cookies when analytics tracking is enabled', async () => {
     const response = createResponse();
     accountManagerPrivacySync.getUserPrivacySettings.mockResolvedValue({
       updatedAt: new Date('2026-06-23T12:00:00.000Z'),
@@ -48,6 +48,64 @@ describe('TrackingController', () => {
       userId: 'keycloak-subject',
     });
     expect(response.cookie).toHaveBeenCalled();
+  });
+
+  it('does not require cookie banner acceptance before refreshing tracking cookies', async () => {
+    const response = createResponse();
+    accountManagerPrivacySync.getUserPrivacySettings.mockResolvedValue({
+      updatedAt: new Date('2026-06-23T12:00:00.000Z'),
+      settings: {
+        analytics_tracking: true,
+        cookie_banner_accepted: false,
+        error_debugging: false,
+        performance_monitoring: false,
+      },
+    });
+
+    const result = await controller.refreshSessionTracking(
+      {
+        user: {
+          sub: 'keycloak-subject',
+        },
+      } as never,
+      response,
+    );
+
+    expect(result).toMatchObject({
+      analyticsAllowed: true,
+      cookieBannerAccepted: false,
+      userId: 'keycloak-subject',
+    });
+    expect(response.cookie).toHaveBeenCalled();
+  });
+
+  it('clears tracking cookies when analytics tracking is explicitly disabled', async () => {
+    const response = createResponse();
+    accountManagerPrivacySync.getUserPrivacySettings.mockResolvedValue({
+      updatedAt: new Date('2026-06-23T12:00:00.000Z'),
+      settings: {
+        analytics_tracking: false,
+        cookie_banner_accepted: true,
+        error_debugging: false,
+        performance_monitoring: false,
+      },
+    });
+
+    const result = await controller.refreshSessionTracking(
+      {
+        user: {
+          sub: 'keycloak-subject',
+        },
+      } as never,
+      response,
+    );
+
+    expect(result).toEqual({
+      analyticsAllowed: false,
+      cookieBannerAccepted: true,
+    });
+    expect(response.cookie).not.toHaveBeenCalled();
+    expect(response.clearCookie).toHaveBeenCalled();
   });
 
   it('clears tracking cookies during logout without requiring a user session', () => {
