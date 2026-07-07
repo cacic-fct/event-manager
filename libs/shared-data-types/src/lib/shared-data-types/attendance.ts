@@ -268,12 +268,21 @@ export class MajorEventUserAttendance {
 }
 
 @ObjectType()
+export class EventAttendanceCsvImportCandidate {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+}
+
+@ObjectType()
 export class EventAttendanceCsvImportAmbiguousValue {
   @Field(() => String)
   value!: string;
 
-  @Field(() => [Person])
-  candidates!: Person[];
+  @Field(() => [EventAttendanceCsvImportCandidate])
+  candidates!: EventAttendanceCsvImportCandidate[];
 }
 
 @ObjectType()

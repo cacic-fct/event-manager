@@ -746,9 +746,14 @@ export interface EventAttendanceCsvImportResult {
   ambiguousValues: EventAttendanceCsvImportAmbiguousValue[];
 }
 
+export interface EventAttendanceCsvImportCandidate {
+  id: string;
+  name: string;
+}
+
 export interface EventAttendanceCsvImportAmbiguousValue {
   value: string;
-  candidates: Person[];
+  candidates: EventAttendanceCsvImportCandidate[];
 }
 
 export interface EventAttendanceCsvImportResolution {

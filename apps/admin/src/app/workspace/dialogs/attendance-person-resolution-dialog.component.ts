@@ -5,8 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
 import {
   EventAttendanceCsvImportAmbiguousValue,
+  EventAttendanceCsvImportCandidate,
   EventAttendanceCsvImportResolution,
-  Person,
 } from '@cacic-fct/event-manager-admin-contracts';
 
 export interface AttendancePersonResolutionDialogData {
@@ -142,15 +142,8 @@ export class AttendancePersonResolutionDialogComponent {
     }));
   }
 
-  candidateDetails(person: Person): string {
-    return [
-      person.email ? `E-mail: ${person.email}` : null,
-      person.phone ? `Telefone: ${person.phone}` : null,
-      person.identityDocument ? `Documento: ${person.identityDocument}` : null,
-      person.academicId ? `Matrícula: ${person.academicId}` : null,
-    ]
-      .filter((detail): detail is string => Boolean(detail))
-      .join(' · ') || 'Sem dados complementares';
+  candidateDetails(_person: EventAttendanceCsvImportCandidate): string {
+    return 'Pessoa cadastrada';
   }
 
   close(): void {

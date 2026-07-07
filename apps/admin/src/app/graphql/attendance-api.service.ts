@@ -77,7 +77,8 @@ export class AttendanceApiService {
             ambiguousValues {
               value
               candidates {
-                ${PERSON_SEARCH_FIELDS}
+                id
+                name
               }
             }
           }

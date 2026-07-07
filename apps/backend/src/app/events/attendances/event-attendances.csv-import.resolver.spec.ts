@@ -102,16 +102,16 @@ describe('EventAttendanceCsvImportResolver', () => {
       personMatch({ id: 'phone-person', name: 'Grace', phone: '+5511999999975' }),
     ]);
 
-    await expect(
-      resolver.importEventAttendancesFromCsv(
-        {
-          eventId: 'event-1',
-          selectedHeader: 'identifier',
-          csvContent: 'identifier\n11999999975',
-        },
-        {} as never,
-      ),
-    ).resolves.toEqual({
+    const result = await resolver.importEventAttendancesFromCsv(
+      {
+        eventId: 'event-1',
+        selectedHeader: 'identifier',
+        csvContent: 'identifier\n11999999975',
+      },
+      {} as never,
+    );
+
+    expect(result).toEqual({
       createdCount: 0,
       duplicateCount: 0,
       failedCount: 0,
@@ -121,12 +121,16 @@ describe('EventAttendanceCsvImportResolver', () => {
         {
           value: '11999999975',
           candidates: [
-            expect.objectContaining({ id: 'document-person' }),
-            expect.objectContaining({ id: 'phone-person' }),
+            { id: 'document-person', name: 'Ada' },
+            { id: 'phone-person', name: 'Grace' },
           ],
         },
       ],
     });
+    expect(result.ambiguousValues[0].candidates[0]).not.toHaveProperty('email');
+    expect(result.ambiguousValues[0].candidates[0]).not.toHaveProperty('phone');
+    expect(result.ambiguousValues[0].candidates[0]).not.toHaveProperty('identityDocument');
+    expect(result.ambiguousValues[0].candidates[0]).not.toHaveProperty('academicId');
     expect(prisma.eventAttendance.findMany).not.toHaveBeenCalled();
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });

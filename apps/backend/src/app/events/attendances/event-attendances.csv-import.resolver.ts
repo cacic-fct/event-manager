@@ -172,7 +172,10 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
 
       unresolvedAmbiguousValues.push({
         value: input.rawValueByNormalizedValue.get(normalizedValue) ?? normalizedValue,
-        candidates,
+        candidates: candidates.map((candidate) => ({
+          id: candidate.id,
+          name: candidate.name,
+        })),
       });
     }
 
