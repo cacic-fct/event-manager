@@ -5,7 +5,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
 import {
   EventAttendanceCsvImportAmbiguousValue,
-  EventAttendanceCsvImportCandidate,
   EventAttendanceCsvImportResolution,
 } from '@cacic-fct/event-manager-admin-contracts';
 
@@ -44,7 +43,7 @@ export interface AttendancePersonResolutionDialogData {
               <mat-radio-button [value]="candidate.id">
                 <span class="candidate-option">
                   <span class="candidate-name">{{ candidate.name }}</span>
-                  <span class="candidate-details">{{ candidateDetails(candidate) }}</span>
+                  <span class="candidate-details">{{ candidateDetails() }}</span>
                 </span>
               </mat-radio-button>
             }
@@ -142,7 +141,7 @@ export class AttendancePersonResolutionDialogComponent {
     }));
   }
 
-  candidateDetails(_person: EventAttendanceCsvImportCandidate): string {
+  candidateDetails(): string {
     return 'Pessoa cadastrada';
   }
 

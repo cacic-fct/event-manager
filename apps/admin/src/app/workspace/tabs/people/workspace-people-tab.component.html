@@ -22,7 +22,7 @@
         <mat-form-field>
           <mat-label>Permissões</mat-label>
           <mat-select formControlName="permissionFilter">
-            @for (option of workspace.peoplePermissionSearchFilterOptions; track option.value) {
+            @for (option of workspace.peoplePermissionSearchFilterOptions(); track option.value) {
               <mat-option [value]="option.value">{{ option.label }}</mat-option>
             }
           </mat-select>
