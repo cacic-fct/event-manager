@@ -204,6 +204,40 @@ describe('AuthController callback redirect validation', () => {
     expect(keycloakAuthService.createSession).not.toHaveBeenCalled();
   });
 
+  it('redirects unexpected callback failures to the frontend with generic recovery copy', async () => {
+    const response = responseFixture();
+    keycloakAuthService.createSession.mockRejectedValue(new Error('Redis connection failed'));
+
+    await controller.callback(
+      requestFixture({
+        cookie: `${AUTH_STATE_COOKIE_NAME}=state-1`,
+      }),
+      response as never,
+      'code-1',
+      undefined,
+      'https://events.example.com/api/auth/callback',
+      'state-1',
+    );
+
+    expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('/app/auth/error?'));
+    expect(readRedirectParam(response, 'reason')).toBe('server-error');
+    expect(readRedirectParam(response, 'title')).toBe('Ocorreu um erro.');
+    expect(readRedirectParam(response, 'description')).toBe('Tente novamente mais tarde');
+    expect(readRedirectParam(response, 'message')).toBe('Ocorreu um erro. Tente novamente mais tarde');
+    expect(readRedirectRaw(response)).toBe(
+      JSON.stringify({
+        statusCode: 500,
+        message: 'Internal server error',
+      }),
+    );
+    expect(readRedirectRaw(response)).not.toContain('Redis connection failed');
+    expect(response.cookie).not.toHaveBeenCalledWith(
+      AUTH_SESSION_COOKIE_NAME,
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
   it('creates the secure session cookie only after a valid callback state and token exchange', async () => {
     const response = responseFixture();
 
@@ -474,8 +508,12 @@ function responseFixture() {
 }
 
 function readRedirectRaw(response: ReturnType<typeof responseFixture>): string {
+  return readRedirectParam(response, 'raw') ?? '';
+}
+
+function readRedirectParam(response: ReturnType<typeof responseFixture>, param: string): string | null {
   const redirectTarget = String(response.redirect.mock.calls[0][0]);
-  return new URL(redirectTarget, 'https://events.example.com').searchParams.get('raw') ?? '';
+  return new URL(redirectTarget, 'https://events.example.com').searchParams.get(param);
 }
 
 function authenticatedUserFixture(): AuthenticatedUser {

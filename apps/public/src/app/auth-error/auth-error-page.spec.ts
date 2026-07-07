@@ -90,6 +90,30 @@ describe('AuthErrorPage', () => {
     expect(auth.login).toHaveBeenCalledWith({ returnTo: '/calendar' });
   });
 
+  it('renders query-param copy as inert text instead of HTML', async () => {
+    queryParamMap.next(
+      convertToParamMap({
+        title: '<img src=x onerror=alert(1)>',
+        description: '<script>alert(1)</script>',
+        actionLabel: '<svg onload=alert(1)>Entrar</svg>',
+        raw: '{"message":"</code><img src=x onerror=alert(1)>"}',
+      }),
+    );
+
+    const fixture = createFixture();
+    const title = fixture.nativeElement.querySelector('h1') as HTMLElement;
+    const description = fixture.nativeElement.querySelector('.auth-error-copy p') as HTMLElement;
+    const technicalDetails = fixture.nativeElement.querySelector('pre code') as HTMLElement;
+
+    expect(title.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(title.innerHTML).toContain('&lt;img');
+    expect(title.querySelector('img')).toBeNull();
+    expect(description.textContent).toContain('<script>alert(1)</script>');
+    expect(description.querySelector('script')).toBeNull();
+    expect(technicalDetails.textContent).toContain('</code><img src=x onerror=alert(1)>');
+    expect(technicalDetails.querySelector('img')).toBeNull();
+  });
+
   it('copies raw technical details when the clipboard is available', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
