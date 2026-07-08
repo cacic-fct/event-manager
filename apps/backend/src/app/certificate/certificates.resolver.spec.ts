@@ -26,6 +26,122 @@ describe('CertificatesResolver authorization', () => {
     expect(targetsService.listIssuableEvents).toHaveBeenCalledWith('cert', 0, 20, accessibleTargets);
   });
 
+  it('filters issuable event groups and major events to accessible certificate targets', async () => {
+    const { authorizationPolicy, resolver, targetsService } = createResolver();
+    const user = { sub: 'user-1' };
+    const accessibleTargets = {
+      eventIds: new Set<string>(),
+      majorEventIds: new Set(['major-1']),
+      eventGroupIds: new Set(['group-1']),
+    };
+    authorizationPolicy.accessibleEventTargets.mockResolvedValue(accessibleTargets);
+    targetsService.listIssuableEventGroups.mockResolvedValue([{ id: 'group-1' }]);
+    targetsService.listIssuableMajorEvents.mockResolvedValue([{ id: 'major-1' }]);
+
+    await expect(
+      resolver.certificateIssuableEventGroups({ request: { user } } as never, 'grupo', 5, 10),
+    ).resolves.toEqual([{ id: 'group-1' }]);
+    await expect(
+      resolver.certificateIssuableMajorEvents({ request: { user } } as never, 'grande', 10, 15),
+    ).resolves.toEqual([{ id: 'major-1' }]);
+
+    expect(authorizationPolicy.accessibleEventTargets).toHaveBeenCalledWith(
+      user,
+      Permission.CertificateConfig.Read,
+    );
+    expect(targetsService.listIssuableEventGroups).toHaveBeenCalledWith('grupo', 5, 10, accessibleTargets);
+    expect(targetsService.listIssuableMajorEvents).toHaveBeenCalledWith('grande', 10, 15, accessibleTargets);
+  });
+
+  it('lists templates, configs, certificates and private downloads with pagination defaults', async () => {
+    const { configsService, downloadService, issuingService, resolver } = createResolver();
+    configsService.listTemplates.mockResolvedValue([{ id: 'template-1' }]);
+    configsService.listConfigsByTarget.mockResolvedValue([{ id: 'config-1' }]);
+    issuingService.listCertificatesByTarget.mockResolvedValue([{ id: 'certificate-1' }]);
+    downloadService.downloadCertificate.mockResolvedValue({
+      fileName: 'certificate.pdf',
+      mimeType: 'application/pdf',
+      contentBase64: 'pdf',
+    });
+
+    await expect(resolver.certificateTemplates('modelo', false, 2, 3)).resolves.toEqual([{ id: 'template-1' }]);
+    await expect(resolver.certificateConfigs(CertificateScope.EVENT, 'event-1')).resolves.toEqual([{ id: 'config-1' }]);
+    await expect(
+      resolver.certificates(CertificateScope.EVENT, 'event-1', 'config-1', undefined, undefined),
+    ).resolves.toEqual([{ id: 'certificate-1' }]);
+    await expect(resolver.downloadCertificate('certificate-1')).resolves.toEqual(
+      expect.objectContaining({ fileName: 'certificate.pdf' }),
+    );
+
+    expect(configsService.listTemplates).toHaveBeenCalledWith('modelo', false, 2, 3);
+    expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT,
+      'event-1',
+      true,
+      0,
+      50,
+    );
+    expect(issuingService.listCertificatesByTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT,
+      'event-1',
+      'config-1',
+      0,
+      50,
+    );
+    expect(downloadService.downloadCertificate).toHaveBeenCalledWith('certificate-1');
+  });
+
+  it('checks frozen target state before creating certificate configs', async () => {
+    const { configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    const input = {
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+    };
+    configsService.createConfig.mockResolvedValue({ id: 'config-1', ...input });
+
+    await expect(resolver.createCertificateConfig(input, { req: { user } } as never)).resolves.toEqual(
+      expect.objectContaining({ id: 'config-1' }),
+    );
+
+    expect(frozenResources.assertCertificateTargetMutable).toHaveBeenCalledWith(
+      CertificateScope.EVENT,
+      'event-1',
+      user,
+      'edit',
+    );
+    expect(configsService.createConfig).toHaveBeenCalledWith(input);
+  });
+
+  it('supports standalone certificate config creation without a folder target', async () => {
+    const { configsService, frozenResources, resolver } = createResolver();
+    const input = {
+      scope: CertificateScope.OTHER,
+      folderId: null,
+    };
+    configsService.createConfig.mockResolvedValue({ id: 'config-1', ...input });
+
+    await expect(resolver.createCertificateConfig(input, {} as never)).resolves.toEqual(
+      expect.objectContaining({ id: 'config-1' }),
+    );
+
+    expect(frozenResources.assertCertificateTargetMutable).toHaveBeenCalledWith(
+      CertificateScope.OTHER,
+      '',
+      undefined,
+      'edit',
+    );
+  });
+
+  it('creates certificate folders through the configs service', () => {
+    const { configsService, resolver } = createResolver();
+    const input = { name: 'Pasta avulsa', emoji: 'folder' };
+    configsService.createFolder.mockReturnValue({ id: 'folder-1', ...input });
+
+    expect(resolver.createCertificateFolder(input)).toEqual({ id: 'folder-1', ...input });
+    expect(configsService.createFolder).toHaveBeenCalledWith(input);
+  });
+
   it('requires update permission on replacement certificate config targets', async () => {
     const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
     const user = { sub: 'user-1' };
@@ -70,6 +186,52 @@ describe('CertificatesResolver authorization', () => {
         targetId: 'major-b',
       },
     );
+  });
+
+  it('updates certificate configs without replacement target checks when the target is unchanged', async () => {
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.updateConfig.mockResolvedValue({ id: 'config-1', isActive: false });
+
+    await expect(
+      resolver.updateCertificateConfig('config-1', { isActive: false }, { req: { user } } as never),
+    ).resolves.toEqual({ id: 'config-1', isActive: false });
+
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
+    expect(configsService.getConfigById).not.toHaveBeenCalled();
+    expect(frozenResources.assertCertificateTargetMutable).not.toHaveBeenCalled();
+    expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
+    expect(configsService.updateConfig).toHaveBeenCalledWith('config-1', { isActive: false });
+  });
+
+  it('skips replacement target authorization when an update clears the target id', async () => {
+    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config-1',
+      scope: CertificateScope.EVENT,
+      eventId: 'event-1',
+    });
+    configsService.updateConfig.mockResolvedValue({
+      id: 'config-1',
+      scope: CertificateScope.EVENT,
+      eventId: null,
+    });
+
+    await expect(
+      resolver.updateCertificateConfig(
+        'config-1',
+        {
+          scope: CertificateScope.EVENT,
+          eventId: null,
+        },
+        { req: { user } } as never,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ id: 'config-1' }));
+
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
+    expect(frozenResources.assertCertificateTargetMutable).not.toHaveBeenCalled();
+    expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
   });
 
   it('requires read permission on the source config target before cloning', async () => {
@@ -225,6 +387,74 @@ describe('CertificatesResolver authorization', () => {
     expect(configsService.cloneConfig).toHaveBeenCalledWith('config-1', null);
   });
 
+  it('deletes certificate configs after frozen delete validation', async () => {
+    const { configsService, frozenResources, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.deleteConfig.mockResolvedValue({ id: 'config-1', deleted: true });
+
+    await expect(resolver.deleteCertificateConfig('config-1', { request: { user } } as never)).resolves.toEqual({
+      id: 'config-1',
+      deleted: true,
+    });
+
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'delete');
+    expect(configsService.deleteConfig).toHaveBeenCalledWith('config-1');
+  });
+
+  it('issues a certificate for one person after frozen config validation', async () => {
+    const { frozenResources, issuingService, resolver } = createResolver();
+    const user = { sub: ' user-1 ' };
+    issuingService.issueForPerson.mockResolvedValue({ id: 'certificate-1' });
+
+    await expect(
+      resolver.issueCertificateForPerson('config-1', 'person-1', { req: { user } } as never),
+    ).resolves.toEqual({ id: 'certificate-1' });
+
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
+    expect(issuingService.issueForPerson).toHaveBeenCalledWith('config-1', 'person-1', 'user-1');
+  });
+
+  it('issues missed certificates with an undefined issuer when the subject is blank', async () => {
+    const { frozenResources, issuingService, resolver } = createResolver();
+    const user = { sub: '   ' };
+    issuingService.issueMissedCertificates.mockResolvedValue([{ id: 'certificate-1' }]);
+
+    await expect(resolver.issueMissedCertificates('config-1', { req: { user } } as never)).resolves.toEqual([
+      { id: 'certificate-1' },
+    ]);
+
+    expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
+    expect(issuingService.issueMissedCertificates).toHaveBeenCalledWith('config-1', undefined);
+  });
+
+  it('reissues all certificates after checking for frozen certificate targets', async () => {
+    const { frozenResources, issuingService, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    issuingService.reissueAllCertificates.mockResolvedValue({ reissued: 2, skipped: 0 });
+
+    await expect(resolver.reissueAllCertificates({ req: { user } } as never)).resolves.toEqual({
+      reissued: 2,
+      skipped: 0,
+    });
+
+    expect(frozenResources.assertNoFrozenCertificateTargets).toHaveBeenCalledWith(user, 'edit');
+    expect(issuingService.reissueAllCertificates).toHaveBeenCalledWith('user-1');
+  });
+
+  it('deletes certificates after frozen certificate validation', async () => {
+    const { frozenResources, issuingService, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    issuingService.deleteCertificate.mockResolvedValue({ id: 'certificate-1', deleted: true });
+
+    await expect(resolver.deleteCertificate('certificate-1', { req: { user } } as never)).resolves.toEqual({
+      id: 'certificate-1',
+      deleted: true,
+    });
+
+    expect(frozenResources.assertCertificateMutable).toHaveBeenCalledWith('certificate-1', user, 'delete');
+    expect(issuingService.deleteCertificate).toHaveBeenCalledWith('certificate-1');
+  });
+
   it('filters certificate folders through folder-scoped read authorization', async () => {
     const { authorizationPolicy, configsService, resolver } = createResolver();
     const user = { sub: 'user-1' };
@@ -317,6 +547,22 @@ describe('CertificatesResolver authorization', () => {
     expect(publicValidationService.validateCertificate).toHaveBeenCalledWith('certificate-1');
     expect(turnstile.assertValidToken.mock.invocationCallOrder[0]).toBeLessThan(
       publicValidationService.validateCertificate.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('uses context.request when validating a public certificate without context.req', async () => {
+    const { publicValidationService, resolver, turnstile } = createResolver();
+    const request = { ip: '203.0.113.20' };
+    publicValidationService.validateCertificate.mockResolvedValue({ id: 'certificate-1' });
+
+    await expect(
+      resolver.publicCertificateValidation('certificate-1', null, { request } as never),
+    ).resolves.toEqual({ id: 'certificate-1' });
+
+    expect(turnstile.assertValidToken).toHaveBeenCalledWith(
+      null,
+      request,
+      TURNSTILE_ACTIONS.certificateValidation,
     );
   });
 
@@ -421,6 +667,7 @@ function createResolver() {
     listConfigsByTarget: jest.fn(),
     getConfigById: jest.fn(),
     createConfig: jest.fn(),
+    createFolder: jest.fn(),
     cloneConfig: jest.fn(),
     updateConfig: jest.fn(),
     updateFolder: jest.fn(),

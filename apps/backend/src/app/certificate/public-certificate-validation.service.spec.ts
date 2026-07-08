@@ -148,6 +148,279 @@ describe('PublicCertificateValidationService', () => {
       }),
     );
   });
+
+  it('returns null for blank certificate ids without querying certificates', async () => {
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn(),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    await expect(service.validateCertificate('   ')).resolves.toBeNull();
+
+    expect(prisma.certificate.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('splits major-event certificates into public event sections and masks valid CPF values', async () => {
+    const issuedAt = new Date('2026-06-01T12:00:00.000Z');
+    const minicourse = majorEventEvent('minicourse-1', 'Minicurso de Angular', EventType.MINICURSO, 120);
+    const lecture = majorEventEvent('lecture-1', 'Palestra de abertura', EventType.PALESTRA, 60);
+    const other = majorEventEvent('other-1', 'Mesa redonda', EventType.OTHER, 45);
+    const hidden = majorEventEvent('hidden-1', 'Encontro interno', EventType.PALESTRA, 30, {
+      publiclyVisible: false,
+    });
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)),
+          person: {
+            name: 'Ada Lovelace',
+            identityDocument: '529.982.247-25',
+            isCPF: true,
+          },
+          config: {
+            ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)).config,
+            scope: CertificateScope.MAJOR_EVENT,
+            event: null,
+            majorEvent: {
+              id: 'major-1',
+              name: 'SECOMP',
+              emoji: 'calendar',
+              deletedAt: null,
+              publicationState: 'PUBLISHED',
+            },
+          },
+        }),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([
+          { event: minicourse },
+          { event: lecture },
+          { event: other },
+          { event: hidden },
+        ]),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    const result = await service.validateCertificate('certificate-1');
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        targetName: 'SECOMP',
+        targetEmoji: 'calendar',
+        maskedIdentityDocument: '•••.982.247-••',
+        totalCreditMinutes: 225,
+      }),
+    );
+    expect(result?.sections).toEqual([
+      {
+        title: 'Minicursos',
+        type: EventType.MINICURSO,
+        creditMinutes: 120,
+        events: [expect.objectContaining({ id: 'minicourse-1', name: 'Minicurso de Angular' })],
+      },
+      {
+        title: 'Palestras',
+        type: EventType.PALESTRA,
+        creditMinutes: 60,
+        events: [expect.objectContaining({ id: 'lecture-1', name: 'Palestra de abertura' })],
+      },
+      {
+        title: 'Outros',
+        type: EventType.OTHER,
+        creditMinutes: 45,
+        events: [expect.objectContaining({ id: 'other-1', name: 'Mesa redonda' })],
+      },
+    ]);
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          personId: 'person-1',
+          event: expect.objectContaining({
+            majorEventId: 'major-1',
+            shouldIssueCertificate: true,
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('uses attended events for partial event-group certificates', async () => {
+    const issuedAt = new Date('2026-06-01T12:00:00.000Z');
+    const attended = eventGroupEvent('event-1', 'Oficina prática', 75);
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)),
+          config: {
+            ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)).config,
+            scope: CertificateScope.EVENT_GROUP,
+            event: null,
+            eventGroup: {
+              id: 'group-1',
+              name: 'Trilha de oficinas',
+              shouldIssueCertificateForEachEvent: false,
+              shouldIssuePartialCertificate: true,
+            },
+          },
+        }),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([{ event: attended }]),
+      },
+      eventSubscription: {
+        findMany: jest.fn(),
+      },
+      event: {
+        findMany: jest.fn(),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    await expect(service.validateCertificate('certificate-1')).resolves.toEqual(
+      expect.objectContaining({
+        targetName: 'Trilha de oficinas',
+        sections: [
+          {
+            title: 'Eventos com presença',
+            creditMinutes: 75,
+            events: [expect.objectContaining({ id: 'event-1', name: 'Oficina prática' })],
+          },
+        ],
+        totalCreditMinutes: 75,
+      }),
+    );
+    expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          personId: 'person-1',
+          event: expect.objectContaining({
+            eventGroupId: 'group-1',
+            shouldIssueCertificate: true,
+          }),
+        }),
+      }),
+    );
+    expect(prisma.eventSubscription.findMany).not.toHaveBeenCalled();
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+  });
+
+  it('falls back to all event-group events when there are no active subscriptions', async () => {
+    const issuedAt = new Date('2026-06-01T12:00:00.000Z');
+    const groupEvent = eventGroupEvent('event-2', 'Palestra aberta', 50);
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)),
+          config: {
+            ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)).config,
+            scope: CertificateScope.EVENT_GROUP,
+            event: null,
+            eventGroup: {
+              id: 'group-1',
+              name: 'Trilha aberta',
+              shouldIssueCertificateForEachEvent: false,
+              shouldIssuePartialCertificate: false,
+            },
+          },
+        }),
+      },
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([groupEvent]),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    await expect(service.validateCertificate('certificate-1')).resolves.toEqual(
+      expect.objectContaining({
+        sections: [
+          {
+            title: 'Eventos inscritos',
+            creditMinutes: 50,
+            events: [expect.objectContaining({ id: 'event-2' })],
+          },
+        ],
+      }),
+    );
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          eventGroupId: 'group-1',
+          deletedAt: null,
+          shouldIssueCertificate: true,
+        }),
+      }),
+    );
+  });
+
+  it('filters lecturer certificates by lecturer event ids and configured category', async () => {
+    const issuedAt = new Date('2026-06-01T12:00:00.000Z');
+    const lecture = majorEventEvent('lecture-1', 'Palestra ministrada', EventType.PALESTRA, 60);
+    const minicourse = majorEventEvent('minicourse-1', 'Minicurso ministrado', EventType.MINICURSO, 120);
+    const otherLecturerEvent = majorEventEvent('other-1', 'Mesa redonda ministrada', EventType.OTHER, 45);
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)),
+          config: {
+            ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)).config,
+            scope: CertificateScope.MAJOR_EVENT,
+            issuedTo: CertificateIssuedTo.LECTURER,
+            certificateFields: {
+              __lecturerEventCategory: 'MINICURSO',
+            },
+            event: null,
+            majorEvent: {
+              id: 'major-1',
+              name: 'SECOMP',
+              emoji: 'calendar',
+              deletedAt: null,
+              publicationState: 'PUBLISHED',
+            },
+          },
+        }),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([lecture, minicourse, otherLecturerEvent]),
+      },
+      eventLecturer: {
+        findMany: jest.fn().mockResolvedValue([
+          { eventId: 'lecture-1' },
+          { eventId: 'minicourse-1' },
+          { eventId: 'other-1' },
+        ]),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    const result = await service.validateCertificate('certificate-1');
+
+    expect(result?.sections).toEqual([
+      {
+        title: 'Minicursos',
+        type: EventType.MINICURSO,
+        creditMinutes: 120,
+        events: [expect.objectContaining({ id: 'minicourse-1', name: 'Minicurso ministrado' })],
+      },
+    ]);
+    expect(result?.totalCreditMinutes).toBe(120);
+    expect(prisma.eventLecturer.findMany).toHaveBeenCalledWith({
+      where: {
+        personId: 'person-1',
+        eventId: {
+          in: ['lecture-1', 'minicourse-1', 'other-1'],
+        },
+      },
+      select: {
+        eventId: true,
+      },
+    });
+  });
 });
 
 function validationService() {
@@ -201,6 +474,33 @@ function eventRecord(id: string, name: string, publiclyVisible: boolean, creditM
     type: EventType.OTHER,
     publiclyVisible,
     publicationState: 'PUBLISHED',
+    majorEventId: null,
     majorEvent: null,
+  };
+}
+
+function majorEventEvent(
+  id: string,
+  name: string,
+  type: EventType,
+  creditMinutes: number,
+  overrides: Partial<ReturnType<typeof eventRecord>> = {},
+) {
+  return {
+    ...eventRecord(id, name, true, creditMinutes),
+    type,
+    majorEventId: 'major-1',
+    majorEvent: {
+      deletedAt: null,
+      publicationState: 'PUBLISHED',
+    },
+    ...overrides,
+  };
+}
+
+function eventGroupEvent(id: string, name: string, creditMinutes: number) {
+  return {
+    ...eventRecord(id, name, true, creditMinutes),
+    type: EventType.PALESTRA,
   };
 }

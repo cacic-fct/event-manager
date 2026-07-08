@@ -4,6 +4,7 @@ import {
   LgpdServiceTestContext,
   restoreLgpdServiceTestContext,
 } from './lgpd.service.spec-support';
+import { deleteReceiptObjects, findReceiptObjectKeys } from './lgpd-receipts';
 
 describe('LgpdService receipt cleanup', () => {
   let context: LgpdServiceTestContext;
@@ -14,6 +15,34 @@ describe('LgpdService receipt cleanup', () => {
 
   afterEach(() => {
     restoreLgpdServiceTestContext();
+  });
+
+  it('skips receipt storage lookup when there are no people to delete', async () => {
+    const { prisma } = context;
+
+    await expect(findReceiptObjectKeys(prisma, [])).resolves.toEqual([]);
+
+    expect(prisma.majorEventReceipt.findMany).not.toHaveBeenCalled();
+  });
+
+  it('deduplicates receipt object cleanup and logs non-error deletion failures', async () => {
+    const s3 = {
+      deleteFile: jest.fn<Promise<void>, [string]>().mockRejectedValueOnce('access denied'),
+    };
+    const logger = {
+      warn: jest.fn<void, [string]>(),
+    };
+
+    await expect(deleteReceiptObjects(s3, logger, ['receipts/duplicate.png', 'receipts/duplicate.png'])).rejects.toThrow(
+      'Failed to delete LGPD receipt object(s): receipts/duplicate.png',
+    );
+
+    expect(s3.deleteFile).toHaveBeenCalledTimes(1);
+    expect(s3.deleteFile).toHaveBeenCalledWith('receipts/duplicate.png');
+    expect(logger.warn).toHaveBeenCalledWith('Failed to delete LGPD receipt object receipts/duplicate.png: access denied');
+    expect(logger.warn).toHaveBeenCalledWith(
+      'LGPD receipt cleanup completed with 1 failed object deletion(s): receipts/duplicate.png',
+    );
   });
 
   it('removes receipt storage and database rows when scheduling deletion', async () => {

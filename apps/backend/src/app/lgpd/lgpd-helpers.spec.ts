@@ -325,6 +325,26 @@ describe('LGPD helper modules', () => {
     });
   });
 
+  it('skips event draft anonymization when the subject has no identifiers', async () => {
+    const emptySubject: DataSubjectResolution = {
+      userIds: [],
+      personIds: [],
+      emails: [],
+      people: [],
+    };
+    const tx = {
+      eventDraft: {
+        findMany: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+
+    expect(buildEventDraftSubjectWhere(emptySubject)).toBeNull();
+    await expect(anonymizeEventDrafts(tx as never, emptySubject, 'anonymized:request-1')).resolves.toBe(0);
+    expect(tx.eventDraft.findMany).not.toHaveBeenCalled();
+    expect(tx.eventDraft.update).not.toHaveBeenCalled();
+  });
+
   it('matches and anonymizes offline attendance submissions by subject identifiers', async () => {
     const dataSubject = dataSubjectResolution();
     const candidates = getOfflineManualSubjectValueCandidates(dataSubject);

@@ -140,6 +140,57 @@ import { RateLimitGuard } from './rate-limit/rate-limit.guard';
 import { RateLimitService } from './rate-limit/rate-limit.service';
 import { validateBackendEnvironment } from './config/environment.validation';
 import { redisProvider } from './redis/redis.provider';
+import { createNoopQueueProviders } from './queues/noop-queue.providers';
+
+const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
+const backendQueueNames = [
+  'weather',
+  DASHBOARD_INSIGHTS_QUEUE,
+  MAJOR_EVENT_RECEIPTS_QUEUE,
+  CALENDAR_FEED_MAINTENANCE_QUEUE,
+  PUBLICATION_QUEUE,
+];
+const queueImports = useInMemoryTestInfra
+  ? []
+  : [
+      BullModule.forRoot({
+        connection: getRedisConnectionOptions(),
+      }),
+      BullModule.registerQueue({
+        name: 'weather',
+      }),
+      BullModule.registerQueue({
+        name: DASHBOARD_INSIGHTS_QUEUE,
+      }),
+      BullModule.registerQueue({
+        name: MAJOR_EVENT_RECEIPTS_QUEUE,
+      }),
+      BullModule.registerQueue({
+        name: CALENDAR_FEED_MAINTENANCE_QUEUE,
+      }),
+      BullModule.registerQueue({
+        name: PUBLICATION_QUEUE,
+      }),
+    ];
+const queueProviders = useInMemoryTestInfra ? createNoopQueueProviders(backendQueueNames) : [];
+const queueProcessorProviders = useInMemoryTestInfra
+  ? []
+  : [
+      CalendarFeedMaintenanceProcessor,
+      PublicationProcessor,
+      DashboardInsightsProcessor,
+      MajorEventReceiptsProcessor,
+      WeatherProcessor,
+    ];
+const schedulerProviders = useInMemoryTestInfra
+  ? []
+  : [
+      CalendarFeedMaintenanceScheduler,
+      PublicationScheduler,
+      DashboardInsightsSchedulerService,
+      EventFormsScheduler,
+      WeatherSchedulerService,
+    ];
 
 @Module({
   imports: [
@@ -149,24 +200,7 @@ import { redisProvider } from './redis/redis.provider';
     }),
     PrismaModule,
     AuthModule,
-    BullModule.forRoot({
-      connection: getRedisConnectionOptions(),
-    }),
-    BullModule.registerQueue({
-      name: 'weather',
-    }),
-    BullModule.registerQueue({
-      name: DASHBOARD_INSIGHTS_QUEUE,
-    }),
-    BullModule.registerQueue({
-      name: MAJOR_EVENT_RECEIPTS_QUEUE,
-    }),
-    BullModule.registerQueue({
-      name: CALENDAR_FEED_MAINTENANCE_QUEUE,
-    }),
-    BullModule.registerQueue({
-      name: PUBLICATION_QUEUE,
-    }),
+    ...queueImports,
     GraphQLModule.forRootAsync<ApolloDriverConfig>({
       driver: ApolloDriver,
       imports: [AuthModule],
@@ -237,8 +271,6 @@ import { redisProvider } from './redis/redis.provider';
     AuditLogService,
     CalendarResolver,
     CalendarService,
-    CalendarFeedMaintenanceScheduler,
-    CalendarFeedMaintenanceProcessor,
     PublicationResolver,
     PublicationService,
     PublicationTransitionService,
@@ -248,8 +280,6 @@ import { redisProvider } from './redis/redis.provider';
     PublicationStateWriterService,
     PublicationTargetService,
     PublicationPreviewContentService,
-    PublicationScheduler,
-    PublicationProcessor,
     CurrentUserContextService,
     CurrentUserEventMapperService,
     CurrentUserPublicEventService,
@@ -266,8 +296,6 @@ import { redisProvider } from './redis/redis.provider';
     CurrentUserSubscriptionFeedResolver,
     DashboardInsightsResolver,
     DashboardInsightsService,
-    DashboardInsightsSchedulerService,
-    DashboardInsightsProcessor,
     AttendanceCategoryService,
     EventSubscriptionSyncService,
     EventSubscriptionCountersService,
@@ -286,7 +314,6 @@ import { redisProvider } from './redis/redis.provider';
     EventFormResponsesService,
     EventFormResultEventsService,
     EventFormResultsAccessService,
-    EventFormsScheduler,
     EventLecturersResolver,
     MergeCandidatesResolver,
     MergeCandidateOperationsService,
@@ -299,7 +326,6 @@ import { redisProvider } from './redis/redis.provider';
     ReceiptSubscriptionSyncService,
     ReceiptUploadService,
     ReceiptValidationService,
-    MajorEventReceiptsProcessor,
     ReceiptAnalysisService,
     AccountManagerPrivacySyncService,
     AccountManagerTotpService,
@@ -313,14 +339,15 @@ import { redisProvider } from './redis/redis.provider';
     CertificateIssuingService,
     PublicCertificateValidationService,
     WeatherService,
-    WeatherSchedulerService,
-    WeatherProcessor,
     FrozenResourceService,
     VotingIntegrationService,
     TurnstileService,
     RateLimitGuard,
     RateLimitService,
     redisProvider,
+    ...queueProviders,
+    ...queueProcessorProviders,
+    ...schedulerProviders,
     {
       provide: APP_GUARD,
       useClass: KeycloakScopeGuard,

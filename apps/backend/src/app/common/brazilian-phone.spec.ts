@@ -17,6 +17,18 @@ describe('getBrazilianPhoneCandidates', () => {
     expect(getBrazilianPhoneCandidates('55999990000')).toEqual(expect.arrayContaining(['55999990000']));
   });
 
+  it('builds display aliases for 10-digit Brazilian phones', () => {
+    expect(getBrazilianPhoneCandidates('1833330000')).toEqual(
+      expect.arrayContaining([
+        '1833330000',
+        '551833330000',
+        '+551833330000',
+        '(18) 3333-0000',
+        '+55 (18) 3333-0000',
+      ]),
+    );
+  });
+
   it('ignores digit strings that cannot be Brazilian phones', () => {
     expect(getBrazilianPhoneCandidates('ABC123')).toEqual([]);
     expect(getBrazilianPhoneCandidates('123456789')).toEqual([]);

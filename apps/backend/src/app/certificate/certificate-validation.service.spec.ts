@@ -44,9 +44,11 @@ describe('CertificateValidationService', () => {
       service.assertScopeTargetConsistency(CertificateScope.EVENT_GROUP, { eventGroupId: 'group-1' }),
     ).not.toThrow();
     expect(() => service.assertScopeTargetConsistency(CertificateScope.EVENT, { eventId: 'event-1' })).not.toThrow();
+    expect(() => service.assertScopeTargetConsistency(CertificateScope.OTHER, {})).not.toThrow();
   });
 
   it('rejects inconsistent certificate scope targets', () => {
+    expect(() => service.assertSupportedScope('INVALID' as CertificateScope)).toThrow(BadRequestException);
     expect(() =>
       service.assertScopeTargetConsistency(CertificateScope.MAJOR_EVENT, {
         majorEventId: 'major-event-1',

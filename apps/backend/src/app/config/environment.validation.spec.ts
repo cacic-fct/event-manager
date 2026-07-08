@@ -105,6 +105,27 @@ describe('validateBackendEnvironment', () => {
         KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.dev.br/api/auth/other',
       }),
     ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.dev.br/api/auth/callback.');
+
+    expect(() =>
+      validateBackendEnvironment({
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.dev.br/api/auth/callback#fragment',
+      }),
+    ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.dev.br/api/auth/callback.');
+
+    expect(() =>
+      validateBackendEnvironment({
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        KEYCLOAK_REDIRECT_URI: 'not a url',
+      }),
+    ).toThrow('KEYCLOAK_REDIRECT_URI must be a valid URL.');
+
+    const config = {
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+      KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.dev.br/api/auth/callback',
+    };
+
+    expect(validateBackendEnvironment(config)).toBe(config);
   });
 
   it('requires the Keycloak token endpoint auth method to be supported when set', () => {

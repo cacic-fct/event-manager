@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, MessageEvent, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -11,6 +11,7 @@ import {
   PublicationState,
 } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { firstValueFrom, of } from 'rxjs';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { GraphqlContext } from '../current-user/selects';
@@ -99,6 +100,83 @@ describe('EventFormsService', () => {
     expect(csvCell('plain text')).toBe('"plain text"');
   });
 
+  it('delegates facade operations to the underlying event-form services', async () => {
+    const facade = createFacadeService();
+    const targetInput = {
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+    };
+    const formInput = {
+      name: 'Pesquisa',
+      elementsJson: '[]',
+      links: [],
+    };
+    const subscriptionScope = {
+      majorEventId: 'major-1',
+      selectedEventIds: new Set(['event-1']),
+    };
+
+    await expect(facade.service.listAdminForms(authenticatedUser)).resolves.toEqual(facade.forms);
+    await expect(facade.service.getAdminForm(authenticatedUser, 'form-1')).resolves.toBe(facade.form);
+    await expect(facade.service.listFormsForTarget(targetInput)).resolves.toEqual(facade.forms);
+    await expect(
+      facade.service.listCurrentUserForms(context, targetInput, { subscriptionFlowOnly: true }),
+    ).resolves.toEqual(facade.forms);
+    await expect(facade.service.saveForm(formInput as never, authenticatedUser)).resolves.toBe(facade.form);
+    await expect(
+      facade.service.saveDraft({ sourceFormId: 'form-1', input: formInput as never }, authenticatedUser),
+    ).resolves.toBe(facade.draft);
+    await expect(facade.service.listDrafts('form-1', authenticatedUser)).resolves.toEqual(facade.drafts);
+    await expect(facade.service.unpublishForm('form-1', authenticatedUser)).resolves.toBe(facade.form);
+    await expect(facade.service.deleteForm('form-1', authenticatedUser)).resolves.toBe(facade.form);
+    await expect(
+      facade.service.submitSubscriptionFlowResponses(prisma as never, 'person-1', null, subscriptionScope),
+    ).resolves.toEqual(['form-1']);
+    await expect(
+      facade.service.archiveResponsesForSubscriptionScope(prisma as never, 'person-1', subscriptionScope),
+    ).resolves.toEqual(['response-1']);
+    await expect(facade.service.emitResultsDeltas(['form-1'])).resolves.toBeUndefined();
+    await expect(
+      facade.service.getCurrentUserResponse(context, { ...targetInput, formId: 'form-1' }),
+    ).resolves.toBe(facade.response);
+    await expect(facade.service.getAdminExportResults(authenticatedUser, 'form-1')).resolves.toBe(facade.resultsModel);
+    await expect(facade.service.getResults('form-1')).resolves.toBe(facade.resultsModel);
+    await expect(facade.service.getLecturerResults(context, 'form-1', 'event-1')).resolves.toBe(facade.resultsModel);
+    await expect(facade.service.listLecturerForms(context, 'event-1')).resolves.toEqual(facade.forms);
+    await expect(firstValueFrom(facade.service.watchResults('form-1'))).resolves.toBe(facade.message);
+    await expect(facade.service.exportAdminResultsCsv(authenticatedUser, 'form-1')).resolves.toBe('csv');
+    await expect(facade.service.publishDueScheduledForms()).resolves.toBe(2);
+    await expect(facade.service.notifyDueAvailableLinks()).resolves.toBe(3);
+
+    expect(facade.listings.listAdminForms).toHaveBeenCalledWith(authenticatedUser, {});
+    expect(facade.listings.listFormsForTarget).toHaveBeenCalledWith(targetInput, {});
+    expect(facade.responses.archiveResponsesForSubscriptionScope).toHaveBeenCalledWith(
+      prisma,
+      'person-1',
+      subscriptionScope,
+      expect.any(Date),
+    );
+    expect(facade.results.getResults).toHaveBeenCalledWith('form-1', 'admin', {});
+  });
+
+  it('checks live result access before subscribing and before each emitted result event', async () => {
+    const facade = createFacadeService();
+    const targetInput = {
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+      formId: 'form-1',
+    };
+
+    await expect(firstValueFrom(facade.service.watchCurrentUserResults(context, targetInput))).resolves.toBe(
+      facade.message,
+    );
+
+    expect(facade.results.assertCurrentUserLiveResultsAccess).toHaveBeenCalledTimes(2);
+    expect(facade.results.assertCurrentUserLiveResultsAccess).toHaveBeenNthCalledWith(1, context, targetInput);
+    expect(facade.results.assertCurrentUserLiveResultsAccess).toHaveBeenNthCalledWith(2, context, targetInput);
+    expect(facade.resultEvents.watchResults).toHaveBeenCalledWith('form-1');
+  });
+
   it('requires the event link opt-in before lecturers can publish manually', async () => {
     prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1' });
     prisma.eventForm.findFirst.mockResolvedValue(formRecord({ allowLecturerManualPublish: false }));
@@ -139,6 +217,41 @@ describe('EventFormsService', () => {
         }),
       }),
     );
+  });
+
+  it('rejects lecturer publication when the opted-in form is not exclusive to the event', async () => {
+    const form = formRecord({
+      allowLecturerManualPublish: true,
+      ownerEventId: 'event-1',
+      links: [
+        linkRecord({ id: 'link-1', allowLecturerManualPublish: true }),
+        linkRecord({ id: 'link-2', eventId: 'event-2', allowLecturerManualPublish: true }),
+      ],
+    });
+    prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1' });
+    prisma.eventForm.findFirst.mockResolvedValue(form);
+
+    await expect(service.publishLecturerForm(context, 'form-1', 'event-1')).rejects.toThrow(
+      'Publicação por ministrantes só está disponível para formulários exclusivos deste evento.',
+    );
+
+    expect(prisma.eventForm.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects lecturer publication when the form is not linked to the event', async () => {
+    const form = formRecord({
+      allowLecturerManualPublish: true,
+      ownerEventId: 'event-1',
+      links: [linkRecord({ id: 'link-1', eventId: 'event-2', allowLecturerManualPublish: true })],
+    });
+    prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1' });
+    prisma.eventForm.findFirst.mockResolvedValue(form);
+
+    await expect(service.publishLecturerForm(context, 'form-1', 'event-1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    expect(prisma.eventForm.updateMany).not.toHaveBeenCalled();
   });
 
   it('does not expose non-public results through the current-user public results path', async () => {
@@ -381,6 +494,121 @@ describe('EventFormsService', () => {
         actor: authenticatedUser,
       }),
       prisma,
+    );
+  });
+
+  it('schedules future form publication and records an audit entry', async () => {
+    const scheduledPublishAt = new Date('2100-07-01T12:00:00.000Z');
+    const form = formRecord({ ownerEventId: 'event-1' });
+    const scheduled = {
+      ...form,
+      publicationState: PublicationState.SCHEDULED,
+      scheduledPublishAt,
+      publicationScheduledBy: authenticatedUser.sub,
+      publicationUpdatedBy: authenticatedUser.sub,
+      unpublishedAt: null,
+    };
+    prisma.eventForm.findFirst.mockResolvedValue(form);
+    prisma.eventForm.update.mockResolvedValue(scheduled);
+
+    const result = await service.publishForm('form-1', scheduledPublishAt, authenticatedUser);
+
+    expect(result.publicationState).toBe(PublicationState.SCHEDULED);
+    expect(prisma.eventForm.update).toHaveBeenCalledWith({
+      where: { id: 'form-1' },
+      data: {
+        publicationState: PublicationState.SCHEDULED,
+        scheduledPublishAt,
+        publicationScheduledBy: authenticatedUser.sub,
+        publicationUpdatedBy: authenticatedUser.sub,
+        unpublishedAt: null,
+      },
+      include: expect.any(Object),
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.EVENT_FORM,
+        entityId: 'form-1',
+        operation: AuditLogOperation.UPDATE,
+        actor: authenticatedUser,
+      }),
+      prisma,
+    );
+    expect(prisma.eventForm.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('unpublishes forms after publish permission and linked target checks', async () => {
+    const form = formRecord({
+      ownerMajorEventId: 'major-1',
+      links: [
+        linkRecord({ id: 'link-1', targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-1' }),
+      ],
+    });
+    const unpublished = {
+      ...form,
+      publicationState: PublicationState.UNPUBLISHED,
+      scheduledPublishAt: null,
+      unpublishedAt: new Date('2026-07-01T12:00:00.000Z'),
+      publicationUpdatedBy: authenticatedUser.sub,
+    };
+    prisma.eventForm.findFirst.mockResolvedValue(form);
+    prisma.eventForm.update.mockResolvedValue(unpublished);
+
+    const result = await service.unpublishForm('form-1', authenticatedUser);
+
+    expect(result.publicationState).toBe(PublicationState.UNPUBLISHED);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      authenticatedUser,
+      [Permission.EventForm.Publish],
+      { eventFormId: 'form-1' },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      authenticatedUser,
+      [Permission.EventForm.Publish],
+      { majorEventId: 'major-1' },
+    );
+    expect(prisma.eventForm.update).toHaveBeenCalledWith({
+      where: { id: 'form-1' },
+      data: expect.objectContaining({
+        publicationState: PublicationState.UNPUBLISHED,
+        scheduledPublishAt: null,
+        publicationUpdatedBy: authenticatedUser.sub,
+      }),
+      include: expect.any(Object),
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: AuditLogEntityType.EVENT_FORM,
+        entityId: 'form-1',
+        operation: AuditLogOperation.UPDATE,
+        actor: authenticatedUser,
+      }),
+      prisma,
+    );
+  });
+
+  it('runs scheduled publication and available-link notification sweeps', async () => {
+    prisma.eventForm.findMany.mockResolvedValue([]);
+
+    await expect(service.publishDueScheduledForms()).resolves.toBe(0);
+    await expect(service.notifyDueAvailableLinks()).resolves.toBe(0);
+
+    expect(prisma.eventForm.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          publicationState: PublicationState.SCHEDULED,
+        }),
+        take: 100,
+      }),
+    );
+    expect(prisma.eventForm.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          publicationState: PublicationState.PUBLISHED,
+        }),
+        include: expect.any(Object),
+        take: 100,
+      }),
     );
   });
 
@@ -1305,6 +1533,80 @@ function createNotifications() {
 function createAuditLog() {
   return {
     record: jest.fn(),
+  };
+}
+
+function createFacadeService() {
+  const form = formRecord();
+  const forms = [form];
+  const drafts = [{ id: 'draft-1' }];
+  const draft = drafts[0];
+  const response = responseRecord();
+  const resultsModel = { form, responses: [], responseCount: 0 };
+  const message = { data: { formId: 'form-1', responseCount: 1 } } as MessageEvent;
+  const listings = {
+    listAdminForms: jest.fn().mockResolvedValue(forms),
+    getAdminForm: jest.fn().mockResolvedValue(form),
+    listFormsForTarget: jest.fn().mockResolvedValue(forms),
+    listCurrentUserForms: jest.fn().mockResolvedValue(forms),
+    listLecturerForms: jest.fn().mockResolvedValue(forms),
+  };
+  const editor = {
+    saveForm: jest.fn().mockResolvedValue(form),
+    saveDraft: jest.fn().mockResolvedValue(draft),
+    listDrafts: jest.fn().mockResolvedValue(drafts),
+    deleteForm: jest.fn().mockResolvedValue(form),
+  };
+  const publication = {
+    publishForm: jest.fn().mockResolvedValue(form),
+    publishLecturerForm: jest.fn().mockResolvedValue(form),
+    unpublishForm: jest.fn().mockResolvedValue(form),
+    publishDueScheduledForms: jest.fn().mockResolvedValue(2),
+    notifyDueAvailableLinks: jest.fn().mockResolvedValue(3),
+  };
+  const responses = {
+    submitCurrentUserResponse: jest.fn().mockResolvedValue(response),
+    submitSubscriptionFlowResponses: jest.fn().mockResolvedValue(['form-1']),
+    archiveResponsesForSubscriptionScope: jest.fn().mockResolvedValue(['response-1']),
+    getCurrentUserResponse: jest.fn().mockResolvedValue(response),
+  };
+  const results = {
+    getCurrentUserResults: jest.fn().mockResolvedValue(resultsModel),
+    getAdminResults: jest.fn().mockResolvedValue(resultsModel),
+    getAdminExportResults: jest.fn().mockResolvedValue(resultsModel),
+    getResults: jest.fn().mockResolvedValue(resultsModel),
+    getLecturerResults: jest.fn().mockResolvedValue(resultsModel),
+    assertCurrentUserLiveResultsAccess: jest.fn().mockResolvedValue(undefined),
+    exportResultsCsv: jest.fn().mockResolvedValue('csv'),
+    exportAdminResultsCsv: jest.fn().mockResolvedValue('csv'),
+  };
+  const resultEvents = {
+    emitResultsDeltas: jest.fn().mockResolvedValue(undefined),
+    watchResults: jest.fn(() => of(message)),
+  };
+
+  return {
+    service: new EventFormsService(
+      listings as unknown as EventFormListingsService,
+      editor as unknown as EventFormEditorService,
+      publication as unknown as EventFormPublicationWorkflowService,
+      responses as unknown as EventFormResponsesService,
+      results as unknown as EventFormResultsAccessService,
+      resultEvents as unknown as EventFormResultEventsService,
+    ),
+    listings,
+    editor,
+    publication,
+    responses,
+    results,
+    resultEvents,
+    form,
+    forms,
+    draft,
+    drafts,
+    response,
+    resultsModel,
+    message,
   };
 }
 

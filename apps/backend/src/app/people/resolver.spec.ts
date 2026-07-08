@@ -2,6 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Logger,
+  NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
@@ -117,6 +119,217 @@ describe('PeopleResolver', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('filters people by direct fields and SQL text search when Typesense is disabled', async () => {
+    const prisma = createPrisma();
+    const resolver = createResolver(prisma);
+    prisma.people.findMany.mockResolvedValueOnce([person()]);
+
+    await expect(
+      resolver.people(
+        ' Ana ',
+        'user-1',
+        'ana@example.com',
+        '555',
+        '123',
+        2,
+        3,
+      ),
+    ).resolves.toEqual([person()]);
+
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          userId: 'user-1',
+          email: { equals: 'ana@example.com', mode: 'insensitive' },
+          phone: { contains: '555', mode: 'insensitive' },
+          identityDocument: '123',
+          OR: [
+            { name: { contains: 'Ana', mode: 'insensitive' } },
+            { email: { contains: 'Ana', mode: 'insensitive' } },
+            { phone: { contains: 'Ana', mode: 'insensitive' } },
+            { identityDocument: { contains: 'Ana' } },
+            { academicId: { contains: 'Ana' } },
+          ],
+        },
+        skip: 2,
+        take: 3,
+      }),
+    );
+  });
+
+  it('uses Typesense rank for people search pagination when no scoped filters are active', async () => {
+    const prisma = createPrisma();
+    const typesenseSearch = createTypesenseSearch();
+    typesenseSearch.isEnabled.mockReturnValue(true);
+    typesenseSearch.searchPeople.mockResolvedValue({
+      available: true,
+      ids: ['person-2', 'person-1', 'person-3'],
+    });
+    prisma.people.findMany.mockResolvedValueOnce([
+      person({ id: 'person-3', name: 'Carlos' }),
+      person({ id: 'person-1', name: 'Ana' }),
+      person({ id: 'person-2', name: 'Bruno' }),
+    ]);
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), { typesenseSearch });
+
+    await expect(
+      resolver.people('Ana', undefined, undefined, undefined, undefined, 1, 1),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: 'person-1',
+      }),
+    ]);
+
+    expect(typesenseSearch.searchPeople).toHaveBeenCalledWith('Ana', 2);
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: ['person-2', 'person-1', 'person-3'] },
+        }),
+        skip: 0,
+        take: 3,
+      }),
+    );
+  });
+
+  it('returns an empty page without querying SQL when Typesense finds no people', async () => {
+    const prisma = createPrisma();
+    const typesenseSearch = createTypesenseSearch();
+    typesenseSearch.isEnabled.mockReturnValue(true);
+    typesenseSearch.searchPeople.mockResolvedValue({ available: true, ids: [] });
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), { typesenseSearch });
+
+    await expect(resolver.people('nobody', undefined, undefined, undefined, undefined, 0, 10)).resolves.toEqual([]);
+
+    expect(prisma.people.findMany).not.toHaveBeenCalled();
+  });
+
+  it('falls back to SQL text search when Typesense is unavailable', async () => {
+    const prisma = createPrisma();
+    const typesenseSearch = createTypesenseSearch();
+    typesenseSearch.isEnabled.mockReturnValue(true);
+    typesenseSearch.searchPeople.mockResolvedValue({ available: false, ids: [] });
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), { typesenseSearch });
+
+    await resolver.people('Ana', undefined, undefined, undefined, undefined, 0, 10);
+
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            { name: { contains: 'Ana', mode: 'insensitive' } },
+            { email: { contains: 'Ana', mode: 'insensitive' } },
+            { phone: { contains: 'Ana', mode: 'insensitive' } },
+            { identityDocument: { contains: 'Ana' } },
+            { academicId: { contains: 'Ana' } },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it('loads a single person or throws when it is missing', async () => {
+    const resolver = createResolver(createPrisma());
+
+    await expect(resolver.person('person-1')).resolves.toEqual(expect.objectContaining({ id: 'person-1' }));
+    await expect(resolver.person('missing-person')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('marks linked-data summaries as non-deletable when delete permission is absent', async () => {
+    const prisma = createPrisma();
+    const authorizationPolicy = createAuthorizationPolicy();
+    authorizationPolicy.evaluatePermissions.mockResolvedValueOnce([]);
+    const resolver = createResolver(prisma, authorizationPolicy);
+    prisma.people.findFirst.mockResolvedValueOnce({ id: 'person-1', userId: null, mergedIntoId: null });
+
+    await expect(resolver.personLinkedDataSummary('person-1', userContext())).resolves.toEqual(
+      expect.objectContaining({
+        hasLinkedData: false,
+        canDelete: false,
+      }),
+    );
+  });
+
+  it('creates people through a transaction and synchronizes audit and search documents', async () => {
+    const prisma = createPrisma();
+    const auditLog = createAuditLog();
+    const typesenseSearch = createTypesenseSearch();
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), { auditLog, typesenseSearch });
+    const created = person({
+      id: 'created-person',
+      email: 'ana@example.com',
+      phone: '555',
+      identityDocument: '123',
+      academicId: 'RA123',
+      userId: 'user-1',
+    });
+    prisma.people.create.mockResolvedValueOnce(created);
+    prisma.people.findUniqueOrThrow.mockResolvedValueOnce(created);
+
+    await expect(
+      resolver.createPerson(
+        {
+          id: 'created-person',
+          name: 'Ana Clara',
+          email: 'ana@example.com',
+          secondaryEmails: ['ana.alt@example.com'],
+          phone: '555',
+          identityDocument: '123',
+          academicId: 'RA123',
+          userId: 'user-1',
+        },
+        userContext(),
+      ),
+    ).resolves.toEqual(created);
+
+    expect(prisma.people.create).toHaveBeenCalledWith({
+      data: {
+        id: 'created-person',
+        name: 'Ana Clara',
+        email: 'ana@example.com',
+        secondaryEmails: ['ana.alt@example.com'],
+        phone: '555',
+        identityDocument: '123',
+        academicId: 'RA123',
+        userId: 'user-1',
+      },
+      include: { user: true, lecturerProfile: true },
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'created-person',
+        operation: 'CREATE',
+        summary: 'Pessoa criada.',
+      }),
+      prisma,
+    );
+    expect(typesenseSearch.upsertPerson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'created-person',
+        email: 'ana@example.com',
+        identityDocument: '123',
+      }),
+    );
+  });
+
+  it('rejects people without identity, email, or name and rejects duplicate identities', async () => {
+    const prisma = createPrisma();
+    const resolver = createResolver(prisma);
+
+    await expect(resolver.createPerson({}, userContext())).rejects.toBeInstanceOf(UnprocessableEntityException);
+
+    prisma.people.findFirst.mockResolvedValueOnce({
+      id: 'duplicate-person',
+      name: 'Ana Clara',
+      email: 'ana@example.com',
+      identityDocument: null,
+    });
+    await expect(resolver.createPerson({ name: 'Ana Clara' }, userContext())).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
   it('rejects merge-managed fields on person creation outside merge operations', async () => {
     const prisma = createPrisma();
     const resolver = createResolver(prisma);
@@ -142,6 +355,87 @@ describe('PeopleResolver', () => {
       ),
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(prisma.people.update).not.toHaveBeenCalled();
+  });
+
+  it('updates people and refreshes issued certificates when certificate identity changes', async () => {
+    const prisma = createPrisma();
+    const auditLog = createAuditLog();
+    const certificateIssuingService = createCertificateIssuingService();
+    const typesenseSearch = createTypesenseSearch();
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), {
+      auditLog,
+      certificateIssuingService,
+      typesenseSearch,
+    });
+    const existing = person({ identityDocument: 'old-id' });
+    const updated = person({ identityDocument: 'new-id' });
+    prisma.people.findFirst.mockResolvedValueOnce(existing).mockResolvedValueOnce(null);
+    prisma.people.update.mockResolvedValueOnce(updated);
+    prisma.people.findUniqueOrThrow.mockResolvedValueOnce(updated);
+
+    await expect(
+      resolver.updatePerson('person-1', { identityDocument: 'new-id', phone: '555' }, requestContext()),
+    ).resolves.toEqual(updated);
+
+    expect(prisma.people.update).toHaveBeenCalledWith({
+      where: { id: 'person-1', deletedAt: null },
+      data: {
+        phone: '555',
+        identityDocument: 'new-id',
+      },
+      include: { user: true, lecturerProfile: true },
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'UPDATE',
+        actor: requestContext().request.user,
+        before: existing,
+        after: updated,
+      }),
+      prisma,
+    );
+    expect(typesenseSearch.upsertPerson).toHaveBeenCalledWith(expect.objectContaining({ identityDocument: 'new-id' }));
+    expect(certificateIssuingService.refreshIssuedCertificatesForPerson).toHaveBeenCalledWith('person-1');
+  });
+
+  it('continues updates when certificate refresh fails after the person is saved', async () => {
+    const prisma = createPrisma();
+    const certificateIssuingService = createCertificateIssuingService();
+    certificateIssuingService.refreshIssuedCertificatesForPerson.mockRejectedValueOnce(new Error('refresh failed'));
+    const loggerError = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), { certificateIssuingService });
+    const updated = person({ name: 'Ana Atualizada' });
+    prisma.people.findFirst.mockResolvedValueOnce(person()).mockResolvedValueOnce(null);
+    prisma.people.update.mockResolvedValueOnce(updated);
+    prisma.people.findUniqueOrThrow.mockResolvedValueOnce(updated);
+
+    try {
+      await expect(resolver.updatePerson('person-1', { name: 'Ana Atualizada' }, userContext())).resolves.toEqual(
+        updated,
+      );
+
+      expect(loggerError).toHaveBeenCalledWith(
+        'Failed to refresh certificates after admin update for person person-1.',
+        expect.stringContaining('refresh failed'),
+      );
+    } finally {
+      loggerError.mockRestore();
+    }
+  });
+
+  it('rejects updates for missing people and externally managed field changes', async () => {
+    const prisma = createPrisma();
+    const resolver = createResolver(prisma);
+
+    prisma.people.findFirst.mockResolvedValueOnce(null);
+    await expect(resolver.updatePerson('missing-person', { name: 'Ana' }, userContext())).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    prisma.people.findFirst.mockResolvedValueOnce(person({ userId: 'user-1' }));
+    await expect(
+      resolver.updatePerson('person-1', { email: 'changed@example.com' }, userContext()),
+    ).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
   it('lists event lecturer links as person linked data', async () => {
@@ -218,9 +512,23 @@ describe('PeopleResolver', () => {
     expect(prisma.eventAttendance.findMany).not.toHaveBeenCalled();
   });
 
+  it('throws when deleting a missing person', async () => {
+    const prisma = createPrisma();
+    const typesenseSearch = createTypesenseSearch();
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), { typesenseSearch });
+    prisma.people.findFirst.mockResolvedValueOnce(null);
+
+    await expect(resolver.deletePerson('missing-person', userContext())).rejects.toBeInstanceOf(NotFoundException);
+
+    expect(prisma.people.update).not.toHaveBeenCalled();
+    expect(typesenseSearch.deletePerson).not.toHaveBeenCalled();
+  });
+
   it('allows deleting people without linked app resources', async () => {
     const prisma = createPrisma();
-    const resolver = createResolver(prisma);
+    const auditLog = createAuditLog();
+    const typesenseSearch = createTypesenseSearch();
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), { auditLog, typesenseSearch });
 
     await expect(resolver.deletePerson('person-1', {})).resolves.toEqual({
       deleted: true,
@@ -230,24 +538,56 @@ describe('PeopleResolver', () => {
       where: { id: 'person-1', deletedAt: null },
       data: { deletedAt: expect.any(Date) },
     });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'person-1',
+        operation: 'DELETE',
+        summary: 'Pessoa excluída.',
+        force: true,
+      }),
+      prisma,
+    );
+    expect(typesenseSearch.deletePerson).toHaveBeenCalledWith('person-1');
   });
 });
 
 function createResolver(
   prisma: ReturnType<typeof createPrisma>,
   authorizationPolicy = createAuthorizationPolicy(),
+  dependencies: Partial<{
+    auditLog: ReturnType<typeof createAuditLog>;
+    certificateIssuingService: ReturnType<typeof createCertificateIssuingService>;
+    typesenseSearch: ReturnType<typeof createTypesenseSearch>;
+  }> = {},
 ): PeopleResolver {
   return new PeopleResolver(
     prisma as never,
-    {
-      isEnabled: jest.fn().mockReturnValue(false),
-      deletePerson: jest.fn().mockResolvedValue(undefined),
-      upsertPerson: jest.fn().mockResolvedValue(undefined),
-    } as never,
-    { refreshIssuedCertificatesForPerson: jest.fn() } as never,
-    { record: jest.fn().mockResolvedValue(undefined) } as never,
+    (dependencies.typesenseSearch ?? createTypesenseSearch()) as never,
+    (dependencies.certificateIssuingService ?? createCertificateIssuingService()) as never,
+    (dependencies.auditLog ?? createAuditLog()) as never,
     authorizationPolicy as never,
   );
+}
+
+function createTypesenseSearch() {
+  return {
+    isEnabled: jest.fn().mockReturnValue(false),
+    searchPeople: jest.fn().mockResolvedValue({ available: false, ids: [] }),
+    deletePerson: jest.fn().mockResolvedValue(undefined),
+    upsertPerson: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
+function createCertificateIssuingService() {
+  return {
+    refreshIssuedCertificatesForPerson: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
+function createAuditLog() {
+  return {
+    record: jest.fn().mockResolvedValue(undefined),
+  };
 }
 
 function createAuthorizationPolicy() {
@@ -272,6 +612,7 @@ function createPrisma() {
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
       create: jest.fn(),
+      findUniqueOrThrow: jest.fn().mockResolvedValue(person()),
       update: jest.fn().mockResolvedValue(person({ deletedAt: new Date('2026-06-21T12:00:00.000Z') })),
     },
     certificate: linkedModel(),
@@ -303,7 +644,29 @@ function userContext() {
   };
 }
 
-function person(overrides: Partial<{ deletedAt: Date | null }> = {}) {
+function requestContext() {
+  return {
+    request: userContext().req,
+  };
+}
+
+function person(overrides: Partial<{
+  id: string;
+  name: string;
+  email: string | null;
+  secondaryEmails: string[];
+  phone: string | null;
+  identityDocument: string | null;
+  academicId: string | null;
+  userId: string | null;
+  mergedIntoId: string | null;
+  externalRef: string | null;
+  deletedAt: Date | null;
+  createdById: string | null;
+  updatedById: string | null;
+  user: unknown;
+  mergedInto: unknown;
+}> = {}) {
   return {
     id: 'person-1',
     name: 'Ana Clara',

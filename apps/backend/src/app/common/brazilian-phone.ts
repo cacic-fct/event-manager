@@ -19,10 +19,6 @@ export function getBrazilianPhoneCandidates(value: string): string[] {
 }
 
 function addBrazilianPhoneDisplayCandidates(candidates: Set<string>, withoutCountry: string): void {
-  if (withoutCountry.length !== 10 && withoutCountry.length !== 11) {
-    return;
-  }
-
   const areaCode = withoutCountry.slice(0, 2);
   const localNumber = withoutCountry.slice(2);
   const prefixLength = localNumber.length === 9 ? 5 : 4;

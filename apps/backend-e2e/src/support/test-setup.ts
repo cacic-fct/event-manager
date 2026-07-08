@@ -27,6 +27,7 @@ afterAll(async () => {
 
 function ensureBackendE2eEnvironment(): void {
   process.env['NODE_ENV'] ??= 'test';
+  process.env['BACKEND_E2E_IN_MEMORY_INFRA'] ??= 'true';
   process.env['DATABASE_URL'] ??= 'postgresql://postgres:postgres@localhost:5432/fct_app_test';
   process.env['REDIS_URL'] ??= 'redis://localhost:6379';
 }

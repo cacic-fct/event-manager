@@ -19,6 +19,8 @@ describe('calendar feed keys', () => {
     const feedKey = deriveFeedKey('nonce-1', pepper);
 
     expect(feedKey).toBe(deriveStoredFeedKey('nonce-1', pepper));
+    expect(deriveStoredFeedKey(null, pepper)).toBeUndefined();
+    expect(deriveStoredFeedKey(undefined, pepper)).toBeUndefined();
     expect(feedKey).toBe(deriveFeedKey('nonce-1', pepper));
     expect(feedKey).not.toBe(deriveFeedKey('nonce-2', pepper));
     expect(hashFeedKey(feedKey, pepper)).toBe(hashFeedKey(feedKey, pepper));
@@ -33,6 +35,16 @@ describe('calendar feed keys', () => {
     );
     expect(() => assertFeedKeyRotationAllowed(new Date('2026-06-22T11:00:00.000Z'), now)).not.toThrow();
     expect(() => assertFeedKeyRotationAllowed(null, now)).not.toThrow();
+  });
+
+  it('reads the configured pepper after trimming surrounding whitespace', () => {
+    process.env = {
+      ...originalEnv,
+      CALENDAR_FEED_KEY_PEPPER: '  configured-calendar-pepper  ',
+      NODE_ENV: 'production',
+    };
+
+    expect(readCalendarFeedKeyPepper()).toBe('configured-calendar-pepper');
   });
 
   it('requires an explicit pepper in production', () => {

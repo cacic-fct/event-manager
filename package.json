@@ -41,7 +41,7 @@
     "@bwip-js/node": "^4.11.1",
     "@cacic-fct/account-manager-cookie-banner": "^0.1.1",
     "@cacic-fct/account-manager-m2m-contracts": "^0.1.2",
-    "@cacic-fct/account-manager-privacy": "^0.1.1",
+    "@cacic-fct/account-manager-privacy": "^0.1.3",
     "@cacic-fct/form-contracts": "^0.1.1",
     "@cacic-fct/ngx-umami": "^1.2.3",
     "@fontsource-variable/inter": "^5.2.8",

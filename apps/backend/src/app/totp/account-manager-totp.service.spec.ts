@@ -65,6 +65,36 @@ describe('AccountManagerTotpService', () => {
     );
   });
 
+  it('uses the default Account Manager origin and omits optional M2M credentials when config is absent', async () => {
+    const defaultConfiguredService = new AccountManagerTotpService(
+      createConfigService({}),
+      m2mTokens as unknown as KeycloakM2mTokenService,
+    );
+    mockedAxios.post.mockResolvedValue({
+      data: {
+        userId: 'user-1',
+        seed: 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP',
+      },
+    });
+
+    await defaultConfiguredService.relaySeed('user-1');
+
+    expect(m2mTokens.getClientCredentialsToken).toHaveBeenCalledWith({
+      audience: undefined,
+      clientId: undefined,
+      clientSecret: undefined,
+    });
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      new URL(M2M_TOTP_ROUTES.ensureSeed('user-1'), 'https://account.cacic.dev.br').toString(),
+      {},
+      {
+        headers: {
+          authorization: 'Bearer m2m-token',
+        },
+      },
+    );
+  });
+
   it('returns a service unavailable error when the relay fails', async () => {
     mockedAxios.isAxiosError.mockReturnValue(true);
     mockedAxios.post.mockRejectedValue({
@@ -72,6 +102,13 @@ describe('AccountManagerTotpService', () => {
         status: 503,
       },
     });
+
+    await expect(service.relaySeed('user-1')).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+
+  it('returns a service unavailable error when the relay fails before receiving an Axios response', async () => {
+    mockedAxios.isAxiosError.mockReturnValue(false);
+    mockedAxios.post.mockRejectedValue(new Error('network unavailable'));
 
     await expect(service.relaySeed('user-1')).rejects.toBeInstanceOf(ServiceUnavailableException);
   });

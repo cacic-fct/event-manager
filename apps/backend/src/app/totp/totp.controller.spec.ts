@@ -69,6 +69,19 @@ describe('TotpController', () => {
     expect(keycloakAuth.getSessionExpiration).toHaveBeenCalledWith('session id');
   });
 
+  it('skips unrelated cookie header fragments while reading the session cookie', async () => {
+    await controller.relayCurrentUserSeed({
+      user: {
+        sub: 'keycloak-subject',
+      },
+      headers: {
+        cookie: `other=value; malformed-cookie; ${AUTH_SESSION_COOKIE_NAME}=session%3Dwith%3Dequals`,
+      },
+    } as never);
+
+    expect(keycloakAuth.getSessionExpiration).toHaveBeenCalledWith('session=with=equals');
+  });
+
   it('rejects relay when the request is missing a user subject', async () => {
     await expect(
       controller.relayCurrentUserSeed({
@@ -80,6 +93,39 @@ describe('TotpController', () => {
       } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
 
+    expect(accountManagerTotp.relaySeed).not.toHaveBeenCalled();
+  });
+
+  it('rejects relay when the request has no session cookie source', async () => {
+    await expect(
+      controller.relayCurrentUserSeed({
+        user: {
+          sub: 'keycloak-subject',
+        },
+        headers: {},
+      } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(keycloakAuth.getSessionExpiration).not.toHaveBeenCalled();
+    expect(accountManagerTotp.relaySeed).not.toHaveBeenCalled();
+  });
+
+  it('rejects relay when the cookie header does not include the session cookie', async () => {
+    await expect(
+      controller.relayCurrentUserSeed({
+        user: {
+          sub: 'keycloak-subject',
+        },
+        cookies: {
+          [AUTH_SESSION_COOKIE_NAME]: false,
+        },
+        headers: {
+          cookie: 'other=value',
+        },
+      } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(keycloakAuth.getSessionExpiration).not.toHaveBeenCalled();
     expect(accountManagerTotp.relaySeed).not.toHaveBeenCalled();
   });
 

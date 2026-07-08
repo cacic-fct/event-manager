@@ -69,6 +69,85 @@ describe('createDocsAuthGate', () => {
     expect(response.redirect).not.toHaveBeenCalled();
   });
 
+  it('allows authenticated docs requests when the session id comes from the raw cookie header', async () => {
+    await runGate({
+      path: '/api/docs',
+      method: 'GET',
+      headers: {
+        cookie: `other=value; ${AUTH_SESSION_COOKIE_NAME}=session%3Dwith%3Dequals`,
+      },
+    });
+
+    expect(keycloakAuthService.authenticateSession).toHaveBeenCalledWith('session=with=equals');
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(response.redirect).not.toHaveBeenCalled();
+  });
+
+  it('ignores malformed and unrelated cookie header entries', async () => {
+    await runGate({
+      path: '/api/docs',
+      method: 'GET',
+      headers: {
+        cookie: `other=value; ${AUTH_SESSION_COOKIE_NAME}; another=value`,
+      },
+    });
+
+    expect(keycloakAuthService.authenticateSession).not.toHaveBeenCalled();
+    expect(response.redirect).toHaveBeenCalledWith('/api/auth/login/redirect?returnTo=%2Fapi%2Fdocs');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('does not gate non-docs root requests', async () => {
+    await runGate({
+      path: '/',
+      method: 'GET',
+    });
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(response.redirect).not.toHaveBeenCalled();
+    expect(keycloakAuthService.authenticateSession).not.toHaveBeenCalled();
+  });
+
+  it('uses request url when originalUrl is empty while redirecting', async () => {
+    await runGate({
+      path: '/api/docs',
+      method: 'GET',
+      originalUrl: '',
+      url: '/api/docs?source=url',
+    });
+
+    expect(response.redirect).toHaveBeenCalledWith('/api/auth/login/redirect?returnTo=%2Fapi%2Fdocs%3Fsource%3Durl');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the docs path when no original URL or request URL is available', async () => {
+    await runGate({
+      path: '/api/docs',
+      method: 'GET',
+      originalUrl: '',
+      url: '',
+    });
+
+    expect(response.redirect).toHaveBeenCalledWith('/api/auth/login/redirect?returnTo=%2Fapi%2Fdocs');
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('redirects authenticated docs requests when the session can no longer be authenticated', async () => {
+    keycloakAuthService.authenticateSession.mockRejectedValueOnce(new Error('expired session'));
+
+    await runGate({
+      path: '/api/docs',
+      method: 'GET',
+      cookies: {
+        [AUTH_SESSION_COOKIE_NAME]: 'expired-session',
+      },
+    });
+
+    expect(keycloakAuthService.authenticateSession).toHaveBeenCalledWith('expired-session');
+    expect(response.redirect).toHaveBeenCalledWith('/api/auth/login/redirect?returnTo=%2Fapi%2Fdocs');
+    expect(next).not.toHaveBeenCalled();
+  });
+
   it('does not gate GraphQL API posts', async () => {
     await runGate({
       path: '/api/graphql/',

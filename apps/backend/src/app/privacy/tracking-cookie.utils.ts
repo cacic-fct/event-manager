@@ -24,14 +24,6 @@ export function refreshCacicTrackingCookies(
   configService: ConfigService,
   input: TrackingCookieInput,
 ): CacicTrackingSessionResponse {
-  if (!input.analyticsAllowed) {
-    clearCacicTrackingCookies(response, configService);
-    return {
-      analyticsAllowed: false,
-      cookieBannerAccepted: input.cookieBannerAccepted,
-    };
-  }
-
   const expiresAt = new Date(Date.now() + TRACKING_COOKIE_MAX_AGE_MS);
   const baseOptions = resolveSharedCookieOptions(configService);
 
@@ -42,7 +34,7 @@ export function refreshCacicTrackingCookies(
   });
 
   const consentPayload: CacicAnalyticsConsentCookiePayload = {
-    analyticsAllowed: true,
+    analyticsAllowed: input.analyticsAllowed,
     cookieBannerAccepted: input.cookieBannerAccepted,
     identityAvailable: true,
     updatedAt: input.updatedAt.toISOString(),
@@ -56,7 +48,7 @@ export function refreshCacicTrackingCookies(
   });
 
   return {
-    analyticsAllowed: true,
+    analyticsAllowed: input.analyticsAllowed,
     cookieBannerAccepted: input.cookieBannerAccepted,
     expiresAt,
     userId: input.keycloakId,

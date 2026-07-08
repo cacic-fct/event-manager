@@ -68,4 +68,31 @@ describe('toPublicAuthenticatedUser', () => {
     expect('permissions' in result.claims).toBe(false);
     expect('custom_internal_claim' in result.claims).toBe(false);
   });
+
+  it('omits attributes when no public attribute keys are present', () => {
+    const result = toPublicAuthenticatedUser({
+      realm_access: {
+        roles: [],
+      },
+      token: 'raw-access-token',
+      roles: [],
+      roleSet: new Set(),
+      permissions: [],
+      permissionSet: new Set(),
+      oidcScopes: [],
+      oidcScopeSet: new Set(),
+      scopes: [],
+      scopeSet: new Set(),
+      claims: {
+        sub: 'user-1',
+        attributes: {
+          internal_note: 'hidden',
+        },
+      },
+    });
+
+    expect(result.claims).toEqual({
+      sub: 'user-1',
+    });
+  });
 });

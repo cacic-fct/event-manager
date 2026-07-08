@@ -1,4 +1,4 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { KeycloakM2mTokenService } from './keycloak-m2m-token.service';
@@ -24,6 +24,7 @@ describe('KeycloakM2mTokenService', () => {
 
   afterEach(() => {
     process.env = { ...originalEnv };
+    jest.restoreAllMocks();
     jest.useRealTimers();
   });
 
@@ -63,6 +64,33 @@ describe('KeycloakM2mTokenService', () => {
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 
+  it('uses configured production credentials with the default production realm URL', async () => {
+    process.env.NODE_ENV = 'production';
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        access_token: 'prod-token',
+        expires_in: 120,
+      },
+    });
+    const service = new KeycloakM2mTokenService(
+      createConfigService({
+        KEYCLOAK_M2M_CLIENT_ID: 'prod-client',
+        KEYCLOAK_M2M_CLIENT_SECRET: 'prod-secret',
+      }),
+    );
+
+    await expect(service.getClientCredentialsToken()).resolves.toBe('prod-token');
+
+    expect(mockedAxios.post).toHaveBeenCalledWith(
+      'https://sso.cacic.dev.br/realms/cacic-sso/protocol/openid-connect/token',
+      expect.any(String),
+      expect.any(Object),
+    );
+    const requestBody = new URLSearchParams(mockedAxios.post.mock.calls[0][1] as string);
+    expect(requestBody.get('client_id')).toBe('prod-client');
+    expect(requestBody.get('client_secret')).toBe('prod-secret');
+  });
+
   it('caches tokens per audience and scope until the refresh skew', async () => {
     process.env.NODE_ENV = 'test';
     mockedAxios.post.mockResolvedValueOnce({
@@ -98,6 +126,63 @@ describe('KeycloakM2mTokenService', () => {
     expect(requestBody.get('client_secret')).toBe('configured-secret');
     expect(requestBody.get('audience')).toBe('cacic-account-manager-audience');
     expect(requestBody.get('scope')).toBe('privacy:write');
+  });
+
+  it('refreshes cached tokens when they are inside the refresh skew window', async () => {
+    mockedAxios.post
+      .mockResolvedValueOnce({
+        data: {
+          access_token: 'first-token',
+          expires_in: 31,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          access_token: 'refreshed-token',
+          expires_in: 120,
+        },
+      });
+    const service = new KeycloakM2mTokenService(createConfigService({}));
+
+    await expect(service.getClientCredentialsToken({ scope: 'profile' })).resolves.toBe('first-token');
+
+    jest.advanceTimersByTime(1500);
+
+    await expect(service.getClientCredentialsToken({ scope: 'profile' })).resolves.toBe('refreshed-token');
+    expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects token responses without a usable access token', async () => {
+    mockedAxios.post.mockResolvedValueOnce({
+      data: {
+        access_token: '',
+        expires_in: 120,
+      },
+    });
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const service = new KeycloakM2mTokenService(createConfigService({}));
+
+    await expect(service.getClientCredentialsToken()).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('suppresses repeated Keycloak failure logs for the same failure window', async () => {
+    mockedAxios.post.mockRejectedValue(new Error('connect ECONNREFUSED'));
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    const service = new KeycloakM2mTokenService(createConfigService({}));
+
+    await expect(service.getClientCredentialsToken()).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(service.getClientCredentialsToken()).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(warn).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(60_001);
+
+    await expect(service.getClientCredentialsToken()).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls[1][0]).toContain('Suppressed 1 similar Keycloak failure log');
   });
 });
 

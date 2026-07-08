@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { CurrentUserEventSubscriptionsResolver } from './subscriptions.resolver';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 
@@ -195,4 +196,217 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       formResponses,
     );
   });
+
+  it('returns empty group and merged subscription lists when the current user has no person', async () => {
+    const { currentUserContext, eventSubscriptions, prisma, resolver } = createResolver();
+    currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: null });
+
+    await expect(resolver.currentUserEventGroupSubscriptions(context())).resolves.toEqual([]);
+    await expect(resolver.currentUserSubscribedItems(context())).resolves.toEqual([]);
+    await expect(resolver.currentUserEventGroupSubscription('group-1', context())).resolves.toBeNull();
+
+    expect(prisma.eventGroupSubscription.findMany).not.toHaveBeenCalled();
+    expect(eventSubscriptions.getCurrentUserSubscribedItems).not.toHaveBeenCalled();
+  });
+
+  it('maps current-user event and group subscriptions when records exist', async () => {
+    const { currentUserContext, eventSubscriptions, mapper, prisma, resolver } = createResolver();
+    const createdAt = new Date('2026-06-01T10:00:00.000Z');
+    const eventSubscription = {
+      eventId: 'event-1',
+      createdAt,
+    };
+    const groupSubscription = {
+      id: 'group-subscription-1',
+      eventGroupId: 'group-1',
+      createdAt,
+    };
+    const groupEvents = [{ id: 'event-1' }];
+    currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+    prisma.eventSubscription.findFirst.mockResolvedValue(eventSubscription);
+    prisma.eventGroupSubscription.findMany.mockResolvedValue([groupSubscription]);
+    prisma.eventGroupSubscription.findFirst.mockResolvedValue(groupSubscription);
+    eventSubscriptions.getSubscribedEventsByEventGroupSubscription.mockResolvedValue(
+      new Map([[groupSubscription.id, groupEvents]]),
+    );
+    mapper.mapCurrentUserEventSubscription.mockReturnValue({ eventId: 'event-1', createdAt });
+    mapper.mapCurrentUserEventGroupSubscription.mockReturnValue({ eventGroupId: 'group-1', createdAt });
+
+    await expect(resolver.currentUserEventSubscription('event-1', context())).resolves.toEqual({
+      eventId: 'event-1',
+      createdAt,
+    });
+    await expect(resolver.currentUserEventGroupSubscriptions(context())).resolves.toEqual([
+      {
+        eventGroupId: 'group-1',
+        createdAt,
+      },
+    ]);
+    await expect(resolver.currentUserEventGroupSubscription('group-1', context())).resolves.toEqual({
+      eventGroupId: 'group-1',
+      createdAt,
+    });
+
+    expect(mapper.mapCurrentUserEventSubscription).toHaveBeenCalledWith(eventSubscription);
+    expect(eventSubscriptions.getSubscribedEventsByEventGroupSubscription).toHaveBeenCalledWith('person-1', [
+      'group-subscription-1',
+    ]);
+    expect(mapper.mapCurrentUserEventGroupSubscription).toHaveBeenCalledWith(groupSubscription, groupEvents);
+  });
+
+  it('maps merged subscribed single-event and event-group items', async () => {
+    const { currentUserContext, eventSubscriptions, mapper, resolver } = createResolver();
+    const startDate = new Date('2026-06-01T10:00:00.000Z');
+    const singleItem = {
+      type: 'single' as const,
+      id: 'event-subscription-1',
+      event: { id: 'event-1' },
+      startDate,
+    };
+    const groupItem = {
+      type: 'group' as const,
+      id: 'group-subscription-1',
+      eventGroup: { id: 'group-1' },
+      events: [{ id: 'event-2' }],
+      startDate,
+    };
+    currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+    eventSubscriptions.getCurrentUserSubscribedItems.mockResolvedValue([singleItem, groupItem]);
+    mapper.mapSubscribedSingleEventItem.mockReturnValue({ event: { id: 'event-1' } });
+    mapper.mapPublicEventGroup.mockReturnValue({ id: 'group-1', name: 'Grupo' });
+    mapper.mapSubscribedEventGroupItem.mockReturnValue({ eventGroup: { id: 'group-1' } });
+
+    await expect(resolver.currentUserSubscribedItems(context())).resolves.toEqual([
+      { event: { id: 'event-1' } },
+      { eventGroup: { id: 'group-1' } },
+    ]);
+
+    expect(mapper.mapSubscribedSingleEventItem).toHaveBeenCalledWith(
+      'event-subscription-1',
+      singleItem.event,
+      startDate,
+    );
+    expect(mapper.mapPublicEventGroup).toHaveBeenCalledWith(groupItem.eventGroup);
+    expect(mapper.mapSubscribedEventGroupItem).toHaveBeenCalledWith(
+      'group-subscription-1',
+      { id: 'group-1', name: 'Grupo' },
+      groupItem.events,
+      startDate,
+    );
+  });
+
+  it('guards unsubscribe and event-group subscribe mutations with frozen-resource checks', async () => {
+    const { currentUserContext, eventSubscriptions, frozenResources: frozen, resolver } = createResolver();
+    currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    eventSubscriptions.unsubscribeCurrentUserEvent.mockResolvedValue({ id: 'event-1' });
+    eventSubscriptions.subscribeCurrentUserEventGroup.mockResolvedValue({ eventGroupId: 'group-1' });
+
+    await expect(resolver.unsubscribeCurrentUserStandaloneEvent('event-1', context())).resolves.toEqual({
+      id: 'event-1',
+    });
+    await expect(resolver.subscribeCurrentUserEventGroup('group-1', context())).resolves.toEqual({
+      eventGroupId: 'group-1',
+    });
+
+    expect(frozen.assertEventMutable).toHaveBeenCalledWith('event-1', { sub: 'user-1' }, 'delete');
+    expect(eventSubscriptions.unsubscribeCurrentUserEvent).toHaveBeenCalledWith(
+      'person-1',
+      'event-1',
+      { sub: 'user-1' },
+    );
+    expect(frozen.assertEventGroupMutable).toHaveBeenCalledWith('group-1', { sub: 'user-1' }, 'edit');
+    expect(eventSubscriptions.subscribeCurrentUserEventGroup).toHaveBeenCalledWith(
+      'person-1',
+      'group-1',
+      { sub: 'user-1' },
+    );
+  });
+
+  it('throws for missing major events and filters subscribable events when requested', async () => {
+    const { prisma, resolver } = createResolver();
+    prisma.majorEvent.findFirst.mockResolvedValueOnce(null);
+
+    await expect(resolver.eventsByMajorEventId('missing-major', true, context())).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+
+    prisma.majorEvent.findFirst.mockResolvedValueOnce({ id: 'major-1' });
+    prisma.event.findMany.mockResolvedValueOnce([{ id: 'event-1' }]);
+
+    await expect(resolver.eventsByMajorEventId('major-1', true, context())).resolves.toEqual([{ id: 'event-1' }]);
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith({
+      where: {
+        AND: [PUBLIC_EVENT_WHERE, { majorEventId: 'major-1' }],
+        allowSubscription: true,
+      },
+      select: expect.any(Object),
+      orderBy: {
+        startDate: 'asc',
+      },
+    });
+  });
 });
+
+function context() {
+  return { req: { user: { sub: 'user-1' } } } as never;
+}
+
+function createResolver() {
+  const prisma = {
+    event: {
+      findMany: jest.fn(),
+    },
+    eventSubscription: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
+    eventGroupSubscription: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
+    majorEvent: {
+      findFirst: jest.fn(),
+    },
+  };
+  const currentUserContext = {
+    getAuthenticatedUser: jest.fn().mockReturnValue({ sub: 'user-1' }),
+    requireCurrentPerson: jest.fn(),
+    resolveCurrentUserContext: jest.fn(),
+  };
+  const mapper = {
+    mapCurrentUserEventGroupSubscription: jest.fn(),
+    mapCurrentUserEventSubscription: jest.fn(),
+    mapPublicEvent: jest.fn(),
+    mapPublicEventGroup: jest.fn(),
+    mapSubscribedEventGroupItem: jest.fn(),
+    mapSubscribedSingleEventItem: jest.fn(),
+  };
+  const eventSubscriptions = {
+    getCurrentUserSubscribedItems: jest.fn(),
+    getSubscribedEventsByEventGroupSubscription: jest.fn(),
+    subscribeCurrentUserEventGroup: jest.fn(),
+    subscribeCurrentUserEvent: jest.fn(),
+    unsubscribeCurrentUserEvent: jest.fn(),
+  };
+  const localFrozenResources = {
+    assertEventMutable: jest.fn().mockResolvedValue(undefined),
+    assertEventGroupMutable: jest.fn().mockResolvedValue(undefined),
+  };
+  const resolver = new CurrentUserEventSubscriptionsResolver(
+    prisma as never,
+    currentUserContext as never,
+    mapper as never,
+    eventSubscriptions as never,
+    localFrozenResources as never,
+  );
+
+  return {
+    currentUserContext,
+    eventSubscriptions,
+    frozenResources: localFrozenResources,
+    mapper,
+    prisma,
+    resolver,
+  };
+}

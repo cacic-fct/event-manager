@@ -4,6 +4,7 @@ import {
   formatAuditValue,
   normalizeAuditSnapshot,
   parseAuditChanges,
+  readAuditSnapshot,
   toNullableAuditJsonInput,
 } from './audit-log.snapshots';
 
@@ -43,13 +44,28 @@ describe('audit log snapshot helpers', () => {
 
   it('formats stored changes and empty snapshots for GraphQL and Prisma', () => {
     expect(toNullableAuditJsonInput({})).toBe(Prisma.JsonNull);
+    expect(readAuditSnapshot(['invalid'])).toBeNull();
+    expect(formatAuditValue(42)).toBe('42');
+    expect(formatAuditValue(BigInt('9007199254740993'))).toBe('9007199254740993');
     expect(formatAuditValue([true, null, 'texto'])).toBe('Sim, vazio, texto');
-    expect(parseAuditChanges([{ field: 'name', before: 'Ana', after: 'Ana Clara' }, { label: 'invalid' }])).toEqual([
+    expect(
+      parseAuditChanges([
+        { field: 'name', label: 'Nome', before: 'Ana', after: 'Ana Clara' },
+        { field: 'email', before: null, after: 'ana@example.com' },
+        { label: 'invalid' },
+      ]),
+    ).toEqual([
       {
         field: 'name',
-        label: undefined,
+        label: 'Nome',
         before: 'Ana',
         after: 'Ana Clara',
+      },
+      {
+        field: 'email',
+        label: undefined,
+        before: null,
+        after: 'ana@example.com',
       },
     ]);
   });

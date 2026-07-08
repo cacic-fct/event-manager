@@ -81,6 +81,49 @@ describe('PlacePresetsResolver', () => {
     );
   });
 
+  it('returns no places without hitting Prisma when Typesense has no matches', async () => {
+    const prisma = createPrismaMock();
+    const typesenseSearch = createTypesenseMock({
+      searchPlacePresets: jest.fn().mockResolvedValue({
+        available: true,
+        ids: [],
+      }),
+    });
+    const resolver = new PlacePresetsResolver(prisma as never, createAuditLogMock() as never, typesenseSearch as never);
+
+    await expect(resolver.placePresets('sem resultado', 0, 10)).resolves.toEqual([]);
+
+    expect(typesenseSearch.searchPlacePresets).toHaveBeenCalledWith('sem resultado', 10);
+    expect(prisma.placePreset.findMany).not.toHaveBeenCalled();
+  });
+
+  it('falls back to SQL filtering when Typesense is enabled but unavailable', async () => {
+    const prisma = createPrismaMock();
+    const typesenseSearch = createTypesenseMock({
+      searchPlacePresets: jest.fn().mockResolvedValue({
+        available: false,
+        ids: [],
+      }),
+    });
+    const resolver = new PlacePresetsResolver(prisma as never, createAuditLogMock() as never, typesenseSearch as never);
+
+    await resolver.placePresets('auditório', 2, 5);
+
+    expect(prisma.placePreset.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          deletedAt: null,
+          OR: [
+            { name: { contains: 'auditório', mode: 'insensitive' } },
+            { locationDescription: { contains: 'auditório', mode: 'insensitive' } },
+          ],
+        },
+        skip: 2,
+        take: 5,
+      }),
+    );
+  });
+
   it('returns one active place and rejects missing places', async () => {
     const prisma = createPrismaMock();
     const resolver = new PlacePresetsResolver(prisma as never);
@@ -129,6 +172,25 @@ describe('PlacePresetsResolver', () => {
         scope: { permission: Permission.PlacePreset.Create },
       }),
       prisma,
+    );
+  });
+
+  it('supports default audit and search collaborators when creating a preset', async () => {
+    const prisma = createPrismaMock();
+    const resolver = new PlacePresetsResolver(prisma as never);
+
+    await expect(
+      resolver.createPlacePreset({
+        name: 'Sala sem integrações',
+        latitude: null,
+        longitude: null,
+        locationDescription: null,
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: 'place-1',
+        name: 'Sala sem integrações',
+      }),
     );
   });
 

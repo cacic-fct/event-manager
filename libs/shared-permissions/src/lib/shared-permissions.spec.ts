@@ -21,6 +21,47 @@ import {
   requiresGlobalPermissionGrantScope,
 } from './shared-permissions';
 
+const permissionScopeExpectations = [
+  ['read', 'Visualizar', 'visibility'],
+  ['create', 'Criar', 'add'],
+  ['update', 'Atualizar', 'edit'],
+  ['delete', 'Excluir', 'delete'],
+  ['collect', 'Coletar', 'fact_check'],
+  ['import', 'Importar', 'upload_file'],
+  ['approve', 'Aprovar', 'check_circle'],
+  ['reject', 'Rejeitar', 'cancel'],
+  ['undo', 'Desfazer', 'undo'],
+  ['issue', 'Emitir', 'workspace_premium'],
+  ['reissue', 'Reemitir', 'sync'],
+  ['merge', 'Mesclar', 'merge_type'],
+  ['scan', 'Buscar', 'search'],
+  ['publish', 'Publicar', 'campaign'],
+  ['results', 'Resultados', 'bar_chart'],
+  ['export', 'Exportar', 'download'],
+  ['custom-action', 'custom-action', 'help'],
+] as const;
+
+const permissionResourceExpectations = [
+  ['certificate', 'Certificado', 'workspace_premium'],
+  ['certificate-config', 'Configuração de certificado', 'workspace_premium'],
+  ['event', 'Evento', 'event'],
+  ['event-attendance', 'Presenças', 'fact_check'],
+  ['event-attendance-collector', 'Coletor de presença', 'fact_check'],
+  ['event-group', 'Grupo de eventos', 'folder'],
+  ['event-lecturer', 'Palestrante', 'record_voice_over'],
+  ['event-form', 'Formulário', 'list_alt'],
+  ['frozen', 'Dados congelados', 'lock'],
+  ['major-event', 'Grande evento', 'festival'],
+  ['merge-candidate', 'Pessoa duplicada', 'merge_type'],
+  ['person', 'Pessoa', 'person'],
+  ['permission-grant', 'Permissão do Event Manager', 'admin_panel_settings'],
+  ['place-preset', 'Local', 'place'],
+  ['receipt', 'Comprovante', 'receipt_long'],
+  ['subscription', 'Inscrição', 'how_to_reg'],
+  ['user', 'Usuário', 'account_circle'],
+  ['custom-resource', 'custom-resource', 'shield'],
+] as const;
+
 describe('shared permissions contract', () => {
   it('keeps catalog, scope rules, and barrel exports in sync', () => {
     expect(Permission.EventForm.Export).toBe('event-form#export');
@@ -101,6 +142,18 @@ describe('shared permissions contract', () => {
     expect(groups.find((group) => group.type === 'event-attendance')?.actions).toHaveLength(2);
   });
 
+  it('covers all stable permission formatting labels and icons', () => {
+    for (const [scope, label, icon] of permissionScopeExpectations) {
+      expect(getPermissionScopeLabel(scope)).toBe(label);
+      expect(getPermissionScopeIcon(scope)).toBe(icon);
+    }
+
+    for (const [resource, label, icon] of permissionResourceExpectations) {
+      expect(getPermissionResourceLabel(resource)).toBe(label);
+      expect(getPermissionResourceIcon(resource)).toBe(icon);
+    }
+  });
+
   it('documents included data and preset permission bundles', () => {
     expect(getPermissionIncludedData(Permission.Receipt.Read)).toEqual(
       expect.arrayContaining([
@@ -113,6 +166,8 @@ describe('shared permissions contract', () => {
     expect(getPermissionIncludedDataSummary(Permission.Certificate.Read)).toContain(
       'Dados limitados da pessoa certificada',
     );
+    expect(getPermissionIncludedData(Permission.Event.Read)).toEqual([]);
+    expect(getPermissionIncludedDataSummary(Permission.Event.Read)).toBe('');
 
     const peopleManager = EVENT_MANAGER_PERMISSION_PRESETS.find((preset) => preset.id === 'people-manager');
     expect(peopleManager).toEqual(
