@@ -5,6 +5,13 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:util"],
   "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/libs/shared-environment"],
+      "options": {
+        "command": "bunx vitest run --coverage --config libs/shared-environment/vitest.config.ts"
+      }
+    },
     "lint": {
       "inputs": [
         "default",

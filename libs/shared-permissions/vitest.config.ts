@@ -8,7 +8,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['lcov', 'text', 'json'],
-      reportsDirectory: '../../coverage/libs/shared-permissions',
+      reportsDirectory: 'coverage/libs/shared-permissions',
+      include: ['libs/shared-permissions/src/**/*.ts'],
       exclude: ['node_modules/', 'dist/', '**/*.spec.ts'],
     },
   },

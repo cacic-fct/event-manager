@@ -20,6 +20,13 @@
         "cwd": "dist/libs/event-manager-m2m-contracts",
         "command": "bun publish --access public"
       }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/libs/event-manager-m2m-contracts"],
+      "options": {
+        "command": "bunx vitest run --coverage --config libs/event-manager-m2m-contracts/vitest.config.ts"
+      }
     }
   }
 }

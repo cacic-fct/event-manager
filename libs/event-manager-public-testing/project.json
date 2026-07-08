@@ -5,5 +5,13 @@
   "sourceRoot": "libs/event-manager-public-testing/src",
   "projectType": "library",
   "tags": ["scope:shared", "type:testing"],
-  "targets": {}
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/libs/event-manager-public-testing"],
+      "options": {
+        "command": "bunx vitest run --coverage --config libs/event-manager-public-testing/vitest.config.ts"
+      }
+    }
+  }
 }

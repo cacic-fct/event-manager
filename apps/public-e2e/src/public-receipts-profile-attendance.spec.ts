@@ -53,7 +53,9 @@ test('lists current-user subscriptions, standalone certificates, and downloads t
 
   await expect(page.getByRole('heading', { name: 'Minhas participações' })).toBeVisible();
   await expect(page.getByText('SECOMPP Pago')).toBeVisible();
+  await expect(page.getByText('Aguardando envio de comprovante, Inscrito, Certificado emitido')).toBeVisible();
   await expect(page.getByText('Oficina pública')).toBeVisible();
+  await expect(page.getByText('Presença registrada às 01/08/2027, 11:30, Inscrito, Certificado emitido')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Certificados avulsos' })).toBeVisible();
   await expect(page.getByText('Atividades complementares')).toBeVisible();
 

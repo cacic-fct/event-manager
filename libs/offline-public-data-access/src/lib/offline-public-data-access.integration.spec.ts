@@ -3,12 +3,14 @@ import '@angular/compiler';
 import { EnvironmentInjector, PLATFORM_ID, createEnvironmentInjector, runInInjectionContext } from '@angular/core';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import Dexie from 'dexie';
+import { firstValueFrom } from 'rxjs';
 import { AttendanceOfflineQueueService } from './attendance-offline-queue.service';
-import type { OfflineAttendanceQueueItem } from './offline-public-data-schema';
+import type { OfflineAttendanceQueueItem, OfflineTotpSeedRecord } from './offline-public-data-schema';
 import { OfflinePublicDataDatabase } from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 import { CalendarOfflineDataService } from './calendar-offline-data.service';
 import { CalendarPreferencesStorageService } from './calendar-preferences-storage.service';
+import { TotpSeedCacheService } from './totp-seed-cache.service';
 import { OfflinePublicDataAccessService } from './public-offline-database';
 import { UserOfflineDataService } from './user-offline-data.service';
 
@@ -31,6 +33,7 @@ describe('offline public data access integration', () => {
       CalendarOfflineDataService,
       CalendarPreferencesStorageService,
       UserOfflineDataService,
+      TotpSeedCacheService,
       OfflinePublicDataAccessService,
     ], rootEnvironmentInjector);
   });
@@ -85,10 +88,12 @@ describe('offline public data access integration', () => {
     const service = injectService(CalendarPreferencesStorageService);
 
     await expect(service.getDefaultItemView()).resolves.toBe('automatic');
+    await expect(firstValueFrom(service.watchDefaultItemView())).resolves.toBe('automatic');
 
     await service.setDefaultItemView('week');
 
     await expect(service.getDefaultItemView()).resolves.toBe('week');
+    await expect(firstValueFrom(service.watchDefaultItemView())).resolves.toBe('week');
     await expect(database.calendarPreferences.get('calendar')).resolves.toEqual(
       expect.objectContaining({
         key: 'calendar',
@@ -96,6 +101,43 @@ describe('offline public data access integration', () => {
         updatedAt: expect.any(Number),
       }),
     );
+  });
+
+  it('watches queued attendance items sorted newest first while hiding in-flight syncs', async () => {
+    const service = injectService(AttendanceOfflineQueueService);
+    await database.attendanceQueue.bulkPut([
+      queueItem('newer-event-item', 'PENDING', {
+        eventId: 'event-1',
+        collectedAt: '2026-06-26T12:00:00.000Z',
+      }),
+      queueItem('older-event-item', 'FAILED', {
+        eventId: 'event-1',
+        collectedAt: '2026-06-26T09:00:00.000Z',
+      }),
+      queueItem('syncing-event-item', 'SYNCING', {
+        eventId: 'event-1',
+        collectedAt: '2026-06-26T13:00:00.000Z',
+      }),
+      queueItem('other-event-item', 'PENDING', {
+        eventId: 'event-2',
+        collectedAt: '2026-06-26T14:00:00.000Z',
+      }),
+      queueItem('other-user-item', 'PENDING', {
+        queuedByUserId: 'user-2',
+        eventId: 'event-1',
+        collectedAt: '2026-06-26T15:00:00.000Z',
+      }),
+    ]);
+
+    await expect(firstValueFrom(service.watchEventItems('user-1', 'event-1'))).resolves.toEqual([
+      expect.objectContaining({ clientId: 'newer-event-item' }),
+      expect.objectContaining({ clientId: 'older-event-item' }),
+    ]);
+    await expect(firstValueFrom(service.watchUnresolvedItems('user-1'))).resolves.toEqual([
+      expect.objectContaining({ clientId: 'other-event-item' }),
+      expect.objectContaining({ clientId: 'newer-event-item' }),
+      expect.objectContaining({ clientId: 'older-event-item' }),
+    ]);
   });
 
   it('resets interrupted syncs once, lists retryable items oldest first, and counts unresolved items', async () => {
@@ -152,6 +194,103 @@ describe('offline public data access integration', () => {
     );
   });
 
+  it('marks, retries, removes, and records failures only for the current user queue', async () => {
+    const service = injectService(AttendanceOfflineQueueService);
+    await database.attendanceQueue.bulkPut([
+      queueItem('pending', 'PENDING', { queuedAt: 300 }),
+      queueItem('failed', 'FAILED', { queuedAt: 100, attempts: 1, lastError: 'Falha anterior.' }),
+      queueItem('other-user', 'PENDING', { queuedByUserId: 'user-2', queuedAt: 50 }),
+    ]);
+
+    await service.markSyncing('user-1', ['pending', 'other-user']);
+    await expect(database.attendanceQueue.get('pending')).resolves.toEqual(
+      expect.objectContaining({
+        clientId: 'pending',
+        status: 'SYNCING',
+      }),
+    );
+    await expect(database.attendanceQueue.get('other-user')).resolves.toEqual(
+      expect.objectContaining({
+        clientId: 'other-user',
+        status: 'PENDING',
+      }),
+    );
+
+    await service.recordSyncFailure('user-1', ['pending', 'other-user'], 'Falha ao enviar presença.');
+    await expect(database.attendanceQueue.get('pending')).resolves.toEqual(
+      expect.objectContaining({
+        status: 'FAILED',
+        attempts: 1,
+        lastError: 'Falha ao enviar presença.',
+      }),
+    );
+    await expect(database.attendanceQueue.get('other-user')).resolves.toEqual(
+      expect.objectContaining({
+        queuedByUserId: 'user-2',
+        status: 'PENDING',
+        attempts: 0,
+      }),
+    );
+
+    await service.retry('user-1', 'failed');
+    await service.remove('user-1', 'pending');
+    await service.remove('user-1', 'other-user');
+
+    await expect(database.attendanceQueue.get('pending')).resolves.toBeUndefined();
+    await expect(database.attendanceQueue.get('failed')).resolves.toEqual(
+      expect.objectContaining({
+        status: 'PENDING',
+        lastError: null,
+      }),
+    );
+    await expect(database.attendanceQueue.get('other-user')).resolves.toEqual(
+      expect.objectContaining({
+        queuedByUserId: 'user-2',
+        status: 'PENDING',
+      }),
+    );
+  });
+
+  it('keeps commit cleanup and status messages aligned with server outcomes', async () => {
+    const service = injectService(AttendanceOfflineQueueService);
+    await database.attendanceQueue.bulkPut([
+      queueItem('duplicate', 'SYNCING'),
+      queueItem('conflict', 'SYNCING'),
+      queueItem('failed', 'SYNCING'),
+      queueItem('custom-message', 'SYNCING'),
+    ]);
+
+    await service.applyCommitResults('user-1', [
+      { clientId: 'duplicate', status: 'DUPLICATE' },
+      { clientId: 'conflict', status: 'CONFLICT' },
+      { clientId: 'failed', status: 'FAILED' },
+      { clientId: 'custom-message', status: 'FAILED', message: 'Código expirado.' },
+    ]);
+
+    await expect(database.attendanceQueue.get('duplicate')).resolves.toBeUndefined();
+    await expect(database.attendanceQueue.get('conflict')).resolves.toEqual(
+      expect.objectContaining({
+        status: 'CONFLICT',
+        attempts: 1,
+        lastError: 'Conflito encontrado. Revise antes de reenviar.',
+      }),
+    );
+    await expect(database.attendanceQueue.get('failed')).resolves.toEqual(
+      expect.objectContaining({
+        status: 'FAILED',
+        attempts: 1,
+        lastError: 'Não foi possível sincronizar.',
+      }),
+    );
+    await expect(database.attendanceQueue.get('custom-message')).resolves.toEqual(
+      expect.objectContaining({
+        status: 'FAILED',
+        attempts: 1,
+        lastError: 'Código expirado.',
+      }),
+    );
+  });
+
   it('stores user snapshots, attendance feeds, and attendance details through the facade', async () => {
     const service = injectService(OfflinePublicDataAccessService);
     const feed = {
@@ -203,6 +342,102 @@ describe('offline public data access integration', () => {
     await expect(service.getLatestUserSnapshot()).resolves.toBeNull();
     await expect(service.getAttendanceFeed('user-1')).resolves.toBeNull();
     await expect(service.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toBeNull();
+  });
+
+  it('returns safe fallback values when offline storage is unavailable', async () => {
+    const unavailableInjector = createEnvironmentInjector([
+      {
+        provide: OfflinePublicDatabaseProvider,
+        useValue: {
+          getDatabase: () => null,
+        },
+      },
+      AttendanceOfflineQueueService,
+      CalendarOfflineDataService,
+      CalendarPreferencesStorageService,
+      UserOfflineDataService,
+      TotpSeedCacheService,
+    ], rootEnvironmentInjector);
+
+    try {
+      const attendanceQueue = runInInjectionContext(unavailableInjector, () => new AttendanceOfflineQueueService());
+      const calendarData = runInInjectionContext(unavailableInjector, () => new CalendarOfflineDataService());
+      const calendarPreferences = runInInjectionContext(
+        unavailableInjector,
+        () => new CalendarPreferencesStorageService(),
+      );
+      const userData = runInInjectionContext(unavailableInjector, () => new UserOfflineDataService());
+      const totpSeeds = runInInjectionContext(unavailableInjector, () => new TotpSeedCacheService());
+
+      await expect(calendarData.getEvents('2026-01-01T00:00:00.000Z')).resolves.toEqual([]);
+      await expect(calendarData.getLastRefresh('calendarEvents')).resolves.toBeNull();
+      await expect(calendarData.upsertEvents([event('event-1', '2026-06-26T09:00:00.000Z')])).resolves.toBeUndefined();
+      await expect(calendarPreferences.getDefaultItemView()).resolves.toBe('automatic');
+      await expect(firstValueFrom(calendarPreferences.watchDefaultItemView())).resolves.toBe('automatic');
+      await expect(calendarPreferences.setDefaultItemView('list')).resolves.toBeUndefined();
+      await expect(attendanceQueue.getCollectionEvents('user-1')).resolves.toEqual([]);
+      await expect(attendanceQueue.getCollectionEvent('user-1', 'event-1')).resolves.toBeNull();
+      await expect(attendanceQueue.listPending('user-1')).resolves.toEqual([]);
+      await expect(attendanceQueue.countPending('user-1')).resolves.toBe(0);
+      await expect(attendanceQueue.countUnresolved('user-1')).resolves.toBe(0);
+      await expect(firstValueFrom(attendanceQueue.watchEventItems('user-1', 'event-1'))).resolves.toEqual([]);
+      await expect(firstValueFrom(attendanceQueue.watchUnresolvedItems('user-1'))).resolves.toEqual([]);
+      await expect(attendanceQueue.enqueue(queueItem('offline', 'PENDING'))).rejects.toThrow(
+        'Armazenamento off-line indisponível neste navegador.',
+      );
+      await expect(attendanceQueue.resetSyncing('user-1')).resolves.toBeUndefined();
+      await expect(attendanceQueue.recordSyncFailure('user-1', ['offline'], 'Falha')).resolves.toBeUndefined();
+      await expect(attendanceQueue.applyCommitResults('user-1', [])).resolves.toBeUndefined();
+      await expect(attendanceQueue.remove('user-1', 'offline')).resolves.toBeUndefined();
+      await expect(attendanceQueue.retry('user-1', 'offline')).resolves.toBeUndefined();
+      await expect(userData.getLatestUserSnapshot()).resolves.toBeNull();
+      await expect(userData.getAttendanceFeed('user-1')).resolves.toBeNull();
+      await expect(userData.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toBeNull();
+      await expect(userData.purgeUserData()).resolves.toBeUndefined();
+      await expect(totpSeeds.getSeed('user-1')).resolves.toBeNull();
+      await expect(totpSeeds.getLatestValidSeed()).resolves.toBeNull();
+      await expect(totpSeeds.replaceSeed(totpSeed('user-1'))).resolves.toBeUndefined();
+      await expect(totpSeeds.clearExpiredSeeds()).resolves.toBeUndefined();
+      await expect(totpSeeds.clearSeedsExcept('user-1')).resolves.toBeUndefined();
+      await expect(totpSeeds.clearSeeds()).resolves.toBeUndefined();
+    } finally {
+      unavailableInjector.destroy();
+    }
+  });
+
+  it('stores TOTP seeds, removes expired sessions, and keeps the latest valid seed', async () => {
+    const service = injectService(TotpSeedCacheService);
+
+    await service.replaceSeed(totpSeed('expired-user', { sessionExpiresAt: 999, updatedAt: 20 }));
+    await service.replaceSeed(totpSeed('older-user', { sessionExpiresAt: 2_000, updatedAt: 10 }));
+    await service.replaceSeed(totpSeed('latest-user', { sessionExpiresAt: 2_000, updatedAt: 30 }));
+
+    await expect(service.getSeed('expired-user', 1_000)).resolves.toBeNull();
+    await expect(database.totpSeeds.get('expired-user')).resolves.toBeUndefined();
+    await expect(service.getSeed('older-user', 1_000)).resolves.toEqual(totpSeed('older-user', {
+      sessionExpiresAt: 2_000,
+      updatedAt: 10,
+    }));
+    await expect(service.getLatestValidSeed(1_000)).resolves.toEqual(totpSeed('latest-user', {
+      sessionExpiresAt: 2_000,
+      updatedAt: 30,
+    }));
+
+    await service.replaceSeed(totpSeed('default-updated-at', { sessionExpiresAt: 2_000, updatedAt: 0 }));
+    await expect(database.totpSeeds.get('default-updated-at')).resolves.toEqual(
+      expect.objectContaining({
+        userId: 'default-updated-at',
+        updatedAt: expect.any(Number),
+      }),
+    );
+
+    await service.clearSeedsExcept('latest-user');
+    await expect(database.totpSeeds.toArray()).resolves.toEqual([
+      totpSeed('latest-user', { sessionExpiresAt: 2_000, updatedAt: 30 }),
+    ]);
+
+    await service.clearSeeds();
+    await expect(database.totpSeeds.count()).resolves.toBe(0);
   });
 
   it('keeps the database unavailable on the server and memoizes it in the browser', () => {
@@ -263,6 +498,24 @@ function queueItem(
     authorEmail: 'coletor@example.com',
     status,
     attempts: 0,
+    ...overrides,
+  };
+}
+
+function totpSeed(
+  userId: string,
+  overrides: Partial<OfflineTotpSeedRecord> = {},
+): OfflineTotpSeedRecord {
+  return {
+    userId,
+    primaryEmail: `${userId}@example.com`,
+    seed: `seed-${userId}`,
+    algorithm: 'SHA512',
+    digits: 6,
+    periodSeconds: 30,
+    serverTime: '2026-06-26T09:00:00.000Z',
+    sessionExpiresAt: 2_000,
+    updatedAt: 10,
     ...overrides,
   };
 }

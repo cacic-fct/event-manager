@@ -11,13 +11,13 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    environment: 'jsdom',
-    include: ['libs/shared-utils/src/**/*.spec.ts'],
+    environment: 'node',
+    include: ['libs/event-manager-public-testing/src/**/*.spec.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['lcov', 'text', 'json'],
-      reportsDirectory: 'coverage/libs/shared-utils',
-      include: ['libs/shared-utils/src/**/*.ts'],
+      reportsDirectory: 'coverage/libs/event-manager-public-testing',
+      include: ['libs/event-manager-public-testing/src/**/*.ts'],
       exclude: ['node_modules/', 'dist/', '**/*.spec.ts', '**/*.stories.ts'],
     },
   },

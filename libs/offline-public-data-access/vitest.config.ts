@@ -18,7 +18,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['lcov', 'text', 'json'],
-      reportsDirectory: '../../coverage/libs/offline-public-data-access',
+      reportsDirectory: 'coverage/libs/offline-public-data-access',
+      include: ['libs/offline-public-data-access/src/**/*.ts'],
       exclude: ['node_modules/', 'dist/', '**/*.spec.ts', '**/*.stories.ts'],
     },
   },
