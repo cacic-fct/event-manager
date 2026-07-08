@@ -50,6 +50,7 @@ export default defineConfig({
   use: {
     baseURL,
     serviceWorkers: 'block',
+    timezoneId: 'America/Sao_Paulo',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
