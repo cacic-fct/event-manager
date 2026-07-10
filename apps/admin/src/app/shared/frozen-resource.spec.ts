@@ -26,6 +26,7 @@ describe('frozen-resource', () => {
             endDate: '2026-05-10T12:00:00.000Z',
           },
         ],
+        now,
       ),
     ).toBe(false);
   });
@@ -43,6 +44,7 @@ describe('frozen-resource', () => {
             endDate: null,
           },
         ],
+        now,
       ),
     ).toBe(false);
   });

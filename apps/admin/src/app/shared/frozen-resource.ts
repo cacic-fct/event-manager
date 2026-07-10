@@ -31,6 +31,7 @@ export function isFrozenMajorEvent(
 export function isFrozenEventGroup(
   eventGroup: Pick<EventGroup, 'createdAt'> | null | undefined,
   events: Array<Pick<Event | EventSummary, 'eventGroupId'> & FreezeDates>,
+  now = new Date(),
 ): boolean {
   if (!eventGroup) {
     return false;
@@ -39,7 +40,7 @@ export function isFrozenEventGroup(
   return isFrozenFromDates([
     eventGroup.createdAt,
     ...events.flatMap((event) => [event.createdAt, event.endDate]),
-  ]);
+  ], now);
 }
 
 function toDate(date: string | Date | null | undefined): Date | null {
