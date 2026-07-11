@@ -1,6 +1,6 @@
 CREATE TYPE "PublicationState" AS ENUM ('DRAFT', 'SCHEDULED', 'PUBLISHED', 'UNPUBLISHED');
 
-CREATE TYPE "PublishContentPreviewTargetType" AS ENUM ('EVENT', 'EVENT_GROUP', 'MAJOR_EVENT');
+CREATE TYPE "PublicContentPreviewTargetType" AS ENUM ('EVENT', 'EVENT_GROUP', 'MAJOR_EVENT');
 
 ALTER TABLE "events"
   ADD COLUMN "publicationState" "PublicationState" NOT NULL DEFAULT 'DRAFT',
@@ -40,7 +40,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS "major_events_scheduledPublishAt_idx" ON
 CREATE TABLE "public_content_previews" (
   "id" TEXT NOT NULL,
   "previewTokenHash" TEXT NOT NULL,
-  "targetType" "PublishContentPreviewTargetType" NOT NULL,
+  "targetType" "PublicContentPreviewTargetType" NOT NULL,
   "targetId" TEXT NOT NULL,
   "targetLabel" TEXT NOT NULL,
   "previewAt" TIMESTAMP(3),
