@@ -5,7 +5,7 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import express from 'express';
-import { basename, dirname, extname, resolve } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appRoutes } from './app/app.routes';
 
@@ -46,6 +46,16 @@ const angularApp = new AngularNodeAppEngine({
 /**
  * Serve static files from /browser
  */
+app.use(
+  '/app/.well-known',
+  express.static(join(browserDistFolder, '.well-known'), {
+    dotfiles: 'allow',
+    index: false,
+    redirect: false,
+    maxAge: '1y',
+  }),
+);
+
 app.use(
   '/app',
   express.static(browserDistFolder, {
@@ -156,11 +166,7 @@ function addTurnstileSiteKeyMeta(html: string): string {
 }
 
 function escapeHtmlAttribute(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function validateServerEnvironment(): void {
