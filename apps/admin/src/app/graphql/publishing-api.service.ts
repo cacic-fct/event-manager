@@ -22,7 +22,7 @@ export interface PublicContentNode {
   children?: PublicContentNode[];
 }
 
-export interface PublicContentWorkspace {
+export interface PublishContentWorkspace {
   generatedAt: string;
   tree?: PublicContentNode[];
   items: PublicContentNode[];
@@ -41,7 +41,7 @@ export interface PublicationActionResult {
   affectedMajorEventIds: string[];
 }
 
-export interface PublicContentPreviewResult {
+export interface PublishContentPreviewResult {
   url: string;
   directPublicUrl: boolean;
   expiresAt?: string | null;
@@ -62,13 +62,13 @@ export interface PublicationBulkInput {
   scheduledPublishAt?: string | null;
 }
 
-export interface PublicContentPreviewInput {
+export interface PublishContentPreviewInput {
   targetType: PublicationTargetType;
   targetId: string;
   previewAt?: string | null;
 }
 
-export interface PublicContentWorkspaceFilters {
+export interface PublishContentWorkspaceFilters {
   query?: string | null;
   skip?: number;
   take?: number;
@@ -91,7 +91,7 @@ const PUBLIC_CONTENT_NODE_FIELDS = `
 export class PublicationApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 
-  getWorkspace(filters?: PublicContentWorkspaceFilters) {
+  getWorkspace(filters?: PublishContentWorkspaceFilters) {
     const variables: Record<string, unknown> | undefined = filters
       ? {
           query: filters.query,
@@ -103,15 +103,15 @@ export class PublicationApiService {
       : undefined;
 
     return this.graphqlHttp
-      .request<{ publicContentWorkspace: PublicContentWorkspace }>(
-        `query PublicContentWorkspace(
+      .request<{ publishContentWorkspace: PublishContentWorkspace }>(
+        `query PublishContentWorkspace(
           $query: String
           $skip: Int
           $take: Int
           $focusTargetType: PublicationTargetType
           $focusTargetId: String
         ) {
-          publicContentWorkspace(
+          publishContentWorkspace(
             query: $query
             skip: $skip
             take: $take
@@ -143,7 +143,7 @@ export class PublicationApiService {
         }`,
         variables,
       )
-      .pipe(map((data) => data.publicContentWorkspace));
+      .pipe(map((data) => data.publishContentWorkspace));
   }
 
   setPublicationState(input: PublicationStateInput) {
@@ -178,11 +178,11 @@ export class PublicationApiService {
       .pipe(map((data) => data.runPublicationBulkOperation));
   }
 
-  createPreview(input: PublicContentPreviewInput) {
+  createPreview(input: PublishContentPreviewInput) {
     return this.graphqlHttp
-      .request<{ createPublicContentPreview: PublicContentPreviewResult }>(
-        `mutation CreatePublicContentPreview($input: PublicContentPreviewInput!) {
-          createPublicContentPreview(input: $input) {
+      .request<{ createPublishContentPreview: PublishContentPreviewResult }>(
+        `mutation CreatePublishContentPreview($input: PublishContentPreviewInput!) {
+          createPublishContentPreview(input: $input) {
             url
             directPublicUrl
             expiresAt
@@ -191,6 +191,6 @@ export class PublicationApiService {
         }`,
         { input },
       )
-      .pipe(map((data) => data.createPublicContentPreview));
+      .pipe(map((data) => data.createPublishContentPreview));
   }
 }

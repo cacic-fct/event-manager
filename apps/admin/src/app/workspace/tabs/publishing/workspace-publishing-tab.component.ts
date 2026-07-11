@@ -22,13 +22,16 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
-import { ConfirmationDialogComponent, ConfirmationDialogData } from '../../../shared/components/confirmation-dialog.component';
+import {
+  ConfirmationDialogComponent,
+  ConfirmationDialogData,
+} from '../../../shared/components/confirmation-dialog.component';
 import {
   PublicContentNode,
-  PublicContentWorkspace,
+  PublishContentWorkspace,
   PublicationApiService,
   PublicationBulkOperation,
-  PublicContentWorkspaceFilters,
+  PublishContentWorkspaceFilters,
 } from '../../../graphql/publishing-api.service';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 import { bindLiveSearch } from '../../../shared/live-search';
@@ -81,7 +84,7 @@ export class WorkspacePublicationTabComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(false);
-  readonly workspace = signal<PublicContentWorkspace | null>(null);
+  readonly workspace = signal<PublishContentWorkspace | null>(null);
   readonly selectedNode = signal<PublicContentNode | null>(null);
   readonly pageIndex = signal(0);
   readonly pageSize = 50;
@@ -294,7 +297,8 @@ export class WorkspacePublicationTabComponent {
 
   targetDescription(node: PublicContentNode, level = 0): string {
     const hiddenFromUsers = node.publiclyVisible === false && !node.statusLabel.toLowerCase().includes('oculto');
-    const targetLabel = level > 0 && node.targetType === 'EVENT_GROUP' ? 'Conjunto' : publicationTargetLabel(node.targetType);
+    const targetLabel =
+      level > 0 && node.targetType === 'EVENT_GROUP' ? 'Conjunto' : publicationTargetLabel(node.targetType);
     const parentLabel = node.parentLabel
       ? node.targetType === 'EVENT_GROUP'
         ? `Conjunto de ${node.parentLabel}`
@@ -371,7 +375,7 @@ export class WorkspacePublicationTabComponent {
     }
   }
 
-  private findRequestedNode(workspace: PublicContentWorkspace): PublicContentNode | null {
+  private findRequestedNode(workspace: PublishContentWorkspace): PublicContentNode | null {
     const requested = this.requestedNode();
     if (!requested) {
       return null;
@@ -384,7 +388,7 @@ export class WorkspacePublicationTabComponent {
     );
   }
 
-  private workspaceFilters(): PublicContentWorkspaceFilters {
+  private workspaceFilters(): PublishContentWorkspaceFilters {
     const requested = this.requestedNode();
     return {
       query: this.query() || null,

@@ -64,13 +64,13 @@ describe('EventApiService', () => {
     const request = httpTesting.expectOne('/api/graphql');
     const query = String(request.request.body.query);
 
-    expect(query).toContain('query PublicContentPreviewEvent');
+    expect(query).toContain('query PublishContentPreviewEvent');
     expect(query).not.toContain('slotsAvailable');
     expect(request.request.body.variables).toEqual({ previewToken: 'preview-token' });
 
     request.flush({
       data: {
-        publicContentPreview: {
+        publishContentPreview: {
           previewAt: '2026-06-26T12:00:00.000Z',
           expiresAt: '2026-06-26T13:00:00.000Z',
           event: eventFixture(),

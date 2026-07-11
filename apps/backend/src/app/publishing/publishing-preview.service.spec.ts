@@ -1,11 +1,11 @@
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
-import { PublicContentPreviewTargetType } from '@prisma/client';
+import { PublishContentPreviewTargetType } from '@prisma/client';
 import { PublicationPreviewService } from './publishing-preview.service';
 
 describe('PublicationPreviewService', () => {
   function createService() {
     const prisma = {
-      publicContentPreview: {
+      publishContentPreview: {
         upsert: jest.fn().mockResolvedValue({ id: 'preview-1', publicPath: '/preview/stored/event' }),
       },
     };
@@ -45,10 +45,10 @@ describe('PublicationPreviewService', () => {
     const second = await service.createPreview(input, context as never);
 
     expect(first.url).not.toEqual(second.url);
-    expect(prisma.publicContentPreview.upsert).toHaveBeenCalledTimes(2);
-    const firstUpsert = prisma.publicContentPreview.upsert.mock.calls[0][0];
-    const secondUpsert = prisma.publicContentPreview.upsert.mock.calls[1][0];
-    expect(firstUpsert.create.targetType).toBe(PublicContentPreviewTargetType.EVENT);
+    expect(prisma.publishContentPreview.upsert).toHaveBeenCalledTimes(2);
+    const firstUpsert = prisma.publishContentPreview.upsert.mock.calls[0][0];
+    const secondUpsert = prisma.publishContentPreview.upsert.mock.calls[1][0];
+    expect(firstUpsert.create.targetType).toBe(PublishContentPreviewTargetType.EVENT);
     expect(firstUpsert.create.previewTokenHash).not.toEqual(secondUpsert.update.previewTokenHash);
     expect(firstUpsert.create.redisKey).not.toEqual(secondUpsert.update.redisKey);
     expect(redis.set.mock.calls[0][0]).not.toEqual(redis.set.mock.calls[1][0]);

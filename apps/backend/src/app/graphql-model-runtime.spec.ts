@@ -41,10 +41,10 @@ import {
 } from './dashboard/models';
 import {
   PublicContentNode,
-  PublicContentPreviewInput,
-  PublicContentPreviewPayload,
-  PublicContentPreviewResult,
-  PublicContentWorkspace,
+  PublishContentPreviewInput,
+  PublishContentPreviewPayload,
+  PublishContentPreviewResult,
+  PublishContentWorkspace,
   PublicationActionResult,
   PublicationBulkInput,
   PublicationBulkOperation,
@@ -251,21 +251,26 @@ describe('GraphQL model runtime metadata', () => {
   it('resolves publishing workspace model field types', () => {
     const fields = resolveGraphqlFieldTypes([
       PublicContentNode,
-      PublicContentWorkspace,
+      PublishContentWorkspace,
       PublicationStateInput,
       PublicationBulkInput,
-      PublicContentPreviewInput,
+      PublishContentPreviewInput,
       PublicationActionResult,
-      PublicContentPreviewResult,
-      PublicContentPreviewPayload,
+      PublishContentPreviewResult,
+      PublishContentPreviewPayload,
     ]);
 
     expect(fields).toEqual(
       expect.arrayContaining([
         { field: 'children', model: 'PublicContentNode', nullable: undefined, type: '[PublicContentNode]' },
-        { field: 'warnings', model: 'PublicContentWorkspace', nullable: undefined, type: '[DashboardInconsistency]' },
+        {
+          field: 'warnings',
+          model: 'PublishContentWorkspace',
+          nullable: undefined,
+          type: '[DashboardInconsistency]',
+        },
         { field: 'operation', model: 'PublicationBulkInput', nullable: undefined, type: 'PublicationBulkOperation' },
-        { field: 'events', model: 'PublicContentPreviewPayload', nullable: undefined, type: '[PublicEvent]' },
+        { field: 'events', model: 'PublishContentPreviewPayload', nullable: undefined, type: '[PublicEvent]' },
       ]),
     );
     expect(PublicationBulkOperation.SCHEDULE_BUNDLE).toBe('SCHEDULE_BUNDLE');
@@ -292,7 +297,12 @@ describe('GraphQL model runtime metadata', () => {
         { field: 'majorEventPrices', model: 'PublicMajorEvent', nullable: undefined, type: '[PublicMajorEventPrice]' },
         { field: 'eventGroup', model: 'PublicEvent', nullable: true, type: 'PublicEventGroup' },
         { field: 'lecturers', model: 'PublicEvent', nullable: undefined, type: '[PublicLecturerProfile]' },
-        { field: 'subscriptionSummaries', model: 'PublicMajorEventSubscriptionPage', nullable: undefined, type: '[PublicEventSubscriptionSummary]' },
+        {
+          field: 'subscriptionSummaries',
+          model: 'PublicMajorEventSubscriptionPage',
+          nullable: undefined,
+          type: '[PublicEventSubscriptionSummary]',
+        },
       ]),
     );
   });
@@ -323,9 +333,24 @@ describe('GraphQL model runtime metadata', () => {
 
     expect(fields).toEqual(
       expect.arrayContaining([
-        { field: 'authenticatedUser', model: 'CurrentUserProfileContext', nullable: undefined, type: 'AuthenticatedUser' },
-        { field: 'events', model: 'CurrentUserOrganizerInfo', nullable: undefined, type: '[CurrentUserOrganizerEventInfo]' },
-        { field: 'items', model: 'CurrentUserSubscriptionFeed', nullable: undefined, type: '[CurrentUserSubscriptionFeedItem]' },
+        {
+          field: 'authenticatedUser',
+          model: 'CurrentUserProfileContext',
+          nullable: undefined,
+          type: 'AuthenticatedUser',
+        },
+        {
+          field: 'events',
+          model: 'CurrentUserOrganizerInfo',
+          nullable: undefined,
+          type: '[CurrentUserOrganizerEventInfo]',
+        },
+        {
+          field: 'items',
+          model: 'CurrentUserSubscriptionFeed',
+          nullable: undefined,
+          type: '[CurrentUserSubscriptionFeedItem]',
+        },
         { field: 'selectedEvents', model: 'CurrentUserMajorEventFeedItem', nullable: undefined, type: '[PublicEvent]' },
         {
           field: 'formResponses',

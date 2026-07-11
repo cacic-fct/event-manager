@@ -1,5 +1,5 @@
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
-import { AuditLogEntityType, PublicContentPreviewTargetType, PublicationState } from '@prisma/client';
+import { AuditLogEntityType, PublishContentPreviewTargetType, PublicationState } from '@prisma/client';
 import { PublicationPreviewContentService } from './publishing-preview-content.service';
 
 describe('PublicationPreviewContentService', () => {
@@ -161,7 +161,7 @@ describe('PublicationPreviewContentService', () => {
 
   it('loads event preview payloads with event, group, parent major event, and single-event list', async () => {
     const { prisma, service } = createService();
-    const preview = previewFixture(PublicContentPreviewTargetType.EVENT, 'event-1');
+    const preview = previewFixture(PublishContentPreviewTargetType.EVENT, 'event-1');
     const majorEvent = publicMajorEventFixture();
     const event = {
       id: 'event-1',
@@ -171,7 +171,7 @@ describe('PublicationPreviewContentService', () => {
     prisma.event.findFirst.mockResolvedValue(event);
 
     await expect(service.loadPreviewPayload(preview)).resolves.toEqual({
-      targetType: PublicContentPreviewTargetType.EVENT,
+      targetType: PublishContentPreviewTargetType.EVENT,
       targetId: 'event-1',
       previewAt: preview.previewAt,
       expiresAt: preview.expiresAt,
@@ -184,7 +184,7 @@ describe('PublicationPreviewContentService', () => {
 
   it('loads major-event preview payloads with visible events ordered by start date', async () => {
     const { prisma, service } = createService();
-    const preview = previewFixture(PublicContentPreviewTargetType.MAJOR_EVENT, 'major-1');
+    const preview = previewFixture(PublishContentPreviewTargetType.MAJOR_EVENT, 'major-1');
     const majorEvent = publicMajorEventFixture();
     const events = [
       {
@@ -196,7 +196,7 @@ describe('PublicationPreviewContentService', () => {
     prisma.event.findMany.mockResolvedValue(events);
 
     await expect(service.loadPreviewPayload(preview)).resolves.toEqual({
-      targetType: PublicContentPreviewTargetType.MAJOR_EVENT,
+      targetType: PublishContentPreviewTargetType.MAJOR_EVENT,
       targetId: 'major-1',
       previewAt: preview.previewAt,
       expiresAt: preview.expiresAt,
@@ -215,7 +215,7 @@ describe('PublicationPreviewContentService', () => {
 
   it('loads event-group preview payloads and derives the parent major event from the first event', async () => {
     const { prisma, service } = createService();
-    const preview = previewFixture(PublicContentPreviewTargetType.EVENT_GROUP, 'group-1');
+    const preview = previewFixture(PublishContentPreviewTargetType.EVENT_GROUP, 'group-1');
     const eventGroup = {
       id: 'group-1',
       name: 'Grupo',
@@ -230,7 +230,7 @@ describe('PublicationPreviewContentService', () => {
     prisma.event.findMany.mockResolvedValue(events);
 
     await expect(service.loadPreviewPayload(preview)).resolves.toEqual({
-      targetType: PublicContentPreviewTargetType.EVENT_GROUP,
+      targetType: PublishContentPreviewTargetType.EVENT_GROUP,
       targetId: 'group-1',
       previewAt: preview.previewAt,
       expiresAt: preview.expiresAt,
@@ -248,18 +248,18 @@ describe('PublicationPreviewContentService', () => {
     prisma.eventGroup.findFirst.mockResolvedValueOnce(null);
 
     await expect(
-      service.loadPreviewPayload(previewFixture(PublicContentPreviewTargetType.EVENT, 'event-1')),
+      service.loadPreviewPayload(previewFixture(PublishContentPreviewTargetType.EVENT, 'event-1')),
     ).rejects.toThrow('Event event-1 was not found.');
     await expect(
-      service.loadPreviewPayload(previewFixture(PublicContentPreviewTargetType.MAJOR_EVENT, 'major-1')),
+      service.loadPreviewPayload(previewFixture(PublishContentPreviewTargetType.MAJOR_EVENT, 'major-1')),
     ).rejects.toThrow('Major event major-1 was not found.');
     await expect(
-      service.loadPreviewPayload(previewFixture(PublicContentPreviewTargetType.EVENT_GROUP, 'group-1')),
+      service.loadPreviewPayload(previewFixture(PublishContentPreviewTargetType.EVENT_GROUP, 'group-1')),
     ).rejects.toThrow('Event group group-1 was not found.');
   });
 });
 
-function previewFixture(targetType: PublicContentPreviewTargetType, targetId: string) {
+function previewFixture(targetType: PublishContentPreviewTargetType, targetId: string) {
   return {
     targetType,
     targetId,

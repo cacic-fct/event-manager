@@ -86,7 +86,9 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
+  const enabledButton = buttons.find(
+    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
+  );
   if (enabledButton) {
     await userEvent.hover(enabledButton);
     await expect(enabledButton).toBeVisible();
@@ -200,7 +202,7 @@ function previewParameters(context: EventStoryContext) {
         http.post('/api/graphql', () =>
           HttpResponse.json({
             data: {
-              publicContentPreview: buildPreview(context.args),
+              publishContentPreview: buildPreview(context.args),
             },
           }),
         ),
@@ -244,7 +246,10 @@ function eventGraphqlData(query: string, args: EventStoryArgs) {
     };
   }
 
-  if (query.includes('SubscribeCurrentUserStandaloneEvent') || query.includes('UnsubscribeCurrentUserStandaloneEvent')) {
+  if (
+    query.includes('SubscribeCurrentUserStandaloneEvent') ||
+    query.includes('UnsubscribeCurrentUserStandaloneEvent')
+  ) {
     return {
       subscribeCurrentUserStandaloneEvent: event,
       unsubscribeCurrentUserStandaloneEvent: event,

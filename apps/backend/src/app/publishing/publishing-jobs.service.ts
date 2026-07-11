@@ -70,7 +70,9 @@ export class PublicationJobsService {
     }
     await Promise.all([
       ...sync.eventIds.map((eventId) => this.enqueueScheduledTarget('EVENT', eventId, scheduledPublishAt)),
-      ...sync.majorEventIds.map((majorEventId) => this.enqueueScheduledTarget('MAJOR_EVENT', majorEventId, scheduledPublishAt)),
+      ...sync.majorEventIds.map((majorEventId) =>
+        this.enqueueScheduledTarget('MAJOR_EVENT', majorEventId, scheduledPublishAt),
+      ),
     ]);
   }
 
@@ -148,7 +150,7 @@ export class PublicationJobsService {
 
     await Promise.all([
       this.searchSync.syncSearch(this.transitions.mergeSync([...eventSync, ...majorSync])),
-      this.prisma.publicContentPreview.deleteMany({
+      this.prisma.publishContentPreview.deleteMany({
         where: { trimAfter: { lte: now } },
       }),
     ]);

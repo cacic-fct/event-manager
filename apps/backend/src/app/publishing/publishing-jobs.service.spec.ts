@@ -72,9 +72,7 @@ describe('PublicationJobsService', () => {
     const eventSchedule = new Date('2026-06-25T12:10:00.000Z');
     const majorEventSchedule = new Date('2026-06-25T11:55:00.000Z');
     prisma.event.findMany.mockResolvedValue([{ id: 'event-1', scheduledPublishAt: eventSchedule }]);
-    prisma.majorEvent.findMany.mockResolvedValue([
-      { id: 'major-1', scheduledPublishAt: majorEventSchedule },
-    ]);
+    prisma.majorEvent.findMany.mockResolvedValue([{ id: 'major-1', scheduledPublishAt: majorEventSchedule }]);
 
     await service.schedulePublicationJobs();
 
@@ -171,13 +169,10 @@ describe('PublicationJobsService', () => {
     expect(transitions.publishEventById).toHaveBeenCalledWith('event-1', null);
     expect(transitions.publishEventById).toHaveBeenCalledWith('event-2', null);
     expect(transitions.publishMajorEventById).toHaveBeenCalledWith('major-1', null);
-    expect(loggerError).toHaveBeenCalledWith(
-      'Failed to publish scheduled EVENT event-2.',
-      failure.stack,
-    );
+    expect(loggerError).toHaveBeenCalledWith('Failed to publish scheduled EVENT event-2.', failure.stack);
     expect(transitions.mergeSync).toHaveBeenCalledWith([eventSync, majorEventSync]);
     expect(searchSync.syncSearch).toHaveBeenCalledWith(mergedSync);
-    expect(prisma.publicContentPreview.deleteMany).toHaveBeenCalledWith({
+    expect(prisma.publishContentPreview.deleteMany).toHaveBeenCalledWith({
       where: { trimAfter: { lte: now } },
     });
   });
@@ -214,7 +209,7 @@ function createService() {
       findFirst: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
     },
-    publicContentPreview: {
+    publishContentPreview: {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
   };

@@ -3,10 +3,10 @@ import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { GraphqlContext } from '../current-user/selects';
 import { PublicationService } from './publishing.service';
 import {
-  PublicContentPreviewInput,
-  PublicContentPreviewPayload,
-  PublicContentPreviewResult,
-  PublicContentWorkspace,
+  PublishContentPreviewInput,
+  PublishContentPreviewPayload,
+  PublishContentPreviewResult,
+  PublishContentWorkspace,
   PublicationActionResult,
   PublicationBulkInput,
   PublicationStateInput,
@@ -16,11 +16,11 @@ import {
 export class PublicationResolver {
   constructor(private readonly publication: PublicationService) {}
 
-  @Query(() => PublicContentWorkspace, {
-    name: 'publicContentWorkspace',
+  @Query(() => PublishContentWorkspace, {
+    name: 'publishContentWorkspace',
     description: 'Publication orchestration tree, status board, and consistency warnings for public content.',
   })
-  publicContentWorkspace(
+  publishContentWorkspace(
     @Context() context: GraphqlContext,
     @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
@@ -28,7 +28,7 @@ export class PublicationResolver {
     @Args('focusTargetType', { type: () => PublicationTargetType, nullable: true })
     focusTargetType?: PublicationTargetType,
     @Args('focusTargetId', { type: () => String, nullable: true }) focusTargetId?: string,
-  ): Promise<PublicContentWorkspace> {
+  ): Promise<PublishContentWorkspace> {
     return this.publication.getWorkspace(context, {
       query,
       skip,
@@ -60,24 +60,24 @@ export class PublicationResolver {
     return this.publication.runBulkOperation(input, context);
   }
 
-  @Mutation(() => PublicContentPreviewResult, {
-    name: 'createPublicContentPreview',
+  @Mutation(() => PublishContentPreviewResult, {
+    name: 'createPublishContentPreview',
     description: 'Creates or refreshes a temporary public preview link for an authenticated administrator.',
   })
-  createPublicContentPreview(
-    @Args('input', { type: () => PublicContentPreviewInput }) input: PublicContentPreviewInput,
+  createPublishContentPreview(
+    @Args('input', { type: () => PublishContentPreviewInput }) input: PublishContentPreviewInput,
     @Context() context: GraphqlContext,
-  ): Promise<PublicContentPreviewResult> {
+  ): Promise<PublishContentPreviewResult> {
     return this.publication.createPreview(input, context);
   }
 
-  @Query(() => PublicContentPreviewPayload, {
-    name: 'publicContentPreview',
+  @Query(() => PublishContentPreviewPayload, {
+    name: 'publishContentPreview',
     description: 'Loads a temporary preview payload authorized by its token and expiration.',
   })
-  publicContentPreview(
+  publishContentPreview(
     @Args('previewToken', { type: () => String }) previewToken: string,
-  ): Promise<PublicContentPreviewPayload> {
+  ): Promise<PublishContentPreviewPayload> {
     return this.publication.getPreviewPayload(previewToken);
   }
 }

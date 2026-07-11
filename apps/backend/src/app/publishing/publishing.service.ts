@@ -2,25 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Prisma } from '@prisma/client';
-import {
-  AccessibleEventGrantTargets,
-  AuthorizationPolicyService,
-} from '../authorization/authorization-policy.service';
+import { AccessibleEventGrantTargets, AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { resolvePagination } from '../common/pagination';
 import { GraphqlContext } from '../current-user/selects';
 import { PrismaService } from '../prisma/prisma.service';
-import {
-  assertPublicationTargetPermission,
-  getPublicationUser,
-} from './publishing-auth';
+import { assertPublicationTargetPermission, getPublicationUser } from './publishing-auth';
 import { buildPublicationConsistencyWarnings } from './publishing-consistency';
 import { PublicationJobsService } from './publishing-jobs.service';
 import {
-  PublicContentPreviewInput,
-  PublicContentPreviewPayload,
-  PublicContentPreviewResult,
-  PublicContentWorkspace,
+  PublishContentPreviewInput,
+  PublishContentPreviewPayload,
+  PublishContentPreviewResult,
+  PublishContentWorkspace,
   PublicContentNode,
   PublicationActionResult,
   PublicationBulkInput,
@@ -161,10 +155,7 @@ export class PublicationService {
     private readonly jobs: PublicationJobsService,
   ) {}
 
-  async getWorkspace(
-    context: GraphqlContext,
-    input: PublicationWorkspaceInput = {},
-  ): Promise<PublicContentWorkspace> {
+  async getWorkspace(context: GraphqlContext, input: PublicationWorkspaceInput = {}): Promise<PublishContentWorkspace> {
     const user = getPublicationUser(context);
     await this.authorizationPolicy.assertPermissions(
       user,
@@ -192,10 +183,7 @@ export class PublicationService {
       accessibleTreeEventWhere,
       this.buildEventSearchWhere(normalizedQuery),
     );
-    const majorEventBaseWhere = this.andWhere<Prisma.MajorEventWhereInput>(
-      { deletedAt: null },
-      majorEventAccessWhere,
-    );
+    const majorEventBaseWhere = this.andWhere<Prisma.MajorEventWhereInput>({ deletedAt: null }, majorEventAccessWhere);
     const majorEventWhere = this.andWhere<Prisma.MajorEventWhereInput>(
       majorEventBaseWhere,
       this.buildNameSearchWhere<Prisma.MajorEventWhereInput>(normalizedQuery),
@@ -259,8 +247,7 @@ export class PublicationService {
       majorEventWhere: majorEventBaseWhere,
     });
     const items =
-      focusedNode &&
-      !pageItems.some((node) => node.targetType === focusedNode.targetType && node.id === focusedNode.id)
+      focusedNode && !pageItems.some((node) => node.targetType === focusedNode.targetType && node.id === focusedNode.id)
         ? [focusedNode, ...pageItems]
         : pageItems;
 
@@ -308,14 +295,11 @@ export class PublicationService {
     return outcome.result;
   }
 
-  createPreview(
-    input: PublicContentPreviewInput,
-    context: GraphqlContext,
-  ): Promise<PublicContentPreviewResult> {
+  createPreview(input: PublishContentPreviewInput, context: GraphqlContext): Promise<PublishContentPreviewResult> {
     return this.previews.createPreview(input, context);
   }
 
-  getPreviewPayload(previewToken: string): Promise<PublicContentPreviewPayload> {
+  getPreviewPayload(previewToken: string): Promise<PublishContentPreviewPayload> {
     return this.previews.getPreviewPayload(previewToken);
   }
 
@@ -697,7 +681,9 @@ export class PublicationService {
       label: eventGroup.name,
       publicationState,
       statusLabel:
-        children.length > 0 ? publicationStateLabel(publicationState, scheduledPublishAt) : 'Controla eventos vinculados',
+        children.length > 0
+          ? publicationStateLabel(publicationState, scheduledPublishAt)
+          : 'Controla eventos vinculados',
       scheduledPublishAt,
       publishedAt: null,
       unpublishedAt: null,
@@ -708,10 +694,7 @@ export class PublicationService {
     };
   }
 
-  private mapNestedEventGroupNode(
-    events: PublicationWorkspaceEventRecord[],
-    parentLabel: string,
-  ): PublicContentNode {
+  private mapNestedEventGroupNode(events: PublicationWorkspaceEventRecord[], parentLabel: string): PublicContentNode {
     const firstEvent = events[0];
     const publicationState = this.deriveGroupState(events);
     const scheduledPublishAt = this.deriveGroupSchedule(events);
@@ -841,9 +824,7 @@ export class PublicationService {
     return { OR };
   }
 
-  private andWhere<TWhere extends { AND?: TWhere | TWhere[] }>(
-    ...parts: (TWhere | null | undefined)[]
-  ): TWhere {
+  private andWhere<TWhere extends { AND?: TWhere | TWhere[] }>(...parts: (TWhere | null | undefined)[]): TWhere {
     const filteredParts = parts.filter((part): part is TWhere => Boolean(part));
     if (filteredParts.length === 1) {
       return filteredParts[0];
@@ -890,8 +871,6 @@ export class PublicationService {
     targetType: PublicationTargetType,
     targetId: string,
   ): { majorEventId?: string; eventGroupId?: string } {
-    return targetType === PublicationTargetType.MAJOR_EVENT
-      ? { majorEventId: targetId }
-      : { eventGroupId: targetId };
+    return targetType === PublicationTargetType.MAJOR_EVENT ? { majorEventId: targetId } : { eventGroupId: targetId };
   }
 }

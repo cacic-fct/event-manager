@@ -111,7 +111,7 @@ function storyParameters(context: GroupPreviewStoryContext) {
         http.post('/api/graphql', () =>
           HttpResponse.json({
             data: {
-              publicContentPreview: buildPreview(context.args),
+              publishContentPreview: buildPreview(context.args),
             },
           }),
         ),

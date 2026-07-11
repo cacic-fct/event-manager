@@ -1,6 +1,6 @@
 import { createHash, createHmac, randomBytes } from 'crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AuditLogOperation, PublicContentPreviewTargetType } from '@prisma/client';
+import { AuditLogOperation, PublishContentPreviewTargetType } from '@prisma/client';
 import Redis from 'ioredis';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -16,9 +16,9 @@ import {
 import { PREVIEW_TOKEN_SECRET, PREVIEW_TRIM_DAYS, PREVIEW_TTL_SECONDS } from './publishing.constants';
 import { PublicationPreviewContentService } from './publishing-preview-content.service';
 import {
-  PublicContentPreviewInput,
-  PublicContentPreviewPayload,
-  PublicContentPreviewResult,
+  PublishContentPreviewInput,
+  PublishContentPreviewPayload,
+  PublishContentPreviewResult,
 } from './publishing.models';
 import { previewPath, previewRedisKey, publicUrl } from './publishing-preview-url';
 import { addDays, addSeconds } from 'date-fns';
@@ -34,9 +34,9 @@ export class PublicationPreviewService {
   ) {}
 
   async createPreview(
-    input: PublicContentPreviewInput,
+    input: PublishContentPreviewInput,
     context: GraphqlContext,
-  ): Promise<PublicContentPreviewResult> {
+  ): Promise<PublishContentPreviewResult> {
     const user = getPublicationUser(context);
     await assertPublicationTargetPermission(
       this.authorizationPolicy,
@@ -62,7 +62,7 @@ export class PublicationPreviewService {
     const expiresAt = addSeconds(now, PREVIEW_TTL_SECONDS);
     const trimAfter = addDays(now, PREVIEW_TRIM_DAYS);
     const previewToken = this.buildPreviewToken(
-      input.targetType as PublicContentPreviewTargetType,
+      input.targetType as PublishContentPreviewTargetType,
       input.targetId,
       actorId,
     );
@@ -72,17 +72,17 @@ export class PublicationPreviewService {
     const publicPath = previewPath(input.targetType, previewToken);
     const previewAt = input.previewAt ?? now;
 
-    const preview = await this.prisma.publicContentPreview.upsert({
+    const preview = await this.prisma.publishContentPreview.upsert({
       where: {
         targetType_targetId_createdById: {
-          targetType: input.targetType as PublicContentPreviewTargetType,
+          targetType: input.targetType as PublishContentPreviewTargetType,
           targetId: input.targetId,
           createdById: actorId,
         },
       },
       create: {
         previewTokenHash,
-        targetType: input.targetType as PublicContentPreviewTargetType,
+        targetType: input.targetType as PublishContentPreviewTargetType,
         targetId: input.targetId,
         targetLabel: target.label,
         previewAt,
@@ -133,8 +133,8 @@ export class PublicationPreviewService {
     };
   }
 
-  async getPreviewPayload(previewToken: string): Promise<PublicContentPreviewPayload> {
-    const preview = await this.prisma.publicContentPreview.findUnique({
+  async getPreviewPayload(previewToken: string): Promise<PublishContentPreviewPayload> {
+    const preview = await this.prisma.publishContentPreview.findUnique({
       where: { previewTokenHash: this.hashPreviewToken(previewToken) },
     });
 
@@ -147,7 +147,7 @@ export class PublicationPreviewService {
       throw new NotFoundException('Preview expired or not found.');
     }
 
-    await this.prisma.publicContentPreview.update({
+    await this.prisma.publishContentPreview.update({
       where: { id: preview.id },
       data: { lastUsedAt: new Date() },
     });
@@ -160,11 +160,7 @@ export class PublicationPreviewService {
     });
   }
 
-  private buildPreviewToken(
-    targetType: PublicContentPreviewTargetType,
-    targetId: string,
-    actorId: string,
-  ): string {
+  private buildPreviewToken(targetType: PublishContentPreviewTargetType, targetId: string, actorId: string): string {
     return createHmac('sha256', PREVIEW_TOKEN_SECRET)
       .update(targetType)
       .update('\0')
@@ -181,7 +177,7 @@ export class PublicationPreviewService {
   }
 
   private async storePreviewSession(
-    input: PublicContentPreviewInput,
+    input: PublishContentPreviewInput,
     actorId: string,
     redisKey: string,
     previewAt: Date,

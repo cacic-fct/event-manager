@@ -1,7 +1,7 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import {
   PublicContentNode,
-  PublicContentWorkspace,
+  PublishContentWorkspace,
   PublicationBulkInput,
   PublicationStateInput,
 } from '../../../graphql/publishing-api.service';
@@ -41,7 +41,7 @@ export function publicationActionResult(affectedNodes: PublicContentNode[] = [])
   };
 }
 
-export function buildPublicationWorkspace(args: PublicationStoryArgs): PublicContentWorkspace {
+export function buildPublicationWorkspace(args: PublicationStoryArgs): PublishContentWorkspace {
   faker.seed(20260801);
   const generatedAt = new Date('2026-08-01T12:00:00.000Z').toISOString();
   const tree = [
@@ -65,7 +65,7 @@ export function buildPublicationWorkspace(args: PublicationStoryArgs): PublicCon
   };
 }
 
-export function applyStoryPublicationState(workspace: PublicContentWorkspace, input: unknown) {
+export function applyStoryPublicationState(workspace: PublishContentWorkspace, input: unknown) {
   if (!isPublicationStateInput(input)) {
     return publicationActionResult();
   }
@@ -75,7 +75,7 @@ export function applyStoryPublicationState(workspace: PublicContentWorkspace, in
   return publicationActionResult(affected);
 }
 
-export function applyStoryBulkOperation(workspace: PublicContentWorkspace, input: unknown) {
+export function applyStoryBulkOperation(workspace: PublishContentWorkspace, input: unknown) {
   if (!isPublicationBulkInput(input)) {
     return publicationActionResult();
   }

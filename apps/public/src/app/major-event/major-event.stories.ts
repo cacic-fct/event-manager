@@ -124,7 +124,7 @@ function previewParameters(context: MajorEventStoryContext) {
         http.post('/api/graphql', () =>
           HttpResponse.json({
             data: {
-              publicContentPreview: {
+              publishContentPreview: {
                 expiresAt: '2026-08-01T13:00:00.000Z',
                 majorEvent: buildMajorEvent(context.args),
               },

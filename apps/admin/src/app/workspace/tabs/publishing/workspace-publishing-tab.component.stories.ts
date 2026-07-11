@@ -5,7 +5,7 @@ import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import { PublicContentWorkspace } from '../../../graphql/publishing-api.service';
+import { PublishContentWorkspace } from '../../../graphql/publishing-api.service';
 import { WorkspacePublicationTabComponent } from './workspace-publishing-tab.component';
 import {
   PublicationStoryArgs,
@@ -107,7 +107,7 @@ export const ErrorState: Story = {
 
 interface PublicationStoryContext {
   args: PublicationStoryArgs;
-  workspace: PublicContentWorkspace;
+  workspace: PublishContentWorkspace;
 }
 
 function createStoryContext(args: Partial<PublicationStoryArgs> = {}): PublicationStoryContext {
@@ -146,18 +146,18 @@ function createGraphqlHandler(context: PublicationStoryContext) {
       });
     }
 
-    if (body.query?.includes('publicContentWorkspace')) {
+    if (body.query?.includes('publishContentWorkspace')) {
       return HttpResponse.json({
         data: {
-          publicContentWorkspace: context.workspace,
+          publishContentWorkspace: context.workspace,
         },
       });
     }
 
-    if (body.query?.includes('createPublicContentPreview')) {
+    if (body.query?.includes('createPublishContentPreview')) {
       return HttpResponse.json({
         data: {
-          createPublicContentPreview: {
+          createPublishContentPreview: {
             url: 'https://eventos.cacic.dev.br/preview/storybook/event',
             directPublicUrl: false,
             expiresAt: new Date('2026-08-01T13:00:00.000Z').toISOString(),

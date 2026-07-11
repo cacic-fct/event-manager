@@ -11,7 +11,7 @@ enum PublicationState {
   UNPUBLISHED
 }
 
-enum PublicContentPreviewTargetType {
+enum PublishContentPreviewTargetType {
   EVENT
   EVENT_GROUP
   MAJOR_EVENT
@@ -165,11 +165,11 @@ model EventLecturer {
   @@map("event_lecturers")
 }
 
-model PublicContentPreview {
+model PublishContentPreview {
   id String @id @default(uuid(7))
 
   previewTokenHash String @unique
-  targetType        PublicContentPreviewTargetType
+  targetType        PublishContentPreviewTargetType
   targetId          String
   targetLabel       String
 

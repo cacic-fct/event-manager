@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   PublicationState as PrismaPublicationState,
-  PublicContentPreviewTargetType,
+  PublishContentPreviewTargetType,
 } from '@prisma/client';
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -12,17 +12,14 @@ import {
   PUBLIC_MAJOR_EVENT_SELECT,
   mapPublicMajorEvent,
 } from '../public-events/models';
-import {
-  PublicContentPreviewInput,
-  PublicContentPreviewPayload,
-} from './publishing.models';
+import { PublishContentPreviewInput, PublishContentPreviewPayload } from './publishing.models';
 import { publicUrl } from './publishing-preview-url';
 
 @Injectable()
 export class PublicationPreviewContentService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async resolveDirectPublishedUrl(input: PublicContentPreviewInput): Promise<string | null> {
+  async resolveDirectPublishedUrl(input: PublishContentPreviewInput): Promise<string | null> {
     if (input.targetType === PublicationTargetType.EVENT) {
       const event = await this.prisma.event.findFirst({
         where: { id: input.targetId, deletedAt: null },
@@ -127,12 +124,12 @@ export class PublicationPreviewContentService {
   }
 
   async loadPreviewPayload(preview: {
-    targetType: PublicContentPreviewTargetType;
+    targetType: PublishContentPreviewTargetType;
     targetId: string;
     previewAt: Date;
     expiresAt: Date;
-  }): Promise<PublicContentPreviewPayload> {
-    if (preview.targetType === PublicContentPreviewTargetType.EVENT) {
+  }): Promise<PublishContentPreviewPayload> {
+    if (preview.targetType === PublishContentPreviewTargetType.EVENT) {
       const event = await this.prisma.event.findFirst({
         where: { id: preview.targetId, deletedAt: null },
         select: PUBLIC_EVENT_SELECT,
@@ -152,7 +149,7 @@ export class PublicationPreviewContentService {
       };
     }
 
-    if (preview.targetType === PublicContentPreviewTargetType.MAJOR_EVENT) {
+    if (preview.targetType === PublishContentPreviewTargetType.MAJOR_EVENT) {
       const majorEvent = await this.prisma.majorEvent.findFirst({
         where: { id: preview.targetId, deletedAt: null },
         select: PUBLIC_MAJOR_EVENT_SELECT,

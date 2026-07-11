@@ -53,7 +53,7 @@ export class PublicContentNode {
 }
 
 @ObjectType()
-export class PublicContentWorkspace {
+export class PublishContentWorkspace {
   @Field(() => Date)
   generatedAt!: Date;
 
@@ -113,7 +113,7 @@ export class PublicationBulkInput {
 }
 
 @InputType()
-export class PublicContentPreviewInput {
+export class PublishContentPreviewInput {
   @Field(() => PublicationTargetType)
   targetType!: PublicationTargetType;
 
@@ -140,7 +140,7 @@ export class PublicationActionResult {
 }
 
 @ObjectType()
-export class PublicContentPreviewResult {
+export class PublishContentPreviewResult {
   @Field(() => String)
   url!: string;
 
@@ -155,7 +155,7 @@ export class PublicContentPreviewResult {
 }
 
 @ObjectType()
-export class PublicContentPreviewPayload {
+export class PublishContentPreviewPayload {
   @Field(() => PublicationTargetType)
   targetType!: PublicationTargetType;
 
