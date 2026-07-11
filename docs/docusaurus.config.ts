@@ -106,7 +106,7 @@ const config: Config = {
       title: 'Event Manager Docs',
       logo: {
         alt: 'Logo do Event Manager Docs',
-        src: 'icons/favicon.png',
+        src: 'icons/favicon.svg',
       },
       items: [
         {
