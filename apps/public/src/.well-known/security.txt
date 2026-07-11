@@ -8,3 +8,5 @@ Contact: mailto:fctapp@cacic.dev.br
 Preferred-Languages: en, pt, es
 
 Expires: 2050-01-01T00:00:00z
+
+Canonical: https://eventos.cacic.dev.br/app/.well-known/security.txt
