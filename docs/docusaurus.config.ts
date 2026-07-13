@@ -138,7 +138,7 @@ const config: Config = {
         },
         {
           label: 'DevOps',
-          href: 'https://cacic.dev.br/docs/Recursos/Servidores/FCTDTIWEBXP01',
+          href: 'https://cacic.dev.br/docs/Recursos/Servidores/FCT-DTI-X-01',
           position: 'left',
         },
         { to: '/blog', label: 'Blog', position: 'left' },

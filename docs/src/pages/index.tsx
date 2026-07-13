@@ -79,8 +79,8 @@ const audienceEntries: AudienceEntry[] = [
       { label: 'Autorização e permissões', to: '/Backend/Autoriza%C3%A7%C3%A3o%20e%20permiss%C3%B5es' },
       { label: 'Auditoria administrativa', to: '/Manual/Interface%20administrativa/Auditoria' },
       {
-        label: 'Servidor FCTDTIWEBXP01',
-        to: 'https://cacic.dev.br/docs/Recursos/Servidores/FCTDTIWEBXP01',
+        label: 'Servidor FCT-DTI-X-01',
+        to: 'https://cacic.dev.br/docs/Recursos/Servidores/FCT-DTI-X-01',
         external: true,
       },
     ],

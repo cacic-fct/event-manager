@@ -43,7 +43,7 @@ const FeatureList: FeatureItem[] = [
         .
         <br />
         Saiba quem são os{' '}
-        <Link to="https://cacic.dev.br/docs/Recursos/Servidores/FCTDTIWEBXP01#Encarregados/">
+        <Link to="https://cacic.dev.br/docs/Recursos/Servidores/FCT-DTI-X-01#Encarregados/">
           <b>Encarregados de dados e de infraestrutura</b>
         </Link>
         .
@@ -62,7 +62,7 @@ const FeatureList: FeatureItem[] = [
         .
         <br />
         Entenda a seção de{' '}
-        <Link to="https://cacic.dev.br/docs/Recursos/Servidores/FCTDTIWEBXP01">
+        <Link to="https://cacic.dev.br/docs/Recursos/Servidores/FCT-DTI-X-01">
           <b>DevOps</b>
         </Link>
         .
