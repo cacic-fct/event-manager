@@ -19,7 +19,7 @@ SELECT
     "templateName": "CACiC Unesp",
     "htmlTemplatePath": "apps/backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.html",
     "cssTemplatePath": "apps/backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.css",
-    "verificationUrlPattern": "eventos.cacic.com.br/app/validate/{certificateID}"
+    "verificationUrlPattern": "eventos.cacic.dev.br/app/validate/{certificateID}"
   }
   $template$::jsonb,
   true,
