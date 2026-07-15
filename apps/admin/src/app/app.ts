@@ -24,7 +24,7 @@ export class App {
   protected readonly title = 'CACiC Eventos';
   protected readonly cookieBannerEnabled = this.cookieBannerFeatureFlag.enabled;
   protected readonly cookieBannerConfig: CookieBannerOptions = {
-    privacyPolicyUrl: 'https://cacic.dev.br/legal/privacy-policy',
+    privacyPolicyUrl: 'https://cacic.com.br/legal/privacy-policy',
     isAuthenticated: () => this.auth.isAuthenticated(),
     onAccept: async (context) => {
       if (!context.isAuthenticated) {

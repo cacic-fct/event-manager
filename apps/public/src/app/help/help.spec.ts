@@ -50,7 +50,7 @@ describe('Help', () => {
 
   it('should render documentation link', () => {
     const link: HTMLAnchorElement | null = fixture.nativeElement.querySelector(
-      'a[href="https://docs.fctapp.cacic.dev.br"]',
+      'a[href="https://docs.eventos.cacic.com.br"]',
     );
 
     expect(link).not.toBeNull();

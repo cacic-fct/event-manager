@@ -24,11 +24,9 @@ type CookieBannerStoryArgs = {
 class CookieBannerStoryHostComponent {
   readonly authenticated = input(true);
   readonly storageKey = input('storybook-cookie-banner');
-  readonly text = input(
-    'Usamos cookies para lembrar suas preferências e melhorar a experiência nos eventos do CACiC.',
-  );
+  readonly text = input('Usamos cookies para lembrar suas preferências e melhorar a experiência nos eventos do CACiC.');
   readonly buttonText = input('Entendi');
-  readonly privacyPolicyUrl = input('https://cacic.dev.br/legal/privacy-policy');
+  readonly privacyPolicyUrl = input('https://cacic.com.br/legal/privacy-policy');
 
   readonly config = computed<CookieBannerOptions>(() => ({
     storageKey: this.storageKey(),
@@ -56,7 +54,7 @@ const meta: Meta<CookieBannerStoryArgs> = {
     storageKey: 'storybook-cookie-banner-default',
     text: defaultText,
     buttonText: 'Aceitar cookies',
-    privacyPolicyUrl: 'https://cacic.dev.br/legal/privacy-policy',
+    privacyPolicyUrl: 'https://cacic.com.br/legal/privacy-policy',
   },
   argTypes: {
     authenticated: { control: 'boolean' },

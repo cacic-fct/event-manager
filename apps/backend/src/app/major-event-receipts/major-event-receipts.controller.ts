@@ -346,7 +346,7 @@ class AdminReceiptQueueItemDto {
 
   @ApiPropertyOptional({
     description: 'Participant email shown to receipt validators.',
-    example: 'joao@cacic.dev.br',
+    example: 'joao@cacic.com.br',
     nullable: true,
   })
   personEmail?: string | null;

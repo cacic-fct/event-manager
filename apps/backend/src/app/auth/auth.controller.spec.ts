@@ -231,11 +231,7 @@ describe('AuthController callback redirect validation', () => {
       }),
     );
     expect(readRedirectRaw(response)).not.toContain('Redis connection failed');
-    expect(response.cookie).not.toHaveBeenCalledWith(
-      AUTH_SESSION_COOKIE_NAME,
-      expect.anything(),
-      expect.anything(),
-    );
+    expect(response.cookie).not.toHaveBeenCalledWith(AUTH_SESSION_COOKIE_NAME, expect.anything(), expect.anything());
   });
 
   it('creates the secure session cookie only after a valid callback state and token exchange', async () => {
@@ -275,13 +271,9 @@ describe('AuthController callback redirect validation', () => {
 
   it('normalizes allowlisted post-logout redirect URIs', async () => {
     await expect(
-      controller.logout(
-        requestFixture(),
-        responseFixture() as never,
-        {
-          postLogoutRedirectUri: 'https://events.example.com/app?loggedOut=1#token',
-        },
-      ),
+      controller.logout(requestFixture(), responseFixture() as never, {
+        postLogoutRedirectUri: 'https://events.example.com/app?loggedOut=1#token',
+      }),
     ).resolves.toEqual({ logoutUrl: 'https://sso.example/logout' });
 
     expect(keycloakAuthService.logout).toHaveBeenCalledWith(
@@ -293,13 +285,9 @@ describe('AuthController callback redirect validation', () => {
 
   it('rejects unallowlisted post-logout redirect URI origins', async () => {
     await expect(
-      controller.logout(
-        requestFixture(),
-        responseFixture() as never,
-        {
-          postLogoutRedirectUri: 'https://evil.example/app',
-        },
-      ),
+      controller.logout(requestFixture(), responseFixture() as never, {
+        postLogoutRedirectUri: 'https://evil.example/app',
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(keycloakAuthService.logout).not.toHaveBeenCalled();
@@ -436,7 +424,7 @@ describe('AuthController callback redirect validation', () => {
     expect(response.clearCookie).toHaveBeenCalledWith(
       'cacic-analytics-id',
       expect.objectContaining({
-        domain: '.cacic.dev.br',
+        domain: '.cacic.com.br',
         sameSite: 'lax',
         secure: true,
         path: '/',
@@ -469,10 +457,7 @@ describe('AuthController callback redirect validation', () => {
       permissions: ['event#create'],
     });
 
-    expect(authorizationPolicy.evaluatePermissions).toHaveBeenCalledWith(user, [
-      'event#create',
-      'major-event#read',
-    ]);
+    expect(authorizationPolicy.evaluatePermissions).toHaveBeenCalledWith(user, ['event#create', 'major-event#read']);
   });
 
   it('rejects malformed permission evaluation payloads before policy evaluation', async () => {

@@ -12,7 +12,7 @@ export interface PublicFeatureFlagConfig {
 export const PUBLIC_FEATURE_FLAG_CONFIG = new InjectionToken<PublicFeatureFlagConfig>('PUBLIC_FEATURE_FLAG_CONFIG', {
   providedIn: 'root',
   factory: () => ({
-    url: 'https://unleash.cacic.dev.br/api/frontend',
+    url: 'https://unleash.cacic.com.br/api/frontend',
     clientKey: '',
     appName: 'events-public',
     environment: 'production',

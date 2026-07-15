@@ -27,7 +27,7 @@ export class App {
     () => this.cookieBannerEnabledOverride() ?? this.featureFlags.booleanValue('cookieBannerEnabled'),
   );
   protected readonly cookieBannerConfig: CookieBannerOptions = {
-    privacyPolicyUrl: 'https://cacic.dev.br/legal/privacy-policy',
+    privacyPolicyUrl: 'https://cacic.com.br/legal/privacy-policy',
     isAuthenticated: () => this.auth.isAuthenticated(),
     onAccept: async (context) => {
       if (!context.isAuthenticated) {

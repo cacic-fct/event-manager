@@ -1,7 +1,7 @@
 blank_issues_enabled: true
 contact_links:
   - name: 📚 Documentação
-    url: https://docs.fctapp.cacic.dev.br
+    url: https://docs.eventos.cacic.com.br
     about: Encontre guias e explicações para perguntas frequentes.
   - name: 💬 Discussões
     url: https://github.com/cacic-fct/event-manager/discussions/new

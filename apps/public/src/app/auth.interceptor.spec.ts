@@ -55,7 +55,9 @@ describe('authInterceptor', () => {
   it('does not recursively refresh auth endpoint failures', async () => {
     const response = firstValueFrom(http.get('/api/auth/me'));
 
-    httpTesting.expectOne('/api/auth/me').flush({ message: 'missing session' }, { status: 401, statusText: 'Unauthorized' });
+    httpTesting
+      .expectOne('/api/auth/me')
+      .flush({ message: 'missing session' }, { status: 401, statusText: 'Unauthorized' });
 
     await expect(response).rejects.toBeInstanceOf(HttpErrorResponse);
     expect(authService.refreshTokenSilently).not.toHaveBeenCalled();
@@ -63,10 +65,12 @@ describe('authInterceptor', () => {
   });
 
   it('does not mutate local auth state when an external CACiC integration returns 401', async () => {
-    const accountManagerUrl = 'https://account.cacic.dev.br/api/privacy/preferences';
+    const accountManagerUrl = 'https://account.cacic.com.br/api/privacy/preferences';
     const response = firstValueFrom(http.get(accountManagerUrl));
 
-    httpTesting.expectOne(accountManagerUrl).flush({ message: 'unauthorized' }, { status: 401, statusText: 'Unauthorized' });
+    httpTesting
+      .expectOne(accountManagerUrl)
+      .flush({ message: 'unauthorized' }, { status: 401, statusText: 'Unauthorized' });
 
     await expect(response).rejects.toBeInstanceOf(HttpErrorResponse);
     expect(authService.refreshTokenSilently).not.toHaveBeenCalled();

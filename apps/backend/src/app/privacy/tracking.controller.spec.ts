@@ -170,6 +170,6 @@ function createResponse(): Response {
 
 function createConfigService(): ConfigService {
   return {
-    get: jest.fn((key: string) => (key === 'BACKEND_URL' ? 'https://eventos.cacic.dev.br/api' : undefined)),
+    get: jest.fn((key: string) => (key === 'BACKEND_URL' ? 'https://eventos.cacic.com.br/api' : undefined)),
   } as unknown as ConfigService;
 }

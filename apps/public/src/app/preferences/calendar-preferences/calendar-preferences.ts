@@ -255,7 +255,7 @@ export class CalendarPreferences {
       return window.location.origin;
     }
 
-    return this.document.baseURI || 'https://eventos.cacic.dev.br';
+    return this.document.baseURI || 'https://eventos.cacic.com.br';
   }
 
   private googleCalendarFeedUrl(feedUrl: string | null): string | null {

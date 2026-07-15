@@ -3,15 +3,13 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { faker } from '@faker-js/faker';
 import { http, HttpResponse } from 'msw';
-import type {
-  ChannelPreference,
-  ListNotificationsResponse,
-  Notification,
-  Preference,
-  Subscriber,
-} from '@novu/js';
+import type { ChannelPreference, ListNotificationsResponse, Notification, Preference, Subscriber } from '@novu/js';
 import { NovuInboxComponent } from './novu-inbox.component';
-import { NotificationPermissionState, NovuListNotificationsArgs, NovuNotificationsService } from './novu-notifications.service';
+import {
+  NotificationPermissionState,
+  NovuListNotificationsArgs,
+  NovuNotificationsService,
+} from './novu-notifications.service';
 
 type StoryPermission = NotificationPermissionState;
 
@@ -49,7 +47,10 @@ function result<T>(data: T): Promise<{ data: T; error: undefined }> {
   return Promise.resolve({ data, error: undefined });
 }
 
-function createNotification(index: number, options: Pick<StoryArgs, 'showImages' | 'richBodies' | 'unreadCount'>): MutableNotification {
+function createNotification(
+  index: number,
+  options: Pick<StoryArgs, 'showImages' | 'richBodies' | 'unreadCount'>,
+): MutableNotification {
   const isUnread = index < options.unreadCount;
   const id = `notification-${index + 1}`;
   const subject = faker.helpers.arrayElement([
@@ -83,7 +84,10 @@ function createNotification(index: number, options: Pick<StoryArgs, 'showImages'
       url: `/profile/attendances/major-${index + 1}`,
       target: '_self',
     },
-    primaryAction: index % 2 === 0 ? { label: 'Ver inscrição', redirect: { url: `/profile/attendances/major-${index + 1}` } } : undefined,
+    primaryAction:
+      index % 2 === 0
+        ? { label: 'Ver inscrição', redirect: { url: `/profile/attendances/major-${index + 1}` } }
+        : undefined,
     secondaryAction: index % 4 === 0 ? { label: 'Ver evento' } : undefined,
     workflow: {
       id: 'major-event-subscription-status-changed',
@@ -182,7 +186,9 @@ class MockNovuNotificationsService {
     const nextNotifications = [...activeNotifications, ...archivedNotifications];
 
     this.notifications.set(nextNotifications);
-    this.unreadCount.set(nextNotifications.filter((notification) => !notification.isRead && !notification.isArchived).length);
+    this.unreadCount.set(
+      nextNotifications.filter((notification) => !notification.isRead && !notification.isArchived).length,
+    );
     this.preferences.set([0, 1, 2].map((index) => createPreference(index)));
   }
 
@@ -299,7 +305,9 @@ class MockNovuNotificationsService {
   }
 
   private refreshUnreadCount(): void {
-    this.unreadCount.set(this.notifications().filter((notification) => !notification.isRead && !notification.isArchived).length);
+    this.unreadCount.set(
+      this.notifications().filter((notification) => !notification.isRead && !notification.isArchived).length,
+    );
   }
 }
 
@@ -307,7 +315,10 @@ class MockNovuNotificationsService {
   selector: 'lib-storybook-novu-inbox-host',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NovuInboxComponent],
-  providers: [MockNovuNotificationsService, { provide: NovuNotificationsService, useExisting: MockNovuNotificationsService }],
+  providers: [
+    MockNovuNotificationsService,
+    { provide: NovuNotificationsService, useExisting: MockNovuNotificationsService },
+  ],
   template: `<lib-novu-inbox [title]="title()" />`,
 })
 class NovuInboxStoryHostComponent {
@@ -352,8 +363,8 @@ const meta: Meta<NovuInboxStoryHostComponent> = {
     layout: 'fullscreen',
     msw: {
       handlers: [
-        http.all('https://notifications.cacic.dev.br/api/*', () => HttpResponse.json({ storybook: true })),
-        http.all('https://notifications.cacic.dev.br/*', () => HttpResponse.json({ storybook: true })),
+        http.all('https://notifications.cacic.com.br/api/*', () => HttpResponse.json({ storybook: true })),
+        http.all('https://notifications.cacic.com.br/*', () => HttpResponse.json({ storybook: true })),
       ],
     },
   },

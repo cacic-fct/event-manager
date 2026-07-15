@@ -76,9 +76,9 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    await expect(service.buildPublicEventCalendar('hidden-event', 'https://eventos.cacic.dev.br')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.buildPublicEventCalendar('hidden-event', 'https://eventos.cacic.com.br'),
+    ).rejects.toBeInstanceOf(NotFoundException);
 
     expect(prisma.event.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -97,14 +97,14 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildPublicEventCalendar('event-1', 'https://eventos.cacic.dev.br');
+    const download = await service.buildPublicEventCalendar('event-1', 'https://eventos.cacic.com.br');
 
     expect(download.fileName).toBe('oficina-de-typescript.ics');
     expect(download.content).toContain('SUMMARY:Oficina de TypeScript');
     expect(download.content).toContain('DESCRIPTION:Aprenda TypeScript com exemplos reais.');
     expect(download.content).toContain('LOCATION:FCT Unesp');
     expect(download.content).toContain('GEO:-22.121;-51.409');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/app/event/event-1');
+    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/app/event/event-1');
   });
 
   it('downloads the whole event group when a public event belongs to a group', async () => {
@@ -133,10 +133,10 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildPublicEventCalendar('event-1', 'https://eventos.cacic.dev.br');
+    const download = await service.buildPublicEventCalendar('event-1', 'https://eventos.cacic.com.br');
 
     expect(download.fileName).toBe('trilha-de-typescript.ics');
-    expect(download.content).toContain('UID:event-group-group-1@eventos.cacic.dev.br');
+    expect(download.content).toContain('UID:event-group-group-1@eventos.cacic.com.br');
     expect(download.content).toContain('SUMMARY:Trilha de TypeScript');
     expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 2 evento(s).');
     expect(download.content).toContain('DTSTART:20260701T130000Z');
@@ -187,7 +187,7 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildPublicEventCalendar('event-1', 'https://eventos.cacic.dev.br');
+    const download = await service.buildPublicEventCalendar('event-1', 'https://eventos.cacic.com.br');
 
     expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 1000+ evento(s).');
     expect(download.content).toContain('DTEND:20260801T150000Z');
@@ -226,9 +226,9 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    await expect(service.buildPrivateUserCalendarFeed('private-key', 'https://eventos.cacic.dev.br')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.buildPrivateUserCalendarFeed('private-key', 'https://eventos.cacic.com.br'),
+    ).rejects.toBeInstanceOf(NotFoundException);
 
     expect(prisma.userCalendarFeedSettings.updateMany).toHaveBeenCalledWith({
       where: {
@@ -453,7 +453,7 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildPrivateUserCalendarFeed('private-key', 'https://eventos.cacic.dev.br');
+    const download = await service.buildPrivateUserCalendarFeed('private-key', 'https://eventos.cacic.com.br');
 
     expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -500,7 +500,7 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildPrivateUserCalendarFeed('private-key', 'https://eventos.cacic.dev.br');
+    const download = await service.buildPrivateUserCalendarFeed('private-key', 'https://eventos.cacic.com.br');
 
     expect(download.content.match(/BEGIN:VEVENT/g) ?? []).toHaveLength(1000);
     expect(download.content).not.toContain('SUMMARY:Atividade privada 0');
@@ -660,7 +660,9 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    await expect(service.rotateCurrentUserAdminCalendarFeedKey('admin-user')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.rotateCurrentUserAdminCalendarFeedKey('admin-user')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
 
     expect(prisma.userAdminCalendarFeedSettings.upsert).not.toHaveBeenCalled();
   });
@@ -887,7 +889,7 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.dev.br');
+    const download = await service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.com.br');
 
     expect(prisma.eventManagerPermissionGrant.findMany).toHaveBeenCalledWith({
       where: {
@@ -936,9 +938,9 @@ describe('CalendarService', () => {
     expect(download.content).toContain('DESCRIPTION:Grupo de eventos com 3 evento(s).');
     expect(download.content).toContain('DTSTART:20260601T130000Z');
     expect(download.content).toContain('DTEND:20260902T150000Z');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/events/admin-event-1');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/groups/group-1');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/major-events/major-1');
+    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/events/admin-event-1');
+    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/groups/group-1');
+    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/major-events/major-1');
     expect(download.content).toContain('CLASS:PUBLIC');
     expect(download.content).toContain('TRANSP:OPAQUE');
   });
@@ -978,7 +980,7 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.dev.br');
+    const download = await service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.com.br');
 
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1037,7 +1039,7 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.dev.br');
+    const download = await service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.com.br');
 
     expect(download.content.match(/BEGIN:VEVENT/g) ?? []).toHaveLength(1000);
     expect(download.content).not.toContain('SUMMARY:Atividade administrativa 0');
@@ -1073,9 +1075,9 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    await expect(service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.dev.br')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.com.br'),
+    ).rejects.toBeInstanceOf(NotFoundException);
 
     expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
     expect(prisma.userAdminCalendarFeedSettings.updateMany).toHaveBeenCalledWith({
@@ -1113,9 +1115,9 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    await expect(service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.dev.br')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.com.br'),
+    ).rejects.toBeInstanceOf(NotFoundException);
 
     expect(prisma.userAdminCalendarFeedSettings.updateMany).toHaveBeenCalledWith({
       where: {
@@ -1308,7 +1310,7 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildSuperAdminCalendarFeed('super-key', 'https://eventos.cacic.dev.br');
+    const download = await service.buildSuperAdminCalendarFeed('super-key', 'https://eventos.cacic.com.br');
 
     expect(download.fileName).toBe('calendario-super-admin-cacic-eventos.ics');
     expect(prisma.event.findMany).toHaveBeenCalledWith(
@@ -1340,9 +1342,9 @@ describe('CalendarService', () => {
     expect(download.content).toContain('SUMMARY:Oficina de TypeScript');
     expect(download.content).toContain('SUMMARY:Trilha de oficinas');
     expect(download.content).toContain('SUMMARY:Congresso CACiC');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/events/event-1');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/groups/group-1');
-    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.dev.br/admin/major-events/major-1');
+    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/events/event-1');
+    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/groups/group-1');
+    expect(download.content).toContain('URL;VALUE=URI:https://eventos.cacic.com.br/admin/major-events/major-1');
     expect(download.content).toContain('CLASS:PUBLIC');
     expect(download.content).toContain('TRANSP:TRANSPARENT');
     expect(prisma.superAdminCalendarFeedSettings.updateMany).not.toHaveBeenCalled();
@@ -1372,7 +1374,7 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    const download = await service.buildSuperAdminCalendarFeed('super-key', 'https://eventos.cacic.dev.br');
+    const download = await service.buildSuperAdminCalendarFeed('super-key', 'https://eventos.cacic.com.br');
 
     expect(download.content.match(/BEGIN:VEVENT/g) ?? []).toHaveLength(1000);
     expect(download.content).not.toContain('SUMMARY:Atividade super-admin 0');
@@ -1404,7 +1406,7 @@ describe('CalendarService', () => {
     });
     const service = new CalendarService(prisma as never);
 
-    await service.buildSuperAdminCalendarFeed('super-key', 'https://eventos.cacic.dev.br');
+    await service.buildSuperAdminCalendarFeed('super-key', 'https://eventos.cacic.com.br');
 
     expect(prisma.superAdminCalendarFeedSettings.updateMany).toHaveBeenCalledWith({
       where: {

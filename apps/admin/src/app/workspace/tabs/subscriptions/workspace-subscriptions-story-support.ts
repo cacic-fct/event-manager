@@ -218,13 +218,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
 }
 
 function defaultPermissions(): WorkspacePermissionScope[] {
-  return [
-    'event#read',
-    'major-event#read',
-    'subscription#read',
-    'subscription#update',
-    'receipt#read',
-  ];
+  return ['event#read', 'major-event#read', 'subscription#read', 'subscription#update', 'receipt#read'];
 }
 
 function buildMajorEvent(id: string, name: string, emoji: string): MajorEvent {
@@ -285,7 +279,7 @@ function buildPerson(id: string, name: string): Person {
   return createAdminPerson({
     id,
     name,
-    email: `${id}@cacic.dev.br`,
+    email: `${id}@cacic.com.br`,
     identityDocument: '123.456.789-00',
     createdAt: '2026-05-01T12:00:00.000Z',
     updatedAt: '2026-05-20T12:00:00.000Z',

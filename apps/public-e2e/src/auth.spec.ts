@@ -65,7 +65,7 @@ async function mockPublicApi(
     onLoginRedirect?: (url: URL) => void;
   },
 ): Promise<void> {
-  await page.route('https://unleash.cacic.dev.br/api/frontend/**', (route) =>
+  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
     route.fulfill({
       status: 304,
       body: '',

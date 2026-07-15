@@ -60,7 +60,7 @@ async function mockTurnstile(page: Page): Promise<void> {
 }
 
 async function mockStaticExternalAssets(page: Page): Promise<void> {
-  await page.route('https://unleash.cacic.dev.br/api/frontend/**', (route) =>
+  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
     route.fulfill({
       status: 304,
       body: '',

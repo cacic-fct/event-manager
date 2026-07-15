@@ -8,7 +8,7 @@ const config: Config = {
   favicon: 'icons/favicon.png',
 
   // Set the production url of your site here
-  url: 'https://docs.fctapp.cacic.dev.br',
+  url: 'https://docs.eventos.cacic.com.br',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
@@ -31,7 +31,7 @@ const config: Config = {
 
   scripts: [
     {
-      src: 'https://a.cacic.dev.br/b.js',
+      src: 'https://a.cacic.com.br/b.js',
       defer: true,
       'data-website-id': '7df7604a-fa18-4305-ac8b-8f3ac89282b8',
     },
@@ -42,7 +42,7 @@ const config: Config = {
       tagName: 'link',
       attributes: {
         rel: 'preconnect',
-        href: 'https://a.cacic.dev.br',
+        href: 'https://a.cacic.com.br',
       },
     },
   ],
@@ -138,7 +138,7 @@ const config: Config = {
         },
         {
           label: 'DevOps',
-          href: 'https://cacic.dev.br/docs/Recursos/Servidores/FCT-DTI-X-01',
+          href: 'https://cacic.com.br/docs/Recursos/Servidores/FCT-DTI-X-01',
           position: 'left',
         },
         { to: '/blog', label: 'Blog', position: 'left' },
@@ -157,7 +157,7 @@ const config: Config = {
           items: [
             {
               label: 'Aplicativo',
-              href: 'https://eventos.cacic.dev.br',
+              href: 'https://eventos.cacic.com.br',
             },
             {
               label: 'Repositório',
@@ -170,7 +170,7 @@ const config: Config = {
           items: [
             {
               label: 'Política de privacidade',
-              href: 'https://cacic.dev.br/legal/privacy-policy',
+              href: 'https://cacic.com.br/legal/privacy-policy',
             },
             {
               label: 'Licenças',

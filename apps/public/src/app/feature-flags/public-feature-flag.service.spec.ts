@@ -78,7 +78,7 @@ describe('PublicFeatureFlagService', () => {
         {
           provide: PUBLIC_FEATURE_FLAG_CONFIG,
           useValue: {
-            url: 'https://unleash.cacic.dev.br/api/frontend',
+            url: 'https://unleash.cacic.com.br/api/frontend',
             clientKey: '',
             appName: 'events-public',
             environment: 'production',
@@ -162,7 +162,7 @@ describe('PublicFeatureFlagService', () => {
   it('checks Unleash freshness on every startup instead of trusting the SDK storage TTL', async () => {
     TestBed.overrideProvider(PUBLIC_FEATURE_FLAG_CONFIG, {
       useValue: {
-        url: 'https://unleash.cacic.dev.br/api/frontend',
+        url: 'https://unleash.cacic.com.br/api/frontend',
         clientKey: 'default:production.test',
         appName: 'events-public',
         environment: 'production',
@@ -188,7 +188,7 @@ describe('PublicFeatureFlagService', () => {
   it('does not block initialization when Unleash startup hangs', async () => {
     TestBed.overrideProvider(PUBLIC_FEATURE_FLAG_CONFIG, {
       useValue: {
-        url: 'https://unleash.cacic.dev.br/api/frontend',
+        url: 'https://unleash.cacic.com.br/api/frontend',
         clientKey: 'default:production.test',
         appName: 'events-public',
         environment: 'production',
@@ -231,7 +231,7 @@ describe('PublicFeatureFlagService', () => {
     });
     TestBed.overrideProvider(PUBLIC_FEATURE_FLAG_CONFIG, {
       useValue: {
-        url: 'https://unleash.cacic.dev.br/api/frontend',
+        url: 'https://unleash.cacic.com.br/api/frontend',
         clientKey: 'default:production.test',
         appName: 'events-public',
         environment: 'production',
@@ -251,7 +251,7 @@ describe('PublicFeatureFlagService', () => {
   it('keeps Unleash fetch failures quiet so cached flags can be used', async () => {
     TestBed.overrideProvider(PUBLIC_FEATURE_FLAG_CONFIG, {
       useValue: {
-        url: 'https://unleash.cacic.dev.br/api/frontend',
+        url: 'https://unleash.cacic.com.br/api/frontend',
         clientKey: 'default:production.test',
         appName: 'events-public',
         environment: 'production',
@@ -267,13 +267,13 @@ describe('PublicFeatureFlagService', () => {
     await service.initialize();
 
     const config = unleashClientMock.constructor.mock.calls[0]?.[0] as { fetch?: typeof fetch } | undefined;
-    await expect(config?.fetch?.('https://unleash.cacic.dev.br/api/frontend')).resolves.toMatchObject({
+    await expect(config?.fetch?.('https://unleash.cacic.com.br/api/frontend')).resolves.toMatchObject({
       status: 304,
       statusText: 'Not Modified',
     });
 
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 403 }));
-    await expect(config?.fetch?.('https://unleash.cacic.dev.br/api/frontend')).resolves.toMatchObject({
+    await expect(config?.fetch?.('https://unleash.cacic.com.br/api/frontend')).resolves.toMatchObject({
       status: 304,
       statusText: 'Not Modified',
     });

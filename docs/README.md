@@ -2,7 +2,7 @@
 
 ## Site
 
-O site é construído com [Docusaurus](https://docusaurus.io/) e pode ser acessado em [docs.fctapp.cacic.dev.br](https://docs.fctapp.cacic.dev.br).
+O site é construído com [Docusaurus](https://docusaurus.io/) e pode ser acessado em [docs.eventos.cacic.com.br](https://docs.eventos.cacic.com.br).
 
 ### Desenvolvimento
 

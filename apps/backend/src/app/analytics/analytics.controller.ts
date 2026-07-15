@@ -43,7 +43,7 @@ export class AnalyticsController {
       type: 'string',
       format: 'binary',
       example:
-        '{"event_id":"...","dsn":"https://PUBLIC_KEY@glitchtip.cacic.dev.br/ID"}\n{"type":"event"}\n{"message":"Example error"}',
+        '{"event_id":"...","dsn":"https://PUBLIC_KEY@glitchtip.cacic.com.br/ID"}\n{"type":"event"}\n{"message":"Example error"}',
     },
   })
   @ApiResponse({

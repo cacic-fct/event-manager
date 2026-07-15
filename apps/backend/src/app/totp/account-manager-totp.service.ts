@@ -17,7 +17,7 @@ export class AccountManagerTotpService {
     private readonly m2mTokens: KeycloakM2mTokenService,
   ) {
     this.accountManagerOrigin = this.resolveAccountManagerOrigin(
-      this.configService.get<string>('ACCOUNT_MANAGER_API_URL') ?? 'https://account.cacic.dev.br/api',
+      this.configService.get<string>('ACCOUNT_MANAGER_API_URL') ?? 'https://account.cacic.com.br/api',
     );
     this.audience = this.configService.get<string>('ACCOUNT_MANAGER_M2M_AUDIENCE');
     this.clientId = this.configService.get<string>('KEYCLOAK_M2M_CLIENT_ID');

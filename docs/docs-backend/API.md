@@ -7,7 +7,7 @@ Trabalhamos com dois tipos de API: GraphQL e REST.
 O GraphQL é a base da API principal do sistema, utilizada para a maioria das operações.  
 Ele faz com que a API seja flexível e eficiente, permitindo que os clientes solicitem exatamente os dados que precisam, além de facilitar no desenvolvimento de novas funcionalidades sem quebrar a compatibilidade com versões anteriores. Isto é, não é necessário criar novos endpoints para cada nova funcionalidade ou editar já existentes, como acontece com o REST.
 
-Acesse o Apollo Sandbox em https://eventos.cacic.dev.br/api/graphql para explorar a API GraphQL, testar consultas e visualizar a documentação automática gerada a partir do esquema GraphQL. 
+Acesse o Apollo Sandbox em https://eventos.cacic.com.br/api/graphql para explorar a API GraphQL, testar consultas e visualizar a documentação automática gerada a partir do esquema GraphQL. 
 
 Se você quer integrar a API pública do CACiC Event Manager em algum projeto, como a homepage da SECOMPP, procure pelas operações com o prefixo "Public".
 
@@ -54,7 +54,7 @@ Atualize tipos, queries, fixtures e exemplos quando o payload mudar.
 
 Damos preferência ao REST para comunicações M2M simples e requisições simples, como o login.
 
-Acesse a documentação em https://eventos.cacic.dev.br/api/docs para obter detalhes sobre os endpoints REST disponíveis, incluindo exemplos de requisições e de respostas.
+Acesse a documentação em https://eventos.cacic.com.br/api/docs para obter detalhes sobre os endpoints REST disponíveis, incluindo exemplos de requisições e de respostas.
 
 ### SSE
 

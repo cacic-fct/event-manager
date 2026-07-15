@@ -158,7 +158,7 @@ function createGraphqlHandler(context: PublicationStoryContext) {
       return HttpResponse.json({
         data: {
           createPublishContentPreview: {
-            url: 'https://eventos.cacic.dev.br/preview/storybook/event',
+            url: 'https://eventos.cacic.com.br/preview/storybook/event',
             directPublicUrl: false,
             expiresAt: new Date('2026-08-01T13:00:00.000Z').toISOString(),
             message: 'Link temporário criado. Ele expira em 1 hora.',

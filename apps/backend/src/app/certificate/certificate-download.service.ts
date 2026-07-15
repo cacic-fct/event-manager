@@ -152,7 +152,7 @@ export class CertificateDownloadService {
   }
 
   private buildVerificationUrl(pattern: string | undefined, certificateId: string): string {
-    const sourcePattern = pattern?.trim() || 'eventos.cacic.dev.br/app/validate/\n{certificateID}';
+    const sourcePattern = pattern?.trim() || 'eventos.cacic.com.br/app/validate/\n{certificateID}';
     if (sourcePattern.includes('{certificateID}')) {
       return sourcePattern.replace(/\{certificateID\}/g, certificateId);
     }

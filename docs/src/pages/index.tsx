@@ -80,7 +80,7 @@ const audienceEntries: AudienceEntry[] = [
       { label: 'Auditoria administrativa', to: '/Manual/Interface%20administrativa/Auditoria' },
       {
         label: 'Servidor FCT-DTI-X-01',
-        to: 'https://cacic.dev.br/docs/Recursos/Servidores/FCT-DTI-X-01',
+        to: 'https://cacic.com.br/docs/Recursos/Servidores/FCT-DTI-X-01',
         external: true,
       },
     ],

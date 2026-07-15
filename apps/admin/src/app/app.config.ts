@@ -61,12 +61,12 @@ export const appConfig: ApplicationConfig = {
     provideCacicObservability({
       analytics: {
         websiteId: 'd8c04657-2416-4af4-b21f-99ea8dcfc5d4',
-        domains: ['eventos.cacic.dev.br'],
+        domains: ['eventos.cacic.com.br'],
         isEnabled: isAccountAnalyticsEnabled,
         buildIdentifyData,
       },
       glitchtip: {
-        dsn: 'https://b787190b5ac546eb867e793b84d2b4b2@glitchtip.cacic.dev.br/2',
+        dsn: 'https://b787190b5ac546eb867e793b84d2b4b2@glitchtip.cacic.com.br/2',
         project: 'admin',
         isEnabled: isAccountDiagnosticsEnabled,
         isPerformanceEnabled: isAccountPerformanceMonitoringEnabled,

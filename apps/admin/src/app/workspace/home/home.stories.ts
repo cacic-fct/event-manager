@@ -78,7 +78,7 @@ const defaultArgs: HomeStoryArgs = {
 
 const storyUser = signal({
   sub: 'storybook-user',
-  email: 'organizador@cacic.dev.br',
+  email: 'organizador@cacic.com.br',
   roles: ['organizer'],
   scopes: [],
   claims: { name: defaultArgs.organizerName },
@@ -138,7 +138,7 @@ const meta: Meta<HomeStoryArgs> = {
     activeArgs = args;
     storyUser.set({
       sub: 'storybook-user',
-      email: 'organizador@cacic.dev.br',
+      email: 'organizador@cacic.com.br',
       roles: ['organizer'],
       scopes: [],
       claims: { name: args.organizerName },
@@ -344,18 +344,20 @@ function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsi
       majorEventsCount: empty ? 0 : 2,
     },
     suggestions: buildSuggestions(args.suggestions),
-    calendarEvents: empty || (!args.showTodayEvents && !args.showMonitoring)
-      ? []
-      : [
-          ...Array.from({ length: todayEventsCount }, (_, index) => buildCalendarEvent(index, 0, args)),
-          ...Array.from({ length: upcomingEventsCount }, (_, index) => buildCalendarEvent(index, index + 1, args)),
-        ],
+    calendarEvents:
+      empty || (!args.showTodayEvents && !args.showMonitoring)
+        ? []
+        : [
+            ...Array.from({ length: todayEventsCount }, (_, index) => buildCalendarEvent(index, 0, args)),
+            ...Array.from({ length: upcomingEventsCount }, (_, index) => buildCalendarEvent(index, index + 1, args)),
+          ],
     weatherAlerts: Array.from({ length: weatherAlertsCount }, (_, index) =>
       buildWeatherAlert(index, todayEventsCount, upcomingEventsCount),
     ),
-    pendingCertificates: pendingCertificatesCount === 0
-      ? []
-      : Array.from({ length: pendingCertificatesCount }, (_, index) => buildPendingCertificate(index)),
+    pendingCertificates:
+      pendingCertificatesCount === 0
+        ? []
+        : Array.from({ length: pendingCertificatesCount }, (_, index) => buildPendingCertificate(index)),
     pendingOfflineAttendancesCount,
     pendingOfflineAttendanceEvents: buildPendingOfflineAttendanceEvents(pendingOfflineAttendancesCount),
     pendingReceiptValidationsCount,
@@ -392,7 +394,8 @@ function buildSuggestions(actions: DashboardInsightAction[]): DashboardActionLin
 function buildCalendarEvent(index: number, daysFromNow: number, args: HomeStoryArgs): DashboardCalendarEvent {
   const startDate = dateFromNow(daysFromNow, 9 + (index % 8));
   const type = faker.helpers.arrayElement(['MINICURSO', 'PALESTRA', 'OTHER']);
-  const allowSubscription = daysFromNow === 0 ? true : shouldAllowFutureSubscription(index, args.futureRegistrationMode);
+  const allowSubscription =
+    daysFromNow === 0 ? true : shouldAllowFutureSubscription(index, args.futureRegistrationMode);
   const slots = allowSubscription ? futureSlots(index, args.futureRegistrationMode) : null;
   const subscriptionsCount = allowSubscription
     ? faker.number.int({ min: 12, max: slots ?? 160 })

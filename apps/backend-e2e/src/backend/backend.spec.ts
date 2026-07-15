@@ -8,6 +8,6 @@ describe('GET /api', () => {
     });
 
     expect(res.status).toBe(303);
-    expect(res.headers.location).toBe('https://docs.fctapp.cacic.dev.br/Backend/API');
+    expect(res.headers.location).toBe('https://docs.eventos.cacic.com.br/Backend/API');
   });
 });

@@ -8,7 +8,7 @@ describe('authentication boundaries', () => {
     });
 
     expect(response.status).toBe(303);
-    expect(response.headers.location).toBe('https://docs.fctapp.cacic.dev.br/Backend/API');
+    expect(response.headers.location).toBe('https://docs.eventos.cacic.com.br/Backend/API');
   });
 
   it('rejects the current-user endpoint when no credentials are provided', async () => {

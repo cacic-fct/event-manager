@@ -152,7 +152,7 @@ jobs:
               repo: context.repo.repo,
               deployment_id: deployment.data.id,
               state: 'success',
-              environment_url: 'https://docs.fctapp.cacic.dev.br',
+              environment_url: 'https://docs.eventos.cacic.com.br',
             });
 
   scrape:
@@ -167,5 +167,5 @@ jobs:
           crawler-api-key: ${{ secrets.DOCS_ALGOLIA_CRAWLER_API_KEY }}
           algolia-app-id: ${{ secrets.DOCS_ALGOLIA_APP_ID }}
           algolia-api-key: ${{ secrets.DOCS_ALGOLIA_API_KEY }}
-          site-url: 'https://docs.fctapp.cacic.dev.br'
+          site-url: 'https://docs.eventos.cacic.com.br'
           crawler-name: 'fctapp-yudi'

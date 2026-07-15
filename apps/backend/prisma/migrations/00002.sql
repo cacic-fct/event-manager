@@ -19,7 +19,7 @@ SELECT
     "templateName": "Example",
     "htmlTemplatePath": "apps/backend/src/app/certificate/templates/example/example.template.html",
     "cssTemplatePath": "apps/backend/src/app/certificate/templates/example/example.template.css",
-    "verificationUrlPattern": "eventos.cacic.dev.br/app/validate/{certificateID}"
+    "verificationUrlPattern": "eventos.cacic.com.br/app/validate/{certificateID}"
   }
   $template$::jsonb,
   true,

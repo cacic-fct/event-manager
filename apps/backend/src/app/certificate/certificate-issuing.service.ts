@@ -128,14 +128,20 @@ export class CertificateIssuingService {
       }
       recipients.push(
         ...issuedBatch
-          .filter((result): result is PromiseFulfilledResult<EligibleCertificateRecipient> => result.status === 'fulfilled')
+          .filter(
+            (result): result is PromiseFulfilledResult<EligibleCertificateRecipient> => result.status === 'fulfilled',
+          )
           .map((result) => result.value),
       );
     }
 
     const issuedCertificates = await this.prisma.$transaction(async (tx) => {
       const certificates: { certificate: CertificateRecord; shouldNotify: boolean }[] = [];
-      for (let index = 0; index < recipients.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+      for (
+        let index = 0;
+        index < recipients.length;
+        index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE
+      ) {
         const batch = recipients.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
         const issuedBatch = await Promise.all(
           batch.map((recipient) =>
@@ -682,7 +688,7 @@ export class CertificateIssuingService {
     const issueYear = new Intl.DateTimeFormat('pt-BR', {
       year: 'numeric',
     }).format(issuedAt);
-    const verificationUrl = 'eventos.cacic.dev.br/app/validate/{certificateID}';
+    const verificationUrl = 'eventos.cacic.com.br/app/validate/{certificateID}';
     const formattedDocument = this.formatIdentityDocument(recipient.person.identityDocument);
     const sortedEvents = [...recipient.events].sort(
       (left, right) => left.startDate.getTime() - right.startDate.getTime(),

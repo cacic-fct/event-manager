@@ -121,7 +121,7 @@ function buildQueue(count: number, frozen = false): ReceiptValidationQueue {
       majorEventEndDate: frozen ? '2025-02-01T12:00:00.000Z' : '2026-06-05T21:00:00.000Z',
       personId: `person-${index + 1}`,
       personName: index === 0 ? 'Ada Lovelace' : `Participante ${index + 1}`,
-      personEmail: `participante-${index + 1}@cacic.dev.br`,
+      personEmail: `participante-${index + 1}@cacic.com.br`,
       personPhone: '18999999999',
       amountPaid: 12000,
       paymentTier: 'Estudante',

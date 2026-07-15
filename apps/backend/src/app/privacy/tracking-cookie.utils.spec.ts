@@ -36,7 +36,7 @@ describe('tracking cookie utilities', () => {
       CACIC_ANALYTICS_ID_COOKIE_NAME,
       'keycloak-subject',
       expect.objectContaining({
-        domain: '.cacic.dev.br',
+        domain: '.cacic.com.br',
         httpOnly: false,
         sameSite: 'lax',
         secure: true,
@@ -46,7 +46,7 @@ describe('tracking cookie utilities', () => {
       CACIC_ANALYTICS_CONSENT_COOKIE_NAME,
       expect.stringContaining('"analyticsAllowed":true'),
       expect.objectContaining({
-        domain: '.cacic.dev.br',
+        domain: '.cacic.com.br',
         httpOnly: false,
       }),
     );
@@ -72,12 +72,12 @@ describe('tracking cookie utilities', () => {
     expect(cookieMock).toHaveBeenCalledWith(
       CACIC_ANALYTICS_ID_COOKIE_NAME,
       'keycloak-subject',
-      expect.objectContaining({ domain: '.cacic.dev.br' }),
+      expect.objectContaining({ domain: '.cacic.com.br' }),
     );
     expect(cookieMock).toHaveBeenCalledWith(
       CACIC_ANALYTICS_CONSENT_COOKIE_NAME,
       expect.stringContaining('"analyticsAllowed":false'),
-      expect.objectContaining({ domain: '.cacic.dev.br' }),
+      expect.objectContaining({ domain: '.cacic.com.br' }),
     );
     expect(clearCookieMock).not.toHaveBeenCalled();
   });
@@ -95,10 +95,7 @@ describe('tracking cookie utilities', () => {
       CACIC_PURR_COOKIE_NAME,
       CACIC_PURR_QUICK_COOKIE_NAME,
     ]) {
-      expect(clearCookieMock).toHaveBeenCalledWith(
-        cookieName,
-        expect.objectContaining({ domain: '.cacic.dev.br' }),
-      );
+      expect(clearCookieMock).toHaveBeenCalledWith(cookieName, expect.objectContaining({ domain: '.cacic.com.br' }));
       expect(hasHostOnlyClearCall(clearCookieMock, cookieName)).toBe(true);
     }
   });
@@ -106,7 +103,7 @@ describe('tracking cookie utilities', () => {
   it('uses an explicitly configured shared cookie domain after trimming it', () => {
     const { cookieMock, response } = createResponse();
     const config = createConfigService({
-      CACIC_SHARED_COOKIE_DOMAIN: '  .configured.cacic.dev.br  ',
+      CACIC_SHARED_COOKIE_DOMAIN: '  .configured.cacic.com.br  ',
     });
 
     refreshCacicTrackingCookies(response, config, {
@@ -119,7 +116,7 @@ describe('tracking cookie utilities', () => {
     expect(cookieMock).toHaveBeenCalledWith(
       CACIC_ANALYTICS_ID_COOKIE_NAME,
       'keycloak-subject',
-      expect.objectContaining({ domain: '.configured.cacic.dev.br' }),
+      expect.objectContaining({ domain: '.configured.cacic.com.br' }),
     );
   });
 
@@ -201,7 +198,7 @@ function createResponse(): {
 
 function createConfigService(overrides: Record<string, string | undefined> = {}): ConfigService {
   const values: Record<string, string | undefined> = {
-    BACKEND_URL: 'https://eventos.cacic.dev.br/api',
+    BACKEND_URL: 'https://eventos.cacic.com.br/api',
     ...overrides,
   };
 

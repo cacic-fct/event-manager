@@ -100,7 +100,7 @@ export async function mockAdminApi(
     permissionGrants: [createAdminE2EPermissionGrant()],
   };
 
-  await page.route('https://unleash.cacic.dev.br/api/frontend/**', (route) =>
+  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
     route.fulfill({
       status: 304,
       body: '',
@@ -569,7 +569,9 @@ export function createAdminE2EEventAttendance(overrides: Record<string, unknown>
   };
 }
 
-export function createAdminE2EOfflineEventAttendanceSubmission(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+export function createAdminE2EOfflineEventAttendanceSubmission(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
   const event = createAdminE2EEvent();
   const collectedAt = relativeIsoDate(-1, 17, 20);
   const submittedAt = relativeIsoDate(-1, 18);
@@ -684,7 +686,9 @@ export function createAdminE2EEventForm(overrides: Partial<AdminE2EEventFormFixt
   };
 }
 
-export function createAdminE2EMajorEventUserAttendance(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+export function createAdminE2EMajorEventUserAttendance(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
   const event = createAdminE2EEvent();
   const person = createAdminE2EPerson();
   const attendedAt = relativeIsoDate(-1, 17, 30);

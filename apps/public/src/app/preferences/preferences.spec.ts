@@ -69,7 +69,7 @@ describe('Preferences', () => {
     fixture.detectChanges();
 
     const accountLink: HTMLAnchorElement | null = fixture.nativeElement.querySelector(
-      'a[href="https://account.cacic.dev.br/app/"]',
+      'a[href="https://account.cacic.com.br/app/"]',
     );
 
     expect(fixture.nativeElement.textContent).toContain('Conta');
@@ -81,8 +81,8 @@ describe('Preferences', () => {
     authState.set(true);
     fixture.detectChanges();
 
-    const logoutButton = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('[role="button"]')).find((button) =>
-      button.textContent?.includes('Sair da conta'),
+    const logoutButton = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('[role="button"]')).find(
+      (button) => button.textContent?.includes('Sair da conta'),
     );
 
     expect(logoutButton).toBeDefined();

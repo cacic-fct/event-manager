@@ -136,9 +136,13 @@ export class WorkspacePreferencesTabComponent {
       .subscribe({
         next: (settings) => {
           this.personalFeedSettingsOverride.set(settings);
-          this.snackBar.open(change.checked ? 'Feed administrativo ativado.' : 'Feed administrativo desativado.', 'OK', {
-            duration: 3000,
-          });
+          this.snackBar.open(
+            change.checked ? 'Feed administrativo ativado.' : 'Feed administrativo desativado.',
+            'OK',
+            {
+              duration: 3000,
+            },
+          );
         },
         error: (error: unknown) => {
           change.source.checked = !change.checked;
@@ -267,9 +271,7 @@ export class WorkspacePreferencesTabComponent {
           width: '520px',
         })
         .afterClosed(),
-    ).then((choice: unknown) =>
-      choice === 'rotate' || choice === 'keep' ? choice : null,
-    );
+    ).then((choice: unknown) => (choice === 'rotate' || choice === 'keep' ? choice : null));
   }
 
   private setPersonalEnabledRequest(
@@ -341,7 +343,7 @@ export class WorkspacePreferencesTabComponent {
       return window.location.origin;
     }
 
-    return this.document.baseURI || 'https://eventos.cacic.dev.br';
+    return this.document.baseURI || 'https://eventos.cacic.com.br';
   }
 
   private showError(error: unknown, fallback: string): void {

@@ -51,7 +51,7 @@ declare global {
 }
 
 const publicFeatureFlagConfig: PublicFeatureFlagConfig = {
-  url: 'https://unleash.cacic.dev.br/api/frontend',
+  url: 'https://unleash.cacic.com.br/api/frontend',
   clientKey: isDevMode()
     ? 'default:development.rUPorLb0LVO4VIBLZ5RX4TKvsvGuABYmpkmzpWa7QHXwqSZ20v0ppRGYCWAO'
     : 'default:production.h8sn3hzUSF07msdHkuXubAVRxSgtAdGsBCXiXXhcs8I4boeXozEue0Tx0lwq',
@@ -132,7 +132,7 @@ export const appConfig: ApplicationConfig = {
     provideCacicObservability({
       analytics: {
         websiteId: 'df6b1fa8-7566-4cb0-8dff-279d15cc0b5d',
-        domains: ['eventos.cacic.dev.br'],
+        domains: ['eventos.cacic.com.br'],
         isEnabled: isAccountAnalyticsEnabled,
         buildIdentifyData: (user) => ({
           authenticated: true,
@@ -144,7 +144,7 @@ export const appConfig: ApplicationConfig = {
         }),
       },
       glitchtip: {
-        dsn: 'https://44b2480fd6cd4402b61590135a093fd6@glitchtip.cacic.dev.br/1',
+        dsn: 'https://44b2480fd6cd4402b61590135a093fd6@glitchtip.cacic.com.br/1',
         project: 'public',
         isEnabled: isAccountDiagnosticsEnabled,
         isPerformanceEnabled: isAccountPerformanceMonitoringEnabled,

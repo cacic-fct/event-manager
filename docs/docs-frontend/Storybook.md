@@ -4,7 +4,7 @@ O Storybook é uma ferramenta de desenvolvimento que permite criar, testar e doc
 
 O CACiC Event Manager usa o Storybook para desenvolver e documentar os componentes da interface do usuário.
 
-Uma cópia do Storybook do projeto está disponível em [storybook.eventos.cacic.dev.br](https://storybook.eventos.cacic.dev.br/).
+Uma cópia do Storybook do projeto está disponível em [storybook.eventos.cacic.com.br](https://storybook.eventos.cacic.com.br/).
 
 ## Projetos
 

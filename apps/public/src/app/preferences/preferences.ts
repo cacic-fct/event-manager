@@ -35,7 +35,7 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
         @if (authService.isAuthenticated()) {
           <h3 matSubheader>Conta</h3>
 
-          <a mat-list-item href="https://account.cacic.dev.br/app/">
+          <a mat-list-item href="https://account.cacic.com.br/app/">
             <mat-icon matListItemIcon>person_edit</mat-icon>
             <span matListItemTitle>Editar informações da conta</span>
           </a>

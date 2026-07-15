@@ -45,7 +45,7 @@ export const workspaceNavItems = [
     description: 'Gerencie eventos individuais, datas, locais e inscrições.',
     icon: 'event',
     group: 'Estrutura do evento',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20evento',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Gerenciar%20Eventos/Criar%20um%20evento',
   },
   {
     kind: 'link',
@@ -55,7 +55,7 @@ export const workspaceNavItems = [
     description: 'Gerencie agrupamentos de eventos e suas relações.',
     icon: 'folder',
     group: 'Estrutura do evento',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grupo%20de%20eventos',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Gerenciar%20Eventos/Criar%20um%20grupo%20de%20eventos',
   },
   {
     kind: 'link',
@@ -65,7 +65,7 @@ export const workspaceNavItems = [
     description: 'Organize eventos maiores compostos por várias atividades.',
     icon: 'festival',
     group: 'Estrutura do evento',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20Eventos/Criar%20um%20grande%20evento',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Gerenciar%20Eventos/Criar%20um%20grande%20evento',
   },
   {
     kind: 'link',
@@ -75,7 +75,7 @@ export const workspaceNavItems = [
     description: 'Orquestre rascunhos, agendamentos, publicação e pré-visualizações.',
     icon: 'campaign',
     group: 'Estrutura do evento',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Publica%C3%A7%C3%A3o',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Publica%C3%A7%C3%A3o',
   },
   {
     kind: 'divider',
@@ -90,7 +90,7 @@ export const workspaceNavItems = [
     description: 'Consulte e ajuste inscrições em eventos e grandes eventos.',
     icon: 'how_to_reg',
     group: 'Participação',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Inscrições',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Inscrições',
   },
   {
     kind: 'link',
@@ -100,7 +100,7 @@ export const workspaceNavItems = [
     description: 'Controle presença, check-ins e registros de participação.',
     icon: 'fact_check',
     group: 'Participação',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Presenças',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Presenças',
   },
   {
     kind: 'link',
@@ -110,7 +110,7 @@ export const workspaceNavItems = [
     description: 'Gerencie modelos, emissões e validações de certificados.',
     icon: 'workspace_premium',
     group: 'Participação',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Certificados',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Certificados',
   },
   {
     kind: 'link',
@@ -120,7 +120,7 @@ export const workspaceNavItems = [
     description: 'Crie formulários, vincule a eventos e acompanhe respostas.',
     icon: 'list_alt',
     group: 'Participação',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Formul%C3%A1rios',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Formul%C3%A1rios',
   },
   {
     kind: 'divider',
@@ -135,7 +135,7 @@ export const workspaceNavItems = [
     description: 'Consulte e gerencie participantes, palestrantes e usuários.',
     icon: 'groups',
     group: 'Pessoas',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20pessoas/Painel%20de%20pessoas',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Gerenciar%20pessoas/Painel%20de%20pessoas',
   },
   {
     kind: 'link',
@@ -145,7 +145,7 @@ export const workspaceNavItems = [
     description: 'Analise possíveis duplicidades e consolide registros.',
     icon: 'merge_type',
     group: 'Pessoas',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Gerenciar%20pessoas/Mesclar%20pessoas',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Gerenciar%20pessoas/Mesclar%20pessoas',
   },
   {
     kind: 'divider',
@@ -160,7 +160,7 @@ export const workspaceNavItems = [
     description: 'Acompanhe avisos e preferências de comunicação.',
     icon: 'notifications',
     group: 'Administração',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Notificações',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Notificações',
   },
   {
     kind: 'link',
@@ -170,7 +170,7 @@ export const workspaceNavItems = [
     description: 'Gerencie presets de locais usados nos eventos.',
     icon: 'place',
     group: 'Administração',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Locais',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Locais',
   },
   {
     kind: 'link',
@@ -180,7 +180,7 @@ export const workspaceNavItems = [
     description: 'Execute ações administrativas com efeitos amplos.',
     icon: 'language',
     group: 'Administração',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Operações%20globais',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Operações%20globais',
   },
   {
     kind: 'link',
@@ -191,7 +191,7 @@ export const workspaceNavItems = [
     icon: 'admin_panel_settings',
     group: 'Administração',
     helpLink:
-      'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Permissões%20e%20recursos%20congelados',
+      'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Permissões%20e%20recursos%20congelados',
   },
   {
     kind: 'link',
@@ -201,7 +201,7 @@ export const workspaceNavItems = [
     description: 'Explore logs de auditoria de todo o sistema.',
     icon: 'manage_search',
     group: 'Administração',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Auditoria',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Auditoria',
     visibleFor: 'super-admin',
     requiredRoleLabel: 'super-admin',
   },
@@ -213,7 +213,7 @@ export const workspaceNavItems = [
     description: 'Ajuste preferências administrativas da sua conta.',
     icon: 'settings',
     group: 'Administração',
-    helpLink: 'https://docs.fctapp.cacic.dev.br/Manual/Interface%20administrativa/Prefer%C3%AAncias',
+    helpLink: 'https://docs.eventos.cacic.com.br/Manual/Interface%20administrativa/Prefer%C3%AAncias',
   },
 ] as const satisfies readonly WorkspaceNavItem[];
 

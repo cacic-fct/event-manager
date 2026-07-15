@@ -45,7 +45,7 @@ describe('public entity fixtures', () => {
   });
 
   it('creates paid major-event fixtures with nested payment and price data', () => {
-    const paymentInfo = createPublicPaymentInfo({ id: 'payment-custom', pixKey: 'pix@cacic.dev.br' });
+    const paymentInfo = createPublicPaymentInfo({ id: 'payment-custom', pixKey: 'pix@cacic.com.br' });
     const price = createPublicMajorEventPrice({
       id: 'price-custom',
       type: 'SINGLE',

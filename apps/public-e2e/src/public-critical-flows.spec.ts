@@ -32,7 +32,9 @@ test('displays a public standalone event and lets the user subscribe and unsubsc
   expect(api.standaloneUnsubscribeCalls()).toBe(1);
 });
 
-test('opens standard major-event subscription from the public list and subscribes to grouped events', async ({ page }) => {
+test('opens standard major-event subscription from the public list and subscribes to grouped events', async ({
+  page,
+}) => {
   const api = await mockPublicCriticalFlowApi(page);
 
   await page.goto('/app/major-event');
@@ -99,7 +101,7 @@ async function preventSilentSso(page: Page): Promise<void> {
 }
 
 async function mockStaticExternalAssets(page: Page): Promise<void> {
-  await page.route('https://unleash.cacic.dev.br/api/frontend/**', (route) =>
+  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
     route.fulfill({
       status: 304,
       body: '',

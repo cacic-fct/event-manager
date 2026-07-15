@@ -6,7 +6,7 @@ O painel de administração é a interface principal para gerenciar o sistema, o
 
 O painel é desktop-first e não é otimizado para uso em dispositivos móveis. Ele também não é otimizado para conexões limitadas, pois consome muitos dados. Portanto, para coletar presenças durante o evento, é recomendado usar o aplicativo público, que é projetado para ser leve e fácil de usar em dispositivos móveis.
 
-Está disponível em https://eventos.cacic.dev.br/admin/
+Está disponível em https://eventos.cacic.com.br/admin/
 
 ### Soft delete
 
@@ -24,4 +24,4 @@ O aplicativo público é a interface voltada para os participantes do evento, on
 
 Também possui funcionalidades específicas para professores e para organizadores, para não ser necessário a liberação do painel de administração para estes grupos.
 
-Está disponível em https://eventos.cacic.dev.br/app/
+Está disponível em https://eventos.cacic.com.br/app/

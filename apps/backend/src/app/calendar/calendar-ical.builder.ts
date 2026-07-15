@@ -51,7 +51,7 @@ export function buildCalendar(input: {
 
 export function mapEventToCalendarEntry(event: CalendarEventRecord, url: string): CalendarEntry {
   return {
-    id: `event-${event.id}@eventos.cacic.dev.br`,
+    id: `event-${event.id}@eventos.cacic.com.br`,
     summary: event.name,
     start: event.startDate,
     end: event.endDate,
@@ -77,7 +77,7 @@ export function mapPublicEventGroupToCalendarEntry(
   const end = events.reduce((latest, event) => (event.endDate > latest ? event.endDate : latest), events[0].endDate);
 
   return {
-    id: `event-group-${eventGroup.id}@eventos.cacic.dev.br`,
+    id: `event-group-${eventGroup.id}@eventos.cacic.com.br`,
     summary: eventGroup.name,
     start,
     end,
@@ -102,7 +102,7 @@ export function mapEventGroupToCalendarEntry(
   const end = events.reduce((latest, event) => (event.endDate > latest ? event.endDate : latest), events[0].endDate);
 
   return {
-    id: `event-group-${eventGroup.id}@eventos.cacic.dev.br`,
+    id: `event-group-${eventGroup.id}@eventos.cacic.com.br`,
     summary: eventGroup.name,
     start,
     end,
@@ -119,7 +119,7 @@ export function mapMajorEventToCalendarEntry(
   publicAppOrigin: string,
 ): CalendarEntry {
   return {
-    id: `major-event-${majorEvent.id}@eventos.cacic.dev.br`,
+    id: `major-event-${majorEvent.id}@eventos.cacic.com.br`,
     summary: majorEvent.name,
     start: majorEvent.startDate,
     end: majorEvent.endDate,

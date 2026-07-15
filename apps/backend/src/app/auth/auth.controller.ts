@@ -74,7 +74,7 @@ class LoginUrlResponseDto {
     description:
       'Keycloak authorization URL generated with the server-side authorization state bound to the auth state cookie.',
     example:
-      'https://sso.cacic.dev.br/realms/cacic-sso/protocol/openid-connect/auth?client_id=cacic-event-manager&response_type=code&scope=openid%20profile%20email&state=...',
+      'https://sso.cacic.com.br/realms/cacic-sso/protocol/openid-connect/auth?client_id=cacic-event-manager&response_type=code&scope=openid%20profile%20email&state=...',
   })
   authorizationUrl!: string;
 }
@@ -176,7 +176,7 @@ class AuthenticatedUserResponseDto {
 
   @ApiPropertyOptional({
     description: 'Email claim when provided by the identity provider.',
-    example: 'joao@cacic.dev.br',
+    example: 'joao@cacic.com.br',
   })
   email?: string;
 
@@ -213,7 +213,7 @@ class AuthenticatedUserResponseDto {
     type: 'object',
     additionalProperties: true,
     example: {
-      iss: 'https://sso.cacic.dev.br/realms/cacic-sso',
+      iss: 'https://sso.cacic.com.br/realms/cacic-sso',
       aud: 'cacic-event-manager',
       typ: 'Bearer',
       is_onboarded: true,
@@ -247,7 +247,7 @@ export class AuthController {
     required: false,
     description:
       'Callback URI used later during the code exchange. Defaults to the backend callback URL derived from forwarded headers.',
-    example: 'https://eventos.cacic.dev.br/api/auth/callback',
+    example: 'https://eventos.cacic.com.br/api/auth/callback',
   })
   @ApiQuery({
     name: 'returnTo',
@@ -313,7 +313,7 @@ export class AuthController {
     required: false,
     description:
       'Callback URI used later during the code exchange. Defaults to the backend callback URL derived from forwarded headers.',
-    example: 'https://eventos.cacic.dev.br/api/auth/callback',
+    example: 'https://eventos.cacic.com.br/api/auth/callback',
   })
   @ApiQuery({
     name: 'returnTo',
@@ -388,7 +388,7 @@ export class AuthController {
     required: false,
     description:
       'Redirect URI used for the token exchange. It must match the URI used to start the authorization request.',
-    example: 'https://eventos.cacic.dev.br/api/auth/callback',
+    example: 'https://eventos.cacic.com.br/api/auth/callback',
   })
   @ApiQuery({
     name: 'state',
@@ -540,7 +540,7 @@ export class AuthController {
       type: 'object',
       additionalProperties: true,
       example: {
-        logoutUrl: 'https://sso.cacic.dev.br/realms/cacic-sso/protocol/openid-connect/logout?...',
+        logoutUrl: 'https://sso.cacic.com.br/realms/cacic-sso/protocol/openid-connect/logout?...',
       },
     },
   })
@@ -713,7 +713,7 @@ export class AuthController {
 
     for (const cookieName of CACIC_TRACKING_COOKIE_NAMES) {
       response.clearCookie(cookieName, {
-        domain: '.cacic.dev.br',
+        domain: '.cacic.com.br',
         sameSite: 'lax',
         secure,
         path: '/',
@@ -805,8 +805,8 @@ export class AuthController {
   private readAllowedCallbackRedirectOrigins(): Set<string> {
     const origins = new Set<string>([
       'http://localhost:3000',
-      'https://eventos.cacic.dev.br',
-      'https://secompp.cacic.dev.br',
+      'https://eventos.cacic.com.br',
+      'https://secompp.cacic.com.br',
     ]);
 
     this.addAllowedOrigin(origins, process.env.KEYCLOAK_REDIRECT_URI, 'allowed callback redirect origin');
@@ -848,8 +848,8 @@ export class AuthController {
   private readAllowedPostLogoutRedirectOrigins(): Set<string> {
     const origins = new Set<string>([
       'http://localhost:4200',
-      'https://eventos.cacic.dev.br',
-      'https://secompp.cacic.dev.br',
+      'https://eventos.cacic.com.br',
+      'https://secompp.cacic.com.br',
     ]);
 
     this.addAllowedOrigin(

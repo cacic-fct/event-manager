@@ -8,7 +8,7 @@ SET
     "templateName": "CACiC Unesp - Participante",
     "htmlTemplatePath": "certificate-templates/cacic-unesp/cacic-unesp-attendee.template.html",
     "cssTemplatePath": "certificate-templates/cacic-unesp/cacic-unesp-attendee.template.css",
-    "verificationUrlPattern": "eventos.cacic.dev.br/app/validar/{certificateID}"
+    "verificationUrlPattern": "eventos.cacic.com.br/app/validar/{certificateID}"
   }
   $template$::jsonb,
   "certificateFields" = $fields$
@@ -56,7 +56,7 @@ SELECT
     "templateName": "CACiC Unesp - Organizador",
     "htmlTemplatePath": "certificate-templates/cacic-unesp/cacic-unesp-organizer.template.html",
     "cssTemplatePath": "certificate-templates/cacic-unesp/cacic-unesp-organizer.template.css",
-    "verificationUrlPattern": "eventos.cacic.dev.br/app/validar/{certificateID}"
+    "verificationUrlPattern": "eventos.cacic.com.br/app/validar/{certificateID}"
   }
   $template$::jsonb,
   $fields$
@@ -108,7 +108,7 @@ SELECT
     "templateName": "CACiC Unesp - Palestrante/Ministrante",
     "htmlTemplatePath": "certificate-templates/cacic-unesp/cacic-unesp-lecturer.template.html",
     "cssTemplatePath": "certificate-templates/cacic-unesp/cacic-unesp-lecturer.template.css",
-    "verificationUrlPattern": "eventos.cacic.dev.br/app/validar/{certificateID}"
+    "verificationUrlPattern": "eventos.cacic.com.br/app/validar/{certificateID}"
   }
   $template$::jsonb,
   $fields$
@@ -159,7 +159,7 @@ SELECT
     "templateName": "CACiC Unesp - Extensão",
     "htmlTemplatePath": "certificate-templates/cacic-unesp/cacic-unesp-extension.template.html",
     "cssTemplatePath": "certificate-templates/cacic-unesp/cacic-unesp-extension.template.css",
-    "verificationUrlPattern": "eventos.cacic.dev.br/app/validar/{certificateID}"
+    "verificationUrlPattern": "eventos.cacic.com.br/app/validar/{certificateID}"
   }
   $template$::jsonb,
   $fields$

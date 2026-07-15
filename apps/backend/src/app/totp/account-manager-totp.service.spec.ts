@@ -85,7 +85,7 @@ describe('AccountManagerTotpService', () => {
       clientSecret: undefined,
     });
     expect(mockedAxios.post).toHaveBeenCalledWith(
-      new URL(M2M_TOTP_ROUTES.ensureSeed('user-1'), 'https://account.cacic.dev.br').toString(),
+      new URL(M2M_TOTP_ROUTES.ensureSeed('user-1'), 'https://account.cacic.com.br').toString(),
       {},
       {
         headers: {

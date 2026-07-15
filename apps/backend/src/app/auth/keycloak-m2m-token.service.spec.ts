@@ -82,7 +82,7 @@ describe('KeycloakM2mTokenService', () => {
     await expect(service.getClientCredentialsToken()).resolves.toBe('prod-token');
 
     expect(mockedAxios.post).toHaveBeenCalledWith(
-      'https://sso.cacic.dev.br/realms/cacic-sso/protocol/openid-connect/token',
+      'https://sso.cacic.com.br/realms/cacic-sso/protocol/openid-connect/token',
       expect.any(String),
       expect.any(Object),
     );

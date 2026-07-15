@@ -20,7 +20,7 @@ const turnstileSiteKey = process.env['TURNSTILE_SITE_KEY']?.trim() ?? '';
 
 const app = express();
 const angularApp = new AngularNodeAppEngine({
-  allowedHosts: ['eventos.cacic.dev.br'],
+  allowedHosts: ['eventos.cacic.com.br'],
   trustProxyHeaders: [
     'x-forwarded-host',
     'x-forwarded-proto',
@@ -116,7 +116,7 @@ app.get('/app/sitemap.xml', (req, res) => {
       return;
     }
     const url = root.ele('url');
-    url.ele('loc', `https://eventos.cacic.dev.br/app${path}`);
+    url.ele('loc', `https://eventos.cacic.com.br/app${path}`);
   });
 
   res.type('application/xml; charset=utf-8');

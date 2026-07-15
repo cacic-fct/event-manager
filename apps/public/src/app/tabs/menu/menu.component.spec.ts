@@ -14,9 +14,7 @@ describe('MenuComponent', () => {
   let fixture: ComponentFixture<MenuComponent>;
   let authService: AuthService;
   let httpTesting: HttpTestingController;
-  let addEventListener: ReturnType<
-    typeof vi.fn<(type: string, listener: EventListenerOrEventListenerObject) => void>
-  >;
+  let addEventListener: ReturnType<typeof vi.fn<(type: string, listener: EventListenerOrEventListenerObject) => void>>;
   let removeEventListener: ReturnType<
     typeof vi.fn<(type: string, listener: EventListenerOrEventListenerObject) => void>
   >;
@@ -86,7 +84,7 @@ describe('MenuComponent', () => {
     expect(text).toContain('Preferências');
     expect(text).not.toContain('Editar informações da conta');
     expect(text).not.toContain('Sair da conta');
-    expect(fixture.nativeElement.querySelector('a[href="https://account.cacic.dev.br/app/"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('a[href="https://account.cacic.com.br/app/"]')).toBeNull();
   });
 
   it('shows the admin panel link for users with workspace entry permissions', async () => {

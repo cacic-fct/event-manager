@@ -46,7 +46,7 @@ export type CacicObservabilityConfig = {
 };
 
 const UMAMI_REPLAY_SCRIPT_ID = 'cacic-replay-script';
-const DEFAULT_UMAMI_REPLAY_SRC = 'https://a.cacic.dev.br/recorder.js';
+const DEFAULT_UMAMI_REPLAY_SRC = 'https://a.cacic.com.br/recorder.js';
 const DEFAULT_UMAMI_REPLAY_SAMPLE_RATE = 1;
 const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'moderate';
 const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 1_200_000;
@@ -57,9 +57,7 @@ class CacicSentryErrorHandler implements ErrorHandler {
 
   handleError(error: unknown): void {
     this.fallbackErrorHandler.handleError(error);
-    void import('@sentry/angular')
-      .then((sentry) => sentry.captureException(error))
-      .catch(() => undefined);
+    void import('@sentry/angular').then((sentry) => sentry.captureException(error)).catch(() => undefined);
   }
 }
 
@@ -191,7 +189,7 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
     providers.push(
       provideUmami({
         websiteId: config.analytics.websiteId,
-        src: config.analytics.src ?? 'https://a.cacic.dev.br/b.js',
+        src: config.analytics.src ?? 'https://a.cacic.com.br/b.js',
         autoTrack: false,
         domains: config.analytics.domains,
       }),

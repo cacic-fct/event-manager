@@ -55,10 +55,7 @@ export function refreshCacicTrackingCookies(
   };
 }
 
-export function clearCacicTrackingCookies(
-  response: Response,
-  configService: ConfigService,
-): void {
+export function clearCacicTrackingCookies(response: Response, configService: ConfigService): void {
   const baseOptions = resolveSharedCookieOptions(configService);
   const hostOnlyOptions = { ...baseOptions };
   delete hostOnlyOptions.domain;
@@ -101,7 +98,7 @@ function resolveSharedCookieDomain(configService: ConfigService): string | undef
 
   try {
     const hostname = new URL(backendUrl).hostname;
-    return hostname === 'cacic.dev.br' || hostname.endsWith('.cacic.dev.br') ? '.cacic.dev.br' : undefined;
+    return hostname === 'cacic.com.br' || hostname.endsWith('.cacic.com.br') ? '.cacic.com.br' : undefined;
   } catch {
     return undefined;
   }

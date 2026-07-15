@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://eventos.cacic.dev.br/app/sitemap.xml
+Sitemap: https://eventos.cacic.com.br/app/sitemap.xml

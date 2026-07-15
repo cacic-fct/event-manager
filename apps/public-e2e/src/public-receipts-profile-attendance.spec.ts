@@ -13,7 +13,9 @@ test.beforeEach(async ({ page }) => {
   await mockStaticExternalAssets(page);
 });
 
-test('opens a paid major event payment page and sends a receipt through the mocked upload endpoint', async ({ page }) => {
+test('opens a paid major event payment page and sends a receipt through the mocked upload endpoint', async ({
+  page,
+}) => {
   const api = await mockPublicApi(page);
 
   await page.goto('/app/major-event');
@@ -24,13 +26,11 @@ test('opens a paid major event payment page and sends a receipt through the mock
   await expect(page.getByRole('heading', { name: 'SECOMPP Pago' })).toBeVisible();
   await expect(page.getByText('Aguardando envio de comprovante')).toBeVisible();
 
-  await page
-    .locator('input[aria-label="Enviar imagem do comprovante de pagamento"]')
-    .setInputFiles({
-      name: 'comprovante.png',
-      mimeType: 'image/png',
-      buffer: pngFixture(),
-    });
+  await page.locator('input[aria-label="Enviar imagem do comprovante de pagamento"]').setInputFiles({
+    name: 'comprovante.png',
+    mimeType: 'image/png',
+    buffer: pngFixture(),
+  });
   await expect(page.getByRole('heading', { name: 'Confirmar comprovante' })).toBeVisible();
   await page.getByRole('button', { name: 'Enviar', exact: true }).click();
 
@@ -46,7 +46,9 @@ test('opens a paid major event payment page and sends a receipt through the mock
   ]);
 });
 
-test('lists current-user subscriptions, standalone certificates, and downloads the certificate archive', async ({ page }) => {
+test('lists current-user subscriptions, standalone certificates, and downloads the certificate archive', async ({
+  page,
+}) => {
   const api = await mockPublicApi(page);
 
   await page.goto('/app/profile/attendances');
@@ -132,7 +134,7 @@ async function preventSilentSso(page: Page): Promise<void> {
 }
 
 async function mockStaticExternalAssets(page: Page): Promise<void> {
-  await page.route('https://unleash.cacic.dev.br/api/frontend/**', (route) =>
+  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
     route.fulfill({
       status: 304,
       body: '',
@@ -335,14 +337,15 @@ async function fulfillGraphql(
 
   if (query.includes('query CurrentUserPendingOnlineAttendanceEvents')) {
     await fulfillGraphqlData(route, {
-      currentUserPendingOnlineAttendanceEvents: state.getOnlineAttendanceConfirmed() || !state.hasPendingOnlineAttendance()
-        ? []
-        : [
-            {
-              eventId: 'online-event',
-              event: onlineAttendanceEventFixture(),
-            },
-          ],
+      currentUserPendingOnlineAttendanceEvents:
+        state.getOnlineAttendanceConfirmed() || !state.hasPendingOnlineAttendance()
+          ? []
+          : [
+              {
+                eventId: 'online-event',
+                event: onlineAttendanceEventFixture(),
+              },
+            ],
     });
     return;
   }
@@ -421,7 +424,7 @@ function paidMajorEventFixture(): PublicMajorEvent {
       id: 'payment-paid-major',
       majorEventId: 'paid-major',
       bankName: 'Banco Teste',
-      pixKey: 'pagamentos@cacic.dev.br',
+      pixKey: 'pagamentos@cacic.com.br',
     }),
     majorEventPrices: [
       createPublicMajorEventPrice({
@@ -615,9 +618,8 @@ function onlineAttendanceEventFixture(): PublicEvent {
 
 function pngFixture(): Buffer {
   return Buffer.from([
-    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
-    0xde,
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde,
   ]);
 }
 

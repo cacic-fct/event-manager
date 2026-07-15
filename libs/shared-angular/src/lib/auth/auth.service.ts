@@ -3,7 +3,19 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import type { Permission } from '@cacic-fct/shared-permissions';
-import { EMPTY, Observable, catchError, finalize, firstValueFrom, map, shareReplay, switchMap, tap, throwError, timeout } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  catchError,
+  finalize,
+  firstValueFrom,
+  map,
+  shareReplay,
+  switchMap,
+  tap,
+  throwError,
+  timeout,
+} from 'rxjs';
 import { AuthOnlineStatusService } from './auth-online-status.service';
 import { AuthenticatedUser, AuthRefreshResult, PasswordLoginResult } from './auth.types';
 import type { LoginOptions } from './auth.types';
@@ -11,7 +23,7 @@ import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforceme
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly accountLoginUrl = 'https://account.cacic.dev.br/api/auth/login';
+  private readonly accountLoginUrl = 'https://account.cacic.com.br/api/auth/login';
   private readonly onboardingReturnStorageKey = 'cacic-eventos:onboarding-return-url';
   private readonly onboardingRefreshAttemptStorageKey = 'cacic-eventos:onboarding-refresh-attempted';
   private readonly silentSsoAttemptStorageKey = 'cacic-eventos:silent-sso-attempted';

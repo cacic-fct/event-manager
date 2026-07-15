@@ -71,7 +71,7 @@ services:
       - 'traefik.enable=true'
       - 'traefik.docker.network=traefik'
       - 'traefik.http.routers.event-manager-api.entrypoints=web,websecure'
-      - 'traefik.http.routers.event-manager-api.rule=Host(`eventos.cacic.dev.br`) && PathPrefix(`/api`)'
+      - 'traefik.http.routers.event-manager-api.rule=Host(`eventos.cacic.com.br`) && PathPrefix(`/api`)'
       - 'traefik.http.routers.event-manager-api.tls=true'
       - 'traefik.http.routers.event-manager-api.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.event-manager-api.service=event-manager-api-svc'
@@ -94,14 +94,14 @@ services:
       - 'traefik.enable=true'
       - 'traefik.docker.network=traefik'
       - 'traefik.http.routers.event-manager-admin.entrypoints=web,websecure'
-      - 'traefik.http.routers.event-manager-admin.rule=Host(`eventos.cacic.dev.br`) && PathPrefix(`/admin/`)'
+      - 'traefik.http.routers.event-manager-admin.rule=Host(`eventos.cacic.com.br`) && PathPrefix(`/admin/`)'
       - 'traefik.http.routers.event-manager-admin.tls=true'
       - 'traefik.http.routers.event-manager-admin.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.event-manager-admin.service=event-manager-admin-svc'
       - 'traefik.http.services.event-manager-admin-svc.loadbalancer.server.port=4000'
 
       - 'traefik.http.routers.event-manager-admin-noslash.entrypoints=web,websecure'
-      - 'traefik.http.routers.event-manager-admin-noslash.rule=Host(`eventos.cacic.dev.br`) && Path(`/admin`)'
+      - 'traefik.http.routers.event-manager-admin-noslash.rule=Host(`eventos.cacic.com.br`) && Path(`/admin`)'
       - 'traefik.http.routers.event-manager-admin-noslash.tls=true'
       - 'traefik.http.routers.event-manager-admin-noslash.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.event-manager-admin-noslash.middlewares=event-manager-admin-slash'
@@ -128,14 +128,14 @@ services:
       - 'traefik.enable=true'
       - 'traefik.docker.network=traefik'
       - 'traefik.http.routers.event-manager-public.entrypoints=web,websecure'
-      - 'traefik.http.routers.event-manager-public.rule=Host(`eventos.cacic.dev.br`) && PathPrefix(`/app/`)'
+      - 'traefik.http.routers.event-manager-public.rule=Host(`eventos.cacic.com.br`) && PathPrefix(`/app/`)'
       - 'traefik.http.routers.event-manager-public.tls=true'
       - 'traefik.http.routers.event-manager-public.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.event-manager-public.service=event-manager-public-svc'
       - 'traefik.http.services.event-manager-public-svc.loadbalancer.server.port=4000'
 
       - 'traefik.http.routers.event-manager-root.entrypoints=web,websecure'
-      - 'traefik.http.routers.event-manager-root.rule=Host(`eventos.cacic.dev.br`) && Path(`/`)'
+      - 'traefik.http.routers.event-manager-root.rule=Host(`eventos.cacic.com.br`) && Path(`/`)'
       - 'traefik.http.routers.event-manager-root.tls=true'
       - 'traefik.http.routers.event-manager-root.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.event-manager-root.middlewares=event-manager-root-redirect'
@@ -144,7 +144,7 @@ services:
       - 'traefik.http.middlewares.event-manager-root-redirect.redirectregex.permanent=true'
 
       - 'traefik.http.routers.event-manager-public-noslash.entrypoints=web,websecure'
-      - 'traefik.http.routers.event-manager-public-noslash.rule=Host(`eventos.cacic.dev.br`) && Path(`/app`)'
+      - 'traefik.http.routers.event-manager-public-noslash.rule=Host(`eventos.cacic.com.br`) && Path(`/app`)'
       - 'traefik.http.routers.event-manager-public-noslash.tls=true'
       - 'traefik.http.routers.event-manager-public-noslash.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.event-manager-public-noslash.middlewares=event-manager-public-slash'
@@ -154,7 +154,7 @@ services:
 
       # Redirect /robots.txt, /humans.txt and /.well-known/security.txt to /app/*.txt
       - 'traefik.http.routers.event-manager-public-textfiles.entrypoints=web,websecure'
-      - 'traefik.http.routers.event-manager-public-textfiles.rule=Host(`eventos.cacic.dev.br`) && (Path(`/robots.txt`) || Path(`/humans.txt`) || Path(`/.well-known/security.txt`))'
+      - 'traefik.http.routers.event-manager-public-textfiles.rule=Host(`eventos.cacic.com.br`) && (Path(`/robots.txt`) || Path(`/humans.txt`) || Path(`/.well-known/security.txt`))'
       - 'traefik.http.routers.event-manager-public-textfiles.tls=true'
       - 'traefik.http.routers.event-manager-public-textfiles.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.event-manager-public-textfiles.middlewares=event-manager-public-textfiles-redirect'
@@ -164,7 +164,7 @@ services:
 
       # Redirect /validar/* to /app/validate/*
       - 'traefik.http.routers.event-manager-validar.entrypoints=web,websecure'
-      - 'traefik.http.routers.event-manager-validar.rule=Host(`eventos.cacic.dev.br`) && PathPrefix(`/validar/`)'
+      - 'traefik.http.routers.event-manager-validar.rule=Host(`eventos.cacic.com.br`) && PathPrefix(`/validar/`)'
       - 'traefik.http.routers.event-manager-validar.tls=true'
       - 'traefik.http.routers.event-manager-validar.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.event-manager-validar.middlewares=event-manager-validar-redirect'
@@ -173,15 +173,15 @@ services:
       - 'traefik.http.middlewares.event-manager-validar-redirect.redirectregex.permanent=true'
       - 'traefik.http.routers.event-manager-validar.service=event-manager-public-svc'
 
-      # Redirect fctapp.cacic.dev.br to eventos.cacic.dev.br/app/ without preserving path
+      # Redirect fctapp.cacic.com.br to eventos.cacic.com.br/app/ without preserving path
       - 'traefik.http.routers.fctapp-redirect.entrypoints=web,websecure'
-      - 'traefik.http.routers.fctapp-redirect.rule=Host(`fctapp.cacic.dev.br`)'
+      - 'traefik.http.routers.fctapp-redirect.rule=Host(`fctapp.cacic.com.br`)'
       - 'traefik.http.routers.fctapp-redirect.tls=true'
       - 'traefik.http.routers.fctapp-redirect.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.fctapp-redirect.middlewares=fctapp-to-eventos'
       - 'traefik.http.routers.fctapp-redirect.service=event-manager-public-svc'
       - "traefik.http.middlewares.fctapp-to-eventos.redirectregex.regex=^https?://fctapp\\.cacic\\.dev\\.br/?.*$$"
-      - 'traefik.http.middlewares.fctapp-to-eventos.redirectregex.replacement=https://eventos.cacic.dev.br/app/'
+      - 'traefik.http.middlewares.fctapp-to-eventos.redirectregex.replacement=https://eventos.cacic.com.br/app/'
       - 'traefik.http.middlewares.fctapp-to-eventos.redirectregex.permanent=true'
 
     networks:

@@ -228,7 +228,7 @@ export class CertificateValidation {
       width: 'min(560px, 96vw)',
       maxWidth: '96vw',
       data: {
-        acceptedPrefixes: ['eventos.cacic.dev.br/validar/'],
+        acceptedPrefixes: ['eventos.cacic.com.br/validar/'],
         title: 'Escanear código de certificado',
         mode: ['QRCode'],
       },
@@ -243,8 +243,8 @@ export class CertificateValidation {
         }
 
         console.log('Scanned code:', code);
-        // strip "eventos.cacic.dev.br/validar/" prefix if present
-        const prefix = 'eventos.cacic.dev.br/validar/';
+        // strip "eventos.cacic.com.br/validar/" prefix if present
+        const prefix = 'eventos.cacic.com.br/validar/';
         const certificateId = code.startsWith(prefix) ? code.substring(prefix.length) : code;
 
         this.validationForm.certificateId().value.set(certificateId);

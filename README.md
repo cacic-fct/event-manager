@@ -1,6 +1,6 @@
 # CACiC Event Manager
 
-[![Documentation](https://img.shields.io/badge/documentation-blue)](https://docs.fctapp.cacic.dev.br)
+[![Documentation](https://img.shields.io/badge/documentation-blue)](https://docs.eventos.cacic.com.br)
 [![CI](https://img.shields.io/github/actions/workflow/status/cacic-fct/event-manager/ci.yml?branch=main&logo=github&label=ci)](https://github.com/cacic-fct/event-manager/actions)
 [![CD](https://img.shields.io/github/actions/workflow/status/cacic-fct/event-manager/cd.yml?branch=main&logo=github&label=cd)](https://github.com/cacic-fct/event-manager/actions)
 [![Docs build](https://img.shields.io/github/actions/workflow/status/cacic-fct/event-manager/docs.yml?branch=main&logo=github&label=docs%20build)](https://github.com/cacic-fct/event-manager/actions)
@@ -18,13 +18,13 @@ Leia o [guia de contribuição do CACiC](https://github.com/cacic-fct/.github/bl
 
 ## Documentação
 
-A documentação do projeto está disponível em [docs.fctapp.cacic.dev.br](https://docs.fctapp.cacic.dev.br).
+A documentação do projeto está disponível em [docs.eventos.cacic.com.br](https://docs.eventos.cacic.com.br).
 
 O projeto da documentação está disponível na pasta `docs`.
 
 ## Aplicativo
 
-O aplicativo é construído com Angular e pode ser acessado em [eventos.cacic.dev.br/app/](https://eventos.cacic.dev.br/app/).
+O aplicativo é construído com Angular e pode ser acessado em [eventos.cacic.com.br/app/](https://eventos.cacic.com.br/app/).
 
 
 ### Desenvolvimento

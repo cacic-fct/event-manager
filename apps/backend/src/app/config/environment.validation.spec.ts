@@ -34,12 +34,7 @@ describe('validateBackendEnvironment', () => {
         NODE_ENV: 'staging',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
       }),
-    ).toThrow(
-      [
-        'PUBLIC_APP_ORIGIN is required.',
-        'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required.',
-      ].join('\n- '),
-    );
+    ).toThrow(['PUBLIC_APP_ORIGIN is required.', 'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required.'].join('\n- '));
   });
 
   it('requires feature-specific settings only when the feature is enabled', () => {
@@ -68,18 +63,14 @@ describe('validateBackendEnvironment', () => {
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         NOVU_SECRET_KEY: 'secret',
       }),
-    ).toThrow(
-      'NOVU_SECURE_MODE_ENABLED must be true when NOVU_SECRET_KEY or NOVU_APPLICATION_IDENTIFIER is set.',
-    );
+    ).toThrow('NOVU_SECURE_MODE_ENABLED must be true when NOVU_SECRET_KEY or NOVU_APPLICATION_IDENTIFIER is set.');
 
     expect(() =>
       validateBackendEnvironment({
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         NOVU_APPLICATION_IDENTIFIER: 'app-1',
       }),
-    ).toThrow(
-      'NOVU_SECURE_MODE_ENABLED must be true when NOVU_SECRET_KEY or NOVU_APPLICATION_IDENTIFIER is set.',
-    );
+    ).toThrow('NOVU_SECURE_MODE_ENABLED must be true when NOVU_SECRET_KEY or NOVU_APPLICATION_IDENTIFIER is set.');
   });
 
   it('requires all S3 storage values when any S3 storage value is set', () => {
@@ -95,23 +86,23 @@ describe('validateBackendEnvironment', () => {
     expect(() =>
       validateBackendEnvironment({
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
-        KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.dev.br/api/auth/callback?extra=1',
+        KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.com.br/api/auth/callback?extra=1',
       }),
-    ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.dev.br/api/auth/callback.');
+    ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.com.br/api/auth/callback.');
 
     expect(() =>
       validateBackendEnvironment({
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
-        KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.dev.br/api/auth/other',
+        KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.com.br/api/auth/other',
       }),
-    ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.dev.br/api/auth/callback.');
+    ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.com.br/api/auth/callback.');
 
     expect(() =>
       validateBackendEnvironment({
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
-        KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.dev.br/api/auth/callback#fragment',
+        KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.com.br/api/auth/callback#fragment',
       }),
-    ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.dev.br/api/auth/callback.');
+    ).toThrow('KEYCLOAK_REDIRECT_URI must be exactly https://eventos.cacic.com.br/api/auth/callback.');
 
     expect(() =>
       validateBackendEnvironment({
@@ -122,7 +113,7 @@ describe('validateBackendEnvironment', () => {
 
     const config = {
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
-      KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.dev.br/api/auth/callback',
+      KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.com.br/api/auth/callback',
     };
 
     expect(validateBackendEnvironment(config)).toBe(config);

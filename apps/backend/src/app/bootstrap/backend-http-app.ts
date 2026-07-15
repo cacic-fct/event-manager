@@ -29,7 +29,7 @@ export function configureBackendHttpApp(app: INestApplication): void {
     }),
   );
   app.enableCors({
-    origin: ['https://eventos.cacic.dev.br', 'https://secompp.cacic.dev.br'],
+    origin: ['https://eventos.cacic.com.br', 'https://secompp.cacic.com.br'],
     credentials: true,
   });
 

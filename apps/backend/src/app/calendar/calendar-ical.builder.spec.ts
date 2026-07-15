@@ -29,14 +29,14 @@ describe('calendar iCal builder', () => {
   };
 
   it('maps event metadata into a calendar entry with URL-safe public links', () => {
-    const entry = mapEventToCalendarEntry(event, buildPublicEventUrl('https://eventos.cacic.dev.br', event.id));
+    const entry = mapEventToCalendarEntry(event, buildPublicEventUrl('https://eventos.cacic.com.br', event.id));
 
     expect(entry).toEqual(
       expect.objectContaining({
-        id: 'event-event 1@eventos.cacic.dev.br',
+        id: 'event-event 1@eventos.cacic.com.br',
         summary: 'Oficina de TypeScript',
         description: 'Descrição completa.\n\nGrande evento: Congresso CACiC\n\nGrupo de eventos: Trilha Web',
-        url: 'https://eventos.cacic.dev.br/app/event/event%201',
+        url: 'https://eventos.cacic.com.br/app/event/event%201',
       }),
     );
     expect(entry.location).toEqual({
@@ -66,9 +66,9 @@ describe('calendar iCal builder', () => {
       ],
     };
 
-    expect(mapPublicEventGroupToCalendarEntry(group, 'https://eventos.cacic.dev.br/app/event/event-1')).toEqual(
+    expect(mapPublicEventGroupToCalendarEntry(group, 'https://eventos.cacic.com.br/app/event/event-1')).toEqual(
       expect.objectContaining({
-        id: 'event-group-group-1@eventos.cacic.dev.br',
+        id: 'event-group-group-1@eventos.cacic.com.br',
         summary: 'Trilha de oficinas',
         start: new Date('2026-07-01T13:00:00.000Z'),
         end: new Date('2026-07-02T16:00:00.000Z'),
@@ -81,7 +81,7 @@ describe('calendar iCal builder', () => {
     const content = buildCalendar({
       name: 'Calendário CACiC',
       description: 'Eventos públicos.',
-      entries: [mapEventToCalendarEntry(event, 'https://eventos.cacic.dev.br/app/event/event-1')],
+      entries: [mapEventToCalendarEntry(event, 'https://eventos.cacic.com.br/app/event/event-1')],
       eventClass: ICalEventClass.PUBLIC,
       transparency: ICalEventTransparency.OPAQUE,
       ttlSeconds: 3600,

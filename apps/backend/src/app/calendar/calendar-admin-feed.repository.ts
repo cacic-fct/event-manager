@@ -66,7 +66,7 @@ export async function hasCurrentAdminFeedTargets(
   now: Date,
   take: number,
 ): Promise<boolean> {
-  const entries = await getAdminCalendarEntriesForUser(prisma, userId, now, 'https://eventos.cacic.dev.br', take);
+  const entries = await getAdminCalendarEntriesForUser(prisma, userId, now, 'https://eventos.cacic.com.br', take);
   return entries.length > 0;
 }
 
@@ -196,9 +196,7 @@ function buildAdminFeedEventWhere(targetPlan: AdminFeedTargetPlan): Prisma.Event
   };
 }
 
-function buildAdminFeedEventGroupWhere(
-  targetPlan: AdminFeedTargetPlan,
-): Prisma.EventGroupWhereInput | null {
+function buildAdminFeedEventGroupWhere(targetPlan: AdminFeedTargetPlan): Prisma.EventGroupWhereInput | null {
   const where: Prisma.EventGroupWhereInput = {
     deletedAt: null,
     events: {
@@ -224,9 +222,7 @@ function buildAdminFeedEventGroupWhere(
   };
 }
 
-function buildAdminFeedMajorEventWhere(
-  targetPlan: AdminFeedTargetPlan,
-): Prisma.MajorEventWhereInput | null {
+function buildAdminFeedMajorEventWhere(targetPlan: AdminFeedTargetPlan): Prisma.MajorEventWhereInput | null {
   const where: Prisma.MajorEventWhereInput = {
     deletedAt: null,
   };

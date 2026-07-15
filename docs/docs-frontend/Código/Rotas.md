@@ -10,7 +10,7 @@ Rotas sempre em inglês, em minúsculas, sem caracteres especiais.
 
 Alguns redirecionamentos podem ser feitos para urls comuns, incluindo em português, por exemplo:
 
-- `/docs` → `https://docs.fctapp.cacic.dev.br`
+- `/docs` → `https://docs.eventos.cacic.com.br`
 - `/validar` → `/validate`
 - `/licenses` → `/about/legal`
 - Sobre:

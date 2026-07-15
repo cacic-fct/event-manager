@@ -11,7 +11,7 @@ Indexar conteúdo? Português.
 
 :::note[Nota]
 
-Esta página é um adendo às [convenções do CACiC](https://cacic.dev.br/docs/Projetos/Especifica%C3%A7%C3%B5es%20comuns/Conven%C3%A7%C3%B5es%20gerais/C%C3%B3digos)
+Esta página é um adendo às [convenções do CACiC](https://cacic.com.br/docs/Projetos/Especifica%C3%A7%C3%B5es%20comuns/Conven%C3%A7%C3%B5es%20gerais/C%C3%B3digos)
 
 :::
 

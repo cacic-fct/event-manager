@@ -9,7 +9,7 @@ export class AppController {
   @ApiOperation({
     summary: 'Redirect to API documentation',
   })
-  @Redirect('https://docs.fctapp.cacic.dev.br/Backend/API', 303)
+  @Redirect('https://docs.eventos.cacic.com.br/Backend/API', 303)
   getApiRoot(): void {
     return;
   }

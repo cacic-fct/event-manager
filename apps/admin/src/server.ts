@@ -13,7 +13,7 @@ const browserDistFolder = resolve(serverDistFolder, '../browser');
 
 const app = express();
 const angularApp = new AngularNodeAppEngine({
-  allowedHosts: ['eventos.cacic.dev.br'],
+  allowedHosts: ['eventos.cacic.com.br'],
   trustProxyHeaders: [
     'x-forwarded-host',
     'x-forwarded-proto',

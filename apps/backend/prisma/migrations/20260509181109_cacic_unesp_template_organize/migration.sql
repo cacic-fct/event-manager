@@ -5,7 +5,7 @@ SET
       jsonb_set(
         "template",
         '{verificationUrlPattern}',
-        '"eventos.cacic.dev.br/validar/{certificateID}"'::jsonb
+        '"eventos.cacic.com.br/validar/{certificateID}"'::jsonb
       ),
       '{htmlTemplatePath}',
       to_jsonb(

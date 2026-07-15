@@ -23,7 +23,7 @@ describe('admin entity fixtures', () => {
         account: '12345-6',
         holder: 'CACiC',
         document: '12.345.678/0001-90',
-        pixKey: 'pix@cacic.dev.br',
+        pixKey: 'pix@cacic.com.br',
         pixCity: 'PRESIDENTE PRUDENTE',
       },
       price: {
