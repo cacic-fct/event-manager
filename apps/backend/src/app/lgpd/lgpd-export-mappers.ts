@@ -1,12 +1,6 @@
-import { AuditLogEntityType } from '@prisma/client';
-import {
-  containsAuditIdentity,
-  isEventAttendanceAuditEntityForPerson,
-} from './lgpd-audit-anonymization';
 import { parseScannerUserId } from './lgpd-offline-submissions';
 import {
   DataSubjectResolution,
-  LgpdAuditLogEntry,
   LgpdOfflineSubmission,
   LgpdResolvedPerson,
 } from './lgpd-records';
@@ -105,47 +99,6 @@ export function mapOfflineSubmissionForExport(
       submission.rejectedById != null && userIds.has(submission.rejectedById) ? submission.rejectedById : null,
     rejectedBySubject: submission.rejectedById != null && userIds.has(submission.rejectedById),
     rejectionReason: submission.rejectionReason,
-  };
-}
-
-export function mapAuditLogEntryForExport(
-  entry: LgpdAuditLogEntry,
-  dataSubject: DataSubjectResolution,
-): Record<string, unknown> {
-  const identityValues = new Set([...dataSubject.userIds, ...dataSubject.personIds]);
-  const actorMatchesSubject = entry.actorId != null && dataSubject.userIds.includes(entry.actorId);
-  const entityMatchesSubject =
-    (entry.entityType === AuditLogEntityType.PERSON && dataSubject.personIds.includes(entry.entityId)) ||
-    isEventAttendanceAuditEntityForPerson(entry.entityType, entry.entityId, dataSubject.personIds);
-  const payloadMatchesSubject =
-    containsAuditIdentity(entry.before, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
-    containsAuditIdentity(entry.after, identityValues, entry.entityType === AuditLogEntityType.PERSON) ||
-    containsAuditIdentity(entry.changes, identityValues, false) ||
-    containsAuditIdentity(entry.metadata, identityValues, false);
-  const revertedBySubject = entry.revertedById != null && dataSubject.userIds.includes(entry.revertedById);
-
-  return {
-    id: entry.id,
-    entityType: entry.entityType,
-    entityId: entityMatchesSubject ? entry.entityId : null,
-    operation: entry.operation,
-    actorId: actorMatchesSubject ? entry.actorId : null,
-    actorType: actorMatchesSubject ? entry.actorType : null,
-    actorMatchesSubject,
-    entityMatchesSubject,
-    payloadMatchesSubject,
-    permission: entry.permission,
-    changedFields: entityMatchesSubject || payloadMatchesSubject ? entry.changedFields : [],
-    groupedCount: entry.groupedCount,
-    firstRecordedAt: entry.firstRecordedAt,
-    lastRecordedAt: entry.lastRecordedAt,
-    createdAt: entry.createdAt,
-    revertedAt: entry.revertedAt,
-    revertedById: revertedBySubject ? entry.revertedById : null,
-    revertedBySubject,
-    revertedByEntryId: entry.revertedByEntryId,
-    revertTargetId: entry.revertTargetId,
-    revertMode: entry.revertMode,
   };
 }
 

@@ -414,7 +414,7 @@ export class CertificatesResolver {
   @RequirePermissions(Permission.Certificate.Delete)
   async deleteCertificate(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.frozenResources.assertCertificateMutable(id, this.getUser(context), 'delete');
-    return this.issuingService.deleteCertificate(id);
+    return this.issuingService.deleteCertificate(id, this.getIssuedById(context));
   }
 
   private getIssuedById(context: GraphqlContext): string | undefined {

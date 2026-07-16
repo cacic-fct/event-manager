@@ -5,7 +5,8 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../common/frozen-resource.service';
@@ -22,6 +23,7 @@ export class EventAttendanceCollectorsResolver {
   constructor(
     private readonly prisma: PrismaService,
     private readonly frozenResources: FrozenResourceService,
+    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {}
 
   @Query(() => [EventAttendanceCollector], { name: 'eventAttendanceCollectors' })
@@ -68,11 +70,24 @@ export class EventAttendanceCollectorsResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
-    return this.prisma.eventAttendanceCollector.create({
-      data: {
-        ...input,
-        createdById: context.req?.user?.sub ?? context.request?.user?.sub,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const collector = await tx.eventAttendanceCollector.create({
+        data: {
+          ...input,
+          createdById: context.req?.user?.sub ?? context.request?.user?.sub,
+        },
+      });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR,
+        entityId: `${collector.eventId}:${collector.personId}`,
+        entityLabel: 'Coletor de presença',
+        operation: AuditLogOperation.CREATE,
+        actor: this.getUser(context),
+        after: collector,
+        summary: 'Coletor de presença adicionado.',
+        scope: { permission: Permission.EventAttendanceCollector.Create, eventId: collector.eventId },
+      }, tx);
+      return collector;
     });
   }
 
@@ -84,13 +99,25 @@ export class EventAttendanceCollectorsResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'delete');
-    await this.prisma.eventAttendanceCollector.delete({
-      where: {
-        eventId_personId: {
-          eventId,
-          personId,
+    await this.prisma.$transaction(async (tx) => {
+      const collector = await tx.eventAttendanceCollector.delete({
+        where: {
+          eventId_personId: {
+            eventId,
+            personId,
+          },
         },
-      },
+      });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR,
+        entityId: `${eventId}:${personId}`,
+        entityLabel: 'Coletor de presença',
+        operation: AuditLogOperation.DELETE,
+        actor: this.getUser(context),
+        before: collector,
+        summary: 'Coletor de presença removido.',
+        scope: { permission: Permission.EventAttendanceCollector.Delete, eventId },
+      }, tx);
     });
 
     return {

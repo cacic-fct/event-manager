@@ -6,7 +6,8 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -110,6 +111,7 @@ export class EventLecturersResolver {
     private readonly prisma: PrismaService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {}
 
   @Query(() => [EventLecturer], { name: 'eventLecturers' })
@@ -196,13 +198,24 @@ export class EventLecturersResolver {
     return this.prisma.$transaction(async (prisma) => {
       await this.ensureLecturerProfile(input.personId, actorId, prisma);
 
-      return prisma.eventLecturer.create({
+      const lecturer = await prisma.eventLecturer.create({
         data: {
           eventId: input.eventId,
           personId: input.personId,
           createdById: actorId,
         },
       });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.EVENT_LECTURER,
+        entityId: `${lecturer.eventId}:${lecturer.personId}`,
+        entityLabel: 'Palestrante do evento',
+        operation: AuditLogOperation.CREATE,
+        actor: this.getUser(context),
+        after: lecturer,
+        summary: 'Palestrante vinculado ao evento.',
+        scope: { permission: Permission.EventLecturer.Create, eventId: lecturer.eventId },
+      }, prisma);
+      return lecturer;
     });
   }
 
@@ -227,6 +240,12 @@ export class EventLecturersResolver {
     const nextPersonId = input.personId ?? personId;
     const actorId = this.getActorId(context);
     await this.prisma.$transaction(async (prisma) => {
+      const existing = await prisma.eventLecturer.findUnique({
+        where: { eventId_personId: { eventId, personId } },
+      });
+      if (!existing) {
+        throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
+      }
       if (input.personId) {
         await this.ensureLecturerProfile(input.personId, actorId, prisma);
       }
@@ -242,6 +261,20 @@ export class EventLecturersResolver {
       if (count === 0) {
         throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
       }
+      const updated = await prisma.eventLecturer.findUniqueOrThrow({
+        where: { eventId_personId: { eventId: nextEventId, personId: nextPersonId } },
+      });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.EVENT_LECTURER,
+        entityId: `${eventId}:${personId}`,
+        entityLabel: 'Palestrante do evento',
+        operation: AuditLogOperation.UPDATE,
+        actor: this.getUser(context),
+        before: existing,
+        after: updated,
+        summary: 'Vínculo de palestrante atualizado.',
+        scope: { permission: Permission.EventLecturer.Update, eventId: nextEventId },
+      }, prisma);
     });
 
     return this.prisma.eventLecturer.findUnique({
@@ -272,16 +305,23 @@ export class EventLecturersResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'delete');
-    const { count } = await this.prisma.eventLecturer.deleteMany({
-      where: {
-        eventId,
-        personId,
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const lecturer = await tx.eventLecturer.findUnique({ where: { eventId_personId: { eventId, personId } } });
+      if (!lecturer) {
+        throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
+      }
+      await tx.eventLecturer.delete({ where: { eventId_personId: { eventId, personId } } });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.EVENT_LECTURER,
+        entityId: `${eventId}:${personId}`,
+        entityLabel: 'Palestrante do evento',
+        operation: AuditLogOperation.DELETE,
+        actor: this.getUser(context),
+        before: lecturer,
+        summary: 'Palestrante desvinculado do evento.',
+        scope: { permission: Permission.EventLecturer.Delete, eventId },
+      }, tx);
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
-    }
 
     return {
       deleted: true,

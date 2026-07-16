@@ -8,7 +8,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
@@ -16,12 +16,14 @@ import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { actionablePendingMergeCandidateWhere } from './merge-candidate-filters';
 import { MergeCandidateOperationsService } from './operations.service';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 
 @Resolver(() => MergeCandidate)
 export class MergeCandidatesResolver {
   constructor(
     private readonly prisma: PrismaService,
     private readonly mergeOperations: MergeCandidateOperationsService,
+    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {}
 
   @Query(() => [MergeCandidate], { name: 'mergeCandidates' })
@@ -72,19 +74,32 @@ export class MergeCandidatesResolver {
 
   @Mutation(() => MergeCandidate, { name: 'createMergeCandidate' })
   @RequirePermissions(Permission.MergeCandidate.Create)
-  createMergeCandidate(
+  async createMergeCandidate(
     @Args('input', { type: () => MergeCandidateCreateInput })
     input: MergeCandidateCreateInput,
     @Context() context: { req?: { user?: AuthenticatedUser } },
   ) {
     const actorId = this.getActorId(context);
 
-    return this.prisma.mergeCandidate.create({
-      data: {
-        ...this.buildMergeCandidateCreateData(input),
-        createdById: actorId ?? undefined,
-        updatedById: actorId ?? undefined,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const candidate = await tx.mergeCandidate.create({
+        data: {
+          ...this.buildMergeCandidateCreateData(input),
+          createdById: actorId ?? undefined,
+          updatedById: actorId ?? undefined,
+        },
+      });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.MERGE_CANDIDATE,
+        entityId: candidate.id,
+        entityLabel: candidate.pairKey,
+        operation: AuditLogOperation.CREATE,
+        actor: this.getUser(context),
+        after: candidate,
+        summary: 'Possível pessoa duplicada cadastrada.',
+        scope: { permission: Permission.MergeCandidate.Create },
+      }, tx);
+      return candidate;
     });
   }
 
@@ -108,16 +123,22 @@ export class MergeCandidatesResolver {
       data.resolvedById = actorId ?? undefined;
     }
 
-    const { count } = await this.prisma.mergeCandidate.updateMany({
-      where: {
-        id,
-      },
-      data,
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.mergeCandidate.findUnique({ where: { id } });
+      if (!existing) throw new NotFoundException(`Merge candidate ${id} was not found.`);
+      const candidate = await tx.mergeCandidate.update({ where: { id }, data });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.MERGE_CANDIDATE,
+        entityId: id,
+        entityLabel: candidate.pairKey,
+        operation: AuditLogOperation.UPDATE,
+        actor: this.getUser(context),
+        before: existing,
+        after: candidate,
+        summary: 'Possível pessoa duplicada atualizada.',
+        scope: { permission: Permission.MergeCandidate.Update },
+      }, tx);
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Merge candidate ${id} was not found.`);
-    }
 
     return this.prisma.mergeCandidate.findUnique({
       where: {
@@ -196,16 +217,25 @@ export class MergeCandidatesResolver {
 
   @Mutation(() => DeletionResult, { name: 'deleteMergeCandidate' })
   @RequirePermissions(Permission.MergeCandidate.Delete)
-  async deleteMergeCandidate(@Args('id', { type: () => String }) id: string) {
-    const { count } = await this.prisma.mergeCandidate.deleteMany({
-      where: {
-        id,
-      },
+  async deleteMergeCandidate(
+    @Args('id', { type: () => String }) id: string,
+    @Context() context: { req?: { user?: AuthenticatedUser } },
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      const candidate = await tx.mergeCandidate.findUnique({ where: { id } });
+      if (!candidate) throw new NotFoundException(`Merge candidate ${id} was not found.`);
+      await tx.mergeCandidate.delete({ where: { id } });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.MERGE_CANDIDATE,
+        entityId: id,
+        entityLabel: candidate.pairKey,
+        operation: AuditLogOperation.DELETE,
+        actor: this.getUser(context),
+        before: candidate,
+        summary: 'Possível pessoa duplicada removida.',
+        scope: { permission: Permission.MergeCandidate.Delete },
+      }, tx);
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Merge candidate ${id} was not found.`);
-    }
 
     return {
       deleted: true,
@@ -216,5 +246,9 @@ export class MergeCandidatesResolver {
   private getActorId(context: { req?: { user?: AuthenticatedUser } }): string | null {
     const user = context.req?.user;
     return user?.sub ?? user?.email ?? user?.preferredUsername ?? null;
+  }
+
+  private getUser(context: { req?: { user?: AuthenticatedUser } }): AuthenticatedUser | undefined {
+    return context.req?.user;
   }
 }

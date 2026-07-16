@@ -876,7 +876,9 @@ describe('CertificateConfigsService', () => {
   it('soft-deletes a folder and its active standalone configs and certificates', async () => {
     const prisma = createPrisma({
       certificateFolder: {
+        findFirst: jest.fn().mockResolvedValue(createFolder({ id: 'folder-1' })),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(createFolder({ id: 'folder-1', deletedAt: new Date() })),
       },
       certificateConfig: {
         findMany: jest.fn().mockResolvedValue([{ id: 'config-1' }, { id: 'config-2' }]),

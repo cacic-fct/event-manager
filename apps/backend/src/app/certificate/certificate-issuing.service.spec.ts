@@ -523,8 +523,10 @@ describe('CertificateIssuingService', () => {
       normalizeRequiredId: jest.fn((_field: string, value: string) => value.trim()),
     };
     const prisma = {
+      $transaction: jest.fn(async (operation: (tx: unknown) => Promise<unknown>) => operation(prisma)),
       certificate: {
-        updateMany: jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 }),
+        findFirst: jest.fn().mockResolvedValueOnce(mappedCertificateRecord).mockResolvedValueOnce(null),
+        update: jest.fn().mockResolvedValue(mappedCertificateRecord),
       },
     };
     const service = new CertificateIssuingService(prisma as never, validation as never, {} as never);

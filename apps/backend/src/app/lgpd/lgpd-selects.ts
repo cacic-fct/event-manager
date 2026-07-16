@@ -222,34 +222,6 @@ export const LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT = {
   updatedAt: true,
 } satisfies Prisma.ExternalAccountMergeOperationSelect;
 
-export const LGPD_AUDIT_LOG_SELECT = {
-  id: true,
-  entityType: true,
-  entityId: true,
-  operation: true,
-  actorId: true,
-  actorType: true,
-  permission: true,
-  eventId: true,
-  majorEventId: true,
-  eventGroupId: true,
-  changedFields: true,
-  groupedCount: true,
-  firstRecordedAt: true,
-  lastRecordedAt: true,
-  createdAt: true,
-  revertedAt: true,
-  revertedById: true,
-  revertedByEntryId: true,
-  revertTargetId: true,
-  revertMode: true,
-  before: true,
-  after: true,
-  changes: true,
-  metadata: true,
-} satisfies Prisma.AuditLogEntrySelect;
-
 export type LgpdOfflineSubmission = Prisma.OfflineEventAttendanceSubmissionGetPayload<{
   select: typeof LGPD_OFFLINE_ATTENDANCE_SUBMISSION_SELECT;
 }>;
-export type LgpdAuditLogEntry = Prisma.AuditLogEntryGetPayload<{ select: typeof LGPD_AUDIT_LOG_SELECT }>;
