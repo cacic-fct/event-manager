@@ -157,6 +157,17 @@ export class AttendanceApiService {
       .pipe(map((data) => data.eventAttendances));
   }
 
+  getEventAttendanceCount(eventId: string) {
+    return this.graphqlHttp
+      .request<{ eventAttendanceCount: number }>(
+        `query EventAttendanceCount($eventId: String!) {
+          eventAttendanceCount(eventId: $eventId)
+        }`,
+        { eventId },
+      )
+      .pipe(map((data) => data.eventAttendanceCount));
+  }
+
   listOfflineEventAttendanceSubmissions(eventId: string) {
     return this.graphqlHttp
       .request<{ offlineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(

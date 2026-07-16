@@ -164,4 +164,20 @@ describe('WorkspaceEventGroupsService', () => {
     });
     expect(eventsService.loadEvents).toHaveBeenCalled();
   });
+
+  it('searches event groups from the first page using the entered query', async () => {
+    service.eventGroupsPagination.pageIndex.set(2);
+    service.eventGroupsSearchForm.controls.query.setValue('minicursos', { emitEvent: false });
+
+    await service.searchEventGroups();
+
+    expect(api.listEventGroups).toHaveBeenCalledWith({ query: 'minicursos', skip: 0, take: 51 });
+    expect(service.eventGroupsPagination.pageIndex()).toBe(0);
+  });
+
+  it('omits the query when loading the unfiltered event-group list', async () => {
+    await service.loadEventGroups();
+
+    expect(api.listEventGroups).toHaveBeenCalledWith({ skip: 0, take: 51 });
+  });
 });

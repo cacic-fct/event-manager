@@ -3,6 +3,7 @@ export const PUBLIC_FEATURE_FLAGS = {
   majorEventTabEnabled: 'events-public-major-event-tab-enabled',
   notificationsTabEnabled: 'events-public-notifications-tab-enabled',
   defaultLoginRedirectPath: 'events-public-default-login-redirect-path',
+  calendarDefaultView: 'events-public-calendar-default-view',
   onboardingEnforcementEnabled: 'events-public-onboarding-enforcement-enabled',
   cookieBannerEnabled: 'cookie-banner-enabled',
   undergraduateUnespRoleVerificationDisabled:
@@ -17,6 +18,7 @@ export interface PublicFeatureFlagValues {
   majorEventTabEnabled: boolean;
   notificationsTabEnabled: boolean;
   defaultLoginRedirectPath: string;
+  calendarDefaultView: string;
   onboardingEnforcementEnabled: boolean;
   cookieBannerEnabled: boolean;
   undergraduateUnespRoleVerificationDisabled: boolean;
@@ -27,6 +29,7 @@ export const PUBLIC_FEATURE_FLAG_DEFAULTS: PublicFeatureFlagValues = {
   majorEventTabEnabled: true,
   notificationsTabEnabled: true,
   defaultLoginRedirectPath: '/calendar',
+  calendarDefaultView: 'list',
   onboardingEnforcementEnabled: true,
   cookieBannerEnabled: true,
   undergraduateUnespRoleVerificationDisabled: false,

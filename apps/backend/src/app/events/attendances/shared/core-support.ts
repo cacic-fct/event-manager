@@ -2,12 +2,12 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../attendance-category.service';
 import { parseUserAztecCode } from '../user-scanner-code';
 import { GraphqlContext } from './types';
+import { PersonCsvImportSupport } from '../../../common/person-csv-import-support';
 
-export abstract class EventAttendancesCoreSupport {
-  constructor(
-    protected readonly prisma: PrismaService,
-    protected readonly attendanceCategories: AttendanceCategoryService,
-  ) {}
+export abstract class EventAttendancesCoreSupport extends PersonCsvImportSupport {
+  constructor(prisma: PrismaService, protected readonly attendanceCategories: AttendanceCategoryService) {
+    super(prisma);
+  }
 
   protected getActorId(context: GraphqlContext): string | undefined {
     return context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;

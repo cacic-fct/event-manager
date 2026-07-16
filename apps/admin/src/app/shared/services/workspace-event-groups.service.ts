@@ -18,6 +18,7 @@ import {
   loadNextPage,
   loadPreviousPage,
   pageVariables,
+  resetPagination,
 } from '../list-pagination';
 import { bindLiveSearch } from '../live-search';
 import { WorkspaceEventsService } from './workspace-events.service';
@@ -94,8 +95,16 @@ export class WorkspaceEventGroupsService {
   readonly eventGroupEventSearchForm = this.formBuilder.nonNullable.group({
     query: ['', [Validators.required]],
   });
+  readonly eventGroupsSearchForm = this.formBuilder.nonNullable.group({
+    query: [''],
+  });
 
   constructor() {
+    bindLiveSearch({
+      control: this.eventGroupsSearchForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchEventGroups(),
+    });
     bindLiveSearch({
       control: this.eventGroupEventSearchForm.controls.query,
       destroyRef: this.destroyRef,
@@ -111,7 +120,13 @@ export class WorkspaceEventGroupsService {
   }
 
   async loadEventGroups(): Promise<void> {
-    const items = await firstValueFrom(this.api.listEventGroups(pageVariables(this.eventGroupsPagination.pageIndex())));
+    const query = this.eventGroupsSearchForm.controls.query.value.trim();
+    const items = await firstValueFrom(
+      this.api.listEventGroups({
+        ...(query ? { query } : {}),
+        ...pageVariables(this.eventGroupsPagination.pageIndex()),
+      }),
+    );
     this.eventGroups.set(applyPagedResult(items, this.eventGroupsPagination));
     await this.refreshEventSummaries();
     const selectedGroup = this.selectedEventGroup();
@@ -129,6 +144,11 @@ export class WorkspaceEventGroupsService {
 
   async nextEventGroupsPage(): Promise<void> {
     await loadNextPage(this.eventGroupsPagination, () => this.loadEventGroups());
+  }
+
+  async searchEventGroups(): Promise<void> {
+    resetPagination(this.eventGroupsPagination);
+    await this.loadEventGroups();
   }
 
   private async refreshEventSummaries(): Promise<void> {

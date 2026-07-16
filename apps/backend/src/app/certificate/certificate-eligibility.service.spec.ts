@@ -1,4 +1,4 @@
-import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
+import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { AttendanceCategory, SubscriptionStatus } from '@prisma/client';
 import { CertificateEligibilityService } from './certificate-eligibility.service';
 
@@ -560,5 +560,37 @@ describe('CertificateEligibilityService', () => {
         },
       },
     });
+  });
+
+  it('resolves all lecturer event categories for catch-all lecturer configs', async () => {
+    const lecture = { ...event, id: 'lecture-1', type: EventType.PALESTRA };
+    const minicourse = { ...event, id: 'minicourse-1', type: EventType.MINICURSO };
+    const eventLecturerFindMany = jest.fn().mockResolvedValue([
+      { personId: person.id, eventId: lecture.id, person },
+      { personId: person.id, eventId: minicourse.id, person },
+    ]);
+    const service = new CertificateEligibilityService({
+      event: {
+        findMany: jest.fn().mockResolvedValue([lecture, minicourse]),
+      },
+      eventLecturer: {
+        findMany: eventLecturerFindMany,
+      },
+    } as never);
+
+    await expect(
+      service.resolveEligibleRecipients({
+        id: 'config-1',
+        scope: CertificateScope.EVENT_GROUP,
+        issuedTo: CertificateIssuedTo.LECTURER,
+        eventGroupId: 'group-1',
+        certificateFields: { __lecturerEventCategory: 'OTHER' },
+      } as never),
+    ).resolves.toEqual([
+      {
+        person,
+        events: [lecture, minicourse],
+      },
+    ]);
   });
 });

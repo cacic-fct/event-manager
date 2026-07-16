@@ -1,6 +1,6 @@
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
-import { CertificateIssuedTo, CertificateScope, EventType } from './enums';
+import { AttendanceImportMatchType, CertificateIssuedTo, CertificateScope, EventType } from './enums';
 import { Event } from './events';
 import { EventGroup } from './event-groups';
 import { MajorEvent } from './major-events';
@@ -208,6 +208,45 @@ export class CertificateReissueResult {
 
   @Field(() => Int)
   certificateCount!: number;
+}
+
+@ObjectType()
+export class CertificateCsvImportCandidate {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+}
+
+@ObjectType()
+export class CertificateCsvImportAmbiguousValue {
+  @Field(() => String)
+  value!: string;
+
+  @Field(() => [CertificateCsvImportCandidate])
+  candidates!: CertificateCsvImportCandidate[];
+}
+
+@ObjectType()
+export class CertificateCsvImportResult {
+  @Field(() => Int)
+  createdCount!: number;
+
+  @Field(() => Int)
+  duplicateCount!: number;
+
+  @Field(() => Int)
+  failedCount!: number;
+
+  @Field(() => [String])
+  failedValues!: string[];
+
+  @Field(() => AttendanceImportMatchType)
+  inferredMatchType!: AttendanceImportMatchType;
+
+  @Field(() => [CertificateCsvImportAmbiguousValue])
+  ambiguousValues!: CertificateCsvImportAmbiguousValue[];
 }
 
 @ObjectType({

@@ -88,7 +88,14 @@ export class PublicFeatureFlagService {
       calendarTabEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.calendarTabEnabled),
       majorEventTabEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.majorEventTabEnabled),
       notificationsTabEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.notificationsTabEnabled),
-      defaultLoginRedirectPath: this.stringVariantValue(client.getVariant(PUBLIC_FEATURE_FLAGS.defaultLoginRedirectPath)),
+      defaultLoginRedirectPath: this.stringVariantValue(
+        client.getVariant(PUBLIC_FEATURE_FLAGS.defaultLoginRedirectPath),
+        PUBLIC_FEATURE_FLAG_DEFAULTS.defaultLoginRedirectPath,
+      ),
+      calendarDefaultView: this.stringVariantValue(
+        client.getVariant(PUBLIC_FEATURE_FLAGS.calendarDefaultView),
+        PUBLIC_FEATURE_FLAG_DEFAULTS.calendarDefaultView,
+      ),
       onboardingEnforcementEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.onboardingEnforcementEnabled),
       cookieBannerEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.cookieBannerEnabled),
       undergraduateUnespRoleVerificationDisabled: client.isEnabled(
@@ -119,12 +126,20 @@ export class PublicFeatureFlagService {
       return toggles.find((toggle) => toggle.name === PUBLIC_FEATURE_FLAGS[key])?.enabled ?? (fallback === true);
     };
     const defaultRedirect = toggles.find((toggle) => toggle.name === PUBLIC_FEATURE_FLAGS.defaultLoginRedirectPath);
+    const calendarDefaultView = toggles.find((toggle) => toggle.name === PUBLIC_FEATURE_FLAGS.calendarDefaultView);
 
     return {
       calendarTabEnabled: enabled('calendarTabEnabled'),
       majorEventTabEnabled: enabled('majorEventTabEnabled'),
       notificationsTabEnabled: enabled('notificationsTabEnabled'),
-      defaultLoginRedirectPath: this.stringVariantValue(defaultRedirect?.variant),
+      defaultLoginRedirectPath: this.stringVariantValue(
+        defaultRedirect?.variant,
+        PUBLIC_FEATURE_FLAG_DEFAULTS.defaultLoginRedirectPath,
+      ),
+      calendarDefaultView: this.stringVariantValue(
+        calendarDefaultView?.variant,
+        PUBLIC_FEATURE_FLAG_DEFAULTS.calendarDefaultView,
+      ),
       onboardingEnforcementEnabled: enabled('onboardingEnforcementEnabled'),
       cookieBannerEnabled: enabled('cookieBannerEnabled'),
       undergraduateUnespRoleVerificationDisabled: enabled(
@@ -133,12 +148,12 @@ export class PublicFeatureFlagService {
     };
   }
 
-  private stringVariantValue(variant: IVariant | undefined): string {
+  private stringVariantValue(variant: IVariant | undefined, fallback: string): string {
     if (variant?.enabled && variant.payload?.type === 'string' && variant.payload.value) {
       return variant.payload.value;
     }
 
-    return PUBLIC_FEATURE_FLAG_DEFAULTS.defaultLoginRedirectPath;
+    return fallback;
   }
 
   private createBootstrapToggles(values: PublicFeatureFlagValues): IToggle[] {
@@ -168,6 +183,20 @@ export class PublicFeatureFlagService {
           payload: {
             type: 'string',
             value: values.defaultLoginRedirectPath,
+          },
+        },
+      },
+      {
+        name: PUBLIC_FEATURE_FLAGS.calendarDefaultView,
+        enabled: true,
+        impressionData: false,
+        variant: {
+          name: 'view',
+          enabled: true,
+          feature_enabled: true,
+          payload: {
+            type: 'string',
+            value: values.calendarDefaultView,
           },
         },
       },

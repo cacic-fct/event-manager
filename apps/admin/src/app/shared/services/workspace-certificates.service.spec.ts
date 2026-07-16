@@ -45,6 +45,7 @@ describe('WorkspaceCertificatesService', () => {
     cloneCertificateConfig: ReturnType<typeof vi.fn>;
     getCertificateFolder: ReturnType<typeof vi.fn>;
     issueMissedCertificates: ReturnType<typeof vi.fn>;
+    issueManualCertificatesFromCsv: ReturnType<typeof vi.fn>;
     listCertificateConfigs: ReturnType<typeof vi.fn>;
     listCertificateFolders: ReturnType<typeof vi.fn>;
     listCertificateIssuableEventGroups: ReturnType<typeof vi.fn>;
@@ -93,6 +94,16 @@ describe('WorkspaceCertificatesService', () => {
       ),
       getCertificateFolder: vi.fn(() => of(certificateFolderFixture())),
       issueMissedCertificates: vi.fn(() => of([])),
+      issueManualCertificatesFromCsv: vi.fn(() =>
+        of({
+          createdCount: 0,
+          duplicateCount: 0,
+          failedCount: 0,
+          failedValues: [],
+          inferredMatchType: 'EMAIL',
+          ambiguousValues: [],
+        }),
+      ),
       listCertificateConfigs: vi.fn(() => of([])),
       listCertificateFolders: vi.fn(() => of([certificateFolderFixture()])),
       listCertificateIssuableEventGroups: vi.fn(() => of([])),
@@ -202,6 +213,14 @@ describe('WorkspaceCertificatesService', () => {
         secondPageText: 'Texto manual do verso',
       }),
     );
+
+    await service.issueMissedCertificates();
+
+    expect(api.updateCertificateConfig).toHaveBeenCalledWith(
+      'config-1',
+      expect.objectContaining({ scope: 'OTHER', folderId: 'folder-1', issuedTo: 'OTHER' }),
+    );
+    expect(api.issueMissedCertificates).toHaveBeenCalledWith('config-1');
   });
 
   it('searches manual certificate people as the query changes', async () => {
@@ -214,6 +233,40 @@ describe('WorkspaceCertificatesService', () => {
 
     expect(peopleApi.listPeopleSummaries).toHaveBeenCalledWith({ query: 'ana', take: 20 });
     expect(service.personSearchResults().map((person) => person.id)).toEqual(['person-1']);
+  });
+
+  it('imports people from CSV for manual certificate configurations', async () => {
+    service.certificateConfigForm.issuedTo().value.set('OTHER');
+    dialog.open
+      .mockReturnValueOnce({ afterClosed: () => of('E-mail') })
+      .mockReturnValueOnce({ afterClosed: () => of(null) });
+    api.issueManualCertificatesFromCsv.mockReturnValueOnce(
+      of({
+        createdCount: 1,
+        duplicateCount: 0,
+        failedCount: 0,
+        failedValues: [],
+        inferredMatchType: 'EMAIL',
+        ambiguousValues: [],
+      }),
+    );
+
+    await service.issueManualCertificatesFromCsv({
+      name: 'people.csv',
+      text: () => Promise.resolve('E-mail\nana@example.com'),
+    } as File);
+
+    expect(api.issueManualCertificatesFromCsv).toHaveBeenCalledWith({
+      configId: 'config-1',
+      csvContent: 'E-mail\nana@example.com',
+      selectedHeader: 'E-mail',
+    });
+    expect(dialog.open).toHaveBeenLastCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({ title: 'Emissão de certificados concluída' }),
+      }),
+    );
   });
 
   it('uses template defaults in the form and sends them in the payload', async () => {
@@ -449,6 +502,45 @@ describe('WorkspaceCertificatesService', () => {
       id: folder.id,
       name: folder.name,
     });
+  });
+
+  it('confirms a folder rename before reissuing its certificates', async () => {
+    const folder = certificateFolderFixture();
+    await service.selectTarget(folder);
+    service.folderForm.controls.name.setValue('Atividades atualizadas');
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () => of(true),
+    });
+
+    await service.saveCertificateFolder();
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: 'Renomear pasta e reemitir certificados?',
+          confirmLabel: 'Renomear e reemitir',
+        }),
+      }),
+    );
+    expect(api.updateCertificateFolder).toHaveBeenCalledWith(folder.id, {
+      name: 'Atividades atualizadas',
+      emoji: folder.emoji,
+      reissueCertificates: true,
+    });
+  });
+
+  it('does not save a folder rename when certificate reissuance is cancelled', async () => {
+    const folder = certificateFolderFixture();
+    await service.selectTarget(folder);
+    service.folderForm.controls.name.setValue('Atividades atualizadas');
+    dialog.open.mockReturnValueOnce({
+      afterClosed: () => of(false),
+    });
+
+    await service.saveCertificateFolder();
+
+    expect(api.updateCertificateFolder).not.toHaveBeenCalled();
   });
 });
 

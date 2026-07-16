@@ -445,7 +445,6 @@ export class PeopleResolver {
 
     const normalizedIdentityDocument = input.identityDocument?.trim();
     const normalizedEmail = input.email?.trim();
-    const normalizedName = input.name?.trim();
 
     const duplicateFilters: Prisma.PeopleWhereInput[] = [];
     if (normalizedIdentityDocument) {
@@ -456,12 +455,6 @@ export class PeopleResolver {
         email: { equals: normalizedEmail, mode: 'insensitive' },
       });
     }
-    if (normalizedName) {
-      duplicateFilters.push({
-        name: { equals: normalizedName, mode: 'insensitive' },
-      });
-    }
-
     if (duplicateFilters.length === 0) {
       return;
     }
@@ -481,9 +474,7 @@ export class PeopleResolver {
     });
 
     if (duplicate) {
-      throw new ConflictException(
-        `Person ${duplicate.id} already exists with matching identity document, email, or name.`,
-      );
+      throw new ConflictException(`Person ${duplicate.id} already exists with matching identity document or email.`);
     }
   }
 

@@ -97,7 +97,7 @@ export class CalendarPreferences {
 
   setDefaultItemView(change: MatButtonToggleChange): void {
     const defaultItemView = this.parseDefaultItemView(change.value);
-    if (!defaultItemView || defaultItemView === 'automatic') {
+    if (!defaultItemView) {
       return;
     }
 

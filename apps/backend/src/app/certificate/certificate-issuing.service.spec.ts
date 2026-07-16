@@ -693,7 +693,7 @@ describe('CertificateIssuingService', () => {
     expect(upsertSpy).not.toHaveBeenCalled();
   });
 
-  it('keeps and refreshes existing manual certificates when issuing missed certificates', async () => {
+  it('keeps and refreshes existing standalone manual certificates when issuing missed certificates', async () => {
     const prisma = {
       certificate: {
         findMany: jest.fn().mockResolvedValue([{ personId: 'person-a' }, { personId: 'person-b' }]),
@@ -702,6 +702,9 @@ describe('CertificateIssuingService', () => {
     };
     const manualConfig = {
       ...config,
+      scope: CertificateScope.OTHER,
+      eventId: null,
+      folderId: 'folder-1',
       issuedTo: 'OTHER',
     };
     const validation = {
@@ -766,6 +769,45 @@ describe('CertificateIssuingService', () => {
       },
     });
     expect(upsertSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('reissues certificates only for configs in a standalone certificate folder', async () => {
+    const prisma = {
+      certificateConfig: {
+        findMany: jest.fn().mockResolvedValue([{ ...config, id: 'config-1', folderId: 'folder-1' }]),
+      },
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const validation = {
+      normalizeRequiredId: jest.fn().mockReturnValue('folder-1'),
+    };
+    const eligibilityService = {
+      resolveEligibleRecipients: jest.fn().mockResolvedValue([{ person: { id: 'person-a' }, events: [] }]),
+    };
+    const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
+    const upsertSpy = jest
+      .spyOn(service as never, 'upsertCertificateForRecipient')
+      .mockResolvedValue(mappedCertificateRecord as never);
+
+    await expect(service.reissueCertificatesForFolder(' folder-1 ', 'admin-user')).resolves.toEqual({
+      configCount: 1,
+      certificateCount: 1,
+    });
+
+    expect(prisma.certificateConfig.findMany).toHaveBeenCalledWith({
+      where: {
+        deletedAt: null,
+        scope: CertificateScope.OTHER,
+        folderId: 'folder-1',
+      },
+      select: expect.any(Object),
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+    expect(upsertSpy).toHaveBeenCalledTimes(1);
   });
 
   it('refreshes only existing active certificates for a person without deleting ineligible ones', async () => {

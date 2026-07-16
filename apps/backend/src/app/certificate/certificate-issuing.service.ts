@@ -25,6 +25,7 @@ import { CertificateValidationService } from './certificate-validation.service';
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
 type CertificateWriteClient = Pick<PrismaService, 'certificate'>;
+type CertificateReissueClient = Pick<PrismaService, 'certificate' | 'certificateConfig'>;
 
 @Injectable()
 export class CertificateIssuingService {
@@ -75,6 +76,29 @@ export class CertificateIssuingService {
 
     const certificate = await this.upsertCertificateForRecipient(config, recipient, issuedById);
     return mapCertificate(certificate);
+  }
+
+  async issueManualForPeople(configId: string, personIds: string[], issuedById?: string): Promise<Certificate[]> {
+    const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
+    const config = await this.eligibilityService.getConfigById(normalizedConfigId);
+    if (config.issuedTo !== CertificateIssuedTo.OTHER) {
+      throw new BadRequestException('CSV imports are available only for manual certificate configurations.');
+    }
+
+    const uniquePersonIds = [...new Set(personIds.map((personId) => this.validation.normalizeRequiredId('personId', personId)))];
+    const certificates: CertificateRecord[] = [];
+    for (let index = 0; index < uniquePersonIds.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+      const batch = uniquePersonIds.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
+      const issuedBatch = await Promise.all(
+        batch.map(async (personId) => {
+          const recipient = await this.resolveRecipientForConfig(config, normalizedConfigId, personId);
+          return this.upsertCertificateForRecipient(config, recipient, issuedById);
+        }),
+      );
+      certificates.push(...issuedBatch);
+    }
+
+    return certificates.map(mapCertificate);
   }
 
   async issueMissedCertificates(configId: string, issuedById?: string): Promise<Certificate[]> {
@@ -199,9 +223,39 @@ export class CertificateIssuingService {
       },
     });
 
+    return this.reissueCertificatesForConfigs(configs, issuedById);
+  }
+
+  async reissueCertificatesForFolder(
+    folderId: string,
+    issuedById?: string,
+    client: CertificateReissueClient = this.prisma,
+    options: { notify?: boolean } = {},
+  ): Promise<CertificateReissueResult> {
+    const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
+    const configs = await client.certificateConfig.findMany({
+      where: {
+        deletedAt: null,
+        scope: CertificateScope.OTHER,
+        folderId: normalizedFolderId,
+      },
+      select: CERTIFICATE_CONFIG_SELECT,
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return this.reissueCertificatesForConfigs(configs, issuedById, { client, notify: options.notify });
+  }
+
+  private async reissueCertificatesForConfigs(
+    configs: CertificateConfigRecord[],
+    issuedById?: string,
+    options: { client?: CertificateReissueClient; notify?: boolean } = {},
+  ): Promise<CertificateReissueResult> {
     let certificateCount = 0;
     for (const config of configs) {
-      const result = await this.issueCertificatesForConfig(config, issuedById);
+      const result = await this.issueCertificatesForConfig(config, issuedById, options);
       certificateCount += result.certificates.length;
     }
 
@@ -214,8 +268,10 @@ export class CertificateIssuingService {
   private async issueCertificatesForConfig(
     config: CertificateConfigRecord,
     issuedById?: string,
+    options: { client?: CertificateWriteClient; notify?: boolean } = {},
   ): Promise<{ certificates: CertificateRecord[] }> {
-    const existingCertificates = await this.prisma.certificate.findMany({
+    const client = options.client ?? this.prisma;
+    const existingCertificates = await client.certificate.findMany({
       where: {
         configId: config.id,
         deletedAt: null,
@@ -230,6 +286,7 @@ export class CertificateIssuingService {
         config,
         existingCertificates.map((certificate) => certificate.personId),
         issuedById,
+        options,
       );
     }
 
@@ -239,7 +296,7 @@ export class CertificateIssuingService {
       .map((certificate) => certificate.personId)
       .filter((personId) => !eligiblePersonIds.has(personId));
     if (invalidPersonIds.length > 0) {
-      await this.prisma.certificate.updateMany({
+      await client.certificate.updateMany({
         where: {
           configId: config.id,
           deletedAt: null,
@@ -260,7 +317,10 @@ export class CertificateIssuingService {
     for (let index = 0; index < recipients.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
       const batch = recipients.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
       const issuedBatch = await Promise.all(
-        batch.map((recipient) => this.upsertCertificateForRecipient(config, recipient, issuedById)),
+        batch.map((recipient) => this.upsertCertificateForRecipient(config, recipient, issuedById, {
+          prisma: client,
+          notify: options.notify,
+        })),
       );
       certificates.push(...issuedBatch);
     }
@@ -272,6 +332,7 @@ export class CertificateIssuingService {
     config: CertificateConfigRecord,
     personIds: string[],
     issuedById?: string,
+    options: { client?: CertificateWriteClient; notify?: boolean } = {},
   ): Promise<{ certificates: CertificateRecord[] }> {
     if (personIds.length === 0) {
       return { certificates: [] };
@@ -284,7 +345,12 @@ export class CertificateIssuingService {
         batch.map(async (personId) => {
           const recipients = await this.eligibilityService.resolveEligibleRecipients(config, personId);
           const recipient = recipients.find((item) => item.person.id === personId);
-          return recipient ? this.upsertCertificateForRecipient(config, recipient, issuedById) : null;
+          return recipient
+            ? this.upsertCertificateForRecipient(config, recipient, issuedById, {
+                prisma: options.client,
+                notify: options.notify,
+              })
+            : null;
         }),
       );
       certificates.push(
@@ -483,8 +549,9 @@ export class CertificateIssuingService {
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
     issuedById?: string,
+    options: { notify?: boolean; prisma?: CertificateWriteClient } = {},
   ) {
-    const result = await this.upsertCertificateForRecipientResult(config, recipient, issuedById);
+    const result = await this.upsertCertificateForRecipientResult(config, recipient, issuedById, options);
     return result.certificate;
   }
 

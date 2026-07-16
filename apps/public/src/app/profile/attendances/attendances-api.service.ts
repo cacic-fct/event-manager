@@ -205,6 +205,13 @@ export class AttendancesApiService {
                 description
                 shortDescription
                 locationDescription
+                majorEventId
+                eventGroupId
+                eventGroup {
+                  id
+                  name
+                  emoji
+                }
               }
 
               eventGroupId

@@ -625,13 +625,18 @@ describe('CertificatesResolver authorization', () => {
   });
 
   it('checks active standalone configs for frozen edit before updating a folder', async () => {
-    const { authorizationPolicy, configsService, frozenResources, resolver } = createResolver();
+    const { authorizationPolicy, configsService, frozenResources, issuingService, prisma, resolver } = createResolver();
     const user = { sub: 'user-1' };
+    configsService.getFolderById.mockResolvedValue({ id: 'folder-1', name: 'Pasta anterior' });
     configsService.listConfigsByTarget.mockResolvedValue([{ id: 'config-1' }, { id: 'config-2' }]);
     configsService.updateFolder.mockResolvedValue({ id: 'folder-1', name: 'Nova pasta' });
 
     await expect(
-      resolver.updateCertificateFolder('folder-1', { name: 'Nova pasta' }, { req: { user } } as never),
+      resolver.updateCertificateFolder(
+        'folder-1',
+        { name: 'Nova pasta', reissueCertificates: true },
+        { req: { user } } as never,
+      ),
     ).resolves.toEqual(
       expect.objectContaining({
         id: 'folder-1',
@@ -648,9 +653,57 @@ describe('CertificatesResolver authorization', () => {
         targetId: 'folder-1',
       },
     );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      [Permission.Certificate.Reissue],
+      {
+        folderId: 'folder-1',
+        scope: CertificateScope.OTHER,
+        targetId: 'folder-1',
+      },
+    );
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'edit');
-    expect(configsService.updateFolder).toHaveBeenCalledWith('folder-1', { name: 'Nova pasta' });
+    expect(configsService.updateFolder).toHaveBeenCalledWith(
+      'folder-1',
+      {
+        name: 'Nova pasta',
+        reissueCertificates: true,
+      },
+      prisma,
+    );
+    expect(issuingService.reissueCertificatesForFolder).toHaveBeenCalledWith('folder-1', 'user-1', prisma, {
+      notify: false,
+    });
+  });
+
+  it('rolls back a folder rename when certificate reissuance fails', async () => {
+    const { configsService, issuingService, prisma, resolver } = createResolver();
+    configsService.getFolderById.mockResolvedValue({ id: 'folder-1', name: 'Pasta anterior' });
+    configsService.listConfigsByTarget.mockResolvedValue([]);
+    configsService.updateFolder.mockResolvedValue({ id: 'folder-1', name: 'Nova pasta' });
+    issuingService.reissueCertificatesForFolder.mockRejectedValue(new Error('Certificate write failed'));
+
+    await expect(
+      resolver.updateCertificateFolder(
+        'folder-1',
+        { name: 'Nova pasta', reissueCertificates: true },
+        { req: { user: { sub: 'user-1' } } } as never,
+      ),
+    ).rejects.toThrow('Certificate write failed');
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not rename a folder without confirmed certificate reissuance', async () => {
+    const { configsService, resolver } = createResolver();
+    configsService.getFolderById.mockResolvedValue({ id: 'folder-1', name: 'Pasta anterior' });
+
+    await expect(
+      resolver.updateCertificateFolder('folder-1', { name: 'Nova pasta' }, { req: { user: { sub: 'user-1' } } } as never),
+    ).rejects.toThrow('Renaming a certificate folder requires reissuing its certificates.');
+
+    expect(configsService.updateFolder).not.toHaveBeenCalled();
   });
 });
 
@@ -680,6 +733,7 @@ function createResolver() {
     issueForExistingConfigRecipients: jest.fn(),
     issueMissedCertificates: jest.fn(),
     reissueAllCertificates: jest.fn(),
+    reissueCertificatesForFolder: jest.fn(),
     deleteCertificate: jest.fn(),
   };
   const downloadService = {
@@ -702,6 +756,9 @@ function createResolver() {
     accessibleEventTargets: jest.fn(),
     assertPermissions: jest.fn(),
   };
+  const prisma = {
+    $transaction: jest.fn((callback) => callback(prisma)),
+  };
   const resolver = new CertificatesResolver(
     targetsService as never,
     configsService as never,
@@ -711,6 +768,7 @@ function createResolver() {
     turnstile as never,
     frozenResources as never,
     authorizationPolicy as never,
+    prisma as never,
   );
 
   return {
@@ -718,6 +776,7 @@ function createResolver() {
     configsService,
     frozenResources,
     issuingService,
+    prisma,
     downloadService,
     publicValidationService,
     resolver,

@@ -247,6 +247,57 @@ describe('PublicCertificateValidationService', () => {
     );
   });
 
+  it('does not rederive incomplete event-group attendance for major-event certificates', async () => {
+    const issuedAt = new Date('2026-06-01T12:00:00.000Z');
+    const attendedPartially = {
+      ...majorEventEvent('group-event-1', 'Oficina incompleta', EventType.MINICURSO, 120),
+      eventGroupId: 'group-1',
+      eventGroup: {
+        shouldIssueCertificate: true,
+        shouldIssueCertificateForEachEvent: false,
+        shouldIssuePartialCertificate: false,
+      },
+    };
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)),
+          renderedData: {
+            events: [],
+          },
+          config: {
+            ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)).config,
+            scope: CertificateScope.MAJOR_EVENT,
+            event: null,
+            majorEvent: {
+              id: 'major-1',
+              name: 'SECOMP',
+              emoji: 'calendar',
+              deletedAt: null,
+              publicationState: 'PUBLISHED',
+            },
+          },
+        }),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([{ event: attendedPartially }]),
+      },
+      event: {
+        findMany: jest.fn(),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    await expect(service.validateCertificate('certificate-1')).resolves.toEqual(
+      expect.objectContaining({
+        sections: [],
+        totalCreditMinutes: 0,
+      }),
+    );
+    expect(prisma.eventAttendance.findMany).not.toHaveBeenCalled();
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+  });
+
   it('uses attended events for partial event-group certificates', async () => {
     const issuedAt = new Date('2026-06-01T12:00:00.000Z');
     const attended = eventGroupEvent('event-1', 'Oficina prática', 75);
@@ -420,6 +471,50 @@ describe('PublicCertificateValidationService', () => {
         eventId: true,
       },
     });
+  });
+
+  it('keeps all lecturer event categories for catch-all lecturer certificates', async () => {
+    const issuedAt = new Date('2026-06-01T12:00:00.000Z');
+    const lecture = majorEventEvent('lecture-1', 'Palestra ministrada', EventType.PALESTRA, 60);
+    const minicourse = majorEventEvent('minicourse-1', 'Minicurso ministrado', EventType.MINICURSO, 120);
+    const prisma = {
+      certificate: {
+        findFirst: jest.fn().mockResolvedValue({
+          ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)),
+          config: {
+            ...certificateRecord(issuedAt, eventRecord('unused-event', 'Evento publico', true, 90)).config,
+            scope: CertificateScope.MAJOR_EVENT,
+            issuedTo: CertificateIssuedTo.LECTURER,
+            certificateFields: {
+              __lecturerEventCategory: 'OTHER',
+            },
+            event: null,
+            majorEvent: {
+              id: 'major-1',
+              name: 'SECOMP',
+              emoji: 'calendar',
+              deletedAt: null,
+              publicationState: 'PUBLISHED',
+            },
+          },
+        }),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([lecture, minicourse]),
+      },
+      eventLecturer: {
+        findMany: jest.fn().mockResolvedValue([{ eventId: lecture.id }, { eventId: minicourse.id }]),
+      },
+    };
+    const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
+
+    const result = await service.validateCertificate('certificate-1');
+
+    expect(result?.sections).toEqual([
+      expect.objectContaining({ type: EventType.MINICURSO, creditMinutes: 120 }),
+      expect.objectContaining({ type: EventType.PALESTRA, creditMinutes: 60 }),
+    ]);
+    expect(result?.totalCreditMinutes).toBe(180);
   });
 });
 

@@ -313,11 +313,16 @@ describe('PeopleResolver', () => {
     );
   });
 
-  it('rejects people without identity, email, or name and rejects duplicate identities', async () => {
+  it('requires at least one identity field, allows namesakes, and rejects duplicate identifiers', async () => {
     const prisma = createPrisma();
     const resolver = createResolver(prisma);
 
     await expect(resolver.createPerson({}, userContext())).rejects.toBeInstanceOf(UnprocessableEntityException);
+
+    const created = person({ id: 'namesake-person' });
+    prisma.people.create.mockResolvedValueOnce(created);
+    prisma.people.findUniqueOrThrow.mockResolvedValueOnce(created);
+    await expect(resolver.createPerson({ name: 'Ana Clara' }, userContext())).resolves.toEqual(created);
 
     prisma.people.findFirst.mockResolvedValueOnce({
       id: 'duplicate-person',
@@ -325,9 +330,27 @@ describe('PeopleResolver', () => {
       email: 'ana@example.com',
       identityDocument: null,
     });
-    await expect(resolver.createPerson({ name: 'Ana Clara' }, userContext())).rejects.toBeInstanceOf(
+    await expect(resolver.createPerson({ email: 'ana@example.com', name: 'Outra Ana' }, userContext())).rejects.toBeInstanceOf(
       ConflictException,
     );
+  });
+
+  it('allows updating a person to a name already used by someone else', async () => {
+    const prisma = createPrisma();
+    const resolver = createResolver(prisma);
+    const updated = person({ name: 'Ana Clara' });
+    prisma.people.findFirst.mockResolvedValueOnce(person({ name: 'Outra Ana' }));
+    prisma.people.update.mockResolvedValueOnce(updated);
+    prisma.people.findUniqueOrThrow.mockResolvedValueOnce(updated);
+
+    await expect(resolver.updatePerson('person-1', { name: 'Ana Clara' }, userContext())).resolves.toEqual(updated);
+
+    expect(prisma.people.findFirst).toHaveBeenCalledTimes(1);
+    expect(prisma.people.update).toHaveBeenCalledWith({
+      where: { id: 'person-1', deletedAt: null },
+      data: { name: 'Ana Clara' },
+      include: { user: true, lecturerProfile: true },
+    });
   });
 
   it('rejects merge-managed fields on person creation outside merge operations', async () => {

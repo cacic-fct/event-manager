@@ -3,7 +3,8 @@
     <aside class="panel">
       <div class="panel-heading">
         <div>
-          <h3>Lista</h3>
+          <h3>Busca</h3>
+          <p>Nome do grupo.</p>
         </div>
 
         <button mat-stroked-button type="button" (click)="workspace.startNewEventGroup()">
@@ -11,6 +12,21 @@
           Novo
         </button>
       </div>
+
+      <form
+        class="compact-form"
+        [formGroup]="workspace.eventGroupsSearchForm"
+        (submit)="$event.preventDefault(); workspace.searchEventGroups()">
+        <mat-form-field>
+          <mat-label>Buscar grupo</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput formControlName="query" />
+        </mat-form-field>
+        <button mat-flat-button type="submit">
+          <mat-icon>search</mat-icon>
+          Buscar
+        </button>
+      </form>
 
       <mat-list class="result-list">
         @for (group of workspace.sortedEventGroups(); track group.id) {

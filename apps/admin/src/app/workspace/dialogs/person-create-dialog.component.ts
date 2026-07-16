@@ -99,25 +99,19 @@ export class PersonCreateDialogComponent {
 
     try {
       const rawValue = this.model();
-      const duplicateCandidates = await firstValueFrom(
-        this.api.listPeopleSummaries(buildDuplicatePeopleLookupFilters({ ...rawValue, take: 10 })),
-      );
+      const duplicateFilters = buildDuplicatePeopleLookupFilters({ ...rawValue, take: 10 });
+      const duplicateCandidates = duplicateFilters
+        ? await firstValueFrom(this.api.listPeopleSummaries(duplicateFilters))
+        : [];
 
-      const normalizedName = rawValue.name.trim().toLowerCase();
       const normalizedEmail = rawValue.email.trim().toLowerCase();
       const normalizedIdentityDocument = rawValue.identityDocument.trim();
 
-      const duplicate = duplicateCandidates.find((candidate) => {
-        if (normalizedIdentityDocument && candidate.identityDocument === normalizedIdentityDocument) {
-          return true;
-        }
-
-        if (normalizedEmail && candidate.email?.trim().toLowerCase() === normalizedEmail) {
-          return true;
-        }
-
-        return candidate.name.trim().toLowerCase() === normalizedName;
-      });
+      const duplicate = duplicateCandidates.find(
+        (candidate) =>
+          (normalizedIdentityDocument && candidate.identityDocument === normalizedIdentityDocument) ||
+          (normalizedEmail && candidate.email?.trim().toLowerCase() === normalizedEmail),
+      );
 
       if (duplicate) {
         this.errorMessage.set(`Já existe uma pessoa (${duplicate.name}, id: ${duplicate.id}).`);

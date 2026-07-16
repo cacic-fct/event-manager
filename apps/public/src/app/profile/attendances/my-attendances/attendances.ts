@@ -30,7 +30,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { CertificateDialog, CertificateDialogData } from './certificate-dialog/certificate-dialog';
-import type { StandaloneCertificateFolderItem } from '@cacic-fct/shared-utils';
+import type {
+  StandaloneCertificateFolderItem,
+  SubscribedEventGroupItem,
+} from '@cacic-fct/shared-utils';
 
 type AttendanceFilter = 'subscribed' | 'present' | 'certificate' | 'lecturer';
 type AttendanceFilterSelection = AttendanceFilter | 'none';
@@ -286,12 +289,70 @@ export class Attendances {
   }
 
   private normalizeFeed(feed: SubscriptionsFeed): NormalizedSubscriptionsFeed {
-    const sortedFeed = sortSubscriptionsFeed(feed);
+    const sortedFeed = sortSubscriptionsFeed({
+      ...feed,
+      eventItems: this.mergeStandaloneEventGroupItems(feed.eventItems),
+    });
 
     return {
       ...sortedFeed,
       standaloneCertificateFolders:
         sortedFeed.standaloneCertificateFolders ?? EMPTY_SUBSCRIPTIONS_FEED.standaloneCertificateFolders,
+    };
+  }
+
+  private mergeStandaloneEventGroupItems(items: SubscribedItem[]): SubscribedItem[] {
+    const ungroupedItems: SubscribedItem[] = [];
+    const groupedItems = new Map<string, SubscribedEventGroupItem>();
+
+    for (const item of items) {
+      if (item.__typename === 'SubscribedEventGroupItem') {
+        const existingGroup = groupedItems.get(item.eventGroup.id);
+        groupedItems.set(item.eventGroup.id, existingGroup ? this.mergeEventGroupItems(existingGroup, item) : item);
+        continue;
+      }
+
+      const eventGroupId = item.event.eventGroupId;
+      const eventGroup = item.event.eventGroup;
+      if (!eventGroupId || !eventGroup || item.event.majorEventId) {
+        ungroupedItems.push(item);
+        continue;
+      }
+
+      const existingGroup = groupedItems.get(eventGroupId);
+      const childEventGroup: SubscribedEventGroupItem = {
+        __typename: 'SubscribedEventGroupItem',
+        id: eventGroupId,
+        type: 'group',
+        startDate: item.event.startDate,
+        eventGroup,
+        events: [item.event],
+        participation: item.participation,
+      };
+      groupedItems.set(
+        eventGroupId,
+        existingGroup ? this.mergeEventGroupItems(existingGroup, childEventGroup) : childEventGroup,
+      );
+    }
+
+    return [...ungroupedItems, ...groupedItems.values()];
+  }
+
+  private mergeEventGroupItems(
+    left: SubscribedEventGroupItem,
+    right: SubscribedEventGroupItem,
+  ): SubscribedEventGroupItem {
+    const eventsById = new Map([...left.events, ...right.events].map((event) => [event.id, event]));
+
+    return {
+      ...left,
+      startDate: left.startDate < right.startDate ? left.startDate : right.startDate,
+      events: [...eventsById.values()].sort((first, second) => first.startDate.localeCompare(second.startDate)),
+      participation: {
+        isSubscribed: left.participation.isSubscribed || right.participation.isSubscribed,
+        isLecturer: left.participation.isLecturer || right.participation.isLecturer,
+        hasIssuedCertificate: left.participation.hasIssuedCertificate || right.participation.hasIssuedCertificate,
+      },
     };
   }
 

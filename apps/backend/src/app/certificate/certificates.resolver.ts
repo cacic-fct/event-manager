@@ -19,7 +19,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
-import { ForbiddenException, UseGuards } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, UseGuards } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { Request } from 'express';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -38,6 +38,7 @@ import { CertificateIssuingService } from './certificate-issuing.service';
 import { CertificateTargetsService } from './certificate-targets.service';
 import { PublicCertificateValidationService } from './public-certificate-validation.service';
 import { TurnstileService } from '../turnstile/turnstile.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 type GraphqlRequest = Request & {
   user?: AuthenticatedUser;
@@ -59,6 +60,7 @@ export class CertificatesResolver {
     private readonly turnstile: TurnstileService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Query(() => [Event], { name: 'certificateIssuableEvents' })
@@ -270,12 +272,30 @@ export class CertificatesResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.assertCertificateFolderPermission(context, Permission.CertificateConfig.Update, id);
+    const existingFolder = await this.configsService.getFolderById(id);
+    const nameChanged = input.name != null && input.name.trim() !== existingFolder.name;
+    if (nameChanged && !input.reissueCertificates) {
+      throw new BadRequestException('Renaming a certificate folder requires reissuing its certificates.');
+    }
+    if (nameChanged) {
+      await this.assertCertificateFolderPermission(context, Permission.Certificate.Reissue, id);
+    }
     const configs = await this.configsService.listConfigsByTarget(CertificateScope.OTHER, id);
     for (const config of configs) {
       await this.frozenResources.assertCertificateConfigMutable(config.id, this.getUser(context), 'edit');
     }
 
-    return this.configsService.updateFolder(id, input);
+    if (!nameChanged) {
+      return this.configsService.updateFolder(id, input);
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updatedFolder = await this.configsService.updateFolder(id, input, tx);
+      await this.issuingService.reissueCertificatesForFolder(id, this.getIssuedById(context), tx, {
+        notify: false,
+      });
+      return updatedFolder;
+    });
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteCertificateFolder' })

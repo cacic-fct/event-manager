@@ -106,6 +106,14 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     }));
   }
 
+  @Query(() => Int, { name: 'eventAttendanceCount' })
+  @RequirePermissions(Permission.EventAttendance.Read)
+  eventAttendanceCount(@Args('eventId', { type: () => String, nullable: true }) eventId?: string): Promise<number> {
+    return this.prisma.eventAttendance.count({
+      where: eventId ? { eventId } : {},
+    });
+  }
+
   @Query(() => [EventAttendanceScannerFeedItem], { name: 'eventAttendanceScannerFeed' })
   @RequirePermissions(Permission.EventAttendance.Read)
   eventAttendanceScannerFeed(@Args('eventId', { type: () => String }) eventId: string) {
