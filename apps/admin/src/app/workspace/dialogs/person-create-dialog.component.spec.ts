@@ -34,7 +34,20 @@ describe('PersonCreateDialogComponent', () => {
     expect(dialogRef.close).toHaveBeenCalledWith(personFixture);
   });
 
-  it('shows duplicate feedback and keeps the dialog open when a matching person exists', async () => {
+  it('allows creating a namesake', async () => {
+    const { api, component, dialogRef } = await createFixture({
+      duplicateCandidates: [{ id: 'person-2', name: 'Ada Lovelace', email: 'other@example.com' }],
+    });
+    component.form.name().value.set('Ada Lovelace');
+
+    await component.onSaveClick();
+
+    expect(component.errorMessage()).toBeNull();
+    expect(api.createPerson).toHaveBeenCalled();
+    expect(dialogRef.close).toHaveBeenCalledWith(personFixture);
+  });
+
+  it('shows duplicate feedback and keeps the dialog open when an email matches', async () => {
     const { api, component, dialogRef } = await createFixture({
       duplicateCandidates: [{ id: 'person-2', name: 'Ada Lovelace', email: 'ada@example.com' }],
     });

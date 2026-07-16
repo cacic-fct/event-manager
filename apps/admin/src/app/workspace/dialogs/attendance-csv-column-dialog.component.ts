@@ -11,6 +11,8 @@ export interface AttendanceCsvColumnDialogData {
   fileName: string;
   headers: string[];
   previewRows: Record<string, string>[];
+  title?: string;
+  confirmLabel?: string;
 }
 
 @Component({
@@ -18,7 +20,7 @@ export interface AttendanceCsvColumnDialogData {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormField, MatButtonModule, MatDialogModule, MatFormFieldModule, MatListModule, MatSelectModule],
   template: `
-    <h2 mat-dialog-title>Importar presenças</h2>
+    <h2 mat-dialog-title>{{ data.title ?? 'Importar presenças' }}</h2>
     <div mat-dialog-content>
       <p>{{ data.fileName }}</p>
       <form>
@@ -44,7 +46,9 @@ export interface AttendanceCsvColumnDialogData {
     </div>
     <div mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button type="button" [disabled]="form().invalid()" (click)="confirm()">Importar</button>
+      <button mat-flat-button type="button" [disabled]="form().invalid()" (click)="confirm()">
+        {{ data.confirmLabel ?? 'Importar' }}
+      </button>
     </div>
   `,
 })

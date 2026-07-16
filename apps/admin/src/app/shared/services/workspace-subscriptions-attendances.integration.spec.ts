@@ -34,6 +34,7 @@ describe('workspace subscription and attendance management integration', () => {
   };
   let attendanceApi: {
     listEventAttendances: ReturnType<typeof vi.fn>;
+    getEventAttendanceCount: ReturnType<typeof vi.fn>;
     listOfflineEventAttendanceSubmissions: ReturnType<typeof vi.fn>;
     createEventAttendance: ReturnType<typeof vi.fn>;
     deleteEventAttendance: ReturnType<typeof vi.fn>;
@@ -72,6 +73,7 @@ describe('workspace subscription and attendance management integration', () => {
     };
     attendanceApi = {
       listEventAttendances: vi.fn(() => of([])),
+      getEventAttendanceCount: vi.fn(() => of(0)),
       listOfflineEventAttendanceSubmissions: vi.fn(() => of([])),
       createEventAttendance: vi.fn(() => of(null)),
       deleteEventAttendance: vi.fn(() => of({ deleted: true })),
@@ -246,6 +248,7 @@ describe('workspace subscription and attendance management integration', () => {
       personId: 'person-1',
     });
     expect(attendanceApi.listEventAttendances).toHaveBeenCalledWith('event-1', { skip: 0, take: 51 });
+    expect(attendanceApi.getEventAttendanceCount).toHaveBeenCalledWith('event-1');
     expect(attendanceApi.listOfflineEventAttendanceSubmissions).toHaveBeenCalledWith('event-1');
     expect(snackbar.open).toHaveBeenCalledWith('Presença off-line corrigida.', 'Fechar', { duration: 3000 });
   });
@@ -356,5 +359,6 @@ describe('workspace subscription and attendance management integration', () => {
       resolutions: [{ value: '11999999975', personId: 'phone-person' }],
     });
     expect(attendanceApi.listEventAttendances).toHaveBeenCalledWith('event-1', { skip: 0, take: 51 });
+    expect(attendanceApi.getEventAttendanceCount).toHaveBeenCalledWith('event-1');
   });
 });

@@ -5,6 +5,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { parseCsv } from '@cacic-fct/shared-utils';
 import { CertificateApiService } from '../../graphql/certificate-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventGroupApiService } from '../../graphql/event-group-api.service';
@@ -12,6 +13,7 @@ import { MajorEventApiService } from '../../graphql/major-event-api.service';
 import { PeopleApiService } from '../../graphql/people-api.service';
 import {
   Certificate,
+  CertificateCsvImportResolution,
   CertificateConfig,
   CertificateConfigCloneInput,
   CertificateConfigInput,
@@ -42,6 +44,9 @@ import {
   CertificateConfigCloneDialogComponent,
   CertificateConfigCloneDialogResult,
 } from '../../workspace/dialogs/certificate-config-clone-dialog.component';
+import { AttendanceCsvColumnDialogComponent } from '../../workspace/dialogs/attendance-csv-column-dialog.component';
+import { AttendanceCsvImportResultDialogComponent } from '../../workspace/dialogs/attendance-csv-import-result-dialog.component';
+import { AttendancePersonResolutionDialogComponent } from '../../workspace/dialogs/attendance-person-resolution-dialog.component';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 
 type WorkspaceCertificateScope = CertificateScope;
@@ -100,11 +105,13 @@ export class WorkspaceCertificatesService {
   readonly certificates = signal<Certificate[]>([]);
   readonly certificatesPagination = createWorkspaceListPagination();
   readonly personSearchResults = signal<Person[]>([]);
+  readonly isImportingPeopleCsv = signal(false);
   readonly certificateFieldDefinitions = signal<CertificateFieldDefinition[]>([]);
   readonly shouldShowSecondPageText = computed(() => !this.certificateConfigModel().shouldAutofillSecondPage);
   readonly shouldShowCertificateTypeLabel = computed(() =>
     this.requiresCustomCertificateTypeLabel(this.certificateConfigModel().issuedTo),
   );
+  readonly isManualCertificateIssue = computed(() => this.certificateConfigModel().issuedTo === 'OTHER');
   private certificateFieldValuesJson: string | null | undefined;
 
   private selectedCertificateTemplate(
@@ -468,6 +475,32 @@ export class WorkspaceCertificatesService {
       emoji: raw.emoji.trim(),
     };
 
+    if (raw.id && this.selectedTarget()?.name !== payload.name) {
+      const confirmed = await firstValueFrom(
+        this.dialog
+          .open(ConfirmationDialogComponent, {
+            data: {
+              title: 'Renomear pasta e reemitir certificados?',
+              message: 'Alterar o nome da pasta será refletido em todos os certificados já emitidos nela.',
+              details: [
+                `Novo nome: ${payload.name}.`,
+                'Escopo: todas as configurações ativas desta pasta.',
+                'Os certificados existentes serão reemitidos com o novo nome da pasta.',
+              ],
+              confirmLabel: 'Renomear e reemitir',
+              tone: 'danger',
+            },
+            width: '420px',
+          })
+          .afterClosed(),
+      );
+      if (confirmed !== true) {
+        return;
+      }
+
+      payload.reissueCertificates = true;
+    }
+
     try {
       const savedFolder = raw.id
         ? await firstValueFrom(this.api.updateCertificateFolder(raw.id, payload))
@@ -570,6 +603,104 @@ export class WorkspaceCertificatesService {
       this.snackbar.open(getErrorMessage(error, 'Não foi possível emitir o certificado.'), 'Fechar', {
         duration: 5000,
       });
+    }
+  }
+
+  async issueManualCertificatesFromCsv(file: File | null): Promise<void> {
+    if (!file || this.isImportingPeopleCsv()) {
+      return;
+    }
+
+    this.isImportingPeopleCsv.set(true);
+    try {
+      const selectedConfig = await this.persistCertificateConfig({ showSnackbar: false });
+      if (!selectedConfig) {
+        return;
+      }
+      if (selectedConfig.issuedTo !== 'OTHER') {
+        this.snackbar.open('A importação CSV está disponível apenas para certificados manuais.', 'Fechar', {
+          duration: 3500,
+        });
+        return;
+      }
+
+      const csvContent = await file.text();
+      const parsedCsv = parseCsv(csvContent);
+      const selectedHeader = await firstValueFrom(
+        this.dialog
+          .open(AttendanceCsvColumnDialogComponent, {
+            width: '32rem',
+            data: {
+              fileName: file.name,
+              headers: parsedCsv.headers,
+              previewRows: parsedCsv.rows.slice(0, 12),
+              title: 'Emitir certificados por CSV',
+              confirmLabel: 'Continuar',
+            },
+          })
+          .afterClosed(),
+      );
+      if (!selectedHeader) {
+        return;
+      }
+
+      let resolutions: CertificateCsvImportResolution[] = [];
+      let result = await firstValueFrom(
+        this.api.issueManualCertificatesFromCsv({
+          configId: selectedConfig.id,
+          csvContent,
+          selectedHeader,
+        }),
+      );
+      while (result.ambiguousValues.length > 0) {
+        const selectedResolutions = await firstValueFrom(
+          this.dialog
+            .open(AttendancePersonResolutionDialogComponent, {
+              width: 'min(48rem, 96vw)',
+              maxWidth: '96vw',
+              maxHeight: '86vh',
+              data: {
+                title: 'Resolver dados ambíguos',
+                description:
+                  'Alguns dados do CSV podem identificar mais de uma pessoa. Selecione a pessoa correta para continuar a emissão.',
+                confirmLabel: 'Continuar emissão',
+                ambiguousValues: result.ambiguousValues,
+              },
+            })
+            .afterClosed(),
+        );
+        if (!selectedResolutions) {
+          return;
+        }
+        resolutions = [...resolutions, ...selectedResolutions];
+        result = await firstValueFrom(
+          this.api.issueManualCertificatesFromCsv({
+            configId: selectedConfig.id,
+            csvContent,
+            selectedHeader,
+            resolutions,
+          }),
+        );
+      }
+
+      await this.loadCertificates();
+      this.dialog.open(AttendanceCsvImportResultDialogComponent, {
+        width: '36rem',
+        maxHeight: '80vh',
+        data: {
+          ...result,
+          title: 'Emissão de certificados concluída',
+          createdLabel: 'certificados emitidos',
+          duplicateLabel: 'já emitidos ou repetidos',
+          failedInstruction: 'Emita os certificados restantes manualmente.',
+        },
+      });
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível importar o CSV.'), 'Fechar', {
+        duration: 5000,
+      });
+    } finally {
+      this.isImportingPeopleCsv.set(false);
     }
   }
 

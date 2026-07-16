@@ -166,7 +166,7 @@ export class CertificateEligibilityService {
       return event.type === EventType.MINICURSO;
     }
 
-    return event.type !== EventType.PALESTRA && event.type !== EventType.MINICURSO;
+    return true;
   }
 
   private parseLecturerEventCategory(certificateFields: Prisma.JsonValue | null): LecturerEventCategory | null {

@@ -52,6 +52,13 @@ describe('EventAttendancesQueriesResolver', () => {
     );
   });
 
+  it('counts attendances for an event', async () => {
+    prisma.eventAttendance.count.mockResolvedValue(74);
+
+    await expect(resolver.eventAttendanceCount('event-1')).resolves.toBe(74);
+    expect(prisma.eventAttendance.count).toHaveBeenCalledWith({ where: { eventId: 'event-1' } });
+  });
+
   it('builds major event attendance rows from paginated subscriptions', async () => {
     prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
     prisma.event.findMany.mockResolvedValue([
@@ -131,6 +138,7 @@ function createFullPrisma() {
   return {
     $transaction: jest.fn(),
     eventAttendance: {
+      count: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),
       deleteMany: jest.fn(),

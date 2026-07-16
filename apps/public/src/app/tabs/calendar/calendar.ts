@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormField, form } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -30,6 +30,7 @@ import {
   switchMap,
 } from 'rxjs';
 import { NetworkStatusService } from '../../shared/network-status.service';
+import { PublicFeatureFlagService } from '../../feature-flags/public-feature-flag.service';
 import { CalendarApiService, CalendarEventTypeFilter } from './calendar-api.service';
 import { CalendarListView } from './calendar-list-view';
 import { CalendarWeekDay, CalendarWeekView } from './calendar-week-view';
@@ -68,6 +69,7 @@ interface CalendarFilterValue {
 export class Calendar {
   private readonly api = inject(CalendarApiService);
   private readonly calendarPreferences = inject(CalendarPreferencesStorageService);
+  private readonly featureFlags = inject(PublicFeatureFlagService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineData = inject(OfflinePublicDataAccessService);
@@ -82,6 +84,9 @@ export class Calendar {
   readonly filterForm = form(this.filterModel);
 
   readonly viewMode = signal<CalendarViewMode>('list');
+  private readonly defaultItemView = toSignal(this.calendarPreferences.watchDefaultItemView(), {
+    initialValue: 'automatic',
+  });
   readonly listStartDate = signal(this.todayDate);
   readonly weekBaseDate = signal(startOfWeek(this.todayDate, { weekStartsOn: 0 }));
   readonly selectedDate = signal(this.todayDate);
@@ -118,14 +123,10 @@ export class Calendar {
   });
 
   constructor() {
-    this.calendarPreferences
-      .watchDefaultItemView()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((defaultItemView) => {
-        if (defaultItemView === 'list' || defaultItemView === 'week') {
-          this.viewMode.set(defaultItemView);
-        }
-      });
+    effect(() => {
+      const defaultItemView = this.defaultItemView();
+      this.viewMode.set(defaultItemView === 'automatic' ? this.calendarDefaultViewFromFeatureFlag() : defaultItemView);
+    });
 
     this.networkStatus
       .watchStatusChanges()
@@ -254,6 +255,10 @@ export class Calendar {
     if (isBefore(date, this.listStartDate())) {
       this.listStartDate.set(isBefore(date, this.minimumDate) ? this.minimumDate : startOfDay(date));
     }
+  }
+
+  private calendarDefaultViewFromFeatureFlag(): CalendarViewMode {
+    return this.featureFlags.stringValue('calendarDefaultView') === 'week' ? 'week' : 'list';
   }
 
   private async shouldRefreshAfterReconnect(): Promise<boolean> {

@@ -158,6 +158,11 @@ export class PublicCertificateValidationService {
   private async resolveCertificateEvents(
     certificate: PublicCertificateValidationRecord,
   ): Promise<CertificateValidationEventRecord[]> {
+    const issuedEventIds = this.getIssuedEventIds(certificate);
+    if (issuedEventIds !== null) {
+      return this.listIssuedCertificateEvents(issuedEventIds);
+    }
+
     if (certificate.config.issuedTo === CertificateIssuedTo.LECTURER) {
       return this.listLecturerCertificateEvents(certificate);
     }
@@ -175,6 +180,49 @@ export class PublicCertificateValidationService {
     }
 
     return [];
+  }
+
+  private getIssuedEventIds(certificate: PublicCertificateValidationRecord): string[] | null {
+    const renderedData = this.getRenderedDataObject(certificate);
+    const renderedEvents = renderedData.events;
+    if (!Array.isArray(renderedEvents)) {
+      return null;
+    }
+
+    return [
+      ...new Set(
+        renderedEvents.flatMap((event) => {
+          if (!event || typeof event !== 'object' || Array.isArray(event)) {
+            return [];
+          }
+
+          const eventId = event.id;
+          return typeof eventId === 'string' && eventId.trim() ? [eventId] : [];
+        }),
+      ),
+    ];
+  }
+
+  private async listIssuedCertificateEvents(eventIds: string[]): Promise<CertificateValidationEventRecord[]> {
+    if (eventIds.length === 0) {
+      return [];
+    }
+
+    const events = await this.prisma.event.findMany({
+      where: {
+        id: {
+          in: eventIds,
+        },
+        deletedAt: null,
+      },
+      select: CERTIFICATE_VALIDATION_EVENT_SELECT,
+    });
+    const eventsById = new Map(events.map((event) => [event.id, event]));
+
+    return eventIds.flatMap((eventId) => {
+      const event = eventsById.get(eventId);
+      return event ? [event] : [];
+    });
   }
 
   private async listLecturerCertificateEvents(
@@ -378,7 +426,9 @@ export class PublicCertificateValidationService {
       return event.type === EventType.MINICURSO;
     }
 
-    return event.type !== EventType.PALESTRA && event.type !== EventType.MINICURSO;
+    // Keep legacy certificates consistent with issuance: OTHER is the
+    // catch-all lecturer option, rather than an EventType.OTHER filter.
+    return true;
   }
 
   private parseLecturerEventCategory(certificateFields: Prisma.JsonValue | null): LecturerEventCategory | null {

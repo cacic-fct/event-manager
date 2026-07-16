@@ -99,6 +99,32 @@ describe('Attendances', () => {
     expect(text).toContain('4 de 6 participações');
   });
 
+  it('merges standalone event-group children into one event-group item', async () => {
+    const { component, fixture } = await createFixture({ onlineFeed: standaloneEventGroupChildrenFeedFixture });
+
+    await settle(fixture);
+
+    const eventItems = component.filteredFeed()?.eventItems;
+    expect(eventItems).toEqual([
+      expect.objectContaining({
+        __typename: 'SubscribedEventGroupItem',
+        eventGroup: expect.objectContaining({
+          id: 'standalone-group',
+          name: 'Grupo de atividades',
+        }),
+        events: [expect.objectContaining({ id: 'group-event-1' }), expect.objectContaining({ id: 'group-event-2' })],
+        participation: {
+          isSubscribed: true,
+          isLecturer: false,
+          hasIssuedCertificate: true,
+        },
+      }),
+    ]);
+    expect(fixture.nativeElement.textContent).toContain('Grupo de atividades');
+    expect(fixture.nativeElement.textContent).not.toContain('Primeira atividade do grupo');
+    expect(fixture.nativeElement.textContent).not.toContain('Segunda atividade do grupo');
+  });
+
   it('downloads all certificates through the shared browser file service', async () => {
     const { component, fileDownload, snackBar } = await createFixture();
 
@@ -517,4 +543,64 @@ const filterableSubscriptionsFeedFixture = {
       },
     },
   ],
+} satisfies SubscriptionsFeed;
+
+const standaloneEventGroupChildrenFeedFixture = {
+  majorEventItems: [],
+  eventItems: [
+    {
+      __typename: 'SubscribedSingleEventItem',
+      id: 'group-event-1',
+      type: 'single',
+      startDate: '2026-07-01T12:00:00.000Z',
+      event: {
+        id: 'group-event-1',
+        name: 'Primeira atividade do grupo',
+        startDate: '2026-07-01T12:00:00.000Z',
+        endDate: '2026-07-01T14:00:00.000Z',
+        emoji: '🧪',
+        type: 'OTHER',
+        majorEventId: null,
+        eventGroupId: 'standalone-group',
+        eventGroup: {
+          id: 'standalone-group',
+          name: 'Grupo de atividades',
+          emoji: '🧪',
+        },
+      },
+      participation: {
+        isSubscribed: true,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+      },
+    },
+    {
+      __typename: 'SubscribedSingleEventItem',
+      id: 'group-event-2',
+      type: 'single',
+      startDate: '2026-07-02T12:00:00.000Z',
+      event: {
+        id: 'group-event-2',
+        name: 'Segunda atividade do grupo',
+        startDate: '2026-07-02T12:00:00.000Z',
+        endDate: '2026-07-02T14:00:00.000Z',
+        emoji: '🧪',
+        type: 'OTHER',
+        majorEventId: null,
+        eventGroupId: 'standalone-group',
+        eventGroup: {
+          id: 'standalone-group',
+          name: 'Grupo de atividades',
+          emoji: '🧪',
+        },
+      },
+      participation: {
+        isSubscribed: false,
+        isLecturer: false,
+        hasIssuedCertificate: true,
+      },
+    },
+  ],
+  standaloneCertificateFolders: [],
+  attendances: [],
 } satisfies SubscriptionsFeed;

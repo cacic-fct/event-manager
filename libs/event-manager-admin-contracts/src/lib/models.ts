@@ -761,6 +761,30 @@ export interface EventAttendanceCsvImportResolution {
   personId: string;
 }
 
+export interface CertificateCsvImportCandidate {
+  id: string;
+  name: string;
+}
+
+export interface CertificateCsvImportAmbiguousValue {
+  value: string;
+  candidates: CertificateCsvImportCandidate[];
+}
+
+export interface CertificateCsvImportResolution {
+  value: string;
+  personId: string;
+}
+
+export interface CertificateCsvImportResult {
+  createdCount: number;
+  duplicateCount: number;
+  failedCount: number;
+  failedValues: string[];
+  inferredMatchType: AttendanceImportMatchType;
+  ambiguousValues: CertificateCsvImportAmbiguousValue[];
+}
+
 export interface MajorEventSubscriptionCsvColumnMapping {
   emailHeader?: string | null;
   fullNameHeader?: string | null;
@@ -927,6 +951,7 @@ export interface CertificateConfigCloneInput {
 export interface CertificateFolderInput {
   name?: string;
   emoji?: string;
+  reissueCertificates?: boolean;
 }
 
 export interface EventInput {

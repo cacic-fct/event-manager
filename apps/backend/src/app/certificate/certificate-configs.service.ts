@@ -29,6 +29,7 @@ import { CertificateValidationService } from './certificate-validation.service';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
+type CertificateFolderWriteClient = Pick<PrismaService, 'certificateFolder'>;
 
 @Injectable()
 export class CertificateConfigsService {
@@ -103,9 +104,13 @@ export class CertificateConfigsService {
     return mapCertificateFolder(folder);
   }
 
-  async updateFolder(folderId: string, input: CertificateFolderUpdateInput): Promise<CertificateFolder> {
+  async updateFolder(
+    folderId: string,
+    input: CertificateFolderUpdateInput,
+    client: CertificateFolderWriteClient = this.prisma,
+  ): Promise<CertificateFolder> {
     const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
-    const existingFolder = await this.prisma.certificateFolder.findFirst({
+    const existingFolder = await client.certificateFolder.findFirst({
       where: {
         id: normalizedFolderId,
         deletedAt: null,
@@ -123,7 +128,7 @@ export class CertificateConfigsService {
     await this.ensureNoDuplicateFolderName(name, normalizedFolderId);
 
     const updatedFolder = await this.withFolderNameConflict(() =>
-      this.prisma.certificateFolder.update({
+      client.certificateFolder.update({
         where: {
           id: normalizedFolderId,
         },

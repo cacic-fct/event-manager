@@ -26,6 +26,7 @@ import { CalendarResolver } from './calendar/calendar.resolver';
 import { CALENDAR_FEED_MAINTENANCE_QUEUE } from './calendar/calendar.models';
 import { CalendarService } from './calendar/calendar.service';
 import { CertificateConfigsService } from './certificate/certificate-configs.service';
+import { CertificateCsvImportResolver } from './certificate/certificate-csv-import.resolver';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
@@ -334,6 +335,7 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateTargetsService,
     CertificateValidationService,
     CertificateConfigsService,
+    CertificateCsvImportResolver,
     CertificateDownloadService,
     CertificateEligibilityService,
     CertificateIssuingService,

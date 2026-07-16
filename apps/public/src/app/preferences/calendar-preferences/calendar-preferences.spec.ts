@@ -93,12 +93,12 @@ describe('CalendarPreferences', () => {
     expect(calendarPreferences.setDefaultItemView).toHaveBeenCalledWith('week');
   });
 
-  it('does not persist the automatic default item view yet', async () => {
+  it('persists the automatic default item view', async () => {
     const { component } = await createComponent();
 
     component.setDefaultItemView({ value: 'automatic' });
 
-    expect(calendarPreferences.setDefaultItemView).not.toHaveBeenCalled();
+    expect(calendarPreferences.setDefaultItemView).toHaveBeenCalledWith('automatic');
   });
 
   it('keeps calendar feed settings hidden for unauthenticated visitors', async () => {

@@ -1,10 +1,10 @@
 import { MajorEventSubscriptionCsvImportInput } from '@cacic-fct/shared-data-types';
 import { BadRequestException } from '@nestjs/common';
 import { Prisma, SubscriptionStatus } from '@prisma/client';
-import { EventAttendancesPersonMatchSupport } from './person-match-support';
+import { EventAttendancesCoreSupport } from './core-support';
 import { CsvRow, PersonMatch, SubscriptionImportPersonData } from './types';
 
-export abstract class EventAttendancesSubscriptionImportSupport extends EventAttendancesPersonMatchSupport {
+export abstract class EventAttendancesSubscriptionImportSupport extends EventAttendancesCoreSupport {
   protected parseSubscriptionStatus(status: string): SubscriptionStatus {
     if (Object.values(SubscriptionStatus).includes(status as SubscriptionStatus)) {
       return status as SubscriptionStatus;

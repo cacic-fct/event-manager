@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { CalendarPreferencesStorageService } from '@cacic-fct/offline-public-data-access';
+import { PublicFeatureFlagService } from '../../feature-flags/public-feature-flag.service';
 import { of } from 'rxjs';
 import { Calendar } from './calendar';
 
@@ -9,10 +11,16 @@ describe('Calendar', () => {
   let component: Calendar;
   let fixture: ComponentFixture<Calendar>;
   let calendarPreferences: { watchDefaultItemView: ReturnType<typeof vi.fn> };
+  let featureFlags: { stringValue: ReturnType<typeof vi.fn> };
+  let calendarDefaultView = signal('list');
 
   beforeEach(async () => {
     calendarPreferences = {
       watchDefaultItemView: vi.fn().mockReturnValue(of('automatic')),
+    };
+    calendarDefaultView = signal('list');
+    featureFlags = {
+      stringValue: vi.fn(() => calendarDefaultView()),
     };
 
     await TestBed.configureTestingModule({
@@ -21,6 +29,7 @@ describe('Calendar', () => {
         provideHttpClient(),
         provideRouter([]),
         { provide: CalendarPreferencesStorageService, useValue: calendarPreferences },
+        { provide: PublicFeatureFlagService, useValue: featureFlags },
       ],
     }).compileComponents();
 
@@ -47,6 +56,31 @@ describe('Calendar', () => {
     calendarPreferences.watchDefaultItemView.mockReturnValueOnce(of('week'));
     fixture = TestBed.createComponent(Calendar);
     component = fixture.componentInstance;
+    await fixture.whenStable();
+
+    expect(component.viewMode()).toBe('week');
+  });
+
+  it('uses the feature-flagged default view when the preference is automatic', async () => {
+    featureFlags.stringValue.mockReturnValue('week');
+    fixture = TestBed.createComponent(Calendar);
+    component = fixture.componentInstance;
+    await fixture.whenStable();
+
+    expect(component.viewMode()).toBe('week');
+    expect(featureFlags.stringValue).toHaveBeenCalledWith('calendarDefaultView');
+  });
+
+  it('falls back to the list view when the feature flag has an unsupported value', () => {
+    featureFlags.stringValue.mockReturnValue('month');
+    fixture = TestBed.createComponent(Calendar);
+    component = fixture.componentInstance;
+
+    expect(component.viewMode()).toBe('list');
+  });
+
+  it('updates the automatic view when the feature flag becomes available', async () => {
+    calendarDefaultView.set('week');
     await fixture.whenStable();
 
     expect(component.viewMode()).toBe('week');

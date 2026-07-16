@@ -3,6 +3,8 @@ import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
   Certificate,
+  CertificateCsvImportResolution,
+  CertificateCsvImportResult,
   CertificateConfig,
   CertificateConfigCloneInput,
   CertificateConfigInput,
@@ -330,6 +332,35 @@ export class CertificateApiService {
         { configId, personId },
       )
       .pipe(map((data) => data.issueCertificateForPerson));
+  }
+
+  issueManualCertificatesFromCsv(input: {
+    configId: string;
+    csvContent: string;
+    selectedHeader: string;
+    resolutions?: CertificateCsvImportResolution[];
+  }) {
+    return this.graphqlHttp
+      .request<{ issueManualCertificatesFromCsv: CertificateCsvImportResult }>(
+        `mutation IssueManualCertificatesFromCsv($input: CertificateCsvImportInput!) {
+          issueManualCertificatesFromCsv(input: $input) {
+            createdCount
+            duplicateCount
+            failedCount
+            failedValues
+            inferredMatchType
+            ambiguousValues {
+              value
+              candidates {
+                id
+                name
+              }
+            }
+          }
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.issueManualCertificatesFromCsv));
   }
 
   issueMissedCertificates(configId: string) {

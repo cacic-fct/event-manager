@@ -132,6 +132,7 @@ export class WorkspaceAttendancesService {
   readonly selectedAttendanceEvent = signal<Event | null>(null);
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
+  readonly attendanceTotalCount = signal(0);
   readonly attendancesPagination = createWorkspaceListPagination();
   readonly offlineAttendanceSubmissions = signal<OfflineAttendanceSubmissionListItem[]>([]);
   readonly attendanceGroups = computed(() => {
@@ -435,18 +436,21 @@ export class WorkspaceAttendancesService {
   async loadAttendances(eventId: string): Promise<void> {
     if (!eventId) {
       this.attendances.set([]);
+      this.attendanceTotalCount.set(0);
       this.offlineAttendanceSubmissions.set([]);
       return;
     }
-    const [data, submissions] = await Promise.all([
+    const [data, attendanceTotalCount, submissions] = await Promise.all([
       firstValueFrom(
         this.api.listEventAttendances(eventId, {
           ...pageVariables(this.attendancesPagination.pageIndex()),
         }),
       ),
+      firstValueFrom(this.api.getEventAttendanceCount(eventId)),
       firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
     ]);
     const visibleAttendances = applyPagedResult(data, this.attendancesPagination);
+    this.attendanceTotalCount.set(attendanceTotalCount);
     this.attendances.set(
       visibleAttendances.map((attendance) => ({
         eventId: attendance.eventId,

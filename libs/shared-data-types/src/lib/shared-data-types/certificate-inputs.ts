@@ -3,6 +3,30 @@ import { Field, InputType } from '@nestjs/graphql';
 import { CertificateIssuedTo, CertificateScope } from './enums';
 
 @InputType()
+export class CertificateCsvImportResolutionInput {
+  @Field(() => String)
+  value!: string;
+
+  @Field(() => String)
+  personId!: string;
+}
+
+@InputType()
+export class CertificateCsvImportInput {
+  @Field(() => String)
+  configId!: string;
+
+  @Field(() => String)
+  csvContent!: string;
+
+  @Field(() => String)
+  selectedHeader!: string;
+
+  @Field(() => [CertificateCsvImportResolutionInput], { nullable: true })
+  resolutions?: CertificateCsvImportResolutionInput[];
+}
+
+@InputType()
 export class CertificateConfigCreateInput {
   @Field(() => String)
   name!: string;
@@ -147,4 +171,7 @@ export class CertificateFolderUpdateInput {
 
   @Field(() => String, { nullable: true })
   emoji?: string;
+
+  @Field(() => Boolean, { nullable: true })
+  reissueCertificates?: boolean;
 }

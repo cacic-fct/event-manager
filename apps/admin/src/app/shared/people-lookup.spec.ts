@@ -54,19 +54,18 @@ describe('people lookup helpers', () => {
     ]);
   });
 
-  it('trims duplicate-check filters while keeping omitted values undefined', () => {
+  it('builds duplicate-check filters only for identity documents and emails', () => {
     expect(
       buildDuplicatePeopleLookupFilters({
-        name: ' Ada Lovelace ',
         email: ' ',
         identityDocument: ' 123456 ',
         take: 10,
       }),
     ).toEqual({
-      query: 'Ada Lovelace',
       email: undefined,
       identityDocument: '123456',
       take: 10,
     });
+    expect(buildDuplicatePeopleLookupFilters({ email: ' ', identityDocument: ' ', take: 10 })).toBeNull();
   });
 });

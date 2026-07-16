@@ -285,12 +285,10 @@
               Limpar
             </button>
             @if (canEditSelectedTarget()) {
-              @if (!workspace.isStandaloneScope()) {
-                <button mat-stroked-button type="button" (click)="workspace.issueMissedCertificates()">
-                  <mat-icon>auto_awesome</mat-icon>
-                  Lançar correções e Emitir pendentes
-                </button>
-              }
+              <button mat-stroked-button type="button" (click)="workspace.issueMissedCertificates()">
+                <mat-icon>auto_awesome</mat-icon>
+                Lançar correções e Emitir pendentes
+              </button>
               @if (workspace.selectedCertificateConfig(); as selectedConfig) {
                 @if (canCloneConfig(selectedConfig)) {
                   <button mat-stroked-button type="button" (click)="workspace.cloneCertificateConfig(selectedConfig)">
@@ -397,7 +395,25 @@
         <section class="surface field-group">
           <div class="surface-heading">
             <h4>Emissão manual</h4>
-            <span>{{ workspace.personSearchResults().length }} resultados</span>
+            <div class="panel-actions">
+              <span>{{ workspace.personSearchResults().length }} resultados</span>
+              @if (workspace.isManualCertificateIssue() && canEditSelectedTarget()) {
+                <input
+                  #peopleCsvInput
+                  hidden
+                  type="file"
+                  accept=".csv,text/csv"
+                  (change)="workspace.issueManualCertificatesFromCsv($any($event.target).files?.[0] ?? null); peopleCsvInput.value = ''" />
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="workspace.isImportingPeopleCsv()"
+                  (click)="peopleCsvInput.click()">
+                  <mat-icon>upload_file</mat-icon>
+                  Importar CSV
+                </button>
+              }
+            </div>
           </div>
 
           <form [formGroup]="workspace.personLookupForm" class="compact-form">

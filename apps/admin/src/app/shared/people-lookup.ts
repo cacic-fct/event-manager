@@ -91,17 +91,18 @@ export function parseUserAztecIdentifier(query: string): string | null {
 }
 
 export function buildDuplicatePeopleLookupFilters(input: {
-  name: string;
   email?: string | null;
   identityDocument?: string | null;
   take: number;
-}): PeopleFilters {
-  const name = input.name.trim();
+}): PeopleFilters | null {
   const email = input.email?.trim();
   const identityDocument = input.identityDocument?.trim();
 
+  if (!email && !identityDocument) {
+    return null;
+  }
+
   return {
-    query: name || undefined,
     email: email || undefined,
     identityDocument: identityDocument || undefined,
     take: input.take,
