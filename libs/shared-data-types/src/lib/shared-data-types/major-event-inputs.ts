@@ -118,6 +118,9 @@ export class MajorEventCreateInput {
 
 @InputType()
 export class MajorEventUpdateInput {
+  @Field(() => Boolean, { nullable: true })
+  publishAfterUpdate?: boolean;
+
   @Field(() => String, { nullable: true })
   id?: string;
 

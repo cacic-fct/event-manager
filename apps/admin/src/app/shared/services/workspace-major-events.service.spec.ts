@@ -146,6 +146,18 @@ describe('WorkspaceMajorEventsService', () => {
     });
   });
 
+  it('publishes existing major-event edits in the update mutation without a second publication mutation', async () => {
+    service.majorEventForm.controls.id.setValue('major-event-1');
+
+    await service.saveMajorEvent('PUBLISH');
+
+    expect(api.updateMajorEvent).toHaveBeenCalledWith(
+      'major-event-1',
+      expect.objectContaining({ publishAfterUpdate: true }),
+    );
+    expect(publicationApi.setPublicationState).not.toHaveBeenCalled();
+  });
+
   it('moves schedule saves to draft and navigates to publication scheduling', async () => {
     await service.saveMajorEvent('SCHEDULE');
 

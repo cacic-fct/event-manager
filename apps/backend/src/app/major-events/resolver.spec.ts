@@ -266,6 +266,7 @@ describe('MajorEventsResolver', () => {
         'major-1',
         {
           name: 'SECOMPP 2026',
+          publishAfterUpdate: true,
         },
         { req: { user: { sub: 'admin-1' } } } as never,
       ),
@@ -275,8 +276,9 @@ describe('MajorEventsResolver', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           name: 'SECOMPP 2026',
-          publicationState: 'DRAFT',
+          publicationState: 'PUBLISHED',
           scheduledPublishAt: null,
+          publishedAt: expect.any(Date),
           publicationUpdatedBy: 'admin-1',
         }),
       }),

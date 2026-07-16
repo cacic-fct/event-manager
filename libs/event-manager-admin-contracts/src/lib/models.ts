@@ -838,6 +838,7 @@ export interface DeletionResult {
 }
 
 export interface MajorEventInput {
+  publishAfterUpdate?: boolean;
   id?: string;
   name?: string;
   emoji?: string;
@@ -955,6 +956,7 @@ export interface CertificateFolderInput {
 }
 
 export interface EventInput {
+  publishAfterUpdate?: boolean;
   id?: string;
   name?: string;
   creditMinutes?: number | null;

@@ -159,7 +159,9 @@ export class WorkspaceMajorEventsService {
     try {
       let savedMajorEvent: MajorEvent;
       if (raw.id) {
-        savedMajorEvent = await firstValueFrom(this.api.updateMajorEvent(raw.id, payload));
+        savedMajorEvent = await firstValueFrom(
+          this.api.updateMajorEvent(raw.id, action === 'PUBLISH' ? { ...payload, publishAfterUpdate: true } : payload),
+        );
         await this.loadMajorEvents();
       } else {
         savedMajorEvent = await firstValueFrom(this.api.createMajorEvent(payload));
@@ -168,13 +170,15 @@ export class WorkspaceMajorEventsService {
       this.selectedMajorEvent.set(savedMajorEvent);
 
       if (action === 'PUBLISH') {
-        await firstValueFrom(
-          this.publicationApi.setPublicationState({
-            targetType: 'MAJOR_EVENT',
-            targetId: savedMajorEvent.id,
-            state: 'PUBLISHED',
-          }),
-        );
+        if (!raw.id) {
+          await firstValueFrom(
+            this.publicationApi.setPublicationState({
+              targetType: 'MAJOR_EVENT',
+              targetId: savedMajorEvent.id,
+              state: 'PUBLISHED',
+            }),
+          );
+        }
         this.snackbar.open('Grande evento publicado.', 'Fechar', { duration: 2500 });
       } else {
         await firstValueFrom(

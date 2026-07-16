@@ -365,8 +365,11 @@ export class WorkspaceEventsService {
       }
 
       let savedEventId;
+      const publishesExistingEvent = Boolean(eventId && action === 'PUBLISH');
       if (eventId) {
-        const updated = await firstValueFrom(this.api.updateEvent(eventId, payload));
+        const updated = await firstValueFrom(
+          this.api.updateEvent(eventId, publishesExistingEvent ? { ...payload, publishAfterUpdate: true } : payload),
+        );
         savedEventId = updated.id;
       } else {
         const created = await firstValueFrom(this.api.createEvent(payload));
@@ -378,13 +381,15 @@ export class WorkspaceEventsService {
       }
 
       if (action === 'PUBLISH') {
-        await firstValueFrom(
-          this.publicationApi.setPublicationState({
-            targetType: 'EVENT',
-            targetId: savedEventId,
-            state: 'PUBLISHED',
-          }),
-        );
+        if (!publishesExistingEvent) {
+          await firstValueFrom(
+            this.publicationApi.setPublicationState({
+              targetType: 'EVENT',
+              targetId: savedEventId,
+              state: 'PUBLISHED',
+            }),
+          );
+        }
         this.snackbar.open('Evento publicado.', 'Fechar', { duration: 2500 });
       } else {
         await firstValueFrom(

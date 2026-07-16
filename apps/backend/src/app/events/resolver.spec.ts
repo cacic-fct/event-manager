@@ -213,6 +213,9 @@ describe('EventsResolver', () => {
       name: 'Evento novo',
       majorEventId: 'major-new',
       eventGroupId: null,
+      publicationState: 'PUBLISHED',
+      scheduledPublishAt: null,
+      publishedAt: new Date('2026-06-22T13:00:00.000Z'),
     };
     const tx = {
       event: {
@@ -258,6 +261,7 @@ describe('EventsResolver', () => {
           name: 'Evento novo',
           majorEventId: 'major-new',
           eventGroupId: null,
+          publishAfterUpdate: true,
         } as never,
         { req: { user: { sub: 'user-1' } } } as never,
       ),
@@ -267,8 +271,9 @@ describe('EventsResolver', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           name: 'Evento novo',
-          publicationState: 'DRAFT',
+          publicationState: 'PUBLISHED',
           scheduledPublishAt: null,
+          publishedAt: expect.any(Date),
           publicationUpdatedBy: 'user-1',
         }),
       }),
@@ -282,8 +287,6 @@ describe('EventsResolver', () => {
     );
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
-        before: previousAudit,
-        after: updatedAudit,
         scope: expect.objectContaining({
           majorEventId: 'major-new',
           eventGroupId: null,
@@ -291,6 +294,10 @@ describe('EventsResolver', () => {
       }),
       tx,
     );
+    expect(auditLog.record.mock.calls[0][0].before).not.toHaveProperty('publicationState');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publicationState');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('scheduledPublishAt');
+    expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publishedAt');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
   });

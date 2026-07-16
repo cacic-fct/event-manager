@@ -135,6 +135,20 @@ describe('PublicationStateWriterService', () => {
     );
   });
 
+  it('does not rewrite or audit an event already in the requested publication state', async () => {
+    const { auditLog, service, tx } = createService();
+    const published = { ...eventRecord(), publicationState: PublicationState.PUBLISHED, publishedAt: now };
+    tx.event.findFirst.mockResolvedValue(published);
+
+    await expect(service.updateEventPublicationState('event-1', PublicationState.PUBLISHED, null, createUser())).resolves.toEqual({
+      eventIds: [],
+      majorEventIds: [],
+    });
+
+    expect(tx.event.update).not.toHaveBeenCalled();
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
   it('rejects scheduled publication without a future timestamp before opening a transaction', async () => {
     const { prisma, service } = createService();
     const user = createUser();
@@ -228,9 +242,9 @@ describe('PublicationStateWriterService', () => {
 
   it('deduplicates bulk targets, moves them to draft, and audits each updated target', async () => {
     const { auditLog, service, tx } = createService();
-    const firstEvent = eventRecord('event-1');
-    const secondEvent = eventRecord('event-2');
-    const majorEvent = majorEventRecord('major-1');
+    const firstEvent = { ...eventRecord('event-1'), publicationState: PublicationState.PUBLISHED };
+    const secondEvent = { ...eventRecord('event-2'), publicationState: PublicationState.PUBLISHED };
+    const majorEvent = { ...majorEventRecord('major-1'), publicationState: PublicationState.PUBLISHED };
     tx.event.findFirst.mockResolvedValueOnce(firstEvent).mockResolvedValueOnce(secondEvent);
     tx.event.update
       .mockResolvedValueOnce({ ...firstEvent, publicationState: PublicationState.DRAFT })

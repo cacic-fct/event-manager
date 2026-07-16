@@ -112,6 +112,9 @@ export class EventCreateInput {
 
 @InputType()
 export class EventUpdateInput {
+  @Field(() => Boolean, { nullable: true })
+  publishAfterUpdate?: boolean;
+
   @Field(() => String, { nullable: true })
   id?: string;
 

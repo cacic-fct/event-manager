@@ -10,6 +10,7 @@ import { FrozenResourceService } from '../common/frozen-resource.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 
 type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
 
@@ -361,8 +362,8 @@ export class EventDraftsService {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: user,
-          before: previousEvent,
-          after: updatedAudit,
+          before: omitPublicationAuditFields(previousEvent),
+          after: omitPublicationAuditFields(updatedAudit),
           scope: {
             permission: Permission.Event.Update,
             eventId: updated.id,

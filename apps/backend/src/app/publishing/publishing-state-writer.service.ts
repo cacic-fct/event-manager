@@ -30,13 +30,16 @@ export class PublicationStateWriterService {
   ): Promise<TargetSync> {
     const now = new Date();
     const data = this.buildPublicationUpdateData(state, scheduledPublishAt, user, now);
-    const event = await this.prisma.$transaction(async (tx) => {
+    const outcome = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.event.findFirst({
         where: { id: eventId, deletedAt: null },
         select: PUBLICATION_EVENT_SELECT,
       });
       if (!previous) {
         throw new NotFoundException(`Event ${eventId} was not found.`);
+      }
+      if (this.hasRequestedPublicationState(previous, state, scheduledPublishAt)) {
+        return { event: previous, changed: false };
       }
       const updated = await tx.event.update({
         where: { id: eventId },
@@ -63,10 +66,10 @@ export class PublicationStateWriterService {
         },
         tx,
       );
-      return updated;
+      return { event: updated, changed: true };
     });
 
-    return { eventIds: [event.id], majorEventIds: [] };
+    return { eventIds: outcome.changed ? [outcome.event.id] : [], majorEventIds: [] };
   }
 
   async updateTargetsPublicationState(input: {
@@ -92,6 +95,9 @@ export class PublicationStateWriterService {
         });
         if (!previous) {
           throw new NotFoundException(`Event ${eventId} was not found.`);
+        }
+        if (this.hasRequestedPublicationState(previous, input.state, input.scheduledPublishAt)) {
+          continue;
         }
         const updated = await tx.event.update({
           where: { id: eventId },
@@ -128,6 +134,9 @@ export class PublicationStateWriterService {
         });
         if (!previous) {
           throw new NotFoundException(`Major event ${majorEventId} was not found.`);
+        }
+        if (this.hasRequestedPublicationState(previous, input.state, input.scheduledPublishAt)) {
+          continue;
         }
         const updated = await tx.majorEvent.update({
           where: { id: majorEventId },
@@ -167,13 +176,16 @@ export class PublicationStateWriterService {
   ): Promise<TargetSync> {
     const now = new Date();
     const data = this.buildPublicationUpdateData(state, scheduledPublishAt, user, now);
-    const majorEvent = await this.prisma.$transaction(async (tx) => {
+    const outcome = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.majorEvent.findFirst({
         where: { id: majorEventId, deletedAt: null },
         select: PUBLICATION_MAJOR_EVENT_SELECT,
       });
       if (!previous) {
         throw new NotFoundException(`Major event ${majorEventId} was not found.`);
+      }
+      if (this.hasRequestedPublicationState(previous, state, scheduledPublishAt)) {
+        return { majorEvent: previous, changed: false };
       }
       const updated = await tx.majorEvent.update({
         where: { id: majorEventId },
@@ -198,10 +210,25 @@ export class PublicationStateWriterService {
         },
         tx,
       );
-      return updated;
+      return { majorEvent: updated, changed: true };
     });
 
-    return { eventIds: [], majorEventIds: [majorEvent.id] };
+    return { eventIds: [], majorEventIds: outcome.changed ? [outcome.majorEvent.id] : [] };
+  }
+
+  private hasRequestedPublicationState(
+    target: { publicationState: PublicationState; scheduledPublishAt: Date | null },
+    state: PublicationState,
+    scheduledPublishAt: Date | null,
+  ): boolean {
+    if (target.publicationState !== state) {
+      return false;
+    }
+
+    return (
+      state !== PrismaPublicationState.SCHEDULED ||
+      target.scheduledPublishAt?.getTime() === scheduledPublishAt?.getTime()
+    );
   }
 
   private buildPublicationUpdateData(

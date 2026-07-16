@@ -28,6 +28,7 @@ import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
+import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 
 const PAYMENT_INFO_SELECT = {
   id: true,
@@ -322,14 +323,15 @@ export class MajorEventsResolver {
     const hasExistingPaymentInfo =
       paymentInfoTableExists && 'paymentInfo' in majorEvent && majorEvent.paymentInfo != null;
 
+    const { publishAfterUpdate = false, ...majorEventInput } = input;
     const data = {
       ...this.buildMajorEventUpdateData(
-        input,
+        majorEventInput,
         majorEvent.isPaymentRequired,
         hasExistingPaymentInfo,
         paymentInfoTableExists,
       ),
-      ...this.buildPublicationInvalidation(majorEvent, this.getUser(context)),
+      ...this.buildPublicationUpdate(majorEvent, this.getUser(context), publishAfterUpdate),
     };
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
@@ -345,8 +347,8 @@ export class MajorEventsResolver {
       });
       const effectiveId = persisted.id;
 
-      if (input.price !== undefined) {
-        await this.syncMajorEventPrice(tx, effectiveId, input.price);
+      if (majorEventInput.price !== undefined) {
+        await this.syncMajorEventPrice(tx, effectiveId, majorEventInput.price);
       }
 
       const updated = await tx.majorEvent.findUniqueOrThrow({
@@ -362,8 +364,8 @@ export class MajorEventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: this.omitPublicationAuditFields(majorEvent),
-          after: this.omitPublicationAuditFields(updated),
+          before: omitPublicationAuditFields(majorEvent),
+          after: omitPublicationAuditFields(updated),
           scope: { permission: Permission.MajorEvent.Update, majorEventId: updated.id },
           summary: 'Grande evento atualizado.',
         },
@@ -711,10 +713,22 @@ export class MajorEventsResolver {
     return data;
   }
 
-  private buildPublicationInvalidation(
+  private buildPublicationUpdate(
     majorEvent: { publicationState: PrismaPublicationState },
     user: AuthenticatedUser | undefined,
+    publishAfterUpdate: boolean,
   ): Prisma.MajorEventUpdateInput {
+    if (publishAfterUpdate) {
+      return {
+        publicationState: PrismaPublicationState.PUBLISHED,
+        scheduledPublishAt: null,
+        publishedAt: new Date(),
+        unpublishedAt: null,
+        publicationScheduledBy: null,
+        publicationUpdatedBy: resolvePublicationActorId(user),
+      };
+    }
+
     if (
       majorEvent.publicationState !== PrismaPublicationState.PUBLISHED &&
       majorEvent.publicationState !== PrismaPublicationState.SCHEDULED
@@ -727,18 +741,6 @@ export class MajorEventsResolver {
       scheduledPublishAt: null,
       publicationUpdatedBy: resolvePublicationActorId(user),
     };
-  }
-
-  private omitPublicationAuditFields<T extends Record<string, unknown>>(majorEvent: T) {
-    const contentFields: Record<string, unknown> = { ...majorEvent };
-    delete contentFields.publicationState;
-    delete contentFields.scheduledPublishAt;
-    delete contentFields.publishedAt;
-    delete contentFields.unpublishedAt;
-    delete contentFields.publicationScheduledBy;
-    delete contentFields.publicationUpdatedBy;
-
-    return contentFields;
   }
 
   private getMajorEventSelect(paymentInfoTableExists: boolean) {

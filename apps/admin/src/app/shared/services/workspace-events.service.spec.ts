@@ -160,6 +160,20 @@ describe('WorkspaceEventsService', () => {
     });
   });
 
+  it('publishes existing event edits in the update mutation without a second publication mutation', async () => {
+    const publishedEvent = createAdminEvent({ id: 'event-1', publicationState: 'PUBLISHED' });
+    service.selectedEvent.set(publishedEvent);
+    service.eventForm.controls.id.setValue(publishedEvent.id);
+
+    await service.saveEvent('PUBLISH');
+
+    expect(api.updateEvent).toHaveBeenCalledWith(
+      'event-1',
+      expect.objectContaining({ publishAfterUpdate: true }),
+    );
+    expect(publicationApi.setPublicationState).not.toHaveBeenCalled();
+  });
+
   it('saves the lecturer profile visibility toggle in event payloads', async () => {
     service.eventForm.controls.displayLecturerProfile.setValue(false);
 

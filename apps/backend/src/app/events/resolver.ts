@@ -24,6 +24,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
+import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -441,7 +442,8 @@ export class EventsResolver {
     const user = this.getUser(context);
     await this.assertEventUpdateRelationPermissions(id, input, user);
     await this.frozenResources.assertEventUpdateMutable(id, input, user);
-    const normalizedInput = await this.normalizeEventCertificateInput(input, id);
+    const { publishAfterUpdate = false, ...eventInput } = input;
+    const normalizedInput = await this.normalizeEventCertificateInput(eventInput, id);
     const event = await this.prisma.$transaction(async (tx) => {
       const previousEvent = await tx.event.findFirst({
         where: { id, deletedAt: null },
@@ -452,7 +454,7 @@ export class EventsResolver {
         where: { id, deletedAt: null },
         data: {
           ...normalizedInput,
-          ...this.buildPublicationInvalidation(previousEvent, this.getUser(context)),
+          ...this.buildPublicationUpdate(previousEvent, user, publishAfterUpdate),
         },
       });
       if (updatedCount.count !== 1) {
@@ -468,8 +470,8 @@ export class EventsResolver {
           entityLabel: updated.name,
           operation: AuditLogOperation.UPDATE,
           actor: this.getUser(context),
-          before: previousEvent,
-          after: updatedAudit,
+          before: omitPublicationAuditFields(previousEvent),
+          after: omitPublicationAuditFields(updatedAudit),
           scope: {
             permission: Permission.Event.Update,
             eventId: updatedAudit.id,
@@ -864,10 +866,22 @@ export class EventsResolver {
     return normalizedInput;
   }
 
-  private buildPublicationInvalidation(
+  private buildPublicationUpdate(
     event: { publicationState: PrismaPublicationState },
     user: AuthenticatedUser | undefined,
+    publishAfterUpdate: boolean,
   ): Prisma.EventUpdateManyMutationInput {
+    if (publishAfterUpdate) {
+      return {
+        publicationState: PrismaPublicationState.PUBLISHED,
+        scheduledPublishAt: null,
+        publishedAt: new Date(),
+        unpublishedAt: null,
+        publicationScheduledBy: null,
+        publicationUpdatedBy: resolvePublicationActorId(user),
+      };
+    }
+
     if (
       event.publicationState !== PrismaPublicationState.PUBLISHED &&
       event.publicationState !== PrismaPublicationState.SCHEDULED
