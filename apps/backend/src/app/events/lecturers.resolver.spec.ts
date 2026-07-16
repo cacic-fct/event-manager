@@ -18,6 +18,10 @@ describe('EventLecturersResolver authorization', () => {
           eventId: 'event-b',
           personId: 'person-1',
         }),
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          eventId: 'event-b',
+          personId: 'person-1',
+        }),
       },
     };
     const frozenResources = {
@@ -190,6 +194,7 @@ describe('EventLecturersResolver authorization', () => {
     prisma.people.findFirst.mockResolvedValue({ id: 'person-2', name: 'Katherine Johnson' });
     prisma.eventLecturer.updateMany.mockResolvedValue({ count: 1 });
     prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1', personId: 'person-2' });
+    prisma.eventLecturer.findUniqueOrThrow.mockResolvedValue({ eventId: 'event-1', personId: 'person-2' });
 
     await expect(
       resolver.updateEventLecturer(
@@ -242,7 +247,14 @@ describe('EventLecturersResolver authorization', () => {
       resolver.updateEventLecturer('event-1', 'person-1', {}, { req: { user: { sub: 'user-1' } as never } }),
     ).rejects.toBeInstanceOf(NotFoundException);
 
-    expect(prisma.eventLecturer.findUnique).not.toHaveBeenCalled();
+    expect(prisma.eventLecturer.findUnique).toHaveBeenCalledWith({
+      where: {
+        eventId_personId: {
+          eventId: 'event-1',
+          personId: 'person-1',
+        },
+      },
+    });
   });
 
   it('throws not found when creating a lecturer assignment for a missing person', async () => {
@@ -262,7 +274,7 @@ describe('EventLecturersResolver authorization', () => {
   it('deletes lecturer assignments after frozen delete validation', async () => {
     const { frozenResources, prisma, resolver } = createResolver();
     const user = { sub: 'user-1' };
-    prisma.eventLecturer.deleteMany.mockResolvedValue({ count: 1 });
+    prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1', personId: 'person-1' });
 
     await expect(resolver.deleteEventLecturer('event-1', 'person-1', { req: { user: user as never } })).resolves.toEqual({
       deleted: true,
@@ -271,17 +283,19 @@ describe('EventLecturersResolver authorization', () => {
     });
 
     expect(frozenResources.assertEventMutable).toHaveBeenCalledWith('event-1', user, 'delete');
-    expect(prisma.eventLecturer.deleteMany).toHaveBeenCalledWith({
+    expect(prisma.eventLecturer.delete).toHaveBeenCalledWith({
       where: {
-        eventId: 'event-1',
-        personId: 'person-1',
+        eventId_personId: {
+          eventId: 'event-1',
+          personId: 'person-1',
+        },
       },
     });
   });
 
   it('throws not found when deleting a missing lecturer assignment', async () => {
     const { prisma, resolver } = createResolver();
-    prisma.eventLecturer.deleteMany.mockResolvedValue({ count: 0 });
+    prisma.eventLecturer.findUnique.mockResolvedValue(null);
 
     await expect(
       resolver.deleteEventLecturer('event-1', 'person-1', { req: { user: { sub: 'user-1' } as never } }),
@@ -303,7 +317,8 @@ function createResolver() {
       findUnique: jest.fn(),
       create: jest.fn(),
       updateMany: jest.fn(),
-      deleteMany: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
+      delete: jest.fn(),
     },
   };
   const frozenResources = {
