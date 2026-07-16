@@ -506,6 +506,7 @@ describe('WorkspaceCertificatesService', () => {
 
   it('confirms a folder rename before reissuing its certificates', async () => {
     const folder = certificateFolderFixture();
+    service.targetFiltersForm.controls.scope.setValue('OTHER');
     await service.selectTarget(folder);
     service.folderForm.controls.name.setValue('Atividades atualizadas');
     dialog.open.mockReturnValueOnce({
@@ -532,6 +533,7 @@ describe('WorkspaceCertificatesService', () => {
 
   it('does not save a folder rename when certificate reissuance is cancelled', async () => {
     const folder = certificateFolderFixture();
+    service.targetFiltersForm.controls.scope.setValue('OTHER');
     await service.selectTarget(folder);
     service.folderForm.controls.name.setValue('Atividades atualizadas');
     dialog.open.mockReturnValueOnce({

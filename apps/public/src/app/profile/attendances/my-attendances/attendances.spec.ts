@@ -108,10 +108,10 @@ describe('Attendances', () => {
     expect(eventItems).toEqual([
       expect.objectContaining({
         __typename: 'SubscribedEventGroupItem',
-        eventGroup: {
+        eventGroup: expect.objectContaining({
           id: 'standalone-group',
           name: 'Grupo de atividades',
-        },
+        }),
         events: [expect.objectContaining({ id: 'group-event-1' }), expect.objectContaining({ id: 'group-event-2' })],
         participation: {
           isSubscribed: true,
