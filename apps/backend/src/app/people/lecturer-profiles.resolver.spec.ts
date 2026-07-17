@@ -3,6 +3,7 @@ import { LecturerProfilesResolver } from './lecturer-profiles.resolver';
 
 describe('LecturerProfilesResolver', () => {
   const prisma = {
+    $transaction: jest.fn(),
     people: {
       findFirst: jest.fn(),
     },
@@ -18,6 +19,7 @@ describe('LecturerProfilesResolver', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.$transaction.mockImplementation((callback) => callback(prisma));
     prisma.people.findFirst.mockResolvedValue({ id: 'person-1' });
     prisma.lecturerProfile.upsert.mockImplementation(({ create }) =>
       Promise.resolve({

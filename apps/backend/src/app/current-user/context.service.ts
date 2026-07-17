@@ -23,6 +23,7 @@ export class CurrentUserContextService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => CertificateIssuingService))
     private readonly certificateIssuingService: CertificateIssuingService,
+    @Inject(forwardRef(() => AccountMergeService))
     private readonly accountMergeService: AccountMergeService,
     private readonly authenticatedUserSync: AuthenticatedUserSyncService,
   ) {}

@@ -1,4 +1,4 @@
-import { Controller, Injectable, Logger, MessageEvent, OnModuleDestroy, Query, Req, Sse } from '@nestjs/common';
+import { Controller, forwardRef, Inject, Injectable, Logger, MessageEvent, OnModuleDestroy, Query, Req, Sse } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import type { Request } from 'express';
 import { Observable, Subject, interval, map, merge, takeUntil } from 'rxjs';
@@ -93,6 +93,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
 
   constructor(
     private readonly auth: KeycloakAuthService,
+    @Inject(forwardRef(() => CurrentUserContextService))
     private readonly currentUserContext: CurrentUserContextService,
     private readonly mapper: CurrentUserEventMapperService,
     private readonly prisma: PrismaService,
