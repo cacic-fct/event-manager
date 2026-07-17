@@ -341,12 +341,17 @@ describe('CertificateIssuingService', () => {
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
     const prisma = {
+      $transaction: jest.fn(),
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
       certificate: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue(mappedCertificateRecord),
         update: jest.fn(),
       },
     };
+    prisma.$transaction.mockImplementation((operation: (tx: typeof prisma) => unknown) => operation(prisma));
     const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
 
     await expect(
@@ -369,6 +374,11 @@ describe('CertificateIssuingService', () => {
       }),
     );
     expect(prisma.certificate.update).not.toHaveBeenCalled();
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 'admin-user' },
+      select: { name: true, email: true },
+    });
     expect(notifications.mapPersonToRecipient).toHaveBeenCalledWith(mappedCertificateRecord.person);
     expect(notifications.notifyCertificateAvailable).toHaveBeenCalledWith({
       certificateId: 'certificate-1',
@@ -394,12 +404,14 @@ describe('CertificateIssuingService', () => {
       },
     };
     const prisma = {
+      $transaction: jest.fn(),
       certificate: {
         findUnique: jest.fn().mockResolvedValue(null),
         create: jest.fn().mockResolvedValue(manualCertificateRecord),
         update: jest.fn(),
       },
     };
+    prisma.$transaction.mockImplementation((operation: (tx: typeof prisma) => unknown) => operation(prisma));
     const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
 
     await (
@@ -425,6 +437,7 @@ describe('CertificateIssuingService', () => {
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
     const prisma = {
+      $transaction: jest.fn(),
       certificate: {
         findUnique: jest.fn().mockResolvedValue({
           ...mappedCertificateRecord,
@@ -435,6 +448,7 @@ describe('CertificateIssuingService', () => {
         update: jest.fn().mockResolvedValue(mappedCertificateRecord),
       },
     };
+    prisma.$transaction.mockImplementation((operation: (tx: typeof prisma) => unknown) => operation(prisma));
     const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
 
     await (
@@ -467,6 +481,7 @@ describe('CertificateIssuingService', () => {
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
     const prisma = {
+      $transaction: jest.fn(),
       certificate: {
         findUnique: jest.fn().mockResolvedValue({
           ...mappedCertificateRecord,
@@ -477,6 +492,7 @@ describe('CertificateIssuingService', () => {
         update: jest.fn().mockResolvedValue(mappedCertificateRecord),
       },
     };
+    prisma.$transaction.mockImplementation((operation: (tx: typeof prisma) => unknown) => operation(prisma));
     const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
 
     await (
