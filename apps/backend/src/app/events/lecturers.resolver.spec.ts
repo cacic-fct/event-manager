@@ -30,10 +30,14 @@ describe('EventLecturersResolver authorization', () => {
     const authorizationPolicy = {
       assertPermissions: jest.fn(),
     };
+    const auditLog = {
+      record: jest.fn().mockResolvedValue(undefined),
+    };
     const resolver = new EventLecturersResolver(
       prisma as never,
       frozenResources as never,
       authorizationPolicy as never,
+      auditLog as never,
     );
     const user = { sub: 'user-1' };
 
@@ -57,6 +61,14 @@ describe('EventLecturersResolver authorization', () => {
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.EventLecturer.Update], {
       eventId: 'event-b',
     });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'event-b:person-1',
+        after: { eventId: 'event-b', personId: 'person-1' },
+        scope: { permission: Permission.EventLecturer.Update, eventId: 'event-b' },
+      }),
+      prisma,
+    );
     expect(prisma.lecturerProfile.upsert).not.toHaveBeenCalled();
   });
 
@@ -77,10 +89,12 @@ describe('EventLecturersResolver authorization', () => {
         }),
       },
     };
+    const auditLog = { record: jest.fn().mockResolvedValue(undefined) };
     const resolver = new EventLecturersResolver(
       prisma as never,
       { assertEventMutable: jest.fn() } as never,
       { assertPermissions: jest.fn() } as never,
+      auditLog as never,
     );
 
     await expect(
@@ -129,6 +143,14 @@ describe('EventLecturersResolver authorization', () => {
         createdById: 'user-1',
       },
     });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'event-1:person-1',
+        after: { eventId: 'event-1', personId: 'person-1', createdById: 'user-1' },
+        scope: { permission: Permission.EventLecturer.Create, eventId: 'event-1' },
+      }),
+      prisma,
+    );
   });
 
   it('lists lecturer assignments with optional filters and pagination', () => {
@@ -189,11 +211,13 @@ describe('EventLecturersResolver authorization', () => {
   });
 
   it('updates a lecturer person and creates a lecturer profile with the request user actor', async () => {
-    const { frozenResources, prisma, resolver } = createResolver();
+    const { auditLog, frozenResources, prisma, resolver } = createResolver();
     const user = { sub: 'request-user' };
     prisma.people.findFirst.mockResolvedValue({ id: 'person-2', name: 'Katherine Johnson' });
     prisma.eventLecturer.updateMany.mockResolvedValue({ count: 1 });
-    prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1', personId: 'person-2' });
+    prisma.eventLecturer.findUnique
+      .mockResolvedValueOnce({ eventId: 'event-1', personId: 'person-1' })
+      .mockResolvedValue({ eventId: 'event-1', personId: 'person-2' });
     prisma.eventLecturer.findUniqueOrThrow.mockResolvedValue({ eventId: 'event-1', personId: 'person-2' });
 
     await expect(
@@ -237,6 +261,15 @@ describe('EventLecturersResolver authorization', () => {
         },
       }),
     );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'event-1:person-2',
+        before: { eventId: 'event-1', personId: 'person-1' },
+        after: { eventId: 'event-1', personId: 'person-2' },
+        scope: { permission: Permission.EventLecturer.Update, eventId: 'event-1' },
+      }),
+      prisma,
+    );
   });
 
   it('throws not found when updating a missing lecturer assignment', async () => {
@@ -272,7 +305,7 @@ describe('EventLecturersResolver authorization', () => {
   });
 
   it('deletes lecturer assignments after frozen delete validation', async () => {
-    const { frozenResources, prisma, resolver } = createResolver();
+    const { auditLog, frozenResources, prisma, resolver } = createResolver();
     const user = { sub: 'user-1' };
     prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1', personId: 'person-1' });
 
@@ -291,6 +324,14 @@ describe('EventLecturersResolver authorization', () => {
         },
       },
     });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'event-1:person-1',
+        before: { eventId: 'event-1', personId: 'person-1' },
+        scope: { permission: Permission.EventLecturer.Delete, eventId: 'event-1' },
+      }),
+      prisma,
+    );
   });
 
   it('throws not found when deleting a missing lecturer assignment', async () => {
@@ -327,14 +368,19 @@ function createResolver() {
   const authorizationPolicy = {
     assertPermissions: jest.fn(),
   };
+  const auditLog = {
+    record: jest.fn().mockResolvedValue(undefined),
+  };
   const resolver = new EventLecturersResolver(
     prisma as never,
     frozenResources as never,
     authorizationPolicy as never,
+    auditLog as never,
   );
 
   return {
     authorizationPolicy,
+    auditLog,
     frozenResources,
     prisma,
     resolver,

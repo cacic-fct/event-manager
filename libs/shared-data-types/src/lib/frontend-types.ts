@@ -1,4 +1,6 @@
 export * from './dashboard.types';
+export * from './frontend-current-user.types';
+export * from './frontend-public-event.types';
 
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
@@ -189,110 +191,6 @@ export interface Event {
   updatedById?: string | null;
 }
 
-export interface PublicPaymentInfo {
-  id: string;
-  bankName: string;
-  agency: string;
-  account: string;
-  holder: string;
-  document: string;
-  pixKey?: string | null;
-  pixCity?: string | null;
-  majorEventId: string;
-}
-
-export interface PublicMajorEventPriceTier {
-  id: string;
-  name: string;
-  value: number;
-}
-
-export interface PublicMajorEventPrice {
-  id: string;
-  type: 'SINGLE' | 'TIERED';
-  tiers: PublicMajorEventPriceTier[];
-}
-
-export interface PublicMajorEvent {
-  id: string;
-  name: string;
-  emoji: string;
-  startDate: string;
-  endDate: string;
-  description?: string | null;
-  subscriptionStartDate?: string | null;
-  subscriptionEndDate?: string | null;
-  maxCoursesPerAttendee?: number | null;
-  maxLecturesPerAttendee?: number | null;
-  maxUncategorizedPerAttendee?: number | null;
-  rankedSubscriptionEnabled?: boolean | null;
-  buttonText?: string | null;
-  buttonLink?: string | null;
-  contactInfo?: string | null;
-  contactType?: ContactType | null;
-  isPaymentRequired?: boolean | null;
-  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
-  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
-  additionalPaymentInfo?: string | null;
-  shouldIssueCertificate?: boolean | null;
-  paymentInfo?: PublicPaymentInfo | null;
-  majorEventPrices?: PublicMajorEventPrice[];
-}
-
-export interface PublicEventGroup {
-  id: string;
-  name: string;
-  emoji?: string | null;
-  shouldIssueCertificateForEachEvent?: boolean | null;
-  shouldIssuePartialCertificate?: boolean | null;
-  shouldIssueCertificate?: boolean | null;
-  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
-  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
-}
-
-export interface PublicLecturerProfile {
-  id: string;
-  displayName: string;
-  biography?: string | null;
-  publishGoogleUserPicture: boolean;
-  googleUserPicture?: string | null;
-  email?: string | null;
-  whatsapp?: string | null;
-}
-
-export interface PublicEvent {
-  id: string;
-  name: string;
-  creditMinutes?: number | null;
-  startDate: string;
-  endDate: string;
-  emoji: string;
-  type: EventType;
-  description?: string | null;
-  shortDescription?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  locationDescription?: string | null;
-  majorEventId?: string | null;
-  majorEvent?: PublicMajorEvent | null;
-  eventGroupId?: string | null;
-  eventGroup?: PublicEventGroup | null;
-  allowSubscription?: boolean | null;
-  slots?: number | null;
-  shouldIssueCertificate?: boolean | null;
-  shouldIssueCertificateForNonPayingAttendees?: boolean | null;
-  shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
-  shouldCollectAttendance?: boolean | null;
-  isOnlineAttendanceAllowed?: boolean | null;
-  onlineAttendanceStartDate?: string | null;
-  onlineAttendanceEndDate?: string | null;
-  publiclyVisible?: boolean | null;
-  displayLecturerProfile?: boolean | null;
-  youtubeCode?: string | null;
-  buttonText?: string | null;
-  buttonLink?: string | null;
-  lecturers?: PublicLecturerProfile[];
-}
 
 export interface User {
   id: string;
@@ -420,37 +318,6 @@ export interface WorkspaceMajorEventSubscription {
   events: WorkspaceMajorEventSubscriptionEvent[];
 }
 
-export interface AuthenticatedUser {
-  sub?: string;
-  preferredUsername?: string;
-  email?: string;
-  roles: string[];
-  permissions: string[];
-  oidcScopes: string[];
-  scopes: string[];
-}
-
-export interface CurrentUserProfileContext {
-  sub?: string;
-  email?: string;
-  preferredUsername?: string;
-  authenticatedUser: AuthenticatedUser;
-  user?: User | null;
-  person?: Person | null;
-}
-
-export interface CurrentUserMajorEventSubscription {
-  id: string;
-  majorEventId: string;
-  majorEvent: MajorEvent;
-  personId: string;
-  subscriptionStatus: string;
-  amountPaid?: number | null;
-  paymentDate?: string | null;
-  paymentTier?: string | null;
-  selectedEvents: Event[];
-}
-
 export interface MajorEventEventAttendanceStatus {
   eventId: string;
   eventName: string;
@@ -470,63 +337,4 @@ export interface MajorEventUserAttendance {
   paymentDate?: string | null;
   paymentTier?: string | null;
   attendances: MajorEventEventAttendanceStatus[];
-}
-
-export interface CurrentUserMajorEventSubscriptionRecord {
-  id: string;
-  majorEventId: string;
-  subscriptionStatus: string;
-  amountPaid?: number | null;
-  paymentDate?: string | null;
-  paymentTier?: string | null;
-  majorEvent: PublicMajorEvent;
-  selectedEvents: PublicEvent[];
-}
-
-export interface CurrentUserEventSubscription {
-  eventId: string;
-  event: PublicEvent;
-  eventGroupSubscriptionId?: string | null;
-  createdAt: string;
-}
-
-export interface CurrentUserEventGroupSubscriptionRecord {
-  id: string;
-  eventGroupId: string;
-  eventGroup: PublicEventGroup;
-  events: PublicEvent[];
-  createdAt: string;
-}
-
-export interface CurrentUserSubscriptionFeedSingleEvent {
-  type: 'SINGLE_EVENT';
-  subscriptionId: string;
-  eventId: string;
-  event: PublicEvent;
-  date: string;
-  createdAt: string;
-}
-
-export interface CurrentUserSubscriptionFeedEventGroup {
-  type: 'EVENT_GROUP';
-  subscriptionId: string;
-  eventGroupId: string;
-  eventGroup: PublicEventGroup;
-  date: string;
-  createdAt: string;
-}
-
-export type CurrentUserSubscriptionFeedItem =
-  | CurrentUserSubscriptionFeedSingleEvent
-  | CurrentUserSubscriptionFeedEventGroup;
-
-export interface CurrentUserSubscriptionFeed {
-  items: CurrentUserSubscriptionFeedItem[];
-}
-
-export interface CurrentUserEventAttendance {
-  eventId: string;
-  event: PublicEvent;
-  attendedAt: string;
-  createdAt: string;
 }

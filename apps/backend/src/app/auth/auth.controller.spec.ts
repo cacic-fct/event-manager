@@ -178,7 +178,6 @@ describe('AuthController callback redirect validation', () => {
     expect(response.redirect).toHaveBeenCalledWith(
       expect.stringContaining('message=O+tempo+de+login+expirou.+Tente+novamente'),
     );
-    expect(readRedirectRaw(response)).toContain('Invalid authorization state.');
     expect(keycloakAuthService.exchangeCodeForTokens).not.toHaveBeenCalled();
     expect(keycloakAuthService.createSession).not.toHaveBeenCalled();
   });
@@ -199,7 +198,6 @@ describe('AuthController callback redirect validation', () => {
 
     expect(keycloakAuthService.consumeAuthorizationState).toHaveBeenCalledWith('state-1');
     expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('/app/auth/error?'));
-    expect(readRedirectRaw(response)).toContain('Missing authorization code.');
     expect(keycloakAuthService.exchangeCodeForTokens).not.toHaveBeenCalled();
     expect(keycloakAuthService.createSession).not.toHaveBeenCalled();
   });
@@ -224,13 +222,8 @@ describe('AuthController callback redirect validation', () => {
     expect(readRedirectParam(response, 'title')).toBe('Ocorreu um erro.');
     expect(readRedirectParam(response, 'description')).toBe('Tente novamente mais tarde');
     expect(readRedirectParam(response, 'message')).toBe('Ocorreu um erro. Tente novamente mais tarde');
-    expect(readRedirectRaw(response)).toBe(
-      JSON.stringify({
-        statusCode: 500,
-        message: 'Internal server error',
-      }),
-    );
-    expect(readRedirectRaw(response)).not.toContain('Redis connection failed');
+    expect(response.redirect).not.toHaveBeenCalledWith(expect.stringContaining('raw='));
+    expect(response.redirect).not.toHaveBeenCalledWith(expect.stringContaining('Redis connection failed'));
     expect(response.cookie).not.toHaveBeenCalledWith(AUTH_SESSION_COOKIE_NAME, expect.anything(), expect.anything());
   });
 
@@ -490,10 +483,6 @@ function responseFixture() {
     clearCookie: jest.fn(),
     redirect: jest.fn(),
   };
-}
-
-function readRedirectRaw(response: ReturnType<typeof responseFixture>): string {
-  return readRedirectParam(response, 'raw') ?? '';
 }
 
 function readRedirectParam(response: ReturnType<typeof responseFixture>, param: string): string | null {

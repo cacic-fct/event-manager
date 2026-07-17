@@ -1,6 +1,7 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { BadRequestException } from '@nestjs/common';
 import { addMinutes } from 'date-fns';
+import { buildCertificateRenderedData, buildMinicursoLines, formatCargaHoraria } from './certificate-rendered-data';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
 describe('CertificateIssuingService', () => {
@@ -72,6 +73,45 @@ describe('CertificateIssuingService', () => {
     expect(prisma.certificate.create).not.toHaveBeenCalled();
     expect(prisma.certificate.update).not.toHaveBeenCalled();
     expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
+  });
+
+  it('persists certificate events in the same deterministic order used by template data', () => {
+    const renderedData = buildCertificateRenderedData(
+      {
+        ...mappedCertificateRecord.config,
+        scope: CertificateScope.EVENT,
+        event: { id: 'event-1', name: 'Evento' },
+      } as never,
+      {
+        person: mappedCertificateRecord.person,
+        events: [
+          {
+            id: 'event-b',
+            name: 'Segundo',
+            startDate: new Date('2026-05-21T10:00:00.000Z'),
+            endDate: new Date('2026-05-21T11:00:00.000Z'),
+            creditMinutes: 60,
+            type: EventType.PALESTRA,
+            eventGroupId: null,
+            eventGroup: null,
+          },
+          {
+            id: 'event-a',
+            name: 'Primeiro',
+            startDate: new Date('2026-05-21T10:00:00.000Z'),
+            endDate: new Date('2026-05-21T11:00:00.000Z'),
+            creditMinutes: 60,
+            type: EventType.PALESTRA,
+            eventGroupId: null,
+            eventGroup: null,
+          },
+        ],
+      } as never,
+      new Date('2026-05-23T12:00:00.000Z'),
+    ) as unknown as { events: { id: string }[]; templateData: { content: string } };
+
+    expect(renderedData.events.map((event) => event.id)).toEqual(['event-a', 'event-b']);
+    expect(renderedData.templateData.content.indexOf('Primeiro')).toBeLessThan(renderedData.templateData.content.indexOf('Segundo'));
   });
 
   it('keeps the original issue date when rendered data only differs by object key order', async () => {
@@ -340,6 +380,14 @@ describe('CertificateIssuingService', () => {
       mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
+    const tx = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
+      certificate: {
+        create: jest.fn().mockResolvedValue(mappedCertificateRecord),
+      },
+    };
     const prisma = {
       $transaction: jest.fn(),
       user: {
@@ -347,11 +395,11 @@ describe('CertificateIssuingService', () => {
       },
       certificate: {
         findUnique: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue(mappedCertificateRecord),
+        create: jest.fn(),
         update: jest.fn(),
       },
     };
-    prisma.$transaction.mockImplementation((operation: (tx: typeof prisma) => unknown) => operation(prisma));
+    prisma.$transaction.mockImplementation((operation: (client: typeof tx) => unknown) => operation(tx));
     const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
 
     await expect(
@@ -362,7 +410,7 @@ describe('CertificateIssuingService', () => {
       ).upsertCertificateForRecipient(mappedCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] }, 'admin-user'),
     ).resolves.toBe(mappedCertificateRecord);
 
-    expect(prisma.certificate.create).toHaveBeenCalledWith(
+    expect(tx.certificate.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           personId: 'person-valid',
@@ -375,7 +423,8 @@ describe('CertificateIssuingService', () => {
     );
     expect(prisma.certificate.update).not.toHaveBeenCalled();
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(tx.user.findUnique).toHaveBeenCalledWith({
       where: { id: 'admin-user' },
       select: { name: true, email: true },
     });
@@ -429,6 +478,91 @@ describe('CertificateIssuingService', () => {
       issuedAt: mappedCertificateRecord.issuedAt,
       recipient: { subscriberId: 'user-1' },
     });
+  });
+
+  it('defers notifications for certificates issued through an externally supplied transaction client', async () => {
+    const notifications = {
+      mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
+      notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
+    };
+    const transactionClient = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(mappedCertificateRecord),
+      },
+    };
+    const service = new CertificateIssuingService(
+      { certificate: { findUnique: jest.fn() } } as never,
+      {} as never,
+      {} as never,
+      notifications as never,
+    );
+
+    const result = await (
+      service as unknown as {
+        upsertCertificateForRecipientResult(
+          config: unknown,
+          recipient: unknown,
+          issuedById: string | undefined,
+          options: { prisma: unknown },
+        ): Promise<{ certificate: unknown; shouldNotify: boolean }>;
+      }
+    ).upsertCertificateForRecipientResult(
+      mappedCertificateRecord.config,
+      { person: mappedCertificateRecord.person, events: [] },
+      'admin-user',
+      { prisma: transactionClient },
+    );
+
+    expect(result).toEqual({ certificate: mappedCertificateRecord, shouldNotify: true });
+    expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
+  });
+
+  it('defers notifications for certificates reissued through an externally supplied transaction client', async () => {
+    const notifications = {
+      mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
+      notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
+    };
+    const transactionClient = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue({
+          ...mappedCertificateRecord,
+          certificateTemplateId: 'old-template',
+        }),
+        update: jest.fn().mockResolvedValue(mappedCertificateRecord),
+      },
+    };
+    const service = new CertificateIssuingService(
+      { certificate: { findUnique: jest.fn() } } as never,
+      {} as never,
+      {} as never,
+      notifications as never,
+    );
+
+    const result = await (
+      service as unknown as {
+        upsertCertificateForRecipientResult(
+          config: unknown,
+          recipient: unknown,
+          issuedById: string | undefined,
+          options: { prisma: unknown },
+        ): Promise<{ certificate: unknown; shouldNotify: boolean }>;
+      }
+    ).upsertCertificateForRecipientResult(
+      mappedCertificateRecord.config,
+      { person: mappedCertificateRecord.person, events: [] },
+      'admin-user',
+      { prisma: transactionClient },
+    );
+
+    expect(result).toEqual({ certificate: mappedCertificateRecord, shouldNotify: true });
+    expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
   });
 
   it('updates soft-deleted certificates when rendered data or template changed', async () => {
@@ -521,6 +655,13 @@ describe('CertificateIssuingService', () => {
   it('returns an empty result when a person has no issued certificates to refresh', async () => {
     const service = new CertificateIssuingService(
       {
+        $transaction: jest.fn((callback) =>
+          callback({
+            certificate: {
+              findMany: jest.fn().mockResolvedValue([]),
+            },
+          }),
+        ),
         certificate: {
           findMany: jest.fn().mockResolvedValue([]),
         },
@@ -637,8 +778,15 @@ describe('CertificateIssuingService', () => {
 
   it('soft-deletes invalid certificates during issueMissedCertificates', async () => {
     const prisma = {
+      $transaction: jest.fn((callback) => callback(prisma)),
+      user: {
+        findUnique: jest.fn(),
+      },
       certificate: {
-        findMany: jest.fn().mockResolvedValue([{ personId: 'person-valid' }, { personId: 'person-invalid' }]),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([{ personId: 'person-valid' }, { personId: 'person-invalid' }])
+          .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'person-invalid' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
@@ -679,8 +827,15 @@ describe('CertificateIssuingService', () => {
 
   it('soft-deletes all existing certificates when no recipients are eligible', async () => {
     const prisma = {
+      $transaction: jest.fn((callback) => callback(prisma)),
+      user: {
+        findUnique: jest.fn(),
+      },
       certificate: {
-        findMany: jest.fn().mockResolvedValue([{ personId: 'person-a' }, { personId: 'person-b' }]),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([{ personId: 'person-a' }, { personId: 'person-b' }])
+          .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'person-a' }, { ...mappedCertificateRecord, personId: 'person-b' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 2 }),
       },
     };
@@ -829,10 +984,21 @@ describe('CertificateIssuingService', () => {
   });
 
   it('refreshes only existing active certificates for a person without deleting ineligible ones', async () => {
-    const prisma = {
-      certificate: {
-        findMany: jest.fn().mockResolvedValue([{ configId: 'config-1' }, { configId: 'config-2' }]),
+    const tx = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'User', email: 'user@example.com' }),
       },
+      certificate: {
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([{ configId: 'config-1' }, { configId: 'config-2' }])
+          .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'person-valid', configId: 'config-2' }]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback) => callback(tx)),
+      certificate: tx.certificate,
     };
     const validation = {
       normalizeRequiredId: jest.fn().mockReturnValue('person-valid'),
@@ -857,7 +1023,8 @@ describe('CertificateIssuingService', () => {
 
     await expect(service.refreshIssuedCertificatesForPerson('person-valid', 'user-1')).resolves.toHaveLength(1);
 
-    expect(prisma.certificate.findMany).toHaveBeenCalledWith({
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.certificate.findMany).toHaveBeenCalledWith({
       where: {
         personId: 'person-valid',
         deletedAt: null,
@@ -881,15 +1048,21 @@ describe('CertificateIssuingService', () => {
       expect.objectContaining({ id: 'config-1' }),
       expect.objectContaining({ person: { id: 'person-valid' } }),
       'user-1',
+      { prisma: tx },
     );
   });
 
   it('refreshes target certificates from source and target configs after people merge', async () => {
     const prisma = {
+      $transaction: jest.fn((callback) => callback(prisma)),
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
       certificate: {
         findMany: jest
           .fn()
-          .mockResolvedValue([{ configId: 'config-1' }, { configId: 'config-2' }, { configId: 'config-1' }]),
+          .mockResolvedValueOnce([{ configId: 'config-1' }, { configId: 'config-2' }, { configId: 'config-1' }])
+          .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'source-person' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
@@ -918,11 +1091,13 @@ describe('CertificateIssuingService', () => {
       expect.objectContaining({ id: 'config-1' }),
       expect.objectContaining({ person: { id: 'target-person' } }),
       'admin-user',
+      { prisma },
     );
     expect(upsertSpy).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'config-2' }),
       expect.objectContaining({ person: { id: 'target-person' } }),
       'admin-user',
+      { prisma },
     );
     expect(prisma.certificate.updateMany).toHaveBeenCalledWith({
       where: {
@@ -936,7 +1111,6 @@ describe('CertificateIssuingService', () => {
   });
 
   it('prints every date for completed grouped minicourse events', () => {
-    const service = new CertificateIssuingService({} as never, {} as never, {} as never);
     const eventGroup = {
       id: 'event-group-1',
       name: 'Grouped minicourse',
@@ -962,13 +1136,9 @@ describe('CertificateIssuingService', () => {
       },
     ];
 
-    expect(
-      (
-        service as unknown as {
-          buildMinicursoLines(events: unknown[]): string[];
-        }
-      ).buildMinicursoLines(events),
-    ).toEqual(['• 02/01/2026, 03/01/2026 - Grouped minicourse - Carga horária: 4 horas']);
+    expect(buildMinicursoLines(events)).toEqual([
+      '• 02/01/2026, 03/01/2026 - Grouped minicourse - Carga horária: 4 horas',
+    ]);
   });
 
   it('autofills the second page with event information by default', () => {
@@ -1327,90 +1497,36 @@ describe('CertificateIssuingService', () => {
   });
 
   describe('formatCargaHoraria', () => {
-    let service: CertificateIssuingService;
-
-    beforeEach(() => {
-      service = new CertificateIssuingService({} as never, {} as never, {} as never);
-    });
-
     it('formats zero minutes as "0 minutos"', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(0),
-      ).toBe('0 minutos');
+      expect(formatCargaHoraria(0)).toBe('0 minutos');
     });
 
     it('formats less than 1 hour as minutes only with singular form', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(1),
-      ).toBe('1 minuto');
+      expect(formatCargaHoraria(1)).toBe('1 minuto');
     });
 
     it('formats less than 1 hour as minutes only with plural form', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(45),
-      ).toBe('45 minutos');
+      expect(formatCargaHoraria(45)).toBe('45 minutos');
     });
 
     it('formats exactly 1 hour with singular form', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(60),
-      ).toBe('1 hora');
+      expect(formatCargaHoraria(60)).toBe('1 hora');
     });
 
     it('formats multiple round hours with plural form', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(240),
-      ).toBe('4 horas');
+      expect(formatCargaHoraria(240)).toBe('4 horas');
     });
 
     it('formats 1 hour and 1 minute with singular forms', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(61),
-      ).toBe('1 hora e 1 minuto');
+      expect(formatCargaHoraria(61)).toBe('1 hora e 1 minuto');
     });
 
     it('formats 1 hour and multiple minutes with mixed forms', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(90),
-      ).toBe('1 hora e 30 minutos');
+      expect(formatCargaHoraria(90)).toBe('1 hora e 30 minutos');
     });
 
     it('formats multiple hours and multiple minutes with plural forms', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(150),
-      ).toBe('2 horas e 30 minutos');
+      expect(formatCargaHoraria(150)).toBe('2 horas e 30 minutos');
     });
   });
 });

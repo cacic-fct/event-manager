@@ -543,12 +543,31 @@ export class CertificateConfigsService {
     }
 
     const updatedConfig = await this.prisma.$transaction(async (tx) => {
-      const config = await tx.certificateConfig.update({
-        where: { id: normalizedConfigId },
-        data,
+      const currentConfig = await tx.certificateConfig.findFirst({
+        where: { id: normalizedConfigId, deletedAt: null },
         select: CERTIFICATE_CONFIG_SELECT,
       });
-      await this.recordConfigAudit(existingConfig, config, AuditLogOperation.UPDATE, tx);
+      if (!currentConfig) {
+        throw new NotFoundException(`Certificate config ${normalizedConfigId} not found.`);
+      }
+      if (currentConfig.updatedAt.getTime() !== existingConfig.updatedAt.getTime()) {
+        throw new ConflictException(`Certificate config ${normalizedConfigId} was updated concurrently.`);
+      }
+      let config: CertificateConfigRecord;
+      try {
+        config = await tx.certificateConfig.update({
+          where: { id: normalizedConfigId, updatedAt: currentConfig.updatedAt },
+          data,
+          select: CERTIFICATE_CONFIG_SELECT,
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+          throw new ConflictException(`Certificate config ${normalizedConfigId} was updated concurrently.`);
+        }
+
+        throw error;
+      }
+      await this.recordConfigAudit(currentConfig, config, AuditLogOperation.UPDATE, tx);
       return config;
     });
 

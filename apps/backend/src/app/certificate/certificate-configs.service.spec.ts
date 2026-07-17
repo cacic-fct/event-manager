@@ -174,6 +174,35 @@ describe('CertificateConfigsService', () => {
     );
   });
 
+  it('converts a late config update conflict to ConflictException', async () => {
+    const missingRecordError = new Prisma.PrismaClientKnownRequestError('Record to update not found', {
+      code: 'P2025',
+      clientVersion: 'test',
+    });
+    const existingConfig = createConfigRecord();
+    const prisma = createPrisma({
+      certificateTemplate: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'template-1' }),
+      },
+      certificateFolder: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'folder-1' }),
+      },
+      certificateConfig: {
+        findFirst: jest.fn().mockResolvedValueOnce(existingConfig).mockResolvedValueOnce(null).mockResolvedValue(existingConfig),
+        update: jest.fn().mockRejectedValue(missingRecordError),
+      },
+    });
+    const service = new CertificateConfigsService(
+      prisma as never,
+      new CertificateValidationService(),
+      {} as never,
+    );
+
+    await expect(service.updateConfig('config-1', { name: 'Updated certificate' })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
   it('ignores nullable folder update fields instead of trimming them', async () => {
     const existingFolder = createFolder({
       name: 'Atividades complementares',
@@ -265,7 +294,7 @@ describe('CertificateConfigsService', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'template-1' }),
       },
       certificateConfig: {
-        findFirst: jest.fn().mockResolvedValueOnce(createConfigRecord()).mockResolvedValueOnce(null),
+        findFirst: jest.fn().mockResolvedValueOnce(createConfigRecord()).mockResolvedValueOnce(null).mockResolvedValue(createConfigRecord()),
         update: jest.fn().mockResolvedValue(
           createConfigRecord({
             scope: CertificateScope.EVENT,
@@ -339,7 +368,8 @@ describe('CertificateConfigsService', () => {
               shouldAutofillSecondPage: true,
             }),
           )
-          .mockResolvedValueOnce(null),
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(createConfigRecord()),
         update: jest.fn().mockResolvedValue(createConfigRecord()),
       },
     });
@@ -400,7 +430,8 @@ describe('CertificateConfigsService', () => {
               certificateTypeLabel: 'Participação',
             }),
           )
-          .mockResolvedValueOnce(null),
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(createConfigRecord()),
         update: jest.fn().mockResolvedValue(
           createConfigRecord({
             scope: CertificateScope.EVENT_GROUP,
@@ -469,7 +500,8 @@ describe('CertificateConfigsService', () => {
               issuedTo: CertificateIssuedTo.OTHER,
             }),
           )
-          .mockResolvedValueOnce(null),
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(createConfigRecord()),
         update: jest.fn().mockResolvedValue(
           createConfigRecord({
             scope: CertificateScope.EVENT,

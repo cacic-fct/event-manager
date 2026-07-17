@@ -57,21 +57,22 @@ import { WorkspaceMajorEventsService } from './workspace-major-events.service';
 import { WorkspacePermissionsService } from './workspace-permissions.service';
 import { WorkspacePlacePresetsService } from './workspace-place-presets.service';
 import { WorkspaceUiService } from './workspace-ui.service';
+import {
+  CUSTOM_PLACE_PRESET_ID,
+  EventGroupResolution,
+  findMatchingPlacePreset,
+  getEventGroupCertificatePermissions,
+  MajorEventResolution,
+  resolveEventGroupSelectionInput,
+  resolveMajorEventSelection,
+  resolveMajorEventSelectionInput,
+  uniquePlacePresets,
+} from './workspace-event-selection.helpers';
+import { createEventCloneDialogData } from './workspace-event-clone-dialog-data';
 
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIfCurrent?: boolean };
 type DraftSelectionResult = EventDraft | null | undefined;
-type EventGroupResolution =
-  | { status: 'none' }
-  | { status: 'found'; group: EventGroup }
-  | { status: 'unresolved' };
-type MajorEventResolution =
-  | { status: 'none' }
-  | { status: 'found'; majorEvent: MajorEvent }
-  | { status: 'unresolved' };
-
-const CUSTOM_PLACE_PRESET_ID = 'PERSONALIZADO';
-
 @Injectable({
   providedIn: 'root',
 })
@@ -771,54 +772,7 @@ export class WorkspaceEventsService {
     const dialogRef = this.dialog.open(CloneAssetDialogComponent, {
       width: '52rem',
       maxWidth: '95vw',
-      data: {
-        title: 'Duplicar evento',
-        sourceLabel: 'Evento existente',
-        sourceName: eventItem.name,
-        defaultName: `${eventItem.name} (cópia)`,
-        parts: [
-          {
-            key: 'lecturers',
-            label: 'Ministrantes',
-            description: 'Copia os vínculos com pessoas ministrantes.',
-            defaultSelected: true,
-            disabled: !canCopyLecturers,
-            disabledReason: 'Exige permissão para visualizar e criar ministrantes do evento.',
-          },
-          {
-            key: 'certificateConfig',
-            label: 'Configuração de certificado',
-            description: 'Copia regras de emissão e modelos de certificado.',
-            defaultSelected: true,
-            disabled: !canCopyCertificateConfig,
-            disabledReason: 'Exige permissão para visualizar e criar configurações de certificado.',
-          },
-          {
-            key: 'subscriptionSettings',
-            label: 'Inscrições',
-            description: 'Copia janela, vagas e regras administrativas de inscrição.',
-            defaultSelected: true,
-          },
-          {
-            key: 'attendanceSettings',
-            label: 'Presença',
-            description: 'Copia coleta e janelas de presença, sem copiar o código de presença.',
-            defaultSelected: true,
-          },
-          {
-            key: 'place',
-            label: 'Local',
-            description: 'Copia coordenadas e descrição do local.',
-            defaultSelected: true,
-          },
-          {
-            key: 'visibility',
-            label: 'Visibilidade',
-            description: 'Copia se o evento aparece para usuários.',
-            defaultSelected: true,
-          },
-        ],
-      },
+      data: createEventCloneDialogData(eventItem.name, { canCopyLecturers, canCopyCertificateConfig }),
     });
 
     return firstValueFrom(dialogRef.afterClosed());
@@ -1170,21 +1124,7 @@ export class WorkspaceEventsService {
     longitude?: number | null;
     locationDescription?: string | null;
   }): PlacePreset | null {
-    const description = normalizePlaceText(input.locationDescription);
-    if (!description) {
-      return null;
-    }
-
-    const latitude = input.latitude ?? null;
-    const longitude = input.longitude ?? null;
-    return (
-      this.allKnownPlacePresets().find(
-        (place) =>
-          normalizePlaceText(place.locationDescription ?? place.name) === description &&
-          (place.latitude ?? null) === latitude &&
-          (place.longitude ?? null) === longitude,
-      ) ?? null
-    );
+    return findMatchingPlacePreset(input, this.allKnownPlacePresets());
   }
 
   private async resolvePlacePresetForEvent(
@@ -1201,28 +1141,11 @@ export class WorkspaceEventsService {
   }
 
   private allKnownPlacePresets(): PlacePreset[] {
-    const places = new Map<string, PlacePreset>();
-    for (const place of [...this.placePresetsService.placePresets(), ...this.placePresetSuggestions()]) {
-      places.set(place.id, place);
-    }
-    return [...places.values()];
+    return uniquePlacePresets(this.placePresetsService.placePresets(), this.placePresetSuggestions());
   }
 
   private resolveSelectedMajorEvent(eventItem: Event): MajorEventResolution {
-    if (!eventItem.majorEventId) {
-      return { status: 'none' };
-    }
-
-    if (eventItem.majorEvent?.id === eventItem.majorEventId) {
-      return { status: 'found', majorEvent: eventItem.majorEvent as MajorEvent };
-    }
-
-    const majorEvent = this.majorEventSearchResults().find((item) => item.id === eventItem.majorEventId);
-    if (majorEvent) {
-      return { status: 'found', majorEvent };
-    }
-
-    return { status: 'unresolved' };
+    return resolveMajorEventSelection(eventItem, this.majorEventSearchResults(), this.majorEvents());
   }
 
   private applySelectedMajorEvent(majorEvent: MajorEvent | null, options: { hasMajorEvent: boolean }): void;
@@ -1231,14 +1154,9 @@ export class WorkspaceEventsService {
     value: MajorEvent | MajorEventResolution | null,
     options?: { hasMajorEvent: boolean },
   ): void {
-    const resolution: MajorEventResolution =
-      options != null
-        ? value == null
-          ? options.hasMajorEvent
-            ? { status: 'unresolved' }
-            : { status: 'none' }
-          : { status: 'found', majorEvent: value as MajorEvent }
-        : (value as MajorEventResolution);
+    const resolution = options != null
+      ? resolveMajorEventSelectionInput(value as MajorEvent | null, options.hasMajorEvent)
+      : (value as MajorEventResolution);
 
     this.selectedMajorEventName.set(resolution.status === 'found' ? resolution.majorEvent.name : '');
   }
@@ -1268,29 +1186,14 @@ export class WorkspaceEventsService {
     value: EventGroup | EventGroupResolution | null,
     options?: { hasEventGroup: boolean },
   ): void {
-    const resolution: EventGroupResolution =
-      options != null
-        ? value == null
-          ? options.hasEventGroup
-            ? { status: 'unresolved' }
-            : { status: 'none' }
-          : { status: 'found', group: value as EventGroup }
-        : (value as EventGroupResolution);
-    const group = resolution.status === 'found' ? resolution.group : null;
-    const allowCertificates =
-      resolution.status === 'unresolved' ? null : group?.shouldIssueCertificate ?? true;
-    this.selectedEventGroupName.set(group?.name ?? '');
-    this.selectedEventGroupAllowsCertificates.set(allowCertificates);
-    this.selectedEventGroupAllowsNonPayingCertificates.set(
-      resolution.status === 'unresolved'
-        ? null
-        : group?.shouldIssueCertificateForNonPayingAttendees ?? allowCertificates,
-    );
-    this.selectedEventGroupAllowsNonSubscribedCertificates.set(
-      resolution.status === 'unresolved'
-        ? null
-        : group?.shouldIssueCertificateForNonSubscribedAttendees ?? allowCertificates,
-    );
+    const resolution = options != null
+      ? resolveEventGroupSelectionInput(value as EventGroup | null, options.hasEventGroup)
+      : (value as EventGroupResolution);
+    const permissions = getEventGroupCertificatePermissions(resolution);
+    this.selectedEventGroupName.set(resolution.status === 'found' ? resolution.group.name : '');
+    this.selectedEventGroupAllowsCertificates.set(permissions.allowsCertificates);
+    this.selectedEventGroupAllowsNonPayingCertificates.set(permissions.allowsNonPayingCertificates);
+    this.selectedEventGroupAllowsNonSubscribedCertificates.set(permissions.allowsNonSubscribedCertificates);
   }
 
   private syncOnlineAttendanceControls(): void {
@@ -1305,8 +1208,4 @@ export class WorkspaceEventsService {
       this.selectedEventGroupAllowsNonSubscribedCertificates(),
     );
   }
-}
-
-function normalizePlaceText(value: string | null | undefined): string {
-  return (value ?? '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 }
