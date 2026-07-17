@@ -970,10 +970,14 @@ describe('CertificateIssuingService', () => {
   it('refreshes target certificates from source and target configs after people merge', async () => {
     const prisma = {
       $transaction: jest.fn((callback) => callback(prisma)),
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
       certificate: {
         findMany: jest
           .fn()
-          .mockResolvedValue([{ configId: 'config-1' }, { configId: 'config-2' }, { configId: 'config-1' }]),
+          .mockResolvedValueOnce([{ configId: 'config-1' }, { configId: 'config-2' }, { configId: 'config-1' }])
+          .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'source-person' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
