@@ -48,6 +48,8 @@ type LecturerProfileAuditSnapshot = Pick<
   | 'biography'
   | 'publishGoogleUserPicture'
   | 'googleUserPicture'
+  | 'email'
+  | 'whatsapp'
   | 'createdAt'
   | 'createdById'
   | 'updatedAt'
@@ -187,6 +189,8 @@ export class LecturerProfilesResolver {
       biography: profile.biography,
       publishGoogleUserPicture: profile.publishGoogleUserPicture,
       googleUserPicture: profile.googleUserPicture,
+      email: profile.email,
+      whatsapp: profile.whatsapp,
       createdAt: profile.createdAt,
       createdById: profile.createdById,
       updatedAt: profile.updatedAt,

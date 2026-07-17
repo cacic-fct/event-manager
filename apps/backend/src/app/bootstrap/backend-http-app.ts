@@ -20,6 +20,7 @@ export async function createBackendHttpApp(): Promise<INestApplication> {
 export function configureBackendHttpApp(app: INestApplication): void {
   const production = process.env.NODE_ENV === 'production';
 
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.use(cookieParser());
   app.setGlobalPrefix(globalPrefix);
   app.use(

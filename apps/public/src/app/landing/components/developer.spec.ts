@@ -36,6 +36,6 @@ describe('Developer', () => {
 
     expect(writeText).toHaveBeenCalledWith(component.publicApiCurl);
     expect(component.curlCopied()).toBe(true);
-    expect(snackBar.open).toHaveBeenCalledWith('Exemplo curl copiado.', 'OK', { duration: 3000 });
+    expect(snackBar.open).toHaveBeenCalledWith('Exemplo em curl copiado.', 'OK', { duration: 3000 });
   });
 });

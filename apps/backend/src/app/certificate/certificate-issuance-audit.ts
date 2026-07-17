@@ -14,8 +14,9 @@ export class CertificateIssuanceAudit {
     operation: AuditLogOperation,
     actorId: string | undefined,
     prisma: CertificateWriteClient,
+    actor?: AuditActor,
   ): Promise<void> {
-    const actor = await this.resolveActor(actorId, prisma);
+    const resolvedActor = actor ?? (await this.resolveActor(actorId, prisma));
     const config = after.config;
     await this.auditLog.record(
       {
@@ -23,7 +24,7 @@ export class CertificateIssuanceAudit {
         entityId: after.id,
         entityLabel: `${config.name} — ${after.person.name}`,
         operation,
-        actor,
+        actor: resolvedActor,
         before,
         after,
         force: true,
@@ -39,7 +40,7 @@ export class CertificateIssuanceAudit {
     );
   }
 
-  private async resolveActor(
+  async resolveActor(
     actorId: string | undefined,
     prisma: CertificateWriteClient,
   ): Promise<AuditActor | undefined> {

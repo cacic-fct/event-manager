@@ -1,3 +1,4 @@
+import type { AttendanceImportMatchType } from './attendance.models';
 import type { Event, EventGroup, MajorEvent } from './event.models';
 import type { Person } from './people.models';
 
@@ -144,6 +145,6 @@ export interface CertificateCsvImportResult {
   duplicateCount: number;
   failedCount: number;
   failedValues: string[];
-  inferredMatchType: import('./attendance.models').AttendanceImportMatchType;
+  inferredMatchType: AttendanceImportMatchType;
   ambiguousValues: CertificateCsvImportAmbiguousValue[];
 }

@@ -34,7 +34,7 @@ export const Loaded: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('heading', { name: 'Eventos universitários, com menos atrito.' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Eventos universitários facilitados' })).toBeVisible();
     await expect(canvas.getByText(platformStats.peopleCount.toLocaleString('pt-BR'))).toBeVisible();
   },
 };

@@ -40,10 +40,12 @@ export class LandingComponent {
   // Data is intentionally delayed by two weeks to avoid exposing real-time platform statistics,
   // which could be used to infer operational information about users and events.
   readonly platformStats = toSignal(
-    this.platformStatsApi.getPublicPlatformStats().pipe(
-      map((stats) => ({ state: 'ready' as PlatformStatsLoadState, stats })),
-      catchError(() => of({ state: 'unavailable' as PlatformStatsLoadState, stats: null })),
-    ),
+    isPlatformBrowser(this.platformId)
+      ? this.platformStatsApi.getPublicPlatformStats().pipe(
+          map((stats) => ({ state: 'ready' as PlatformStatsLoadState, stats })),
+          catchError(() => of({ state: 'unavailable' as PlatformStatsLoadState, stats: null })),
+        )
+      : of({ state: 'loading' as PlatformStatsLoadState, stats: null }),
     { initialValue: { state: 'loading' as PlatformStatsLoadState, stats: null } },
   );
 

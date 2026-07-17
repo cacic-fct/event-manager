@@ -18,7 +18,7 @@ describe('CertificateIssuanceRefresh', () => {
       { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,
       eligibility as never,
       upsertCertificate as never,
-      { record: jest.fn() } as never,
+      { record: jest.fn(), resolveActor: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await refresh.refreshForPerson('person-1', 'admin-1');
@@ -32,7 +32,7 @@ describe('CertificateIssuanceRefresh', () => {
   it('audits every active source certificate deleted after a people merge', async () => {
     const sourceCertificate = { id: 'certificate-1', personId: 'source-person', deletedAt: null };
     const prisma = transactionPrisma([], [sourceCertificate]);
-    const audit = { record: jest.fn() };
+    const audit = { record: jest.fn(), resolveActor: jest.fn().mockResolvedValue(undefined) };
     const refresh = new CertificateIssuanceRefresh(
       prisma as never,
       { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,
@@ -53,12 +53,13 @@ describe('CertificateIssuanceRefresh', () => {
       AuditLogOperation.DELETE,
       'admin-1',
       prisma,
+      undefined,
     );
   });
 
   it('does not delete or audit when the source person has no active certificates after a people merge', async () => {
     const prisma = transactionPrisma([], []);
-    const audit = { record: jest.fn() };
+    const audit = { record: jest.fn(), resolveActor: jest.fn().mockResolvedValue(undefined) };
     const refresh = new CertificateIssuanceRefresh(
       prisma as never,
       { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,

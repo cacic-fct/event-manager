@@ -10,10 +10,10 @@ export async function consumeAuthorizationState(
   state: string | undefined,
 ): Promise<Awaited<ReturnType<KeycloakAuthService['consumeAuthorizationState']>> | null> {
   const cookieState = readAuthCookie(request, AUTH_STATE_COOKIE_NAME);
-  clearAuthorizationStateCookie(response, request);
   if (!state || !cookieState || state !== cookieState) {
     return null;
   }
+  clearAuthorizationStateCookie(response, request);
   return (await keycloakAuthService.consumeAuthorizationState(state)) ?? null;
 }
 

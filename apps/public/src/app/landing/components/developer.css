@@ -56,6 +56,7 @@
 .developer-action {
   --mat-button-outlined-label-text-color: #fff;
   --mat-button-outlined-outline-color: rgba(255, 255, 255, .65);
+
   min-height: 2.75rem;
 }
 

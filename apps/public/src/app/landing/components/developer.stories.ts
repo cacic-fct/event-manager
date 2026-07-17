@@ -23,7 +23,7 @@ export const Playground: Story = {
     await expect(canvas.getByRole('link', { name: 'Documentação' })).toBeVisible();
     await expect(canvas.getByText('publicEvents(take: 3)')).toBeVisible();
     await expect(canvas.getByText("curl --request POST 'https://eventos.cacic.com.br/api/graphql'")).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Copiar exemplo curl' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Copiar exemplo em curl' })).toBeVisible();
   },
 };
 

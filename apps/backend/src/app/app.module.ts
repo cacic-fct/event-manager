@@ -30,6 +30,8 @@ import { CertificateCsvImportResolver } from './certificate/certificate-csv-impo
 import { CertificateDownloadService } from './certificate/certificate-download.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
+import { CertificateNotificationJobsProcessor } from './certificate/certificate-notification-jobs.processor';
+import { CertificateNotificationJobsService, CERTIFICATE_NOTIFICATION_QUEUE } from './certificate/certificate-notification-jobs.service';
 import { CertificateTargetsService } from './certificate/certificate-targets.service';
 import { CertificateValidationService } from './certificate/certificate-validation.service';
 import { CertificatesResolver } from './certificate/certificates.resolver';
@@ -155,6 +157,7 @@ const backendQueueNames = [
   MAJOR_EVENT_RECEIPTS_QUEUE,
   CALENDAR_FEED_MAINTENANCE_QUEUE,
   PUBLICATION_QUEUE,
+  CERTIFICATE_NOTIFICATION_QUEUE,
 ];
 const queueImports = useInMemoryTestInfra
   ? []
@@ -180,6 +183,9 @@ const queueImports = useInMemoryTestInfra
       BullModule.registerQueue({
         name: PUBLICATION_QUEUE,
       }),
+      BullModule.registerQueue({
+        name: CERTIFICATE_NOTIFICATION_QUEUE,
+      }),
     ];
 const queueProviders = useInMemoryTestInfra ? createNoopQueueProviders(backendQueueNames) : [];
 const queueProcessorProviders = useInMemoryTestInfra
@@ -191,6 +197,7 @@ const queueProcessorProviders = useInMemoryTestInfra
       PublicPlatformStatsProcessor,
       MajorEventReceiptsProcessor,
       WeatherProcessor,
+      CertificateNotificationJobsProcessor,
     ];
 const schedulerProviders = useInMemoryTestInfra
   ? []
@@ -351,6 +358,7 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateDownloadService,
     CertificateEligibilityService,
     CertificateIssuingService,
+    CertificateNotificationJobsService,
     PublicCertificateValidationService,
     WeatherService,
     FrozenResourceService,

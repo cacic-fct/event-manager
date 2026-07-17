@@ -299,7 +299,7 @@ export class AuthController {
   @ApiOperation({
     summary: 'Development password login',
     description:
-      'Authenticates with email and password through Keycloak direct access grants. Enabled by default outside production and controlled by KEYCLOAK_PASSWORD_LOGIN_ENABLED.',
+      'Authenticates with email and password through Keycloak direct access grants. Available only in development and test environments when KEYCLOAK_PASSWORD_LOGIN_ENABLED is enabled.',
   })
   @ApiBody({
     type: PasswordLoginRequestDto,
