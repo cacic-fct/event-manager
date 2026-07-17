@@ -570,6 +570,13 @@ describe('CertificateIssuingService', () => {
   it('returns an empty result when a person has no issued certificates to refresh', async () => {
     const service = new CertificateIssuingService(
       {
+        $transaction: jest.fn((callback) =>
+          callback({
+            certificate: {
+              findMany: jest.fn().mockResolvedValue([]),
+            },
+          }),
+        ),
         certificate: {
           findMany: jest.fn().mockResolvedValue([]),
         },
@@ -892,8 +899,7 @@ describe('CertificateIssuingService', () => {
   });
 
   it('refreshes only existing active certificates for a person without deleting ineligible ones', async () => {
-    const prisma = {
-      $transaction: jest.fn((callback) => callback(prisma)),
+    const tx = {
       user: {
         findUnique: jest.fn().mockResolvedValue({ name: 'User', email: 'user@example.com' }),
       },
@@ -904,6 +910,10 @@ describe('CertificateIssuingService', () => {
           .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'person-valid', configId: 'config-2' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback) => callback(tx)),
+      certificate: tx.certificate,
     };
     const validation = {
       normalizeRequiredId: jest.fn().mockReturnValue('person-valid'),
@@ -928,7 +938,8 @@ describe('CertificateIssuingService', () => {
 
     await expect(service.refreshIssuedCertificatesForPerson('person-valid', 'user-1')).resolves.toHaveLength(1);
 
-    expect(prisma.certificate.findMany).toHaveBeenCalledWith({
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.certificate.findMany).toHaveBeenCalledWith({
       where: {
         personId: 'person-valid',
         deletedAt: null,
@@ -952,7 +963,7 @@ describe('CertificateIssuingService', () => {
       expect.objectContaining({ id: 'config-1' }),
       expect.objectContaining({ person: { id: 'person-valid' } }),
       'user-1',
-      { prisma },
+      { prisma: tx },
     );
   });
 

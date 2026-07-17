@@ -553,11 +553,20 @@ export class CertificateConfigsService {
       if (currentConfig.updatedAt.getTime() !== existingConfig.updatedAt.getTime()) {
         throw new ConflictException(`Certificate config ${normalizedConfigId} was updated concurrently.`);
       }
-      const config = await tx.certificateConfig.update({
-        where: { id: normalizedConfigId, updatedAt: currentConfig.updatedAt },
-        data,
-        select: CERTIFICATE_CONFIG_SELECT,
-      });
+      let config: CertificateConfigRecord;
+      try {
+        config = await tx.certificateConfig.update({
+          where: { id: normalizedConfigId, updatedAt: currentConfig.updatedAt },
+          data,
+          select: CERTIFICATE_CONFIG_SELECT,
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+          throw new ConflictException(`Certificate config ${normalizedConfigId} was updated concurrently.`);
+        }
+
+        throw error;
+      }
       await this.recordConfigAudit(currentConfig, config, AuditLogOperation.UPDATE, tx);
       return config;
     });

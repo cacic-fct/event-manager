@@ -58,22 +58,25 @@ export class CertificateIssuanceRefresh {
 
   async refreshForPerson(personId: string, issuedById?: string): Promise<CertificateRecord[]> {
     const normalizedPersonId = this.validation.normalizeRequiredId('personId', personId);
-    const existingCertificates = await this.prisma.certificate.findMany({
-      where: {
-        personId: normalizedPersonId,
-        deletedAt: null,
-        config: { deletedAt: null, isActive: true },
-        person: { deletedAt: null },
-      },
-      select: { configId: true },
-      orderBy: { issuedAt: 'asc' },
-    });
+    return this.prisma.$transaction(async (tx) => {
+      const existingCertificates = await tx.certificate.findMany({
+        where: {
+          personId: normalizedPersonId,
+          deletedAt: null,
+          config: { deletedAt: null, isActive: true },
+          person: { deletedAt: null },
+        },
+        select: { configId: true },
+        orderBy: { issuedAt: 'asc' },
+      });
 
-    return this.refreshConfigsForPerson(
-      normalizedPersonId,
-      existingCertificates.map((certificate) => certificate.configId),
-      issuedById,
-    );
+      return this.refreshConfigsForPerson(
+        normalizedPersonId,
+        existingCertificates.map((certificate) => certificate.configId),
+        issuedById,
+        tx,
+      );
+    });
   }
 
   async refreshAfterPeopleMerge(
