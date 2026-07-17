@@ -53,4 +53,19 @@ describe('CertificateNotificationJobsService', () => {
       expect.objectContaining({ issuedAt: new Date('2026-05-23T15:30:00.000Z') }),
     );
   });
+
+  it('does not deliver notifications when Novu is unavailable', async () => {
+    const service = new CertificateNotificationJobsService({ add: jest.fn() } as never, undefined);
+
+    await expect(
+      service.deliver({
+        certificateId: 'certificate-1',
+        configId: 'config-1',
+        certificateName: 'Config',
+        targetName: 'Evento',
+        issuedAt: '2026-05-23T15:30:00.000Z',
+        recipient: { subscriberId: 'person-1' },
+      }),
+    ).resolves.toBeUndefined();
+  });
 });

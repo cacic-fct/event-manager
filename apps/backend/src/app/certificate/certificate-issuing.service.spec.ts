@@ -843,8 +843,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await service.issueMissedCertificates('config-1');
 
@@ -931,8 +931,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await expect(service.issueMissedCertificates('config-1')).resolves.toHaveLength(2);
     expect(prisma.certificate.updateMany).not.toHaveBeenCalled();
@@ -965,8 +965,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, {} as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await expect(service.reissueAllCertificates('admin-user')).resolves.toEqual({
       configCount: 2,
@@ -1005,8 +1005,8 @@ describe('CertificateIssuingService', () => {
     };
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await expect(service.reissueCertificatesForFolder(' folder-1 ', 'admin-user')).resolves.toEqual({
       configCount: 1,
@@ -1062,8 +1062,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await expect(service.refreshIssuedCertificatesForPerson('person-valid', 'user-1')).resolves.toHaveLength(1);
 
@@ -1125,8 +1125,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await service.refreshIssuedCertificatesAfterPeopleMerge('target-person', 'source-person', 'admin-user');
 

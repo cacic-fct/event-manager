@@ -1,5 +1,5 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { CertificateRecord } from './certificate.constants';
@@ -21,7 +21,7 @@ export class CertificateNotificationJobsService {
   constructor(
     @InjectQueue(CERTIFICATE_NOTIFICATION_QUEUE)
     private readonly queue: Queue<CertificateAvailableNotificationJob>,
-    private readonly notifications: NovuNotificationsService,
+    @Optional() private readonly notifications?: NovuNotificationsService,
   ) {}
 
   async enqueue(certificate: CertificateRecord): Promise<void> {
@@ -40,6 +40,10 @@ export class CertificateNotificationJobsService {
   }
 
   async deliver(input: CertificateAvailableNotificationJob): Promise<void> {
+    if (!this.notifications) {
+      return;
+    }
+
     await this.notifications.notifyCertificateAvailable({
       ...input,
       issuedAt: new Date(input.issuedAt),

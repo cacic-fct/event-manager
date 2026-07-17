@@ -47,9 +47,10 @@ export class CertificateIssuingService {
       eligibilityService,
       (config, recipient, issuedById, options) =>
         options === undefined
-          ? this.upsertCertificateForRecipient(config, recipient, issuedById)
-          : this.upsertCertificateForRecipient(config, recipient, issuedById, options),
+          ? this.upsertCertificateForRecipientResult(config, recipient, issuedById)
+          : this.upsertCertificateForRecipientResult(config, recipient, issuedById, options),
       this.audit,
+      (certificate) => this.notifyCertificateAvailable(certificate),
     );
   }
 
