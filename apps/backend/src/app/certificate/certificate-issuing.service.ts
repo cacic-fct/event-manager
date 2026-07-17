@@ -7,7 +7,9 @@ import {
   EventType,
 } from '@cacic-fct/shared-data-types';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -24,8 +26,8 @@ import { CertificateValidationService } from './certificate-validation.service';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
-type CertificateWriteClient = Pick<PrismaService, 'certificate'>;
-type CertificateReissueClient = Pick<PrismaService, 'certificate' | 'certificateConfig'>;
+type CertificateWriteClient = Pick<AuditPrismaClient, 'certificate' | 'user'>;
+type CertificateReissueClient = Pick<AuditPrismaClient, 'certificate' | 'certificateConfig' | 'user'>;
 
 @Injectable()
 export class CertificateIssuingService {
@@ -36,6 +38,7 @@ export class CertificateIssuingService {
     private readonly validation: CertificateValidationService,
     private readonly eligibilityService: CertificateEligibilityService,
     private readonly notifications?: NovuNotificationsService,
+    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {}
 
   async listCertificatesByTarget(
@@ -440,21 +443,21 @@ export class CertificateIssuingService {
     return refreshedCertificates;
   }
 
-  async deleteCertificate(certificateId: string): Promise<DeletionResult> {
+  async deleteCertificate(certificateId: string, deletedById?: string): Promise<DeletionResult> {
     const normalizedCertificateId = this.validation.normalizeRequiredId('certificateId', certificateId);
-    const { count } = await this.prisma.certificate.updateMany({
-      where: {
-        id: normalizedCertificateId,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const certificate = await tx.certificate.findFirst({
+        where: { id: normalizedCertificateId, deletedAt: null },
+        select: CERTIFICATE_SELECT,
+      });
+      if (!certificate) throw new NotFoundException(`Certificate ${normalizedCertificateId} not found.`);
+      const deleted = await tx.certificate.update({
+        where: { id: normalizedCertificateId },
+        data: { deletedAt: new Date() },
+        select: CERTIFICATE_SELECT,
+      });
+      await this.recordCertificateAudit(certificate, deleted, AuditLogOperation.DELETE, deletedById, tx);
     });
-
-    if (count === 0) {
-      throw new NotFoundException(`Certificate ${normalizedCertificateId} not found.`);
-    }
 
     return {
       deleted: true,
@@ -561,8 +564,8 @@ export class CertificateIssuingService {
     issuedById?: string,
     options: { notify?: boolean; prisma?: CertificateWriteClient } = {},
   ): Promise<{ certificate: CertificateRecord; shouldNotify: boolean }> {
-    const prisma = options.prisma ?? this.prisma;
     const shouldNotifyNow = options.notify ?? true;
+    const prisma = options.prisma ?? this.prisma;
     const existingCertificate = await prisma.certificate.findUnique({
       where: {
         personId_configId: {
@@ -590,7 +593,35 @@ export class CertificateIssuingService {
     const renderedData = this.buildRenderedData(config, recipient, issuedAt);
 
     if (!existingCertificate) {
-      const certificate = await prisma.certificate.create({
+      const createCertificate = async (client: CertificateWriteClient) => {
+        const certificate = await client.certificate.create({
+          data: {
+            personId: recipient.person.id,
+            configId: config.id,
+            renderedData,
+            certificateTemplateId: config.certificateTemplateId,
+            issuedById: issuedById ?? null,
+            issuedAt,
+          },
+          select: CERTIFICATE_SELECT,
+        });
+        await this.recordCertificateAudit(null, certificate, AuditLogOperation.ISSUE, issuedById, client);
+        return certificate;
+      };
+      const certificate = options.prisma && options.prisma !== this.prisma
+        ? await createCertificate(options.prisma)
+        : await this.prisma.$transaction((tx) => createCertificate(tx));
+      if (shouldNotifyNow) {
+        await this.notifyCertificateAvailable(certificate);
+      }
+      return { certificate, shouldNotify: true };
+    }
+
+    const updateCertificate = async (client: CertificateWriteClient) => {
+      const certificate = await client.certificate.update({
+        where: {
+          id: existingCertificate.id,
+        },
         data: {
           personId: recipient.person.id,
           configId: config.id,
@@ -598,34 +629,71 @@ export class CertificateIssuingService {
           certificateTemplateId: config.certificateTemplateId,
           issuedById: issuedById ?? null,
           issuedAt,
+          deletedAt: null,
         },
         select: CERTIFICATE_SELECT,
       });
-      if (shouldNotifyNow) {
-        await this.notifyCertificateAvailable(certificate);
-      }
-      return { certificate, shouldNotify: true };
-    }
-
-    const certificate = await prisma.certificate.update({
-      where: {
-        id: existingCertificate.id,
-      },
-      data: {
-        personId: recipient.person.id,
-        configId: config.id,
-        renderedData,
-        certificateTemplateId: config.certificateTemplateId,
-        issuedById: issuedById ?? null,
-        issuedAt,
-        deletedAt: null,
-      },
-      select: CERTIFICATE_SELECT,
-    });
+      await this.recordCertificateAudit(existingCertificate, certificate, AuditLogOperation.REISSUE, issuedById, client);
+      return certificate;
+    };
+    const certificate = options.prisma && options.prisma !== this.prisma
+      ? await updateCertificate(options.prisma)
+      : await this.prisma.$transaction((tx) => updateCertificate(tx));
     if (shouldNotifyNow) {
       await this.notifyCertificateAvailable(certificate);
     }
     return { certificate, shouldNotify: true };
+  }
+
+  private async recordCertificateAudit(
+    before: CertificateRecord | null,
+    after: CertificateRecord,
+    operation: AuditLogOperation,
+    actorId: string | undefined,
+    prisma: CertificateWriteClient,
+  ): Promise<void> {
+    const actor = await this.resolveAuditActor(actorId, prisma as AuditPrismaClient);
+    const config = after.config;
+    await this.auditLog.record(
+      {
+        entityType: AuditLogEntityType.CERTIFICATE,
+        entityId: after.id,
+        entityLabel: `${config.name} — ${after.person.name}`,
+        operation,
+        actor,
+        before,
+        after,
+        force: true,
+        summary: operation === AuditLogOperation.ISSUE ? 'Certificado emitido.' : operation === AuditLogOperation.DELETE ? 'Certificado removido.' : 'Certificado reemitido.',
+        scope: this.auditScopeForConfig(config),
+      },
+      prisma as unknown as AuditPrismaClient,
+    );
+  }
+
+  private async resolveAuditActor(
+    actorId: string | undefined,
+    prisma: AuditPrismaClient,
+  ): Promise<AuditActor | undefined> {
+    if (!actorId) return undefined;
+    const user = await prisma.user.findUnique({
+      where: { id: actorId },
+      select: { name: true, email: true },
+    });
+    return {
+      id: actorId,
+      name: user?.name ?? actorId,
+      email: user?.email ?? null,
+      type: AuditLogActorType.USER,
+    };
+  }
+
+  private auditScopeForConfig(config: CertificateConfigRecord) {
+    return {
+      eventId: config.eventId,
+      eventGroupId: config.eventGroupId,
+      majorEventId: config.majorEventId,
+    };
   }
 
   private async notifyCertificateAvailable(certificate: CertificateRecord): Promise<void> {

@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { MajorEventSubscriptionFlow, Prisma, ReceiptValidationActionType, SubscriptionStatus } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, MajorEventSubscriptionFlow, Prisma, ReceiptValidationActionType, SubscriptionStatus } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CurrentUserMajorEventSubscriptionService } from '../../current-user/major-events/subscription.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
@@ -53,6 +55,7 @@ export class ReceiptValidationService {
     private readonly dashboardInsights: DashboardInsightsService,
     private readonly queue: ReceiptAdminQueueService,
     private readonly sync: ReceiptSubscriptionSyncService,
+    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {}
 
   async approveReceipt(
@@ -104,6 +107,17 @@ export class ReceiptValidationService {
         ...subscription.selectedEvents.map((selection) => selection.eventId),
         ...eventIdsToConfirm,
       ]);
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.RECEIPT_VALIDATION,
+        entityId: action.id,
+        entityLabel: 'Comprovante de pagamento',
+        operation: AuditLogOperation.APPROVE,
+        actor: authenticatedUser,
+        before: { subscriptionStatus: subscription.subscriptionStatus, receiptRejectionReason: subscription.receiptRejectionReason },
+        after: { subscriptionStatus: SubscriptionStatus.CONFIRMED, receiptRejectionReason: null, selectedEventIds: eventIdsToConfirm },
+        summary: 'Comprovante de pagamento aprovado.',
+        scope: { permission: Permission.Receipt.Approve, majorEventId: subscription.majorEventId },
+      }, tx);
 
       return action;
     });
@@ -165,6 +179,17 @@ export class ReceiptValidationService {
       });
 
       await this.attendanceCategories.refreshForMajorEventPerson(subscription.majorEventId, subscription.personId, tx);
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.RECEIPT_VALIDATION,
+        entityId: createdAction.id,
+        entityLabel: 'Comprovante de pagamento',
+        operation: AuditLogOperation.REJECT,
+        actor: authenticatedUser,
+        before: { subscriptionStatus: subscription.subscriptionStatus, receiptRejectionReason: subscription.receiptRejectionReason },
+        after: { subscriptionStatus: nextStatus, receiptRejectionReason: normalizedReason },
+        summary: 'Comprovante de pagamento rejeitado.',
+        scope: { permission: Permission.Receipt.Reject, majorEventId: subscription.majorEventId },
+      }, tx);
       return createdAction;
     });
 
@@ -264,6 +289,17 @@ export class ReceiptValidationService {
         tx,
       );
       await this.sync.refreshEventSubscriptionCounters(tx, selectedEventIds);
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.RECEIPT_VALIDATION,
+        entityId: existingAction.id,
+        entityLabel: 'Comprovante de pagamento',
+        operation: AuditLogOperation.UNDO,
+        actor: authenticatedUser,
+        before: { subscriptionStatus: existingAction.nextStatus, receiptRejectionReason: existingAction.nextRejectionReason },
+        after: { subscriptionStatus: existingAction.previousStatus, receiptRejectionReason: existingAction.previousRejectionReason },
+        summary: 'Validação de comprovante desfeita.',
+        scope: { permission: Permission.Receipt.Undo, majorEventId: existingAction.subscription.majorEventId },
+      }, tx);
 
       return existingAction;
     });

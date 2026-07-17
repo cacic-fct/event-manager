@@ -452,7 +452,7 @@ describe('CertificatesResolver authorization', () => {
     });
 
     expect(frozenResources.assertCertificateMutable).toHaveBeenCalledWith('certificate-1', user, 'delete');
-    expect(issuingService.deleteCertificate).toHaveBeenCalledWith('certificate-1');
+    expect(issuingService.deleteCertificate).toHaveBeenCalledWith('certificate-1', 'user-1');
   });
 
   it('filters certificate folders through folder-scoped read authorization', async () => {

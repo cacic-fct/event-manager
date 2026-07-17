@@ -8,7 +8,6 @@ import {
 import { resolveDataSubject } from './lgpd-data-subject';
 import { anonymizeEventDrafts, buildEventDraftSubjectWhere } from './lgpd-event-drafts';
 import {
-  mapAuditLogEntryForExport,
   mapOfflineSubmissionForExport,
   mapPersonForExport,
   selectForExport,
@@ -111,7 +110,7 @@ describe('LGPD helper modules', () => {
     );
   });
 
-  it('redacts offline submissions and audit entries to subject-matching identities', () => {
+  it('redacts offline submissions to subject-matching identities', () => {
     const dataSubject = dataSubjectResolution();
 
     expect(
@@ -157,45 +156,6 @@ describe('LGPD helper modules', () => {
       }),
     );
 
-    expect(
-      mapAuditLogEntryForExport(
-        {
-          id: 'audit-1',
-          entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-          entityId: 'person-1:event-1',
-          operation: 'USER_CREATE',
-          actorId: 'other-user',
-          actorType: 'USER',
-          permission: 'event-attendance#collect',
-          before: null,
-          after: { personId: 'person-1', submittedById: 'subject-user' },
-          changes: [],
-          metadata: null,
-          changedFields: ['personId'],
-          groupedCount: 1,
-          firstRecordedAt: new Date('2026-07-01T12:00:00.000Z'),
-          lastRecordedAt: new Date('2026-07-01T12:00:00.000Z'),
-          createdAt: new Date('2026-07-01T12:00:00.000Z'),
-          revertedAt: null,
-          revertedById: 'subject-user',
-          revertedByEntryId: null,
-          revertTargetId: null,
-          revertMode: null,
-        } as never,
-        dataSubject,
-      ),
-    ).toEqual(
-      expect.objectContaining({
-        entityId: 'person-1:event-1',
-        actorId: null,
-        actorMatchesSubject: false,
-        entityMatchesSubject: true,
-        payloadMatchesSubject: true,
-        changedFields: ['personId'],
-        revertedById: 'subject-user',
-        revertedBySubject: true,
-      }),
-    );
   });
 
   it('builds audit-log subject filters and anonymizes matching audit payloads', async () => {

@@ -5,13 +5,11 @@ import { S3Service } from '../s3/s3.service';
 import {
   anonymizeAuditEntries,
   buildAnonymizedAuditSubjectId,
-  buildAuditLogSubjectWhere,
   synchronizeAnonymizedAuditEntries,
 } from './lgpd-audit-anonymization';
 import { resolveDataSubject } from './lgpd-data-subject';
 import { anonymizeEventDrafts, buildEventDraftSubjectWhere } from './lgpd-event-drafts';
 import {
-  mapAuditLogEntryForExport,
   mapOfflineSubmissionForExport,
   mapPersonForExport,
   selectManyForExport,
@@ -24,7 +22,6 @@ import { deleteReceiptObjects, findReceiptObjectKeys } from './lgpd-receipts';
 import {
   LGPD_ACCOUNT_USER_MERGE_SELECT,
   LGPD_ACCOUNT_USER_SELECT,
-  LGPD_AUDIT_LOG_SELECT,
   LGPD_CERTIFICATE_SELECT,
   LGPD_EVENT_ATTENDANCE_SELECT,
   LGPD_EVENT_DRAFT_SELECT,
@@ -74,7 +71,6 @@ export class LgpdService {
       mergeOperations,
       mergeCandidates,
       eventDrafts,
-      auditLogEntries,
     ] = await Promise.all([
       this.prisma.user.findMany({
         where: { id: { in: userIds } },
@@ -161,11 +157,6 @@ export class LgpdService {
             orderBy: { updatedAt: 'desc' },
           })
         : Promise.resolve([]),
-      this.prisma.auditLogEntry.findMany({
-        where: buildAuditLogSubjectWhere(dataSubject, { includeActorEmail: false }),
-        select: LGPD_AUDIT_LOG_SELECT,
-        orderBy: { lastRecordedAt: 'desc' },
-      }),
     ]);
 
     return {
@@ -208,7 +199,6 @@ export class LgpdService {
           LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT,
         ),
       },
-      auditHistory: { records: auditLogEntries.map((entry) => mapAuditLogEntryForExport(entry, dataSubject)) },
     };
   }
 

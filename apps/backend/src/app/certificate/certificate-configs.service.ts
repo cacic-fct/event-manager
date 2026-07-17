@@ -12,13 +12,16 @@ import {
   DeletionResult,
 } from '@cacic-fct/shared-data-types';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditPrismaClient } from '../audit-log/audit-log.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
   CERTIFICATE_FOLDER_SELECT,
   CERTIFICATE_CONFIG_SELECT,
   CERTIFICATE_TEMPLATE_SELECT,
+  CertificateConfigRecord,
   buildConfigTargetWhere,
   mapCertificateFolder,
   mapCertificateConfig,
@@ -29,7 +32,7 @@ import { CertificateValidationService } from './certificate-validation.service';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
-type CertificateFolderWriteClient = Pick<PrismaService, 'certificateFolder'>;
+type CertificateFolderWriteClient = AuditPrismaClient;
 
 @Injectable()
 export class CertificateConfigsService {
@@ -41,6 +44,7 @@ export class CertificateConfigsService {
       isEnabled: () => false,
       searchCertificateTemplates: async () => ({ available: false, ids: [] }),
     } as unknown as TypesenseSearchService,
+    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {}
 
   async listFolders(query?: string, skip?: number, take?: number): Promise<CertificateFolder[]> {
@@ -90,16 +94,17 @@ export class CertificateConfigsService {
     const emoji = this.normalizeFolderEmoji(input.emoji);
     await this.ensureNoDuplicateFolderName(name);
 
-    const folder = await this.withFolderNameConflict(() =>
-      this.prisma.certificateFolder.create({
-        data: {
-          name,
-          emoji,
-        },
-        select: CERTIFICATE_FOLDER_SELECT,
-      }),
-      name,
-    );
+    const folder = await this.prisma.$transaction(async (tx) => {
+      const created = await this.withFolderNameConflict(() =>
+        tx.certificateFolder.create({
+          data: { name, emoji },
+          select: CERTIFICATE_FOLDER_SELECT,
+        }),
+        name,
+      );
+      await this.recordFolderAudit(null, created, AuditLogOperation.CREATE, tx);
+      return created;
+    });
 
     return mapCertificateFolder(folder);
   }
@@ -107,8 +112,12 @@ export class CertificateConfigsService {
   async updateFolder(
     folderId: string,
     input: CertificateFolderUpdateInput,
-    client: CertificateFolderWriteClient = this.prisma,
+    client?: CertificateFolderWriteClient,
   ): Promise<CertificateFolder> {
+    if (!client || client === this.prisma) {
+      return this.prisma.$transaction((tx) => this.updateFolder(folderId, input, tx));
+    }
+
     const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
     const existingFolder = await client.certificateFolder.findFirst({
       where: {
@@ -125,7 +134,7 @@ export class CertificateConfigsService {
     const name = input.name == null ? existingFolder.name : this.normalizeFolderName(input.name);
     const emoji = input.emoji == null ? existingFolder.emoji : this.normalizeFolderEmoji(input.emoji);
 
-    await this.ensureNoDuplicateFolderName(name, normalizedFolderId);
+    await this.ensureNoDuplicateFolderName(name, normalizedFolderId, client);
 
     const updatedFolder = await this.withFolderNameConflict(() =>
       client.certificateFolder.update({
@@ -140,6 +149,12 @@ export class CertificateConfigsService {
       }),
       name,
     );
+    await this.recordFolderAudit(
+      existingFolder,
+      updatedFolder,
+      AuditLogOperation.UPDATE,
+      client,
+    );
 
     return mapCertificateFolder(updatedFolder);
   }
@@ -148,19 +163,18 @@ export class CertificateConfigsService {
     const normalizedFolderId = this.validation.normalizeRequiredId('folderId', folderId);
     const deletedAt = new Date();
     await this.prisma.$transaction(async (tx) => {
-      const { count } = await tx.certificateFolder.updateMany({
-        where: {
-          id: normalizedFolderId,
-          deletedAt: null,
-        },
+      const folder = await tx.certificateFolder.findFirst({
+        where: { id: normalizedFolderId, deletedAt: null },
+        select: CERTIFICATE_FOLDER_SELECT,
+      });
+      if (!folder) throw new NotFoundException(`Certificate folder ${normalizedFolderId} not found.`);
+      const deletedFolder = await tx.certificateFolder.update({
+        where: { id: normalizedFolderId },
         data: {
           deletedAt,
         },
+        select: CERTIFICATE_FOLDER_SELECT,
       });
-
-      if (count === 0) {
-        throw new NotFoundException(`Certificate folder ${normalizedFolderId} not found.`);
-      }
 
       const configs = await tx.certificateConfig.findMany({
         where: {
@@ -197,6 +211,9 @@ export class CertificateConfigsService {
           },
         });
       }
+      await this.recordFolderAudit(folder, deletedFolder, AuditLogOperation.DELETE, tx, {
+        deletedConfigCount: configIds.length,
+      });
     });
 
     return {
@@ -355,8 +372,9 @@ export class CertificateConfigsService {
     }
     await this.ensureNoDuplicateName(scope, targetId, name);
 
-    const createdConfig = await this.prisma.certificateConfig.create({
-      data: {
+    const createdConfig = await this.prisma.$transaction(async (tx) => {
+      const config = await tx.certificateConfig.create({
+        data: {
         name,
         scope,
         majorEventId: majorEventId ?? null,
@@ -375,8 +393,11 @@ export class CertificateConfigsService {
           : certificateFields === null
             ? { certificateFields: Prisma.DbNull }
             : { certificateFields }),
-      },
-      select: CERTIFICATE_CONFIG_SELECT,
+        },
+        select: CERTIFICATE_CONFIG_SELECT,
+      });
+      await this.recordConfigAudit(null, config, AuditLogOperation.CREATE, tx);
+      return config;
     });
 
     return mapCertificateConfig(createdConfig);
@@ -521,12 +542,14 @@ export class CertificateConfigsService {
       return mapCertificateConfig(existingConfig);
     }
 
-    const updatedConfig = await this.prisma.certificateConfig.update({
-      where: {
-        id: normalizedConfigId,
-      },
-      data,
-      select: CERTIFICATE_CONFIG_SELECT,
+    const updatedConfig = await this.prisma.$transaction(async (tx) => {
+      const config = await tx.certificateConfig.update({
+        where: { id: normalizedConfigId },
+        data,
+        select: CERTIFICATE_CONFIG_SELECT,
+      });
+      await this.recordConfigAudit(existingConfig, config, AuditLogOperation.UPDATE, tx);
+      return config;
     });
 
     return mapCertificateConfig(updatedConfig);
@@ -618,8 +641,9 @@ export class CertificateConfigsService {
 
     await this.ensureNoDuplicateName(scope, targetId, name);
 
-    const createdConfig = await this.prisma.certificateConfig.create({
-      data: {
+    const createdConfig = await this.prisma.$transaction(async (tx) => {
+      const config = await tx.certificateConfig.create({
+        data: {
         name,
         scope,
         majorEventId,
@@ -639,8 +663,11 @@ export class CertificateConfigsService {
         issuedTo,
         certificateTypeLabel,
         certificateFields: this.toJsonCreateValue(certificateFields),
-      },
-      select: CERTIFICATE_CONFIG_SELECT,
+        },
+        select: CERTIFICATE_CONFIG_SELECT,
+      });
+      await this.recordConfigAudit(null, config, AuditLogOperation.CREATE, tx, 'Configuração de certificado clonada.');
+      return config;
     });
 
     return mapCertificateConfig(createdConfig);
@@ -648,34 +675,88 @@ export class CertificateConfigsService {
 
   async deleteConfig(configId: string): Promise<DeletionResult> {
     const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
-    const { count } = await this.prisma.certificateConfig.updateMany({
-      where: {
-        id: normalizedConfigId,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
-    });
-
-    if (count === 0) {
-      throw new NotFoundException(`Certificate config ${normalizedConfigId} not found.`);
-    }
-
-    await this.prisma.certificate.updateMany({
-      where: {
-        configId: normalizedConfigId,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.certificateConfig.findFirst({
+        where: { id: normalizedConfigId, deletedAt: null },
+        select: CERTIFICATE_CONFIG_SELECT,
+      });
+      if (!existing) throw new NotFoundException(`Certificate config ${normalizedConfigId} not found.`);
+      const deleted = await tx.certificateConfig.update({
+        where: { id: normalizedConfigId },
+        data: { deletedAt: new Date() },
+        select: CERTIFICATE_CONFIG_SELECT,
+      });
+      await tx.certificate.updateMany({
+        where: { configId: normalizedConfigId, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
+      await this.recordConfigAudit(existing, deleted, AuditLogOperation.DELETE, tx);
     });
 
     return {
       deleted: true,
       id: normalizedConfigId,
     };
+  }
+
+  private async recordConfigAudit(
+    before: CertificateConfigRecord | null,
+    after: CertificateConfigRecord,
+    operation: AuditLogOperation,
+    prisma: Prisma.TransactionClient,
+    summary?: string,
+  ): Promise<void> {
+    await this.auditLog.record(
+      {
+        entityType: AuditLogEntityType.CERTIFICATE_CONFIG,
+        entityId: after.id,
+        entityLabel: after.name,
+        operation,
+        before,
+        after,
+        summary:
+          summary ??
+          (operation === AuditLogOperation.CREATE
+            ? 'Configuração de certificado criada.'
+            : operation === AuditLogOperation.DELETE
+              ? 'Configuração de certificado removida.'
+              : 'Configuração de certificado atualizada.'),
+        scope: {
+          eventId: after.eventId,
+          eventGroupId: after.eventGroupId,
+          majorEventId: after.majorEventId,
+        },
+      },
+      prisma as unknown as AuditPrismaClient,
+    );
+  }
+
+  private async recordFolderAudit(
+    before: Prisma.CertificateFolderGetPayload<{ select: typeof CERTIFICATE_FOLDER_SELECT }> | null,
+    after: Prisma.CertificateFolderGetPayload<{ select: typeof CERTIFICATE_FOLDER_SELECT }>,
+    operation: AuditLogOperation,
+    prisma: CertificateFolderWriteClient,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    await this.auditLog.record(
+      {
+        entityType: AuditLogEntityType.SYSTEM,
+        entityId: after.id,
+        entityLabel: after.name,
+        operation,
+        before,
+        after,
+        force: true,
+        summary:
+          operation === AuditLogOperation.CREATE
+            ? 'Pasta de certificados criada.'
+            : operation === AuditLogOperation.DELETE
+              ? 'Pasta de certificados removida.'
+              : 'Pasta de certificados atualizada.',
+        metadata: { resourceType: 'CERTIFICATE_FOLDER', ...metadata },
+      },
+      prisma,
+    );
   }
 
   private async ensureTemplateExists(templateId: string): Promise<void> {
@@ -710,8 +791,12 @@ export class CertificateConfigsService {
     }
   }
 
-  private async ensureNoDuplicateFolderName(name: string, excludeId?: string): Promise<void> {
-    const duplicate = await this.prisma.certificateFolder.findFirst({
+  private async ensureNoDuplicateFolderName(
+    name: string,
+    excludeId?: string,
+    client: Pick<PrismaService, 'certificateFolder'> = this.prisma,
+  ): Promise<void> {
+    const duplicate = await client.certificateFolder.findFirst({
       where: {
         deletedAt: null,
         name: {

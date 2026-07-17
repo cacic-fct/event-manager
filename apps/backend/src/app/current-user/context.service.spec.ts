@@ -1,4 +1,5 @@
 import { ForbiddenException } from '@nestjs/common';
+import { SELF_DECLARED_DEPS_METADATA } from '@nestjs/common/constants';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AccountMergeService } from '../account-merge/account-merge.service';
 import { AuthenticatedUserSyncService } from '../auth/authenticated-user-sync.service';
@@ -60,6 +61,18 @@ describe('CurrentUserContextService', () => {
       accountMergeService as unknown as AccountMergeService,
       new AuthenticatedUserSyncService(prisma as unknown as PrismaService),
     );
+  });
+
+  it('defers the circular account merge dependency token', () => {
+    const dependencies = Reflect.getMetadata(SELF_DECLARED_DEPS_METADATA, CurrentUserContextService) as Array<{
+      index: number;
+      param: unknown;
+    }>;
+
+    expect(dependencies).toContainEqual({
+      index: 2,
+      param: expect.objectContaining({ forwardRef: expect.any(Function) }),
+    });
   });
 
   it.each([false, 'false', undefined])(

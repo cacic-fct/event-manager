@@ -876,7 +876,8 @@ describe('CertificateConfigsService', () => {
   it('soft-deletes a folder and its active standalone configs and certificates', async () => {
     const prisma = createPrisma({
       certificateFolder: {
-        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue(createFolder({ id: 'folder-1' })),
+        update: jest.fn().mockResolvedValue(createFolder({ id: 'folder-1', deletedAt: new Date() })),
       },
       certificateConfig: {
         findMany: jest.fn().mockResolvedValue([{ id: 'config-1' }, { id: 'config-2' }]),
@@ -897,12 +898,13 @@ describe('CertificateConfigsService', () => {
       id: 'folder-1',
     });
 
-    expect(prisma.certificateFolder.updateMany).toHaveBeenCalledWith(
+    expect(prisma.certificateFolder.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           id: 'folder-1',
-          deletedAt: null,
         },
+        data: { deletedAt: expect.any(Date) },
+        select: expect.any(Object),
       }),
     );
     expect(prisma.certificateConfig.updateMany).toHaveBeenCalledWith(
@@ -956,7 +958,7 @@ function createPrisma(overrides: {
     },
   };
   prisma.$transaction =
-    overrides.$transaction ?? jest.fn(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation(prisma));
+    overrides.$transaction ?? jest.fn(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation({ ...prisma }));
   return prisma;
 }
 

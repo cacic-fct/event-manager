@@ -2,7 +2,8 @@ import { LecturerProfile, LecturerProfileUpsertInput } from '@cacic-fct/shared-d
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { Prisma } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { CurrentUserContextService } from '../current-user/context.service';
@@ -44,6 +45,7 @@ export class LecturerProfilesResolver {
   constructor(
     private readonly prisma: PrismaService,
     private readonly currentUserContext: CurrentUserContextService,
+    private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {}
 
   @Query(() => LecturerProfile, { name: 'lecturerProfile', nullable: true })
@@ -67,17 +69,26 @@ export class LecturerProfilesResolver {
     await this.ensurePersonExists(personId);
     const data = this.buildProfileData(input, this.getActorId(context));
 
-    return this.prisma.lecturerProfile.upsert({
-      where: {
-        personId,
-      },
-      create: {
-        personId,
-        ...data,
-        createdById: this.getActorId(context),
-      },
-      update: data,
-      select: LECTURER_PROFILE_SELECT,
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.lecturerProfile.findUnique({ where: { personId }, select: LECTURER_PROFILE_SELECT });
+      const profile = await tx.lecturerProfile.upsert({
+        where: { personId },
+        create: { personId, ...data, createdById: this.getActorId(context) },
+        update: data,
+        select: LECTURER_PROFILE_SELECT,
+      });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.LECTURER_PROFILE,
+        entityId: profile.id,
+        entityLabel: profile.displayName,
+        operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+        actor: this.getUser(context),
+        before: existing,
+        after: profile,
+        summary: existing ? 'Perfil de palestrante atualizado.' : 'Perfil de palestrante criado.',
+        scope: { permission: Permission.Person.Update },
+      }, tx);
+      return profile;
     });
   }
 
@@ -106,17 +117,29 @@ export class LecturerProfilesResolver {
       googleUserPicture: this.getGoogleUserPicture(authenticatedUser, input.publishGoogleUserPicture ?? false),
     };
 
-    return this.prisma.lecturerProfile.upsert({
-      where: {
-        personId: person.id,
-      },
-      create: {
-        personId: person.id,
-        ...data,
-        createdById: actorId,
-      },
-      update: data,
-      select: LECTURER_PROFILE_SELECT,
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.lecturerProfile.findUnique({
+        where: { personId: person.id },
+        select: LECTURER_PROFILE_SELECT,
+      });
+      const profile = await tx.lecturerProfile.upsert({
+        where: { personId: person.id },
+        create: { personId: person.id, ...data, createdById: actorId },
+        update: data,
+        select: LECTURER_PROFILE_SELECT,
+      });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.LECTURER_PROFILE,
+        entityId: profile.id,
+        entityLabel: profile.displayName,
+        operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+        actor: authenticatedUser,
+        before: existing,
+        after: profile,
+        summary: existing ? 'Perfil de palestrante atualizado pelo usuário.' : 'Perfil de palestrante criado pelo usuário.',
+        scope: { permission: Permission.Person.Update },
+      }, tx);
+      return profile;
     });
   }
 
@@ -181,6 +204,10 @@ export class LecturerProfilesResolver {
 
   private getActorId(context: GraphqlContext): string | undefined {
     return context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+  }
+
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
   }
 
   private getGoogleUserPicture(user: AuthenticatedUser, publish: boolean): string | null {

@@ -1,7 +1,9 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -19,7 +21,9 @@ export class CurrentUserContextService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => CertificateIssuingService))
     private readonly certificateIssuingService: CertificateIssuingService,
+    @Inject(forwardRef(() => AccountMergeService))
     private readonly accountMergeService: AccountMergeService,
     private readonly authenticatedUserSync: AuthenticatedUserSyncService,
   ) {}
