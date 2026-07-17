@@ -17,6 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { actionablePendingMergeCandidateWhere } from './merge-candidate-filters';
 import { MergeCandidateOperationsService } from './operations.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
+import { GraphqlContext } from '../../current-user/selects';
 
 @Resolver(() => MergeCandidate)
 export class MergeCandidatesResolver {
@@ -248,7 +249,7 @@ export class MergeCandidatesResolver {
     return user?.sub ?? user?.email ?? user?.preferredUsername ?? null;
   }
 
-  private getUser(context: { req?: { user?: AuthenticatedUser } }): AuthenticatedUser | undefined {
-    return context.req?.user;
+  private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
+    return context.req?.user ?? context.request?.user;
   }
 }

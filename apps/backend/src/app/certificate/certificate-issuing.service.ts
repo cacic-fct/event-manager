@@ -301,8 +301,8 @@ export class CertificateIssuingService {
     issuedById?: string,
     options: { notify?: boolean; prisma?: CertificateWriteClient } = {},
   ): Promise<{ certificate: CertificateRecord; shouldNotify: boolean }> {
-    const prisma = options.prisma ?? this.prisma;
     const shouldNotifyNow = options.notify ?? true;
+    const prisma = options.prisma ?? this.prisma;
     const existingCertificate = await prisma.certificate.findUnique({
       where: {
         personId_configId: {
@@ -330,7 +330,35 @@ export class CertificateIssuingService {
     const renderedData = this.buildRenderedData(config, recipient, issuedAt);
 
     if (!existingCertificate) {
-      const certificate = await prisma.certificate.create({
+      const createCertificate = async (client: CertificateWriteClient) => {
+        const certificate = await client.certificate.create({
+          data: {
+            personId: recipient.person.id,
+            configId: config.id,
+            renderedData,
+            certificateTemplateId: config.certificateTemplateId,
+            issuedById: issuedById ?? null,
+            issuedAt,
+          },
+          select: CERTIFICATE_SELECT,
+        });
+        await this.recordCertificateAudit(null, certificate, AuditLogOperation.ISSUE, issuedById, client);
+        return certificate;
+      };
+      const certificate = options.prisma && options.prisma !== this.prisma
+        ? await createCertificate(options.prisma)
+        : await this.prisma.$transaction((tx) => createCertificate(tx));
+      if (shouldNotifyNow) {
+        await this.notifyCertificateAvailable(certificate);
+      }
+      return { certificate, shouldNotify: true };
+    }
+
+    const updateCertificate = async (client: CertificateWriteClient) => {
+      const certificate = await client.certificate.update({
+        where: {
+          id: existingCertificate.id,
+        },
         data: {
           personId: recipient.person.id,
           configId: config.id,
@@ -338,35 +366,19 @@ export class CertificateIssuingService {
           certificateTemplateId: config.certificateTemplateId,
           issuedById: issuedById ?? null,
           issuedAt,
+          deletedAt: null,
         },
         select: CERTIFICATE_SELECT,
       });
-      if (shouldNotifyNow) {
-        await this.notifyCertificateAvailable(certificate);
-      }
-      await this.recordCertificateAudit(null, certificate, AuditLogOperation.ISSUE, issuedById, prisma);
-      return { certificate, shouldNotify: true };
-    }
-
-    const certificate = await prisma.certificate.update({
-      where: {
-        id: existingCertificate.id,
-      },
-      data: {
-        personId: recipient.person.id,
-        configId: config.id,
-        renderedData,
-        certificateTemplateId: config.certificateTemplateId,
-        issuedById: issuedById ?? null,
-        issuedAt,
-        deletedAt: null,
-      },
-      select: CERTIFICATE_SELECT,
-    });
+      await this.recordCertificateAudit(existingCertificate, certificate, AuditLogOperation.REISSUE, issuedById, client);
+      return certificate;
+    };
+    const certificate = options.prisma && options.prisma !== this.prisma
+      ? await updateCertificate(options.prisma)
+      : await this.prisma.$transaction((tx) => updateCertificate(tx));
     if (shouldNotifyNow) {
       await this.notifyCertificateAvailable(certificate);
     }
-    await this.recordCertificateAudit(existingCertificate, certificate, AuditLogOperation.REISSUE, issuedById, prisma);
     return { certificate, shouldNotify: true };
   }
 
