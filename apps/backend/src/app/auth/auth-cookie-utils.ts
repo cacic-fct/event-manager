@@ -25,7 +25,14 @@ export function readAuthCookie(request: Request, name: string): string | null {
   for (const cookie of cookieHeader.split(';')) {
     const [cookieName, ...rest] = cookie.trim().split('=');
     if (cookieName === name && rest.length > 0) {
-      return decodeURIComponent(rest.join('='));
+      try {
+        return decodeURIComponent(rest.join('='));
+      } catch (error) {
+        if (error instanceof URIError) {
+          continue;
+        }
+        throw error;
+      }
     }
   }
 

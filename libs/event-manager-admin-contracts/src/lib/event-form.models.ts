@@ -1,4 +1,5 @@
 import type { FormElement } from '@cacic-fct/form-contracts';
+import type { PublicationState } from './event.models';
 
 export type EventFormSigilo = 'PUBLIC' | 'PARTIALLY_SECRET' | 'SECRET' | 'ANONYMOUS';
 export type EventFormAudience = 'SUBSCRIBERS' | 'ATTENDEES' | 'SUBSCRIBERS_OR_ATTENDEES';
@@ -48,7 +49,7 @@ export interface EventForm {
   resultsPublic: boolean;
   resultsLive: boolean;
   allowResponseEdits: boolean;
-  publicationState: import('./event.models').PublicationState;
+  publicationState: PublicationState;
   scheduledPublishAt?: string | null;
   publishedAt?: string | null;
   unpublishedAt?: string | null;

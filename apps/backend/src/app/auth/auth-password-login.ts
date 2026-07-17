@@ -1,5 +1,5 @@
 export function isPasswordLoginEnabled(environment: NodeJS.ProcessEnv = process.env): boolean {
-  if (environment.NODE_ENV === 'production') {
+  if (!['development', 'test'].includes(environment.NODE_ENV ?? '')) {
     return false;
   }
 
@@ -14,5 +14,5 @@ export function isPasswordLoginEnabled(environment: NodeJS.ProcessEnv = process.
     }
   }
 
-  return true;
+  return false;
 }

@@ -1145,7 +1145,7 @@ export class WorkspaceEventsService {
   }
 
   private resolveSelectedMajorEvent(eventItem: Event): MajorEventResolution {
-    return resolveMajorEventSelection(eventItem, this.majorEventSearchResults());
+    return resolveMajorEventSelection(eventItem, this.majorEventSearchResults(), this.majorEvents());
   }
 
   private applySelectedMajorEvent(majorEvent: MajorEvent | null, options: { hasMajorEvent: boolean }): void;

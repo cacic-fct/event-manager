@@ -40,6 +40,20 @@ interface LecturerProfileData {
   updatedById: string | undefined;
 }
 
+type LecturerProfileAuditSnapshot = Pick<
+  Prisma.LecturerProfileGetPayload<{ select: typeof LECTURER_PROFILE_SELECT }>,
+  | 'id'
+  | 'personId'
+  | 'displayName'
+  | 'biography'
+  | 'publishGoogleUserPicture'
+  | 'googleUserPicture'
+  | 'createdAt'
+  | 'createdById'
+  | 'updatedAt'
+  | 'updatedById'
+>;
+
 @Resolver(() => LecturerProfile)
 export class LecturerProfilesResolver {
   constructor(
@@ -83,8 +97,8 @@ export class LecturerProfilesResolver {
         entityLabel: profile.displayName,
         operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
         actor: this.getUser(context),
-        before: existing,
-        after: profile,
+        before: this.toAuditSnapshot(existing),
+        after: this.toAuditSnapshot(profile),
         summary: existing ? 'Perfil de palestrante atualizado.' : 'Perfil de palestrante criado.',
         scope: { permission: Permission.Person.Update },
       }, tx);
@@ -134,8 +148,8 @@ export class LecturerProfilesResolver {
         entityLabel: profile.displayName,
         operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
         actor: authenticatedUser,
-        before: existing,
-        after: profile,
+        before: this.toAuditSnapshot(existing),
+        after: this.toAuditSnapshot(profile),
         summary: existing ? 'Perfil de palestrante atualizado pelo usuário.' : 'Perfil de palestrante criado pelo usuário.',
         scope: { permission: Permission.Person.Update },
       }, tx);
@@ -157,6 +171,27 @@ export class LecturerProfilesResolver {
     if (!person) {
       throw new NotFoundException(`Person ${personId} was not found.`);
     }
+  }
+
+  private toAuditSnapshot(
+    profile: Prisma.LecturerProfileGetPayload<{ select: typeof LECTURER_PROFILE_SELECT }> | null,
+  ): LecturerProfileAuditSnapshot | null {
+    if (!profile) {
+      return null;
+    }
+
+    return {
+      id: profile.id,
+      personId: profile.personId,
+      displayName: profile.displayName,
+      biography: profile.biography,
+      publishGoogleUserPicture: profile.publishGoogleUserPicture,
+      googleUserPicture: profile.googleUserPicture,
+      createdAt: profile.createdAt,
+      createdById: profile.createdById,
+      updatedAt: profile.updatedAt,
+      updatedById: profile.updatedById,
+    };
   }
 
   private buildProfileData(

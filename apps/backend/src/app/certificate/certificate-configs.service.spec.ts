@@ -265,7 +265,7 @@ describe('CertificateConfigsService', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'template-1' }),
       },
       certificateConfig: {
-        findFirst: jest.fn().mockResolvedValueOnce(createConfigRecord()).mockResolvedValueOnce(null),
+        findFirst: jest.fn().mockResolvedValueOnce(createConfigRecord()).mockResolvedValueOnce(null).mockResolvedValue(createConfigRecord()),
         update: jest.fn().mockResolvedValue(
           createConfigRecord({
             scope: CertificateScope.EVENT,
@@ -339,7 +339,8 @@ describe('CertificateConfigsService', () => {
               shouldAutofillSecondPage: true,
             }),
           )
-          .mockResolvedValueOnce(null),
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(createConfigRecord()),
         update: jest.fn().mockResolvedValue(createConfigRecord()),
       },
     });
@@ -400,7 +401,8 @@ describe('CertificateConfigsService', () => {
               certificateTypeLabel: 'Participação',
             }),
           )
-          .mockResolvedValueOnce(null),
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(createConfigRecord()),
         update: jest.fn().mockResolvedValue(
           createConfigRecord({
             scope: CertificateScope.EVENT_GROUP,
@@ -469,7 +471,8 @@ describe('CertificateConfigsService', () => {
               issuedTo: CertificateIssuedTo.OTHER,
             }),
           )
-          .mockResolvedValueOnce(null),
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(createConfigRecord()),
         update: jest.fn().mockResolvedValue(
           createConfigRecord({
             scope: CertificateScope.EVENT,

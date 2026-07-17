@@ -12,14 +12,18 @@ export type MajorEventResolution =
   | { status: 'found'; majorEvent: MajorEvent }
   | { status: 'unresolved' };
 
-export function resolveMajorEventSelection(eventItem: Event, searchResults: readonly MajorEvent[]): MajorEventResolution {
+export function resolveMajorEventSelection(
+  eventItem: Event,
+  searchResults: readonly MajorEvent[],
+  majorEvents: readonly MajorEvent[] = [],
+): MajorEventResolution {
   if (!eventItem.majorEventId) {
     return { status: 'none' };
   }
   if (eventItem.majorEvent?.id === eventItem.majorEventId) {
     return { status: 'found', majorEvent: eventItem.majorEvent as MajorEvent };
   }
-  const majorEvent = searchResults.find((item) => item.id === eventItem.majorEventId);
+  const majorEvent = [...searchResults, ...majorEvents].find((item) => item.id === eventItem.majorEventId);
   return majorEvent ? { status: 'found', majorEvent } : { status: 'unresolved' };
 }
 

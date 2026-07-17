@@ -1,8 +1,10 @@
 import { CertificateIssuedTo, CertificateReissueResult, CertificateScope } from '@cacic-fct/shared-data-types';
+import { AuditLogOperation } from '@prisma/client';
 import { AuditPrismaClient } from '../audit-log/audit-log.types';
 import { PrismaService } from '../prisma/prisma.service';
-import { CERTIFICATE_CONFIG_SELECT, CertificateConfigRecord, CertificateRecord } from './certificate.constants';
+import { CERTIFICATE_CONFIG_SELECT, CERTIFICATE_SELECT, CertificateConfigRecord, CertificateRecord } from './certificate.constants';
 import { CertificateEligibilityService, EligibleCertificateRecipient } from './certificate-eligibility.service';
+import { CertificateIssuanceAudit } from './certificate-issuance-audit';
 import { CertificateValidationService } from './certificate-validation.service';
 
 type CertificateWriteClient = Pick<AuditPrismaClient, 'certificate' | 'user'>;
@@ -21,6 +23,7 @@ export class CertificateIssuanceRefresh {
     private readonly validation: CertificateValidationService,
     private readonly eligibility: CertificateEligibilityService,
     private readonly upsertCertificate: UpsertCertificate,
+    private readonly audit: CertificateIssuanceAudit,
   ) {}
 
   async reissueAll(issuedById?: string): Promise<CertificateReissueResult> {
@@ -80,24 +83,26 @@ export class CertificateIssuanceRefresh {
   ): Promise<CertificateRecord[]> {
     const normalizedTargetPersonId = this.validation.normalizeRequiredId('targetPersonId', targetPersonId);
     const normalizedSourcePersonId = this.validation.normalizeRequiredId('sourcePersonId', sourcePersonId);
-    const mergedCertificates = await this.prisma.certificate.findMany({
-      where: {
-        personId: { in: [normalizedTargetPersonId, normalizedSourcePersonId] },
-        deletedAt: null,
-        config: { deletedAt: null, isActive: true },
-      },
-      select: { configId: true },
-      orderBy: { issuedAt: 'asc' },
-    });
-    const configIds = [...new Set(mergedCertificates.map((certificate) => certificate.configId))];
-    const refreshedCertificates = await this.refreshConfigsForPerson(normalizedTargetPersonId, configIds, issuedById);
+    return this.prisma.$transaction(async (tx) => {
+      const mergedCertificates = await tx.certificate.findMany({
+        where: {
+          personId: { in: [normalizedTargetPersonId, normalizedSourcePersonId] },
+          deletedAt: null,
+          config: { deletedAt: null, isActive: true },
+        },
+        select: { configId: true },
+        orderBy: { issuedAt: 'asc' },
+      });
+      const configIds = [...new Set(mergedCertificates.map((certificate) => certificate.configId))];
+      const refreshedCertificates = await this.refreshConfigsForPerson(normalizedTargetPersonId, configIds, issuedById, tx);
 
-    await this.prisma.certificate.updateMany({
-      where: { personId: normalizedSourcePersonId, deletedAt: null },
-      data: { deletedAt: new Date() },
-    });
+      await tx.certificate.updateMany({
+        where: { personId: normalizedSourcePersonId, deletedAt: null },
+        data: { deletedAt: new Date() },
+      });
 
-    return refreshedCertificates;
+      return refreshedCertificates;
+    });
   }
 
   private async reissueConfigs(
@@ -135,10 +140,7 @@ export class CertificateIssuanceRefresh {
       .map((certificate) => certificate.personId)
       .filter((personId) => !eligiblePersonIds.has(personId));
     if (invalidPersonIds.length > 0) {
-      await client.certificate.updateMany({
-        where: { configId: config.id, deletedAt: null, personId: { in: invalidPersonIds } },
-        data: { deletedAt: new Date() },
-      });
+      await this.invalidateCertificates(config.id, invalidPersonIds, issuedById, client);
     }
 
     return this.upsertRecipients(config, recipients, issuedById, options);
@@ -156,7 +158,11 @@ export class CertificateIssuanceRefresh {
         batch.map(async (personId) => {
           const recipients = await this.eligibility.resolveEligibleRecipients(config, personId);
           const recipient = recipients.find((item) => item.person.id === personId);
-          return recipient ? this.upsertCertificate(config, recipient, issuedById, { prisma: options.client, notify: options.notify }) : null;
+          if (recipient) {
+            return this.upsertCertificate(config, recipient, issuedById, { prisma: options.client, notify: options.notify });
+          }
+          await this.invalidateCertificates(config.id, [personId], issuedById, options.client ?? this.prisma);
+          return null;
         }),
       );
       certificates.push(...refreshed.filter((certificate): certificate is CertificateRecord => certificate !== null));
@@ -168,6 +174,7 @@ export class CertificateIssuanceRefresh {
     personId: string,
     configIds: string[],
     issuedById?: string,
+    client: CertificateWriteClient = this.prisma,
   ): Promise<CertificateRecord[]> {
     const certificates: CertificateRecord[] = [];
     for (const batch of batches(configIds)) {
@@ -176,7 +183,11 @@ export class CertificateIssuanceRefresh {
           const config = await this.eligibility.getConfigById(configId);
           const recipients = await this.eligibility.resolveEligibleRecipients(config, personId);
           const recipient = recipients.find((item) => item.person.id === personId);
-          return recipient ? this.upsertCertificate(config, recipient, issuedById) : null;
+          if (recipient) {
+            return this.upsertCertificate(config, recipient, issuedById, { prisma: client });
+          }
+          await this.invalidateCertificates(config.id, [personId], issuedById, client);
+          return null;
         }),
       );
       certificates.push(...refreshed.filter((certificate): certificate is CertificateRecord => certificate !== null));
@@ -199,6 +210,46 @@ export class CertificateIssuanceRefresh {
       );
     }
     return certificates;
+  }
+
+  private async invalidateCertificates(
+    configId: string,
+    personIds: string[],
+    issuedById: string | undefined,
+    client: CertificateWriteClient,
+  ): Promise<void> {
+    const remove = async (prisma: CertificateWriteClient) => {
+      const certificates = await prisma.certificate.findMany({
+        where: { configId, deletedAt: null, personId: { in: personIds } },
+        select: CERTIFICATE_SELECT,
+      });
+      if (certificates.length === 0) {
+        return;
+      }
+
+      const deletedAt = new Date();
+      await prisma.certificate.updateMany({
+        where: { configId, deletedAt: null, personId: { in: personIds } },
+        data: { deletedAt },
+      });
+      await Promise.all(
+        certificates.map((certificate) =>
+          this.audit.record(
+            certificate as CertificateRecord,
+            { ...certificate, deletedAt } as CertificateRecord,
+            AuditLogOperation.DELETE,
+            issuedById,
+            prisma,
+          ),
+        ),
+      );
+    };
+
+    if (client === this.prisma) {
+      await this.prisma.$transaction((tx) => remove(tx));
+      return;
+    }
+    await remove(client);
   }
 }
 

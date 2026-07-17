@@ -12,7 +12,8 @@ export function buildCertificateRenderedData(
   recipient: EligibleCertificateRecipient,
   issuedAt: Date,
 ): Prisma.InputJsonObject {
-  const totalCreditMinutes = recipient.events.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
+  const events = sortEvents(recipient.events);
+  const totalCreditMinutes = events.reduce((total, event) => total + (event.creditMinutes ?? 0), 0);
   const target = resolveTarget(config);
   const targetName = target?.name ?? '';
 
@@ -33,7 +34,7 @@ export function buildCertificateRenderedData(
       academicId: recipient.person.academicId ?? null,
     },
     target: target ? { id: target.id, name: target.name } : null,
-    events: recipient.events.map((event) => ({
+    events: events.map((event) => ({
       id: event.id,
       name: event.name,
       startDate: event.startDate.toISOString(),
@@ -95,7 +96,7 @@ function buildExampleTemplateData(
   const issueYear = formatIssueDate(issuedAt, 'numeric');
   const verificationUrl = 'eventos.cacic.com.br/app/validate/{certificateID}';
   const formattedDocument = formatIdentityDocument(recipient.person.identityDocument);
-  const sortedEvents = [...recipient.events].sort((left, right) => left.startDate.getTime() - right.startDate.getTime());
+  const sortedEvents = sortEvents(recipient.events);
   const minicursos = sortedEvents.filter((event) => event.type === EventType.MINICURSO);
   const palestras = sortedEvents.filter((event) => event.type === EventType.PALESTRA);
   const otherEvents = sortedEvents.filter(
@@ -158,6 +159,12 @@ function buildExampleTemplateData(
     palestrasSection: sections.palestras.text,
     otherEventTypesList: sections.other.text,
   };
+}
+
+function sortEvents(events: EventRecord[]): EventRecord[] {
+  return [...events].sort(
+    (left, right) => left.startDate.getTime() - right.startDate.getTime() || left.id.localeCompare(right.id),
+  );
 }
 
 function formatIssueDate(date: Date, month: '2-digit' | 'long' | 'numeric'): string {

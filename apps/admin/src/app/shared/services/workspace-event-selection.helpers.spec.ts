@@ -4,7 +4,7 @@ import {
   resolveMajorEventSelection,
   uniquePlacePresets,
 } from './workspace-event-selection.helpers';
-import { createAdminMajorEvent, createAdminPlacePreset } from '../../testing/admin-entity-fixtures';
+import { createAdminEvent, createAdminEventGroup, createAdminMajorEvent, createAdminPlacePreset } from '../../testing/admin-entity-fixtures';
 
 describe('workspace event selection helpers', () => {
   it('uses event group certificate defaults while retaining unresolved state', () => {
@@ -17,6 +17,34 @@ describe('workspace event selection helpers', () => {
       allowsCertificates: null,
       allowsNonPayingCertificates: null,
       allowsNonSubscribedCertificates: null,
+    });
+    expect(
+      getEventGroupCertificatePermissions({
+        status: 'found',
+        group: createAdminEventGroup({
+          shouldIssueCertificate: false,
+          shouldIssueCertificateForNonPayingAttendees: true,
+          shouldIssueCertificateForNonSubscribedAttendees: false,
+        }),
+      }),
+    ).toEqual({
+      allowsCertificates: false,
+      allowsNonPayingCertificates: true,
+      allowsNonSubscribedCertificates: false,
+    });
+    expect(
+      getEventGroupCertificatePermissions({
+        status: 'found',
+        group: createAdminEventGroup({
+          shouldIssueCertificate: false,
+          shouldIssueCertificateForNonPayingAttendees: undefined as never,
+          shouldIssueCertificateForNonSubscribedAttendees: undefined as never,
+        }),
+      }),
+    ).toEqual({
+      allowsCertificates: false,
+      allowsNonPayingCertificates: false,
+      allowsNonSubscribedCertificates: false,
     });
   });
 
@@ -35,8 +63,14 @@ describe('workspace event selection helpers', () => {
 
   it('uses embedded or searched major event data and reports unknown relations', () => {
     const majorEvent = createAdminMajorEvent({ id: 'major-1', name: 'Semana' });
-    const event = { majorEventId: 'major-1', majorEvent } as never;
+    const event = createAdminEvent({ majorEventId: 'major-1', majorEvent });
     expect(resolveMajorEventSelection(event, [])).toEqual({ status: 'found', majorEvent });
-    expect(resolveMajorEventSelection({ majorEventId: 'missing' } as never, [])).toEqual({ status: 'unresolved' });
+    expect(resolveMajorEventSelection(createAdminEvent({ majorEventId: 'missing', majorEvent: null }), [])).toEqual({
+      status: 'unresolved',
+    });
+    expect(resolveMajorEventSelection(createAdminEvent({ majorEventId: 'major-1', majorEvent: null }), [], [majorEvent])).toEqual({
+      status: 'found',
+      majorEvent,
+    });
   });
 });

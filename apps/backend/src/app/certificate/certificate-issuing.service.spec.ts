@@ -1,7 +1,7 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { BadRequestException } from '@nestjs/common';
 import { addMinutes } from 'date-fns';
-import { buildMinicursoLines, formatCargaHoraria } from './certificate-rendered-data';
+import { buildCertificateRenderedData, buildMinicursoLines, formatCargaHoraria } from './certificate-rendered-data';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
 describe('CertificateIssuingService', () => {
@@ -73,6 +73,45 @@ describe('CertificateIssuingService', () => {
     expect(prisma.certificate.create).not.toHaveBeenCalled();
     expect(prisma.certificate.update).not.toHaveBeenCalled();
     expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
+  });
+
+  it('persists certificate events in the same deterministic order used by template data', () => {
+    const renderedData = buildCertificateRenderedData(
+      {
+        ...mappedCertificateRecord.config,
+        scope: CertificateScope.EVENT,
+        event: { id: 'event-1', name: 'Evento' },
+      } as never,
+      {
+        person: mappedCertificateRecord.person,
+        events: [
+          {
+            id: 'event-b',
+            name: 'Segundo',
+            startDate: new Date('2026-05-21T10:00:00.000Z'),
+            endDate: new Date('2026-05-21T11:00:00.000Z'),
+            creditMinutes: 60,
+            type: EventType.PALESTRA,
+            eventGroupId: null,
+            eventGroup: null,
+          },
+          {
+            id: 'event-a',
+            name: 'Primeiro',
+            startDate: new Date('2026-05-21T10:00:00.000Z'),
+            endDate: new Date('2026-05-21T11:00:00.000Z'),
+            creditMinutes: 60,
+            type: EventType.PALESTRA,
+            eventGroupId: null,
+            eventGroup: null,
+          },
+        ],
+      } as never,
+      new Date('2026-05-23T12:00:00.000Z'),
+    ) as unknown as { events: { id: string }[]; templateData: { content: string } };
+
+    expect(renderedData.events.map((event) => event.id)).toEqual(['event-a', 'event-b']);
+    expect(renderedData.templateData.content.indexOf('Primeiro')).toBeLessThan(renderedData.templateData.content.indexOf('Segundo'));
   });
 
   it('keeps the original issue date when rendered data only differs by object key order', async () => {
@@ -341,6 +380,14 @@ describe('CertificateIssuingService', () => {
       mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
       notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
     };
+    const tx = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
+      certificate: {
+        create: jest.fn().mockResolvedValue(mappedCertificateRecord),
+      },
+    };
     const prisma = {
       $transaction: jest.fn(),
       user: {
@@ -348,11 +395,11 @@ describe('CertificateIssuingService', () => {
       },
       certificate: {
         findUnique: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockResolvedValue(mappedCertificateRecord),
+        create: jest.fn(),
         update: jest.fn(),
       },
     };
-    prisma.$transaction.mockImplementation((operation: (tx: typeof prisma) => unknown) => operation(prisma));
+    prisma.$transaction.mockImplementation((operation: (client: typeof tx) => unknown) => operation(tx));
     const service = new CertificateIssuingService(prisma as never, {} as never, {} as never, notifications as never);
 
     await expect(
@@ -363,7 +410,7 @@ describe('CertificateIssuingService', () => {
       ).upsertCertificateForRecipient(mappedCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] }, 'admin-user'),
     ).resolves.toBe(mappedCertificateRecord);
 
-    expect(prisma.certificate.create).toHaveBeenCalledWith(
+    expect(tx.certificate.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           personId: 'person-valid',
@@ -376,7 +423,8 @@ describe('CertificateIssuingService', () => {
     );
     expect(prisma.certificate.update).not.toHaveBeenCalled();
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(tx.user.findUnique).toHaveBeenCalledWith({
       where: { id: 'admin-user' },
       select: { name: true, email: true },
     });
@@ -638,8 +686,15 @@ describe('CertificateIssuingService', () => {
 
   it('soft-deletes invalid certificates during issueMissedCertificates', async () => {
     const prisma = {
+      $transaction: jest.fn((callback) => callback(prisma)),
+      user: {
+        findUnique: jest.fn(),
+      },
       certificate: {
-        findMany: jest.fn().mockResolvedValue([{ personId: 'person-valid' }, { personId: 'person-invalid' }]),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([{ personId: 'person-valid' }, { personId: 'person-invalid' }])
+          .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'person-invalid' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
@@ -680,8 +735,15 @@ describe('CertificateIssuingService', () => {
 
   it('soft-deletes all existing certificates when no recipients are eligible', async () => {
     const prisma = {
+      $transaction: jest.fn((callback) => callback(prisma)),
+      user: {
+        findUnique: jest.fn(),
+      },
       certificate: {
-        findMany: jest.fn().mockResolvedValue([{ personId: 'person-a' }, { personId: 'person-b' }]),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([{ personId: 'person-a' }, { personId: 'person-b' }])
+          .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'person-a' }, { ...mappedCertificateRecord, personId: 'person-b' }]),
         updateMany: jest.fn().mockResolvedValue({ count: 2 }),
       },
     };
@@ -831,8 +893,16 @@ describe('CertificateIssuingService', () => {
 
   it('refreshes only existing active certificates for a person without deleting ineligible ones', async () => {
     const prisma = {
+      $transaction: jest.fn((callback) => callback(prisma)),
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'User', email: 'user@example.com' }),
+      },
       certificate: {
-        findMany: jest.fn().mockResolvedValue([{ configId: 'config-1' }, { configId: 'config-2' }]),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([{ configId: 'config-1' }, { configId: 'config-2' }])
+          .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'person-valid', configId: 'config-2' }]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
     };
     const validation = {
@@ -882,11 +952,13 @@ describe('CertificateIssuingService', () => {
       expect.objectContaining({ id: 'config-1' }),
       expect.objectContaining({ person: { id: 'person-valid' } }),
       'user-1',
+      { prisma },
     );
   });
 
   it('refreshes target certificates from source and target configs after people merge', async () => {
     const prisma = {
+      $transaction: jest.fn((callback) => callback(prisma)),
       certificate: {
         findMany: jest
           .fn()
@@ -919,11 +991,13 @@ describe('CertificateIssuingService', () => {
       expect.objectContaining({ id: 'config-1' }),
       expect.objectContaining({ person: { id: 'target-person' } }),
       'admin-user',
+      { prisma },
     );
     expect(upsertSpy).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'config-2' }),
       expect.objectContaining({ person: { id: 'target-person' } }),
       'admin-user',
+      { prisma },
     );
     expect(prisma.certificate.updateMany).toHaveBeenCalledWith({
       where: {

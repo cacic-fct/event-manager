@@ -266,7 +266,7 @@ export class EventLecturersResolver {
       });
       await this.auditLog.record({
         entityType: AuditLogEntityType.EVENT_LECTURER,
-        entityId: `${eventId}:${personId}`,
+        entityId: `${nextEventId}:${nextPersonId}`,
         entityLabel: 'Palestrante do evento',
         operation: AuditLogOperation.UPDATE,
         actor: this.getUser(context),

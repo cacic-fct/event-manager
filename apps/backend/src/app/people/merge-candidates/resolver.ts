@@ -10,18 +10,13 @@ import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { GraphqlContext } from '../../current-user/selects';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { actionablePendingMergeCandidateWhere } from './merge-candidate-filters';
 import { MergeCandidateOperationsService } from './operations.service';
 import { AuditLogService } from '../../audit-log/audit-log.service';
-type MergeCandidateContext = {
-  req?: { user?: AuthenticatedUser };
-  request?: { user?: AuthenticatedUser };
-};
-
 @Resolver(() => MergeCandidate)
 export class MergeCandidatesResolver {
   constructor(
@@ -81,9 +76,10 @@ export class MergeCandidatesResolver {
   async createMergeCandidate(
     @Args('input', { type: () => MergeCandidateCreateInput })
     input: MergeCandidateCreateInput,
-    @Context() context: MergeCandidateContext,
+    @Context() context: GraphqlContext,
   ) {
-    const actorId = this.getActorId(context);
+    const actor = this.getUser(context);
+    const actorId = this.getActorId(actor);
 
     return this.prisma.$transaction(async (tx) => {
       const candidate = await tx.mergeCandidate.create({
@@ -98,7 +94,7 @@ export class MergeCandidatesResolver {
         entityId: candidate.id,
         entityLabel: candidate.pairKey,
         operation: AuditLogOperation.CREATE,
-        actor: this.getUser(context),
+        actor,
         after: candidate,
         summary: 'Possível pessoa duplicada cadastrada.',
         scope: { permission: Permission.MergeCandidate.Create },
@@ -113,9 +109,10 @@ export class MergeCandidatesResolver {
     @Args('id', { type: () => String }) id: string,
     @Args('input', { type: () => MergeCandidateUpdateInput })
     input: MergeCandidateUpdateInput,
-    @Context() context: MergeCandidateContext,
+    @Context() context: GraphqlContext,
   ) {
-    const actorId = this.getActorId(context);
+    const actor = this.getUser(context);
+    const actorId = this.getActorId(actor);
 
     const data: Prisma.MergeCandidateUncheckedUpdateManyInput = {
       ...this.buildMergeCandidateUpdateData(input),
@@ -136,7 +133,7 @@ export class MergeCandidatesResolver {
         entityId: id,
         entityLabel: candidate.pairKey,
         operation: AuditLogOperation.UPDATE,
-        actor: this.getUser(context),
+        actor,
         before: existing,
         after: candidate,
         summary: 'Possível pessoa duplicada atualizada.',
@@ -196,8 +193,8 @@ export class MergeCandidatesResolver {
 
   @Mutation(() => Int, { name: 'scanMergeCandidates' })
   @RequirePermissions(Permission.MergeCandidate.Scan)
-  scanMergeCandidates(@Context() context: MergeCandidateContext) {
-    return this.mergeOperations.scanMergeCandidates(this.getActorId(context));
+  scanMergeCandidates(@Context() context: GraphqlContext) {
+    return this.mergeOperations.scanMergeCandidates(this.getActorId(this.getUser(context)));
   }
 
   @Mutation(() => MergeCandidate, { name: 'mergeCandidatePeople' })
@@ -205,25 +202,25 @@ export class MergeCandidatesResolver {
   mergeCandidatePeople(
     @Args('input', { type: () => MergeCandidateMergeInput })
     input: MergeCandidateMergeInput,
-    @Context() context: MergeCandidateContext,
+    @Context() context: GraphqlContext,
   ) {
-    return this.mergeOperations.mergeCandidatePeople(input, this.getActorId(context));
+    return this.mergeOperations.mergeCandidatePeople(input, this.getActorId(this.getUser(context)));
   }
 
   @Mutation(() => MergeCandidate, { name: 'undoMergeCandidatePeople' })
   @RequirePermissions(Permission.MergeCandidate.Undo)
   undoMergeCandidatePeople(
     @Args('candidateId', { type: () => String }) candidateId: string,
-    @Context() context: MergeCandidateContext,
+    @Context() context: GraphqlContext,
   ) {
-    return this.mergeOperations.undoMergeCandidatePeople(candidateId, this.getActorId(context));
+    return this.mergeOperations.undoMergeCandidatePeople(candidateId, this.getActorId(this.getUser(context)));
   }
 
   @Mutation(() => DeletionResult, { name: 'deleteMergeCandidate' })
   @RequirePermissions(Permission.MergeCandidate.Delete)
   async deleteMergeCandidate(
     @Args('id', { type: () => String }) id: string,
-    @Context() context: MergeCandidateContext,
+    @Context() context: GraphqlContext,
   ) {
     await this.prisma.$transaction(async (tx) => {
       const candidate = await tx.mergeCandidate.findUnique({ where: { id } });
@@ -247,12 +244,11 @@ export class MergeCandidatesResolver {
     };
   }
 
-  private getActorId(context: MergeCandidateContext): string | null {
-    const user = context.req?.user;
+  private getActorId(user: ReturnType<MergeCandidatesResolver['getUser']>): string | null {
     return user?.sub ?? user?.email ?? user?.preferredUsername ?? null;
   }
 
-  private getUser(context: MergeCandidateContext): AuthenticatedUser | undefined {
+  private getUser(context: GraphqlContext) {
     return context.req?.user ?? context.request?.user;
   }
 }

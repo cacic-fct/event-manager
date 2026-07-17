@@ -47,6 +47,7 @@ export class CertificateIssuingService {
         options === undefined
           ? this.upsertCertificateForRecipient(config, recipient, issuedById)
           : this.upsertCertificateForRecipient(config, recipient, issuedById, options),
+      this.audit,
     );
   }
 

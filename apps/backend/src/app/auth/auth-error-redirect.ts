@@ -14,12 +14,10 @@ export type AuthorizationErrorPayload = { message: string; error?: string; statu
 export function getAuthorizationErrorRedirectUri(input: AuthorizationErrorPayload): string {
   const url = new URL(AUTH_ERROR_REDIRECT_PATH, 'https://eventos.cacic.local');
   const content = getAuthorizationErrorContent(input);
-  const raw = JSON.stringify({ statusCode: input.statusCode, message: input.message, ...(input.error ? { error: input.error } : {}) });
   url.searchParams.set('reason', content.reason);
   url.searchParams.set('title', content.title);
   url.searchParams.set('description', content.description);
   url.searchParams.set('message', content.message);
-  url.searchParams.set('raw', raw);
   return `${url.pathname}${url.search}`;
 }
 
