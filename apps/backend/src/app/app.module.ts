@@ -83,6 +83,10 @@ import { DashboardInsightsProcessor } from './dashboard/insights.processor';
 import { DashboardInsightsResolver } from './dashboard/insights.resolver';
 import { DashboardInsightsSchedulerService } from './dashboard/insights-scheduler.service';
 import { DASHBOARD_INSIGHTS_QUEUE, DashboardInsightsService } from './dashboard/insights.service';
+import { PublicPlatformStatsProcessor } from './public-platform-stats/public-platform-stats.processor';
+import { PublicPlatformStatsResolver } from './public-platform-stats/public-platform-stats.resolver';
+import { PublicPlatformStatsScheduler } from './public-platform-stats/public-platform-stats.scheduler';
+import { PUBLIC_PLATFORM_STATS_QUEUE, PublicPlatformStatsService } from './public-platform-stats/public-platform-stats.service';
 import { EventGroupsResolver } from './event-groups/resolver';
 import { EventLecturersResolver } from './events/lecturers.resolver';
 import { EventsResolver } from './events/resolver';
@@ -147,6 +151,7 @@ const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
   'weather',
   DASHBOARD_INSIGHTS_QUEUE,
+  PUBLIC_PLATFORM_STATS_QUEUE,
   MAJOR_EVENT_RECEIPTS_QUEUE,
   CALENDAR_FEED_MAINTENANCE_QUEUE,
   PUBLICATION_QUEUE,
@@ -162,6 +167,9 @@ const queueImports = useInMemoryTestInfra
       }),
       BullModule.registerQueue({
         name: DASHBOARD_INSIGHTS_QUEUE,
+      }),
+      BullModule.registerQueue({
+        name: PUBLIC_PLATFORM_STATS_QUEUE,
       }),
       BullModule.registerQueue({
         name: MAJOR_EVENT_RECEIPTS_QUEUE,
@@ -180,6 +188,7 @@ const queueProcessorProviders = useInMemoryTestInfra
       CalendarFeedMaintenanceProcessor,
       PublicationProcessor,
       DashboardInsightsProcessor,
+      PublicPlatformStatsProcessor,
       MajorEventReceiptsProcessor,
       WeatherProcessor,
     ];
@@ -189,6 +198,7 @@ const schedulerProviders = useInMemoryTestInfra
       CalendarFeedMaintenanceScheduler,
       PublicationScheduler,
       DashboardInsightsSchedulerService,
+      PublicPlatformStatsScheduler,
       EventFormsScheduler,
       WeatherSchedulerService,
     ];
@@ -263,6 +273,7 @@ const schedulerProviders = useInMemoryTestInfra
     EventDraftsResolver,
     EventDraftsService,
     PublicEventsResolver,
+    PublicPlatformStatsResolver,
     UsersResolver,
     PeopleResolver,
     LecturerProfilesResolver,
@@ -297,6 +308,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserSubscriptionFeedResolver,
     DashboardInsightsResolver,
     DashboardInsightsService,
+    PublicPlatformStatsService,
     AttendanceCategoryService,
     EventSubscriptionSyncService,
     EventSubscriptionCountersService,

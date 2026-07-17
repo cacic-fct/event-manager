@@ -32,7 +32,7 @@
   </section>
 
   <section #nextSection>
-    <app-value-proposition />
+    <app-value-proposition [stats]="platformStats().stats" [statsState]="platformStats().state" />
   </section>
 
   <section>
@@ -40,6 +40,18 @@
   </section>
 </main>
 
-<footer>
-  <a href="https://cacic.com.br/legal/privacy-policy">Política de Privacidade</a>
+<footer class="landing-footer">
+  <div class="landing-footer-content">
+    <div class="landing-footer-identity">
+      <p class="landing-footer-title">CACiC Eventos</p>
+      <span class="landing-footer-description">Uma iniciativa do Centro Acadêmico Ciência da Computação da FCT-Unesp.</span>
+    </div>
+
+    <nav class="landing-footer-links" aria-label="Links institucionais">
+      <a class="landing-footer-link" href="https://cacic.com.br" target="_blank" rel="noopener">Homepage do CACiC</a>
+      <a class="landing-footer-link" href="https://account.cacic.com.br" target="_blank" rel="noopener">Conta CACiC</a>
+      <a class="landing-footer-link" routerLink="/validate">Validar certificado</a>
+      <a class="landing-footer-link" href="https://cacic.com.br/legal/privacy-policy" target="_blank" rel="noopener">Política de privacidade</a>
+    </nav>
+  </div>
 </footer>

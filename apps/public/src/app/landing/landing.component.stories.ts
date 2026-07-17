@@ -1,3 +1,4 @@
+import { provideHttpClient } from '@angular/common/http';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
@@ -5,9 +6,21 @@ import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { signal } from '@angular/core';
 import { MediaMatcher } from '@angular/cdk/layout';
+import { fakerPT_BR as faker } from '@faker-js/faker';
 import { AuthService } from '@cacic-fct/shared-angular';
+import type { PublicPlatformStats } from '@cacic-fct/event-manager-public-contracts';
+import { HttpResponse, http } from 'msw';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { LandingComponent } from './landing.component';
+
+faker.seed(20260717);
+
+const platformStats: PublicPlatformStats = {
+  peopleCount: faker.number.int({ min: 100_000, max: 160_000 }),
+  eventsCount: faker.number.int({ min: 5_000, max: 9_000 }),
+  majorEventsCount: faker.number.int({ min: 250, max: 500 }),
+  certificatesCount: faker.number.int({ min: 250_000, max: 400_000 }),
+};
 
 const meta: Meta<LandingComponent> = {
   component: LandingComponent,
@@ -16,6 +29,7 @@ const meta: Meta<LandingComponent> = {
   decorators: [
     applicationConfig({
       providers: [
+        provideHttpClient(),
         provideRouter([]),
         provideNoopAnimations(),
         {
@@ -84,6 +98,52 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 
 export const Playground: Story = {
   args: {},
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  globals: { theme: 'light' },
+  parameters: {
+    msw: {
+      handlers: [platformStatsHandler(platformStats)],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await exerciseStory(canvasElement);
+    await expect(within(canvasElement).getByRole('link', { name: 'Validar certificado' })).toBeVisible();
+  },
 };
 
+export const EstatisticasIndisponiveis: Story = {
+  args: {},
+  globals: { theme: 'light' },
+  parameters: {
+    msw: {
+      handlers: [
+        platformStatsHandler(null),
+      ],
+    },
+  },
+};
+
+export const Dark: Story = {
+  args: {},
+  globals: { theme: 'dark' },
+  parameters: {
+    msw: {
+      handlers: [platformStatsHandler(platformStats)],
+    },
+  },
+};
+
+function platformStatsHandler(stats: PublicPlatformStats | null) {
+  return http.post('/api/graphql', async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+
+    if (body.query?.includes('PublicPlatformStats')) {
+      return HttpResponse.json(
+        stats
+          ? { data: { publicPlatformStats: stats } }
+          : { errors: [{ message: 'As estatísticas simuladas estão indisponíveis.' }] },
+      );
+    }
+
+    return HttpResponse.json({ data: {} });
+  });
+}

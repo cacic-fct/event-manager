@@ -1,0 +1,136 @@
+:host {
+  display: block;
+}
+
+.developer {
+  background: #0b003d;
+  color: #fff;
+  padding: clamp(4rem, 9vw, 7.5rem) 1.5rem;
+}
+
+.developer-container {
+  margin: 0 auto;
+  max-width: 75rem;
+}
+
+.developer-content {
+  align-items: center;
+  display: grid;
+  gap: clamp(3rem, 8vw, 7rem);
+  grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+}
+
+.developer-copy {
+  max-width: 35rem;
+}
+
+.developer-mark {
+  color: #7fc9ef;
+  margin-bottom: 1.5rem;
+}
+
+.developer-title {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.developer-description {
+  color: rgba(255, 255, 255, .82);
+  font-size: 1.125rem;
+  letter-spacing: .01em;
+  line-height: 1.7;
+  margin: 1.25rem 0 0;
+  text-wrap: pretty;
+}
+
+.developer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: 2rem;
+}
+
+.developer-action {
+  --mat-button-outlined-label-text-color: #fff;
+  --mat-button-outlined-outline-color: rgba(255, 255, 255, .65);
+  min-height: 2.75rem;
+}
+
+.developer-api-example {
+  border-left: 1px solid rgba(255, 255, 255, .34);
+  min-width: 0;
+  padding-left: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+.developer-api-label {
+  align-items: center;
+  color: #b4ddf3;
+  display: flex;
+  font-size: .875rem;
+  gap: .5rem;
+  margin: 0 0 1rem;
+}
+
+.developer-api-label-icon {
+  font-size: 1.125rem;
+  height: 1.125rem;
+  width: 1.125rem;
+}
+
+.developer-api-query {
+  border-bottom: 1px solid rgba(255, 255, 255, .26);
+  padding-bottom: 1.25rem;
+}
+
+.developer-api-curl {
+  padding-top: 1.25rem;
+}
+
+.developer-api-curl-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: .5rem;
+}
+
+.developer-api-language {
+  color: rgba(255, 255, 255, .72);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.developer-api-copy-button {
+  --mat-icon-button-icon-color: #fff;
+}
+
+.developer-api-code {
+  color: #fff;
+  font: 500 clamp(.75rem, 1.4vw, 1rem) / 1.7 'Source Code Pro Variable', monospace;
+  margin: 0;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+@media (max-width: 48rem) {
+  .developer-content {
+    grid-template-columns: 1fr;
+  }
+
+  .developer-api-example {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, .34);
+    padding: 2rem 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .developer-action {
+    transition: background-color 180ms cubic-bezier(.16, 1, .3, 1), color 180ms cubic-bezier(.16, 1, .3, 1);
+  }
+}

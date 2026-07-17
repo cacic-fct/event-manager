@@ -9,6 +9,7 @@ import type {
   PublicEventWeather,
   PublicMajorEvent,
   PublicMajorEventSubscriptionPage,
+  PublicPlatformStats,
 } from '../types';
 import {
   CERTIFICATE_DOWNLOAD_FIELDS,
@@ -208,6 +209,21 @@ export const DOWNLOAD_PUBLIC_CERTIFICATE_QUERY = `
   query DownloadPublicCertificate($certificateId: String!) {
     downloadPublicCertificate(certificateId: $certificateId) {
       ${CERTIFICATE_DOWNLOAD_FIELDS}
+    }
+  }
+`;
+
+export interface PublicPlatformStatsQuery {
+  publicPlatformStats: PublicPlatformStats;
+}
+
+export const PUBLIC_PLATFORM_STATS_QUERY = `
+  query PublicPlatformStats {
+    publicPlatformStats {
+      peopleCount
+      eventsCount
+      majorEventsCount
+      certificatesCount
     }
   }
 `;

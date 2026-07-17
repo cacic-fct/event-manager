@@ -6,6 +6,8 @@ import { provideRouter, Router } from '@angular/router';
 import { MediaMatcher } from '@angular/cdk/layout';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
+import { PlatformStatsApiService } from './platform-stats-api.service';
+import { of } from 'rxjs';
 import { LandingComponent } from './landing.component';
 
 describe('LandingComponent', () => {
@@ -55,6 +57,13 @@ describe('LandingComponent', () => {
             }),
           },
         },
+        {
+          provide: PlatformStatsApiService,
+          useValue: {
+            getPublicPlatformStats: () =>
+              of({ peopleCount: 1, eventsCount: 2, majorEventsCount: 3, certificatesCount: 4 }),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -102,5 +111,21 @@ describe('LandingComponent', () => {
     await fixture.componentInstance.login();
 
     expect(login).toHaveBeenCalledWith({ returnTo: '' });
+  });
+
+  it('renders the institutional and certificate-validation footer links', () => {
+    fixture.detectChanges();
+    const footer = fixture.nativeElement.querySelector('.landing-footer') as HTMLElement;
+    const links = [...footer.querySelectorAll('a')];
+
+    expect(links.map((link) => link.textContent?.trim())).toEqual([
+      'Homepage do CACiC',
+      'Conta CACiC',
+      'Validar certificado',
+      'Política de privacidade',
+    ]);
+    expect(links[0].href).toBe('https://cacic.com.br/');
+    expect(links[1].href).toBe('https://account.cacic.com.br/');
+    expect(links[2].getAttribute('href')).toBe('/validate');
   });
 });
