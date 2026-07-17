@@ -32,7 +32,7 @@ import { CertificateValidationService } from './certificate-validation.service';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
-type CertificateFolderWriteClient = Pick<PrismaService, 'certificateFolder' | 'auditLogEntry' | 'user'>;
+type CertificateFolderWriteClient = AuditPrismaClient;
 
 @Injectable()
 export class CertificateConfigsService {
@@ -735,7 +735,7 @@ export class CertificateConfigsService {
     before: Prisma.CertificateFolderGetPayload<{ select: typeof CERTIFICATE_FOLDER_SELECT }> | null,
     after: Prisma.CertificateFolderGetPayload<{ select: typeof CERTIFICATE_FOLDER_SELECT }>,
     operation: AuditLogOperation,
-    prisma: Prisma.TransactionClient,
+    prisma: CertificateFolderWriteClient,
     metadata?: Record<string, unknown>,
   ): Promise<void> {
     await this.auditLog.record(
@@ -755,7 +755,7 @@ export class CertificateConfigsService {
               : 'Pasta de certificados atualizada.',
         metadata: { resourceType: 'CERTIFICATE_FOLDER', ...metadata },
       },
-      prisma as unknown as AuditPrismaClient,
+      prisma,
     );
   }
 

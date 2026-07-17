@@ -1,6 +1,7 @@
 import { Certificate, CertificateIssuedTo, CertificateReissueResult, CertificateScope, DeletionResult } from '@cacic-fct/shared-data-types';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, Prisma } from '@prisma/client';
+import { AuditPrismaClient } from '../audit-log/audit-log.types';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -8,7 +9,6 @@ import {
   CERTIFICATE_SELECT,
   CertificateRecord,
   CertificateConfigRecord,
-  EventRecord,
   buildConfigTargetWhere,
   mapCertificate,
 } from './certificate.constants';
@@ -20,8 +20,8 @@ import { CertificateIssuanceRecipients } from './certificate-issuance-recipients
 import { buildCertificateRenderedData, hasSameJson } from './certificate-rendered-data';
 import { CertificateValidationService } from './certificate-validation.service';
 
-type CertificateWriteClient = Pick<PrismaService, 'certificate'>;
-type CertificateReissueClient = Pick<PrismaService, 'certificate' | 'certificateConfig'>;
+type CertificateWriteClient = Pick<AuditPrismaClient, 'certificate' | 'user'>;
+type CertificateReissueClient = Pick<AuditPrismaClient, 'certificate' | 'certificateConfig' | 'user'>;
 
 @Injectable()
 export class CertificateIssuingService {
@@ -37,7 +37,7 @@ export class CertificateIssuingService {
     private readonly notifications?: NovuNotificationsService,
     auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
   ) {
-    this.audit = new CertificateIssuanceAudit(prisma, auditLog);
+    this.audit = new CertificateIssuanceAudit(auditLog);
     this.recipients = new CertificateIssuanceRecipients(prisma, eligibilityService);
     this.refresh = new CertificateIssuanceRefresh(
       prisma,

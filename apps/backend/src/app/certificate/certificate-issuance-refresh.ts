@@ -1,11 +1,12 @@
 import { CertificateIssuedTo, CertificateReissueResult, CertificateScope } from '@cacic-fct/shared-data-types';
+import { AuditPrismaClient } from '../audit-log/audit-log.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { CERTIFICATE_CONFIG_SELECT, CertificateConfigRecord, CertificateRecord } from './certificate.constants';
 import { CertificateEligibilityService, EligibleCertificateRecipient } from './certificate-eligibility.service';
 import { CertificateValidationService } from './certificate-validation.service';
 
-type CertificateWriteClient = Pick<PrismaService, 'certificate'>;
-type CertificateReissueClient = Pick<PrismaService, 'certificate' | 'certificateConfig'>;
+type CertificateWriteClient = Pick<AuditPrismaClient, 'certificate' | 'user'>;
+type CertificateReissueClient = Pick<AuditPrismaClient, 'certificate' | 'certificateConfig' | 'user'>;
 
 type UpsertCertificate = (
   config: CertificateConfigRecord,

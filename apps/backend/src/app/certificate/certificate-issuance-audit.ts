@@ -1,16 +1,12 @@
 import { AuditLogActorType, AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
-import { PrismaService } from '../prisma/prisma.service';
 import { CertificateConfigRecord, CertificateRecord } from './certificate.constants';
 
-type CertificateWriteClient = Pick<PrismaService, 'certificate'>;
+type CertificateWriteClient = Pick<AuditPrismaClient, 'certificate' | 'user'>;
 
 export class CertificateIssuanceAudit {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly auditLog: AuditLogService,
-  ) {}
+  constructor(private readonly auditLog: AuditLogService) {}
 
   async record(
     before: CertificateRecord | null,
@@ -19,7 +15,7 @@ export class CertificateIssuanceAudit {
     actorId: string | undefined,
     prisma: CertificateWriteClient,
   ): Promise<void> {
-    const actor = await this.resolveActor(actorId);
+    const actor = await this.resolveActor(actorId, prisma);
     const config = after.config;
     await this.auditLog.record(
       {
@@ -39,13 +35,16 @@ export class CertificateIssuanceAudit {
               : 'Certificado reemitido.',
         scope: this.scopeForConfig(config),
       },
-      prisma as unknown as AuditPrismaClient,
+      prisma,
     );
   }
 
-  private async resolveActor(actorId: string | undefined): Promise<AuditActor | undefined> {
+  private async resolveActor(
+    actorId: string | undefined,
+    prisma: CertificateWriteClient,
+  ): Promise<AuditActor | undefined> {
     if (!actorId) return undefined;
-    const user = await (this.prisma as Partial<PrismaService>).user?.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: actorId },
       select: { name: true, email: true },
     });
