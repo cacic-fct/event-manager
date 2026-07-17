@@ -1,8 +1,8 @@
 import { Certificate, CertificateIssuedTo, CertificateReissueResult, CertificateScope, DeletionResult } from '@cacic-fct/shared-data-types';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, Prisma } from '@prisma/client';
-import { AuditPrismaClient } from '../audit-log/audit-log.types';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { AuditPrismaClient } from '../audit-log/audit-log.types';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
