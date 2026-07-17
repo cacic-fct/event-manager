@@ -1,6 +1,7 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
 import { BadRequestException } from '@nestjs/common';
 import { addMinutes } from 'date-fns';
+import { buildMinicursoLines, formatCargaHoraria } from './certificate-rendered-data';
 import { CertificateIssuingService } from './certificate-issuing.service';
 
 describe('CertificateIssuingService', () => {
@@ -920,7 +921,6 @@ describe('CertificateIssuingService', () => {
   });
 
   it('prints every date for completed grouped minicourse events', () => {
-    const service = new CertificateIssuingService({} as never, {} as never, {} as never);
     const eventGroup = {
       id: 'event-group-1',
       name: 'Grouped minicourse',
@@ -946,13 +946,9 @@ describe('CertificateIssuingService', () => {
       },
     ];
 
-    expect(
-      (
-        service as unknown as {
-          buildMinicursoLines(events: unknown[]): string[];
-        }
-      ).buildMinicursoLines(events),
-    ).toEqual(['• 02/01/2026, 03/01/2026 - Grouped minicourse - Carga horária: 4 horas']);
+    expect(buildMinicursoLines(events)).toEqual([
+      '• 02/01/2026, 03/01/2026 - Grouped minicourse - Carga horária: 4 horas',
+    ]);
   });
 
   it('autofills the second page with event information by default', () => {
@@ -1311,90 +1307,36 @@ describe('CertificateIssuingService', () => {
   });
 
   describe('formatCargaHoraria', () => {
-    let service: CertificateIssuingService;
-
-    beforeEach(() => {
-      service = new CertificateIssuingService({} as never, {} as never, {} as never);
-    });
-
     it('formats zero minutes as "0 minutos"', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(0),
-      ).toBe('0 minutos');
+      expect(formatCargaHoraria(0)).toBe('0 minutos');
     });
 
     it('formats less than 1 hour as minutes only with singular form', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(1),
-      ).toBe('1 minuto');
+      expect(formatCargaHoraria(1)).toBe('1 minuto');
     });
 
     it('formats less than 1 hour as minutes only with plural form', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(45),
-      ).toBe('45 minutos');
+      expect(formatCargaHoraria(45)).toBe('45 minutos');
     });
 
     it('formats exactly 1 hour with singular form', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(60),
-      ).toBe('1 hora');
+      expect(formatCargaHoraria(60)).toBe('1 hora');
     });
 
     it('formats multiple round hours with plural form', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(240),
-      ).toBe('4 horas');
+      expect(formatCargaHoraria(240)).toBe('4 horas');
     });
 
     it('formats 1 hour and 1 minute with singular forms', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(61),
-      ).toBe('1 hora e 1 minuto');
+      expect(formatCargaHoraria(61)).toBe('1 hora e 1 minuto');
     });
 
     it('formats 1 hour and multiple minutes with mixed forms', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(90),
-      ).toBe('1 hora e 30 minutos');
+      expect(formatCargaHoraria(90)).toBe('1 hora e 30 minutos');
     });
 
     it('formats multiple hours and multiple minutes with plural forms', () => {
-      expect(
-        (
-          service as unknown as {
-            formatCargaHoraria(minutes: number): string;
-          }
-        ).formatCargaHoraria(150),
-      ).toBe('2 horas e 30 minutos');
+      expect(formatCargaHoraria(150)).toBe('2 horas e 30 minutos');
     });
   });
 });
