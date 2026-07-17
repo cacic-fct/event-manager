@@ -72,7 +72,7 @@ export class CertificateIssuanceRefresh {
 
       return this.refreshConfigsForPerson(
         normalizedPersonId,
-        existingCertificates.map((certificate) => certificate.configId),
+        [...new Set(existingCertificates.map((certificate) => certificate.configId))],
         issuedById,
         tx,
       );
@@ -99,10 +99,26 @@ export class CertificateIssuanceRefresh {
       const configIds = [...new Set(mergedCertificates.map((certificate) => certificate.configId))];
       const refreshedCertificates = await this.refreshConfigsForPerson(normalizedTargetPersonId, configIds, issuedById, tx);
 
+      const sourceCertificates = await tx.certificate.findMany({
+        where: { personId: normalizedSourcePersonId, deletedAt: null },
+        select: CERTIFICATE_SELECT,
+      });
+      const deletedAt = new Date();
       await tx.certificate.updateMany({
         where: { personId: normalizedSourcePersonId, deletedAt: null },
-        data: { deletedAt: new Date() },
+        data: { deletedAt },
       });
+      await Promise.all(
+        sourceCertificates.map((certificate) =>
+          this.audit.record(
+            certificate as CertificateRecord,
+            { ...certificate, deletedAt } as CertificateRecord,
+            AuditLogOperation.DELETE,
+            issuedById,
+            tx,
+          ),
+        ),
+      );
 
       return refreshedCertificates;
     });
