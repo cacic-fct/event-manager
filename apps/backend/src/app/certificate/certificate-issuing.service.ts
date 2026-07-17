@@ -27,7 +27,7 @@ import { CertificateValidationService } from './certificate-validation.service';
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
 type CertificateWriteClient = Pick<AuditPrismaClient, 'certificate' | 'user'>;
-type CertificateReissueClient = Pick<PrismaService, 'certificate' | 'certificateConfig'>;
+type CertificateReissueClient = Pick<AuditPrismaClient, 'certificate' | 'certificateConfig' | 'user'>;
 
 @Injectable()
 export class CertificateIssuingService {
