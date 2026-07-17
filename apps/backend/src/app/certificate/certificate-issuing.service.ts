@@ -20,8 +20,8 @@ import { CertificateIssuanceRecipients } from './certificate-issuance-recipients
 import { buildCertificateRenderedData, hasSameJson } from './certificate-rendered-data';
 import { CertificateValidationService } from './certificate-validation.service';
 
-type CertificateWriteClient = Pick<AuditPrismaClient, 'certificate' | 'user'>;
-type CertificateReissueClient = Pick<AuditPrismaClient, 'certificate' | 'certificateConfig' | 'user'>;
+type CertificateWriteClient = AuditPrismaClient;
+type CertificateReissueClient = AuditPrismaClient;
 
 @Injectable()
 export class CertificateIssuingService {

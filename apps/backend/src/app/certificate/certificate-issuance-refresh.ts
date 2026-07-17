@@ -7,8 +7,8 @@ import { CertificateEligibilityService, EligibleCertificateRecipient } from './c
 import { CertificateIssuanceAudit } from './certificate-issuance-audit';
 import { CertificateValidationService } from './certificate-validation.service';
 
-type CertificateWriteClient = Pick<AuditPrismaClient, 'certificate' | 'user'>;
-type CertificateReissueClient = Pick<AuditPrismaClient, 'certificate' | 'certificateConfig' | 'user'>;
+type CertificateWriteClient = AuditPrismaClient;
+type CertificateReissueClient = AuditPrismaClient;
 
 type UpsertCertificate = (
   config: CertificateConfigRecord,

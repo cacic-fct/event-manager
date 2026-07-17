@@ -3,7 +3,7 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
 import { CertificateConfigRecord, CertificateRecord } from './certificate.constants';
 
-type CertificateWriteClient = Pick<AuditPrismaClient, 'certificate' | 'user'>;
+type CertificateWriteClient = AuditPrismaClient;
 
 export class CertificateIssuanceAudit {
   constructor(private readonly auditLog: AuditLogService) {}
