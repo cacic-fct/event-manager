@@ -103,6 +103,10 @@ export class CertificateIssuanceRefresh {
         where: { personId: normalizedSourcePersonId, deletedAt: null },
         select: CERTIFICATE_SELECT,
       });
+      if (sourceCertificates.length === 0) {
+        return refreshedCertificates;
+      }
+
       const deletedAt = new Date();
       await tx.certificate.updateMany({
         where: { personId: normalizedSourcePersonId, deletedAt: null },

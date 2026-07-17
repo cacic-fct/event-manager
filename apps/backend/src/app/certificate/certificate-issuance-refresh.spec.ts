@@ -55,6 +55,23 @@ describe('CertificateIssuanceRefresh', () => {
       prisma,
     );
   });
+
+  it('does not delete or audit when the source person has no active certificates after a people merge', async () => {
+    const prisma = transactionPrisma([], []);
+    const audit = { record: jest.fn() };
+    const refresh = new CertificateIssuanceRefresh(
+      prisma as never,
+      { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,
+      {} as never,
+      jest.fn() as never,
+      audit as never,
+    );
+
+    await refresh.refreshAfterPeopleMerge('target-person', 'source-person', 'admin-1');
+
+    expect(prisma.certificate.updateMany).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
 });
 
 function transactionPrisma(...findManyResults: unknown[]) {

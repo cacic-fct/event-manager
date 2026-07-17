@@ -480,6 +480,91 @@ describe('CertificateIssuingService', () => {
     });
   });
 
+  it('defers notifications for certificates issued through an externally supplied transaction client', async () => {
+    const notifications = {
+      mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
+      notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
+    };
+    const transactionClient = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(mappedCertificateRecord),
+      },
+    };
+    const service = new CertificateIssuingService(
+      { certificate: { findUnique: jest.fn() } } as never,
+      {} as never,
+      {} as never,
+      notifications as never,
+    );
+
+    const result = await (
+      service as unknown as {
+        upsertCertificateForRecipientResult(
+          config: unknown,
+          recipient: unknown,
+          issuedById: string | undefined,
+          options: { prisma: unknown },
+        ): Promise<{ certificate: unknown; shouldNotify: boolean }>;
+      }
+    ).upsertCertificateForRecipientResult(
+      mappedCertificateRecord.config,
+      { person: mappedCertificateRecord.person, events: [] },
+      'admin-user',
+      { prisma: transactionClient },
+    );
+
+    expect(result).toEqual({ certificate: mappedCertificateRecord, shouldNotify: true });
+    expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
+  });
+
+  it('defers notifications for certificates reissued through an externally supplied transaction client', async () => {
+    const notifications = {
+      mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),
+      notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined),
+    };
+    const transactionClient = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
+      certificate: {
+        findUnique: jest.fn().mockResolvedValue({
+          ...mappedCertificateRecord,
+          certificateTemplateId: 'old-template',
+        }),
+        update: jest.fn().mockResolvedValue(mappedCertificateRecord),
+      },
+    };
+    const service = new CertificateIssuingService(
+      { certificate: { findUnique: jest.fn() } } as never,
+      {} as never,
+      {} as never,
+      notifications as never,
+    );
+
+    const result = await (
+      service as unknown as {
+        upsertCertificateForRecipientResult(
+          config: unknown,
+          recipient: unknown,
+          issuedById: string | undefined,
+          options: { prisma: unknown },
+        ): Promise<{ certificate: unknown; shouldNotify: boolean }>;
+      }
+    ).upsertCertificateForRecipientResult(
+      mappedCertificateRecord.config,
+      { person: mappedCertificateRecord.person, events: [] },
+      'admin-user',
+      { prisma: transactionClient },
+    );
+
+    expect(result).toEqual({ certificate: mappedCertificateRecord, shouldNotify: true });
+    expect(notifications.notifyCertificateAvailable).not.toHaveBeenCalled();
+  });
+
   it('updates soft-deleted certificates when rendered data or template changed', async () => {
     const notifications = {
       mapPersonToRecipient: jest.fn().mockReturnValue({ subscriberId: 'user-1' }),

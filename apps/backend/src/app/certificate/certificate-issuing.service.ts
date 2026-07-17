@@ -302,7 +302,7 @@ export class CertificateIssuingService {
     issuedById?: string,
     options: { notify?: boolean; prisma?: CertificateWriteClient } = {},
   ): Promise<{ certificate: CertificateRecord; shouldNotify: boolean }> {
-    const shouldNotifyNow = options.notify ?? true;
+    const shouldNotifyNow = (options.notify ?? true) && (options.prisma === undefined || options.prisma === this.prisma);
     const prisma = options.prisma ?? this.prisma;
     const existingCertificate = await prisma.certificate.findUnique({
       where: {
