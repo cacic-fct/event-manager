@@ -58,7 +58,7 @@ export class OnlineAttendanceNotificationJobsService {
       !endDate ||
       startDate >= endDate ||
       startDate > event.endDate ||
-      startDate <= new Date()
+      endDate <= new Date()
     ) {
       return;
     }
@@ -75,8 +75,8 @@ export class OnlineAttendanceNotificationJobsService {
           backoff: { type: 'exponential', delay: 1_000 },
           delay: Math.max(startDate.getTime() - Date.now(), 0),
           jobId: `online-attendance-available:${event.id}:${startDate.getTime()}`,
-          removeOnComplete: true,
-          removeOnFail: 50,
+          removeOnComplete: false,
+          removeOnFail: true,
         },
       );
     } catch (error) {
@@ -94,8 +94,8 @@ export class OnlineAttendanceNotificationJobsService {
         shouldCollectAttendance: true,
         isOnlineAttendanceAllowed: true,
         onlineAttendanceCode: { not: null },
-        onlineAttendanceStartDate: { gt: new Date() },
-        onlineAttendanceEndDate: { not: null },
+        onlineAttendanceStartDate: { not: null },
+        onlineAttendanceEndDate: { gte: new Date() },
       },
       select: {
         id: true,
@@ -166,11 +166,14 @@ export class OnlineAttendanceNotificationJobsService {
       ...(event.majorEvent?.subscriptions ?? []).map(({ person }) => this.notifications.mapPersonToRecipient(person)),
     ];
     const uniqueRecipients = [...new Map(recipients.map((recipient) => [recipient.subscriberId, recipient])).values()];
-    await this.notifications.notifyOnlineAttendanceAvailable({
+    const delivered = await this.notifications.notifyOnlineAttendanceAvailable({
       eventId: event.id,
       eventName: event.name,
       endsAt: event.onlineAttendanceEndDate,
       recipients: uniqueRecipients,
     });
+    if (!delivered) {
+      throw new Error(`Online attendance notification for event ${event.id} was not acknowledged.`);
+    }
   }
 }

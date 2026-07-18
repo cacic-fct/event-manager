@@ -28,6 +28,7 @@ describe('WorkspaceFormsService integration', () => {
     unpublishForm: ReturnType<typeof vi.fn>;
     deleteForm: ReturnType<typeof vi.fn>;
     results: ReturnType<typeof vi.fn>;
+    previousSubscriberCount: ReturnType<typeof vi.fn>;
   };
   let eventApi: {
     listEvents: ReturnType<typeof vi.fn>;
@@ -57,6 +58,7 @@ describe('WorkspaceFormsService integration', () => {
       unpublishForm: vi.fn(() => of(form)),
       deleteForm: vi.fn(() => of(form)),
       results: vi.fn(() => of(createAdminEventFormResults({ form }))),
+      previousSubscriberCount: vi.fn(() => of(0)),
     };
     eventApi = {
       listEvents: vi.fn(() => of([event])),
@@ -299,6 +301,27 @@ describe('WorkspaceFormsService integration', () => {
       notifyOnPublish: true,
       allowLecturerManualPublish: false,
     });
+  });
+
+  it('ignores a stale previous-subscriber count after the link target changes', async () => {
+    await service.initialize();
+    await service.selectForm(service.forms()[0]);
+    const staleResponse = new Subject<number>();
+    formApi.previousSubscriberCount.mockClear();
+    formApi.previousSubscriberCount.mockImplementationOnce(() => staleResponse).mockImplementationOnce(() => of(7));
+
+    service.updateLink('form-link-1', { displayOrder: 1 });
+    service.updateLink('form-link-1', {
+      targetType: 'MAJOR_EVENT',
+      eventId: null,
+      majorEventId: 'major-event-1',
+    });
+    await Promise.resolve();
+    staleResponse.next(99);
+    staleResponse.complete();
+    await Promise.resolve();
+
+    expect(service.previousSubscriberCount(service.links()[0])).toBe(7);
   });
 });
 

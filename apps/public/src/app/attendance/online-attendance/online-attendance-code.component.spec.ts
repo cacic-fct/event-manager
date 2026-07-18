@@ -103,6 +103,17 @@ describe('OnlineAttendanceCodeComponent', () => {
     expect(attendanceCoordinator.dismissPending).toHaveBeenCalledWith(['event-1'], '/profile/attendances');
   });
 
+  it('dismisses the route event when the pending attendance could not be loaded', async () => {
+    const { attendanceCoordinator, component } = await createFixture({
+      routeParams: { eventId: 'event-1' },
+      pendingEvents: [],
+    });
+
+    component.back();
+
+    expect(attendanceCoordinator.dismissPending).toHaveBeenCalledWith(['event-1'], '/menu');
+  });
+
   it('opens the attendance list when a notification is opened while multiple attendances are pending', async () => {
     const nextPendingEvent = {
       ...pendingAttendanceEvent,

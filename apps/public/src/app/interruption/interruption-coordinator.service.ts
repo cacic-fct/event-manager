@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
+import { Injectable, OnDestroy, PLATFORM_ID, effect, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { EMPTY, Subject, Subscription, catchError, filter, forkJoin, map, of, switchMap } from 'rxjs';
@@ -37,7 +37,7 @@ function canApplyInterruption(interruption: Interruption, context: InterruptionC
 }
 
 @Injectable({ providedIn: 'root' })
-export class InterruptionCoordinatorService {
+export class InterruptionCoordinatorService implements OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly flows = (inject(INTERRUPTION_FLOW, { optional: true }) as readonly InterruptionFlow[] | null) ?? [];
   private readonly platformId = inject(PLATFORM_ID);
@@ -79,7 +79,7 @@ export class InterruptionCoordinatorService {
           switchMap(() => this.resolveNextInterruption()),
         )
         .subscribe((interruption) => {
-          if (!interruption) {
+          if (!interruption || !this.auth.isAuthenticated()) {
             return;
           }
 
@@ -96,6 +96,10 @@ export class InterruptionCoordinatorService {
     if (this.started && isPlatformBrowser(this.platformId)) {
       this.checks.next();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
   }
 
   private resolveNextInterruption() {

@@ -688,6 +688,10 @@ export class WorkspaceFormsService {
     if (!targetId) {
       return;
     }
+    const snapshot = {
+      targetType: link.targetType,
+      targetId,
+    };
     this.previousSubscriberCounts.update((counts) => ({ ...counts, [link.localId]: null }));
     try {
       const count = await firstValueFrom(
@@ -699,7 +703,12 @@ export class WorkspaceFormsService {
           majorEventId: link.targetType === 'MAJOR_EVENT' ? targetId : null,
         }),
       );
-      if (this.links().some((item) => item.localId === link.localId)) {
+      if (
+        this.links().some((item) => {
+          const itemTargetId = item.targetType === 'EVENT' ? item.eventId : item.majorEventId;
+          return item.localId === link.localId && item.targetType === snapshot.targetType && itemTargetId === snapshot.targetId;
+        })
+      ) {
         this.previousSubscriberCounts.update((counts) => ({ ...counts, [link.localId]: count }));
       }
     } catch {

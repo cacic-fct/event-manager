@@ -502,12 +502,14 @@ describe('NovuNotificationsService', () => {
   });
 
   it('notifies subscribers when online attendance starts with a direct attendance link', async () => {
-    await service.notifyOnlineAttendanceAvailable({
+    await expect(
+      service.notifyOnlineAttendanceAvailable({
       eventId: 'event-1',
       eventName: 'Aula de TypeScript',
       endsAt: new Date('2026-05-23T15:30:00.000Z'),
       recipients: [{ subscriberId: 'user-1', email: 'ada@example.com' }],
-    });
+      }),
+    ).resolves.toBe(true);
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body).toEqual(

@@ -250,7 +250,10 @@ export class EventFormListingsService {
       const target = normalizeTarget(link);
       const response = await this.prisma.eventFormResponse.findFirst({
         where: {
-          ...(responseLookupWhere(link.form, person.id, target) ?? responseTargetWhere(link.form.id, person.id, target)),
+          ...(responseLookupWhere(link.form, person.id, target) ??
+            (link.form.responseMode === 'MULTIPLE_PER_TARGET'
+              ? { formId: link.form.id, personId: person.id, linkId: link.id }
+              : responseTargetWhere(link.form.id, person.id, target))),
           deletedAt: null,
         },
         select: { id: true },
@@ -302,6 +305,7 @@ export class EventFormListingsService {
         id: input.linkId,
         formId: input.formId,
         deletedAt: null,
+        ...(target.eventId ? { eventId: target.eventId } : { majorEventId: target.majorEventId }),
       },
       select: {
         targetType: true,

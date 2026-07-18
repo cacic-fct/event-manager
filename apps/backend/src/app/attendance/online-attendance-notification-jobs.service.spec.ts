@@ -1,3 +1,4 @@
+import { SubscriptionStatus } from '@prisma/client';
 import {
   ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB,
   OnlineAttendanceNotificationJobsService,
@@ -29,7 +30,7 @@ describe('OnlineAttendanceNotificationJobsService', () => {
       expect.objectContaining({
         delay: 3_600_000,
         jobId: `online-attendance-available:event-1:${startDate.getTime()}`,
-        removeOnComplete: true,
+        removeOnComplete: false,
       }),
     );
   });
@@ -39,7 +40,7 @@ describe('OnlineAttendanceNotificationJobsService', () => {
 
     await service.scheduleEvent(
       onlineAttendanceEvent({
-        onlineAttendanceStartDate: new Date('2026-06-25T11:00:00.000Z'),
+        onlineAttendanceEndDate: new Date('2026-06-25T11:00:00.000Z'),
       }),
     );
     await service.scheduleEvent(onlineAttendanceEvent({ onlineAttendanceCode: null }));
@@ -50,6 +51,19 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     );
 
     expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it('queues an active window immediately so a missed scheduling attempt can be reconciled', async () => {
+    const { queue, service } = createService();
+    const startDate = new Date('2026-06-25T11:00:00.000Z');
+
+    await service.scheduleEvent(onlineAttendanceEvent({ onlineAttendanceStartDate: startDate }));
+
+    expect(queue.add).toHaveBeenCalledWith(
+      ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB,
+      expect.objectContaining({ onlineAttendanceStartDate: startDate.toISOString() }),
+      expect.objectContaining({ delay: 0, removeOnComplete: false, removeOnFail: true }),
+    );
   });
 
   it('does not let notification scheduling failures block admin event changes', async () => {
@@ -105,8 +119,36 @@ describe('OnlineAttendanceNotificationJobsService', () => {
           onlineAttendanceStartDate: now,
           onlineAttendanceEndDate: { gte: now },
         }),
+        select: expect.objectContaining({
+          majorEvent: expect.objectContaining({
+            select: expect.objectContaining({
+              subscriptions: expect.objectContaining({
+                where: { deletedAt: null, subscriptionStatus: SubscriptionStatus.CONFIRMED },
+              }),
+            }),
+          }),
+        }),
       }),
     );
+  });
+
+  it('retries delivery when Novu does not acknowledge the notification', async () => {
+    const { notifications, prisma, service } = createService();
+    prisma.event.findFirst.mockResolvedValue({
+      id: 'event-1',
+      name: 'Aula de TypeScript',
+      endDate: new Date('2026-06-25T14:00:00.000Z'),
+      onlineAttendanceStartDate: now,
+      onlineAttendanceCode: 'ABCD',
+      onlineAttendanceEndDate: new Date('2026-06-25T14:00:00.000Z'),
+      subscriptions: [],
+      majorEvent: null,
+    });
+    notifications.notifyOnlineAttendanceAvailable.mockResolvedValue(false);
+
+    await expect(
+      service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() }),
+    ).rejects.toThrow('was not acknowledged');
   });
 });
 
@@ -119,7 +161,7 @@ function createService() {
   };
   const notifications = {
     mapPersonToRecipient: jest.fn(),
-    notifyOnlineAttendanceAvailable: jest.fn(),
+    notifyOnlineAttendanceAvailable: jest.fn().mockResolvedValue(true),
   };
   const queue = {
     add: jest.fn(),
