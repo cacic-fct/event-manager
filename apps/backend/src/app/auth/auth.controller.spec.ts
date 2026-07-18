@@ -127,7 +127,7 @@ describe('AuthController callback redirect validation', () => {
       requestFixture({
         'x-forwarded-proto': 'https',
         'x-forwarded-host': 'events.example.com',
-      }),
+      }, true),
       response as never,
       undefined,
       '/admin/events',
@@ -167,12 +167,7 @@ describe('AuthController callback redirect validation', () => {
       'state-query',
     );
 
-    expect(response.clearCookie).toHaveBeenCalledWith(AUTH_STATE_COOKIE_NAME, {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: false,
-      path: '/api/auth/callback',
-    });
+    expect(response.clearCookie).not.toHaveBeenCalled();
     expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('/app/auth/error?'));
     expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('reason=login-expired'));
     expect(response.redirect).toHaveBeenCalledWith(
@@ -234,7 +229,7 @@ describe('AuthController callback redirect validation', () => {
       requestFixture({
         cookie: `${AUTH_STATE_COOKIE_NAME}=state-1`,
         'x-forwarded-proto': 'https',
-      }),
+      }, true),
       response as never,
       'code-1',
       undefined,
@@ -294,7 +289,7 @@ describe('AuthController callback redirect validation', () => {
         requestFixture({
           cookie: `${AUTH_SESSION_COOKIE_NAME}=session%20id`,
           'x-forwarded-proto': 'https',
-        }),
+        }, true),
         response as never,
       ),
     ).resolves.toEqual({
@@ -322,7 +317,7 @@ describe('AuthController callback redirect validation', () => {
       controller.passwordLogin(
         requestFixture({
           'x-forwarded-proto': 'https',
-        }),
+        }, true),
         response as never,
         {
           email: ' ALUNO@UNESP.BR ',
@@ -394,7 +389,7 @@ describe('AuthController callback redirect validation', () => {
       requestFixture({
         cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
         'x-forwarded-proto': 'https',
-      }),
+      }, true),
       response as never,
       {
         postLogoutRedirectUri: 'https://events.example.com/app',
@@ -469,10 +464,11 @@ describe('AuthController callback redirect validation', () => {
   });
 });
 
-function requestFixture(headers: Record<string, string> = {}) {
+function requestFixture(headers: Record<string, string> = {}, secure = false) {
   return {
     protocol: 'http',
     headers,
+    secure,
     get: (name: string) => (name.toLowerCase() === 'host' ? 'localhost:3000' : undefined),
   } as never;
 }

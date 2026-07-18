@@ -28,7 +28,7 @@ export function createAllowedPostLogoutRedirectOrigins(environment: NodeJS.Proce
     addAllowedOrigin(origins, rawOrigin.trim(), 'allowed post-logout redirect origin', logger);
   }
   for (const rawOrigin of (environment.KEYCLOAK_ALLOWED_POST_LOGIN_REDIRECT_ORIGINS ?? '').split(',')) {
-    addAllowedOrigin(origins, rawOrigin.trim(), 'allowed post-logout redirect origin', logger);
+    addAllowedOrigin(origins, rawOrigin.trim(), 'allowed post-login redirect origin', logger);
   }
   return origins;
 }

@@ -42,7 +42,7 @@ export function getAuthorizationErrorPayload(error: unknown): AuthorizationError
 }
 
 function getAuthorizationErrorContent(input: Pick<AuthorizationErrorPayload, 'message' | 'statusCode'>) {
-  if (input.statusCode === HttpStatus.INTERNAL_SERVER_ERROR && input.message === INTERNAL_SERVER_ERROR_MESSAGE) {
+  if (input.statusCode >= HttpStatus.INTERNAL_SERVER_ERROR) {
     return { description: GENERIC_AUTH_ERROR_DESCRIPTION, message: GENERIC_AUTH_ERROR_MESSAGE, reason: 'server-error', title: GENERIC_AUTH_ERROR_TITLE };
   }
   return { description: LOGIN_EXPIRED_ERROR_DESCRIPTION, message: LOGIN_EXPIRED_ERROR_MESSAGE, reason: 'login-expired', title: LOGIN_EXPIRED_ERROR_TITLE };

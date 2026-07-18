@@ -1,5 +1,6 @@
+import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import { ValuePropositionComponent } from './value-proposition.component';
 
 const meta: Meta<ValuePropositionComponent> = {
@@ -16,23 +17,39 @@ export default meta;
 
 type Story = StoryObj<ValuePropositionComponent>;
 
-const exerciseStory = async (canvasElement: HTMLElement) => {
-  const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
+faker.seed(20260717);
+
+const platformStats = {
+  peopleCount: faker.number.int({ min: 100_000, max: 160_000 }),
+  eventsCount: faker.number.int({ min: 5_000, max: 9_000 }),
+  majorEventsCount: faker.number.int({ min: 250, max: 500 }),
+  certificatesCount: faker.number.int({ min: 250_000, max: 400_000 }),
 };
 
-export const Playground: Story = {
-  args: {},
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+export const Loaded: Story = {
+  globals: { theme: 'light' },
+  args: {
+    statsState: 'ready',
+    stats: platformStats,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Eventos universitários facilitados' })).toBeVisible();
+    await expect(canvas.getByText(platformStats.peopleCount.toLocaleString('pt-BR'))).toBeVisible();
+  },
 };
 
+export const Dark: Story = {
+  globals: { theme: 'dark' },
+  args: {
+    statsState: 'ready',
+    stats: platformStats,
+  },
+};
+
+export const Loading: Story = { globals: { theme: 'light' }, args: { statsState: 'loading', stats: null } };
+
+export const StatisticsUnavailable: Story = {
+  globals: { theme: 'light' },
+  args: { statsState: 'unavailable', stats: null },
+};

@@ -30,6 +30,8 @@ import { CertificateCsvImportResolver } from './certificate/certificate-csv-impo
 import { CertificateDownloadService } from './certificate/certificate-download.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
+import { CertificateNotificationJobsProcessor } from './certificate/certificate-notification-jobs.processor';
+import { CertificateNotificationJobsService, CERTIFICATE_NOTIFICATION_QUEUE } from './certificate/certificate-notification-jobs.service';
 import { CertificateTargetsService } from './certificate/certificate-targets.service';
 import { CertificateValidationService } from './certificate/certificate-validation.service';
 import { CertificatesResolver } from './certificate/certificates.resolver';
@@ -83,6 +85,10 @@ import { DashboardInsightsProcessor } from './dashboard/insights.processor';
 import { DashboardInsightsResolver } from './dashboard/insights.resolver';
 import { DashboardInsightsSchedulerService } from './dashboard/insights-scheduler.service';
 import { DASHBOARD_INSIGHTS_QUEUE, DashboardInsightsService } from './dashboard/insights.service';
+import { PublicPlatformStatsProcessor } from './public-platform-stats/public-platform-stats.processor';
+import { PublicPlatformStatsResolver } from './public-platform-stats/public-platform-stats.resolver';
+import { PublicPlatformStatsScheduler } from './public-platform-stats/public-platform-stats.scheduler';
+import { PUBLIC_PLATFORM_STATS_QUEUE, PublicPlatformStatsService } from './public-platform-stats/public-platform-stats.service';
 import { EventGroupsResolver } from './event-groups/resolver';
 import { EventLecturersResolver } from './events/lecturers.resolver';
 import { EventsResolver } from './events/resolver';
@@ -147,9 +153,11 @@ const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
   'weather',
   DASHBOARD_INSIGHTS_QUEUE,
+  PUBLIC_PLATFORM_STATS_QUEUE,
   MAJOR_EVENT_RECEIPTS_QUEUE,
   CALENDAR_FEED_MAINTENANCE_QUEUE,
   PUBLICATION_QUEUE,
+  CERTIFICATE_NOTIFICATION_QUEUE,
 ];
 const queueImports = useInMemoryTestInfra
   ? []
@@ -164,6 +172,9 @@ const queueImports = useInMemoryTestInfra
         name: DASHBOARD_INSIGHTS_QUEUE,
       }),
       BullModule.registerQueue({
+        name: PUBLIC_PLATFORM_STATS_QUEUE,
+      }),
+      BullModule.registerQueue({
         name: MAJOR_EVENT_RECEIPTS_QUEUE,
       }),
       BullModule.registerQueue({
@@ -171,6 +182,9 @@ const queueImports = useInMemoryTestInfra
       }),
       BullModule.registerQueue({
         name: PUBLICATION_QUEUE,
+      }),
+      BullModule.registerQueue({
+        name: CERTIFICATE_NOTIFICATION_QUEUE,
       }),
     ];
 const queueProviders = useInMemoryTestInfra ? createNoopQueueProviders(backendQueueNames) : [];
@@ -180,8 +194,10 @@ const queueProcessorProviders = useInMemoryTestInfra
       CalendarFeedMaintenanceProcessor,
       PublicationProcessor,
       DashboardInsightsProcessor,
+      PublicPlatformStatsProcessor,
       MajorEventReceiptsProcessor,
       WeatherProcessor,
+      CertificateNotificationJobsProcessor,
     ];
 const schedulerProviders = useInMemoryTestInfra
   ? []
@@ -189,6 +205,7 @@ const schedulerProviders = useInMemoryTestInfra
       CalendarFeedMaintenanceScheduler,
       PublicationScheduler,
       DashboardInsightsSchedulerService,
+      PublicPlatformStatsScheduler,
       EventFormsScheduler,
       WeatherSchedulerService,
     ];
@@ -263,6 +280,7 @@ const schedulerProviders = useInMemoryTestInfra
     EventDraftsResolver,
     EventDraftsService,
     PublicEventsResolver,
+    PublicPlatformStatsResolver,
     UsersResolver,
     PeopleResolver,
     LecturerProfilesResolver,
@@ -297,6 +315,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserSubscriptionFeedResolver,
     DashboardInsightsResolver,
     DashboardInsightsService,
+    PublicPlatformStatsService,
     AttendanceCategoryService,
     EventSubscriptionSyncService,
     EventSubscriptionCountersService,
@@ -339,6 +358,7 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateDownloadService,
     CertificateEligibilityService,
     CertificateIssuingService,
+    CertificateNotificationJobsService,
     PublicCertificateValidationService,
     WeatherService,
     FrozenResourceService,

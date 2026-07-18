@@ -12,13 +12,16 @@ describe('CertificateIssuanceRefresh', () => {
       getConfigById: jest.fn(async (id: string) => ({ id })),
       resolveEligibleRecipients: jest.fn(async () => [{ person: { id: 'person-1' } }]),
     };
-    const upsertCertificate = jest.fn(async (config: { id: string }) => ({ id: `certificate-${config.id}` }));
+    const upsertCertificate = jest.fn(async (config: { id: string }) => ({
+      certificate: { id: `certificate-${config.id}` },
+      shouldNotify: false,
+    }));
     const refresh = new CertificateIssuanceRefresh(
       prisma as never,
       { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,
       eligibility as never,
       upsertCertificate as never,
-      { record: jest.fn() } as never,
+      { record: jest.fn(), resolveActor: jest.fn().mockResolvedValue(undefined) } as never,
     );
 
     await refresh.refreshForPerson('person-1', 'admin-1');
@@ -29,10 +32,35 @@ describe('CertificateIssuanceRefresh', () => {
     expect(upsertCertificate).toHaveBeenCalledTimes(2);
   });
 
+  it('delivers pending notifications only after a refresh transaction commits', async () => {
+    const notifyCertificateAvailable = jest.fn().mockResolvedValue(undefined);
+    const certificate = { id: 'certificate-1' };
+    const prisma = transactionPrisma([{ configId: 'config-1' }]);
+    prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => {
+      const result = await callback(prisma);
+      expect(notifyCertificateAvailable).not.toHaveBeenCalled();
+      return result;
+    });
+    const refresh = new CertificateIssuanceRefresh(
+      prisma as never,
+      { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,
+      {
+        getConfigById: jest.fn().mockResolvedValue({ id: 'config-1' }),
+        resolveEligibleRecipients: jest.fn().mockResolvedValue([{ person: { id: 'person-1' } }]),
+      } as never,
+      jest.fn().mockResolvedValue({ certificate, shouldNotify: true }) as never,
+      { record: jest.fn(), resolveActor: jest.fn().mockResolvedValue(undefined) } as never,
+      notifyCertificateAvailable,
+    );
+
+    await expect(refresh.refreshForPerson('person-1')).resolves.toEqual([certificate]);
+    expect(notifyCertificateAvailable).toHaveBeenCalledWith(certificate);
+  });
+
   it('audits every active source certificate deleted after a people merge', async () => {
     const sourceCertificate = { id: 'certificate-1', personId: 'source-person', deletedAt: null };
     const prisma = transactionPrisma([], [sourceCertificate]);
-    const audit = { record: jest.fn() };
+    const audit = { record: jest.fn(), resolveActor: jest.fn().mockResolvedValue(undefined) };
     const refresh = new CertificateIssuanceRefresh(
       prisma as never,
       { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,
@@ -53,12 +81,13 @@ describe('CertificateIssuanceRefresh', () => {
       AuditLogOperation.DELETE,
       'admin-1',
       prisma,
+      undefined,
     );
   });
 
   it('does not delete or audit when the source person has no active certificates after a people merge', async () => {
     const prisma = transactionPrisma([], []);
-    const audit = { record: jest.fn() };
+    const audit = { record: jest.fn(), resolveActor: jest.fn().mockResolvedValue(undefined) };
     const refresh = new CertificateIssuanceRefresh(
       prisma as never,
       { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,

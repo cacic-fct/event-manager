@@ -2,7 +2,7 @@ import { Certificate, CertificateIssuedTo, CertificateReissueResult, Certificate
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import { AuditPrismaClient } from '../audit-log/audit-log.types';
+import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -15,6 +15,7 @@ import {
 import { CertificateEligibilityService, EligibleCertificateRecipient } from './certificate-eligibility.service';
 import { CertificateIssuanceAudit } from './certificate-issuance-audit';
 import { notifyCertificateAvailable } from './certificate-issuance-notifications';
+import { CertificateNotificationJobsService } from './certificate-notification-jobs.service';
 import { CertificateIssuanceRefresh } from './certificate-issuance-refresh';
 import { CertificateIssuanceRecipients } from './certificate-issuance-recipients';
 import { buildCertificateRenderedData, hasSameJson } from './certificate-rendered-data';
@@ -36,6 +37,7 @@ export class CertificateIssuingService {
     private readonly eligibilityService: CertificateEligibilityService,
     private readonly notifications?: NovuNotificationsService,
     auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
+    private readonly notificationJobs?: CertificateNotificationJobsService,
   ) {
     this.audit = new CertificateIssuanceAudit(auditLog);
     this.recipients = new CertificateIssuanceRecipients(prisma, eligibilityService);
@@ -45,9 +47,10 @@ export class CertificateIssuingService {
       eligibilityService,
       (config, recipient, issuedById, options) =>
         options === undefined
-          ? this.upsertCertificateForRecipient(config, recipient, issuedById)
-          : this.upsertCertificateForRecipient(config, recipient, issuedById, options),
+          ? this.upsertCertificateForRecipientResult(config, recipient, issuedById)
+          : this.upsertCertificateForRecipientResult(config, recipient, issuedById, options),
       this.audit,
+      (certificate) => this.notifyCertificateAvailable(certificate),
     );
   }
 
@@ -290,7 +293,7 @@ export class CertificateIssuingService {
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
     issuedById?: string,
-    options: { notify?: boolean; prisma?: CertificateWriteClient } = {},
+    options: { auditActor?: AuditActor; notify?: boolean; prisma?: CertificateWriteClient } = {},
   ) {
     const result = await this.upsertCertificateForRecipientResult(config, recipient, issuedById, options);
     return result.certificate;
@@ -300,7 +303,7 @@ export class CertificateIssuingService {
     config: CertificateConfigRecord,
     recipient: EligibleCertificateRecipient,
     issuedById?: string,
-    options: { notify?: boolean; prisma?: CertificateWriteClient } = {},
+    options: { auditActor?: AuditActor; notify?: boolean; prisma?: CertificateWriteClient } = {},
   ): Promise<{ certificate: CertificateRecord; shouldNotify: boolean }> {
     const shouldNotifyNow = (options.notify ?? true) && (options.prisma === undefined || options.prisma === this.prisma);
     const prisma = options.prisma ?? this.prisma;
@@ -343,7 +346,7 @@ export class CertificateIssuingService {
           },
           select: CERTIFICATE_SELECT,
         });
-        await this.recordCertificateAudit(null, certificate, AuditLogOperation.ISSUE, issuedById, client);
+        await this.recordCertificateAudit(null, certificate, AuditLogOperation.ISSUE, issuedById, client, options.auditActor);
         return certificate;
       };
       const certificate = options.prisma && options.prisma !== this.prisma
@@ -371,7 +374,7 @@ export class CertificateIssuingService {
         },
         select: CERTIFICATE_SELECT,
       });
-      await this.recordCertificateAudit(existingCertificate, certificate, AuditLogOperation.REISSUE, issuedById, client);
+      await this.recordCertificateAudit(existingCertificate, certificate, AuditLogOperation.REISSUE, issuedById, client, options.auditActor);
       return certificate;
     };
     const certificate = options.prisma && options.prisma !== this.prisma
@@ -389,11 +392,16 @@ export class CertificateIssuingService {
     operation: AuditLogOperation,
     actorId: string | undefined,
     prisma: CertificateWriteClient,
+    actor?: AuditActor,
   ): Promise<void> {
-    return this.audit.record(before, after, operation, actorId, prisma);
+    return this.audit.record(before, after, operation, actorId, prisma, actor);
   }
 
   private async notifyCertificateAvailable(certificate: CertificateRecord): Promise<void> {
+    if (this.notificationJobs) {
+      await this.notificationJobs.enqueue(certificate);
+      return;
+    }
     return notifyCertificateAvailable(this.notifications, certificate);
   }
 

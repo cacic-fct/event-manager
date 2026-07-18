@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
 import { Developer } from './developer';
 
 const meta: Meta<Developer> = {
@@ -16,23 +16,17 @@ export default meta;
 
 type Story = StoryObj<Developer>;
 
-const exerciseStory = async (canvasElement: HTMLElement) => {
-  const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find((button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true');
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
-};
-
 export const Playground: Story = {
-  args: {},
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('link', { name: 'Documentação' })).toBeVisible();
+    await expect(canvas.getByText('publicEvents(take: 3)')).toBeVisible();
+    await expect(canvas.getByText("curl --request POST 'https://eventos.cacic.com.br/api/graphql'")).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Copiar exemplo em curl' })).toBeVisible();
+  },
 };
 
+export const Dark: Story = {
+  globals: { theme: 'dark' },
+};

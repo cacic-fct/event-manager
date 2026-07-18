@@ -111,7 +111,11 @@ describe('CertificateIssuingService', () => {
     ) as unknown as { events: { id: string }[]; templateData: { content: string } };
 
     expect(renderedData.events.map((event) => event.id)).toEqual(['event-a', 'event-b']);
-    expect(renderedData.templateData.content.indexOf('Primeiro')).toBeLessThan(renderedData.templateData.content.indexOf('Segundo'));
+    const primeiroIndex = renderedData.templateData.content.indexOf('Primeiro');
+    const segundoIndex = renderedData.templateData.content.indexOf('Segundo');
+    expect(primeiroIndex).toBeGreaterThanOrEqual(0);
+    expect(segundoIndex).toBeGreaterThanOrEqual(0);
+    expect(primeiroIndex).toBeLessThan(segundoIndex);
   });
 
   it('keeps the original issue date when rendered data only differs by object key order', async () => {
@@ -335,6 +339,40 @@ describe('CertificateIssuingService', () => {
     expect(recipientSpy).toHaveBeenCalledTimes(3);
     expect(upsertSpy).toHaveBeenCalledTimes(2);
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues cloned certificate notifications only after its transaction commits', async () => {
+    const notificationJobs = { enqueue: jest.fn().mockResolvedValue(undefined) };
+    const prisma = {
+      $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+        const result = await callback({});
+        expect(notificationJobs.enqueue).not.toHaveBeenCalled();
+        return result;
+      }),
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-1' }]),
+      },
+    };
+    const service = new CertificateIssuingService(
+      prisma as never,
+      { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,
+      { getConfigById: jest.fn().mockResolvedValue(config) } as never,
+      undefined,
+      undefined,
+      notificationJobs as never,
+    );
+    jest.spyOn(service as never, 'resolveRecipientForConfig').mockResolvedValue({
+      person: mappedCertificateRecord.person,
+      events: [],
+    });
+    jest.spyOn(service as never, 'upsertCertificateForRecipientResult').mockResolvedValue({
+      certificate: mappedCertificateRecord,
+      shouldNotify: true,
+    });
+
+    await service.issueForExistingConfigRecipients('source-config', 'target-config', 'admin-user');
+
+    expect(notificationJobs.enqueue).toHaveBeenCalledWith(mappedCertificateRecord);
   });
 
   it('propagates unexpected failures before writing cloned recipient certificates', async () => {
@@ -805,8 +843,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await service.issueMissedCertificates('config-1');
 
@@ -893,8 +931,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await expect(service.issueMissedCertificates('config-1')).resolves.toHaveLength(2);
     expect(prisma.certificate.updateMany).not.toHaveBeenCalled();
@@ -905,6 +943,9 @@ describe('CertificateIssuingService', () => {
 
   it('reissues certificates for every certificate config', async () => {
     const prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
       certificateConfig: {
         findMany: jest.fn().mockResolvedValue([{ ...config, id: 'config-1' }, { ...config, id: 'config-2' }]),
       },
@@ -924,8 +965,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, {} as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await expect(service.reissueAllCertificates('admin-user')).resolves.toEqual({
       configCount: 2,
@@ -946,6 +987,9 @@ describe('CertificateIssuingService', () => {
 
   it('reissues certificates only for configs in a standalone certificate folder', async () => {
     const prisma = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
+      },
       certificateConfig: {
         findMany: jest.fn().mockResolvedValue([{ ...config, id: 'config-1', folderId: 'folder-1' }]),
       },
@@ -961,8 +1005,8 @@ describe('CertificateIssuingService', () => {
     };
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await expect(service.reissueCertificatesForFolder(' folder-1 ', 'admin-user')).resolves.toEqual({
       configCount: 1,
@@ -1018,8 +1062,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await expect(service.refreshIssuedCertificatesForPerson('person-valid', 'user-1')).resolves.toHaveLength(1);
 
@@ -1048,7 +1092,7 @@ describe('CertificateIssuingService', () => {
       expect.objectContaining({ id: 'config-1' }),
       expect.objectContaining({ person: { id: 'person-valid' } }),
       'user-1',
-      { prisma: tx },
+      expect.objectContaining({ prisma: tx }),
     );
   });
 
@@ -1081,8 +1125,8 @@ describe('CertificateIssuingService', () => {
 
     const service = new CertificateIssuingService(prisma as never, validation as never, eligibilityService as never);
     const upsertSpy = jest
-      .spyOn(service as never, 'upsertCertificateForRecipient')
-      .mockResolvedValue(mappedCertificateRecord as never);
+      .spyOn(service as never, 'upsertCertificateForRecipientResult')
+      .mockResolvedValue({ certificate: mappedCertificateRecord, shouldNotify: false } as never);
 
     await service.refreshIssuedCertificatesAfterPeopleMerge('target-person', 'source-person', 'admin-user');
 
@@ -1091,13 +1135,13 @@ describe('CertificateIssuingService', () => {
       expect.objectContaining({ id: 'config-1' }),
       expect.objectContaining({ person: { id: 'target-person' } }),
       'admin-user',
-      { prisma },
+      expect.objectContaining({ prisma }),
     );
     expect(upsertSpy).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'config-2' }),
       expect.objectContaining({ person: { id: 'target-person' } }),
       'admin-user',
-      { prisma },
+      expect.objectContaining({ prisma }),
     );
     expect(prisma.certificate.updateMany).toHaveBeenCalledWith({
       where: {

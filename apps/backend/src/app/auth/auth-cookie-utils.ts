@@ -44,12 +44,7 @@ export function resolveCookieMaxAge(expiresAt: number): number {
 }
 
 export function isSecureAuthRequest(request: Request): boolean {
-  if (request.secure) {
-    return true;
-  }
-
-  const forwardedProto = request.headers['x-forwarded-proto'];
-  return Array.isArray(forwardedProto) ? forwardedProto[0] === 'https' : forwardedProto === 'https';
+  return request.secure;
 }
 
 export function clearCacicTrackingCookies(response: Response, request: Request): void {

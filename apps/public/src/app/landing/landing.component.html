@@ -32,7 +32,7 @@
   </section>
 
   <section #nextSection>
-    <app-value-proposition />
+    <app-value-proposition [stats]="platformStats().stats" [statsState]="platformStats().state" />
   </section>
 
   <section>
@@ -40,6 +40,4 @@
   </section>
 </main>
 
-<footer>
-  <a href="https://cacic.com.br/legal/privacy-policy">Política de Privacidade</a>
-</footer>
+<app-landing-footer />
