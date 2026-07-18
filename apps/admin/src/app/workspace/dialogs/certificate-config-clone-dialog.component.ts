@@ -126,8 +126,7 @@ export type CertificateConfigCloneDialogResult = {
             <mat-checkbox [formControl]="partControls.issuedPeople">
               Pessoas já emitidas
             </mat-checkbox>
-          }
-          @if (data.config.issuedTo === 'OTHER') {
+          } @else {
             <mat-checkbox [formControl]="partControls.manualPeople">
               Lista de pessoas da emissão manual
             </mat-checkbox>

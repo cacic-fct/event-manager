@@ -1,5 +1,5 @@
 import { Certificate, CertificateIssuedTo, CertificateReissueResult, CertificateScope, DeletionResult } from '@cacic-fct/shared-data-types';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
@@ -28,6 +28,7 @@ type CertificateReissueClient = AuditPrismaClient;
 @Injectable()
 export class CertificateIssuingService {
   private static readonly CERTIFICATE_ISSUING_BATCH_SIZE = 10;
+  private readonly logger = new Logger(CertificateIssuingService.name);
   private readonly audit: CertificateIssuanceAudit;
   private readonly refresh: CertificateIssuanceRefresh;
   private readonly recipients: CertificateIssuanceRecipients;
@@ -274,7 +275,12 @@ export class CertificateIssuingService {
   }
 
   async notifyCopiedCertificates(certificates: CertificateRecord[]): Promise<void> {
-    await Promise.all(certificates.map((certificate) => this.notifyCertificateAvailable(certificate)));
+    const results = await Promise.allSettled(certificates.map((certificate) => this.notifyCertificateAvailable(certificate)));
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        this.logger.error('Could not enqueue a copied certificate notification.', result.reason);
+      }
+    }
   }
 
   private isExpectedRecipientSkipError(error: unknown): boolean {

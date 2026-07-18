@@ -1,5 +1,5 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { addMinutes } from 'date-fns';
 import { buildCertificateRenderedData, buildMinicursoLines, formatCargaHoraria } from './certificate-rendered-data';
 import { CertificateIssuingService } from './certificate-issuing.service';
@@ -412,6 +412,17 @@ describe('CertificateIssuingService', () => {
     await service.issueForExistingConfigRecipients('source-config', 'target-config', 'admin-user');
 
     expect(notificationJobs.enqueue).toHaveBeenCalledWith(mappedCertificateRecord);
+  });
+
+  it('does not reject a completed clone when queuing a copied certificate notification fails', async () => {
+    const notificationJobs = { enqueue: jest.fn().mockRejectedValue(new Error('Redis unavailable')) };
+    const logError = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    const service = new CertificateIssuingService({} as never, {} as never, {} as never, undefined, undefined, notificationJobs as never);
+
+    await expect(service.notifyCopiedCertificates([mappedCertificateRecord])).resolves.toBeUndefined();
+
+    expect(notificationJobs.enqueue).toHaveBeenCalledWith(mappedCertificateRecord);
+    expect(logError).toHaveBeenCalledWith('Could not enqueue a copied certificate notification.', expect.any(Error));
   });
 
   it('propagates unexpected failures before writing cloned recipient certificates', async () => {
