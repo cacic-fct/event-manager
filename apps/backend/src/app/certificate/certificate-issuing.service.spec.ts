@@ -1,5 +1,5 @@
 import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/shared-data-types';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { addMinutes } from 'date-fns';
 import { buildCertificateRenderedData, buildMinicursoLines, formatCargaHoraria } from './certificate-rendered-data';
 import { CertificateIssuingService } from './certificate-issuing.service';
@@ -285,6 +285,45 @@ describe('CertificateIssuingService', () => {
     expect(upsertSpy).toHaveBeenCalledWith(config, recipient, 'admin-user');
   });
 
+  it('copies manual recipients through the caller transaction with the duplicator as issuer', async () => {
+    const sourceConfig = { ...mappedCertificateRecord.config, id: 'source-config', issuedTo: CertificateIssuedTo.OTHER };
+    const targetConfig = { ...mappedCertificateRecord.config, id: 'target-config', issuedTo: CertificateIssuedTo.OTHER };
+    const transaction = {
+      certificateConfig: {
+        findFirst: jest.fn().mockResolvedValueOnce(sourceConfig).mockResolvedValueOnce(targetConfig),
+      },
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-1' }]),
+      },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Duplicator', email: 'duplicator@example.com' }),
+      },
+    };
+    const service = new CertificateIssuingService(
+      {} as never,
+      { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,
+      {} as never,
+    );
+    const recipient = { person: mappedCertificateRecord.person, events: [] };
+    jest.spyOn(service as never, 'resolveRecipientForConfig').mockResolvedValue(recipient);
+    const copiedCertificate = { ...mappedCertificateRecord, config: targetConfig };
+    const upsert = jest.spyOn(service as never, 'upsertCertificateForRecipientResult').mockResolvedValue({
+      certificate: copiedCertificate,
+      shouldNotify: true,
+    });
+
+    await expect(service.copyManualRecipients('source-config', 'target-config', 'duplicating-user', transaction as never)).resolves.toEqual([
+      copiedCertificate,
+    ]);
+
+    expect(upsert).toHaveBeenCalledWith(
+      targetConfig,
+      recipient,
+      'duplicating-user',
+      expect.objectContaining({ prisma: transaction, notify: false }),
+    );
+  });
+
   it('copies existing issued recipients in batches without failing the whole copy on one ineligible person', async () => {
     const prisma = {
       $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback({})),
@@ -373,6 +412,17 @@ describe('CertificateIssuingService', () => {
     await service.issueForExistingConfigRecipients('source-config', 'target-config', 'admin-user');
 
     expect(notificationJobs.enqueue).toHaveBeenCalledWith(mappedCertificateRecord);
+  });
+
+  it('does not reject a completed clone when queuing a copied certificate notification fails', async () => {
+    const notificationJobs = { enqueue: jest.fn().mockRejectedValue(new Error('Redis unavailable')) };
+    const logError = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    const service = new CertificateIssuingService({} as never, {} as never, {} as never, undefined, undefined, notificationJobs as never);
+
+    await expect(service.notifyCopiedCertificates([mappedCertificateRecord])).resolves.toBeUndefined();
+
+    expect(notificationJobs.enqueue).toHaveBeenCalledWith(mappedCertificateRecord);
+    expect(logError).toHaveBeenCalledWith('Could not enqueue a copied certificate notification.', expect.any(Error));
   });
 
   it('propagates unexpected failures before writing cloned recipient certificates', async () => {

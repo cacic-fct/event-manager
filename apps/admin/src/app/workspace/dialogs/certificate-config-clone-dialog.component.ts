@@ -29,6 +29,7 @@ export type CertificateConfigCloneDialogData = {
   config: CertificateConfig;
   defaultName: string;
   canCopyIssuedPeople: boolean;
+  canCopyManualPeople: boolean;
 };
 
 export type CertificateConfigCloneDialogResult = {
@@ -121,9 +122,15 @@ export type CertificateConfigCloneDialogResult = {
           <mat-checkbox [formControl]="partControls.activeState">
             Status
           </mat-checkbox>
-          <mat-checkbox [formControl]="partControls.issuedPeople">
-            Pessoas já emitidas
-          </mat-checkbox>
+          @if (data.config.issuedTo !== 'OTHER') {
+            <mat-checkbox [formControl]="partControls.issuedPeople">
+              Pessoas já emitidas
+            </mat-checkbox>
+          } @else {
+            <mat-checkbox [formControl]="partControls.manualPeople">
+              Lista de pessoas da emissão manual
+            </mat-checkbox>
+          }
         </div>
       </section>
     </div>
@@ -239,6 +246,13 @@ export class CertificateConfigCloneDialogComponent {
       },
       { nonNullable: true },
     ),
+    manualPeople: new FormControl(
+      {
+        value: false,
+        disabled: !this.data.canCopyManualPeople,
+      },
+      { nonNullable: true },
+    ),
   };
 
   constructor() {
@@ -271,6 +285,7 @@ export class CertificateConfigCloneDialogComponent {
         recipientData: this.partControls.recipientData.value,
         activeState: this.partControls.activeState.value,
         issuedPeople: this.partControls.issuedPeople.value,
+        manualPeople: this.partControls.manualPeople.value,
       },
     });
   }

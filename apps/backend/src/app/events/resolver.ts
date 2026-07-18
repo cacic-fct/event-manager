@@ -6,6 +6,7 @@ import { addHours, subHours } from 'date-fns';
 import {
   AuditLogEntityType,
   AuditLogOperation,
+  AttendanceCreationMethod,
   CertificateScope,
   Prisma,
   PublicationState as PrismaPublicationState,
@@ -23,6 +24,7 @@ import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+import { AttendanceCategoryService } from './attendance-category.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 
@@ -200,6 +202,11 @@ const EVENT_CLONE_SOURCE_SELECT = {
   },
 } satisfies Prisma.EventSelect;
 
+const EVENT_CLONE_ATTENDANCE_SELECT = {
+  personId: true,
+  attendedAt: true,
+} satisfies Prisma.EventAttendanceSelect;
+
 const DEFAULT_DRAFT_EVENT_NAME = 'Evento sem título';
 const DEFAULT_EVENT_DURATION_HOURS = 1;
 
@@ -214,6 +221,9 @@ export class EventsResolver {
     private readonly auditLog: AuditLogService = {
       record: async () => undefined,
     } as unknown as AuditLogService,
+    private readonly attendanceCategories: AttendanceCategoryService = {
+      refreshForEventPersons: async () => undefined,
+    } as unknown as AttendanceCategoryService,
   ) {}
 
   @Query(() => [Event], { name: 'events' })
@@ -515,19 +525,29 @@ export class EventsResolver {
     @Args('input', { type: () => EventCloneInput, nullable: true }) input: EventCloneInput | null,
     @Context() context: GraphqlContext,
   ) {
+    const parts = input?.parts;
+    const shouldCopyAttendances = Boolean(parts?.attendances);
     const source = await this.prisma.event.findFirst({
       where: {
         id,
         deletedAt: null,
       },
-      select: EVENT_CLONE_SOURCE_SELECT,
+      select: {
+        ...EVENT_CLONE_SOURCE_SELECT,
+        ...(shouldCopyAttendances
+          ? {
+              attendances: {
+                select: EVENT_CLONE_ATTENDANCE_SELECT,
+              },
+            }
+          : {}),
+      },
     });
 
     if (!source) {
       throw new NotFoundException(`Event ${id} was not found.`);
     }
 
-    const parts = input?.parts;
     const shouldCopyLecturers = Boolean(parts?.lecturers);
     const shouldCopyCertificateConfig = Boolean(parts?.certificateConfig);
     if (shouldCopyLecturers) {
@@ -537,6 +557,11 @@ export class EventsResolver {
     }
     if (shouldCopyCertificateConfig) {
       await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.CertificateConfig.Read], {
+        eventId: source.id,
+      });
+    }
+    if (shouldCopyAttendances) {
+      await this.authorizationPolicy.assertPermissions(this.getUser(context), [Permission.EventAttendance.Read], {
         eventId: source.id,
       });
     }
@@ -615,6 +640,13 @@ export class EventsResolver {
         cloneTargetContext,
       );
     }
+    if (shouldCopyAttendances) {
+      await this.authorizationPolicy.assertPermissions(
+        this.getUser(context),
+        [Permission.EventAttendance.Collect],
+        cloneTargetContext,
+      );
+    }
     await this.frozenResources.assertEventCreateTargetsMutable(cloneInput, this.getUser(context));
     const normalizedInput = this.applyEventCreateDefaults(await this.normalizeEventCertificateInput(cloneInput));
     const eventInput = { ...normalizedInput };
@@ -649,6 +681,13 @@ export class EventsResolver {
         await this.cloneCertificateConfigsForEvent(tx, source.certificateConfigs, createdEvent.id);
       }
 
+      const copiedAttendanceCount = await this.cloneAttendancesForEvent(
+        tx,
+        source.attendances ?? [],
+        createdEvent.id,
+        actorId,
+      );
+
       await this.disableGroupPerEventModeForMajorEvent(createdEvent, tx);
       await this.auditLog.record(
         {
@@ -664,7 +703,16 @@ export class EventsResolver {
             majorEventId: createdEvent.majorEventId,
             eventGroupId: createdEvent.eventGroupId,
           },
-          summary: `Evento criado como cópia de ${source.name}.`,
+          summary: this.buildCloneAuditSummary(source.name, shouldCopyAttendances ? copiedAttendanceCount : undefined),
+          metadata: shouldCopyAttendances
+            ? {
+                copiedAttendances: {
+                  sourceEventId: source.id,
+                  count: copiedAttendanceCount,
+                  creationMethod: AttendanceCreationMethod.EVENT_DUPLICATION,
+                },
+              }
+            : undefined,
         },
         tx,
       );
@@ -990,9 +1038,43 @@ export class EventsResolver {
     }
   }
 
+  private async cloneAttendancesForEvent(
+    tx: Prisma.TransactionClient,
+    attendances: Array<{ personId: string; attendedAt: Date }>,
+    eventId: string,
+    actorId: string | undefined,
+  ): Promise<number> {
+    if (attendances.length === 0) {
+      return 0;
+    }
+
+    const personIds = attendances.map((attendance) => attendance.personId);
+    const result = await tx.eventAttendance.createMany({
+      data: attendances.map((attendance) => ({
+        personId: attendance.personId,
+        eventId,
+        attendedAt: attendance.attendedAt,
+        createdById: actorId,
+        committedById: actorId,
+        createdByMethod: AttendanceCreationMethod.EVENT_DUPLICATION,
+      })),
+    });
+    await this.attendanceCategories.refreshForEventPersons([eventId], personIds, tx);
+    return result.count;
+  }
+
   private buildCloneName(inputName: string | null | undefined, sourceName: string): string {
     const name = inputName?.trim();
     return name || `${sourceName} (cópia)`;
+  }
+
+  private buildCloneAuditSummary(sourceName: string, copiedAttendanceCount: number | undefined): string {
+    if (copiedAttendanceCount === undefined) {
+      return `Evento criado como cópia de ${sourceName}.`;
+    }
+
+    const attendanceLabel = copiedAttendanceCount === 1 ? 'registro de presença copiado' : 'registros de presença copiados';
+    return `Evento criado como cópia de ${sourceName}, com ${copiedAttendanceCount} ${attendanceLabel}.`;
   }
 
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {

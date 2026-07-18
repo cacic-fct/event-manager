@@ -107,6 +107,7 @@ export interface CertificateConfigClonePartsInput {
   recipientData?: boolean;
   activeState?: boolean;
   issuedPeople?: boolean;
+  manualPeople?: boolean;
 }
 
 export interface CertificateConfigCloneInput {

@@ -114,6 +114,7 @@ registerEnumType(PriceType, {
 
 export const AttendanceCreationMethod = {
   CSV_IMPORT: 'CSV_IMPORT',
+  EVENT_DUPLICATION: 'EVENT_DUPLICATION',
   MANUAL_INPUT: 'MANUAL_INPUT',
   SCANNER: 'SCANNER',
   ONLINE_CODE: 'ONLINE_CODE',

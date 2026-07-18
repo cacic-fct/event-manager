@@ -78,7 +78,10 @@ const meta: Meta<AttendanceInfoStoryArgs> = {
     personName: { control: 'text' },
     eventName: { control: 'text' },
     category: { control: 'select', options: ['REGULAR', 'NON_PAYING', 'NON_SUBSCRIBED', 'UNKNOWN'] },
-    createdByMethod: { control: 'select', options: ['SCANNER', 'MANUAL_INPUT', 'CSV_IMPORT', 'ONLINE_CODE', 'UNKNOWN'] },
+    createdByMethod: {
+      control: 'select',
+      options: ['SCANNER', 'MANUAL_INPUT', 'CSV_IMPORT', 'EVENT_DUPLICATION', 'ONLINE_CODE', 'UNKNOWN'],
+    },
     hasLocation: { control: 'boolean' },
     collectedAccuracyMeters: { control: { type: 'range', min: 0, max: 80, step: 1 } },
   },

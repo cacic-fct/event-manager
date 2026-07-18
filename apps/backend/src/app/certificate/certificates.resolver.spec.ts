@@ -1,4 +1,4 @@
-import { CertificateScope } from '@cacic-fct/shared-data-types';
+import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TURNSTILE_ACTIONS } from '@cacic-fct/shared-utils';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
@@ -384,7 +384,56 @@ describe('CertificatesResolver authorization', () => {
         targetId: 'folder-1',
       },
     );
-    expect(configsService.cloneConfig).toHaveBeenCalledWith('config-1', null);
+    expect(configsService.cloneConfig).toHaveBeenCalledWith(
+      'config-1',
+      null,
+      expect.objectContaining({ actor: user, client: expect.anything() }),
+    );
+  });
+
+  it('copies a manual people list atomically and attributes it to the duplicator', async () => {
+    const { authorizationPolicy, configsService, issuingService, prisma, resolver } = createResolver();
+    const user = { sub: 'user-1' };
+    configsService.getConfigById.mockResolvedValue({
+      id: 'config-1',
+      scope: CertificateScope.OTHER,
+      folderId: 'folder-1',
+      issuedTo: CertificateIssuedTo.OTHER,
+    });
+    configsService.cloneConfig.mockResolvedValue({
+      id: 'config-copy',
+      scope: CertificateScope.OTHER,
+      folderId: 'folder-1',
+    });
+    const copiedCertificate = { id: 'certificate-copy' };
+    issuingService.copyManualRecipients.mockResolvedValue([copiedCertificate]);
+
+    await resolver.cloneCertificateConfig(
+      'config-1',
+      { parts: { manualPeople: true } },
+      { req: { user } } as never,
+    );
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      3,
+      user,
+      [Permission.Certificate.Read],
+      { scope: CertificateScope.OTHER, targetId: 'folder-1' },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
+      4,
+      user,
+      [Permission.Certificate.Issue],
+      { scope: CertificateScope.OTHER, targetId: 'folder-1' },
+    );
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(configsService.cloneConfig).toHaveBeenCalledWith(
+      'config-1',
+      { parts: { manualPeople: true } },
+      expect.objectContaining({ actor: user, client: prisma }),
+    );
+    expect(issuingService.copyManualRecipients).toHaveBeenCalledWith('config-1', 'config-copy', 'user-1', prisma);
+    expect(issuingService.notifyCopiedCertificates).toHaveBeenCalledWith([copiedCertificate]);
   });
 
   it('deletes certificate configs after frozen delete validation', async () => {
@@ -731,6 +780,8 @@ function createResolver() {
     listCertificatesByTarget: jest.fn(),
     issueForPerson: jest.fn(),
     issueForExistingConfigRecipients: jest.fn(),
+    copyManualRecipients: jest.fn(),
+    notifyCopiedCertificates: jest.fn(),
     issueMissedCertificates: jest.fn(),
     reissueAllCertificates: jest.fn(),
     reissueCertificatesForFolder: jest.fn(),

@@ -129,6 +129,9 @@ export class CertificateConfigClonePartsInput {
 
   @Field(() => Boolean, { nullable: true })
   issuedPeople?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  manualPeople?: boolean;
 }
 
 @InputType()

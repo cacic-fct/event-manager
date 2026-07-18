@@ -590,7 +590,7 @@ describe('CertificateConfigsService', () => {
           recipientData: true,
           activeState: true,
         },
-      }),
+      }, { actor: { sub: 'duplicating-user' } as never }),
     ).resolves.toEqual(
       expect.objectContaining({
         id: 'config-copy',
@@ -613,6 +613,8 @@ describe('CertificateConfigsService', () => {
           certificateFields: {
             cidade: 'Presidente Prudente',
           },
+          createdById: 'duplicating-user',
+          updatedById: 'duplicating-user',
         }),
       }),
     );

@@ -242,6 +242,9 @@ export class EventClonePartsInput {
   attendanceSettings?: boolean;
 
   @Field(() => Boolean, { nullable: true })
+  attendances?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
   place?: boolean;
 
   @Field(() => Boolean, { nullable: true })

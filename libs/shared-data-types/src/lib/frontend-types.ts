@@ -7,7 +7,13 @@ export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 export type CertificateScope = 'MAJOR_EVENT' | 'EVENT_GROUP' | 'EVENT' | 'OTHER';
 export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
 export type SubscriptionCreationMethod = 'ADMIN_DASHBOARD' | 'SELF_SUBSCRIPTION' | 'UNKNOWN';
-export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
+export type AttendanceCreationMethod =
+  | 'CSV_IMPORT'
+  | 'EVENT_DUPLICATION'
+  | 'MANUAL_INPUT'
+  | 'SCANNER'
+  | 'ONLINE_CODE'
+  | 'UNKNOWN';
 export type OfflineEventAttendanceSubmissionStatus = 'PENDING' | 'COMMITTED' | 'REJECTED';
 export type OfflineEventAttendanceResolutionIssue =
   | 'COLLECTION_WINDOW_EXPIRED'

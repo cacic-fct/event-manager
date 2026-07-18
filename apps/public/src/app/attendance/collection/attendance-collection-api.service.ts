@@ -3,7 +3,13 @@ import { Injectable, NgZone, inject } from '@angular/core';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
 
-export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
+export type AttendanceCreationMethod =
+  | 'CSV_IMPORT'
+  | 'EVENT_DUPLICATION'
+  | 'MANUAL_INPUT'
+  | 'SCANNER'
+  | 'ONLINE_CODE'
+  | 'UNKNOWN';
 export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
 
 export interface AttendanceCollectionEvent {

@@ -428,6 +428,7 @@ export class WorkspaceCertificatesService {
         recipientData: Boolean(result.parts.recipientData),
         activeState: Boolean(result.parts.activeState),
         issuedPeople: Boolean(result.parts.issuedPeople),
+        manualPeople: Boolean(result.parts.manualPeople),
       },
     };
 
@@ -852,6 +853,7 @@ export class WorkspaceCertificatesService {
     config: CertificateConfig,
   ): Promise<CertificateConfigCloneDialogResult | null | undefined> {
     const canCopyIssuedPeople = this.permissions.hasAll([Permission.Certificate.Read, Permission.Certificate.Issue]);
+    const canCopyManualPeople = config.issuedTo === 'OTHER' && canCopyIssuedPeople;
     const dialogRef = this.dialog.open(CertificateConfigCloneDialogComponent, {
       width: '52rem',
       maxWidth: '95vw',
@@ -859,6 +861,7 @@ export class WorkspaceCertificatesService {
         config,
         defaultName: `${config.name} (cópia)`,
         canCopyIssuedPeople,
+        canCopyManualPeople,
       },
     });
 

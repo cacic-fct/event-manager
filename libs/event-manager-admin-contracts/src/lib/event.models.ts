@@ -286,6 +286,7 @@ export interface EventClonePartsInput {
   certificateConfig?: boolean;
   subscriptionSettings?: boolean;
   attendanceSettings?: boolean;
+  attendances?: boolean;
   place?: boolean;
   visibility?: boolean;
 }

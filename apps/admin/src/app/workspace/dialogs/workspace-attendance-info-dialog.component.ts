@@ -212,6 +212,7 @@ export class WorkspaceAttendanceInfoDialogComponent {
   private getMethodLabel(method: string): string {
     const labels: Record<string, string> = {
       CSV_IMPORT: 'Importação CSV',
+      EVENT_DUPLICATION: 'Duplicação de evento',
       MANUAL_INPUT: 'Manual',
       ONLINE_CODE: 'Online',
       SCANNER: 'Scanner',
