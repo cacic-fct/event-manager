@@ -12,6 +12,7 @@ import { Developer } from './components/developer';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { PlatformStatsApiService } from './platform-stats-api.service';
 import { catchError, map, of } from 'rxjs';
+import { LandingFooterComponent } from './components/landing-footer.component';
 
 @Component({
   selector: 'app-login-page',
@@ -23,6 +24,7 @@ import { catchError, map, of } from 'rxjs';
     RouterLink,
     DoodlesComponent,
     Developer,
+    LandingFooterComponent,
   ],
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.scss'],
