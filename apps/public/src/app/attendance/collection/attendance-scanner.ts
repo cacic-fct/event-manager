@@ -231,6 +231,8 @@ export class AttendanceScanner implements OnInit {
     switch (method) {
       case 'CSV_IMPORT':
         return 'CSV';
+      case 'EVENT_DUPLICATION':
+        return 'duplicação de evento';
       case 'MANUAL_INPUT':
         return 'manual';
       case 'SCANNER':

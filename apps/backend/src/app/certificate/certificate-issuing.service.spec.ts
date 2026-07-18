@@ -285,6 +285,45 @@ describe('CertificateIssuingService', () => {
     expect(upsertSpy).toHaveBeenCalledWith(config, recipient, 'admin-user');
   });
 
+  it('copies manual recipients through the caller transaction with the duplicator as issuer', async () => {
+    const sourceConfig = { ...mappedCertificateRecord.config, id: 'source-config', issuedTo: CertificateIssuedTo.OTHER };
+    const targetConfig = { ...mappedCertificateRecord.config, id: 'target-config', issuedTo: CertificateIssuedTo.OTHER };
+    const transaction = {
+      certificateConfig: {
+        findFirst: jest.fn().mockResolvedValueOnce(sourceConfig).mockResolvedValueOnce(targetConfig),
+      },
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([{ personId: 'person-1' }]),
+      },
+      user: {
+        findUnique: jest.fn().mockResolvedValue({ name: 'Duplicator', email: 'duplicator@example.com' }),
+      },
+    };
+    const service = new CertificateIssuingService(
+      {} as never,
+      { normalizeRequiredId: jest.fn((_field: string, value: string) => value) } as never,
+      {} as never,
+    );
+    const recipient = { person: mappedCertificateRecord.person, events: [] };
+    jest.spyOn(service as never, 'resolveRecipientForConfig').mockResolvedValue(recipient);
+    const copiedCertificate = { ...mappedCertificateRecord, config: targetConfig };
+    const upsert = jest.spyOn(service as never, 'upsertCertificateForRecipientResult').mockResolvedValue({
+      certificate: copiedCertificate,
+      shouldNotify: true,
+    });
+
+    await expect(service.copyManualRecipients('source-config', 'target-config', 'duplicating-user', transaction as never)).resolves.toEqual([
+      copiedCertificate,
+    ]);
+
+    expect(upsert).toHaveBeenCalledWith(
+      targetConfig,
+      recipient,
+      'duplicating-user',
+      expect.objectContaining({ prisma: transaction, notify: false }),
+    );
+  });
+
   it('copies existing issued recipients in batches without failing the whole copy on one ineligible person', async () => {
     const prisma = {
       $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback({})),

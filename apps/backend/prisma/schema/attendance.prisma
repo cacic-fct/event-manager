@@ -90,6 +90,7 @@ model OfflineEventAttendanceSubmission {
 
 enum AttendanceCreationMethod {
   CSV_IMPORT
+  EVENT_DUPLICATION
   MANUAL_INPUT
   SCANNER
   ONLINE_CODE

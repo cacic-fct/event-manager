@@ -385,6 +385,7 @@ describe('WorkspaceCertificatesService', () => {
             recipientData: true,
             activeState: false,
             issuedPeople: true,
+            manualPeople: false,
           },
         }),
     });
@@ -396,6 +397,7 @@ describe('WorkspaceCertificatesService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           canCopyIssuedPeople: true,
+          canCopyManualPeople: false,
         }),
       }),
     );
@@ -411,6 +413,7 @@ describe('WorkspaceCertificatesService', () => {
         recipientData: true,
         activeState: false,
         issuedPeople: true,
+        manualPeople: false,
       },
     });
   });

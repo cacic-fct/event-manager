@@ -15,6 +15,7 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditPrismaClient } from '../audit-log/audit-log.types';
+import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
@@ -33,6 +34,10 @@ import { CertificateValidationService } from './certificate-validation.service';
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
 type CertificateFolderWriteClient = AuditPrismaClient;
+type CertificateConfigCloneOptions = {
+  client?: AuditPrismaClient;
+  actor?: AuthenticatedUser;
+};
 
 @Injectable()
 export class CertificateConfigsService {
@@ -574,9 +579,18 @@ export class CertificateConfigsService {
     return mapCertificateConfig(updatedConfig);
   }
 
-  async cloneConfig(configId: string, input: CertificateConfigCloneInput | null): Promise<CertificateConfig> {
+  async cloneConfig(
+    configId: string,
+    input: CertificateConfigCloneInput | null,
+    options: CertificateConfigCloneOptions = {},
+  ): Promise<CertificateConfig> {
+    if (!options.client || options.client === this.prisma) {
+      return this.prisma.$transaction((tx) => this.cloneConfig(configId, input, { ...options, client: tx }));
+    }
+
+    const client = options.client;
     const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
-    const source = await this.prisma.certificateConfig.findFirst({
+    const source = await client.certificateConfig.findFirst({
       where: {
         id: normalizedConfigId,
         deletedAt: null,
@@ -641,7 +655,7 @@ export class CertificateConfigsService {
       await this.targetsService.assertIssuableTarget(scope, targetId);
     }
     const parts = input?.parts;
-    const shouldCopyRecipientData = Boolean(parts?.recipientData || parts?.issuedPeople);
+    const shouldCopyRecipientData = Boolean(parts?.recipientData || parts?.issuedPeople || parts?.manualPeople);
     const defaultIssuedTo = scope === CertificateScope.OTHER ? CertificateIssuedTo.OTHER : CertificateIssuedTo.ATTENDEE;
     const issuedTo =
       scope === CertificateScope.OTHER
@@ -655,14 +669,13 @@ export class CertificateConfigsService {
       : this.resolveCertificateTypeLabel(issuedTo, certificateFields, undefined);
     const name =
       input?.name === undefined || input.name === null
-        ? await this.buildUniqueCloneName(scope, targetId, source.name)
+        ? await this.buildUniqueCloneName(scope, targetId, source.name, client)
         : this.validation.normalizeRequiredName(input.name);
 
-    await this.ensureNoDuplicateName(scope, targetId, name);
+    await this.ensureNoDuplicateName(scope, targetId, name, undefined, client);
 
-    const createdConfig = await this.prisma.$transaction(async (tx) => {
-      const config = await tx.certificateConfig.create({
-        data: {
+    const createdConfig = await client.certificateConfig.create({
+      data: {
         name,
         scope,
         majorEventId,
@@ -682,12 +695,19 @@ export class CertificateConfigsService {
         issuedTo,
         certificateTypeLabel,
         certificateFields: this.toJsonCreateValue(certificateFields),
-        },
-        select: CERTIFICATE_CONFIG_SELECT,
-      });
-      await this.recordConfigAudit(null, config, AuditLogOperation.CREATE, tx, 'Configuração de certificado clonada.');
-      return config;
+        createdById: options.actor?.sub,
+        updatedById: options.actor?.sub,
+      },
+      select: CERTIFICATE_CONFIG_SELECT,
     });
+    await this.recordConfigAudit(
+      null,
+      createdConfig,
+      AuditLogOperation.CREATE,
+      client,
+      'Configuração de certificado clonada.',
+      options.actor,
+    );
 
     return mapCertificateConfig(createdConfig);
   }
@@ -722,8 +742,9 @@ export class CertificateConfigsService {
     before: CertificateConfigRecord | null,
     after: CertificateConfigRecord,
     operation: AuditLogOperation,
-    prisma: Prisma.TransactionClient,
+    prisma: AuditPrismaClient,
     summary?: string,
+    actor?: AuthenticatedUser,
   ): Promise<void> {
     await this.auditLog.record(
       {
@@ -745,6 +766,7 @@ export class CertificateConfigsService {
           eventGroupId: after.eventGroupId,
           majorEventId: after.majorEventId,
         },
+        actor,
       },
       prisma as unknown as AuditPrismaClient,
     );
@@ -919,8 +941,9 @@ export class CertificateConfigsService {
     targetId: string,
     name: string,
     excludeId?: string,
+    client: Pick<AuditPrismaClient, 'certificateConfig'> = this.prisma,
   ): Promise<void> {
-    const duplicate = await this.prisma.certificateConfig.findFirst({
+    const duplicate = await client.certificateConfig.findFirst({
       where: {
         deletedAt: null,
         name: {
@@ -940,12 +963,17 @@ export class CertificateConfigsService {
     }
   }
 
-  private async buildUniqueCloneName(scope: CertificateScope, targetId: string, sourceName: string): Promise<string> {
+  private async buildUniqueCloneName(
+    scope: CertificateScope,
+    targetId: string,
+    sourceName: string,
+    client: Pick<AuditPrismaClient, 'certificateConfig'> = this.prisma,
+  ): Promise<string> {
     const baseName = `${sourceName} (cópia)`;
     let name = baseName;
     let copyIndex = 2;
 
-    while (await this.hasDuplicateName(scope, targetId, name)) {
+    while (await this.hasDuplicateName(scope, targetId, name, client)) {
       name = `${baseName} ${copyIndex}`;
       copyIndex += 1;
     }
@@ -953,8 +981,13 @@ export class CertificateConfigsService {
     return name;
   }
 
-  private async hasDuplicateName(scope: CertificateScope, targetId: string, name: string): Promise<boolean> {
-    const duplicate = await this.prisma.certificateConfig.findFirst({
+  private async hasDuplicateName(
+    scope: CertificateScope,
+    targetId: string,
+    name: string,
+    client: Pick<AuditPrismaClient, 'certificateConfig'> = this.prisma,
+  ): Promise<boolean> {
+    const duplicate = await client.certificateConfig.findFirst({
       where: {
         deletedAt: null,
         name: {

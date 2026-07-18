@@ -511,6 +511,7 @@ export class WorkspaceEventsService {
             certificateConfig: Boolean(result.parts.certificateConfig),
             subscriptionSettings: Boolean(result.parts.subscriptionSettings),
             attendanceSettings: Boolean(result.parts.attendanceSettings),
+            attendances: Boolean(result.parts.attendances),
             place: Boolean(result.parts.place),
             visibility: Boolean(result.parts.visibility),
           },
@@ -768,11 +769,19 @@ export class WorkspaceEventsService {
       Permission.CertificateConfig.Read,
       Permission.CertificateConfig.Create,
     ]);
+    const canCopyAttendances = this.permissions.hasAll([
+      Permission.EventAttendance.Read,
+      Permission.EventAttendance.Collect,
+    ]);
 
     const dialogRef = this.dialog.open(CloneAssetDialogComponent, {
       width: '52rem',
       maxWidth: '95vw',
-      data: createEventCloneDialogData(eventItem.name, { canCopyLecturers, canCopyCertificateConfig }),
+      data: createEventCloneDialogData(eventItem.name, {
+        canCopyLecturers,
+        canCopyCertificateConfig,
+        canCopyAttendances,
+      }),
     });
 
     return firstValueFrom(dialogRef.afterClosed());

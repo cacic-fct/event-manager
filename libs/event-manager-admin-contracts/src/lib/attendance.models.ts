@@ -1,7 +1,13 @@
 import type { Event, MajorEvent } from './event.models';
 import type { Person } from './people.models';
 
-export type AttendanceCreationMethod = 'CSV_IMPORT' | 'MANUAL_INPUT' | 'SCANNER' | 'ONLINE_CODE' | 'UNKNOWN';
+export type AttendanceCreationMethod =
+  | 'CSV_IMPORT'
+  | 'EVENT_DUPLICATION'
+  | 'MANUAL_INPUT'
+  | 'SCANNER'
+  | 'ONLINE_CODE'
+  | 'UNKNOWN';
 export type AttendanceImportMatchType = 'IDENTITY_DOCUMENT' | 'EMAIL' | 'FULL_NAME';
 export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
 export type SubscriptionStatus =

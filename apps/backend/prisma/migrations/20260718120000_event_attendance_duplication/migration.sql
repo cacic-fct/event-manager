@@ -1,0 +1,1 @@
+ALTER TYPE "AttendanceCreationMethod" ADD VALUE 'EVENT_DUPLICATION';

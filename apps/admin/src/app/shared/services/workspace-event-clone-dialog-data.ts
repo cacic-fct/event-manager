@@ -2,7 +2,7 @@ import type { CloneAssetDialogData } from '../../workspace/dialogs/clone-asset-d
 
 export function createEventCloneDialogData(
   eventName: string,
-  permissions: { canCopyLecturers: boolean; canCopyCertificateConfig: boolean },
+  permissions: { canCopyLecturers: boolean; canCopyCertificateConfig: boolean; canCopyAttendances: boolean },
 ): CloneAssetDialogData {
   return {
     title: 'Duplicar evento',
@@ -37,6 +37,14 @@ export function createEventCloneDialogData(
         label: 'Presença',
         description: 'Copia coleta e janelas de presença, sem copiar o código de presença.',
         defaultSelected: true,
+      },
+      {
+        key: 'attendances',
+        label: 'Registros de presença',
+        description: 'Copia as pessoas presentes. O novo registro identifica quem duplicou o evento.',
+        defaultSelected: false,
+        disabled: !permissions.canCopyAttendances,
+        disabledReason: 'Exige permissão para visualizar presenças de origem e registrar presenças no novo evento.',
       },
       { key: 'place', label: 'Local', description: 'Copia coordenadas e descrição do local.', defaultSelected: true },
       {

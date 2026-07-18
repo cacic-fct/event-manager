@@ -43,6 +43,7 @@ describe('CertificateConfigCloneDialogComponent', () => {
       }),
       defaultName: 'Certificate (cópia)',
       canCopyIssuedPeople: true,
+      canCopyManualPeople: true,
     });
 
     await settleAsyncWork();
@@ -77,7 +78,7 @@ describe('CertificateConfigCloneDialogComponent', () => {
     read(component).form.controls.name.setValue('  Cópia ajustada  ');
     read(component).partControls.textContent.setValue(false);
     read(component).partControls.activeState.setValue(false);
-    read(component).partControls.issuedPeople.setValue(true);
+    read(component).partControls.manualPeople.setValue(true);
 
     read(component).confirmClone();
 
@@ -90,7 +91,8 @@ describe('CertificateConfigCloneDialogComponent', () => {
         textContent: false,
         recipientData: true,
         activeState: false,
-        issuedPeople: true,
+        issuedPeople: false,
+        manualPeople: true,
       },
     });
   });
@@ -138,6 +140,7 @@ async function createFixture(
     }),
     defaultName: 'Certificate (cópia)',
     canCopyIssuedPeople: true,
+    canCopyManualPeople: true,
   },
 ): Promise<{
   component: CertificateConfigCloneDialogComponent;

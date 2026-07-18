@@ -33,6 +33,7 @@ type CertificateConfigCloneDialogStoryArgs = {
   sourceScope: CertificateScope;
   targetsMode: CertificateCloneTargetsMode;
   canCopyIssuedPeople: boolean;
+  canCopyManualPeople: boolean;
 };
 
 const dialogRefMock = {
@@ -53,6 +54,7 @@ class CertificateConfigCloneDialogStoryHostComponent {
   readonly sourceScope = input<CertificateScope>('EVENT');
   readonly targetsMode = input<CertificateCloneTargetsMode>('populated');
   readonly canCopyIssuedPeople = input(true);
+  readonly canCopyManualPeople = input(true);
 
   readonly storyInjector = computed(() =>
     Injector.create({
@@ -64,6 +66,7 @@ class CertificateConfigCloneDialogStoryHostComponent {
             config: certificateConfig(this.sourceScope()),
             defaultName: this.defaultName(),
             canCopyIssuedPeople: this.canCopyIssuedPeople(),
+            canCopyManualPeople: this.canCopyManualPeople(),
           } satisfies CertificateConfigCloneDialogData,
         },
         { provide: MatDialogRef, useValue: dialogRefMock },
@@ -82,6 +85,7 @@ const meta: Meta<CertificateConfigCloneDialogStoryArgs> = {
     sourceScope: 'EVENT',
     targetsMode: 'populated',
     canCopyIssuedPeople: true,
+    canCopyManualPeople: true,
   },
   argTypes: {
     defaultName: { control: 'text' },
@@ -94,6 +98,7 @@ const meta: Meta<CertificateConfigCloneDialogStoryArgs> = {
       options: ['populated', 'empty', 'loading-error'],
     },
     canCopyIssuedPeople: { control: 'boolean' },
+    canCopyManualPeople: { control: 'boolean' },
   },
   decorators: [
     applicationConfig({
@@ -141,6 +146,7 @@ export const TargetLoadError: Story = {
 export const CannotCopyIssuedPeople: Story = {
   args: {
     canCopyIssuedPeople: false,
+    canCopyManualPeople: false,
   },
 };
 

@@ -343,6 +343,12 @@ describe('EventsResolver', () => {
       updatedAt: new Date('2026-06-01T12:00:00.000Z'),
       updatedById: 'creator',
       lecturers: [{ personId: 'person-1' }],
+      attendances: [
+        {
+          personId: 'person-2',
+          attendedAt: new Date('2026-07-01T12:30:00.000Z'),
+        },
+      ],
       certificateConfigs: [
         {
           name: 'Participante',
@@ -374,6 +380,9 @@ describe('EventsResolver', () => {
       certificateConfig: {
         create: jest.fn(),
       },
+      eventAttendance: {
+        createMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
     };
     const prisma = {
       event: {
@@ -400,6 +409,9 @@ describe('EventsResolver', () => {
     const auditLog = {
       record: jest.fn(),
     };
+    const attendanceCategories = {
+      refreshForEventPersons: jest.fn(),
+    };
     const resolver = new EventsResolver(
       prisma as never,
       typesenseSearch as never,
@@ -407,6 +419,7 @@ describe('EventsResolver', () => {
       frozenResources as never,
       authorizationPolicy as never,
       auditLog as never,
+      attendanceCategories as never,
     );
 
     await expect(
@@ -419,6 +432,7 @@ describe('EventsResolver', () => {
             certificateConfig: true,
             subscriptionSettings: true,
             attendanceSettings: true,
+            attendances: true,
             place: true,
             visibility: true,
           },
@@ -461,6 +475,31 @@ describe('EventsResolver', () => {
         certificateTemplateId: 'template-1',
       }),
     });
+    expect(tx.eventAttendance.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          personId: 'person-2',
+          eventId: 'event-clone',
+          attendedAt: new Date('2026-07-01T12:30:00.000Z'),
+          createdById: 'admin-1',
+          committedById: 'admin-1',
+          createdByMethod: 'EVENT_DUPLICATION',
+        },
+      ],
+    });
+    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(['event-clone'], ['person-2'], tx);
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          attendances: {
+            select: {
+              personId: true,
+              attendedAt: true,
+            },
+          },
+        }),
+      }),
+    );
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
       { sub: 'admin-1' },
       [Permission.EventLecturer.Read],
@@ -505,11 +544,33 @@ describe('EventsResolver', () => {
         eventGroupId: 'group-1',
       },
     );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(6);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.EventAttendance.Read],
+      {
+        eventId: 'event-source',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      { sub: 'admin-1' },
+      [Permission.EventAttendance.Collect],
+      {
+        majorEventId: 'major-1',
+        eventGroupId: 'group-1',
+      },
+    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(8);
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
         entityId: 'event-clone',
-        summary: 'Evento criado como cópia de Oficina de Git.',
+        summary: 'Evento criado como cópia de Oficina de Git, com 1 registro de presença copiado.',
+        metadata: {
+          copiedAttendances: {
+            sourceEventId: 'event-source',
+            count: 1,
+            creationMethod: 'EVENT_DUPLICATION',
+          },
+        },
       }),
       tx,
     );

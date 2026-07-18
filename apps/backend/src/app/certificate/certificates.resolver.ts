@@ -356,7 +356,14 @@ export class CertificatesResolver {
       scope,
       targetId,
     });
-    if (input?.parts?.issuedPeople) {
+    const shouldCopyManualPeople = Boolean(input?.parts?.manualPeople);
+    if (shouldCopyManualPeople && input?.parts?.issuedPeople) {
+      throw new BadRequestException('Choose either issued people or the manual people list when cloning a certificate config.');
+    }
+    if (shouldCopyManualPeople && source.issuedTo !== 'OTHER') {
+      throw new BadRequestException('Only manual certificate configurations have a manual people list to copy.');
+    }
+    if (input?.parts?.issuedPeople || shouldCopyManualPeople) {
       await this.authorizationPolicy.assertPermissions(user, [Permission.Certificate.Read], {
         scope: source.scope,
         targetId: sourceTargetId,
@@ -367,7 +374,16 @@ export class CertificatesResolver {
       });
     }
 
-    const created = await this.configsService.cloneConfig(id, input);
+    const { created, copiedManualCertificates } = await this.prisma.$transaction(async (tx) => {
+      const createdConfig = await this.configsService.cloneConfig(id, input, { client: tx, actor: user });
+      const copiedManualCertificates = shouldCopyManualPeople
+        ? await this.issuingService.copyManualRecipients(id, createdConfig.id, this.getIssuedById(context), tx)
+        : [];
+      return { created: createdConfig, copiedManualCertificates };
+    });
+    if (copiedManualCertificates.length > 0) {
+      await this.issuingService.notifyCopiedCertificates(copiedManualCertificates);
+    }
     if (input?.parts?.issuedPeople) {
       await this.issuingService.issueForExistingConfigRecipients(id, created.id, this.getIssuedById(context));
     }

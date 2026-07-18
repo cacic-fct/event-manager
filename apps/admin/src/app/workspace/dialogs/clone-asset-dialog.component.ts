@@ -12,6 +12,7 @@ export type CloneAssetPartKey =
   | 'certificateConfig'
   | 'subscriptionSettings'
   | 'attendanceSettings'
+  | 'attendances'
   | 'place'
   | 'visibility'
   | 'paymentSettings';

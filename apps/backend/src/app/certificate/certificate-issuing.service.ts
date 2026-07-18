@@ -7,6 +7,7 @@ import { NovuNotificationsService } from '../notifications/novu-notifications.se
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CERTIFICATE_SELECT,
+  CERTIFICATE_CONFIG_SELECT,
   CertificateRecord,
   CertificateConfigRecord,
   buildConfigTargetWhere,
@@ -202,6 +203,78 @@ export class CertificateIssuingService {
     );
 
     return issuedCertificates.map((issued) => mapCertificate(issued.certificate));
+  }
+
+  async copyManualRecipients(
+    sourceConfigId: string,
+    targetConfigId: string,
+    issuedById: string | undefined,
+    client: CertificateWriteClient,
+  ): Promise<CertificateRecord[]> {
+    const normalizedSourceConfigId = this.validation.normalizeRequiredId('sourceConfigId', sourceConfigId);
+    const normalizedTargetConfigId = this.validation.normalizeRequiredId('targetConfigId', targetConfigId);
+    const [sourceConfig, targetConfig] = await Promise.all(
+      [normalizedSourceConfigId, normalizedTargetConfigId].map((id) =>
+        client.certificateConfig.findFirst({
+          where: { id, deletedAt: null },
+          select: CERTIFICATE_CONFIG_SELECT,
+        }),
+      ),
+    );
+
+    if (!sourceConfig || !targetConfig) {
+      throw new NotFoundException('Certificate config was not found while copying manual recipients.');
+    }
+    if (sourceConfig.issuedTo !== CertificateIssuedTo.OTHER || targetConfig.issuedTo !== CertificateIssuedTo.OTHER) {
+      throw new BadRequestException('Manual recipients can only be copied between manual certificate configurations.');
+    }
+
+    const sourceCertificates = await client.certificate.findMany({
+      where: {
+        configId: normalizedSourceConfigId,
+        deletedAt: null,
+        person: { deletedAt: null },
+      },
+      select: { personId: true },
+      orderBy: { issuedAt: 'asc' },
+    });
+    const auditActor = await this.audit.resolveActor(issuedById, client);
+    const issuedCertificates: CertificateRecord[] = [];
+
+    for (let index = 0; index < sourceCertificates.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+      const batch = sourceCertificates.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async ({ personId }) => {
+          const recipient = await this.resolveRecipientForConfig(targetConfig, normalizedTargetConfigId, personId);
+          return this.upsertCertificateForRecipientResult(targetConfig, recipient, issuedById, {
+            auditActor,
+            notify: false,
+            prisma: client,
+          });
+        }),
+      );
+      const unexpectedError = results.find(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected' && !this.isExpectedRecipientSkipError(result.reason),
+      );
+      if (unexpectedError) {
+        throw unexpectedError.reason;
+      }
+      issuedCertificates.push(
+        ...results
+          .filter(
+            (result): result is PromiseFulfilledResult<{ certificate: CertificateRecord; shouldNotify: boolean }> =>
+              result.status === 'fulfilled' && result.value.shouldNotify,
+          )
+          .map((result) => result.value.certificate),
+      );
+    }
+
+    return issuedCertificates;
+  }
+
+  async notifyCopiedCertificates(certificates: CertificateRecord[]): Promise<void> {
+    await Promise.all(certificates.map((certificate) => this.notifyCertificateAvailable(certificate)));
   }
 
   private isExpectedRecipientSkipError(error: unknown): boolean {
