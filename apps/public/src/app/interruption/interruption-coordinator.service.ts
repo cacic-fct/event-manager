@@ -11,7 +11,7 @@ import {
   InterruptionFlow,
 } from './interruption-flow';
 
-const NORMAL_INTERRUPTION_EXEMPTION_PATHS = ['/profile/forms/', '/attendance/collect/'];
+const NORMAL_INTERRUPTION_EXEMPTION_PATHS = ['/profile/forms/', '/attendance/collect/', '/attendance/register'];
 
 export function selectNextInterruption(
   interruptions: readonly (Interruption | null)[],

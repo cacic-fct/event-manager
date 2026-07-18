@@ -14,8 +14,9 @@ describe('selectNextInterruption', () => {
     expect(selectNextInterruption([attendance, urgent, requiredForm], { currentUrl: '/menu' })).toBe(urgent);
   });
 
-  it('does not interrupt form completion or scanner collection with normal flows', () => {
+  it('does not interrupt form completion, attendance registration, or scanner collection with normal flows', () => {
     expect(selectNextInterruption([attendance, requiredForm], { currentUrl: '/profile/forms/form-1' })).toBeNull();
+    expect(selectNextInterruption([attendance, requiredForm], { currentUrl: '/attendance/register/event-1' })).toBeNull();
     expect(selectNextInterruption([attendance, requiredForm], { currentUrl: '/attendance/collect/event-1' })).toBeNull();
   });
 

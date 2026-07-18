@@ -102,17 +102,35 @@ describe('OnlineAttendanceCodeComponent', () => {
 
     expect(attendanceCoordinator.dismissPending).toHaveBeenCalledWith(['event-1'], '/profile/attendances');
   });
+
+  it('opens the attendance list when a notification is opened while multiple attendances are pending', async () => {
+    const nextPendingEvent = {
+      ...pendingAttendanceEvent,
+      eventId: 'event-2',
+      event: { ...pendingAttendanceEvent.event, id: 'event-2' },
+    };
+    const { router } = await createFixture({
+      queryParams: { fromNotification: 'true' },
+      pendingEvents: [pendingAttendanceEvent, nextPendingEvent],
+    });
+
+    expect(router.navigate).toHaveBeenCalledWith(['/attendance/register'], {
+      queryParams: { returnUrl: '/menu' },
+    });
+  });
 });
 
 async function createFixture({
   routeParams = { eventId: 'event-1' },
   queryParams = {},
   pendingEventsAfterSubmit = [],
+  pendingEvents = [pendingAttendanceEvent],
   scannerCode = null,
 }: {
   routeParams?: Params;
   queryParams?: Params;
   pendingEventsAfterSubmit?: PendingOnlineAttendanceEvent[];
+  pendingEvents?: PendingOnlineAttendanceEvent[];
   scannerCode?: string | null;
 } = {}): Promise<{
   api: {
@@ -131,9 +149,9 @@ async function createFixture({
   const queryParamMap = new BehaviorSubject(convertToParamMap(queryParams));
   const api = {
     confirmAttendance: vi.fn(() => of({ eventId: 'event-1', attendedAt: null, createdAt: null })),
-    listPendingEvents: vi.fn(() => of([pendingAttendanceEvent] as PendingOnlineAttendanceEvent[])),
+    listPendingEvents: vi.fn(() => of(pendingEvents)),
   };
-  api.listPendingEvents.mockReturnValueOnce(of([pendingAttendanceEvent]));
+  api.listPendingEvents.mockReturnValueOnce(of(pendingEvents));
   if (pendingEventsAfterSubmit.length > 0) {
     api.listPendingEvents.mockReturnValueOnce(of(pendingEventsAfterSubmit));
   }

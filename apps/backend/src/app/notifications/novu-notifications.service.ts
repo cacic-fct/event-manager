@@ -1,77 +1,34 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NovuSubscriberSession } from '@cacic-fct/shared-data-types';
-import { Prisma, SubscriptionStatus } from '@prisma/client';
-import { createHmac } from 'node:crypto';
+import { SubscriptionStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
+import {
+  mapAuthenticatedUserToRecipient,
+  mapPersonToRecipient,
+  mapUserToRecipient,
+} from './novu-notification-recipients';
+import { NovuNotificationTransport } from './novu-notification-transport';
+import type {
+  CertificateAvailableNotification,
+  EventFormAvailableNotification,
+  MajorEventSubscriptionNotificationRecord,
+  NotificationRecipient,
+  OfflineAttendanceReviewQueuedNotification,
+  OnlineAttendanceAvailableNotification,
+  SubscriptionStatusNotification,
+} from './novu-notification.types';
 
-type NotificationRecipient = {
-  subscriberId: string;
-  email?: string;
-  phone?: string;
-  firstName?: string;
-  lastName?: string;
-  data?: Record<string, unknown>;
-};
-
-type SubscriptionStatusNotification = {
-  subscriptionId: string;
-  majorEventId: string;
-  majorEventName: string;
-  previousStatus: SubscriptionStatus;
-  nextStatus: SubscriptionStatus;
-  recipient: NotificationRecipient;
-  rejectionReason?: string | null;
-};
-
-type OfflineAttendanceReviewQueuedNotification = {
-  submissionId: string;
-  eventId: string;
-  eventName: string;
-  recipients: NotificationRecipient[];
-  submittedById: string;
-  authorName?: string | null;
-  submittedAt: Date;
-};
-
-type CertificateAvailableNotification = {
-  certificateId: string;
-  configId: string;
-  certificateName: string;
-  targetName?: string | null;
-  issuedAt: Date;
-  recipient: NotificationRecipient;
-};
-
-type EventFormAvailableNotification = {
-  formId: string;
-  linkId?: string | null;
-  formName: string;
-  targetType: 'EVENT' | 'MAJOR_EVENT';
-  targetId: string;
-  targetName: string;
-  recipients: NotificationRecipient[];
-  requiredSubscriptionForm?: boolean;
-};
-
-type NovuTriggerResponse = {
-  acknowledged: boolean;
-  status: string;
-  error?: string[];
-  transactionId?: string;
-};
-
-type NovuTriggerRequest = {
-  name: string;
-  to: NotificationRecipient | NotificationRecipient[];
-  transactionId: string;
-  payload: Record<string, unknown>;
-  overrides?: Record<string, unknown>;
-};
+export type {
+  MajorEventSubscriptionNotificationRecord,
+  NotificationRecipient,
+  OnlineAttendanceAvailableNotification,
+} from './novu-notification.types';
 
 @Injectable()
 export class NovuNotificationsService {
   private readonly logger = new Logger(NovuNotificationsService.name);
+  private readonly transport: NovuNotificationTransport;
   private readonly workflowIdentifier = this.config.get<string>(
     'NOVU_MAJOR_EVENT_SUBSCRIPTION_WORKFLOW_IDENTIFIER',
     'major-event-subscription-status-changed',
@@ -89,78 +46,20 @@ export class NovuNotificationsService {
     'event-form-available',
   );
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    this.transport = new NovuNotificationTransport(config, this.logger);
+  }
 
   createSubscriberSession(recipient: NotificationRecipient): NovuSubscriberSession | null {
-    if (!this.isSecureModeEnabled()) {
-      return null;
-    }
-
-    const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
-    const applicationIdentifier = this.getOptionalConfig('NOVU_APPLICATION_IDENTIFIER');
-
-    if (!secretKey || !applicationIdentifier) {
-      return null;
-    }
-
-    const session: NovuSubscriberSession = {
-      applicationIdentifier,
-      subscriberId: recipient.subscriberId,
-      subscriberHash: this.signSubscriberId(recipient.subscriberId, secretKey),
-    };
-
-    const apiUrl = this.getOptionalConfig('NOVU_CLIENT_API_URL') ?? this.getOptionalConfig('NOVU_API_URL');
-    if (apiUrl) {
-      session.apiUrl = apiUrl.replace(/\/$/, '');
-    }
-
-    const socketUrl = this.getOptionalConfig('NOVU_CLIENT_SOCKET_URL');
-    if (socketUrl) {
-      session.socketUrl = socketUrl.replace(/\/$/, '');
-    }
-
-    const socketPath = this.getOptionalConfig('NOVU_CLIENT_SOCKET_PATH');
-    if (socketPath) {
-      session.socketPath = socketPath;
-    }
-
-    const pushIntegrationIdentifier = this.getOptionalConfig('NOVU_PUSH_INTEGRATION_IDENTIFIER');
-    if (pushIntegrationIdentifier) {
-      session.pushIntegrationIdentifier = pushIntegrationIdentifier;
-    }
-
-    const vapidPublicKey = this.getOptionalConfig('NOVU_VAPID_PUBLIC_KEY');
-    if (vapidPublicKey) {
-      session.vapidPublicKey = vapidPublicKey;
-    }
-
-    return session;
+    return this.transport.createSubscriberSession(recipient);
   }
 
   mapAuthenticatedUserToRecipient(user: AuthenticatedUser): NotificationRecipient {
-    const subscriberId = user.sub ?? user.email ?? user.preferredUsername;
-    if (!subscriberId) {
-      throw new Error('Authenticated user does not have a stable subscriber identifier.');
-    }
-
-    return {
-      subscriberId,
-      email: user.email,
-      firstName: typeof user.claims.given_name === 'string' ? user.claims.given_name : undefined,
-      lastName: typeof user.claims.family_name === 'string' ? user.claims.family_name : undefined,
-      data: {
-        preferredUsername: user.preferredUsername,
-      },
-    };
+    return mapAuthenticatedUserToRecipient(user);
   }
 
   async notifyMajorEventSubscriptionStatusChanged(input: SubscriptionStatusNotification): Promise<void> {
-    if (!this.isSecureModeEnabled()) {
-      return;
-    }
-
-    const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
-
+    const secretKey = this.transport.secretKey();
     if (!secretKey) {
       return;
     }
@@ -174,7 +73,7 @@ export class NovuNotificationsService {
     const title = `Inscrição em ${input.majorEventName}`;
     const body = this.statusBody(input.majorEventName, input.nextStatus);
 
-    await this.triggerNovu(secretKey, {
+    await this.transport.trigger(secretKey, {
           name: this.workflowIdentifier,
           to: input.recipient,
           transactionId: `major-event-subscription:${input.subscriptionId}:${input.nextStatus}`,
@@ -233,11 +132,7 @@ export class NovuNotificationsService {
   }
 
   async notifyOfflineAttendanceReviewQueued(input: OfflineAttendanceReviewQueuedNotification): Promise<void> {
-    if (!this.isSecureModeEnabled()) {
-      return;
-    }
-
-    const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
+    const secretKey = this.transport.secretKey();
     if (!secretKey || input.recipients.length === 0) {
       return;
     }
@@ -246,7 +141,7 @@ export class NovuNotificationsService {
     const title = `Presença off-line para revisar`;
     const body = `Uma presença off-line de ${input.eventName} foi enviada para revisão administrativa.`;
 
-    await this.triggerNovu(secretKey, {
+    await this.transport.trigger(secretKey, {
           name: this.offlineAttendanceReviewWorkflowIdentifier,
           to: input.recipients,
           transactionId: `offline-attendance-review:${input.submissionId}`,
@@ -284,11 +179,7 @@ export class NovuNotificationsService {
   }
 
   async notifyCertificateAvailable(input: CertificateAvailableNotification): Promise<void> {
-    if (!this.isSecureModeEnabled()) {
-      return;
-    }
-
-    const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
+    const secretKey = this.transport.secretKey();
     if (!secretKey) {
       return;
     }
@@ -298,7 +189,7 @@ export class NovuNotificationsService {
     const targetLabel = input.targetName?.trim() || input.certificateName;
     const body = `Seu certificado de ${targetLabel} está disponível.`;
 
-    await this.triggerNovu(secretKey, {
+    await this.transport.trigger(secretKey, {
           name: this.certificateAvailableWorkflowIdentifier,
           to: input.recipient,
           transactionId: `certificate-available:${input.configId}:${input.certificateId}:${input.issuedAt.toISOString()}`,
@@ -338,11 +229,7 @@ export class NovuNotificationsService {
   }
 
   async notifyEventFormAvailable(input: EventFormAvailableNotification): Promise<boolean> {
-    if (!this.isSecureModeEnabled()) {
-      return false;
-    }
-
-    const secretKey = this.config.get<string>('NOVU_SECRET_KEY');
+    const secretKey = this.transport.secretKey();
     if (!secretKey || input.recipients.length === 0) {
       return false;
     }
@@ -369,7 +256,7 @@ export class NovuNotificationsService {
       transactionIdParts.push(input.linkId);
     }
 
-    return this.triggerNovu(secretKey, {
+    return this.transport.trigger(secretKey, {
           name: this.eventFormAvailableWorkflowIdentifier,
           to: input.recipients,
           transactionId: transactionIdParts.join(':'),
@@ -407,6 +294,44 @@ export class NovuNotificationsService {
     });
   }
 
+  async notifyOnlineAttendanceAvailable(input: OnlineAttendanceAvailableNotification): Promise<void> {
+    const secretKey = this.transport.secretKey();
+    if (!secretKey || input.recipients.length === 0) {
+      return;
+    }
+
+    const actionUrl = `/attendance/register/${input.eventId}?fromNotification=true`;
+    const endTime = new Intl.DateTimeFormat('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(input.endsAt);
+    const title = 'Presença disponível';
+    const body = `Você pode registrar sua presença em ${input.eventName} até ${endTime}.`;
+
+    await this.transport.trigger(secretKey, {
+      name: this.config.get<string>('NOVU_ONLINE_ATTENDANCE_WORKFLOW_IDENTIFIER', 'online-attendance-available'),
+      to: input.recipients,
+      transactionId: `online-attendance-available:${input.eventId}:${input.endsAt.toISOString()}`,
+      payload: {
+        title,
+        subject: title,
+        body,
+        eventId: input.eventId,
+        eventName: input.eventName,
+        endsAt: input.endsAt.toISOString(),
+        actionLabel: 'Registrar presença',
+        actionUrl,
+        redirectUrl: actionUrl,
+      },
+      overrides: {
+        fcm: { data: { url: actionUrl, eventId: input.eventId } },
+        webPush: { data: { url: actionUrl, eventId: input.eventId } },
+      },
+    });
+  }
+
   mapPersonToRecipient(person: {
     id: string;
     name: string;
@@ -415,90 +340,11 @@ export class NovuNotificationsService {
     userId?: string | null;
     user?: { id: string; email: string; name: string } | null;
   }): NotificationRecipient {
-    const [firstName, ...lastNameParts] = person.name.trim().split(/\s+/);
-
-    return {
-      subscriberId: person.userId ?? person.user?.id ?? person.email ?? person.id,
-      email: person.email ?? person.user?.email ?? undefined,
-      phone: person.phone ?? undefined,
-      firstName: firstName || undefined,
-      lastName: lastNameParts.join(' ') || undefined,
-      data: {
-        personId: person.id,
-      },
-    };
+    return mapPersonToRecipient(person);
   }
 
   mapUserToRecipient(user: { id: string; email: string; name: string }): NotificationRecipient {
-    const [firstName, ...lastNameParts] = user.name.trim().split(/\s+/);
-
-    return {
-      subscriberId: user.id,
-      email: user.email,
-      firstName: firstName || undefined,
-      lastName: lastNameParts.join(' ') || undefined,
-      data: {
-        userId: user.id,
-      },
-    };
-  }
-
-  private apiUrl(): string {
-    return this.config.get<string>('NOVU_API_URL', 'https://api.novu.co').replace(/\/$/, '');
-  }
-
-  private async triggerNovu(secretKey: string, body: NovuTriggerRequest): Promise<boolean> {
-    const controller = new AbortController();
-    const timeoutMs = this.novuTriggerTimeoutMs();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-    try {
-      const response = await fetch(`${this.apiUrl()}/v1/events/trigger`, {
-        method: 'POST',
-        headers: {
-          Authorization: `ApiKey ${secretKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-
-      if (!response.ok) {
-        this.logger.warn(`Novu trigger failed with HTTP ${response.status}.`);
-        return false;
-      }
-
-      const result = (await response.json()) as NovuTriggerResponse;
-      if (!result.acknowledged) {
-        this.logger.warn(`Novu trigger was not acknowledged: ${result.status} ${result.error?.join(', ') ?? ''}`);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      this.logger.warn(`Novu trigger failed: ${error instanceof Error ? error.message : String(error)}`);
-      return false;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  private novuTriggerTimeoutMs(): number {
-    const configuredValue = Number(this.config.get<string>('NOVU_TRIGGER_TIMEOUT_MS', '10000'));
-    return Number.isFinite(configuredValue) && configuredValue > 0 ? configuredValue : 10000;
-  }
-
-  private getOptionalConfig(key: string): string | undefined {
-    const value = this.config.get<string>(key)?.trim();
-    return value || undefined;
-  }
-
-  private isSecureModeEnabled(): boolean {
-    return this.config.get<string>('NOVU_SECURE_MODE_ENABLED')?.trim().toLowerCase() === 'true';
-  }
-
-  private signSubscriberId(subscriberId: string, secretKey: string): string {
-    return createHmac('sha256', secretKey).update(subscriberId).digest('hex');
+    return mapUserToRecipient(user);
   }
 
   private statusLabel(status: SubscriptionStatus): string {
@@ -557,33 +403,3 @@ export class NovuNotificationsService {
     ]).has(status);
   }
 }
-
-export type MajorEventSubscriptionNotificationRecord = Prisma.MajorEventSubscriptionGetPayload<{
-  select: {
-    id: true;
-    majorEventId: true;
-    subscriptionStatus: true;
-    receiptRejectionReason: true;
-    majorEvent: {
-      select: {
-        name: true;
-      };
-    };
-    person: {
-      select: {
-        id: true;
-        name: true;
-        email: true;
-        phone: true;
-        userId: true;
-        user: {
-          select: {
-            id: true;
-            email: true;
-            name: true;
-          };
-        };
-      };
-    };
-  };
-}>;
