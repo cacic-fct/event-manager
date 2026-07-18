@@ -6,6 +6,7 @@ import {
   type PublicEventForm,
   type PublicEventFormResponse,
   type PublicEventFormResults,
+  type RequiredSubscriptionFormInterruption,
   type SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
@@ -113,6 +114,23 @@ export class PublicEventFormApiService {
       `,
       input,
     ).pipe(map((data) => data.currentUserEventForms));
+  }
+
+  listRequiredSubscriptionFormInterruptions(): Observable<RequiredSubscriptionFormInterruption[]> {
+    return this.query<{ currentUserRequiredSubscriptionFormInterruptions: RequiredSubscriptionFormInterruption[] }>(
+      `
+        query CurrentUserRequiredSubscriptionFormInterruptions {
+          currentUserRequiredSubscriptionFormInterruptions {
+            formId
+            linkId
+            targetType
+            eventId
+            majorEventId
+            displayOrder
+          }
+        }
+      `,
+    ).pipe(map((data) => data.currentUserRequiredSubscriptionFormInterruptions));
   }
 
   getCurrentUserResponse(input: {

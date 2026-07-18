@@ -17,6 +17,7 @@ import { catchError, combineLatest, finalize, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
+import { OnlineAttendanceCoordinatorService } from './online-attendance-coordinator.service';
 
 type AttendanceCodeState =
   | { status: 'loading' }
@@ -44,6 +45,7 @@ export class OnlineAttendanceCodeComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly attendanceCoordinator = inject(OnlineAttendanceCoordinatorService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly scannerFeedback = inject(ScannerFeedbackService);
   private readonly cooldown = createRateLimitCooldown(this.destroyRef);
@@ -83,7 +85,10 @@ export class OnlineAttendanceCodeComponent {
       return;
     }
 
-    void this.router.navigateByUrl(this.returnUrl() || '/menu');
+    this.attendanceCoordinator.dismissPending(
+      state.status === 'ready' ? [state.item.eventId] : [],
+      this.returnUrl() || '/menu',
+    );
   }
 
   submit(): void {

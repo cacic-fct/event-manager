@@ -28,6 +28,9 @@ import { MatIconRegistry } from '@angular/material/icon';
 import { AnalyticsService } from './analytics/analytics.service';
 import { OnlineAttendanceCoordinatorService } from './attendance/online-attendance/online-attendance-coordinator.service';
 import { AttendanceOfflineSyncService } from './attendance/collection/attendance-offline-sync.service';
+import { RequiredSubscriptionFormInterruptionFlow } from './forms/required-subscription-form-interruption.flow';
+import { InterruptionCoordinatorService } from './interruption/interruption-coordinator.service';
+import { provideInterruptionFlow } from './interruption/interruption-flow';
 import { OfflineUserDataService } from './shared/offline-user-data.service';
 import { NetworkStatusService } from './shared/network-status.service';
 import { NetworkStatusSnackbarService } from './shared/network-status-snackbar.service';
@@ -122,6 +125,8 @@ export const appConfig: ApplicationConfig = {
     provideRouter(appRoutes),
     { provide: TitleStrategy, useClass: PageTitleStrategy },
     provideHttpClient(withInterceptors([authInterceptor])),
+    provideInterruptionFlow(OnlineAttendanceCoordinatorService),
+    provideInterruptionFlow(RequiredSubscriptionFormInterruptionFlow),
     provideCloudflareTurnstile({
       siteKey: turnstileSiteKey,
     }),
@@ -167,7 +172,7 @@ export const appConfig: ApplicationConfig = {
       inject(AnalyticsService).start();
     }),
     provideAppInitializer(() => {
-      inject(OnlineAttendanceCoordinatorService).start();
+      inject(InterruptionCoordinatorService).start();
       inject(AttendanceOfflineSyncService).start();
     }),
     provideAppInitializer(() => {

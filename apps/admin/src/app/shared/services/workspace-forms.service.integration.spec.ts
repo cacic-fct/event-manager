@@ -296,7 +296,7 @@ describe('WorkspaceFormsService integration', () => {
     expect(savedInput?.links?.[0]).toMatchObject({
       insertInSubscriptionFlow: true,
       requiredInSubscriptionFlow: true,
-      notifyOnPublish: false,
+      notifyOnPublish: true,
       allowLecturerManualPublish: false,
     });
   });

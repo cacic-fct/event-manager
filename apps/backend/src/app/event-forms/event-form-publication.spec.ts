@@ -120,7 +120,7 @@ describe('event form publication and service support helpers', () => {
         eventId: 'event-1',
         insertInSubscriptionFlow: true,
         requiredInSubscriptionFlow: true,
-        notifyOnPublish: false,
+        notifyOnPublish: true,
         allowLecturerManualPublish: false,
         createdById: 'admin-user',
       }),

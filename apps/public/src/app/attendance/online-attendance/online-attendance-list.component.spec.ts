@@ -1,9 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { createPublicEvent } from '../../testing/public-entity-fixtures';
 import { EmojiService } from '../../shared/emoji.service';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
+import { OnlineAttendanceCoordinatorService } from './online-attendance-coordinator.service';
 import { OnlineAttendanceListComponent } from './online-attendance-list.component';
 import { BehaviorSubject, throwError, of } from 'rxjs';
 
@@ -41,16 +42,16 @@ describe('OnlineAttendanceListComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Falha de rede');
   });
 
-  it('returns to the provided URL when the toolbar back action is used', async () => {
-    const { component, router } = await createFixture({
+  it('dismisses the displayed attendances and returns to the provided URL when the toolbar back action is used', async () => {
+    const pendingEvent = pendingAttendanceEvent();
+    const { attendanceCoordinator, component } = await createFixture({
       queryParams: { returnUrl: '/profile/attendances' },
-      pendingEvents: [],
+      pendingEvents: [pendingEvent],
     });
-    const navigateByUrl = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
 
     component.back();
 
-    expect(navigateByUrl).toHaveBeenCalledWith('/profile/attendances');
+    expect(attendanceCoordinator.dismissPending).toHaveBeenCalledWith(['online-event'], '/profile/attendances');
   });
 });
 
@@ -65,11 +66,14 @@ async function createFixture({
 } = {}): Promise<{
   component: OnlineAttendanceListComponent;
   fixture: ComponentFixture<OnlineAttendanceListComponent>;
-  router: Router;
+  attendanceCoordinator: { dismissPending: ReturnType<typeof vi.fn> };
 }> {
   const queryParamMap = new BehaviorSubject(convertToParamMap(queryParams));
   const api = {
     listPendingEvents: vi.fn(() => (error ? throwError(() => error) : of(pendingEvents))),
+  };
+  const attendanceCoordinator = {
+    dismissPending: vi.fn(),
   };
 
   await TestBed.configureTestingModule({
@@ -93,6 +97,10 @@ async function createFixture({
         provide: OnlineAttendanceApiService,
         useValue: api,
       },
+      {
+        provide: OnlineAttendanceCoordinatorService,
+        useValue: attendanceCoordinator,
+      },
     ],
   }).compileComponents();
 
@@ -102,7 +110,7 @@ async function createFixture({
   return {
     component: fixture.componentInstance,
     fixture,
-    router: TestBed.inject(Router),
+    attendanceCoordinator,
   };
 }
 

@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { EventForm as EventFormModel } from '@cacic-fct/shared-data-types';
+import {
+  EventForm as EventFormModel,
+  EventFormPreviousSubscriberCountInput,
+  RequiredSubscriptionFormInterruption,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { EventFormTargetType, Prisma, PublicationState } from '@prisma/client';
+import { EventFormAudience, EventFormTargetType, Prisma, PublicationState } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';
@@ -13,7 +17,7 @@ import { toEventFormModel, toPublicEventFormModel } from './event-form-model.map
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
 import { eventFormInclude, TargetInput } from './event-form-records';
 import { requireEventForm } from './event-form-service-support';
-import { findLinkForTarget, normalizeTarget } from './event-form-targets';
+import { findLinkForTarget, normalizeTarget, responseLookupWhere, responseTargetWhere } from './event-form-targets';
 
 @Injectable()
 export class EventFormListingsService {
@@ -172,6 +176,188 @@ export class EventFormListingsService {
     }
 
     return eligible;
+  }
+
+  async listCurrentUserRequiredSubscriptionFormInterruptions(
+    context: GraphqlContext,
+  ): Promise<RequiredSubscriptionFormInterruption[]> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    if (!person) {
+      return [];
+    }
+
+    const now = new Date();
+    const links = await this.prisma.eventFormLink.findMany({
+      where: {
+        deletedAt: null,
+        insertInSubscriptionFlow: true,
+        requiredInSubscriptionFlow: true,
+        audience: {
+          not: EventFormAudience.ATTENDEES,
+        },
+        AND: [
+          { OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
+          { OR: [{ availableUntil: null }, { availableUntil: { gt: now } }] },
+        ],
+        form: {
+          deletedAt: null,
+          publicationState: PublicationState.PUBLISHED,
+        },
+        OR: [
+          {
+            event: {
+              endDate: { gt: now },
+              subscriptions: {
+                some: {
+                  personId: person.id,
+                  deletedAt: null,
+                },
+              },
+            },
+          },
+          {
+            majorEvent: {
+              endDate: { gt: now },
+              subscriptions: {
+                some: {
+                  personId: person.id,
+                  deletedAt: null,
+                },
+              },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        targetType: true,
+        eventId: true,
+        majorEventId: true,
+        displayOrder: true,
+        form: {
+          select: {
+            id: true,
+            responseMode: true,
+          },
+        },
+      },
+      orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    const interruptions: RequiredSubscriptionFormInterruption[] = [];
+    for (const link of links) {
+      const target = normalizeTarget(link);
+      const response = await this.prisma.eventFormResponse.findFirst({
+        where: {
+          ...(responseLookupWhere(link.form, person.id, target) ?? responseTargetWhere(link.form.id, person.id, target)),
+          deletedAt: null,
+        },
+        select: { id: true },
+      });
+      if (response) {
+        continue;
+      }
+
+      interruptions.push({
+        formId: link.form.id,
+        linkId: link.id,
+        targetType: link.targetType,
+        eventId: link.eventId,
+        majorEventId: link.majorEventId,
+        displayOrder: link.displayOrder,
+      });
+    }
+    return interruptions;
+  }
+
+  async countPreviousSubscribers(
+    user: AuthenticatedUser | undefined,
+    input: EventFormPreviousSubscriberCountInput,
+  ): Promise<number> {
+    const target = normalizeTarget(input);
+    await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], {
+      eventId: target.eventId ?? undefined,
+      majorEventId: target.majorEventId ?? undefined,
+    });
+
+    if (!input.formId || !input.linkId) {
+      return target.eventId
+        ? this.prisma.eventSubscription.count({
+            where: {
+              eventId: target.eventId,
+              deletedAt: null,
+            },
+          })
+        : this.prisma.majorEventSubscription.count({
+            where: {
+              majorEventId: target.majorEventId ?? undefined,
+              deletedAt: null,
+            },
+          });
+    }
+
+    const link = await this.prisma.eventFormLink.findFirst({
+      where: {
+        id: input.linkId,
+        formId: input.formId,
+        deletedAt: null,
+      },
+      select: {
+        targetType: true,
+        eventId: true,
+        majorEventId: true,
+        form: {
+          select: {
+            id: true,
+            responseMode: true,
+          },
+        },
+      },
+    });
+    if (!link) {
+      return 0;
+    }
+
+    const subscribers = link.eventId
+      ? await this.prisma.eventSubscription.findMany({
+          where: {
+            eventId: link.eventId,
+            deletedAt: null,
+          },
+          select: { personId: true },
+        })
+      : await this.prisma.majorEventSubscription.findMany({
+          where: {
+            majorEventId: link.majorEventId ?? '',
+            deletedAt: null,
+          },
+          select: { personId: true },
+        });
+    if (subscribers.length === 0) {
+      return 0;
+    }
+
+    const responses = await this.prisma.eventFormResponse.findMany({
+      where: {
+        formId: link.form.id,
+        personId: {
+          in: subscribers.map((subscription) => subscription.personId),
+        },
+        deletedAt: null,
+        ...(link.form.responseMode === 'MULTIPLE_PER_TARGET'
+          ? { linkId: input.linkId }
+          : link.form.responseMode === 'ONE_PER_TARGET'
+            ? {
+                targetType: link.targetType,
+                eventId: link.eventId,
+                majorEventId: link.majorEventId,
+              }
+            : {}),
+      },
+      select: { personId: true },
+    });
+    return Math.max(0, subscribers.length - new Set(responses.map((response) => response.personId)).size);
   }
 
   private async canListCurrentUserForm(

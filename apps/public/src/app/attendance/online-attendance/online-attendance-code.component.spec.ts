@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { BehaviorSubject, of } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
+import { OnlineAttendanceCoordinatorService } from './online-attendance-coordinator.service';
 import { OnlineAttendanceCodeComponent } from './online-attendance-code.component';
 
 describe('OnlineAttendanceCodeComponent', () => {
@@ -91,6 +92,16 @@ describe('OnlineAttendanceCodeComponent', () => {
       queryParams: { returnUrl: '/menu' },
     });
   });
+
+  it('dismisses the current attendance when returning to the original page', async () => {
+    const { attendanceCoordinator, component } = await createFixture({
+      queryParams: { returnUrl: '/profile/attendances' },
+    });
+
+    component.back();
+
+    expect(attendanceCoordinator.dismissPending).toHaveBeenCalledWith(['event-1'], '/profile/attendances');
+  });
 });
 
 async function createFixture({
@@ -109,6 +120,7 @@ async function createFixture({
     listPendingEvents: ReturnType<typeof vi.fn>;
   };
   component: OnlineAttendanceCodeComponent;
+  attendanceCoordinator: { dismissPending: ReturnType<typeof vi.fn> };
   dialog: { open: ReturnType<typeof vi.fn> };
   fixture: ComponentFixture<OnlineAttendanceCodeComponent>;
   router: { navigate: ReturnType<typeof vi.fn>; navigateByUrl: ReturnType<typeof vi.fn> };
@@ -139,6 +151,9 @@ async function createFixture({
   };
   const snackBar = {
     open: vi.fn(),
+  };
+  const attendanceCoordinator = {
+    dismissPending: vi.fn(),
   };
 
   await TestBed.configureTestingModule({
@@ -171,6 +186,10 @@ async function createFixture({
         useValue: api,
       },
       {
+        provide: OnlineAttendanceCoordinatorService,
+        useValue: attendanceCoordinator,
+      },
+      {
         provide: Router,
         useValue: router,
       },
@@ -190,6 +209,7 @@ async function createFixture({
   return {
     api,
     component: fixture.componentInstance,
+    attendanceCoordinator,
     dialog,
     fixture,
     router,

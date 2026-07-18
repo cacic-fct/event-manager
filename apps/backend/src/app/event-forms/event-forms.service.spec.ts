@@ -1366,6 +1366,115 @@ describe('EventFormsService', () => {
     expect(notifications.notifyEventFormAvailable).toHaveBeenCalled();
   });
 
+  it('lists unanswered required subscription forms for active subscriptions only', async () => {
+    prisma.eventFormLink.findMany.mockResolvedValue([
+      {
+        id: 'link-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        majorEventId: null,
+        displayOrder: 4,
+        form: {
+          id: 'form-1',
+          responseMode: EventFormResponseMode.ONE_PER_TARGET,
+        },
+      },
+    ]);
+    prisma.eventFormResponse.findFirst.mockResolvedValue(null);
+
+    await expect(service.listCurrentUserRequiredSubscriptionFormInterruptions(context)).resolves.toEqual([
+      {
+        formId: 'form-1',
+        linkId: 'link-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        majorEventId: null,
+        displayOrder: 4,
+      },
+    ]);
+    expect(prisma.eventFormLink.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          insertInSubscriptionFlow: true,
+          requiredInSubscriptionFlow: true,
+          form: expect.objectContaining({ publicationState: PublicationState.PUBLISHED }),
+          OR: expect.arrayContaining([
+            expect.objectContaining({ event: expect.objectContaining({ endDate: expect.any(Object) }) }),
+            expect.objectContaining({ majorEvent: expect.objectContaining({ endDate: expect.any(Object) }) }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it('does not interrupt a subscriber who already answered a required form', async () => {
+    prisma.eventFormLink.findMany.mockResolvedValue([
+      {
+        id: 'link-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        majorEventId: null,
+        displayOrder: 0,
+        form: {
+          id: 'form-1',
+          responseMode: EventFormResponseMode.ONE_PER_TARGET,
+        },
+      },
+    ]);
+    prisma.eventFormResponse.findFirst.mockResolvedValue({ id: 'response-1' });
+
+    await expect(service.listCurrentUserRequiredSubscriptionFormInterruptions(context)).resolves.toEqual([]);
+  });
+
+  it('counts previous subscribers before a required form is saved', async () => {
+    prisma.eventSubscription.count.mockResolvedValue(3);
+
+    await expect(
+      service.countPreviousSubscribers(authenticatedUser, {
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+      }),
+    ).resolves.toBe(3);
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      authenticatedUser,
+      [Permission.EventForm.Update],
+      { eventId: 'event-1', majorEventId: undefined },
+    );
+  });
+
+  it('notifies only previous subscribers who still need a required subscription form', async () => {
+    const form = formRecord({
+      responseMode: EventFormResponseMode.ONE_PER_TARGET,
+      links: [
+        linkRecord({
+          id: 'link-1',
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+          majorEventId: null,
+          audience: EventFormAudience.SUBSCRIBERS,
+          insertInSubscriptionFlow: true,
+          requiredInSubscriptionFlow: true,
+          notifyOnPublish: true,
+        }),
+      ],
+    });
+    prisma.eventSubscription.findMany.mockResolvedValue([
+      { person: { id: 'person-1', name: 'Ana Silva', email: 'ana@example.com' } },
+      { person: { id: 'person-2', name: 'Bia Lima', email: 'bia@example.com' } },
+    ]);
+    prisma.eventFormResponse.findMany.mockResolvedValue([{ personId: 'person-1' }]);
+    prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
+    notifications.notifyEventFormAvailable.mockResolvedValue(true);
+
+    await expect(formNotifications.notifyEligiblePeople(form)).resolves.toBe(1);
+    expect(notifications.notifyEventFormAvailable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requiredSubscriptionForm: true,
+        recipients: [expect.objectContaining({ subscriberId: 'person-2' })],
+      }),
+    );
+  });
+
   it('does not send form notifications when another worker already claimed the link', async () => {
     const form = formRecord({
       links: [
@@ -1471,10 +1580,12 @@ function createPrisma() {
       findFirst: jest.fn(),
     },
     eventSubscription: {
+      count: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
     },
     majorEventSubscription: {
+      count: jest.fn(),
       findFirst: jest.fn(),
       findMany: jest.fn(),
     },
@@ -1483,6 +1594,7 @@ function createPrisma() {
       findMany: jest.fn(),
     },
     eventFormLink: {
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),

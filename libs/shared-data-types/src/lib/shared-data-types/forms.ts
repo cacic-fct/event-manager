@@ -84,6 +84,27 @@ export class EventFormLink {
 }
 
 @ObjectType()
+export class RequiredSubscriptionFormInterruption {
+  @Field(() => String)
+  formId!: string;
+
+  @Field(() => String)
+  linkId!: string;
+
+  @Field(() => EventFormTargetType)
+  targetType!: EventFormTargetType;
+
+  @Field(() => String, { nullable: true })
+  eventId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  majorEventId?: string | null;
+
+  @Field(() => Int)
+  displayOrder!: number;
+}
+
+@ObjectType()
 export class EventForm {
   @Field(() => String)
   id!: string;
@@ -339,6 +360,24 @@ export class EventFormInput {
 
   @Field(() => [EventFormLinkInput], { nullable: true })
   links?: EventFormLinkInput[] | null;
+}
+
+@InputType()
+export class EventFormPreviousSubscriberCountInput {
+  @Field(() => String, { nullable: true })
+  formId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  linkId?: string | null;
+
+  @Field(() => EventFormTargetType)
+  targetType!: EventFormTargetType;
+
+  @Field(() => String, { nullable: true })
+  eventId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  majorEventId?: string | null;
 }
 
 @InputType()

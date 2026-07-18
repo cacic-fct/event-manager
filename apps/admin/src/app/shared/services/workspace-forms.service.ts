@@ -60,6 +60,7 @@ export class WorkspaceFormsService {
   readonly selectedResults = signal<EventFormResults | null>(null);
   readonly elements = signal<FormElement[]>([]);
   readonly links = signal<EventFormLinkDraft[]>([]);
+  readonly previousSubscriberCounts = signal<Record<string, number | null>>({});
   readonly events = signal<Event[]>([]);
   readonly majorEvents = signal<MajorEvent[]>([]);
   readonly targetFilter = signal<{ eventId?: string; majorEventId?: string } | null>(null);
@@ -191,6 +192,7 @@ export class WorkspaceFormsService {
     this.closeResultsStream();
     this.elements.set([]);
     this.links.set([]);
+    this.previousSubscriberCounts.set({});
     const owner = this.defaultOwner();
     this.form.reset({
       id: '',
@@ -242,17 +244,38 @@ export class WorkspaceFormsService {
   }
 
   addLink(targetType: EventFormTargetType): void {
-    this.links.update((links) => [...links, this.createLinkDraft(targetType, links.length)]);
+    const link = this.createLinkDraft(targetType, this.links().length);
+    this.links.update((links) => [...links, link]);
+    void this.refreshPreviousSubscriberCount(link);
   }
 
   removeLink(localId: string): void {
     this.links.update((links) => links.filter((link) => link.localId !== localId));
+    this.previousSubscriberCounts.update((counts) => {
+      const remaining = { ...counts };
+      delete remaining[localId];
+      return remaining;
+    });
   }
 
   updateLink(localId: string, patch: Partial<EventFormLinkDraft>): void {
-    this.links.update((links) =>
-      links.map((link) => (link.localId === localId ? this.normalizeLinkDraft({ ...link, ...patch }, link) : link)),
+    const current = this.links().find((link) => link.localId === localId);
+    if (!current) {
+      return;
+    }
+    const startsRequiredSubscriptionFlow =
+      patch.requiredInSubscriptionFlow === true &&
+      !(current.insertInSubscriptionFlow && current.requiredInSubscriptionFlow);
+    const updated = this.normalizeLinkDraft(
+      {
+        ...current,
+        ...patch,
+        ...(startsRequiredSubscriptionFlow && patch.notifyOnPublish === undefined ? { notifyOnPublish: true } : {}),
+      },
+      current,
     );
+    this.links.update((links) => links.map((link) => (link.localId === localId ? updated : link)));
+    void this.refreshPreviousSubscriberCount(updated);
   }
 
   updateLinkDate(localId: string, key: 'availableFrom' | 'availableUntil', value: string): void {
@@ -391,6 +414,10 @@ export class WorkspaceFormsService {
     return this.majorEvents().find((event) => event.id === link.majorEventId)?.name ?? 'Grande evento';
   }
 
+  previousSubscriberCount(link: Pick<EventFormLinkDraft, 'localId'>): number | null {
+    return this.previousSubscriberCounts()[link.localId] ?? null;
+  }
+
   private async publish(scheduledPublishAt: string | null): Promise<void> {
     const selected = this.selectedForm();
     if (!selected) {
@@ -423,6 +450,9 @@ export class WorkspaceFormsService {
     this.links.set(
       form.links.map((link) => this.toLinkDraft(link)),
     );
+    for (const link of this.links()) {
+      void this.refreshPreviousSubscriberCount(link);
+    }
     this.form.reset({
       id: form.id,
       name: form.name,
@@ -446,6 +476,7 @@ export class WorkspaceFormsService {
     this.closeResultsStream();
     this.elements.set([]);
     this.links.set([]);
+    this.previousSubscriberCounts.set({});
     const owner = this.defaultOwner();
     this.form.reset({
       id: '',
@@ -533,6 +564,8 @@ export class WorkspaceFormsService {
   private normalizeLinkDraft(link: EventFormLinkDraft, previous?: EventFormLinkDraft): EventFormLinkDraft {
     const targetType = link.targetType;
     const insertInSubscriptionFlow = link.requiredInSubscriptionFlow === true ? true : (link.insertInSubscriptionFlow ?? false);
+    const notifyPreviousSubscribers =
+      insertInSubscriptionFlow && link.requiredInSubscriptionFlow === true ? (link.notifyOnPublish ?? true) : false;
     const fallbackEventId = link.eventId || previous?.eventId || (this.selectableEvents()[0]?.id ?? '');
     const fallbackMajorEventId = link.majorEventId || previous?.majorEventId || (this.selectableMajorEvents()[0]?.id ?? '');
 
@@ -540,7 +573,7 @@ export class WorkspaceFormsService {
       ...link,
       insertInSubscriptionFlow,
       requiredInSubscriptionFlow: insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
-      notifyOnPublish: insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
+      notifyOnPublish: insertInSubscriptionFlow ? notifyPreviousSubscribers : (link.notifyOnPublish ?? true),
       allowLecturerManualPublish:
           targetType === 'EVENT' && !insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
     };
@@ -619,7 +652,12 @@ export class WorkspaceFormsService {
       displayOrder: link.displayOrder ?? index,
       availableFrom: this.localInputToIso(link.availableFrom),
       availableUntil: this.localInputToIso(link.availableUntil),
-      notifyOnPublish: link.insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
+      notifyOnPublish:
+        link.insertInSubscriptionFlow && link.requiredInSubscriptionFlow
+          ? (link.notifyOnPublish ?? true)
+          : link.insertInSubscriptionFlow
+            ? false
+            : (link.notifyOnPublish ?? true),
       allowLecturerManualPublish:
         link.targetType === 'EVENT' && !link.insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
     };
@@ -639,6 +677,34 @@ export class WorkspaceFormsService {
       eventId: null,
       majorEventId: link.majorEventId || '',
     };
+  }
+
+  private async refreshPreviousSubscriberCount(link: EventFormLinkDraft): Promise<void> {
+    if (!link.insertInSubscriptionFlow || !link.requiredInSubscriptionFlow) {
+      this.previousSubscriberCounts.update((counts) => ({ ...counts, [link.localId]: null }));
+      return;
+    }
+    const targetId = link.targetType === 'EVENT' ? link.eventId : link.majorEventId;
+    if (!targetId) {
+      return;
+    }
+    this.previousSubscriberCounts.update((counts) => ({ ...counts, [link.localId]: null }));
+    try {
+      const count = await firstValueFrom(
+        this.api.previousSubscriberCount({
+          formId: link.id ? this.selectedForm()?.id ?? null : null,
+          linkId: link.id ?? null,
+          targetType: link.targetType,
+          eventId: link.targetType === 'EVENT' ? targetId : null,
+          majorEventId: link.targetType === 'MAJOR_EVENT' ? targetId : null,
+        }),
+      );
+      if (this.links().some((item) => item.localId === link.localId)) {
+        this.previousSubscriberCounts.update((counts) => ({ ...counts, [link.localId]: count }));
+      }
+    } catch {
+      // The checkbox stays available when the optional eligibility hint cannot be loaded.
+    }
   }
 
   private defaultOwner(): { type: FormOwnerType; id: string } {

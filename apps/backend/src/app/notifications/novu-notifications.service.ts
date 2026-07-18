@@ -51,6 +51,7 @@ type EventFormAvailableNotification = {
   targetId: string;
   targetName: string;
   recipients: NotificationRecipient[];
+  requiredSubscriptionForm?: boolean;
 };
 
 type NovuTriggerResponse = {
@@ -354,9 +355,16 @@ export class NovuNotificationsService {
       searchParams.set('linkId', input.linkId);
     }
     const actionUrl = `/profile/forms/${input.formId}?${searchParams.toString()}`;
-    const title = 'Formulário disponível';
-    const body = `O formulário "${input.formName}" está disponível para ${input.targetName}.`;
-    const transactionIdParts = ['event-form-available', input.formId, input.targetType, input.targetId];
+    const title = input.requiredSubscriptionForm ? 'Formulário obrigatório pendente' : 'Formulário disponível';
+    const body = input.requiredSubscriptionForm
+      ? `Para concluir sua inscrição em ${input.targetName}, responda o formulário "${input.formName}".`
+      : `O formulário "${input.formName}" está disponível para ${input.targetName}.`;
+    const transactionIdParts = [
+      input.requiredSubscriptionForm ? 'required-subscription-form' : 'event-form-available',
+      input.formId,
+      input.targetType,
+      input.targetId,
+    ];
     if (input.linkId) {
       transactionIdParts.push(input.linkId);
     }
