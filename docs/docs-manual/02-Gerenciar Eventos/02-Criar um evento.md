@@ -98,7 +98,7 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
 
 - **Visível para usuários**
 
-  - Se o evento deve ser exibido para os usuários na lista de eventos do calendário. Desmarcar essa opção é útil para usar a lista de presenças do evento como uma lista de retirada de kits, por exemplo.
+  - Se o evento deve ser exibido para os usuários na lista de eventos do calendário.
 
 - **Inscrever automaticamente pelo grande evento**
 
@@ -115,6 +115,14 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
 - **Início e fim da presença on-line**
   - Período em que os participantes poderão registrar a própria presença.
 
+:::tip[Dica]
+
+Eventos permitem usos criativos.
+
+Por exemplo, ao desmarcar a opcão "Visível para usuários" a lista de presenças do evento pode ser usada como uma lista de retirada de kits, já que o scanner de presenças diferencia os participantes inscritos e pagantes dos não inscritos.
+
+:::
+
 ### Ministrantes 
 
 As pessoas cadastradas nessa seção terão acesso à página "informações do organizador" e serão consideradas na emissão automática de certificados para "Palestrantes/ministrantes".
@@ -123,7 +131,7 @@ As pessoas cadastradas nessa seção terão acesso à página "informações do 
 
 O ministrante de um evento não deve se inscrever na própria atividade.
 
-Oriente os ministrantes.
+Oriente os ministrantes a não fazerem isso.
 
 :::
 
