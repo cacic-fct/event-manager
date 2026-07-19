@@ -90,6 +90,7 @@ export class OnlineAttendanceNotificationJobsService {
         `Could not schedule the online attendance notification for event ${event.id}.`,
         error instanceof Error ? error.stack : String(error),
       );
+      throw error;
     }
   }
 
@@ -145,7 +146,10 @@ export class OnlineAttendanceNotificationJobsService {
         onlineAttendanceCode: true,
         onlineAttendanceEndDate: true,
         subscriptions: {
-          where: { deletedAt: null },
+          where: {
+            deletedAt: null,
+            subscriptionStatus: SubscriptionStatus.CONFIRMED,
+          },
           select: { person: { select: PERSON_SELECT } },
         },
         majorEvent: {

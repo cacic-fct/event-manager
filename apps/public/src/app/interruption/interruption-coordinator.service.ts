@@ -81,7 +81,11 @@ export class InterruptionCoordinatorService implements OnDestroy {
           switchMap(() => this.resolveNextInterruption()),
         )
         .subscribe((interruption) => {
-          if (!interruption || !this.auth.isAuthenticated()) {
+          if (
+            !interruption ||
+            !this.auth.isAuthenticated() ||
+            !this.featureFlags.booleanValue('interruptionsEnabled')
+          ) {
             return;
           }
 

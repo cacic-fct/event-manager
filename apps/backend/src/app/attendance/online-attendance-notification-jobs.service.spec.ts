@@ -76,12 +76,12 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     );
   });
 
-  it('does not let notification scheduling failures block admin event changes', async () => {
+  it('propagates notification scheduling failures so reconciliation can retry them', async () => {
     const { queue, service } = createService();
     const logError = jest.spyOn(service['logger'], 'error').mockImplementation();
     queue.add.mockRejectedValue(new Error('Redis unavailable'));
 
-    await expect(service.scheduleEvent(onlineAttendanceEvent())).resolves.toBeUndefined();
+    await expect(service.scheduleEvent(onlineAttendanceEvent())).rejects.toThrow('Redis unavailable');
 
     expect(logError).toHaveBeenCalledWith(
       'Could not schedule the online attendance notification for event event-1.',
@@ -130,6 +130,9 @@ describe('OnlineAttendanceNotificationJobsService', () => {
           onlineAttendanceEndDate: { gte: now },
         }),
         select: expect.objectContaining({
+          subscriptions: expect.objectContaining({
+            where: { deletedAt: null, subscriptionStatus: SubscriptionStatus.CONFIRMED },
+          }),
           majorEvent: expect.objectContaining({
             select: expect.objectContaining({
               subscriptions: expect.objectContaining({

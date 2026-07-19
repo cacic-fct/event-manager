@@ -89,6 +89,19 @@ describe('InterruptionCoordinatorService', () => {
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
+  it('does not navigate when the global kill switch is disabled while an interruption is resolving', () => {
+    const resolution = new Subject<Interruption | null>();
+    const interruptionsEnabled = signal(true);
+    const { router, service } = createService([{ resolve: () => resolution }], signal(true), interruptionsEnabled);
+
+    service.start();
+    interruptionsEnabled.set(false);
+    resolution.next(attendance);
+    resolution.complete();
+
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
   it('does not resolve or navigate interruptions when the global kill switch is disabled', () => {
     const flow = { resolve: vi.fn(() => of(attendance)) } satisfies InterruptionFlow;
     const { router, service } = createService([flow], signal(true), signal(false));
