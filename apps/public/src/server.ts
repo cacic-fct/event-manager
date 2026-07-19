@@ -4,7 +4,9 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
+import { applyCspNonceToHtml, createCspNonce } from '@cacic-fct/shared-utils';
 import express from 'express';
+import { readFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { appRoutes } from './app/app.routes';
@@ -56,6 +58,22 @@ app.use(
   }),
 );
 
+app.get(['/app/index.html', '/app/index.csr.html'], async (req, res, next) => {
+  try {
+    const html = await readFile(join(browserDistFolder, basename(req.path)), 'utf8');
+    writeResponseToNodeResponse(
+      await applyCspToHtmlResponse(
+        new Response(html, {
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        }),
+      ),
+      res,
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use(
   '/app',
   express.static(browserDistFolder, {
@@ -93,8 +111,7 @@ app.use('/{*splat}', (req, res, next) => {
         return;
       }
 
-      const configuredResponse =
-        turnstileSiteKey && isHtmlResponse(response) ? await injectTurnstileSiteKey(response) : response;
+      const configuredResponse = isHtmlResponse(response) ? await applyCspToHtmlResponse(response) : response;
       writeResponseToNodeResponse(configuredResponse, res);
     })
     .catch(next);
@@ -144,12 +161,18 @@ function isHtmlResponse(response: Response): boolean {
   return (response.headers.get('content-type') ?? '').includes('text/html');
 }
 
-async function injectTurnstileSiteKey(response: Response): Promise<Response> {
+async function applyCspToHtmlResponse(response: Response): Promise<Response> {
   const html = await response.text();
   const headers = new Headers(response.headers);
-  headers.delete('content-length');
+  const nonce = createCspNonce();
 
-  return new Response(addTurnstileSiteKeyMeta(html), {
+  headers.delete('content-length');
+  headers.set('Content-Security-Policy', publicCspPolicy(nonce));
+  headers.set('Cache-Control', 'private, no-store');
+  headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
+
+  const configuredHtml = addTurnstileSiteKeyMeta(html);
+  return new Response(applyCspNonceToHtml(configuredHtml, nonce), {
     status: response.status,
     statusText: response.statusText,
     headers,
@@ -173,4 +196,28 @@ function validateServerEnvironment(): void {
   if (process.env['NODE_ENV'] === 'production' && !turnstileSiteKey) {
     throw new Error('TURNSTILE_SITE_KEY must be set for the production public app server.');
   }
+}
+
+function publicCspPolicy(nonce: string): string {
+  return [
+    "base-uri 'self'",
+    "default-src 'self'",
+    "object-src 'none'",
+    `script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval' https://a.cacic.com.br https://challenges.cloudflare.com`,
+    "script-src-attr 'none'",
+    `style-src 'self' 'nonce-${nonce}'`,
+    "style-src-attr 'unsafe-inline'",
+    "img-src 'self' data: blob: https://cdn.jsdelivr.net https://lh3.googleusercontent.com",
+    "font-src 'self' data:",
+    "connect-src 'self' https://a.cacic.com.br https://account.cacic.com.br https://cdn.jsdelivr.net https://fastly.jsdelivr.net https://glitchtip.cacic.com.br https://notifications.cacic.com.br https://unleash.cacic.com.br",
+    "frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    "media-src 'self' blob:",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    'trusted-types angular angular#bundler angular#unsafe-bypass default cacic#external-script',
+    "require-trusted-types-for 'script'",
+    'upgrade-insecure-requests',
+  ].join('; ');
 }

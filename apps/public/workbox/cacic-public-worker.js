@@ -235,11 +235,54 @@ workbox.routing.registerRoute(
 async function appShellFallback() {
   const precachedResponse = await workbox.precaching.matchPrecache(appShellUrl);
   if (precachedResponse) {
-    return precachedResponse;
+    return createOfflineHtmlResponse(precachedResponse);
   }
 
   const cachedResponse = await caches.match(appShellUrl);
-  return cachedResponse ?? Response.error();
+  return cachedResponse ? createOfflineHtmlResponse(cachedResponse) : Response.error();
+}
+
+async function createOfflineHtmlResponse(response) {
+  const nonce = createCspNonce();
+  const headers = new Headers(response.headers);
+  const contentSecurityPolicy = headers.get('Content-Security-Policy');
+
+  if (contentSecurityPolicy) {
+    headers.set('Content-Security-Policy', contentSecurityPolicy.replace(/'nonce-[^']+'/g, `'nonce-${nonce}'`));
+  }
+
+  headers.set('Cache-Control', 'private, no-store');
+  headers.delete('content-length');
+
+  return new Response(applyCspNonceToHtml(await response.text(), nonce), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function createCspNonce() {
+  const bytes = new Uint8Array(16);
+  self.crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
+function applyCspNonceToHtml(html, nonce) {
+  return html
+    .replace(/<app-root\b([^>]*)>/i, (_match, attributes) =>
+      withNonceAttribute('app-root', attributes, `ngCspNonce="${nonce}"`),
+    )
+    .replace(/<(script|style)\b([^>]*)>/gi, (_match, tagName, attributes) =>
+      withNonceAttribute(tagName, attributes, `nonce="${nonce}"`),
+    );
+}
+
+function withNonceAttribute(tagName, attributes, nonceAttribute) {
+  const attributesWithoutNonce = attributes
+    .replace(/\snonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/\sngcspnonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+
+  return `<${tagName}${attributesWithoutNonce} ${nonceAttribute}>`;
 }
 
 async function cacheAttendanceScannerUrls(urls) {

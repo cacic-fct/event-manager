@@ -1,7 +1,11 @@
 import '@angular/compiler';
 import { EnvironmentInjector, PLATFORM_ID, createEnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { assertTrustedExternalScriptUrl, CacicTrustedTypesService } from './trusted-types';
+import {
+  assertTrustedExternalScriptUrl,
+  assertTrustedServiceWorkerUrl,
+  CacicTrustedTypesService,
+} from './trusted-types';
 
 describe('assertTrustedExternalScriptUrl', () => {
   it('accepts only the external scripts declared in the Trusted Types policy', () => {
@@ -20,6 +24,29 @@ describe('assertTrustedExternalScriptUrl', () => {
     );
     expect(() => assertTrustedExternalScriptUrl('http://a.cacic.com.br/b.js')).toThrow(
       'External script URL is not approved',
+    );
+  });
+});
+
+describe('assertTrustedServiceWorkerUrl', () => {
+  const serviceWorkerUrl = new URL('/app/cacic-public-worker.js', location.origin).href;
+
+  it('accepts only the same-origin public service worker', () => {
+    expect(assertTrustedServiceWorkerUrl(serviceWorkerUrl)).toBe(serviceWorkerUrl);
+  });
+
+  it('rejects a different origin, path, query, or fragment', () => {
+    expect(() => assertTrustedServiceWorkerUrl('https://example.com/app/cacic-public-worker.js')).toThrow(
+      'Service worker URL is not approved',
+    );
+    expect(() => assertTrustedServiceWorkerUrl(new URL('/app/other-worker.js', location.origin).href)).toThrow(
+      'Service worker URL is not approved',
+    );
+    expect(() => assertTrustedServiceWorkerUrl(`${serviceWorkerUrl}?version=1`)).toThrow(
+      'Service worker URL is not approved',
+    );
+    expect(() => assertTrustedServiceWorkerUrl(`${serviceWorkerUrl}#fragment`)).toThrow(
+      'Service worker URL is not approved',
     );
   });
 });
