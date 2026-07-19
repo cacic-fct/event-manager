@@ -74,6 +74,11 @@
       "configurations": {
         "production": {
           "extractLicenses": true,
+          "optimization": {
+            "styles": {
+              "inlineCritical": false
+            }
+          },
           "budgets": [
             {
               "type": "initial",
