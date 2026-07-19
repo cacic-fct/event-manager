@@ -10,7 +10,7 @@ import { isPlatformBrowser, registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { provideRouter } from '@angular/router';
 import { appRoutes } from './app.routes';
-import { provideClientHydration, withEventReplay } from '@angular/platform-browser';
+import { provideClientHydration } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { authInterceptor } from '@cacic-fct/shared-angular/auth/interceptor';
@@ -50,7 +50,7 @@ const buildIdentifyData = (user: AuthenticatedUser) => ({
 export const appConfig: ApplicationConfig = {
   providers: [
     { provide: LOCALE_ID, useValue: 'pt-BR' },
-    provideClientHydration(withEventReplay()),
+    provideClientHydration(),
     provideBrowserGlobalErrorListeners(),
     provideHttpClient(withInterceptors([authInterceptor])),
     provideRouter(appRoutes),

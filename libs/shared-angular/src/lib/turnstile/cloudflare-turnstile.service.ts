@@ -1,5 +1,6 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { trustedExternalScriptUrl } from '../security/trusted-types';
 
 const TURNSTILE_SCRIPT_URL = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
 
@@ -73,7 +74,7 @@ export class CloudflareTurnstileService {
       );
 
       if (!existingScript) {
-        script.src = TURNSTILE_SCRIPT_URL;
+        script.src = trustedExternalScriptUrl(TURNSTILE_SCRIPT_URL);
         script.async = true;
         script.defer = true;
         this.document.head.appendChild(script);

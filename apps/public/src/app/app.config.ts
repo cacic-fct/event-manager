@@ -10,7 +10,7 @@ import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
 import { provideRouter, RouteReuseStrategy, TitleStrategy } from '@angular/router';
 import { appRoutes } from './app.routes';
-import { provideClientHydration, withEventReplay, withNoIncrementalHydration } from '@angular/platform-browser';
+import { provideClientHydration, withNoIncrementalHydration } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   AUTH_ONBOARDING_ENFORCEMENT_ENABLED,
@@ -120,7 +120,7 @@ export const appConfig: ApplicationConfig = {
   providers: [
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     { provide: PUBLIC_FEATURE_FLAG_CONFIG, useValue: publicFeatureFlagConfig },
-    provideClientHydration(withEventReplay(), withNoIncrementalHydration()),
+    provideClientHydration(withNoIncrementalHydration()),
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
     { provide: TitleStrategy, useClass: PageTitleStrategy },

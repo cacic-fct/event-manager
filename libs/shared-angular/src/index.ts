@@ -22,6 +22,7 @@ export * from './lib/privacy/account-privacy-startup';
 export * from './lib/privacy/cookie-banner-sync.service';
 export * from './lib/service-worker/service-worker.service';
 export * from './lib/sitemap/sitemap.utils';
+export * from './lib/security/trusted-types';
 export * from './lib/guards/guards';
 export * from './lib/guards/redirect-authenticated';
 export * from './lib/turnstile/cloudflare-turnstile.component';
