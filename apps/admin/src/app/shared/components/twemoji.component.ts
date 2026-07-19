@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { EmojiService } from '../services/emoji.service';
+import { EmojiService } from '../../workspace/data-access/shared/emoji.service';
 
 @Component({
   selector: 'app-twemoji',

@@ -23,7 +23,7 @@ import type {
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
 import { DashboardApiService } from '../../graphql/dashboard-api.service';
 import { TwemojiComponent } from '../../shared/components/twemoji.component';
-import { workspaceNavLinkItems } from '../workspace-nav';
+import { navigationLinkItems } from '../shell/navigation';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
@@ -60,7 +60,7 @@ export class Home implements OnInit, OnDestroy {
   readonly error = signal<string | null>(null);
 
   readonly greetings: Signal<string> = computed(() => this.getGreetings());
-  readonly navMap = computed(() => Object.fromEntries(workspaceNavLinkItems.map((item) => [item.id, item])));
+  readonly navMap = computed(() => Object.fromEntries(navigationLinkItems.map((item) => [item.id, item])));
   readonly todayEvents = computed(() => this.insights()?.calendarEvents.filter((event) => this.isToday(event)) ?? []);
   readonly todayAttendanceEvents = computed(() => this.todayEvents().filter((event) => event.canCollectAttendanceNow));
   readonly upcomingEvents = computed(

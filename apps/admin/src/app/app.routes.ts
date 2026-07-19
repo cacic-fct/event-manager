@@ -12,7 +12,7 @@ export const appRoutes: Route[] = [
   {
     path: '',
     canActivate: [authGuardWithLocalLogin(), requiredPermissionsGuard(WORKSPACE_ENTRY_PERMISSIONS, '/app/')],
-    loadChildren: () => import('./workspace/workspace.routes').then((m) => m.workspaceRoutes),
+    loadChildren: () => import('./workspace/shell/routes').then((m) => m.routes),
   },
   {
     path: '**',
