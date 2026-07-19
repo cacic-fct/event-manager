@@ -209,11 +209,32 @@ function createWorkerHarness(): WorkerHarness {
       openWindow: vi.fn(),
     },
     skipWaiting: vi.fn(async () => undefined),
+    crypto: {
+      getRandomValues: (bytes: Uint8Array) => {
+        bytes.fill(1);
+        return bytes;
+      },
+    },
     addEventListener: vi.fn((type: keyof WorkerListenerMap, listener: never) => {
       listeners[type].push(listener);
     }),
   };
   const fetchMock = vi.fn<(request: Request) => Promise<Response>>();
+  const importScripts = vi.fn(() => {
+    Object.assign(workerGlobal, {
+      CspNonce: {
+        createCspNonce: () => btoa(String.fromCharCode(...new Uint8Array(16).fill(1))),
+        applyCspNonceToHtml: (html: string, nonce: string) =>
+          html
+            .replace(/<app-root\b([^>]*)>/i, (_match, attributes: string) =>
+              `<app-root${attributes.replace(/\sngcspnonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')} ngCspNonce="${nonce}">`,
+            )
+            .replace(/<(script|style)\b([^>]*)>/gi, (_match, tagName: string, attributes: string) =>
+              `<${tagName}${attributes.replace(/\snonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')} nonce="${nonce}">`,
+            ),
+      },
+    });
+  });
 
   const evaluate = new Function(
     'self',
@@ -226,7 +247,7 @@ function createWorkerHarness(): WorkerHarness {
     loadWorkerSource(),
   );
 
-  evaluate(workerGlobal, workbox, caches, vi.fn(), Response, Request, fetchMock);
+  evaluate(workerGlobal, workbox, caches, importScripts, Response, Request, fetchMock);
 
   return {
     listeners,
@@ -385,6 +406,33 @@ describe('cacic-public-worker', () => {
 
     await expect(response.text()).resolves.toBe('cached-shell');
     expect(harness.caches.match).toHaveBeenCalledWith('/app/index.csr.html');
+  });
+
+  it('rotates the cached shell nonce before returning it offline', async () => {
+    const harness = createWorkerHarness();
+    const navigationRoute = harness.routes.find((route) =>
+      route.matcher(requestContext('/app/about', { mode: 'navigate' })),
+    );
+
+    harness.networkFirstInstances[0].handle.mockRejectedValueOnce(new Error('offline'));
+    harness.workbox.precaching.matchPrecache.mockResolvedValueOnce(
+      new Response('<app-root ngCspNonce="stale"></app-root><script src="main.js"></script><style>body {}</style>', {
+        headers: {
+          'Content-Security-Policy': "script-src 'nonce-stale'; style-src 'nonce-stale'",
+        },
+      }),
+    );
+
+    const response = await (navigationRoute?.handler as (options: unknown) => Promise<Response>)(
+      requestContext('/app/about', { mode: 'navigate' }),
+    );
+
+    const nonce = 'AQEBAQEBAQEBAQEBAQEBAQ==';
+    await expect(response.text()).resolves.toBe(
+      `<app-root ngCspNonce="${nonce}"></app-root><script src="main.js" nonce="${nonce}"></script><style nonce="${nonce}">body {}</style>`,
+    );
+    expect(response.headers.get('Content-Security-Policy')).toBe(`script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'`);
+    expect(response.headers.get('Cache-Control')).toBe('private, no-store');
   });
 
   it('reports scanner-cache success only after every requested URL is cached', async () => {

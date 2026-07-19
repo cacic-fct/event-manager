@@ -6,6 +6,7 @@ const EXTERNAL_SCRIPT_URLS = new Set([
   'https://a.cacic.com.br/recorder.js',
   'https://challenges.cloudflare.com/turnstile/v0/api.js',
 ]);
+const PUBLIC_SERVICE_WORKER_PATH = '/app/cacic-public-worker.js';
 
 const EXTERNAL_SCRIPT_POLICY_NAME = 'cacic#external-script';
 const DEFAULT_POLICY_NAME = 'default';
@@ -48,6 +49,30 @@ export function trustedExternalScriptUrl(value: string): string {
   return externalScriptPolicy?.createScriptURL(url) ?? url;
 }
 
+/**
+ * Validates the public app's same-origin service worker script.
+ *
+ * ServiceWorkerContainer.register() is a Trusted Types script URL sink in
+ * browsers that enforce `require-trusted-types-for 'script'`.
+ */
+export function assertTrustedServiceWorkerUrl(value: string): string {
+  const url = new URL(value);
+
+  if (url.origin !== location.origin || url.pathname !== PUBLIC_SERVICE_WORKER_PATH || url.search || url.hash) {
+    throw new Error(`Service worker URL is not approved by the Trusted Types policy: ${url.href}`);
+  }
+
+  return url.href;
+}
+
+/**
+ * Produces a TrustedScriptURL for the public app's same-origin service worker.
+ */
+export function trustedServiceWorkerUrl(value: string): string {
+  const url = assertTrustedServiceWorkerUrl(value);
+  return externalScriptPolicy?.createScriptURL(url) ?? url;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CacicTrustedTypesService {
   private readonly platformId = inject(PLATFORM_ID);
@@ -65,7 +90,13 @@ export class CacicTrustedTypesService {
       return;
     }
 
-    const createTrustedScriptUrl = (value: string) => assertTrustedExternalScriptUrl(value);
+    const createTrustedScriptUrl = (value: string) => {
+      try {
+        return assertTrustedExternalScriptUrl(value);
+      } catch {
+        return assertTrustedServiceWorkerUrl(value);
+      }
+    };
 
     try {
       externalScriptPolicy = trustedTypes.createPolicy(EXTERNAL_SCRIPT_POLICY_NAME, {

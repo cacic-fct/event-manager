@@ -4,6 +4,7 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 
 import { UpdateModalComponent } from './dialog-components/update.component';
 import { UpdateErrorDialogComponent } from './dialog-components/update-error.component';
+import { trustedServiceWorkerUrl } from '../security/trusted-types';
 
 type UpdateState = 'idle' | 'checking' | 'downloading' | 'ready' | 'failed' | 'unrecoverable';
 const SERVICE_WORKER_RELOAD_KEY = 'cacic-eventos:service-worker-reload';
@@ -156,7 +157,7 @@ export class ServiceWorkerService {
 
   private async registerServiceWorker(): Promise<void> {
     try {
-      const registration = await navigator.serviceWorker.register(this.serviceWorkerUrl(), {
+      const registration = await navigator.serviceWorker.register(trustedServiceWorkerUrl(this.serviceWorkerUrl()), {
         scope: this.serviceWorkerScope(),
         updateViaCache: 'none',
       });
