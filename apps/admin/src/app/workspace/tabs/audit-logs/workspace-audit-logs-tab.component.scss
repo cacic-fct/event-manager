@@ -1,6 +1,6 @@
 .audit-filter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
   gap: 0.75rem;
   align-items: start;
 }
@@ -116,8 +116,9 @@
 .entry-detail-grid strong,
 .change-row span,
 .change-row code {
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .entry-title,
@@ -141,7 +142,7 @@
 
 .entry-detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
   gap: 0.75rem;
   margin: 0.75rem 0;
 }
@@ -185,6 +186,7 @@ pre {
 }
 
 .change-row code {
+  overflow: visible;
   padding: 0.25rem 0.375rem;
 }
 
@@ -197,7 +199,7 @@ pre {
 
 .json-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
   gap: 0.75rem;
   margin-top: 0.75rem;
 }

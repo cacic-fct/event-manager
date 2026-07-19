@@ -1,6 +1,7 @@
 .calendar-preferences {
   display: grid;
   gap: 16px;
+  min-width: 0;
 }
 
 .feed-section {
@@ -9,7 +10,15 @@
 }
 
 .default-view-toggle {
+  display: flex;
+  flex-wrap: wrap;
   margin-inline: 16px;
+  max-width: calc(100% - 32px);
+}
+
+.default-view-toggle mat-button-toggle {
+  flex: 1 1 7.5rem;
+  min-width: 0;
 }
 
 .feed-url-field {
@@ -20,6 +29,12 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.feed-actions > button,
+.feed-actions > a {
+  max-width: 100%;
+  white-space: normal;
 }
 
 .empty-section {

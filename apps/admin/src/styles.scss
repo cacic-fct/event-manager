@@ -60,3 +60,28 @@ body {
   font-feature-settings: 'liga';
   -webkit-font-feature-settings: 'liga';
 }
+
+// Names, identifiers, and audit details are operational content. List rows
+// should expand to show them rather than silently truncating them.
+.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-two-lines,
+.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-three-lines {
+  height: auto;
+  min-height: var(--mat-list-list-item-three-line-container-height, 88px);
+}
+
+.mat-mdc-list-base .mat-mdc-list-item .mdc-list-item__content {
+  overflow: visible;
+  white-space: normal;
+}
+
+.mat-mdc-list-base .mat-mdc-list-item .mdc-list-item__primary-text,
+.mat-mdc-list-base .mat-mdc-list-item .mdc-list-item__secondary-text {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-three-lines .mdc-list-item__secondary-text {
+  white-space: normal;
+}
