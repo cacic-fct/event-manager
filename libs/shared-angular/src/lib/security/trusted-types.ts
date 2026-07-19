@@ -1,3 +1,4 @@
+import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject, makeEnvironmentProviders, provideEnvironmentInitializer } from '@angular/core';
 
 const EXTERNAL_SCRIPT_URLS = new Set([
@@ -53,7 +54,7 @@ export class CacicTrustedTypesService {
   private initialized = false;
 
   initialize(): void {
-    if (this.initialized || this.platformId !== 'browser') {
+    if (this.initialized || !isPlatformBrowser(this.platformId)) {
       return;
     }
 
@@ -78,6 +79,10 @@ export class CacicTrustedTypesService {
         createScriptURL: createTrustedScriptUrl,
       });
     } catch (error: unknown) {
+      if (isDuplicateTrustedTypesPolicyError(error)) {
+        return;
+      }
+
       this.initialized = false;
       const detail = error instanceof Error ? ` ${error.message}` : '';
       throw new Error(`Could not initialize the CACiC Trusted Types policies.${detail}`);
@@ -91,6 +96,10 @@ export function provideCacicTrustedTypes() {
       inject(CacicTrustedTypesService).initialize();
     }),
   ]);
+}
+
+function isDuplicateTrustedTypesPolicyError(error: unknown): boolean {
+  return error instanceof Error && /policy with name .+ already exists/i.test(error.message);
 }
 
 function getTrustedTypesPolicyFactory(): TrustedTypesPolicyFactory | null {
