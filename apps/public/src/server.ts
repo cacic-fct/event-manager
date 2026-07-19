@@ -4,7 +4,7 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
-import { applyCspNonceToHtml, createCspNonce } from '@cacic-fct/shared-utils';
+import { applyCspToHtmlResponse } from '@cacic-fct/shared-utils';
 import express from 'express';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
@@ -66,6 +66,8 @@ app.get(['/app/index.html', '/app/index.csr.html'], async (req, res, next) => {
         new Response(html, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' },
         }),
+        publicCspPolicy,
+        addTurnstileSiteKeyMeta,
       ),
       res,
     );
@@ -111,7 +113,9 @@ app.use('/{*splat}', (req, res, next) => {
         return;
       }
 
-      const configuredResponse = isHtmlResponse(response) ? await applyCspToHtmlResponse(response) : response;
+      const configuredResponse = isHtmlResponse(response)
+        ? await applyCspToHtmlResponse(response, publicCspPolicy, addTurnstileSiteKeyMeta)
+        : response;
       writeResponseToNodeResponse(configuredResponse, res);
     })
     .catch(next);
@@ -159,24 +163,6 @@ export const reqHandler = createNodeRequestHandler(app);
 
 function isHtmlResponse(response: Response): boolean {
   return (response.headers.get('content-type') ?? '').includes('text/html');
-}
-
-async function applyCspToHtmlResponse(response: Response): Promise<Response> {
-  const html = await response.text();
-  const headers = new Headers(response.headers);
-  const nonce = createCspNonce();
-
-  headers.delete('content-length');
-  headers.set('Content-Security-Policy', publicCspPolicy(nonce));
-  headers.set('Cache-Control', 'private, no-store');
-  headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
-
-  const configuredHtml = addTurnstileSiteKeyMeta(html);
-  return new Response(applyCspNonceToHtml(configuredHtml, nonce), {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
 }
 
 function addTurnstileSiteKeyMeta(html: string): string {

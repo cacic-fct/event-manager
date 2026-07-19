@@ -220,6 +220,21 @@ function createWorkerHarness(): WorkerHarness {
     }),
   };
   const fetchMock = vi.fn<(request: Request) => Promise<Response>>();
+  const importScripts = vi.fn(() => {
+    Object.assign(workerGlobal, {
+      CspNonce: {
+        createCspNonce: () => btoa(String.fromCharCode(...new Uint8Array(16).fill(1))),
+        applyCspNonceToHtml: (html: string, nonce: string) =>
+          html
+            .replace(/<app-root\b([^>]*)>/i, (_match, attributes: string) =>
+              `<app-root${attributes.replace(/\sngcspnonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')} ngCspNonce="${nonce}">`,
+            )
+            .replace(/<(script|style)\b([^>]*)>/gi, (_match, tagName: string, attributes: string) =>
+              `<${tagName}${attributes.replace(/\snonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')} nonce="${nonce}">`,
+            ),
+      },
+    });
+  });
 
   const evaluate = new Function(
     'self',
@@ -232,7 +247,7 @@ function createWorkerHarness(): WorkerHarness {
     loadWorkerSource(),
   );
 
-  evaluate(workerGlobal, workbox, caches, vi.fn(), Response, Request, fetchMock);
+  evaluate(workerGlobal, workbox, caches, importScripts, Response, Request, fetchMock);
 
   return {
     listeners,

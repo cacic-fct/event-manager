@@ -2,7 +2,9 @@
 
 // Keep Novu push handling in the same registered Service Worker.
 importScripts('./novu-push-handler.js');
-importScripts('./__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js');
+importScripts('./__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js', './csp-nonce.js');
+
+const { applyCspNonceToHtml, createCspNonce } = self.CspNonce;
 
 workbox.setConfig({
   modulePathPrefix: './__WORKBOX_LIBRARY_DIRECTORY__/',
@@ -259,30 +261,6 @@ async function createOfflineHtmlResponse(response) {
     statusText: response.statusText,
     headers,
   });
-}
-
-function createCspNonce() {
-  const bytes = new Uint8Array(16);
-  self.crypto.getRandomValues(bytes);
-  return btoa(String.fromCharCode(...bytes));
-}
-
-function applyCspNonceToHtml(html, nonce) {
-  return html
-    .replace(/<app-root\b([^>]*)>/i, (_match, attributes) =>
-      withNonceAttribute('app-root', attributes, `ngCspNonce="${nonce}"`),
-    )
-    .replace(/<(script|style)\b([^>]*)>/gi, (_match, tagName, attributes) =>
-      withNonceAttribute(tagName, attributes, `nonce="${nonce}"`),
-    );
-}
-
-function withNonceAttribute(tagName, attributes, nonceAttribute) {
-  const attributesWithoutNonce = attributes
-    .replace(/\snonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/\sngcspnonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-
-  return `<${tagName}${attributesWithoutNonce} ${nonceAttribute}>`;
 }
 
 async function cacheAttendanceScannerUrls(urls) {

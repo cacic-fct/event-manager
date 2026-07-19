@@ -4,7 +4,7 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
-import { applyCspNonceToHtml, createCspNonce } from '@cacic-fct/shared-utils';
+import { applyCspToHtmlResponse } from '@cacic-fct/shared-utils';
 import express from 'express';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -49,6 +49,7 @@ app.get(['/admin/index.html', '/admin/index.csr.html'], async (req, res, next) =
         new Response(html, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' },
         }),
+        adminCspPolicy,
       ),
       res,
     );
@@ -72,7 +73,9 @@ app.use(
 app.use('/{*splat}', (req, res, next) => {
   angularApp
     .handle(req)
-    .then(async (response) => (response ? writeResponseToNodeResponse(await applyCspToHtmlResponse(response), res) : next()))
+    .then(async (response) =>
+      response ? writeResponseToNodeResponse(await applyCspToHtmlResponse(response, adminCspPolicy), res) : next(),
+    )
     .catch(next);
 });
 
@@ -91,24 +94,6 @@ if (isMainModule(import.meta.url) || process.env['pm_id']) {
  * Request handler used by the Angular CLI (for dev-server and during build) or Firebase Cloud Functions.
  */
 export const reqHandler = createNodeRequestHandler(app);
-
-async function applyCspToHtmlResponse(response: Response): Promise<Response> {
-  const html = await response.text();
-  const headers = new Headers(response.headers);
-  const nonce = createCspNonce();
-
-  headers.set('Content-Security-Policy', adminCspPolicy(nonce));
-  headers.set('Cache-Control', 'private, no-store');
-  headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
-
-  headers.delete('content-length');
-
-  return new Response(applyCspNonceToHtml(html, nonce), {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
 
 function adminCspPolicy(nonce: string): string {
   return [

@@ -15,6 +15,26 @@ export function applyCspNonceToHtml(html: string, nonce: string): string {
     );
 }
 
+export async function applyCspToHtmlResponse(
+  response: Response,
+  contentSecurityPolicy: (nonce: string) => string,
+  transformHtml: (html: string) => string = (html) => html,
+): Promise<Response> {
+  const nonce = createCspNonce();
+  const headers = new Headers(response.headers);
+
+  headers.delete('content-length');
+  headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
+  headers.set('Cache-Control', 'private, no-store');
+  headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
+
+  return new Response(applyCspNonceToHtml(transformHtml(await response.text()), nonce), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 function withNonceAttribute(tagName: string, attributes: string, nonceAttribute: string): string {
   const attributesWithoutNonce = attributes
     .replace(/\snonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')

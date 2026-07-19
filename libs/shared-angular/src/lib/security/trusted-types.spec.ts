@@ -5,6 +5,7 @@ import {
   assertTrustedExternalScriptUrl,
   assertTrustedServiceWorkerUrl,
   CacicTrustedTypesService,
+  trustedServiceWorkerUrl,
 } from './trusted-types';
 
 describe('assertTrustedExternalScriptUrl', () => {
@@ -46,6 +47,29 @@ describe('assertTrustedServiceWorkerUrl', () => {
       'Service worker URL is not approved',
     );
     expect(() => assertTrustedServiceWorkerUrl(`${serviceWorkerUrl}#fragment`)).toThrow(
+      'Service worker URL is not approved',
+    );
+  });
+});
+
+describe('trustedServiceWorkerUrl', () => {
+  const serviceWorkerUrl = new URL('/app/cacic-public-worker.js', location.origin).href;
+
+  it('returns the approved same-origin service worker URL', () => {
+    expect(trustedServiceWorkerUrl(serviceWorkerUrl)).toBe(serviceWorkerUrl);
+  });
+
+  it('rejects a different origin, path, query, or fragment', () => {
+    expect(() => trustedServiceWorkerUrl('https://example.com/app/cacic-public-worker.js')).toThrow(
+      'Service worker URL is not approved',
+    );
+    expect(() => trustedServiceWorkerUrl(new URL('/app/other-worker.js', location.origin).href)).toThrow(
+      'Service worker URL is not approved',
+    );
+    expect(() => trustedServiceWorkerUrl(`${serviceWorkerUrl}?version=1`)).toThrow(
+      'Service worker URL is not approved',
+    );
+    expect(() => trustedServiceWorkerUrl(`${serviceWorkerUrl}#fragment`)).toThrow(
       'Service worker URL is not approved',
     );
   });
