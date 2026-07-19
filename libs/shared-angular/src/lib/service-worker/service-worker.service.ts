@@ -31,6 +31,7 @@ export class ServiceWorkerService {
   private readonly trackedServiceWorkers = new WeakSet<ServiceWorker>();
   private reloadWhenControlling = false;
   private started = false;
+  private recoveryAttempted = false;
 
   start(): void {
     if (this.started || !this.canUseServiceWorker() || isDevMode()) {
@@ -79,15 +80,7 @@ export class ServiceWorkerService {
 
       return hasUpdate;
     } catch (error: unknown) {
-      if (this.isRegistrationUninstalledError(error)) {
-        this.registration = null;
-        this.state.set('idle');
-        void this.registerServiceWorker();
-        return false;
-      }
-
-      this.state.set('failed');
-      this.error.set(this.stringifyError(error));
+      await this.handleServiceWorkerError(error);
       return false;
     }
   }
@@ -111,13 +104,7 @@ export class ServiceWorkerService {
           }),
       );
     } catch (error: unknown) {
-      if (this.isRegistrationUninstalledError(error)) {
-        this.registration = null;
-        void this.registerServiceWorker();
-        return;
-      }
-
-      throw error;
+      await this.handleServiceWorkerError(error);
     }
   }
 
@@ -163,13 +150,13 @@ export class ServiceWorkerService {
       });
 
       this.registration = registration;
+      this.state.set('idle');
+      this.error.set(null);
       this.listenForServiceWorkerUpdates(registration);
       this.handleCurrentRegistration(registration);
       this.serviceWorkerControlled.set(Boolean(navigator.serviceWorker.controller));
     } catch (error: unknown) {
-      this.state.set('failed');
-      this.error.set(this.stringifyError(error));
-      this.openUpdateErrorDialog(this.stringifyError(error));
+      await this.handleServiceWorkerError(error);
     }
   }
 
@@ -209,6 +196,11 @@ export class ServiceWorkerService {
 
     this.trackedServiceWorkers.add(serviceWorker);
 
+    serviceWorker.addEventListener('error', (event) => {
+      const message = event instanceof ErrorEvent && event.message ? event.message : 'O Service Worker encontrou um erro.';
+      void this.handleServiceWorkerError(message);
+    });
+
     if (isUpdate) {
       this.handleUpdateDetected();
     }
@@ -233,7 +225,7 @@ export class ServiceWorkerService {
         }
 
         case 'redundant': {
-          this.handleUpdateFailed();
+          void this.handleUpdateFailed();
           break;
         }
       }
@@ -270,16 +262,44 @@ export class ServiceWorkerService {
     waitingServiceWorker.postMessage({ type: 'SKIP_WAITING' });
   }
 
-  private handleUpdateFailed(): void {
+  private async handleUpdateFailed(): Promise<void> {
     const message = 'Falha ao instalar a nova versão do Service Worker.';
-
-    this.state.set('failed');
-    this.error.set(message);
 
     this.updateDialogRef?.close();
     this.updateDialogRef = null;
 
-    this.openUpdateErrorDialog(message);
+    await this.handleServiceWorkerError(message);
+  }
+
+  private async handleServiceWorkerError(error: unknown): Promise<void> {
+    const message = this.stringifyError(error);
+
+    this.state.set('failed');
+    this.error.set(message);
+
+    if (this.recoveryAttempted) {
+      this.openUpdateErrorDialog(message);
+      return;
+    }
+
+    this.recoveryAttempted = true;
+    this.updateDialogRef?.close();
+    this.updateDialogRef = null;
+
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(
+        registrations
+          .filter((registration) => registration.scope === this.serviceWorkerScope())
+          .map((registration) => registration.unregister()),
+      );
+    } catch {
+      // Attempt a fresh registration even when querying or removing the old worker fails.
+    }
+
+    this.registration = null;
+    this.serviceWorkerControlled.set(false);
+    await this.registerServiceWorker();
   }
 
   private openUpdateErrorDialog(error: string): void {
@@ -358,7 +378,4 @@ export class ServiceWorkerService {
     return 'Erro desconhecido ao atualizar o aplicativo.';
   }
 
-  private isRegistrationUninstalledError(error: unknown): boolean {
-    return this.stringifyError(error).includes('registration has been uninstalled');
-  }
 }

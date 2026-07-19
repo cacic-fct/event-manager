@@ -19,6 +19,7 @@ const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
 const turnstileSiteKeyMetaName = 'cacic-turnstile-site-key';
 const turnstileSiteKey = process.env['TURNSTILE_SITE_KEY']?.trim() ?? '';
+const publicAppVersion = 'APP_VERSION_PLACEHOLDER';
 
 const app = express();
 const angularApp = new AngularNodeAppEngine({
@@ -33,17 +34,13 @@ const angularApp = new AngularNodeAppEngine({
   ],
 });
 
-/**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/**', (req, res) => {
- *   // Handle API request
- * });
- * ```
- */
+app.get('/app/api/version', (_req, res) => {
+  res.set({
+    'Cache-Control': 'no-store, max-age=0',
+    'CDN-Cache-Control': 'no-store',
+  });
+  res.json({ version: publicAppVersion });
+});
 
 /**
  * Serve static files from /browser

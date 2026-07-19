@@ -227,3 +227,13 @@ export const PUBLIC_PLATFORM_STATS_QUERY = `
     }
   }
 `;
+
+export interface ServerVersionQuery {
+  serverVersion: string;
+}
+
+export const SERVER_VERSION_QUERY = `
+  query ServerVersion {
+    serverVersion
+  }
+`;

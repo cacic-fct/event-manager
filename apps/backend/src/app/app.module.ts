@@ -155,6 +155,7 @@ import { validateBackendEnvironment } from './config/environment.validation';
 import { redisProvider } from './redis/redis.provider';
 import { createNoopQueueProviders } from './queues/noop-queue.providers';
 import { BackendFeatureFlagService } from './feature-flags/backend-feature-flags';
+import { ServerVersionResolver } from './server-version/server-version.resolver';
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
@@ -295,6 +296,7 @@ const schedulerProviders = useInMemoryTestInfra
     EventDraftsResolver,
     EventDraftsService,
     PublicEventsResolver,
+    ServerVersionResolver,
     PublicPlatformStatsResolver,
     UsersResolver,
     PeopleResolver,
