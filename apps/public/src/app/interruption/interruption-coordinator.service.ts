@@ -1,8 +1,9 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
+import { Injectable, OnDestroy, PLATFORM_ID, effect, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { EMPTY, Subject, Subscription, catchError, filter, forkJoin, map, of, switchMap } from 'rxjs';
+import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import {
   INTERRUPTION_FLOW,
   INTERRUPTION_PRIORITIES,
@@ -37,8 +38,9 @@ function canApplyInterruption(interruption: Interruption, context: InterruptionC
 }
 
 @Injectable({ providedIn: 'root' })
-export class InterruptionCoordinatorService {
+export class InterruptionCoordinatorService implements OnDestroy {
   private readonly auth = inject(AuthService);
+  private readonly featureFlags = inject(PublicFeatureFlagService);
   private readonly flows = (inject(INTERRUPTION_FLOW, { optional: true }) as readonly InterruptionFlow[] | null) ?? [];
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
@@ -50,7 +52,7 @@ export class InterruptionCoordinatorService {
 
   constructor() {
     effect(() => {
-      if (this.auth.isAuthenticated()) {
+      if (this.auth.isAuthenticated() && this.featureFlags.booleanValue('interruptionsEnabled')) {
         this.requestCheck();
       }
     });
@@ -79,7 +81,11 @@ export class InterruptionCoordinatorService {
           switchMap(() => this.resolveNextInterruption()),
         )
         .subscribe((interruption) => {
-          if (!interruption) {
+          if (
+            !interruption ||
+            !this.auth.isAuthenticated() ||
+            !this.featureFlags.booleanValue('interruptionsEnabled')
+          ) {
             return;
           }
 
@@ -98,7 +104,15 @@ export class InterruptionCoordinatorService {
     }
   }
 
+  ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
+  }
+
   private resolveNextInterruption() {
+    if (!this.featureFlags.booleanValue('interruptionsEnabled')) {
+      return of(null);
+    }
+
     if (this.flows.length === 0) {
       return EMPTY;
     }

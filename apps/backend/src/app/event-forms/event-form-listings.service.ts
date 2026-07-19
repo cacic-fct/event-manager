@@ -207,6 +207,7 @@ export class EventFormListingsService {
         OR: [
           {
             event: {
+              deletedAt: null,
               endDate: { gt: now },
               subscriptions: {
                 some: {
@@ -218,6 +219,7 @@ export class EventFormListingsService {
           },
           {
             majorEvent: {
+              deletedAt: null,
               endDate: { gt: now },
               subscriptions: {
                 some: {
@@ -245,30 +247,62 @@ export class EventFormListingsService {
       orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
     });
 
-    const interruptions: RequiredSubscriptionFormInterruption[] = [];
-    for (const link of links) {
+    const responseLookups = links.map((link) => {
       const target = normalizeTarget(link);
-      const response = await this.prisma.eventFormResponse.findFirst({
-        where: {
-          ...(responseLookupWhere(link.form, person.id, target) ?? responseTargetWhere(link.form.id, person.id, target)),
-          deletedAt: null,
-        },
-        select: { id: true },
-      });
-      if (response) {
-        continue;
+      return {
+        link,
+        target,
+        where:
+          responseLookupWhere(link.form, person.id, target) ??
+          (link.form.responseMode === 'MULTIPLE_PER_TARGET'
+            ? { formId: link.form.id, personId: person.id, linkId: link.id }
+            : responseTargetWhere(link.form.id, person.id, target)),
+      };
+    });
+    const responses =
+      responseLookups.length === 0
+        ? []
+        : await this.prisma.eventFormResponse.findMany({
+            where: {
+              deletedAt: null,
+              OR: responseLookups.map(({ where }) => where),
+            },
+            select: {
+              formId: true,
+              linkId: true,
+              targetType: true,
+              eventId: true,
+              majorEventId: true,
+            },
+          });
+    const answeredResponseKeys = new Set(
+      responses.flatMap((response) => [
+        `form:${response.formId}`,
+        `link:${response.formId}:${response.linkId ?? ''}`,
+        `target:${response.formId}:${response.targetType}:${response.eventId ?? ''}:${response.majorEventId ?? ''}`,
+      ]),
+    );
+
+    return responseLookups.flatMap(({ link, target }) => {
+      const responseKey =
+        link.form.responseMode === 'SINGLE_PER_FORM'
+          ? `form:${link.form.id}`
+          : link.form.responseMode === 'MULTIPLE_PER_TARGET'
+            ? `link:${link.form.id}:${link.id}`
+            : `target:${link.form.id}:${target.targetType}:${target.eventId ?? ''}:${target.majorEventId ?? ''}`;
+      if (answeredResponseKeys.has(responseKey)) {
+        return [];
       }
 
-      interruptions.push({
+      return [{
         formId: link.form.id,
         linkId: link.id,
         targetType: link.targetType,
         eventId: link.eventId,
         majorEventId: link.majorEventId,
         displayOrder: link.displayOrder,
-      });
-    }
-    return interruptions;
+      }];
+    });
   }
 
   async countPreviousSubscribers(
@@ -302,6 +336,7 @@ export class EventFormListingsService {
         id: input.linkId,
         formId: input.formId,
         deletedAt: null,
+        ...(target.eventId ? { eventId: target.eventId } : { majorEventId: target.majorEventId }),
       },
       select: {
         targetType: true,

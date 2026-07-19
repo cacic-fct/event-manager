@@ -688,6 +688,14 @@ export class WorkspaceFormsService {
     if (!targetId) {
       return;
     }
+    const snapshot = {
+      localId: link.localId,
+      id: link.id,
+      targetType: link.targetType,
+      targetId,
+      insertInSubscriptionFlow: link.insertInSubscriptionFlow,
+      requiredInSubscriptionFlow: link.requiredInSubscriptionFlow,
+    };
     this.previousSubscriberCounts.update((counts) => ({ ...counts, [link.localId]: null }));
     try {
       const count = await firstValueFrom(
@@ -699,8 +707,20 @@ export class WorkspaceFormsService {
           majorEventId: link.targetType === 'MAJOR_EVENT' ? targetId : null,
         }),
       );
-      if (this.links().some((item) => item.localId === link.localId)) {
-        this.previousSubscriberCounts.update((counts) => ({ ...counts, [link.localId]: count }));
+      if (
+        this.links().some((item) => {
+          const itemTargetId = item.targetType === 'EVENT' ? item.eventId : item.majorEventId;
+          return (
+            item.localId === snapshot.localId &&
+            item.id === snapshot.id &&
+            item.targetType === snapshot.targetType &&
+            itemTargetId === snapshot.targetId &&
+            item.insertInSubscriptionFlow === snapshot.insertInSubscriptionFlow &&
+            item.requiredInSubscriptionFlow === snapshot.requiredInSubscriptionFlow
+          );
+        })
+      ) {
+        this.previousSubscriberCounts.update((counts) => ({ ...counts, [snapshot.localId]: count }));
       }
     } catch {
       // The checkbox stays available when the optional eligibility hint cannot be loaded.

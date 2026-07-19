@@ -295,17 +295,19 @@ describe('NovuNotificationsService', () => {
   });
 
   it('sends certificate availability notifications with an idempotent issue transaction', async () => {
-    await service.notifyCertificateAvailable({
-      certificateId: 'certificate-1',
-      configId: 'config-1',
-      certificateName: 'Certificado de participacao',
-      targetName: 'Semana da Computacao',
-      issuedAt: new Date('2026-05-23T15:30:00.000Z'),
-      recipient: {
-        subscriberId: 'user-1',
-        email: 'ada@example.com',
-      },
-    });
+    await expect(
+      service.notifyCertificateAvailable({
+        certificateId: 'certificate-1',
+        configId: 'config-1',
+        certificateName: 'Certificado de participacao',
+        targetName: 'Semana da Computacao',
+        issuedAt: new Date('2026-05-23T15:30:00.000Z'),
+        recipient: {
+          subscriberId: 'user-1',
+          email: 'ada@example.com',
+        },
+      }),
+    ).resolves.toBe(true);
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://novu.example.com/v1/events/trigger',
@@ -502,12 +504,14 @@ describe('NovuNotificationsService', () => {
   });
 
   it('notifies subscribers when online attendance starts with a direct attendance link', async () => {
-    await service.notifyOnlineAttendanceAvailable({
+    await expect(
+      service.notifyOnlineAttendanceAvailable({
       eventId: 'event-1',
       eventName: 'Aula de TypeScript',
       endsAt: new Date('2026-05-23T15:30:00.000Z'),
       recipients: [{ subscriberId: 'user-1', email: 'ada@example.com' }],
-    });
+      }),
+    ).resolves.toBe(true);
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     expect(body).toEqual(

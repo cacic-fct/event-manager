@@ -154,6 +154,7 @@ import { RateLimitService } from './rate-limit/rate-limit.service';
 import { validateBackendEnvironment } from './config/environment.validation';
 import { redisProvider } from './redis/redis.provider';
 import { createNoopQueueProviders } from './queues/noop-queue.providers';
+import { BackendFeatureFlagService } from './feature-flags/backend-feature-flags';
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
@@ -282,6 +283,7 @@ const schedulerProviders = useInMemoryTestInfra
   ],
   providers: [
     NovuNotificationsService,
+    BackendFeatureFlagService,
     OnlineAttendanceNotificationJobsService,
     AccountMergeService,
     LgpdService,

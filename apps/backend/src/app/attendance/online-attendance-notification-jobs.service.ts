@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger } from '@nestjs/common';
 import { PublicationState, SubscriptionStatus } from '@prisma/client';
 import { Queue } from 'bullmq';
+import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
 import { PrismaService } from '../prisma/prisma.service';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 
@@ -37,6 +38,7 @@ export class OnlineAttendanceNotificationJobsService {
     private readonly notifications: NovuNotificationsService,
     @InjectQueue(ONLINE_ATTENDANCE_NOTIFICATION_QUEUE)
     private readonly queue: Queue<OnlineAttendanceAvailableNotificationJob>,
+    private readonly featureFlags: BackendFeatureFlagService,
   ) {}
 
   async scheduleEvent(event: {
@@ -48,6 +50,10 @@ export class OnlineAttendanceNotificationJobsService {
     onlineAttendanceStartDate: Date | null;
     onlineAttendanceEndDate: Date | null;
   }): Promise<void> {
+    if (!this.featureFlags.isEnabled('onlineAttendanceNotificationsEnabled')) {
+      return;
+    }
+
     const startDate = event.onlineAttendanceStartDate;
     const endDate = event.onlineAttendanceEndDate;
     if (
@@ -58,7 +64,7 @@ export class OnlineAttendanceNotificationJobsService {
       !endDate ||
       startDate >= endDate ||
       startDate > event.endDate ||
-      startDate <= new Date()
+      endDate <= new Date()
     ) {
       return;
     }
@@ -75,8 +81,8 @@ export class OnlineAttendanceNotificationJobsService {
           backoff: { type: 'exponential', delay: 1_000 },
           delay: Math.max(startDate.getTime() - Date.now(), 0),
           jobId: `online-attendance-available:${event.id}:${startDate.getTime()}`,
-          removeOnComplete: true,
-          removeOnFail: 50,
+          removeOnComplete: false,
+          removeOnFail: true,
         },
       );
     } catch (error) {
@@ -84,6 +90,7 @@ export class OnlineAttendanceNotificationJobsService {
         `Could not schedule the online attendance notification for event ${event.id}.`,
         error instanceof Error ? error.stack : String(error),
       );
+      throw error;
     }
   }
 
@@ -94,8 +101,8 @@ export class OnlineAttendanceNotificationJobsService {
         shouldCollectAttendance: true,
         isOnlineAttendanceAllowed: true,
         onlineAttendanceCode: { not: null },
-        onlineAttendanceStartDate: { gt: new Date() },
-        onlineAttendanceEndDate: { not: null },
+        onlineAttendanceStartDate: { not: null },
+        onlineAttendanceEndDate: { gte: new Date() },
       },
       select: {
         id: true,
@@ -112,6 +119,10 @@ export class OnlineAttendanceNotificationJobsService {
   }
 
   async deliver(input: OnlineAttendanceAvailableNotificationJob): Promise<void> {
+    if (!this.featureFlags.isEnabled('onlineAttendanceNotificationsEnabled')) {
+      return;
+    }
+
     const startDate = new Date(input.onlineAttendanceStartDate);
     const now = new Date();
     const event = await this.prisma.event.findFirst({
@@ -135,7 +146,10 @@ export class OnlineAttendanceNotificationJobsService {
         onlineAttendanceCode: true,
         onlineAttendanceEndDate: true,
         subscriptions: {
-          where: { deletedAt: null },
+          where: {
+            deletedAt: null,
+            subscriptionStatus: SubscriptionStatus.CONFIRMED,
+          },
           select: { person: { select: PERSON_SELECT } },
         },
         majorEvent: {
@@ -166,11 +180,18 @@ export class OnlineAttendanceNotificationJobsService {
       ...(event.majorEvent?.subscriptions ?? []).map(({ person }) => this.notifications.mapPersonToRecipient(person)),
     ];
     const uniqueRecipients = [...new Map(recipients.map((recipient) => [recipient.subscriberId, recipient])).values()];
-    await this.notifications.notifyOnlineAttendanceAvailable({
+    if (uniqueRecipients.length === 0) {
+      return;
+    }
+
+    const delivered = await this.notifications.notifyOnlineAttendanceAvailable({
       eventId: event.id,
       eventName: event.name,
       endsAt: event.onlineAttendanceEndDate,
       recipients: uniqueRecipients,
     });
+    if (!delivered) {
+      throw new Error(`Online attendance notification for event ${event.id} was not acknowledged.`);
+    }
   }
 }

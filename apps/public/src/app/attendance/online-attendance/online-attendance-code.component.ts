@@ -110,7 +110,7 @@ export class OnlineAttendanceCodeComponent {
     }
 
     this.attendanceCoordinator.dismissPending(
-      state.status === 'ready' ? [state.item.eventId] : [],
+      [state.status === 'ready' ? state.item.eventId : this.eventId()].filter(Boolean),
       this.returnUrl() || '/menu',
     );
   }

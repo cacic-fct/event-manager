@@ -10,11 +10,13 @@ import { OnlineAttendanceCoordinatorService } from './online-attendance-coordina
 
 describe('OnlineAttendanceCoordinatorService', () => {
   it('does not interrupt again after the current pending attendances are dismissed', async () => {
-    const { api, service } = createService();
+    const { api, router, service } = createService();
 
     expect(await resolve(service)).not.toBeNull();
 
     service.dismissPending(['event-1'], '/menu');
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/menu');
 
     expect(await resolve(service)).toBeNull();
 
@@ -26,6 +28,7 @@ describe('OnlineAttendanceCoordinatorService', () => {
 
 function createService(): {
   api: { listPendingEvents: ReturnType<typeof vi.fn> };
+  router: { navigateByUrl: ReturnType<typeof vi.fn> };
   service: OnlineAttendanceCoordinatorService;
 } {
   const api = {
@@ -63,8 +66,10 @@ function createService(): {
     ],
   });
 
+  const router = TestBed.inject(Router) as unknown as { navigateByUrl: ReturnType<typeof vi.fn> };
   return {
     api,
+    router,
     service: TestBed.inject(OnlineAttendanceCoordinatorService),
   };
 }

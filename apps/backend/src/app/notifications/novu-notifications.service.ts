@@ -178,10 +178,10 @@ export class NovuNotificationsService {
     });
   }
 
-  async notifyCertificateAvailable(input: CertificateAvailableNotification): Promise<void> {
+  async notifyCertificateAvailable(input: CertificateAvailableNotification): Promise<boolean> {
     const secretKey = this.transport.secretKey();
     if (!secretKey) {
-      return;
+      return false;
     }
 
     const actionUrl = '/profile/attendances';
@@ -189,7 +189,7 @@ export class NovuNotificationsService {
     const targetLabel = input.targetName?.trim() || input.certificateName;
     const body = `Seu certificado de ${targetLabel} está disponível.`;
 
-    await this.transport.trigger(secretKey, {
+    return this.transport.trigger(secretKey, {
           name: this.certificateAvailableWorkflowIdentifier,
           to: input.recipient,
           transactionId: `certificate-available:${input.configId}:${input.certificateId}:${input.issuedAt.toISOString()}`,
@@ -294,10 +294,10 @@ export class NovuNotificationsService {
     });
   }
 
-  async notifyOnlineAttendanceAvailable(input: OnlineAttendanceAvailableNotification): Promise<void> {
+  async notifyOnlineAttendanceAvailable(input: OnlineAttendanceAvailableNotification): Promise<boolean> {
     const secretKey = this.transport.secretKey();
     if (!secretKey || input.recipients.length === 0) {
-      return;
+      return false;
     }
 
     const actionUrl = `/attendance/register/${input.eventId}?fromNotification=true`;
@@ -310,7 +310,7 @@ export class NovuNotificationsService {
     const title = 'Presença disponível';
     const body = `Você pode registrar sua presença em ${input.eventName} até ${endTime}.`;
 
-    await this.transport.trigger(secretKey, {
+    return this.transport.trigger(secretKey, {
       name: this.config.get<string>('NOVU_ONLINE_ATTENDANCE_WORKFLOW_IDENTIFIER', 'online-attendance-available'),
       to: input.recipients,
       transactionId: `online-attendance-available:${input.eventId}:${input.endsAt.toISOString()}`,
