@@ -17,12 +17,15 @@ const workboxDirectory = await copyWorkboxLibraries(browserDirectory);
 const cspNonce = await readFile(cspNonceSource, 'utf8');
 const { code: cspNonceWorkerModule } = await transform(cspNonce, {
   format: 'iife',
-  globalName: 'self.CspNonce',
+  // An esbuild global name beginning with `self.` emits `var self = self || {}`.
+  // In a service worker, that overwrites the WorkerGlobalScope and prevents
+  // Workbox from registering its install and activate event listeners.
+  globalName: 'CspNonce',
   loader: 'ts',
   minify: true,
   target: 'es2017',
 });
-await writeFile(cspNonceDestination, cspNonceWorkerModule);
+await writeFile(cspNonceDestination, `${cspNonceWorkerModule}\nself.CspNonce = CspNonce;\n`);
 const source = await readFile(workerSource, 'utf8');
 await writeFile(preparedWorkerSource, source.replaceAll('__WORKBOX_LIBRARY_DIRECTORY__', workboxDirectory));
 
