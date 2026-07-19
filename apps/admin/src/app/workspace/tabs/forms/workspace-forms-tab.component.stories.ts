@@ -520,7 +520,12 @@ function normalizeStoryLink(
         : null,
     insertInSubscriptionFlow,
     requiredInSubscriptionFlow: insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
-    notifyOnPublish: insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
+    notifyOnPublish:
+      insertInSubscriptionFlow && link.requiredInSubscriptionFlow === true
+        ? (link.notifyOnPublish ?? true)
+        : insertInSubscriptionFlow
+          ? false
+          : (link.notifyOnPublish ?? true),
     allowLecturerManualPublish:
       targetType === 'EVENT' && !insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
   };

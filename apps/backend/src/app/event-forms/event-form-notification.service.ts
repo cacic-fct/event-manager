@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { EventFormAudience, EventFormTargetType, Prisma } from '@prisma/client';
+import { EventFormAudience, EventFormResponseMode, EventFormTargetType, Prisma } from '@prisma/client';
 import { isPast } from 'date-fns';
+import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -12,6 +13,8 @@ type EventFormNotificationLink = {
   eventId: string | null;
   majorEventId: string | null;
   audience: EventFormAudience;
+  insertInSubscriptionFlow: boolean;
+  requiredInSubscriptionFlow: boolean;
   notifyOnPublish: boolean;
   lastNotifiedAt: Date | null;
   availableFrom: Date | null;
@@ -23,6 +26,7 @@ type EventFormNotificationLink = {
 type EventFormNotificationRecord = {
   id: string;
   name: string;
+  responseMode: EventFormResponseMode;
   links: readonly EventFormNotificationLink[];
 };
 
@@ -31,6 +35,7 @@ export class EventFormNotificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NovuNotificationsService,
+    private readonly featureFlags: BackendFeatureFlagService,
   ) {}
 
   async notifyEligiblePeople(form: EventFormNotificationRecord): Promise<number> {
@@ -49,7 +54,17 @@ export class EventFormNotificationService {
         continue;
       }
 
-      const recipients = await this.findNotificationRecipients(link);
+      const requiresExistingSubscriberResponse = this.isRequiredSubscriptionForm(link);
+      if (
+        requiresExistingSubscriberResponse &&
+        !this.featureFlags.isEnabled('requiredSubscriptionFormNotificationsEnabled')
+      ) {
+        continue;
+      }
+
+      const recipients = requiresExistingSubscriberResponse
+        ? await this.findRequiredSubscriptionRecipients(form, link)
+        : await this.findNotificationRecipients(link);
       if (recipients.length === 0) {
         await this.prisma.eventFormLink.updateMany({
           where: {
@@ -89,6 +104,7 @@ export class EventFormNotificationService {
           targetId: link.eventId ?? link.majorEventId ?? '',
           targetName: link.event?.name ?? link.majorEvent?.name ?? form.name,
           recipients,
+          requiredSubscriptionForm: requiresExistingSubscriberResponse,
         });
       } catch {
         notified = false;
@@ -176,6 +192,76 @@ export class EventFormNotificationService {
     }
 
     return [...people.values()].map((person) => this.notifications.mapPersonToRecipient(person));
+  }
+
+  private async findRequiredSubscriptionRecipients(
+    form: EventFormNotificationRecord,
+    link: EventFormNotificationLink,
+  ) {
+    const subscriptions = link.eventId
+      ? await this.prisma.eventSubscription.findMany({
+          where: {
+            eventId: link.eventId,
+            deletedAt: null,
+          },
+          select: {
+            person: this.notificationPersonSelect(),
+          },
+        })
+      : link.majorEventId
+        ? await this.prisma.majorEventSubscription.findMany({
+            where: {
+              majorEventId: link.majorEventId,
+              deletedAt: null,
+            },
+            select: {
+              person: this.notificationPersonSelect(),
+            },
+          })
+        : [];
+    const people = [...new Map(subscriptions.map((subscription) => [subscription.person.id, subscription.person])).values()];
+    if (people.length === 0) {
+      return [];
+    }
+
+    const answered = await this.prisma.eventFormResponse.findMany({
+      where: {
+        formId: form.id,
+        personId: {
+          in: people.map((person) => person.id),
+        },
+        deletedAt: null,
+        ...this.responseScopeForRequiredSubscriptionLink(form.responseMode, link),
+      },
+      select: {
+        personId: true,
+      },
+    });
+    const answeredPeople = new Set(answered.map((response) => response.personId));
+    return people
+      .filter((person) => !answeredPeople.has(person.id))
+      .map((person) => this.notifications.mapPersonToRecipient(person));
+  }
+
+  private responseScopeForRequiredSubscriptionLink(
+    responseMode: EventFormResponseMode,
+    link: EventFormNotificationLink,
+  ): Prisma.EventFormResponseWhereInput {
+    if (responseMode === EventFormResponseMode.SINGLE_PER_FORM) {
+      return {};
+    }
+    if (responseMode === EventFormResponseMode.MULTIPLE_PER_TARGET) {
+      return { linkId: link.id };
+    }
+    return {
+      targetType: link.targetType,
+      eventId: link.eventId,
+      majorEventId: link.majorEventId,
+    };
+  }
+
+  private isRequiredSubscriptionForm(link: EventFormNotificationLink): boolean {
+    return link.insertInSubscriptionFlow && link.requiredInSubscriptionFlow && link.audience !== EventFormAudience.ATTENDEES;
   }
 
   private notificationPersonSelect() {

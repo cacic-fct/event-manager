@@ -32,6 +32,12 @@ import { CertificateEligibilityService } from './certificate/certificate-eligibi
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
 import { CertificateNotificationJobsProcessor } from './certificate/certificate-notification-jobs.processor';
 import { CertificateNotificationJobsService, CERTIFICATE_NOTIFICATION_QUEUE } from './certificate/certificate-notification-jobs.service';
+import {
+  ONLINE_ATTENDANCE_NOTIFICATION_QUEUE,
+  OnlineAttendanceNotificationJobsService,
+} from './attendance/online-attendance-notification-jobs.service';
+import { OnlineAttendanceNotificationJobsProcessor } from './attendance/online-attendance-notification-jobs.processor';
+import { OnlineAttendanceNotificationScheduler } from './attendance/online-attendance-notification.scheduler';
 import { CertificateTargetsService } from './certificate/certificate-targets.service';
 import { CertificateValidationService } from './certificate/certificate-validation.service';
 import { CertificatesResolver } from './certificate/certificates.resolver';
@@ -148,6 +154,7 @@ import { RateLimitService } from './rate-limit/rate-limit.service';
 import { validateBackendEnvironment } from './config/environment.validation';
 import { redisProvider } from './redis/redis.provider';
 import { createNoopQueueProviders } from './queues/noop-queue.providers';
+import { BackendFeatureFlagService } from './feature-flags/backend-feature-flags';
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
@@ -158,6 +165,7 @@ const backendQueueNames = [
   CALENDAR_FEED_MAINTENANCE_QUEUE,
   PUBLICATION_QUEUE,
   CERTIFICATE_NOTIFICATION_QUEUE,
+  ONLINE_ATTENDANCE_NOTIFICATION_QUEUE,
 ];
 const queueImports = useInMemoryTestInfra
   ? []
@@ -186,6 +194,9 @@ const queueImports = useInMemoryTestInfra
       BullModule.registerQueue({
         name: CERTIFICATE_NOTIFICATION_QUEUE,
       }),
+      BullModule.registerQueue({
+        name: ONLINE_ATTENDANCE_NOTIFICATION_QUEUE,
+      }),
     ];
 const queueProviders = useInMemoryTestInfra ? createNoopQueueProviders(backendQueueNames) : [];
 const queueProcessorProviders = useInMemoryTestInfra
@@ -198,6 +209,7 @@ const queueProcessorProviders = useInMemoryTestInfra
       MajorEventReceiptsProcessor,
       WeatherProcessor,
       CertificateNotificationJobsProcessor,
+      OnlineAttendanceNotificationJobsProcessor,
     ];
 const schedulerProviders = useInMemoryTestInfra
   ? []
@@ -208,6 +220,7 @@ const schedulerProviders = useInMemoryTestInfra
       PublicPlatformStatsScheduler,
       EventFormsScheduler,
       WeatherSchedulerService,
+      OnlineAttendanceNotificationScheduler,
     ];
 
 @Module({
@@ -270,6 +283,8 @@ const schedulerProviders = useInMemoryTestInfra
   ],
   providers: [
     NovuNotificationsService,
+    BackendFeatureFlagService,
+    OnlineAttendanceNotificationJobsService,
     AccountMergeService,
     LgpdService,
     MajorEventsResolver,

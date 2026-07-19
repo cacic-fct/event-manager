@@ -1,13 +1,15 @@
-import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
 import {
   EventForm,
   EventFormDraft,
   EventFormDraftSaveInput,
   EventFormInput,
+  EventFormPreviousSubscriberCountInput,
   EventFormResponse,
   EventFormResults,
   EventFormTargetType,
   PublishEventFormInput,
+  RequiredSubscriptionFormInterruption,
   SubmitEventFormResponseInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -69,6 +71,23 @@ export class EventFormsResolver {
     @Args('subscriptionFlowOnly', { type: () => Boolean, nullable: true }) subscriptionFlowOnly?: boolean,
   ): Promise<EventForm[]> {
     return this.forms.listCurrentUserForms(context, { targetType, eventId, majorEventId }, { subscriptionFlowOnly });
+  }
+
+  @Query(() => [RequiredSubscriptionFormInterruption], { name: 'currentUserRequiredSubscriptionFormInterruptions' })
+  currentUserRequiredSubscriptionFormInterruptions(
+    @Context() context: GraphqlContext,
+  ): Promise<RequiredSubscriptionFormInterruption[]> {
+    return this.forms.listCurrentUserRequiredSubscriptionFormInterruptions(context);
+  }
+
+  @Query(() => Int, { name: 'eventFormPreviousSubscriberCount' })
+  @AllowScopedCollectionPermissions()
+  @RequirePermissions(Permission.EventForm.Update)
+  eventFormPreviousSubscriberCount(
+    @Args('input', { type: () => EventFormPreviousSubscriberCountInput }) input: EventFormPreviousSubscriberCountInput,
+    @Context() context: GraphqlContext,
+  ): Promise<number> {
+    return this.forms.countPreviousSubscribers(this.getUser(context), input);
   }
 
   @Query(() => EventFormResponse, { name: 'currentUserEventFormResponse', nullable: true })

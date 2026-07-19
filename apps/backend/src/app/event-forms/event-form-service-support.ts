@@ -133,8 +133,10 @@ export async function replaceEventFormLinks(
   formId: string,
   links: readonly NonNullable<EventFormInput['links']>[number][],
   actorId: string | undefined,
+  previousLinks: readonly EventFormLinkRecord[] = [],
 ): Promise<void> {
   const nextLinkIds = new Set(links.map((link) => link.id).filter((id): id is string => Boolean(id)));
+  const previousLinksById = new Map(previousLinks.map((link) => [link.id, link]));
   await tx.eventFormLink.updateMany({
     where: {
       formId,
@@ -149,6 +151,17 @@ export async function replaceEventFormLinks(
 
   for (const link of links) {
     const target = normalizeTarget(link);
+    const previous = link.id ? previousLinksById.get(link.id) : undefined;
+    const requiresPreviousSubscriberNotification =
+      link.insertInSubscriptionFlow === true && link.requiredInSubscriptionFlow === true && link.notifyOnPublish !== false;
+    const notificationAudienceChanged =
+      !previous ||
+      !previous.insertInSubscriptionFlow ||
+      !previous.requiredInSubscriptionFlow ||
+      !previous.notifyOnPublish ||
+      previous.targetType !== target.targetType ||
+      previous.eventId !== target.eventId ||
+      previous.majorEventId !== target.majorEventId;
     const data = {
       targetType: target.targetType,
       eventId: target.eventId,
@@ -160,11 +173,17 @@ export async function replaceEventFormLinks(
       displayOrder: link.displayOrder ?? 0,
       availableFrom: link.availableFrom ?? null,
       availableUntil: link.availableUntil ?? null,
-      notifyOnPublish: link.insertInSubscriptionFlow ? false : (link.notifyOnPublish ?? true),
+      notifyOnPublish:
+        link.insertInSubscriptionFlow && link.requiredInSubscriptionFlow
+          ? (link.notifyOnPublish ?? true)
+          : link.insertInSubscriptionFlow
+            ? false
+            : (link.notifyOnPublish ?? true),
       allowLecturerManualPublish:
         target.targetType === EventFormTargetType.EVENT && !link.insertInSubscriptionFlow
           ? (link.allowLecturerManualPublish ?? false)
           : false,
+      ...(requiresPreviousSubscriberNotification && notificationAudienceChanged ? { lastNotifiedAt: null } : {}),
       updatedById: actorId,
     } satisfies Prisma.EventFormLinkUncheckedUpdateInput;
 

@@ -81,7 +81,7 @@ export class EventFormEditorService {
           },
         });
         if (shouldReplaceLinks) {
-          await replaceEventFormLinks(tx, existing.id, nextLinks, actorId);
+          await replaceEventFormLinks(tx, existing.id, nextLinks, actorId, existing.links);
         }
 
         const updated = await tx.eventForm.findUniqueOrThrow({

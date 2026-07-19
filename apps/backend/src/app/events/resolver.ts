@@ -24,6 +24,7 @@ import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/events/attendance-realtime.service';
+import { OnlineAttendanceNotificationJobsService } from '../attendance/online-attendance-notification-jobs.service';
 import { AttendanceCategoryService } from './attendance-category.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
@@ -224,6 +225,9 @@ export class EventsResolver {
     private readonly attendanceCategories: AttendanceCategoryService = {
       refreshForEventPersons: async () => undefined,
     } as unknown as AttendanceCategoryService,
+    private readonly onlineAttendanceNotifications: OnlineAttendanceNotificationJobsService = {
+      scheduleEvent: async () => undefined,
+    } as unknown as OnlineAttendanceNotificationJobsService,
   ) {}
 
   @Query(() => [Event], { name: 'events' })
@@ -439,6 +443,7 @@ export class EventsResolver {
       startDate: event.startDate,
       endDate: event.endDate,
     });
+    await this.onlineAttendanceNotifications.scheduleEvent(event);
     return event;
   }
 
@@ -514,6 +519,7 @@ export class EventsResolver {
       if (this.didChangeOnlineAttendanceWindow(input)) {
         await this.attendanceRealtime.notifyAllConnectedPeople();
       }
+      await this.onlineAttendanceNotifications.scheduleEvent(event);
     }
     return event;
   }

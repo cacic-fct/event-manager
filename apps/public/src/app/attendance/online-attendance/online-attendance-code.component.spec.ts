@@ -7,6 +7,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { BehaviorSubject, of } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
+import { OnlineAttendanceCoordinatorService } from './online-attendance-coordinator.service';
 import { OnlineAttendanceCodeComponent } from './online-attendance-code.component';
 
 describe('OnlineAttendanceCodeComponent', () => {
@@ -91,17 +92,56 @@ describe('OnlineAttendanceCodeComponent', () => {
       queryParams: { returnUrl: '/menu' },
     });
   });
+
+  it('dismisses the current attendance when returning to the original page', async () => {
+    const { attendanceCoordinator, component } = await createFixture({
+      queryParams: { returnUrl: '/profile/attendances' },
+    });
+
+    component.back();
+
+    expect(attendanceCoordinator.dismissPending).toHaveBeenCalledWith(['event-1'], '/profile/attendances');
+  });
+
+  it('dismisses the route event when the pending attendance could not be loaded', async () => {
+    const { attendanceCoordinator, component } = await createFixture({
+      routeParams: { eventId: 'event-1' },
+      pendingEvents: [],
+    });
+
+    component.back();
+
+    expect(attendanceCoordinator.dismissPending).toHaveBeenCalledWith(['event-1'], '/menu');
+  });
+
+  it('opens the attendance list when a notification is opened while multiple attendances are pending', async () => {
+    const nextPendingEvent = {
+      ...pendingAttendanceEvent,
+      eventId: 'event-2',
+      event: { ...pendingAttendanceEvent.event, id: 'event-2' },
+    };
+    const { router } = await createFixture({
+      queryParams: { fromNotification: 'true' },
+      pendingEvents: [pendingAttendanceEvent, nextPendingEvent],
+    });
+
+    expect(router.navigate).toHaveBeenCalledWith(['/attendance/register'], {
+      queryParams: { returnUrl: '/menu' },
+    });
+  });
 });
 
 async function createFixture({
   routeParams = { eventId: 'event-1' },
   queryParams = {},
   pendingEventsAfterSubmit = [],
+  pendingEvents = [pendingAttendanceEvent],
   scannerCode = null,
 }: {
   routeParams?: Params;
   queryParams?: Params;
   pendingEventsAfterSubmit?: PendingOnlineAttendanceEvent[];
+  pendingEvents?: PendingOnlineAttendanceEvent[];
   scannerCode?: string | null;
 } = {}): Promise<{
   api: {
@@ -109,6 +149,7 @@ async function createFixture({
     listPendingEvents: ReturnType<typeof vi.fn>;
   };
   component: OnlineAttendanceCodeComponent;
+  attendanceCoordinator: { dismissPending: ReturnType<typeof vi.fn> };
   dialog: { open: ReturnType<typeof vi.fn> };
   fixture: ComponentFixture<OnlineAttendanceCodeComponent>;
   router: { navigate: ReturnType<typeof vi.fn>; navigateByUrl: ReturnType<typeof vi.fn> };
@@ -119,9 +160,9 @@ async function createFixture({
   const queryParamMap = new BehaviorSubject(convertToParamMap(queryParams));
   const api = {
     confirmAttendance: vi.fn(() => of({ eventId: 'event-1', attendedAt: null, createdAt: null })),
-    listPendingEvents: vi.fn(() => of([pendingAttendanceEvent] as PendingOnlineAttendanceEvent[])),
+    listPendingEvents: vi.fn(() => of(pendingEvents)),
   };
-  api.listPendingEvents.mockReturnValueOnce(of([pendingAttendanceEvent]));
+  api.listPendingEvents.mockReturnValueOnce(of(pendingEvents));
   if (pendingEventsAfterSubmit.length > 0) {
     api.listPendingEvents.mockReturnValueOnce(of(pendingEventsAfterSubmit));
   }
@@ -139,6 +180,9 @@ async function createFixture({
   };
   const snackBar = {
     open: vi.fn(),
+  };
+  const attendanceCoordinator = {
+    dismissPending: vi.fn(),
   };
 
   await TestBed.configureTestingModule({
@@ -171,6 +215,10 @@ async function createFixture({
         useValue: api,
       },
       {
+        provide: OnlineAttendanceCoordinatorService,
+        useValue: attendanceCoordinator,
+      },
+      {
         provide: Router,
         useValue: router,
       },
@@ -190,6 +238,7 @@ async function createFixture({
   return {
     api,
     component: fixture.componentInstance,
+    attendanceCoordinator,
     dialog,
     fixture,
     router,

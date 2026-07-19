@@ -1,10 +1,12 @@
 import { Injectable, MessageEvent } from '@nestjs/common';
 import {
   EventForm as EventFormModel,
+  EventFormPreviousSubscriberCountInput,
   EventFormDraft as EventFormDraftModel,
   EventFormInput,
   EventFormResults,
   EventFormResponse as EventFormResponseModel,
+  RequiredSubscriptionFormInterruption,
   SubmitEventFormResponseInput,
 } from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
@@ -53,6 +55,19 @@ export class EventFormsService {
     options: { subscriptionFlowOnly?: boolean } = {},
   ): Promise<EventFormModel[]> {
     return this.listings.listCurrentUserForms(context, input, options);
+  }
+
+  async listCurrentUserRequiredSubscriptionFormInterruptions(
+    context: GraphqlContext,
+  ): Promise<RequiredSubscriptionFormInterruption[]> {
+    return this.listings.listCurrentUserRequiredSubscriptionFormInterruptions(context);
+  }
+
+  async countPreviousSubscribers(
+    user: AuthenticatedUser | undefined,
+    input: EventFormPreviousSubscriberCountInput,
+  ): Promise<number> {
+    return this.listings.countPreviousSubscribers(user, input);
   }
 
   async saveForm(input: EventFormInput, user: AuthenticatedUser | undefined): Promise<EventFormModel> {

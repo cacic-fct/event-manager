@@ -192,6 +192,23 @@ export class EventFormApiService {
       .pipe(map((data) => data.deleteEventForm));
   }
 
+  previousSubscriberCount(input: {
+    formId?: string | null;
+    linkId?: string | null;
+    targetType: 'EVENT' | 'MAJOR_EVENT';
+    eventId?: string | null;
+    majorEventId?: string | null;
+  }) {
+    return this.graphqlHttp
+      .request<{ eventFormPreviousSubscriberCount: number }>(
+        `query EventFormPreviousSubscriberCount($input: EventFormPreviousSubscriberCountInput!) {
+          eventFormPreviousSubscriberCount(input: $input)
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.eventFormPreviousSubscriberCount));
+  }
+
   results(formId: string) {
     return this.graphqlHttp
       .request<{ eventFormResults: EventFormResults }>(

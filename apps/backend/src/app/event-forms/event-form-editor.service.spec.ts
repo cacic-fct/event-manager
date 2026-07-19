@@ -228,7 +228,7 @@ describe('EventFormEditorService', () => {
         data: expect.objectContaining({
           targetType: EventFormTargetType.MAJOR_EVENT,
           majorEventId: 'major-2',
-          notifyOnPublish: false,
+          notifyOnPublish: true,
           allowLecturerManualPublish: false,
         }),
       }),

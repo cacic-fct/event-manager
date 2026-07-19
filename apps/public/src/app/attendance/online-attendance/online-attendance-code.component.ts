@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { FormField, form, maxLength, minLength, required, submit as submitSignalForm } from '@angular/forms/signals';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -17,6 +17,7 @@ import { catchError, combineLatest, finalize, map, of, switchMap } from 'rxjs';
 import { EmojiService } from '../../shared/emoji.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
 import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './online-attendance-api.service';
+import { OnlineAttendanceCoordinatorService } from './online-attendance-coordinator.service';
 
 type AttendanceCodeState =
   | { status: 'loading' }
@@ -44,6 +45,7 @@ export class OnlineAttendanceCodeComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly attendanceCoordinator = inject(OnlineAttendanceCoordinatorService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly scannerFeedback = inject(ScannerFeedbackService);
   private readonly cooldown = createRateLimitCooldown(this.destroyRef);
@@ -67,12 +69,36 @@ export class OnlineAttendanceCodeComponent {
   private readonly eventId = toSignal(this.route.paramMap.pipe(map((params) => params.get('eventId') || '')), {
     initialValue: '',
   });
+  private readonly openedFromNotification = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('fromNotification') === 'true')),
+    { initialValue: false },
+  );
   private readonly reloadCounter = signal(0);
+  private redirectedToListFromNotification = false;
 
   readonly slots = computed(() => this.codeModel().code.padEnd(4, ' '));
   readonly state = toSignal(this.createState(), {
     initialValue: { status: 'loading' } satisfies AttendanceCodeState,
   });
+
+  constructor() {
+    effect(() => {
+      const state = this.state();
+      if (
+        !this.openedFromNotification() ||
+        this.redirectedToListFromNotification ||
+        state.status !== 'ready' ||
+        state.total < 2
+      ) {
+        return;
+      }
+
+      this.redirectedToListFromNotification = true;
+      void this.router.navigate(['/attendance/register'], {
+        queryParams: { returnUrl: this.returnUrl() },
+      });
+    });
+  }
 
   back(): void {
     const state = this.state();
@@ -83,7 +109,10 @@ export class OnlineAttendanceCodeComponent {
       return;
     }
 
-    void this.router.navigateByUrl(this.returnUrl() || '/menu');
+    this.attendanceCoordinator.dismissPending(
+      [state.status === 'ready' ? state.item.eventId : this.eventId()].filter(Boolean),
+      this.returnUrl() || '/menu',
+    );
   }
 
   submit(): void {

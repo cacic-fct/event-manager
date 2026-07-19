@@ -30,7 +30,7 @@ export class CookieBannerFeatureFlagService {
     const client = new UnleashClient({
       url: UNLEASH_URL,
       clientKey: this.readRuntimeConfigValue('cacic-unleash-client-key') || PRODUCTION_CLIENT_KEY,
-      appName: 'fct-app-admin',
+      appName: 'events-admin',
       environment: this.readRuntimeConfigValue('cacic-unleash-environment') || 'production',
       refreshInterval: 60,
       disableMetrics: true,

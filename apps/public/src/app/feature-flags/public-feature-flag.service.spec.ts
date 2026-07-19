@@ -9,6 +9,7 @@ const unleashClientMock = vi.hoisted(() => ({
   start: vi.fn<() => Promise<void>>(() => Promise.resolve()),
   on: vi.fn(),
   isEnabled: vi.fn(() => true),
+  getAllToggles: vi.fn(() => []),
   getVariant: vi.fn(() => ({ name: 'disabled', enabled: false, feature_enabled: false })),
   constructor: vi.fn(),
 }));
@@ -20,6 +21,7 @@ vi.mock('unleash-proxy-client', () => ({
       start: unleashClientMock.start,
       on: unleashClientMock.on,
       isEnabled: unleashClientMock.isEnabled,
+      getAllToggles: unleashClientMock.getAllToggles,
       getVariant: unleashClientMock.getVariant,
     };
   }),
@@ -102,6 +104,7 @@ describe('PublicFeatureFlagService', () => {
     await service.initialize();
 
     expect(service.booleanValue('calendarTabEnabled')).toBe(true);
+    expect(service.booleanValue('interruptionsEnabled')).toBe(true);
     expect(service.stringValue('defaultLoginRedirectPath')).toBe('/calendar');
   });
 

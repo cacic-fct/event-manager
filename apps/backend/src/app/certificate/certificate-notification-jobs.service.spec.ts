@@ -37,7 +37,7 @@ describe('CertificateNotificationJobsService', () => {
   });
 
   it('delivers the queued notification with its original issue date', async () => {
-    const notifications = { notifyCertificateAvailable: jest.fn().mockResolvedValue(undefined) };
+    const notifications = { notifyCertificateAvailable: jest.fn().mockResolvedValue(true) };
     const service = new CertificateNotificationJobsService({ add: jest.fn() } as never, notifications as never);
 
     await service.deliver({
@@ -52,6 +52,22 @@ describe('CertificateNotificationJobsService', () => {
     expect(notifications.notifyCertificateAvailable).toHaveBeenCalledWith(
       expect.objectContaining({ issuedAt: new Date('2026-05-23T15:30:00.000Z') }),
     );
+  });
+
+  it('throws when Novu does not acknowledge delivery so BullMQ retries the job', async () => {
+    const notifications = { notifyCertificateAvailable: jest.fn().mockResolvedValue(false) };
+    const service = new CertificateNotificationJobsService({ add: jest.fn() } as never, notifications as never);
+
+    await expect(
+      service.deliver({
+        certificateId: 'certificate-1',
+        configId: 'config-1',
+        certificateName: 'Config',
+        targetName: 'Evento',
+        issuedAt: '2026-05-23T15:30:00.000Z',
+        recipient: { subscriberId: 'person-1' },
+      }),
+    ).rejects.toThrow('was not acknowledged');
   });
 
   it('does not deliver notifications when Novu is unavailable', async () => {

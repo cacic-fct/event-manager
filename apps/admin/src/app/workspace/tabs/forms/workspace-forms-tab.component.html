@@ -397,13 +397,24 @@
                     (change)="workspace.updateLink(link.localId, { enforceRequiredAnswers: $event.checked })">
                     Validar obrigatórias
                   </mat-checkbox>
-                  <mat-checkbox
-                    [checked]="link.notifyOnPublish ?? true"
-                    [disabled]="link.insertInSubscriptionFlow ?? false"
-                    matTooltip="Indisponível quando o formulário faz parte da inscrição, porque a pessoa já vê o formulário ao se inscrever."
-                    (change)="workspace.updateLink(link.localId, { notifyOnPublish: $event.checked })">
-                    Avisar quando ficar disponível
-                  </mat-checkbox>
+                  @if (!(link.insertInSubscriptionFlow ?? false) || !(link.requiredInSubscriptionFlow ?? false)) {
+                    <mat-checkbox
+                      [checked]="link.notifyOnPublish ?? true"
+                      [disabled]="link.insertInSubscriptionFlow ?? false"
+                      matTooltip="Indisponível quando o formulário faz parte da inscrição, porque a pessoa já vê o formulário ao se inscrever."
+                      (change)="workspace.updateLink(link.localId, { notifyOnPublish: $event.checked })">
+                      Avisar quando ficar disponível
+                    </mat-checkbox>
+                  }
+                  @if ((link.insertInSubscriptionFlow ?? false) && (link.requiredInSubscriptionFlow ?? false)) {
+                    <mat-checkbox
+                      [checked]="link.notifyOnPublish ?? true"
+                      [disabled]="workspace.previousSubscriberCount(link) === 0"
+                      matTooltip="Envia uma notificação aos inscritos anteriores que ainda não responderam este formulário."
+                      (change)="workspace.updateLink(link.localId, { notifyOnPublish: $event.checked })">
+                      Notificar inscritos anteriores
+                    </mat-checkbox>
+                  }
                   @if (link.targetType === 'EVENT') {
                     <mat-checkbox
                       [checked]="link.allowLecturerManualPublish ?? false"

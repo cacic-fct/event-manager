@@ -85,9 +85,9 @@ export class PublicFeatureFlagService {
     }
 
     this.valuesSignal.set({
-      calendarTabEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.calendarTabEnabled),
-      majorEventTabEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.majorEventTabEnabled),
-      notificationsTabEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.notificationsTabEnabled),
+      calendarTabEnabled: this.clientBooleanValue('calendarTabEnabled'),
+      majorEventTabEnabled: this.clientBooleanValue('majorEventTabEnabled'),
+      notificationsTabEnabled: this.clientBooleanValue('notificationsTabEnabled'),
       defaultLoginRedirectPath: this.stringVariantValue(
         client.getVariant(PUBLIC_FEATURE_FLAGS.defaultLoginRedirectPath),
         PUBLIC_FEATURE_FLAG_DEFAULTS.defaultLoginRedirectPath,
@@ -96,11 +96,10 @@ export class PublicFeatureFlagService {
         client.getVariant(PUBLIC_FEATURE_FLAGS.calendarDefaultView),
         PUBLIC_FEATURE_FLAG_DEFAULTS.calendarDefaultView,
       ),
-      onboardingEnforcementEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.onboardingEnforcementEnabled),
-      cookieBannerEnabled: client.isEnabled(PUBLIC_FEATURE_FLAGS.cookieBannerEnabled),
-      undergraduateUnespRoleVerificationDisabled: client.isEnabled(
-        PUBLIC_FEATURE_FLAGS.undergraduateUnespRoleVerificationDisabled,
-      ),
+      onboardingEnforcementEnabled: this.clientBooleanValue('onboardingEnforcementEnabled'),
+      cookieBannerEnabled: this.clientBooleanValue('cookieBannerEnabled'),
+      undergraduateUnespRoleVerificationDisabled: this.clientBooleanValue('undergraduateUnespRoleVerificationDisabled'),
+      interruptionsEnabled: this.clientBooleanValue('interruptionsEnabled'),
     });
   }
 
@@ -145,7 +144,13 @@ export class PublicFeatureFlagService {
       undergraduateUnespRoleVerificationDisabled: enabled(
         'undergraduateUnespRoleVerificationDisabled',
       ),
+      interruptionsEnabled: enabled('interruptionsEnabled'),
     };
+  }
+
+  private clientBooleanValue(key: PublicFeatureFlagKey): boolean {
+    const toggle = this.client?.getAllToggles().find((item) => item.name === PUBLIC_FEATURE_FLAGS[key]);
+    return toggle?.enabled ?? PUBLIC_FEATURE_FLAG_DEFAULTS[key] === true;
   }
 
   private stringVariantValue(variant: IVariant | undefined, fallback: string): string {

@@ -78,6 +78,15 @@ export interface PublicEventFormResults {
   responses: PublicEventFormResponse[];
 }
 
+export interface RequiredSubscriptionFormInterruption {
+  formId: string;
+  linkId: string;
+  targetType: EventFormTargetType;
+  eventId?: string | null;
+  majorEventId?: string | null;
+  displayOrder: number;
+}
+
 type SubmitPublicEventFormResponseBaseInput = GraphqlVariables & {
   formId: string;
   linkId?: string | null;
