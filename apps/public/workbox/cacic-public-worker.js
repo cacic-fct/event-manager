@@ -1,25 +1,13 @@
 /* global caches, importScripts, Response, self, workbox */
 
-const workerScriptPolicy = self.trustedTypes?.createPolicy('cacic#service-worker', {
-  createScriptURL: (value) => {
-    const url = new URL(value, self.location.href);
-    const workerDirectory = new URL('./', self.location.href);
-
-    if (url.origin !== self.location.origin || !url.pathname.startsWith(workerDirectory.pathname)) {
-      throw new TypeError(`Service worker script URL is not approved: ${url.href}`);
-    }
-
-    return url.href;
-  },
-});
-
-const trustedWorkerScriptUrl = (value) => workerScriptPolicy?.createScriptURL(value) ?? value;
-
 // Keep Novu push handling in the same registered Service Worker.
-importScripts(trustedWorkerScriptUrl('./novu-push-handler.js'));
+// The document enforces Trusted Types when registering this same-origin worker.
+// Worker evaluation itself has no CSP header, so creating another policy here is
+// redundant and breaks Firefox service-worker startup.
+importScripts('./novu-push-handler.js');
 importScripts(
-  trustedWorkerScriptUrl('./__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js'),
-  trustedWorkerScriptUrl('./csp-nonce.js'),
+  './__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js',
+  './csp-nonce.js',
 );
 
 const { applyCspNonceToHtml, createCspNonce } = self.CspNonce;

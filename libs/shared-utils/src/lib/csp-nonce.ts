@@ -25,8 +25,8 @@ export async function applyCspToHtmlResponse(
 
   headers.delete('content-length');
   headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
-  headers.set('Cache-Control', 'private, no-store');
-  headers.set('Cloudflare-CDN-Cache-Control', 'no-store');
+  headers.set('Cache-Control', 'private, no-store, no-transform');
+  headers.set('Cloudflare-CDN-Cache-Control', 'no-store, no-transform');
 
   return new Response(applyCspNonceToHtml(transformHtml(await response.text()), nonce), {
     status: response.status,

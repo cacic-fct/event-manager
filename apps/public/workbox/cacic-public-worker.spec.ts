@@ -74,7 +74,6 @@ interface WorkerHarness {
   };
   importScripts: ReturnType<typeof vi.fn>;
   createPolicy: ReturnType<typeof vi.fn>;
-  workerScriptPolicyRules: { createScriptURL(value: string): string } | null;
 }
 
 class MockNetworkOnly {
@@ -200,9 +199,7 @@ function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean 
     },
   };
 
-  let workerScriptPolicyRules: { createScriptURL(value: string): string } | null = null;
   const createPolicy = vi.fn((_: string, rules: { createScriptURL(value: string): string }) => {
-    workerScriptPolicyRules = rules;
     return {
       createScriptURL: vi.fn((value: string) => rules.createScriptURL(value)),
     };
@@ -278,7 +275,6 @@ function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean 
     workbox,
     importScripts,
     createPolicy,
-    workerScriptPolicyRules,
   };
 }
 
@@ -314,21 +310,15 @@ async function dispatchMessage(harness: WorkerHarness, event: Omit<WorkerMessage
 }
 
 describe('cacic-public-worker', () => {
-  it('uses a narrowly scoped Trusted Types policy for imported worker scripts', () => {
+  it('loads worker dependencies without requiring Trusted Types support in service workers', () => {
     const harness = createWorkerHarness({ trustedTypes: true });
 
-    expect(harness.createPolicy).toHaveBeenCalledWith(
-      'cacic#service-worker',
-      expect.objectContaining({ createScriptURL: expect.any(Function) }),
-    );
-    expect(harness.importScripts).toHaveBeenNthCalledWith(1, 'https://eventos.example/app/novu-push-handler.js');
+    expect(harness.createPolicy).not.toHaveBeenCalled();
+    expect(harness.importScripts).toHaveBeenNthCalledWith(1, './novu-push-handler.js');
     expect(harness.importScripts).toHaveBeenNthCalledWith(
       2,
-      expect.stringContaining('/app/__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js'),
-      'https://eventos.example/app/csp-nonce.js',
-    );
-    expect(() => harness.workerScriptPolicyRules?.createScriptURL('https://example.com/worker.js')).toThrow(
-      'Service worker script URL is not approved',
+      './__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js',
+      './csp-nonce.js',
     );
   });
 

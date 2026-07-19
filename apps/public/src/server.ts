@@ -203,7 +203,7 @@ function publicCspPolicy(nonce: string): string {
     "media-src 'self' blob:",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    'trusted-types angular angular#bundler angular#unsafe-bypass default cacic#external-script cacic#service-worker',
+    'trusted-types angular angular#bundler angular#unsafe-bypass default cacic#external-script',
     "require-trusted-types-for 'script'",
     'upgrade-insecure-requests',
   ].join('; ');
