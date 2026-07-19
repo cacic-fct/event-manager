@@ -323,6 +323,26 @@ describe('WorkspaceFormsService integration', () => {
 
     expect(service.previousSubscriberCount(service.links()[0])).toBe(7);
   });
+
+  it('ignores a stale previous-subscriber count after the link identity or subscription-flow settings change', async () => {
+    await service.initialize();
+    await service.selectForm(service.forms()[0]);
+    const staleResponse = new Subject<number>();
+    formApi.previousSubscriberCount.mockClear();
+    formApi.previousSubscriberCount.mockImplementationOnce(() => staleResponse);
+
+    service.updateLink('form-link-1', { displayOrder: 1 });
+    service.updateLink('form-link-1', {
+      id: 'updated-link-id',
+      insertInSubscriptionFlow: false,
+      requiredInSubscriptionFlow: false,
+    });
+    staleResponse.next(99);
+    staleResponse.complete();
+    await Promise.resolve();
+
+    expect(service.previousSubscriberCount(service.links()[0])).toBeNull();
+  });
 });
 
 class FakeEventSource {

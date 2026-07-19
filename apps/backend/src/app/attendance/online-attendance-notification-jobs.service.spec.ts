@@ -53,6 +53,16 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     expect(queue.add).not.toHaveBeenCalled();
   });
 
+  it('does not schedule or deliver notifications when the global kill switch is disabled', async () => {
+    const { featureFlags, queue, service } = createService();
+    featureFlags.isEnabled.mockReturnValue(false);
+
+    await service.scheduleEvent(onlineAttendanceEvent());
+    await service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() });
+
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
   it('queues an active window immediately so a missed scheduling attempt can be reconciled', async () => {
     const { queue, service } = createService();
     const startDate = new Date('2026-06-25T11:00:00.000Z');
@@ -141,14 +151,35 @@ describe('OnlineAttendanceNotificationJobsService', () => {
       onlineAttendanceStartDate: now,
       onlineAttendanceCode: 'ABCD',
       onlineAttendanceEndDate: new Date('2026-06-25T14:00:00.000Z'),
-      subscriptions: [],
+      subscriptions: [{ person: person('person-1', 'user-1') }],
       majorEvent: null,
     });
+    notifications.mapPersonToRecipient.mockReturnValue({ subscriberId: 'user-1', email: 'user-1@example.com' });
     notifications.notifyOnlineAttendanceAvailable.mockResolvedValue(false);
 
     await expect(
       service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() }),
     ).rejects.toThrow('was not acknowledged');
+  });
+
+  it('finishes delivery without notifying when there are no recipients', async () => {
+    const { notifications, prisma, service } = createService();
+    prisma.event.findFirst.mockResolvedValue({
+      id: 'event-1',
+      name: 'Aula de TypeScript',
+      endDate: new Date('2026-06-25T14:00:00.000Z'),
+      onlineAttendanceStartDate: now,
+      onlineAttendanceCode: 'ABCD',
+      onlineAttendanceEndDate: new Date('2026-06-25T14:00:00.000Z'),
+      subscriptions: [],
+      majorEvent: null,
+    });
+
+    await expect(
+      service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() }),
+    ).resolves.toBeUndefined();
+
+    expect(notifications.notifyOnlineAttendanceAvailable).not.toHaveBeenCalled();
   });
 });
 
@@ -166,12 +197,21 @@ function createService() {
   const queue = {
     add: jest.fn(),
   };
+  const featureFlags = {
+    isEnabled: jest.fn().mockReturnValue(true),
+  };
 
   return {
     prisma,
     notifications,
     queue,
-    service: new OnlineAttendanceNotificationJobsService(prisma as never, notifications as never, queue as never),
+    featureFlags,
+    service: new OnlineAttendanceNotificationJobsService(
+      prisma as never,
+      notifications as never,
+      queue as never,
+      featureFlags as never,
+    ),
   };
 }
 

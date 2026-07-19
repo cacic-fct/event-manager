@@ -16,6 +16,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { GraphqlContext } from '../current-user/selects';
 import { CurrentUserContextService } from '../current-user/context.service';
+import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventFormEditorService } from './event-form-editor.service';
@@ -34,6 +35,7 @@ describe('EventFormsService', () => {
   let authorizationPolicy: ReturnType<typeof createAuthorizationPolicy>;
   let currentUserContext: ReturnType<typeof createCurrentUserContext>;
   let notifications: ReturnType<typeof createNotifications>;
+  let featureFlags: { isEnabled: jest.Mock };
   let formNotifications: EventFormNotificationService;
   let auditLog: ReturnType<typeof createAuditLog>;
 
@@ -48,10 +50,12 @@ describe('EventFormsService', () => {
     authorizationPolicy = createAuthorizationPolicy();
     currentUserContext = createCurrentUserContext(authenticatedUser);
     notifications = createNotifications();
+    featureFlags = { isEnabled: jest.fn().mockReturnValue(true) };
     auditLog = createAuditLog();
     formNotifications = new EventFormNotificationService(
       prisma as unknown as jest.Mocked<PrismaService>,
       notifications as unknown as jest.Mocked<NovuNotificationsService>,
+      featureFlags as unknown as BackendFeatureFlagService,
     );
     const resultEvents = new EventFormResultEventsService();
     const listings = new EventFormListingsService(
@@ -1380,7 +1384,7 @@ describe('EventFormsService', () => {
         },
       },
     ]);
-    prisma.eventFormResponse.findFirst.mockResolvedValue(null);
+    prisma.eventFormResponse.findMany.mockResolvedValue([]);
 
     await expect(service.listCurrentUserRequiredSubscriptionFormInterruptions(context)).resolves.toEqual([
       {
@@ -1399,8 +1403,8 @@ describe('EventFormsService', () => {
           requiredInSubscriptionFlow: true,
           form: expect.objectContaining({ publicationState: PublicationState.PUBLISHED }),
           OR: expect.arrayContaining([
-            expect.objectContaining({ event: expect.objectContaining({ endDate: expect.any(Object) }) }),
-            expect.objectContaining({ majorEvent: expect.objectContaining({ endDate: expect.any(Object) }) }),
+            expect.objectContaining({ event: expect.objectContaining({ deletedAt: null, endDate: expect.any(Object) }) }),
+            expect.objectContaining({ majorEvent: expect.objectContaining({ deletedAt: null, endDate: expect.any(Object) }) }),
           ]),
         }),
       }),
@@ -1421,7 +1425,15 @@ describe('EventFormsService', () => {
         },
       },
     ]);
-    prisma.eventFormResponse.findFirst.mockResolvedValue({ id: 'response-1' });
+    prisma.eventFormResponse.findMany.mockResolvedValue([
+      {
+        formId: 'form-1',
+        linkId: 'link-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        majorEventId: null,
+      },
+    ]);
 
     await expect(service.listCurrentUserRequiredSubscriptionFormInterruptions(context)).resolves.toEqual([]);
   });
@@ -1437,18 +1449,36 @@ describe('EventFormsService', () => {
         form: { id: 'form-1', responseMode: EventFormResponseMode.MULTIPLE_PER_TARGET },
       },
     ]);
-    prisma.eventFormResponse.findFirst.mockResolvedValue({ id: 'response-1' });
+    prisma.eventFormResponse.findMany.mockResolvedValue([
+      {
+        formId: 'form-1',
+        linkId: 'link-1',
+        targetType: EventFormTargetType.EVENT,
+        eventId: 'event-1',
+        majorEventId: null,
+      },
+    ]);
 
     await expect(service.listCurrentUserRequiredSubscriptionFormInterruptions(context)).resolves.toEqual([]);
 
-    expect(prisma.eventFormResponse.findFirst).toHaveBeenCalledWith({
+    expect(prisma.eventFormResponse.findMany).toHaveBeenCalledWith({
       where: {
-        formId: 'form-1',
-        personId: 'person-1',
-        linkId: 'link-1',
         deletedAt: null,
+        OR: [
+          {
+            formId: 'form-1',
+            personId: 'person-1',
+            linkId: 'link-1',
+          },
+        ],
       },
-      select: { id: true },
+      select: {
+        formId: true,
+        linkId: true,
+        targetType: true,
+        eventId: true,
+        majorEventId: true,
+      },
     });
   });
 
@@ -1518,6 +1548,29 @@ describe('EventFormsService', () => {
         recipients: [expect.objectContaining({ subscriberId: 'person-2' })],
       }),
     );
+  });
+
+  it('does not notify required subscription forms while their global kill switch is disabled', async () => {
+    const form = formRecord({
+      links: [
+        linkRecord({
+          id: 'link-1',
+          targetType: EventFormTargetType.EVENT,
+          eventId: 'event-1',
+          majorEventId: null,
+          audience: EventFormAudience.SUBSCRIBERS,
+          insertInSubscriptionFlow: true,
+          requiredInSubscriptionFlow: true,
+          notifyOnPublish: true,
+        }),
+      ],
+    });
+    featureFlags.isEnabled.mockReturnValue(false);
+
+    await expect(formNotifications.notifyEligiblePeople(form)).resolves.toBe(0);
+
+    expect(notifications.notifyEventFormAvailable).not.toHaveBeenCalled();
+    expect(prisma.eventFormLink.updateMany).not.toHaveBeenCalled();
   });
 
   it('does not send form notifications when another worker already claimed the link', async () => {

@@ -178,10 +178,10 @@ export class NovuNotificationsService {
     });
   }
 
-  async notifyCertificateAvailable(input: CertificateAvailableNotification): Promise<void> {
+  async notifyCertificateAvailable(input: CertificateAvailableNotification): Promise<boolean> {
     const secretKey = this.transport.secretKey();
     if (!secretKey) {
-      return;
+      return false;
     }
 
     const actionUrl = '/profile/attendances';
@@ -189,7 +189,7 @@ export class NovuNotificationsService {
     const targetLabel = input.targetName?.trim() || input.certificateName;
     const body = `Seu certificado de ${targetLabel} está disponível.`;
 
-    await this.transport.trigger(secretKey, {
+    return this.transport.trigger(secretKey, {
           name: this.certificateAvailableWorkflowIdentifier,
           to: input.recipient,
           transactionId: `certificate-available:${input.configId}:${input.certificateId}:${input.issuedAt.toISOString()}`,

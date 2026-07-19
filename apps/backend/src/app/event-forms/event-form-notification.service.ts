@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EventFormAudience, EventFormResponseMode, EventFormTargetType, Prisma } from '@prisma/client';
 import { isPast } from 'date-fns';
+import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -34,6 +35,7 @@ export class EventFormNotificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NovuNotificationsService,
+    private readonly featureFlags: BackendFeatureFlagService,
   ) {}
 
   async notifyEligiblePeople(form: EventFormNotificationRecord): Promise<number> {
@@ -53,6 +55,13 @@ export class EventFormNotificationService {
       }
 
       const requiresExistingSubscriberResponse = this.isRequiredSubscriptionForm(link);
+      if (
+        requiresExistingSubscriberResponse &&
+        !this.featureFlags.isEnabled('requiredSubscriptionFormNotificationsEnabled')
+      ) {
+        continue;
+      }
+
       const recipients = requiresExistingSubscriberResponse
         ? await this.findRequiredSubscriptionRecipients(form, link)
         : await this.findNotificationRecipients(link);

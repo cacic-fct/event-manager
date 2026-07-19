@@ -8,6 +8,7 @@ export const PUBLIC_FEATURE_FLAGS = {
   cookieBannerEnabled: 'cookie-banner-enabled',
   undergraduateUnespRoleVerificationDisabled:
     'cacic-undergraduate-unesp-role-verification-disabled',
+  interruptionsEnabled: 'events-public-interruptions-enabled',
 } as const;
 
 export type PublicFeatureFlagKey = keyof typeof PUBLIC_FEATURE_FLAGS;
@@ -22,6 +23,7 @@ export interface PublicFeatureFlagValues {
   onboardingEnforcementEnabled: boolean;
   cookieBannerEnabled: boolean;
   undergraduateUnespRoleVerificationDisabled: boolean;
+  interruptionsEnabled: boolean;
 }
 
 export const PUBLIC_FEATURE_FLAG_DEFAULTS: PublicFeatureFlagValues = {
@@ -33,6 +35,7 @@ export const PUBLIC_FEATURE_FLAG_DEFAULTS: PublicFeatureFlagValues = {
   onboardingEnforcementEnabled: true,
   cookieBannerEnabled: true,
   undergraduateUnespRoleVerificationDisabled: false,
+  interruptionsEnabled: true,
 };
 
 export const PUBLIC_FEATURE_FLAG_BOOLEAN_KEYS = [
@@ -42,4 +45,5 @@ export const PUBLIC_FEATURE_FLAG_BOOLEAN_KEYS = [
   'onboardingEnforcementEnabled',
   'cookieBannerEnabled',
   'undergraduateUnespRoleVerificationDisabled',
+  'interruptionsEnabled',
 ] as const satisfies readonly PublicFeatureFlagKey[];

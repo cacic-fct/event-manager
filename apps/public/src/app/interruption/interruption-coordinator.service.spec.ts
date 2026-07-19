@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Subject, of, throwError } from 'rxjs';
+import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import type { Interruption } from './interruption-flow';
 import { INTERRUPTION_FLOW, InterruptionFlow } from './interruption-flow';
 import { InterruptionCoordinatorService, selectNextInterruption } from './interruption-coordinator.service';
@@ -87,9 +88,23 @@ describe('InterruptionCoordinatorService', () => {
 
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
+
+  it('does not resolve or navigate interruptions when the global kill switch is disabled', () => {
+    const flow = { resolve: vi.fn(() => of(attendance)) } satisfies InterruptionFlow;
+    const { router, service } = createService([flow], signal(true), signal(false));
+
+    service.start();
+
+    expect(flow.resolve).not.toHaveBeenCalled();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
 });
 
-function createService(flows: readonly InterruptionFlow[], authenticated = signal(true)): {
+function createService(
+  flows: readonly InterruptionFlow[],
+  authenticated = signal(true),
+  interruptionsEnabled = signal(true),
+): {
   events: Subject<unknown>;
   router: { navigateByUrl: ReturnType<typeof vi.fn> };
   service: InterruptionCoordinatorService;
@@ -105,6 +120,7 @@ function createService(flows: readonly InterruptionFlow[], authenticated = signa
     providers: [
       InterruptionCoordinatorService,
       { provide: AuthService, useValue: { isAuthenticated: authenticated } },
+      { provide: PublicFeatureFlagService, useValue: { booleanValue: () => interruptionsEnabled() } },
       { provide: Router, useValue: router },
       { provide: PLATFORM_ID, useValue: 'browser' },
       ...flows.map((flow) => ({ provide: INTERRUPTION_FLOW, useValue: flow, multi: true })),

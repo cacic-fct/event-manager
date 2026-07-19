@@ -44,10 +44,13 @@ export class CertificateNotificationJobsService {
       return;
     }
 
-    await this.notifications.notifyCertificateAvailable({
+    const delivered = await this.notifications.notifyCertificateAvailable({
       ...input,
       issuedAt: new Date(input.issuedAt),
     });
+    if (!delivered) {
+      throw new Error(`Certificate notification for certificate ${input.certificateId} was not acknowledged.`);
+    }
   }
 }
 
