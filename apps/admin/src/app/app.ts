@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { type CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner';
+import { type CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner/angular';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { CookieBannerSyncService } from '@cacic-fct/shared-angular/privacy/cookie-banner-sync';

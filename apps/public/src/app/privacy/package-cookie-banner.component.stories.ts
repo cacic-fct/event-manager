@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import type { CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner';
+import type { CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner/angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';

@@ -72,6 +72,9 @@ interface WorkerHarness {
       matchPrecache: ReturnType<typeof vi.fn<(url: string) => Promise<Response | undefined>>>;
     };
   };
+  importScripts: ReturnType<typeof vi.fn>;
+  createPolicy: ReturnType<typeof vi.fn>;
+  workerScriptPolicyRules: { createScriptURL(value: string): string } | null;
 }
 
 class MockNetworkOnly {
@@ -105,7 +108,7 @@ function loadWorkerSource(): string {
   return readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'cacic-public-worker.js'), 'utf8');
 }
 
-function createWorkerHarness(): WorkerHarness {
+function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean } = {}): WorkerHarness {
   const listeners: WorkerListenerMap = {
     install: [],
     message: [],
@@ -197,6 +200,13 @@ function createWorkerHarness(): WorkerHarness {
     },
   };
 
+  let workerScriptPolicyRules: { createScriptURL(value: string): string } | null = null;
+  const createPolicy = vi.fn((_: string, rules: { createScriptURL(value: string): string }) => {
+    workerScriptPolicyRules = rules;
+    return {
+      createScriptURL: vi.fn((value: string) => rules.createScriptURL(value)),
+    };
+  });
   const workerGlobal = {
     __WB_MANIFEST: [],
     location: new URL('https://eventos.example/app/cacic-public-worker.js'),
@@ -219,6 +229,9 @@ function createWorkerHarness(): WorkerHarness {
       listeners[type].push(listener);
     }),
   };
+  if (trustedTypes) {
+    Object.assign(workerGlobal, { trustedTypes: { createPolicy } });
+  }
   const fetchMock = vi.fn<(request: Request) => Promise<Response>>();
   const importScripts = vi.fn(() => {
     Object.assign(workerGlobal, {
@@ -263,6 +276,9 @@ function createWorkerHarness(): WorkerHarness {
     caches,
     openedCaches,
     workbox,
+    importScripts,
+    createPolicy,
+    workerScriptPolicyRules,
   };
 }
 
@@ -298,6 +314,24 @@ async function dispatchMessage(harness: WorkerHarness, event: Omit<WorkerMessage
 }
 
 describe('cacic-public-worker', () => {
+  it('uses a narrowly scoped Trusted Types policy for imported worker scripts', () => {
+    const harness = createWorkerHarness({ trustedTypes: true });
+
+    expect(harness.createPolicy).toHaveBeenCalledWith(
+      'cacic#service-worker',
+      expect.objectContaining({ createScriptURL: expect.any(Function) }),
+    );
+    expect(harness.importScripts).toHaveBeenNthCalledWith(1, 'https://eventos.example/app/novu-push-handler.js');
+    expect(harness.importScripts).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('/app/__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js'),
+      'https://eventos.example/app/csp-nonce.js',
+    );
+    expect(() => harness.workerScriptPolicyRules?.createScriptURL('https://example.com/worker.js')).toThrow(
+      'Service worker script URL is not approved',
+    );
+  });
+
   it('registers the expected runtime routes for private traffic and offline navigations', () => {
     const harness = createWorkerHarness();
 
