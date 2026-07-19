@@ -97,7 +97,10 @@
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
       "options": {
-        "proxyConfig": "apps/admin/src/proxy.conf.json"
+        "proxyConfig": "apps/admin/src/proxy.conf.json",
+        "headers": {
+            "Content-Security-Policy-Report-Only": "base-uri 'self'; default-src 'self'; object-src 'none'; script-src 'self' 'wasm-unsafe-eval' https://a.cacic.com.br https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://cdn.jsdelivr.net https://lh3.googleusercontent.com; font-src 'self' data:; connect-src 'self' ws://localhost:* http://localhost:* https://a.cacic.com.br https://account.cacic.com.br https://cdn.jsdelivr.net https://fastly.jsdelivr.net https://glitchtip.cacic.com.br https://notifications.cacic.com.br https://unleash.cacic.com.br; frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com; worker-src 'self' blob:; manifest-src 'self'; media-src 'self' blob:; form-action 'self'; frame-ancestors 'self'; trusted-types angular angular#bundler angular#unsafe-bypass default cacic#external-script; require-trusted-types-for 'script'"
+        }
       },
       "configurations": {
         "production": {

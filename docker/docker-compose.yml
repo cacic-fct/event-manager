@@ -97,6 +97,7 @@ services:
       - 'traefik.http.routers.event-manager-admin.rule=Host(`eventos.cacic.com.br`) && PathPrefix(`/admin/`)'
       - 'traefik.http.routers.event-manager-admin.tls=true'
       - 'traefik.http.routers.event-manager-admin.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-admin.middlewares=event-manager-admin-frontend-security@file'
       - 'traefik.http.routers.event-manager-admin.service=event-manager-admin-svc'
       - 'traefik.http.services.event-manager-admin-svc.loadbalancer.server.port=4000'
 
@@ -131,6 +132,7 @@ services:
       - 'traefik.http.routers.event-manager-public.rule=Host(`eventos.cacic.com.br`) && PathPrefix(`/app/`)'
       - 'traefik.http.routers.event-manager-public.tls=true'
       - 'traefik.http.routers.event-manager-public.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.event-manager-public.middlewares=event-manager-public-frontend-security@file'
       - 'traefik.http.routers.event-manager-public.service=event-manager-public-svc'
       - 'traefik.http.services.event-manager-public-svc.loadbalancer.server.port=4000'
 

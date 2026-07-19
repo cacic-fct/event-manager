@@ -21,6 +21,11 @@ import { AuthService } from '../auth/auth.service';
 import { CacicAnalyticsService, type AnalyticsEventData } from './analytics.service';
 import { CACIC_ANALYTICS_CONFIG } from './observability.config';
 import type { CacicAnalyticsConfig, CacicObservabilityToggle } from './observability.config';
+import {
+  assertTrustedExternalScriptUrl,
+  provideCacicTrustedTypes,
+  trustedExternalScriptUrl,
+} from '../security/trusted-types';
 
 export type CacicObservabilityConfig = {
   analytics: {
@@ -46,6 +51,7 @@ export type CacicObservabilityConfig = {
 };
 
 const UMAMI_REPLAY_SCRIPT_ID = 'cacic-replay-script';
+const DEFAULT_UMAMI_ANALYTICS_SRC = 'https://a.cacic.com.br/b.js';
 const DEFAULT_UMAMI_REPLAY_SRC = 'https://a.cacic.com.br/recorder.js';
 const DEFAULT_UMAMI_REPLAY_SAMPLE_RATE = 1;
 const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'moderate';
@@ -134,7 +140,7 @@ class CacicUmamiReplayScriptLoader {
     const script = this.document.createElement('script');
     script.id = UMAMI_REPLAY_SCRIPT_ID;
     script.defer = true;
-    script.src = replayConfig?.src ?? DEFAULT_UMAMI_REPLAY_SRC;
+    script.src = trustedExternalScriptUrl(replayConfig?.src ?? DEFAULT_UMAMI_REPLAY_SRC);
     script.dataset['websiteId'] = config.analytics.websiteId;
     script.dataset['sampleRate'] = String(replayConfig?.sampleRate ?? DEFAULT_UMAMI_REPLAY_SAMPLE_RATE);
     script.dataset['maskLevel'] = replayConfig?.maskLevel ?? DEFAULT_UMAMI_REPLAY_MASK_LEVEL;
@@ -153,7 +159,9 @@ class CacicUmamiReplayScriptLoader {
 }
 
 export function provideCacicObservability(config: CacicObservabilityConfig) {
+  const analyticsScriptUrl = assertTrustedExternalScriptUrl(config.analytics.src ?? DEFAULT_UMAMI_ANALYTICS_SRC);
   const providers: Array<Provider | EnvironmentProviders> = [
+    provideCacicTrustedTypes(),
     CacicObservabilityConsentService,
     {
       provide: CACIC_ANALYTICS_CONFIG,
@@ -189,7 +197,7 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
     providers.push(
       provideUmami({
         websiteId: config.analytics.websiteId,
-        src: config.analytics.src ?? 'https://a.cacic.com.br/b.js',
+        src: analyticsScriptUrl,
         autoTrack: false,
         domains: config.analytics.domains,
       }),
