@@ -150,7 +150,7 @@ export class PublicationJobsService {
 
     await Promise.all([
       this.searchSync.syncSearch(this.transitions.mergeSync([...eventSync, ...majorSync])),
-      this.prisma.publishContentPreview.deleteMany({
+      this.prisma.publicationPreview.deleteMany({
         where: { trimAfter: { lte: now } },
       }),
     ]);

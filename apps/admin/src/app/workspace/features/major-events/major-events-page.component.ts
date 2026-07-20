@@ -16,9 +16,9 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspaceMajorEventsService } from '../../data-access/major-events/major-events.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { MajorEventsService } from './data-access/major-events.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 
 @Component({
   selector: 'app-workspace-major-events-tab',
@@ -46,10 +46,10 @@ import { WorkspacePermissionsService } from '../../data-access/permissions/permi
   ],
 })
 export class MajorEventsPageComponent {
-  readonly workspace = inject(WorkspaceMajorEventsService);
+  readonly workspace = inject(MajorEventsService);
   private readonly route = inject(ActivatedRoute);
-  protected readonly auditLog = inject(WorkspaceAuditLogService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly auditLog = inject(AuditLogService);
+  protected readonly permissions = inject(PermissionsService);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {

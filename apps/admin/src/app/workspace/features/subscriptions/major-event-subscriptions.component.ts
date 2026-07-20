@@ -15,9 +15,9 @@ import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { WorkspaceMajorEventSubscription } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
-import { WorkspaceSubscriptionsService } from '../../data-access/subscriptions/subscriptions.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
+import { SubscriptionsService } from './data-access/subscriptions.service';
 
 @Component({
   selector: 'app-workspace-major-event-subscriptions-subtab',
@@ -47,9 +47,9 @@ import { WorkspaceSubscriptionsService } from '../../data-access/subscriptions/s
 })
 export class MajorEventSubscriptionsComponent {
   readonly pendingReceiptsCount = input.required<number>();
-  readonly workspace = inject(WorkspaceSubscriptionsService);
-  protected readonly auditLog = inject(WorkspaceAuditLogService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  readonly workspace = inject(SubscriptionsService);
+  protected readonly auditLog = inject(AuditLogService);
+  protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
   protected readonly statuses = [

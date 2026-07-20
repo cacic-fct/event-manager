@@ -23,15 +23,15 @@ import {
   createAdminEventFormResults,
   createAdminMajorEvent,
 } from '../../../testing/admin-entity-fixtures';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { EventFormLinkDraft, WorkspaceFormsService } from '../../data-access/forms/forms.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { EventFormLinkDraft, FormsService } from './data-access/forms.service';
 import { FormsPageComponent } from './forms-page.component';
 
 type FormsStoryMode = 'populated' | 'empty' | 'readonly' | 'loading' | 'public-results';
 type FormsStoryTarget = 'all' | 'event' | 'major-event';
 
-interface WorkspaceFormsStoryArgs {
+interface FormsStoryArgs {
   mode: FormsStoryMode;
   target: FormsStoryTarget;
   itemCount: number;
@@ -44,7 +44,7 @@ interface WorkspaceFormsStoryArgs {
   lecturerPublish: boolean;
 }
 
-const defaultArgs: WorkspaceFormsStoryArgs = {
+const defaultArgs: FormsStoryArgs = {
   mode: 'populated',
   target: 'all',
   itemCount: 4,
@@ -67,7 +67,7 @@ const eventFormPermissions: PermissionScope[] = [
   Permission.EventForm.Export,
 ];
 
-const meta: Meta<WorkspaceFormsStoryArgs> = {
+const meta: Meta<FormsStoryArgs> = {
   component: FormsPageComponent,
   title: 'CACiC Eventos/Workspace/Tabs/Forms/Workspace Forms Tab',
   tags: ['autodocs'],
@@ -101,7 +101,7 @@ const meta: Meta<WorkspaceFormsStoryArgs> = {
       applicationConfig({
         providers: createFormsStoryProviders({
           ...defaultArgs,
-          ...(context.args as WorkspaceFormsStoryArgs),
+          ...(context.args as FormsStoryArgs),
         }),
       })(story, context),
   ],
@@ -113,7 +113,7 @@ const meta: Meta<WorkspaceFormsStoryArgs> = {
 
 export default meta;
 
-type Story = StoryObj<WorkspaceFormsStoryArgs>;
+type Story = StoryObj<FormsStoryArgs>;
 
 export const Populated: Story = {
   args: {},
@@ -189,7 +189,7 @@ async function exerciseFormsStory(
   }
 }
 
-function createFormsStoryProviders(args: WorkspaceFormsStoryArgs) {
+function createFormsStoryProviders(args: FormsStoryArgs) {
   return [
     provideRouter([]),
     {
@@ -199,22 +199,22 @@ function createFormsStoryProviders(args: WorkspaceFormsStoryArgs) {
       },
     },
     {
-      provide: WorkspacePermissionsService,
+      provide: PermissionsService,
       useValue: createPermissionsStoryService(args.mode !== 'readonly'),
     },
     {
-      provide: WorkspaceFormsService,
+      provide: FormsService,
       useFactory: () => createFormsStoryService(new FormBuilder(), args),
     },
     {
-      provide: WorkspaceAuditLogService,
+      provide: AuditLogService,
       useValue: { openHistory: () => undefined },
     },
   ];
 }
 
 function createPermissionsStoryService(canWrite: boolean): Pick<
-  WorkspacePermissionsService,
+  PermissionsService,
   'has' | 'hasAll' | 'hasAny' | 'missing' | 'canEdit' | 'canDelete' | 'rawPermissions' | 'granted'
 > {
   const grantedSet = new Set<PermissionScope>(canWrite ? eventFormPermissions : [Permission.EventForm.Read]);
@@ -230,7 +230,7 @@ function createPermissionsStoryService(canWrite: boolean): Pick<
   };
 }
 
-function createFormsStoryService(formBuilder: FormBuilder, args: WorkspaceFormsStoryArgs): WorkspaceFormsService {
+function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs): FormsService {
   const events = buildEvents();
   const majorEvents = buildMajorEvents();
   const forms = args.mode === 'empty' ? [] : buildForms(args, events, majorEvents);
@@ -333,9 +333,9 @@ function createFormsStoryService(formBuilder: FormBuilder, args: WorkspaceFormsS
       link.targetType === 'EVENT'
         ? events.find((event) => event.id === link.eventId)?.name ?? 'Evento'
         : majorEvents.find((majorEvent) => majorEvent.id === link.majorEventId)?.name ?? 'Grande evento',
-  } satisfies Partial<WorkspaceFormsService>;
+  } satisfies Partial<FormsService>;
 
-  return service as WorkspaceFormsService;
+  return service as FormsService;
 }
 
 function routeParams(target: FormsStoryTarget): Record<string, string> {
@@ -362,7 +362,7 @@ function buildMajorEvents(): MajorEvent[] {
   ];
 }
 
-function buildForms(args: WorkspaceFormsStoryArgs, events: Event[], majorEvents: MajorEvent[]): EventForm[] {
+function buildForms(args: FormsStoryArgs, events: Event[], majorEvents: MajorEvent[]): EventForm[] {
   return Array.from({ length: args.itemCount }, (_, index) => {
     const event = events[index % events.length] as Event;
     const majorEvent = majorEvents[index % majorEvents.length] as MajorEvent;
@@ -453,7 +453,7 @@ function buildElements(): FormElement[] {
   ];
 }
 
-function buildResults(form: EventForm, args: WorkspaceFormsStoryArgs): EventFormResults {
+function buildResults(form: EventForm, args: FormsStoryArgs): EventFormResults {
   return createAdminEventFormResults({
     form,
     responseCount: form.responseCount,

@@ -13,9 +13,9 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { EventGroup, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenEventGroup } from '../../../shared/frozen-resource';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspaceEventGroupsService } from '../../data-access/event-groups/event-groups.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { EventGroupsService } from './data-access/event-groups.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 import { DatePipe } from '@angular/common';
 
 @Component({
@@ -42,10 +42,10 @@ import { DatePipe } from '@angular/common';
   ],
 })
 export class EventGroupsPageComponent {
-  readonly workspace = inject(WorkspaceEventGroupsService);
+  readonly workspace = inject(EventGroupsService);
   private readonly route = inject(ActivatedRoute);
-  protected readonly auditLog = inject(WorkspaceAuditLogService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly auditLog = inject(AuditLogService);
+  protected readonly permissions = inject(PermissionsService);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {

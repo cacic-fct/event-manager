@@ -15,11 +15,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { Event, EventType, MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
-import { WorkspaceEventsService } from '../../data-access/events/events.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
+import { EventsService } from './data-access/events.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
 import { isFrozenEvent, isFrozenMajorEvent } from '../../../shared/frozen-resource';
-import { EventFilterPanelComponent } from '../../shared/components/shared/event-filter-panel.component';
+import { EventFilterPanelComponent } from '../../shared/components/filters/event-filter-panel.component';
 
 @Component({
   selector: 'app-workspace-events-tab',
@@ -50,10 +50,10 @@ import { EventFilterPanelComponent } from '../../shared/components/shared/event-
 export class EventsPageComponent {
   @ViewChild(EventFilterPanelComponent)
   private eventFilterPanel?: EventFilterPanelComponent;
-  readonly workspace = inject(WorkspaceEventsService);
+  readonly workspace = inject(EventsService);
   private readonly route = inject(ActivatedRoute);
-  protected readonly auditLog = inject(WorkspaceAuditLogService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly auditLog = inject(AuditLogService);
+  protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
   constructor() {

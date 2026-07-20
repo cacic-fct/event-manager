@@ -20,9 +20,9 @@ import {
   EventFormResponseMode,
   EventFormSigilo,
 } from '@cacic-fct/event-manager-admin-contracts';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
-import { WorkspaceFormsService } from '../../data-access/forms/forms.service';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
+import { FormsService } from './data-access/forms.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
 import { DeleteEventFormDialogComponent } from './dialogs/delete-event-form-dialog.component';
 import { FormResultsComponent } from './form-results.component';
 
@@ -54,11 +54,11 @@ import { FormResultsComponent } from './form-results.component';
   ],
 })
 export class FormsPageComponent implements OnDestroy {
-  readonly workspace = inject(WorkspaceFormsService);
+  readonly workspace = inject(FormsService);
   private readonly route = inject(ActivatedRoute);
   private readonly dialog = inject(MatDialog);
-  protected readonly auditLog = inject(WorkspaceAuditLogService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly auditLog = inject(AuditLogService);
+  protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
   protected readonly sigiloOptions: EventFormSigilo[] = ['PUBLIC', 'PARTIALLY_SECRET', 'SECRET', 'ANONYMOUS'];
   protected readonly responseModeOptions: EventFormResponseMode[] = [

@@ -11,15 +11,15 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { PermissionGrantsApiService } from '../../../graphql/permission-grants-api.service';
 import { PeopleApiService } from '../../../graphql/people-api.service';
 import { createAdminPerson } from '../../../testing/admin-entity-fixtures';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspacePeopleService } from '../../data-access/people/people.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { PeopleService } from './data-access/people.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 import { PeoplePageComponent } from './people-page.component';
 
 describe('PeoplePageComponent permission grants integration', () => {
   let fixture: ComponentFixture<PeoplePageComponent>;
   let element: HTMLElement;
-  let service: WorkspacePeopleService;
+  let service: PeopleService;
   let permissionGrantsApi: {
     createGrant: ReturnType<typeof vi.fn>;
     deleteGrant: ReturnType<typeof vi.fn>;
@@ -48,9 +48,9 @@ describe('PeoplePageComponent permission grants integration', () => {
         provideNoopAnimations(),
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ personId: person.id })) } },
         { provide: AuthService, useValue: { roles: signal<string[]>([EventManagerKeycloakRole.SuperAdmin]) } },
-        { provide: WorkspaceAuditLogService, useValue: { openHistory: vi.fn(), openEventAttendanceHistory: vi.fn() } },
+        { provide: AuditLogService, useValue: { openHistory: vi.fn(), openEventAttendanceHistory: vi.fn() } },
         {
-          provide: WorkspacePermissionsService,
+          provide: PermissionsService,
           useValue: {
             canDelete: () => true,
             canEdit: () => true,
@@ -82,7 +82,7 @@ describe('PeoplePageComponent permission grants integration', () => {
       ],
     }).compileComponents();
 
-    service = TestBed.inject(WorkspacePeopleService);
+    service = TestBed.inject(PeopleService);
     fixture = TestBed.createComponent(PeoplePageComponent);
     element = fixture.nativeElement as HTMLElement;
     fixture.detectChanges();

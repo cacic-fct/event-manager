@@ -202,7 +202,7 @@ function previewParameters(context: EventStoryContext) {
         http.post('/api/graphql', () =>
           HttpResponse.json({
             data: {
-              publishContentPreview: buildPreview(context.args),
+              publicationPreview: buildPreview(context.args),
             },
           }),
         ),

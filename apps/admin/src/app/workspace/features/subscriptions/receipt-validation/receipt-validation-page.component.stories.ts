@@ -7,7 +7,7 @@ import {
   ReceiptValidationApiService,
   ReceiptValidationQueue,
 } from '../../../../graphql/receipt-validation-api.service';
-import { WorkspacePermissionsService } from '../../../data-access/permissions/permissions.service';
+import { PermissionsService } from '../../permissions/data-access/permissions.service';
 import { ReceiptValidationPageComponent } from './receipt-validation-page.component';
 
 const meta: Meta<ReceiptValidationPageComponent> = {
@@ -101,7 +101,7 @@ function createReceiptValidationStoryProviders(queue: ReceiptValidationQueue) {
     },
     { provide: ReceiptValidationApiService, useValue: api },
     {
-      provide: WorkspacePermissionsService,
+      provide: PermissionsService,
       useValue: {
         has: () => false,
         canEdit: () => true,

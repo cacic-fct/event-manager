@@ -2,7 +2,7 @@ import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 import { GlobalOperationsPageComponent } from './global-operations-page.component';
 
 type GlobalOperationsStoryArgs = {
@@ -27,7 +27,7 @@ const meta: Meta<GlobalOperationsStoryArgs> = {
     applicationConfig({
       providers: [
         {
-          provide: WorkspacePermissionsService,
+          provide: PermissionsService,
           useValue: {
             canEdit: () => activeArgs.canReissue,
             has: () => activeArgs.canReissue,

@@ -51,7 +51,7 @@ function guardedWorkspaceTabRoute(
 export const routes: Route[] = [
   {
     path: '',
-    loadComponent: () => import('./shell.component').then((m) => m.WorkspaceShellComponent),
+    loadComponent: () => import('./shell.component').then((m) => m.AdminShellComponent),
     children: [
       {
         path: '',

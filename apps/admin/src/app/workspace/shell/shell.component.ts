@@ -14,16 +14,16 @@ import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
 import { NovuNotificationBadgeComponent } from '@cacic-fct/shared-notifications-angular/badge';
 import { filter, map, startWith } from 'rxjs';
 
-import { WorkspacePermissionsService } from '../data-access/permissions/permissions.service';
-import { WorkspaceShellService } from '../data-access/shell/shell.service';
+import { PermissionsService } from '../features/permissions/data-access/permissions.service';
+import { ShellService } from './data-access/shell.service';
 import { findNavigationItemForUrl, navigationItems } from './navigation';
 import { isPlatformBrowser } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
 
-export type WorkspaceNavigationMode = 'icons' | 'full' | 'auto';
+export type NavigationMode = 'icons' | 'full' | 'auto';
 
 const navigationModeStorageKey = 'cacic-admin-workspace-nav-mode';
-const navigationModes = ['icons', 'full', 'auto'] as const satisfies readonly WorkspaceNavigationMode[];
+const navigationModes = ['icons', 'full', 'auto'] as const satisfies readonly NavigationMode[];
 
 @Component({
   selector: 'app-workspace-shell',
@@ -51,15 +51,15 @@ const navigationModes = ['icons', 'full', 'auto'] as const satisfies readonly Wo
     './shell.responsive.component.scss',
   ],
 })
-export class WorkspaceShellComponent {
+export class AdminShellComponent {
   private readonly authService = inject(AuthService);
   private readonly breakpointObserver = inject(BreakpointObserver);
   public readonly router = inject(Router);
 
-  readonly shell = inject(WorkspaceShellService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  readonly shell = inject(ShellService);
+  protected readonly permissions = inject(PermissionsService);
 
-  readonly initialNavMode = input<WorkspaceNavigationMode | null>(null);
+  readonly initialNavMode = input<NavigationMode | null>(null);
   readonly activeUrlOverride = input<string | null>(null);
 
   protected readonly user = this.authService.user;
@@ -69,7 +69,7 @@ export class WorkspaceShellComponent {
   private platformId = inject(PLATFORM_ID);
   private isDarkSignal = signal(false);
   fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
-  protected readonly navMode = signal<WorkspaceNavigationMode>('auto');
+  protected readonly navMode = signal<NavigationMode>('auto');
   protected readonly navModeLabel = computed(() => {
     switch (this.navMode()) {
       case 'icons':
@@ -126,7 +126,7 @@ export class WorkspaceShellComponent {
 
     if (isPlatformBrowser(this.platformId)) {
       const storedMode = window.localStorage.getItem(navigationModeStorageKey);
-      if (isWorkspaceNavigationMode(storedMode)) {
+      if (isNavigationMode(storedMode)) {
         this.navMode.set(storedMode);
       }
 
@@ -179,6 +179,6 @@ export class WorkspaceShellComponent {
   }
 }
 
-function isWorkspaceNavigationMode(value: string | null): value is WorkspaceNavigationMode {
+function isNavigationMode(value: string | null): value is NavigationMode {
   return value === 'icons' || value === 'full' || value === 'auto';
 }

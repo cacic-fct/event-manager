@@ -86,15 +86,15 @@ export class EventApiService {
 
   getPreviewEventPageData(previewToken: string): Observable<EventPageData> {
     return this.query<{
-      publishContentPreview: {
+      publicationPreview: {
         previewAt: string;
         expiresAt: string;
         event: PublicEvent | null;
       };
     }>(
       `
-        query PublishContentPreviewEvent($previewToken: String!) {
-          publishContentPreview(previewToken: $previewToken) {
+        query PublicationPreviewEvent($previewToken: String!) {
+          publicationPreview(previewToken: $previewToken) {
             previewAt
             expiresAt
             event {
@@ -106,7 +106,7 @@ export class EventApiService {
       { previewToken },
     ).pipe(
       map((data) => {
-        const event = data.publishContentPreview.event;
+        const event = data.publicationPreview.event;
         if (!event) {
           throw new Error('Pré-visualização sem evento.');
         }
@@ -121,8 +121,8 @@ export class EventApiService {
           currentUserSubscription: null,
           currentUserAttendance: null,
           preview: {
-            previewAt: data.publishContentPreview.previewAt,
-            expiresAt: data.publishContentPreview.expiresAt,
+            previewAt: data.publicationPreview.previewAt,
+            expiresAt: data.publicationPreview.expiresAt,
           },
         };
       }),

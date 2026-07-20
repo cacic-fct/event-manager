@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltip } from '@angular/material/tooltip';
 import { formatPermissionGroups } from '@cacic-fct/shared-permissions';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { PermissionsService } from './data-access/permissions.service';
 
 @Component({
   selector: 'app-workspace-permissions-tab',
@@ -15,7 +15,7 @@ import { WorkspacePermissionsService } from '../../data-access/permissions/permi
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class PermissionsPageComponent {
-  private readonly workspacePermissions = inject(WorkspacePermissionsService);
+  private readonly workspacePermissions = inject(PermissionsService);
 
   readonly formattedPermissions = computed(() => formatPermissionGroups(this.workspacePermissions.rawPermissions()));
 

@@ -11,10 +11,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { PermissionGrantsApiService } from '../../../graphql/permission-grants-api.service';
 import { PeopleApiService } from '../../../graphql/people-api.service';
 import { createAdminPerson } from '../../../testing/admin-entity-fixtures';
-import type { PermissionGrantDraft } from '../../data-access/people/people-permission-grants';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspacePeopleService } from '../../data-access/people/people.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import type { PermissionGrantDraft } from './data-access/people-permission-grants';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { PeopleService } from './data-access/people.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 import { PeoplePageComponent } from './people-page.component';
 
 describe('PeoplePageComponent permissions section', () => {
@@ -138,7 +138,7 @@ async function renderComponent(options: RenderOptions = {}): Promise<{
   auditLog: { openHistory: ReturnType<typeof vi.fn> };
   element: HTMLElement;
   fixture: ComponentFixture<PeoplePageComponent>;
-  service: WorkspacePeopleService;
+  service: PeopleService;
 }> {
   const grantedPermissions = new Set(
     options.grantedPermissions ?? [
@@ -166,9 +166,9 @@ async function renderComponent(options: RenderOptions = {}): Promise<{
       provideNoopAnimations(),
       { provide: ActivatedRoute, useValue: { paramMap: NEVER } },
       { provide: AuthService, useValue: { roles } },
-      { provide: WorkspaceAuditLogService, useValue: auditLog },
+      { provide: AuditLogService, useValue: auditLog },
       {
-        provide: WorkspacePermissionsService,
+        provide: PermissionsService,
         useValue: {
           canDelete: (...permissions: Permission[]) => permissions.every((permission) => grantedPermissions.has(permission)),
           canEdit: (...permissions: Permission[]) => permissions.every((permission) => grantedPermissions.has(permission)),
@@ -186,7 +186,7 @@ async function renderComponent(options: RenderOptions = {}): Promise<{
     ],
   }).compileComponents();
 
-  const service = TestBed.inject(WorkspacePeopleService);
+  const service = TestBed.inject(PeopleService);
   const selectedPerson = options.selectedPerson ?? linkedPerson();
   service.selectedPerson.set(selectedPerson);
   service.people.set([selectedPerson]);

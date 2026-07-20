@@ -1,6 +1,6 @@
 import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { PublicationState as PrismaPublicationState } from '@prisma/client';
-import { PublicContentNode } from './publishing.models';
+import { PublicationNode } from './publishing.models';
 import {
   PublicationEventGroupRecord,
   PublicationEventRecord,
@@ -12,7 +12,7 @@ export function buildPublicationTree(
   majorEvents: PublicationMajorEventRecord[],
   eventGroups: PublicationEventGroupRecord[],
   standaloneEvents: PublicationEventRecord[],
-): PublicContentNode[] {
+): PublicationNode[] {
   return [
     ...majorEvents.map((majorEvent) => mapMajorEventNode(majorEvent)),
     ...eventGroups.map((eventGroup) => mapStandaloneEventGroupNode(eventGroup)),
@@ -20,7 +20,7 @@ export function buildPublicationTree(
   ];
 }
 
-function mapMajorEventNode(majorEvent: PublicationMajorEventRecord): PublicContentNode {
+function mapMajorEventNode(majorEvent: PublicationMajorEventRecord): PublicationNode {
   const directEvents = majorEvent.events.filter((event) => !event.eventGroupId);
   const groupedEvents = new Map<string, PublicationEventRecord[]>();
   for (const event of majorEvent.events) {
@@ -51,7 +51,7 @@ function mapMajorEventNode(majorEvent: PublicationMajorEventRecord): PublicConte
   };
 }
 
-function mapStandaloneEventGroupNode(eventGroup: PublicationEventGroupRecord): PublicContentNode {
+function mapStandaloneEventGroupNode(eventGroup: PublicationEventGroupRecord): PublicationNode {
   return mapEventGroupNode(eventGroup.events, null, {
     id: eventGroup.id,
     name: eventGroup.name,
@@ -62,7 +62,7 @@ function mapEventGroupNode(
   events: PublicationEventRecord[],
   parentLabel: string | null,
   fallback?: { id: string; name: string },
-): PublicContentNode {
+): PublicationNode {
   const firstEvent = events[0];
   const eventGroup = firstEvent?.eventGroup;
   const publicationState = deriveGroupState(events);
@@ -83,7 +83,7 @@ function mapEventGroupNode(
   };
 }
 
-function mapEventNode(event: PublicationEventRecord, parentLabel: string | null = null): PublicContentNode {
+function mapEventNode(event: PublicationEventRecord, parentLabel: string | null = null): PublicationNode {
   return {
     targetType: PublicationTargetType.EVENT,
     id: event.id,

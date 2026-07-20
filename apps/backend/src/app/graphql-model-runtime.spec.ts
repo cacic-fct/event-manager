@@ -40,11 +40,11 @@ import {
   WorkspaceDashboardInsights,
 } from './dashboard/models';
 import {
-  PublicContentNode,
-  PublishContentPreviewInput,
-  PublishContentPreviewPayload,
-  PublishContentPreviewResult,
-  PublishContentWorkspace,
+  PublicationNode,
+  PublicationPreviewInput,
+  PublicationPreviewPayload,
+  PublicationPreviewResult,
+  PublicationWorkspace,
   PublicationActionResult,
   PublicationBulkInput,
   PublicationBulkOperation,
@@ -250,27 +250,27 @@ describe('GraphQL model runtime metadata', () => {
 
   it('resolves publishing workspace model field types', () => {
     const fields = resolveGraphqlFieldTypes([
-      PublicContentNode,
-      PublishContentWorkspace,
+      PublicationNode,
+      PublicationWorkspace,
       PublicationStateInput,
       PublicationBulkInput,
-      PublishContentPreviewInput,
+      PublicationPreviewInput,
       PublicationActionResult,
-      PublishContentPreviewResult,
-      PublishContentPreviewPayload,
+      PublicationPreviewResult,
+      PublicationPreviewPayload,
     ]);
 
     expect(fields).toEqual(
       expect.arrayContaining([
-        { field: 'children', model: 'PublicContentNode', nullable: undefined, type: '[PublicContentNode]' },
+        { field: 'children', model: 'PublicationNode', nullable: undefined, type: '[PublicationNode]' },
         {
           field: 'warnings',
-          model: 'PublishContentWorkspace',
+          model: 'PublicationWorkspace',
           nullable: undefined,
           type: '[DashboardInconsistency]',
         },
         { field: 'operation', model: 'PublicationBulkInput', nullable: undefined, type: 'PublicationBulkOperation' },
-        { field: 'events', model: 'PublishContentPreviewPayload', nullable: undefined, type: '[PublicEvent]' },
+        { field: 'events', model: 'PublicationPreviewPayload', nullable: undefined, type: '[PublicEvent]' },
       ]),
     );
     expect(PublicationBulkOperation.SCHEDULE_BUNDLE).toBe('SCHEDULE_BUNDLE');

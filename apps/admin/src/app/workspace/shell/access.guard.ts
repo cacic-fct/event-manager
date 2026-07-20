@@ -4,10 +4,10 @@ import { PLATFORM_ID } from '@angular/core';
 import { CanMatchFn, Route } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { EventManagerKeycloakRole, Permission, type WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
-import { WorkspacePermissionsService } from '../data-access/permissions/permissions.service';
+import { PermissionsService } from '../features/permissions/data-access/permissions.service';
 
 export const canReadFeatureGuard: CanMatchFn = async (route: Route) => {
-  const permissions = inject(WorkspacePermissionsService);
+  const permissions = inject(PermissionsService);
   const platformId = inject(PLATFORM_ID);
 
   const permissionTab = route.data?.['id'] as WorkspacePermissionTab | undefined;
@@ -26,7 +26,7 @@ export const canReadFeatureGuard: CanMatchFn = async (route: Route) => {
 };
 
 export const canValidateReceiptsGuard: CanMatchFn = async () => {
-  const permissions = inject(WorkspacePermissionsService);
+  const permissions = inject(PermissionsService);
   const platformId = inject(PLATFORM_ID);
 
   if (!isPlatformBrowser(platformId)) {

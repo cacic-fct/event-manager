@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, computed, inject } from '@angular/c
 import { ActivatedRoute } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 
-import { WorkspacePermissionsService } from '../data-access/permissions/permissions.service';
+import { PermissionsService } from '../features/permissions/data-access/permissions.service';
 import { NavigationLinkItem } from './navigation';
 
 @Component({
@@ -90,7 +90,7 @@ import { NavigationLinkItem } from './navigation';
 })
 export class PermissionDeniedComponent {
   private readonly route = inject(ActivatedRoute);
-  private readonly permissions = inject(WorkspacePermissionsService);
+  private readonly permissions = inject(PermissionsService);
 
   protected readonly navItem = computed(() => {
     return this.route.snapshot.data as NavigationLinkItem;

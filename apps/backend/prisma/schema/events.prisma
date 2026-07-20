@@ -11,7 +11,7 @@ enum PublicationState {
   UNPUBLISHED
 }
 
-enum PublishContentPreviewTargetType {
+enum PublicationPreviewTargetType {
   EVENT
   EVENT_GROUP
   MAJOR_EVENT
@@ -165,11 +165,11 @@ model EventLecturer {
   @@map("event_lecturers")
 }
 
-model PublishContentPreview {
+model PublicationPreview {
   id String @id @default(uuid(7))
 
   previewTokenHash String @unique
-  targetType        PublishContentPreviewTargetType
+  targetType        PublicationPreviewTargetType
   targetId          String
   targetLabel       String
 
@@ -191,5 +191,5 @@ model PublishContentPreview {
   @@index([targetType, targetId])
   @@index([expiresAt])
   @@index([trimAfter])
-  @@map("public_content_previews")
+  @@map("publication_previews")
 }

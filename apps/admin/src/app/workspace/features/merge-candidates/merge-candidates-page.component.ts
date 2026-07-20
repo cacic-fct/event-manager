@@ -7,8 +7,8 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { MergeCandidateStatus, MergeMatchMethod } from '@cacic-fct/event-manager-admin-contracts';
-import { WorkspaceMergeCandidatesService } from '../../data-access/merge-candidates/merge-candidates.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { MergeCandidatesService } from './data-access/merge-candidates.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 
 @Component({
   selector: 'app-workspace-merge-candidates-tab',
@@ -23,8 +23,8 @@ import { WorkspacePermissionsService } from '../../data-access/permissions/permi
   ],
 })
 export class MergeCandidatesPageComponent {
-  readonly workspace = inject(WorkspaceMergeCandidatesService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  readonly workspace = inject(MergeCandidatesService);
+  protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
   protected describeMergeMatchMethod(method: MergeMatchMethod | null | undefined): string {

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
-import { WorkspaceAttendancesService } from '../../data-access/attendances/attendances.service';
+import { AttendancesService } from './data-access/attendances.service';
 import { EventAttendancesComponent } from './event-attendances.component';
 import { MajorEventAttendancesComponent } from './major-event-attendances.component';
 
@@ -22,7 +22,7 @@ import { MajorEventAttendancesComponent } from './major-event-attendances.compon
 export class AttendancesPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly workspace = inject(WorkspaceAttendancesService);
+  private readonly workspace = inject(AttendancesService);
 
   protected readonly selectedTabIndex = signal(0);
 

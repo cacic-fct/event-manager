@@ -11,12 +11,12 @@ import { compareIsoDateAsc, formatDateRange, getEventTypeLabel } from '@cacic-fc
 import { EmojiService } from '../shared/emoji.service';
 import {
   MajorEventSubscriptionApiService,
-  PublicContentGroupPreview,
+  PublicationGroupPreview,
 } from '../major-event/subscription/subscription-api.service';
 
 type GroupPreviewState =
   | { status: 'loading' }
-  | { status: 'ready'; preview: PublicContentGroupPreview }
+  | { status: 'ready'; preview: PublicationGroupPreview }
   | { status: 'error'; message: string };
 
 @Component({

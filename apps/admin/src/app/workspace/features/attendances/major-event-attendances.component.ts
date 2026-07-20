@@ -13,9 +13,9 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { isFrozenMajorEvent } from '../../../shared/frozen-resource';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspaceAttendancesService } from '../../data-access/attendances/attendances.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { AttendancesService } from './data-access/attendances.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 
 @Component({
   selector: 'app-workspace-major-event-attendances-subtab',
@@ -43,9 +43,9 @@ import { WorkspacePermissionsService } from '../../data-access/permissions/permi
   ],
 })
 export class MajorEventAttendancesComponent {
-  readonly workspace = inject(WorkspaceAttendancesService);
-  protected readonly auditLog = inject(WorkspaceAuditLogService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  readonly workspace = inject(AttendancesService);
+  protected readonly auditLog = inject(AuditLogService);
+  protected readonly permissions = inject(PermissionsService);
 
   protected readonly statuses = [
     'WAITING_RECEIPT_UPLOAD',

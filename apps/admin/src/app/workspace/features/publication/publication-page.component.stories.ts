@@ -5,7 +5,7 @@ import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import { PublishContentWorkspace } from '../../../graphql/publishing-api.service';
+import { PublicationWorkspace } from '../../../graphql/publishing-api.service';
 import { PublicationPageComponent } from './publication-page.component';
 import {
   PublicationStoryArgs,
@@ -107,7 +107,7 @@ export const ErrorState: Story = {
 
 interface PublicationStoryContext {
   args: PublicationStoryArgs;
-  workspace: PublishContentWorkspace;
+  workspace: PublicationWorkspace;
 }
 
 function createStoryContext(args: Partial<PublicationStoryArgs> = {}): PublicationStoryContext {
@@ -146,18 +146,18 @@ function createGraphqlHandler(context: PublicationStoryContext) {
       });
     }
 
-    if (body.query?.includes('publishContentWorkspace')) {
+    if (body.query?.includes('publicationWorkspace')) {
       return HttpResponse.json({
         data: {
-          publishContentWorkspace: context.workspace,
+          publicationWorkspace: context.workspace,
         },
       });
     }
 
-    if (body.query?.includes('createPublishContentPreview')) {
+    if (body.query?.includes('createPublicationPreview')) {
       return HttpResponse.json({
         data: {
-          createPublishContentPreview: {
+          createPublicationPreview: {
             url: 'https://eventos.cacic.com.br/preview/storybook/event',
             directPublicUrl: false,
             expiresAt: new Date('2026-08-01T13:00:00.000Z').toISOString(),

@@ -4,13 +4,13 @@ import { AuthService } from '@cacic-fct/shared-angular/auth';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import { WorkspacePermissionsService } from '../data-access/permissions/permissions.service';
-import { WorkspaceShellService } from '../data-access/shell/shell.service';
-import { WorkspaceShellComponent, WorkspaceNavigationMode } from './shell.component';
+import { PermissionsService } from '../features/permissions/data-access/permissions.service';
+import { ShellService } from './data-access/shell.service';
+import { AdminShellComponent, NavigationMode } from './shell.component';
 import { NavigationLinkId } from './navigation';
 
 type WorkspaceLayoutStoryArgs = {
-  navMode: WorkspaceNavigationMode;
+  navMode: NavigationMode;
   activeUrl: string;
   loading: boolean;
   showMissingPermissions: boolean;
@@ -42,7 +42,7 @@ const defaultArgs: WorkspaceLayoutStoryArgs = {
 };
 
 const meta: Meta<WorkspaceLayoutStoryArgs> = {
-  component: WorkspaceShellComponent,
+  component: AdminShellComponent,
   title: 'CACiC Eventos/Workspace/Workspace Layout',
   tags: ['autodocs'],
   decorators: [
@@ -58,14 +58,14 @@ const meta: Meta<WorkspaceLayoutStoryArgs> = {
           },
         },
         {
-          provide: WorkspaceShellService,
+          provide: ShellService,
           useValue: {
             loading: shellLoading,
             loadInitialData: async () => undefined,
           },
         },
         {
-          provide: WorkspacePermissionsService,
+          provide: PermissionsService,
           useValue: {
             missingReadForTab: (tab: NavigationLinkId) =>
               activeArgs?.showMissingPermissions && tab === activeArgs.missingPermissionTab

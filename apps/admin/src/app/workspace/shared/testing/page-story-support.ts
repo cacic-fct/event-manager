@@ -12,11 +12,11 @@ import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { applicationConfig, type Decorator } from '@storybook/angular';
 import type { Event, EventDraft, EventGroup, EventSummary, MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import { createWorkspaceListPagination } from '../../../shared/list-pagination';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspaceEventGroupsService } from '../../data-access/event-groups/event-groups.service';
-import { WorkspaceEventsService } from '../../data-access/events/events.service';
-import { WorkspaceMajorEventsService } from '../../data-access/major-events/major-events.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { AuditLogService } from '../../features/audit-logs/data-access/audit-log.service';
+import { EventGroupsService } from '../../features/event-groups/data-access/event-groups.service';
+import { EventsService } from '../../features/events/data-access/events.service';
+import { MajorEventsService } from '../../features/major-events/data-access/major-events.service';
+import { PermissionsService } from '../../features/permissions/data-access/permissions.service';
 
 export type WorkspaceTabStoryMode = 'populated' | 'empty' | 'readonly' | 'loading' | 'drafts';
 
@@ -61,26 +61,26 @@ const permissions: PermissionScope[] = [
 export function createWorkspaceTabStoryProviders(args: WorkspaceTabStoryArgs): Provider[] {
   return [
     {
-      provide: WorkspacePermissionsService,
+      provide: PermissionsService,
       useValue: createPermissionsStoryService(args.mode !== 'readonly'),
     },
     {
-      provide: WorkspaceAuditLogService,
+      provide: AuditLogService,
       useValue: {
         openHistory: () => undefined,
         openEventAttendanceHistory: () => undefined,
       },
     },
     {
-      provide: WorkspaceMajorEventsService,
+      provide: MajorEventsService,
       useFactory: () => createMajorEventsStoryService(inject(FormBuilder), args),
     },
     {
-      provide: WorkspaceEventGroupsService,
+      provide: EventGroupsService,
       useFactory: () => createEventGroupsStoryService(inject(FormBuilder), args),
     },
     {
-      provide: WorkspaceEventsService,
+      provide: EventsService,
       useFactory: () => createEventsStoryService(inject(FormBuilder), args),
     },
   ];
@@ -109,7 +109,7 @@ export async function exerciseWorkspaceTabStory(canvasElement: HTMLElement): Pro
 }
 
 function createPermissionsStoryService(canWrite: boolean): Pick<
-  WorkspacePermissionsService,
+  PermissionsService,
   'has' | 'hasAll' | 'hasAny' | 'missing' | 'canEdit' | 'canDelete' | 'rawPermissions' | 'granted'
 > {
   const grantedSet = new Set<PermissionScope>(

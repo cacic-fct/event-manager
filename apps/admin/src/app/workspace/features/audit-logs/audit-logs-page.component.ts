@@ -29,7 +29,7 @@ import {
   auditLogEntityTypeLabel,
   auditLogOperationIcon,
   auditLogOperationLabel,
-} from './workspace-audit-log-utils';
+} from './audit-log.utils';
 
 type AuditLogFilterForm = {
   query: FormControl<string>;

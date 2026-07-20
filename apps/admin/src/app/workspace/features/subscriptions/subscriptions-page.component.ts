@@ -5,8 +5,8 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { ReceiptValidationApiService } from '../../../graphql/receipt-validation-api.service';
-import { WorkspaceSubscriptionsService } from '../../data-access/subscriptions/subscriptions.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { SubscriptionsService } from './data-access/subscriptions.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 import { EventSubscriptionsComponent } from './event-subscriptions.component';
 import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.component';
 
@@ -26,8 +26,8 @@ import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.co
 export class SubscriptionsPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly workspace = inject(WorkspaceSubscriptionsService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  private readonly workspace = inject(SubscriptionsService);
+  protected readonly permissions = inject(PermissionsService);
   private readonly receiptValidationApi = inject(ReceiptValidationApiService);
 
   protected readonly selectedTabIndex = signal(0);

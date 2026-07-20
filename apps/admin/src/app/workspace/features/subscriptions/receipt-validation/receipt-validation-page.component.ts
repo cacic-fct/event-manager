@@ -28,7 +28,7 @@ import {
 } from '../../../../graphql/receipt-validation-api.service';
 import { getErrorMessage } from '../../../../shared/error-message';
 import { isFrozenMajorEvent } from '../../../../shared/frozen-resource';
-import { WorkspacePermissionsService } from '../../../data-access/permissions/permissions.service';
+import { PermissionsService } from '../../permissions/data-access/permissions.service';
 
 interface LastValidationAction {
   id: string;
@@ -76,7 +76,7 @@ export class ReceiptValidationPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly permissions = inject(PermissionsService);
   private readonly majorEventId = this.route.snapshot.paramMap.get('majorEventId') ?? undefined;
 
   protected readonly loading = signal(true);

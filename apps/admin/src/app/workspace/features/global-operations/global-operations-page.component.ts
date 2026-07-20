@@ -9,7 +9,7 @@ import { firstValueFrom } from 'rxjs';
 import { CertificateApiService } from '../../../graphql/certificate-api.service';
 import { ConfirmationDialogComponent } from '../../../shared/components/confirmation-dialog.component';
 import { getErrorMessage } from '../../../shared/error-message';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 
 @Component({
   selector: 'app-workspace-global-operations-tab',
@@ -27,7 +27,7 @@ export class GlobalOperationsPageComponent {
   private readonly certificatesApi = inject(CertificateApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
   readonly reissuingCertificates = signal(false);

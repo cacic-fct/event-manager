@@ -27,11 +27,11 @@ import {
   ConfirmationDialogData,
 } from '../../../shared/components/confirmation-dialog.component';
 import {
-  PublicContentNode,
-  PublishContentWorkspace,
+  PublicationNode,
+  PublicationWorkspace,
   PublicationApiService,
   PublicationBulkOperation,
-  PublishContentWorkspaceFilters,
+  PublicationWorkspaceFilters,
 } from '../../../graphql/publishing-api.service';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 import { bindLiveSearch } from '../../../shared/live-search';
@@ -84,12 +84,12 @@ export class PublicationPageComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(false);
-  readonly workspace = signal<PublishContentWorkspace | null>(null);
-  readonly selectedNode = signal<PublicContentNode | null>(null);
+  readonly workspace = signal<PublicationWorkspace | null>(null);
+  readonly selectedNode = signal<PublicationNode | null>(null);
   readonly pageIndex = signal(0);
   readonly pageSize = 50;
   readonly query = signal('');
-  private readonly requestedNode = signal<Pick<PublicContentNode, 'targetType' | 'id'> | null>(null);
+  private readonly requestedNode = signal<Pick<PublicationNode, 'targetType' | 'id'> | null>(null);
   readonly workspaceTree = computed(() => this.workspace()?.tree ?? this.workspace()?.items ?? []);
   readonly workspaceItems = computed(() => flattenPublicationNodes(this.workspaceTree()));
   readonly workspaceListItems = computed(() => flattenPublicationListItems(this.workspaceTree()));
@@ -162,7 +162,7 @@ export class PublicationPageComponent {
     }
   }
 
-  selectNode(node: PublicContentNode): void {
+  selectNode(node: PublicationNode): void {
     this.selectedNode.set(node);
   }
 
@@ -295,7 +295,7 @@ export class PublicationPageComponent {
     return publicationTargetLabel(targetType);
   }
 
-  targetDescription(node: PublicContentNode, level = 0): string {
+  targetDescription(node: PublicationNode, level = 0): string {
     const hiddenFromUsers = node.publiclyVisible === false && !node.statusLabel.toLowerCase().includes('oculto');
     const targetLabel =
       level > 0 && node.targetType === 'EVENT_GROUP' ? 'Conjunto' : publicationTargetLabel(node.targetType);
@@ -319,19 +319,19 @@ export class PublicationPageComponent {
     return publicationChildCountLabel(count);
   }
 
-  isSelected(node: PublicContentNode): boolean {
+  isSelected(node: PublicationNode): boolean {
     const selected = this.selectedNode();
     return selected?.id === node.id && selected.targetType === node.targetType;
   }
 
-  isWarning(node: PublicContentNode): boolean {
+  isWarning(node: PublicationNode): boolean {
     return node.publicationState !== 'PUBLISHED' || node.publiclyVisible === false;
   }
 
   private parseRequestedNode(
     targetType: string | null,
     targetId: string | null,
-  ): Pick<PublicContentNode, 'targetType' | 'id'> | null {
+  ): Pick<PublicationNode, 'targetType' | 'id'> | null {
     if (!targetId) {
       return null;
     }
@@ -375,7 +375,7 @@ export class PublicationPageComponent {
     }
   }
 
-  private findRequestedNode(workspace: PublishContentWorkspace): PublicContentNode | null {
+  private findRequestedNode(workspace: PublicationWorkspace): PublicationNode | null {
     const requested = this.requestedNode();
     if (!requested) {
       return null;
@@ -388,7 +388,7 @@ export class PublicationPageComponent {
     );
   }
 
-  private workspaceFilters(): PublishContentWorkspaceFilters {
+  private workspaceFilters(): PublicationWorkspaceFilters {
     const requested = this.requestedNode();
     return {
       query: this.query() || null,
@@ -470,7 +470,7 @@ export class PublicationPageComponent {
 
   private async confirmBulkOperation(
     operation: PublicationBulkOperation,
-    selected: PublicContentNode,
+    selected: PublicationNode,
     scheduledPublishAt: string | null,
   ): Promise<boolean> {
     const confirmed = await firstValueFrom(
@@ -487,7 +487,7 @@ export class PublicationPageComponent {
 
   private bulkOperationConfirmationData(
     operation: PublicationBulkOperation,
-    selected: PublicContentNode,
+    selected: PublicationNode,
     scheduledPublishAt: string | null,
   ): ConfirmationDialogData {
     const scope = selected.childCount > 0 ? `${selected.childCount} item(ns) vinculado(s)` : 'itens vinculados';

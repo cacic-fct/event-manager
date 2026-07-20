@@ -12,10 +12,10 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { EventType } from '@cacic-fct/event-manager-admin-contracts';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
 import { isFrozenEvent } from '../../../shared/frozen-resource';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspaceAttendancesService } from '../../data-access/attendances/attendances.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
-import { EventFilterPanelComponent } from '../../shared/components/shared/event-filter-panel.component';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { AttendancesService } from './data-access/attendances.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
+import { EventFilterPanelComponent } from '../../shared/components/filters/event-filter-panel.component';
 
 @Component({
   selector: 'app-workspace-event-attendances-subtab',
@@ -43,9 +43,9 @@ import { EventFilterPanelComponent } from '../../shared/components/shared/event-
   ],
 })
 export class EventAttendancesComponent implements OnInit {
-  readonly workspace = inject(WorkspaceAttendancesService);
-  protected readonly auditLog = inject(WorkspaceAuditLogService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  readonly workspace = inject(AttendancesService);
+  protected readonly auditLog = inject(AuditLogService);
+  protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
   ngOnInit(): void {

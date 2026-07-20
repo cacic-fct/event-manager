@@ -21,8 +21,8 @@ import {
   isFrozenFromDates,
   isFrozenMajorEvent,
 } from '../../../shared/frozen-resource';
-import { WorkspaceCertificatesService } from '../../data-access/certificates/certificates.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { CertificatesService } from './data-access/certificates.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 
 @Component({
   selector: 'app-workspace-certificates-tab',
@@ -50,9 +50,9 @@ import { WorkspacePermissionsService } from '../../data-access/permissions/permi
   ],
 })
 export class CertificatesPageComponent {
-  readonly workspace = inject(WorkspaceCertificatesService);
+  readonly workspace = inject(CertificatesService);
   private readonly route = inject(ActivatedRoute);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
   constructor() {

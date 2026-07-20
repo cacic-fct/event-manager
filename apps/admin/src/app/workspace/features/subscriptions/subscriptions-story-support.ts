@@ -13,9 +13,9 @@ import {
 import { ReceiptValidationApiService } from '../../../graphql/receipt-validation-api.service';
 import {
   WorkspacePermissionScope,
-  WorkspacePermissionsService,
-} from '../../data-access/permissions/permissions.service';
-import { WorkspaceSubscriptionsService } from '../../data-access/subscriptions/subscriptions.service';
+  PermissionsService,
+} from '../permissions/data-access/permissions.service';
+import { SubscriptionsService } from './data-access/subscriptions.service';
 import { createAdminEvent, createAdminMajorEvent, createAdminPerson } from '../../../testing/admin-entity-fixtures';
 
 interface StoryWorkspaceOptions {
@@ -30,8 +30,8 @@ export function createWorkspaceSubscriptionsStoryProviders(options: StoryWorkspa
   const receiptValidationApi = createReceiptValidationStoryApi(options.pendingReceiptsCount ?? 0);
 
   return [
-    { provide: WorkspaceSubscriptionsService, useValue: workspace },
-    { provide: WorkspacePermissionsService, useValue: permissions },
+    { provide: SubscriptionsService, useValue: workspace },
+    { provide: PermissionsService, useValue: permissions },
     { provide: ReceiptValidationApiService, useValue: receiptValidationApi },
   ];
 }
@@ -45,7 +45,7 @@ function createWorkspacePermissionsStoryService(permissions: WorkspacePermission
     hasAll: (scopes: WorkspacePermissionScope[]) => scopes.every((scope) => granted().has(scope)),
     canEdit: (...scopes: WorkspacePermissionScope[]) => scopes.every((scope) => granted().has(scope)),
     evaluateWorkspacePermissions: () => Promise.resolve(),
-  } satisfies Partial<WorkspacePermissionsService>;
+  } satisfies Partial<PermissionsService>;
 }
 
 function createReceiptValidationStoryApi(pendingReceiptsCount: number) {
@@ -214,7 +214,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     },
   };
 
-  return service as unknown as WorkspaceSubscriptionsService;
+  return service as unknown as SubscriptionsService;
 }
 
 function defaultPermissions(): WorkspacePermissionScope[] {

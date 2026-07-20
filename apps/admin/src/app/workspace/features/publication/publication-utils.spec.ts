@@ -1,4 +1,4 @@
-import type { PublicContentNode } from '../../../graphql/publishing-api.service';
+import type { PublicationNode } from '../../../graphql/publishing-api.service';
 import {
   defaultScheduledPublicationDate,
   flattenPublicationListItems,
@@ -97,9 +97,9 @@ describe('workspace publishing utils', () => {
 
 function node(
   id: string,
-  targetType: PublicContentNode['targetType'],
-  children: PublicContentNode[] = [],
-): PublicContentNode {
+  targetType: PublicationNode['targetType'],
+  children: PublicationNode[] = [],
+): PublicationNode {
   return {
     targetType,
     id,

@@ -1,19 +1,19 @@
-import { PublicContentNode } from '../../../graphql/publishing-api.service';
+import { PublicationNode } from '../../../graphql/publishing-api.service';
 import { PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 import { addDays, format, parseISO, set } from 'date-fns';
 
 export interface PublicationListItem {
   key: string;
   level: number;
-  node: PublicContentNode;
+  node: PublicationNode;
 }
 
-export function flattenPublicationNodes(nodes: PublicContentNode[]): PublicContentNode[] {
+export function flattenPublicationNodes(nodes: PublicationNode[]): PublicationNode[] {
   return nodes.flatMap((node) => [node, ...flattenPublicationNodes(node.children ?? [])]);
 }
 
 export function flattenPublicationListItems(
-  nodes: PublicContentNode[],
+  nodes: PublicationNode[],
   level = 0,
   lineage = '',
   nestedNodeKeys = collectNestedNodeKeys(nodes),
@@ -31,7 +31,7 @@ export function flattenPublicationListItems(
   });
 }
 
-function collectNestedNodeKeys(nodes: PublicContentNode[]): Set<string> {
+function collectNestedNodeKeys(nodes: PublicationNode[]): Set<string> {
   const nestedNodeKeys = new Set<string>();
   for (const node of nodes) {
     collectChildNodeKeys(node.children ?? [], nestedNodeKeys);
@@ -39,14 +39,14 @@ function collectNestedNodeKeys(nodes: PublicContentNode[]): Set<string> {
   return nestedNodeKeys;
 }
 
-function collectChildNodeKeys(nodes: PublicContentNode[], nestedNodeKeys: Set<string>): void {
+function collectChildNodeKeys(nodes: PublicationNode[], nestedNodeKeys: Set<string>): void {
   for (const node of nodes) {
     nestedNodeKeys.add(publicationNodeKey(node));
     collectChildNodeKeys(node.children ?? [], nestedNodeKeys);
   }
 }
 
-function publicationNodeKey(node: PublicContentNode): string {
+function publicationNodeKey(node: PublicationNode): string {
   return `${node.targetType}:${node.id}`;
 }
 

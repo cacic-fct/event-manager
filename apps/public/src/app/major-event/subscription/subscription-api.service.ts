@@ -27,7 +27,7 @@ export type {
   PublicMajorEventSubscriptionPage,
 } from '@cacic-fct/event-manager-public-contracts';
 
-export interface PublicContentGroupPreview {
+export interface PublicationGroupPreview {
   previewAt: string;
   expiresAt: string;
   eventGroup: PublicEventGroup;
@@ -47,14 +47,14 @@ export class MajorEventSubscriptionApiService {
 
   getPreviewMajorEvents(previewToken: string): Observable<{ events: PublicMajorEvent[]; expiresAt: string }> {
     return this.query<{
-      publishContentPreview: {
+      publicationPreview: {
         expiresAt: string;
         majorEvent: PublicMajorEvent | null;
       };
     }>(
       `
-        query PublishContentPreviewMajorEvent($previewToken: String!) {
-          publishContentPreview(previewToken: $previewToken) {
+        query PublicationPreviewMajorEvent($previewToken: String!) {
+          publicationPreview(previewToken: $previewToken) {
             expiresAt
             majorEvent {
               ${PUBLIC_MAJOR_EVENT_CARD_FIELDS}
@@ -65,26 +65,26 @@ export class MajorEventSubscriptionApiService {
       { previewToken },
     ).pipe(
       map((data) => {
-        const majorEvent = data.publishContentPreview.majorEvent;
+        const majorEvent = data.publicationPreview.majorEvent;
         if (!majorEvent) {
           throw new Error('Pré-visualização sem grande evento.');
         }
 
         return {
           events: [majorEvent],
-          expiresAt: data.publishContentPreview.expiresAt,
+          expiresAt: data.publicationPreview.expiresAt,
         };
       }),
     );
   }
 
-  getPreviewGroup(previewToken: string): Observable<PublicContentGroupPreview> {
+  getPreviewGroup(previewToken: string): Observable<PublicationGroupPreview> {
     return this.query<{
-      publishContentPreview: PublicContentGroupPreview;
+      publicationPreview: PublicationGroupPreview;
     }>(
       `
-        query PublishContentPreviewGroup($previewToken: String!) {
-          publishContentPreview(previewToken: $previewToken) {
+        query PublicationPreviewGroup($previewToken: String!) {
+          publicationPreview(previewToken: $previewToken) {
             previewAt
             expiresAt
             eventGroup {
@@ -104,11 +104,11 @@ export class MajorEventSubscriptionApiService {
       { previewToken },
     ).pipe(
       map((data) => {
-        if (!data.publishContentPreview.eventGroup) {
+        if (!data.publicationPreview.eventGroup) {
           throw new Error('Pré-visualização sem grupo de eventos.');
         }
 
-        return data.publishContentPreview;
+        return data.publicationPreview;
       }),
     );
   }

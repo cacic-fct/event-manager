@@ -15,9 +15,9 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '../../../shared/components/twemoji.component';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspacePeopleService } from '../../data-access/people/people.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { PeopleService } from './data-access/people.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
 
 @Component({
   selector: 'app-workspace-people-tab',
@@ -45,11 +45,11 @@ import { WorkspacePermissionsService } from '../../data-access/permissions/permi
   ],
 })
 export class PeoplePageComponent {
-  readonly workspace = inject(WorkspacePeopleService);
+  readonly workspace = inject(PeopleService);
   private readonly route = inject(ActivatedRoute);
   private readonly auth = inject(AuthService);
-  protected readonly auditLog = inject(WorkspaceAuditLogService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly auditLog = inject(AuditLogService);
+  protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
   protected readonly isSuperAdmin = computed(() => this.auth.roles().includes(EventManagerKeycloakRole.SuperAdmin));
 

@@ -1,7 +1,7 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import {
-  PublicContentNode,
-  PublishContentWorkspace,
+  PublicationNode,
+  PublicationWorkspace,
   PublicationBulkInput,
   PublicationStateInput,
 } from '../../../graphql/publishing-api.service';
@@ -27,7 +27,7 @@ export const defaultPublicationStoryArgs: PublicationStoryArgs = {
   includeCriticalWarnings: true,
 };
 
-export function publicationActionResult(affectedNodes: PublicContentNode[] = []) {
+export function publicationActionResult(affectedNodes: PublicationNode[] = []) {
   const affectedEventIds = affectedNodes.filter((node) => node.targetType === 'EVENT').map((node) => node.id);
   const affectedMajorEventIds = affectedNodes
     .filter((node) => node.targetType === 'MAJOR_EVENT')
@@ -41,7 +41,7 @@ export function publicationActionResult(affectedNodes: PublicContentNode[] = [])
   };
 }
 
-export function buildPublicationWorkspace(args: PublicationStoryArgs): PublishContentWorkspace {
+export function buildPublicationWorkspace(args: PublicationStoryArgs): PublicationWorkspace {
   faker.seed(20260801);
   const generatedAt = new Date('2026-08-01T12:00:00.000Z').toISOString();
   const tree = [
@@ -65,7 +65,7 @@ export function buildPublicationWorkspace(args: PublicationStoryArgs): PublishCo
   };
 }
 
-export function applyStoryPublicationState(workspace: PublishContentWorkspace, input: unknown) {
+export function applyStoryPublicationState(workspace: PublicationWorkspace, input: unknown) {
   if (!isPublicationStateInput(input)) {
     return publicationActionResult();
   }
@@ -75,7 +75,7 @@ export function applyStoryPublicationState(workspace: PublishContentWorkspace, i
   return publicationActionResult(affected);
 }
 
-export function applyStoryBulkOperation(workspace: PublishContentWorkspace, input: unknown) {
+export function applyStoryBulkOperation(workspace: PublicationWorkspace, input: unknown) {
   if (!isPublicationBulkInput(input)) {
     return publicationActionResult();
   }
@@ -168,18 +168,18 @@ function statusLabel(state: 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'UNPUBLISHED')
 }
 
 function updateNodeAndDescendants(
-  node: PublicContentNode,
+  node: PublicationNode,
   state: PublicationState,
   scheduledPublishAt: string | null | undefined,
-): PublicContentNode[] {
+): PublicationNode[] {
   return updateNodes([node, ...flatten(node.children ?? [])], state, scheduledPublishAt ?? null);
 }
 
 function updateNodes(
-  nodes: PublicContentNode[],
+  nodes: PublicationNode[],
   state: PublicationState,
   scheduledPublishAt: string | null,
-): PublicContentNode[] {
+): PublicationNode[] {
   const changedAt = new Date('2026-08-01T14:30:00.000Z').toISOString();
   for (const node of nodes) {
     node.publicationState = state;
@@ -233,15 +233,15 @@ function buildWarnings(args: PublicationStoryArgs) {
   ];
 }
 
-function flatten(nodes: PublicContentNode[]): PublicContentNode[] {
+function flatten(nodes: PublicationNode[]): PublicationNode[] {
   return nodes.flatMap((node) => [node, ...flatten(node.children ?? [])]);
 }
 
 function findNode(
-  nodes: PublicContentNode[],
+  nodes: PublicationNode[],
   targetType: PublicationStateInput['targetType'],
   targetId: string,
-): PublicContentNode | null {
+): PublicationNode | null {
   for (const node of nodes) {
     if (node.targetType === targetType && node.id === targetId) {
       return node;

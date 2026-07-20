@@ -14,7 +14,7 @@ registerEnumType(PublicationBulkOperation, {
 });
 
 @ObjectType()
-export class PublicContentNode {
+export class PublicationNode {
   @Field(() => PublicationTargetType)
   targetType!: PublicationTargetType;
 
@@ -48,20 +48,20 @@ export class PublicContentNode {
   @Field(() => Int)
   childCount!: number;
 
-  @Field(() => [PublicContentNode])
-  children!: PublicContentNode[];
+  @Field(() => [PublicationNode])
+  children!: PublicationNode[];
 }
 
 @ObjectType()
-export class PublishContentWorkspace {
+export class PublicationWorkspace {
   @Field(() => Date)
   generatedAt!: Date;
 
-  @Field(() => [PublicContentNode])
-  tree!: PublicContentNode[];
+  @Field(() => [PublicationNode])
+  tree!: PublicationNode[];
 
-  @Field(() => [PublicContentNode])
-  items!: PublicContentNode[];
+  @Field(() => [PublicationNode])
+  items!: PublicationNode[];
 
   @Field(() => Int)
   totalCount!: number;
@@ -113,7 +113,7 @@ export class PublicationBulkInput {
 }
 
 @InputType()
-export class PublishContentPreviewInput {
+export class PublicationPreviewInput {
   @Field(() => PublicationTargetType)
   targetType!: PublicationTargetType;
 
@@ -140,7 +140,7 @@ export class PublicationActionResult {
 }
 
 @ObjectType()
-export class PublishContentPreviewResult {
+export class PublicationPreviewResult {
   @Field(() => String)
   url!: string;
 
@@ -155,7 +155,7 @@ export class PublishContentPreviewResult {
 }
 
 @ObjectType()
-export class PublishContentPreviewPayload {
+export class PublicationPreviewPayload {
   @Field(() => PublicationTargetType)
   targetType!: PublicationTargetType;
 

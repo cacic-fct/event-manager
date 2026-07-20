@@ -18,9 +18,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { WorkspaceAuditLogService } from '../../data-access/audit-logs/audit-log.service';
-import { WorkspacePermissionsService } from '../../data-access/permissions/permissions.service';
-import { WorkspacePlacePresetsService } from '../../data-access/places/place-presets.service';
+import { AuditLogService } from '../audit-logs/data-access/audit-log.service';
+import { PermissionsService } from '../permissions/data-access/permissions.service';
+import { PlacePresetsService } from './data-access/place-presets.service';
 
 @Component({
   selector: 'app-workspace-places-tab',
@@ -45,11 +45,11 @@ import { WorkspacePlacePresetsService } from '../../data-access/places/place-pre
   ],
 })
 export class PlacesPageComponent implements OnDestroy {
-  readonly workspace = inject(WorkspacePlacePresetsService);
+  readonly workspace = inject(PlacePresetsService);
   private readonly route = inject(ActivatedRoute);
   private readonly document = inject(DOCUMENT);
-  protected readonly auditLog = inject(WorkspaceAuditLogService);
-  protected readonly permissions = inject(WorkspacePermissionsService);
+  protected readonly auditLog = inject(AuditLogService);
+  protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
   private readonly markerIconUrl = new URL('assets/shared/pin.svg', this.document.baseURI).toString();

@@ -15,7 +15,7 @@ import {
   AUDIT_LOG_OPERATION_OPTIONS,
   auditLogEntityTypeLabel,
   auditLogOperationLabel,
-} from './workspace-audit-log-utils';
+} from './audit-log.utils';
 import { AuditLogsPageComponent } from './audit-logs-page.component';
 
 type RequestState = 'success' | 'empty' | 'error';
