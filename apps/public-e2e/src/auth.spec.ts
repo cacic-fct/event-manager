@@ -20,7 +20,7 @@ test('public preferences remain available without starting backend login', async
   expect(loginRedirect).toBeNull();
 });
 
-test('public landing login starts backend auth with the feature-flagged public return path', async ({ page }) => {
+test('public landing login starts backend auth with the public app return path', async ({ page }) => {
   let loginRedirect: URL | null = null;
   await mockPublicApi(page, {
     user: null,
@@ -35,7 +35,7 @@ test('public landing login starts backend auth with the feature-flagged public r
   await page.getByRole('button', { name: 'Entrar com o Google' }).click();
 
   await expect.poll(() => loginRedirect?.pathname).toBe('/api/auth/login/redirect');
-  await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/app/calendar');
+  await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/app');
 });
 
 test('authenticated public users keep their local session and see account actions', async ({ page }) => {
@@ -61,6 +61,7 @@ async function preventSilentSso(page: Page): Promise<void> {
 async function mockPublicApi(
   page: Page,
   options: {
+    defaultRedirect?: 'MENU' | 'CALENDAR' | 'MAJOR_EVENT' | 'WALLET';
     user: Record<string, unknown> | null;
     onLoginRedirect?: (url: URL) => void;
   },
@@ -94,6 +95,16 @@ async function mockPublicApi(
     }
 
     if (url.pathname === '/api/graphql') {
+      const body = route.request().postDataJSON() as { query?: unknown };
+      if (typeof body.query === 'string' && body.query.includes('query CurrentUserDefaultRedirect')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: { currentUserDefaultRedirect: options.defaultRedirect ?? 'MENU' } }),
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',

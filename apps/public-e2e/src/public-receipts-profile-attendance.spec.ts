@@ -253,6 +253,13 @@ async function fulfillGraphql(
   const query = body.query;
   const variables = body.variables;
 
+  if (query.includes('query CurrentUserDefaultRedirect')) {
+    await fulfillGraphqlData(route, {
+      currentUserDefaultRedirect: 'MAJOR_EVENT',
+    });
+    return;
+  }
+
   if (query.includes('query PublicMajorEvents')) {
     await fulfillGraphqlData(route, {
       publicMajorEvents: [paidMajorEventFixture()],
