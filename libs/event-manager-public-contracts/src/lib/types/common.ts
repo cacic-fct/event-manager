@@ -5,6 +5,7 @@ export type CertificateScope = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT' | 'OTHER'
 export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
+export type DefaultRedirectRoute = 'MENU' | 'CALENDAR' | 'MAJOR_EVENT' | 'WALLET';
 
 export type GraphqlVariable =
   | string

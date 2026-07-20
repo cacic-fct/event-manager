@@ -87,6 +87,8 @@ import { CurrentUserProfileResolver } from './current-user/profile/resolver';
 import { CurrentUserPublicEventService } from './current-user/public-event.service';
 import { CurrentUserSubscriptionFeedService } from './current-user/subscription-feed/service';
 import { CurrentUserSubscriptionFeedResolver } from './current-user/subscription-feed/resolver';
+import { CurrentUserDefaultRedirectService } from './current-user/default-redirect/service';
+import { CurrentUserDefaultRedirectResolver } from './current-user/default-redirect/resolver';
 import { DashboardInsightsProcessor } from './dashboard/insights.processor';
 import { DashboardInsightsResolver } from './dashboard/insights.resolver';
 import { DashboardInsightsSchedulerService } from './dashboard/insights-scheduler.service';
@@ -322,6 +324,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserEventSubscriptionService,
     CurrentUserMajorEventSubscriptionService,
     CurrentUserSubscriptionFeedService,
+    CurrentUserDefaultRedirectService,
     CurrentUserCertificatesResolver,
     CurrentUserProfileResolver,
     CurrentUserMajorEventSubscriptionsResolver,
@@ -330,6 +333,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserAttendanceCollectionResolver,
     CurrentUserOnlineAttendanceRealtimeService,
     CurrentUserSubscriptionFeedResolver,
+    CurrentUserDefaultRedirectResolver,
     DashboardInsightsResolver,
     DashboardInsightsService,
     PublicPlatformStatsService,

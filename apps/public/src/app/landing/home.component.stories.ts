@@ -1,11 +1,23 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { applicationConfig } from '@storybook/angular';
+import { signal } from '@angular/core';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { HomeComponent } from './home.component';
+import { DefaultRedirectService } from './default-redirect.service';
 
 const meta: Meta<HomeComponent> = {
   component: HomeComponent,
   title: 'Public/Landing/Home',
   tags: ['autodocs'],
+  decorators: [
+    applicationConfig({
+      providers: [
+        { provide: AuthService, useValue: { isAuthenticated: signal(false), login: async () => undefined } },
+        { provide: DefaultRedirectService, useValue: { resolve: async () => '/calendar' } },
+      ],
+    }),
+  ],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
@@ -35,4 +47,3 @@ export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
-

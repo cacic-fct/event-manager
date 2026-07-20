@@ -1,26 +1,36 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { LandingComponent } from './landing.component';
+import { DefaultRedirectService } from './default-redirect.service';
 
 /**
  * Root home component that:
  * - Shows landing page if user is not authenticated
- * - Automatically redirects to /menu if user is authenticated
+ * - Automatically resolves the highest-priority default route when authenticated
  */
 @Component({
   selector: 'app-home',
-  standalone: true,
   imports: [LandingComponent],
-  template: '<app-login-page></app-login-page>',
+  template: `
+    @if (!authService.isAuthenticated()) {
+      <app-login-page />
+    }
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HomeComponent implements OnInit {
-  private readonly authService = inject(AuthService);
+  protected readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly defaultRedirect = inject(DefaultRedirectService);
 
   ngOnInit(): void {
     if (this.authService.isAuthenticated()) {
-      void this.router.navigateByUrl('/menu');
+      void this.navigateToDefaultRoute();
     }
+  }
+
+  private async navigateToDefaultRoute(): Promise<void> {
+    await this.router.navigateByUrl(await this.defaultRedirect.resolve());
   }
 }

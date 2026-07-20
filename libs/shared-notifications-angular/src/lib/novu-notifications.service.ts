@@ -158,6 +158,17 @@ export class NovuNotificationsService {
     this.unreadCount.set(this.isFilterCountResponse(data) ? data.count : 0);
   }
 
+  async hasUnreadNotifications(): Promise<boolean> {
+    const user = this.auth.user();
+    if (!user || !isPlatformBrowser(this.platformId)) {
+      return false;
+    }
+
+    this.ensureReady();
+    await this.connectClientOnce(user, this.resolveLocalUserKey(user));
+    return this.unreadCount() > 0;
+  }
+
   async markAsRead(notification: NovuNotification): Promise<void> {
     await this.runNotificationMutation(() => notification.read());
   }

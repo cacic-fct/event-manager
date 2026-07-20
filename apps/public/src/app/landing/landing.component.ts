@@ -9,10 +9,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { DoodlesComponent } from './components/doodles.component';
 import { isPlatformBrowser } from '@angular/common';
 import { Developer } from './components/developer';
-import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { PlatformStatsApiService } from './platform-stats-api.service';
 import { catchError, map, of } from 'rxjs';
 import { LandingFooterComponent } from './components/landing-footer.component';
+import { DefaultRedirectService } from './default-redirect.service';
 
 @Component({
   selector: 'app-login-page',
@@ -34,8 +34,8 @@ export class LandingComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly featureFlags = inject(PublicFeatureFlagService);
   private readonly platformStatsApi = inject(PlatformStatsApiService);
+  private readonly defaultRedirect = inject(DefaultRedirectService);
 
   private readonly nextSection = viewChild<ElementRef<HTMLElement>>('nextSection');
 
@@ -52,13 +52,11 @@ export class LandingComponent {
   );
 
   async login(): Promise<void> {
-    const returnTo = this.featureFlags.stringValue('defaultLoginRedirectPath') ?? '/app/calendar';
-
     if (this.authService.isAuthenticated()) {
-      await this.router.navigateByUrl(returnTo);
+      await this.router.navigateByUrl(await this.defaultRedirect.resolve());
       return;
     }
-    await this.authService.login({ returnTo });
+    await this.authService.login({ returnTo: '/app' });
   }
 
   scrollToNextSection(): void {
