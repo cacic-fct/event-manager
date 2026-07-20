@@ -1,0 +1,184 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, PLATFORM_ID, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { AuthService } from '@cacic-fct/shared-angular/auth';
+import { CacicLogoComponent } from '@cacic-fct/shared-angular/cacic-logo';
+import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
+import { NovuNotificationBadgeComponent } from '@cacic-fct/shared-notifications-angular/badge';
+import { filter, map, startWith } from 'rxjs';
+
+import { PermissionsService } from '../permissions/permissions.service';
+import { ShellService } from './shell.service';
+import { findNavigationItemForUrl, navigationItems } from './navigation';
+import { isPlatformBrowser } from '@angular/common';
+import { MatDividerModule } from '@angular/material/divider';
+
+export type NavigationMode = 'icons' | 'full' | 'auto';
+
+const navigationModeStorageKey = 'cacic-admin-workspace-nav-mode';
+const navigationModes = ['icons', 'full', 'auto'] as const satisfies readonly NavigationMode[];
+
+@Component({
+  selector: 'app-workspace-shell',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    RouterLink,
+    RouterOutlet,
+    MatToolbarModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatSidenavModule,
+    MatTooltipModule,
+    MatDividerModule,
+    CacicLogoComponent,
+    NovuNotificationBadgeComponent,
+  ],
+  templateUrl: './shell.component.html',
+  styleUrls: [
+    './shell.component.scss',
+    './shell.navigation.component.scss',
+    './shell.navigation-items.component.scss',
+    './shell.permissions.component.scss',
+    './shell.responsive.component.scss',
+  ],
+})
+export class AdminShellComponent {
+  private readonly authService = inject(AuthService);
+  private readonly breakpointObserver = inject(BreakpointObserver);
+  public readonly router = inject(Router);
+
+  readonly shell = inject(ShellService);
+  protected readonly permissions = inject(PermissionsService);
+
+  readonly initialNavMode = input<NavigationMode | null>(null);
+  readonly activeUrlOverride = input<string | null>(null);
+
+  protected readonly user = this.authService.user;
+
+  protected readonly navItems = computed(() => navigationItems.filter((item) => this.canShowNavItem(item)));
+
+  private platformId = inject(PLATFORM_ID);
+  private isDarkSignal = signal(false);
+  fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
+  protected readonly navMode = signal<NavigationMode>('auto');
+  protected readonly navModeLabel = computed(() => {
+    switch (this.navMode()) {
+      case 'icons':
+        return 'Somente ícones';
+      case 'full':
+        return 'Completa';
+      case 'auto':
+        return 'Automática';
+    }
+  });
+  protected readonly navModeIcon = computed(() => {
+    switch (this.navMode()) {
+      case 'icons':
+        return 'view_sidebar';
+      case 'full':
+        return 'keyboard_tab';
+      case 'auto':
+        return 'width_normal';
+    }
+  });
+  protected readonly navModeTooltip = computed(
+    () => `Navegação ${this.navModeLabel().toLowerCase()}. Clique para alternar o modo.`,
+  );
+
+  protected readonly isMobile = toSignal(
+    this.breakpointObserver.observe('(max-width: 768px)').pipe(map((result) => result.matches)),
+    { initialValue: false },
+  );
+
+  private readonly currentUrl = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects),
+      startWith(this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  protected readonly activeUrl = computed(() => this.activeUrlOverride() ?? this.currentUrl());
+
+  protected readonly activeNavItem = computed(() => {
+    return findNavigationItemForUrl(this.activeUrl());
+  });
+
+  protected readonly showPageHeader = computed(() => this.activeUrl() !== '/');
+
+  constructor() {
+    effect(() => {
+      const initialNavMode = this.initialNavMode();
+      if (initialNavMode) {
+        this.navMode.set(initialNavMode);
+      }
+    });
+
+    if (isPlatformBrowser(this.platformId)) {
+      const storedMode = window.localStorage.getItem(navigationModeStorageKey);
+      if (isNavigationMode(storedMode)) {
+        this.navMode.set(storedMode);
+      }
+
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+      this.isDarkSignal.set(media.matches);
+
+      media.addEventListener('change', (e) => {
+        this.isDarkSignal.set(e.matches);
+      });
+    }
+
+    void this.shell.loadInitialData();
+  }
+
+  protected activeNavId(): string {
+    return this.activeNavItem().id;
+  }
+
+  protected closeSidenavIfMobile(sidenav: MatSidenav): void {
+    if (this.isMobile()) {
+      void sidenav.close();
+    }
+  }
+
+  protected cycleNavMode(): void {
+    const currentIndex = navigationModes.indexOf(this.navMode());
+    const nextMode = navigationModes[(currentIndex + 1) % navigationModes.length];
+    this.navMode.set(nextMode);
+
+    if (isPlatformBrowser(this.platformId)) {
+      window.localStorage.setItem(navigationModeStorageKey, nextMode);
+    }
+  }
+
+  protected async logout(): Promise<void> {
+    await this.authService.logout();
+  }
+
+  private canShowNavItem(item: (typeof navigationItems)[number]): boolean {
+    if (item.kind === 'divider') {
+      return true;
+    }
+
+    if ('visibleFor' in item && item.visibleFor === 'super-admin') {
+      return this.authService.roles().includes(EventManagerKeycloakRole.SuperAdmin);
+    }
+
+    return true;
+  }
+}
+
+function isNavigationMode(value: string | null): value is NavigationMode {
+  return value === 'icons' || value === 'full' || value === 'auto';
+}

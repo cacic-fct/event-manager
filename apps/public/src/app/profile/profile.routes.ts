@@ -4,12 +4,12 @@ export const routes: Route[] = [
   {
     path: 'attendances',
     title: 'Participações',
-    loadChildren: () => import('./attendances/attendances.routes').then((m) => m.routes),
+    loadChildren: () => import('./attendance/attendance.routes').then((m) => m.routes),
   },
   {
     path: 'wallet',
     title: 'Crachá',
-    loadComponent: () => import('./wallet/wallet').then((m) => m.Wallet),
+    loadComponent: () => import('./wallet/page').then((m) => m.Wallet),
   },
   {
     path: 'forms/:formId',
@@ -19,6 +19,6 @@ export const routes: Route[] = [
   {
     path: 'lecturer-profile',
     title: 'Perfil de palestrante',
-    loadComponent: () => import('./lecturer-profile/lecturer-profile').then((m) => m.LecturerProfileComponent),
+    loadComponent: () => import('./lecturer-profile/page').then((m) => m.LecturerProfileComponent),
   },
 ];
