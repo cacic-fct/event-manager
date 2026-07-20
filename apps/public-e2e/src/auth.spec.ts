@@ -1,5 +1,7 @@
 import type { Page } from '@playwright/test';
+import type { DefaultRedirectRoute } from '@cacic-fct/event-manager-public-contracts/types';
 import { expect, test } from './support/e2e-test';
+import { fulfillCurrentUserDefaultRedirect } from './support/current-user-default-redirect';
 
 test.beforeEach(async ({ page }) => {
   await preventSilentSso(page);
@@ -61,7 +63,7 @@ async function preventSilentSso(page: Page): Promise<void> {
 async function mockPublicApi(
   page: Page,
   options: {
-    defaultRedirect?: 'MENU' | 'CALENDAR' | 'MAJOR_EVENT' | 'WALLET';
+    defaultRedirect?: DefaultRedirectRoute;
     user: Record<string, unknown> | null;
     onLoginRedirect?: (url: URL) => void;
   },
@@ -96,12 +98,10 @@ async function mockPublicApi(
 
     if (url.pathname === '/api/graphql') {
       const body = route.request().postDataJSON() as { query?: unknown };
-      if (typeof body.query === 'string' && body.query.includes('query CurrentUserDefaultRedirect')) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ data: { currentUserDefaultRedirect: options.defaultRedirect ?? 'MENU' } }),
-        });
+      if (
+        typeof body.query === 'string' &&
+        (await fulfillCurrentUserDefaultRedirect(route, body.query, options.defaultRedirect))
+      ) {
         return;
       }
 

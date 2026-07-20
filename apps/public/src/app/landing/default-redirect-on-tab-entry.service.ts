@@ -38,7 +38,7 @@ export class DefaultRedirectOnTabEntryService {
   private async redirect(initialPath: string): Promise<void> {
     const route = await this.defaultRedirect.resolve();
     if (route !== initialPath) {
-      await this.router.navigateByUrl(route);
+      await this.defaultRedirect.navigateToDefault(this.router, route);
     }
   }
 }

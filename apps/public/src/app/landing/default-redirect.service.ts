@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
 import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular';
@@ -50,6 +51,10 @@ export class DefaultRedirectService {
     } catch {
       return fallback;
     }
+  }
+
+  async navigateToDefault(router: Router, route?: string): Promise<void> {
+    await router.navigateByUrl(route ?? (await this.resolve()));
   }
 
   private async resolveOffline(fallback: string): Promise<string> {

@@ -1,5 +1,6 @@
 import type { Page, Route } from '@playwright/test';
 import { expect, test } from './support/e2e-test';
+import { fulfillCurrentUserDefaultRedirect } from './support/current-user-default-redirect';
 import {
   createPublicEvent,
   createPublicMajorEvent,
@@ -253,10 +254,7 @@ async function fulfillGraphql(
   const query = body.query;
   const variables = body.variables;
 
-  if (query.includes('query CurrentUserDefaultRedirect')) {
-    await fulfillGraphqlData(route, {
-      currentUserDefaultRedirect: 'MAJOR_EVENT',
-    });
+  if (await fulfillCurrentUserDefaultRedirect(route, query, 'MAJOR_EVENT')) {
     return;
   }
 

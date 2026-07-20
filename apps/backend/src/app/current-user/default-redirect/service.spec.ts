@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import { DefaultRedirectRoute } from '../models';
 import { CurrentUserDefaultRedirectService } from './service';
@@ -104,6 +105,40 @@ describe('CurrentUserDefaultRedirectService', () => {
   it('caches an uncached route for fifteen minutes under the current person key', async () => {
     await service.resolve('person-1');
 
+    expect(redis.set).toHaveBeenCalledWith(
+      'current-user:default-redirect:v1:person-1',
+      DefaultRedirectRoute.MENU,
+      'EX',
+      15 * 60,
+    );
+  });
+
+  it('continues resolving and caches the route when Redis reads fail', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    redis.get.mockRejectedValue(new Error('Redis unavailable'));
+
+    await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MENU);
+
+    expect(prisma.event.findFirst).toHaveBeenCalledTimes(2);
+    expect(redis.set).toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Could not read the current-user default redirect cache'));
+  });
+
+  it('continues resolving when Redis writes fail', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    redis.set.mockRejectedValue(new Error('Redis unavailable'));
+
+    await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MENU);
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Could not cache the current-user default redirect'));
+  });
+
+  it('ignores corrupted cached routes and replaces them with the resolved route', async () => {
+    redis.get.mockResolvedValue('CORRUPTED_ROUTE');
+
+    await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MENU);
+
+    expect(prisma.event.findFirst).toHaveBeenCalledTimes(2);
     expect(redis.set).toHaveBeenCalledWith(
       'current-user:default-redirect:v1:person-1',
       DefaultRedirectRoute.MENU,

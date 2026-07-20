@@ -82,12 +82,15 @@ describe('DefaultRedirectService', () => {
 
   it('falls back to the feature-flagged route when the online decision times out', async () => {
     vi.useFakeTimers();
-    api.getCurrentUserDefaultRedirect.mockReturnValue(NEVER);
+    try {
+      api.getCurrentUserDefaultRedirect.mockReturnValue(NEVER);
 
-    const result = TestBed.inject(DefaultRedirectService).resolve();
-    await vi.advanceTimersByTimeAsync(400);
+      const result = TestBed.inject(DefaultRedirectService).resolve();
+      await vi.advanceTimersByTimeAsync(400);
 
-    await expect(result).resolves.toBe('/feature-default');
-    vi.useRealTimers();
+      await expect(result).resolves.toBe('/feature-default');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

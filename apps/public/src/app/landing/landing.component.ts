@@ -53,7 +53,7 @@ export class LandingComponent {
 
   async login(): Promise<void> {
     if (this.authService.isAuthenticated()) {
-      await this.router.navigateByUrl(await this.defaultRedirect.resolve());
+      await this.defaultRedirect.navigateToDefault(this.router);
       return;
     }
     await this.authService.login({ returnTo: '/app' });

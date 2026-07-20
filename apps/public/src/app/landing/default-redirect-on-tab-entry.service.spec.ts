@@ -10,17 +10,19 @@ describe('DefaultRedirectOnTabEntryService', () => {
   let events: Subject<unknown>;
   let resolve: ReturnType<typeof vi.fn>;
   let navigateByUrl: ReturnType<typeof vi.fn>;
+  let navigateToDefault: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     events = new Subject<unknown>();
     resolve = vi.fn().mockResolvedValue('/menu');
     navigateByUrl = vi.fn().mockResolvedValue(true);
+    navigateToDefault = vi.fn().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
         DefaultRedirectOnTabEntryService,
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: AuthService, useValue: { isAuthenticated: () => true } },
-        { provide: DefaultRedirectService, useValue: { resolve } },
+        { provide: DefaultRedirectService, useValue: { resolve, navigateToDefault } },
         { provide: Router, useValue: { events: events.asObservable(), navigateByUrl } },
       ],
     });
@@ -36,7 +38,8 @@ describe('DefaultRedirectOnTabEntryService', () => {
     events.next(new NavigationEnd(2, '/major-event', '/major-event'));
 
     expect(resolve).toHaveBeenCalledTimes(1);
-    expect(navigateByUrl).toHaveBeenCalledWith('/menu');
+    expect(navigateToDefault).toHaveBeenCalledWith(TestBed.inject(Router), '/menu');
+    expect(navigateByUrl).not.toHaveBeenCalled();
   });
 
   it('does not run for an initial route outside the tabs', () => {
@@ -57,6 +60,7 @@ describe('DefaultRedirectOnTabEntryService', () => {
     await Promise.resolve();
     await Promise.resolve();
 
+    expect(navigateToDefault).not.toHaveBeenCalled();
     expect(navigateByUrl).not.toHaveBeenCalled();
   });
 });
