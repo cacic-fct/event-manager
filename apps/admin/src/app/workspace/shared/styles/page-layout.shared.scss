@@ -67,6 +67,12 @@
   justify-content: flex-end;
 }
 
+.actions > button,
+.actions > a {
+  max-width: 100%;
+  white-space: normal;
+}
+
 .editor-action-row {
   display: flex;
   flex: 1 1 auto;
@@ -147,4 +153,3 @@
   align-items: center;
   gap: 0.5rem;
 }
-

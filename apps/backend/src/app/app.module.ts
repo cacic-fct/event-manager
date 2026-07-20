@@ -87,6 +87,8 @@ import { CurrentUserProfileResolver } from './current-user/profile/resolver';
 import { CurrentUserPublicEventService } from './current-user/public-event.service';
 import { CurrentUserSubscriptionFeedService } from './current-user/subscription-feed/service';
 import { CurrentUserSubscriptionFeedResolver } from './current-user/subscription-feed/resolver';
+import { CurrentUserDefaultRedirectService } from './current-user/default-redirect/service';
+import { CurrentUserDefaultRedirectResolver } from './current-user/default-redirect/resolver';
 import { DashboardInsightsProcessor } from './dashboard/insights.processor';
 import { DashboardInsightsResolver } from './dashboard/insights.resolver';
 import { DashboardInsightsSchedulerService } from './dashboard/insights-scheduler.service';
@@ -155,6 +157,7 @@ import { validateBackendEnvironment } from './config/environment.validation';
 import { redisProvider } from './redis/redis.provider';
 import { createNoopQueueProviders } from './queues/noop-queue.providers';
 import { BackendFeatureFlagService } from './feature-flags/backend-feature-flags';
+import { ServerVersionResolver } from './server-version/server-version.resolver';
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
@@ -295,6 +298,7 @@ const schedulerProviders = useInMemoryTestInfra
     EventDraftsResolver,
     EventDraftsService,
     PublicEventsResolver,
+    ServerVersionResolver,
     PublicPlatformStatsResolver,
     UsersResolver,
     PeopleResolver,
@@ -320,6 +324,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserEventSubscriptionService,
     CurrentUserMajorEventSubscriptionService,
     CurrentUserSubscriptionFeedService,
+    CurrentUserDefaultRedirectService,
     CurrentUserCertificatesResolver,
     CurrentUserProfileResolver,
     CurrentUserMajorEventSubscriptionsResolver,
@@ -328,6 +333,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserAttendanceCollectionResolver,
     CurrentUserOnlineAttendanceRealtimeService,
     CurrentUserSubscriptionFeedResolver,
+    CurrentUserDefaultRedirectResolver,
     DashboardInsightsResolver,
     DashboardInsightsService,
     PublicPlatformStatsService,

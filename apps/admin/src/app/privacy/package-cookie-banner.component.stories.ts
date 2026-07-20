@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import type { CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner';
+import type { CookieBannerOptions } from '@cacic-fct/account-manager-cookie-banner/angular';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
 import { PackageCookieBannerComponent } from './package-cookie-banner.component';
@@ -82,4 +82,3 @@ export const GuestUser: Story = {
     text: 'Este aviso também aparece antes da autenticação quando a política de cookies exigir consentimento.',
   },
 };
-

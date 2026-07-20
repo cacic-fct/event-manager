@@ -12,6 +12,7 @@ import type { PublicPlatformStats } from '@cacic-fct/event-manager-public-contra
 import { HttpResponse, http } from 'msw';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { LandingComponent } from './landing.component';
+import { DefaultRedirectService } from './default-redirect.service';
 
 faker.seed(20260717);
 
@@ -51,6 +52,7 @@ const meta: Meta<LandingComponent> = {
             },
           },
         },
+        { provide: DefaultRedirectService, useValue: { resolve: async () => '/calendar' } },
         {
           provide: MediaMatcher,
           useValue: {

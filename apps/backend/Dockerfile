@@ -34,6 +34,9 @@ RUN DATABASE_URL="postgresql://user:password@localhost:5432/db?schema=public" \
 FROM prisma-deps AS builder
 WORKDIR /workspace
 
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
 COPY nx.json tsconfig.base.json ./
 COPY eslint.config.mjs jest.config.ts jest.preset.js ./
 
@@ -41,6 +44,9 @@ COPY apps/backend ./apps/backend
 COPY libs ./libs
 COPY certificate-templates ./certificate-templates
 
+RUN find ./apps/backend -type f \
+    \( -name "*.ts" -o -name "*.js" -o -name "*.json" \) \
+    -exec sed -i "s/APP_VERSION_PLACEHOLDER/${APP_VERSION}/g" {} +
 RUN bun x nx run backend:build:production
 
 FROM base AS production-deps

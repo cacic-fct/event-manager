@@ -40,6 +40,7 @@ import { PublicFeatureFlagService } from './feature-flags/public-feature-flag.se
 import { PUBLIC_FEATURE_FLAG_CONFIG, type PublicFeatureFlagConfig } from './feature-flags/public-feature-flag.config';
 import { TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS } from '@cacic-fct/shared-utils';
 import { PageTitleStrategy } from './shared/page-title-strategy';
+import { DefaultRedirectOnTabEntryService } from './landing/default-redirect-on-tab-entry.service';
 
 registerLocaleData(localePt);
 
@@ -167,6 +168,9 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       const authService = inject(AuthService);
       return authService.initialize();
+    }),
+    provideAppInitializer(() => {
+      inject(DefaultRedirectOnTabEntryService).start();
     }),
     provideAppInitializer(() => {
       inject(AnalyticsService).start();

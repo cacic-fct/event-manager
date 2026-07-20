@@ -5,8 +5,17 @@ import {
   SubmitEventFormResponseInput,
   User,
 } from '@cacic-fct/shared-data-types';
-import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
+import { Field, InputType, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
 import { PublicEvent, PublicEventGroup, PublicMajorEvent } from '../public-events/models';
+
+export enum DefaultRedirectRoute {
+  MENU = 'MENU',
+  CALENDAR = 'CALENDAR',
+  MAJOR_EVENT = 'MAJOR_EVENT',
+  WALLET = 'WALLET',
+}
+
+registerEnumType(DefaultRedirectRoute, { name: 'DefaultRedirectRoute' });
 
 @ObjectType()
 export class CurrentUserProfileContext {

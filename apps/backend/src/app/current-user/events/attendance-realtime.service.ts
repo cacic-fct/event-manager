@@ -14,6 +14,7 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { AUTH_SESSION_COOKIE_NAME } from '../../auth/auth.constants';
+import { Public } from '../../auth/decorators/public.decorator';
 import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
@@ -812,6 +813,7 @@ export class CurrentUserRealtimeEventsController {
     },
   })
   @ApiBearerAuth()
+  @Public()
   stream(
     @Req() request: Request,
     @Query('majorEventIds') majorEventIds?: string | string[],

@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { firstValueFrom, take } from 'rxjs';
-import { AUTH_SESSION_COOKIE_NAME } from '../../auth/auth.constants';
+import { AUTH_SESSION_COOKIE_NAME, IS_PUBLIC_KEY } from '../../auth/auth.constants';
 import {
   CurrentUserOnlineAttendanceRealtimeService,
   CurrentUserRealtimeEventsController,
@@ -257,6 +257,10 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
 });
 
 describe('CurrentUserRealtimeEventsController', () => {
+  it('allows guests to receive public subscription updates', () => {
+    expect(Reflect.getMetadata(IS_PUBLIC_KEY, CurrentUserRealtimeEventsController.prototype.stream)).toBe(true);
+  });
+
   it('normalizes repeated and comma-separated event ids before opening the stream', () => {
     const realtime = {
       stream: jest.fn().mockReturnValue('stream'),

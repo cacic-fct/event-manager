@@ -97,3 +97,16 @@ body {
 mat-toolbar .global-toolbar-spacer {
   flex: 1 1 auto;
 }
+
+.wrapping-list .mdc-list-item__content {
+  overflow: visible;
+  white-space: normal;
+}
+
+.wrapping-list .mdc-list-item__primary-text,
+.wrapping-list .mdc-list-item__secondary-text {
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}

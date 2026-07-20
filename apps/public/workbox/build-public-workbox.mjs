@@ -3,14 +3,29 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { copyWorkboxLibraries, injectManifest } from 'workbox-build';
+import { transform } from 'esbuild';
 
 const workspaceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const browserDirectory = join(workspaceRoot, 'dist/apps/public/browser');
 const workerSource = join(workspaceRoot, 'apps/public/workbox/cacic-public-worker.js');
 const preparedWorkerSource = join(browserDirectory, 'cacic-public-worker.source.js');
 const workerDestination = join(browserDirectory, 'cacic-public-worker.js');
+const cspNonceSource = join(workspaceRoot, 'libs/shared-utils/src/lib/csp-nonce.ts');
+const cspNonceDestination = join(browserDirectory, 'csp-nonce.js');
 
 const workboxDirectory = await copyWorkboxLibraries(browserDirectory);
+const cspNonce = await readFile(cspNonceSource, 'utf8');
+const { code: cspNonceWorkerModule } = await transform(cspNonce, {
+  format: 'iife',
+  // An esbuild global name beginning with `self.` emits `var self = self || {}`.
+  // In a service worker, that overwrites the WorkerGlobalScope and prevents
+  // Workbox from registering its install and activate event listeners.
+  globalName: 'CspNonce',
+  loader: 'ts',
+  minify: true,
+  target: 'es2017',
+});
+await writeFile(cspNonceDestination, `${cspNonceWorkerModule}\nself.CspNonce = CspNonce;\n`);
 const source = await readFile(workerSource, 'utf8');
 await writeFile(preparedWorkerSource, source.replaceAll('__WORKBOX_LIBRARY_DIRECTORY__', workboxDirectory));
 

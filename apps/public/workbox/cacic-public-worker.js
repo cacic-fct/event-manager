@@ -1,8 +1,16 @@
 /* global caches, importScripts, Response, self, workbox */
 
 // Keep Novu push handling in the same registered Service Worker.
+// The document enforces Trusted Types when registering this same-origin worker.
+// Worker evaluation itself has no CSP header, so creating another policy here is
+// redundant and breaks Firefox service-worker startup.
 importScripts('./novu-push-handler.js');
-importScripts('./__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js');
+importScripts(
+  './__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js',
+  './csp-nonce.js',
+);
+
+const { applyCspNonceToHtml, createCspNonce } = self.CspNonce;
 
 workbox.setConfig({
   modulePathPrefix: './__WORKBOX_LIBRARY_DIRECTORY__/',
@@ -235,11 +243,30 @@ workbox.routing.registerRoute(
 async function appShellFallback() {
   const precachedResponse = await workbox.precaching.matchPrecache(appShellUrl);
   if (precachedResponse) {
-    return precachedResponse;
+    return createOfflineHtmlResponse(precachedResponse);
   }
 
   const cachedResponse = await caches.match(appShellUrl);
-  return cachedResponse ?? Response.error();
+  return cachedResponse ? createOfflineHtmlResponse(cachedResponse) : Response.error();
+}
+
+async function createOfflineHtmlResponse(response) {
+  const nonce = createCspNonce();
+  const headers = new Headers(response.headers);
+  const contentSecurityPolicy = headers.get('Content-Security-Policy');
+
+  if (contentSecurityPolicy) {
+    headers.set('Content-Security-Policy', contentSecurityPolicy.replace(/'nonce-[^']+'/g, `'nonce-${nonce}'`));
+  }
+
+  headers.set('Cache-Control', 'private, no-store');
+  headers.delete('content-length');
+
+  return new Response(applyCspNonceToHtml(await response.text(), nonce), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 async function cacheAttendanceScannerUrls(urls) {

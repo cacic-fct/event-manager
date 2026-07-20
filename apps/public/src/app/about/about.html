@@ -44,6 +44,12 @@
         <div matListItemLine>APP_VERSION_PLACEHOLDER</div>
       </mat-list-item>
 
+      <mat-list-item>
+        <mat-icon matListItemIcon>dns</mat-icon>
+        <div matListItemTitle>Versão do servidor</div>
+        <div matListItemLine>{{ serverVersion() ?? 'Indisponível' }}</div>
+      </mat-list-item>
+
       <a mat-list-item routerLink="./legal">
         <mat-icon matListItemIcon>gavel</mat-icon>
         <div matListItemTitle>Legal</div>
