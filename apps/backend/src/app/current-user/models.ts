@@ -5,8 +5,24 @@ import {
   SubmitEventFormResponseInput,
   User,
 } from '@cacic-fct/shared-data-types';
-import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
+import type { DefaultRedirectRoute as SharedDefaultRedirectRoute } from '@cacic-fct/event-manager-public-contracts/types';
+import { Field, InputType, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
 import { PublicEvent, PublicEventGroup, PublicMajorEvent } from '../public-events/models';
+
+export enum DefaultRedirectRoute {
+  MENU = 'MENU',
+  CALENDAR = 'CALENDAR',
+  MAJOR_EVENT = 'MAJOR_EVENT',
+  WALLET = 'WALLET',
+}
+
+type Assert<T extends true> = T;
+type IsEqual<Left, Right> = [Left] extends [Right] ? ([Right] extends [Left] ? true : false) : false;
+export type DefaultRedirectRouteContractAssertion = Assert<
+  IsEqual<`${DefaultRedirectRoute}`, SharedDefaultRedirectRoute>
+>;
+
+registerEnumType(DefaultRedirectRoute, { name: 'DefaultRedirectRoute' });
 
 @ObjectType()
 export class CurrentUserProfileContext {

@@ -1,6 +1,7 @@
 import type {
   CertificateDownload,
   DateTimeString,
+  DefaultRedirectRoute,
   EventType,
   GraphqlVariables,
   PublicCertificateValidation,
@@ -22,6 +23,16 @@ import {
   PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS,
   PUBLIC_SUBSCRIPTION_EVENT_FIELDS,
 } from './fragments';
+
+export interface CurrentUserDefaultRedirectQuery {
+  currentUserDefaultRedirect: DefaultRedirectRoute;
+}
+
+export const CURRENT_USER_DEFAULT_REDIRECT_QUERY = `
+  query CurrentUserDefaultRedirect {
+    currentUserDefaultRedirect
+  }
+`;
 
 export type PublicMajorEventsQueryVariables = GraphqlVariables & {
   query?: string | null;

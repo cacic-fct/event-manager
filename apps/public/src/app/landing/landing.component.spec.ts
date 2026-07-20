@@ -5,23 +5,23 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, Router } from '@angular/router';
 import { MediaMatcher } from '@angular/cdk/layout';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { PlatformStatsApiService } from './platform-stats-api.service';
 import { of } from 'rxjs';
 import { LandingComponent } from './landing.component';
+import { DefaultRedirectService } from './default-redirect.service';
 
 describe('LandingComponent', () => {
   let fixture: ComponentFixture<LandingComponent>;
   let authState: ReturnType<typeof signal<boolean>>;
   let login: ReturnType<typeof vi.fn>;
   let navigateByUrl: ReturnType<typeof vi.fn>;
-  let featureFlagValue: string | undefined;
+  let navigateToDefault: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     authState = signal(false);
     login = vi.fn().mockResolvedValue(undefined);
     navigateByUrl = vi.fn().mockResolvedValue(true);
-    featureFlagValue = '/app/menu';
+    navigateToDefault = vi.fn().mockResolvedValue(undefined);
 
     await TestBed.configureTestingModule({
       imports: [LandingComponent],
@@ -45,18 +45,7 @@ describe('LandingComponent', () => {
             }),
           },
         },
-        {
-          provide: PublicFeatureFlagService,
-          useValue: {
-            stringValue: vi.fn((key: string) => {
-              if (key === 'defaultLoginRedirectPath') {
-                return featureFlagValue;
-              }
-
-              return undefined;
-            }),
-          },
-        },
+        { provide: DefaultRedirectService, useValue: { navigateToDefault } },
         {
           provide: PlatformStatsApiService,
           useValue: {
@@ -72,45 +61,20 @@ describe('LandingComponent', () => {
     fixture = TestBed.createComponent(LandingComponent);
   });
 
-  it('passes the feature-flagged default redirect to login', async () => {
+  it('returns to the public root so the authenticated redirect can be resolved after login', async () => {
     await fixture.componentInstance.login();
 
-    expect(login).toHaveBeenCalledWith({ returnTo: '/app/menu' });
+    expect(login).toHaveBeenCalledWith({ returnTo: '/app' });
   });
 
-  it('navigates authenticated users to the feature-flagged default redirect', async () => {
+  it('navigates authenticated users to the resolved default redirect', async () => {
     authState.set(true);
 
     await fixture.componentInstance.login();
 
-    expect(navigateByUrl).toHaveBeenCalledWith('/app/menu');
+    expect(navigateToDefault).toHaveBeenCalledWith(TestBed.inject(Router));
+    expect(navigateByUrl).not.toHaveBeenCalled();
     expect(login).not.toHaveBeenCalled();
-  });
-
-  it('falls back to /app/calendar when the feature flag returns undefined', async () => {
-    featureFlagValue = undefined;
-
-    await fixture.componentInstance.login();
-
-    expect(login).toHaveBeenCalledWith({ returnTo: '/app/calendar' });
-  });
-
-  it('navigates authenticated users to /app/calendar when the feature flag returns undefined', async () => {
-    featureFlagValue = undefined;
-    authState.set(true);
-
-    await fixture.componentInstance.login();
-
-    expect(navigateByUrl).toHaveBeenCalledWith('/app/calendar');
-    expect(login).not.toHaveBeenCalled();
-  });
-
-  it('does not fall back when the feature flag returns an empty string', async () => {
-    featureFlagValue = '';
-
-    await fixture.componentInstance.login();
-
-    expect(login).toHaveBeenCalledWith({ returnTo: '' });
   });
 
   it('renders the institutional and certificate-validation footer links', () => {
