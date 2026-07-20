@@ -42,7 +42,7 @@
     @if (visibleFeed.majorEventItems.length === 0) {
     <p class="empty-text">{{ majorEventsEmptyText(currentState.data.majorEventItems.length) }}</p>
     } @else {
-    <mat-action-list>
+    <mat-action-list class="wrapping-list">
       @for ( subscription of visibleFeed.majorEventItems; track subscription.id ) {
       <a
         mat-list-item
@@ -71,7 +71,7 @@
     @if (visibleFeed.eventItems.length === 0) {
     <p class="empty-text">{{ eventItemsEmptyText(currentState.data.eventItems.length) }}</p>
     } @else {
-    <mat-action-list>
+    <mat-action-list class="wrapping-list">
       @for (item of visibleFeed.eventItems; track item.id) {
       <a mat-list-item [routerLink]="itemRoute(item)" [attr.aria-label]="'Abrir detalhes de ' + itemTitle(item)">
         <div matListItemIcon class="emoji-frame">
@@ -94,7 +94,7 @@
     @if (currentState.data.standaloneCertificateFolders.length === 0) {
     <p class="empty-text">Nenhum certificado avulso disponível.</p>
     } @else {
-    <mat-action-list>
+    <mat-action-list class="wrapping-list">
       @for (folder of currentState.data.standaloneCertificateFolders; track folder.id) {
       <button
         mat-list-item
