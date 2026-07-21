@@ -5,11 +5,14 @@
   <span>{{ isPreview() ? 'Pré-Visualização' : 'Evento' }}</span>
   <span class="toolbar-spacer"></span>
   @if (calendarDownloadUrl(); as calendarUrl) {
-  <a matIconButton [href]="calendarUrl" matTooltip="Baixar calendário" aria-label="Baixar calendário do evento">
+  <a
+    matIconButton
+    [href]="calendarUrl"
+    matTooltip="Baixar arquivo de calendário"
+    aria-label="Baixar arquivo de calendário do evento">
     <mat-icon>event</mat-icon>
   </a>
-  }
-  @if (!isPreview()) {
+  } @if (!isPreview()) {
   <button matIconButton type="button" matTooltip="Compartilhar" aria-label="Compartilhar evento" (click)="shareEvent()">
     <mat-icon>ios_share</mat-icon>
   </button>
@@ -30,14 +33,10 @@
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ currentState.message }}</p>
   </section>
-  } @else { @let data = currentState.data; @let event = data.event;
-
-  @if (data.preview) {
+  } @else { @let data = currentState.data; @let event = data.event; @if (data.preview) {
   <section class="preview-notice" aria-live="polite">
     <mat-icon aria-hidden="true">visibility</mat-icon>
-    <p>
-      Pré-visualização temporária. Este link expira em {{ data.preview.expiresAt | date: 'dd/MM/yyyy HH:mm' }}.
-    </p>
+    <p>Pré-visualização temporária. Este link expira em {{ data.preview.expiresAt | date: 'dd/MM/yyyy HH:mm' }}.</p>
   </section>
   }
 
@@ -91,9 +90,10 @@
       <mat-icon>event_busy</mat-icon>
       Cancelar inscrição
     </button>
-    } @else if (hasStandaloneSubscription(event)) {
-    @if (standaloneSubscriptionCooldownSeconds() > 0) {
-    <p class="rate-limit-message">Aguarde {{ standaloneSubscriptionCooldownSeconds() }}s para alterar sua inscrição novamente.</p>
+    } @else if (hasStandaloneSubscription(event)) { @if (standaloneSubscriptionCooldownSeconds() > 0) {
+    <p class="rate-limit-message">
+      Aguarde {{ standaloneSubscriptionCooldownSeconds() }}s para alterar sua inscrição novamente.
+    </p>
     }
     <button
       mat-flat-button
@@ -122,13 +122,12 @@
 
   @if (event.allowSubscription) {
   <p class="status-line">{{ subscriptionStatusLine(data) }}</p>
-  }
-
-  @if (attendeeFormLinks().length > 0) {
+  } @if (attendeeFormLinks().length > 0) {
   <section class="form-actions" aria-label="Formulários disponíveis">
     <h2>Formulários</h2>
     <div class="actions">
-      @for (formLink of attendeeFormLinks(); track formLink.formId + formLink.targetType + formLink.targetId + formLink.linkId) {
+      @for (formLink of attendeeFormLinks(); track formLink.formId + formLink.targetType + formLink.targetId +
+      formLink.linkId) {
       <a mat-stroked-button [routerLink]="formRoute(formLink)" [queryParams]="formQueryParams(formLink)">
         <mat-icon>{{ formLink.mode === 'results' ? 'bar_chart' : 'list_alt' }}</mat-icon>
         {{ formLink.mode === 'results' ? 'Resultados: ' + formLink.name : formLink.name }}
