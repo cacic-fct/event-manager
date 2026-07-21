@@ -2,7 +2,7 @@
   <section class="hero-section">
     <div class="hero-content">
       <div class="hero-visual">
-        <app-doodles class="doodles" />
+        <app-doodles class="doodles" [class.doodles-white]="isDarkSignal()" [class.doodles-black]="!isDarkSignal()" />
       </div>
       <div class="hero-text">
         <h1 class="hero-title">

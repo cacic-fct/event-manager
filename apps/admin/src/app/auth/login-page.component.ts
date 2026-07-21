@@ -1,13 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  PLATFORM_ID,
-  computed,
-  inject,
-  isDevMode,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject, isDevMode, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -33,7 +25,9 @@ import { CacicLogoComponent } from '@cacic-fct/shared-angular/cacic-logo';
   template: `
     <main class="login-page">
       <mat-card appearance="outlined">
-        <lib-cacic-logo [fillColor]="fillColor()"></lib-cacic-logo>
+        <lib-cacic-logo
+          [class.logo-bark-mode]="isDarkSignal()"
+          [class.logo-light-mode]="!isDarkSignal()"></lib-cacic-logo>
         <h1>Event Manager</h1>
         @if (isDevelopment) {
           <p>Entre com e-mail e senha para acessar o painel.</p>
@@ -41,12 +35,7 @@ import { CacicLogoComponent } from '@cacic-fct/shared-angular/cacic-logo';
           <form [formGroup]="form" class="login-form" (ngSubmit)="onSubmit()">
             <mat-form-field appearance="outline">
               <mat-label>E-mail</mat-label>
-              <input
-                matInput
-                type="email"
-                autocomplete="username"
-                formControlName="email"
-              />
+              <input matInput type="email" autocomplete="username" formControlName="email" />
               @if (form.controls.email.hasError('email')) {
                 <mat-error>Informe um e-mail válido.</mat-error>
               }
@@ -61,17 +50,13 @@ import { CacicLogoComponent } from '@cacic-fct/shared-angular/cacic-logo';
                 matInput
                 [type]="hidePassword() ? 'password' : 'text'"
                 autocomplete="current-password"
-                formControlName="password"
-              />
+                formControlName="password" />
               <button
                 mat-icon-button
                 matSuffix
                 type="button"
-                [attr.aria-label]="
-                  hidePassword() ? 'Mostrar senha' : 'Ocultar senha'
-                "
-                (click)="hidePassword.set(!hidePassword())"
-              >
+                [attr.aria-label]="hidePassword() ? 'Mostrar senha' : 'Ocultar senha'"
+                (click)="hidePassword.set(!hidePassword())">
                 <mat-icon>
                   {{ hidePassword() ? 'visibility' : 'visibility_off' }}
                 </mat-icon>
@@ -85,22 +70,12 @@ import { CacicLogoComponent } from '@cacic-fct/shared-angular/cacic-logo';
               <p class="error-message" role="alert">{{ errorMessage() }}</p>
             }
 
-            <button
-              mat-flat-button
-              color="primary"
-              type="submit"
-              [disabled]="form.invalid || isSubmitting()"
-            >
+            <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid || isSubmitting()">
               <mat-icon>login</mat-icon>
               {{ isSubmitting() ? 'Entrando...' : 'Entrar' }}
             </button>
 
-            <button
-              mat-button
-              type="button"
-              [disabled]="isSubmitting()"
-              (click)="onSsoClick()"
-            >
+            <button mat-button type="button" [disabled]="isSubmitting()" (click)="onSsoClick()">
               <mat-icon>account_circle</mat-icon>
               Entrar com SSO
             </button>
@@ -169,9 +144,6 @@ export class LoginPageComponent {
   protected readonly isSubmitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly isDarkSignal = signal(false);
-  protected readonly fillColor = computed(() =>
-    this.isDarkSignal() ? '#fff' : '#000',
-  );
   protected readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]],

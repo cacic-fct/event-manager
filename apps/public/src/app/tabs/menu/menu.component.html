@@ -1,5 +1,5 @@
 <mat-toolbar>
-  <lib-cacic-logo [fillColor]="fillColor()" />
+  <lib-cacic-logo [class.logo-bark-mode]="isDarkSignal()" [class.logo-light-mode]="!isDarkSignal()" />
 </mat-toolbar>
 
 <main class="global-container">

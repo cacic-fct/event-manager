@@ -4,7 +4,8 @@
   </a>
   <lib-cacic-logo
     routerLink="/"
-    [fillColor]="fillColor()"
+    [class.logo-bark-mode]="isDarkSignal()"
+    [class.logo-light-mode]="!isDarkSignal()"
     aria-label="Voltar ao início"
     matTooltip="Voltar ao início"
     role="link" />
@@ -147,8 +148,7 @@
 
     @if (downloadError()) {
     <p class="error-text" aria-live="polite">{{ downloadError() }}</p>
-    }
-    @if (downloadCooldownSeconds() > 0) {
+    } @if (downloadCooldownSeconds() > 0) {
     <p class="error-text" aria-live="polite">Aguarde {{ downloadCooldownSeconds() }}s para baixar novamente.</p>
     }
   </section>
@@ -186,6 +186,5 @@
     </section>
     }
   </section>
-  }
-  }
+  } }
 </main>

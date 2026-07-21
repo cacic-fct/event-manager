@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, ElementRef, inject, PLATFORM_ID, viewChild } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  inject,
+  PLATFORM_ID,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -34,8 +43,10 @@ export class LandingComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly platformStatsApi = inject(PlatformStatsApiService);
   private readonly defaultRedirect = inject(DefaultRedirectService);
+  private readonly isDarkSignal = signal(false);
 
   private readonly nextSection = viewChild<ElementRef<HTMLElement>>('nextSection');
 
@@ -50,6 +61,24 @@ export class LandingComponent {
       : of({ state: 'loading' as PlatformStatsLoadState, stats: null }),
     { initialValue: { state: 'loading' as PlatformStatsLoadState, stats: null } },
   );
+
+  constructor() {
+    if (isPlatformBrowser(this.platformId) && window.matchMedia) {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+
+      this.isDarkSignal.set(media.matches);
+
+      const listener = (event: MediaQueryListEvent) => {
+        this.isDarkSignal.set(event.matches);
+      };
+
+      media.addEventListener('change', listener);
+
+      this.destroyRef.onDestroy(() => {
+        media.removeEventListener('change', listener);
+      });
+    }
+  }
 
   async login(): Promise<void> {
     if (this.authService.isAuthenticated()) {

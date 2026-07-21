@@ -1,6 +1,10 @@
 <main class="auth-error-page">
   <section class="auth-error-panel" aria-labelledby="auth-error-title">
-    <lib-cacic-logo class="auth-error-logo" [fillColor]="logoFillColor()" aria-hidden="true" />
+    <lib-cacic-logo
+      class="auth-error-logo"
+      [class.logo-bark-mode]="isDarkSignal()"
+      [class.logo-light-mode]="!isDarkSignal()"
+      aria-hidden="true" />
 
     <div class="auth-error-copy">
       <h1 id="auth-error-title">{{ content().title }}</h1>

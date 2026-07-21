@@ -1,4 +1,21 @@
 .svg-container {
-  width: 100%;
-  height: auto;
+  display: inline-block;
+}
+
+:host {
+  color: #000;
+}
+
+:host(.logo-bark-mode),
+:host(.logo-white) {
+  color: #fff;
+}
+
+:host(.logo-light-mode),
+:host(.logo-black) {
+  color: #000;
+}
+
+:host .cls-1 {
+  fill: currentColor;
 }

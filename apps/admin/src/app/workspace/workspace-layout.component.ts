@@ -1,5 +1,14 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, PLATFORM_ID, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  PLATFORM_ID,
+  signal,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -68,7 +77,6 @@ export class WorkspaceLayoutComponent {
 
   private platformId = inject(PLATFORM_ID);
   private isDarkSignal = signal(false);
-  fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
   protected readonly navMode = signal<WorkspaceNavigationMode>('auto');
   protected readonly navModeLabel = computed(() => {
     switch (this.navMode()) {
