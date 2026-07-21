@@ -79,6 +79,7 @@
               "inlineCritical": false
             }
           },
+          "sourceMap": true,
           "budgets": [
             {
               "type": "initial",
