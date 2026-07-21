@@ -46,7 +46,7 @@ export class LandingComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformStatsApi = inject(PlatformStatsApiService);
   private readonly defaultRedirect = inject(DefaultRedirectService);
-  private readonly isDarkSignal = signal(false);
+  public readonly isDarkSignal = signal(false);
 
   private readonly nextSection = viewChild<ElementRef<HTMLElement>>('nextSection');
 

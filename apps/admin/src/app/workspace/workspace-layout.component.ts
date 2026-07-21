@@ -76,7 +76,7 @@ export class WorkspaceLayoutComponent {
   protected readonly navItems = computed(() => workspaceNavItems.filter((item) => this.canShowNavItem(item)));
 
   private platformId = inject(PLATFORM_ID);
-  private isDarkSignal = signal(false);
+  public isDarkSignal = signal(false);
   protected readonly navMode = signal<WorkspaceNavigationMode>('auto');
   protected readonly navModeLabel = computed(() => {
     switch (this.navMode()) {

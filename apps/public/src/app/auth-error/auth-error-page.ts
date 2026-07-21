@@ -64,7 +64,7 @@ export class AuthErrorPage {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
-  private readonly isDarkSignal = signal(false);
+  public readonly isDarkSignal = signal(false);
   private readonly routeContent = signal<AuthErrorPageContent>(DEFAULT_AUTH_ERROR_CONTENT);
 
   readonly content = computed(() => this.contentOverride() ?? this.routeContent());

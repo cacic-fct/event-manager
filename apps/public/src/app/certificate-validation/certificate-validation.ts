@@ -81,7 +81,7 @@ export class CertificateValidation {
   private pendingCertificateId: string | null = null;
   private nextValidationSource: ValidationSource | null = null;
   private currentRouteCertificateId: string | null = null;
-  private isDarkSignal = signal(false);
+  public isDarkSignal = signal(false);
   private readonly notFoundCertificateId = signal<string | null>(null);
 
   readonly certificateLookupModel = signal({
