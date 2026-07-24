@@ -37,3 +37,16 @@ export function watchReplayableEventSource<T>(url: string, options: ReplayableSs
     return () => source.close();
   });
 }
+
+export function decodeTypedSseEvent<T, K extends string>(event: MessageEvent<string>, type: string, key: K): T | null {
+  const parsed = JSON.parse(event.data) as { type: string } & Partial<Record<K, T>>;
+  const value = parsed[key];
+  return parsed.type === type && value ? value : null;
+}
+
+export function watchReplayableEventSourcePing(url: string, errorMessage: string): Observable<void> {
+  return watchReplayableEventSource(url, {
+    decode: () => undefined,
+    errorMessage,
+  });
+}

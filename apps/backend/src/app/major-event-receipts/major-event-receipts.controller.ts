@@ -568,7 +568,6 @@ export class MajorEventReceiptsController {
   streamPendingValidationQueue(
     @Query('majorEventId') majorEventId: string | undefined,
     @Headers('last-event-id') lastEventId: string | undefined,
-    @Req() request: RequestWithUser,
   ): Observable<MessageEvent> {
     const normalizedMajorEventId = majorEventId?.trim() || undefined;
 
@@ -584,7 +583,7 @@ export class MajorEventReceiptsController {
     );
 
     return this.replay.replay(
-      this.replay.scope('receipt-validation-queue', normalizedMajorEventId, request.user?.sub ?? request.headers.cookie),
+      this.replay.scope('receipt-validation-queue', normalizedMajorEventId),
       lastEventId,
       snapshots,
     );

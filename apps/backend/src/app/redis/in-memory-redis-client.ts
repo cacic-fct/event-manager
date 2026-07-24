@@ -77,12 +77,27 @@ export class InMemoryRedisClient implements OnModuleDestroy {
     const list = this.lists.get(key) ?? [];
     const normalizedStart = start < 0 ? Math.max(list.length + start, 0) : start;
     const normalizedStop = stop < 0 ? list.length + stop : stop;
+    if (normalizedStop < 0 || normalizedStart > normalizedStop || normalizedStart >= list.length) {
+      return [];
+    }
     return list.slice(normalizedStart, normalizedStop + 1);
   }
 
   async ltrim(key: string, start: number, stop: number): Promise<'OK'> {
+    this.deleteIfExpired(key);
+    if (this.values.has(key) || this.hashes.has(key)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    }
+    if (!this.lists.has(key)) {
+      return 'OK';
+    }
     const values = await this.lrange(key, start, stop);
-    this.lists.set(key, values);
+    if (values.length === 0) {
+      this.lists.delete(key);
+      this.expirations.delete(key);
+    } else {
+      this.lists.set(key, values);
+    }
     return 'OK';
   }
 

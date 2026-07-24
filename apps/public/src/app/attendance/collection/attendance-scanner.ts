@@ -114,6 +114,8 @@ export class AttendanceScanner implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (attendances) => this.attendances.set(attendances),
+        error: () =>
+          this.snackbar.open('Não foi possível acompanhar as presenças em tempo real.', 'Fechar', { duration: 3500 }),
       });
   }
 

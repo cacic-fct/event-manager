@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
+import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
 
@@ -142,13 +142,12 @@ export class AttendanceCollectionApiService {
 
   watchFeed(eventId: string): Observable<AttendanceScannerFeedItem[]> {
     return watchReplayableEventSource(`/api/attendance-collection/events/${encodeURIComponent(eventId)}/feed/events`, {
-      decode: (event) => {
-        const parsed = JSON.parse(event.data) as {
-          type: string;
-          attendances?: AttendanceScannerFeedItem[];
-        };
-        return parsed.type === 'event-attendance-scanner-feed' && parsed.attendances ? parsed.attendances : null;
-      },
+      decode: (event) =>
+        decodeTypedSseEvent<AttendanceScannerFeedItem[], 'attendances'>(
+          event,
+          'event-attendance-scanner-feed',
+          'attendances',
+        ),
       errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
     });
   }

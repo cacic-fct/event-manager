@@ -34,11 +34,12 @@ export class EventFormResultEventsService {
       },
     } satisfies MessageEvent;
 
+    subject?.next(event);
+
     try {
       await this.replay.record(this.replay.scope('event-form-results', formId), event);
     } catch (error) {
       this.logger.warn(error instanceof Error ? error.message : 'Could not record form result SSE replay event.');
     }
-    subject?.next(event);
   }
 }

@@ -830,7 +830,7 @@ export class CurrentUserRealtimeEventsController {
     return this.replay.replay(
       this.replay.scope(
         'current-user-events-realtime',
-        request.headers.cookie,
+        this.readCookie(request, AUTH_SESSION_COOKIE_NAME),
         normalizedMajorEventIds.join(','),
         normalizedEventIds.join(','),
       ),
@@ -850,5 +850,26 @@ export class CurrentUserRealtimeEventsController {
           .filter(Boolean),
       ),
     ];
+  }
+
+  private readCookie(request: Request, name: string): string | null {
+    const parsedCookie = (request as RequestWithCookies).cookies?.[name];
+    if (typeof parsedCookie === 'string') {
+      return parsedCookie;
+    }
+
+    const cookieHeader = request.headers.cookie;
+    if (!cookieHeader) {
+      return null;
+    }
+
+    for (const cookie of cookieHeader.split(';')) {
+      const [cookieName, ...rest] = cookie.trim().split('=');
+      if (cookieName === name && rest.length > 0) {
+        return decodeURIComponent(rest.join('='));
+      }
+    }
+
+    return null;
   }
 }

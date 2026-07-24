@@ -116,7 +116,14 @@ export class EventFormsController {
     @Headers('last-event-id') lastEventId: string | undefined,
   ): Observable<MessageEvent> {
     return this.replay.replay(
-      this.replay.scope('event-form-results', formId),
+      this.replay.scope(
+        'event-form-current-user-results',
+        formId,
+        request.user?.sub,
+        targetType,
+        eventId,
+        majorEventId,
+      ),
       lastEventId,
       this.forms.watchCurrentUserResults(
         { req: request },

@@ -3,7 +3,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { firstValueFrom, Subscription } from 'rxjs';
-import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
+import { watchReplayableEventSourcePing } from '@cacic-fct/shared-angular';
 import {
   Event,
   EventForm,
@@ -778,10 +778,10 @@ export class WorkspaceFormsService {
     }
 
     let stream: Subscription | null = null;
-    stream = watchReplayableEventSource(`/api/event-forms/${encodeURIComponent(form.id)}/results/events`, {
-      decode: () => undefined,
-      errorMessage: 'Não foi possível acompanhar os resultados em tempo real.',
-    }).subscribe({
+    stream = watchReplayableEventSourcePing(
+      `/api/event-forms/${encodeURIComponent(form.id)}/results/events`,
+      'Não foi possível acompanhar os resultados em tempo real.',
+    ).subscribe({
       next: () => void this.loadResults(),
       error: () => {
         if (this.resultsStream === stream) {

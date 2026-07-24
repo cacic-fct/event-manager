@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
+import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { Observable, map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 
@@ -105,13 +105,8 @@ export class ReceiptValidationApiService {
   watchQueue(majorEventId?: string): Observable<ReceiptValidationQueue> {
     const queryString = majorEventId ? `?majorEventId=${encodeURIComponent(majorEventId)}` : '';
     return watchReplayableEventSource(`/api/major-event-receipts/admin/queue/events${queryString}`, {
-      decode: (event) => {
-        const parsed = JSON.parse(event.data) as {
-          type: string;
-          queue?: ReceiptValidationQueue;
-        };
-        return parsed.type === 'receipt-validation-queue' && parsed.queue ? parsed.queue : null;
-      },
+      decode: (event) =>
+        decodeTypedSseEvent<ReceiptValidationQueue, 'queue'>(event, 'receipt-validation-queue', 'queue'),
       errorMessage: 'Não foi possível acompanhar a fila de comprovantes.',
     });
   }

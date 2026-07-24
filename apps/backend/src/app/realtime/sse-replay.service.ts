@@ -17,10 +17,7 @@ interface StoredSseEvent {
 
 @Injectable()
 export class SseReplayService {
-  private readonly cursorSecret =
-    process.env.SSE_REPLAY_CURSOR_SECRET?.trim() ||
-    process.env.PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET?.trim() ||
-    'local-development-sse-replay-secret';
+  private readonly cursorSecret = this.readCursorSecret();
 
   constructor(private readonly redis: Redis) {}
 
@@ -48,6 +45,11 @@ export class SseReplayService {
 
       const sourceSubscription = source.subscribe({
         next: (event) => {
+          if (this.isHeartbeat(event)) {
+            subscriber.next(event);
+            return;
+          }
+
           void this.publish(scope, event)
             .then((stored) => {
               if (replayFinished) {
@@ -56,7 +58,7 @@ export class SseReplayService {
                 buffered.push(stored);
               }
             })
-            .catch((error: unknown) => subscriber.error(error));
+            .catch(() => subscriber.next(event));
         },
         error: (error: unknown) => subscriber.error(error),
         complete: () => subscriber.complete(),
@@ -75,22 +77,7 @@ export class SseReplayService {
         })
         .catch((error: unknown) => subscriber.error(error));
 
-      const replayPoll =
-        typeof globalThis.setInterval === 'function'
-          ? globalThis.setInterval(() => {
-              if (!replayFinished) {
-                return;
-              }
-              void this.readReplay(scope, lastDeliveredId)
-                .then((events) => events.forEach(deliver))
-                .catch((error: unknown) => subscriber.error(error));
-            }, 1_000)
-          : null;
-
       return () => {
-        if (replayPoll !== null) {
-          globalThis.clearInterval(replayPoll);
-        }
         sourceSubscription.unsubscribe();
       };
     });
@@ -171,6 +158,23 @@ export class SseReplayService {
     return createHash('sha256')
       .update(JSON.stringify({ data: event.data, type: event.type, retry: event.retry ?? 3_000 }))
       .digest('base64url');
+  }
+
+  private isHeartbeat(event: MessageEvent): boolean {
+    return typeof event.data === 'object' && event.data !== null && 'type' in event.data && event.data.type === 'heartbeat';
+  }
+
+  private readCursorSecret(): string {
+    const configuredSecret = process.env.SSE_REPLAY_CURSOR_SECRET?.trim();
+    if (configuredSecret) {
+      return configuredSecret;
+    }
+
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('SSE_REPLAY_CURSOR_SECRET is required in production.');
+    }
+
+    return 'local-development-sse-replay-secret';
   }
 
   private parseStoredEvent(value: string): StoredSseEvent | null {

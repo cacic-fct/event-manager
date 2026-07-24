@@ -26,10 +26,32 @@ describe('EventFormResultEventsService', () => {
         },
       },
     ]);
-    expect(replay.record).toHaveBeenCalledWith(
+    expect(replay.record).toHaveBeenCalledTimes(2);
+    expect(replay.record).toHaveBeenNthCalledWith(
+      1,
       'event-form-results:scope',
       expect.objectContaining({ data: expect.objectContaining({ formId: 'form-1' }) }),
     );
+    expect(replay.record).toHaveBeenNthCalledWith(
+      2,
+      'event-form-results:scope',
+      expect.objectContaining({ data: expect.objectContaining({ formId: 'form-2' }) }),
+    );
+    subscription.unsubscribe();
+  });
+
+  it('notifies subscribers when replay persistence fails', async () => {
+    const replay = {
+      scope: jest.fn(() => 'event-form-results:scope'),
+      record: jest.fn().mockRejectedValue(new Error('Redis unavailable')),
+    };
+    const service = new EventFormResultEventsService(replay as never);
+    const events: unknown[] = [];
+    const subscription = service.watchResults('form-1').subscribe((event) => events.push(event));
+
+    await service.emitResultsDelta('form-1');
+
+    expect(events).toHaveLength(1);
     subscription.unsubscribe();
   });
 });

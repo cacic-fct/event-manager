@@ -261,7 +261,7 @@ describe('CurrentUserRealtimeEventsController', () => {
     expect(Reflect.getMetadata(IS_PUBLIC_KEY, CurrentUserRealtimeEventsController.prototype.stream)).toBe(true);
   });
 
-  it('normalizes repeated and comma-separated event ids before opening the stream', () => {
+  it('normalizes event ids and replays the authenticated session stream from Last-Event-ID', () => {
     const realtime = {
       stream: jest.fn().mockReturnValue('stream'),
     };
@@ -270,12 +270,24 @@ describe('CurrentUserRealtimeEventsController', () => {
       replay: jest.fn((_scope, _lastEventId, stream) => stream),
     };
     const controller = new CurrentUserRealtimeEventsController(realtime as never, replay as never);
-    const request = { headers: {} } as Request;
+    const request = {
+      cookies: {
+        [AUTH_SESSION_COOKIE_NAME]: 'session-1',
+      },
+      headers: {},
+    } as Request;
 
     expect(
-      controller.stream(request, [' major-1,major-2 ', 'major-1'], ' event-1,,event-2 '),
+      controller.stream(request, [' major-1,major-2 ', 'major-1'], ' event-1,,event-2 ', 'sse1.cursor'),
     ).toBe('stream');
     expect(realtime.stream).toHaveBeenCalledWith(request, ['major-1', 'major-2'], ['event-1', 'event-2']);
+    expect(replay.scope).toHaveBeenCalledWith(
+      'current-user-events-realtime',
+      'session-1',
+      'major-1,major-2',
+      'event-1,event-2',
+    );
+    expect(replay.replay).toHaveBeenCalledWith('scope', 'sse1.cursor', 'stream');
   });
 });
 

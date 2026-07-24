@@ -70,6 +70,74 @@ describe('SseReplayService', () => {
     expect(messages).toHaveLength(1);
     subscription.unsubscribe();
   });
+
+  it('does not poll Redis after replaying the initial event set', async () => {
+    jest.useFakeTimers();
+    const service = createService();
+    const scope = service.scope('event-form-results', 'form-1');
+    const source = new Subject<{ data: object }>();
+    const subscription = service.replay(scope, undefined, source).subscribe();
+
+    await flushPromises();
+    jest.advanceTimersByTime(60_000);
+
+    expect(jest.getTimerCount()).toBe(0);
+    subscription.unsubscribe();
+  });
+
+  it('delivers a live event when replay persistence is unavailable', async () => {
+    const redis = new InMemoryRedisClient();
+    const lrange = jest.spyOn(redis, 'lrange');
+    const service = new SseReplayService(redis as never);
+    const scope = service.scope('event-form-results', 'form-1');
+    const source = new Subject<{ data: object }>();
+    const messages: unknown[] = [];
+    const errors: unknown[] = [];
+    const subscription = service.replay(scope, undefined, source).subscribe({
+      next: (event) => messages.push(event),
+      error: (error: unknown) => errors.push(error),
+    });
+
+    await flushPromises();
+    lrange.mockRejectedValueOnce(new Error('Redis unavailable'));
+    source.next({ data: { revision: 1 } });
+    await flushPromises();
+
+    expect(messages).toEqual([{ data: { revision: 1 } }]);
+    expect(errors).toEqual([]);
+    subscription.unsubscribe();
+  });
+
+  it('does not persist heartbeat events', async () => {
+    const redis = new InMemoryRedisClient();
+    const lpush = jest.spyOn(redis, 'lpush');
+    const service = new SseReplayService(redis as never);
+    const scope = service.scope('current-user-events-realtime', 'session-1');
+    const source = new Subject<{ data: { type: string } }>();
+    const messages: unknown[] = [];
+    const subscription = service.replay(scope, undefined, source).subscribe((event) => messages.push(event));
+
+    await flushPromises();
+    source.next({ data: { type: 'heartbeat' } });
+    await flushPromises();
+
+    expect(messages).toEqual([{ data: { type: 'heartbeat' } }]);
+    expect(lpush).not.toHaveBeenCalled();
+    subscription.unsubscribe();
+  });
+
+  it('matches Redis list behavior for missing lists and negative underflow', async () => {
+    const redis = new InMemoryRedisClient();
+
+    await expect(redis.lrange('missing', 0, -2)).resolves.toEqual([]);
+    await expect(redis.ltrim('missing', 0, -1)).resolves.toBe('OK');
+    await expect(redis.exists('missing')).resolves.toBe(0);
+
+    await redis.lpush('list', 'three', 'two', 'one');
+    await expect(redis.lrange('list', 0, -5)).resolves.toEqual([]);
+    await redis.ltrim('list', 0, -5);
+    await expect(redis.exists('list')).resolves.toBe(0);
+  });
 });
 
 function createService(): SseReplayService {
