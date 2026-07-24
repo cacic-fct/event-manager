@@ -42,7 +42,12 @@ export class EventFormPublicationWorkflowService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Publish], {
       eventFormId: form.id,
     });
-    await assertCanManageLinkedTargets(this.authorizationPolicy, user, formTargetInputs(form), Permission.EventForm.Publish);
+    await assertCanManageLinkedTargets(
+      this.authorizationPolicy,
+      user,
+      formTargetInputs(form),
+      Permission.EventForm.Publish,
+    );
 
     if (scheduledPublishAt && isFuture(scheduledPublishAt)) {
       const scheduled = await this.prisma.$transaction(async (tx) => {
@@ -76,11 +81,7 @@ export class EventFormPublicationWorkflowService {
     return this.publishFormNow(form.id, user?.sub, user);
   }
 
-  async publishLecturerForm(
-    context: GraphqlContext,
-    formId: string,
-    eventId: string,
-  ): Promise<EventFormModel> {
+  async publishLecturerForm(context: GraphqlContext, formId: string, eventId: string): Promise<EventFormModel> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     await assertPersonIsEventLecturer(this.prisma, person.id, eventId);
     const form = await requireEventForm(this.prisma, formId);
@@ -93,16 +94,22 @@ export class EventFormPublicationWorkflowService {
     }
     const ownedExclusivelyByEvent = form.ownerEventId === eventId && !form.ownerMajorEventId;
     if (!ownedExclusivelyByEvent || form.links.some((item) => item.id !== link.id)) {
-      throw new ForbiddenException('Publicação por ministrantes só está disponível para formulários exclusivos deste evento.');
+      throw new ForbiddenException(
+        'Publicação por ministrantes só está disponível para formulários exclusivos deste evento.',
+      );
     }
 
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
-    return this.publishFormNow(form.id, authenticatedUser?.sub ?? person.id, authenticatedUser ?? {
-      id: person.id,
-      name: person.name,
-      email: person.email,
-      type: AuditLogActorType.USER,
-    });
+    return this.publishFormNow(
+      form.id,
+      authenticatedUser?.sub ?? person.id,
+      authenticatedUser ?? {
+        id: person.id,
+        name: person.name,
+        email: person.email,
+        type: AuditLogActorType.USER,
+      },
+    );
   }
 
   async unpublishForm(formId: string, user: AuthenticatedUser | undefined): Promise<EventFormModel> {
@@ -110,7 +117,12 @@ export class EventFormPublicationWorkflowService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Publish], {
       eventFormId: form.id,
     });
-    await assertCanManageLinkedTargets(this.authorizationPolicy, user, formTargetInputs(form), Permission.EventForm.Publish);
+    await assertCanManageLinkedTargets(
+      this.authorizationPolicy,
+      user,
+      formTargetInputs(form),
+      Permission.EventForm.Publish,
+    );
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const unpublished = await tx.eventForm.update({

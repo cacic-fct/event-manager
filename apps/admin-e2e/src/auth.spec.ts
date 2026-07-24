@@ -37,10 +37,12 @@ test('login page submits development password credentials without a real Keycloa
   await page.getByRole('textbox', { name: 'Senha' }).fill('1');
   await page.getByRole('button', { name: /^Entrar$/ }).click();
 
-  await expect.poll(() => passwordLoginBody).toEqual({
-    email: 'aluno@unesp.br',
-    password: '1',
-  });
+  await expect
+    .poll(() => passwordLoginBody)
+    .toEqual({
+      email: 'aluno@unesp.br',
+      password: '1',
+    });
   await expect(page).toHaveURL(/\/admin\/?$/);
 });
 

@@ -821,11 +821,7 @@ describe('EventSubscriptionsResolver', () => {
       ['event-2', 'event-3'],
       SubscriptionStatus.CONFIRMED,
     );
-    expect(counters.refresh).toHaveBeenNthCalledWith(
-      1,
-      tx,
-      expect.arrayContaining(['event-1', 'event-2', 'event-3']),
-    );
+    expect(counters.refresh).toHaveBeenNthCalledWith(1, tx, expect.arrayContaining(['event-1', 'event-2', 'event-3']));
     expect(counters.refresh).toHaveBeenNthCalledWith(2, tx, ['event-2', 'event-3']);
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -4,10 +4,7 @@ import {
   publishDueScheduledEventForms,
   publishEventFormNow,
 } from './event-form-publication';
-import {
-  normalizeFormName,
-  replaceEventFormLinks,
-} from './event-form-service-support';
+import { normalizeFormName, replaceEventFormLinks } from './event-form-service-support';
 import { formRecord } from './event-form.spec-support';
 
 describe('event form publication and service support helpers', () => {
@@ -15,19 +12,24 @@ describe('event form publication and service support helpers', () => {
     const prisma = {
       $transaction: jest.fn(async (callback: (tx: unknown) => unknown) => callback(prisma)),
       eventForm: {
-        findMany: jest.fn()
+        findMany: jest
+          .fn()
           .mockResolvedValueOnce([{ id: 'form-1' }, { id: 'form-2' }])
           .mockResolvedValueOnce([formRecord({ id: 'form-3' })]),
         findFirst: jest.fn((args: { where: { id: string } }) => Promise.resolve(formRecord({ id: args.where.id }))),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: jest.fn((args: { where: { id: string } }) => Promise.resolve(formRecord({
-          id: args.where.id,
-          publicationState: PublicationState.PUBLISHED,
-          scheduledPublishAt: null,
-          publishedAt: new Date('2026-07-01T12:00:00.000Z'),
-          unpublishedAt: null,
-          publicationUpdatedBy: null,
-        }))),
+        findUniqueOrThrow: jest.fn((args: { where: { id: string } }) =>
+          Promise.resolve(
+            formRecord({
+              id: args.where.id,
+              publicationState: PublicationState.PUBLISHED,
+              scheduledPublishAt: null,
+              publishedAt: new Date('2026-07-01T12:00:00.000Z'),
+              unpublishedAt: null,
+              publicationUpdatedBy: null,
+            }),
+          ),
+        ),
       },
     };
     const notifications = {
@@ -76,9 +78,13 @@ describe('event form publication and service support helpers', () => {
     const prisma = {
       $transaction: jest.fn(async (callback: (tx: unknown) => unknown) => callback(prisma)),
       eventForm: {
-        findFirst: jest.fn().mockResolvedValue(formRecord({ id: 'form-1', publicationState: PublicationState.SCHEDULED })),
+        findFirst: jest
+          .fn()
+          .mockResolvedValue(formRecord({ id: 'form-1', publicationState: PublicationState.SCHEDULED })),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        findUniqueOrThrow: jest.fn().mockResolvedValue(formRecord({ id: 'form-1', publicationState: PublicationState.PUBLISHED })),
+        findUniqueOrThrow: jest
+          .fn()
+          .mockResolvedValue(formRecord({ id: 'form-1', publicationState: PublicationState.PUBLISHED })),
       },
     };
     const tx = {
@@ -88,8 +94,9 @@ describe('event form publication and service support helpers', () => {
       },
     };
 
-    await expect(publishEventFormNow(prisma as never, formNotifications as never, 'form-1', 'admin-user')).resolves
-      .toEqual(expect.objectContaining({ id: 'form-1', publicationState: PublicationState.PUBLISHED }));
+    await expect(
+      publishEventFormNow(prisma as never, formNotifications as never, 'form-1', 'admin-user'),
+    ).resolves.toEqual(expect.objectContaining({ id: 'form-1', publicationState: PublicationState.PUBLISHED }));
     expect(formNotifications.notifyEligiblePeople).toHaveBeenCalledWith(expect.objectContaining({ id: 'form-1' }));
 
     await replaceEventFormLinks(

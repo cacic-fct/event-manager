@@ -26,7 +26,10 @@ describe('typesense writer helpers', () => {
       ],
     });
 
-    expect(client.rootCollections.create).toHaveBeenCalledWith({ name: 'events', fields: [{ name: 'id', type: 'string' }] });
+    expect(client.rootCollections.create).toHaveBeenCalledWith({
+      name: 'events',
+      fields: [{ name: 'id', type: 'string' }],
+    });
     expect(client.collection.update).toHaveBeenCalledWith({
       fields: [{ name: 'status', type: 'string', facet: true }],
     });

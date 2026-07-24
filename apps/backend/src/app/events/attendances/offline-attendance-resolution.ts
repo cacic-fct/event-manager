@@ -2,7 +2,13 @@ import type {
   OfflineEventAttendanceCommitResult,
   OfflineEventAttendanceResolutionIssue,
 } from '@cacic-fct/shared-data-types';
-import { BadRequestException, ConflictException, ForbiddenException, HttpException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  HttpException,
+  NotFoundException,
+} from '@nestjs/common';
 
 export type OfflineAttendanceResolution = {
   issue: OfflineEventAttendanceResolutionIssue;

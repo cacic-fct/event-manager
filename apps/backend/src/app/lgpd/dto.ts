@@ -20,5 +20,4 @@ export class LgpdDeletionRequestDto extends LgpdUserRequestDto {
   @ApiProperty({ example: 'delete-request-id' })
   @IsString()
   requestId!: string;
-
 }

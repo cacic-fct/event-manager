@@ -118,11 +118,9 @@ export class PublicMajorEventsResolver {
     }
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
-    return mappedMajorEvents
-      .sort(
-        (left, right) =>
-          (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-      );
+    return mappedMajorEvents.sort(
+      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+    );
   }
 
   @Query(() => PublicMajorEvent, {

@@ -93,17 +93,20 @@ export class LecturerProfilesResolver {
         update: data,
         select: LECTURER_PROFILE_SELECT,
       });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.LECTURER_PROFILE,
-        entityId: profile.id,
-        entityLabel: profile.displayName,
-        operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
-        actor: this.getUser(context),
-        before: this.toAuditSnapshot(existing),
-        after: this.toAuditSnapshot(profile),
-        summary: existing ? 'Perfil de palestrante atualizado.' : 'Perfil de palestrante criado.',
-        scope: { permission: Permission.Person.Update },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.LECTURER_PROFILE,
+          entityId: profile.id,
+          entityLabel: profile.displayName,
+          operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          before: this.toAuditSnapshot(existing),
+          after: this.toAuditSnapshot(profile),
+          summary: existing ? 'Perfil de palestrante atualizado.' : 'Perfil de palestrante criado.',
+          scope: { permission: Permission.Person.Update },
+        },
+        tx,
+      );
       return profile;
     });
   }
@@ -144,17 +147,22 @@ export class LecturerProfilesResolver {
         update: data,
         select: LECTURER_PROFILE_SELECT,
       });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.LECTURER_PROFILE,
-        entityId: profile.id,
-        entityLabel: profile.displayName,
-        operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
-        actor: authenticatedUser,
-        before: this.toAuditSnapshot(existing),
-        after: this.toAuditSnapshot(profile),
-        summary: existing ? 'Perfil de palestrante atualizado pelo usuário.' : 'Perfil de palestrante criado pelo usuário.',
-        scope: { permission: Permission.Person.Update },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.LECTURER_PROFILE,
+          entityId: profile.id,
+          entityLabel: profile.displayName,
+          operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+          actor: authenticatedUser,
+          before: this.toAuditSnapshot(existing),
+          after: this.toAuditSnapshot(profile),
+          summary: existing
+            ? 'Perfil de palestrante atualizado pelo usuário.'
+            : 'Perfil de palestrante criado pelo usuário.',
+          scope: { permission: Permission.Person.Update },
+        },
+        tx,
+      );
       return profile;
     });
   }
@@ -198,10 +206,7 @@ export class LecturerProfilesResolver {
     };
   }
 
-  private buildProfileData(
-    input: LecturerProfileUpsertInput,
-    actorId: string | undefined,
-  ): LecturerProfileData {
+  private buildProfileData(input: LecturerProfileUpsertInput, actorId: string | undefined): LecturerProfileData {
     const displayName = input.displayName.trim();
     const biography = input.biography?.trim() || null;
 
@@ -232,7 +237,11 @@ export class LecturerProfilesResolver {
 
     const hasPlus = raw.startsWith('+');
     const digits = raw.replace(/\D/g, '');
-    const normalized = hasPlus ? `+${digits}` : digits.length === 10 || digits.length === 11 ? `+55${digits}` : `+${digits}`;
+    const normalized = hasPlus
+      ? `+${digits}`
+      : digits.length === 10 || digits.length === 11
+        ? `+55${digits}`
+        : `+${digits}`;
 
     if (!/^\+[1-9]\d{7,14}$/.test(normalized)) {
       throw new BadRequestException('WhatsApp must be a valid international phone number.');

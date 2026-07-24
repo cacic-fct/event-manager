@@ -14,10 +14,16 @@ export class LoginUrlResponseDto {
 }
 
 export class RefreshSessionResponseDto {
-  @ApiProperty({ description: 'Access-token expiration timestamp in milliseconds since epoch.', example: 1767225599000 })
+  @ApiProperty({
+    description: 'Access-token expiration timestamp in milliseconds since epoch.',
+    example: 1767225599000,
+  })
   expiresAt!: number;
 
-  @ApiProperty({ description: 'Server-side session expiration timestamp in milliseconds since epoch.', example: 1767229199000 })
+  @ApiProperty({
+    description: 'Server-side session expiration timestamp in milliseconds since epoch.',
+    example: 1767229199000,
+  })
   sessionExpiresAt!: number;
 }
 
@@ -31,14 +37,20 @@ export class PasswordLoginRequestDto {
   @MinLength(1)
   password!: string;
 
-  @ApiPropertyOptional({ description: 'Optional post-login destination for clients that track it.', example: '/admin/' })
+  @ApiPropertyOptional({
+    description: 'Optional post-login destination for clients that track it.',
+    example: '/admin/',
+  })
   @IsOptional()
   @IsString()
   returnTo?: string;
 }
 
 export class PasswordLoginResponseDto extends RefreshSessionResponseDto {
-  @ApiProperty({ description: 'Authenticated user resolved from the created session.', type: () => AuthenticatedUserResponseDto })
+  @ApiProperty({
+    description: 'Authenticated user resolved from the created session.',
+    type: () => AuthenticatedUserResponseDto,
+  })
   user!: PublicAuthenticatedUser;
 }
 
@@ -62,7 +74,11 @@ export class PermissionEvaluationResponseDto {
 }
 
 export class RealmAccessDto {
-  @ApiProperty({ description: 'Realm roles present in the access token.', example: ['offline_access', 'uma_authorization'], type: [String] })
+  @ApiProperty({
+    description: 'Realm roles present in the access token.',
+    example: ['offline_access', 'uma_authorization'],
+    type: [String],
+  })
   roles!: string[];
 }
 
@@ -70,16 +86,26 @@ export class AuthenticatedUserResponseDto {
   @ApiProperty({ description: 'Realm-level access information extracted from the token.', type: RealmAccessDto })
   realm_access!: RealmAccessDto;
 
-  @ApiPropertyOptional({ description: 'Subject identifier from the authenticated identity.', example: '018f47b1-5c4e-7c7b-9e6f-0c8c2f7281ad' })
+  @ApiPropertyOptional({
+    description: 'Subject identifier from the authenticated identity.',
+    example: '018f47b1-5c4e-7c7b-9e6f-0c8c2f7281ad',
+  })
   sub?: string;
 
   @ApiPropertyOptional({ description: 'Preferred username claim from the identity provider.', example: 'joao.silva' })
   preferredUsername?: string;
 
-  @ApiPropertyOptional({ description: 'Email claim when provided by the identity provider.', example: 'joao@cacic.com.br' })
+  @ApiPropertyOptional({
+    description: 'Email claim when provided by the identity provider.',
+    example: 'joao@cacic.com.br',
+  })
   email?: string;
 
-  @ApiProperty({ description: 'Normalized role list used by application authorization checks.', example: ['admin', 'event-manager'], type: [String] })
+  @ApiProperty({
+    description: 'Normalized role list used by application authorization checks.',
+    example: ['admin', 'event-manager'],
+    type: [String],
+  })
   roles!: string[];
 
   @ApiProperty({
@@ -89,7 +115,11 @@ export class AuthenticatedUserResponseDto {
   })
   permissions!: string[];
 
-  @ApiProperty({ description: 'OIDC scopes granted to the authenticated session.', example: ['openid', 'profile', 'email', 'identity-document'], type: [String] })
+  @ApiProperty({
+    description: 'OIDC scopes granted to the authenticated session.',
+    example: ['openid', 'profile', 'email', 'identity-document'],
+    type: [String],
+  })
   oidcScopes!: string[];
 
   @ApiProperty({ description: 'Legacy alias for oidcScopes.', example: ['openid', 'profile', 'email'], type: [String] })
@@ -99,7 +129,12 @@ export class AuthenticatedUserResponseDto {
     description: 'Public allowlist of token claims needed by client applications.',
     type: 'object',
     additionalProperties: true,
-    example: { iss: 'https://sso.cacic.com.br/realms/cacic-sso', aud: 'cacic-event-manager', typ: 'Bearer', is_onboarded: true },
+    example: {
+      iss: 'https://sso.cacic.com.br/realms/cacic-sso',
+      aud: 'cacic-event-manager',
+      typ: 'Bearer',
+      is_onboarded: true,
+    },
   })
   claims!: Record<string, unknown>;
 }

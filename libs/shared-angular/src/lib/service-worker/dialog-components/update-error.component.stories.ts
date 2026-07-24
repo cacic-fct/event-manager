@@ -62,4 +62,3 @@ export const Playground: Story = {
     await expect(canvas.getByText('Erro ao atualizar o aplicativo')).toBeVisible();
   },
 };
-

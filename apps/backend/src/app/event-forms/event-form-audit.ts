@@ -121,7 +121,11 @@ function eventFormResponseAuditSnapshot(response: EventFormResponseRecord): Reco
   };
 }
 
-function eventFormAuditScope(form: EventFormRecord): { eventId?: string | null; majorEventId?: string | null; eventGroupId?: string | null } {
+function eventFormAuditScope(form: EventFormRecord): {
+  eventId?: string | null;
+  majorEventId?: string | null;
+  eventGroupId?: string | null;
+} {
   if (form.ownerEventId) {
     return {
       eventId: form.ownerEventId,

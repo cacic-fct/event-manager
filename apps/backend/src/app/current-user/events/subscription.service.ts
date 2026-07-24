@@ -125,7 +125,12 @@ export class CurrentUserEventSubscriptionService {
       this.ensureEventSubscriptionWindowOpen(targetEvent, now);
 
       if (targetEvent.eventGroupId) {
-        const groupSubscription = await this.subscribeCurrentUserEventGroupTx(tx, personId, targetEvent.eventGroupId, now);
+        const groupSubscription = await this.subscribeCurrentUserEventGroupTx(
+          tx,
+          personId,
+          targetEvent.eventGroupId,
+          now,
+        );
         await this.recordEventGroupSubscriptionChange(groupSubscription, personId, actor, tx);
         submittedFormIds.push(
           ...(await this.eventForms.submitSubscriptionFlowResponses(

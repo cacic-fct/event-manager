@@ -29,9 +29,9 @@ describe('REST_VALIDATION_PIPE', () => {
   });
 
   it('rejects properties that are not declared by the DTO', async () => {
-    await expect(
-      REST_VALIDATION_PIPE.transform({ name: 'Oficina', unexpected: 'value' }, metadata),
-    ).rejects.toThrow(BadRequestException);
+    await expect(REST_VALIDATION_PIPE.transform({ name: 'Oficina', unexpected: 'value' }, metadata)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('rejects invalid property types', async () => {

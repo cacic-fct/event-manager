@@ -109,11 +109,7 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
     icon: 'receipt_long',
     preferredScope: EventManagerPermissionGrantScope.MajorEvent,
     allowedScopes: MAJOR_EVENT_SCOPE_ONLY,
-    permissions: [
-      Permission.MajorEvent.Read,
-      Permission.Subscription.Read,
-      Permission.Receipt.Read,
-    ],
+    permissions: [Permission.MajorEvent.Read, Permission.Subscription.Read, Permission.Receipt.Read],
   },
   {
     id: 'major-event-receipt-validator',
@@ -208,7 +204,8 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
   {
     id: 'readonly-operator',
     label: 'Consulta operacional',
-    description: 'Consulta dados operacionais de eventos, inscrições, presenças, certificados, formulários e comprovantes.',
+    description:
+      'Consulta dados operacionais de eventos, inscrições, presenças, certificados, formulários e comprovantes.',
     icon: 'visibility',
     preferredScope: EventManagerPermissionGrantScope.MajorEvent,
     allowedScopes: MAJOR_EVENT_SCOPE_ONLY,

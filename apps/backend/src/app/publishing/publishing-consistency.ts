@@ -60,7 +60,11 @@ export function buildPublicationConsistencyWarnings(input: {
       });
     }
 
-    if (event.publicationState === 'PUBLISHED' && event.majorEvent && event.majorEvent.publicationState !== 'PUBLISHED') {
+    if (
+      event.publicationState === 'PUBLISHED' &&
+      event.majorEvent &&
+      event.majorEvent.publicationState !== 'PUBLISHED'
+    ) {
       warnings.push({
         type: 'PUBLISHED_EVENT_WITH_UNPUBLISHED_MAJOR_EVENT',
         action: 'OPEN_PUBLICATION',
@@ -72,11 +76,7 @@ export function buildPublicationConsistencyWarnings(input: {
       });
     }
 
-    if (
-      event.publicationState === 'SCHEDULED' &&
-      event.scheduledPublishAt &&
-      event.scheduledPublishAt <= input.now
-    ) {
+    if (event.publicationState === 'SCHEDULED' && event.scheduledPublishAt && event.scheduledPublishAt <= input.now) {
       warnings.push({
         type: 'OVERDUE_SCHEDULED_PUBLICATION',
         action: 'OPEN_PUBLICATION',

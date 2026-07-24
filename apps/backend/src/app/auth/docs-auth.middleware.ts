@@ -41,10 +41,7 @@ function shouldGateRequest(request: Request): boolean {
   }
 
   return (
-    path === '/api/docs' ||
-    path.startsWith('/api/docs/') ||
-    path === '/api/docs-json' ||
-    path === '/api/docs-yaml'
+    path === '/api/docs' || path.startsWith('/api/docs/') || path === '/api/docs-json' || path === '/api/docs-yaml'
   );
 }
 

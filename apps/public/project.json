@@ -4,10 +4,7 @@
   "projectType": "application",
   "prefix": "app",
   "sourceRoot": "apps/public/src",
-  "tags": [
-    "scope:public",
-    "type:app"
-  ],
+  "tags": ["scope:public", "type:app"],
   "targets": {
     "build": {
       "executor": "nx:run-commands",
@@ -17,36 +14,26 @@
           "params": "forward"
         }
       ],
-      "outputs": [
-        "{workspaceRoot}/dist/apps/public"
-      ],
+      "outputs": ["{workspaceRoot}/dist/apps/public"],
       "defaultConfiguration": "production",
       "options": {
-        "commands": [
-          "node apps/public/workbox/build-public-workbox.mjs"
-        ],
+        "commands": ["node apps/public/workbox/build-public-workbox.mjs"],
         "parallel": false
       },
       "configurations": {
         "production": {
-          "commands": [
-            "node apps/public/workbox/build-public-workbox.mjs"
-          ],
+          "commands": ["node apps/public/workbox/build-public-workbox.mjs"],
           "parallel": false
         },
         "development": {
-          "commands": [
-            "node -e \"process.exit(0)\""
-          ],
+          "commands": ["node -e \"process.exit(0)\""],
           "parallel": false
         }
       }
     },
     "build-application": {
       "executor": "@angular/build:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
         "baseHref": "/app/",
@@ -62,9 +49,7 @@
           "apps/public/src/robots.txt",
           "apps/public/src/.well-known/security.txt"
         ],
-        "styles": [
-          "apps/public/src/styles.scss"
-        ],
+        "styles": ["apps/public/src/styles.scss"],
         "server": "apps/public/src/main.server.ts",
         "ssr": {
           "entry": "apps/public/src/server.ts"
@@ -129,9 +114,7 @@
         "{workspaceRoot}/eslint.config.mjs",
         "{workspaceRoot}/tools/eslint-rules/**/*",
         {
-          "externalDependencies": [
-            "eslint"
-          ]
+          "externalDependencies": ["eslint"]
         }
       ]
     },
@@ -167,15 +150,8 @@
         "configDir": "apps/public/.storybook",
         "browserTarget": "public:build-storybook",
         "compodoc": true,
-        "compodocArgs": [
-          "-e",
-          "json",
-          "-d",
-          "apps/public/.storybook/compodoc"
-        ],
-        "styles": [
-          "apps/public/src/styles.scss"
-        ]
+        "compodocArgs": ["-e", "json", "-d", "apps/public/.storybook/compodoc"],
+        "styles": ["apps/public/src/styles.scss"]
       },
       "configurations": {
         "ci": {
@@ -185,18 +161,14 @@
     },
     "build-storybook": {
       "executor": "@storybook/angular:build-storybook",
-      "outputs": [
-        "{options.outputDir}"
-      ],
+      "outputs": ["{options.outputDir}"],
       "options": {
         "outputDir": "dist/storybook/public",
         "configDir": "apps/public/.storybook",
         "tsConfig": "apps/public/.storybook/tsconfig.json",
         "browserTarget": "public:build-storybook",
         "compodoc": false,
-        "styles": [
-          "apps/public/src/styles.scss"
-        ]
+        "styles": ["apps/public/src/styles.scss"]
       },
       "configurations": {
         "ci": {
@@ -212,9 +184,7 @@
     },
     "static-storybook": {
       "executor": "@nx/web:file-server",
-      "dependsOn": [
-        "build-storybook"
-      ],
+      "dependsOn": ["build-storybook"],
       "options": {
         "buildTarget": "public:build-storybook",
         "staticFilePath": "dist/storybook/public",

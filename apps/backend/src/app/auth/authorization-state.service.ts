@@ -21,7 +21,12 @@ export class AuthorizationStateService {
 
   constructor(private readonly redis: Redis) {}
 
-  async create(options?: { redirectUri?: string; returnTo?: string; state?: string; prompt?: string }): Promise<string> {
+  async create(options?: {
+    redirectUri?: string;
+    returnTo?: string;
+    state?: string;
+    prompt?: string;
+  }): Promise<string> {
     const returnTo = this.normalizePostLoginReturnTo(options?.returnTo);
     const state = randomBytes(32).toString('base64url');
 

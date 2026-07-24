@@ -112,10 +112,7 @@ export function findMissingTypesenseFields(
   return (schema.fields ?? []).filter((field) => field.name !== 'id' && !currentNames.has(field.name));
 }
 
-export function createTypesenseCollectionSchema(
-  name: string,
-  fields: CollectionFieldSchema[],
-): CollectionCreateSchema {
+export function createTypesenseCollectionSchema(name: string, fields: CollectionFieldSchema[]): CollectionCreateSchema {
   return {
     name,
     fields,

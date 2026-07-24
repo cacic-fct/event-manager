@@ -95,7 +95,10 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
   const subscription = details.subscription;
   const eventGroup = subscription?.eventGroup ?? details.eventGroup;
   const rawEvents = subscription?.events ?? details.events ?? [];
-  if (!eventGroup || (!subscription && details.attendances.length === 0 && !details.hasIssuedCertificate && !details.isLecturer)) {
+  if (
+    !eventGroup ||
+    (!subscription && details.attendances.length === 0 && !details.hasIssuedCertificate && !details.isLecturer)
+  ) {
     return null;
   }
 
@@ -143,7 +146,10 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
 export function buildMajorEventDetail(details: MajorEventDetails): DetailViewModel | null {
   const subscription = details.subscription;
   const majorEvent = subscription?.majorEvent ?? details.majorEvent;
-  if (!majorEvent || (!subscription && details.attendances.length === 0 && !details.hasIssuedCertificate && !details.isLecturer)) {
+  if (
+    !majorEvent ||
+    (!subscription && details.attendances.length === 0 && !details.hasIssuedCertificate && !details.isLecturer)
+  ) {
     return null;
   }
 

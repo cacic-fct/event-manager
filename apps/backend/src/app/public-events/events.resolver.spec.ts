@@ -212,7 +212,8 @@ describe('PublicEventsResolver lecturer profiles', () => {
     ]);
 
     expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', {
-      filterBy: 'publiclyVisible:=true && publicationState:=PUBLISHED && majorEventPublicationState:=PUBLISHED && startDate:>=1782172800',
+      filterBy:
+        'publiclyVisible:=true && publicationState:=PUBLISHED && majorEventPublicationState:=PUBLISHED && startDate:>=1782172800',
       limit: 500,
     });
     expect(prisma.event.findMany).toHaveBeenCalledWith(
@@ -404,9 +405,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
     };
     const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
 
-    await expect(
-      resolver.lecturers({ id: 'event-1', displayLecturerProfile: false } as never),
-    ).resolves.toEqual([]);
+    await expect(resolver.lecturers({ id: 'event-1', displayLecturerProfile: false } as never)).resolves.toEqual([]);
 
     expect(prisma.eventLecturer.findMany).not.toHaveBeenCalled();
   });

@@ -74,11 +74,13 @@ describe('ReceiptValidationService', () => {
   });
 
   it('rejects invalid receipts only when a reason is provided', async () => {
-    await expect(service.rejectReceipt('subscription-1', 'receipt-1', 'INVALID_RECEIPT', undefined, user)).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      service.rejectReceipt('subscription-1', 'receipt-1', 'INVALID_RECEIPT', undefined, user),
+    ).rejects.toThrow(BadRequestException);
 
-    await expect(service.rejectReceipt('subscription-1', 'receipt-1', 'INVALID_RECEIPT', ' unreadable ', user)).resolves.toEqual({
+    await expect(
+      service.rejectReceipt('subscription-1', 'receipt-1', 'INVALID_RECEIPT', ' unreadable ', user),
+    ).resolves.toEqual({
       actionId: 'action-1',
       item: { subscriptionId: 'subscription-1' },
     });
@@ -135,19 +137,25 @@ describe('ReceiptValidationService', () => {
 
   it('blocks approvals when the subscription is missing, already validated, or has a newer receipt', async () => {
     tx.majorEventSubscription.findUnique.mockResolvedValue(null);
-    await expect(service.approveReceipt('subscription-1', 'receipt-1', undefined, user)).rejects.toThrow(NotFoundException);
+    await expect(service.approveReceipt('subscription-1', 'receipt-1', undefined, user)).rejects.toThrow(
+      NotFoundException,
+    );
 
     tx.majorEventSubscription.findUnique.mockResolvedValue({
       ...createSubscription(),
       subscriptionStatus: SubscriptionStatus.CONFIRMED,
     });
-    await expect(service.approveReceipt('subscription-1', 'receipt-1', undefined, user)).rejects.toThrow(ConflictException);
+    await expect(service.approveReceipt('subscription-1', 'receipt-1', undefined, user)).rejects.toThrow(
+      ConflictException,
+    );
 
     tx.majorEventSubscription.findUnique.mockResolvedValue({
       ...createSubscription(),
       receipts: [{ id: 'newer-receipt' }],
     });
-    await expect(service.approveReceipt('subscription-1', 'receipt-1', undefined, user)).rejects.toThrow(ConflictException);
+    await expect(service.approveReceipt('subscription-1', 'receipt-1', undefined, user)).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('validates ranked selected event overrides', async () => {
@@ -162,7 +170,9 @@ describe('ReceiptValidationService', () => {
     tx.eventSubscription.count.mockResolvedValue(0);
     majorEventSubscriptions.allocateRankedEventIds.mockReturnValue(['event-1']);
 
-    await expect(service.approveReceipt('subscription-1', 'receipt-1', ['event-2'], user)).rejects.toThrow(BadRequestException);
+    await expect(service.approveReceipt('subscription-1', 'receipt-1', ['event-2'], user)).rejects.toThrow(
+      BadRequestException,
+    );
     await expect(service.approveReceipt('subscription-1', 'receipt-1', ['event-1'], user)).resolves.toEqual({
       actionId: 'action-1',
       item: { subscriptionId: 'subscription-1' },

@@ -10,7 +10,11 @@ import {
   publicLecturerProfileStoryDefaultControls,
   type PublicLecturerProfileStoryControls,
 } from '../../testing/public-event-story-fixtures';
-import { AttendancesApiService, type LecturerProfile, type LecturerProfileInput } from '../attendances/attendances-api.service';
+import {
+  AttendancesApiService,
+  type LecturerProfile,
+  type LecturerProfileInput,
+} from '../attendance/attendances-api.service';
 import { LecturerProfileComponent } from './lecturer-profile';
 
 type LecturerProfileStoryState = 'profile' | 'empty' | 'loading' | 'error';
@@ -148,10 +152,9 @@ export const SaveError: Story = {
   },
 };
 
-function createAttendancesApiMock(args: LecturerProfileStoryArgs): Pick<
-  AttendancesApiService,
-  'getCurrentUserLecturerProfile' | 'upsertCurrentUserLecturerProfile'
-> {
+function createAttendancesApiMock(
+  args: LecturerProfileStoryArgs,
+): Pick<AttendancesApiService, 'getCurrentUserLecturerProfile' | 'upsertCurrentUserLecturerProfile'> {
   return {
     getCurrentUserLecturerProfile: () => {
       if (args.state === 'loading') {

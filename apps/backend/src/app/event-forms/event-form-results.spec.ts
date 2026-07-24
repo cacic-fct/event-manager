@@ -1,8 +1,5 @@
 import { type FormElement } from '@cacic-fct/form-contracts';
-import {
-  buildFormResultSummary,
-  eventFormResultsToCsv,
-} from './event-form-results';
+import { buildFormResultSummary, eventFormResultsToCsv } from './event-form-results';
 import { eventFormModel, responseRecord } from './event-form.spec-support';
 
 describe('event form results helpers', () => {

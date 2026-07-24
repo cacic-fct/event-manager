@@ -97,7 +97,10 @@ export class AuthorizationPolicyService {
     }
   }
 
-  async evaluatePermissions(user: AuthenticatedUser | undefined, permissions: readonly string[]): Promise<Permission[]> {
+  async evaluatePermissions(
+    user: AuthenticatedUser | undefined,
+    permissions: readonly string[],
+  ): Promise<Permission[]> {
     const requirements = this.normalizePermissions(permissions);
     if (!user || !this.hasEventManagerAccess(user)) {
       return [];
@@ -120,7 +123,10 @@ export class AuthorizationPolicyService {
     return requirements.filter((permission) => grantedPermissions.has(permission));
   }
 
-  async evaluateGlobalPermissions(user: AuthenticatedUser | undefined, permissions: readonly string[]): Promise<Permission[]> {
+  async evaluateGlobalPermissions(
+    user: AuthenticatedUser | undefined,
+    permissions: readonly string[],
+  ): Promise<Permission[]> {
     const requirements = this.normalizePermissions(permissions);
     if (!user || !this.hasEventManagerAccess(user)) {
       return [];
@@ -290,18 +296,11 @@ export class AuthorizationPolicyService {
       }),
     ]);
 
-    if (
-      !event ||
-      event.deletedAt ||
-      !event.shouldCollectAttendance
-    ) {
+    if (!event || event.deletedAt || !event.shouldCollectAttendance) {
       throw new ForbiddenException('Você não pode coletar presença para este evento.');
     }
 
-    if (
-      options.enforceCollectionWindow &&
-      !this.isAttendanceCollectionOpen(event.startDate, event.endDate)
-    ) {
+    if (options.enforceCollectionWindow && !this.isAttendanceCollectionOpen(event.startDate, event.endDate)) {
       throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
     }
 
@@ -316,10 +315,7 @@ export class AuthorizationPolicyService {
     throw new ForbiddenException('Você não pode coletar presença para este evento.');
   }
 
-  canLecturerViewSubscriberList(event: {
-    endDate: Date;
-    shouldProvideSubscriberListToLecturer: boolean;
-  }): boolean {
+  canLecturerViewSubscriberList(event: { endDate: Date; shouldProvideSubscriberListToLecturer: boolean }): boolean {
     return event.shouldProvideSubscriberListToLecturer && isFuture(event.endDate);
   }
 
@@ -331,7 +327,10 @@ export class AuthorizationPolicyService {
     },
     personId: string,
   ): void {
-    if (!this.canLecturerViewSubscriberList(event) || !event.lecturers.some((lecturer) => lecturer.personId === personId)) {
+    if (
+      !this.canLecturerViewSubscriberList(event) ||
+      !event.lecturers.some((lecturer) => lecturer.personId === personId)
+    ) {
       throw new ForbiddenException('Subscriber list is not available for this event.');
     }
   }
@@ -341,7 +340,9 @@ export class AuthorizationPolicyService {
     this.collectResourceIds(raw, context);
 
     const resources = new Set(
-      this.normalizePermissionRequirements(requiredPermissions).map((permission) => parsePermission(permission).resource),
+      this.normalizePermissionRequirements(requiredPermissions).map(
+        (permission) => parsePermission(permission).resource,
+      ),
     );
     if (resources.size === 1) {
       context.primaryResource = [...resources][0];
@@ -419,7 +420,10 @@ export class AuthorizationPolicyService {
     return normalized as Permission[];
   }
 
-  private async findActiveGrants(userId: string | undefined, permissions?: readonly Permission[]): Promise<ActiveGrant[]> {
+  private async findActiveGrants(
+    userId: string | undefined,
+    permissions?: readonly Permission[],
+  ): Promise<ActiveGrant[]> {
     if (!userId) {
       return [];
     }
@@ -635,10 +639,7 @@ export class AuthorizationPolicyService {
     }
   }
 
-  private async addReceiptValidationActionTarget(
-    target: ResolvedGrantTarget,
-    actionId: string,
-  ): Promise<void> {
+  private async addReceiptValidationActionTarget(target: ResolvedGrantTarget, actionId: string): Promise<void> {
     const action = await this.prisma.majorEventReceiptValidationAction.findUnique({
       where: {
         id: actionId,

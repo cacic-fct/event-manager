@@ -89,16 +89,19 @@ export class MergeCandidatesResolver {
           updatedById: actorId ?? undefined,
         },
       });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.MERGE_CANDIDATE,
-        entityId: candidate.id,
-        entityLabel: candidate.pairKey,
-        operation: AuditLogOperation.CREATE,
-        actor,
-        after: candidate,
-        summary: 'Possível pessoa duplicada cadastrada.',
-        scope: { permission: Permission.MergeCandidate.Create },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MERGE_CANDIDATE,
+          entityId: candidate.id,
+          entityLabel: candidate.pairKey,
+          operation: AuditLogOperation.CREATE,
+          actor,
+          after: candidate,
+          summary: 'Possível pessoa duplicada cadastrada.',
+          scope: { permission: Permission.MergeCandidate.Create },
+        },
+        tx,
+      );
       return candidate;
     });
   }
@@ -128,17 +131,20 @@ export class MergeCandidatesResolver {
       const existing = await tx.mergeCandidate.findUnique({ where: { id } });
       if (!existing) throw new NotFoundException(`Merge candidate ${id} was not found.`);
       const candidate = await tx.mergeCandidate.update({ where: { id }, data });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.MERGE_CANDIDATE,
-        entityId: id,
-        entityLabel: candidate.pairKey,
-        operation: AuditLogOperation.UPDATE,
-        actor,
-        before: existing,
-        after: candidate,
-        summary: 'Possível pessoa duplicada atualizada.',
-        scope: { permission: Permission.MergeCandidate.Update },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MERGE_CANDIDATE,
+          entityId: id,
+          entityLabel: candidate.pairKey,
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          before: existing,
+          after: candidate,
+          summary: 'Possível pessoa duplicada atualizada.',
+          scope: { permission: Permission.MergeCandidate.Update },
+        },
+        tx,
+      );
     });
 
     return this.prisma.mergeCandidate.findUnique({
@@ -218,24 +224,24 @@ export class MergeCandidatesResolver {
 
   @Mutation(() => DeletionResult, { name: 'deleteMergeCandidate' })
   @RequirePermissions(Permission.MergeCandidate.Delete)
-  async deleteMergeCandidate(
-    @Args('id', { type: () => String }) id: string,
-    @Context() context: GraphqlContext,
-  ) {
+  async deleteMergeCandidate(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     await this.prisma.$transaction(async (tx) => {
       const candidate = await tx.mergeCandidate.findUnique({ where: { id } });
       if (!candidate) throw new NotFoundException(`Merge candidate ${id} was not found.`);
       await tx.mergeCandidate.delete({ where: { id } });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.MERGE_CANDIDATE,
-        entityId: id,
-        entityLabel: candidate.pairKey,
-        operation: AuditLogOperation.DELETE,
-        actor: this.getUser(context),
-        before: candidate,
-        summary: 'Possível pessoa duplicada removida.',
-        scope: { permission: Permission.MergeCandidate.Delete },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.MERGE_CANDIDATE,
+          entityId: id,
+          entityLabel: candidate.pairKey,
+          operation: AuditLogOperation.DELETE,
+          actor: this.getUser(context),
+          before: candidate,
+          summary: 'Possível pessoa duplicada removida.',
+          scope: { permission: Permission.MergeCandidate.Delete },
+        },
+        tx,
+      );
     });
 
     return {

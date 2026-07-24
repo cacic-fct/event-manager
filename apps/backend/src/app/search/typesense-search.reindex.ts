@@ -211,9 +211,12 @@ export async function replaceAuditLogSearchDocuments(input: {
             return;
           }
 
-          const importResult = await collection.documents().import(entries.map((entry) => toAuditLogSearchDocument(entry)), {
-            action: 'upsert',
-          });
+          const importResult = await collection.documents().import(
+            entries.map((entry) => toAuditLogSearchDocument(entry)),
+            {
+              action: 'upsert',
+            },
+          );
           assertTypesenseImportSucceeded(importResult, input.schema.name);
 
           cursor = { id: entries[entries.length - 1].id };

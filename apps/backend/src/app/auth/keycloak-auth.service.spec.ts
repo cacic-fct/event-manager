@@ -531,9 +531,7 @@ describe('KeycloakAuthService', () => {
     );
     await expect(
       service.authenticateAccessToken(jwt({ sub: 'future-user', nbf: Math.floor(Date.now() / 1000) + 120 })),
-    ).rejects.toBeInstanceOf(
-      UnauthorizedException,
-    );
+    ).rejects.toBeInstanceOf(UnauthorizedException);
 
     await expect(
       service.authenticateAccessToken(

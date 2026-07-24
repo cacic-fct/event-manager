@@ -454,11 +454,7 @@ export class PublicCertificateValidationService {
     return typeof value === 'string' || value === null ? value : fallback;
   }
 
-  private readRenderedBoolean(
-    certificate: PublicCertificateValidationRecord,
-    key: string,
-    fallback: boolean,
-  ): boolean {
+  private readRenderedBoolean(certificate: PublicCertificateValidationRecord, key: string, fallback: boolean): boolean {
     const renderedData = this.getRenderedDataObject(certificate);
     if (!Object.prototype.hasOwnProperty.call(renderedData, key)) {
       return fallback;
@@ -557,10 +553,7 @@ export class PublicCertificateValidationService {
       return undefined;
     }
 
-    if (
-      certificate.config.scope === CertificateScope.MAJOR_EVENT &&
-      !this.isCertificateMajorEventPublic(certificate)
-    ) {
+    if (certificate.config.scope === CertificateScope.MAJOR_EVENT && !this.isCertificateMajorEventPublic(certificate)) {
       return undefined;
     }
 
@@ -588,10 +581,7 @@ export class PublicCertificateValidationService {
       return undefined;
     }
 
-    if (
-      certificate.config.scope === CertificateScope.MAJOR_EVENT &&
-      !this.isCertificateMajorEventPublic(certificate)
-    ) {
+    if (certificate.config.scope === CertificateScope.MAJOR_EVENT && !this.isCertificateMajorEventPublic(certificate)) {
       return undefined;
     }
 
@@ -602,13 +592,17 @@ export class PublicCertificateValidationService {
     return certificate.config.majorEvent?.emoji ?? certificate.config.event?.emoji ?? undefined;
   }
 
-  private isCertificateEventPublic(event?: CertificateValidationEventRecord | null): event is CertificateValidationEventRecord {
+  private isCertificateEventPublic(
+    event?: CertificateValidationEventRecord | null,
+  ): event is CertificateValidationEventRecord {
     return Boolean(
       event &&
         event.publiclyVisible &&
         event.publicationState === 'PUBLISHED' &&
         (!event.majorEventId ||
-          Boolean(event.majorEvent && event.majorEvent.deletedAt == null && event.majorEvent.publicationState === 'PUBLISHED')),
+          Boolean(
+            event.majorEvent && event.majorEvent.deletedAt == null && event.majorEvent.publicationState === 'PUBLISHED',
+          )),
     );
   }
 

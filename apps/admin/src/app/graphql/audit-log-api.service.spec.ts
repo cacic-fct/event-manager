@@ -36,9 +36,9 @@ describe('AuditLogApiService', () => {
   });
 
   it('maps entity history, explorer, and revert operations', async () => {
-    await expect(firstValueFrom(service.listEntityHistory({ entityType: 'PERSON', entityId: 'person-1' }))).resolves.toEqual([
-      auditLogEntryFixture(),
-    ]);
+    await expect(
+      firstValueFrom(service.listEntityHistory({ entityType: 'PERSON', entityId: 'person-1' })),
+    ).resolves.toEqual([auditLogEntryFixture()]);
     await expect(
       firstValueFrom(
         service.searchExplorer({

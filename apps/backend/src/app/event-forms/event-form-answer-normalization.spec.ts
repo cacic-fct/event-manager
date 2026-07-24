@@ -59,13 +59,9 @@ describe('event form answer normalization', () => {
       { elementId: 'time', value: '09:30' },
     ]);
 
-    expect(() =>
-      normalizeAnswers(
-        JSON.stringify([{ elementId: 'tracks', value: ['vue'] }]),
-        elements,
-        false,
-      ),
-    ).toThrow(BadRequestException);
+    expect(() => normalizeAnswers(JSON.stringify([{ elementId: 'tracks', value: ['vue'] }]), elements, false)).toThrow(
+      BadRequestException,
+    );
   });
 
   it('enforces required current questions for stored responses', () => {
@@ -258,9 +254,21 @@ describe('event form answer normalization', () => {
       { element: baseElement('time', 'time'), value: '09:70', message: 'Hora inválida' },
       { element: scaleElement('score'), value: 6, message: 'Valor fora da escala' },
       { element: ratingElement('rating'), value: 0, message: 'Valor fora da avaliação' },
-      { element: gridElement('single-grid', 'singleSelectionGrid'), value: { missing: 'yes' }, message: 'Linha inválida' },
-      { element: gridElement('single-grid', 'singleSelectionGrid'), value: { row1: 'maybe' }, message: 'Coluna inválida' },
-      { element: gridElement('multiple-grid', 'multipleSelectionGrid'), value: { missing: ['yes'] }, message: 'Linha inválida' },
+      {
+        element: gridElement('single-grid', 'singleSelectionGrid'),
+        value: { missing: 'yes' },
+        message: 'Linha inválida',
+      },
+      {
+        element: gridElement('single-grid', 'singleSelectionGrid'),
+        value: { row1: 'maybe' },
+        message: 'Coluna inválida',
+      },
+      {
+        element: gridElement('multiple-grid', 'multipleSelectionGrid'),
+        value: { missing: ['yes'] },
+        message: 'Linha inválida',
+      },
       {
         element: gridElement('multiple-grid', 'multipleSelectionGrid'),
         value: { row1: ['maybe'] },
@@ -411,11 +419,7 @@ function ratingElement(id: string, required = false): FormElement {
   };
 }
 
-function gridElement(
-  id: string,
-  type: 'singleSelectionGrid' | 'multipleSelectionGrid',
-  required = false,
-): FormElement {
+function gridElement(id: string, type: 'singleSelectionGrid' | 'multipleSelectionGrid', required = false): FormElement {
   return {
     ...baseElement(id, type, required),
     settings: {
@@ -433,11 +437,7 @@ function gridElement(
   };
 }
 
-function schedulingElement(
-  id: string,
-  inviteeMode: 'none' | 'optional' | 'required',
-  required = false,
-): FormElement {
+function schedulingElement(id: string, inviteeMode: 'none' | 'optional' | 'required', required = false): FormElement {
   return {
     ...baseElement(id, 'scheduling', required),
     settings: {

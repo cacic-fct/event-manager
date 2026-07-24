@@ -39,12 +39,9 @@ describe('rate limit errors', () => {
   });
 
   it('keeps non-rate-limited GraphQL errors readable', () => {
-    expect(
-      graphqlError([
-        { message: 'Primeiro erro' },
-        { message: 'Segundo erro' },
-      ]).message,
-    ).toBe('Primeiro erro\nSegundo erro');
+    expect(graphqlError([{ message: 'Primeiro erro' }, { message: 'Segundo erro' }]).message).toBe(
+      'Primeiro erro\nSegundo erro',
+    );
   });
 
   it('maps HTTP 429 retry headers and body fallbacks', () => {

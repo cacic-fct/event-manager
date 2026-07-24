@@ -1,9 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  AuditLogOperation,
-  EventManagerPermissionGrantScope,
-} from '@prisma/client';
+import { AuditLogOperation, EventManagerPermissionGrantScope } from '@prisma/client';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -72,12 +69,14 @@ describe('PermissionGrantsResolver integration', () => {
       { request: { user: authenticatedUser('actor-1') } },
     );
 
-    expect(created).toEqual(expect.objectContaining({
-      userId: 'user-1',
-      permission: Permission.Event.Create,
-      createdById: 'actor-1',
-      updatedById: 'actor-1',
-    }));
+    expect(created).toEqual(
+      expect.objectContaining({
+        userId: 'user-1',
+        permission: Permission.Event.Create,
+        createdById: 'actor-1',
+        updatedById: 'actor-1',
+      }),
+    );
     expect(prisma.eventManagerPermissionGrant.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -111,11 +110,13 @@ describe('PermissionGrantsResolver integration', () => {
       { req: { user: authenticatedUser('actor-2') } },
     );
 
-    expect(updated).toEqual(expect.objectContaining({
-      id: 'grant-1',
-      permission: Permission.Event.Update,
-      updatedById: 'actor-2',
-    }));
+    expect(updated).toEqual(
+      expect.objectContaining({
+        id: 'grant-1',
+        permission: Permission.Event.Update,
+        updatedById: 'actor-2',
+      }),
+    );
     expect(prisma.eventManagerPermissionGrant.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -193,7 +194,9 @@ function createPrisma() {
     },
     $transaction: jest.fn(),
   };
-  prisma.$transaction.mockImplementation(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation(prisma));
+  prisma.$transaction.mockImplementation(async (operation: (tx: typeof prisma) => Promise<unknown>) =>
+    operation(prisma),
+  );
   return prisma;
 }
 

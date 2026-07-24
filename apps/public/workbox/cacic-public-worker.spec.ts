@@ -236,11 +236,15 @@ function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean 
         createCspNonce: () => btoa(String.fromCharCode(...new Uint8Array(16).fill(1))),
         applyCspNonceToHtml: (html: string, nonce: string) =>
           html
-            .replace(/<app-root\b([^>]*)>/i, (_match, attributes: string) =>
-              `<app-root${attributes.replace(/\sngcspnonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')} ngCspNonce="${nonce}">`,
+            .replace(
+              /<app-root\b([^>]*)>/i,
+              (_match, attributes: string) =>
+                `<app-root${attributes.replace(/\sngcspnonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')} ngCspNonce="${nonce}">`,
             )
-            .replace(/<(script|style)\b([^>]*)>/gi, (_match, tagName: string, attributes: string) =>
-              `<${tagName}${attributes.replace(/\snonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')} nonce="${nonce}">`,
+            .replace(
+              /<(script|style)\b([^>]*)>/gi,
+              (_match, tagName: string, attributes: string) =>
+                `<${tagName}${attributes.replace(/\snonce\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')} nonce="${nonce}">`,
             ),
       },
     });
@@ -325,7 +329,9 @@ describe('cacic-public-worker', () => {
   it('registers the expected runtime routes for private traffic and offline navigations', () => {
     const harness = createWorkerHarness();
 
-    const authGetRoute = harness.routes.find((route) => route.method === 'GET' && route.matcher(requestContext('/api/auth/me')));
+    const authGetRoute = harness.routes.find(
+      (route) => route.method === 'GET' && route.matcher(requestContext('/api/auth/me')),
+    );
     const graphqlPostRoute = harness.routes.find(
       (route) => route.method === 'POST' && route.matcher(requestContext('/api/graphql')),
     );
@@ -380,9 +386,9 @@ describe('cacic-public-worker', () => {
     );
 
     expect(twemojiRoute?.handler).toBeInstanceOf(MockCacheFirst);
-    expect(twemojiRoute?.matcher(requestContext('https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/png/1f389.png'))).toBe(
-      false,
-    );
+    expect(
+      twemojiRoute?.matcher(requestContext('https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/png/1f389.png')),
+    ).toBe(false);
     const twemojiHandler = twemojiRoute?.handler as unknown as MockCacheFirst;
     expect(twemojiHandler.options).toMatchObject({
       cacheName: 'twemoji-svg',
@@ -455,7 +461,9 @@ describe('cacic-public-worker', () => {
     await expect(response.text()).resolves.toBe(
       `<app-root ngCspNonce="${nonce}"></app-root><script src="main.js" nonce="${nonce}"></script><style nonce="${nonce}">body {}</style>`,
     );
-    expect(response.headers.get('Content-Security-Policy')).toBe(`script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'`);
+    expect(response.headers.get('Content-Security-Policy')).toBe(
+      `script-src 'nonce-${nonce}'; style-src 'nonce-${nonce}'`,
+    );
     expect(response.headers.get('Cache-Control')).toBe('private, no-store');
   });
 

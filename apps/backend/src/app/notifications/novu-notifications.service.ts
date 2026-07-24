@@ -74,45 +74,45 @@ export class NovuNotificationsService {
     const body = this.statusBody(input.majorEventName, input.nextStatus);
 
     await this.transport.trigger(secretKey, {
-          name: this.workflowIdentifier,
-          to: input.recipient,
-          transactionId: `major-event-subscription:${input.subscriptionId}:${input.nextStatus}`,
-          payload: {
-            title,
-            subject: title,
-            body,
+      name: this.workflowIdentifier,
+      to: input.recipient,
+      transactionId: `major-event-subscription:${input.subscriptionId}:${input.nextStatus}`,
+      payload: {
+        title,
+        subject: title,
+        body,
+        majorEventId: input.majorEventId,
+        majorEventName: input.majorEventName,
+        subscriptionId: input.subscriptionId,
+        previousStatus: input.previousStatus,
+        nextStatus: input.nextStatus,
+        statusLabel,
+        isPositive: this.isPositiveStatus(input.nextStatus),
+        isNegative: this.isNegativeStatus(input.nextStatus),
+        rejectionReason: input.rejectionReason ?? null,
+        actionLabel: 'Ver inscrição',
+        actionUrl,
+        redirectUrl: actionUrl,
+        subscriberId: input.recipient.subscriberId,
+      },
+      overrides: {
+        fcm: {
+          data: {
+            url: actionUrl,
             majorEventId: input.majorEventId,
-            majorEventName: input.majorEventName,
             subscriptionId: input.subscriptionId,
-            previousStatus: input.previousStatus,
-            nextStatus: input.nextStatus,
-            statusLabel,
-            isPositive: this.isPositiveStatus(input.nextStatus),
-            isNegative: this.isNegativeStatus(input.nextStatus),
-            rejectionReason: input.rejectionReason ?? null,
-            actionLabel: 'Ver inscrição',
-            actionUrl,
-            redirectUrl: actionUrl,
             subscriberId: input.recipient.subscriberId,
           },
-          overrides: {
-            fcm: {
-              data: {
-                url: actionUrl,
-                majorEventId: input.majorEventId,
-                subscriptionId: input.subscriptionId,
-                subscriberId: input.recipient.subscriberId,
-              },
-            },
-            webPush: {
-              data: {
-                url: actionUrl,
-                majorEventId: input.majorEventId,
-                subscriptionId: input.subscriptionId,
-                subscriberId: input.recipient.subscriberId,
-              },
-            },
+        },
+        webPush: {
+          data: {
+            url: actionUrl,
+            majorEventId: input.majorEventId,
+            subscriptionId: input.subscriptionId,
+            subscriberId: input.recipient.subscriberId,
           },
+        },
+      },
     });
   }
 
@@ -142,39 +142,39 @@ export class NovuNotificationsService {
     const body = `Uma presença off-line de ${input.eventName} foi enviada para revisão administrativa.`;
 
     await this.transport.trigger(secretKey, {
-          name: this.offlineAttendanceReviewWorkflowIdentifier,
-          to: input.recipients,
-          transactionId: `offline-attendance-review:${input.submissionId}`,
-          payload: {
-            title,
-            subject: title,
-            body,
+      name: this.offlineAttendanceReviewWorkflowIdentifier,
+      to: input.recipients,
+      transactionId: `offline-attendance-review:${input.submissionId}`,
+      payload: {
+        title,
+        subject: title,
+        body,
+        eventId: input.eventId,
+        eventName: input.eventName,
+        submissionId: input.submissionId,
+        submittedById: input.submittedById,
+        authorName: input.authorName ?? null,
+        submittedAt: input.submittedAt.toISOString(),
+        actionLabel: 'Revisar presença',
+        actionUrl,
+        redirectUrl: actionUrl,
+      },
+      overrides: {
+        fcm: {
+          data: {
+            url: actionUrl,
             eventId: input.eventId,
-            eventName: input.eventName,
             submissionId: input.submissionId,
-            submittedById: input.submittedById,
-            authorName: input.authorName ?? null,
-            submittedAt: input.submittedAt.toISOString(),
-            actionLabel: 'Revisar presença',
-            actionUrl,
-            redirectUrl: actionUrl,
           },
-          overrides: {
-            fcm: {
-              data: {
-                url: actionUrl,
-                eventId: input.eventId,
-                submissionId: input.submissionId,
-              },
-            },
-            webPush: {
-              data: {
-                url: actionUrl,
-                eventId: input.eventId,
-                submissionId: input.submissionId,
-              },
-            },
+        },
+        webPush: {
+          data: {
+            url: actionUrl,
+            eventId: input.eventId,
+            submissionId: input.submissionId,
           },
+        },
+      },
     });
   }
 
@@ -190,41 +190,41 @@ export class NovuNotificationsService {
     const body = `Seu certificado de ${targetLabel} está disponível.`;
 
     return this.transport.trigger(secretKey, {
-          name: this.certificateAvailableWorkflowIdentifier,
-          to: input.recipient,
-          transactionId: `certificate-available:${input.configId}:${input.certificateId}:${input.issuedAt.toISOString()}`,
-          payload: {
-            title,
-            subject: title,
-            body,
+      name: this.certificateAvailableWorkflowIdentifier,
+      to: input.recipient,
+      transactionId: `certificate-available:${input.configId}:${input.certificateId}:${input.issuedAt.toISOString()}`,
+      payload: {
+        title,
+        subject: title,
+        body,
+        certificateId: input.certificateId,
+        configId: input.configId,
+        certificateName: input.certificateName,
+        targetName: input.targetName ?? null,
+        issuedAt: input.issuedAt.toISOString(),
+        actionLabel: 'Ver certificados',
+        actionUrl,
+        redirectUrl: actionUrl,
+        subscriberId: input.recipient.subscriberId,
+      },
+      overrides: {
+        fcm: {
+          data: {
+            url: actionUrl,
             certificateId: input.certificateId,
             configId: input.configId,
-            certificateName: input.certificateName,
-            targetName: input.targetName ?? null,
-            issuedAt: input.issuedAt.toISOString(),
-            actionLabel: 'Ver certificados',
-            actionUrl,
-            redirectUrl: actionUrl,
             subscriberId: input.recipient.subscriberId,
           },
-          overrides: {
-            fcm: {
-              data: {
-                url: actionUrl,
-                certificateId: input.certificateId,
-                configId: input.configId,
-                subscriberId: input.recipient.subscriberId,
-              },
-            },
-            webPush: {
-              data: {
-                url: actionUrl,
-                certificateId: input.certificateId,
-                configId: input.configId,
-                subscriberId: input.recipient.subscriberId,
-              },
-            },
+        },
+        webPush: {
+          data: {
+            url: actionUrl,
+            certificateId: input.certificateId,
+            configId: input.configId,
+            subscriberId: input.recipient.subscriberId,
           },
+        },
+      },
     });
   }
 
@@ -257,40 +257,40 @@ export class NovuNotificationsService {
     }
 
     return this.transport.trigger(secretKey, {
-          name: this.eventFormAvailableWorkflowIdentifier,
-          to: input.recipients,
-          transactionId: transactionIdParts.join(':'),
-          payload: {
-            title,
-            subject: title,
-            body,
+      name: this.eventFormAvailableWorkflowIdentifier,
+      to: input.recipients,
+      transactionId: transactionIdParts.join(':'),
+      payload: {
+        title,
+        subject: title,
+        body,
+        formId: input.formId,
+        formName: input.formName,
+        targetType: input.targetType,
+        targetId: input.targetId,
+        targetName: input.targetName,
+        actionLabel: 'Responder formulário',
+        actionUrl,
+        redirectUrl: actionUrl,
+      },
+      overrides: {
+        fcm: {
+          data: {
+            url: actionUrl,
             formId: input.formId,
-            formName: input.formName,
             targetType: input.targetType,
             targetId: input.targetId,
-            targetName: input.targetName,
-            actionLabel: 'Responder formulário',
-            actionUrl,
-            redirectUrl: actionUrl,
           },
-          overrides: {
-            fcm: {
-              data: {
-                url: actionUrl,
-                formId: input.formId,
-                targetType: input.targetType,
-                targetId: input.targetId,
-              },
-            },
-            webPush: {
-              data: {
-                url: actionUrl,
-                formId: input.formId,
-                targetType: input.targetType,
-                targetId: input.targetId,
-              },
-            },
+        },
+        webPush: {
+          data: {
+            url: actionUrl,
+            formId: input.formId,
+            targetType: input.targetType,
+            targetId: input.targetId,
           },
+        },
+      },
     });
   }
 

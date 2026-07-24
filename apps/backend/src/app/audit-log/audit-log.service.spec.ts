@@ -182,7 +182,9 @@ describe('AuditLogService', () => {
     jest.useFakeTimers();
     const tx = createPrisma();
     const expectedLastRecordedAt = new Date('2026-06-22T12:00:00.000Z');
-    tx.auditLogEntry.create.mockResolvedValue(createAuditEntry({ id: 'audit-stale', lastRecordedAt: expectedLastRecordedAt }));
+    tx.auditLogEntry.create.mockResolvedValue(
+      createAuditEntry({ id: 'audit-stale', lastRecordedAt: expectedLastRecordedAt }),
+    );
     prisma.auditLogEntry.findUnique
       .mockResolvedValueOnce(
         createAuditEntry({
@@ -829,11 +831,15 @@ describe('AuditLogService', () => {
     prisma.auditLogEntry.findMany.mockClear();
     await service.listEntityHistory(AuditLogEntityType.EVENT_ATTENDANCE, 'person-1:event-1', undefined, 1);
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenLastCalledWith(undefined, [Permission.EventAttendance.Read], {
-      eventId: 'event-1',
-      majorEventId: undefined,
-      eventGroupId: undefined,
-    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenLastCalledWith(
+      undefined,
+      [Permission.EventAttendance.Read],
+      {
+        eventId: 'event-1',
+        majorEventId: undefined,
+        eventGroupId: undefined,
+      },
+    );
   });
 
   it('does not offer automatic reversal for multi-entity merge operations', async () => {
@@ -1095,11 +1101,7 @@ describe('AuditLogService', () => {
         shouldIssueCertificateForNonPayingAttendees: true,
         shouldIssueCertificateForNonSubscribedAttendees: true,
       },
-      changedFields: [
-        'name',
-        'shouldIssueCertificate',
-        'shouldIssueCertificateForNonPayingAttendees',
-      ],
+      changedFields: ['name', 'shouldIssueCertificate', 'shouldIssueCertificateForNonPayingAttendees'],
       lastRecordedAt: new Date('2026-06-22T12:00:00.000Z'),
     });
     const currentGroup = {

@@ -8,9 +8,7 @@ describe('CertificateConfigsService', () => {
   it('uses Typesense rank for template searches before applying pagination', async () => {
     const prisma = createPrisma({
       certificateTemplate: {
-        findMany: jest.fn().mockResolvedValue([
-          createTemplate({ id: 'template-b', name: 'B' }),
-        ]),
+        findMany: jest.fn().mockResolvedValue([createTemplate({ id: 'template-b', name: 'B' })]),
       },
     });
     const typesenseSearch = createTypesenseSearch({
@@ -163,11 +161,7 @@ describe('CertificateConfigsService', () => {
         create: jest.fn().mockRejectedValue(duplicateError),
       },
     });
-    const service = new CertificateConfigsService(
-      prisma as never,
-      new CertificateValidationService(),
-      {} as never,
-    );
+    const service = new CertificateConfigsService(prisma as never, new CertificateValidationService(), {} as never);
 
     await expect(service.createFolder({ name: ' Complementares ', emoji: '🏅' })).rejects.toBeInstanceOf(
       ConflictException,
@@ -188,15 +182,15 @@ describe('CertificateConfigsService', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'folder-1' }),
       },
       certificateConfig: {
-        findFirst: jest.fn().mockResolvedValueOnce(existingConfig).mockResolvedValueOnce(null).mockResolvedValue(existingConfig),
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(existingConfig)
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(existingConfig),
         update: jest.fn().mockRejectedValue(missingRecordError),
       },
     });
-    const service = new CertificateConfigsService(
-      prisma as never,
-      new CertificateValidationService(),
-      {} as never,
-    );
+    const service = new CertificateConfigsService(prisma as never, new CertificateValidationService(), {} as never);
 
     await expect(service.updateConfig('config-1', { name: 'Updated certificate' })).rejects.toBeInstanceOf(
       ConflictException,
@@ -214,11 +208,7 @@ describe('CertificateConfigsService', () => {
         update: jest.fn().mockResolvedValue(existingFolder),
       },
     });
-    const service = new CertificateConfigsService(
-      prisma as never,
-      new CertificateValidationService(),
-      {} as never,
-    );
+    const service = new CertificateConfigsService(prisma as never, new CertificateValidationService(), {} as never);
 
     await expect(service.updateFolder('folder-1', { name: null, emoji: null } as never)).resolves.toEqual(
       expect.objectContaining({
@@ -294,7 +284,11 @@ describe('CertificateConfigsService', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'template-1' }),
       },
       certificateConfig: {
-        findFirst: jest.fn().mockResolvedValueOnce(createConfigRecord()).mockResolvedValueOnce(null).mockResolvedValue(createConfigRecord()),
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(createConfigRecord())
+          .mockResolvedValueOnce(null)
+          .mockResolvedValue(createConfigRecord()),
         update: jest.fn().mockResolvedValue(
           createConfigRecord({
             scope: CertificateScope.EVENT,
@@ -467,10 +461,7 @@ describe('CertificateConfigsService', () => {
       }),
     );
 
-    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
-      CertificateScope.EVENT_GROUP,
-      'event-group-1',
-    );
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(CertificateScope.EVENT_GROUP, 'event-group-1');
     expect(prisma.certificateConfig.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -560,11 +551,7 @@ describe('CertificateConfigsService', () => {
     });
     const prisma = createPrisma({
       certificateConfig: {
-        findFirst: jest
-          .fn()
-          .mockResolvedValueOnce(source)
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce(null),
+        findFirst: jest.fn().mockResolvedValueOnce(source).mockResolvedValueOnce(null).mockResolvedValueOnce(null),
         create: jest.fn().mockResolvedValue(
           createConfigRecord({
             ...source,
@@ -584,13 +571,17 @@ describe('CertificateConfigsService', () => {
     );
 
     await expect(
-      service.cloneConfig('config-1', {
-        parts: {
-          textContent: true,
-          recipientData: true,
-          activeState: true,
+      service.cloneConfig(
+        'config-1',
+        {
+          parts: {
+            textContent: true,
+            recipientData: true,
+            activeState: true,
+          },
         },
-      }, { actor: { sub: 'duplicating-user' } as never }),
+        { actor: { sub: 'duplicating-user' } as never },
+      ),
     ).resolves.toEqual(
       expect.objectContaining({
         id: 'config-copy',
@@ -640,11 +631,7 @@ describe('CertificateConfigsService', () => {
     });
     const prisma = createPrisma({
       certificateConfig: {
-        findFirst: jest
-          .fn()
-          .mockResolvedValueOnce(source)
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce(null),
+        findFirst: jest.fn().mockResolvedValueOnce(source).mockResolvedValueOnce(null).mockResolvedValueOnce(null),
         create: jest.fn().mockResolvedValue(
           createConfigRecord({
             ...source,
@@ -699,11 +686,7 @@ describe('CertificateConfigsService', () => {
     });
     const prisma = createPrisma({
       certificateConfig: {
-        findFirst: jest
-          .fn()
-          .mockResolvedValueOnce(source)
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce(null),
+        findFirst: jest.fn().mockResolvedValueOnce(source).mockResolvedValueOnce(null).mockResolvedValueOnce(null),
         create: jest.fn().mockResolvedValue(
           createConfigRecord({
             ...source,
@@ -730,10 +713,7 @@ describe('CertificateConfigsService', () => {
       eventGroupId: 'event-group-2',
     });
 
-    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
-      CertificateScope.EVENT_GROUP,
-      'event-group-2',
-    );
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(CertificateScope.EVENT_GROUP, 'event-group-2');
     expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -921,11 +901,7 @@ describe('CertificateConfigsService', () => {
         updateMany: jest.fn().mockResolvedValue({ count: 3 }),
       },
     });
-    const service = new CertificateConfigsService(
-      prisma as never,
-      new CertificateValidationService(),
-      {} as never,
-    );
+    const service = new CertificateConfigsService(prisma as never, new CertificateValidationService(), {} as never);
 
     await expect(service.deleteFolder(' folder-1 ')).resolves.toEqual({
       deleted: true,
@@ -964,13 +940,15 @@ describe('CertificateConfigsService', () => {
   });
 });
 
-function createPrisma(overrides: {
-  $transaction?: ReturnType<typeof basePrisma>['$transaction'];
-  certificateTemplate?: Partial<ReturnType<typeof basePrisma>['certificateTemplate']>;
-  certificateFolder?: Partial<ReturnType<typeof basePrisma>['certificateFolder']>;
-  certificateConfig?: Partial<ReturnType<typeof basePrisma>['certificateConfig']>;
-  certificate?: Partial<ReturnType<typeof basePrisma>['certificate']>;
-} = {}) {
+function createPrisma(
+  overrides: {
+    $transaction?: ReturnType<typeof basePrisma>['$transaction'];
+    certificateTemplate?: Partial<ReturnType<typeof basePrisma>['certificateTemplate']>;
+    certificateFolder?: Partial<ReturnType<typeof basePrisma>['certificateFolder']>;
+    certificateConfig?: Partial<ReturnType<typeof basePrisma>['certificateConfig']>;
+    certificate?: Partial<ReturnType<typeof basePrisma>['certificate']>;
+  } = {},
+) {
   const base = basePrisma();
   const prisma = {
     ...base,
@@ -992,7 +970,8 @@ function createPrisma(overrides: {
     },
   };
   prisma.$transaction =
-    overrides.$transaction ?? jest.fn(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation({ ...prisma }));
+    overrides.$transaction ??
+    jest.fn(async (operation: (tx: typeof prisma) => Promise<unknown>) => operation({ ...prisma }));
   return prisma;
 }
 

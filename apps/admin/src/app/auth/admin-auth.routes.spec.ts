@@ -36,8 +36,8 @@ describe('admin auth route wiring', () => {
   });
 
   it('wires the workspace entry route to the admin local-login guard behavior', () => {
-    const workspaceRoute = appRoutes.find((route) => route.path === '');
-    const guard = workspaceRoute?.canActivate?.[0] as CanActivateFn | undefined;
+    const appRoute = appRoutes.find((route) => route.path === '');
+    const guard = appRoute?.canActivate?.[0] as CanActivateFn | undefined;
 
     expect(guard).toBeDefined();
 

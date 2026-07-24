@@ -1,7 +1,4 @@
-import {
-  CommitOfflineEventAttendancesInput,
-  OfflineEventAttendanceCommitResult,
-} from '@cacic-fct/shared-data-types';
+import { CommitOfflineEventAttendancesInput, OfflineEventAttendanceCommitResult } from '@cacic-fct/shared-data-types';
 import { BadRequestException, ForbiddenException, HttpException } from '@nestjs/common';
 import { AttendanceCreationMethod } from '@prisma/client';
 import { CurrentUserContextService } from '../context.service';
@@ -135,9 +132,7 @@ export class OfflineAttendanceCommitter {
         attendance: toEventAttendance(attendance),
       };
     } catch (error: unknown) {
-      if (
-        await this.shouldStage(item.eventId, sender.id, error, context, canCommitWithPermission)
-      ) {
+      if (await this.shouldStage(item.eventId, sender.id, error, context, canCommitWithPermission)) {
         try {
           const stagedSubmission = await this.submissions.stage(item, context, {
             createdById,

@@ -16,9 +16,7 @@ export class PrivacyController {
 
   @Get('settings')
   @ApiOkResponse({ description: 'Privacy settings for the authenticated user.' })
-  async getPrivacySettings(
-    @Req() request: RequestWithUser,
-  ): Promise<PrivacySettingRecord> {
+  async getPrivacySettings(@Req() request: RequestWithUser): Promise<PrivacySettingRecord> {
     const userId = request.user?.sub;
     if (!userId) {
       throw new BadRequestException('Authenticated user is missing a subject identifier.');

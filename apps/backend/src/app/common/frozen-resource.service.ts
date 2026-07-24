@@ -16,9 +16,7 @@ export function getFrozenCutoffDate(now = new Date()): Date {
 }
 
 export function getLatestDate(dates: Array<Date | null | undefined>): Date | null {
-  const validDates = dates
-    .filter((date): date is Date => date instanceof Date)
-    .filter((date) => isValid(date));
+  const validDates = dates.filter((date): date is Date => date instanceof Date).filter((date) => isValid(date));
 
   return validDates.length > 0 ? max(validDates) : null;
 }
@@ -270,7 +268,10 @@ export class FrozenResourceService {
     await this.assertCertificateConfigMutable(certificate.configId, user, operation);
   }
 
-  async assertNoFrozenCertificateTargets(user: AuthenticatedUser | undefined, operation: FrozenOperation): Promise<void> {
+  async assertNoFrozenCertificateTargets(
+    user: AuthenticatedUser | undefined,
+    operation: FrozenOperation,
+  ): Promise<void> {
     const cutoff = getFrozenCutoffDate();
     const frozenConfig = await this.prisma.certificateConfig.findFirst({
       where: {
@@ -402,16 +403,10 @@ export class FrozenResourceService {
 
   private throwFrozen(operation: FrozenOperation): never {
     const permission = operation === 'delete' ? FROZEN_DELETE_PERMISSION : FROZEN_EDIT_PERMISSION;
-    throw new ForbiddenException(
-      `Dados congelados. Esta operação exige a permissão ${permission}.`,
-    );
+    throw new ForbiddenException(`Dados congelados. Esta operação exige a permissão ${permission}.`);
   }
 
-  private canBypass(
-    user: AuthenticatedUser | undefined,
-    operation: FrozenOperation,
-    context = {},
-  ): Promise<boolean> {
+  private canBypass(user: AuthenticatedUser | undefined, operation: FrozenOperation, context = {}): Promise<boolean> {
     const permission = operation === 'delete' ? Permission.Frozen.Delete : Permission.Frozen.Update;
     return this.authorizationPolicy.canOverrideFrozenResource(user, permission, context);
   }

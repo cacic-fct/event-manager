@@ -5,49 +5,89 @@ import { EventFormRendererComponent } from './event-form-renderer.component';
 
 const elements: FormElement[] = [
   { id: 'section', type: 'section', title: 'Dados do participante', required: false, options: [] },
-  { id: 'shirt', type: 'selectionDropdown', title: 'Tamanho da camiseta', required: true, options: [
-    { id: 'p', label: 'P' },
-    { id: 'm', label: 'M' },
-    { id: 'g', label: 'G' },
-  ] },
+  {
+    id: 'shirt',
+    type: 'selectionDropdown',
+    title: 'Tamanho da camiseta',
+    required: true,
+    options: [
+      { id: 'p', label: 'P' },
+      { id: 'm', label: 'M' },
+      { id: 'g', label: 'G' },
+    ],
+  },
   { id: 'bio', type: 'longText', title: 'Observações', required: false, options: [] },
-  { id: 'tracks', type: 'multipleChoice', title: 'Áreas de interesse', required: true, options: [
-    { id: 'web', label: 'Web' },
-    { id: 'data', label: 'Dados' },
-    { id: 'infra', label: 'Infraestrutura' },
-  ] },
-  { id: 'scale', type: 'linearScale', title: 'Expectativa', required: true, options: [], settings: {
-    linearScale: { min: 1, max: 5, minLabel: 'Baixa', maxLabel: 'Alta' },
-  } },
-  { id: 'rating', type: 'starRating', title: 'Avaliação geral', required: false, options: [], settings: {
-    starRating: { max: 5 },
-  } },
-  { id: 'grid', type: 'singleSelectionGrid', title: 'Disponibilidade por turno', required: false, options: [], settings: {
-    grid: {
-      rows: [
-        { id: 'mon', label: 'Segunda' },
-        { id: 'tue', label: 'Terça' },
-      ],
-      columns: [
-        { id: 'morning', label: 'Manhã' },
-        { id: 'night', label: 'Noite' },
-      ],
+  {
+    id: 'tracks',
+    type: 'multipleChoice',
+    title: 'Áreas de interesse',
+    required: true,
+    options: [
+      { id: 'web', label: 'Web' },
+      { id: 'data', label: 'Dados' },
+      { id: 'infra', label: 'Infraestrutura' },
+    ],
+  },
+  {
+    id: 'scale',
+    type: 'linearScale',
+    title: 'Expectativa',
+    required: true,
+    options: [],
+    settings: {
+      linearScale: { min: 1, max: 5, minLabel: 'Baixa', maxLabel: 'Alta' },
     },
-  } },
+  },
+  {
+    id: 'rating',
+    type: 'starRating',
+    title: 'Avaliação geral',
+    required: false,
+    options: [],
+    settings: {
+      starRating: { max: 5 },
+    },
+  },
+  {
+    id: 'grid',
+    type: 'singleSelectionGrid',
+    title: 'Disponibilidade por turno',
+    required: false,
+    options: [],
+    settings: {
+      grid: {
+        rows: [
+          { id: 'mon', label: 'Segunda' },
+          { id: 'tue', label: 'Terça' },
+        ],
+        columns: [
+          { id: 'morning', label: 'Manhã' },
+          { id: 'night', label: 'Noite' },
+        ],
+      },
+    },
+  },
   { id: 'date', type: 'date', title: 'Data preferida', required: false, options: [] },
   { id: 'time', type: 'time', title: 'Horário preferido', required: false, options: [] },
-  { id: 'schedule', type: 'scheduling', title: 'Agende atendimento', required: false, options: [], settings: {
-    scheduling: {
-      timezone: 'America/Sao_Paulo',
-      durationMinutes: 30,
-      slotIntervalMinutes: 30,
-      bufferBeforeMinutes: 0,
-      bufferAfterMinutes: 0,
-      inviteeMode: 'optional',
-      maxInvitees: 1,
-      availability: [{ id: 'window-1', date: '2026-07-01', startTime: '09:00', endTime: '11:00' }],
+  {
+    id: 'schedule',
+    type: 'scheduling',
+    title: 'Agende atendimento',
+    required: false,
+    options: [],
+    settings: {
+      scheduling: {
+        timezone: 'America/Sao_Paulo',
+        durationMinutes: 30,
+        slotIntervalMinutes: 30,
+        bufferBeforeMinutes: 0,
+        bufferAfterMinutes: 0,
+        inviteeMode: 'optional',
+        maxInvitees: 1,
+        availability: [{ id: 'window-1', date: '2026-07-01', startTime: '09:00', endTime: '11:00' }],
+      },
     },
-  } },
+  },
 ];
 
 const answers: FormResponseAnswer[] = [

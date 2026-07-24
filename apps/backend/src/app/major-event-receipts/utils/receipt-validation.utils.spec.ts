@@ -42,9 +42,9 @@ describe('receipt-validation utils', () => {
   it('normalizes rejection reasons, actor ids, and selected event ids', () => {
     expect(normalizeRejectionReason('  missing value  ')).toBe('missing value');
     expect(normalizeRejectionReason('   ')).toBeNull();
-    expect(getActorId({ sub: 'user-id', email: 'user@example.com', token: '', permissionSet: new Set() } as never)).toBe(
-      'user-id',
-    );
+    expect(
+      getActorId({ sub: 'user-id', email: 'user@example.com', token: '', permissionSet: new Set() } as never),
+    ).toBe('user-id');
     expect(getActorId({ email: 'user@example.com', token: '', permissionSet: new Set() } as never)).toBe(
       'user@example.com',
     );

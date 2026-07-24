@@ -73,12 +73,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     const prisma = {
       $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
     };
-    const service = new CurrentUserEventSubscriptionService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = new CurrentUserEventSubscriptionService(prisma as never, {} as never, {} as never, {} as never);
 
     await expect(service.subscribeCurrentUserEvent('person-1', 'hidden-event')).rejects.toBeInstanceOf(
       NotFoundException,
@@ -101,12 +96,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     const prisma = {
       $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
     };
-    const service = new CurrentUserEventSubscriptionService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = new CurrentUserEventSubscriptionService(prisma as never, {} as never, {} as never, {} as never);
 
     await expect(service.unsubscribeCurrentUserEvent('person-1', 'hidden-event')).rejects.toBeInstanceOf(
       NotFoundException,
@@ -197,16 +187,11 @@ describe('CurrentUserEventSubscriptionService', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
     };
-    const service = new CurrentUserEventSubscriptionService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = new CurrentUserEventSubscriptionService(prisma as never, {} as never, {} as never, {} as never);
 
-    await expect(
-      service.getSubscribedEventsByEventGroupSubscription('person-1', ['subscription-1']),
-    ).resolves.toEqual(new Map());
+    await expect(service.getSubscribedEventsByEventGroupSubscription('person-1', ['subscription-1'])).resolves.toEqual(
+      new Map(),
+    );
 
     expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith({
       where: {
@@ -246,12 +231,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     const prisma = {
       $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
     };
-    const service = new CurrentUserEventSubscriptionService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      {} as never,
-    );
+    const service = new CurrentUserEventSubscriptionService(prisma as never, {} as never, {} as never, {} as never);
 
     await expect(service.subscribeCurrentUserEventGroup('person-1', 'group-1')).rejects.toBeInstanceOf(
       NotFoundException,
@@ -319,7 +299,10 @@ describe('CurrentUserEventSubscriptionService', () => {
         create: jest.fn().mockResolvedValue(groupSubscription),
       },
       eventSubscription: {
-        findMany: jest.fn().mockResolvedValueOnce([]).mockResolvedValueOnce(events.map((event) => ({ event }))),
+        findMany: jest
+          .fn()
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce(events.map((event) => ({ event }))),
         updateMany: jest.fn(),
         createMany: jest.fn(),
       },
@@ -357,5 +340,4 @@ describe('CurrentUserEventSubscriptionService', () => {
       undefined,
     );
   });
-
 });

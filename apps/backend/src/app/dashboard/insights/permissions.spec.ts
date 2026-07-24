@@ -13,12 +13,7 @@ describe('dashboard permission helpers', () => {
       permissionSet: new Set([Permission.Person.Update, Permission.Event.Update]),
     } as never;
 
-    await expect(
-      resolveDashboardPermissions(
-        authorizationPolicy as never,
-        authenticatedUser,
-      ),
-    ).resolves.toEqual({
+    await expect(resolveDashboardPermissions(authorizationPolicy as never, authenticatedUser)).resolves.toEqual({
       permissions: [Permission.Certificate.Issue, Permission.Event.Update],
       cacheable: true,
       canReadGlobalInsights: true,
@@ -39,12 +34,7 @@ describe('dashboard permission helpers', () => {
       permissionSet: new Set([Permission.Event.Update]),
     } as never;
 
-    await expect(
-      resolveDashboardPermissions(
-        authorizationPolicy as never,
-        authenticatedUser,
-      ),
-    ).resolves.toEqual({
+    await expect(resolveDashboardPermissions(authorizationPolicy as never, authenticatedUser)).resolves.toEqual({
       permissions: [Permission.Certificate.Issue, Permission.Event.Update],
       cacheable: false,
       canReadGlobalInsights: false,

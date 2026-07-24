@@ -31,7 +31,9 @@ describe('SseReplayService', () => {
     const otherCursor = await service.record(firstScope, { data: { formId: 'form-1' } });
     const latest = await service.record(secondScope, { data: { formId: 'form-2' } });
 
-    await expect(firstValueFrom(service.replay(secondScope, otherCursor.id, NEVER).pipe(take(1)))).resolves.toEqual(latest);
+    await expect(firstValueFrom(service.replay(secondScope, otherCursor.id, NEVER).pipe(take(1)))).resolves.toEqual(
+      latest,
+    );
   });
 
   it('uses an opaque scope tag and rolls the generation periodically', async () => {
@@ -78,7 +80,10 @@ describe('SseReplayService', () => {
     const initialReplay = new Promise<string[]>((resolve) => {
       resolveInitialReplay = resolve;
     });
-    jest.spyOn(redis, 'lrange').mockImplementationOnce(() => initialReplay).mockImplementation(originalLrange);
+    jest
+      .spyOn(redis, 'lrange')
+      .mockImplementationOnce(() => initialReplay)
+      .mockImplementation(originalLrange);
     const service = new SseReplayService(redis as never);
     const scope = service.scope('event-form-results', 'form-1');
     const source = new Subject<{ data: object }>();
@@ -96,9 +101,15 @@ describe('SseReplayService', () => {
 
   it('forwards source and initial-replay failures, while preserving source completion', async () => {
     const sourceError = new Error('source unavailable');
-    await expect(firstValueFrom(createService().replay('scope', undefined, throwError(() => sourceError)))).rejects.toBe(
-      sourceError,
-    );
+    await expect(
+      firstValueFrom(
+        createService().replay(
+          'scope',
+          undefined,
+          throwError(() => sourceError),
+        ),
+      ),
+    ).rejects.toBe(sourceError);
 
     const complete = jest.fn();
     createService().replay('scope', undefined, EMPTY).subscribe({ complete });
@@ -107,9 +118,9 @@ describe('SseReplayService', () => {
 
     const redis = new InMemoryRedisClient();
     jest.spyOn(redis, 'lrange').mockRejectedValueOnce(new Error('replay unavailable'));
-    await expect(firstValueFrom(new SseReplayService(redis as never).replay('scope', undefined, NEVER))).rejects.toThrow(
-      'replay unavailable',
-    );
+    await expect(
+      firstValueFrom(new SseReplayService(redis as never).replay('scope', undefined, NEVER)),
+    ).rejects.toThrow('replay unavailable');
   });
 
   it('uses the latest valid snapshot when no cursor is supplied and ignores malformed journal entries', async () => {
@@ -195,7 +206,10 @@ describe('SseReplayService', () => {
     const replayRead = new Promise<string[]>((resolve) => {
       resolveInitialReplay = resolve;
     });
-    jest.spyOn(redis, 'lrange').mockImplementationOnce(() => replayRead).mockImplementation(originalLrange);
+    jest
+      .spyOn(redis, 'lrange')
+      .mockImplementationOnce(() => replayRead)
+      .mockImplementation(originalLrange);
     const source = new Subject<{ data: object }>();
     const received: unknown[] = [];
     const complete = jest.fn();

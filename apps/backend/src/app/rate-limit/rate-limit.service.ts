@@ -184,7 +184,9 @@ export class RateLimitService {
     );
   }
 
-  private async consumeRedis(input: RateLimitConsumeInput): Promise<Omit<RateLimitDecision, 'disabled' | 'wouldBlock'>> {
+  private async consumeRedis(
+    input: RateLimitConsumeInput,
+  ): Promise<Omit<RateLimitDecision, 'disabled' | 'wouldBlock'>> {
     const now = Date.now();
     const policy = input.policy;
     const key = this.key(input);

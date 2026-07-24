@@ -47,14 +47,16 @@ describe('EventDraftsService', () => {
     loggerWarnSpy.mockRestore();
   });
 
-  function buildService(overrides: Partial<{
-    prisma: Record<string, unknown>;
-    authorizationPolicy: Record<string, unknown>;
-    frozenResources: Record<string, unknown>;
-    auditLog: Record<string, unknown>;
-    attendanceRealtime: Record<string, unknown>;
-    typesenseSearch: Record<string, unknown>;
-  }> = {}) {
+  function buildService(
+    overrides: Partial<{
+      prisma: Record<string, unknown>;
+      authorizationPolicy: Record<string, unknown>;
+      frozenResources: Record<string, unknown>;
+      auditLog: Record<string, unknown>;
+      attendanceRealtime: Record<string, unknown>;
+      typesenseSearch: Record<string, unknown>;
+    }> = {},
+  ) {
     const tx = {
       eventDraft: {
         create: jest.fn().mockResolvedValue(draftRecord),

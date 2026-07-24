@@ -69,274 +69,305 @@ type OptionCollection = 'options' | 'gridRows' | 'gridColumns' | 'availability';
         <p class="empty-state">Adicione perguntas, textos ou seções para montar o formulário.</p>
       }
 
-      <div
-        cdkDropList
-        class="builder-list"
-        [cdkDropListData]="elements()"
-        (cdkDropListDropped)="drop($event)"
-      >
+      <div cdkDropList class="builder-list" [cdkDropListData]="elements()" (cdkDropListDropped)="drop($event)">
         @for (element of elements(); track element.id; let index = $index) {
-        <section class="builder-item" cdkDrag>
-          <header>
-            <div>
-              <span>{{ labels[element.type] }}</span>
-              <h3>{{ element.title }}</h3>
+          <section class="builder-item" cdkDrag>
+            <header>
+              <div>
+                <span>{{ labels[element.type] }}</span>
+                <h3>{{ element.title }}</h3>
+              </div>
+              <div class="item-actions">
+                <button mat-icon-button type="button" class="drag-handle" matTooltip="Arrastar item" cdkDragHandle>
+                  <mat-icon>drag_indicator</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Mover para cima"
+                  [disabled]="index === 0"
+                  (click)="move(index, -1)">
+                  <mat-icon>arrow_upward</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Mover para baixo"
+                  [disabled]="index === elements().length - 1"
+                  (click)="move(index, 1)">
+                  <mat-icon>arrow_downward</mat-icon>
+                </button>
+                <button mat-icon-button type="button" matTooltip="Duplicar" (click)="duplicate(index)">
+                  <mat-icon>content_copy</mat-icon>
+                </button>
+                <button mat-icon-button type="button" matTooltip="Remover" (click)="remove(element.id)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </header>
+
+            <div class="item-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Título</mat-label>
+                <input matInput [value]="element.title" (input)="updateText(element.id, 'title', $event)" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Descrição</mat-label>
+                <textarea
+                  matInput
+                  rows="2"
+                  [value]="element.description ?? ''"
+                  (input)="updateText(element.id, 'description', $event)"></textarea>
+              </mat-form-field>
+
+              @if (isAnswerElement(element.type)) {
+                <mat-checkbox [checked]="element.required" (change)="updateRequired(element.id, $event.checked)">
+                  Resposta obrigatória
+                </mat-checkbox>
+              }
             </div>
-            <div class="item-actions">
-              <button mat-icon-button type="button" class="drag-handle" matTooltip="Arrastar item" cdkDragHandle>
-                <mat-icon>drag_indicator</mat-icon>
-              </button>
-              <button mat-icon-button type="button" matTooltip="Mover para cima" [disabled]="index === 0" (click)="move(index, -1)">
-                <mat-icon>arrow_upward</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                type="button"
-                matTooltip="Mover para baixo"
-                [disabled]="index === elements().length - 1"
-                (click)="move(index, 1)"
-              >
-                <mat-icon>arrow_downward</mat-icon>
-              </button>
-              <button mat-icon-button type="button" matTooltip="Duplicar" (click)="duplicate(index)">
-                <mat-icon>content_copy</mat-icon>
-              </button>
-              <button mat-icon-button type="button" matTooltip="Remover" (click)="remove(element.id)">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
-          </header>
 
-          <div class="item-grid">
-            <mat-form-field appearance="outline">
-              <mat-label>Título</mat-label>
-              <input matInput [value]="element.title" (input)="updateText(element.id, 'title', $event)" />
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Descrição</mat-label>
-              <textarea matInput rows="2" [value]="element.description ?? ''" (input)="updateText(element.id, 'description', $event)"></textarea>
-            </mat-form-field>
-
-            @if (isAnswerElement(element.type)) {
-              <mat-checkbox [checked]="element.required" (change)="updateRequired(element.id, $event.checked)">
-                Resposta obrigatória
-              </mat-checkbox>
+            @if (usesOptions(element.type)) {
+              <div class="option-editor">
+                <h4>Opções</h4>
+                @for (option of element.options; track option.id) {
+                  <div class="option-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Opção</mat-label>
+                      <input
+                        matInput
+                        [value]="option.label"
+                        (input)="updateOption(element.id, 'options', option.id, $event)" />
+                    </mat-form-field>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      matTooltip="Remover opção"
+                      (click)="removeOption(element.id, 'options', option.id)">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                }
+                <button mat-button type="button" (click)="addOption(element.id, 'options')">
+                  <mat-icon>add</mat-icon>
+                  Opção
+                </button>
+              </div>
             }
-          </div>
 
-          @if (usesOptions(element.type)) {
-            <div class="option-editor">
-              <h4>Opções</h4>
-              @for (option of element.options; track option.id) {
-                <div class="option-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Opção</mat-label>
-                    <input matInput [value]="option.label" (input)="updateOption(element.id, 'options', option.id, $event)" />
-                  </mat-form-field>
-                  <button mat-icon-button type="button" matTooltip="Remover opção" (click)="removeOption(element.id, 'options', option.id)">
-                    <mat-icon>close</mat-icon>
+            @if (isGrid(element.type)) {
+              <div class="grid-editor">
+                <div class="option-editor">
+                  <h4>Linhas</h4>
+                  @for (row of element.settings?.grid?.rows ?? []; track row.id) {
+                    <div class="option-row">
+                      <mat-form-field appearance="outline">
+                        <mat-label>Linha</mat-label>
+                        <input
+                          matInput
+                          [value]="row.label"
+                          (input)="updateOption(element.id, 'gridRows', row.id, $event)" />
+                      </mat-form-field>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        matTooltip="Remover linha"
+                        (click)="removeOption(element.id, 'gridRows', row.id)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  }
+                  <button mat-button type="button" (click)="addOption(element.id, 'gridRows')">
+                    <mat-icon>add</mat-icon>
+                    Linha
                   </button>
                 </div>
-              }
-              <button mat-button type="button" (click)="addOption(element.id, 'options')">
-                <mat-icon>add</mat-icon>
-                Opção
-              </button>
-            </div>
-          }
 
-          @if (isGrid(element.type)) {
-            <div class="grid-editor">
-              <div class="option-editor">
-                <h4>Linhas</h4>
-                @for (row of element.settings?.grid?.rows ?? []; track row.id) {
-                  <div class="option-row">
-                    <mat-form-field appearance="outline">
-                      <mat-label>Linha</mat-label>
-                      <input matInput [value]="row.label" (input)="updateOption(element.id, 'gridRows', row.id, $event)" />
-                    </mat-form-field>
-                    <button mat-icon-button type="button" matTooltip="Remover linha" (click)="removeOption(element.id, 'gridRows', row.id)">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
-                }
-                <button mat-button type="button" (click)="addOption(element.id, 'gridRows')">
-                  <mat-icon>add</mat-icon>
-                  Linha
-                </button>
+                <div class="option-editor">
+                  <h4>Colunas</h4>
+                  @for (column of element.settings?.grid?.columns ?? []; track column.id) {
+                    <div class="option-row">
+                      <mat-form-field appearance="outline">
+                        <mat-label>Coluna</mat-label>
+                        <input
+                          matInput
+                          [value]="column.label"
+                          (input)="updateOption(element.id, 'gridColumns', column.id, $event)" />
+                      </mat-form-field>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        matTooltip="Remover coluna"
+                        (click)="removeOption(element.id, 'gridColumns', column.id)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  }
+                  <button mat-button type="button" (click)="addOption(element.id, 'gridColumns')">
+                    <mat-icon>add</mat-icon>
+                    Coluna
+                  </button>
+                </div>
               </div>
+            }
 
-              <div class="option-editor">
-                <h4>Colunas</h4>
-                @for (column of element.settings?.grid?.columns ?? []; track column.id) {
-                  <div class="option-row">
-                    <mat-form-field appearance="outline">
-                      <mat-label>Coluna</mat-label>
-                      <input matInput [value]="column.label" (input)="updateOption(element.id, 'gridColumns', column.id, $event)" />
-                    </mat-form-field>
-                    <button mat-icon-button type="button" matTooltip="Remover coluna" (click)="removeOption(element.id, 'gridColumns', column.id)">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
-                }
-                <button mat-button type="button" (click)="addOption(element.id, 'gridColumns')">
-                  <mat-icon>add</mat-icon>
-                  Coluna
-                </button>
+            @if (element.type === 'linearScale') {
+              <div class="settings-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>Mínimo</mat-label>
+                  <mat-select
+                    [value]="element.settings?.linearScale?.min ?? 1"
+                    (selectionChange)="updateLinearMin(element.id, $event.value)">
+                    <mat-option [value]="0">0</mat-option>
+                    <mat-option [value]="1">1</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Máximo</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="2"
+                    [value]="element.settings?.linearScale?.max ?? 5"
+                    (input)="updateLinearNumber(element.id, $event)" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Rótulo mínimo</mat-label>
+                  <input
+                    matInput
+                    [value]="element.settings?.linearScale?.minLabel ?? ''"
+                    (input)="updateLinearText(element.id, 'minLabel', $event)" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Rótulo máximo</mat-label>
+                  <input
+                    matInput
+                    [value]="element.settings?.linearScale?.maxLabel ?? ''"
+                    (input)="updateLinearText(element.id, 'maxLabel', $event)" />
+                </mat-form-field>
               </div>
-            </div>
-          }
+            }
 
-          @if (element.type === 'linearScale') {
-            <div class="settings-grid">
+            @if (element.type === 'starRating') {
               <mat-form-field appearance="outline">
-                <mat-label>Mínimo</mat-label>
-                <mat-select [value]="element.settings?.linearScale?.min ?? 1" (selectionChange)="updateLinearMin(element.id, $event.value)">
-                  <mat-option [value]="0">0</mat-option>
-                  <mat-option [value]="1">1</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Máximo</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  min="2"
-                  [value]="element.settings?.linearScale?.max ?? 5"
-                  (input)="updateLinearNumber(element.id, $event)"
-                />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Rótulo mínimo</mat-label>
-                <input
-                  matInput
-                  [value]="element.settings?.linearScale?.minLabel ?? ''"
-                  (input)="updateLinearText(element.id, 'minLabel', $event)"
-                />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Rótulo máximo</mat-label>
-                <input
-                  matInput
-                  [value]="element.settings?.linearScale?.maxLabel ?? ''"
-                  (input)="updateLinearText(element.id, 'maxLabel', $event)"
-                />
-              </mat-form-field>
-            </div>
-          }
-
-          @if (element.type === 'starRating') {
-            <mat-form-field appearance="outline">
-              <mat-label>Quantidade máxima de estrelas</mat-label>
-              <input
-                matInput
-                type="number"
-                min="1"
-                max="10"
-                [value]="element.settings?.starRating?.max ?? 5"
-                (input)="updateStarMax(element.id, $event)"
-              />
-            </mat-form-field>
-          }
-
-          @if (element.type === 'scheduling') {
-            <div class="settings-grid">
-              <mat-form-field appearance="outline">
-                <mat-label>Responsável</mat-label>
-                <input
-                  matInput
-                  [value]="element.settings?.scheduling?.hostName ?? ''"
-                  (input)="updateSchedulingText(element.id, 'hostName', $event)"
-                />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Local</mat-label>
-                <input
-                  matInput
-                  [value]="element.settings?.scheduling?.location ?? ''"
-                  (input)="updateSchedulingText(element.id, 'location', $event)"
-                />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Fuso horário</mat-label>
-                <input
-                  matInput
-                  [value]="element.settings?.scheduling?.timezone ?? 'America/Sao_Paulo'"
-                  (input)="updateSchedulingText(element.id, 'timezone', $event)"
-                />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Duração em minutos</mat-label>
+                <mat-label>Quantidade máxima de estrelas</mat-label>
                 <input
                   matInput
                   type="number"
                   min="1"
-                  [value]="element.settings?.scheduling?.durationMinutes ?? 30"
-                  (input)="updateSchedulingNumber(element.id, 'durationMinutes', $event)"
-                />
+                  max="10"
+                  [value]="element.settings?.starRating?.max ?? 5"
+                  (input)="updateStarMax(element.id, $event)" />
               </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Intervalo em minutos</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  min="1"
-                  [value]="element.settings?.scheduling?.slotIntervalMinutes ?? 30"
-                  (input)="updateSchedulingNumber(element.id, 'slotIntervalMinutes', $event)"
-                />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Convidados</mat-label>
-                <mat-select
-                  [value]="element.settings?.scheduling?.inviteeMode ?? 'none'"
-                  (selectionChange)="updateSchedulingInviteeMode(element.id, $event.value)"
-                >
-                  <mat-option value="none">Não permitir</mat-option>
-                  <mat-option value="optional">Opcional</mat-option>
-                  <mat-option value="required">Obrigatório</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Máximo de convidados</mat-label>
-                <input
-                  matInput
-                  type="number"
-                  min="0"
-                  [value]="element.settings?.scheduling?.maxInvitees ?? 0"
-                  (input)="updateSchedulingNumber(element.id, 'maxInvitees', $event)"
-                />
-              </mat-form-field>
-            </div>
+            }
 
-            <div class="option-editor">
-              <h4>Janelas de disponibilidade</h4>
-              @for (window of element.settings?.scheduling?.availability ?? []; track window.id) {
-                <div class="availability-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Data</mat-label>
-                    <input matInput type="date" [value]="window.date" (input)="updateAvailability(element.id, window.id, 'date', $event)" />
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Início</mat-label>
-                    <input matInput type="time" [value]="window.startTime" (input)="updateAvailability(element.id, window.id, 'startTime', $event)" />
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Fim</mat-label>
-                    <input matInput type="time" [value]="window.endTime" (input)="updateAvailability(element.id, window.id, 'endTime', $event)" />
-                  </mat-form-field>
-                  <button mat-icon-button type="button" matTooltip="Remover janela" (click)="removeOption(element.id, 'availability', window.id)">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                </div>
-              }
-              <button mat-button type="button" (click)="addOption(element.id, 'availability')">
-                <mat-icon>add</mat-icon>
-                Janela
-              </button>
-            </div>
-          }
-        </section>
+            @if (element.type === 'scheduling') {
+              <div class="settings-grid">
+                <mat-form-field appearance="outline">
+                  <mat-label>Responsável</mat-label>
+                  <input
+                    matInput
+                    [value]="element.settings?.scheduling?.hostName ?? ''"
+                    (input)="updateSchedulingText(element.id, 'hostName', $event)" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Local</mat-label>
+                  <input
+                    matInput
+                    [value]="element.settings?.scheduling?.location ?? ''"
+                    (input)="updateSchedulingText(element.id, 'location', $event)" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Fuso horário</mat-label>
+                  <input
+                    matInput
+                    [value]="element.settings?.scheduling?.timezone ?? 'America/Sao_Paulo'"
+                    (input)="updateSchedulingText(element.id, 'timezone', $event)" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Duração em minutos</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="1"
+                    [value]="element.settings?.scheduling?.durationMinutes ?? 30"
+                    (input)="updateSchedulingNumber(element.id, 'durationMinutes', $event)" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Intervalo em minutos</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="1"
+                    [value]="element.settings?.scheduling?.slotIntervalMinutes ?? 30"
+                    (input)="updateSchedulingNumber(element.id, 'slotIntervalMinutes', $event)" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Convidados</mat-label>
+                  <mat-select
+                    [value]="element.settings?.scheduling?.inviteeMode ?? 'none'"
+                    (selectionChange)="updateSchedulingInviteeMode(element.id, $event.value)">
+                    <mat-option value="none">Não permitir</mat-option>
+                    <mat-option value="optional">Opcional</mat-option>
+                    <mat-option value="required">Obrigatório</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Máximo de convidados</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="0"
+                    [value]="element.settings?.scheduling?.maxInvitees ?? 0"
+                    (input)="updateSchedulingNumber(element.id, 'maxInvitees', $event)" />
+                </mat-form-field>
+              </div>
+
+              <div class="option-editor">
+                <h4>Janelas de disponibilidade</h4>
+                @for (window of element.settings?.scheduling?.availability ?? []; track window.id) {
+                  <div class="availability-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Data</mat-label>
+                      <input
+                        matInput
+                        type="date"
+                        [value]="window.date"
+                        (input)="updateAvailability(element.id, window.id, 'date', $event)" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Início</mat-label>
+                      <input
+                        matInput
+                        type="time"
+                        [value]="window.startTime"
+                        (input)="updateAvailability(element.id, window.id, 'startTime', $event)" />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Fim</mat-label>
+                      <input
+                        matInput
+                        type="time"
+                        [value]="window.endTime"
+                        (input)="updateAvailability(element.id, window.id, 'endTime', $event)" />
+                    </mat-form-field>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      matTooltip="Remover janela"
+                      (click)="removeOption(element.id, 'availability', window.id)">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                }
+                <button mat-button type="button" (click)="addOption(element.id, 'availability')">
+                  <mat-icon>add</mat-icon>
+                  Janela
+                </button>
+              </div>
+            }
+          </section>
         }
       </div>
     </div>
@@ -528,7 +559,9 @@ export class EventFormBuilderComponent {
   }
 
   addOption(elementId: string, collection: OptionCollection): void {
-    this.updateElement(elementId, (element) => this.updateCollection(element, collection, (items) => [...items, this.newOption(collection, items.length)]));
+    this.updateElement(elementId, (element) =>
+      this.updateCollection(element, collection, (items) => [...items, this.newOption(collection, items.length)]),
+    );
   }
 
   updateOption(elementId: string, collection: OptionCollection, optionId: string, event: Event): void {
@@ -604,11 +637,7 @@ export class EventFormBuilderComponent {
     }));
   }
 
-  updateSchedulingText(
-    elementId: string,
-    key: 'hostName' | 'location' | 'timezone',
-    event: Event,
-  ): void {
+  updateSchedulingText(elementId: string, key: 'hostName' | 'location' | 'timezone', event: Event): void {
     const value = this.eventValue(event);
     this.updateElement(elementId, (element) => ({
       ...element,
@@ -629,7 +658,8 @@ export class EventFormBuilderComponent {
   ): void {
     this.updateElement(elementId, (element) => {
       const scheduling = this.ensureScheduling(element);
-      const minimum = key === 'maxInvitees' && scheduling.inviteeMode === 'required' ? 1 : key === 'maxInvitees' ? 0 : 1;
+      const minimum =
+        key === 'maxInvitees' && scheduling.inviteeMode === 'required' ? 1 : key === 'maxInvitees' ? 0 : 1;
       return {
         ...element,
         settings: {

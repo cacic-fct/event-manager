@@ -123,7 +123,9 @@ export abstract class EventAttendancesScannerFeedSupport extends EventAttendance
         (standaloneEventSubscriptionKeys.has(`${attendance.personId}:${attendance.eventId}`) ? 'CONFIRMED' : undefined),
       attendedAt: attendance.attendedAt,
       createdByMethod: attendance.createdByMethod,
-      collectedByFirstName: attendance.createdById ? (collectorFirstNameById.get(attendance.createdById) ?? undefined) : undefined,
+      collectedByFirstName: attendance.createdById
+        ? (collectorFirstNameById.get(attendance.createdById) ?? undefined)
+        : undefined,
       committedByFirstName:
         attendance.committedById && attendance.committedById !== attendance.createdById
           ? (collectorFirstNameById.get(attendance.committedById) ?? undefined)

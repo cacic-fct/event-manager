@@ -199,8 +199,9 @@ describe('CertificateIssuingService', () => {
     };
     const service = new CertificateIssuingService(prisma as never, validation as never, {} as never);
 
-    await expect(service.listCertificatesByTarget(CertificateScope.EVENT, ' event-1 ', ' config-1 ', 5, 20)).resolves
-      .toHaveLength(1);
+    await expect(
+      service.listCertificatesByTarget(CertificateScope.EVENT, ' event-1 ', ' config-1 ', 5, 20),
+    ).resolves.toHaveLength(1);
 
     expect(validation.assertSupportedScope).toHaveBeenCalledWith(CertificateScope.EVENT);
     expect(prisma.certificate.findMany).toHaveBeenCalledWith(
@@ -286,8 +287,16 @@ describe('CertificateIssuingService', () => {
   });
 
   it('copies manual recipients through the caller transaction with the duplicator as issuer', async () => {
-    const sourceConfig = { ...mappedCertificateRecord.config, id: 'source-config', issuedTo: CertificateIssuedTo.OTHER };
-    const targetConfig = { ...mappedCertificateRecord.config, id: 'target-config', issuedTo: CertificateIssuedTo.OTHER };
+    const sourceConfig = {
+      ...mappedCertificateRecord.config,
+      id: 'source-config',
+      issuedTo: CertificateIssuedTo.OTHER,
+    };
+    const targetConfig = {
+      ...mappedCertificateRecord.config,
+      id: 'target-config',
+      issuedTo: CertificateIssuedTo.OTHER,
+    };
     const transaction = {
       certificateConfig: {
         findFirst: jest.fn().mockResolvedValueOnce(sourceConfig).mockResolvedValueOnce(targetConfig),
@@ -312,9 +321,9 @@ describe('CertificateIssuingService', () => {
       shouldNotify: true,
     });
 
-    await expect(service.copyManualRecipients('source-config', 'target-config', 'duplicating-user', transaction as never)).resolves.toEqual([
-      copiedCertificate,
-    ]);
+    await expect(
+      service.copyManualRecipients('source-config', 'target-config', 'duplicating-user', transaction as never),
+    ).resolves.toEqual([copiedCertificate]);
 
     expect(upsert).toHaveBeenCalledWith(
       targetConfig,
@@ -328,12 +337,14 @@ describe('CertificateIssuingService', () => {
     const prisma = {
       $transaction: jest.fn(async (callback: (tx: unknown) => Promise<unknown>) => callback({})),
       certificate: {
-        findMany: jest.fn().mockResolvedValue([
-          { personId: 'person-1' },
-          { personId: 'person-2' },
-          { personId: 'person-2' },
-          { personId: 'person-3' },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { personId: 'person-1' },
+            { personId: 'person-2' },
+            { personId: 'person-2' },
+            { personId: 'person-3' },
+          ]),
       },
     };
     const validation = {
@@ -369,11 +380,12 @@ describe('CertificateIssuingService', () => {
         shouldNotify: false,
       }));
 
-    await expect(service.issueForExistingConfigRecipients('source-config', 'target-config', 'admin-user')).resolves
-      .toEqual([
-        expect.objectContaining({ personId: 'person-1' }),
-        expect.objectContaining({ personId: 'person-3' }),
-      ]);
+    await expect(
+      service.issueForExistingConfigRecipients('source-config', 'target-config', 'admin-user'),
+    ).resolves.toEqual([
+      expect.objectContaining({ personId: 'person-1' }),
+      expect.objectContaining({ personId: 'person-3' }),
+    ]);
 
     expect(recipientSpy).toHaveBeenCalledTimes(3);
     expect(upsertSpy).toHaveBeenCalledTimes(2);
@@ -417,7 +429,14 @@ describe('CertificateIssuingService', () => {
   it('does not reject a completed clone when queuing a copied certificate notification fails', async () => {
     const notificationJobs = { enqueue: jest.fn().mockRejectedValue(new Error('Redis unavailable')) };
     const logError = jest.spyOn(Logger.prototype, 'error').mockImplementation();
-    const service = new CertificateIssuingService({} as never, {} as never, {} as never, undefined, undefined, notificationJobs as never);
+    const service = new CertificateIssuingService(
+      {} as never,
+      {} as never,
+      {} as never,
+      undefined,
+      undefined,
+      notificationJobs as never,
+    );
 
     await expect(service.notifyCopiedCertificates([mappedCertificateRecord])).resolves.toBeUndefined();
 
@@ -495,7 +514,11 @@ describe('CertificateIssuingService', () => {
         service as unknown as {
           upsertCertificateForRecipient(config: unknown, recipient: unknown, issuedById?: string): Promise<unknown>;
         }
-      ).upsertCertificateForRecipient(mappedCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] }, 'admin-user'),
+      ).upsertCertificateForRecipient(
+        mappedCertificateRecord.config,
+        { person: mappedCertificateRecord.person, events: [] },
+        'admin-user',
+      ),
     ).resolves.toBe(mappedCertificateRecord);
 
     expect(tx.certificate.create).toHaveBeenCalledWith(
@@ -555,7 +578,10 @@ describe('CertificateIssuingService', () => {
       service as unknown as {
         upsertCertificateForRecipient(config: unknown, recipient: unknown, issuedById?: string): Promise<unknown>;
       }
-    ).upsertCertificateForRecipient(manualCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] });
+    ).upsertCertificateForRecipient(manualCertificateRecord.config, {
+      person: mappedCertificateRecord.person,
+      events: [],
+    });
 
     expect(notifications.mapPersonToRecipient).toHaveBeenCalledWith(mappedCertificateRecord.person);
     expect(notifications.notifyCertificateAvailable).toHaveBeenCalledWith({
@@ -677,7 +703,10 @@ describe('CertificateIssuingService', () => {
       service as unknown as {
         upsertCertificateForRecipient(config: unknown, recipient: unknown): Promise<unknown>;
       }
-    ).upsertCertificateForRecipient(mappedCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] });
+    ).upsertCertificateForRecipient(mappedCertificateRecord.config, {
+      person: mappedCertificateRecord.person,
+      events: [],
+    });
 
     expect(prisma.certificate.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -721,7 +750,10 @@ describe('CertificateIssuingService', () => {
       service as unknown as {
         upsertCertificateForRecipient(config: unknown, recipient: unknown): Promise<unknown>;
       }
-    ).upsertCertificateForRecipient(mappedCertificateRecord.config, { person: mappedCertificateRecord.person, events: [] });
+    ).upsertCertificateForRecipient(mappedCertificateRecord.config, {
+      person: mappedCertificateRecord.person,
+      events: [],
+    });
 
     expect(prisma.certificate.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -923,7 +955,10 @@ describe('CertificateIssuingService', () => {
         findMany: jest
           .fn()
           .mockResolvedValueOnce([{ personId: 'person-a' }, { personId: 'person-b' }])
-          .mockResolvedValueOnce([{ ...mappedCertificateRecord, personId: 'person-a' }, { ...mappedCertificateRecord, personId: 'person-b' }]),
+          .mockResolvedValueOnce([
+            { ...mappedCertificateRecord, personId: 'person-a' },
+            { ...mappedCertificateRecord, personId: 'person-b' },
+          ]),
         updateMany: jest.fn().mockResolvedValue({ count: 2 }),
       },
     };
@@ -997,7 +1032,10 @@ describe('CertificateIssuingService', () => {
         findUnique: jest.fn().mockResolvedValue({ name: 'Admin', email: 'admin@example.com' }),
       },
       certificateConfig: {
-        findMany: jest.fn().mockResolvedValue([{ ...config, id: 'config-1' }, { ...config, id: 'config-2' }]),
+        findMany: jest.fn().mockResolvedValue([
+          { ...config, id: 'config-1' },
+          { ...config, id: 'config-2' },
+        ]),
       },
       certificate: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -1239,7 +1277,11 @@ describe('CertificateIssuingService', () => {
     const service = new CertificateIssuingService({} as never, {} as never, {} as never);
     const renderedData = (
       service as unknown as {
-        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+        buildRenderedData(
+          config: unknown,
+          recipient: unknown,
+          issuedAt: Date,
+        ): { templateData: Record<string, string> };
       }
     ).buildRenderedData(
       {
@@ -1289,7 +1331,11 @@ describe('CertificateIssuingService', () => {
     const service = new CertificateIssuingService({} as never, {} as never, {} as never);
     const renderedData = (
       service as unknown as {
-        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+        buildRenderedData(
+          config: unknown,
+          recipient: unknown,
+          issuedAt: Date,
+        ): { templateData: Record<string, string> };
       }
     ).buildRenderedData(
       {
@@ -1336,7 +1382,11 @@ describe('CertificateIssuingService', () => {
     const render = (certificateFields: Record<string, string>) =>
       (
         service as unknown as {
-          buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+          buildRenderedData(
+            config: unknown,
+            recipient: unknown,
+            issuedAt: Date,
+          ): { templateData: Record<string, string> };
         }
       ).buildRenderedData(
         {
@@ -1390,7 +1440,11 @@ describe('CertificateIssuingService', () => {
     const render = (config: Record<string, unknown>) =>
       (
         service as unknown as {
-          buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+          buildRenderedData(
+            config: unknown,
+            recipient: unknown,
+            issuedAt: Date,
+          ): { templateData: Record<string, string> };
         }
       ).buildRenderedData(
         {
@@ -1434,7 +1488,11 @@ describe('CertificateIssuingService', () => {
     const service = new CertificateIssuingService({} as never, {} as never, {} as never);
     const renderedData = (
       service as unknown as {
-        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+        buildRenderedData(
+          config: unknown,
+          recipient: unknown,
+          issuedAt: Date,
+        ): { templateData: Record<string, string> };
       }
     ).buildRenderedData(
       {
@@ -1492,7 +1550,11 @@ describe('CertificateIssuingService', () => {
     const service = new CertificateIssuingService({} as never, {} as never, {} as never);
     const renderedData = (
       service as unknown as {
-        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+        buildRenderedData(
+          config: unknown,
+          recipient: unknown,
+          issuedAt: Date,
+        ): { templateData: Record<string, string> };
       }
     ).buildRenderedData(
       {
@@ -1553,7 +1615,11 @@ describe('CertificateIssuingService', () => {
     const service = new CertificateIssuingService({} as never, {} as never, {} as never);
     const renderedData = (
       service as unknown as {
-        buildRenderedData(config: unknown, recipient: unknown, issuedAt: Date): { templateData: Record<string, string> };
+        buildRenderedData(
+          config: unknown,
+          recipient: unknown,
+          issuedAt: Date,
+        ): { templateData: Record<string, string> };
       }
     ).buildRenderedData(
       {

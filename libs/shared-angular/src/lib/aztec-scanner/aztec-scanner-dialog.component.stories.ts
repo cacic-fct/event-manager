@@ -97,4 +97,3 @@ export const ContinuousScan: Story = {
     acceptedPrefixes: ['user:', 'attendance:'],
   },
 };
-

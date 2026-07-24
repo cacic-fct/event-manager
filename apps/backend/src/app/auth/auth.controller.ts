@@ -31,11 +31,21 @@ import { LogoutDto } from './dto/logout.dto';
 import { KeycloakAuthService } from './keycloak-auth.service';
 import { PublicAuthenticatedUser, toPublicAuthenticatedUser } from './public-authenticated-user';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
-import { clearCacicTrackingCookies, isSecureAuthRequest, readAuthCookie, resolveCookieMaxAge } from './auth-cookie-utils';
+import {
+  clearCacicTrackingCookies,
+  isSecureAuthRequest,
+  readAuthCookie,
+  resolveCookieMaxAge,
+} from './auth-cookie-utils';
 import { getAuthorizationErrorPayload, getAuthorizationErrorRedirectUri } from './auth-error-redirect';
 import { isPasswordLoginEnabled } from './auth-password-login';
 import { readPermissionList } from './auth-permission-input';
-import { createAllowedCallbackRedirectOrigins, createAllowedPostLogoutRedirectOrigins, resolveCallbackRedirectUri, resolvePostLogoutRedirectUri } from './auth-redirect-utils';
+import {
+  createAllowedCallbackRedirectOrigins,
+  createAllowedPostLogoutRedirectOrigins,
+  resolveCallbackRedirectUri,
+  resolvePostLogoutRedirectUri,
+} from './auth-redirect-utils';
 import { consumeAuthorizationState, setAuthorizationStateCookie } from './auth-authorization-state';
 import { getFailedAuthorizationRedirectUri } from './auth-post-login-redirect';
 import {
@@ -392,7 +402,10 @@ export class AuthController {
     return this.keycloakAuthService.logout({
       refreshToken: body?.refreshToken ?? sessionLogoutInput?.refreshToken,
       idTokenHint: body?.idTokenHint ?? sessionLogoutInput?.idTokenHint,
-      postLogoutRedirectUri: resolvePostLogoutRedirectUri(body?.postLogoutRedirectUri, this.allowedPostLogoutRedirectOrigins),
+      postLogoutRedirectUri: resolvePostLogoutRedirectUri(
+        body?.postLogoutRedirectUri,
+        this.allowedPostLogoutRedirectOrigins,
+      ),
     });
   }
 
@@ -486,5 +499,4 @@ export class AuthController {
 
     return { permissions: grantedPermissions };
   }
-
 }

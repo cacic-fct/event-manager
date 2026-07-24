@@ -91,10 +91,12 @@ describe('public event models', () => {
       id: 'payment-1',
       majorEventId: 'major-event-1',
     });
-    expect(Object.assign(new PublicMajorEventPriceTier(), { id: 'tier-1', name: 'Lote 1', value: 2500 })).toMatchObject({
-      id: 'tier-1',
-      value: 2500,
-    });
+    expect(Object.assign(new PublicMajorEventPriceTier(), { id: 'tier-1', name: 'Lote 1', value: 2500 })).toMatchObject(
+      {
+        id: 'tier-1',
+        value: 2500,
+      },
+    );
     expect(
       Object.assign(new PublicMajorEventPrice(), {
         id: 'price-1',
@@ -102,7 +104,9 @@ describe('public event models', () => {
         tiers: [new PublicMajorEventPriceTier()],
       }),
     ).toMatchObject({ id: 'price-1', tiers: [{}] });
-    expect(Object.assign(new PublicMajorEvent(), { ...majorEventFixture(), shouldIssueCertificate: true })).toMatchObject({
+    expect(
+      Object.assign(new PublicMajorEvent(), { ...majorEventFixture(), shouldIssueCertificate: true }),
+    ).toMatchObject({
       id: 'major-event-1',
       rankedSubscriptionEnabled: true,
     });
@@ -128,8 +132,9 @@ describe('public event models', () => {
         queueCount: 0,
       }),
     ).toMatchObject({ id: 'event-1', queueCount: 0 });
-    expect(Object.assign(new PublicEventSubscriptionSummary(), { eventId: 'event-1', hasAvailableSlots: true }))
-      .toMatchObject({ eventId: 'event-1', hasAvailableSlots: true });
+    expect(
+      Object.assign(new PublicEventSubscriptionSummary(), { eventId: 'event-1', hasAvailableSlots: true }),
+    ).toMatchObject({ eventId: 'event-1', hasAvailableSlots: true });
     expect(
       Object.assign(new PublicMajorEventSubscriptionPage(), {
         majorEvent: new PublicMajorEvent(),

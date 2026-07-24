@@ -252,10 +252,9 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
         new Promise<never>((_resolve, reject) => {
           timeout = setTimeout(() => {
             reject(new ReceiptImageProcessingTimeoutError(`${operationName} timed out after ${timeoutMs} ms.`));
-            Promise.resolve(onTimeout?.())
-              .catch((error: unknown) => {
-                this.logger.warn(`Failed to stop timed-out ${operationName}: ${this.formatErrorMessage(error)}`);
-              });
+            Promise.resolve(onTimeout?.()).catch((error: unknown) => {
+              this.logger.warn(`Failed to stop timed-out ${operationName}: ${this.formatErrorMessage(error)}`);
+            });
           }, timeoutMs);
         }),
       ]);
@@ -280,21 +279,19 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
     return error instanceof Error ? error : new Error(message);
   }
 
-  private resolveExpectedAmountCents(
-    subscription: {
-      amountPaid: number | null;
-      paymentTier: string | null;
-      createdByMethod: string;
-      majorEvent: {
-        majorEventPrices: Array<{
-          tiers: Array<{
-            name: string;
-            value: number;
-          }>;
+  private resolveExpectedAmountCents(subscription: {
+    amountPaid: number | null;
+    paymentTier: string | null;
+    createdByMethod: string;
+    majorEvent: {
+      majorEventPrices: Array<{
+        tiers: Array<{
+          name: string;
+          value: number;
         }>;
-      };
-    },
-  ): number | undefined {
+      }>;
+    };
+  }): number | undefined {
     if (subscription.createdByMethod === 'SELF_SUBSCRIPTION') {
       return this.resolvePriceTierAmountCents(subscription) ?? subscription.amountPaid ?? undefined;
     }

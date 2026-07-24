@@ -330,11 +330,13 @@ function createPrisma() {
   };
 }
 
-function createTypesenseSearch(overrides: Partial<{
-  searchEvents: jest.Mock;
-  searchEventGroups: jest.Mock;
-  searchMajorEvents: jest.Mock;
-}> = {}) {
+function createTypesenseSearch(
+  overrides: Partial<{
+    searchEvents: jest.Mock;
+    searchEventGroups: jest.Mock;
+    searchMajorEvents: jest.Mock;
+  }> = {},
+) {
   return {
     isEnabled: jest.fn().mockReturnValue(true),
     searchEvents: jest.fn(),

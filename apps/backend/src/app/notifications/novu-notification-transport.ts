@@ -1,6 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { createHmac } from 'node:crypto';
-import type { NotificationRecipient, NovuSubscriberSession, NovuTriggerRequest, NovuTriggerResponse } from './novu-notification.types';
+import type {
+  NotificationRecipient,
+  NovuSubscriberSession,
+  NovuTriggerRequest,
+  NovuTriggerResponse,
+} from './novu-notification.types';
 
 type NotificationLogger = {
   warn(message: string): void;

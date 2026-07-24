@@ -11,11 +11,11 @@ import { assertPublicationTargetPermission, getPublicationUser } from './publish
 import { buildPublicationConsistencyWarnings } from './publishing-consistency';
 import { PublicationJobsService } from './publishing-jobs.service';
 import {
-  PublishContentPreviewInput,
-  PublishContentPreviewPayload,
-  PublishContentPreviewResult,
-  PublishContentWorkspace,
-  PublicContentNode,
+  PublicationPreviewInput,
+  PublicationPreviewPayload,
+  PublicationPreviewResult,
+  PublicationWorkspace,
+  PublicationNode,
   PublicationActionResult,
   PublicationBulkInput,
   PublicationStateInput,
@@ -155,7 +155,7 @@ export class PublicationService {
     private readonly jobs: PublicationJobsService,
   ) {}
 
-  async getWorkspace(context: GraphqlContext, input: PublicationWorkspaceInput = {}): Promise<PublishContentWorkspace> {
+  async getWorkspace(context: GraphqlContext, input: PublicationWorkspaceInput = {}): Promise<PublicationWorkspace> {
     const user = getPublicationUser(context);
     await this.authorizationPolicy.assertPermissions(
       user,
@@ -295,11 +295,11 @@ export class PublicationService {
     return outcome.result;
   }
 
-  createPreview(input: PublishContentPreviewInput, context: GraphqlContext): Promise<PublishContentPreviewResult> {
+  createPreview(input: PublicationPreviewInput, context: GraphqlContext): Promise<PublicationPreviewResult> {
     return this.previews.createPreview(input, context);
   }
 
-  getPreviewPayload(previewToken: string): Promise<PublishContentPreviewPayload> {
+  getPreviewPayload(previewToken: string): Promise<PublicationPreviewPayload> {
     return this.previews.getPreviewPayload(previewToken);
   }
 
@@ -570,7 +570,7 @@ export class PublicationService {
       eventGroupWhere: Prisma.EventGroupWhereInput;
       majorEventWhere: Prisma.MajorEventWhereInput;
     },
-  ): Promise<PublicContentNode | null> {
+  ): Promise<PublicationNode | null> {
     if (!input.focusTargetType || !input.focusTargetId) {
       return null;
     }
@@ -603,7 +603,7 @@ export class PublicationService {
     eventGroups: PublicationWorkspaceEventGroupRecord[],
     events: PublicationWorkspaceEventRecord[],
     treeChildren: PublicationTreeChildren,
-  ): PublicContentNode[] {
+  ): PublicationNode[] {
     return [
       ...majorEvents.map((majorEvent) =>
         this.mapMajorEventNode(majorEvent, treeChildren.majorEventChildren.get(majorEvent.id) ?? []),
@@ -636,7 +636,7 @@ export class PublicationService {
   private mapMajorEventNode(
     majorEvent: PublicationWorkspaceMajorEventRecord,
     children: PublicationWorkspaceEventRecord[] = [],
-  ): PublicContentNode {
+  ): PublicationNode {
     const directEvents = children.filter((event) => !event.eventGroupId);
     const groupedEvents = new Map<string, PublicationWorkspaceEventRecord[]>();
     for (const event of children) {
@@ -671,7 +671,7 @@ export class PublicationService {
   private mapEventGroupNode(
     eventGroup: PublicationWorkspaceEventGroupRecord,
     children: PublicationWorkspaceEventRecord[] = [],
-  ): PublicContentNode {
+  ): PublicationNode {
     const publicationState = children.length > 0 ? this.deriveGroupState(children) : 'DRAFT';
     const scheduledPublishAt = this.deriveGroupSchedule(children);
 
@@ -694,7 +694,7 @@ export class PublicationService {
     };
   }
 
-  private mapNestedEventGroupNode(events: PublicationWorkspaceEventRecord[], parentLabel: string): PublicContentNode {
+  private mapNestedEventGroupNode(events: PublicationWorkspaceEventRecord[], parentLabel: string): PublicationNode {
     const firstEvent = events[0];
     const publicationState = this.deriveGroupState(events);
     const scheduledPublishAt = this.deriveGroupSchedule(events);
@@ -719,7 +719,7 @@ export class PublicationService {
   private mapEventNode(
     event: PublicationWorkspaceEventRecord,
     parentLabel = this.eventParentLabel(event),
-  ): PublicContentNode {
+  ): PublicationNode {
     return {
       targetType: PublicationTargetType.EVENT,
       id: event.id,
@@ -736,7 +736,7 @@ export class PublicationService {
     };
   }
 
-  private deriveGroupState(events: PublicationWorkspaceEventRecord[]): PublicContentNode['publicationState'] {
+  private deriveGroupState(events: PublicationWorkspaceEventRecord[]): PublicationNode['publicationState'] {
     if (events.some((event) => event.publicationState === 'PUBLISHED')) {
       return 'PUBLISHED';
     }

@@ -301,7 +301,8 @@ export class NovuInboxComponent {
     }
 
     const ownSegments = this.route.snapshot.pathFromRoot.flatMap((route) => route.url.map((segment) => segment.path));
-    const activeSegments = this.router.parseUrl(this.router.url).root.children['primary']?.segments.map((segment) => segment.path) ?? [];
+    const activeSegments =
+      this.router.parseUrl(this.router.url).root.children['primary']?.segments.map((segment) => segment.path) ?? [];
 
     return ownSegments.every((segment, index) => activeSegments[index] === segment);
   }

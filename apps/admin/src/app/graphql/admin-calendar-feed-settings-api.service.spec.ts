@@ -22,7 +22,9 @@ describe('AdminCalendarFeedSettingsApiService', () => {
         }
         if (query.includes('RotateCurrentUserAdminCalendarFeedKey')) {
           return of({
-            rotateCurrentUserAdminCalendarFeedKey: adminSettingsFixture({ feedPath: '/api/calendar/admin/feeds/rotated.ics' }),
+            rotateCurrentUserAdminCalendarFeedKey: adminSettingsFixture({
+              feedPath: '/api/calendar/admin/feeds/rotated.ics',
+            }),
           });
         }
         if (query.includes('SuperAdminCalendarFeedSettings')) {
@@ -80,10 +82,7 @@ describe('AdminCalendarFeedSettingsApiService', () => {
 
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(1, expect.stringContaining('superAdminCalendarFeedSettings'));
     expect(graphqlHttp.request.mock.calls[0][0]).toContain('rotatedAt');
-    expect(graphqlHttp.request).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining('rotateSuperAdminCalendarFeedKey'),
-    );
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(2, expect.stringContaining('rotateSuperAdminCalendarFeedKey'));
   });
 });
 

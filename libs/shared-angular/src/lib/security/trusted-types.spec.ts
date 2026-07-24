@@ -69,9 +69,7 @@ describe('trustedServiceWorkerUrl', () => {
     expect(() => trustedServiceWorkerUrl(`${serviceWorkerUrl}?version=1`)).toThrow(
       'Service worker URL is not approved',
     );
-    expect(() => trustedServiceWorkerUrl(`${serviceWorkerUrl}#fragment`)).toThrow(
-      'Service worker URL is not approved',
-    );
+    expect(() => trustedServiceWorkerUrl(`${serviceWorkerUrl}#fragment`)).toThrow('Service worker URL is not approved');
   });
 });
 
@@ -117,7 +115,10 @@ describe('CacicTrustedTypesService', () => {
   });
 
   function createService(platformId: string): CacicTrustedTypesService {
-    const injector = createEnvironmentInjector([{ provide: PLATFORM_ID, useValue: platformId }], rootEnvironmentInjector);
+    const injector = createEnvironmentInjector(
+      [{ provide: PLATFORM_ID, useValue: platformId }],
+      rootEnvironmentInjector,
+    );
 
     try {
       return runInInjectionContext(injector, () => new CacicTrustedTypesService());

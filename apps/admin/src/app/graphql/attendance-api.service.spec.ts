@@ -19,7 +19,10 @@ describe('AttendanceApiService', () => {
 
     expect(source.url).toBe('/api/event-attendances/events/event%20%2F%201/scanner-feed/events');
     expect(source.init).toEqual({ withCredentials: true });
-    source.emitMessage({ type: 'event-attendance-scanner-feed', attendances: [{ eventId: 'event-1', personId: 'person-1' }] });
+    source.emitMessage({
+      type: 'event-attendance-scanner-feed',
+      attendances: [{ eventId: 'event-1', personId: 'person-1' }],
+    });
 
     await expect(feed).resolves.toEqual([{ eventId: 'event-1', personId: 'person-1' }]);
     expect(source.close).toHaveBeenCalledOnce();

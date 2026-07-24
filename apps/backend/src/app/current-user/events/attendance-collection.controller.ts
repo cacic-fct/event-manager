@@ -86,8 +86,7 @@ class EventAttendanceScannerFeedItemDto {
   collectedByFirstName!: string | null;
 
   @ApiPropertyOptional({
-    description:
-      'First name of the user who synchronized the attendance, when it differs from the original collector.',
+    description: 'First name of the user who synchronized the attendance, when it differs from the original collector.',
     example: 'Maria',
     nullable: true,
   })
@@ -171,7 +170,11 @@ export class CurrentUserAttendanceCollectionController extends EventAttendancesS
     );
 
     return this.replay.replay(
-      this.replay.scope('current-user-attendance-collection-feed', eventId, request.user?.sub ?? request.headers.cookie),
+      this.replay.scope(
+        'current-user-attendance-collection-feed',
+        eventId,
+        request.user?.sub ?? request.headers.cookie,
+      ),
       lastEventId,
       snapshots,
     );
@@ -191,5 +194,4 @@ export class CurrentUserAttendanceCollectionController extends EventAttendancesS
       collectorUserId: request.user?.sub,
     };
   }
-
 }

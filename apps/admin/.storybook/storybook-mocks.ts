@@ -1,4 +1,8 @@
-import { EVENT_MANAGER_PERMISSION_CATALOG, EventManagerPermissionGrantScope, Permission } from '@cacic-fct/shared-permissions';
+import {
+  EVENT_MANAGER_PERMISSION_CATALOG,
+  EventManagerPermissionGrantScope,
+  Permission,
+} from '@cacic-fct/shared-permissions';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { http, HttpResponse } from 'msw';
 
@@ -478,10 +482,7 @@ function graphqlError(message: string): GraphqlMockError {
 
 function isGraphqlMockError(value: unknown): value is GraphqlMockError {
   return Boolean(
-    value &&
-      typeof value === 'object' &&
-      'errors' in value &&
-      Array.isArray((value as GraphqlMockError).errors),
+    value && typeof value === 'object' && 'errors' in value && Array.isArray((value as GraphqlMockError).errors),
   );
 }
 
@@ -698,7 +699,9 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
   }
 
   if (query.includes('EventAttendanceScannerFeed')) {
-    return { eventAttendanceScannerFeed: Array.from({ length: 5 }, (_, index) => eventAttendanceScannerFeedItem(index)) };
+    return {
+      eventAttendanceScannerFeed: Array.from({ length: 5 }, (_, index) => eventAttendanceScannerFeedItem(index)),
+    };
   }
 
   if (query.includes('CreateEventAttendanceFromAztecCode')) {

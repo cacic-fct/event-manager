@@ -45,18 +45,21 @@ function createPrismaMock(): Record<AuditEntityDelegateName, AuditEntityDelegate
 }
 
 describe('findCurrentAuditEntityRecord', () => {
-  it.each(ENTITY_DELEGATES)('finds current %s records using the configured select', async (entityType, delegateName) => {
-    const prisma = createPrismaMock();
+  it.each(ENTITY_DELEGATES)(
+    'finds current %s records using the configured select',
+    async (entityType, delegateName) => {
+      const prisma = createPrismaMock();
 
-    await expect(
-      findCurrentAuditEntityRecord(prisma as unknown as PrismaService, entityType, 'entity-1'),
-    ).resolves.toEqual({ id: 'entity-1' });
+      await expect(
+        findCurrentAuditEntityRecord(prisma as unknown as PrismaService, entityType, 'entity-1'),
+      ).resolves.toEqual({ id: 'entity-1' });
 
-    expect(prisma[delegateName].findUnique).toHaveBeenCalledWith({
-      where: { id: 'entity-1' },
-      select: getAuditLogRevertConfig(entityType).select,
-    });
-  });
+      expect(prisma[delegateName].findUnique).toHaveBeenCalledWith({
+        where: { id: 'entity-1' },
+        select: getAuditLogRevertConfig(entityType).select,
+      });
+    },
+  );
 
   it('returns null for unsupported entity types', async () => {
     const prisma = createPrismaMock();

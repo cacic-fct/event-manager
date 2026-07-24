@@ -52,7 +52,10 @@ export class ReceiptUploadService {
     } as unknown as FrozenResourceService,
   ) {}
 
-  async getCurrentReceipt(majorEventId: string, authenticatedUser: AuthenticatedUser): Promise<CurrentUserReceiptResponse | null> {
+  async getCurrentReceipt(
+    majorEventId: string,
+    authenticatedUser: AuthenticatedUser,
+  ): Promise<CurrentUserReceiptResponse | null> {
     const person = await this.currentUserContext.requireCurrentPerson(this.buildUserContext(authenticatedUser));
     const receipt = await this.prisma.majorEventReceipt.findFirst({
       where: {
@@ -264,7 +267,10 @@ export class ReceiptUploadService {
     throw new ForbiddenException('You cannot access this receipt.');
   }
 
-  private async hasAdminReceiptReadPermission(authenticatedUser: AuthenticatedUser, receiptId: string): Promise<boolean> {
+  private async hasAdminReceiptReadPermission(
+    authenticatedUser: AuthenticatedUser,
+    receiptId: string,
+  ): Promise<boolean> {
     try {
       await this.authorizationPolicy.assertPermissions(authenticatedUser, [RECEIPT_ADMIN_PERMISSION], {
         receiptId,

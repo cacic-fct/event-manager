@@ -1,4 +1,8 @@
-import { EventAttendance, EventAttendanceCsvImportInput, EventAttendanceCsvImportResult } from '@cacic-fct/shared-data-types';
+import {
+  EventAttendance,
+  EventAttendanceCsvImportInput,
+  EventAttendanceCsvImportResult,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';

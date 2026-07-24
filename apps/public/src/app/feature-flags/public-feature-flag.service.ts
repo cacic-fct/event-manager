@@ -122,7 +122,7 @@ export class PublicFeatureFlagService {
   private valuesFromToggles(toggles: IToggle[]): PublicFeatureFlagValues {
     const enabled = (key: PublicFeatureFlagKey): boolean => {
       const fallback = PUBLIC_FEATURE_FLAG_DEFAULTS[key];
-      return toggles.find((toggle) => toggle.name === PUBLIC_FEATURE_FLAGS[key])?.enabled ?? (fallback === true);
+      return toggles.find((toggle) => toggle.name === PUBLIC_FEATURE_FLAGS[key])?.enabled ?? fallback === true;
     };
     const defaultRedirect = toggles.find((toggle) => toggle.name === PUBLIC_FEATURE_FLAGS.defaultLoginRedirectPath);
     const calendarDefaultView = toggles.find((toggle) => toggle.name === PUBLIC_FEATURE_FLAGS.calendarDefaultView);
@@ -141,9 +141,7 @@ export class PublicFeatureFlagService {
       ),
       onboardingEnforcementEnabled: enabled('onboardingEnforcementEnabled'),
       cookieBannerEnabled: enabled('cookieBannerEnabled'),
-      undergraduateUnespRoleVerificationDisabled: enabled(
-        'undergraduateUnespRoleVerificationDisabled',
-      ),
+      undergraduateUnespRoleVerificationDisabled: enabled('undergraduateUnespRoleVerificationDisabled'),
       interruptionsEnabled: enabled('interruptionsEnabled'),
     };
   }
@@ -246,7 +244,10 @@ export class PublicFeatureFlagService {
       return;
     }
 
-    await database.featureFlagCache.where('updatedAt').below(Date.now() - CACHE_TTL_MS).delete();
+    await database.featureFlagCache
+      .where('updatedAt')
+      .below(Date.now() - CACHE_TTL_MS)
+      .delete();
   }
 
   private isExpired(record: OfflineFeatureFlagCacheRecord): boolean {

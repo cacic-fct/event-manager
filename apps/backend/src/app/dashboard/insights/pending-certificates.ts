@@ -294,8 +294,7 @@ function hasMissingCertificatesOrConfig(target: {
   certificateConfigs: { certificates: { id: string }[] }[];
 }): boolean {
   return (
-    (target.shouldIssueCertificate && target.certificateConfigs.length === 0) ||
-    hasConfigWithoutCertificate(target)
+    (target.shouldIssueCertificate && target.certificateConfigs.length === 0) || hasConfigWithoutCertificate(target)
   );
 }
 

@@ -20,7 +20,8 @@ const NAME_PARTICLES = new Set(['de', 'da', 'das', 'do', 'dos', 'e']);
 export class ReceiptAnalysisService {
   analyze(text: string, personName: string, expectedAmountCents?: number | null): ReceiptAnalysisResult {
     const parsedAmounts = this.extractBrazilianRealAmounts(text);
-    const matchedAmount = expectedAmountCents == null ? undefined : parsedAmounts.find((amount) => amount.cents === expectedAmountCents);
+    const matchedAmount =
+      expectedAmountCents == null ? undefined : parsedAmounts.find((amount) => amount.cents === expectedAmountCents);
     const matchedNameText = this.findMatchingNameText(text, personName);
 
     return {

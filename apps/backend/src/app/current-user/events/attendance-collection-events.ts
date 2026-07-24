@@ -128,10 +128,7 @@ async function findManagerCollectionEvents(
         gte: visibleFrom,
         lte: endOfToday,
       },
-      AND: [
-        PUBLIC_EVENT_WHERE,
-        ...(hasGlobalAccess ? [] : [{ OR: scopeFilters }]),
-      ],
+      AND: [PUBLIC_EVENT_WHERE, ...(hasGlobalAccess ? [] : [{ OR: scopeFilters }])],
     },
     select: PUBLIC_EVENT_SELECT,
     orderBy: {
@@ -145,9 +142,7 @@ async function findManagerCollectionEvents(
   }));
 }
 
-function mergeCollectionEvents(
-  events: CurrentUserAttendanceCollectionEvent[],
-): CurrentUserAttendanceCollectionEvent[] {
+function mergeCollectionEvents(events: CurrentUserAttendanceCollectionEvent[]): CurrentUserAttendanceCollectionEvent[] {
   const byEventId = new Map<string, CurrentUserAttendanceCollectionEvent>();
   for (const event of events) {
     byEventId.set(event.eventId, event);

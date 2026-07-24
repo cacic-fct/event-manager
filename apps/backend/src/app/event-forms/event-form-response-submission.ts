@@ -53,7 +53,11 @@ export async function submitResponseForPerson(
   await assertPersonCanAnswerLink(prisma, personId, link, {
     allowFutureSubscriber: options.requireSubscriptionFlowLink && link.insertInSubscriptionFlow,
   });
-  const answers = normalizeAnswers(input.answersJson, form.elements as unknown as FormElement[], link.enforceRequiredAnswers);
+  const answers = normalizeAnswers(
+    input.answersJson,
+    form.elements as unknown as FormElement[],
+    link.enforceRequiredAnswers,
+  );
   const responseSource = link.insertInSubscriptionFlow
     ? ContractResponseSource.SUBSCRIPTION_FLOW
     : ContractResponseSource.PUBLIC_FORM;
@@ -169,8 +173,7 @@ export async function assertRequiredSubscriptionFlowResponses(
         ? { targetType: EventFormTargetType.EVENT, eventId: link.eventId, majorEventId: null }
         : { targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: link.majorEventId };
     const responseWhere =
-      responseLookupWhere(link.form, personId, target) ??
-      responseTargetWhere(link.formId, personId, target);
+      responseLookupWhere(link.form, personId, target) ?? responseTargetWhere(link.formId, personId, target);
     const response = await tx.eventFormResponse.findFirst({
       where: {
         ...responseWhere,

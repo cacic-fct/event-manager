@@ -1,10 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import {
-  DEFAULT_KEYCLOAK_DEV_REALM_URL,
-  DEFAULT_KEYCLOAK_REALM_URL,
-} from './auth.constants';
+import { DEFAULT_KEYCLOAK_DEV_REALM_URL, DEFAULT_KEYCLOAK_REALM_URL } from './auth.constants';
 import { summarizeKeycloakFailure } from './keycloak-error-logging';
 
 type ClientCredentialsTokenResponse = {
@@ -31,8 +28,7 @@ export class KeycloakM2mTokenService {
 
   async getClientCredentialsToken(options: ClientCredentialsTokenOptions = {}): Promise<string> {
     const clientId =
-      options.clientId ??
-      this.readConfigWithDevelopmentFallback('KEYCLOAK_M2M_CLIENT_ID', 'cacic-event-manager-m2m');
+      options.clientId ?? this.readConfigWithDevelopmentFallback('KEYCLOAK_M2M_CLIENT_ID', 'cacic-event-manager-m2m');
     const clientSecret =
       options.clientSecret ??
       this.readConfigWithDevelopmentFallback('KEYCLOAK_M2M_CLIENT_SECRET', 'cacic-event-manager-m2m-dev-secret');
@@ -100,9 +96,7 @@ export class KeycloakM2mTokenService {
 
   private get realmUrl(): string {
     const fallbackRealmUrl =
-      process.env.NODE_ENV === 'production'
-        ? DEFAULT_KEYCLOAK_REALM_URL
-        : DEFAULT_KEYCLOAK_DEV_REALM_URL;
+      process.env.NODE_ENV === 'production' ? DEFAULT_KEYCLOAK_REALM_URL : DEFAULT_KEYCLOAK_DEV_REALM_URL;
 
     return (this.configService.get<string>('KEYCLOAK_REALM_URL') ?? fallbackRealmUrl).replace(/\/+$/, '');
   }

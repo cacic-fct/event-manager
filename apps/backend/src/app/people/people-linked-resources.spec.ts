@@ -71,9 +71,7 @@ describe('people linked resources', () => {
       mergedInto: null,
     });
     prisma.eventAttendance.count.mockResolvedValueOnce(3);
-    prisma.eventAttendance.findMany.mockResolvedValueOnce([
-      attendance('event-2', 'Segunda aula'),
-    ]);
+    prisma.eventAttendance.findMany.mockResolvedValueOnce([attendance('event-2', 'Segunda aula')]);
 
     const page = await buildPersonLinkedResourcePage(prisma as never, 'person-1', 'ATTENDANCE', 1, 1);
 
@@ -593,9 +591,7 @@ describe('people linked resources', () => {
       'Grande evento: SECOMP',
     );
     expect(getCertificateTargetLabel({ scope: 'GLOBAL' })).toBe('GLOBAL');
-    expect(getCertificateRoute({ id: 'config-1', eventId: 'event-1' })).toBe(
-      '/certificates/event/event-1/config-1',
-    );
+    expect(getCertificateRoute({ id: 'config-1', eventId: 'event-1' })).toBe('/certificates/event/event-1/config-1');
     expect(getCertificateRoute({ id: 'config-1', eventGroupId: 'group-1' })).toBe(
       '/certificates/event-group/group-1/config-1',
     );

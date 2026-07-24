@@ -52,10 +52,7 @@ export class EventFormListingsService {
     }
     if (filters.eventId) {
       andFilters.push({
-        OR: [
-          { ownerEventId: filters.eventId },
-          { links: { some: { eventId: filters.eventId, deletedAt: null } } },
-        ],
+        OR: [{ ownerEventId: filters.eventId }, { links: { some: { eventId: filters.eventId, deletedAt: null } } }],
       });
     }
     if (filters.majorEventId) {
@@ -294,14 +291,16 @@ export class EventFormListingsService {
         return [];
       }
 
-      return [{
-        formId: link.form.id,
-        linkId: link.id,
-        targetType: link.targetType,
-        eventId: link.eventId,
-        majorEventId: link.majorEventId,
-        displayOrder: link.displayOrder,
-      }];
+      return [
+        {
+          formId: link.form.id,
+          linkId: link.id,
+          targetType: link.targetType,
+          eventId: link.eventId,
+          majorEventId: link.majorEventId,
+          displayOrder: link.displayOrder,
+        },
+      ];
     });
   }
 
@@ -416,10 +415,7 @@ export class EventFormListingsService {
     );
   }
 
-  async listLecturerForms(
-    context: GraphqlContext,
-    eventId: string,
-  ): Promise<EventFormModel[]> {
+  async listLecturerForms(context: GraphqlContext, eventId: string): Promise<EventFormModel[]> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     await assertPersonIsEventLecturer(this.prisma, person.id, eventId);
     return this.listFormsForTarget({ targetType: EventFormTargetType.EVENT, eventId });

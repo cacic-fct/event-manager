@@ -174,10 +174,7 @@ describe('redisProvider e2e in-memory infrastructure', () => {
   it('supports the rate-limit service script shape', async () => {
     const redis = createInMemoryRedis();
     const now = jest.spyOn(Date, 'now').mockReturnValue(10_000);
-    const service = new RateLimitService(
-      redis as unknown as Redis,
-      { get: jest.fn(() => 'production') } as never,
-    );
+    const service = new RateLimitService(redis as unknown as Redis, { get: jest.fn(() => 'production') } as never);
     const policy = {
       name: 'test-policy',
       windowMs: 60_000,
@@ -235,11 +232,15 @@ describe('redisProvider e2e in-memory infrastructure', () => {
       );
 
     await redis.set(key, 'value');
-    await expect(consumeRateLimit()).rejects.toThrow(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    await expect(consumeRateLimit()).rejects.toThrow(
+      `WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`,
+    );
 
     await redis.del(key);
     await redis.lpush(key, 'value');
-    await expect(consumeRateLimit()).rejects.toThrow(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    await expect(consumeRateLimit()).rejects.toThrow(
+      `WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`,
+    );
   });
 
   it('clears in-memory keys on disconnect and module destroy', async () => {

@@ -74,14 +74,12 @@ export function toEventSearchDocument(event: EventSearchSource): EventSearchDocu
     locationDescription: toOptionalString(event.locationDescription),
     majorEventId: toOptionalString(event.majorEventId),
     majorEventName:
-      event.majorEventName ??
-      (event.majorEvent?.deletedAt ? undefined : toOptionalString(event.majorEvent?.name)),
+      event.majorEventName ?? (event.majorEvent?.deletedAt ? undefined : toOptionalString(event.majorEvent?.name)),
     majorEventPublicationState:
       event.majorEventPublicationState ?? materializeMajorEventPublicationState(event.majorEvent),
     eventGroupId: toOptionalString(event.eventGroupId),
     eventGroupName:
-      event.eventGroupName ??
-      (event.eventGroup?.deletedAt ? undefined : toOptionalString(event.eventGroup?.name)),
+      event.eventGroupName ?? (event.eventGroup?.deletedAt ? undefined : toOptionalString(event.eventGroup?.name)),
     startDate: toUnixTimestamp(event.startDate),
     endDate: toUnixTimestamp(event.endDate),
     publiclyVisible: Boolean(event.publiclyVisible),

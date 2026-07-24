@@ -137,7 +137,9 @@ export type SuperAdminCalendarFeedSettingsRecord = Prisma.SuperAdminCalendarFeed
   select: typeof SUPER_ADMIN_CALENDAR_FEED_SETTINGS_SELECT;
 }>;
 export type AdminMajorEventRecord = Prisma.MajorEventGetPayload<{ select: typeof ADMIN_MAJOR_EVENT_SELECT }>;
-export type AdminEventGroupRecord = Prisma.EventGroupGetPayload<{ select: ReturnType<typeof buildAdminEventGroupSelect> }>;
+export type AdminEventGroupRecord = Prisma.EventGroupGetPayload<{
+  select: ReturnType<typeof buildAdminEventGroupSelect>;
+}>;
 export type AdminCalendarGrantRecord = Prisma.EventManagerPermissionGrantGetPayload<{
   select: typeof ADMIN_CALENDAR_GRANT_SELECT;
 }>;

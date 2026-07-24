@@ -265,7 +265,8 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         committedById: this.getActorId(context),
         location: input.location,
       },
-      (attendance, tx) => this.recordAttendanceCreate(attendance, context, 'Presença registrada por entrada manual.', tx),
+      (attendance, tx) =>
+        this.recordAttendanceCreate(attendance, context, 'Presença registrada por entrada manual.', tx),
     );
   }
 
@@ -580,7 +581,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     return normalizedIds;
   }
 
-
   @Mutation(() => EventAttendance, { name: 'updateEventAttendance' })
   @RequirePermissions(Permission.EventAttendance.Update)
   async updateEventAttendance(
@@ -712,7 +712,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         : null;
     const manualValue =
       createdByMethod === AttendanceCreationMethod.MANUAL_INPUT
-        ? normalizeOptionalString(input.manualValue ?? submission.manualValue) ?? null
+        ? (normalizeOptionalString(input.manualValue ?? submission.manualValue) ?? null)
         : null;
     const explicitPersonId = normalizeOptionalString(input.personId);
 
@@ -901,18 +901,21 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     summary: string,
     prisma: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
-    await this.auditLog.record({
-      entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-      entityId: this.auditLog.buildCompositeEntityId([attendance.personId, attendance.eventId]),
-      entityLabel: attendance.person?.name ?? attendance.personId,
-      operation: AuditLogOperation.CREATE,
-      actor: this.getUser(context),
-      after: attendance,
-      scope: {
-        permission: Permission.EventAttendance.Collect,
-        eventId: attendance.eventId,
+    await this.auditLog.record(
+      {
+        entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+        entityId: this.auditLog.buildCompositeEntityId([attendance.personId, attendance.eventId]),
+        entityLabel: attendance.person?.name ?? attendance.personId,
+        operation: AuditLogOperation.CREATE,
+        actor: this.getUser(context),
+        after: attendance,
+        scope: {
+          permission: Permission.EventAttendance.Collect,
+          eventId: attendance.eventId,
+        },
+        summary,
       },
-      summary,
-    }, prisma);
+      prisma,
+    );
   }
 }

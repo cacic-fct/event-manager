@@ -108,9 +108,7 @@ describe('AuthorizationStateService', () => {
     expect(JSON.parse(redis.set.mock.calls[0][1])).toEqual({});
     expect(JSON.parse(redis.set.mock.calls[1][1])).toEqual({});
     expect(JSON.parse(redis.set.mock.calls[2][1])).toEqual({});
-    expect(service.getPostLoginRedirectUri({ returnTo: '/\\attacker.example' })).toBe(
-      'https://events.example.com/app',
-    );
+    expect(service.getPostLoginRedirectUri({ returnTo: '/\\attacker.example' })).toBe('https://events.example.com/app');
   });
 
   it('rejects protocol-relative, malformed, expired, and unreadable states', async () => {

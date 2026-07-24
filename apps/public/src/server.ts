@@ -54,10 +54,7 @@ app.get('/app/api/version', (_req, res) => {
 });
 
 app.get('/app/sitemap.xml', (_req, res) => {
-  sendXml(
-    res,
-    buildSitemapIndex(['/app/sitemaps/static.xml', '/app/sitemaps/events.xml']),
-  );
+  sendXml(res, buildSitemapIndex(['/app/sitemaps/static.xml', '/app/sitemaps/events.xml']));
 });
 
 app.get('/app/sitemaps/static.xml', (_req, res) => {
@@ -71,12 +68,7 @@ app.get('/app/sitemaps/static.xml', (_req, res) => {
 app.get('/app/sitemaps/events.xml', async (_req, res, next) => {
   try {
     const { pageCount } = await getPublicEventSitemapPage(0);
-    sendXml(
-      res,
-      buildSitemapIndex(
-        Array.from({ length: pageCount }, (_, page) => `/app/sitemaps/events/${page}.xml`),
-      ),
-    );
+    sendXml(res, buildSitemapIndex(Array.from({ length: pageCount }, (_, page) => `/app/sitemaps/events/${page}.xml`)));
   } catch (error) {
     next(error);
   }
@@ -233,7 +225,12 @@ async function getPublicEventSitemapPage(page: number): Promise<PublicEventSitem
     errors?: { message?: string }[];
   };
   const sitemap = payload.data?.publicEventSitemap;
-  if (!sitemap || !Number.isSafeInteger(sitemap.pageCount) || sitemap.pageCount < 0 || !Array.isArray(sitemap.entries)) {
+  if (
+    !sitemap ||
+    !Number.isSafeInteger(sitemap.pageCount) ||
+    sitemap.pageCount < 0 ||
+    !Array.isArray(sitemap.entries)
+  ) {
     const message = payload.errors?.[0]?.message ?? 'API returned an invalid sitemap payload.';
     throw new Error(`Unable to load public event sitemap: ${message}`);
   }

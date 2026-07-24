@@ -416,10 +416,7 @@ export function createAdminEventFromInput(input: EventInput = {}): Event {
   });
 }
 
-export function createAdminEventDraft(
-  overrides: Partial<EventDraft> = {},
-  payload: EventInput = {},
-): EventDraft {
+export function createAdminEventDraft(overrides: Partial<EventDraft> = {}, payload: EventInput = {}): EventDraft {
   const sourceEventId = overrides.sourceEventId ?? payload.id ?? 'event-1';
 
   return {
@@ -442,7 +439,10 @@ export function createAdminEventDraft(
 
 export function createAdminEventForm(overrides: Partial<EventForm> = {}): EventForm {
   const event = createAdminEvent({ id: overrides.ownerEventId ?? 'event-1', name: 'Oficina de Angular' });
-  const majorEvent = createAdminMajorEvent({ id: overrides.ownerMajorEventId ?? 'major-event-1', name: 'Grande evento' });
+  const majorEvent = createAdminMajorEvent({
+    id: overrides.ownerMajorEventId ?? 'major-event-1',
+    name: 'Grande evento',
+  });
   const owner = overrides.ownerMajorEventId
     ? {
         type: 'MAJOR_EVENT' as const,
@@ -554,8 +554,8 @@ export function createAdminEventFormFromInput(input: EventFormInput): EventForm 
         id: link.id ?? `form-link-${index + 1}`,
         formId: input.id ?? 'form-1',
         targetType: link.targetType,
-        eventId: link.targetType === 'EVENT' ? link.eventId ?? null : null,
-        majorEventId: link.targetType === 'MAJOR_EVENT' ? link.majorEventId ?? null : null,
+        eventId: link.targetType === 'EVENT' ? (link.eventId ?? null) : null,
+        majorEventId: link.targetType === 'MAJOR_EVENT' ? (link.majorEventId ?? null) : null,
         target: null,
         audience: link.audience ?? 'SUBSCRIBERS_OR_ATTENDEES',
         insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,

@@ -1,5 +1,8 @@
 import { ForbiddenException } from '@nestjs/common';
-import { EventFormAudience as ContractAudience, EventFormLink as EventFormLinkModel } from '@cacic-fct/shared-data-types';
+import {
+  EventFormAudience as ContractAudience,
+  EventFormLink as EventFormLinkModel,
+} from '@cacic-fct/shared-data-types';
 import { EventFormAudience } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { toLinkModel } from './event-form-model.mapper';

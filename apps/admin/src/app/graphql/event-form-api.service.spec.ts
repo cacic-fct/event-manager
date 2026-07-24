@@ -75,7 +75,9 @@ describe('EventFormApiService', () => {
   it('maps draft and result operations', async () => {
     await expect(firstValueFrom(service.listDrafts('form-1'))).resolves.toEqual([draftFixture()]);
     await expect(
-      firstValueFrom(service.saveDraft({ sourceFormId: 'form-1', draftId: null, input: { name: 'Rascunho' } as never })),
+      firstValueFrom(
+        service.saveDraft({ sourceFormId: 'form-1', draftId: null, input: { name: 'Rascunho' } as never }),
+      ),
     ).resolves.toEqual(draftFixture({ id: 'saved-draft' }));
     await expect(firstValueFrom(service.results('form-1'))).resolves.toEqual(resultsFixture());
 

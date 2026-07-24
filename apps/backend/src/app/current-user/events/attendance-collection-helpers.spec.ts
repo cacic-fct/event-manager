@@ -1,13 +1,5 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-} from '@nestjs/common';
-import {
-  AttendanceCreationMethod,
-  EventManagerPermissionGrantScope,
-  UserRole,
-} from '@prisma/client';
+import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { AttendanceCreationMethod, EventManagerPermissionGrantScope, UserRole } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { recordAttendanceCreate } from './attendance-collection-audit';
 import {
@@ -73,9 +65,9 @@ describe('attendance collection helpers', () => {
       collectedAccuracyMeters: 25,
     });
     expect(() => getRequiredAttendanceLocationData(undefined)).toThrow(BadRequestException);
-    expect(() =>
-      getRequiredAttendanceLocationData({ latitude: -22.1, longitude: -51.4, accuracyMeters: 250 }),
-    ).toThrow(BadRequestException);
+    expect(() => getRequiredAttendanceLocationData({ latitude: -22.1, longitude: -51.4, accuracyMeters: 250 })).toThrow(
+      BadRequestException,
+    );
     expect(
       toEventAttendance({
         personId: 'person-1',

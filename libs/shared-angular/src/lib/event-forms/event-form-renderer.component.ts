@@ -75,11 +75,7 @@ import {
                 @case ('shortText') {
                   <mat-form-field appearance="outline">
                     <mat-label>Resposta</mat-label>
-                    <input
-                      matInput
-                      [value]="stringAnswer(element.id)"
-                      (input)="setStringAnswer(element.id, $event)"
-                    />
+                    <input matInput [value]="stringAnswer(element.id)" (input)="setStringAnswer(element.id, $event)" />
                   </mat-form-field>
                 }
                 @case ('longText') {
@@ -89,16 +85,14 @@ import {
                       matInput
                       rows="4"
                       [value]="stringAnswer(element.id)"
-                      (input)="setStringAnswer(element.id, $event)"
-                    ></textarea>
+                      (input)="setStringAnswer(element.id, $event)"></textarea>
                   </mat-form-field>
                 }
                 @case ('singleChoice') {
                   <mat-radio-group
                     class="option-list"
                     [value]="stringAnswer(element.id)"
-                    (change)="setAnswer(element.id, $event.value)"
-                  >
+                    (change)="setAnswer(element.id, $event.value)">
                     @for (option of element.options; track option.id) {
                       <mat-radio-button [value]="option.id">{{ option.label }}</mat-radio-button>
                     }
@@ -109,8 +103,7 @@ import {
                     @for (option of element.options; track option.id) {
                       <mat-checkbox
                         [checked]="isOptionChecked(element.id, option.id)"
-                        (change)="toggleMultipleAnswer(element.id, option.id, $event.checked)"
-                      >
+                        (change)="toggleMultipleAnswer(element.id, option.id, $event.checked)">
                         {{ option.label }}
                       </mat-checkbox>
                     }
@@ -121,8 +114,7 @@ import {
                     <mat-label>Selecione</mat-label>
                     <mat-select
                       [value]="stringAnswer(element.id)"
-                      (selectionChange)="setAnswer(element.id, $event.value)"
-                    >
+                      (selectionChange)="setAnswer(element.id, $event.value)">
                       @for (option of element.options; track option.id) {
                         <mat-option [value]="option.id">{{ option.label }}</mat-option>
                       }
@@ -144,8 +136,7 @@ import {
                           <mat-radio-button
                             [name]="element.id + '-' + row.id"
                             [checked]="gridStringAnswer(element.id, row.id) === column.id"
-                            (change)="setGridStringAnswer(element.id, row.id, column.id)"
-                          />
+                            (change)="setGridStringAnswer(element.id, row.id, column.id)" />
                         }
                       </div>
                     }
@@ -165,8 +156,7 @@ import {
                         @for (column of element.settings?.grid?.columns ?? []; track column.id) {
                           <mat-checkbox
                             [checked]="isGridOptionChecked(element.id, row.id, column.id)"
-                            (change)="toggleGridMultipleAnswer(element.id, row.id, column.id, $event.checked)"
-                          />
+                            (change)="toggleGridMultipleAnswer(element.id, row.id, column.id, $event.checked)" />
                         }
                       </div>
                     }
@@ -180,8 +170,7 @@ import {
                         mat-stroked-button
                         type="button"
                         [class.selected-value]="numberAnswer(element.id) === value"
-                        (click)="setAnswer(element.id, value)"
-                      >
+                        (click)="setAnswer(element.id, value)">
                         {{ value }}
                       </button>
                     }
@@ -196,8 +185,7 @@ import {
                         type="button"
                         [class.selected-star]="numberAnswer(element.id) >= value"
                         [matTooltip]="value + ' estrela' + (value === 1 ? '' : 's')"
-                        (click)="setAnswer(element.id, value)"
-                      >
+                        (click)="setAnswer(element.id, value)">
                         <mat-icon>{{ numberAnswer(element.id) >= value ? 'star' : 'star_border' }}</mat-icon>
                       </button>
                     }
@@ -210,8 +198,7 @@ import {
                       matInput
                       type="date"
                       [value]="stringAnswer(element.id)"
-                      (input)="setStringAnswer(element.id, $event)"
-                    />
+                      (input)="setStringAnswer(element.id, $event)" />
                   </mat-form-field>
                 }
                 @case ('time') {
@@ -221,8 +208,7 @@ import {
                       matInput
                       type="time"
                       [value]="stringAnswer(element.id)"
-                      (input)="setStringAnswer(element.id, $event)"
-                    />
+                      (input)="setStringAnswer(element.id, $event)" />
                   </mat-form-field>
                 }
                 @case ('scheduling') {
@@ -231,8 +217,7 @@ import {
                       <mat-label>Horário</mat-label>
                       <mat-select
                         [value]="schedulingAnswer(element.id)?.slotId ?? ''"
-                        (selectionChange)="setSchedulingSlot(element.id, $event.value)"
-                      >
+                        (selectionChange)="setSchedulingSlot(element.id, $event.value)">
                         @for (slot of schedulingSlots(element); track slot.id) {
                           <mat-option [value]="slot.id">{{ slot.label }}</mat-option>
                         }
@@ -247,8 +232,7 @@ import {
                             <input
                               matInput
                               [value]="invitee.name"
-                              (input)="setSchedulingInviteeName(element.id, $index, $event)"
-                            />
+                              (input)="setSchedulingInviteeName(element.id, $index, $event)" />
                           </mat-form-field>
                           <mat-form-field appearance="outline">
                             <mat-label>E-mail</mat-label>
@@ -256,16 +240,14 @@ import {
                               matInput
                               type="email"
                               [value]="invitee.email ?? ''"
-                              (input)="setSchedulingInviteeEmail(element.id, $index, $event)"
-                            />
+                              (input)="setSchedulingInviteeEmail(element.id, $index, $event)" />
                           </mat-form-field>
                         }
                         <button
                           mat-button
                           type="button"
                           [disabled]="isSchedulingInviteeLimitReached(element)"
-                          (click)="addSchedulingInvitee(element)"
-                        >
+                          (click)="addSchedulingInvitee(element)">
                           <mat-icon>person_add</mat-icon>
                           Convidado
                         </button>
@@ -440,7 +422,8 @@ export class EventFormRendererComponent {
   }
 
   setStringAnswer(elementId: string, event: Event): void {
-    const value = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement ? event.target.value : '';
+    const value =
+      event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement ? event.target.value : '';
     this.setAnswer(elementId, value);
   }
 
@@ -474,9 +457,7 @@ export class EventFormRendererComponent {
 
   setGridStringAnswer(elementId: string, rowId: string, columnId: string): void {
     const current = answerValue(this.answers(), elementId);
-    const next: Record<string, string> = this.isRecord(current)
-      ? { ...(current as Record<string, string>) }
-      : {};
+    const next: Record<string, string> = this.isRecord(current) ? { ...(current as Record<string, string>) } : {};
     next[rowId] = columnId;
     this.setAnswer(elementId, next as Record<string, string>);
   }
@@ -490,9 +471,7 @@ export class EventFormRendererComponent {
 
   toggleGridMultipleAnswer(elementId: string, rowId: string, columnId: string, checked: boolean): void {
     const current = answerValue(this.answers(), elementId);
-    const next: Record<string, string[]> = this.isRecord(current)
-      ? { ...(current as Record<string, string[]>) }
-      : {};
+    const next: Record<string, string[]> = this.isRecord(current) ? { ...(current as Record<string, string[]>) } : {};
     const rowValue = Array.isArray(next[rowId]) ? [...next[rowId]] : [];
     next[rowId] = checked ? [...new Set([...rowValue, columnId])] : rowValue.filter((value) => value !== columnId);
     this.setAnswer(elementId, next as Record<string, string[]>);

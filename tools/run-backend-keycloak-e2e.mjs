@@ -49,9 +49,7 @@ async function waitForUrl(url, label, timeoutMs = 120_000) {
   }
 
   throw new Error(
-    `Timed out waiting for ${label} at ${url}: ${
-      lastError instanceof Error ? lastError.message : String(lastError)
-    }`,
+    `Timed out waiting for ${label} at ${url}: ${lastError instanceof Error ? lastError.message : String(lastError)}`,
   );
 }
 
@@ -85,13 +83,9 @@ async function main() {
   dockerCompose(['up', '-d']);
 
   await waitForUrl(`${keycloakUrl}/realms/cacic-sso/.well-known/openid-configuration`, 'test Keycloak');
-  run(
-    process.platform === 'win32' ? 'bunx.cmd' : 'bunx',
-    ['nx', 'e2e', 'backend-e2e', '--runInBand', ...nxE2eArgs],
-    {
-      env: testEnv,
-    },
-  );
+  run(process.platform === 'win32' ? 'bunx.cmd' : 'bunx', ['nx', 'e2e', 'backend-e2e', '--runInBand', ...nxE2eArgs], {
+    env: testEnv,
+  });
 }
 
 try {

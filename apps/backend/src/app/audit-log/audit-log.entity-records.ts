@@ -14,11 +14,20 @@ export async function findCurrentAuditEntityRecord(
     case AuditLogEntityType.EVENT:
       return prisma.event.findUnique({ where: { id: entityId }, select: getAuditLogRevertConfig(entityType).select });
     case AuditLogEntityType.MAJOR_EVENT:
-      return prisma.majorEvent.findUnique({ where: { id: entityId }, select: getAuditLogRevertConfig(entityType).select });
+      return prisma.majorEvent.findUnique({
+        where: { id: entityId },
+        select: getAuditLogRevertConfig(entityType).select,
+      });
     case AuditLogEntityType.EVENT_GROUP:
-      return prisma.eventGroup.findUnique({ where: { id: entityId }, select: getAuditLogRevertConfig(entityType).select });
+      return prisma.eventGroup.findUnique({
+        where: { id: entityId },
+        select: getAuditLogRevertConfig(entityType).select,
+      });
     case AuditLogEntityType.PLACE_PRESET:
-      return prisma.placePreset.findUnique({ where: { id: entityId }, select: getAuditLogRevertConfig(entityType).select });
+      return prisma.placePreset.findUnique({
+        where: { id: entityId },
+        select: getAuditLogRevertConfig(entityType).select,
+      });
     case AuditLogEntityType.PERMISSION_GRANT:
       return prisma.eventManagerPermissionGrant.findUnique({
         where: { id: entityId },
@@ -41,11 +50,23 @@ export async function updateAuditEntityRecord(
     case AuditLogEntityType.EVENT:
       return tx.event.update({ where: { id: entityId }, data, select: getAuditLogRevertConfig(entityType).select });
     case AuditLogEntityType.MAJOR_EVENT:
-      return tx.majorEvent.update({ where: { id: entityId }, data, select: getAuditLogRevertConfig(entityType).select });
+      return tx.majorEvent.update({
+        where: { id: entityId },
+        data,
+        select: getAuditLogRevertConfig(entityType).select,
+      });
     case AuditLogEntityType.EVENT_GROUP:
-      return tx.eventGroup.update({ where: { id: entityId }, data, select: getAuditLogRevertConfig(entityType).select });
+      return tx.eventGroup.update({
+        where: { id: entityId },
+        data,
+        select: getAuditLogRevertConfig(entityType).select,
+      });
     case AuditLogEntityType.PLACE_PRESET:
-      return tx.placePreset.update({ where: { id: entityId }, data, select: getAuditLogRevertConfig(entityType).select });
+      return tx.placePreset.update({
+        where: { id: entityId },
+        data,
+        select: getAuditLogRevertConfig(entityType).select,
+      });
     case AuditLogEntityType.PERMISSION_GRANT:
       return tx.eventManagerPermissionGrant.update({
         where: { id: entityId },

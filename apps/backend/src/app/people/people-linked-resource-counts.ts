@@ -1,8 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import {
-  PersonLinkedResourceGroupType,
-  PersonLinkedResourcePrisma,
-} from './people-linked-resource-definitions';
+import { PersonLinkedResourceGroupType, PersonLinkedResourcePrisma } from './people-linked-resource-definitions';
 
 export async function countPersonLinkedResourceGroups(
   prisma: PersonLinkedResourcePrisma,
@@ -62,11 +59,7 @@ export async function countPersonLinkedResourceGroups(
     LECTURER_PROFILE: lecturerProfile ? 1 : 0,
     PERMISSION_GRANT: permissionGrant,
     MERGE:
-      (person.mergedIntoId ? 1 : 0) +
-      mergedFrom +
-      mergeCandidate +
-      mergeOperationAsTarget +
-      mergeOperationAsSource,
+      (person.mergedIntoId ? 1 : 0) + mergedFrom + mergeCandidate + mergeOperationAsTarget + mergeOperationAsSource,
   };
 }
 

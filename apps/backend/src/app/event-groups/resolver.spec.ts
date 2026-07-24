@@ -220,19 +220,17 @@ describe('EventGroupsResolver authorization', () => {
       ),
     ).resolves.toBe(created);
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      { sub: 'admin-1' },
-      [Permission.EventGroup.Create],
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'admin-1' }, [
+      Permission.EventGroup.Create,
+    ]);
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
       { sub: 'admin-1' },
       [Permission.CertificateConfig.Read],
       { eventGroupId: 'group-source' },
     );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      { sub: 'admin-1' },
-      [Permission.CertificateConfig.Create],
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'admin-1' }, [
+      Permission.CertificateConfig.Create,
+    ]);
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(3);
     expect(tx.certificateConfig.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -379,12 +377,12 @@ describe('EventGroupsResolver authorization', () => {
       auditLog as never,
     );
 
-    await expect(
-      resolver.deleteEventGroup('group-1', { req: { user: { sub: 'admin-1' } } } as never),
-    ).resolves.toEqual({
-      deleted: true,
-      id: 'group-1',
-    });
+    await expect(resolver.deleteEventGroup('group-1', { req: { user: { sub: 'admin-1' } } } as never)).resolves.toEqual(
+      {
+        deleted: true,
+        id: 'group-1',
+      },
+    );
 
     expect(tx.eventGroup.update).toHaveBeenCalledWith({
       where: { id: 'group-1', deletedAt: null },

@@ -182,11 +182,7 @@ function buildPublicEventsTypesenseFilter(input: {
   startDateFrom?: Date;
   startDateUntil?: Date;
 }): string {
-  const filters = [
-    'publiclyVisible:=true',
-    'publicationState:=PUBLISHED',
-    'majorEventPublicationState:=PUBLISHED',
-  ];
+  const filters = ['publiclyVisible:=true', 'publicationState:=PUBLISHED', 'majorEventPublicationState:=PUBLISHED'];
 
   if (input.eventGroupId) {
     filters.push(`eventGroupId:=${escapeTypesenseFilterValue(input.eventGroupId)}`);
@@ -336,11 +332,9 @@ export class PublicEventsResolver {
     }
 
     const rank = new Map(prioritizedIds.map((id, index) => [id, index]));
-    return [...events]
-      .sort(
-        (left, right) =>
-          (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
-      );
+    return [...events].sort(
+      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+    );
   }
 
   @Query(() => [PublicEvent], {

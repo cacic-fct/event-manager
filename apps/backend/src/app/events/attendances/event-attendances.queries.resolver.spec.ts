@@ -127,7 +127,10 @@ describe('EventAttendancesQueriesResolver', () => {
 
   it('returns one attendance or throws when it is missing', async () => {
     prisma.eventAttendance.findUnique.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
-    await expect(resolver.eventAttendance('person-1', 'event-1')).resolves.toEqual({ personId: 'person-1', eventId: 'event-1' });
+    await expect(resolver.eventAttendance('person-1', 'event-1')).resolves.toEqual({
+      personId: 'person-1',
+      eventId: 'event-1',
+    });
 
     prisma.eventAttendance.findUnique.mockResolvedValue(null);
     await expect(resolver.eventAttendance('person-1', 'event-1')).rejects.toBeInstanceOf(NotFoundException);

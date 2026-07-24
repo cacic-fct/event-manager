@@ -6,7 +6,13 @@ import {
   type FormResponseAnswer,
 } from '@cacic-fct/form-contracts';
 import { EventFormResponseRecord } from './event-form-records';
-import { isEmptyAnswer, isRecord, parseAnswersJson, parseAnswersValue, parseElementsJson } from './event-form-answer-normalization';
+import {
+  isEmptyAnswer,
+  isRecord,
+  parseAnswersJson,
+  parseAnswersValue,
+  parseElementsJson,
+} from './event-form-answer-normalization';
 
 type FormResultSummary = {
   questions: Array<{
@@ -52,16 +58,10 @@ export function buildFormResultSummary(
 }
 
 export function eventFormResultsToCsv(results: EventFormResults): string {
-  const elements = parseElementsJson(results.form.elementsJson).filter((element) => isFormAnswerElementType(element.type));
-  const rows = [
-    [
-      'Resposta',
-      'Pessoa',
-      'E-mail',
-      'Enviado em',
-      ...elements.map((element) => element.title),
-    ],
-  ];
+  const elements = parseElementsJson(results.form.elementsJson).filter((element) =>
+    isFormAnswerElementType(element.type),
+  );
+  const rows = [['Resposta', 'Pessoa', 'E-mail', 'Enviado em', ...elements.map((element) => element.title)]];
 
   for (const response of results.responses) {
     const answers = parseAnswersJson(response.answersJson);
@@ -78,7 +78,10 @@ export function eventFormResultsToCsv(results: EventFormResults): string {
   return rows.map((row) => row.map((cell) => csvCell(cell)).join(',')).join('\n');
 }
 
-function buildBuckets(element: FormElement, values: readonly FormAnswerValue[]): Array<{ label: string; value: number }> {
+function buildBuckets(
+  element: FormElement,
+  values: readonly FormAnswerValue[],
+): Array<{ label: string; value: number }> {
   if (['shortText', 'longText', 'date', 'time', 'scheduling'].includes(element.type)) {
     return [];
   }
@@ -132,9 +135,7 @@ function answerToCsvCell(element: FormElement, value: FormAnswerValue): string {
     return String(value);
   }
   if (Array.isArray(value)) {
-    return value
-      .map((item) => element.options.find((option) => option.id === item)?.label ?? item)
-      .join('; ');
+    return value.map((item) => element.options.find((option) => option.id === item)?.label ?? item).join('; ');
   }
   return JSON.stringify(value);
 }

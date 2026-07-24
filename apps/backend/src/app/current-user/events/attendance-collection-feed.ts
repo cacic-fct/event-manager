@@ -111,9 +111,7 @@ export async function getAttendanceScannerFeed(
   const standaloneEventSubscriptionKeys = new Set(
     standaloneEventSubscriptions.map((subscription) => `${subscription.personId}:${subscription.eventId}`),
   );
-  const collectorFirstNameById = new Map(
-    collectors.map((collector) => [collector.id, getFirstName(collector.name)]),
-  );
+  const collectorFirstNameById = new Map(collectors.map((collector) => [collector.id, getFirstName(collector.name)]));
 
   return attendances.map((attendance) => ({
     personId: attendance.personId,

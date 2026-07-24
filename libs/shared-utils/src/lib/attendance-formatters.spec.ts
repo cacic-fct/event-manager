@@ -19,12 +19,8 @@ import { formatUnespRole } from './unesp-role-formatters';
 
 describe('attendance formatters', () => {
   it('formats same-day and multi-day date ranges for the Portuguese UI', () => {
-    expect(formatDateRange('2026-06-26T09:00:00', '2026-06-26T11:30:00')).toBe(
-      '26/06/2026, 09:00-11:30',
-    );
-    expect(formatDateRange('2026-06-26T22:00:00', '2026-06-27T01:30:00')).toBe(
-      '26/06/2026, 22:00 - 27/06/2026, 01:30',
-    );
+    expect(formatDateRange('2026-06-26T09:00:00', '2026-06-26T11:30:00')).toBe('26/06/2026, 09:00-11:30');
+    expect(formatDateRange('2026-06-26T22:00:00', '2026-06-27T01:30:00')).toBe('26/06/2026, 22:00 - 27/06/2026, 01:30');
   });
 
   it('falls back when an event collection has no dates and otherwise spans first to last event', () => {
@@ -34,9 +30,7 @@ describe('attendance formatters', () => {
         event('first', '2026-06-26T09:00:00', { endDate: '2026-06-26T10:00:00' }),
         event('last', '2026-06-27T11:00:00', { endDate: '2026-06-27T12:00:00' }),
       ]),
-    ).toBe(
-      '26/06/2026, 09:00 - 27/06/2026, 12:00',
-    );
+    ).toBe('26/06/2026, 09:00 - 27/06/2026, 12:00');
   });
 
   it('opens online attendance only inside the configured collection window', () => {

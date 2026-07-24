@@ -15,7 +15,11 @@ describe('EventAttendancesMutationsResolver', () => {
 
   it('creates, updates, and deletes attendances while refreshing categories', async () => {
     const tx = createTxMock();
-    tx.eventAttendance.findUniqueOrThrow.mockResolvedValue({ personId: 'person-1', eventId: 'event-1', createdById: 'collector-1' });
+    tx.eventAttendance.findUniqueOrThrow.mockResolvedValue({
+      personId: 'person-1',
+      eventId: 'event-1',
+      createdById: 'collector-1',
+    });
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
@@ -25,7 +29,9 @@ describe('EventAttendancesMutationsResolver', () => {
       ),
     ).resolves.toEqual({ personId: 'person-1', eventId: 'event-1', createdById: 'collector-1' });
     expect(tx.eventAttendance.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ createdByMethod: AttendanceCreationMethod.MANUAL_INPUT }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ createdByMethod: AttendanceCreationMethod.MANUAL_INPUT }),
+      }),
     );
     expect(attendanceCategories.refreshForAttendance).toHaveBeenCalledWith('person-1', 'event-1', tx);
 
@@ -63,11 +69,17 @@ describe('EventAttendancesMutationsResolver', () => {
 
     tx.eventAttendance.findUnique.mockResolvedValueOnce(null);
     prisma.$transaction.mockImplementationOnce(async (callback) => callback(tx));
-    await expect(resolver.updateEventAttendance('person-1', 'missing-event', {})).rejects.toBeInstanceOf(NotFoundException);
+    await expect(resolver.updateEventAttendance('person-1', 'missing-event', {})).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
 
     tx.eventAttendance.findUnique.mockResolvedValueOnce({ personId: 'person-1', eventId: 'event-1' });
     prisma.$transaction.mockImplementationOnce(async (callback) => callback(tx));
-    await expect(resolver.deleteEventAttendance('person-1', 'event-1')).resolves.toEqual({ deleted: true, personId: 'person-1', eventId: 'event-1' });
+    await expect(resolver.deleteEventAttendance('person-1', 'event-1')).resolves.toEqual({
+      deleted: true,
+      personId: 'person-1',
+      eventId: 'event-1',
+    });
     tx.eventAttendance.findUnique.mockResolvedValueOnce(null);
     prisma.$transaction.mockImplementationOnce(async (callback) => callback(tx));
     await expect(resolver.deleteEventAttendance('person-1', 'event-1')).rejects.toBeInstanceOf(NotFoundException);
@@ -105,7 +117,11 @@ describe('EventAttendancesMutationsResolver', () => {
 
     await expect(
       resolver.createEventAttendanceFromScannerCode(
-        { eventId: 'event-1', code: 'user:user-1', location: { latitude: -22.1, longitude: -51.4, accuracyMeters: 12 } },
+        {
+          eventId: 'event-1',
+          code: 'user:user-1',
+          location: { latitude: -22.1, longitude: -51.4, accuracyMeters: 12 },
+        },
         { request: { user: { sub: 'collector-1' } } } as never,
       ),
     ).resolves.toEqual(expect.objectContaining({ personId: 'person-1' }));
@@ -121,26 +137,33 @@ describe('EventAttendancesMutationsResolver', () => {
       }),
     );
 
-    await expect(resolver.createEventAttendanceFromScannerCode({ eventId: 'event-1', code: 'bad-code' }, {} as never)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      resolver.createEventAttendanceFromScannerCode({ eventId: 'event-1', code: 'bad-code' }, {} as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
 
     prisma.people.findMany.mockResolvedValue([{ id: 'person-2', mergedIntoId: null }]);
-    await expect(resolver.createEventAttendanceFromManualInput({ eventId: 'event-1', value: 'ada@example.com' }, {} as never)).resolves.toEqual(
-      expect.objectContaining({ eventId: 'event-1' }),
-    );
+    await expect(
+      resolver.createEventAttendanceFromManualInput({ eventId: 'event-1', value: 'ada@example.com' }, {} as never),
+    ).resolves.toEqual(expect.objectContaining({ eventId: 'event-1' }));
 
     prisma.people.findMany.mockResolvedValue([
       { id: 'person-1', mergedIntoId: null },
       { id: 'person-2', mergedIntoId: null },
     ]);
-    await expect(resolver.createEventAttendanceFromManualInput({ eventId: 'event-1', value: 'duplicate@example.com' }, {} as never)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(
+      resolver.createEventAttendanceFromManualInput(
+        { eventId: 'event-1', value: 'duplicate@example.com' },
+        {} as never,
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('creates Aztec-code attendances after validating the event and active person', async () => {
-    const { resolver: resolverWithDeps, frozenResources, auditLog } = createResolverWithDependencies(prisma, attendanceCategories);
+    const {
+      resolver: resolverWithDeps,
+      frozenResources,
+      auditLog,
+    } = createResolverWithDependencies(prisma, attendanceCategories);
     const tx = createTxMock();
     const attendance = {
       personId: 'person-1',
@@ -153,11 +176,9 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
-      resolverWithDeps.createEventAttendanceFromAztecCode(
-        'event-1',
-        'user:user-1',
-        { request: { user: { sub: 'collector-1' } } } as never,
-      ),
+      resolverWithDeps.createEventAttendanceFromAztecCode('event-1', 'user:user-1', {
+        request: { user: { sub: 'collector-1' } },
+      } as never),
     ).resolves.toBe(attendance);
 
     expect(frozenResources.assertEventMutable).toHaveBeenCalledWith('event-1', { sub: 'collector-1' }, 'edit');
@@ -202,18 +223,24 @@ describe('EventAttendancesMutationsResolver', () => {
     const { resolver: resolverWithDeps } = createResolverWithDependencies(prisma, attendanceCategories);
 
     await expect(
-      resolverWithDeps.createEventAttendanceFromAztecCode('event-1', 'invalid', { req: { user: { sub: 'collector-1' } } } as never),
+      resolverWithDeps.createEventAttendanceFromAztecCode('event-1', 'invalid', {
+        req: { user: { sub: 'collector-1' } },
+      } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     prisma.event.findFirst.mockResolvedValue(null);
     await expect(
-      resolverWithDeps.createEventAttendanceFromAztecCode('event-missing', 'user:user-1', { req: { user: { sub: 'collector-1' } } } as never),
+      resolverWithDeps.createEventAttendanceFromAztecCode('event-missing', 'user:user-1', {
+        req: { user: { sub: 'collector-1' } },
+      } as never),
     ).rejects.toBeInstanceOf(NotFoundException);
 
     prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
     prisma.people.findFirst.mockResolvedValue(null);
     await expect(
-      resolverWithDeps.createEventAttendanceFromAztecCode('event-1', 'user:missing-user', { req: { user: { sub: 'collector-1' } } } as never),
+      resolverWithDeps.createEventAttendanceFromAztecCode('event-1', 'user:missing-user', {
+        req: { user: { sub: 'collector-1' } },
+      } as never),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -231,11 +258,9 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
-      resolverWithDeps.createEventAttendanceFromAztecCode(
-        'event-1',
-        'user:user-1',
-        { req: { user: { sub: 'collector-1' } } } as never,
-      ),
+      resolverWithDeps.createEventAttendanceFromAztecCode('event-1', 'user:user-1', {
+        req: { user: { sub: 'collector-1' } },
+      } as never),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -272,10 +297,9 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.people.findFirst.mockResolvedValue(null);
 
     await expect(
-      resolver.createEventAttendanceFromScannerCode(
-        { eventId: 'event-1', code: 'user:missing-user' },
-        { req: { user: { sub: 'collector-1' } } } as never,
-      ),
+      resolver.createEventAttendanceFromScannerCode({ eventId: 'event-1', code: 'user:missing-user' }, {
+        req: { user: { sub: 'collector-1' } },
+      } as never),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -317,7 +341,9 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
-      resolver.approveOfflineEventAttendanceSubmission('submission-1', { req: { user: { sub: 'admin-user' } } } as never),
+      resolver.approveOfflineEventAttendanceSubmission('submission-1', {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).resolves.toEqual(expect.objectContaining({ id: 'submission-1', status: 'COMMITTED' }));
     expect(tx.eventAttendance.create).not.toHaveBeenCalled();
     expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
@@ -336,7 +362,11 @@ describe('EventAttendancesMutationsResolver', () => {
   });
 
   it('approves offline submissions in normalized batches', async () => {
-    const { resolver: resolverWithDeps, authorizationPolicy, dashboardInsights } = createResolverWithDependencies(prisma, attendanceCategories);
+    const {
+      resolver: resolverWithDeps,
+      authorizationPolicy,
+      dashboardInsights,
+    } = createResolverWithDependencies(prisma, attendanceCategories);
     const firstSubmission = offlineSubmissionFixture({ id: 'submission-1', personId: 'person-1' });
     const secondSubmission = offlineSubmissionFixture({ id: 'submission-2', personId: 'person-2' });
     prisma.offlineEventAttendanceSubmission.findUnique.mockImplementation(({ where }: { where: { id: string } }) =>
@@ -345,13 +375,14 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.people.findUnique
       .mockResolvedValueOnce({ id: 'person-1', mergedIntoId: null })
       .mockResolvedValueOnce({ id: 'person-2', mergedIntoId: null });
-    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockImplementation(({ where }: { where: { id: string } }) =>
-      Promise.resolve({
-        ...(where.id === 'submission-2' ? secondSubmission : firstSubmission),
-        status: 'COMMITTED',
-        committedAt: new Date('2026-05-21T13:00:00.000Z'),
-        committedById: 'admin-user',
-      }),
+    prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockImplementation(
+      ({ where }: { where: { id: string } }) =>
+        Promise.resolve({
+          ...(where.id === 'submission-2' ? secondSubmission : firstSubmission),
+          status: 'COMMITTED',
+          committedAt: new Date('2026-05-21T13:00:00.000Z'),
+          committedById: 'admin-user',
+        }),
     );
     const tx = createTxMock();
     tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 1 });
@@ -359,10 +390,9 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
-      resolverWithDeps.approveOfflineEventAttendanceSubmissions(
-        [' submission-1 ', 'submission-1', 'submission-2'],
-        { req: { user: { sub: 'admin-user' } } } as never,
-      ),
+      resolverWithDeps.approveOfflineEventAttendanceSubmissions([' submission-1 ', 'submission-1', 'submission-2'], {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).resolves.toEqual([
       expect.objectContaining({ id: 'submission-1', status: 'COMMITTED' }),
       expect.objectContaining({ id: 'submission-2', status: 'COMMITTED' }),
@@ -388,8 +418,13 @@ describe('EventAttendancesMutationsResolver', () => {
   });
 
   it('rejects pending offline submissions with trimmed reasons and audit entries', async () => {
-    const { resolver: resolverWithDeps, frozenResources, authorizationPolicy, auditLog, dashboardInsights } =
-      createResolverWithDependencies(prisma, attendanceCategories);
+    const {
+      resolver: resolverWithDeps,
+      frozenResources,
+      authorizationPolicy,
+      auditLog,
+      dashboardInsights,
+    } = createResolverWithDependencies(prisma, attendanceCategories);
     const submission = offlineSubmissionFixture();
     prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(submission);
     prisma.offlineEventAttendanceSubmission.findUniqueOrThrow.mockResolvedValue({
@@ -404,18 +439,14 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
-      resolverWithDeps.rejectOfflineEventAttendanceSubmission(
-        'submission-1',
-        '  sem documento  ',
-        { req: { user: { sub: 'admin-user' } } } as never,
-      ),
+      resolverWithDeps.rejectOfflineEventAttendanceSubmission('submission-1', '  sem documento  ', {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).resolves.toEqual(expect.objectContaining({ id: 'submission-1', status: 'REJECTED' }));
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      { sub: 'admin-user' },
-      expect.any(Array),
-      { eventId: 'event-1' },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'admin-user' }, expect.any(Array), {
+      eventId: 'event-1',
+    });
     expect(frozenResources.assertEventMutable).toHaveBeenCalledWith('event-1', { sub: 'admin-user' }, 'edit');
     expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -444,14 +475,18 @@ describe('EventAttendancesMutationsResolver', () => {
 
     prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValueOnce(null);
     await expect(
-      resolverWithDeps.rejectOfflineEventAttendanceSubmission('missing-submission', null, { req: { user: { sub: 'admin-user' } } } as never),
+      resolverWithDeps.rejectOfflineEventAttendanceSubmission('missing-submission', null, {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).rejects.toBeInstanceOf(NotFoundException);
 
     prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValueOnce(
       offlineSubmissionFixture({ status: 'COMMITTED' }),
     );
     await expect(
-      resolverWithDeps.rejectOfflineEventAttendanceSubmission('submission-1', null, { req: { user: { sub: 'admin-user' } } } as never),
+      resolverWithDeps.rejectOfflineEventAttendanceSubmission('submission-1', null, {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).rejects.toBeInstanceOf(ConflictException);
 
     prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValueOnce(offlineSubmissionFixture());
@@ -459,7 +494,9 @@ describe('EventAttendancesMutationsResolver', () => {
     tx.offlineEventAttendanceSubmission.updateMany.mockResolvedValue({ count: 0 });
     prisma.$transaction.mockImplementationOnce(async (callback) => callback(tx));
     await expect(
-      resolverWithDeps.rejectOfflineEventAttendanceSubmission('submission-1', null, { req: { user: { sub: 'admin-user' } } } as never),
+      resolverWithDeps.rejectOfflineEventAttendanceSubmission('submission-1', null, {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -472,15 +509,17 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.$transaction.mockImplementationOnce(async (callback) => callback(tx));
 
     await expect(
-      resolverWithDeps.approveOfflineEventAttendanceSubmission('submission-1', { req: { user: { sub: 'admin-user' } } } as never),
+      resolverWithDeps.approveOfflineEventAttendanceSubmission('submission-1', {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('rejects approve and update when offline submissions are missing or already reviewed', async () => {
     prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValueOnce(null);
-    await expect(resolver.approveOfflineEventAttendanceSubmission('missing-submission', {} as never)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      resolver.approveOfflineEventAttendanceSubmission('missing-submission', {} as never),
+    ).rejects.toBeInstanceOf(NotFoundException);
 
     prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValueOnce(
       offlineSubmissionFixture({ status: 'REJECTED' }),
@@ -570,11 +609,9 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
-      resolver.updateOfflineEventAttendanceSubmission(
-        'submission-1',
-        { personId: 'person-1' },
-        { req: { user: { sub: 'admin-user' } } } as never,
-      ),
+      resolver.updateOfflineEventAttendanceSubmission('submission-1', { personId: 'person-1' }, {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
@@ -616,7 +653,9 @@ describe('EventAttendancesMutationsResolver', () => {
     tx.eventAttendance.findUnique.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
-    await resolver.approveOfflineEventAttendanceSubmission('submission-1', { req: { user: { sub: 'admin-user' } } } as never);
+    await resolver.approveOfflineEventAttendanceSubmission('submission-1', {
+      req: { user: { sub: 'admin-user' } },
+    } as never);
 
     expect(tx.offlineEventAttendanceSubmission.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -664,7 +703,9 @@ describe('EventAttendancesMutationsResolver', () => {
     tx.eventAttendance.findUniqueOrThrow.mockResolvedValue({ personId: 'person-1', eventId: 'event-1' });
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
-    await resolver.approveOfflineEventAttendanceSubmission('submission-1', { req: { user: { sub: 'admin-user' } } } as never);
+    await resolver.approveOfflineEventAttendanceSubmission('submission-1', {
+      req: { user: { sub: 'admin-user' } },
+    } as never);
 
     expect(prisma.people.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -809,11 +850,9 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
-      resolver.updateOfflineEventAttendanceSubmission(
-        'submission-1',
-        { personId: 'person-2' },
-        { req: { user: { sub: 'admin-user' } } } as never,
-      ),
+      resolver.updateOfflineEventAttendanceSubmission('submission-1', { personId: 'person-2' }, {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).resolves.toEqual(
       expect.objectContaining({
         id: 'submission-1',
@@ -851,11 +890,9 @@ describe('EventAttendancesMutationsResolver', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
 
     await expect(
-      resolver.updateOfflineEventAttendanceSubmission(
-        'submission-1',
-        { personId: 'missing-person' },
-        { req: { user: { sub: 'admin-user' } } } as never,
-      ),
+      resolver.updateOfflineEventAttendanceSubmission('submission-1', { personId: 'missing-person' }, {
+        req: { user: { sub: 'admin-user' } },
+      } as never),
     ).resolves.toEqual(
       expect.objectContaining({
         id: 'submission-1',

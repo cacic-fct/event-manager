@@ -28,9 +28,7 @@ export async function moveRelations(
     : [];
 
   const targetAttendanceSet = new Set(targetAttendances.map((attendance) => attendance.eventId));
-  const insertedAttendanceRows = sourceAttendances.filter(
-    (attendance) => !targetAttendanceSet.has(attendance.eventId),
-  );
+  const insertedAttendanceRows = sourceAttendances.filter((attendance) => !targetAttendanceSet.has(attendance.eventId));
 
   if (insertedAttendanceRows.length > 0) {
     await tx.eventAttendance.createMany({
@@ -122,9 +120,7 @@ export async function moveRelations(
         },
       })
     : [];
-  const targetEventSubscriptionSet = new Set(
-    targetEventSubscriptions.map((subscription) => subscription.eventId),
-  );
+  const targetEventSubscriptionSet = new Set(targetEventSubscriptions.map((subscription) => subscription.eventId));
   const movedEventSubscriptionIds = sourceEventSubscriptions
     .filter((subscription) => !targetEventSubscriptionSet.has(subscription.eventId))
     .map((subscription) => subscription.id);

@@ -52,13 +52,10 @@ describe('synchronizeRevertedAuditEntity', () => {
     const typesenseSearch = createTypesenseSearchMock();
     const attendanceRealtime = createAttendanceRealtimeMock();
 
-    await synchronizeRevertedAuditEntity(
-      typesenseSearch,
-      attendanceRealtime,
-      entityType,
-      'entity-1',
-      { id: 'entity-1', deletedAt },
-    );
+    await synchronizeRevertedAuditEntity(typesenseSearch, attendanceRealtime, entityType, 'entity-1', {
+      id: 'entity-1',
+      deletedAt,
+    });
 
     expect(typesenseSearch[deleteMethod]).toHaveBeenCalledWith('entity-1');
   });

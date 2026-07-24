@@ -20,19 +20,21 @@ export class DefaultRedirectOnTabEntryService {
       return;
     }
 
-    this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd)).subscribe((event) => {
-      if (this.hasHandledInitialNavigation) {
-        return;
-      }
-      this.hasHandledInitialNavigation = true;
+    this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event) => {
+        if (this.hasHandledInitialNavigation) {
+          return;
+        }
+        this.hasHandledInitialNavigation = true;
 
-      const initialPath = event.urlAfterRedirects.split(/[?#]/, 1)[0];
-      if (!this.auth.isAuthenticated() || !TAB_ROUTES.has(initialPath)) {
-        return;
-      }
+        const initialPath = event.urlAfterRedirects.split(/[?#]/, 1)[0];
+        if (!this.auth.isAuthenticated() || !TAB_ROUTES.has(initialPath)) {
+          return;
+        }
 
-      void this.redirect(initialPath);
-    });
+        void this.redirect(initialPath);
+      });
   }
 
   private async redirect(initialPath: string): Promise<void> {

@@ -593,7 +593,9 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
         displayName: String(input['displayName'] ?? 'Storybook User'),
         biography: String(input['biography'] ?? ''),
         publishGoogleUserPicture: Boolean(input['publishGoogleUserPicture']),
-        googleUserPicture: input['publishGoogleUserPicture'] ? 'https://lh3.googleusercontent.com/a/storybook-user' : null,
+        googleUserPicture: input['publishGoogleUserPicture']
+          ? 'https://lh3.googleusercontent.com/a/storybook-user'
+          : null,
         email: input['email'] ?? null,
         whatsapp: input['whatsapp'] ?? null,
       },
@@ -634,7 +636,9 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
 }
 
 function publicCalendarEvents(variables: Record<string, unknown>): PublicEvent[] {
-  const query = String(variables['query'] ?? '').trim().toLocaleLowerCase('pt-BR');
+  const query = String(variables['query'] ?? '')
+    .trim()
+    .toLocaleLowerCase('pt-BR');
   const eventType = variables['eventType'];
   const startDateFrom = parseOptionalDate(variables['startDateFrom']);
   const startDateUntil = parseOptionalDate(variables['startDateUntil']);

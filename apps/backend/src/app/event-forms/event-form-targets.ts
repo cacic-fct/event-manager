@@ -1,15 +1,35 @@
 import { BadRequestException } from '@nestjs/common';
-import { EventForm as EventFormModel, EventFormInput, EventFormLink as EventFormLinkModel } from '@cacic-fct/shared-data-types';
-import { EventFormAudience, EventFormResponseMode, EventFormResponseSource, EventFormSigilo, EventFormTargetType, Prisma } from '@prisma/client';
+import {
+  EventForm as EventFormModel,
+  EventFormInput,
+  EventFormLink as EventFormLinkModel,
+} from '@cacic-fct/shared-data-types';
+import {
+  EventFormAudience,
+  EventFormResponseMode,
+  EventFormResponseSource,
+  EventFormSigilo,
+  EventFormTargetType,
+  Prisma,
+} from '@prisma/client';
 import {
   EventFormAudience as ContractAudience,
   EventFormResponseMode as ContractResponseMode,
   EventFormResponseSource as ContractResponseSource,
   EventFormSigilo as ContractSigilo,
 } from '@cacic-fct/shared-data-types';
-import { EventFormLinkRecord, EventFormRecord, NormalizedTarget, SubscriptionFlowTargetScope, TargetInput } from './event-form-records';
+import {
+  EventFormLinkRecord,
+  EventFormRecord,
+  NormalizedTarget,
+  SubscriptionFlowTargetScope,
+  TargetInput,
+} from './event-form-records';
 
-export function normalizeOwner(input: EventFormInput): { ownerEventId: string | null; ownerMajorEventId: string | null } {
+export function normalizeOwner(input: EventFormInput): {
+  ownerEventId: string | null;
+  ownerMajorEventId: string | null;
+} {
   const ownerEventId = input.ownerEventId?.trim() || null;
   const ownerMajorEventId = input.ownerMajorEventId?.trim() || null;
   if (ownerEventId && ownerMajorEventId) {
@@ -52,10 +72,7 @@ export function isSameTarget(left: TargetInput, right: TargetInput): boolean {
   );
 }
 
-export function assertSubscriptionFlowTargetAllowed(
-  input: TargetInput,
-  scope: SubscriptionFlowTargetScope,
-): void {
+export function assertSubscriptionFlowTargetAllowed(input: TargetInput, scope: SubscriptionFlowTargetScope): void {
   const target = normalizeTarget(input);
   if (target.targetType === EventFormTargetType.MAJOR_EVENT) {
     if (target.majorEventId === scope.majorEventId) {
@@ -82,7 +99,10 @@ export function findLinkForTarget(form: EventFormModel, input: TargetInput): Eve
   );
 }
 
-export function ownerTargetInput(target: { ownerEventId: string | null; ownerMajorEventId: string | null }): TargetInput {
+export function ownerTargetInput(target: {
+  ownerEventId: string | null;
+  ownerMajorEventId: string | null;
+}): TargetInput {
   return target.ownerEventId
     ? { targetType: EventFormTargetType.EVENT, eventId: target.ownerEventId }
     : { targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: target.ownerMajorEventId };
@@ -125,7 +145,10 @@ export function manageableLinksForReplace(
 
 export function isLinkAvailable(link: Pick<EventFormLinkRecord, 'availableFrom' | 'availableUntil'>): boolean {
   const now = Date.now();
-  return (!link.availableFrom || link.availableFrom.getTime() <= now) && (!link.availableUntil || link.availableUntil.getTime() > now);
+  return (
+    (!link.availableFrom || link.availableFrom.getTime() <= now) &&
+    (!link.availableUntil || link.availableUntil.getTime() > now)
+  );
 }
 
 export function findEventLinkRecord(form: EventFormRecord, eventId: string): EventFormLinkRecord | null {

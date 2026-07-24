@@ -83,7 +83,10 @@ export class TypesenseSearchService implements OnModuleInit {
     );
   }
 
-  async searchMajorEvents(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
+  async searchMajorEvents(
+    query: string,
+    options: number | TypesenseSearchOptions = 50,
+  ): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<MajorEventSearchDocument>(
       TYPESENSE_COLLECTIONS.majorEvents,
       query,
@@ -92,7 +95,10 @@ export class TypesenseSearchService implements OnModuleInit {
     );
   }
 
-  async searchEventGroups(query: string, options: number | TypesenseSearchOptions = 50): Promise<TypesenseSearchResult> {
+  async searchEventGroups(
+    query: string,
+    options: number | TypesenseSearchOptions = 50,
+  ): Promise<TypesenseSearchResult> {
     return this.searchDocumentIds<EventGroupSearchDocument>(TYPESENSE_COLLECTIONS.eventGroups, query, 'name', options);
   }
 
@@ -243,11 +249,7 @@ export class TypesenseSearchService implements OnModuleInit {
     await this.deleteDocument(TYPESENSE_COLLECTIONS.people, id);
   }
 
-  async upsertPlacePreset(input: {
-    id: string;
-    name: string;
-    locationDescription?: string | null;
-  }): Promise<void> {
+  async upsertPlacePreset(input: { id: string; name: string; locationDescription?: string | null }): Promise<void> {
     await this.upsertDocument<PlacePresetSearchDocument>(
       TYPESENSE_COLLECTIONS.placePresets,
       toPlacePresetSearchDocument(input),

@@ -73,4 +73,3 @@ export const SuperAdminFeed: Story = {
     feedName: 'feed de super-admins',
   },
 };
-

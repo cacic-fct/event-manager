@@ -53,7 +53,10 @@ export class KeycloakAuthService {
 
   private readonly clientSecret = this.readClientSecret();
   private readonly tokenEndpointAuthMethod = this.readTokenEndpointAuthMethod();
-  private readonly defaultRedirectUri = this.readEnv('KEYCLOAK_REDIRECT_URI', 'http://localhost:3000/api/auth/callback');
+  private readonly defaultRedirectUri = this.readEnv(
+    'KEYCLOAK_REDIRECT_URI',
+    'http://localhost:3000/api/auth/callback',
+  );
 
   private readonly defaultPostLogoutRedirectUri = this.readOptionalEnv('KEYCLOAK_POST_LOGOUT_REDIRECT_URI');
   private readonly loginIdpHint = this.readLoginIdpHint();
@@ -63,10 +66,7 @@ export class KeycloakAuthService {
     10_000,
   );
   private readonly jwksCacheTtlMs = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_JWKS_CACHE_TTL_MS, 600_000);
-  private readonly jwtClockSkewSeconds = this.parsePositiveIntegerEnv(
-    process.env.KEYCLOAK_JWT_CLOCK_SKEW_SECONDS,
-    30,
-  );
+  private readonly jwtClockSkewSeconds = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_JWT_CLOCK_SKEW_SECONDS, 30);
 
   constructor(
     private readonly sessions: AuthSessionStoreService,
@@ -391,9 +391,7 @@ export class KeycloakAuthService {
 
     const requiredRoles = options.requiredRoles ?? [];
     const resourceClientId = options.resourceClientId?.trim() || audience;
-    const missingRoles = requiredRoles.filter(
-      (role) => !this.hasResourceClientRole(principal, resourceClientId, role),
-    );
+    const missingRoles = requiredRoles.filter((role) => !this.hasResourceClientRole(principal, resourceClientId, role));
     if (missingRoles.length > 0) {
       throw new ForbiddenException(`Missing required M2M roles: ${missingRoles.join(', ')}.`);
     }
@@ -587,10 +585,7 @@ export class KeycloakAuthService {
 
   private async verifyJwtClaims(accessToken: string): Promise<TokenClaims> {
     const segments = accessToken.split('.');
-    if (
-      segments.length !== 3 ||
-      segments.some((segment) => segment.length === 0)
-    ) {
+    if (segments.length !== 3 || segments.some((segment) => segment.length === 0)) {
       throw new UnauthorizedException('Invalid token format.');
     }
 
@@ -930,9 +925,7 @@ export class KeycloakAuthService {
       return configuredRealmUrl;
     }
 
-    return process.env.NODE_ENV === 'production'
-      ? DEFAULT_KEYCLOAK_REALM_URL
-      : DEFAULT_KEYCLOAK_DEV_REALM_URL;
+    return process.env.NODE_ENV === 'production' ? DEFAULT_KEYCLOAK_REALM_URL : DEFAULT_KEYCLOAK_DEV_REALM_URL;
   }
 
   private readClientSecret(): string | undefined {
@@ -1017,15 +1010,8 @@ export class KeycloakAuthService {
   }
 
   private readRequiredM2mAudience(configuredAudience?: string): string {
-    const fallbackAudience =
-      process.env.NODE_ENV === 'production'
-        ? ''
-        : 'cacic-event-manager-audience';
-    const audience = (
-      configuredAudience ??
-      process.env.KEYCLOAK_M2M_AUDIENCE ??
-      fallbackAudience
-    ).trim();
+    const fallbackAudience = process.env.NODE_ENV === 'production' ? '' : 'cacic-event-manager-audience';
+    const audience = (configuredAudience ?? process.env.KEYCLOAK_M2M_AUDIENCE ?? fallbackAudience).trim();
     if (!audience) {
       throw new ForbiddenException('M2M audience is not configured.');
     }
@@ -1034,13 +1020,10 @@ export class KeycloakAuthService {
   }
 
   private readRequiredAllowedM2mClients(configuredClients?: string[]): Set<string> {
-    const fallbackClients =
-      process.env.NODE_ENV === 'production' ? '' : 'cacic-account-manager-m2m';
+    const fallbackClients = process.env.NODE_ENV === 'production' ? '' : 'cacic-account-manager-m2m';
     const clients =
       configuredClients ??
-      (process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS ?? fallbackClients)
-        .split(',')
-        .map((client) => client.trim());
+      (process.env.KEYCLOAK_M2M_ALLOWED_CLIENTS ?? fallbackClients).split(',').map((client) => client.trim());
     const allowedClients = new Set(clients.map((client) => client.trim()).filter((client) => client.length > 0));
 
     if (allowedClients.size === 0) {
@@ -1089,5 +1072,4 @@ export class KeycloakAuthService {
 
     return rawAudience.some((audience) => audience === expectedAudience);
   }
-
 }

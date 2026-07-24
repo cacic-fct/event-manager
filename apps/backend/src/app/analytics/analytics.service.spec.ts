@@ -19,7 +19,9 @@ describe('AnalyticsService', () => {
   it('does not forward empty envelopes or unknown projects', async () => {
     await expect(service.forwardEnvelope('admin', createRequest())).resolves.toBeUndefined();
     await expect(service.forwardEnvelope('admin', createRequest(Buffer.alloc(0)))).resolves.toBeUndefined();
-    await expect(service.forwardEnvelope('unknown-project', createRequest(Buffer.from('envelope')))).resolves.toBeUndefined();
+    await expect(
+      service.forwardEnvelope('unknown-project', createRequest(Buffer.from('envelope'))),
+    ).resolves.toBeUndefined();
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -55,7 +57,9 @@ describe('AnalyticsService', () => {
 
   it('logs and rejects when GlitchTip rejects the envelope', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
-    fetchMock.mockResolvedValue(new Response('upstream unavailable', { status: 503, statusText: 'Service Unavailable' }));
+    fetchMock.mockResolvedValue(
+      new Response('upstream unavailable', { status: 503, statusText: 'Service Unavailable' }),
+    );
 
     await expect(service.forwardEnvelope('admin', createRequest(Buffer.from('envelope')))).rejects.toBeInstanceOf(
       BadGatewayException,
@@ -81,10 +85,7 @@ describe('AnalyticsService', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('Status: 502 Bad Gateway. Body: '));
   });
 
-  function createRequest(
-    rawBody?: Buffer,
-    contentType?: string | string[],
-  ): RawBodyRequest<Request> {
+  function createRequest(rawBody?: Buffer, contentType?: string | string[]): RawBodyRequest<Request> {
     return {
       rawBody,
       headers:

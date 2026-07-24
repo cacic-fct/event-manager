@@ -2,7 +2,11 @@ import type { Logger } from '@nestjs/common';
 import type { SearchParams } from 'typesense';
 import type { Client as TypesenseClient } from 'typesense';
 import { TYPESENSE_MAX_PER_PAGE } from './typesense-search.collections';
-import type { TypesensePagedSearchResult, TypesenseSearchOptions, TypesenseSearchResult } from './typesense-search.types';
+import type {
+  TypesensePagedSearchResult,
+  TypesenseSearchOptions,
+  TypesenseSearchResult,
+} from './typesense-search.types';
 
 const TYPESENSE_MAX_RESULT_WINDOW = 10_000;
 

@@ -45,24 +45,14 @@ describe('publishing auth helpers', () => {
   });
 
   it.each([
-    [
-      PublicationTargetType.EVENT,
-      Permission.Event.Update,
-      [Permission.Event.Update],
-      { eventId: 'target-1' },
-    ],
+    [PublicationTargetType.EVENT, Permission.Event.Update, [Permission.Event.Update], { eventId: 'target-1' }],
     [
       PublicationTargetType.EVENT_GROUP,
       Permission.Event.Update,
       [Permission.EventGroup.Update],
       { eventGroupId: 'target-1' },
     ],
-    [
-      PublicationTargetType.EVENT_GROUP,
-      Permission.Event.Read,
-      [Permission.Event.Read],
-      { eventGroupId: 'target-1' },
-    ],
+    [PublicationTargetType.EVENT_GROUP, Permission.Event.Read, [Permission.Event.Read], { eventGroupId: 'target-1' }],
     [
       PublicationTargetType.MAJOR_EVENT,
       Permission.Event.Update,
@@ -75,22 +65,25 @@ describe('publishing auth helpers', () => {
       [Permission.MajorEvent.Read],
       { majorEventId: 'target-1' },
     ],
-  ])('asserts %s target permissions with the correct scope', async (targetType, permission, expectedPermissions, scope) => {
-    const authorizationPolicy = {
-      assertPermissions: jest.fn().mockResolvedValue(undefined),
-    };
-    const user = { sub: 'admin-1' };
+  ])(
+    'asserts %s target permissions with the correct scope',
+    async (targetType, permission, expectedPermissions, scope) => {
+      const authorizationPolicy = {
+        assertPermissions: jest.fn().mockResolvedValue(undefined),
+      };
+      const user = { sub: 'admin-1' };
 
-    await expect(
-      assertPublicationTargetPermission(
-        authorizationPolicy as never,
-        user as never,
-        targetType,
-        'target-1',
-        permission,
-      ),
-    ).resolves.toBeUndefined();
+      await expect(
+        assertPublicationTargetPermission(
+          authorizationPolicy as never,
+          user as never,
+          targetType,
+          'target-1',
+          permission,
+        ),
+      ).resolves.toBeUndefined();
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, expectedPermissions, scope);
-  });
+      expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, expectedPermissions, scope);
+    },
+  );
 });

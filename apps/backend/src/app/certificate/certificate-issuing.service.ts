@@ -1,4 +1,10 @@
-import { Certificate, CertificateIssuedTo, CertificateReissueResult, CertificateScope, DeletionResult } from '@cacic-fct/shared-data-types';
+import {
+  Certificate,
+  CertificateIssuedTo,
+  CertificateReissueResult,
+  CertificateScope,
+  DeletionResult,
+} from '@cacic-fct/shared-data-types';
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, Prisma } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -103,9 +109,15 @@ export class CertificateIssuingService {
       throw new BadRequestException('CSV imports are available only for manual certificate configurations.');
     }
 
-    const uniquePersonIds = [...new Set(personIds.map((personId) => this.validation.normalizeRequiredId('personId', personId)))];
+    const uniquePersonIds = [
+      ...new Set(personIds.map((personId) => this.validation.normalizeRequiredId('personId', personId))),
+    ];
     const certificates: CertificateRecord[] = [];
-    for (let index = 0; index < uniquePersonIds.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+    for (
+      let index = 0;
+      index < uniquePersonIds.length;
+      index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE
+    ) {
       const batch = uniquePersonIds.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
       const issuedBatch = await Promise.all(
         batch.map(async (personId) => {
@@ -242,7 +254,11 @@ export class CertificateIssuingService {
     const auditActor = await this.audit.resolveActor(issuedById, client);
     const issuedCertificates: CertificateRecord[] = [];
 
-    for (let index = 0; index < sourceCertificates.length; index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE) {
+    for (
+      let index = 0;
+      index < sourceCertificates.length;
+      index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE
+    ) {
       const batch = sourceCertificates.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(async ({ personId }) => {
@@ -275,7 +291,9 @@ export class CertificateIssuingService {
   }
 
   async notifyCopiedCertificates(certificates: CertificateRecord[]): Promise<void> {
-    const results = await Promise.allSettled(certificates.map((certificate) => this.notifyCertificateAvailable(certificate)));
+    const results = await Promise.allSettled(
+      certificates.map((certificate) => this.notifyCertificateAvailable(certificate)),
+    );
     for (const result of results) {
       if (result.status === 'rejected') {
         this.logger.error('Could not enqueue a copied certificate notification.', result.reason);
@@ -384,7 +402,8 @@ export class CertificateIssuingService {
     issuedById?: string,
     options: { auditActor?: AuditActor; notify?: boolean; prisma?: CertificateWriteClient } = {},
   ): Promise<{ certificate: CertificateRecord; shouldNotify: boolean }> {
-    const shouldNotifyNow = (options.notify ?? true) && (options.prisma === undefined || options.prisma === this.prisma);
+    const shouldNotifyNow =
+      (options.notify ?? true) && (options.prisma === undefined || options.prisma === this.prisma);
     const prisma = options.prisma ?? this.prisma;
     const existingCertificate = await prisma.certificate.findUnique({
       where: {
@@ -425,12 +444,20 @@ export class CertificateIssuingService {
           },
           select: CERTIFICATE_SELECT,
         });
-        await this.recordCertificateAudit(null, certificate, AuditLogOperation.ISSUE, issuedById, client, options.auditActor);
+        await this.recordCertificateAudit(
+          null,
+          certificate,
+          AuditLogOperation.ISSUE,
+          issuedById,
+          client,
+          options.auditActor,
+        );
         return certificate;
       };
-      const certificate = options.prisma && options.prisma !== this.prisma
-        ? await createCertificate(options.prisma)
-        : await this.prisma.$transaction((tx) => createCertificate(tx));
+      const certificate =
+        options.prisma && options.prisma !== this.prisma
+          ? await createCertificate(options.prisma)
+          : await this.prisma.$transaction((tx) => createCertificate(tx));
       if (shouldNotifyNow) {
         await this.notifyCertificateAvailable(certificate);
       }
@@ -453,12 +480,20 @@ export class CertificateIssuingService {
         },
         select: CERTIFICATE_SELECT,
       });
-      await this.recordCertificateAudit(existingCertificate, certificate, AuditLogOperation.REISSUE, issuedById, client, options.auditActor);
+      await this.recordCertificateAudit(
+        existingCertificate,
+        certificate,
+        AuditLogOperation.REISSUE,
+        issuedById,
+        client,
+        options.auditActor,
+      );
       return certificate;
     };
-    const certificate = options.prisma && options.prisma !== this.prisma
-      ? await updateCertificate(options.prisma)
-      : await this.prisma.$transaction((tx) => updateCertificate(tx));
+    const certificate =
+      options.prisma && options.prisma !== this.prisma
+        ? await updateCertificate(options.prisma)
+        : await this.prisma.$transaction((tx) => updateCertificate(tx));
     if (shouldNotifyNow) {
       await this.notifyCertificateAvailable(certificate);
     }

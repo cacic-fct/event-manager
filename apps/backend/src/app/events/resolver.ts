@@ -1,4 +1,10 @@
-import { DeletionResult, Event, EventCloneInput, EventCreateInput, EventUpdateInput } from '@cacic-fct/shared-data-types';
+import {
+  DeletionResult,
+  Event,
+  EventCloneInput,
+  EventCreateInput,
+  EventUpdateInput,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
@@ -15,10 +21,7 @@ import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scope
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
-import {
-  AccessibleEventGrantTargets,
-  AuthorizationPolicyService,
-} from '../authorization/authorization-policy.service';
+import { AccessibleEventGrantTargets, AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { resolvePagination } from '../common/pagination';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -481,7 +484,10 @@ export class EventsResolver {
         throw new NotFoundException(`Event ${id} was not found.`);
       }
       const updated = await tx.event.findUniqueOrThrow({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
-      const updatedAudit = await tx.event.findUniqueOrThrow({ where: { id, deletedAt: null }, select: EVENT_AUDIT_SELECT });
+      const updatedAudit = await tx.event.findUniqueOrThrow({
+        where: { id, deletedAt: null },
+        select: EVENT_AUDIT_SELECT,
+      });
       await this.disableGroupPerEventModeForMajorEvent(updated, tx);
       await this.auditLog.record(
         {
@@ -1044,9 +1050,7 @@ export class EventsResolver {
           issuedTo: config.issuedTo,
           certificateTypeLabel: config.certificateTypeLabel,
           certificateFields:
-            config.certificateFields === null
-              ? Prisma.DbNull
-              : (config.certificateFields as Prisma.InputJsonValue),
+            config.certificateFields === null ? Prisma.DbNull : (config.certificateFields as Prisma.InputJsonValue),
         },
       });
     }
@@ -1087,7 +1091,8 @@ export class EventsResolver {
       return `Evento criado como cópia de ${sourceName}.`;
     }
 
-    const attendanceLabel = copiedAttendanceCount === 1 ? 'registro de presença copiado' : 'registros de presença copiados';
+    const attendanceLabel =
+      copiedAttendanceCount === 1 ? 'registro de presença copiado' : 'registros de presença copiados';
     return `Evento criado como cópia de ${sourceName}, com ${copiedAttendanceCount} ${attendanceLabel}.`;
   }
 

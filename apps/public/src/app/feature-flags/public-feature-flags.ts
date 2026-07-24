@@ -6,8 +6,7 @@ export const PUBLIC_FEATURE_FLAGS = {
   calendarDefaultView: 'events-public-calendar-default-view',
   onboardingEnforcementEnabled: 'events-public-onboarding-enforcement-enabled',
   cookieBannerEnabled: 'cookie-banner-enabled',
-  undergraduateUnespRoleVerificationDisabled:
-    'cacic-undergraduate-unesp-role-verification-disabled',
+  undergraduateUnespRoleVerificationDisabled: 'cacic-undergraduate-unesp-role-verification-disabled',
   interruptionsEnabled: 'events-public-interruptions-enabled',
 } as const;
 

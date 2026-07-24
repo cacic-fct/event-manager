@@ -1,44 +1,42 @@
 import { Route } from '@angular/router';
-import {
-  developmentOnlyGuard,
-} from '@cacic-fct/shared-angular';
+import { developmentOnlyGuard } from '@cacic-fct/shared-angular';
 import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,
-} from './attendance/collection/attendance-collection-access.service';
+} from './attendance/collection/access.service';
 
 export const appRoutes: Route[] = [
   {
     path: '',
     pathMatch: 'full',
-    loadComponent: () => import('./landing/home.component').then((m) => m.HomeComponent),
+    loadComponent: () => import('./landing/home-redirect.page').then((m) => m.HomeComponent),
   },
   {
     path: '',
-    loadComponent: () => import('./tabs/bottom-toolbar/bottom-toolbar.layout').then((m) => m.ToolbarLayoutComponent),
+    loadComponent: () => import('./layout/bottom-navigation/layout').then((m) => m.ToolbarLayoutComponent),
     children: [
       {
         path: 'menu',
-        loadComponent: () => import('./tabs/menu/menu.component').then((m) => m.MenuComponent),
+        loadComponent: () => import('./menu/menu.component').then((m) => m.MenuComponent),
         title: 'Menu',
         data: { reuseTab: true },
       },
       {
         path: 'calendar',
-        loadComponent: () => import('./tabs/calendar/calendar').then((m) => m.Calendar),
+        loadComponent: () => import('./calendar/calendar-page').then((m) => m.Calendar),
         title: 'Calendário',
         data: { reuseTab: true },
       },
       {
         path: 'major-event',
-        loadComponent: () => import('./major-event/major-event').then((m) => m.MajorEvent),
+        loadComponent: () => import('./major-events/list/event-list-page').then((m) => m.MajorEvent),
         title: 'Grandes eventos',
         data: { reuseTab: true },
       },
       {
         path: 'notifications',
         loadComponent: () =>
-          import('./tabs/notifications/notifications-tab.component').then((m) => m.NotificationsTabComponent),
+          import('./notifications/notifications-tab.component').then((m) => m.NotificationsTabComponent),
         title: 'Notificações',
         data: { reuseTab: true },
       },
@@ -46,43 +44,44 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'dev-tools',
-    loadChildren: () => import('./development-tools/development-tools.routes').then((m) => m.routes),
+    loadChildren: () => import('./developer-tools/development-tools.routes').then((m) => m.routes),
     title: 'Ferramentas de desenvolvimento',
     canActivate: [developmentOnlyGuard],
   },
   {
     path: 'auth/error',
-    loadComponent: () => import('./auth-error/auth-error-page').then((m) => m.AuthErrorPage),
+    loadComponent: () => import('./auth/error/auth-error-page').then((m) => m.AuthErrorPage),
     title: 'Erro de login',
   },
   {
     path: 'preview/:previewToken/event',
-    loadComponent: () => import('./event/event').then((m) => m.Event),
+    loadComponent: () => import('./events/detail/event-page').then((m) => m.Event),
     title: 'Pré-Visualização',
   },
   {
     path: 'preview/:previewToken/major-event',
-    loadComponent: () => import('./major-event/major-event').then((m) => m.MajorEvent),
+    loadComponent: () => import('./major-events/list/event-list-page').then((m) => m.MajorEvent),
     title: 'Pré-Visualização',
   },
   {
     path: 'preview/:previewToken/group',
-    loadComponent: () => import('./preview/group-preview.component').then((m) => m.GroupPreviewComponent),
+    loadComponent: () => import('./preview/group-page').then((m) => m.GroupPreviewComponent),
     title: 'Pré-Visualização',
   },
   {
     path: 'event/:eventId',
-    loadComponent: () => import('./event/event').then((m) => m.Event),
+    loadComponent: () => import('./events/detail/event-page').then((m) => m.Event),
     title: 'Evento',
   },
   {
     path: 'major-event/:majorEventId/subscription',
-    loadComponent: () => import('./major-event/subscription/subscription').then((m) => m.MajorEventSubscription),
+    loadComponent: () =>
+      import('./major-events/registration/standard/subscription').then((m) => m.MajorEventSubscription),
     title: 'Inscrição',
     children: [
       {
         path: 'event/:eventId',
-        loadComponent: () => import('./event/event').then((m) => m.Event),
+        loadComponent: () => import('./events/detail/event-page').then((m) => m.Event),
         title: 'Informações do evento',
       },
     ],
@@ -90,7 +89,7 @@ export const appRoutes: Route[] = [
   {
     path: 'major-event/:majorEventId/ranked-subscription',
     loadComponent: () =>
-      import('./major-event/subscription/ranked-subscription').then((m) => m.RankedMajorEventSubscription),
+      import('./major-events/registration/ranked/ranked-subscription').then((m) => m.RankedMajorEventSubscription),
     title: 'Inscrição',
     children: [
       {
@@ -105,41 +104,37 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'event/:eventId',
-        loadComponent: () => import('./event/event').then((m) => m.Event),
+        loadComponent: () => import('./events/detail/event-page').then((m) => m.Event),
         title: 'Evento',
       },
     ],
   },
   {
     path: 'major-event/:majorEventId/payment',
-    loadComponent: () => import('./major-event/payment/payment-info').then((m) => m.PaymentInfo),
+    loadComponent: () => import('./major-events/payment/payment-info').then((m) => m.PaymentInfo),
     title: 'Pagamento',
   },
   {
     path: 'attendance/register',
     loadComponent: () =>
-      import('./attendance/online-attendance/online-attendance-list.component').then(
-        (m) => m.OnlineAttendanceListComponent,
-      ),
+      import('./attendance/self-registration/events/event-list-page').then((m) => m.OnlineAttendanceListComponent),
     title: 'Confirmar presença',
   },
   {
     path: 'attendance/register/:eventId',
     loadComponent: () =>
-      import('./attendance/online-attendance/online-attendance-code.component').then(
-        (m) => m.OnlineAttendanceCodeComponent,
-      ),
+      import('./attendance/self-registration/code/code-page').then((m) => m.OnlineAttendanceCodeComponent),
     title: 'Confirmar presença',
   },
   {
     path: 'attendance/collect',
-    loadComponent: () => import('./attendance/collection/scanner-event-list').then((m) => m.ScannerEventList),
+    loadComponent: () => import('./attendance/collection/events/event-list-page').then((m) => m.ScannerEventList),
     title: 'Coletar presenças',
     canActivate: [attendanceCollectionListGuard],
   },
   {
     path: 'attendance/collect/:eventId',
-    loadComponent: () => import('./attendance/collection/attendance-scanner').then((m) => m.AttendanceScanner),
+    loadComponent: () => import('./attendance/collection/scanner/scanner-page').then((m) => m.AttendanceScanner),
     title: 'Coletar presença',
     canActivate: [attendanceCollectionScannerGuard],
   },
@@ -166,12 +161,14 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'validate',
-    loadComponent: () => import('./certificate-validation/certificate-validation').then((m) => m.CertificateValidation),
+    loadComponent: () =>
+      import('./certificates/validation/certificate-validation').then((m) => m.CertificateValidation),
     title: 'Validar certificado',
   },
   {
     path: 'validate/:certificateId',
-    loadComponent: () => import('./certificate-validation/certificate-validation').then((m) => m.CertificateValidation),
+    loadComponent: () =>
+      import('./certificates/validation/certificate-validation').then((m) => m.CertificateValidation),
     title: 'Validar certificado',
   },
   {

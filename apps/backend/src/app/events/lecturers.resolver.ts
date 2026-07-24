@@ -205,16 +205,19 @@ export class EventLecturersResolver {
           createdById: actorId,
         },
       });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.EVENT_LECTURER,
-        entityId: `${lecturer.eventId}:${lecturer.personId}`,
-        entityLabel: 'Palestrante do evento',
-        operation: AuditLogOperation.CREATE,
-        actor: this.getUser(context),
-        after: lecturer,
-        summary: 'Palestrante vinculado ao evento.',
-        scope: { permission: Permission.EventLecturer.Create, eventId: lecturer.eventId },
-      }, prisma);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_LECTURER,
+          entityId: `${lecturer.eventId}:${lecturer.personId}`,
+          entityLabel: 'Palestrante do evento',
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: lecturer,
+          summary: 'Palestrante vinculado ao evento.',
+          scope: { permission: Permission.EventLecturer.Create, eventId: lecturer.eventId },
+        },
+        prisma,
+      );
       return lecturer;
     });
   }
@@ -264,17 +267,20 @@ export class EventLecturersResolver {
       const updated = await prisma.eventLecturer.findUniqueOrThrow({
         where: { eventId_personId: { eventId: nextEventId, personId: nextPersonId } },
       });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.EVENT_LECTURER,
-        entityId: `${nextEventId}:${nextPersonId}`,
-        entityLabel: 'Palestrante do evento',
-        operation: AuditLogOperation.UPDATE,
-        actor: this.getUser(context),
-        before: existing,
-        after: updated,
-        summary: 'Vínculo de palestrante atualizado.',
-        scope: { permission: Permission.EventLecturer.Update, eventId: nextEventId },
-      }, prisma);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_LECTURER,
+          entityId: `${nextEventId}:${nextPersonId}`,
+          entityLabel: 'Palestrante do evento',
+          operation: AuditLogOperation.UPDATE,
+          actor: this.getUser(context),
+          before: existing,
+          after: updated,
+          summary: 'Vínculo de palestrante atualizado.',
+          scope: { permission: Permission.EventLecturer.Update, eventId: nextEventId },
+        },
+        prisma,
+      );
     });
 
     return this.prisma.eventLecturer.findUnique({
@@ -311,16 +317,19 @@ export class EventLecturersResolver {
         throw new NotFoundException(`Event lecturer ${eventId}/${personId} was not found.`);
       }
       await tx.eventLecturer.delete({ where: { eventId_personId: { eventId, personId } } });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.EVENT_LECTURER,
-        entityId: `${eventId}:${personId}`,
-        entityLabel: 'Palestrante do evento',
-        operation: AuditLogOperation.DELETE,
-        actor: this.getUser(context),
-        before: lecturer,
-        summary: 'Palestrante desvinculado do evento.',
-        scope: { permission: Permission.EventLecturer.Delete, eventId },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_LECTURER,
+          entityId: `${eventId}:${personId}`,
+          entityLabel: 'Palestrante do evento',
+          operation: AuditLogOperation.DELETE,
+          actor: this.getUser(context),
+          before: lecturer,
+          summary: 'Palestrante desvinculado do evento.',
+          scope: { permission: Permission.EventLecturer.Delete, eventId },
+        },
+        tx,
+      );
     });
 
     return {

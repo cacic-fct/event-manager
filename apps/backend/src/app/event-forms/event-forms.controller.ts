@@ -154,7 +154,8 @@ export class EventFormsController {
       'text/csv': {
         schema: {
           type: 'string',
-          example: 'Resposta,Pessoa,E-mail,Enviado em,Tamanho da camiseta\nform-response-1,Ada Lovelace,ada@example.edu,2026-06-28T23:00:00.000Z,M',
+          example:
+            'Resposta,Pessoa,E-mail,Enviado em,Tamanho da camiseta\nform-response-1,Ada Lovelace,ada@example.edu,2026-06-28T23:00:00.000Z,M',
         },
       },
     },

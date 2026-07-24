@@ -134,7 +134,9 @@ function normalizeElement(value: unknown, index: number): FormElement {
 
   const id = stringValue(value['id']) || `element-${index + 1}`;
   const title = stringValue(value['title']) || defaultTitle(type);
-  const options = Array.isArray(value['options']) ? value['options'].map((option, optionIndex) => normalizeOption(option, optionIndex)) : [];
+  const options = Array.isArray(value['options'])
+    ? value['options'].map((option, optionIndex) => normalizeOption(option, optionIndex))
+    : [];
 
   return {
     id,
@@ -210,7 +212,14 @@ function normalizeMultipleChoiceAnswer(element: FormElement, value: FormAnswerVa
     return null;
   }
   const ids = optionIds(element);
-  const normalized = [...new Set(value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean))];
+  const normalized = [
+    ...new Set(
+      value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
   const invalid = normalized.find((item) => !ids.has(item));
   if (invalid) {
     throw new BadRequestException(`Opção inválida para a pergunta "${element.title}".`);
@@ -244,11 +253,7 @@ function isValidIsoDate(value: string): boolean {
   const date = new Date(Date.UTC(0, month - 1, day));
   date.setUTCFullYear(year);
 
-  return (
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-  );
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
 function normalizeTimeAnswer(element: FormElement, value: FormAnswerValue): FormAnswerValue {
@@ -305,7 +310,14 @@ function normalizeGridAnswer(element: FormElement, value: FormAnswerValue, multi
         throw new BadRequestException(`Linha inválida para a pergunta "${element.title}".`);
       }
       if (Array.isArray(rawValue)) {
-        const normalized = [...new Set(rawValue.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean))];
+        const normalized = [
+          ...new Set(
+            rawValue
+              .filter((item): item is string => typeof item === 'string')
+              .map((item) => item.trim())
+              .filter(Boolean),
+          ),
+        ];
         const invalid = normalized.find((item) => !columnIds.has(item));
         if (invalid) {
           throw new BadRequestException(`Coluna inválida para a pergunta "${element.title}".`);
@@ -418,9 +430,7 @@ function schedulingSlotIds(element: FormElement): Set<string> {
       continue;
     }
     for (let cursor = start; cursor + durationMinutes <= end; cursor += stepMinutes) {
-      slotIds.add(
-        `${window.id}:${formatLocalTimeMinutes(cursor)}-${formatLocalTimeMinutes(cursor + durationMinutes)}`,
-      );
+      slotIds.add(`${window.id}:${formatLocalTimeMinutes(cursor)}-${formatLocalTimeMinutes(cursor + durationMinutes)}`);
     }
   }
   return slotIds;

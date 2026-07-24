@@ -1,11 +1,6 @@
 import type { EventTargetType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import type { AttendanceCreationMethod } from '@cacic-fct/shared-data-types';
-import type {
-  EventDetails,
-  EventGroupDetails,
-  MajorEventDetails,
-  SubscriptionsFeed,
-} from '@cacic-fct/shared-utils';
+import type { EventDetails, EventGroupDetails, MajorEventDetails, SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import Dexie, { Table } from 'dexie';
 
 export interface OfflineCalendarEvent {

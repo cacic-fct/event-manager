@@ -1,5 +1,10 @@
 import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
-import { buildEventDetail, buildEventGroupDetail, buildMajorEventDetail, getEventGroupCertificateTargets } from './detail-view-model';
+import {
+  buildEventDetail,
+  buildEventGroupDetail,
+  buildMajorEventDetail,
+  getEventGroupCertificateTargets,
+} from './detail-view-model';
 
 describe('detail view model', () => {
   it('builds grouped event details with sorted events, certificate targets, and attendance summary', () => {

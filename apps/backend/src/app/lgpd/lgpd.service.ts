@@ -9,15 +9,8 @@ import {
 } from './lgpd-audit-anonymization';
 import { resolveDataSubject } from './lgpd-data-subject';
 import { anonymizeEventDrafts, buildEventDraftSubjectWhere } from './lgpd-event-drafts';
-import {
-  mapOfflineSubmissionForExport,
-  mapPersonForExport,
-  selectManyForExport,
-} from './lgpd-export-mappers';
-import {
-  anonymizeOfflineAttendanceSubmissions,
-  buildOfflineSubmissionSubjectWhere,
-} from './lgpd-offline-submissions';
+import { mapOfflineSubmissionForExport, mapPersonForExport, selectManyForExport } from './lgpd-export-mappers';
+import { anonymizeOfflineAttendanceSubmissions, buildOfflineSubmissionSubjectWhere } from './lgpd-offline-submissions';
 import { deleteReceiptObjects, findReceiptObjectKeys } from './lgpd-receipts';
 import {
   LGPD_ACCOUNT_USER_MERGE_SELECT,
@@ -87,26 +80,34 @@ export class LgpdService {
         select: LGPD_EXTERNAL_ACCOUNT_MERGE_OPERATION_SELECT,
         orderBy: { occurredAt: 'desc' },
       }),
-      personIds.length > 0 ? this.prisma.eventSubscription.findMany({
-        where: { personId: { in: personIds } },
-        select: LGPD_EVENT_SUBSCRIPTION_SELECT,
-        orderBy: { createdAt: 'desc' },
-      }) : Promise.resolve([]),
-      personIds.length > 0 ? this.prisma.eventGroupSubscription.findMany({
-        where: { personId: { in: personIds } },
-        select: LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT,
-        orderBy: { createdAt: 'desc' },
-      }) : Promise.resolve([]),
-      personIds.length > 0 ? this.prisma.majorEventSubscription.findMany({
-        where: { personId: { in: personIds } },
-        select: LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT,
-        orderBy: { createdAt: 'desc' },
-      }) : Promise.resolve([]),
-      personIds.length > 0 ? this.prisma.eventAttendance.findMany({
-        where: { personId: { in: personIds } },
-        select: LGPD_EVENT_ATTENDANCE_SELECT,
-        orderBy: { attendedAt: 'desc' },
-      }) : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.eventSubscription.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_EVENT_SUBSCRIPTION_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.eventGroupSubscription.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.majorEventSubscription.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.eventAttendance.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_EVENT_ATTENDANCE_SELECT,
+            orderBy: { attendedAt: 'desc' },
+          })
+        : Promise.resolve([]),
       offlineSubmissionWhere
         ? this.prisma.offlineEventAttendanceSubmission.findMany({
             where: offlineSubmissionWhere,
@@ -114,42 +115,54 @@ export class LgpdService {
             orderBy: { submittedAt: 'desc' },
           })
         : Promise.resolve([]),
-      personIds.length > 0 ? this.prisma.eventLecturer.findMany({
-        where: { personId: { in: personIds } },
-        select: LGPD_EVENT_LECTURER_SELECT,
-        orderBy: { createdAt: 'desc' },
-      }) : Promise.resolve([]),
-      personIds.length > 0 ? this.prisma.certificate.findMany({
-        where: { personId: { in: personIds } },
-        select: LGPD_CERTIFICATE_SELECT,
-        orderBy: { issuedAt: 'desc' },
-      }) : Promise.resolve([]),
-      personIds.length > 0 ? this.prisma.majorEventReceipt.findMany({
-        where: { personId: { in: personIds } },
-        select: LGPD_MAJOR_EVENT_RECEIPT_SELECT,
-        orderBy: { uploadedAt: 'desc' },
-      }) : Promise.resolve([]),
-      personIds.length > 0 ? this.prisma.majorEventReceiptValidationAction.findMany({
-        where: {
-          subscription: { personId: { in: personIds } },
-        },
-        select: LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
-        orderBy: { createdAt: 'desc' },
-      }) : Promise.resolve([]),
-      personIds.length > 0 ? this.prisma.peopleMergeOperation.findMany({
-        where: {
-          OR: [{ targetPersonId: { in: personIds } }, { sourcePersonId: { in: personIds } }],
-        },
-        select: LGPD_PEOPLE_MERGE_OPERATION_SELECT,
-        orderBy: { createdAt: 'desc' },
-      }) : Promise.resolve([]),
-      personIds.length > 0 ? this.prisma.mergeCandidate.findMany({
-        where: {
-          OR: [{ personAId: { in: personIds } }, { personBId: { in: personIds } }],
-        },
-        select: LGPD_MERGE_CANDIDATE_SELECT,
-        orderBy: { createdAt: 'desc' },
-      }) : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.eventLecturer.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_EVENT_LECTURER_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.certificate.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_CERTIFICATE_SELECT,
+            orderBy: { issuedAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.majorEventReceipt.findMany({
+            where: { personId: { in: personIds } },
+            select: LGPD_MAJOR_EVENT_RECEIPT_SELECT,
+            orderBy: { uploadedAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.majorEventReceiptValidationAction.findMany({
+            where: {
+              subscription: { personId: { in: personIds } },
+            },
+            select: LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.peopleMergeOperation.findMany({
+            where: {
+              OR: [{ targetPersonId: { in: personIds } }, { sourcePersonId: { in: personIds } }],
+            },
+            select: LGPD_PEOPLE_MERGE_OPERATION_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
+      personIds.length > 0
+        ? this.prisma.mergeCandidate.findMany({
+            where: {
+              OR: [{ personAId: { in: personIds } }, { personBId: { in: personIds } }],
+            },
+            select: LGPD_MERGE_CANDIDATE_SELECT,
+            orderBy: { createdAt: 'desc' },
+          })
+        : Promise.resolve([]),
       eventDraftWhere
         ? this.prisma.eventDraft.findMany({
             where: eventDraftWhere,
@@ -165,14 +178,8 @@ export class LgpdService {
       people: { records: people.map((person) => mapPersonForExport(person)) },
       subscriptions: {
         eventSubscriptions: selectManyForExport(eventSubscriptions, LGPD_EVENT_SUBSCRIPTION_SELECT),
-        eventGroupSubscriptions: selectManyForExport(
-          eventGroupSubscriptions,
-          LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT,
-        ),
-        majorEventSubscriptions: selectManyForExport(
-          majorEventSubscriptions,
-          LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT,
-        ),
+        eventGroupSubscriptions: selectManyForExport(eventGroupSubscriptions, LGPD_EVENT_GROUP_SUBSCRIPTION_SELECT),
+        majorEventSubscriptions: selectManyForExport(majorEventSubscriptions, LGPD_MAJOR_EVENT_SUBSCRIPTION_SELECT),
       },
       attendances: {
         records: selectManyForExport(attendances, LGPD_EVENT_ATTENDANCE_SELECT),
@@ -185,10 +192,7 @@ export class LgpdService {
       certificates: { records: selectManyForExport(certificates, LGPD_CERTIFICATE_SELECT) },
       receipts: {
         majorEventReceipts: selectManyForExport(majorEventReceipts, LGPD_MAJOR_EVENT_RECEIPT_SELECT),
-        receiptValidationActions: selectManyForExport(
-          receiptValidationActions,
-          LGPD_RECEIPT_VALIDATION_ACTION_SELECT,
-        ),
+        receiptValidationActions: selectManyForExport(receiptValidationActions, LGPD_RECEIPT_VALIDATION_ACTION_SELECT),
       },
       mergeHistory: {
         mergeOperations: selectManyForExport(mergeOperations, LGPD_PEOPLE_MERGE_OPERATION_SELECT),
@@ -314,8 +318,12 @@ export class LgpdService {
       });
       const majorEventReceipts = await tx.majorEventReceipt.deleteMany({ where: { personId: { in: personIds } } });
       const eventSubscriptions = await tx.eventSubscription.deleteMany({ where: { personId: { in: personIds } } });
-      const eventGroupSubscriptions = await tx.eventGroupSubscription.deleteMany({ where: { personId: { in: personIds } } });
-      const majorEventSubscriptions = await tx.majorEventSubscription.deleteMany({ where: { personId: { in: personIds } } });
+      const eventGroupSubscriptions = await tx.eventGroupSubscription.deleteMany({
+        where: { personId: { in: personIds } },
+      });
+      const majorEventSubscriptions = await tx.majorEventSubscription.deleteMany({
+        where: { personId: { in: personIds } },
+      });
       const attendances = await tx.eventAttendance.deleteMany({ where: { personId: { in: personIds } } });
       const lecturers = await tx.eventLecturer.deleteMany({ where: { personId: { in: personIds } } });
       await tx.externalAccountMergeOperation.deleteMany({
@@ -376,6 +384,4 @@ export class LgpdService {
       note: 'Event Manager stores event data on person records linked to account users.',
     };
   }
-
-
 }

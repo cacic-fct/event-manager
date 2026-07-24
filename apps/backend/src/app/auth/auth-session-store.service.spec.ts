@@ -75,7 +75,12 @@ describe('AuthSessionStoreService', () => {
 
     await service.releaseRefreshLock('session-1', 'worker-a');
 
-    expect(redis.eval).toHaveBeenCalledWith(expect.stringContaining('redis.call("get", KEYS[1])'), 1, 'auth:session:session-1:refresh-lock', 'worker-a');
+    expect(redis.eval).toHaveBeenCalledWith(
+      expect.stringContaining('redis.call("get", KEYS[1])'),
+      1,
+      'auth:session:session-1:refresh-lock',
+      'worker-a',
+    );
   });
 
   it('waits until a refresh lock disappears', async () => {

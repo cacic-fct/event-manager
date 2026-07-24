@@ -233,7 +233,12 @@ export function getAuditLogRevertConfig(entityType: AuditLogEntityType): RevertE
     case AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION:
       return { readPermission: Permission.Subscription.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
     case AuditLogEntityType.EVENT_ATTENDANCE:
-      return { readPermission: Permission.EventAttendance.Read, supportsSoftDelete: false, mutableFields: [], select: {} };
+      return {
+        readPermission: Permission.EventAttendance.Read,
+        supportsSoftDelete: false,
+        mutableFields: [],
+        select: {},
+      };
     case AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR:
       return {
         readPermission: Permission.EventAttendanceCollector.Read,
@@ -242,18 +247,33 @@ export function getAuditLogRevertConfig(entityType: AuditLogEntityType): RevertE
         select: {},
       };
     case AuditLogEntityType.EVENT_LECTURER:
-      return { readPermission: Permission.EventLecturer.Read, supportsSoftDelete: false, mutableFields: [], select: {} };
+      return {
+        readPermission: Permission.EventLecturer.Read,
+        supportsSoftDelete: false,
+        mutableFields: [],
+        select: {},
+      };
     case AuditLogEntityType.EVENT_FORM:
     case AuditLogEntityType.EVENT_FORM_LINK:
       return { readPermission: Permission.EventForm.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
     case AuditLogEntityType.EVENT_FORM_RESPONSE:
       return { readPermission: Permission.EventForm.Results, supportsSoftDelete: false, mutableFields: [], select: {} };
     case AuditLogEntityType.CERTIFICATE_CONFIG:
-      return { readPermission: Permission.CertificateConfig.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
+      return {
+        readPermission: Permission.CertificateConfig.Read,
+        supportsSoftDelete: true,
+        mutableFields: [],
+        select: {},
+      };
     case AuditLogEntityType.CERTIFICATE:
       return { readPermission: Permission.Certificate.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
     case AuditLogEntityType.MERGE_CANDIDATE:
-      return { readPermission: Permission.MergeCandidate.Read, supportsSoftDelete: true, mutableFields: [], select: {} };
+      return {
+        readPermission: Permission.MergeCandidate.Read,
+        supportsSoftDelete: true,
+        mutableFields: [],
+        select: {},
+      };
     case AuditLogEntityType.RECEIPT_VALIDATION:
       return { readPermission: Permission.Receipt.Read, supportsSoftDelete: false, mutableFields: [], select: {} };
     default:

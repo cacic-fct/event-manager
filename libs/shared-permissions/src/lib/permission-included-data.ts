@@ -5,13 +5,7 @@ export type PermissionIncludedData = {
   fields: readonly string[];
 };
 
-const LIMITED_PERSON_IDENTITY = [
-  'nome',
-  'e-mail principal',
-  'telefone',
-  'documento',
-  'ID acadêmico',
-] as const;
+const LIMITED_PERSON_IDENTITY = ['nome', 'e-mail principal', 'telefone', 'documento', 'ID acadêmico'] as const;
 
 const EVENT_CONTEXT_FIELDS = ['nome', 'datas', 'tipo', 'grupo', 'grande evento'] as const;
 

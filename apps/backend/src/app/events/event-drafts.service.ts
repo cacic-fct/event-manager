@@ -1,7 +1,12 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { DeletionResult, EventDraft, EventDraftSaveInput, EventUpdateInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { AuditLogEntityType, AuditLogOperation, Prisma, PublicationState as PrismaPublicationState } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  Prisma,
+  PublicationState as PrismaPublicationState,
+} from '@prisma/client';
 import { addDays, isValid, parseISO, subDays } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
@@ -213,7 +218,9 @@ export class EventDraftsService {
     user: AuthenticatedUser | undefined,
     options: { sourceEventId?: string; sourceEventIds?: string[] } = {},
   ): Promise<EventDraft[]> {
-    const requestedIds = [...new Set([...(options.sourceEventIds ?? []), options.sourceEventId].filter(Boolean))] as string[];
+    const requestedIds = [
+      ...new Set([...(options.sourceEventIds ?? []), options.sourceEventId].filter(Boolean)),
+    ] as string[];
     const sourceEventIds = await this.editableSourceEventIds(user, requestedIds);
     if (sourceEventIds.length === 0) {
       return [];
@@ -579,7 +586,11 @@ export class EventDraftsService {
     return typeof name === 'string' && name.trim() ? name.trim() : fallbackName;
   }
 
-  private draftExpiresAt(payload: EventDraftPayload, sourceEventEndDate: Date | null | undefined, fallbackDate = new Date()): Date {
+  private draftExpiresAt(
+    payload: EventDraftPayload,
+    sourceEventEndDate: Date | null | undefined,
+    fallbackDate = new Date(),
+  ): Date {
     const payloadEndDate = payload['endDate'];
     const payloadBaseDate = typeof payloadEndDate === 'string' ? this.validDateOrNull(payloadEndDate) : null;
     const baseDate = payloadBaseDate ?? (sourceEventEndDate instanceof Date ? sourceEventEndDate : fallbackDate);
@@ -668,22 +679,23 @@ export class EventDraftsService {
     const tasks: Array<{ name: string; run: () => Promise<unknown> }> = [
       {
         name: 'Typesense event sync',
-        run: () => this.typesenseSearch.upsertEvent({
-          id: event.id,
-          name: event.name,
-          emoji: event.emoji,
-          type: event.type,
-          description: event.description,
-          shortDescription: event.shortDescription,
-          locationDescription: event.locationDescription,
-          majorEventId: event.majorEventId,
-          eventGroupId: event.eventGroupId,
-          shouldIssueCertificate: event.shouldIssueCertificate,
-          publiclyVisible: event.publiclyVisible,
-          publicationState: event.publicationState,
-          startDate: event.startDate,
-          endDate: event.endDate,
-        }),
+        run: () =>
+          this.typesenseSearch.upsertEvent({
+            id: event.id,
+            name: event.name,
+            emoji: event.emoji,
+            type: event.type,
+            description: event.description,
+            shortDescription: event.shortDescription,
+            locationDescription: event.locationDescription,
+            majorEventId: event.majorEventId,
+            eventGroupId: event.eventGroupId,
+            shouldIssueCertificate: event.shouldIssueCertificate,
+            publiclyVisible: event.publiclyVisible,
+            publicationState: event.publicationState,
+            startDate: event.startDate,
+            endDate: event.endDate,
+          }),
       },
     ];
 
@@ -729,7 +741,8 @@ export class EventDraftsService {
           select: { name: true, email: true },
         })
       : null;
-    const claimName = this.readStringClaim(user.claims, 'name') ?? this.readStringClaim(user.claims, 'preferred_username');
+    const claimName =
+      this.readStringClaim(user.claims, 'name') ?? this.readStringClaim(user.claims, 'preferred_username');
 
     return {
       id: user.sub ?? null,

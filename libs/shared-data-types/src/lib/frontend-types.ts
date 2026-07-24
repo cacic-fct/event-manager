@@ -197,7 +197,6 @@ export interface Event {
   updatedById?: string | null;
 }
 
-
 export interface User {
   id: string;
   email: string;

@@ -278,13 +278,9 @@ describe('EventsResolver', () => {
         }),
       }),
     );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      { sub: 'user-1' },
-      [Permission.Event.Update],
-      {
-        majorEventId: 'major-new',
-      },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'user-1' }, [Permission.Event.Update], {
+      majorEventId: 'major-new',
+    });
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
         scope: expect.objectContaining({
@@ -514,20 +510,12 @@ describe('EventsResolver', () => {
         eventId: 'event-source',
       },
     );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      { sub: 'admin-1' },
-      [Permission.Event.Create],
-      {
-        majorEventId: 'major-1',
-      },
-    );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      { sub: 'admin-1' },
-      [Permission.Event.Create],
-      {
-        eventGroupId: 'group-1',
-      },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'admin-1' }, [Permission.Event.Create], {
+      majorEventId: 'major-1',
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'admin-1' }, [Permission.Event.Create], {
+      eventGroupId: 'group-1',
+    });
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
       { sub: 'admin-1' },
       [Permission.EventLecturer.Create],

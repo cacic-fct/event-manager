@@ -1,8 +1,4 @@
-import {
-  Certificate,
-  CertificateCsvImportInput,
-  CertificateCsvImportResult,
-} from '@cacic-fct/shared-data-types';
+import { Certificate, CertificateCsvImportInput, CertificateCsvImportResult } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';

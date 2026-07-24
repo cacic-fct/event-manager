@@ -250,23 +250,17 @@ export class PeopleResolver {
     description: 'Lists app resources linked to a person. Restricted to Event Manager super-admin users.',
   })
   @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
-  async personLinkedDataSummary(
-    @Args('id', { type: () => String }) id: string,
-    @Context() context: GraphqlContext,
-  ) {
+  async personLinkedDataSummary(@Args('id', { type: () => String }) id: string, @Context() context: GraphqlContext) {
     const grantedPermissions = await this.authorizationPolicy.evaluatePermissions(this.getUser(context), [
       Permission.Person.Delete,
     ]);
-    return buildPersonLinkedDataSummary(
-      this.prisma,
-      id,
-      grantedPermissions.includes(Permission.Person.Delete),
-    );
+    return buildPersonLinkedDataSummary(this.prisma, id, grantedPermissions.includes(Permission.Person.Delete));
   }
 
   @Query(() => PersonLinkedResourcePage, {
     name: 'personLinkedResources',
-    description: 'Lists one paginated group of resources linked to a person. Restricted to Event Manager super-admin users.',
+    description:
+      'Lists one paginated group of resources linked to a person. Restricted to Event Manager super-admin users.',
   })
   @RequireRoles(EventManagerKeycloakRole.SuperAdmin)
   async personLinkedResources(

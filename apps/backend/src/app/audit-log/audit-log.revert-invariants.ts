@@ -28,11 +28,7 @@ export async function applyAuditLogRevertInvariants(
   const shouldIssueCertificate = updated['shouldIssueCertificate'];
   const shouldIssueForNonPaying = updated['shouldIssueCertificateForNonPayingAttendees'];
   const shouldIssueForNonSubscribed = updated['shouldIssueCertificateForNonSubscribedAttendees'];
-  if (
-    shouldIssueCertificate !== false &&
-    shouldIssueForNonPaying !== false &&
-    shouldIssueForNonSubscribed !== false
-  ) {
+  if (shouldIssueCertificate !== false && shouldIssueForNonPaying !== false && shouldIssueForNonSubscribed !== false) {
     return;
   }
 

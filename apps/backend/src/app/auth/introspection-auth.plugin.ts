@@ -57,7 +57,9 @@ export function createIntrospectionAuthPlugin({
   };
 }
 
-function containsIntrospectionField(document: GraphQLRequestContextDidResolveOperation<GraphqlRequestContext>['document']) {
+function containsIntrospectionField(
+  document: GraphQLRequestContextDidResolveOperation<GraphqlRequestContext>['document'],
+) {
   let containsIntrospection = false;
 
   visit(document, {

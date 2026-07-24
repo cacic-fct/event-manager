@@ -281,7 +281,8 @@ export class PublicCertificateValidationEvent {
 
   @Field(() => Int, {
     nullable: true,
-    description: 'Credit workload for this event in minutes. Null means this event does not expose an individual workload.',
+    description:
+      'Credit workload for this event in minutes. Null means this event does not expose an individual workload.',
   })
   creditMinutes?: number;
 }

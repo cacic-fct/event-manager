@@ -120,10 +120,9 @@ describe('CertificateDownloadService', () => {
       scale: 3,
       includetext: false,
     });
-    expect(setContent).toHaveBeenCalledWith(
-      expect.stringContaining('&lt;Maria &amp; João&gt; 12 true'),
-      { waitUntil: 'networkidle' },
-    );
+    expect(setContent).toHaveBeenCalledWith(expect.stringContaining('&lt;Maria &amp; João&gt; 12 true'), {
+      waitUntil: 'networkidle',
+    });
     expect(setContent).toHaveBeenCalledWith(expect.stringContaining('data:image/png;base64,c2VhbA=='), {
       waitUntil: 'networkidle',
     });
@@ -198,7 +197,9 @@ describe('CertificateDownloadService', () => {
         },
       }),
     );
-    expect(toBuffer).toHaveBeenCalledWith(expect.objectContaining({ text: 'https://eventos.example.test/validar/certificate-2' }));
+    expect(toBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ text: 'https://eventos.example.test/validar/certificate-2' }),
+    );
     expect(setContent).toHaveBeenCalledWith(
       '<html><body>https://eventos.example.test/validar/certificate-2 </body></html>',
       { waitUntil: 'networkidle' },
@@ -221,9 +222,13 @@ describe('CertificateDownloadService', () => {
         contentBase64: Buffer.from('pdf-2').toString('base64'),
       });
 
-    const archive = await service.downloadCertificatesArchive(' João da Silva / CACiC ', ['certificate-1', 'certificate-2'], {
-      events: [{ id: 'event-1', name: 'Evento' }],
-    });
+    const archive = await service.downloadCertificatesArchive(
+      ' João da Silva / CACiC ',
+      ['certificate-1', 'certificate-2'],
+      {
+        events: [{ id: 'event-1', name: 'Evento' }],
+      },
+    );
     const zip = Buffer.from(archive.contentBase64, 'base64');
 
     expect(archive.fileName).toBe('joao-da-silva-cacic_certificados.zip');

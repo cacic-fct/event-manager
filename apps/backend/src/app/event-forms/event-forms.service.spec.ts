@@ -89,20 +89,11 @@ describe('EventFormsService', () => {
       authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,
       currentUserContext as unknown as jest.Mocked<CurrentUserContextService>,
     );
-    service = new EventFormsService(
-      listings,
-      editor,
-      publication,
-      responses,
-      results,
-      resultEvents,
-    );
+    service = new EventFormsService(listings, editor, publication, responses, results, resultEvents);
   });
 
   it('neutralizes CSV formulas after leading whitespace or control characters', () => {
-    expect(csvCell('\t=IMPORTXML("https://example.com")')).toBe(
-      '"\'\t=IMPORTXML(""https://example.com"")"',
-    );
+    expect(csvCell('\t=IMPORTXML("https://example.com")')).toBe('"\'\t=IMPORTXML(""https://example.com"")"');
     expect(csvCell('\u0000+SUM(1,1)')).toBe('"\'\u0000+SUM(1,1)"');
     expect(csvCell('plain text')).toBe('"plain text"');
   });
@@ -143,9 +134,9 @@ describe('EventFormsService', () => {
       facade.service.archiveResponsesForSubscriptionScope(prisma as never, 'person-1', subscriptionScope),
     ).resolves.toEqual(['response-1']);
     await expect(facade.service.emitResultsDeltas(['form-1'])).resolves.toBeUndefined();
-    await expect(
-      facade.service.getCurrentUserResponse(context, { ...targetInput, formId: 'form-1' }),
-    ).resolves.toBe(facade.response);
+    await expect(facade.service.getCurrentUserResponse(context, { ...targetInput, formId: 'form-1' })).resolves.toBe(
+      facade.response,
+    );
     await expect(facade.service.getAdminExportResults(authenticatedUser, 'form-1')).resolves.toBe(facade.resultsModel);
     await expect(facade.service.getResults('form-1')).resolves.toBe(facade.resultsModel);
     await expect(facade.service.getLecturerResults(context, 'form-1', 'event-1')).resolves.toBe(facade.resultsModel);
@@ -188,9 +179,7 @@ describe('EventFormsService', () => {
     prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1' });
     prisma.eventForm.findFirst.mockResolvedValue(formRecord({ allowLecturerManualPublish: false }));
 
-    await expect(service.publishLecturerForm(context, 'form-1', 'event-1')).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    await expect(service.publishLecturerForm(context, 'form-1', 'event-1')).rejects.toBeInstanceOf(ForbiddenException);
 
     expect(prisma.eventForm.update).not.toHaveBeenCalled();
     expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalledWith(
@@ -254,9 +243,7 @@ describe('EventFormsService', () => {
     prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1' });
     prisma.eventForm.findFirst.mockResolvedValue(form);
 
-    await expect(service.publishLecturerForm(context, 'form-1', 'event-1')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(service.publishLecturerForm(context, 'form-1', 'event-1')).rejects.toBeInstanceOf(NotFoundException);
 
     expect(prisma.eventForm.updateMany).not.toHaveBeenCalled();
   });
@@ -298,10 +285,7 @@ describe('EventFormsService', () => {
         resultsPublic: true,
         resultsLive: true,
         sigilo: EventFormSigilo.PUBLIC,
-        links: [
-          linkRecord({ id: 'link-1', eventId: 'event-1' }),
-          linkRecord({ id: 'link-2', eventId: 'event-2' }),
-        ],
+        links: [linkRecord({ id: 'link-1', eventId: 'event-1' }), linkRecord({ id: 'link-2', eventId: 'event-2' })],
       }),
     );
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
@@ -399,7 +383,9 @@ describe('EventFormsService', () => {
   });
 
   it('creates a new response when the form allows multiple answers per target', async () => {
-    prisma.eventForm.findFirst.mockResolvedValue(formRecord({ responseMode: EventFormResponseMode.MULTIPLE_PER_TARGET }));
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({ responseMode: EventFormResponseMode.MULTIPLE_PER_TARGET }),
+    );
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
     prisma.eventAttendance.findFirst.mockResolvedValue(null);
     prisma.eventFormResponse.create.mockResolvedValue(responseRecord());
@@ -435,13 +421,16 @@ describe('EventFormsService', () => {
     prisma.eventForm.findUniqueOrThrow.mockResolvedValue(updated);
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
 
-    await service.saveForm({
-      id: 'form-1',
-      name: 'Pesquisa',
-      ownerMajorEventId: 'major-2',
-      elementsJson: '[]',
-      links: [],
-    }, authenticatedUser);
+    await service.saveForm(
+      {
+        id: 'form-1',
+        name: 'Pesquisa',
+        ownerMajorEventId: 'major-2',
+        elementsJson: '[]',
+        links: [],
+      },
+      authenticatedUser,
+    );
 
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
       authenticatedUser,
@@ -469,7 +458,12 @@ describe('EventFormsService', () => {
       ownerEventId: 'event-1',
       links: [
         linkRecord({ id: 'link-1', eventId: 'event-1' }),
-        linkRecord({ id: 'link-2', targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-2' }),
+        linkRecord({
+          id: 'link-2',
+          targetType: EventFormTargetType.MAJOR_EVENT,
+          eventId: null,
+          majorEventId: 'major-2',
+        }),
       ],
     });
     prisma.eventForm.findFirst.mockResolvedValue(form);
@@ -548,7 +542,12 @@ describe('EventFormsService', () => {
     const form = formRecord({
       ownerMajorEventId: 'major-1',
       links: [
-        linkRecord({ id: 'link-1', targetType: EventFormTargetType.MAJOR_EVENT, eventId: null, majorEventId: 'major-1' }),
+        linkRecord({
+          id: 'link-1',
+          targetType: EventFormTargetType.MAJOR_EVENT,
+          eventId: null,
+          majorEventId: 'major-1',
+        }),
       ],
     });
     const unpublished = {
@@ -935,10 +934,7 @@ describe('EventFormsService', () => {
         where: expect.objectContaining({
           AND: expect.arrayContaining([
             {
-              OR: [
-                { ownerEventId: 'event-1' },
-                { links: { some: { eventId: 'event-1', deletedAt: null } } },
-              ],
+              OR: [{ ownerEventId: 'event-1' }, { links: { some: { eventId: 'event-1', deletedAt: null } } }],
             },
             {
               OR: [
@@ -1002,10 +998,7 @@ describe('EventFormsService', () => {
     prisma.eventForm.findMany.mockResolvedValue([
       formRecord({
         resultsPublic: true,
-        links: [
-          linkRecord({ id: 'link-1', eventId: 'event-1' }),
-          linkRecord({ id: 'link-2', eventId: 'event-2' }),
-        ],
+        links: [linkRecord({ id: 'link-1', eventId: 'event-1' }), linkRecord({ id: 'link-2', eventId: 'event-2' })],
       }),
     ]);
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
@@ -1157,7 +1150,9 @@ describe('EventFormsService', () => {
         formId: 'form-1',
         targetType: EventFormTargetType.EVENT,
         eventId: 'event-1',
-        answersJson: JSON.stringify([{ elementId: 'meeting', value: { slotId: 'window-1:09:00-09:30', invitees: [] } }]),
+        answersJson: JSON.stringify([
+          { elementId: 'meeting', value: { slotId: 'window-1:09:00-09:30', invitees: [] } },
+        ]),
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
 
@@ -1255,7 +1250,9 @@ describe('EventFormsService', () => {
     prisma.eventSubscription.findFirst.mockResolvedValue({ id: 'subscription-1' });
     prisma.eventAttendance.findFirst.mockResolvedValue(null);
     prisma.eventLecturer.findUnique.mockResolvedValue(null);
-    prisma.eventFormResponse.findMany.mockResolvedValue([responseRecord({ answers: [{ elementId: 'shirt-size', value: 'm' }] })]);
+    prisma.eventFormResponse.findMany.mockResolvedValue([
+      responseRecord({ answers: [{ elementId: 'shirt-size', value: 'm' }] }),
+    ]);
 
     const results = await service.getCurrentUserResults(context, {
       formId: 'form-1',
@@ -1350,7 +1347,9 @@ describe('EventFormsService', () => {
         }),
       ],
     });
-    prisma.eventSubscription.findMany.mockResolvedValue([{ person: { id: 'person-2', name: 'Bia', email: 'bia@example.com' } }]);
+    prisma.eventSubscription.findMany.mockResolvedValue([
+      { person: { id: 'person-2', name: 'Bia', email: 'bia@example.com' } },
+    ]);
     prisma.eventAttendance.findMany.mockResolvedValue([]);
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
     notifications.notifyEventFormAvailable.mockResolvedValue(true);
@@ -1406,8 +1405,12 @@ describe('EventFormsService', () => {
           requiredInSubscriptionFlow: true,
           form: expect.objectContaining({ publicationState: PublicationState.PUBLISHED }),
           OR: expect.arrayContaining([
-            expect.objectContaining({ event: expect.objectContaining({ deletedAt: null, endDate: expect.any(Object) }) }),
-            expect.objectContaining({ majorEvent: expect.objectContaining({ deletedAt: null, endDate: expect.any(Object) }) }),
+            expect.objectContaining({
+              event: expect.objectContaining({ deletedAt: null, endDate: expect.any(Object) }),
+            }),
+            expect.objectContaining({
+              majorEvent: expect.objectContaining({ deletedAt: null, endDate: expect.any(Object) }),
+            }),
           ]),
         }),
       }),
@@ -1588,7 +1591,9 @@ describe('EventFormsService', () => {
         }),
       ],
     });
-    prisma.eventSubscription.findMany.mockResolvedValue([{ person: { id: 'person-2', name: 'Bia', email: 'bia@example.com' } }]);
+    prisma.eventSubscription.findMany.mockResolvedValue([
+      { person: { id: 'person-2', name: 'Bia', email: 'bia@example.com' } },
+    ]);
     prisma.eventAttendance.findMany.mockResolvedValue([]);
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 0 });
 
@@ -1610,7 +1615,9 @@ describe('EventFormsService', () => {
         }),
       ],
     });
-    prisma.eventSubscription.findMany.mockResolvedValue([{ person: { id: 'person-2', name: 'Bia', email: 'bia@example.com' } }]);
+    prisma.eventSubscription.findMany.mockResolvedValue([
+      { person: { id: 'person-2', name: 'Bia', email: 'bia@example.com' } },
+    ]);
     prisma.eventAttendance.findMany.mockResolvedValue([]);
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 1 });
     notifications.notifyEventFormAvailable.mockRejectedValue(new Error('Novu unavailable'));
@@ -1912,8 +1919,14 @@ function linkRecord(
   const now = new Date('2026-06-28T12:00:00.000Z');
   const futureTargetEndDate = new Date('2100-07-01T12:00:00.000Z');
   const targetType = options.targetType ?? EventFormTargetType.EVENT;
-  const eventId = options.eventId === undefined ? (targetType === EventFormTargetType.EVENT ? 'event-1' : null) : options.eventId;
-  const majorEventId = options.majorEventId === undefined ? (targetType === EventFormTargetType.MAJOR_EVENT ? 'major-1' : null) : options.majorEventId;
+  const eventId =
+    options.eventId === undefined ? (targetType === EventFormTargetType.EVENT ? 'event-1' : null) : options.eventId;
+  const majorEventId =
+    options.majorEventId === undefined
+      ? targetType === EventFormTargetType.MAJOR_EVENT
+        ? 'major-1'
+        : null
+      : options.majorEventId;
   return {
     id: options.id ?? 'link-1',
     formId: 'form-1',

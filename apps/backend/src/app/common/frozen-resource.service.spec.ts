@@ -22,12 +22,9 @@ describe('FrozenResourceService', () => {
   });
 
   it('freezes when the latest date is older than two months', () => {
-    expect(
-      isFrozenFromDates(
-        [new Date('2026-01-01T12:00:00.000Z'), new Date('2026-03-01T12:00:00.000Z')],
-        now,
-      ),
-    ).toBe(true);
+    expect(isFrozenFromDates([new Date('2026-01-01T12:00:00.000Z'), new Date('2026-03-01T12:00:00.000Z')], now)).toBe(
+      true,
+    );
   });
 
   it('freezes from createdAt when endDate is empty', () => {
@@ -35,25 +32,19 @@ describe('FrozenResourceService', () => {
   });
 
   it('does not freeze when createdAt or endDate is recent', () => {
-    expect(
-      isFrozenFromDates(
-        [new Date('2026-05-01T12:00:00.000Z'), new Date('2026-01-01T12:00:00.000Z')],
-        now,
-      ),
-    ).toBe(false);
-    expect(
-      isFrozenFromDates(
-        [new Date('2026-01-01T12:00:00.000Z'), new Date('2026-05-01T12:00:00.000Z')],
-        now,
-      ),
-    ).toBe(false);
+    expect(isFrozenFromDates([new Date('2026-05-01T12:00:00.000Z'), new Date('2026-01-01T12:00:00.000Z')], now)).toBe(
+      false,
+    );
+    expect(isFrozenFromDates([new Date('2026-01-01T12:00:00.000Z'), new Date('2026-05-01T12:00:00.000Z')], now)).toBe(
+      false,
+    );
   });
 
   it('ignores null and invalid dates when resolving the latest date', () => {
     expect(getLatestDate([null, undefined, new Date('invalid')])).toBeNull();
-    expect(
-      getLatestDate([new Date('2026-01-01T12:00:00.000Z'), new Date('2026-05-01T12:00:00.000Z')]),
-    ).toEqual(new Date('2026-05-01T12:00:00.000Z'));
+    expect(getLatestDate([new Date('2026-01-01T12:00:00.000Z'), new Date('2026-05-01T12:00:00.000Z')])).toEqual(
+      new Date('2026-05-01T12:00:00.000Z'),
+    );
   });
 
   it('denies editing an old event without frozen permission', async () => {
@@ -332,16 +323,18 @@ describe('FrozenResourceService', () => {
       },
     } as unknown as PrismaService);
 
-    await expect(service.assertCertificateTargetMutable(CertificateScope.EVENT, 'event-1', buildUser([]), 'edit'))
-      .resolves.toBeUndefined();
+    await expect(
+      service.assertCertificateTargetMutable(CertificateScope.EVENT, 'event-1', buildUser([]), 'edit'),
+    ).resolves.toBeUndefined();
     await expect(
       service.assertCertificateTargetMutable(CertificateScope.EVENT_GROUP, 'group-1', buildUser([]), 'edit'),
     ).resolves.toBeUndefined();
     await expect(
       service.assertCertificateTargetMutable(CertificateScope.MAJOR_EVENT, 'major-1', buildUser([]), 'edit'),
     ).resolves.toBeUndefined();
-    await expect(service.assertCertificateTargetMutable(CertificateScope.OTHER, 'folder-1', buildUser([]), 'edit'))
-      .resolves.toBeUndefined();
+    await expect(
+      service.assertCertificateTargetMutable(CertificateScope.OTHER, 'folder-1', buildUser([]), 'edit'),
+    ).resolves.toBeUndefined();
   });
 
   it('resolves certificates through their certificate config', async () => {
@@ -439,8 +432,9 @@ describe('FrozenResourceService', () => {
     };
     const service = new FrozenResourceService(prisma as unknown as PrismaService);
 
-    await expect(service.assertMajorEventSubscriptionMutable('subscription-1', buildUser([]), 'edit'))
-      .resolves.toBeUndefined();
+    await expect(
+      service.assertMajorEventSubscriptionMutable('subscription-1', buildUser([]), 'edit'),
+    ).resolves.toBeUndefined();
 
     expect(prisma.majorEvent.findFirst).toHaveBeenCalledWith({
       where: {
@@ -458,8 +452,9 @@ describe('FrozenResourceService', () => {
       },
     } as unknown as PrismaService);
 
-    await expect(service.assertMajorEventSubscriptionMutable('subscription-1', buildUser([]), 'edit'))
-      .rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      service.assertMajorEventSubscriptionMutable('subscription-1', buildUser([]), 'edit'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('resolves receipt validation actions through their subscription', async () => {
@@ -479,8 +474,9 @@ describe('FrozenResourceService', () => {
     };
     const service = new FrozenResourceService(prisma as unknown as PrismaService);
 
-    await expect(service.assertReceiptValidationActionMutable('action-1', buildUser([]), 'edit'))
-      .resolves.toBeUndefined();
+    await expect(
+      service.assertReceiptValidationActionMutable('action-1', buildUser([]), 'edit'),
+    ).resolves.toBeUndefined();
 
     expect(prisma.majorEventSubscription.findFirst).toHaveBeenCalledWith({
       where: {
@@ -500,8 +496,9 @@ describe('FrozenResourceService', () => {
       },
     } as unknown as PrismaService);
 
-    await expect(service.assertReceiptValidationActionMutable('action-1', buildUser([]), 'edit'))
-      .rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      service.assertReceiptValidationActionMutable('action-1', buildUser([]), 'edit'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('checks certificate config bypass after resolving the target context', async () => {

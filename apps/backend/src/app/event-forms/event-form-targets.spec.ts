@@ -53,10 +53,7 @@ describe('event form target helpers', () => {
     };
 
     expect(() =>
-      assertSubscriptionFlowTargetAllowed(
-        { targetType: EventFormTargetType.EVENT, eventId: 'event-1' },
-        scope,
-      ),
+      assertSubscriptionFlowTargetAllowed({ targetType: EventFormTargetType.EVENT, eventId: 'event-1' }, scope),
     ).not.toThrow();
     expect(() =>
       assertSubscriptionFlowTargetAllowed(
@@ -65,22 +62,29 @@ describe('event form target helpers', () => {
       ),
     ).not.toThrow();
     expect(() =>
-      assertSubscriptionFlowTargetAllowed(
-        { targetType: EventFormTargetType.EVENT, eventId: 'event-2' },
-        scope,
-      ),
+      assertSubscriptionFlowTargetAllowed({ targetType: EventFormTargetType.EVENT, eventId: 'event-2' }, scope),
     ).toThrow(BadRequestException);
   });
 
   it('builds response lookup filters by response mode', () => {
     const target = normalizeTarget({ targetType: EventFormTargetType.EVENT, eventId: 'event-1' });
 
-    expect(responseLookupWhere({ id: 'form-1', responseMode: EventFormResponseMode.MULTIPLE_PER_TARGET }, 'person-1', target)).toBeNull();
-    expect(responseLookupWhere({ id: 'form-1', responseMode: EventFormResponseMode.SINGLE_PER_FORM }, 'person-1', target)).toEqual({
+    expect(
+      responseLookupWhere(
+        { id: 'form-1', responseMode: EventFormResponseMode.MULTIPLE_PER_TARGET },
+        'person-1',
+        target,
+      ),
+    ).toBeNull();
+    expect(
+      responseLookupWhere({ id: 'form-1', responseMode: EventFormResponseMode.SINGLE_PER_FORM }, 'person-1', target),
+    ).toEqual({
       formId: 'form-1',
       personId: 'person-1',
     });
-    expect(responseLookupWhere({ id: 'form-1', responseMode: EventFormResponseMode.SINGLE_PER_TARGET }, 'person-1', target)).toEqual({
+    expect(
+      responseLookupWhere({ id: 'form-1', responseMode: EventFormResponseMode.SINGLE_PER_TARGET }, 'person-1', target),
+    ).toEqual({
       formId: 'form-1',
       personId: 'person-1',
       targetType: EventFormTargetType.EVENT,
@@ -149,8 +153,9 @@ describe('event form target helpers', () => {
       form.links[0],
       form.links[1],
     ]);
-    expect(findLinkForTarget({ links: form.links } as never, { targetType: EventFormTargetType.EVENT, eventId: 'event-1' }))
-      .toBe(form.links[0]);
+    expect(
+      findLinkForTarget({ links: form.links } as never, { targetType: EventFormTargetType.EVENT, eventId: 'event-1' }),
+    ).toBe(form.links[0]);
     expect(findEventLinkRecord(form as never, 'event-1')).toBe(form.links[0]);
     expect(
       findLinkRecordForTarget(form as never, {
@@ -163,10 +168,7 @@ describe('event form target helpers', () => {
     expect(isLinkAvailable(form.links[1] as never)).toBe(false);
     expect(toDbSigilo(EventFormSigilo.PARTIALLY_SECRET)).toBe(EventFormSigilo.PARTIALLY_SECRET);
     expect(toDbAudience(EventFormAudience.SUBSCRIBERS)).toBe(EventFormAudience.SUBSCRIBERS);
-    expect(toDbResponseMode(EventFormResponseMode.SINGLE_PER_TARGET)).toBe(
-      EventFormResponseMode.SINGLE_PER_TARGET,
-    );
+    expect(toDbResponseMode(EventFormResponseMode.SINGLE_PER_TARGET)).toBe(EventFormResponseMode.SINGLE_PER_TARGET);
     expect(toDbResponseSource(EventFormResponseSource.PUBLIC_FORM)).toBe(EventFormResponseSource.PUBLIC_FORM);
-
   });
 });

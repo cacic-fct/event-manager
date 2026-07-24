@@ -1,5 +1,11 @@
 import { EventManagerKeycloakRole } from '@cacic-fct/shared-permissions';
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   AuditLogActorType,
   AuditLogEntry as PrismaAuditLogEntry,
@@ -16,15 +22,32 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { findCurrentAuditEntityRecord, updateAuditEntityRecord } from './audit-log.entity-records';
 import { mapAuditLogEntry, mapAuditLogExplorerEntry } from './audit-log.entry-mapper';
-import { assertValidAuditLogExplorerDateRange, buildAuditLogSearchQuery, buildAuditLogSqlWhere, buildAuditLogTypesenseFilter } from './audit-log.explorer';
+import {
+  assertValidAuditLogExplorerDateRange,
+  buildAuditLogSearchQuery,
+  buildAuditLogSqlWhere,
+  buildAuditLogTypesenseFilter,
+} from './audit-log.explorer';
 import { getAuditFieldLabel } from './audit-log.field-labels';
 import { AuditLogEntry, AuditLogExplorerInput, AuditLogExplorerResult } from './audit-log.models';
 import { getAuditLogRevertConfig, isReversibleAuditOperation } from './audit-log.revert-config';
 import { applyAuditLogRevertInvariants } from './audit-log.revert-invariants';
 import { synchronizeRevertedAuditEntity } from './audit-log.reverted-entity-sync';
-import { diffAuditRecords, normalizeAuditSnapshot, readAuditSnapshot, toAuditJsonInput, toNullableAuditJsonInput } from './audit-log.snapshots';
+import {
+  diffAuditRecords,
+  normalizeAuditSnapshot,
+  readAuditSnapshot,
+  toAuditJsonInput,
+  toNullableAuditJsonInput,
+} from './audit-log.snapshots';
 import { synchronizeAuditLogEntry } from './audit-log.synchronization';
-import { AuditActor, AuditPrismaClient, AuditRecordOptions, RevertEntityConfig, StoredAuditChange } from './audit-log.types';
+import {
+  AuditActor,
+  AuditPrismaClient,
+  AuditRecordOptions,
+  RevertEntityConfig,
+  StoredAuditChange,
+} from './audit-log.types';
 
 const DEFAULT_SQUASH_WINDOW_MS = 2 * 60_000;
 
@@ -147,7 +170,9 @@ export class AuditLogService {
     if (searchResult.available) {
       const entries = await this.findAuditLogEntriesByIds(searchResult.ids);
       return {
-        entries: entries.map((entry) => mapAuditLogExplorerEntry(entry, (auditEntry) => this.canRevertEntry(auditEntry))),
+        entries: entries.map((entry) =>
+          mapAuditLogExplorerEntry(entry, (auditEntry) => this.canRevertEntry(auditEntry)),
+        ),
         total: searchResult.found,
         skip,
         take,
@@ -203,9 +228,8 @@ export class AuditLogService {
     await this.assertCanRevert(targetEntry, config, actor);
 
     const entriesToRevert = await this.resolveEntriesToRevert(targetEntry, input.mode);
-    const laterConflicts = input.mode === AuditLogRevertMode.ENTRY_ONLY
-      ? await this.findLaterChangedFields(targetEntry)
-      : [];
+    const laterConflicts =
+      input.mode === AuditLogRevertMode.ENTRY_ONLY ? await this.findLaterChangedFields(targetEntry) : [];
     if (laterConflicts.length > 0) {
       throw new ConflictException(
         `Campos alterados depois dessa entrada: ${laterConflicts.map((field) => getAuditFieldLabel(field)).join(', ')}. Use "desfazer daqui em diante".`,
@@ -433,11 +457,18 @@ export class AuditLogService {
           },
         })
       : null;
-    const claimName = this.readStringClaim(actor.claims, 'name') ?? this.readStringClaim(actor.claims, 'preferred_username');
+    const claimName =
+      this.readStringClaim(actor.claims, 'name') ?? this.readStringClaim(actor.claims, 'preferred_username');
 
     return {
       id: actorId,
-      name: persistedUser?.name ?? claimName ?? actor.preferredUsername ?? actor.email ?? actor.sub ?? 'Usuário autenticado',
+      name:
+        persistedUser?.name ??
+        claimName ??
+        actor.preferredUsername ??
+        actor.email ??
+        actor.sub ??
+        'Usuário autenticado',
       email: persistedUser?.email ?? actor.email ?? null,
       type: AuditLogActorType.USER,
     };
@@ -473,7 +504,7 @@ export class AuditLogService {
     this.assertSuperAdminAuditAccess(actor);
     const permission =
       entry.operation === AuditLogOperation.CREATE
-        ? config.deletePermission ?? config.updatePermission
+        ? (config.deletePermission ?? config.updatePermission)
         : config.updatePermission;
     if (!permission) {
       throw new BadRequestException('Esse registro não tem uma permissão de reversão configurada.');
@@ -726,5 +757,4 @@ export class AuditLogService {
       }
     });
   }
-
 }

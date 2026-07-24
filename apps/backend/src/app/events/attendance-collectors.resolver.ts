@@ -77,16 +77,19 @@ export class EventAttendanceCollectorsResolver {
           createdById: context.req?.user?.sub ?? context.request?.user?.sub,
         },
       });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR,
-        entityId: `${collector.eventId}:${collector.personId}`,
-        entityLabel: 'Coletor de presença',
-        operation: AuditLogOperation.CREATE,
-        actor: this.getUser(context),
-        after: collector,
-        summary: 'Coletor de presença adicionado.',
-        scope: { permission: Permission.EventAttendanceCollector.Create, eventId: collector.eventId },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR,
+          entityId: `${collector.eventId}:${collector.personId}`,
+          entityLabel: 'Coletor de presença',
+          operation: AuditLogOperation.CREATE,
+          actor: this.getUser(context),
+          after: collector,
+          summary: 'Coletor de presença adicionado.',
+          scope: { permission: Permission.EventAttendanceCollector.Create, eventId: collector.eventId },
+        },
+        tx,
+      );
       return collector;
     });
   }
@@ -108,16 +111,19 @@ export class EventAttendanceCollectorsResolver {
           },
         },
       });
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR,
-        entityId: `${eventId}:${personId}`,
-        entityLabel: 'Coletor de presença',
-        operation: AuditLogOperation.DELETE,
-        actor: this.getUser(context),
-        before: collector,
-        summary: 'Coletor de presença removido.',
-        scope: { permission: Permission.EventAttendanceCollector.Delete, eventId },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.EVENT_ATTENDANCE_COLLECTOR,
+          entityId: `${eventId}:${personId}`,
+          entityLabel: 'Coletor de presença',
+          operation: AuditLogOperation.DELETE,
+          actor: this.getUser(context),
+          before: collector,
+          summary: 'Coletor de presença removido.',
+          scope: { permission: Permission.EventAttendanceCollector.Delete, eventId },
+        },
+        tx,
+      );
     });
 
     return {

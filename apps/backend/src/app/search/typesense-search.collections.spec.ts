@@ -9,9 +9,7 @@ describe('typesense collection helpers', () => {
   it('builds prefixed schemas for every search collection', () => {
     const schemas = createTypesenseCollectionSchemas();
 
-    expect(Object.values(TYPESENSE_COLLECTIONS)).toEqual(
-      expect.arrayContaining(schemas.map((schema) => schema.name)),
-    );
+    expect(Object.values(TYPESENSE_COLLECTIONS)).toEqual(expect.arrayContaining(schemas.map((schema) => schema.name)));
     expect(TYPESENSE_COLLECTIONS.events).toBe('cacic_event_manager_events');
     expect(schemas.find((schema) => schema.name === TYPESENSE_COLLECTIONS.events)?.fields).toEqual(
       expect.arrayContaining([

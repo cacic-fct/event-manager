@@ -45,7 +45,10 @@ export class EventFormsService {
     return this.listings.getAdminForm(user, formId);
   }
 
-  async listFormsForTarget(input: TargetInput, options: { subscriptionFlowOnly?: boolean } = {}): Promise<EventFormModel[]> {
+  async listFormsForTarget(
+    input: TargetInput,
+    options: { subscriptionFlowOnly?: boolean } = {},
+  ): Promise<EventFormModel[]> {
     return this.listings.listFormsForTarget(input, options);
   }
 
@@ -93,11 +96,7 @@ export class EventFormsService {
     return this.publication.publishForm(formId, scheduledPublishAt, user);
   }
 
-  async publishLecturerForm(
-    context: GraphqlContext,
-    formId: string,
-    eventId: string,
-  ): Promise<EventFormModel> {
+  async publishLecturerForm(context: GraphqlContext, formId: string, eventId: string): Promise<EventFormModel> {
     return this.publication.publishLecturerForm(context, formId, eventId);
   }
 
@@ -172,18 +171,11 @@ export class EventFormsService {
     return this.results.getResults(formId, viewer, options);
   }
 
-  async getLecturerResults(
-    context: GraphqlContext,
-    formId: string,
-    eventId: string,
-  ): Promise<EventFormResults> {
+  async getLecturerResults(context: GraphqlContext, formId: string, eventId: string): Promise<EventFormResults> {
     return this.results.getLecturerResults(context, formId, eventId);
   }
 
-  async listLecturerForms(
-    context: GraphqlContext,
-    eventId: string,
-  ): Promise<EventFormModel[]> {
+  async listLecturerForms(context: GraphqlContext, eventId: string): Promise<EventFormModel[]> {
     return this.listings.listLecturerForms(context, eventId);
   }
 
@@ -191,17 +183,11 @@ export class EventFormsService {
     return this.resultEvents.watchResults(formId);
   }
 
-  assertCurrentUserLiveResultsAccess(
-    context: GraphqlContext,
-    input: TargetInput & { formId: string },
-  ): Promise<void> {
+  assertCurrentUserLiveResultsAccess(context: GraphqlContext, input: TargetInput & { formId: string }): Promise<void> {
     return this.results.assertCurrentUserLiveResultsAccess(context, input);
   }
 
-  watchCurrentUserResults(
-    context: GraphqlContext,
-    input: TargetInput & { formId: string },
-  ): Observable<MessageEvent> {
+  watchCurrentUserResults(context: GraphqlContext, input: TargetInput & { formId: string }): Observable<MessageEvent> {
     return defer(() => this.results.assertCurrentUserLiveResultsAccess(context, input)).pipe(
       switchMap(() => this.resultEvents.watchResults(input.formId)),
       switchMap(async (event) => {

@@ -90,12 +90,12 @@ describe('PublicationStateWriterService', () => {
     tx.event.findFirst.mockResolvedValue(previous);
     tx.event.update.mockResolvedValue(updated);
 
-    await expect(service.updateEventPublicationState('event-1', PublicationState.PUBLISHED, null, user)).resolves.toEqual(
-      {
-        eventIds: ['event-1'],
-        majorEventIds: [],
-      },
-    );
+    await expect(
+      service.updateEventPublicationState('event-1', PublicationState.PUBLISHED, null, user),
+    ).resolves.toEqual({
+      eventIds: ['event-1'],
+      majorEventIds: [],
+    });
 
     expect(tx.event.findFirst).toHaveBeenCalledWith({
       where: { id: 'event-1', deletedAt: null },
@@ -140,7 +140,9 @@ describe('PublicationStateWriterService', () => {
     const published = { ...eventRecord(), publicationState: PublicationState.PUBLISHED, publishedAt: now };
     tx.event.findFirst.mockResolvedValue(published);
 
-    await expect(service.updateEventPublicationState('event-1', PublicationState.PUBLISHED, null, createUser())).resolves.toEqual({
+    await expect(
+      service.updateEventPublicationState('event-1', PublicationState.PUBLISHED, null, createUser()),
+    ).resolves.toEqual({
       eventIds: [],
       majorEventIds: [],
     });

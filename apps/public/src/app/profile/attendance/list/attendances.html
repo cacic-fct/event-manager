@@ -1,0 +1,124 @@
+<mat-toolbar>
+  <a matIconButton routerLink="/menu" aria-label="Voltar para o menu">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+</mat-toolbar>
+
+<main class="attendances-page">
+  <header class="page-header">
+    <p class="eyebrow">Perfil</p>
+    <h1>Minhas participações</h1>
+  </header>
+
+  @let currentState = feedState(); @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  } @else if (currentState.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ currentState.message }}</p>
+  </section>
+  } @else { @let visibleFeed = filteredFeed(); @if (visibleFeed) {
+  <section class="filter-section" aria-label="Filtros de participação">
+    <mat-form-field appearance="outline" class="filter-field">
+      <mat-label>Filtrar resultados</mat-label>
+      <mat-select multiple [value]="selectedFilters()" (selectionChange)="updateFilters($event.value)">
+        <mat-select-trigger>{{ filterTriggerLabel() }}</mat-select-trigger>
+        <mat-option value="none">Sem filtro</mat-option>
+        @for (option of filterOptions; track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <p>{{ filteredResultSummary() }}</p>
+  </section>
+
+  <section class="feed-section">
+    <div class="section-heading">
+      <h2>Grandes eventos</h2>
+    </div>
+
+    @if (visibleFeed.majorEventItems.length === 0) {
+    <p class="empty-text">{{ majorEventsEmptyText(currentState.data.majorEventItems.length) }}</p>
+    } @else {
+    <mat-action-list class="wrapping-list">
+      @for ( subscription of visibleFeed.majorEventItems; track subscription.id ) {
+      <a
+        mat-list-item
+        [routerLink]="majorEventRoute(subscription)"
+        [attr.aria-label]="'Abrir detalhes de ' + subscription.majorEvent.name">
+        <div matListItemIcon class="emoji-frame">
+          <img
+            class="twemoji"
+            [src]="emoji.getTwemojiUrl(subscription.majorEvent.emoji)"
+            [alt]="subscription.majorEvent.emoji" />
+        </div>
+        <div matListItemTitle>{{ subscription.majorEvent.name }}</div>
+        <div matListItemLine>{{ majorEventDateLine(subscription) }}</div>
+        <div matListItemLine>{{ majorEventStatusLine(subscription, currentState.data.attendances) }}</div>
+      </a>
+      }
+    </mat-action-list>
+    }
+  </section>
+
+  <section class="feed-section">
+    <div class="section-heading">
+      <h2>Eventos</h2>
+    </div>
+
+    @if (visibleFeed.eventItems.length === 0) {
+    <p class="empty-text">{{ eventItemsEmptyText(currentState.data.eventItems.length) }}</p>
+    } @else {
+    <mat-action-list class="wrapping-list">
+      @for (item of visibleFeed.eventItems; track item.id) {
+      <a mat-list-item [routerLink]="itemRoute(item)" [attr.aria-label]="'Abrir detalhes de ' + itemTitle(item)">
+        <div matListItemIcon class="emoji-frame">
+          <img class="twemoji" [src]="emoji.getTwemojiUrl(itemEmoji(item))" [alt]="itemEmoji(item)" />
+        </div>
+        <div matListItemTitle>{{ itemTitle(item) }}</div>
+        <div matListItemLine>{{ itemDateLine(item) }}</div>
+        <div matListItemLine>{{ itemStatusLine(item, currentState.data.attendances) }}</div>
+      </a>
+      }
+    </mat-action-list>
+    }
+  </section>
+
+  <section class="feed-section">
+    <div class="section-heading">
+      <h2>Certificados avulsos</h2>
+    </div>
+
+    @if (currentState.data.standaloneCertificateFolders.length === 0) {
+    <p class="empty-text">Nenhum certificado avulso disponível.</p>
+    } @else {
+    <mat-action-list class="wrapping-list">
+      @for (folder of currentState.data.standaloneCertificateFolders; track folder.id) {
+      <button
+        mat-list-item
+        type="button"
+        (click)="openStandaloneCertificates(folder)"
+        [attr.aria-label]="'Abrir certificados avulsos de ' + folder.name">
+        <div matListItemIcon class="emoji-frame">
+          <img class="twemoji" [src]="emoji.getTwemojiUrl(folder.emoji)" [alt]="folder.emoji" />
+        </div>
+        <div matListItemTitle>{{ folder.name }}</div>
+        <div matListItemLine>{{ standaloneCertificateLine(folder) }}</div>
+      </button>
+      }
+    </mat-action-list>
+    }
+  </section>
+
+  <section class="certificate-download-section">
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="isDownloadingCertificates()"
+      (click)="downloadCertificatesArchive()">
+      <mat-icon aria-hidden="true">download</mat-icon>
+      {{ isDownloadingCertificates() ? 'Preparando certificados' : 'Baixar todos os certificados' }}
+    </button>
+  </section>
+  } }
+</main>

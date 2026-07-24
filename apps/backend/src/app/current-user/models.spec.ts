@@ -32,8 +32,9 @@ describe('current user GraphQL models', () => {
       sub: 'sub-1',
       email: 'ada@example.com',
     });
-    expect(Object.assign(new CurrentUserEventAttendance(), { eventId: event.id, event, attendedAt: createdAt, createdAt }))
-      .toMatchObject({ eventId: 'event-1' });
+    expect(
+      Object.assign(new CurrentUserEventAttendance(), { eventId: event.id, event, attendedAt: createdAt, createdAt }),
+    ).toMatchObject({ eventId: 'event-1' });
     expect(Object.assign(new CurrentUserPendingOnlineAttendanceEvent(), { eventId: event.id, event })).toMatchObject({
       eventId: 'event-1',
     });
@@ -124,12 +125,15 @@ describe('current user GraphQL models', () => {
         participation,
       }),
     ).toMatchObject({ type: 'SINGLE_EVENT', participation });
-    expect(Object.assign(new CurrentUserSubscriptionFeed(), { items: [new CurrentUserSubscriptionFeedItem()] }))
-      .toMatchObject({ items: [{}] });
-    expect(Object.assign(new SubscribedSingleEventItem(), { id: 'item-1', event, startDate: createdAt })).toMatchObject({
-      type: 'single',
-      event,
-    });
+    expect(
+      Object.assign(new CurrentUserSubscriptionFeed(), { items: [new CurrentUserSubscriptionFeedItem()] }),
+    ).toMatchObject({ items: [{}] });
+    expect(Object.assign(new SubscribedSingleEventItem(), { id: 'item-1', event, startDate: createdAt })).toMatchObject(
+      {
+        type: 'single',
+        event,
+      },
+    );
     expect(
       Object.assign(new SubscribedEventGroupItem(), {
         id: 'item-2',
@@ -159,7 +163,8 @@ describe('current user GraphQL models', () => {
         desiredUncategorized: 3,
       }),
     ).toMatchObject({ majorEventId: 'major-event-1', selectedEventIds: ['event-1'] });
-    expect(Object.assign(new ConfirmCurrentUserOnlineAttendanceInput(), { eventId: event.id, code: 'abc123' }))
-      .toMatchObject({ eventId: 'event-1', code: 'abc123' });
+    expect(
+      Object.assign(new ConfirmCurrentUserOnlineAttendanceInput(), { eventId: event.id, code: 'abc123' }),
+    ).toMatchObject({ eventId: 'event-1', code: 'abc123' });
   });
 });

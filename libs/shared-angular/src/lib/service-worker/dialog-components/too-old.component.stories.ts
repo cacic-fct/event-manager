@@ -22,4 +22,3 @@ export const BlockingUpdate: Story = {
     await expect(canvas.getByText('A versão do seu aplicativo é muito antiga')).toBeVisible();
   },
 };
-

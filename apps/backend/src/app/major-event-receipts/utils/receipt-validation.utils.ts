@@ -3,7 +3,9 @@ import { SubscriptionStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { ReceiptRejectionCode } from '../receipt.types';
 
-export function getScheduleConflictEventIds(events: Array<{ id: string; startDate: Date; endDate: Date }>): Set<string> {
+export function getScheduleConflictEventIds(
+  events: Array<{ id: string; startDate: Date; endDate: Date }>,
+): Set<string> {
   const conflictIds = new Set<string>();
   for (const event of events) {
     for (const otherEvent of events) {

@@ -72,9 +72,7 @@ describe('typesense event search helpers', () => {
     expect(materializeMajorEventPublicationState({ deletedAt: new Date(), publicationState: 'PUBLISHED' })).toBe(
       'UNPUBLISHED',
     );
-    expect(materializeMajorEventPublicationState({ deletedAt: null, publicationState: 'PUBLISHED' })).toBe(
-      'PUBLISHED',
-    );
+    expect(materializeMajorEventPublicationState({ deletedAt: null, publicationState: 'PUBLISHED' })).toBe('PUBLISHED');
 
     expect(isIssuableCertificateEvent({ shouldIssueCertificate: true })).toBe(true);
     expect(isIssuableCertificateEvent({ majorEventId: 'major-1', shouldIssueCertificate: true })).toBe(false);

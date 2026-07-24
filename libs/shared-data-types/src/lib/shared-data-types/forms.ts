@@ -411,7 +411,6 @@ export class SubmitEventFormResponseInput {
 
   @Field(() => String)
   answersJson!: string;
-
 }
 
 @InputType()

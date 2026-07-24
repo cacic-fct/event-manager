@@ -6,65 +6,46 @@
   "tags": ["scope:backend", "type:app"],
   "targets": {
     "build": {
-      "outputs": [
-        "{workspaceRoot}/dist/apps/backend"
-      ],
+      "outputs": ["{workspaceRoot}/dist/apps/backend"],
       "executor": "nx:run-commands",
       "options": {
         "command": "webpack-cli build",
-        "args": [
-          "--config-node-env=production"
-        ],
+        "args": ["--config-node-env=production"],
         "cwd": "apps/backend"
       },
       "configurations": {
         "development": {
-          "args": [
-            "--config-node-env=development"
-          ]
+          "args": ["--config-node-env=development"]
         }
       }
     },
     "prune-lockfile": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "cache": true,
       "executor": "@nx/js:prune-lockfile",
-      "outputs": [
-        "{workspaceRoot}/dist/apps/backend/package.json"
-      ],
+      "outputs": ["{workspaceRoot}/dist/apps/backend/package.json"],
       "options": {
         "buildTarget": "backend:build"
       }
     },
     "copy-workspace-modules": {
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "cache": true,
-      "outputs": [
-        "{workspaceRoot}/dist/apps/backend/workspace_modules"
-      ],
+      "outputs": ["{workspaceRoot}/dist/apps/backend/workspace_modules"],
       "executor": "@nx/js:copy-workspace-modules",
       "options": {
         "buildTarget": "backend:build"
       }
     },
     "prune": {
-      "dependsOn": [
-        "prune-lockfile",
-        "copy-workspace-modules"
-      ],
+      "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
       "executor": "nx:noop"
     },
     "serve": {
       "continuous": true,
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": [
-        "build"
-      ],
+      "dependsOn": ["build"],
       "options": {
         "buildTarget": "backend:build",
         "runBuildTargetDependencies": false

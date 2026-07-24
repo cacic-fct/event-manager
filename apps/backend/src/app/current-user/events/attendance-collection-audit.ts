@@ -18,18 +18,21 @@ export async function recordAttendanceCreate(params: {
   prisma?: PrismaService | Prisma.TransactionClient;
   metadata?: Record<string, unknown>;
 }): Promise<void> {
-  await params.auditLog.record({
-    entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-    entityId: params.auditLog.buildCompositeEntityId([params.attendance.personId, params.attendance.eventId]),
-    entityLabel: params.attendance.personId,
-    operation: AuditLogOperation.USER_CREATE,
-    actor: getAuthenticatedUser(params.currentUserContext, params.context),
-    after: params.attendance,
-    scope: {
-      permission: Permission.EventAttendance.Collect,
-      eventId: params.attendance.eventId,
+  await params.auditLog.record(
+    {
+      entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+      entityId: params.auditLog.buildCompositeEntityId([params.attendance.personId, params.attendance.eventId]),
+      entityLabel: params.attendance.personId,
+      operation: AuditLogOperation.USER_CREATE,
+      actor: getAuthenticatedUser(params.currentUserContext, params.context),
+      after: params.attendance,
+      scope: {
+        permission: Permission.EventAttendance.Collect,
+        eventId: params.attendance.eventId,
+      },
+      summary: params.summary,
+      metadata: params.metadata,
     },
-    summary: params.summary,
-    metadata: params.metadata,
-  }, params.prisma);
+    params.prisma,
+  );
 }

@@ -12,7 +12,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { AttendancesApiService, LecturerProfile, LecturerProfileInput } from '../attendances/attendances-api.service';
+import { AttendancesApiService, LecturerProfile, LecturerProfileInput } from '../attendance/attendances-api.service';
 
 type LecturerProfileState =
   | { status: 'loading' }

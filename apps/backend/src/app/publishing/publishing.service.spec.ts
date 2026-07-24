@@ -127,27 +127,25 @@ describe('PublicationService', () => {
         _count: { events: 1 },
       },
     ]);
-    prisma.event.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: 'event-1',
-          name: 'Evento publicado',
-          publiclyVisible: true,
-          publicationState: PublicationState.PUBLISHED,
-          scheduledPublishAt: null,
-          publishedAt: new Date('2026-06-25T10:00:00.000Z'),
-          unpublishedAt: null,
-          majorEventId: null,
-          eventGroupId: 'group-1',
-          majorEvent: null,
-          eventGroup: {
-            id: 'group-1',
-            name: 'Grupo',
-            deletedAt: null,
-          },
+    prisma.event.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        id: 'event-1',
+        name: 'Evento publicado',
+        publiclyVisible: true,
+        publicationState: PublicationState.PUBLISHED,
+        scheduledPublishAt: null,
+        publishedAt: new Date('2026-06-25T10:00:00.000Z'),
+        unpublishedAt: null,
+        majorEventId: null,
+        eventGroupId: 'group-1',
+        majorEvent: null,
+        eventGroup: {
+          id: 'group-1',
+          name: 'Grupo',
+          deletedAt: null,
         },
-      ]);
+      },
+    ]);
 
     await expect(service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never)).resolves.toMatchObject({
       tree: [
@@ -192,23 +190,18 @@ describe('PublicationService', () => {
     prisma.majorEvent.count.mockResolvedValue(0);
     prisma.eventGroup.count.mockResolvedValue(0);
     prisma.event.count.mockResolvedValue(1);
-    prisma.event.findMany
-      .mockResolvedValueOnce([event])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([event]);
-    prisma.majorEvent.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: 'major-1',
-          name: 'SECOMPP',
-          publicationState: PublicationState.PUBLISHED,
-          scheduledPublishAt: null,
-          publishedAt: new Date('2026-06-24T10:00:00.000Z'),
-          unpublishedAt: null,
-          _count: { events: 1 },
-        },
-      ]);
+    prisma.event.findMany.mockResolvedValueOnce([event]).mockResolvedValueOnce([]).mockResolvedValueOnce([event]);
+    prisma.majorEvent.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        id: 'major-1',
+        name: 'SECOMPP',
+        publicationState: PublicationState.PUBLISHED,
+        scheduledPublishAt: null,
+        publishedAt: new Date('2026-06-24T10:00:00.000Z'),
+        unpublishedAt: null,
+        _count: { events: 1 },
+      },
+    ]);
 
     await expect(
       service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never, { query: 'Angular' }),
@@ -235,13 +228,14 @@ describe('PublicationService', () => {
     prisma.eventGroup.count.mockResolvedValue(20);
     prisma.event.count.mockResolvedValue(30);
 
-    await expect(service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never, { skip: 55, take: 30 }))
-      .resolves.toMatchObject({
-        totalCount: 110,
-        skip: 55,
-        take: 30,
-        hasMore: true,
-      });
+    await expect(
+      service.getWorkspace({ req: { user: { sub: 'admin-1' } } } as never, { skip: 55, take: 30 }),
+    ).resolves.toMatchObject({
+      totalCount: 110,
+      skip: 55,
+      take: 30,
+      hasMore: true,
+    });
 
     expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -276,18 +270,12 @@ describe('PublicationService', () => {
       ok: true,
     });
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
-      1,
-      user,
-      [Permission.EventGroup.Update],
-      { eventGroupId: 'group-1' },
-    );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
-      2,
-      user,
-      [Permission.Event.Update],
-      { eventGroupId: 'group-1' },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(1, user, [Permission.EventGroup.Update], {
+      eventGroupId: 'group-1',
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(2, user, [Permission.Event.Update], {
+      eventGroupId: 'group-1',
+    });
     expect(transitions.setPublicationState).toHaveBeenCalledWith(input, user);
   });
 
@@ -306,18 +294,12 @@ describe('PublicationService', () => {
       ok: true,
     });
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
-      1,
-      user,
-      [Permission.MajorEvent.Update],
-      { majorEventId: 'major-1' },
-    );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
-      2,
-      user,
-      [Permission.Event.Update],
-      { majorEventId: 'major-1' },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(1, user, [Permission.MajorEvent.Update], {
+      majorEventId: 'major-1',
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(2, user, [Permission.Event.Update], {
+      majorEventId: 'major-1',
+    });
     expect(transitions.runBulkOperation).toHaveBeenCalledWith(input, user);
   });
 });

@@ -156,8 +156,14 @@ describe('CurrentUserEventMapperService', () => {
   });
 
   it('finds earliest event dates and compares feed dates descending', () => {
-    const older = { ...service.mapPublicEvent(eventFixture({ id: 'older' }) as never), startDate: new Date('2026-05-20') };
-    const newer = { ...service.mapPublicEvent(eventFixture({ id: 'newer' }) as never), startDate: new Date('2026-05-22') };
+    const older = {
+      ...service.mapPublicEvent(eventFixture({ id: 'older' }) as never),
+      startDate: new Date('2026-05-20'),
+    };
+    const newer = {
+      ...service.mapPublicEvent(eventFixture({ id: 'newer' }) as never),
+      startDate: new Date('2026-05-22'),
+    };
 
     expect(service.getEarliestEventStartDate([newer, older])).toBe(older.startDate);
     expect(

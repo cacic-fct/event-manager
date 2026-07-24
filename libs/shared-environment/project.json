@@ -21,15 +21,11 @@
         "{workspaceRoot}/eslint.config.mjs",
         "{workspaceRoot}/tools/eslint-rules/**/*",
         {
-          "externalDependencies": [
-            "eslint"
-          ]
+          "externalDependencies": ["eslint"]
         }
       ],
       "options": {
-        "args": [
-          "**/*.ts"
-        ]
+        "args": ["**/*.ts"]
       }
     }
   }

@@ -34,7 +34,10 @@ const WORKSPACE_SUBSCRIPTION_READ_SCOPES = [
   Permission.MajorEvent.Read,
 ] as const;
 
-const WORKSPACE_EVENT_SUBSCRIPTION_CREATE_PERMISSIONS = [Permission.Subscription.Create, Permission.Event.Read] as const;
+const WORKSPACE_EVENT_SUBSCRIPTION_CREATE_PERMISSIONS = [
+  Permission.Subscription.Create,
+  Permission.Event.Read,
+] as const;
 
 const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_CREATE_PERMISSIONS = [
   Permission.Subscription.Create,
@@ -244,9 +247,9 @@ export class EventSubscriptionsResolver {
     return subscriptions.map((subscription) => ({
       ...subscription,
       majorEventSubscriptionId: subscription.event.majorEventId
-        ? majorEventSubscriptionIdsByPersonMajorAndEvent.get(
+        ? (majorEventSubscriptionIdsByPersonMajorAndEvent.get(
             `${subscription.personId}:${subscription.event.majorEventId}:${subscription.eventId}`,
-          ) ?? null
+          ) ?? null)
         : null,
       isLecturerSubscription: lecturerPersonIds.has(subscription.personId),
     }));
@@ -406,11 +409,7 @@ export class EventSubscriptionsResolver {
         ...(subscriptionSyncResult?.createdEventIds ?? []),
       ]);
 
-      const [result] = await this.attachMajorEventSubscriptionEvents(
-        input.majorEventId,
-        [majorEventSubscription],
-        tx,
-      );
+      const [result] = await this.attachMajorEventSubscriptionEvents(input.majorEventId, [majorEventSubscription], tx);
       if (!result?.person) {
         throw new NotFoundException(`Subscription ${majorEventSubscription.id} was not found.`);
       }
@@ -555,7 +554,10 @@ export class EventSubscriptionsResolver {
     if (existing.subscriptionStatus !== subscription.subscriptionStatus) {
       const notificationRecord = await this.findMajorEventSubscriptionNotificationRecord(subscription.id);
       if (notificationRecord) {
-        await this.notifications.notifyMajorEventSubscriptionRecordChanged(existing.subscriptionStatus, notificationRecord);
+        await this.notifications.notifyMajorEventSubscriptionRecordChanged(
+          existing.subscriptionStatus,
+          notificationRecord,
+        );
       }
     }
     return subscription;

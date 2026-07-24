@@ -100,11 +100,12 @@ export class CertificateConfigsService {
     await this.ensureNoDuplicateFolderName(name);
 
     const folder = await this.prisma.$transaction(async (tx) => {
-      const created = await this.withFolderNameConflict(() =>
-        tx.certificateFolder.create({
-          data: { name, emoji },
-          select: CERTIFICATE_FOLDER_SELECT,
-        }),
+      const created = await this.withFolderNameConflict(
+        () =>
+          tx.certificateFolder.create({
+            data: { name, emoji },
+            select: CERTIFICATE_FOLDER_SELECT,
+          }),
         name,
       );
       await this.recordFolderAudit(null, created, AuditLogOperation.CREATE, tx);
@@ -141,25 +142,21 @@ export class CertificateConfigsService {
 
     await this.ensureNoDuplicateFolderName(name, normalizedFolderId, client);
 
-    const updatedFolder = await this.withFolderNameConflict(() =>
-      client.certificateFolder.update({
-        where: {
-          id: normalizedFolderId,
-        },
-        data: {
-          ...(input.name == null ? {} : { name }),
-          ...(input.emoji == null ? {} : { emoji }),
-        },
-        select: CERTIFICATE_FOLDER_SELECT,
-      }),
+    const updatedFolder = await this.withFolderNameConflict(
+      () =>
+        client.certificateFolder.update({
+          where: {
+            id: normalizedFolderId,
+          },
+          data: {
+            ...(input.name == null ? {} : { name }),
+            ...(input.emoji == null ? {} : { emoji }),
+          },
+          select: CERTIFICATE_FOLDER_SELECT,
+        }),
       name,
     );
-    await this.recordFolderAudit(
-      existingFolder,
-      updatedFolder,
-      AuditLogOperation.UPDATE,
-      client,
-    );
+    await this.recordFolderAudit(existingFolder, updatedFolder, AuditLogOperation.UPDATE, client);
 
     return mapCertificateFolder(updatedFolder);
   }
@@ -242,14 +239,11 @@ export class CertificateConfigsService {
     let prioritizedIds: string[] = [];
     if (normalizedQuery) {
       if (this.typesenseSearch.isEnabled()) {
-        const searchResult = await this.typesenseSearch.searchCertificateTemplates(
-          normalizedQuery,
-          {
-            filterBy: includeInactive ? undefined : 'isActive:=true',
-            limit: take ?? 50,
-            offset: skip ?? 0,
-          },
-        );
+        const searchResult = await this.typesenseSearch.searchCertificateTemplates(normalizedQuery, {
+          filterBy: includeInactive ? undefined : 'isActive:=true',
+          limit: take ?? 50,
+          offset: skip ?? 0,
+        });
         if (searchResult.available) {
           prioritizedIds = searchResult.ids;
           if (prioritizedIds.length === 0) {
@@ -349,7 +343,8 @@ export class CertificateConfigsService {
     const secondPageText = this.validation.normalizeOptionalText(input.secondPageText);
     const certificateFields = this.validation.normalizeCertificateFieldsJson(input.certificateFieldsJson);
     this.assertStandaloneIssuedTo(scope, input.issuedTo);
-    const issuedTo = scope === CertificateScope.OTHER ? CertificateIssuedTo.OTHER : (input.issuedTo ?? CertificateIssuedTo.ATTENDEE);
+    const issuedTo =
+      scope === CertificateScope.OTHER ? CertificateIssuedTo.OTHER : (input.issuedTo ?? CertificateIssuedTo.ATTENDEE);
     const certificateTypeLabel = this.resolveCertificateTypeLabel(
       issuedTo,
       certificateFields === undefined ? null : certificateFields,
@@ -380,24 +375,24 @@ export class CertificateConfigsService {
     const createdConfig = await this.prisma.$transaction(async (tx) => {
       const config = await tx.certificateConfig.create({
         data: {
-        name,
-        scope,
-        majorEventId: majorEventId ?? null,
-        eventGroupId: eventGroupId ?? null,
-        eventId: eventId ?? null,
-        folderId: scope === CertificateScope.OTHER ? targetId : null,
-        certificateTemplateId: templateId,
-        certificateText: certificateText === undefined ? undefined : certificateText,
-        shouldAutofillSecondPage: input.shouldAutofillSecondPage ?? scope !== CertificateScope.OTHER,
-        secondPageText: secondPageText === undefined ? undefined : secondPageText,
-        isActive: input.isActive ?? true,
-        issuedTo,
-        certificateTypeLabel,
-        ...(certificateFields === undefined
-          ? {}
-          : certificateFields === null
-            ? { certificateFields: Prisma.DbNull }
-            : { certificateFields }),
+          name,
+          scope,
+          majorEventId: majorEventId ?? null,
+          eventGroupId: eventGroupId ?? null,
+          eventId: eventId ?? null,
+          folderId: scope === CertificateScope.OTHER ? targetId : null,
+          certificateTemplateId: templateId,
+          certificateText: certificateText === undefined ? undefined : certificateText,
+          shouldAutofillSecondPage: input.shouldAutofillSecondPage ?? scope !== CertificateScope.OTHER,
+          secondPageText: secondPageText === undefined ? undefined : secondPageText,
+          isActive: input.isActive ?? true,
+          issuedTo,
+          certificateTypeLabel,
+          ...(certificateFields === undefined
+            ? {}
+            : certificateFields === null
+              ? { certificateFields: Prisma.DbNull }
+              : { certificateFields }),
         },
         select: CERTIFICATE_CONFIG_SELECT,
       });
@@ -685,11 +680,7 @@ export class CertificateConfigsService {
         certificateTemplateId: source.certificateTemplateId,
         certificateText: parts?.textContent ? source.certificateText : null,
         shouldAutofillSecondPage:
-          scope === CertificateScope.OTHER
-            ? false
-            : parts?.textContent
-              ? source.shouldAutofillSecondPage
-              : true,
+          scope === CertificateScope.OTHER ? false : parts?.textContent ? source.shouldAutofillSecondPage : true,
         secondPageText: parts?.textContent ? source.secondPageText : null,
         isActive: parts?.activeState ? source.isActive : true,
         issuedTo,

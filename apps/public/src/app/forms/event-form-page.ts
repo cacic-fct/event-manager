@@ -138,9 +138,13 @@ export class EventFormPage {
           void this.router.navigate(['/profile', 'attendances']);
         },
         error: (error: unknown) => {
-          this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível salvar as respostas.', 'Fechar', {
-            duration: 6000,
-          });
+          this.snackbar.open(
+            error instanceof Error ? error.message : 'Não foi possível salvar as respostas.',
+            'Fechar',
+            {
+              duration: 6000,
+            },
+          );
         },
       });
   }
@@ -160,7 +164,10 @@ export class EventFormPage {
       switchMap((forms) => {
         const form = forms.find((item) => item.id === formId);
         if (!form) {
-          return of({ status: 'error', message: 'Formulário não encontrado para esta inscrição.' } satisfies FormPageState);
+          return of({
+            status: 'error',
+            message: 'Formulário não encontrado para esta inscrição.',
+          } satisfies FormPageState);
         }
         const link = this.findLink(form, targetType, targetId, requestedLinkId);
         if (!link) {

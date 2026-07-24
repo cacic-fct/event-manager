@@ -19,13 +19,7 @@ describe('getBrazilianPhoneCandidates', () => {
 
   it('builds display aliases for 10-digit Brazilian phones', () => {
     expect(getBrazilianPhoneCandidates('1833330000')).toEqual(
-      expect.arrayContaining([
-        '1833330000',
-        '551833330000',
-        '+551833330000',
-        '(18) 3333-0000',
-        '+55 (18) 3333-0000',
-      ]),
+      expect.arrayContaining(['1833330000', '551833330000', '+551833330000', '(18) 3333-0000', '+55 (18) 3333-0000']),
     );
   });
 

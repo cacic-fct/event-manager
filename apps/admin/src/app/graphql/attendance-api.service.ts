@@ -294,16 +294,19 @@ export class AttendanceApiService {
   }
 
   watchEventAttendanceScannerFeed(eventId: string): Observable<EventAttendanceScannerFeedItem[]> {
-    return watchReplayableEventSource(`/api/event-attendances/events/${encodeURIComponent(eventId)}/scanner-feed/events`, {
-      decode: (event) => {
-        const parsed = JSON.parse(event.data) as {
-          type: string;
-          attendances?: EventAttendanceScannerFeedItem[];
-        };
-        return parsed.type === 'event-attendance-scanner-feed' && parsed.attendances ? parsed.attendances : null;
+    return watchReplayableEventSource(
+      `/api/event-attendances/events/${encodeURIComponent(eventId)}/scanner-feed/events`,
+      {
+        decode: (event) => {
+          const parsed = JSON.parse(event.data) as {
+            type: string;
+            attendances?: EventAttendanceScannerFeedItem[];
+          };
+          return parsed.type === 'event-attendance-scanner-feed' && parsed.attendances ? parsed.attendances : null;
+        },
+        errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
       },
-      errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
-    });
+    );
   }
 
   createEventAttendanceFromScannerCode(input: { eventId: string; code: string }) {

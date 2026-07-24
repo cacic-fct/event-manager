@@ -62,7 +62,8 @@ export class ServiceWorkerService {
     try {
       this.state.set('checking');
 
-      const registration = this.registration ?? (await navigator.serviceWorker.getRegistration(this.serviceWorkerScope()));
+      const registration =
+        this.registration ?? (await navigator.serviceWorker.getRegistration(this.serviceWorkerScope()));
       if (!registration) {
         this.state.set('idle');
         return false;
@@ -125,7 +126,8 @@ export class ServiceWorkerService {
       return 'Service Worker indisponível neste navegador.';
     }
 
-    const registration = this.registration ?? (await navigator.serviceWorker.getRegistration(this.serviceWorkerScope()));
+    const registration =
+      this.registration ?? (await navigator.serviceWorker.getRegistration(this.serviceWorkerScope()));
     if (!registration) {
       return 'Service Worker não registrado.';
     }
@@ -197,7 +199,8 @@ export class ServiceWorkerService {
     this.trackedServiceWorkers.add(serviceWorker);
 
     serviceWorker.addEventListener('error', (event) => {
-      const message = event instanceof ErrorEvent && event.message ? event.message : 'O Service Worker encontrou um erro.';
+      const message =
+        event instanceof ErrorEvent && event.message ? event.message : 'O Service Worker encontrou um erro.';
       void this.handleServiceWorkerError(message);
     });
 
@@ -377,5 +380,4 @@ export class ServiceWorkerService {
 
     return 'Erro desconhecido ao atualizar o aplicativo.';
   }
-
 }

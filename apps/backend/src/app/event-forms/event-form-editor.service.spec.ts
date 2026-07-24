@@ -117,7 +117,9 @@ describe('EventFormEditorService', () => {
         description: 'Coleta de tamanhos',
         ownerEventId: 'event-1',
         ownerMajorEventId: null,
-        elements: [{ id: 'element-1', type: 'shortText', title: 'Nome', descriptionImages: [], required: false, options: [] }],
+        elements: [
+          { id: 'element-1', type: 'shortText', title: 'Nome', descriptionImages: [], required: false, options: [] },
+        ],
         sigilo: EventFormSigilo.SECRET,
         responseMode: EventFormResponseMode.ONE_PER_TARGET,
         resultsPublic: true,
@@ -157,10 +159,7 @@ describe('EventFormEditorService', () => {
       ownerEventId: 'event-1',
       resultsPublic: true,
       resultsLive: true,
-      links: [
-        linkRecord({ id: 'link-1', eventId: 'event-2' }),
-        linkRecord({ id: 'link-removed', eventId: 'event-3' }),
-      ],
+      links: [linkRecord({ id: 'link-1', eventId: 'event-2' }), linkRecord({ id: 'link-removed', eventId: 'event-3' })],
     });
     const updated = formRecord({
       name: 'Pesquisa revisada',
@@ -282,7 +281,8 @@ describe('EventFormEditorService', () => {
         name: 'Rascunho aberto',
         payload: expect.objectContaining({
           name: '  Rascunho aberto  ',
-          elementsJson: '[{"id":"element-1","type":"longText","title":"Comentário","descriptionImages":[],"required":false,"options":[]}]',
+          elementsJson:
+            '[{"id":"element-1","type":"longText","title":"Comentário","descriptionImages":[],"required":false,"options":[]}]',
         }),
         createdById: 'user-1',
         createdByName: 'Ana Silva',
@@ -594,8 +594,14 @@ function linkRecord(
 ) {
   const now = new Date('2026-06-28T12:00:00.000Z');
   const targetType = options.targetType ?? EventFormTargetType.EVENT;
-  const eventId = options.eventId === undefined ? (targetType === EventFormTargetType.EVENT ? 'event-1' : null) : options.eventId;
-  const majorEventId = options.majorEventId === undefined ? (targetType === EventFormTargetType.MAJOR_EVENT ? 'major-1' : null) : options.majorEventId;
+  const eventId =
+    options.eventId === undefined ? (targetType === EventFormTargetType.EVENT ? 'event-1' : null) : options.eventId;
+  const majorEventId =
+    options.majorEventId === undefined
+      ? targetType === EventFormTargetType.MAJOR_EVENT
+        ? 'major-1'
+        : null
+      : options.majorEventId;
   return {
     id: options.id ?? 'link-1',
     formId: options.formId ?? 'form-1',

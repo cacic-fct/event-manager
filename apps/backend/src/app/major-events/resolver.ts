@@ -422,9 +422,7 @@ export class MajorEventsResolver {
 
     const sourcePrice = source.majorEventPrices[0];
     const sourcePaymentInfo =
-      paymentInfoTableExists && 'paymentInfo' in source
-        ? (source.paymentInfo as PaymentInfoCloneRecord | null)
-        : null;
+      paymentInfoTableExists && 'paymentInfo' in source ? (source.paymentInfo as PaymentInfoCloneRecord | null) : null;
     const cloneInput: MajorEventCreateInput = {
       name: this.buildCloneName(input?.name, source.name),
       emoji: source.emoji,
@@ -955,9 +953,7 @@ export class MajorEventsResolver {
           issuedTo: config.issuedTo,
           certificateTypeLabel: config.certificateTypeLabel,
           certificateFields:
-            config.certificateFields === null
-              ? Prisma.DbNull
-              : (config.certificateFields as Prisma.InputJsonValue),
+            config.certificateFields === null ? Prisma.DbNull : (config.certificateFields as Prisma.InputJsonValue),
         },
       });
     }

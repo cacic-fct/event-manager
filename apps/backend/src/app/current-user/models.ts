@@ -378,7 +378,6 @@ export class UpsertCurrentUserMajorEventSubscriptionInput {
 
   @Field(() => [SubmitEventFormResponseInput], { nullable: true })
   formResponses?: SubmitEventFormResponseInput[] | null;
-
 }
 
 @InputType()

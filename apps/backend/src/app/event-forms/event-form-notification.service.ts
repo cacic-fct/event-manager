@@ -194,10 +194,7 @@ export class EventFormNotificationService {
     return [...people.values()].map((person) => this.notifications.mapPersonToRecipient(person));
   }
 
-  private async findRequiredSubscriptionRecipients(
-    form: EventFormNotificationRecord,
-    link: EventFormNotificationLink,
-  ) {
+  private async findRequiredSubscriptionRecipients(form: EventFormNotificationRecord, link: EventFormNotificationLink) {
     const subscriptions = link.eventId
       ? await this.prisma.eventSubscription.findMany({
           where: {
@@ -219,7 +216,9 @@ export class EventFormNotificationService {
             },
           })
         : [];
-    const people = [...new Map(subscriptions.map((subscription) => [subscription.person.id, subscription.person])).values()];
+    const people = [
+      ...new Map(subscriptions.map((subscription) => [subscription.person.id, subscription.person])).values(),
+    ];
     if (people.length === 0) {
       return [];
     }
@@ -261,7 +260,9 @@ export class EventFormNotificationService {
   }
 
   private isRequiredSubscriptionForm(link: EventFormNotificationLink): boolean {
-    return link.insertInSubscriptionFlow && link.requiredInSubscriptionFlow && link.audience !== EventFormAudience.ATTENDEES;
+    return (
+      link.insertInSubscriptionFlow && link.requiredInSubscriptionFlow && link.audience !== EventFormAudience.ATTENDEES
+    );
   }
 
   private notificationPersonSelect() {

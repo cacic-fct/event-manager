@@ -174,15 +174,17 @@ function createClientMock() {
   };
 }
 
-function createPrismaMock(records: Partial<{
-  event: unknown[];
-  majorEvent: unknown[];
-  eventGroup: unknown[];
-  people: unknown[];
-  placePreset: unknown[];
-  certificateTemplate: unknown[];
-  auditLogEntry: unknown[];
-}> = {}) {
+function createPrismaMock(
+  records: Partial<{
+    event: unknown[];
+    majorEvent: unknown[];
+    eventGroup: unknown[];
+    people: unknown[];
+    placePreset: unknown[];
+    certificateTemplate: unknown[];
+    auditLogEntry: unknown[];
+  }> = {},
+) {
   return {
     event: {
       findMany: jest.fn().mockResolvedValue(records.event ?? []),

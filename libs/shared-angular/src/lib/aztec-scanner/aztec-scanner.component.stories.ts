@@ -54,4 +54,3 @@ export const QrAndAztec: Story = {
     formats: ['Aztec', 'QRCode'],
   },
 };
-

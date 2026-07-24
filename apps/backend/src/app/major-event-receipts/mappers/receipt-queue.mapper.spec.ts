@@ -80,12 +80,14 @@ describe('ReceiptQueueMapper', () => {
   });
 });
 
-function createSubscription(overrides: {
-  subscriptionFlow?: MajorEventSubscriptionFlow;
-  amountMatched?: boolean;
-  matchedAmountText?: string | null;
-  nameMatched?: boolean;
-} = {}) {
+function createSubscription(
+  overrides: {
+    subscriptionFlow?: MajorEventSubscriptionFlow;
+    amountMatched?: boolean;
+    matchedAmountText?: string | null;
+    nameMatched?: boolean;
+  } = {},
+) {
   const startDate = new Date('2026-01-01T10:00:00.000Z');
   const endDate = new Date('2026-01-01T11:00:00.000Z');
 

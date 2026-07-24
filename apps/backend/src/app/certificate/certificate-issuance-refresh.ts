@@ -2,7 +2,12 @@ import { CertificateIssuedTo, CertificateReissueResult, CertificateScope } from 
 import { AuditLogOperation } from '@prisma/client';
 import { AuditActor, AuditPrismaClient } from '../audit-log/audit-log.types';
 import { PrismaService } from '../prisma/prisma.service';
-import { CERTIFICATE_CONFIG_SELECT, CERTIFICATE_SELECT, CertificateConfigRecord, CertificateRecord } from './certificate.constants';
+import {
+  CERTIFICATE_CONFIG_SELECT,
+  CERTIFICATE_SELECT,
+  CertificateConfigRecord,
+  CertificateRecord,
+} from './certificate.constants';
 import { CertificateEligibilityService, EligibleCertificateRecipient } from './certificate-eligibility.service';
 import { CertificateIssuanceAudit } from './certificate-issuance-audit';
 import { CertificateValidationService } from './certificate-validation.service';
@@ -25,7 +30,8 @@ export class CertificateIssuanceRefresh {
     private readonly eligibility: CertificateEligibilityService,
     private readonly upsertCertificate: UpsertCertificate,
     private readonly audit: CertificateIssuanceAudit,
-    private readonly notifyCertificateAvailable: (certificate: CertificateRecord) => Promise<void> = async () => undefined,
+    private readonly notifyCertificateAvailable: (certificate: CertificateRecord) => Promise<void> = async () =>
+      undefined,
   ) {}
 
   async reissueAll(issuedById?: string): Promise<CertificateReissueResult> {
@@ -107,7 +113,13 @@ export class CertificateIssuanceRefresh {
         orderBy: { issuedAt: 'asc' },
       });
       const configIds = [...new Set(mergedCertificates.map((certificate) => certificate.configId))];
-      const refreshedCertificates = await this.refreshConfigsForPerson(normalizedTargetPersonId, configIds, issuedById, tx, auditActor);
+      const refreshedCertificates = await this.refreshConfigsForPerson(
+        normalizedTargetPersonId,
+        configIds,
+        issuedById,
+        tx,
+        auditActor,
+      );
 
       const sourceCertificates = await tx.certificate.findMany({
         where: { personId: normalizedSourcePersonId, deletedAt: null },
@@ -177,10 +189,15 @@ export class CertificateIssuanceRefresh {
     });
 
     if (config.issuedTo === CertificateIssuedTo.OTHER) {
-      return this.refreshManualConfig(config, existingCertificates.map((certificate) => certificate.personId), issuedById, {
-        ...options,
-        auditActor,
-      });
+      return this.refreshManualConfig(
+        config,
+        existingCertificates.map((certificate) => certificate.personId),
+        issuedById,
+        {
+          ...options,
+          auditActor,
+        },
+      );
     }
 
     const recipients = await this.eligibility.resolveEligibleRecipients(config);
@@ -214,11 +231,19 @@ export class CertificateIssuanceRefresh {
               notify: options.notify,
             });
           }
-          await this.invalidateCertificates(config.id, [personId], issuedById, options.client ?? this.prisma, options.auditActor);
+          await this.invalidateCertificates(
+            config.id,
+            [personId],
+            issuedById,
+            options.client ?? this.prisma,
+            options.auditActor,
+          );
           return null;
         }),
       );
-      certificates.push(...refreshed.filter((certificate): certificate is CertificateUpsertResult => certificate !== null));
+      certificates.push(
+        ...refreshed.filter((certificate): certificate is CertificateUpsertResult => certificate !== null),
+      );
     }
     return certificates;
   }
@@ -244,7 +269,9 @@ export class CertificateIssuanceRefresh {
           return null;
         }),
       );
-      certificates.push(...refreshed.filter((certificate): certificate is CertificateUpsertResult => certificate !== null));
+      certificates.push(
+        ...refreshed.filter((certificate): certificate is CertificateUpsertResult => certificate !== null),
+      );
     }
     return certificates;
   }
@@ -274,7 +301,9 @@ export class CertificateIssuanceRefresh {
 
   private async notifyPendingCertificates(results: CertificateUpsertResult[]): Promise<void> {
     await Promise.all(
-      results.filter(({ shouldNotify }) => shouldNotify).map(({ certificate }) => this.notifyCertificateAvailable(certificate)),
+      results
+        .filter(({ shouldNotify }) => shouldNotify)
+        .map(({ certificate }) => this.notifyCertificateAvailable(certificate)),
     );
   }
 

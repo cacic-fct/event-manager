@@ -1,8 +1,5 @@
 import sharp from 'sharp';
-import {
-  MAX_RECEIPT_DECODED_IMAGE_PIXELS,
-  MAX_RECEIPT_IMAGE_DIMENSION_PIXELS,
-} from '../receipt.types';
+import { MAX_RECEIPT_DECODED_IMAGE_PIXELS, MAX_RECEIPT_IMAGE_DIMENSION_PIXELS } from '../receipt.types';
 import {
   ReceiptImageProcessingLimitError,
   assertReceiptBufferWithinProcessingLimits,

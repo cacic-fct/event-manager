@@ -154,17 +154,16 @@ export class EventFormResultsAccessService {
       anonymous: form.sigilo === EventFormSigilo.ANONYMOUS,
       answersReleased,
       summaryJson: JSON.stringify(summary),
-      responses: answersReleased || identitiesReleased
-        ? responses.map((response) => toResponseModel(response, form.sigilo, viewer, { includeAnswers: answersReleased }))
-        : [],
+      responses:
+        answersReleased || identitiesReleased
+          ? responses.map((response) =>
+              toResponseModel(response, form.sigilo, viewer, { includeAnswers: answersReleased }),
+            )
+          : [],
     };
   }
 
-  async getLecturerResults(
-    context: GraphqlContext,
-    formId: string,
-    eventId: string,
-  ): Promise<EventFormResults> {
+  async getLecturerResults(context: GraphqlContext, formId: string, eventId: string): Promise<EventFormResults> {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     await assertPersonIsEventLecturer(this.prisma, person.id, eventId);
     const form = await requireEventForm(this.prisma, formId);

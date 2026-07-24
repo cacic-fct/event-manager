@@ -13,9 +13,11 @@ describe('MergeCandidatesResolver', () => {
     const resolver = new MergeCandidatesResolver(prisma as never, {} as never, auditLog as unknown as AuditLogService);
     const requestUser = { sub: 'request-user' } as never;
     const reqUser = { sub: 'req-user' } as never;
-    const getUser = (resolver as unknown as {
-      getUser(context: { req?: { user?: typeof reqUser }; request?: { user?: typeof reqUser } }): typeof reqUser;
-    }).getUser.bind(resolver);
+    const getUser = (
+      resolver as unknown as {
+        getUser(context: { req?: { user?: typeof reqUser }; request?: { user?: typeof reqUser } }): typeof reqUser;
+      }
+    ).getUser.bind(resolver);
 
     expect(getUser({ request: { user: requestUser } })).toBe(requestUser);
     expect(getUser({ req: { user: reqUser }, request: { user: requestUser } })).toBe(reqUser);
@@ -27,7 +29,9 @@ describe('MergeCandidatesResolver', () => {
     );
 
     expect(prisma.mergeCandidate.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ createdById: 'request-user', updatedById: 'request-user' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ createdById: 'request-user', updatedById: 'request-user' }),
+      }),
     );
     expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ actor: requestUser }), prisma);
   });

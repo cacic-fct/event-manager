@@ -73,5 +73,11 @@ function createCertificateAvailableNotification(
 }
 
 function getCertificateTargetName(certificate: CertificateRecord): string | null {
-  return certificate.config.event?.name ?? certificate.config.eventGroup?.name ?? certificate.config.majorEvent?.name ?? certificate.config.folder?.name ?? null;
+  return (
+    certificate.config.event?.name ??
+    certificate.config.eventGroup?.name ??
+    certificate.config.majorEvent?.name ??
+    certificate.config.folder?.name ??
+    null
+  );
 }

@@ -12,10 +12,7 @@ describe('AccountMergeService', () => {
   beforeEach(() => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-21T12:00:00.000Z'));
     prisma = createPrismaMock();
-    service = new AccountMergeService(
-      prisma as unknown as PrismaService,
-      {} as unknown as CertificateIssuingService,
-    );
+    service = new AccountMergeService(prisma as unknown as PrismaService, {} as unknown as CertificateIssuingService);
   });
 
   afterEach(() => {
@@ -378,9 +375,9 @@ describe('AccountMergeService', () => {
   });
 
   it('rejects invalid account merge notifications before opening a transaction', async () => {
-    await expect(service.acknowledgeAccountMerge({ ...notification(), type: 'unknown' }, 'actor-1')).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.acknowledgeAccountMerge({ ...notification(), type: 'unknown' }, 'actor-1'),
+    ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
       service.acknowledgeAccountMerge({ ...notification(), oldUserId: 'same-user', newUserId: 'same-user' }, 'actor-1'),
     ).rejects.toBeInstanceOf(BadRequestException);

@@ -57,10 +57,25 @@ export class EventFormEditorService {
       await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Update], {
         eventFormId: existing.id,
       });
-      await assertCanManageLinkedTargets(this.authorizationPolicy, user, [formOwnerTargetInput(existing)], Permission.EventForm.Update);
-      await assertCanManageLinkedTargets(this.authorizationPolicy, user, [ownerTargetInput(target)], Permission.EventForm.Update);
+      await assertCanManageLinkedTargets(
+        this.authorizationPolicy,
+        user,
+        [formOwnerTargetInput(existing)],
+        Permission.EventForm.Update,
+      );
+      await assertCanManageLinkedTargets(
+        this.authorizationPolicy,
+        user,
+        [ownerTargetInput(target)],
+        Permission.EventForm.Update,
+      );
       if (shouldReplaceLinks) {
-        await assertCanManageLinkedTargets(this.authorizationPolicy, user, manageableLinksForReplace(existing.links, nextLinks), Permission.EventForm.Update);
+        await assertCanManageLinkedTargets(
+          this.authorizationPolicy,
+          user,
+          manageableLinksForReplace(existing.links, nextLinks),
+          Permission.EventForm.Update,
+        );
       }
 
       const updated = await this.prisma.$transaction(async (tx) => {
@@ -222,7 +237,12 @@ export class EventFormEditorService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.EventForm.Delete], {
       eventFormId: form.id,
     });
-    await assertCanManageLinkedTargets(this.authorizationPolicy, user, formTargetInputs(form), Permission.EventForm.Delete);
+    await assertCanManageLinkedTargets(
+      this.authorizationPolicy,
+      user,
+      formTargetInputs(form),
+      Permission.EventForm.Delete,
+    );
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const deletedAt = new Date();

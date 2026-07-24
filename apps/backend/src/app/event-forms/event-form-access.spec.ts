@@ -1,9 +1,5 @@
 import { EventFormResponseMode, EventFormTargetType } from '@prisma/client';
-import {
-  buildAccessibleFormWhere,
-  isEmptyAccessibleTargets,
-  resultResponseWhere,
-} from './event-form-access';
+import { buildAccessibleFormWhere, isEmptyAccessibleTargets, resultResponseWhere } from './event-form-access';
 import { formRecord, linkRecord } from './event-form.spec-support';
 
 describe('event form access helpers', () => {

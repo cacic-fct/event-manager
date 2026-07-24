@@ -145,12 +145,7 @@ describeKeycloak('Keycloak-backed authentication', () => {
       const response = await axios.post(
         '/api/auth/permissions/evaluate',
         {
-          permissions: [
-            Permission.Event.Create,
-            Permission.Event.Delete,
-            Permission.Event.Create,
-            'not-a-permission',
-          ],
+          permissions: [Permission.Event.Create, Permission.Event.Delete, Permission.Event.Create, 'not-a-permission'],
         },
         {
           headers: {
@@ -180,9 +175,11 @@ describeKeycloak('Keycloak-backed authentication', () => {
     const allowedPayload = decodeJwtPayload(allowedToken);
     expect(asArray(allowedPayload['aud'])).toContain('cacic-event-manager-audience');
     expect(
-      (((allowedPayload['resource_access'] as Record<string, unknown>)['cacic-event-manager-audience'] as {
-        roles?: string[];
-      })?.roles ?? []),
+      (
+        (allowedPayload['resource_access'] as Record<string, unknown>)['cacic-event-manager-audience'] as {
+          roles?: string[];
+        }
+      )?.roles ?? [],
     ).toEqual(expect.arrayContaining(['account-profile:write']));
 
     const acceptedAuthResponse = await axios.post(
@@ -243,8 +240,7 @@ async function waitForKeycloak(): Promise<void> {
 }
 
 function createPrismaClient(): PrismaClient {
-  const connectionString =
-    process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/postgres';
+  const connectionString = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/postgres';
   return new PrismaClient({
     adapter: new PrismaPg({
       connectionString,
@@ -262,7 +258,10 @@ async function cleanupPermissionEvaluationGrants(prisma: PrismaClient, userId: s
 }
 
 function sanitizeEmailLocalPart(value: string): string {
-  const localPart = value.toLowerCase().replace(/[^a-z0-9._-]+/gu, '-').replace(/^-+|-+$/gu, '');
+  const localPart = value
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/gu, '-')
+    .replace(/^-+|-+$/gu, '');
   return localPart || 'permission-e2e-user';
 }
 

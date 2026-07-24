@@ -98,7 +98,9 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
 
     return attendances.map((attendance) => ({
       ...attendance,
-      collectedByFullName: attendance.createdById ? (collectorNameById.get(attendance.createdById) ?? undefined) : undefined,
+      collectedByFullName: attendance.createdById
+        ? (collectorNameById.get(attendance.createdById) ?? undefined)
+        : undefined,
       committedByFullName:
         attendance.committedById && attendance.committedById !== attendance.createdById
           ? (collectorNameById.get(attendance.committedById) ?? undefined)

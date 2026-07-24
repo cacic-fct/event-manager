@@ -121,7 +121,10 @@ export class AuthenticatedUserSyncService {
       return [];
     }
 
-    return value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean);
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   private sameStringArray(left: readonly string[], right: readonly string[]): boolean {

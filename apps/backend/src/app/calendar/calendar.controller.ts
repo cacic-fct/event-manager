@@ -37,10 +37,7 @@ export class CalendarController {
       example: ICALENDAR_RESPONSE_EXAMPLE,
     },
   })
-  async downloadPublicEventCalendar(
-    @Param('eventId') eventId: string,
-    @Res() response: Response,
-  ): Promise<void> {
+  async downloadPublicEventCalendar(@Param('eventId') eventId: string, @Res() response: Response): Promise<void> {
     const download = await this.calendars.buildPublicEventCalendar(eventId, this.publicAppOrigin);
     this.sendCalendar(response, download, 'public, max-age=3600');
   }
@@ -65,10 +62,7 @@ export class CalendarController {
       example: ICALENDAR_RESPONSE_EXAMPLE,
     },
   })
-  async downloadPrivateUserCalendarFeed(
-    @Param('feedKey') feedKey: string,
-    @Res() response: Response,
-  ): Promise<void> {
+  async downloadPrivateUserCalendarFeed(@Param('feedKey') feedKey: string, @Res() response: Response): Promise<void> {
     const download = await this.calendars.buildPrivateUserCalendarFeed(feedKey, this.publicAppOrigin);
     this.sendCalendar(response, download, 'private, max-age=900');
   }
@@ -93,10 +87,7 @@ export class CalendarController {
       example: ICALENDAR_RESPONSE_EXAMPLE,
     },
   })
-  async downloadPrivateAdminCalendarFeed(
-    @Param('feedKey') feedKey: string,
-    @Res() response: Response,
-  ): Promise<void> {
+  async downloadPrivateAdminCalendarFeed(@Param('feedKey') feedKey: string, @Res() response: Response): Promise<void> {
     const download = await this.calendars.buildPrivateAdminCalendarFeed(feedKey, this.publicAppOrigin);
     this.sendCalendar(response, download, 'private, max-age=900');
   }
@@ -121,10 +112,7 @@ export class CalendarController {
       example: ICALENDAR_RESPONSE_EXAMPLE,
     },
   })
-  async downloadSuperAdminCalendarFeed(
-    @Param('feedKey') feedKey: string,
-    @Res() response: Response,
-  ): Promise<void> {
+  async downloadSuperAdminCalendarFeed(@Param('feedKey') feedKey: string, @Res() response: Response): Promise<void> {
     const download = await this.calendars.buildSuperAdminCalendarFeed(feedKey, this.publicAppOrigin);
     this.sendCalendar(response, download, 'private, max-age=900');
   }

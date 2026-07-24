@@ -9,11 +9,7 @@ import {
   RECONCILE_PUBLICATION_STATES_JOB,
 } from './publishing.constants';
 import { PublicationJobsService } from './publishing-jobs.service';
-import {
-  PublicationJobData,
-  PublicationQueueData,
-  SchedulablePublicationTargetType,
-} from './publishing.types';
+import { PublicationJobData, PublicationQueueData, SchedulablePublicationTargetType } from './publishing.types';
 
 const SCHEDULABLE_PUBLICATION_TARGET_TYPES = new Set<SchedulablePublicationTargetType>([
   PublicationTargetType.EVENT,

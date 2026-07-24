@@ -1,6 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { SERVER_VERSION_QUERY, type GraphqlResponse, type ServerVersionQuery } from '@cacic-fct/event-manager-public-contracts';
+import {
+  SERVER_VERSION_QUERY,
+  type GraphqlResponse,
+  type ServerVersionQuery,
+} from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
 import { graphqlError } from '../shared/rate-limit-error';
 

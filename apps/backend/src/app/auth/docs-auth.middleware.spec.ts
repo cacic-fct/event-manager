@@ -34,26 +34,25 @@ describe('createDocsAuthGate', () => {
         method: 'GET',
       });
 
-      expect(response.redirect).toHaveBeenCalledWith(
-        `/api/auth/login/redirect?returnTo=${encodeURIComponent(path)}`,
-      );
+      expect(response.redirect).toHaveBeenCalledWith(`/api/auth/login/redirect?returnTo=${encodeURIComponent(path)}`);
       expect(next).not.toHaveBeenCalled();
       expect(keycloakAuthService.authenticateSession).not.toHaveBeenCalled();
     },
   );
 
-  it.each(['/api/graphql', '/api/graphql/'])('gates unauthenticated GraphQL landing page requests for %s', async (path) => {
-    await runGate({
-      path,
-      method: 'GET',
-      accepts: jest.fn().mockReturnValue('html'),
-    });
+  it.each(['/api/graphql', '/api/graphql/'])(
+    'gates unauthenticated GraphQL landing page requests for %s',
+    async (path) => {
+      await runGate({
+        path,
+        method: 'GET',
+        accepts: jest.fn().mockReturnValue('html'),
+      });
 
-    expect(response.redirect).toHaveBeenCalledWith(
-      `/api/auth/login/redirect?returnTo=${encodeURIComponent(path)}`,
-    );
-    expect(next).not.toHaveBeenCalled();
-  });
+      expect(response.redirect).toHaveBeenCalledWith(`/api/auth/login/redirect?returnTo=${encodeURIComponent(path)}`);
+      expect(next).not.toHaveBeenCalled();
+    },
+  );
 
   it('allows authenticated trailing-slash Swagger spec requests', async () => {
     await runGate({

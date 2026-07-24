@@ -97,9 +97,9 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     const processor = new MajorEventReceiptsProcessor({} as never, {} as never, {} as never);
     const streamToBuffer = processor['streamToBuffer'].bind(processor);
 
-    await expect(streamToBuffer(Readable.from([Buffer.alloc(MAX_RECEIPT_FILE_SIZE_BYTES + 1)]), MAX_RECEIPT_FILE_SIZE_BYTES)).rejects.toThrow(
-      ReceiptImageProcessingLimitError,
-    );
+    await expect(
+      streamToBuffer(Readable.from([Buffer.alloc(MAX_RECEIPT_FILE_SIZE_BYTES + 1)]), MAX_RECEIPT_FILE_SIZE_BYTES),
+    ).rejects.toThrow(ReceiptImageProcessingLimitError);
   });
 
   it('reads non-buffer receipt stream chunks into a single buffer', async () => {
@@ -115,15 +115,15 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     const processor = new MajorEventReceiptsProcessor({} as never, {} as never, {} as never);
     const runReceiptImageOperation = processor['runReceiptImageOperation'].bind(processor);
 
-    await expect(runReceiptImageOperation(Promise.reject(new Error('timeout reached')), 'Receipt conversion')).rejects.toThrow(
-      ReceiptImageProcessingTimeoutError,
-    );
-    await expect(runReceiptImageOperation(Promise.reject(new Error('pixel limit exceeded')), 'Receipt conversion')).rejects.toThrow(
-      ReceiptImageProcessingLimitError,
-    );
-    await expect(runReceiptImageOperation(Promise.reject(new Error('decode failed')), 'Receipt conversion')).rejects.toThrow(
-      'Receipt conversion failed.',
-    );
+    await expect(
+      runReceiptImageOperation(Promise.reject(new Error('timeout reached')), 'Receipt conversion'),
+    ).rejects.toThrow(ReceiptImageProcessingTimeoutError);
+    await expect(
+      runReceiptImageOperation(Promise.reject(new Error('pixel limit exceeded')), 'Receipt conversion'),
+    ).rejects.toThrow(ReceiptImageProcessingLimitError);
+    await expect(
+      runReceiptImageOperation(Promise.reject(new Error('decode failed')), 'Receipt conversion'),
+    ).rejects.toThrow('Receipt conversion failed.');
     await expect(runReceiptImageOperation(Promise.resolve('ok'), 'Receipt conversion')).resolves.toBe('ok');
   });
 

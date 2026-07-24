@@ -162,10 +162,7 @@ describe('LgpdService hard delete', () => {
     });
     expect(tx.accountUserMerge.deleteMany).toHaveBeenCalledWith({
       where: {
-        OR: [
-          { oldUserId: { in: ['old-user', 'new-user'] } },
-          { newUserId: { in: ['old-user', 'new-user'] } },
-        ],
+        OR: [{ oldUserId: { in: ['old-user', 'new-user'] } }, { newUserId: { in: ['old-user', 'new-user'] } }],
       },
     });
     expect(tx.people.deleteMany).toHaveBeenCalledWith({

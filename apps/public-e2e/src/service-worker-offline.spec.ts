@@ -56,7 +56,10 @@ test.describe('public service worker offline support', () => {
     });
 
     // eslint-disable-next-line playwright/no-skipped-test -- This path can only run against the production/static worker build.
-    test.skip(!serviceWorkerReady, 'Requires the production/static public build with cacic-public-worker.js available.');
+    test.skip(
+      !serviceWorkerReady,
+      'Requires the production/static public build with cacic-public-worker.js available.',
+    );
 
     const cacheState = await page.evaluate(async () => {
       return {

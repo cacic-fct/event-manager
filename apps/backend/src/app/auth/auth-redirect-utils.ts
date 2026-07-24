@@ -3,7 +3,10 @@ import { Request } from 'express';
 
 type WarningLogger = Pick<Console, 'warn'>;
 
-export function createAllowedCallbackRedirectOrigins(environment: NodeJS.ProcessEnv, logger: WarningLogger): Set<string> {
+export function createAllowedCallbackRedirectOrigins(
+  environment: NodeJS.ProcessEnv,
+  logger: WarningLogger,
+): Set<string> {
   const origins = new Set<string>([
     'http://localhost:3000',
     'https://eventos.cacic.com.br',
@@ -16,14 +19,27 @@ export function createAllowedCallbackRedirectOrigins(environment: NodeJS.Process
   return origins;
 }
 
-export function createAllowedPostLogoutRedirectOrigins(environment: NodeJS.ProcessEnv, logger: WarningLogger): Set<string> {
+export function createAllowedPostLogoutRedirectOrigins(
+  environment: NodeJS.ProcessEnv,
+  logger: WarningLogger,
+): Set<string> {
   const origins = new Set<string>([
     'http://localhost:4200',
     'https://eventos.cacic.com.br',
     'https://secompp.cacic.com.br',
   ]);
-  addAllowedOrigin(origins, environment.KEYCLOAK_POST_LOGOUT_REDIRECT_URI, 'allowed post-logout redirect origin', logger);
-  addAllowedOrigin(origins, environment.KEYCLOAK_POST_LOGIN_REDIRECT_URI, 'allowed post-logout redirect origin', logger);
+  addAllowedOrigin(
+    origins,
+    environment.KEYCLOAK_POST_LOGOUT_REDIRECT_URI,
+    'allowed post-logout redirect origin',
+    logger,
+  );
+  addAllowedOrigin(
+    origins,
+    environment.KEYCLOAK_POST_LOGIN_REDIRECT_URI,
+    'allowed post-logout redirect origin',
+    logger,
+  );
   for (const rawOrigin of (environment.KEYCLOAK_ALLOWED_POST_LOGOUT_REDIRECT_ORIGINS ?? '').split(',')) {
     addAllowedOrigin(origins, rawOrigin.trim(), 'allowed post-logout redirect origin', logger);
   }
@@ -109,7 +125,12 @@ function parseHttpUrl(value: string, invalidMessage: string, invalidProtocolMess
   return url;
 }
 
-function addAllowedOrigin(origins: Set<string>, rawUrl: string | undefined, description: string, logger: WarningLogger): void {
+function addAllowedOrigin(
+  origins: Set<string>,
+  rawUrl: string | undefined,
+  description: string,
+  logger: WarningLogger,
+): void {
   if (!rawUrl) {
     return;
   }

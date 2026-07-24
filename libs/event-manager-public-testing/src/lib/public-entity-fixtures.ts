@@ -161,7 +161,7 @@ export function createPublicEventFormLink(overrides: Partial<PublicEventFormLink
     majorEventId,
     target: {
       type: targetType,
-      id: targetType === 'EVENT' ? eventId ?? 'event-1' : majorEventId ?? 'major-1',
+      id: targetType === 'EVENT' ? (eventId ?? 'event-1') : (majorEventId ?? 'major-1'),
       name: targetType === 'EVENT' ? 'Arquitetura Angular com Signals' : 'CACiC Storybook',
       emoji: 'event',
     },
@@ -318,9 +318,9 @@ export function createStoryPublicEvent(
   index = 0,
   options: PublicStoryFixtureOptions &
     Partial<PublicEvent> & {
-    majorEvent?: PublicMajorEvent | null;
-    eventGroup?: PublicEventGroup | null;
-  } = {},
+      majorEvent?: PublicMajorEvent | null;
+      eventGroup?: PublicEventGroup | null;
+    } = {},
 ): PublicEvent {
   const optionMajorEvent = hasOwn(options, 'majorEvent') ? (options.majorEvent ?? null) : undefined;
   const optionEventGroup = hasOwn(options, 'eventGroup') ? (options.eventGroup ?? null) : undefined;

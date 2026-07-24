@@ -6,96 +6,89 @@
 </mat-toolbar>
 
 <main class="form-page">
-  @let currentState = state();
-  @if (currentState.status === 'loading') {
-    <mat-progress-bar mode="indeterminate" />
+  @let currentState = state(); @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" />
   } @else if (currentState.status === 'error') {
-    <section class="empty-section" aria-live="polite">
-      <mat-icon>error</mat-icon>
-      <p>{{ currentState.message }}</p>
-    </section>
+  <section class="empty-section" aria-live="polite">
+    <mat-icon>error</mat-icon>
+    <p>{{ currentState.message }}</p>
+  </section>
   } @else {
+  <header>
+    <p>Formulário</p>
+    <h1>{{ currentState.form.name }}</h1>
+    @if (currentState.form.description) {
+    <span>{{ currentState.form.description }}</span>
+    }
+  </header>
+
+  @if (currentState.canAnswer && currentState.canEditResponse) {
+  <lib-event-form-renderer
+    [elements]="currentState.elements"
+    [initialAnswers]="currentState.answers"
+    submitLabel="Salvar respostas"
+    (formSubmitted)="submit(currentState, $event)" />
+  } @else if (currentState.response) {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon>task_alt</mat-icon>
+    <p>Suas respostas já foram enviadas.</p>
+  </section>
+  <lib-event-form-renderer
+    [elements]="currentState.elements"
+    [initialAnswers]="currentState.answers"
+    [readOnly]="true"
+    [showSubmit]="false" />
+  } @else {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon>lock_clock</mat-icon>
+    <p>Este formulário está encerrado.</p>
+  </section>
+  } @if (resultsLoading()) {
+  <mat-progress-bar mode="indeterminate" />
+  } @if (results(); as currentResults) {
+  <section class="results-section" aria-live="polite">
     <header>
-      <p>Formulário</p>
-      <h1>{{ currentState.form.name }}</h1>
-      @if (currentState.form.description) {
-        <span>{{ currentState.form.description }}</span>
-      }
+      <p>{{ resultVisibilityLabel(currentState) }}</p>
+      <h2>Resultados</h2>
+      <span>
+        {{ currentResults.responseCount }} resposta{{ currentResults.responseCount === 1 ? '' : 's' }} · {{
+        sigiloLabel(currentResults) }}
+      </span>
     </header>
 
-    @if (currentState.canAnswer && currentState.canEditResponse) {
-      <lib-event-form-renderer
-        [elements]="currentState.elements"
-        [initialAnswers]="currentState.answers"
-        submitLabel="Salvar respostas"
-        (formSubmitted)="submit(currentState, $event)" />
-    } @else if (currentState.response) {
-      <section class="empty-section" aria-live="polite">
-        <mat-icon>task_alt</mat-icon>
-        <p>Suas respostas já foram enviadas.</p>
-      </section>
-      <lib-event-form-renderer
-        [elements]="currentState.elements"
-        [initialAnswers]="currentState.answers"
-        [readOnly]="true"
-        [showSubmit]="false" />
+    @if (resultsSummary().questions.length === 0) {
+    <p class="empty-text">Ainda não há perguntas respondidas neste formulário.</p>
     } @else {
-      <section class="empty-section" aria-live="polite">
-        <mat-icon>lock_clock</mat-icon>
-        <p>Este formulário está encerrado.</p>
-      </section>
-    }
-
-    @if (resultsLoading()) {
-      <mat-progress-bar mode="indeterminate" />
-    }
-
-    @if (results(); as currentResults) {
-      <section class="results-section" aria-live="polite">
+    <div class="results-grid">
+      @for (question of resultsSummary().questions; track question.elementId) {
+      <article>
         <header>
-          <p>{{ resultVisibilityLabel(currentState) }}</p>
-          <h2>Resultados</h2>
-          <span>
-            {{ currentResults.responseCount }} resposta{{ currentResults.responseCount === 1 ? '' : 's' }}
-            ·
-            {{ sigiloLabel(currentResults) }}
-          </span>
+          <h3>{{ question.title }}</h3>
+          <span>{{ question.answeredCount }} resposta{{ question.answeredCount === 1 ? '' : 's' }}</span>
         </header>
 
-        @if (resultsSummary().questions.length === 0) {
-          <p class="empty-text">Ainda não há perguntas respondidas neste formulário.</p>
+        @if (question.buckets.length > 0) {
+        <ul class="bucket-list">
+          @for (bucket of question.buckets; track bucket.label) {
+          <li>
+            <span>{{ bucket.label }}</span>
+            <strong>{{ bucket.value }}</strong>
+          </li>
+          }
+        </ul>
+        } @else if (question.textAnswers.length > 0) {
+        <ul class="text-answers">
+          @for (answer of question.textAnswers; track $index) {
+          <li>{{ answer }}</li>
+          }
+        </ul>
         } @else {
-          <div class="results-grid">
-            @for (question of resultsSummary().questions; track question.elementId) {
-              <article>
-                <header>
-                  <h3>{{ question.title }}</h3>
-                  <span>{{ question.answeredCount }} resposta{{ question.answeredCount === 1 ? '' : 's' }}</span>
-                </header>
-
-                @if (question.buckets.length > 0) {
-                  <ul class="bucket-list">
-                    @for (bucket of question.buckets; track bucket.label) {
-                      <li>
-                        <span>{{ bucket.label }}</span>
-                        <strong>{{ bucket.value }}</strong>
-                      </li>
-                    }
-                  </ul>
-                } @else if (question.textAnswers.length > 0) {
-                  <ul class="text-answers">
-                    @for (answer of question.textAnswers; track $index) {
-                      <li>{{ answer }}</li>
-                    }
-                  </ul>
-                } @else {
-                  <p class="empty-text">Sem respostas agregáveis.</p>
-                }
-              </article>
-            }
-          </div>
+        <p class="empty-text">Sem respostas agregáveis.</p>
         }
-      </section>
+      </article>
+      }
+    </div>
     }
-  }
+  </section>
+  } }
 </main>

@@ -38,7 +38,9 @@ export class EventFormsScheduler implements OnModuleInit, OnModuleDestroy {
         this.logger.log(`Sent ${notified} event form availability notification${notified === 1 ? '' : 's'}.`);
       }
     } catch (error) {
-      this.logger.warn(`Scheduled event form publication failed: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Scheduled event form publication failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     } finally {
       this.publishing = false;
     }

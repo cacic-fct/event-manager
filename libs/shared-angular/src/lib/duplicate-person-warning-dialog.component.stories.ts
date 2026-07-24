@@ -74,4 +74,3 @@ export const LongMessage: Story = {
       'Encontramos outro registro com o mesmo documento, e-mail secundário ou código externo. Revise os dados antes de continuar com a coleta de presença.',
   },
 };
-

@@ -1,5 +1,12 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType, AuditLogOperation, MajorEventSubscriptionFlow, Prisma, ReceiptValidationActionType, SubscriptionStatus } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  MajorEventSubscriptionFlow,
+  Prisma,
+  ReceiptValidationActionType,
+  SubscriptionStatus,
+} from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -107,17 +114,27 @@ export class ReceiptValidationService {
         ...subscription.selectedEvents.map((selection) => selection.eventId),
         ...eventIdsToConfirm,
       ]);
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.RECEIPT_VALIDATION,
-        entityId: action.id,
-        entityLabel: 'Comprovante de pagamento',
-        operation: AuditLogOperation.APPROVE,
-        actor: authenticatedUser,
-        before: { subscriptionStatus: subscription.subscriptionStatus, receiptRejectionReason: subscription.receiptRejectionReason },
-        after: { subscriptionStatus: SubscriptionStatus.CONFIRMED, receiptRejectionReason: null, selectedEventIds: eventIdsToConfirm },
-        summary: 'Comprovante de pagamento aprovado.',
-        scope: { permission: Permission.Receipt.Approve, majorEventId: subscription.majorEventId },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.RECEIPT_VALIDATION,
+          entityId: action.id,
+          entityLabel: 'Comprovante de pagamento',
+          operation: AuditLogOperation.APPROVE,
+          actor: authenticatedUser,
+          before: {
+            subscriptionStatus: subscription.subscriptionStatus,
+            receiptRejectionReason: subscription.receiptRejectionReason,
+          },
+          after: {
+            subscriptionStatus: SubscriptionStatus.CONFIRMED,
+            receiptRejectionReason: null,
+            selectedEventIds: eventIdsToConfirm,
+          },
+          summary: 'Comprovante de pagamento aprovado.',
+          scope: { permission: Permission.Receipt.Approve, majorEventId: subscription.majorEventId },
+        },
+        tx,
+      );
 
       return action;
     });
@@ -179,17 +196,23 @@ export class ReceiptValidationService {
       });
 
       await this.attendanceCategories.refreshForMajorEventPerson(subscription.majorEventId, subscription.personId, tx);
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.RECEIPT_VALIDATION,
-        entityId: createdAction.id,
-        entityLabel: 'Comprovante de pagamento',
-        operation: AuditLogOperation.REJECT,
-        actor: authenticatedUser,
-        before: { subscriptionStatus: subscription.subscriptionStatus, receiptRejectionReason: subscription.receiptRejectionReason },
-        after: { subscriptionStatus: nextStatus, receiptRejectionReason: normalizedReason },
-        summary: 'Comprovante de pagamento rejeitado.',
-        scope: { permission: Permission.Receipt.Reject, majorEventId: subscription.majorEventId },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.RECEIPT_VALIDATION,
+          entityId: createdAction.id,
+          entityLabel: 'Comprovante de pagamento',
+          operation: AuditLogOperation.REJECT,
+          actor: authenticatedUser,
+          before: {
+            subscriptionStatus: subscription.subscriptionStatus,
+            receiptRejectionReason: subscription.receiptRejectionReason,
+          },
+          after: { subscriptionStatus: nextStatus, receiptRejectionReason: normalizedReason },
+          summary: 'Comprovante de pagamento rejeitado.',
+          scope: { permission: Permission.Receipt.Reject, majorEventId: subscription.majorEventId },
+        },
+        tx,
+      );
       return createdAction;
     });
 
@@ -289,17 +312,26 @@ export class ReceiptValidationService {
         tx,
       );
       await this.sync.refreshEventSubscriptionCounters(tx, selectedEventIds);
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.RECEIPT_VALIDATION,
-        entityId: existingAction.id,
-        entityLabel: 'Comprovante de pagamento',
-        operation: AuditLogOperation.UNDO,
-        actor: authenticatedUser,
-        before: { subscriptionStatus: existingAction.nextStatus, receiptRejectionReason: existingAction.nextRejectionReason },
-        after: { subscriptionStatus: existingAction.previousStatus, receiptRejectionReason: existingAction.previousRejectionReason },
-        summary: 'Validação de comprovante desfeita.',
-        scope: { permission: Permission.Receipt.Undo, majorEventId: existingAction.subscription.majorEventId },
-      }, tx);
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.RECEIPT_VALIDATION,
+          entityId: existingAction.id,
+          entityLabel: 'Comprovante de pagamento',
+          operation: AuditLogOperation.UNDO,
+          actor: authenticatedUser,
+          before: {
+            subscriptionStatus: existingAction.nextStatus,
+            receiptRejectionReason: existingAction.nextRejectionReason,
+          },
+          after: {
+            subscriptionStatus: existingAction.previousStatus,
+            receiptRejectionReason: existingAction.previousRejectionReason,
+          },
+          summary: 'Validação de comprovante desfeita.',
+          scope: { permission: Permission.Receipt.Undo, majorEventId: existingAction.subscription.majorEventId },
+        },
+        tx,
+      );
 
       return existingAction;
     });
@@ -348,8 +380,12 @@ export class ReceiptValidationService {
     }
 
     const eventsById = new Map(rankedEvents.map((event) => [event.id, event]));
-    const requestedEvents = normalizedRequestedEventIds.map((eventId) => eventsById.get(eventId)).filter((event): event is (typeof rankedEvents)[number] => Boolean(event));
-    if (!requestedEvents.every((event) => event.slots == null || event.slotsAvailable == null || event.slotsAvailable > 0)) {
+    const requestedEvents = normalizedRequestedEventIds
+      .map((eventId) => eventsById.get(eventId))
+      .filter((event): event is (typeof rankedEvents)[number] => Boolean(event));
+    if (
+      !requestedEvents.every((event) => event.slots == null || event.slotsAvailable == null || event.slotsAvailable > 0)
+    ) {
       throw new BadRequestException('Cannot approve ranked selections with events that have no available slots.');
     }
     if (getScheduleConflictEventIds(requestedEvents).size > 0) {
@@ -358,14 +394,18 @@ export class ReceiptValidationService {
 
     const requestedCounts = countReceiptEventsByCategory(requestedEvents);
     const recommendedCounts = countReceiptEventsByCategory(
-      recommendedEventIds.map((eventId) => eventsById.get(eventId)).filter((event): event is (typeof rankedEvents)[number] => Boolean(event)),
+      recommendedEventIds
+        .map((eventId) => eventsById.get(eventId))
+        .filter((event): event is (typeof rankedEvents)[number] => Boolean(event)),
     );
     if (
       requestedCounts.course !== recommendedCounts.course ||
       requestedCounts.lecture !== recommendedCounts.lecture ||
       requestedCounts.uncategorized !== recommendedCounts.uncategorized
     ) {
-      throw new BadRequestException('Selected ranked events must match the number of currently allocatable requested events.');
+      throw new BadRequestException(
+        'Selected ranked events must match the number of currently allocatable requested events.',
+      );
     }
 
     return normalizedRequestedEventIds;

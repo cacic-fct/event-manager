@@ -11,9 +11,11 @@ describe('ExplanationCard', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(ExplanationCard);
-    component = fixture.componentInstance;    fixture.componentRef.setInput('title', 'Test Title');
+    component = fixture.componentInstance;
+    fixture.componentRef.setInput('title', 'Test Title');
     fixture.componentRef.setInput('icon', 'info');
-    fixture.detectChanges();    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
   });
 
   it('should create', () => {

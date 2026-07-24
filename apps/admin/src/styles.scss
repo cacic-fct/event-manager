@@ -95,8 +95,12 @@ body {
   white-space: normal;
 }
 
-.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-three-lines .mat-mdc-list-item-line.mdc-list-item__secondary-text,
-.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-three-lines .mat-mdc-list-item-unscoped-content.mdc-list-item__secondary-text {
+.mat-mdc-list-base
+  .mat-mdc-list-item.mdc-list-item--with-three-lines
+  .mat-mdc-list-item-line.mdc-list-item__secondary-text,
+.mat-mdc-list-base
+  .mat-mdc-list-item.mdc-list-item--with-three-lines
+  .mat-mdc-list-item-unscoped-content.mdc-list-item__secondary-text {
   display: block;
   -webkit-box-orient: initial;
   -webkit-line-clamp: unset;

@@ -48,4 +48,3 @@ export const Default: Story = {
     await expect(canvas.getByRole('button', { name: /permitir/i })).toBeVisible();
   },
 };
-

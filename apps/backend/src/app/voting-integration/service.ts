@@ -238,10 +238,7 @@ export class VotingIntegrationService {
 
     for (const identifier of identifiers) {
       const requestId = identifier.requestId.trim();
-      const identifierValue = this.normalizeIdentifierValue(
-        identifier.identifierType,
-        identifier.identifierValue,
-      );
+      const identifierValue = this.normalizeIdentifierValue(identifier.identifierType, identifier.identifierValue);
       if (!requestId || !identifierValue) {
         continue;
       }

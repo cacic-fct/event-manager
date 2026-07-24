@@ -2,11 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { Request, Response } from 'express';
-import {
-  RATE_LIMIT_METADATA_KEY,
-  RateLimitMetadata,
-  RateLimitResourceLocator,
-} from './rate-limit.decorator';
+import { RATE_LIMIT_METADATA_KEY, RateLimitMetadata, RateLimitResourceLocator } from './rate-limit.decorator';
 import { RateLimitService } from './rate-limit.service';
 
 type RequestLike = Request & {
@@ -89,10 +85,7 @@ export class RateLimitGuard implements CanActivate {
     };
   }
 
-  private resourceParts(
-    locators: readonly RateLimitResourceLocator[],
-    sources: Record<string, unknown>,
-  ): string[] {
+  private resourceParts(locators: readonly RateLimitResourceLocator[], sources: Record<string, unknown>): string[] {
     return locators
       .map((locator) => this.resolvePath(sources[locator.source], locator.path))
       .filter((value): value is string => Boolean(value));

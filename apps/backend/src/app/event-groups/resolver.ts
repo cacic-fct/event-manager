@@ -428,9 +428,7 @@ export class EventGroupsResolver {
           issuedTo: config.issuedTo,
           certificateTypeLabel: config.certificateTypeLabel,
           certificateFields:
-            config.certificateFields === null
-              ? Prisma.DbNull
-              : (config.certificateFields as Prisma.InputJsonValue),
+            config.certificateFields === null ? Prisma.DbNull : (config.certificateFields as Prisma.InputJsonValue),
         },
       });
     }

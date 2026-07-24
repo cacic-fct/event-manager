@@ -194,12 +194,9 @@ describe('PublicCertificateValidationService', () => {
         }),
       },
       eventAttendance: {
-        findMany: jest.fn().mockResolvedValue([
-          { event: minicourse },
-          { event: lecture },
-          { event: other },
-          { event: hidden },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ event: minicourse }, { event: lecture }, { event: other }, { event: hidden }]),
       },
     };
     const service = new PublicCertificateValidationService(prisma as never, validationService() as never);
@@ -440,11 +437,9 @@ describe('PublicCertificateValidationService', () => {
         findMany: jest.fn().mockResolvedValue([lecture, minicourse, otherLecturerEvent]),
       },
       eventLecturer: {
-        findMany: jest.fn().mockResolvedValue([
-          { eventId: 'lecture-1' },
-          { eventId: 'minicourse-1' },
-          { eventId: 'other-1' },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ eventId: 'lecture-1' }, { eventId: 'minicourse-1' }, { eventId: 'other-1' }]),
       },
     };
     const service = new PublicCertificateValidationService(prisma as never, validationService() as never);

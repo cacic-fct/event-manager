@@ -21,9 +21,7 @@ function createEvent(overrides: Partial<PublicationConsistencyEvent> = {}): Publ
   };
 }
 
-function createMajorEvent(
-  overrides: Partial<PublicationConsistencyMajorEvent> = {},
-): PublicationConsistencyMajorEvent {
+function createMajorEvent(overrides: Partial<PublicationConsistencyMajorEvent> = {}): PublicationConsistencyMajorEvent {
   return {
     id: 'major-event-1',
     name: 'Grande evento 1',

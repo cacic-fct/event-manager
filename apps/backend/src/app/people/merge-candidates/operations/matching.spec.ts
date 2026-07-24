@@ -60,12 +60,7 @@ describe('merge candidate matching helpers', () => {
   });
 });
 
-function person(
-  id: string,
-  name: string,
-  email: string | null,
-  identityDocument: string | null,
-): MatchablePerson {
+function person(id: string, name: string, email: string | null, identityDocument: string | null): MatchablePerson {
   return {
     id,
     name,

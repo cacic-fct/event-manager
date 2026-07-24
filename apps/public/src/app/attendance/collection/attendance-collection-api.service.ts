@@ -192,7 +192,9 @@ export class AttendanceCollectionApiService {
     ).pipe(map((data) => data.collectCurrentUserManualAttendance));
   }
 
-  commitOfflineAttendances(items: readonly OfflineAttendanceCommitPayload[]): Observable<OfflineAttendanceCommitResult[]> {
+  commitOfflineAttendances(
+    items: readonly OfflineAttendanceCommitPayload[],
+  ): Observable<OfflineAttendanceCommitResult[]> {
     return this.query<{ commitCurrentUserOfflineAttendances: OfflineAttendanceCommitResult[] }>(
       `
         mutation CommitCurrentUserOfflineAttendances($input: CommitOfflineEventAttendancesInput!) {

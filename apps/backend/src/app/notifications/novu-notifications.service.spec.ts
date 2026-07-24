@@ -93,7 +93,9 @@ describe('NovuNotificationsService', () => {
   });
 
   it('does not create subscriber sessions when Novu secure signing is unavailable', () => {
-    config.get.mockImplementation((key: string, fallback?: string) => (key === 'NOVU_SECRET_KEY' ? undefined : fallback));
+    config.get.mockImplementation((key: string, fallback?: string) =>
+      key === 'NOVU_SECRET_KEY' ? undefined : fallback,
+    );
 
     expect(service.createSubscriberSession({ subscriberId: 'user-1' })).toBeNull();
 
@@ -145,7 +147,9 @@ describe('NovuNotificationsService', () => {
   });
 
   it('does not notify when Novu is disabled or the status is unchanged', async () => {
-    config.get.mockImplementation((key: string, fallback?: string) => (key === 'NOVU_SECRET_KEY' ? undefined : fallback));
+    config.get.mockImplementation((key: string, fallback?: string) =>
+      key === 'NOVU_SECRET_KEY' ? undefined : fallback,
+    );
     await service.notifyMajorEventSubscriptionStatusChanged(notificationFixture());
 
     config.get.mockImplementation((key: string, fallback?: string) => {
@@ -506,10 +510,10 @@ describe('NovuNotificationsService', () => {
   it('notifies subscribers when online attendance starts with a direct attendance link', async () => {
     await expect(
       service.notifyOnlineAttendanceAvailable({
-      eventId: 'event-1',
-      eventName: 'Aula de TypeScript',
-      endsAt: new Date('2026-05-23T15:30:00.000Z'),
-      recipients: [{ subscriberId: 'user-1', email: 'ada@example.com' }],
+        eventId: 'event-1',
+        eventName: 'Aula de TypeScript',
+        endsAt: new Date('2026-05-23T15:30:00.000Z'),
+        recipients: [{ subscriberId: 'user-1', email: 'ada@example.com' }],
       }),
     ).resolves.toBe(true);
 

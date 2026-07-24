@@ -23,8 +23,12 @@ describe('selectNextInterruption', () => {
 
   it('does not interrupt form completion, attendance registration, or scanner collection with normal flows', () => {
     expect(selectNextInterruption([attendance, requiredForm], { currentUrl: '/profile/forms/form-1' })).toBeNull();
-    expect(selectNextInterruption([attendance, requiredForm], { currentUrl: '/attendance/register/event-1' })).toBeNull();
-    expect(selectNextInterruption([attendance, requiredForm], { currentUrl: '/attendance/collect/event-1' })).toBeNull();
+    expect(
+      selectNextInterruption([attendance, requiredForm], { currentUrl: '/attendance/register/event-1' }),
+    ).toBeNull();
+    expect(
+      selectNextInterruption([attendance, requiredForm], { currentUrl: '/attendance/collect/event-1' }),
+    ).toBeNull();
   });
 
   it('still permits urgent interruptions on protected normal-flow pages', () => {

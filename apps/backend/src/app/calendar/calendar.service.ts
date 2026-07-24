@@ -15,11 +15,7 @@ import {
   hashFeedKey,
   readCalendarFeedKeyPepper,
 } from './calendar-feed-keys';
-import {
-  mapAdminSettings,
-  mapSettings,
-  mapSuperAdminSettings,
-} from './calendar-feed-settings.mapper';
+import { mapAdminSettings, mapSettings, mapSuperAdminSettings } from './calendar-feed-settings.mapper';
 import {
   buildCalendar,
   buildPublicEventUrl,
@@ -70,10 +66,7 @@ export class CalendarService {
     return mapSettings(settings, this.calendarFeedKeyPepper);
   }
 
-  async setCurrentUserCalendarFeedEnabled(
-    userId: string,
-    enabled: boolean,
-  ): Promise<CurrentUserCalendarFeedSettings> {
+  async setCurrentUserCalendarFeedEnabled(userId: string, enabled: boolean): Promise<CurrentUserCalendarFeedSettings> {
     if (!enabled) {
       const settings = await this.prisma.userCalendarFeedSettings.updateManyAndReturn({
         where: {
@@ -403,9 +396,7 @@ export class CalendarService {
       content: buildCalendar({
         name: `CACiC Eventos - ${settings.user.name}`,
         description: 'Eventos vinculados a sua conta CACiC Eventos.',
-        entries: events.map((event) =>
-          mapEventToCalendarEntry(event, buildPublicEventUrl(publicAppOrigin, event.id)),
-        ),
+        entries: events.map((event) => mapEventToCalendarEntry(event, buildPublicEventUrl(publicAppOrigin, event.id))),
         eventClass: ICalEventClass.PUBLIC,
         transparency: ICalEventTransparency.OPAQUE,
         ttlSeconds: 60 * 60,
@@ -793,5 +784,4 @@ export class CalendarService {
   private isStaleAdminAccessCheck(lastCheckedAt: Date | null, now: Date): boolean {
     return !lastCheckedAt || lastCheckedAt < subHours(now, ADMIN_FEED_ACCESS_CHECK_MAX_AGE_HOURS);
   }
-
 }

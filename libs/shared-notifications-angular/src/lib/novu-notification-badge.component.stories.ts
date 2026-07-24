@@ -91,4 +91,3 @@ export const HighCount: Story = {
     overlap: false,
   },
 };
-

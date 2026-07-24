@@ -194,7 +194,9 @@ export class SseReplayService {
   }
 
   private isHeartbeat(event: MessageEvent): boolean {
-    return typeof event.data === 'object' && event.data !== null && 'type' in event.data && event.data.type === 'heartbeat';
+    return (
+      typeof event.data === 'object' && event.data !== null && 'type' in event.data && event.data.type === 'heartbeat'
+    );
   }
 
   private readCursorSecret(): string {

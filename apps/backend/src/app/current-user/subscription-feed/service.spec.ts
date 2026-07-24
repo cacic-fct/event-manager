@@ -17,10 +17,12 @@ describe('CurrentUserSubscriptionFeedService', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
       eventAttendance: {
-        findMany: jest.fn().mockResolvedValue([
-          { event: event('standalone-attended', 'Evento com presença') },
-          { event: event('group-child', 'Atividade em grupo', 'group-attended') },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { event: event('standalone-attended', 'Evento com presença') },
+            { event: event('group-child', 'Atividade em grupo', 'group-attended') },
+          ]),
       },
     };
     const mapper = {
@@ -592,8 +594,6 @@ function event(id: string, name: string, eventGroupId: string | null = null, maj
     type: 'OTHER',
     majorEventId,
     eventGroupId,
-    eventGroup: eventGroupId
-      ? eventGroup(eventGroupId, 'Grupo com presença')
-      : null,
+    eventGroup: eventGroupId ? eventGroup(eventGroupId, 'Grupo com presença') : null,
   };
 }

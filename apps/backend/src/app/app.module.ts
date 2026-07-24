@@ -31,7 +31,10 @@ import { CertificateDownloadService } from './certificate/certificate-download.s
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
 import { CertificateNotificationJobsProcessor } from './certificate/certificate-notification-jobs.processor';
-import { CertificateNotificationJobsService, CERTIFICATE_NOTIFICATION_QUEUE } from './certificate/certificate-notification-jobs.service';
+import {
+  CertificateNotificationJobsService,
+  CERTIFICATE_NOTIFICATION_QUEUE,
+} from './certificate/certificate-notification-jobs.service';
 import {
   ONLINE_ATTENDANCE_NOTIFICATION_QUEUE,
   OnlineAttendanceNotificationJobsService,
@@ -88,7 +91,7 @@ import { CurrentUserProfileResolver } from './current-user/profile/resolver';
 import { CurrentUserPublicEventService } from './current-user/public-event.service';
 import { CurrentUserSubscriptionFeedService } from './current-user/subscription-feed/service';
 import { CurrentUserSubscriptionFeedResolver } from './current-user/subscription-feed/resolver';
-import { CurrentUserDefaultRedirectService } from './current-user/default-redirect/service';
+import { CurrentUserDefaultRedirectService } from './current-user/default-redirect/current-user-default-redirect.service';
 import { CurrentUserDefaultRedirectResolver } from './current-user/default-redirect/resolver';
 import { DashboardInsightsProcessor } from './dashboard/insights.processor';
 import { DashboardInsightsResolver } from './dashboard/insights.resolver';
@@ -97,7 +100,10 @@ import { DASHBOARD_INSIGHTS_QUEUE, DashboardInsightsService } from './dashboard/
 import { PublicPlatformStatsProcessor } from './public-platform-stats/public-platform-stats.processor';
 import { PublicPlatformStatsResolver } from './public-platform-stats/public-platform-stats.resolver';
 import { PublicPlatformStatsScheduler } from './public-platform-stats/public-platform-stats.scheduler';
-import { PUBLIC_PLATFORM_STATS_QUEUE, PublicPlatformStatsService } from './public-platform-stats/public-platform-stats.service';
+import {
+  PUBLIC_PLATFORM_STATS_QUEUE,
+  PublicPlatformStatsService,
+} from './public-platform-stats/public-platform-stats.service';
 import { EventGroupsResolver } from './event-groups/resolver';
 import { EventLecturersResolver } from './events/lecturers.resolver';
 import { EventsResolver } from './events/resolver';

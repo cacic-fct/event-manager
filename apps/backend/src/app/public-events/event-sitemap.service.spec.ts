@@ -42,20 +42,13 @@ describe('EventSitemapService', () => {
       select: { id: true, updatedAt: true },
       orderBy: { id: 'asc' },
     });
-    expect(redis.set).toHaveBeenCalledWith(
-      'public:event-sitemap:v1',
-      expect.any(String),
-      'EX',
-      7 * 24 * 60 * 60,
-    );
+    expect(redis.set).toHaveBeenCalledWith('public:event-sitemap:v1', expect.any(String), 'EX', 7 * 24 * 60 * 60);
   });
 
   it('serves a valid cached sitemap without querying the database', async () => {
     const { prisma, redis, service } = createContext();
     redis.get.mockResolvedValue(
-      JSON.stringify([
-        { id: '01980000-0000-7000-8000-000000000001', updatedAt: '2026-07-23T12:00:00.000Z' },
-      ]),
+      JSON.stringify([{ id: '01980000-0000-7000-8000-000000000001', updatedAt: '2026-07-23T12:00:00.000Z' }]),
     );
 
     await expect(service.getPage(0)).resolves.toEqual({

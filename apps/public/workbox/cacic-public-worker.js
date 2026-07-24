@@ -5,10 +5,7 @@
 // Worker evaluation itself has no CSP header, so creating another policy here is
 // redundant and breaks Firefox service-worker startup.
 importScripts('./novu-push-handler.js');
-importScripts(
-  './__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js',
-  './csp-nonce.js',
-);
+importScripts('./__WORKBOX_LIBRARY_DIRECTORY__/workbox-sw.js', './csp-nonce.js');
 
 const { applyCspNonceToHtml, createCspNonce } = self.CspNonce;
 
@@ -82,7 +79,8 @@ const isZxingWasmUrl = (url) =>
 const isGoogleProfilePictureUrl = (url) =>
   url.origin === 'https://lh3.googleusercontent.com' && /^\/a(?:-|\/)/.test(url.pathname);
 const isTwemojiSvgUrl = (url) =>
-  url.origin === 'https://cdn.jsdelivr.net' && /^\/gh\/twitter\/twemoji@latest\/assets\/svg\/[^/]+\.svg$/.test(url.pathname);
+  url.origin === 'https://cdn.jsdelivr.net' &&
+  /^\/gh\/twitter\/twemoji@latest\/assets\/svg\/[^/]+\.svg$/.test(url.pathname);
 const hasPrivateCacheControl = (response) => {
   const cacheControl = response.headers.get('Cache-Control')?.toLowerCase() ?? '';
   return cacheControl.includes('no-store') || cacheControl.includes('private');
@@ -275,9 +273,7 @@ async function cacheAttendanceScannerUrls(urls) {
   }
 
   const results = await Promise.allSettled(
-    urls
-      .filter((url) => typeof url === 'string')
-      .map((url) => cacheAttendanceScannerUrl(url)),
+    urls.filter((url) => typeof url === 'string').map((url) => cacheAttendanceScannerUrl(url)),
   );
   return results.every((result) => result.status === 'fulfilled' && result.value);
 }

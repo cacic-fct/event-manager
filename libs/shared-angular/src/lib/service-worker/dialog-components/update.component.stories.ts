@@ -22,4 +22,3 @@ export const Installing: Story = {
     await expect(canvas.getByText('Instalando atualização')).toBeVisible();
   },
 };
-

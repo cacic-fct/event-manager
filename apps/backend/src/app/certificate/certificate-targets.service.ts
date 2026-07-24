@@ -353,8 +353,7 @@ export class CertificateTargetsService {
   private sortByTypesenseRank<T extends { id: string }>(items: T[], ids: string[]): T[] {
     const rank = new Map(ids.map((id, index) => [id, index]));
     return [...items].sort(
-      (left, right) =>
-        (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
+      (left, right) => (rank.get(left.id) ?? Number.MAX_SAFE_INTEGER) - (rank.get(right.id) ?? Number.MAX_SAFE_INTEGER),
     );
   }
 

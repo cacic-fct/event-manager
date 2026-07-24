@@ -94,10 +94,7 @@ describe('typesense query helpers', () => {
         options: 10,
       }),
     ).resolves.toEqual({ available: false, ids: [] });
-    expect(logger.error).toHaveBeenCalledWith(
-      'Typesense search failed for collection events.',
-      expect.any(Error),
-    );
+    expect(logger.error).toHaveBeenCalledWith('Typesense search failed for collection events.', expect.any(Error));
   });
 
   it('falls back when the requested offset exhausts the Typesense result window', async () => {
@@ -134,10 +131,7 @@ describe('typesense query helpers', () => {
         allowMatchAll: true,
       }),
     ).rejects.toBe(error);
-    expect(logger.error).toHaveBeenCalledWith(
-      'Typesense search request is invalid for collection audit_logs.',
-      error,
-    );
+    expect(logger.error).toHaveBeenCalledWith('Typesense search request is invalid for collection audit_logs.', error);
   });
 });
 

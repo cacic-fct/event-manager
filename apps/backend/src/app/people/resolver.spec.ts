@@ -124,17 +124,9 @@ describe('PeopleResolver', () => {
     const resolver = createResolver(prisma);
     prisma.people.findMany.mockResolvedValueOnce([person()]);
 
-    await expect(
-      resolver.people(
-        ' Ana ',
-        'user-1',
-        'ana@example.com',
-        '555',
-        '123',
-        2,
-        3,
-      ),
-    ).resolves.toEqual([person()]);
+    await expect(resolver.people(' Ana ', 'user-1', 'ana@example.com', '555', '123', 2, 3)).resolves.toEqual([
+      person(),
+    ]);
 
     expect(prisma.people.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -173,9 +165,7 @@ describe('PeopleResolver', () => {
     ]);
     const resolver = createResolver(prisma, createAuthorizationPolicy(), { typesenseSearch });
 
-    await expect(
-      resolver.people('Ana', undefined, undefined, undefined, undefined, 1, 1),
-    ).resolves.toEqual([
+    await expect(resolver.people('Ana', undefined, undefined, undefined, undefined, 1, 1)).resolves.toEqual([
       expect.objectContaining({
         id: 'person-1',
       }),
@@ -330,9 +320,9 @@ describe('PeopleResolver', () => {
       email: 'ana@example.com',
       identityDocument: null,
     });
-    await expect(resolver.createPerson({ email: 'ana@example.com', name: 'Outra Ana' }, userContext())).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(
+      resolver.createPerson({ email: 'ana@example.com', name: 'Outra Ana' }, userContext()),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('allows updating a person to a name already used by someone else', async () => {
@@ -371,11 +361,7 @@ describe('PeopleResolver', () => {
     const resolver = createResolver(prisma);
 
     await expect(
-      resolver.updatePerson(
-        'person-1',
-        { mergedIntoId: 'target-person', externalRef: 'external-1' },
-        userContext(),
-      ),
+      resolver.updatePerson('person-1', { mergedIntoId: 'target-person', externalRef: 'external-1' }, userContext()),
     ).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(prisma.people.update).not.toHaveBeenCalled();
   });
@@ -629,9 +615,11 @@ function createPrisma() {
   const prisma = {
     $transaction: jest.fn(),
     people: {
-      findFirst: jest.fn().mockImplementation(({ where }: { where?: { id?: string } } = {}) =>
-        where?.id === 'person-1' ? Promise.resolve(person()) : Promise.resolve(null),
-      ),
+      findFirst: jest
+        .fn()
+        .mockImplementation(({ where }: { where?: { id?: string } } = {}) =>
+          where?.id === 'person-1' ? Promise.resolve(person()) : Promise.resolve(null),
+        ),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
       create: jest.fn(),
@@ -673,23 +661,25 @@ function requestContext() {
   };
 }
 
-function person(overrides: Partial<{
-  id: string;
-  name: string;
-  email: string | null;
-  secondaryEmails: string[];
-  phone: string | null;
-  identityDocument: string | null;
-  academicId: string | null;
-  userId: string | null;
-  mergedIntoId: string | null;
-  externalRef: string | null;
-  deletedAt: Date | null;
-  createdById: string | null;
-  updatedById: string | null;
-  user: unknown;
-  mergedInto: unknown;
-}> = {}) {
+function person(
+  overrides: Partial<{
+    id: string;
+    name: string;
+    email: string | null;
+    secondaryEmails: string[];
+    phone: string | null;
+    identityDocument: string | null;
+    academicId: string | null;
+    userId: string | null;
+    mergedIntoId: string | null;
+    externalRef: string | null;
+    deletedAt: Date | null;
+    createdById: string | null;
+    updatedById: string | null;
+    user: unknown;
+    mergedInto: unknown;
+  }> = {},
+) {
   return {
     id: 'person-1',
     name: 'Ana Clara',

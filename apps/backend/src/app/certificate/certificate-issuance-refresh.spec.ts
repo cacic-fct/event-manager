@@ -3,11 +3,7 @@ import { CertificateIssuanceRefresh } from './certificate-issuance-refresh';
 
 describe('CertificateIssuanceRefresh', () => {
   it('refreshes each person configuration once while preserving its first-seen order', async () => {
-    const prisma = transactionPrisma([
-      { configId: 'config-1' },
-      { configId: 'config-2' },
-      { configId: 'config-1' },
-    ]);
+    const prisma = transactionPrisma([{ configId: 'config-1' }, { configId: 'config-2' }, { configId: 'config-1' }]);
     const eligibility = {
       getConfigById: jest.fn(async (id: string) => ({ id })),
       resolveEligibleRecipients: jest.fn(async () => [{ person: { id: 'person-1' } }]),

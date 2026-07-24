@@ -1,8 +1,4 @@
-import {
-  mapAdminSettings,
-  mapSettings,
-  mapSuperAdminSettings,
-} from './calendar-feed-settings.mapper';
+import { mapAdminSettings, mapSettings, mapSuperAdminSettings } from './calendar-feed-settings.mapper';
 import { deriveFeedKey } from './calendar-feed-keys';
 
 describe('calendar feed settings mapper', () => {

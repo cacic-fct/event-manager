@@ -7,11 +7,7 @@ import {
 } from './lgpd-audit-anonymization';
 import { resolveDataSubject } from './lgpd-data-subject';
 import { anonymizeEventDrafts, buildEventDraftSubjectWhere } from './lgpd-event-drafts';
-import {
-  mapOfflineSubmissionForExport,
-  mapPersonForExport,
-  selectForExport,
-} from './lgpd-export-mappers';
+import { mapOfflineSubmissionForExport, mapPersonForExport, selectForExport } from './lgpd-export-mappers';
 import {
   anonymizeOfflineAttendanceSubmissions,
   buildOfflineSubmissionSubjectWhere,
@@ -68,16 +64,14 @@ describe('LGPD helper modules', () => {
       },
     };
 
-    await expect(resolveDataSubject(prisma as never, { userId: ' old-user ', email: ' ALIAS@example.com ' }))
-      .resolves.toEqual({
-        userIds: expect.arrayContaining(['old-user', 'new-user', 'external-user']),
-        personIds: ['source-person', 'target-person'],
-        emails: expect.arrayContaining(['alias@example.com', 'old@example.com', 'new@example.com']),
-        people: [
-          expect.objectContaining({ id: 'source-person' }),
-          expect.objectContaining({ id: 'target-person' }),
-        ],
-      });
+    await expect(
+      resolveDataSubject(prisma as never, { userId: ' old-user ', email: ' ALIAS@example.com ' }),
+    ).resolves.toEqual({
+      userIds: expect.arrayContaining(['old-user', 'new-user', 'external-user']),
+      personIds: ['source-person', 'target-person'],
+      emails: expect.arrayContaining(['alias@example.com', 'old@example.com', 'new@example.com']),
+      people: [expect.objectContaining({ id: 'source-person' }), expect.objectContaining({ id: 'target-person' })],
+    });
     expect(prisma.$queryRaw).toHaveBeenCalled();
   });
 
@@ -155,7 +149,6 @@ describe('LGPD helper modules', () => {
         committedBySubject: false,
       }),
     );
-
   });
 
   it('builds audit-log subject filters and anonymizes matching audit payloads', async () => {
@@ -349,9 +342,9 @@ describe('LGPD helper modules', () => {
         },
       ]),
     });
-    await expect(
-      anonymizeOfflineAttendanceSubmissions(tx as never, dataSubject, 'anonymized:request-1'),
-    ).resolves.toBe(1);
+    await expect(anonymizeOfflineAttendanceSubmissions(tx as never, dataSubject, 'anonymized:request-1')).resolves.toBe(
+      1,
+    );
     expect(tx.offlineEventAttendanceSubmission.update).toHaveBeenCalledWith({
       where: { id: 'offline-1' },
       data: expect.objectContaining({

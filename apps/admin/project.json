@@ -4,16 +4,11 @@
   "projectType": "application",
   "prefix": "app",
   "sourceRoot": "apps/admin/src",
-  "tags": [
-    "scope:admin",
-    "type:app"
-  ],
+  "tags": ["scope:admin", "type:app"],
   "targets": {
     "build": {
       "executor": "@angular/build:application",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
         "baseHref": "/admin/",
@@ -27,9 +22,7 @@
             "input": "apps/admin/public"
           }
         ],
-        "styles": [
-          "apps/admin/src/styles.scss"
-        ],
+        "styles": ["apps/admin/src/styles.scss"],
         "server": "apps/admin/src/main.server.ts",
         "ssr": {
           "entry": "apps/admin/src/server.ts"
@@ -93,9 +86,7 @@
         "{workspaceRoot}/eslint.config.mjs",
         "{workspaceRoot}/tools/eslint-rules/**/*",
         {
-          "externalDependencies": [
-            "eslint"
-          ]
+          "externalDependencies": ["eslint"]
         }
       ]
     },
@@ -123,12 +114,7 @@
         "configDir": "apps/admin/.storybook",
         "browserTarget": "admin:build-storybook",
         "compodoc": true,
-        "compodocArgs": [
-          "-e",
-          "json",
-          "-d",
-          "apps/public/.storybook/compodoc"
-        ],
+        "compodocArgs": ["-e", "json", "-d", "apps/public/.storybook/compodoc"],
         "styles": [
           "@fontsource/material-symbols-outlined",
           "@fontsource-variable/inter",
@@ -144,9 +130,7 @@
     },
     "build-storybook": {
       "executor": "@storybook/angular:build-storybook",
-      "outputs": [
-        "{options.outputDir}"
-      ],
+      "outputs": ["{options.outputDir}"],
       "options": {
         "outputDir": "dist/storybook/admin",
         "configDir": "apps/admin/.storybook",
@@ -174,9 +158,7 @@
     },
     "static-storybook": {
       "executor": "@nx/web:file-server",
-      "dependsOn": [
-        "build-storybook"
-      ],
+      "dependsOn": ["build-storybook"],
       "options": {
         "buildTarget": "admin:build-storybook",
         "staticFilePath": "dist/storybook/admin",

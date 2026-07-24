@@ -1,10 +1,5 @@
 import { Field, InputType, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
-import {
-  AuditLogActorType,
-  AuditLogEntityType,
-  AuditLogOperation,
-  AuditLogRevertMode,
-} from '@prisma/client';
+import { AuditLogActorType, AuditLogEntityType, AuditLogOperation, AuditLogRevertMode } from '@prisma/client';
 
 export enum AuditLogExplorerRevertedStatus {
   ALL = 'ALL',

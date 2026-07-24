@@ -38,7 +38,9 @@ export async function readProcessableReceiptImageMetadata(buffer: Buffer): Promi
   pages?: number;
 }> {
   try {
-    const metadata = await createReceiptSharp(buffer).timeout({ seconds: RECEIPT_IMAGE_METADATA_TIMEOUT_SECONDS }).metadata();
+    const metadata = await createReceiptSharp(buffer)
+      .timeout({ seconds: RECEIPT_IMAGE_METADATA_TIMEOUT_SECONDS })
+      .metadata();
     assertReceiptImageMetadataWithinProcessingLimits(metadata);
 
     return {
@@ -100,7 +102,9 @@ export function normalizeReceiptImageProcessingError(error: unknown, fallbackMes
   return new ReceiptImageProcessingLimitError(fallbackMessage);
 }
 
-export function isReceiptImageProcessingError(error: unknown): error is ReceiptImageProcessingLimitError | ReceiptImageProcessingTimeoutError {
+export function isReceiptImageProcessingError(
+  error: unknown,
+): error is ReceiptImageProcessingLimitError | ReceiptImageProcessingTimeoutError {
   return error instanceof ReceiptImageProcessingLimitError || error instanceof ReceiptImageProcessingTimeoutError;
 }
 

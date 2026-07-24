@@ -64,10 +64,7 @@ export async function notifyDueAvailableEventFormLinks(
             { OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
             { OR: [{ availableUntil: null }, { availableUntil: { gt: now } }] },
           ],
-          OR: [
-            { event: { endDate: { gte: now } } },
-            { majorEvent: { endDate: { gte: now } } },
-          ],
+          OR: [{ event: { endDate: { gte: now } } }, { majorEvent: { endDate: { gte: now } } }],
         },
       },
     },
@@ -171,9 +168,6 @@ async function publishEventFormNowIfClaimed(
   return published;
 }
 
-function notifyEligiblePeople(
-  formNotifications: EventFormNotificationService,
-  form: EventFormRecord,
-): Promise<number> {
+function notifyEligiblePeople(formNotifications: EventFormNotificationService, form: EventFormRecord): Promise<number> {
   return formNotifications.notifyEligiblePeople(form);
 }

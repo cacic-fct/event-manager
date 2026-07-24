@@ -42,7 +42,10 @@ class MockCloudflareTurnstileService {
   selector: 'lib-storybook-cloudflare-turnstile-host',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CloudflareTurnstileComponent],
-  providers: [MockCloudflareTurnstileService, { provide: CloudflareTurnstileService, useExisting: MockCloudflareTurnstileService }],
+  providers: [
+    MockCloudflareTurnstileService,
+    { provide: CloudflareTurnstileService, useExisting: MockCloudflareTurnstileService },
+  ],
   template: `
     @if (showWidget()) {
       <lib-cloudflare-turnstile [action]="action()" [theme]="theme()" (tokenChange)="token.set($event)" />
@@ -121,4 +124,3 @@ export const DarkTheme: Story = {
     theme: 'dark',
   },
 };
-

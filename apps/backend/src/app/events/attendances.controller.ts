@@ -83,8 +83,7 @@ class EventAttendanceScannerFeedItemDto {
   collectedByFirstName!: string | null;
 
   @ApiPropertyOptional({
-    description:
-      'First name of the user who synchronized the attendance, when it differs from the original collector.',
+    description: 'First name of the user who synchronized the attendance, when it differs from the original collector.',
     example: 'Maria',
     nullable: true,
   })
@@ -175,5 +174,4 @@ export class EventAttendancesController extends EventAttendancesScannerFeedSuppo
       snapshots,
     );
   }
-
 }

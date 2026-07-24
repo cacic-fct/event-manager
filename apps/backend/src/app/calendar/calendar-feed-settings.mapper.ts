@@ -19,7 +19,8 @@ export function mapSettings(
 
   return {
     enabled: settings?.enabled ?? false,
-    feedPath: settings?.enabled && resolvedFeedKey ? `/api/calendar/feeds/${encodeURIComponent(resolvedFeedKey)}.ics` : null,
+    feedPath:
+      settings?.enabled && resolvedFeedKey ? `/api/calendar/feeds/${encodeURIComponent(resolvedFeedKey)}.ics` : null,
     disabledAt: settings?.disabledAt ?? null,
     disabledReason: settings?.disabledReason ?? null,
     lastFetchedAt: settings?.lastFetchedAt ?? null,
@@ -38,7 +39,9 @@ export function mapAdminSettings(
   return {
     enabled: settings?.enabled ?? false,
     feedPath:
-      settings?.enabled && resolvedFeedKey ? `/api/calendar/admin/feeds/${encodeURIComponent(resolvedFeedKey)}.ics` : null,
+      settings?.enabled && resolvedFeedKey
+        ? `/api/calendar/admin/feeds/${encodeURIComponent(resolvedFeedKey)}.ics`
+        : null,
     disabledAt: settings?.disabledAt ?? null,
     disabledReason: settings?.disabledReason ?? null,
     lastFetchedAt: settings?.lastFetchedAt ?? null,

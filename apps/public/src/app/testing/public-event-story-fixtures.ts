@@ -61,7 +61,10 @@ export interface MutableStoryContext<TArgs> {
   args: TArgs;
 }
 
-export function createMutableStoryContext<TArgs>(defaults: TArgs, args: Partial<TArgs> = {}): MutableStoryContext<TArgs> {
+export function createMutableStoryContext<TArgs>(
+  defaults: TArgs,
+  args: Partial<TArgs> = {},
+): MutableStoryContext<TArgs> {
   return {
     args: { ...defaults, ...args },
   };
@@ -188,9 +191,13 @@ export function createPublicStoryEvent(options: PublicEventStoryOptions = {}): P
   const durationHours = options.durationHours ?? 2;
   const context = options.context ?? 'major-event';
   const majorEvent =
-    context === 'major-event' ? createPublicStoryMajorEvent({ name: options.majorEventName ?? 'CACiC Storybook' }) : null;
+    context === 'major-event'
+      ? createPublicStoryMajorEvent({ name: options.majorEventName ?? 'CACiC Storybook' })
+      : null;
   const eventGroup =
-    context === 'event-group' ? createPublicStoryEventGroup({ name: options.eventGroupName ?? 'Trilha Frontend' }) : null;
+    context === 'event-group'
+      ? createPublicStoryEventGroup({ name: options.eventGroupName ?? 'Trilha Frontend' })
+      : null;
 
   return createPublicEvent({
     id: options.id ?? `public-story-event-${index + 1}`,
@@ -201,7 +208,8 @@ export function createPublicStoryEvent(options: PublicEventStoryOptions = {}): P
       ],
     emoji: options.emoji ?? ['🧠', '♿', '📡'][index % 3],
     type: options.type ?? (['MINICURSO', 'PALESTRA', 'OTHER'] as const)[index % 3],
-    shortDescription: context === 'short-description' ? (options.shortDescription ?? 'Sessão aberta para a comunidade.') : null,
+    shortDescription:
+      context === 'short-description' ? (options.shortDescription ?? 'Sessão aberta para a comunidade.') : null,
     locationDescription: options.locationDescription ?? 'Laboratório 01',
     majorEventId: majorEvent?.id ?? null,
     majorEvent,

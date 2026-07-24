@@ -55,9 +55,7 @@ export class MajorEventReceiptsResolver {
     name: 'adminReceiptValidationQueue',
   })
   @RequirePermissions(RECEIPT_ADMIN_PERMISSION)
-  adminReceiptValidationQueue(
-    @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
-  ) {
+  adminReceiptValidationQueue(@Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string) {
     return this.receipts.listPendingValidationQueue(majorEventId?.trim() || undefined);
   }
 
@@ -89,13 +87,7 @@ export class MajorEventReceiptsResolver {
   ) {
     const user = this.requireAuthenticatedUser(context);
     await this.frozenResources.assertMajorEventSubscriptionMutable(input.subscriptionId, user, 'edit');
-    return this.receipts.rejectReceipt(
-      input.subscriptionId,
-      input.receiptId,
-      input.rejectionCode,
-      input.reason,
-      user,
-    );
+    return this.receipts.rejectReceipt(input.subscriptionId, input.receiptId, input.rejectionCode, input.reason, user);
   }
 
   @Mutation(() => AdminReceiptQueueItemModel, {

@@ -1,11 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
-import {
-  EventForm,
-  EventFormDraft,
-  EventFormInput,
-  EventFormResults,
-} from '@cacic-fct/event-manager-admin-contracts';
+import { EventForm, EventFormDraft, EventFormInput, EventFormResults } from '@cacic-fct/event-manager-admin-contracts';
 import { GraphqlHttpService } from './graphql-http.service';
 
 const EVENT_FORM_LINK_FIELDS = `

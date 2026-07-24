@@ -159,11 +159,7 @@ describe('TypesenseSearchService', () => {
         hits: Array.from({ length: 250 }, (_, index) => ({ document: { id: `event-${index}` } })),
       })
       .mockResolvedValueOnce({
-        hits: [
-          { document: { id: 'event-250' } },
-          { document: { id: 'event-251' } },
-          { document: { id: 'event-252' } },
-        ],
+        hits: [{ document: { id: 'event-250' } }, { document: { id: 'event-251' } }, { document: { id: 'event-252' } }],
       });
 
     await expect(
@@ -618,9 +614,7 @@ describe('TypesenseSearchService', () => {
     const prisma = createPrismaMock();
     const firstBatch = Array.from({ length: 500 }, (_, index) => createAuditLogEntry({ id: `audit-${index + 1}` }));
     const secondBatch = [createAuditLogEntry({ id: 'audit-501' })];
-    prisma.auditLogEntry.findMany
-      .mockResolvedValueOnce(firstBatch)
-      .mockResolvedValueOnce(secondBatch);
+    prisma.auditLogEntry.findMany.mockResolvedValueOnce(firstBatch).mockResolvedValueOnce(secondBatch);
     const { client, service } = createEnabledService(prisma);
 
     await service['replaceAuditLogDocuments']({
@@ -707,15 +701,17 @@ function createTypesenseClientMock() {
   };
 }
 
-function createPrismaMock(records: Partial<{
-  event: unknown[];
-  majorEvent: unknown[];
-  eventGroup: unknown[];
-  people: unknown[];
-  placePreset: unknown[];
-  certificateTemplate: unknown[];
-  auditLogEntry: unknown[];
-}> = {}) {
+function createPrismaMock(
+  records: Partial<{
+    event: unknown[];
+    majorEvent: unknown[];
+    eventGroup: unknown[];
+    people: unknown[];
+    placePreset: unknown[];
+    certificateTemplate: unknown[];
+    auditLogEntry: unknown[];
+  }> = {},
+) {
   return {
     event: {
       findMany: jest.fn().mockResolvedValue(records.event ?? []),

@@ -20,21 +20,11 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { NovuNotificationsService } from '../../notifications/novu-notifications.service';
 import { recordAttendanceCreate } from './attendance-collection-audit';
-import {
-  findCurrentUserAttendanceCollectionEvents,
-  requireAttendanceCollector,
-} from './attendance-collection-events';
+import { findCurrentUserAttendanceCollectionEvents, requireAttendanceCollector } from './attendance-collection-events';
 import { getAttendanceScannerFeed } from './attendance-collection-feed';
 import { OfflineAttendanceCommitter } from './attendance-collection-offline-commit';
-import {
-  createAttendance,
-  findSinglePersonForManualInput,
-} from './attendance-collection-records';
-import {
-  getActorId,
-  getAuthenticatedUser,
-  parseUserAztecCode,
-} from './attendance-collection-context';
+import { createAttendance, findSinglePersonForManualInput } from './attendance-collection-records';
+import { getActorId, getAuthenticatedUser, parseUserAztecCode } from './attendance-collection-context';
 
 @Resolver(() => CurrentUserAttendanceCollectionEvent)
 export class CurrentUserAttendanceCollectionResolver {

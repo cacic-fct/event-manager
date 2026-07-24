@@ -5,7 +5,10 @@ import { GraphqlContext } from './types';
 import { PersonCsvImportSupport } from '../../../common/person-csv-import-support';
 
 export abstract class EventAttendancesCoreSupport extends PersonCsvImportSupport {
-  constructor(prisma: PrismaService, protected readonly attendanceCategories: AttendanceCategoryService) {
+  constructor(
+    prisma: PrismaService,
+    protected readonly attendanceCategories: AttendanceCategoryService,
+  ) {
     super(prisma);
   }
 

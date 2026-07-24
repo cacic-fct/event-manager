@@ -45,9 +45,9 @@ describe('S3Service', () => {
   it('generates stable file keys with sanitized timestamps', () => {
     const service = new S3Service(configServiceMock() as never);
 
-    expect(
-      service.generateFileKey('lgpd', 'user-1', 'document.pdf', new Date('2026-05-21T12:34:56.789Z')),
-    ).toBe('lgpd/user-1/2026-05-21T12-34-56-789Z-document.pdf');
+    expect(service.generateFileKey('lgpd', 'user-1', 'document.pdf', new Date('2026-05-21T12:34:56.789Z'))).toBe(
+      'lgpd/user-1/2026-05-21T12-34-56-789Z-document.pdf',
+    );
   });
 
   it('fails storage operations when S3 configuration is incomplete', async () => {
@@ -91,9 +91,7 @@ describe('S3Service', () => {
     jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
     uploadDoneMock.mockRejectedValue(new Error('network down'));
 
-    await expect(service.uploadFile('key', Buffer.from('file'))).rejects.toThrow(
-      'Failed to upload file: network down',
-    );
+    await expect(service.uploadFile('key', Buffer.from('file'))).rejects.toThrow('Failed to upload file: network down');
   });
 
   it('downloads object streams and metadata', async () => {
@@ -175,10 +173,7 @@ describe('S3Service', () => {
     });
 
     sendMock.mockResolvedValueOnce({
-      Contents: [
-        { Key: 'prefix/a.txt', Size: 1, LastModified: lastModified },
-        { Key: 'prefix/b.txt' },
-      ],
+      Contents: [{ Key: 'prefix/a.txt', Size: 1, LastModified: lastModified }, { Key: 'prefix/b.txt' }],
     });
     await expect(service.listFiles('prefix/')).resolves.toEqual([
       { key: 'prefix/a.txt', size: 1, lastModified },

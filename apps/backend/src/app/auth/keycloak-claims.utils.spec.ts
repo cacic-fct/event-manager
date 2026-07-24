@@ -111,14 +111,7 @@ describe('keycloak claims utils', () => {
           permissions: ['events:read', 'certificates:issue'],
         },
       ),
-    ).toEqual([
-      'events:read',
-      'events#write',
-      'events#read',
-      'people#merge',
-      'global-operation',
-      'certificates:issue',
-    ]);
+    ).toEqual(['events:read', 'events#write', 'events#read', 'people#merge', 'global-operation', 'certificates:issue']);
   });
 
   it('reads typed primitive claims only when the value matches the requested type', () => {

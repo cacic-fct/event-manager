@@ -175,35 +175,30 @@ export async function buildPersonLinkedResourceGroups(
         occurredAt: certificate.issuedAt,
       })),
     ),
-    buildLinkedGroup(
-      'SUBSCRIPTION',
-      'Inscrições',
-      'confirmation_number',
-      [
-        ...eventSubscriptions.map((subscription) => ({
-          id: subscription.id,
-          label: subscription.event.name,
-          description: 'Inscrição em evento',
-          route: `/subscriptions/event/${subscription.eventId}`,
-          occurredAt: subscription.createdAt,
-        })),
-        ...eventGroupSubscriptions.map((subscription) => ({
-          id: subscription.id,
-          label: subscription.eventGroup.name,
-          description: 'Inscrição em grupo de eventos',
-          route: `/groups/${subscription.eventGroupId}`,
-          occurredAt: subscription.createdAt,
-        })),
-        ...majorEventSubscriptions.map((subscription) => ({
-          id: subscription.id,
-          label: subscription.majorEvent.name,
-          description: 'Inscrição em grande evento',
-          route: `/subscriptions/major-event/${subscription.majorEventId}`,
-          status: subscription.subscriptionStatus,
-          occurredAt: subscription.updatedAt,
-        })),
-      ],
-    ),
+    buildLinkedGroup('SUBSCRIPTION', 'Inscrições', 'confirmation_number', [
+      ...eventSubscriptions.map((subscription) => ({
+        id: subscription.id,
+        label: subscription.event.name,
+        description: 'Inscrição em evento',
+        route: `/subscriptions/event/${subscription.eventId}`,
+        occurredAt: subscription.createdAt,
+      })),
+      ...eventGroupSubscriptions.map((subscription) => ({
+        id: subscription.id,
+        label: subscription.eventGroup.name,
+        description: 'Inscrição em grupo de eventos',
+        route: `/groups/${subscription.eventGroupId}`,
+        occurredAt: subscription.createdAt,
+      })),
+      ...majorEventSubscriptions.map((subscription) => ({
+        id: subscription.id,
+        label: subscription.majorEvent.name,
+        description: 'Inscrição em grande evento',
+        route: `/subscriptions/major-event/${subscription.majorEventId}`,
+        status: subscription.subscriptionStatus,
+        occurredAt: subscription.updatedAt,
+      })),
+    ]),
     buildLinkedGroup(
       'ATTENDANCE',
       'Presenças',
@@ -217,27 +212,22 @@ export async function buildPersonLinkedResourceGroups(
         occurredAt: attendance.attendedAt,
       })),
     ),
-    buildLinkedGroup(
-      'EVENT_RELATION',
-      'Vínculos com eventos',
-      'event_available',
-      [
-        ...lectures.map((lecture) => ({
-          id: `${lecture.eventId}:${lecture.personId}:lecturer`,
-          label: lecture.event.name,
-          description: 'Ministrante',
-          route: `/events/${lecture.eventId}`,
-          occurredAt: lecture.createdAt,
-        })),
-        ...attendanceCollectors.map((collector) => ({
-          id: `${collector.eventId}:${collector.personId}:collector`,
-          label: collector.event.name,
-          description: 'Coletor de presença',
-          route: `/events/${collector.eventId}`,
-          occurredAt: collector.createdAt,
-        })),
-      ],
-    ),
+    buildLinkedGroup('EVENT_RELATION', 'Vínculos com eventos', 'event_available', [
+      ...lectures.map((lecture) => ({
+        id: `${lecture.eventId}:${lecture.personId}:lecturer`,
+        label: lecture.event.name,
+        description: 'Ministrante',
+        route: `/events/${lecture.eventId}`,
+        occurredAt: lecture.createdAt,
+      })),
+      ...attendanceCollectors.map((collector) => ({
+        id: `${collector.eventId}:${collector.personId}:collector`,
+        label: collector.event.name,
+        description: 'Coletor de presença',
+        route: `/events/${collector.eventId}`,
+        occurredAt: collector.createdAt,
+      })),
+    ]),
     buildLinkedGroup(
       'OFFLINE_ATTENDANCE_SUBMISSION',
       'Coletas offline',
@@ -293,53 +283,48 @@ export async function buildPersonLinkedResourceGroups(
         occurredAt: grant.createdAt,
       })),
     ),
-    buildLinkedGroup(
-      'MERGE',
-      'Unificações',
-      'call_merge',
-      [
-        ...(person.mergedInto
-          ? [
-              {
-                id: `${person.id}:merged-into:${person.mergedInto.id}`,
-                label: `Unificada em ${person.mergedInto.name}`,
-                description: 'Esta pessoa aponta para outro cadastro',
-                route: `/people/${person.mergedInto.id}`,
-              },
-            ]
-          : []),
-        ...mergedFrom.map((mergedPerson) => ({
-          id: `${mergedPerson.id}:merged-from:${person.id}`,
-          label: `${mergedPerson.name} foi unificada neste cadastro`,
-          description: 'Outro cadastro aponta para esta pessoa',
-          route: `/people/${mergedPerson.id}`,
-          occurredAt: mergedPerson.updatedAt,
-        })),
-        ...mergeCandidates.map((candidate) => ({
-          id: candidate.id,
-          label: `Candidato de unificação ${candidate.status.toLocaleLowerCase('pt-BR')}`,
-          description: candidate.matchValue ?? candidate.matchMethod ?? 'Candidato de unificação',
-          route: '/merge-candidates',
-          status: candidate.status,
-          occurredAt: candidate.updatedAt,
-        })),
-        ...mergeOperationsAsTarget.map((operation) => ({
-          id: `${operation.id}:target`,
-          label: 'Operação de unificação como destino',
-          description: operation.status,
-          route: '/merge-candidates',
-          status: operation.status,
-          occurredAt: operation.createdAt,
-        })),
-        ...mergeOperationsAsSource.map((operation) => ({
-          id: `${operation.id}:source`,
-          label: 'Operação de unificação como origem',
-          description: operation.status,
-          route: '/merge-candidates',
-          status: operation.status,
-          occurredAt: operation.createdAt,
-        })),
-      ],
-    ),
+    buildLinkedGroup('MERGE', 'Unificações', 'call_merge', [
+      ...(person.mergedInto
+        ? [
+            {
+              id: `${person.id}:merged-into:${person.mergedInto.id}`,
+              label: `Unificada em ${person.mergedInto.name}`,
+              description: 'Esta pessoa aponta para outro cadastro',
+              route: `/people/${person.mergedInto.id}`,
+            },
+          ]
+        : []),
+      ...mergedFrom.map((mergedPerson) => ({
+        id: `${mergedPerson.id}:merged-from:${person.id}`,
+        label: `${mergedPerson.name} foi unificada neste cadastro`,
+        description: 'Outro cadastro aponta para esta pessoa',
+        route: `/people/${mergedPerson.id}`,
+        occurredAt: mergedPerson.updatedAt,
+      })),
+      ...mergeCandidates.map((candidate) => ({
+        id: candidate.id,
+        label: `Candidato de unificação ${candidate.status.toLocaleLowerCase('pt-BR')}`,
+        description: candidate.matchValue ?? candidate.matchMethod ?? 'Candidato de unificação',
+        route: '/merge-candidates',
+        status: candidate.status,
+        occurredAt: candidate.updatedAt,
+      })),
+      ...mergeOperationsAsTarget.map((operation) => ({
+        id: `${operation.id}:target`,
+        label: 'Operação de unificação como destino',
+        description: operation.status,
+        route: '/merge-candidates',
+        status: operation.status,
+        occurredAt: operation.createdAt,
+      })),
+      ...mergeOperationsAsSource.map((operation) => ({
+        id: `${operation.id}:source`,
+        label: 'Operação de unificação como origem',
+        description: operation.status,
+        route: '/merge-candidates',
+        status: operation.status,
+        occurredAt: operation.createdAt,
+      })),
+    ]),
   ]);
 }

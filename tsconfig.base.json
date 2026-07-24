@@ -24,21 +24,15 @@
       "@cacic-fct/shared-angular/auth/guard": ["./libs/shared-angular/src/lib/auth/auth.guard.ts"],
       "@cacic-fct/shared-angular/auth/interceptor": ["./libs/shared-angular/src/lib/auth/auth.interceptor.ts"],
       "@cacic-fct/shared-angular/auth/types": ["./libs/shared-angular/src/lib/auth/auth.types.ts"],
-      "@cacic-fct/shared-angular/aztec-scanner": [
-        "./libs/shared-angular/src/lib/aztec-scanner/index.ts"
-      ],
-      "@cacic-fct/shared-angular/cacic-logo": [
-        "./libs/shared-angular/src/lib/cacic-logo/cacic-logo.component.ts"
-      ],
+      "@cacic-fct/shared-angular/aztec-scanner": ["./libs/shared-angular/src/lib/aztec-scanner/index.ts"],
+      "@cacic-fct/shared-angular/cacic-logo": ["./libs/shared-angular/src/lib/cacic-logo/cacic-logo.component.ts"],
       "@cacic-fct/shared-angular/calendar-feed": [
         "./libs/shared-angular/src/lib/calendar-feed-reenable-dialog.component.ts"
       ],
       "@cacic-fct/shared-angular/duplicate-person-warning-dialog": [
         "./libs/shared-angular/src/lib/duplicate-person-warning-dialog.component.ts"
       ],
-      "@cacic-fct/shared-angular/event-forms": [
-        "./libs/shared-angular/src/lib/event-forms/index.ts"
-      ],
+      "@cacic-fct/shared-angular/event-forms": ["./libs/shared-angular/src/lib/event-forms/index.ts"],
       "@cacic-fct/shared-angular/observability": [
         "./libs/shared-angular/src/lib/observability/provide-observability.ts"
       ],
@@ -48,9 +42,7 @@
       "@cacic-fct/shared-angular/privacy/config": [
         "./libs/shared-angular/src/lib/privacy/account-privacy-provider.config.ts"
       ],
-      "@cacic-fct/shared-angular/privacy/startup": [
-        "./libs/shared-angular/src/lib/privacy/account-privacy-startup.ts"
-      ],
+      "@cacic-fct/shared-angular/privacy/startup": ["./libs/shared-angular/src/lib/privacy/account-privacy-startup.ts"],
       "@cacic-fct/shared-angular/redirect-authenticated": [
         "./libs/shared-angular/src/lib/guards/redirect-authenticated.ts"
       ],

@@ -45,10 +45,7 @@ describe('CertificatesResolver authorization', () => {
       resolver.certificateIssuableMajorEvents({ request: { user } } as never, 'grande', 10, 15),
     ).resolves.toEqual([{ id: 'major-1' }]);
 
-    expect(authorizationPolicy.accessibleEventTargets).toHaveBeenCalledWith(
-      user,
-      Permission.CertificateConfig.Read,
-    );
+    expect(authorizationPolicy.accessibleEventTargets).toHaveBeenCalledWith(user, Permission.CertificateConfig.Read);
     expect(targetsService.listIssuableEventGroups).toHaveBeenCalledWith('grupo', 5, 10, accessibleTargets);
     expect(targetsService.listIssuableMajorEvents).toHaveBeenCalledWith('grande', 10, 15, accessibleTargets);
   });
@@ -74,13 +71,7 @@ describe('CertificatesResolver authorization', () => {
     );
 
     expect(configsService.listTemplates).toHaveBeenCalledWith('modelo', false, 2, 3);
-    expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(
-      CertificateScope.EVENT,
-      'event-1',
-      true,
-      0,
-      50,
-    );
+    expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(CertificateScope.EVENT, 'event-1', true, 0, 50);
     expect(issuingService.listCertificatesByTarget).toHaveBeenCalledWith(
       CertificateScope.EVENT,
       'event-1',
@@ -178,14 +169,10 @@ describe('CertificatesResolver authorization', () => {
       user,
       'edit',
     );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.CertificateConfig.Update],
-      {
-        scope: CertificateScope.MAJOR_EVENT,
-        targetId: 'major-b',
-      },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.CertificateConfig.Update], {
+      scope: CertificateScope.MAJOR_EVENT,
+      targetId: 'major-b',
+    });
   });
 
   it('updates certificate configs without replacement target checks when the target is unchanged', async () => {
@@ -324,29 +311,15 @@ describe('CertificatesResolver authorization', () => {
         targetId: 'group-1',
       },
     );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
-      3,
-      user,
-      [Permission.Certificate.Read],
-      {
-        scope: CertificateScope.EVENT,
-        targetId: 'event-1',
-      },
-    );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
-      4,
-      user,
-      [Permission.Certificate.Issue],
-      {
-        scope: CertificateScope.EVENT_GROUP,
-        targetId: 'group-1',
-      },
-    );
-    expect(issuingService.issueForExistingConfigRecipients).toHaveBeenCalledWith(
-      'config-1',
-      'config-clone',
-      'user-1',
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(3, user, [Permission.Certificate.Read], {
+      scope: CertificateScope.EVENT,
+      targetId: 'event-1',
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(4, user, [Permission.Certificate.Issue], {
+      scope: CertificateScope.EVENT_GROUP,
+      targetId: 'group-1',
+    });
+    expect(issuingService.issueForExistingConfigRecipients).toHaveBeenCalledWith('config-1', 'config-clone', 'user-1');
   });
 
   it('uses the source target for clone authorization when input is omitted', async () => {
@@ -408,24 +381,16 @@ describe('CertificatesResolver authorization', () => {
     const copiedCertificate = { id: 'certificate-copy' };
     issuingService.copyManualRecipients.mockResolvedValue([copiedCertificate]);
 
-    await resolver.cloneCertificateConfig(
-      'config-1',
-      { parts: { manualPeople: true } },
-      { req: { user } } as never,
-    );
+    await resolver.cloneCertificateConfig('config-1', { parts: { manualPeople: true } }, { req: { user } } as never);
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
-      3,
-      user,
-      [Permission.Certificate.Read],
-      { scope: CertificateScope.OTHER, targetId: 'folder-1' },
-    );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(
-      4,
-      user,
-      [Permission.Certificate.Issue],
-      { scope: CertificateScope.OTHER, targetId: 'folder-1' },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(3, user, [Permission.Certificate.Read], {
+      scope: CertificateScope.OTHER,
+      targetId: 'folder-1',
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenNthCalledWith(4, user, [Permission.Certificate.Issue], {
+      scope: CertificateScope.OTHER,
+      targetId: 'folder-1',
+    });
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     expect(configsService.cloneConfig).toHaveBeenCalledWith(
       'config-1',
@@ -522,31 +487,19 @@ describe('CertificatesResolver authorization', () => {
     ]);
 
     expect(configsService.listFolders).toHaveBeenCalledWith('cert', 0, 20);
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.CertificateConfig.Read],
-      {
-        allowScopedCollection: true,
-      },
-    );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.CertificateConfig.Read],
-      {
-        folderId: 'folder-1',
-        scope: CertificateScope.OTHER,
-        targetId: 'folder-1',
-      },
-    );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.CertificateConfig.Read],
-      {
-        folderId: 'folder-2',
-        scope: CertificateScope.OTHER,
-        targetId: 'folder-2',
-      },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.CertificateConfig.Read], {
+      allowScopedCollection: true,
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.CertificateConfig.Read], {
+      folderId: 'folder-1',
+      scope: CertificateScope.OTHER,
+      targetId: 'folder-1',
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.CertificateConfig.Read], {
+      folderId: 'folder-2',
+      scope: CertificateScope.OTHER,
+      targetId: 'folder-2',
+    });
   });
 
   it('rethrows non-authorization errors while filtering certificate folders', async () => {
@@ -568,15 +521,11 @@ describe('CertificatesResolver authorization', () => {
       name: 'Standalone',
     });
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.CertificateConfig.Read],
-      {
-        folderId: 'folder-1',
-        scope: CertificateScope.OTHER,
-        targetId: 'folder-1',
-      },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.CertificateConfig.Read], {
+      folderId: 'folder-1',
+      scope: CertificateScope.OTHER,
+      targetId: 'folder-1',
+    });
   });
 
   it('verifies Turnstile before public certificate validation lookup', async () => {
@@ -604,15 +553,11 @@ describe('CertificatesResolver authorization', () => {
     const request = { ip: '203.0.113.20' };
     publicValidationService.validateCertificate.mockResolvedValue({ id: 'certificate-1' });
 
-    await expect(
-      resolver.publicCertificateValidation('certificate-1', null, { request } as never),
-    ).resolves.toEqual({ id: 'certificate-1' });
+    await expect(resolver.publicCertificateValidation('certificate-1', null, { request } as never)).resolves.toEqual({
+      id: 'certificate-1',
+    });
 
-    expect(turnstile.assertValidToken).toHaveBeenCalledWith(
-      null,
-      request,
-      TURNSTILE_ACTIONS.certificateValidation,
-    );
+    expect(turnstile.assertValidToken).toHaveBeenCalledWith(null, request, TURNSTILE_ACTIONS.certificateValidation);
   });
 
   it('does not validate a public certificate when Turnstile validation fails', async () => {
@@ -659,15 +604,11 @@ describe('CertificatesResolver authorization', () => {
     });
 
     expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(CertificateScope.OTHER, 'folder-1');
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.CertificateConfig.Delete],
-      {
-        folderId: 'folder-1',
-        scope: CertificateScope.OTHER,
-        targetId: 'folder-1',
-      },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.CertificateConfig.Delete], {
+      folderId: 'folder-1',
+      scope: CertificateScope.OTHER,
+      targetId: 'folder-1',
+    });
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'delete');
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'delete');
     expect(configsService.deleteFolder).toHaveBeenCalledWith('folder-1');
@@ -681,11 +622,9 @@ describe('CertificatesResolver authorization', () => {
     configsService.updateFolder.mockResolvedValue({ id: 'folder-1', name: 'Nova pasta' });
 
     await expect(
-      resolver.updateCertificateFolder(
-        'folder-1',
-        { name: 'Nova pasta', reissueCertificates: true },
-        { req: { user } } as never,
-      ),
+      resolver.updateCertificateFolder('folder-1', { name: 'Nova pasta', reissueCertificates: true }, {
+        req: { user },
+      } as never),
     ).resolves.toEqual(
       expect.objectContaining({
         id: 'folder-1',
@@ -693,24 +632,16 @@ describe('CertificatesResolver authorization', () => {
     );
 
     expect(configsService.listConfigsByTarget).toHaveBeenCalledWith(CertificateScope.OTHER, 'folder-1');
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.CertificateConfig.Update],
-      {
-        folderId: 'folder-1',
-        scope: CertificateScope.OTHER,
-        targetId: 'folder-1',
-      },
-    );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.Certificate.Reissue],
-      {
-        folderId: 'folder-1',
-        scope: CertificateScope.OTHER,
-        targetId: 'folder-1',
-      },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.CertificateConfig.Update], {
+      folderId: 'folder-1',
+      scope: CertificateScope.OTHER,
+      targetId: 'folder-1',
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.Certificate.Reissue], {
+      folderId: 'folder-1',
+      scope: CertificateScope.OTHER,
+      targetId: 'folder-1',
+    });
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-2', user, 'edit');
     expect(configsService.updateFolder).toHaveBeenCalledWith(
@@ -734,11 +665,9 @@ describe('CertificatesResolver authorization', () => {
     issuingService.reissueCertificatesForFolder.mockRejectedValue(new Error('Certificate write failed'));
 
     await expect(
-      resolver.updateCertificateFolder(
-        'folder-1',
-        { name: 'Nova pasta', reissueCertificates: true },
-        { req: { user: { sub: 'user-1' } } } as never,
-      ),
+      resolver.updateCertificateFolder('folder-1', { name: 'Nova pasta', reissueCertificates: true }, {
+        req: { user: { sub: 'user-1' } },
+      } as never),
     ).rejects.toThrow('Certificate write failed');
 
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
@@ -749,7 +678,9 @@ describe('CertificatesResolver authorization', () => {
     configsService.getFolderById.mockResolvedValue({ id: 'folder-1', name: 'Pasta anterior' });
 
     await expect(
-      resolver.updateCertificateFolder('folder-1', { name: 'Nova pasta' }, { req: { user: { sub: 'user-1' } } } as never),
+      resolver.updateCertificateFolder('folder-1', { name: 'Nova pasta' }, {
+        req: { user: { sub: 'user-1' } },
+      } as never),
     ).rejects.toThrow('Renaming a certificate folder requires reissuing its certificates.');
 
     expect(configsService.updateFolder).not.toHaveBeenCalled();

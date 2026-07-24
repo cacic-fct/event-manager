@@ -23,19 +23,22 @@ describe('offline public data access integration', () => {
     await Dexie.delete('cacic-public-offline-data');
     database = new OfflinePublicDataDatabase();
 
-    injector = createEnvironmentInjector([
-      {
-        provide: OfflinePublicDatabaseProvider,
-        useValue: {
-          getDatabase: () => database,
+    injector = createEnvironmentInjector(
+      [
+        {
+          provide: OfflinePublicDatabaseProvider,
+          useValue: {
+            getDatabase: () => database,
+          },
         },
-      },
-      CalendarOfflineDataService,
-      CalendarPreferencesStorageService,
-      UserOfflineDataService,
-      TotpSeedCacheService,
-      OfflinePublicDataAccessService,
-    ], rootEnvironmentInjector);
+        CalendarOfflineDataService,
+        CalendarPreferencesStorageService,
+        UserOfflineDataService,
+        TotpSeedCacheService,
+        OfflinePublicDataAccessService,
+      ],
+      rootEnvironmentInjector,
+    );
   });
 
   afterEach(async () => {
@@ -345,19 +348,22 @@ describe('offline public data access integration', () => {
   });
 
   it('returns safe fallback values when offline storage is unavailable', async () => {
-    const unavailableInjector = createEnvironmentInjector([
-      {
-        provide: OfflinePublicDatabaseProvider,
-        useValue: {
-          getDatabase: () => null,
+    const unavailableInjector = createEnvironmentInjector(
+      [
+        {
+          provide: OfflinePublicDatabaseProvider,
+          useValue: {
+            getDatabase: () => null,
+          },
         },
-      },
-      AttendanceOfflineQueueService,
-      CalendarOfflineDataService,
-      CalendarPreferencesStorageService,
-      UserOfflineDataService,
-      TotpSeedCacheService,
-    ], rootEnvironmentInjector);
+        AttendanceOfflineQueueService,
+        CalendarOfflineDataService,
+        CalendarPreferencesStorageService,
+        UserOfflineDataService,
+        TotpSeedCacheService,
+      ],
+      rootEnvironmentInjector,
+    );
 
     try {
       const attendanceQueue = runInInjectionContext(unavailableInjector, () => new AttendanceOfflineQueueService());
@@ -414,14 +420,18 @@ describe('offline public data access integration', () => {
 
     await expect(service.getSeed('expired-user', 1_000)).resolves.toBeNull();
     await expect(database.totpSeeds.get('expired-user')).resolves.toBeUndefined();
-    await expect(service.getSeed('older-user', 1_000)).resolves.toEqual(totpSeed('older-user', {
-      sessionExpiresAt: 2_000,
-      updatedAt: 10,
-    }));
-    await expect(service.getLatestValidSeed(1_000)).resolves.toEqual(totpSeed('latest-user', {
-      sessionExpiresAt: 2_000,
-      updatedAt: 30,
-    }));
+    await expect(service.getSeed('older-user', 1_000)).resolves.toEqual(
+      totpSeed('older-user', {
+        sessionExpiresAt: 2_000,
+        updatedAt: 10,
+      }),
+    );
+    await expect(service.getLatestValidSeed(1_000)).resolves.toEqual(
+      totpSeed('latest-user', {
+        sessionExpiresAt: 2_000,
+        updatedAt: 30,
+      }),
+    );
 
     await service.replaceSeed(totpSeed('default-updated-at', { sessionExpiresAt: 2_000, updatedAt: 0 }));
     await expect(database.totpSeeds.get('default-updated-at')).resolves.toEqual(
@@ -441,8 +451,14 @@ describe('offline public data access integration', () => {
   });
 
   it('keeps the database unavailable on the server and memoizes it in the browser', () => {
-    const serverInjector = createEnvironmentInjector([{ provide: PLATFORM_ID, useValue: 'server' }], rootEnvironmentInjector);
-    const browserInjector = createEnvironmentInjector([{ provide: PLATFORM_ID, useValue: 'browser' }], rootEnvironmentInjector);
+    const serverInjector = createEnvironmentInjector(
+      [{ provide: PLATFORM_ID, useValue: 'server' }],
+      rootEnvironmentInjector,
+    );
+    const browserInjector = createEnvironmentInjector(
+      [{ provide: PLATFORM_ID, useValue: 'browser' }],
+      rootEnvironmentInjector,
+    );
 
     try {
       const serverProvider = runInInjectionContext(serverInjector, () => new OfflinePublicDatabaseProvider());
@@ -502,10 +518,7 @@ function queueItem(
   };
 }
 
-function totpSeed(
-  userId: string,
-  overrides: Partial<OfflineTotpSeedRecord> = {},
-): OfflineTotpSeedRecord {
+function totpSeed(userId: string, overrides: Partial<OfflineTotpSeedRecord> = {}): OfflineTotpSeedRecord {
   return {
     userId,
     primaryEmail: `${userId}@example.com`,

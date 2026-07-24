@@ -134,10 +134,9 @@ describe('CurrentUserEventAttendanceResolver', () => {
     const { resolver, frozenResources } = createResolverWithDependencies(prisma);
 
     await expect(
-      resolver.confirmCurrentUserOnlineAttendance(
-        { eventId: 'hidden-event', code: '123456' },
-        { req: { user: { sub: 'user-1' } } } as never,
-      ),
+      resolver.confirmCurrentUserOnlineAttendance({ eventId: 'hidden-event', code: '123456' }, {
+        req: { user: { sub: 'user-1' } },
+      } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.event.findFirst).toHaveBeenCalledWith({
@@ -162,16 +161,8 @@ describe('CurrentUserEventAttendanceResolver', () => {
     ],
     ['has no configured code', { onlineAttendanceCode: null }, 'does not have an online attendance code configured.'],
     ['receives an invalid code', { onlineAttendanceCode: '654321' }, 'Invalid attendance code.'],
-    [
-      'has not opened yet',
-      { onlineAttendanceStartDate: new Date('2099-01-01T00:00:00.000Z') },
-      'is not open yet.',
-    ],
-    [
-      'is already closed',
-      { onlineAttendanceEndDate: new Date('2000-01-01T00:00:00.000Z') },
-      'is already closed.',
-    ],
+    ['has not opened yet', { onlineAttendanceStartDate: new Date('2099-01-01T00:00:00.000Z') }, 'is not open yet.'],
+    ['is already closed', { onlineAttendanceEndDate: new Date('2000-01-01T00:00:00.000Z') }, 'is already closed.'],
   ])('rejects online attendance confirmation when the event %s', async (_caseName, overrides, message) => {
     const prisma = {
       event: {
@@ -200,10 +191,9 @@ describe('CurrentUserEventAttendanceResolver', () => {
     const resolver = createResolver(prisma);
 
     await expect(
-      resolver.confirmCurrentUserOnlineAttendance(
-        { eventId: 'event-1', code: '123456' },
-        { req: { user: { sub: 'user-1' } } } as never,
-      ),
+      resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: '123456' }, {
+        req: { user: { sub: 'user-1' } },
+      } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.eventSubscription.findFirst).toHaveBeenCalledWith({
@@ -243,10 +233,9 @@ describe('CurrentUserEventAttendanceResolver', () => {
     const resolver = createResolver(prisma);
 
     await expect(
-      resolver.confirmCurrentUserOnlineAttendance(
-        { eventId: 'event-1', code: '123456' },
-        { req: { user: { sub: 'user-1' } } } as never,
-      ),
+      resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: '123456' }, {
+        req: { user: { sub: 'user-1' } },
+      } as never),
     ).rejects.toBeInstanceOf(BadRequestException);
 
     expect(prisma.majorEventSubscription.findFirst).toHaveBeenCalledWith({
@@ -463,12 +452,10 @@ describe('CurrentUserEventAttendanceResolver', () => {
           groupBy: jest.fn().mockResolvedValue([{ eventId: 'event-1', _count: { _all: 2 } }]),
         },
         majorEventSubscriptionEventSelection: {
-          groupBy: jest
-            .fn()
-            .mockResolvedValue([
-              { eventId: 'event-1', _count: { _all: 3 } },
-              { eventId: 'event-2', _count: { _all: 4 } },
-            ]),
+          groupBy: jest.fn().mockResolvedValue([
+            { eventId: 'event-1', _count: { _all: 3 } },
+            { eventId: 'event-2', _count: { _all: 4 } },
+          ]),
         },
         eventAttendance: {
           groupBy: jest.fn().mockResolvedValue([{ eventId: 'event-2', _count: { _all: 5 } }]),
@@ -601,9 +588,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
       fileName: 'inscritos-evento.csv',
       mimeType: 'text/csv;charset=utf-8',
     });
-    expect(csv).toBe(
-      '\uFEFFNome,CPF\nAna,\n"Bruno, Teste",documento externo\nZoé,•••.982.247-••\n',
-    );
+    expect(csv).toBe('\uFEFFNome,CPF\nAna,\n"Bruno, Teste",documento externo\nZoé,•••.982.247-••\n');
     expect(authorizationPolicy.assertLecturerCanViewSubscriberList).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'event-1' }),
       'person-1',

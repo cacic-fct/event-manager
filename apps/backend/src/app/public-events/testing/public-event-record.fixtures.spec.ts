@@ -1,7 +1,4 @@
-import {
-  createPublicEventRecord,
-  createPublicMajorEventRecord,
-} from './public-event-record.fixtures';
+import { createPublicEventRecord, createPublicMajorEventRecord } from './public-event-record.fixtures';
 
 describe('public event record fixtures', () => {
   it('builds public major event records with defaults and overrides', () => {

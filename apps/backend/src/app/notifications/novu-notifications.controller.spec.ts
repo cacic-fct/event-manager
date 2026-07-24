@@ -23,7 +23,11 @@ describe('NovuNotificationsController', () => {
   };
 
   let currentUserContext: { resolveCurrentUserContext: jest.Mock };
-  let notifications: { mapPersonToRecipient: jest.Mock; mapAuthenticatedUserToRecipient: jest.Mock; createSubscriberSession: jest.Mock };
+  let notifications: {
+    mapPersonToRecipient: jest.Mock;
+    mapAuthenticatedUserToRecipient: jest.Mock;
+    createSubscriberSession: jest.Mock;
+  };
   let controller: NovuNotificationsController;
 
   beforeEach(() => {

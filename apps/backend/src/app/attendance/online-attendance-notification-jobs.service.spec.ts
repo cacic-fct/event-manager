@@ -160,9 +160,9 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     notifications.mapPersonToRecipient.mockReturnValue({ subscriberId: 'user-1', email: 'user-1@example.com' });
     notifications.notifyOnlineAttendanceAvailable.mockResolvedValue(false);
 
-    await expect(
-      service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() }),
-    ).rejects.toThrow('was not acknowledged');
+    await expect(service.deliver({ eventId: 'event-1', onlineAttendanceStartDate: now.toISOString() })).rejects.toThrow(
+      'was not acknowledged',
+    );
   });
 
   it('finishes delivery without notifying when there are no recipients', async () => {

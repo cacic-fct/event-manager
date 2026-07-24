@@ -168,7 +168,13 @@ export class CertificatesResolver {
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
     const pagination = resolvePagination(skip, take);
-    return this.configsService.listConfigsByTarget(scope, targetId, includeInactive ?? true, pagination.skip, pagination.take);
+    return this.configsService.listConfigsByTarget(
+      scope,
+      targetId,
+      includeInactive ?? true,
+      pagination.skip,
+      pagination.take,
+    );
   }
 
   @Query(() => [Certificate], { name: 'certificates' })
@@ -358,7 +364,9 @@ export class CertificatesResolver {
     });
     const shouldCopyManualPeople = Boolean(input?.parts?.manualPeople);
     if (shouldCopyManualPeople && input?.parts?.issuedPeople) {
-      throw new BadRequestException('Choose either issued people or the manual people list when cloning a certificate config.');
+      throw new BadRequestException(
+        'Choose either issued people or the manual people list when cloning a certificate config.',
+      );
     }
     if (shouldCopyManualPeople && source.issuedTo !== 'OTHER') {
       throw new BadRequestException('Only manual certificate configurations have a manual people list to copy.');

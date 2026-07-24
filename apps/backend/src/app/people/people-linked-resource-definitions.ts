@@ -1,12 +1,12 @@
-import {
-  PersonLinkedResource,
-  PersonLinkedResourceGroup,
-} from '@cacic-fct/shared-data-types';
+import { PersonLinkedResource, PersonLinkedResourceGroup } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
-export type PersonLinkedResourceInput = Omit<PersonLinkedResource, 'description' | 'route' | 'status' | 'occurredAt'> & {
+export type PersonLinkedResourceInput = Omit<
+  PersonLinkedResource,
+  'description' | 'route' | 'status' | 'occurredAt'
+> & {
   description?: string | null;
   route?: string | null;
   status?: string | null;
@@ -54,9 +54,7 @@ export function buildLinkedGroup(
   return { type, label, icon, items };
 }
 
-export function normalizeLinkedResourceGroups(
-  groups: PersonLinkedResourceGroupInput[],
-): PersonLinkedResourceGroup[] {
+export function normalizeLinkedResourceGroups(groups: PersonLinkedResourceGroupInput[]): PersonLinkedResourceGroup[] {
   return groups
     .filter((group) => group.items.length > 0)
     .map((group) => ({

@@ -63,14 +63,12 @@ describe('getAuditLogRevertConfig', () => {
 });
 
 describe('isReversibleAuditOperation', () => {
-  it.each([
-    AuditLogOperation.CREATE,
-    AuditLogOperation.UPDATE,
-    AuditLogOperation.DELETE,
-    AuditLogOperation.RESTORE,
-  ])('allows %s operations to be reverted', (operation) => {
-    expect(isReversibleAuditOperation(operation)).toBe(true);
-  });
+  it.each([AuditLogOperation.CREATE, AuditLogOperation.UPDATE, AuditLogOperation.DELETE, AuditLogOperation.RESTORE])(
+    'allows %s operations to be reverted',
+    (operation) => {
+      expect(isReversibleAuditOperation(operation)).toBe(true);
+    },
+  );
 
   it.each([
     AuditLogOperation.IMPORT,

@@ -65,10 +65,7 @@ export async function createAttendance(params: {
   }
 }
 
-export async function findSinglePersonForManualInput(
-  prisma: PrismaService,
-  rawValue: string,
-): Promise<{ id: string }> {
+export async function findSinglePersonForManualInput(prisma: PrismaService, rawValue: string): Promise<{ id: string }> {
   const value = rawValue.trim();
   if (!value) {
     throw new BadRequestException('Informe e-mail, telefone ou documento.');

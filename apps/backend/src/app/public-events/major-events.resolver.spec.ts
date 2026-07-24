@@ -20,9 +20,7 @@ describe('PublicMajorEventsResolver', () => {
     };
     const resolver = new PublicMajorEventsResolver(prisma as never, typesenseSearch as never);
 
-    await expect(
-      resolver.publicMajorEvents(' congresso ', undefined, undefined, 10_000, 1_000),
-    ).resolves.toEqual([
+    await expect(resolver.publicMajorEvents(' congresso ', undefined, undefined, 10_000, 1_000)).resolves.toEqual([
       expect.objectContaining({
         id: 'major-1',
         name: 'Major 1',
@@ -133,7 +131,10 @@ describe('PublicMajorEventsResolver', () => {
   });
 
   it('applies the public events rate-limit policy', () => {
-    const metadata = Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, PublicMajorEventsResolver.prototype.publicMajorEvents);
+    const metadata = Reflect.getMetadata(
+      RATE_LIMIT_METADATA_KEY,
+      PublicMajorEventsResolver.prototype.publicMajorEvents,
+    );
 
     expect(metadata).toEqual({
       policy: RATE_LIMIT_POLICIES.publicEvents,

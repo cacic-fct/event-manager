@@ -315,7 +315,12 @@ export class CurrentUserSubscriptionFeedService {
       }
     >();
     for (const event of attendanceEventsById.values()) {
-      if (!event.eventGroupId || !event.eventGroup || event.majorEventId || subscribedEventGroupIds.has(event.eventGroupId)) {
+      if (
+        !event.eventGroupId ||
+        !event.eventGroup ||
+        event.majorEventId ||
+        subscribedEventGroupIds.has(event.eventGroupId)
+      ) {
         continue;
       }
 
@@ -335,7 +340,12 @@ export class CurrentUserSubscriptionFeedService {
       }
     >();
     for (const { event } of lecturerEventGroups) {
-      if (!event.eventGroupId || !event.eventGroup || event.majorEventId || subscribedEventGroupIds.has(event.eventGroupId)) {
+      if (
+        !event.eventGroupId ||
+        !event.eventGroup ||
+        event.majorEventId ||
+        subscribedEventGroupIds.has(event.eventGroupId)
+      ) {
         continue;
       }
 

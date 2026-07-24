@@ -45,11 +45,7 @@ const PUBLIC_CLAIM_KEYS = new Set([
   'unesp_role',
 ]);
 
-const PUBLIC_ATTRIBUTE_KEYS = new Set([
-  'analytics_enabled',
-  'diagnostics_enabled',
-  'performance_monitoring_enabled',
-]);
+const PUBLIC_ATTRIBUTE_KEYS = new Set(['analytics_enabled', 'diagnostics_enabled', 'performance_monitoring_enabled']);
 
 export function toPublicAuthenticatedUser(user: AuthenticatedUser): PublicAuthenticatedUser {
   return {

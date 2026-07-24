@@ -1,10 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { createHmac, randomBytes } from 'node:crypto';
 import { subHours } from 'date-fns';
-import {
-  CALENDAR_FEED_KEY_NONCE_BYTES,
-  CALENDAR_FEED_KEY_ROTATION_COOLDOWN_HOURS,
-} from './calendar-feed.constants';
+import { CALENDAR_FEED_KEY_NONCE_BYTES, CALENDAR_FEED_KEY_ROTATION_COOLDOWN_HOURS } from './calendar-feed.constants';
 
 export function assertFeedKeyRotationAllowed(rotatedAt: Date | null, now: Date): void {
   if (rotatedAt && rotatedAt > subHours(now, CALENDAR_FEED_KEY_ROTATION_COOLDOWN_HOURS)) {

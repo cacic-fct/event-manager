@@ -49,7 +49,9 @@ describe('PlacePresetApiService', () => {
       query: 'lab',
       take: 10,
     });
-    expect(graphqlHttp.request).toHaveBeenNthCalledWith(2, expect.stringContaining('GetPlacePreset'), { id: 'place-2' });
+    expect(graphqlHttp.request).toHaveBeenNthCalledWith(2, expect.stringContaining('GetPlacePreset'), {
+      id: 'place-2',
+    });
   });
 
   it('maps create, update, delete, and merge mutations', async () => {
@@ -61,7 +63,10 @@ describe('PlacePresetApiService', () => {
     await expect(firstValueFrom(service.updatePlacePreset('place-1', input))).resolves.toEqual(
       createAdminPlacePreset({ id: 'updated-place' }),
     );
-    await expect(firstValueFrom(service.deletePlacePreset('place-1'))).resolves.toEqual({ deleted: true, id: 'place-1' });
+    await expect(firstValueFrom(service.deletePlacePreset('place-1'))).resolves.toEqual({
+      deleted: true,
+      id: 'place-1',
+    });
     await expect(firstValueFrom(service.mergePlacePreset('target-place', 'source-place', input))).resolves.toEqual({
       deleted: true,
       id: 'source-place',

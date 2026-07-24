@@ -1,6 +1,4 @@
-import {
-  OfflineEventAttendanceCommitResult,
-} from '@cacic-fct/shared-data-types';
+import { OfflineEventAttendanceCommitResult } from '@cacic-fct/shared-data-types';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -14,11 +12,7 @@ export function getAuthenticatedUser(
   currentUserContext: CurrentUserContextService,
   context: GraphqlContext,
 ): AuthenticatedUser | undefined {
-  return (
-    currentUserContext.getAuthenticatedUser?.(context) ??
-    context.req?.user ??
-    context.request?.user
-  );
+  return currentUserContext.getAuthenticatedUser?.(context) ?? context.req?.user ?? context.request?.user;
 }
 
 export function getActorId(context: GraphqlContext): string | undefined {

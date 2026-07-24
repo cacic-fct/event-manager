@@ -7,7 +7,11 @@ import {
   getSubscribedItemTitle,
   sortSubscriptionsFeed,
 } from './feed-view-model';
-import type { CurrentUserMajorEventFeedItem, SubscribedEventGroupItem, SubscribedSingleEventItem } from './attendance-models';
+import type {
+  CurrentUserMajorEventFeedItem,
+  SubscribedEventGroupItem,
+  SubscribedSingleEventItem,
+} from './attendance-models';
 
 describe('feed view model', () => {
   it('sorts major event and standalone feed items newest first without mutating the source feed', () => {
@@ -49,11 +53,7 @@ describe('feed view model', () => {
 
     const sorted = sortSubscriptionsFeed(feed);
 
-    expect(sorted.standaloneCertificateFolders.map((folder) => folder.id)).toEqual([
-      'dated',
-      'no-date-a',
-      'no-date-b',
-    ]);
+    expect(sorted.standaloneCertificateFolders.map((folder) => folder.id)).toEqual(['dated', 'no-date-a', 'no-date-b']);
   });
 
   it('maps subscribed single-event metadata and attendance status', () => {

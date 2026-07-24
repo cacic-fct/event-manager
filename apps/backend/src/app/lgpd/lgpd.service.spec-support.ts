@@ -89,9 +89,8 @@ export function createLgpdServiceTestContext() {
   prisma.people.findMany.mockImplementation(async (args: PeopleFindManyArgs) => findPeople(args));
   prisma.$queryRaw.mockResolvedValue([]);
   prisma.majorEventReceipt.findMany.mockResolvedValue([{ objectKey: 'receipts/old.png' }]);
-  prisma.$transaction.mockImplementation(
-    async (input: Promise<unknown>[] | ((transaction: typeof tx) => unknown)) =>
-      Array.isArray(input) ? Promise.all(input) : input(tx),
+  prisma.$transaction.mockImplementation(async (input: Promise<unknown>[] | ((transaction: typeof tx) => unknown)) =>
+    Array.isArray(input) ? Promise.all(input) : input(tx),
   );
 
   return {

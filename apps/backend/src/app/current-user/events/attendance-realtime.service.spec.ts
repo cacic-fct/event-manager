@@ -128,18 +128,20 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
       person: null,
     });
 
-    const subscription = service.stream(
-      {
-        cookies: {
-          [AUTH_SESSION_COOKIE_NAME]: 'parsed-session',
-        },
-        headers: {
-          cookie: `${AUTH_SESSION_COOKIE_NAME}=header-session`,
-        },
-      } as Request,
-      [],
-      [],
-    ).subscribe();
+    const subscription = service
+      .stream(
+        {
+          cookies: {
+            [AUTH_SESSION_COOKIE_NAME]: 'parsed-session',
+          },
+          headers: {
+            cookie: `${AUTH_SESSION_COOKIE_NAME}=header-session`,
+          },
+        } as Request,
+        [],
+        [],
+      )
+      .subscribe();
     await flushPromises();
 
     expect(auth.authenticateSession).toHaveBeenCalledWith('parsed-session');
@@ -277,9 +279,9 @@ describe('CurrentUserRealtimeEventsController', () => {
       headers: {},
     } as Request;
 
-    expect(
-      controller.stream(request, [' major-1,major-2 ', 'major-1'], ' event-1,,event-2 ', 'sse1.cursor'),
-    ).toBe('stream');
+    expect(controller.stream(request, [' major-1,major-2 ', 'major-1'], ' event-1,,event-2 ', 'sse1.cursor')).toBe(
+      'stream',
+    );
     expect(realtime.stream).toHaveBeenCalledWith(request, ['major-1', 'major-2'], ['event-1', 'event-2']);
     expect(replay.scope).toHaveBeenCalledWith(
       'current-user-events-realtime',

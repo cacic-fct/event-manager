@@ -25,7 +25,13 @@ describe('MajorEventsResolver', () => {
     );
 
     await expect(
-      resolver.majorEvents({ req: { user: { sub: 'admin-1' } } } as never, undefined, undefined, undefined, endDateFrom),
+      resolver.majorEvents(
+        { req: { user: { sub: 'admin-1' } } } as never,
+        undefined,
+        undefined,
+        undefined,
+        endDateFrom,
+      ),
     ).resolves.toEqual([]);
 
     expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(
@@ -159,19 +165,17 @@ describe('MajorEventsResolver', () => {
       ),
     ).resolves.toBe(created);
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      { sub: 'admin-1' },
-      [Permission.MajorEvent.Create],
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'admin-1' }, [
+      Permission.MajorEvent.Create,
+    ]);
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
       { sub: 'admin-1' },
       [Permission.CertificateConfig.Read],
       { majorEventId: 'major-source' },
     );
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      { sub: 'admin-1' },
-      [Permission.CertificateConfig.Create],
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({ sub: 'admin-1' }, [
+      Permission.CertificateConfig.Create,
+    ]);
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(3);
     expect(tx.majorEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -473,9 +477,7 @@ describe('MajorEventsResolver', () => {
       }),
       tx,
     );
-    expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'major-created' }),
-    );
+    expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(expect.objectContaining({ id: 'major-created' }));
     expect(prisma.$transaction).toHaveBeenCalled();
   });
 
@@ -746,9 +748,9 @@ describe('MajorEventsResolver', () => {
     const { resolver, prisma } = createResolver();
     prisma.majorEvent.findFirst.mockResolvedValue(null);
 
-    await expect(resolver.updateMajorEvent('missing-major', { name: 'Novo nome' }, context() as never)).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      resolver.updateMajorEvent('missing-major', { name: 'Novo nome' }, context() as never),
+    ).rejects.toBeInstanceOf(NotFoundException);
 
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
@@ -787,7 +789,9 @@ describe('MajorEventsResolver', () => {
     const { resolver, tx, typesenseSearch } = createResolver();
     tx.majorEvent.findFirst.mockResolvedValue(null);
 
-    await expect(resolver.deleteMajorEvent('missing-major', context() as never)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(resolver.deleteMajorEvent('missing-major', context() as never)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
 
     expect(tx.majorEvent.update).not.toHaveBeenCalled();
     expect(typesenseSearch.deleteMajorEvent).not.toHaveBeenCalled();

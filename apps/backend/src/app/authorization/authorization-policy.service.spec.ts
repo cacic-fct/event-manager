@@ -1,10 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { CertificateScope, EventManagerPermissionGrantScope } from '@prisma/client';
-import {
-  EVENT_MANAGER_PERMISSION_CATALOG,
-  EventManagerKeycloakRole,
-  Permission,
-} from '@cacic-fct/shared-permissions';
+import { EVENT_MANAGER_PERMISSION_CATALOG, EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from './authorization-policy.service';
 
@@ -312,11 +308,11 @@ describe('AuthorizationPolicyService', () => {
     );
 
     await expect(
-      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [
-        Permission.Subscription.Update,
-        Permission.Event.Read,
-        Permission.MajorEvent.Read,
-      ], context),
+      service.assertPermissions(
+        user([EventManagerKeycloakRole.Access]),
+        [Permission.Subscription.Update, Permission.Event.Read, Permission.MajorEvent.Read],
+        context,
+      ),
     ).resolves.toBeUndefined();
     expect(context.subscriptionId).toBe('subscription-1');
   });
@@ -571,9 +567,11 @@ describe('AuthorizationPolicyService', () => {
       shouldCollectAttendance: true,
     });
 
-    await expect(service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
-      enforceCollectionWindow: true,
-    })).resolves.toBeUndefined();
+    await expect(
+      service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
+        enforceCollectionWindow: true,
+      }),
+    ).resolves.toBeUndefined();
   });
 
   it('rejects attendance collection for unpublished or closed collection windows', async () => {
@@ -630,10 +628,12 @@ describe('AuthorizationPolicyService', () => {
       }),
     ]);
 
-    await expect(service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
-      enforceCollectionWindow: true,
-      user: user([EventManagerKeycloakRole.Access]),
-    })).resolves.toBeUndefined();
+    await expect(
+      service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
+        enforceCollectionWindow: true,
+        user: user([EventManagerKeycloakRole.Access]),
+      }),
+    ).resolves.toBeUndefined();
   });
 
   it('allows super-admins to collect without an explicit collector row or DB grant', async () => {
@@ -646,10 +646,12 @@ describe('AuthorizationPolicyService', () => {
       shouldCollectAttendance: true,
     });
 
-    await expect(service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
-      enforceCollectionWindow: true,
-      user: user([EventManagerKeycloakRole.SuperAdmin]),
-    })).resolves.toBeUndefined();
+    await expect(
+      service.assertAttendanceCollectorForEvent('event-1', 'person-1', {
+        enforceCollectionWindow: true,
+        user: user([EventManagerKeycloakRole.SuperAdmin]),
+      }),
+    ).resolves.toBeUndefined();
     expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
   });
 

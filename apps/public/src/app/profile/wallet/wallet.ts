@@ -16,7 +16,7 @@ import { formatCPF, formatUnespRole, isValidCPF } from '@cacic-fct/shared-utils'
 
 import { PrintDialog } from './print-dialog';
 import { WalletTotpDialog } from './totp-dialog';
-import { WalletBarcodeComponent } from './wallet-barcode.component';
+import { WalletBarcodeComponent } from './barcode';
 import { NetworkStatusService } from '../../shared/network-status.service';
 import { OfflineUserDataService } from '../../shared/offline-user-data.service';
 

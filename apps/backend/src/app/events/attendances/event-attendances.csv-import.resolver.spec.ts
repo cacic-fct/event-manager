@@ -40,7 +40,11 @@ describe('EventAttendanceCsvImportResolver', () => {
       inferredMatchType: AttendanceImportMatchType.EMAIL,
       ambiguousValues: [],
     });
-    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(['event-1'], ['person-1'], expect.any(Object));
+    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(
+      ['event-1'],
+      ['person-1'],
+      expect.any(Object),
+    );
 
     await expect(
       resolver.importEventAttendancesFromCsv(
@@ -92,7 +96,11 @@ describe('EventAttendanceCsvImportResolver', () => {
         select: expect.objectContaining({ phone: true }),
       }),
     );
-    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(['event-1'], ['person-1'], expect.any(Object));
+    expect(attendanceCategories.refreshForEventPersons).toHaveBeenCalledWith(
+      ['event-1'],
+      ['person-1'],
+      expect.any(Object),
+    );
   });
 
   it('returns ambiguous inferred document-like values when CPF and phone aliases match different people', async () => {

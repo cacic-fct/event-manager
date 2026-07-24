@@ -4,7 +4,7 @@ export const routes: Route[] = [
   {
     path: 'attendances',
     title: 'Participações',
-    loadChildren: () => import('./attendances/attendances.routes').then((m) => m.routes),
+    loadChildren: () => import('./attendance/attendance.routes').then((m) => m.routes),
   },
   {
     path: 'wallet',

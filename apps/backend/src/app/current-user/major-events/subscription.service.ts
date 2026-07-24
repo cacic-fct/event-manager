@@ -3,7 +3,12 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { CertificateScope, Prisma, SubscriptionStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MAJOR_EVENT_BASE_SELECT, EventRecord } from '../selects';
-import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE, PublicEvent } from '../../public-events/models';
+import {
+  PUBLIC_EVENT_SELECT,
+  PUBLIC_EVENT_WHERE,
+  PUBLIC_MAJOR_EVENT_WHERE,
+  PublicEvent,
+} from '../../public-events/models';
 import { CurrentUserMajorEventFeedItem } from '../models';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
@@ -745,7 +750,9 @@ export class CurrentUserMajorEventSubscriptionService {
     return 'uncategorized';
   }
 
-  private groupRankedEventsByPreferenceItem(events: RankedEventLike[]): Array<{ key: string; events: RankedEventLike[] }> {
+  private groupRankedEventsByPreferenceItem(
+    events: RankedEventLike[],
+  ): Array<{ key: string; events: RankedEventLike[] }> {
     const groups = new Map<string, RankedEventLike[]>();
     for (const event of events) {
       const key = event.eventGroupId ?? event.id;

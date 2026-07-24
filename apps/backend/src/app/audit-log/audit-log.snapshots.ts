@@ -88,7 +88,9 @@ export function isPlainAuditRecord(value: unknown): value is Record<string, unkn
   return Boolean(value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date));
 }
 
-export function toNullableAuditJsonInput(value: Record<string, unknown>): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+export function toNullableAuditJsonInput(
+  value: Record<string, unknown>,
+): Prisma.InputJsonValue | typeof Prisma.JsonNull {
   if (Object.keys(value).length === 0) {
     return Prisma.JsonNull;
   }

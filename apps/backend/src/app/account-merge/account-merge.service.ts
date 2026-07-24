@@ -5,13 +5,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import {
-  EventFormResponseMode,
-  EventFormTargetType,
-  ExternalAccountMergeResult,
-  People,
-  Prisma,
-} from '@prisma/client';
+import { EventFormResponseMode, EventFormTargetType, ExternalAccountMergeResult, People, Prisma } from '@prisma/client';
 import { differenceInDays, isValid, parseISO } from 'date-fns';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';

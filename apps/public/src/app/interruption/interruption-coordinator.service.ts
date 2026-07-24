@@ -65,9 +65,11 @@ export class InterruptionCoordinatorService implements OnDestroy {
     this.started = true;
 
     this.subscriptions.add(
-      this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd)).subscribe(() => {
-        this.requestCheck();
-      }),
+      this.router.events
+        .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+        .subscribe(() => {
+          this.requestCheck();
+        }),
     );
     for (const flow of this.flows) {
       if (flow.changes) {
@@ -118,13 +120,7 @@ export class InterruptionCoordinatorService implements OnDestroy {
     }
 
     const context: InterruptionContext = { currentUrl: this.router.url || '/menu' };
-    return forkJoin(
-      this.flows.map((flow) =>
-        flow.resolve(context).pipe(
-          catchError(() => of(null)),
-        ),
-      ),
-    ).pipe(
+    return forkJoin(this.flows.map((flow) => flow.resolve(context).pipe(catchError(() => of(null))))).pipe(
       map((interruptions) => this.selectNext(interruptions, context)),
     );
   }

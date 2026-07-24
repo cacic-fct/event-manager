@@ -137,9 +137,8 @@ describe('LgpdService data export', () => {
         ],
       }),
     );
-    const exportedOfflineSubmissions = (
-      result.attendances as { offlineSubmissions: Record<string, unknown>[] }
-    ).offlineSubmissions;
+    const exportedOfflineSubmissions = (result.attendances as { offlineSubmissions: Record<string, unknown>[] })
+      .offlineSubmissions;
     expect(exportedOfflineSubmissions[0]).not.toHaveProperty('event');
     expect(exportedOfflineSubmissions[0]).not.toHaveProperty('person');
     expect(result).not.toHaveProperty('auditHistory');

@@ -63,18 +63,22 @@ describe('public entity fixtures', () => {
       links: [majorEventLink],
     });
 
-    expect(eventLink).toEqual(expect.objectContaining({
-      formId: 'form-event',
-      eventId: 'event-test',
-      majorEventId: null,
-      target: expect.objectContaining({ type: 'EVENT', id: 'event-test' }),
-    }));
-    expect(majorEventLink).toEqual(expect.objectContaining({
-      formId: 'form-major',
-      eventId: null,
-      majorEventId: 'major-test',
-      target: expect.objectContaining({ type: 'MAJOR_EVENT', id: 'major-test' }),
-    }));
+    expect(eventLink).toEqual(
+      expect.objectContaining({
+        formId: 'form-event',
+        eventId: 'event-test',
+        majorEventId: null,
+        target: expect.objectContaining({ type: 'EVENT', id: 'event-test' }),
+      }),
+    );
+    expect(majorEventLink).toEqual(
+      expect.objectContaining({
+        formId: 'form-major',
+        eventId: null,
+        majorEventId: 'major-test',
+        target: expect.objectContaining({ type: 'MAJOR_EVENT', id: 'major-test' }),
+      }),
+    );
     expect(form.links).toEqual([majorEventLink]);
   });
 
@@ -90,11 +94,13 @@ describe('public entity fixtures', () => {
     expect(majorEvents).toHaveLength(8);
     expect(majorEvents.every((majorEvent) => majorEvent.isPaymentRequired)).toBe(true);
     expect(events).toHaveLength(8);
-    expect(events[0]).toEqual(expect.objectContaining({
-      allowSubscription: false,
-      majorEventId: expect.any(String),
-      eventGroupId: expect.any(String),
-    }));
+    expect(events[0]).toEqual(
+      expect.objectContaining({
+        allowSubscription: false,
+        majorEventId: expect.any(String),
+        eventGroupId: expect.any(String),
+      }),
+    );
     expect(events[0]?.startDate).not.toBe(publicFixtureDate);
   });
 });

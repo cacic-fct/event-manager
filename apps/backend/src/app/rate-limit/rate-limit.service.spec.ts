@@ -351,9 +351,7 @@ describe('RateLimitService', () => {
       resourceParts: ['event-1'],
     });
 
-    const expectedHash = createHash('sha256')
-      .update(`${policy.name}|user:user-1|event-1`)
-      .digest('hex');
+    const expectedHash = createHash('sha256').update(`${policy.name}|user:user-1|event-1`).digest('hex');
     expect(redis.eval).toHaveBeenCalledWith(
       expect.any(String),
       1,
@@ -384,9 +382,7 @@ describe('RateLimitService', () => {
       resourceParts: ['event-1'],
     });
 
-    const expectedHash = createHash('sha256')
-      .update(`${policy.name}|email:user@example.com|event-1`)
-      .digest('hex');
+    const expectedHash = createHash('sha256').update(`${policy.name}|email:user@example.com|event-1`).digest('hex');
     expect(redis.eval).toHaveBeenCalledWith(
       expect.any(String),
       1,
@@ -415,9 +411,7 @@ describe('RateLimitService', () => {
       resourceParts: ['event-1'],
     });
 
-    const expectedHash = createHash('sha256')
-      .update(`${policy.name}|user:request-user|event-1`)
-      .digest('hex');
+    const expectedHash = createHash('sha256').update(`${policy.name}|user:request-user|event-1`).digest('hex');
     expect(redis.eval).toHaveBeenCalledWith(
       expect.any(String),
       1,
@@ -449,9 +443,7 @@ describe('RateLimitService', () => {
       resourceParts: ['event-1'],
     });
 
-    const expectedHash = createHash('sha256')
-      .update(`${policy.name}|ip:2001:db8::1|event-1`)
-      .digest('hex');
+    const expectedHash = createHash('sha256').update(`${policy.name}|ip:2001:db8::1|event-1`).digest('hex');
     expect(redis.eval).toHaveBeenCalledWith(
       expect.any(String),
       1,

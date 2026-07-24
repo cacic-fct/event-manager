@@ -114,7 +114,13 @@ function buildExampleTemplateData(
     'Observações:',
     'Datas em formato "dia/mês/ano".',
   ];
-  const secondPageEventContent = [sections.minicursos.text, sections.palestras.text, sections.other.text, 'Observações:', 'Datas em formato "dia/mês/ano".']
+  const secondPageEventContent = [
+    sections.minicursos.text,
+    sections.palestras.text,
+    sections.other.text,
+    'Observações:',
+    'Datas em formato "dia/mês/ano".',
+  ]
     .filter((line) => line.trim().length > 0)
     .join('\n\n');
   const certificateTypeLabel = buildCertificateTypeLabel(config);
@@ -154,7 +160,9 @@ function buildExampleTemplateData(
     document: `Documento: ${formattedDocument}`,
     event_name_small: targetName,
     content: contentLines.join('\n'),
-    second_page_content: config.shouldAutofillSecondPage ? secondPageEventContent : (config.secondPageText?.trim() ?? ''),
+    second_page_content: config.shouldAutofillSecondPage
+      ? secondPageEventContent
+      : (config.secondPageText?.trim() ?? ''),
     minicursosSection: sections.minicursos.text,
     palestrasSection: sections.palestras.text,
     otherEventTypesList: sections.other.text,
@@ -312,7 +320,8 @@ export function buildMinicursoLines(events: EventRecord[]): string[] {
 
 function buildSingleEventLines(events: EventRecord[]): string[] {
   return events.map(
-    (event) => `• ${formatDate(event.startDate)} - ${event.name} - Carga horária: ${formatCargaHoraria(event.creditMinutes ?? 0)}`,
+    (event) =>
+      `• ${formatDate(event.startDate)} - ${event.name} - Carga horária: ${formatCargaHoraria(event.creditMinutes ?? 0)}`,
   );
 }
 

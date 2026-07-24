@@ -29,7 +29,10 @@ describe('EventFormsController', () => {
       scope: jest.fn(() => 'event-form-results:scope'),
       replay: jest.fn((_scope: string, _lastEventId: string | undefined, source: Observable<MessageEvent>) => source),
     };
-    const controller = new EventFormsController(forms as unknown as EventFormsService, replay as unknown as SseReplayService);
+    const controller = new EventFormsController(
+      forms as unknown as EventFormsService,
+      replay as unknown as SseReplayService,
+    );
 
     await expect(
       firstValueFrom(
@@ -59,7 +62,10 @@ describe('EventFormsController', () => {
       scope: jest.fn(),
       replay: jest.fn(),
     };
-    const controller = new EventFormsController(forms as unknown as EventFormsService, replay as unknown as SseReplayService);
+    const controller = new EventFormsController(
+      forms as unknown as EventFormsService,
+      replay as unknown as SseReplayService,
+    );
 
     await expect(
       firstValueFrom(

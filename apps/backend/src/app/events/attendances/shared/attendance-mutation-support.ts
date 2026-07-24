@@ -4,15 +4,18 @@ import { getBrazilianPhoneCandidates } from '../../../common/brazilian-phone';
 import { EventAttendancesScannerFeedSupport } from './scanner-feed-support';
 
 export abstract class EventAttendancesMutationSupport extends EventAttendancesScannerFeedSupport {
-  protected async createAttendanceWithMetadata(input: {
-    eventId: string;
-    personId: string;
-    createdByMethod: AttendanceCreationMethod;
-    createdById?: string;
-    committedById?: string;
-    attendedAt?: Date;
-    location?: { latitude: number; longitude: number; accuracyMeters: number };
-  }, afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>) {
+  protected async createAttendanceWithMetadata(
+    input: {
+      eventId: string;
+      personId: string;
+      createdByMethod: AttendanceCreationMethod;
+      createdById?: string;
+      committedById?: string;
+      attendedAt?: Date;
+      location?: { latitude: number; longitude: number; accuracyMeters: number };
+    },
+    afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>,
+  ) {
     const locationData = input.location
       ? {
           collectedLatitude: input.location.latitude,

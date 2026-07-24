@@ -7,7 +7,7 @@ import { DASHBOARD_INCONSISTENCY_FIELDS } from './graphql-query-fragments';
 
 export type PublicationBulkOperation = 'PUBLISH_MISSING_CHILDREN' | 'SCHEDULE_BUNDLE' | 'UNPUBLISH_BUNDLE';
 
-export interface PublicContentNode {
+export interface PublicationNode {
   targetType: PublicationTargetType;
   id: string;
   label: string;
@@ -19,13 +19,13 @@ export interface PublicContentNode {
   publiclyVisible?: boolean | null;
   parentLabel?: string | null;
   childCount: number;
-  children?: PublicContentNode[];
+  children?: PublicationNode[];
 }
 
-export interface PublishContentWorkspace {
+export interface PublicationWorkspace {
   generatedAt: string;
-  tree?: PublicContentNode[];
-  items: PublicContentNode[];
+  tree?: PublicationNode[];
+  items: PublicationNode[];
   totalCount: number;
   skip: number;
   take: number;
@@ -41,7 +41,7 @@ export interface PublicationActionResult {
   affectedMajorEventIds: string[];
 }
 
-export interface PublishContentPreviewResult {
+export interface PublicationPreviewResult {
   url: string;
   directPublicUrl: boolean;
   expiresAt?: string | null;
@@ -62,13 +62,13 @@ export interface PublicationBulkInput {
   scheduledPublishAt?: string | null;
 }
 
-export interface PublishContentPreviewInput {
+export interface PublicationPreviewInput {
   targetType: PublicationTargetType;
   targetId: string;
   previewAt?: string | null;
 }
 
-export interface PublishContentWorkspaceFilters {
+export interface PublicationWorkspaceFilters {
   query?: string | null;
   skip?: number;
   take?: number;
@@ -91,7 +91,7 @@ const PUBLIC_CONTENT_NODE_FIELDS = `
 export class PublicationApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 
-  getWorkspace(filters?: PublishContentWorkspaceFilters) {
+  getWorkspace(filters?: PublicationWorkspaceFilters) {
     const variables: Record<string, unknown> | undefined = filters
       ? {
           query: filters.query,
@@ -103,15 +103,15 @@ export class PublicationApiService {
       : undefined;
 
     return this.graphqlHttp
-      .request<{ publishContentWorkspace: PublishContentWorkspace }>(
-        `query PublishContentWorkspace(
+      .request<{ publicationWorkspace: PublicationWorkspace }>(
+        `query PublicationWorkspace(
           $query: String
           $skip: Int
           $take: Int
           $focusTargetType: PublicationTargetType
           $focusTargetId: String
         ) {
-          publishContentWorkspace(
+          publicationWorkspace(
             query: $query
             skip: $skip
             take: $take
@@ -143,7 +143,7 @@ export class PublicationApiService {
         }`,
         variables,
       )
-      .pipe(map((data) => data.publishContentWorkspace));
+      .pipe(map((data) => data.publicationWorkspace));
   }
 
   setPublicationState(input: PublicationStateInput) {
@@ -178,11 +178,11 @@ export class PublicationApiService {
       .pipe(map((data) => data.runPublicationBulkOperation));
   }
 
-  createPreview(input: PublishContentPreviewInput) {
+  createPreview(input: PublicationPreviewInput) {
     return this.graphqlHttp
-      .request<{ createPublishContentPreview: PublishContentPreviewResult }>(
-        `mutation CreatePublishContentPreview($input: PublishContentPreviewInput!) {
-          createPublishContentPreview(input: $input) {
+      .request<{ createPublicationPreview: PublicationPreviewResult }>(
+        `mutation CreatePublicationPreview($input: PublicationPreviewInput!) {
+          createPublicationPreview(input: $input) {
             url
             directPublicUrl
             expiresAt
@@ -191,6 +191,6 @@ export class PublicationApiService {
         }`,
         { input },
       )
-      .pipe(map((data) => data.createPublishContentPreview));
+      .pipe(map((data) => data.createPublicationPreview));
   }
 }

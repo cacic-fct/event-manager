@@ -38,14 +38,13 @@ export class KeycloakScopeGuard implements CanActivate {
     }
 
     const request = this.getRequest(context);
-    const roles = this.reflector.getAllAndOverride<string[]>(REQUIRED_ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]) ?? [];
-    const permissions = this.reflector.getAllAndOverride<string[]>(REQUIRED_PERMISSIONS_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]) ?? [];
+    const roles =
+      this.reflector.getAllAndOverride<string[]>(REQUIRED_ROLES_KEY, [context.getHandler(), context.getClass()]) ?? [];
+    const permissions =
+      this.reflector.getAllAndOverride<string[]>(REQUIRED_PERMISSIONS_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? [];
 
     const accessToken = this.extractBearerToken(request.headers.authorization);
     if (accessToken) {

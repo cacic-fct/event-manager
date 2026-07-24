@@ -13,20 +13,22 @@ export class PlatformStatsApiService {
   private readonly http = inject(HttpClient);
 
   getPublicPlatformStats(): Observable<PublicPlatformStatsQuery['publicPlatformStats']> {
-    return this.http.post<GraphqlResponse<PublicPlatformStatsQuery>>('/api/graphql', {
-      query: PUBLIC_PLATFORM_STATS_QUERY,
-    }).pipe(
-      map((response) => {
-        if (response.errors?.length) {
-          throw graphqlError(response.errors);
-        }
+    return this.http
+      .post<GraphqlResponse<PublicPlatformStatsQuery>>('/api/graphql', {
+        query: PUBLIC_PLATFORM_STATS_QUERY,
+      })
+      .pipe(
+        map((response) => {
+          if (response.errors?.length) {
+            throw graphqlError(response.errors);
+          }
 
-        if (!response.data) {
-          throw new Error('Resposta GraphQL sem dados.');
-        }
+          if (!response.data) {
+            throw new Error('Resposta GraphQL sem dados.');
+          }
 
-        return response.data.publicPlatformStats;
-      }),
-    );
+          return response.data.publicPlatformStats;
+        }),
+      );
   }
 }

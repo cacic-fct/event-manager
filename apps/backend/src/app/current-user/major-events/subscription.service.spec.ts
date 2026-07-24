@@ -75,19 +75,15 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
     });
 
     expect(
-      service.resolveSelfServicePayment(
-        majorEventWithPrices([
-          { name: 'Lote unico', value: 3000 },
-        ]),
-        undefined,
-      ),
+      service.resolveSelfServicePayment(majorEventWithPrices([{ name: 'Lote unico', value: 3000 }]), undefined),
     ).toEqual({
       amountPaid: 3000,
       paymentTier: 'Lote unico',
     });
 
-    expect(() => service.resolveSelfServicePayment(majorEventWithPrices([{ name: 'Aluno', value: 2500 }], true), 'VIP'))
-      .not.toThrow();
+    expect(() =>
+      service.resolveSelfServicePayment(majorEventWithPrices([{ name: 'Aluno', value: 2500 }], true), 'VIP'),
+    ).not.toThrow();
     expect(() =>
       service.resolveSelfServicePayment(
         majorEventWithPrices([
@@ -178,19 +174,13 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
       expect(() =>
         service.ensureMajorEventEventLimits(
           { maxCoursesPerAttendee: 1, maxLecturesPerAttendee: 1 } as never,
-          [
-            rankedEvent('course-1', 'MINICURSO', 8, 9),
-            rankedEvent('course-2', 'MINICURSO', 9, 10),
-          ] as never,
+          [rankedEvent('course-1', 'MINICURSO', 8, 9), rankedEvent('course-2', 'MINICURSO', 9, 10)] as never,
         ),
       ).toThrow(BadRequestException);
       expect(() =>
         service.ensureMajorEventEventLimits(
           { maxCoursesPerAttendee: 2, maxLecturesPerAttendee: 1 } as never,
-          [
-            rankedEvent('lecture-1', 'PALESTRA', 8, 9),
-            rankedEvent('lecture-2', 'PALESTRA', 9, 10),
-          ] as never,
+          [rankedEvent('lecture-1', 'PALESTRA', 8, 9), rankedEvent('lecture-2', 'PALESTRA', 9, 10)] as never,
         ),
       ).toThrow(BadRequestException);
 
@@ -234,10 +224,12 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
         ]),
       },
       eventSubscription: {
-        findMany: jest.fn().mockResolvedValue([
-          { event: publicEvent('event-4', 'major-1') },
-          { event: publicEvent('event-without-major', null) },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { event: publicEvent('event-4', 'major-1') },
+            { event: publicEvent('event-without-major', null) },
+          ]),
       },
     };
     service = new CurrentUserMajorEventSubscriptionService(prisma as never, {} as never);
@@ -393,10 +385,7 @@ function publicEvent(id: string, majorEventId: string | null) {
   };
 }
 
-function majorEventWithPrices(
-  tiers: Array<{ name: string; value: number }>,
-  isPaymentRequired = true,
-) {
+function majorEventWithPrices(tiers: Array<{ name: string; value: number }>, isPaymentRequired = true) {
   return {
     isPaymentRequired,
     majorEventPrices: [

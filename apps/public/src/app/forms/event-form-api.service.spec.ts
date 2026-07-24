@@ -39,9 +39,7 @@ describe('PublicEventFormApiService', () => {
       .subscribe();
     const source = FakeEventSource.instances[0] as FakeEventSource;
 
-    expect(source.url).toBe(
-      '/api/event-forms/form-1/current-user-results/events?targetType=MAJOR_EVENT',
-    );
+    expect(source.url).toBe('/api/event-forms/form-1/current-user-results/events?targetType=MAJOR_EVENT');
 
     subscription.unsubscribe();
     expect(source.close).toHaveBeenCalledOnce();

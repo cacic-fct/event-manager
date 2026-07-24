@@ -121,8 +121,7 @@ export const EventManagerKeycloakRole = {
   SuperAdmin: 'super-admin',
 } as const;
 
-export type EventManagerKeycloakRole =
-  (typeof EventManagerKeycloakRole)[keyof typeof EventManagerKeycloakRole];
+export type EventManagerKeycloakRole = (typeof EventManagerKeycloakRole)[keyof typeof EventManagerKeycloakRole];
 
 export const EventManagerPermissionGrantScope = {
   Global: 'GLOBAL',

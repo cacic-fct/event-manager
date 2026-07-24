@@ -44,9 +44,7 @@ export function buildAuditLogSubjectWhere(
     ]),
   );
   const emailConditions: Prisma.AuditLogEntryWhereInput[] = dataSubject.emails.flatMap((email) => [
-    ...(includeActorEmail
-      ? [{ actorEmail: { equals: email, mode: Prisma.QueryMode.insensitive } }]
-      : []),
+    ...(includeActorEmail ? [{ actorEmail: { equals: email, mode: Prisma.QueryMode.insensitive } }] : []),
     { before: { path: ['email'], equals: email } },
     { after: { path: ['email'], equals: email } },
     { changes: { path: ['email'], equals: email } },

@@ -106,7 +106,9 @@ export abstract class PersonCsvImportSupport {
       headers,
       rows: dataRecords.map((record, index) => {
         if (record.length !== headers.length) {
-          throw new BadRequestException(`CSV row ${index + 2} has ${record.length} columns; expected ${headers.length}.`);
+          throw new BadRequestException(
+            `CSV row ${index + 2} has ${record.length} columns; expected ${headers.length}.`,
+          );
         }
 
         return headers.reduce<CsvRow>((row, header, headerIndex) => {
@@ -250,9 +252,11 @@ export abstract class PersonCsvImportSupport {
         }));
       case AttendanceImportMatchType.IDENTITY_DOCUMENT:
         return values.flatMap((value) => {
-          const filters: Prisma.PeopleWhereInput[] = this.identityDocumentLookupValues(value).map((identityDocument) => ({
-            identityDocument,
-          }));
+          const filters: Prisma.PeopleWhereInput[] = this.identityDocumentLookupValues(value).map(
+            (identityDocument) => ({
+              identityDocument,
+            }),
+          );
           const phoneCandidates = getBrazilianPhoneCandidates(value);
           if (phoneCandidates.length > 0) {
             filters.push({ phone: { in: phoneCandidates } });

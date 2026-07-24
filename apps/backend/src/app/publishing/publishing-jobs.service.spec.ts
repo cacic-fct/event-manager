@@ -172,7 +172,7 @@ describe('PublicationJobsService', () => {
     expect(loggerError).toHaveBeenCalledWith('Failed to publish scheduled EVENT event-2.', failure.stack);
     expect(transitions.mergeSync).toHaveBeenCalledWith([eventSync, majorEventSync]);
     expect(searchSync.syncSearch).toHaveBeenCalledWith(mergedSync);
-    expect(prisma.publishContentPreview.deleteMany).toHaveBeenCalledWith({
+    expect(prisma.publicationPreview.deleteMany).toHaveBeenCalledWith({
       where: { trimAfter: { lte: now } },
     });
   });
@@ -209,7 +209,7 @@ function createService() {
       findFirst: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
     },
-    publishContentPreview: {
+    publicationPreview: {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
   };

@@ -249,7 +249,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     });
     this.majorEventSubscriptions.ensureEventGroupsAreFullySelected(selectedEventIdSet, allGroupedEvents);
 
-    const missingAutoSubscribeEventIds = requiredAutoSubscribeEventIds.filter((eventId) => !selectedEventIdSet.has(eventId));
+    const missingAutoSubscribeEventIds = requiredAutoSubscribeEventIds.filter(
+      (eventId) => !selectedEventIdSet.has(eventId),
+    );
     if (missingAutoSubscribeEventIds.length > 0) {
       throw new BadRequestException(
         `Auto-subscribe events must be selected: ${missingAutoSubscribeEventIds.join(', ')}.`,
@@ -403,7 +405,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           data: selectionEventIdsToCreate.map((eventId) => ({
             subscriptionId: activeMajorEventSubscription.id,
             eventId,
-            preferenceOrder: isRankedSubscription ? this.getPreferenceOrder(eventId, selectedEventIds, selectedEventsById) : null,
+            preferenceOrder: isRankedSubscription
+              ? this.getPreferenceOrder(eventId, selectedEventIds, selectedEventsById)
+              : null,
           })),
         });
       }
@@ -682,7 +686,11 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     };
   }
 
-  private getPreferenceOrder(eventId: string, selectedEventIds: string[], selectedEventsById: Map<string, EventRecord>): number {
+  private getPreferenceOrder(
+    eventId: string,
+    selectedEventIds: string[],
+    selectedEventsById: Map<string, EventRecord>,
+  ): number {
     const event = selectedEventsById.get(eventId);
     if (!event?.eventGroupId) {
       return selectedEventIds.indexOf(eventId);
@@ -727,7 +735,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         startDate: event.startDate,
         endDate: event.endDate,
         slots: event.slots,
-        slotsAvailable: event.slots == null ? null : Math.max(event.slots - (activeCountByEventId.get(event.id) ?? 0), 0),
+        slotsAvailable:
+          event.slots == null ? null : Math.max(event.slots - (activeCountByEventId.get(event.id) ?? 0), 0),
         autoSubscribe: event.autoSubscribe,
       }));
 

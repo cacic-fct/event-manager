@@ -341,9 +341,7 @@ export class PlacePresetsResolver {
       ...('name' in input && input.name != null ? { name: input.name.trim() } : {}),
       ...('latitude' in input ? { latitude: input.latitude ?? null } : {}),
       ...('longitude' in input ? { longitude: input.longitude ?? null } : {}),
-      ...('locationDescription' in input
-        ? { locationDescription: input.locationDescription?.trim() || null }
-        : {}),
+      ...('locationDescription' in input ? { locationDescription: input.locationDescription?.trim() || null } : {}),
     };
   }
 

@@ -182,11 +182,9 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     );
 
     await expect(
-      resolver.subscribeCurrentUserStandaloneEvent(
-        'event-1',
-        formResponses,
-        { req: { user: { sub: 'user-1' } } } as never,
-      ),
+      resolver.subscribeCurrentUserStandaloneEvent('event-1', formResponses, {
+        req: { user: { sub: 'user-1' } },
+      } as never),
     ).resolves.toEqual({ id: 'event-1' });
 
     expect(eventSubscriptions.subscribeCurrentUserEvent).toHaveBeenCalledWith(
@@ -309,17 +307,13 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     });
 
     expect(frozen.assertEventMutable).toHaveBeenCalledWith('event-1', { sub: 'user-1' }, 'delete');
-    expect(eventSubscriptions.unsubscribeCurrentUserEvent).toHaveBeenCalledWith(
-      'person-1',
-      'event-1',
-      { sub: 'user-1' },
-    );
+    expect(eventSubscriptions.unsubscribeCurrentUserEvent).toHaveBeenCalledWith('person-1', 'event-1', {
+      sub: 'user-1',
+    });
     expect(frozen.assertEventGroupMutable).toHaveBeenCalledWith('group-1', { sub: 'user-1' }, 'edit');
-    expect(eventSubscriptions.subscribeCurrentUserEventGroup).toHaveBeenCalledWith(
-      'person-1',
-      'group-1',
-      { sub: 'user-1' },
-    );
+    expect(eventSubscriptions.subscribeCurrentUserEventGroup).toHaveBeenCalledWith('person-1', 'group-1', {
+      sub: 'user-1',
+    });
   });
 
   it('throws for missing major events and filters subscribable events when requested', async () => {

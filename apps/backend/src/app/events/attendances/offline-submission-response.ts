@@ -1,7 +1,4 @@
-import {
-  OfflineEventAttendanceSubmission,
-  OfflineEventAttendanceSubmissionStatus,
-} from '@cacic-fct/shared-data-types';
+import { OfflineEventAttendanceSubmission, OfflineEventAttendanceSubmissionStatus } from '@cacic-fct/shared-data-types';
 import { classifyOfflineAttendanceMessage } from './offline-attendance-resolution';
 
 export type OfflineSubmissionResponseSource = {
@@ -38,17 +35,11 @@ export type OfflineSubmissionActor = {
   name: string | null;
 };
 
-export function offlineSubmissionActorIds(
-  submissions: readonly OfflineSubmissionResponseSource[],
-): string[] {
+export function offlineSubmissionActorIds(submissions: readonly OfflineSubmissionResponseSource[]): string[] {
   return [
     ...new Set(
       submissions
-        .flatMap((submission) => [
-          submission.submittedById,
-          submission.committedById,
-          submission.rejectedById,
-        ])
+        .flatMap((submission) => [submission.submittedById, submission.committedById, submission.rejectedById])
         .filter((id): id is string => Boolean(id)),
     ),
   ];

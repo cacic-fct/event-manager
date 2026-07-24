@@ -1,0 +1,59 @@
+<section class="developer" aria-labelledby="developer-title">
+  <div class="developer-container">
+    <div class="developer-content">
+      <div class="developer-copy">
+        <mat-icon class="developer-mark" aria-hidden="true">code</mat-icon>
+        <h2 id="developer-title" class="developer-title">Software livre.</h2>
+        <p class="developer-description">
+          O CACiC Eventos é desenvolvido abertamente. Explore, proponha melhorias ou crie integrações usando a API
+          pública.
+        </p>
+        <div class="developer-actions">
+          <a
+            class="developer-action"
+            href="https://docs.eventos.cacic.com.br"
+            matButton="outlined"
+            target="_blank"
+            rel="noopener">
+            <mat-icon>menu_book</mat-icon>
+            Documentação
+          </a>
+          <a
+            class="developer-action"
+            href="https://github.com/cacic-fct/event-manager"
+            matButton="outlined"
+            target="_blank"
+            rel="noopener">
+            <mat-icon>open_in_new</mat-icon>
+            Repositório
+          </a>
+        </div>
+      </div>
+
+      <div class="developer-api-example">
+        <p class="developer-api-label">
+          <mat-icon class="developer-api-label-icon" aria-hidden="true">api</mat-icon>
+          Exemplo de consulta à API pública
+        </p>
+        <div class="developer-api-query">
+          <p class="developer-api-language">GraphQL</p>
+          <pre class="developer-api-code"><code>{{ publicApiQuery }}</code></pre>
+        </div>
+        <div class="developer-api-curl">
+          <div class="developer-api-curl-heading">
+            <p class="developer-api-language">curl</p>
+            <button
+              class="developer-api-copy-button"
+              type="button"
+              matIconButton
+              [attr.aria-label]="curlCopied() ? 'Exemplo em curl copiado' : 'Copiar exemplo em curl'"
+              (click)="copyPublicApiCurl()">
+              <mat-icon aria-hidden="true">{{ curlCopied() ? 'check' : 'content_copy' }}</mat-icon>
+            </button>
+          </div>
+          <pre class="developer-api-code"><code>{{ publicApiCurl }}</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

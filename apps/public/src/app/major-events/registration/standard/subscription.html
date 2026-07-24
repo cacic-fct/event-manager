@@ -1,0 +1,109 @@
+@if (childRouteActive()) {
+<router-outlet />
+} @else {
+<mat-toolbar>
+  <button matIconButton type="button" routerLink="/menu" aria-label="Voltar">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Inscrição</span>
+</mat-toolbar>
+
+<main class="subscription-page">
+  @let state = pageState(); @if (state.status === 'loading') {
+  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+    <p>Carregando inscrição...</p>
+  </section>
+  } @else if (state.status === 'error') {
+  <section class="empty-section" aria-live="polite">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ state.message }}</p>
+  </section>
+  } @else { @let majorEvent = state.data.majorEvent;
+
+  <header class="page-header">
+    <div class="emoji-frame">
+      <img class="twemoji" [src]="emoji.getTwemojiUrl(majorEvent.emoji)" [alt]="majorEvent.emoji" />
+    </div>
+    <div class="header-copy">
+      <p class="eyebrow">Grande evento</p>
+      <h1>{{ majorEvent.name }}</h1>
+      <p>{{ dateLine() }}</p>
+    </div>
+  </header>
+
+  <mat-chip-set aria-label="Resumo da inscrição">
+    @if (majorEvent.maxCoursesPerAttendee !== null && majorEvent.maxCoursesPerAttendee !== undefined) {
+    <mat-chip> {{ courseCount() }} / {{ majorEvent.maxCoursesPerAttendee }} minicursos </mat-chip>
+    } @if (majorEvent.maxLecturesPerAttendee !== null && majorEvent.maxLecturesPerAttendee !== undefined) {
+    <mat-chip> {{ lectureCount() }} / {{ majorEvent.maxLecturesPerAttendee }} palestras </mat-chip>
+    } @if (majorEvent.isPaymentRequired) {
+    <mat-chip>
+      <mat-icon matChipAvatar>payments</mat-icon>
+      Exige pagamento
+    </mat-chip>
+    } @if (currentUserSubscription(); as subscription) {
+    <mat-chip>
+      <mat-icon matChipAvatar>check</mat-icon>
+      {{ statusLabel(subscription.subscriptionStatus) }}
+    </mat-chip>
+    }
+  </mat-chip-set>
+
+  @if (majorEvent.description) {
+  <p class="description">{{ majorEvent.description }}</p>
+  }
+
+  <app-subscription-event-list
+    [events]="sortedEvents()"
+    [summariesByEventId]="summariesByEventId()"
+    [selectedEventIds]="effectiveSelectedEventIds()"
+    [autoSelectedEventIds]="autoSelectedEventIds()"
+    [disabledReasons]="disabledReasons()"
+    (toggleEvent)="toggleEvent($event)"
+    (openInfo)="openInfo($event)" />
+
+  @if (majorEvent.isPaymentRequired && priceTiers().length > 1) {
+  <section class="price-section">
+    <h2>Preço</h2>
+    <mat-radio-group
+      class="price-options"
+      [value]="selectedPriceTierName()"
+      aria-label="Selecionar preço"
+      (change)="selectPriceTier($event.value)">
+      @for (tier of priceTiers(); track tier.id) {
+      <mat-radio-button [value]="tier.name">
+        <span>{{ tier.name }}</span>
+        <strong>{{ tier.value / 100 | currency: 'BRL' }}</strong>
+      </mat-radio-button>
+      }
+    </mat-radio-group>
+  </section>
+  } @else if (majorEvent.isPaymentRequired && priceTiers().length === 1) {
+  <section class="price-section">
+    <h2>Preço</h2>
+    <p>{{ priceTiers()[0].name }} · {{ priceTiers()[0].value / 100 | currency: 'BRL' }}</p>
+  </section>
+  } @if (subscriptionCooldownSeconds() > 0) {
+  <p class="rate-limit-message">Aguarde {{ subscriptionCooldownSeconds() }}s para alterar a inscrição novamente.</p>
+  }
+
+  <button
+    mat-fab
+    extended
+    type="button"
+    class="subscribe-fab"
+    [disabled]="
+      isSubmitting() ||
+      selectedEvents().length === 0 ||
+      currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' ||
+      subscriptionCooldownSeconds() > 0
+    "
+    (click)="submit()">
+    <mat-icon>{{ submitButtonIcon() }}</mat-icon>
+    {{ submitButtonLabel() }}
+  </button>
+  }
+</main>
+}

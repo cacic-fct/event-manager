@@ -92,9 +92,9 @@ describe('CertificateApiService', () => {
   });
 
   it('maps target, folder, template, config, and certificate queries from response fields', async () => {
-    await expect(firstValueFrom(service.listCertificateIssuableEvents({ query: 'aula', skip: 1, take: 2 }))).resolves.toEqual([
-      createAdminEvent({ id: 'event-1' }),
-    ]);
+    await expect(
+      firstValueFrom(service.listCertificateIssuableEvents({ query: 'aula', skip: 1, take: 2 })),
+    ).resolves.toEqual([createAdminEvent({ id: 'event-1' })]);
     await expect(firstValueFrom(service.listCertificateIssuableEventGroups())).resolves.toEqual([
       createAdminEventGroup({ id: 'group-1' }),
     ]);
@@ -110,12 +110,12 @@ describe('CertificateApiService', () => {
     await expect(firstValueFrom(service.listCertificateTemplates({ includeInactive: true }))).resolves.toEqual([
       createAdminCertificateTemplate(),
     ]);
-    await expect(firstValueFrom(service.listCertificateConfigs('OTHER', 'folder-1', { includeInactive: false }))).resolves.toEqual([
-      createAdminCertificateConfig({ id: 'config-1' }),
-    ]);
-    await expect(firstValueFrom(service.listCertificates('OTHER', 'folder-1', { configId: 'config-1' }))).resolves.toEqual([
-      certificate(),
-    ]);
+    await expect(
+      firstValueFrom(service.listCertificateConfigs('OTHER', 'folder-1', { includeInactive: false })),
+    ).resolves.toEqual([createAdminCertificateConfig({ id: 'config-1' })]);
+    await expect(
+      firstValueFrom(service.listCertificates('OTHER', 'folder-1', { configId: 'config-1' })),
+    ).resolves.toEqual([certificate()]);
 
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(1, expect.stringContaining('ListCertificateIssuableEvents'), {
       query: 'aula',

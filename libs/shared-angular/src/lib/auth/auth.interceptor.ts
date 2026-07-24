@@ -38,9 +38,7 @@ function shouldSkipRefresh(req: HttpRequest<unknown>): boolean {
     return true;
   }
 
-  return (
-    url.pathname === '/api/auth/refresh' || url.pathname === '/api/auth/me' || url.pathname === '/api/auth/logout'
-  );
+  return url.pathname === '/api/auth/refresh' || url.pathname === '/api/auth/me' || url.pathname === '/api/auth/logout';
 }
 
 function getRequestUrl(url: string): URL | null {

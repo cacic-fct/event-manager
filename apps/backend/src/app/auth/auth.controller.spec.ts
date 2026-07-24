@@ -124,10 +124,13 @@ describe('AuthController callback redirect validation', () => {
     const response = responseFixture();
 
     await controller.redirectToLogin(
-      requestFixture({
-        'x-forwarded-proto': 'https',
-        'x-forwarded-host': 'events.example.com',
-      }, true),
+      requestFixture(
+        {
+          'x-forwarded-proto': 'https',
+          'x-forwarded-host': 'events.example.com',
+        },
+        true,
+      ),
       response as never,
       undefined,
       '/admin/events',
@@ -226,10 +229,13 @@ describe('AuthController callback redirect validation', () => {
     const response = responseFixture();
 
     await controller.callback(
-      requestFixture({
-        cookie: `${AUTH_STATE_COOKIE_NAME}=state-1`,
-        'x-forwarded-proto': 'https',
-      }, true),
+      requestFixture(
+        {
+          cookie: `${AUTH_STATE_COOKIE_NAME}=state-1`,
+          'x-forwarded-proto': 'https',
+        },
+        true,
+      ),
       response as never,
       'code-1',
       undefined,
@@ -286,10 +292,13 @@ describe('AuthController callback redirect validation', () => {
 
     await expect(
       controller.refresh(
-        requestFixture({
-          cookie: `${AUTH_SESSION_COOKIE_NAME}=session%20id`,
-          'x-forwarded-proto': 'https',
-        }, true),
+        requestFixture(
+          {
+            cookie: `${AUTH_SESSION_COOKIE_NAME}=session%20id`,
+            'x-forwarded-proto': 'https',
+          },
+          true,
+        ),
         response as never,
       ),
     ).resolves.toEqual({
@@ -315,9 +324,12 @@ describe('AuthController callback redirect validation', () => {
 
     await expect(
       controller.passwordLogin(
-        requestFixture({
-          'x-forwarded-proto': 'https',
-        }, true),
+        requestFixture(
+          {
+            'x-forwarded-proto': 'https',
+          },
+          true,
+        ),
         response as never,
         {
           email: ' ALUNO@UNESP.BR ',
@@ -386,10 +398,13 @@ describe('AuthController callback redirect validation', () => {
     const response = responseFixture();
 
     await controller.logout(
-      requestFixture({
-        cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
-        'x-forwarded-proto': 'https',
-      }, true),
+      requestFixture(
+        {
+          cookie: `${AUTH_SESSION_COOKIE_NAME}=session-id`,
+          'x-forwarded-proto': 'https',
+        },
+        true,
+      ),
       response as never,
       {
         postLogoutRedirectUri: 'https://events.example.com/app',

@@ -47,9 +47,7 @@ export class CloudflareTurnstileService {
     }
 
     this.loadPromise = new Promise<TurnstileApi>((resolve, reject) => {
-      const existingScript = this.document.querySelector<HTMLScriptElement>(
-        `script[src="${TURNSTILE_SCRIPT_URL}"]`,
-      );
+      const existingScript = this.document.querySelector<HTMLScriptElement>(`script[src="${TURNSTILE_SCRIPT_URL}"]`);
       const script = existingScript ?? this.document.createElement('script');
 
       const resolveWhenReady = () => {
@@ -67,11 +65,7 @@ export class CloudflareTurnstileService {
       }
 
       script.addEventListener('load', resolveWhenReady, { once: true });
-      script.addEventListener(
-        'error',
-        () => reject(new Error('Failed to load the Turnstile script.')),
-        { once: true },
-      );
+      script.addEventListener('error', () => reject(new Error('Failed to load the Turnstile script.')), { once: true });
 
       if (!existingScript) {
         script.src = trustedExternalScriptUrl(TURNSTILE_SCRIPT_URL);

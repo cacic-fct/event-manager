@@ -34,8 +34,6 @@ describe('CSP nonce helpers', () => {
     expect(response.headers.get('Cloudflare-CDN-Cache-Control')).toBe('no-store, no-transform');
     expect(response.headers.get('Content-Length')).toBeNull();
     expect(response.headers.get('X-Request-Id')).toBe('request-id');
-    await expect(response.text()).resolves.toMatch(
-      /^<script data-transformed nonce="[A-Za-z0-9+/]{22}=="><\/script>$/,
-    );
+    await expect(response.text()).resolves.toMatch(/^<script data-transformed nonce="[A-Za-z0-9+/]{22}=="><\/script>$/);
   });
 });

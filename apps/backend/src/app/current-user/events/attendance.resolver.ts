@@ -443,7 +443,10 @@ export class CurrentUserEventAttendanceResolver {
     const rows = [...peopleById.values()].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
     const csv = [
       ['Nome', 'CPF'],
-      ...rows.map((personItem) => [personItem.name, this.formatSubscriberIdentityDocument(personItem.identityDocument)]),
+      ...rows.map((personItem) => [
+        personItem.name,
+        this.formatSubscriberIdentityDocument(personItem.identityDocument),
+      ]),
     ]
       .map((row) => row.map((value) => this.escapeCsvValue(value)).join(','))
       .join('\n');

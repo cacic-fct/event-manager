@@ -1,16 +1,7 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EventFormAudience as ContractAudience, EventFormInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  EventFormResponseMode,
-  EventFormTargetType,
-  Prisma,
-  PublicationState,
-} from '@prisma/client';
+import { EventFormResponseMode, EventFormTargetType, Prisma, PublicationState } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -21,16 +12,9 @@ import {
   NormalizedTarget,
   TargetInput,
 } from './event-form-records';
-import {
-  isLinkAvailable,
-  normalizeTarget,
-  toDbAudience,
-} from './event-form-targets';
+import { isLinkAvailable, normalizeTarget, toDbAudience } from './event-form-targets';
 
-export async function requireEventForm(
-  prisma: PrismaService,
-  formId: string,
-): Promise<EventFormRecord> {
+export async function requireEventForm(prisma: PrismaService, formId: string): Promise<EventFormRecord> {
   const form = await prisma.eventForm.findFirst({
     where: {
       id: formId,
@@ -68,10 +52,7 @@ export async function updateDraftForSourceForm(
   });
 }
 
-export async function requirePublishedEventForm(
-  prisma: PrismaService,
-  formId: string,
-): Promise<EventFormRecord> {
+export async function requirePublishedEventForm(prisma: PrismaService, formId: string): Promise<EventFormRecord> {
   const form = await requireEventForm(prisma, formId);
   if (form.publicationState !== PublicationState.PUBLISHED) {
     throw new NotFoundException(`Event form ${formId} is not published.`);
@@ -153,7 +134,9 @@ export async function replaceEventFormLinks(
     const target = normalizeTarget(link);
     const previous = link.id ? previousLinksById.get(link.id) : undefined;
     const requiresPreviousSubscriberNotification =
-      link.insertInSubscriptionFlow === true && link.requiredInSubscriptionFlow === true && link.notifyOnPublish !== false;
+      link.insertInSubscriptionFlow === true &&
+      link.requiredInSubscriptionFlow === true &&
+      link.notifyOnPublish !== false;
     const notificationAudienceChanged =
       !previous ||
       !previous.insertInSubscriptionFlow ||
@@ -284,7 +267,11 @@ export function normalizeOptionalFormText(value: string | null | undefined): str
   return normalized || null;
 }
 
-export function eventFormActorInfo(user: AuthenticatedUser | undefined): { id?: string; name?: string; email?: string } {
+export function eventFormActorInfo(user: AuthenticatedUser | undefined): {
+  id?: string;
+  name?: string;
+  email?: string;
+} {
   return {
     id: user?.sub,
     name: (typeof user?.claims['name'] === 'string' ? user.claims['name'] : undefined) ?? user?.preferredUsername,

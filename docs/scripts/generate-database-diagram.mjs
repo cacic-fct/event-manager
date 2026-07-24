@@ -47,8 +47,7 @@ if (!diagram.startsWith('erDiagram')) {
 }
 
 const pageMarkdown = readFileSync(docsPage, 'utf8');
-const diagramBlockPattern =
-  /\{\/\* DATABASE_DIAGRAM_START \*\/\}[\s\S]*?\{\/\* DATABASE_DIAGRAM_END \*\/\}/;
+const diagramBlockPattern = /\{\/\* DATABASE_DIAGRAM_START \*\/\}[\s\S]*?\{\/\* DATABASE_DIAGRAM_END \*\/\}/;
 
 if (!diagramBlockPattern.test(pageMarkdown)) {
   throw new Error(`Could not find DATABASE_DIAGRAM placeholder block in ${docsPage}`);

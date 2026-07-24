@@ -78,13 +78,7 @@ export class EventFormResponsesService {
         requireSubscriptionFlowLink: true,
       });
       await this.auditLog.record(
-        eventFormResponseAuditRecord(
-          result.form,
-          result.response,
-          result.operation,
-          actor,
-          result.previousResponse,
-        ),
+        eventFormResponseAuditRecord(result.form, result.response, result.operation, actor, result.previousResponse),
         tx,
       );
       submittedFormIds.push(result.formId);

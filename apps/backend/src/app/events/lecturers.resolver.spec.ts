@@ -309,7 +309,9 @@ describe('EventLecturersResolver authorization', () => {
     const user = { sub: 'user-1' };
     prisma.eventLecturer.findUnique.mockResolvedValue({ eventId: 'event-1', personId: 'person-1' });
 
-    await expect(resolver.deleteEventLecturer('event-1', 'person-1', { req: { user: user as never } })).resolves.toEqual({
+    await expect(
+      resolver.deleteEventLecturer('event-1', 'person-1', { req: { user: user as never } }),
+    ).resolves.toEqual({
       deleted: true,
       eventId: 'event-1',
       personId: 'person-1',

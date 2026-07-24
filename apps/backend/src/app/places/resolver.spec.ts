@@ -433,12 +433,14 @@ function createAuditLogMock() {
   };
 }
 
-function createTypesenseMock(overrides: Partial<{
-  isEnabled: jest.Mock;
-  searchPlacePresets: jest.Mock;
-  upsertPlacePreset: jest.Mock;
-  deletePlacePreset: jest.Mock;
-}> = {}) {
+function createTypesenseMock(
+  overrides: Partial<{
+    isEnabled: jest.Mock;
+    searchPlacePresets: jest.Mock;
+    upsertPlacePreset: jest.Mock;
+    deletePlacePreset: jest.Mock;
+  }> = {},
+) {
   return {
     isEnabled: jest.fn().mockReturnValue(true),
     searchPlacePresets: jest.fn().mockResolvedValue({ available: false, ids: [] }),

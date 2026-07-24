@@ -26,7 +26,8 @@ describe('CookieBannerFeatureFlagService', () => {
     TestBed.resetTestingModule();
     vi.resetModules();
     vi.clearAllMocks();
-    CookieBannerFeatureFlagService = (await import('./cookie-banner-feature-flag.service')).CookieBannerFeatureFlagService;
+    CookieBannerFeatureFlagService = (await import('./cookie-banner-feature-flag.service'))
+      .CookieBannerFeatureFlagService;
 
     TestBed.configureTestingModule({
       providers: [{ provide: PLATFORM_ID, useValue: 'browser' }],

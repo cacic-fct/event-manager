@@ -118,13 +118,18 @@ export async function upsertTypesenseDocument<T extends { id: string }>(input: {
   }
 
   try {
-    await input.client.collections<T & Record<string, unknown>>(input.collectionName).documents().upsert(input.document);
+    await input.client
+      .collections<T & Record<string, unknown>>(input.collectionName)
+      .documents()
+      .upsert(input.document);
   } catch (error) {
     input.logger.error(`Failed to upsert Typesense document ${input.document.id} in ${input.collectionName}.`, error);
   }
 }
 
-async function retrieveTypesenseCollectionIfExists(collection: TypesenseCollectionReader): Promise<CollectionSchema | null> {
+async function retrieveTypesenseCollectionIfExists(
+  collection: TypesenseCollectionReader,
+): Promise<CollectionSchema | null> {
   try {
     return await collection.retrieve();
   } catch (error) {
@@ -191,9 +196,12 @@ async function migrateDirectTypesenseCollectionToAlias(
     try {
       await client.aliases().upsert(aliasName, { collection_name: collectionName });
     } catch (error) {
-      await restoreDirectTypesenseCollectionFromBackup(client, aliasName, conflictingCollection, backupCollectionName).catch(
-        () => undefined,
-      );
+      await restoreDirectTypesenseCollectionFromBackup(
+        client,
+        aliasName,
+        conflictingCollection,
+        backupCollectionName,
+      ).catch(() => undefined);
       throw error;
     }
   } finally {
@@ -215,7 +223,10 @@ async function restoreDirectTypesenseCollectionFromBackup(
     return;
   }
 
-  const importResult = await client.collections(collectionName).documents().import(exportedDocuments, { action: 'create' });
+  const importResult = await client
+    .collections(collectionName)
+    .documents()
+    .import(exportedDocuments, { action: 'create' });
   assertTypesenseImportSucceeded(importResult, collectionName);
 }
 

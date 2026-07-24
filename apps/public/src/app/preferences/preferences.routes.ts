@@ -9,7 +9,7 @@ export const routes: Route[] = [
   },
   {
     path: 'calendar',
-    loadComponent: () => import('./calendar-preferences/calendar-preferences').then((m) => m.CalendarPreferences),
+    loadComponent: () => import('./calendar/calendar-preferences').then((m) => m.CalendarPreferences),
     title: 'Calendário',
   },
   {

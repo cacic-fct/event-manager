@@ -23,18 +23,12 @@ export function isPublicFormLinkAvailable(
   return hasPublicFormLinkStarted(link, now) && !isPublicFormLinkClosed(link, now);
 }
 
-export function hasPublicFormLinkStarted(
-  link: Pick<PublicEventFormLink, 'availableFrom'>,
-  now = new Date(),
-): boolean {
+export function hasPublicFormLinkStarted(link: Pick<PublicEventFormLink, 'availableFrom'>, now = new Date()): boolean {
   const availableFrom = toDate(link.availableFrom);
   return !availableFrom || availableFrom.getTime() <= now.getTime();
 }
 
-export function isPublicFormLinkClosed(
-  link: Pick<PublicEventFormLink, 'availableUntil'>,
-  now = new Date(),
-): boolean {
+export function isPublicFormLinkClosed(link: Pick<PublicEventFormLink, 'availableUntil'>, now = new Date()): boolean {
   const availableUntil = toDate(link.availableUntil);
   return Boolean(availableUntil && availableUntil.getTime() <= now.getTime());
 }

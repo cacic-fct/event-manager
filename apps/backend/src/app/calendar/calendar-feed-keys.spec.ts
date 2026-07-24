@@ -30,9 +30,7 @@ describe('calendar feed keys', () => {
   it('blocks feed key rotation inside the cooldown window', () => {
     const now = new Date('2026-06-23T12:00:00.000Z');
 
-    expect(() => assertFeedKeyRotationAllowed(new Date('2026-06-23T11:00:00.000Z'), now)).toThrow(
-      BadRequestException,
-    );
+    expect(() => assertFeedKeyRotationAllowed(new Date('2026-06-23T11:00:00.000Z'), now)).toThrow(BadRequestException);
     expect(() => assertFeedKeyRotationAllowed(new Date('2026-06-22T11:00:00.000Z'), now)).not.toThrow();
     expect(() => assertFeedKeyRotationAllowed(null, now)).not.toThrow();
   });

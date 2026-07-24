@@ -27,7 +27,9 @@ describe('GraphQL metadata decorators', () => {
       const content = readFileSync(file, 'utf8');
       const fieldMatches = [...content.matchAll(/@Field\s*\(\s*(?!\(\s*\)\s*=>)/g)];
 
-      return fieldMatches.map((match) => `${relative(process.cwd(), file)}:${content.slice(0, match.index).split('\n').length}`);
+      return fieldMatches.map(
+        (match) => `${relative(process.cwd(), file)}:${content.slice(0, match.index).split('\n').length}`,
+      );
     });
 
     expect(violations).toEqual([]);
@@ -38,7 +40,9 @@ describe('GraphQL metadata decorators', () => {
       const content = readFileSync(file, 'utf8');
       const argsMatches = [...content.matchAll(/@Args\s*\(\s*(['"`])[^'"`]+\1\s*\)/g)];
 
-      return argsMatches.map((match) => `${relative(process.cwd(), file)}:${content.slice(0, match.index).split('\n').length}`);
+      return argsMatches.map(
+        (match) => `${relative(process.cwd(), file)}:${content.slice(0, match.index).split('\n').length}`,
+      );
     });
 
     expect(violations).toEqual([]);

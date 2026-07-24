@@ -76,7 +76,8 @@ export class PublicationTransitionService {
       sync,
       scheduledState:
         input.operation === PublicationBulkOperation.SCHEDULE_BUNDLE ? PrismaPublicationState.SCHEDULED : null,
-      scheduledPublishAt: input.operation === PublicationBulkOperation.SCHEDULE_BUNDLE ? input.scheduledPublishAt ?? null : null,
+      scheduledPublishAt:
+        input.operation === PublicationBulkOperation.SCHEDULE_BUNDLE ? (input.scheduledPublishAt ?? null) : null,
     };
   }
 
@@ -160,10 +161,7 @@ export class PublicationTransitionService {
     });
   }
 
-  private async scheduleBundle(
-    input: PublicationBulkInput,
-    user: AuthenticatedUser | undefined,
-  ): Promise<TargetSync> {
+  private async scheduleBundle(input: PublicationBulkInput, user: AuthenticatedUser | undefined): Promise<TargetSync> {
     if (!input.scheduledPublishAt) {
       throw new BadRequestException('Escolha a data e hora de publicação.');
     }
@@ -180,10 +178,7 @@ export class PublicationTransitionService {
     });
   }
 
-  private async unpublishBundle(
-    input: PublicationBulkInput,
-    user: AuthenticatedUser | undefined,
-  ): Promise<TargetSync> {
+  private async unpublishBundle(input: PublicationBulkInput, user: AuthenticatedUser | undefined): Promise<TargetSync> {
     const eventIds = await this.targets.resolveChildEventIds(input.targetType, input.targetId, {
       includeTargetEvent: true,
     });
