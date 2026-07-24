@@ -102,6 +102,7 @@ describe('SseReplayService', () => {
 
     const complete = jest.fn();
     createService().replay('scope', undefined, EMPTY).subscribe({ complete });
+    await flushPromises();
     expect(complete).toHaveBeenCalledTimes(1);
 
     const redis = new InMemoryRedisClient();
@@ -162,7 +163,7 @@ describe('SseReplayService', () => {
 
   it('delivers a live event when replay persistence is unavailable', async () => {
     const redis = new InMemoryRedisClient();
-    const lrange = jest.spyOn(redis, 'lrange');
+    const evalSpy = jest.spyOn(redis, 'eval');
     const service = new SseReplayService(redis as never);
     const scope = service.scope('event-form-results', 'form-1');
     const source = new Subject<{ data: object }>();
@@ -174,13 +175,59 @@ describe('SseReplayService', () => {
     });
 
     await flushPromises();
-    lrange.mockRejectedValueOnce(new Error('Redis unavailable'));
+    evalSpy.mockRejectedValueOnce(new Error('Redis unavailable'));
     source.next({ data: { revision: 1 } });
     await flushPromises();
 
     expect(messages).toEqual([{ data: { revision: 1 } }]);
     expect(errors).toEqual([]);
     subscription.unsubscribe();
+  });
+
+  it('delivers the initial replay and buffered events before completing the source', async () => {
+    const redis = new InMemoryRedisClient();
+    const service = new SseReplayService(redis as never);
+    const scope = service.scope('event-form-results', 'form-1');
+    await service.record(scope, { data: { revision: 1 } });
+    const originalLrange = redis.lrange.bind(redis);
+    const initialEvents = await originalLrange(`sse-replay:v1:${scope}:events`, 0, -1);
+    let resolveInitialReplay: ((events: string[]) => void) | undefined;
+    const replayRead = new Promise<string[]>((resolve) => {
+      resolveInitialReplay = resolve;
+    });
+    jest.spyOn(redis, 'lrange').mockImplementationOnce(() => replayRead).mockImplementation(originalLrange);
+    const source = new Subject<{ data: object }>();
+    const received: unknown[] = [];
+    const complete = jest.fn();
+
+    service.replay(scope, undefined, source).subscribe({
+      next: (event) => received.push(event.data),
+      complete,
+    });
+    source.next({ data: { revision: 2 } });
+    source.complete();
+
+    await flushPromises();
+    expect(complete).not.toHaveBeenCalled();
+    resolveInitialReplay?.(initialEvents);
+    await flushPromises();
+
+    expect(received).toEqual([{ revision: 1 }, { revision: 2 }]);
+    expect(complete).toHaveBeenCalledTimes(1);
+  });
+
+  it('atomically deduplicates concurrent records for the same scope', async () => {
+    const redis = new InMemoryRedisClient();
+    const service = new SseReplayService(redis as never);
+    const scope = service.scope('receipt-validation-queue', 'major-1', 'admin-1');
+
+    const [first, second] = await Promise.all([
+      service.record(scope, { data: { pendingCount: 1 } }),
+      service.record(scope, { data: { pendingCount: 1 } }),
+    ]);
+
+    expect(second).toEqual(first);
+    await expect(redis.lrange(`sse-replay:v1:${scope}:events`, 0, -1)).resolves.toHaveLength(1);
   });
 
   it('does not persist heartbeat events', async () => {

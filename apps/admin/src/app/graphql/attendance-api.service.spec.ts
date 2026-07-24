@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceApiService } from './attendance-api.service';
 import { GraphqlHttpService } from './graphql-http.service';
@@ -24,26 +25,3 @@ describe('AttendanceApiService', () => {
     expect(source.close).toHaveBeenCalledOnce();
   });
 });
-
-class FakeEventSource {
-  static instances: FakeEventSource[] = [];
-  onmessage: ((event: MessageEvent<string>) => void) | null = null;
-  onerror: (() => void) | null = null;
-  readonly close = vi.fn();
-
-  constructor(
-    readonly url: string,
-    readonly init?: EventSourceInit,
-  ) {
-    FakeEventSource.instances.push(this);
-  }
-
-  emitMessage(data: object): void {
-    this.onmessage?.({ data: JSON.stringify(data) } as MessageEvent<string>);
-  }
-}
-
-function installFakeEventSource(): void {
-  FakeEventSource.instances = [];
-  vi.stubGlobal('EventSource', FakeEventSource);
-}

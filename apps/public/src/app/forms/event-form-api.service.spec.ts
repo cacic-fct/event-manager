@@ -1,5 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
+import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
 import { firstValueFrom } from 'rxjs';
 import { PublicEventFormApiService } from './event-form-api.service';
 
@@ -33,32 +34,16 @@ describe('PublicEventFormApiService', () => {
     installFakeEventSource();
     TestBed.configureTestingModule({ providers: [provideHttpClient()] });
 
-    TestBed.inject(PublicEventFormApiService)
+    const subscription = TestBed.inject(PublicEventFormApiService)
       .watchCurrentUserResults({ formId: 'form-1', targetType: 'MAJOR_EVENT' })
       .subscribe();
+    const source = FakeEventSource.instances[0] as FakeEventSource;
 
-    expect(FakeEventSource.instances[0]?.url).toBe(
+    expect(source.url).toBe(
       '/api/event-forms/form-1/current-user-results/events?targetType=MAJOR_EVENT',
     );
+
+    subscription.unsubscribe();
+    expect(source.close).toHaveBeenCalledOnce();
   });
 });
-
-class FakeEventSource {
-  static instances: FakeEventSource[] = [];
-  onmessage: ((event: MessageEvent<string>) => void) | null = null;
-  onerror: (() => void) | null = null;
-  readonly close = vi.fn();
-
-  constructor(readonly url: string) {
-    FakeEventSource.instances.push(this);
-  }
-
-  emitMessage(): void {
-    this.onmessage?.({ data: '{}' } as MessageEvent<string>);
-  }
-}
-
-function installFakeEventSource(): void {
-  FakeEventSource.instances = [];
-  vi.stubGlobal('EventSource', FakeEventSource);
-}

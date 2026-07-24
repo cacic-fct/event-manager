@@ -1,4 +1,5 @@
 import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
+import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
 
 describe('decodeTypedSseEvent', () => {
   it.each([false, 0, ''])('preserves falsy payload values', (value) => {
@@ -76,33 +77,3 @@ describe('watchReplayableEventSource', () => {
     expect(unsupported).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ message: 'Indisponível.' }));
   });
 });
-
-class FakeEventSource {
-  static readonly CLOSED = 2;
-  static instances: FakeEventSource[] = [];
-
-  onmessage: ((event: MessageEvent<string>) => void) | null = null;
-  onerror: (() => void) | null = null;
-  readonly close = vi.fn();
-  readyState = 1;
-
-  constructor(
-    readonly url: string,
-    readonly init?: EventSourceInit,
-  ) {
-    FakeEventSource.instances.push(this);
-  }
-
-  emitMessage(data: string): void {
-    this.onmessage?.({ data } as MessageEvent<string>);
-  }
-
-  emitError(): void {
-    this.onerror?.();
-  }
-}
-
-function installFakeEventSource(): void {
-  FakeEventSource.instances = [];
-  vi.stubGlobal('EventSource', FakeEventSource);
-}

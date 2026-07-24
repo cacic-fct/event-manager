@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
+import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
 import { of, Subject } from 'rxjs';
 import { EventApiService } from '../../graphql/event-api.service';
 import { EventFormApiService } from '../../graphql/event-form-api.service';
@@ -400,47 +401,3 @@ describe('WorkspaceFormsService integration', () => {
     expect(service.previousSubscriberCount(service.links()[0])).toBeNull();
   });
 });
-
-class FakeEventSource {
-  static readonly CLOSED = 2;
-  static instances: FakeEventSource[] = [];
-
-  onmessage: ((event: MessageEvent) => void) | null = null;
-  onerror: ((event: Event) => void) | null = null;
-  readonly close = vi.fn();
-  readyState = 1;
-
-  constructor(
-    readonly url: string,
-    readonly init?: EventSourceInit,
-  ) {
-    FakeEventSource.instances.push(this);
-  }
-
-  emitMessage(): void {
-    this.onmessage?.({} as MessageEvent);
-  }
-
-  emitError(): void {
-    this.onerror?.({} as Event);
-  }
-}
-
-function installFakeEventSource(): () => void {
-  const previous = globalThis.EventSource;
-  FakeEventSource.instances = [];
-  Object.defineProperty(globalThis, 'EventSource', {
-    configurable: true,
-    value: FakeEventSource,
-    writable: true,
-  });
-
-  return () => {
-    FakeEventSource.instances = [];
-    Object.defineProperty(globalThis, 'EventSource', {
-      configurable: true,
-      value: previous,
-      writable: true,
-    });
-  };
-}

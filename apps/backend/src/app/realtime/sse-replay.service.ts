@@ -6,6 +6,28 @@ import { Observable } from 'rxjs';
 const REPLAY_TTL_SECONDS = 15 * 60;
 const MAX_REPLAY_EVENTS = 512;
 const GENERATION_DURATION_MS = 6 * 60 * 60 * 1000;
+const SSE_REPLAY_PUBLISH_SCRIPT = `
+-- sse-replay-publish
+local latest = redis.call('LINDEX', KEYS[1], 0)
+if latest then
+  local parsed, previous = pcall(cjson.decode, latest)
+  if parsed and type(previous) == 'table' and previous.fingerprint == ARGV[1] then
+    return latest
+  end
+end
+
+local sequence = redis.call('INCR', KEYS[2])
+local event = cjson.decode(ARGV[2])
+event.id = ARGV[3] .. tostring(sequence)
+event.fingerprint = ARGV[1]
+local stored = cjson.encode(event)
+
+redis.call('LPUSH', KEYS[1], stored)
+redis.call('LTRIM', KEYS[1], 0, tonumber(ARGV[4]) - 1)
+redis.call('EXPIRE', KEYS[1], tonumber(ARGV[5]))
+redis.call('EXPIRE', KEYS[2], tonumber(ARGV[5]))
+return stored
+`;
 
 interface StoredSseEvent {
   id: string;
@@ -32,7 +54,9 @@ export class SseReplayService {
     return new Observable<MessageEvent>((subscriber) => {
       let lastDeliveredId = lastEventId;
       let replayFinished = false;
+      let sourceCompleted = false;
       const buffered: StoredSseEvent[] = [];
+      const pendingPublishes = new Set<Promise<void>>();
 
       const deliver = (event: StoredSseEvent) => {
         if (event.id === lastDeliveredId) {
@@ -43,6 +67,12 @@ export class SseReplayService {
         subscriber.next(this.toMessageEvent(event));
       };
 
+      const completeWhenReady = () => {
+        if (sourceCompleted && replayFinished && pendingPublishes.size === 0) {
+          subscriber.complete();
+        }
+      };
+
       const sourceSubscription = source.subscribe({
         next: (event) => {
           if (this.isHeartbeat(event)) {
@@ -50,7 +80,7 @@ export class SseReplayService {
             return;
           }
 
-          void this.publish(scope, event)
+          const publication = this.publish(scope, event)
             .then((stored) => {
               if (replayFinished) {
                 deliver(stored);
@@ -59,9 +89,17 @@ export class SseReplayService {
               }
             })
             .catch(() => subscriber.next(event));
+          pendingPublishes.add(publication);
+          void publication.finally(() => {
+            pendingPublishes.delete(publication);
+            completeWhenReady();
+          });
         },
         error: (error: unknown) => subscriber.error(error),
-        complete: () => subscriber.complete(),
+        complete: () => {
+          sourceCompleted = true;
+          completeWhenReady();
+        },
       });
 
       void this.readReplay(scope, lastEventId)
@@ -74,6 +112,7 @@ export class SseReplayService {
           for (const event of buffered) {
             deliver(event);
           }
+          completeWhenReady();
         })
         .catch((error: unknown) => subscriber.error(error));
 
@@ -90,31 +129,28 @@ export class SseReplayService {
   private async publish(scope: string, event: MessageEvent): Promise<StoredSseEvent> {
     const fingerprint = this.fingerprint(event);
     const key = this.eventsKey(scope);
-    const [latest] = await this.redis.lrange(key, 0, 0);
-
-    if (latest) {
-      const previous = this.parseStoredEvent(latest);
-      if (previous?.fingerprint === fingerprint) {
-        return previous;
-      }
+    const generation = Math.floor(Date.now() / GENERATION_DURATION_MS).toString(36);
+    const stored = await this.redis.eval(
+      SSE_REPLAY_PUBLISH_SCRIPT,
+      2,
+      key,
+      this.sequenceKey(scope, generation),
+      fingerprint,
+      JSON.stringify({
+        data: event.data,
+        type: event.type,
+        retry: event.retry ?? 3_000,
+      }),
+      `sse1.${this.scopeTag(scope)}.${generation}.`,
+      MAX_REPLAY_EVENTS.toString(),
+      REPLAY_TTL_SECONDS.toString(),
+    );
+    const parsed = typeof stored === 'string' ? this.parseStoredEvent(stored) : null;
+    if (!parsed) {
+      throw new Error('Unexpected Redis SSE replay response.');
     }
 
-    const generation = Math.floor(Date.now() / GENERATION_DURATION_MS).toString(36);
-    const sequence = await this.redis.incr(this.sequenceKey(scope, generation));
-    const stored: StoredSseEvent = {
-      id: `sse1.${this.scopeTag(scope)}.${generation}.${sequence.toString(36)}`,
-      data: event.data,
-      type: event.type,
-      retry: event.retry ?? 3_000,
-      fingerprint,
-    };
-
-    await this.redis.lpush(key, JSON.stringify(stored));
-    await this.redis.ltrim(key, 0, MAX_REPLAY_EVENTS - 1);
-    await this.redis.expire(key, REPLAY_TTL_SECONDS);
-    await this.redis.expire(this.sequenceKey(scope, generation), REPLAY_TTL_SECONDS);
-
-    return stored;
+    return parsed;
   }
 
   private async readReplay(scope: string, lastEventId: string | undefined): Promise<StoredSseEvent[]> {
