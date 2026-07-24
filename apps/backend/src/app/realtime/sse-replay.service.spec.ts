@@ -1,4 +1,4 @@
-import { firstValueFrom, NEVER, Subject, take } from 'rxjs';
+import { EMPTY, firstValueFrom, NEVER, Subject, take, throwError } from 'rxjs';
 import { InMemoryRedisClient } from '../redis/in-memory-redis-client';
 import { SseReplayService } from './sse-replay.service';
 
@@ -69,6 +69,81 @@ describe('SseReplayService', () => {
     expect(errors).toEqual([]);
     expect(messages).toHaveLength(1);
     subscription.unsubscribe();
+  });
+
+  it('buffers live events emitted while the initial replay is being read', async () => {
+    const redis = new InMemoryRedisClient();
+    const originalLrange = redis.lrange.bind(redis);
+    let resolveInitialReplay: ((events: string[]) => void) | undefined;
+    const initialReplay = new Promise<string[]>((resolve) => {
+      resolveInitialReplay = resolve;
+    });
+    jest.spyOn(redis, 'lrange').mockImplementationOnce(() => initialReplay).mockImplementation(originalLrange);
+    const service = new SseReplayService(redis as never);
+    const scope = service.scope('event-form-results', 'form-1');
+    const source = new Subject<{ data: object }>();
+    const received: unknown[] = [];
+    const subscription = service.replay(scope, undefined, source).subscribe((event) => received.push(event));
+
+    source.next({ data: { revision: 1 } });
+    await flushPromises();
+    resolveInitialReplay?.([]);
+    await flushPromises();
+
+    expect(received).toMatchObject([{ data: { revision: 1 } }]);
+    subscription.unsubscribe();
+  });
+
+  it('forwards source and initial-replay failures, while preserving source completion', async () => {
+    const sourceError = new Error('source unavailable');
+    await expect(firstValueFrom(createService().replay('scope', undefined, throwError(() => sourceError)))).rejects.toBe(
+      sourceError,
+    );
+
+    const complete = jest.fn();
+    createService().replay('scope', undefined, EMPTY).subscribe({ complete });
+    expect(complete).toHaveBeenCalledTimes(1);
+
+    const redis = new InMemoryRedisClient();
+    jest.spyOn(redis, 'lrange').mockRejectedValueOnce(new Error('replay unavailable'));
+    await expect(firstValueFrom(new SseReplayService(redis as never).replay('scope', undefined, NEVER))).rejects.toThrow(
+      'replay unavailable',
+    );
+  });
+
+  it('uses the latest valid snapshot when no cursor is supplied and ignores malformed journal entries', async () => {
+    const redis = new InMemoryRedisClient();
+    const service = new SseReplayService(redis as never);
+    const scope = service.scope('event-form-results', 'form-1');
+    const event = await service.record(scope, { data: { revision: 1 } });
+    await redis.lpush(`sse-replay:v1:${scope}:events`, 'not json');
+
+    await expect(firstValueFrom(service.replay(scope, undefined, NEVER).pipe(take(1)))).resolves.toEqual(event);
+  });
+
+  it('requires an explicit cursor secret in production and uses the local fallback outside production', () => {
+    const previousSecret = process.env.SSE_REPLAY_CURSOR_SECRET;
+    const previousNodeEnv = process.env.NODE_ENV;
+    delete process.env.SSE_REPLAY_CURSOR_SECRET;
+    process.env.NODE_ENV = 'production';
+
+    try {
+      expect(() => createService()).toThrow('SSE_REPLAY_CURSOR_SECRET is required in production.');
+
+      process.env.NODE_ENV = 'test';
+      expect(createService().scope('event-form-results', 'form-1')).toMatch(/^event-form-results:[A-Za-z0-9_-]{22}$/);
+    } finally {
+      if (previousSecret === undefined) {
+        delete process.env.SSE_REPLAY_CURSOR_SECRET;
+      } else {
+        process.env.SSE_REPLAY_CURSOR_SECRET = previousSecret;
+      }
+      if (previousNodeEnv === undefined) {
+        delete process.env.NODE_ENV;
+      } else {
+        process.env.NODE_ENV = previousNodeEnv;
+      }
+    }
   });
 
   it('does not poll Redis after replaying the initial event set', async () => {

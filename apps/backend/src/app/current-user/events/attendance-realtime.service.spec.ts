@@ -289,6 +289,25 @@ describe('CurrentUserRealtimeEventsController', () => {
     );
     expect(replay.replay).toHaveBeenCalledWith('scope', 'sse1.cursor', 'stream');
   });
+
+  it('ignores malformed percent-encoding in the raw session cookie header', () => {
+    const realtime = { stream: jest.fn().mockReturnValue('stream') };
+    const replay = {
+      scope: jest.fn().mockReturnValue('scope'),
+      replay: jest.fn((_scope, _lastEventId, stream) => stream),
+    };
+    const controller = new CurrentUserRealtimeEventsController(realtime as never, replay as never);
+
+    expect(
+      controller.stream(
+        { headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=malformed%` } } as Request,
+        undefined,
+        undefined,
+      ),
+    ).toBe('stream');
+
+    expect(replay.scope).toHaveBeenCalledWith('current-user-events-realtime', null, '', '');
+  });
 });
 
 function createService() {

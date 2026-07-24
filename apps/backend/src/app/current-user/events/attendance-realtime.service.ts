@@ -866,7 +866,11 @@ export class CurrentUserRealtimeEventsController {
     for (const cookie of cookieHeader.split(';')) {
       const [cookieName, ...rest] = cookie.trim().split('=');
       if (cookieName === name && rest.length > 0) {
-        return decodeURIComponent(rest.join('='));
+        try {
+          return decodeURIComponent(rest.join('='));
+        } catch {
+          return null;
+        }
       }
     }
 

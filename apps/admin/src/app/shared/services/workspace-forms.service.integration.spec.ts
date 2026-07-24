@@ -213,6 +213,62 @@ describe('WorkspaceFormsService integration', () => {
     }
   });
 
+  it('closes the live result stream when the selected form is no longer live', async () => {
+    const restoreEventSource = installFakeEventSource();
+    const liveForm = createAdminEventForm({
+      id: 'form-1',
+      ownerEventId: 'event-1',
+      resultsPublic: true,
+      resultsLive: true,
+    });
+    const nonLiveForm = createAdminEventForm({
+      id: 'form-2',
+      ownerEventId: 'event-1',
+      resultsPublic: true,
+      resultsLive: false,
+    });
+    formApi.listForms.mockReturnValue(of([liveForm]));
+    formApi.getForm.mockImplementation((id: string) => of(id === liveForm.id ? liveForm : nonLiveForm));
+
+    try {
+      await service.initialize();
+      await service.selectForm(liveForm);
+      const source = FakeEventSource.instances[0] as FakeEventSource;
+
+      await service.selectForm(nonLiveForm);
+
+      expect(source.close).toHaveBeenCalledOnce();
+    } finally {
+      restoreEventSource();
+    }
+  });
+
+  it('clears a terminal live result stream without attempting a manual second close', async () => {
+    const restoreEventSource = installFakeEventSource();
+    const liveForm = createAdminEventForm({
+      id: 'form-1',
+      ownerEventId: 'event-1',
+      resultsPublic: true,
+      resultsLive: true,
+    });
+    formApi.listForms.mockReturnValue(of([liveForm]));
+    formApi.getForm.mockReturnValue(of(liveForm));
+
+    try {
+      await service.initialize();
+      await service.selectForm(liveForm);
+      const source = FakeEventSource.instances[0] as FakeEventSource;
+
+      source.readyState = FakeEventSource.CLOSED;
+      source.emitError();
+      service.closeResultsStream();
+
+      expect(source.close).toHaveBeenCalledOnce();
+    } finally {
+      restoreEventSource();
+    }
+  });
+
   it('clears stale selected editor state when the selected form disappears', async () => {
     await service.initialize();
     await service.selectForm(service.forms()[0]);
@@ -346,11 +402,13 @@ describe('WorkspaceFormsService integration', () => {
 });
 
 class FakeEventSource {
+  static readonly CLOSED = 2;
   static instances: FakeEventSource[] = [];
 
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
   readonly close = vi.fn();
+  readyState = 1;
 
   constructor(
     readonly url: string,
@@ -361,6 +419,10 @@ class FakeEventSource {
 
   emitMessage(): void {
     this.onmessage?.({} as MessageEvent);
+  }
+
+  emitError(): void {
+    this.onerror?.({} as Event);
   }
 }
 

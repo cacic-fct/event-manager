@@ -128,10 +128,7 @@ export class SseReplayService {
       return [];
     }
 
-    const latest = events.at(-1);
-    if (!latest) {
-      return [];
-    }
+    const latest = events[events.length - 1];
 
     if (!lastEventId) {
       return [latest];

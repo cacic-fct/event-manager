@@ -169,6 +169,10 @@ export class InMemoryRedisClient implements OnModuleDestroy {
   private consumeRateLimit(key: string, args: unknown[]): number[] {
     this.deleteIfExpired(key);
 
+    if (this.values.has(key) || this.lists.has(key)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    }
+
     const now = this.numberArg(args, 0);
     const windowMs = this.numberArg(args, 1);
     const freeAttempts = this.numberArg(args, 2);
@@ -221,7 +225,6 @@ export class InMemoryRedisClient implements OnModuleDestroy {
       blockedUntilMs = 0;
     }
 
-    this.values.delete(key);
     this.hashes.set(
       key,
       new Map([
