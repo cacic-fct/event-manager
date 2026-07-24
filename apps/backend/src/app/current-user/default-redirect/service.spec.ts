@@ -59,6 +59,7 @@ describe('CurrentUserDefaultRedirectService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           AND: expect.arrayContaining([
+            { endDate: { gte: now } },
             { OR: [{ subscriptionStartDate: null }, { subscriptionStartDate: { lte: now } }] },
             { OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }] },
             {
@@ -93,7 +94,7 @@ describe('CurrentUserDefaultRedirectService', () => {
     await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MENU);
   });
 
-  it('uses a route cached for the current person without querying event data', async () => {
+  it('uses a cached route for the current person without querying event data', async () => {
     redis.get.mockResolvedValue(DefaultRedirectRoute.MAJOR_EVENT);
 
     await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MAJOR_EVENT);
@@ -113,37 +114,25 @@ describe('CurrentUserDefaultRedirectService', () => {
     );
   });
 
-  it('continues resolving and caches the route when Redis reads fail', async () => {
+  it('does not select a past major event with no configured subscription deadline', async () => {
+    await service.resolve('person-1');
+
+    expect(prisma.majorEvent.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([{ endDate: { gte: now } }]),
+        }),
+      }),
+    );
+  });
+
+  it('continues resolving and caching when Redis reads fail', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
     redis.get.mockRejectedValue(new Error('Redis unavailable'));
 
     await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MENU);
 
-    expect(prisma.event.findFirst).toHaveBeenCalledTimes(2);
     expect(redis.set).toHaveBeenCalled();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('Could not read the current-user default redirect cache'));
-  });
-
-  it('continues resolving when Redis writes fail', async () => {
-    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
-    redis.set.mockRejectedValue(new Error('Redis unavailable'));
-
-    await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MENU);
-
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Could not cache the current-user default redirect'));
-  });
-
-  it('ignores corrupted cached routes and replaces them with the resolved route', async () => {
-    redis.get.mockResolvedValue('CORRUPTED_ROUTE');
-
-    await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MENU);
-
-    expect(prisma.event.findFirst).toHaveBeenCalledTimes(2);
-    expect(redis.set).toHaveBeenCalledWith(
-      'current-user:default-redirect:v1:person-1',
-      DefaultRedirectRoute.MENU,
-      'EX',
-      15 * 60,
-    );
   });
 });

@@ -102,6 +102,7 @@ export class CurrentUserDefaultRedirectService {
       where: {
         AND: [
           PUBLIC_MAJOR_EVENT_WHERE,
+          { endDate: { gte: now } },
           {
             OR: [{ subscriptionStartDate: null }, { subscriptionStartDate: { lte: now } }],
           },
