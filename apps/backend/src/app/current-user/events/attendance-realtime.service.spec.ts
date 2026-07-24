@@ -265,7 +265,11 @@ describe('CurrentUserRealtimeEventsController', () => {
     const realtime = {
       stream: jest.fn().mockReturnValue('stream'),
     };
-    const controller = new CurrentUserRealtimeEventsController(realtime as never);
+    const replay = {
+      scope: jest.fn().mockReturnValue('scope'),
+      replay: jest.fn((_scope, _lastEventId, stream) => stream),
+    };
+    const controller = new CurrentUserRealtimeEventsController(realtime as never, replay as never);
     const request = { headers: {} } as Request;
 
     expect(

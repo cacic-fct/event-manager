@@ -1,4 +1,4 @@
-import { Controller, forwardRef, Inject, Injectable, Logger, MessageEvent, OnModuleDestroy, Query, Req, Sse } from '@nestjs/common';
+import { Controller, forwardRef, Headers, Inject, Injectable, Logger, MessageEvent, OnModuleDestroy, Query, Req, Sse } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import type { Request } from 'express';
 import { Observable, Subject, interval, map, merge, takeUntil } from 'rxjs';
@@ -22,6 +22,7 @@ import { CurrentUserPendingOnlineAttendanceEvent } from '../models';
 import { PUBLIC_EVENT_SELECT, PublicEventSubscriptionSummary } from '../../public-events/models';
 import { CurrentUserContextService } from '../context.service';
 import { PublicEventsResolver } from '../../public-events/events.resolver';
+import { SseReplayService } from '../../realtime/sse-replay.service';
 
 const ONLINE_ATTENDANCE_CHANNEL = 'current-user.online-attendance';
 const MAJOR_EVENT_SUBSCRIPTION_CHANNEL = 'public.major-event-subscription';
@@ -649,7 +650,10 @@ class EventSubscriptionAvailabilityChangedMessageDto {
 )
 @Controller('current-user/events/realtime')
 export class CurrentUserRealtimeEventsController {
-  constructor(private readonly realtime: CurrentUserOnlineAttendanceRealtimeService) {}
+  constructor(
+    private readonly realtime: CurrentUserOnlineAttendanceRealtimeService,
+    private readonly replay: SseReplayService,
+  ) {}
 
   @Sse()
   @ApiTags('SSE', 'current-user')
@@ -818,8 +822,21 @@ export class CurrentUserRealtimeEventsController {
     @Req() request: Request,
     @Query('majorEventIds') majorEventIds?: string | string[],
     @Query('eventIds') eventIds?: string | string[],
+    @Headers('last-event-id') lastEventId?: string,
   ): Observable<MessageEvent> {
-    return this.realtime.stream(request, this.parseIds(majorEventIds), this.parseIds(eventIds));
+    const normalizedMajorEventIds = this.parseIds(majorEventIds);
+    const normalizedEventIds = this.parseIds(eventIds);
+
+    return this.replay.replay(
+      this.replay.scope(
+        'current-user-events-realtime',
+        request.headers.cookie,
+        normalizedMajorEventIds.join(','),
+        normalizedEventIds.join(','),
+      ),
+      lastEventId,
+      this.realtime.stream(request, normalizedMajorEventIds, normalizedEventIds),
+    );
   }
 
   private parseIds(value?: string | string[]): string[] {

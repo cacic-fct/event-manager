@@ -65,6 +65,7 @@ import { EventFormPublicationWorkflowService } from './event-forms/event-form-pu
 import { EventFormResponsesService } from './event-forms/event-form-responses.service';
 import { EventFormResultEventsService } from './event-forms/event-form-result-events.service';
 import { EventFormResultsAccessService } from './event-forms/event-form-results-access.service';
+import { SseReplayService } from './realtime/sse-replay.service';
 import { EventFormsResolver } from './event-forms/event-forms.resolver';
 import { EventFormsScheduler } from './event-forms/event-forms.scheduler';
 import { EventFormsService } from './event-forms/event-forms.service';
@@ -358,6 +359,7 @@ const schedulerProviders = useInMemoryTestInfra
     EventFormPublicationWorkflowService,
     EventFormResponsesService,
     EventFormResultEventsService,
+    SseReplayService,
     EventFormResultsAccessService,
     EventLecturersResolver,
     MergeCandidatesResolver,

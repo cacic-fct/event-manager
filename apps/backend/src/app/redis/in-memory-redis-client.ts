@@ -4,11 +4,12 @@ import { Readable } from 'node:stream';
 export class InMemoryRedisClient implements OnModuleDestroy {
   private readonly values = new Map<string, string>();
   private readonly hashes = new Map<string, Map<string, string>>();
+  private readonly lists = new Map<string, string[]>();
   private readonly expirations = new Map<string, number>();
 
   async get(key: string): Promise<string | null> {
     this.deleteIfExpired(key);
-    if (this.hashes.has(key)) {
+    if (this.hashes.has(key) || this.lists.has(key)) {
       throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
     }
     return this.values.get(key) ?? null;
@@ -17,12 +18,13 @@ export class InMemoryRedisClient implements OnModuleDestroy {
   async set(key: string, value: string, ...args: unknown[]): Promise<'OK' | null> {
     this.deleteIfExpired(key);
 
-    if (this.usesNx(args) && (this.values.has(key) || this.hashes.has(key))) {
+    if (this.usesNx(args) && (this.values.has(key) || this.hashes.has(key) || this.lists.has(key))) {
       return null;
     }
 
     this.values.set(key, value);
     this.hashes.delete(key);
+    this.lists.delete(key);
     this.setExpiration(key, args);
     return 'OK';
   }
@@ -33,7 +35,8 @@ export class InMemoryRedisClient implements OnModuleDestroy {
       this.expirations.delete(key);
       const deletedValue = this.values.delete(key);
       const deletedHash = this.hashes.delete(key);
-      if (deletedValue || deletedHash) {
+      const deletedList = this.lists.delete(key);
+      if (deletedValue || deletedHash || deletedList) {
         deleted += 1;
       }
     }
@@ -42,7 +45,54 @@ export class InMemoryRedisClient implements OnModuleDestroy {
 
   async exists(key: string): Promise<number> {
     this.deleteIfExpired(key);
-    return this.values.has(key) || this.hashes.has(key) ? 1 : 0;
+    return this.values.has(key) || this.hashes.has(key) || this.lists.has(key) ? 1 : 0;
+  }
+
+  async incr(key: string): Promise<number> {
+    const current = await this.get(key);
+    const next = Number(current ?? '0') + 1;
+    if (!Number.isSafeInteger(next)) {
+      throw new Error('ERR increment or decrement would overflow');
+    }
+    await this.set(key, next.toString());
+    return next;
+  }
+
+  async lpush(key: string, ...values: string[]): Promise<number> {
+    this.deleteIfExpired(key);
+    if (this.values.has(key) || this.hashes.has(key)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    }
+    const list = this.lists.get(key) ?? [];
+    list.unshift(...values);
+    this.lists.set(key, list);
+    return list.length;
+  }
+
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    this.deleteIfExpired(key);
+    if (this.values.has(key) || this.hashes.has(key)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    }
+    const list = this.lists.get(key) ?? [];
+    const normalizedStart = start < 0 ? Math.max(list.length + start, 0) : start;
+    const normalizedStop = stop < 0 ? list.length + stop : stop;
+    return list.slice(normalizedStart, normalizedStop + 1);
+  }
+
+  async ltrim(key: string, start: number, stop: number): Promise<'OK'> {
+    const values = await this.lrange(key, start, stop);
+    this.lists.set(key, values);
+    return 'OK';
+  }
+
+  async expire(key: string, seconds: number): Promise<number> {
+    this.deleteIfExpired(key);
+    if (!this.values.has(key) && !this.hashes.has(key) && !this.lists.has(key)) {
+      return 0;
+    }
+    this.expirations.set(key, Date.now() + seconds * 1000);
+    return 1;
   }
 
   async eval(script: string, keyCount: number, ...args: unknown[]): Promise<unknown> {
@@ -81,6 +131,7 @@ export class InMemoryRedisClient implements OnModuleDestroy {
   disconnect(): void {
     this.values.clear();
     this.hashes.clear();
+    this.lists.clear();
     this.expirations.clear();
   }
 
@@ -214,15 +265,16 @@ export class InMemoryRedisClient implements OnModuleDestroy {
       this.expirations.delete(key);
       this.values.delete(key);
       this.hashes.delete(key);
+      this.lists.delete(key);
     }
   }
 
   private keys(pattern?: string): string[] {
-    for (const key of [...this.values.keys(), ...this.hashes.keys()]) {
+    for (const key of [...this.values.keys(), ...this.hashes.keys(), ...this.lists.keys()]) {
       this.deleteIfExpired(key);
     }
 
-    const keys = [...new Set([...this.values.keys(), ...this.hashes.keys()])];
+    const keys = [...new Set([...this.values.keys(), ...this.hashes.keys(), ...this.lists.keys()])];
     if (!pattern) {
       return keys;
     }
