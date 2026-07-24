@@ -29,6 +29,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
+import { EventSitemapService } from '../public-events/event-sitemap.service';
 
 const PAYMENT_INFO_SELECT = {
   id: true,
@@ -138,6 +139,9 @@ export class MajorEventsResolver {
     private readonly auditLog: AuditLogService = {
       record: async () => undefined,
     } as unknown as AuditLogService,
+    private readonly sitemap: EventSitemapService = {
+      refresh: async () => [],
+    } as unknown as EventSitemapService,
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
@@ -287,6 +291,7 @@ export class MajorEventsResolver {
       );
       return created;
     });
+    await this.sitemap.refresh();
     await this.typesenseSearch.upsertMajorEvent({
       id: majorEvent.id,
       name: majorEvent.name,
@@ -373,6 +378,7 @@ export class MajorEventsResolver {
       );
       return updated;
     });
+    await this.sitemap.refresh();
     await this.typesenseSearch.upsertMajorEvent({
       id: updatedMajorEvent.id,
       name: updatedMajorEvent.name,
@@ -497,6 +503,7 @@ export class MajorEventsResolver {
       );
       return created;
     });
+    await this.sitemap.refresh();
     await this.typesenseSearch.upsertMajorEvent({
       id: majorEvent.id,
       name: majorEvent.name,
@@ -537,6 +544,7 @@ export class MajorEventsResolver {
         tx,
       );
     });
+    await this.sitemap.refresh();
     await this.typesenseSearch.deleteMajorEvent(id);
     return {
       deleted: true,

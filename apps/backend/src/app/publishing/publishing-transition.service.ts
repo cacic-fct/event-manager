@@ -8,6 +8,7 @@ import { PublicationSearchSyncService } from './publishing-search-sync.service';
 import { PublicationStateWriterService } from './publishing-state-writer.service';
 import { PublicationTargetService } from './publishing-target.service';
 import { PublicationTransitionOutcome, TargetSync } from './publishing.types';
+import { EventSitemapService } from '../public-events/event-sitemap.service';
 
 @Injectable()
 export class PublicationTransitionService {
@@ -15,6 +16,9 @@ export class PublicationTransitionService {
     private readonly searchSync: PublicationSearchSyncService,
     private readonly stateWriter: PublicationStateWriterService,
     private readonly targets: PublicationTargetService,
+    private readonly sitemap: EventSitemapService = {
+      refresh: async () => [],
+    } as unknown as EventSitemapService,
   ) {}
 
   async setPublicationState(
@@ -32,6 +36,7 @@ export class PublicationTransitionService {
       scheduledPublishAt: input.scheduledPublishAt ?? null,
       user,
     });
+    await this.sitemap.refresh();
     await this.searchSync.syncSearch(sync);
 
     return {
@@ -58,6 +63,7 @@ export class PublicationTransitionService {
           ? await this.scheduleBundle(input, user)
           : await this.unpublishBundle(input, user);
 
+    await this.sitemap.refresh();
     await this.searchSync.syncSearch(sync);
 
     return {
@@ -75,21 +81,25 @@ export class PublicationTransitionService {
   }
 
   async publishEventById(eventId: string, user: AuthenticatedUser | null): Promise<TargetSync> {
-    return this.stateWriter.updateEventPublicationState(
+    const sync = await this.stateWriter.updateEventPublicationState(
       eventId,
       PrismaPublicationState.PUBLISHED,
       null,
       user ?? undefined,
     );
+    await this.sitemap.refresh();
+    return sync;
   }
 
   async publishMajorEventById(majorEventId: string, user: AuthenticatedUser | null): Promise<TargetSync> {
-    return this.stateWriter.updateMajorEventPublicationState(
+    const sync = await this.stateWriter.updateMajorEventPublicationState(
       majorEventId,
       PrismaPublicationState.PUBLISHED,
       null,
       user ?? undefined,
     );
+    await this.sitemap.refresh();
+    return sync;
   }
 
   mergeSync(syncs: TargetSync[]): TargetSync {

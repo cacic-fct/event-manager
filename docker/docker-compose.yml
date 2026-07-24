@@ -121,6 +121,7 @@ services:
       NODE_ENV: production
       PORT: 4000
       TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:?TURNSTILE_SITE_KEY is required}
+      SITEMAP_API_URL: http://backend:3000/api/graphql
     depends_on:
       backend:
         condition: service_started
