@@ -24,6 +24,7 @@ import type {
 import { Home } from './home';
 
 registerLocaleData(localePt);
+faker.seed(20260724);
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 

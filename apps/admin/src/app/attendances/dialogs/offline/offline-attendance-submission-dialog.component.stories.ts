@@ -10,6 +10,8 @@ import type {
 } from '@cacic-fct/event-manager-admin-contracts';
 import { OfflineAttendanceSubmissionDialogComponent } from './offline-attendance-submission-dialog.component';
 
+faker.seed(20260724);
+
 type OfflineSubmissionStoryArgs = {
   eventName: string;
   personName: string;
