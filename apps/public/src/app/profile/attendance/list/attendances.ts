@@ -158,15 +158,15 @@ export class Attendances {
   });
 
   majorEventRoute(subscription: CurrentUserMajorEventFeedItem): string[] {
-    return ['../../../attendances/my-attendances/major-event', subscription.majorEvent.id];
+    return ['/profile/attendances', 'major-event', subscription.majorEvent.id];
   }
 
   itemRoute(item: SubscribedItem): string[] {
     if (item.__typename === 'SubscribedSingleEventItem') {
-      return ['../../../attendances/my-attendances/event', item.event.id];
+      return ['/profile/attendances', 'event', item.event.id];
     }
 
-    return ['../../../attendances/my-attendances/event-group', item.eventGroup.id];
+    return ['/profile/attendances', 'event-group', item.eventGroup.id];
   }
 
   itemEmoji(item: SubscribedItem): string {

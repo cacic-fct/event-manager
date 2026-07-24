@@ -25,6 +25,18 @@ describe('Attendances', () => {
     expect(offlineData.replaceAttendanceFeed).toHaveBeenCalledWith('user-1', subscriptionsFeedFixture);
   });
 
+  it('uses absolute attendance detail routes', async () => {
+    const { component } = await createFixture();
+    const majorEvent = subscriptionsFeedFixture.majorEventItems[0];
+    const event = subscriptionsFeedFixture.eventItems[0];
+    if (!majorEvent || !event) {
+      throw new Error('Expected attendance fixtures');
+    }
+
+    expect(component.majorEventRoute(majorEvent)).toEqual(['/profile/attendances', 'major-event', 'major-1']);
+    expect(component.itemRoute(event)).toEqual(['/profile/attendances', 'event', 'event-1']);
+  });
+
   it('falls back to the last offline feed when the network request fails', async () => {
     const { fixture, offlineData } = await createFixture({
       onlineFeedError: new Error('offline'),
