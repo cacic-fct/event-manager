@@ -76,7 +76,7 @@ export class AdminShellComponent {
   protected readonly navItems = computed(() => navigationItems.filter((item) => this.canShowNavItem(item)));
 
   private platformId = inject(PLATFORM_ID);
-  private isDarkSignal = signal(false);
+  protected readonly isDarkSignal = signal(false);
   fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
   protected readonly navMode = signal<NavigationMode>('auto');
   protected readonly navModeLabel = computed(() => {
