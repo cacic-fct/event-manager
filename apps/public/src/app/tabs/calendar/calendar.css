@@ -20,11 +20,15 @@
   align-items: start;
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 240px) minmax(150px, 200px) auto;
 }
 
 .search-field,
 .type-field {
+  width: 100%;
+}
+
+.subscription-field {
   width: 100%;
 }
 

@@ -15,6 +15,7 @@ import {
   OfflinePublicDataAccessService,
 } from '@cacic-fct/offline-public-data-access';
 import { getEventTypeLabel } from '@cacic-fct/shared-utils';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { addDays, isAfter, isBefore, startOfDay, startOfWeek, subDays, subMonths } from 'date-fns';
 import {
   Observable,
@@ -24,6 +25,7 @@ import {
   distinctUntilChanged,
   filter,
   from,
+  forkJoin,
   map,
   of,
   startWith,
@@ -39,13 +41,16 @@ type CalendarViewMode = 'list' | 'week';
 
 type CalendarState =
   | { status: 'loading' }
-  | { status: 'ready'; events: PublicEvent[] }
+  | { status: 'ready'; events: PublicEvent[]; subscribedEventIds: ReadonlySet<string> }
   | { status: 'error'; message: string };
 
 interface CalendarFilterValue {
   query: string;
   eventType: CalendarEventTypeFilter;
+  subscription: CalendarSubscriptionFilter;
 }
+
+type CalendarSubscriptionFilter = 'ALL' | 'SUBSCRIBED';
 
 @Component({
   selector: 'app-calendar',
@@ -68,6 +73,7 @@ interface CalendarFilterValue {
 })
 export class Calendar {
   private readonly api = inject(CalendarApiService);
+  private readonly auth = inject(AuthService);
   private readonly calendarPreferences = inject(CalendarPreferencesStorageService);
   private readonly featureFlags = inject(PublicFeatureFlagService);
   private readonly destroyRef = inject(DestroyRef);
@@ -80,10 +86,12 @@ export class Calendar {
   readonly filterModel = signal<CalendarFilterValue>({
     query: '',
     eventType: 'ALL',
+    subscription: 'ALL',
   });
   readonly filterForm = form(this.filterModel);
 
   readonly viewMode = signal<CalendarViewMode>('list');
+  readonly isAuthenticated = this.auth.isAuthenticated;
   private readonly defaultItemView = toSignal(this.calendarPreferences.watchDefaultItemView(), {
     initialValue: 'automatic',
   });
@@ -100,6 +108,11 @@ export class Calendar {
     { value: 'MINICURSO', label: getEventTypeLabel('MINICURSO') },
     { value: 'PALESTRA', label: getEventTypeLabel('PALESTRA') },
     { value: 'OTHER', label: getEventTypeLabel('OTHER') },
+  ];
+
+  readonly subscriptionOptions: Array<{ value: CalendarSubscriptionFilter; label: string }> = [
+    { value: 'ALL', label: 'Todos' },
+    { value: 'SUBSCRIBED', label: 'Inscrito' },
   ];
 
   readonly weekDays = computed<CalendarWeekDay[]>(() => {
@@ -126,6 +139,12 @@ export class Calendar {
     effect(() => {
       const defaultItemView = this.defaultItemView();
       this.viewMode.set(defaultItemView === 'automatic' ? this.calendarDefaultViewFromFeatureFlag() : defaultItemView);
+    });
+
+    effect(() => {
+      if (!this.isAuthenticated() && this.filterModel().subscription === 'SUBSCRIBED') {
+        this.filterForm.subscription().value.set('ALL');
+      }
     });
 
     this.networkStatus
@@ -186,14 +205,20 @@ export class Calendar {
   }
 
   private createCalendarState(): Observable<CalendarState> {
-    return combineLatest([this.filterChanges(), toObservable(this.listStartDate), toObservable(this.refreshCounter)]).pipe(
-      switchMap(([filters, startDate]) =>
-        this.loadEvents(filters, startDate).pipe(
+    return combineLatest([
+      this.filterChanges(),
+      toObservable(this.listStartDate),
+      toObservable(this.refreshCounter),
+      toObservable(this.isAuthenticated),
+    ]).pipe(
+      switchMap(([filters, startDate, , isAuthenticated]) =>
+        this.loadEvents(filters, startDate, isAuthenticated).pipe(
           map(
-            (events) =>
+            ({ events, subscribedEventIds }) =>
               ({
                 status: 'ready',
                 events,
+                subscribedEventIds,
               }) satisfies CalendarState,
           ),
           startWith({ status: 'loading' } satisfies CalendarState),
@@ -208,24 +233,42 @@ export class Calendar {
     );
   }
 
-  private loadEvents(filters: CalendarFilterValue, startDate: Date): Observable<PublicEvent[]> {
+  private loadEvents(
+    filters: CalendarFilterValue,
+    startDate: Date,
+    isAuthenticated: boolean,
+  ): Observable<{ events: PublicEvent[]; subscribedEventIds: ReadonlySet<string> }> {
     const query = filters.query.trim();
     const startDateFrom = startDate.toISOString();
 
     if (!this.networkStatus.isOnline()) {
-      return from(this.getCachedCalendarEvents(filters, startDateFrom));
+      return from(this.getCachedCalendarEvents(filters, startDateFrom)).pipe(
+        map((events) => ({ events, subscribedEventIds: new Set<string>() })),
+      );
     }
 
-    return this.api
-      .getCalendarEvents({
-        query,
-        eventType: filters.eventType,
-        startDateFrom,
-      })
-      .pipe(
-        switchMap((events) => from(this.offlineData.upsertCalendarEvents(events)).pipe(map(() => events))),
-        catchError(() => from(this.getCachedCalendarEvents(filters, startDateFrom))),
-      );
+    const calendarEvents = this.api.getCalendarEvents({
+      query,
+      eventType: filters.eventType,
+      startDateFrom,
+    });
+    const subscribedEventIds = isAuthenticated ? this.api.getCurrentUserSubscribedEventIds() : of(new Set<string>());
+
+    return forkJoin({ calendarEvents, subscribedEventIds }).pipe(
+      switchMap(({ calendarEvents, subscribedEventIds }) =>
+        from(this.offlineData.upsertCalendarEvents(calendarEvents)).pipe(
+          map(() => ({
+            events: this.filterSubscribedEvents(calendarEvents, filters.subscription, subscribedEventIds),
+            subscribedEventIds,
+          })),
+        ),
+      ),
+      catchError(() =>
+        from(this.getCachedCalendarEvents(filters, startDateFrom)).pipe(
+          map((events) => ({ events, subscribedEventIds: new Set<string>() })),
+        ),
+      ),
+    );
   }
 
   private async getCachedCalendarEvents(filters: CalendarFilterValue, startDateFrom: string): Promise<PublicEvent[]> {
@@ -240,15 +283,28 @@ export class Calendar {
         (event.shortDescription ?? '').toLocaleLowerCase('pt-BR').includes(query) ||
         (event.majorEvent?.name ?? '').toLocaleLowerCase('pt-BR').includes(query);
 
-      return matchesType && matchesQuery;
+      const matchesSubscription = filters.subscription !== 'SUBSCRIBED';
+
+      return matchesType && matchesQuery && matchesSubscription;
     });
   }
 
   private filterChanges(): Observable<CalendarFilterValue> {
     return toObservable(computed(() => this.filterModel())).pipe(
       debounceTime(250),
-      distinctUntilChanged((left, right) => left.query === right.query && left.eventType === right.eventType),
+      distinctUntilChanged(
+        (left, right) =>
+          left.query === right.query && left.eventType === right.eventType && left.subscription === right.subscription,
+      ),
     );
+  }
+
+  private filterSubscribedEvents(
+    events: PublicEvent[],
+    subscription: CalendarSubscriptionFilter,
+    subscribedEventIds: ReadonlySet<string>,
+  ): PublicEvent[] {
+    return subscription === 'SUBSCRIBED' ? events.filter((event) => subscribedEventIds.has(event.id)) : events;
   }
 
   private ensureListIncludes(date: Date): void {

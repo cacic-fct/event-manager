@@ -3,14 +3,18 @@ import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
 import { CalendarPreferencesStorageService } from '@cacic-fct/offline-public-data-access';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicFeatureFlagService } from '../../feature-flags/public-feature-flag.service';
 import { of } from 'rxjs';
+import { CalendarApiService } from './calendar-api.service';
 import { Calendar } from './calendar';
 
 describe('Calendar', () => {
   let component: Calendar;
   let fixture: ComponentFixture<Calendar>;
   let calendarPreferences: { watchDefaultItemView: ReturnType<typeof vi.fn> };
+  let calendarApi: { getCalendarEvents: ReturnType<typeof vi.fn>; getCurrentUserSubscribedEventIds: ReturnType<typeof vi.fn> };
+  let isAuthenticated = signal(true);
   let featureFlags: { stringValue: ReturnType<typeof vi.fn> };
   let calendarDefaultView = signal('list');
 
@@ -18,9 +22,14 @@ describe('Calendar', () => {
     calendarPreferences = {
       watchDefaultItemView: vi.fn().mockReturnValue(of('automatic')),
     };
+    isAuthenticated = signal(true);
     calendarDefaultView = signal('list');
     featureFlags = {
       stringValue: vi.fn(() => calendarDefaultView()),
+    };
+    calendarApi = {
+      getCalendarEvents: vi.fn(() => of([])),
+      getCurrentUserSubscribedEventIds: vi.fn(() => of(new Set<string>())),
     };
 
     await TestBed.configureTestingModule({
@@ -30,6 +39,8 @@ describe('Calendar', () => {
         provideRouter([]),
         { provide: CalendarPreferencesStorageService, useValue: calendarPreferences },
         { provide: PublicFeatureFlagService, useValue: featureFlags },
+        { provide: AuthService, useValue: { isAuthenticated } },
+        { provide: CalendarApiService, useValue: calendarApi },
       ],
     }).compileComponents();
 
@@ -45,10 +56,12 @@ describe('Calendar', () => {
   it('keeps calendar filters in the signal form model', () => {
     component.filterForm.query().value.set('Angular');
     component.filterForm.eventType().value.set('MINICURSO');
+    component.filterForm.subscription().value.set('SUBSCRIBED');
 
     expect(component.filterModel()).toEqual({
       query: 'Angular',
       eventType: 'MINICURSO',
+      subscription: 'SUBSCRIBED',
     });
   });
 

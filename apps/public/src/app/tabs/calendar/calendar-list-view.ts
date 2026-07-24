@@ -29,6 +29,7 @@ interface CalendarListDay {
 })
 export class CalendarListView {
   readonly events = input.required<PublicEvent[]>();
+  readonly subscribedEventIds = input<ReadonlySet<string>>(new Set());
   readonly canLoadOlder = input(false);
   readonly isLoadingOlder = input(false);
   readonly returnUrl = input('/calendar');

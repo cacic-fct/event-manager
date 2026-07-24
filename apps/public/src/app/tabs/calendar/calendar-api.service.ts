@@ -20,6 +20,11 @@ export interface CalendarEventFilters {
   startDateUntil?: string;
 }
 
+interface CurrentUserSubscribedItem {
+  event?: { id: string } | null;
+  events?: Array<{ id: string }> | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CalendarApiService {
   private readonly http = inject(HttpClient);
@@ -36,6 +41,57 @@ export class CalendarApiService {
       PUBLIC_CALENDAR_EVENTS_QUERY,
       variables,
     ).pipe(map((data) => data.publicCalendarEvents));
+  }
+
+  getCurrentUserSubscribedEventIds(): Observable<Set<string>> {
+    return this.query<{
+      currentUserSubscribedItems: CurrentUserSubscribedItem[];
+      currentUserMajorEventSubscriptions: Array<{ selectedEvents?: Array<{ id: string }> | null }>;
+    }>(
+      `
+        query CurrentUserCalendarSubscribedEvents {
+          currentUserSubscribedItems {
+            ... on SubscribedSingleEventItem {
+              event {
+                id
+              }
+            }
+            ... on SubscribedEventGroupItem {
+              events {
+                id
+              }
+            }
+          }
+          currentUserMajorEventSubscriptions {
+            selectedEvents {
+              id
+            }
+          }
+        }
+      `,
+    ).pipe(
+      map((data) => {
+        const eventIds = new Set<string>();
+
+        for (const item of data.currentUserSubscribedItems) {
+          if (item.event) {
+            eventIds.add(item.event.id);
+          }
+
+          for (const event of item.events ?? []) {
+            eventIds.add(event.id);
+          }
+        }
+
+        for (const subscription of data.currentUserMajorEventSubscriptions) {
+          for (const event of subscription.selectedEvents ?? []) {
+            eventIds.add(event.id);
+          }
+        }
+
+        return eventIds;
+      }),
+    );
   }
 
   private query<TData>(query: string, variables?: GraphqlVariables): Observable<TData> {

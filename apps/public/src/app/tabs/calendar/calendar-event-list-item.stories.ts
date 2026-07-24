@@ -10,6 +10,7 @@ import {
 } from './calendar-story-fixtures';
 
 type CalendarEventListItemStoryArgs = CalendarStoryEventControls & {
+  isSubscribed: boolean;
   returnUrl: string;
 };
 
@@ -19,15 +20,18 @@ const meta: Meta<CalendarEventListItemStoryArgs> = {
   tags: ['autodocs'],
   args: {
     ...calendarStoryEventDefaultControls,
+    isSubscribed: true,
     returnUrl: '/calendar',
   },
   argTypes: {
     ...calendarStoryEventControlArgTypes,
+    isSubscribed: { control: 'boolean' },
     returnUrl: { control: 'text' },
   },
   render: (args) => ({
     props: {
       event: createDemoEvent(args),
+      isSubscribed: args.isSubscribed,
       returnUrl: args.returnUrl,
     },
   }),
@@ -50,6 +54,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   const eventLink = await canvas.findByRole('link');
   await userEvent.hover(eventLink);
   await expect(eventLink).toBeVisible();
+  await expect(canvas.getByText('Inscrito')).toBeVisible();
 };
 
 export const Online: Story = {

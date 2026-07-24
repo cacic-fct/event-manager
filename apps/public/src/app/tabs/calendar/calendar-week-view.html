@@ -47,7 +47,10 @@
   } @else {
   <mat-list>
     @for (event of selectedDateEvents(); track event.id) {
-    <app-calendar-event-list-item [event]="event" [returnUrl]="returnUrl()" />
+    <app-calendar-event-list-item
+      [event]="event"
+      [isSubscribed]="subscribedEventIds().has(event.id)"
+      [returnUrl]="returnUrl()" />
     }
   </mat-list>
   }

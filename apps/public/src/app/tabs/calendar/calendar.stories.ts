@@ -48,6 +48,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await expectCalendarEventVisible(canvasElement);
 
   await expect(await canvas.findByText('Acessibilidade em produtos digitais')).toBeVisible();
+  await expect(await canvas.findByText('Inscrito')).toBeVisible();
 
   const searchInput = canvas.getByRole('searchbox', { name: 'Buscar eventos' });
   await userEvent.clear(searchInput);
@@ -98,15 +99,24 @@ function storyParameters(context: CalendarStoryContext) {
       handlers: [
         http.post('/api/graphql', async ({ request }) => {
           const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
-          if (!body.query?.includes('publicCalendarEvents')) {
-            return HttpResponse.json({ data: {} });
+          if (body.query?.includes('CurrentUserCalendarSubscribedEvents')) {
+            return HttpResponse.json({
+              data: {
+                currentUserSubscribedItems: [{ event: { id: createCalendarStoryEvents(context.args)[1]?.id } }],
+                currentUserMajorEventSubscriptions: [],
+              },
+            });
           }
 
-          return HttpResponse.json({
-            data: {
-              publicCalendarEvents: filterCalendarEvents(createCalendarStoryEvents(context.args), body.variables ?? {}),
-            },
-          });
+          if (body.query?.includes('publicCalendarEvents')) {
+            return HttpResponse.json({
+              data: {
+                publicCalendarEvents: filterCalendarEvents(createCalendarStoryEvents(context.args), body.variables ?? {}),
+              },
+            });
+          }
+
+          return HttpResponse.json({ data: {} });
         }),
       ],
     },
