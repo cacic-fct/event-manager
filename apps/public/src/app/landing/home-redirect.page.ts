@@ -31,6 +31,6 @@ export class HomeComponent implements OnInit {
   }
 
   private async navigateToDefaultRoute(): Promise<void> {
-    await this.router.navigateByUrl(await this.defaultRedirect.resolve());
+    await this.defaultRedirect.navigateToDefault(this.router);
   }
 }

@@ -128,7 +128,7 @@ describe('AuthErrorPage', () => {
     expect(snackBar.open).toHaveBeenCalledWith('Detalhes técnicos copiados.', 'OK', { duration: 3000 });
   });
 
-  it('uses the dark-mode CACiC logo color when the system color scheme is dark', async () => {
+  it('switches the CACiC logo to the light class when the system color scheme is dark', async () => {
     Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       value: vi.fn(() => ({
@@ -141,8 +141,10 @@ describe('AuthErrorPage', () => {
     });
 
     const fixture = createFixture();
+    const logo = fixture.nativeElement.querySelector('lib-cacic-logo') as HTMLElement | null;
 
-    expect(fixture.componentInstance.logoFillColor()).toBe('#fff');
+    expect(logo?.classList.contains('logo-bark-mode')).toBe(true);
+    expect(logo?.classList.contains('logo-light-mode')).toBe(false);
   });
 
   function createFixture(): ComponentFixture<AuthErrorPage> {

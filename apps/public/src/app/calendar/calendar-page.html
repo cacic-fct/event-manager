@@ -33,6 +33,17 @@
       </mat-select>
     </mat-form-field>
 
+    @if (isAuthenticated()) {
+    <mat-form-field appearance="outline" class="subscription-field">
+      <mat-label>Inscrição</mat-label>
+      <mat-select [formField]="filterForm.subscription">
+        @for (option of subscriptionOptions; track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    }
+
     <button mat-stroked-button type="button" class="search-button" (click)="searchNow()">
       <mat-icon>search</mat-icon>
       Buscar
@@ -49,6 +60,7 @@
   } @else { @if (viewMode() === 'list') {
   <app-calendar-list-view
     [events]="state.events"
+    [subscribedEventIds]="state.subscribedEventIds"
     [canLoadOlder]="canLoadOlder()"
     [returnUrl]="'/calendar'"
     (loadOlder)="loadOlderEvents()" />
@@ -57,6 +69,7 @@
     [weekDays]="weekDays()"
     [selectedDate]="selectedDate()"
     [events]="state.events"
+    [subscribedEventIds]="state.subscribedEventIds"
     [canGoPrevious]="canGoPreviousWeek()"
     [returnUrl]="'/calendar'"
     (previousWeek)="previousWeek()"

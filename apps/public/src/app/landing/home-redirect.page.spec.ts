@@ -8,14 +8,14 @@ import { HomeComponent } from './home-redirect.page';
 describe('HomeComponent', () => {
   it('resolves the authenticated default route instead of using a static route guard', async () => {
     const authState = signal(true);
-    const resolve = vi.fn().mockResolvedValue('/profile/wallet');
+    const navigateToDefault = vi.fn().mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
       imports: [HomeComponent],
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: { isAuthenticated: authState } },
-        { provide: DefaultRedirectService, useValue: { resolve } },
+        { provide: DefaultRedirectService, useValue: { navigateToDefault } },
       ],
     });
     TestBed.overrideComponent(HomeComponent, { set: { imports: [], template: '' } });
@@ -25,7 +25,7 @@ describe('HomeComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
 
-    expect(resolve).toHaveBeenCalled();
-    expect(navigateByUrl).toHaveBeenCalledWith('/profile/wallet');
+    expect(navigateToDefault).toHaveBeenCalledWith(TestBed.inject(Router));
+    expect(navigateByUrl).not.toHaveBeenCalled();
   });
 });

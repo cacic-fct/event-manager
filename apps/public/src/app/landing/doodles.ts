@@ -1,13 +1,4 @@
-import { MediaMatcher } from '@angular/cdk/layout';
-import { isPlatformBrowser } from '@angular/common';
-import {
-  Component,
-  computed,
-  DestroyRef,
-  inject,
-  PLATFORM_ID,
-  signal,
-} from '@angular/core';
+import { Component } from '@angular/core';
 
 @Component({
   selector: 'app-doodles',
@@ -16,76 +7,8 @@ import {
     data-name="Layer 1"
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 963 406"
-    [style.--svg-fill-color]="fillColor()">
-    <defs>
-      <style>
-        .cls-1 {
-          fill: var(--svg-fill-color, #000);
-        }
-        .cls-2 {
-          fill: #cc4e2b;
-        }
-        .cls-3 {
-          fill: #ff5252;
-        }
-        .cls-4 {
-          fill: #0068b5;
-        }
-        .cls-5 {
-          fill: #e6e6e6;
-          stroke: #000;
-        }
-        .cls-5,
-        .cls-8 {
-          stroke-miterlimit: 10;
-          stroke-width: 3px;
-        }
-        .cls-18,
-        .cls-6 {
-          fill: #000001;
-        }
-        .cls-7 {
-          fill: #fcee21;
-        }
-        .cls-15,
-        .cls-8 {
-          fill: #fff;
-        }
-        .cls-8 {
-          stroke: #3fa9f5;
-        }
-        .cls-9 {
-          fill: #333b3f;
-        }
-        .cls-10 {
-          fill: #8cc63f;
-        }
-        .cls-11 {
-          fill: #333;
-        }
-        .cls-12 {
-          fill: #7fc9ef;
-        }
-        .cls-13 {
-          fill: #54a7db;
-        }
-        .cls-14 {
-          fill: #b4ddf3;
-        }
-        .cls-16 {
-          fill: #dfdfde;
-        }
-        .cls-17 {
-          fill: #333a90;
-        }
-        .cls-18 {
-          fill-rule: evenodd;
-        }
-        .cls-19 {
-          fill: #006837;
-        }
-      </style>
-    </defs>
+    width="100%"
+    height="100%">
     <path class="cls-1" d="M742.59,226V334.29a1.46,1.46,0,0,0,2.91,0V226a1.46,1.46,0,0,0-2.91,0Z" />
     <path class="cls-1" d="M85.26,236V339.12a1.39,1.39,0,0,0,2.77,0V236a1.39,1.39,0,0,0-2.77,0Z" />
     <path
@@ -383,32 +306,108 @@ import {
       d="M74.9,236a25.58,25.58,0,0,1,7.86-.27c1.67.17,5.36.57,6,2.43l.39-1.45c-3,2.64-7.78,2.3-11.47,1.65a1.51,1.51,0,0,0-.8,2.9c2.27.68,4.44.12,6.73,0,1.17,0,3.55.25,3.78,1.76s-2.15,1.87-3.17,1.82c-2.33-.09-4.41-.9-6.77-.56l.79,2.89c2-.49,4.44-1.21,6.4-.27,1,.51,2.17,2,1.59,3.24s-2.75.81-3.85.66a10.89,10.89,0,0,0-5.17.07c-1.53.51-1.37,3,.4,2.94a18.51,18.51,0,0,1,7.75,1c.86.36,1.39.8.57,1.58a2.78,2.78,0,0,1-1.74.62c-3.73.31-7.59-1-10.93,1.38-1.56,1.1-.06,3.7,1.52,2.59,3.87-2.73,9.49.94,13.09-2.3a3.7,3.7,0,0,0-.62-6.27c-2.74-1.55-6.58-1.71-9.64-1.58l.4,2.95c2.26-.76,4.64.41,7,.19a4.57,4.57,0,0,0,4.39-4.2,6.09,6.09,0,0,0-3.2-5.44c-2.7-1.42-5.91-.73-8.7,0-1.93.48-1.06,3.15.79,2.89,2.75-.39,5.37,1.15,8.15.45,2.18-.55,4.12-2.26,4-4.66s-2.13-3.82-4.17-4.41c-2.84-.82-5.74.64-8.54-.21l-.8,2.9c4.86.85,10.44,1,14.39-2.43a1.5,1.5,0,0,0,.39-1.46c-1-3.15-4.76-4.09-7.67-4.49a28.4,28.4,0,0,0-9.86.22c-1.88.42-1.09,3.31.8,2.9Z" />
     <circle class="cls-3" cx="640.5" cy="72.38" r="8.62" />
   </svg>`,
-})
-export class DoodlesComponent {
-  private readonly platformId = inject(PLATFORM_ID);
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly mediaMatcher = inject(MediaMatcher);
-  public readonly isDarkMode = signal(false);
-
-  public readonly fillColor = computed(() => (this.isDarkMode() ? '#fff' : '#000'));
-
-  constructor() {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
+  styles: `
+    :host {
+      display: block;
+      color: #000;
     }
 
-    const query = this.mediaMatcher.matchMedia('(prefers-color-scheme: dark)');
+    :host(.doodles-white) {
+      color: #fff;
+    }
 
-    this.isDarkMode.set(query.matches);
+    :host(.doodles-black) {
+      color: #000;
+    }
 
-    const listener = (event: MediaQueryListEvent) => {
-      this.isDarkMode.set(event.matches);
-    };
+    svg {
+      display: block;
+    }
 
-    query.addEventListener('change', listener);
+    .cls-1 {
+      fill: currentColor;
+    }
 
-    this.destroyRef.onDestroy(() => {
-      query.removeEventListener('change', listener);
-    });
-  }
-}
+    .cls-2 {
+      fill: #cc4e2b;
+    }
+
+    .cls-3 {
+      fill: #ff5252;
+    }
+
+    .cls-4 {
+      fill: #0068b5;
+    }
+
+    .cls-5 {
+      fill: #e6e6e6;
+      stroke: #000;
+    }
+
+    .cls-5,
+    .cls-8 {
+      stroke-miterlimit: 10;
+      stroke-width: 3px;
+    }
+
+    .cls-18,
+    .cls-6 {
+      fill: #000001;
+    }
+
+    .cls-7 {
+      fill: #fcee21;
+    }
+
+    .cls-15,
+    .cls-8 {
+      fill: #fff;
+    }
+
+    .cls-8 {
+      stroke: #3fa9f5;
+    }
+
+    .cls-9 {
+      fill: #333b3f;
+    }
+
+    .cls-10 {
+      fill: #8cc63f;
+    }
+
+    .cls-11 {
+      fill: #333;
+    }
+
+    .cls-12 {
+      fill: #7fc9ef;
+    }
+
+    .cls-13 {
+      fill: #54a7db;
+    }
+
+    .cls-14 {
+      fill: #b4ddf3;
+    }
+
+    .cls-16 {
+      fill: #dfdfde;
+    }
+
+    .cls-17 {
+      fill: #333a90;
+    }
+
+    .cls-18 {
+      fill-rule: evenodd;
+    }
+
+    .cls-19 {
+      fill: #006837;
+    }
+  `,
+})
+export class DoodlesComponent {}

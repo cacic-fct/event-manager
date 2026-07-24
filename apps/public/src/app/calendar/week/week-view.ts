@@ -23,6 +23,7 @@ export class CalendarWeekView {
   readonly weekDays = input.required<CalendarWeekDay[]>();
   readonly selectedDate = input.required<Date>();
   readonly events = input.required<PublicEvent[]>();
+  readonly subscribedEventIds = input<ReadonlySet<string>>(new Set());
   readonly canGoPrevious = input(true);
   readonly returnUrl = input('/calendar');
   readonly previousWeek = output<void>();

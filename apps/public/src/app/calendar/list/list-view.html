@@ -21,7 +21,10 @@
     @for (day of month.days; track day.key) {
     <div class="date-sticky-bar">{{ day.label }}</div>
     @for (event of day.events; track event.id) {
-    <app-calendar-event-list-item [event]="event" [returnUrl]="returnUrl()" />
+    <app-calendar-event-list-item
+      [event]="event"
+      [isSubscribed]="subscribedEventIds().has(event.id)"
+      [returnUrl]="returnUrl()" />
     } } }
   </mat-list>
   }

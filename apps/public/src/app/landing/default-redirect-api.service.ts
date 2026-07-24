@@ -11,6 +11,13 @@ import { graphqlError } from '../shared/rate-limit-error';
 
 export const DEFAULT_REDIRECT_TIMEOUT_MS = 400;
 
+const DEFAULT_REDIRECT_ROUTES = {
+  MENU: true,
+  CALENDAR: true,
+  MAJOR_EVENT: true,
+  WALLET: true,
+} satisfies Record<DefaultRedirectRoute, true>;
+
 @Injectable({ providedIn: 'root' })
 export class DefaultRedirectApiService {
   private readonly http = inject(HttpClient);
@@ -31,8 +38,17 @@ export class DefaultRedirectApiService {
             throw new Error('Resposta GraphQL sem dados.');
           }
 
-          return response.data.currentUserDefaultRedirect;
+          const route = response.data.currentUserDefaultRedirect;
+          if (!isDefaultRedirectRoute(route)) {
+            throw new Error('Resposta GraphQL com rota de redirecionamento inválida.');
+          }
+
+          return route;
         }),
       );
   }
+}
+
+function isDefaultRedirectRoute(value: unknown): value is DefaultRedirectRoute {
+  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(DEFAULT_REDIRECT_ROUTES, value);
 }

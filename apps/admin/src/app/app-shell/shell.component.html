@@ -5,7 +5,10 @@
     </button>
   }
 
-  <lib-cacic-logo routerLink="/" [fillColor]="fillColor()"></lib-cacic-logo>
+  <lib-cacic-logo
+    routerLink="/"
+    [class.logo-bark-mode]="isDarkSignal()"
+    [class.logo-light-mode]="!isDarkSignal()"></lib-cacic-logo>
 
   <span class="internal-badge">interno</span>
 

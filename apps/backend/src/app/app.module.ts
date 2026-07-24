@@ -65,6 +65,7 @@ import { EventFormPublicationWorkflowService } from './event-forms/event-form-pu
 import { EventFormResponsesService } from './event-forms/event-form-responses.service';
 import { EventFormResultEventsService } from './event-forms/event-form-result-events.service';
 import { EventFormResultsAccessService } from './event-forms/event-form-results-access.service';
+import { SseReplayService } from './realtime/sse-replay.service';
 import { EventFormsResolver } from './event-forms/event-forms.resolver';
 import { EventFormsScheduler } from './event-forms/event-forms.scheduler';
 import { EventFormsService } from './event-forms/event-forms.service';
@@ -158,6 +159,8 @@ import { redisProvider } from './redis/redis.provider';
 import { createNoopQueueProviders } from './queues/noop-queue.providers';
 import { BackendFeatureFlagService } from './feature-flags/backend-feature-flags';
 import { ServerVersionResolver } from './server-version/server-version.resolver';
+import { EventSitemapResolver } from './public-events/event-sitemap.resolver';
+import { EventSitemapService } from './public-events/event-sitemap.service';
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
@@ -298,6 +301,8 @@ const schedulerProviders = useInMemoryTestInfra
     EventDraftsResolver,
     EventDraftsService,
     PublicEventsResolver,
+    EventSitemapResolver,
+    EventSitemapService,
     ServerVersionResolver,
     PublicPlatformStatsResolver,
     UsersResolver,
@@ -354,6 +359,7 @@ const schedulerProviders = useInMemoryTestInfra
     EventFormPublicationWorkflowService,
     EventFormResponsesService,
     EventFormResultEventsService,
+    SseReplayService,
     EventFormResultsAccessService,
     EventLecturersResolver,
     MergeCandidatesResolver,

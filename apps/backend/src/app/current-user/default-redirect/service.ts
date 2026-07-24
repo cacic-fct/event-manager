@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import Redis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -10,6 +10,8 @@ const CACHE_KEY_PREFIX = 'current-user:default-redirect:v1';
 
 @Injectable()
 export class CurrentUserDefaultRedirectService {
+  private readonly logger = new Logger(CurrentUserDefaultRedirectService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: Redis,
@@ -43,7 +45,8 @@ export class CurrentUserDefaultRedirectService {
     try {
       const cached = await this.redis.get(this.getCacheKey(personId));
       return isDefaultRedirectRoute(cached) ? cached : null;
-    } catch {
+    } catch (error) {
+      this.logger.warn(`Could not read the current-user default redirect cache: ${this.formatError(error)}`);
       return null;
     }
   }
@@ -51,13 +54,17 @@ export class CurrentUserDefaultRedirectService {
   private async cacheRoute(personId: string, route: DefaultRedirectRoute): Promise<void> {
     try {
       await this.redis.set(this.getCacheKey(personId), route, 'EX', CACHE_TTL_SECONDS);
-    } catch {
-      // A Redis outage must not delay a post-login redirect.
+    } catch (error) {
+      this.logger.warn(`Could not cache the current-user default redirect: ${this.formatError(error)}`);
     }
   }
 
   private getCacheKey(personId: string): string {
     return `${CACHE_KEY_PREFIX}:${personId}`;
+  }
+
+  private formatError(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 
   private async hasPendingInPersonAttendance(personId: string, now: Date): Promise<boolean> {
@@ -95,6 +102,7 @@ export class CurrentUserDefaultRedirectService {
       where: {
         AND: [
           PUBLIC_MAJOR_EVENT_WHERE,
+          { endDate: { gte: now } },
           {
             OR: [{ subscriptionStartDate: null }, { subscriptionStartDate: { lte: now } }],
           },

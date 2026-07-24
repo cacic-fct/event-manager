@@ -1,5 +1,6 @@
 import type { Page, Route } from '@playwright/test';
 import { expect, test } from './support/e2e-test';
+import { fulfillCurrentUserDefaultRedirect } from './support/current-user-default-redirect';
 import {
   createPublicEvent,
   createPublicEventGroup,
@@ -213,6 +214,10 @@ async function fulfillGraphql(
   const body = parseGraphqlRequest(route);
   const query = body.query;
   const variables = body.variables;
+
+  if (await fulfillCurrentUserDefaultRedirect(route, query, 'MAJOR_EVENT')) {
+    return;
+  }
 
   if (query.includes('mutation SubscribeCurrentUserStandaloneEvent')) {
     state.incrementStandaloneSubscribeCalls();

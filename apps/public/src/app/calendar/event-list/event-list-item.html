@@ -8,6 +8,9 @@
   </div>
   <div matListItemTitle>{{ event().name }}</div>
   <div matListItemLine>{{ contextLine() }}</div>
+  @if (isSubscribed()) {
+  <div matListItemLine>Inscrito</div>
+  }
   @if (event().locationDescription) {
   <div matListItemLine>{{ event().locationDescription }}</div>
   }

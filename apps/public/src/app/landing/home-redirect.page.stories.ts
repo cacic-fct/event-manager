@@ -14,7 +14,7 @@ const meta: Meta<HomeComponent> = {
     applicationConfig({
       providers: [
         { provide: AuthService, useValue: { isAuthenticated: signal(false), login: async () => undefined } },
-        { provide: DefaultRedirectService, useValue: { resolve: async () => '/calendar' } },
+        { provide: DefaultRedirectService, useValue: { navigateToDefault: async () => undefined } },
       ],
     }),
   ],

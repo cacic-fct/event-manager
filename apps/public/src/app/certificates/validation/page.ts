@@ -1,13 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  inject,
-  PLATFORM_ID,
-  signal,
-  viewChild,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, inject, PLATFORM_ID, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormField, form, required, submit as submitSignalForm, validate } from '@angular/forms/signals';
 import { MatButtonModule } from '@angular/material/button';
@@ -90,9 +81,8 @@ export class CertificateValidation {
   private pendingCertificateId: string | null = null;
   private nextValidationSource: ValidationSource | null = null;
   private currentRouteCertificateId: string | null = null;
-  private isDarkSignal = signal(false);
+  public isDarkSignal = signal(false);
   private readonly notFoundCertificateId = signal<string | null>(null);
-  fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
 
   readonly certificateLookupModel = signal({
     certificateId: '',

@@ -1,5 +1,14 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  PLATFORM_ID,
+  computed,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -55,11 +64,10 @@ export class AuthErrorPage {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
-  private readonly isDarkSignal = signal(false);
+  public readonly isDarkSignal = signal(false);
   private readonly routeContent = signal<AuthErrorPageContent>(DEFAULT_AUTH_ERROR_CONTENT);
 
   readonly content = computed(() => this.contentOverride() ?? this.routeContent());
-  readonly logoFillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {

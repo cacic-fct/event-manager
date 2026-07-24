@@ -46,6 +46,7 @@ model EventSubscription {
 
   @@unique([eventId, personId, deletedAt])
   @@index([eventId])
+  @@index([personId, deletedAt, eventId])
   @@index([eventGroupSubscriptionId])
   @@map("event_subscriptions")
 }
@@ -108,6 +109,7 @@ model MajorEventSubscription {
 
   @@unique([majorEventId, personId, deletedAt])
   @@index([majorEventId])
+  @@index([personId, deletedAt, subscriptionStatus, majorEventId])
   @@map("major_event_subscriptions")
 }
 

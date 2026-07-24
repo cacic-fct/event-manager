@@ -7,12 +7,10 @@ const meta: Meta<CacicLogoComponent> = {
   component: CacicLogoComponent,
   tags: ['autodocs'],
   argTypes: {
-    fillColor: { control: 'color' },
     width: { control: 'text' },
     height: { control: 'text' },
   },
   args: {
-    fillColor: '#0f172a',
     width: '240px',
     height: '120px',
   },
@@ -21,13 +19,17 @@ const meta: Meta<CacicLogoComponent> = {
 export default meta;
 type Story = StoryObj<CacicLogoComponent>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  render: (args) => ({
+    props: args,
+    template: `<lib-cacic-logo class="logo-light-mode" [width]="width" [height]="height"></lib-cacic-logo>`,
+  }),
+};
 
 export const LightForeground: Story = {
-  args: {
-    fillColor: '#ffffff',
-  },
-  parameters: {
-    backgrounds: { default: 'dark-surface' },
-  },
+  render: (args) => ({
+    props: args,
+    template: `<lib-cacic-logo class="logo-bark-mode" [width]="width" [height]="height"></lib-cacic-logo>`,
+  }),
+  parameters: { backgrounds: { default: 'dark-surface' } },
 };

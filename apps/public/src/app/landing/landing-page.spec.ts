@@ -15,13 +15,13 @@ describe('LandingComponent', () => {
   let authState: ReturnType<typeof signal<boolean>>;
   let login: ReturnType<typeof vi.fn>;
   let navigateByUrl: ReturnType<typeof vi.fn>;
-  let resolveDefaultRedirect: ReturnType<typeof vi.fn>;
+  let navigateToDefault: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     authState = signal(false);
     login = vi.fn().mockResolvedValue(undefined);
     navigateByUrl = vi.fn().mockResolvedValue(true);
-    resolveDefaultRedirect = vi.fn().mockResolvedValue('/menu');
+    navigateToDefault = vi.fn().mockResolvedValue(undefined);
 
     await TestBed.configureTestingModule({
       imports: [LandingComponent],
@@ -45,7 +45,7 @@ describe('LandingComponent', () => {
             }),
           },
         },
-        { provide: DefaultRedirectService, useValue: { resolve: resolveDefaultRedirect } },
+        { provide: DefaultRedirectService, useValue: { navigateToDefault } },
         {
           provide: PlatformStatsApiService,
           useValue: {
@@ -72,8 +72,8 @@ describe('LandingComponent', () => {
 
     await fixture.componentInstance.login();
 
-    expect(navigateByUrl).toHaveBeenCalledWith('/menu');
-    expect(resolveDefaultRedirect).toHaveBeenCalled();
+    expect(navigateToDefault).toHaveBeenCalledWith(TestBed.inject(Router));
+    expect(navigateByUrl).not.toHaveBeenCalled();
     expect(login).not.toHaveBeenCalled();
   });
 

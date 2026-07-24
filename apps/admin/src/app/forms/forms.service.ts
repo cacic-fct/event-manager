@@ -2,7 +2,8 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
+import { watchReplayableEventSourcePing } from '@cacic-fct/shared-angular';
 import {
   Event,
   EventForm,
@@ -108,7 +109,7 @@ export class FormsService {
     }
     return ids;
   });
-  private resultsEventSource: EventSource | null = null;
+  private resultsStream: Subscription | null = null;
   private loadFormsRequestId = 0;
 
   readonly filtersForm = this.formBuilder.nonNullable.group({
@@ -776,19 +777,19 @@ export class FormsService {
       return;
     }
 
-    const source = new EventSource(`/api/event-forms/${encodeURIComponent(form.id)}/results/events`, {
-      withCredentials: true,
+    let stream: Subscription | null = null;
+    stream = watchReplayableEventSourcePing(
+      `/api/event-forms/${encodeURIComponent(form.id)}/results/events`,
+      'Não foi possível acompanhar os resultados em tempo real.',
+    ).subscribe({
+      next: () => void this.loadResults(),
+      error: () => {
+        if (this.resultsStream === stream) {
+          this.resultsStream = null;
+        }
+      },
     });
-    source.onmessage = () => {
-      void this.loadResults();
-    };
-    source.onerror = () => {
-      source.close();
-      if (this.resultsEventSource === source) {
-        this.resultsEventSource = null;
-      }
-    };
-    this.resultsEventSource = source;
+    this.resultsStream = stream;
   }
 
   private shouldStreamLiveResults(form: EventForm): boolean {
@@ -796,7 +797,7 @@ export class FormsService {
   }
 
   closeResultsStream(): void {
-    this.resultsEventSource?.close();
-    this.resultsEventSource = null;
+    this.resultsStream?.unsubscribe();
+    this.resultsStream = null;
   }
 }

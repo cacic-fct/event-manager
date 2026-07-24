@@ -28,6 +28,7 @@ import { OnlineAttendanceNotificationJobsService } from '../attendance/online-at
 import { AttendanceCategoryService } from './attendance-category.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
+import { EventSitemapService } from '../public-events/event-sitemap.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -228,6 +229,9 @@ export class EventsResolver {
     private readonly onlineAttendanceNotifications: OnlineAttendanceNotificationJobsService = {
       scheduleEvent: async () => undefined,
     } as unknown as OnlineAttendanceNotificationJobsService,
+    private readonly sitemap: EventSitemapService = {
+      refresh: async () => [],
+    } as unknown as EventSitemapService,
   ) {}
 
   @Query(() => [Event], { name: 'events' })
@@ -427,6 +431,7 @@ export class EventsResolver {
       );
       return createdEvent;
     });
+    await this.sitemap.refresh();
     await this.typesenseSearch.upsertEvent({
       id: event.id,
       name: event.name,
@@ -500,6 +505,7 @@ export class EventsResolver {
       return updated;
     });
     if (event) {
+      await this.sitemap.refresh();
       await this.typesenseSearch.upsertEvent({
         id: event.id,
         name: event.name,
@@ -724,6 +730,7 @@ export class EventsResolver {
       );
       return createdEvent;
     });
+    await this.sitemap.refresh();
     await this.typesenseSearch.upsertEvent({
       id: event.id,
       name: event.name,
@@ -776,6 +783,7 @@ export class EventsResolver {
         tx,
       );
     });
+    await this.sitemap.refresh();
     await this.typesenseSearch.deleteEvent(id);
     return {
       deleted: true,

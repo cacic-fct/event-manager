@@ -41,8 +41,7 @@ export class MenuComponent {
 
   private platformId = inject(PLATFORM_ID);
   private readonly destroyRef = inject(DestroyRef);
-  private isDarkSignal = signal(false);
-  fillColor = computed(() => (this.isDarkSignal() ? '#fff' : '#000'));
+  public isDarkSignal = signal(false);
 
   readonly isProfileAvailable = computed(() => this.authService.isAuthenticated() || Boolean(this.offlineSnapshot()));
   readonly displayUser = computed(() => {

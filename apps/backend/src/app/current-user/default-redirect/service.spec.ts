@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import { DefaultRedirectRoute } from '../models';
 import { CurrentUserDefaultRedirectService } from './service';
@@ -58,6 +59,7 @@ describe('CurrentUserDefaultRedirectService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           AND: expect.arrayContaining([
+            { endDate: { gte: now } },
             { OR: [{ subscriptionStartDate: null }, { subscriptionStartDate: { lte: now } }] },
             { OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }] },
             {
@@ -92,7 +94,7 @@ describe('CurrentUserDefaultRedirectService', () => {
     await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MENU);
   });
 
-  it('uses a route cached for the current person without querying event data', async () => {
+  it('uses a cached route for the current person without querying event data', async () => {
     redis.get.mockResolvedValue(DefaultRedirectRoute.MAJOR_EVENT);
 
     await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MAJOR_EVENT);
@@ -110,5 +112,27 @@ describe('CurrentUserDefaultRedirectService', () => {
       'EX',
       15 * 60,
     );
+  });
+
+  it('does not select a past major event with no configured subscription deadline', async () => {
+    await service.resolve('person-1');
+
+    expect(prisma.majorEvent.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([{ endDate: { gte: now } }]),
+        }),
+      }),
+    );
+  });
+
+  it('continues resolving and caching when Redis reads fail', async () => {
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    redis.get.mockRejectedValue(new Error('Redis unavailable'));
+
+    await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MENU);
+
+    expect(redis.set).toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Could not read the current-user default redirect cache'));
   });
 });
