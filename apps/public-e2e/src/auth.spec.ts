@@ -23,21 +23,18 @@ test('public preferences remain available without starting backend login', async
 });
 
 test('public landing login starts backend auth with the public app return path', async ({ page }) => {
-  let loginRedirect: URL | null = null;
   await mockPublicApi(page, {
     user: null,
-    onLoginRedirect: (url) => {
-      loginRedirect = url;
-    },
   });
 
   await page.goto('/app/');
 
   await expect(page.getByRole('heading', { name: 'CACiC Eventos' })).toBeVisible();
+  const loginNavigation = page.waitForURL(
+    (url) => url.pathname === '/api/auth/login/redirect' && url.searchParams.get('returnTo') === '/app',
+  );
   await page.getByRole('button', { name: 'Entrar com o Google' }).click();
-
-  await expect.poll(() => loginRedirect?.pathname).toBe('/api/auth/login/redirect');
-  await expect.poll(() => loginRedirect?.searchParams.get('returnTo')).toBe('/app');
+  await loginNavigation;
 });
 
 test('authenticated public users keep their local session and see account actions', async ({ page }) => {

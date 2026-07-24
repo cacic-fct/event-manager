@@ -286,7 +286,7 @@ async function fulfillGraphql(
     return;
   }
 
-  if (query.includes('query CurrentUserSubscriptionsFeed')) {
+  if (query.includes('currentUserSubscriptionFeed')) {
     await fulfillGraphqlData(route, subscriptionsFeedFixture());
     return;
   }
