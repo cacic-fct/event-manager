@@ -23,9 +23,9 @@
         "@aws-sdk/lib-storage": "^3.1075.0",
         "@bwip-js/browser": "^4.11.1",
         "@bwip-js/node": "^4.11.1",
-        "@cacic-fct/account-manager-cookie-banner": "^0.1.1",
+        "@cacic-fct/account-manager-cookie-banner": "^0.1.2",
         "@cacic-fct/account-manager-m2m-contracts": "^0.1.2",
-        "@cacic-fct/account-manager-privacy": "^0.1.3",
+        "@cacic-fct/account-manager-privacy": "^0.1.5",
         "@cacic-fct/form-contracts": "^0.1.1",
         "@cacic-fct/ngx-umami": "^1.2.3",
         "@fontsource-variable/inter": "^5.2.8",
@@ -596,11 +596,11 @@
 
     "@bwip-js/node": ["@bwip-js/node@4.11.1", "", {}, "sha512-jViMtIAlJws/FGc2qZa4gxCs3xBZDtS/wcQ4X2bxclPuxIsJWSo+QkaioqlWimn01IYGzRCSns5BjBLJ74wHDA=="],
 
-    "@cacic-fct/account-manager-cookie-banner": ["@cacic-fct/account-manager-cookie-banner@0.1.1", "", {}, "sha512-fNB2dT9isAClyALbWUtry8lwT/mK2UtbldgW/eGGPkYHoJ7/e8ZLdk1IjHhiRmwLUwvgOs082vY17iYmgXmoLw=="],
+    "@cacic-fct/account-manager-cookie-banner": ["@cacic-fct/account-manager-cookie-banner@0.1.2", "", {}, "sha512-/1Zg85crrfaRnPA0cI9jsp4KllqBqZN16QxM1hbSKR6FUsSIh4TGrXmOlGcodIptben00m7azBL3twbklFyaTg=="],
 
     "@cacic-fct/account-manager-m2m-contracts": ["@cacic-fct/account-manager-m2m-contracts@0.1.2", "", {}, "sha512-vCIT2NsuhFs7ja4g0Pfyv4Zkk7keYBRiFZSYbAts2gHi4OT8AZM5h6mHcD02XRVnnI8i7Uhxzfn8pTLYiV1yfQ=="],
 
-    "@cacic-fct/account-manager-privacy": ["@cacic-fct/account-manager-privacy@0.1.3", "", { "dependencies": { "@cacic-fct/account-manager-m2m-contracts": "^0.1.1", "tslib": "^2.8.0" }, "peerDependencies": { "@angular/common": ">=19", "@angular/core": ">=19", "rxjs": "^7.8.0" }, "optionalPeers": ["@angular/common", "@angular/core", "rxjs"] }, "sha512-v2gwfunPYLRlHGubi7wDE/nJZNueByaIpT0X/pLs5RHjJNz4rq08obe9J/QUTqwea31UvVXPV6+phoj92KKfgw=="],
+    "@cacic-fct/account-manager-privacy": ["@cacic-fct/account-manager-privacy@0.1.5", "", { "dependencies": { "@cacic-fct/account-manager-m2m-contracts": "^0.1.1", "tslib": "^2.8.0" }, "peerDependencies": { "@angular/common": ">=19", "@angular/core": ">=19", "rxjs": "^7.8.0" }, "optionalPeers": ["@angular/common", "@angular/core", "rxjs"] }, "sha512-PIxLZLLz/BWWwej8WGpJ+/bzCtxgAXvb7NMql41BaCqRBWVuLz4qGRN/90XA5t0UabJDovOCsHSEk0wMENbTFQ=="],
 
     "@cacic-fct/form-contracts": ["@cacic-fct/form-contracts@0.1.1", "", {}, "sha512-hMAy/fE0YMZeKricfvChGQR1LHDEvNuyQVXDdAKtnlAwb8IKkLsA4M+MlAbnT6jGm8pZNpwH4HzPTEAsZKWUPg=="],
 
