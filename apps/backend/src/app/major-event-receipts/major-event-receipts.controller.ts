@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Header,
+  Headers,
   MessageEvent,
   Param,
   Post,
@@ -39,6 +40,7 @@ import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { MajorEventReceiptsService } from './major-event-receipts.service';
+import { SseReplayService } from '../realtime/sse-replay.service';
 import {
   MAX_RECEIPT_FILE_SIZE_BYTES,
   RECEIPT_ADMIN_PERMISSION,
@@ -473,7 +475,10 @@ class ReceiptValidationQueueMessageDto {
 @ApiBearerAuth()
 @Controller('major-event-receipts')
 export class MajorEventReceiptsController {
-  constructor(private readonly receipts: MajorEventReceiptsService) {}
+  constructor(
+    private readonly receipts: MajorEventReceiptsService,
+    private readonly replay: SseReplayService,
+  ) {}
 
   @Post('major-events/:majorEventId')
   @UseGuards(RateLimitGuard)
@@ -560,10 +565,13 @@ export class MajorEventReceiptsController {
   @ApiForbiddenResponse({
     description: `Returned when the authenticated user does not have the required scope: ${RECEIPT_ADMIN_PERMISSION}.`,
   })
-  streamPendingValidationQueue(@Query('majorEventId') majorEventId?: string): Observable<MessageEvent> {
+  streamPendingValidationQueue(
+    @Query('majorEventId') majorEventId: string | undefined,
+    @Headers('last-event-id') lastEventId: string | undefined,
+  ): Observable<MessageEvent> {
     const normalizedMajorEventId = majorEventId?.trim() || undefined;
 
-    return interval(3_000).pipe(
+    const snapshots = interval(3_000).pipe(
       startWith(0),
       switchMap(() => this.receipts.listPendingValidationQueue(normalizedMajorEventId)),
       map((queue) => ({
@@ -572,6 +580,12 @@ export class MajorEventReceiptsController {
           queue,
         },
       })),
+    );
+
+    return this.replay.replay(
+      this.replay.scope('receipt-validation-queue', normalizedMajorEventId),
+      lastEventId,
+      snapshots,
     );
   }
 

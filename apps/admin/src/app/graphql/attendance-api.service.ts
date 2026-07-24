@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, NgZone, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { Observable, map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
@@ -27,7 +28,6 @@ import {
 export class AttendanceApiService {
   private readonly http = inject(HttpClient);
   private readonly graphqlHttp = inject(GraphqlHttpService);
-  private readonly zone = inject(NgZone);
 
   createEventAttendance(input: { eventId: string; personId: string }) {
     return this.graphqlHttp
@@ -294,32 +294,15 @@ export class AttendanceApiService {
   }
 
   watchEventAttendanceScannerFeed(eventId: string): Observable<EventAttendanceScannerFeedItem[]> {
-    return new Observable<EventAttendanceScannerFeedItem[]>((subscriber) => {
-      const source = new EventSource(
-        `/api/event-attendances/events/${encodeURIComponent(eventId)}/scanner-feed/events`,
-        {
-          withCredentials: true,
-        },
-      );
-
-      source.onmessage = (event) => {
-        this.zone.run(() => {
-          const parsed = JSON.parse(event.data) as {
-            type: string;
-            attendances?: EventAttendanceScannerFeedItem[];
-          };
-          if (parsed.type === 'event-attendance-scanner-feed' && parsed.attendances) {
-            subscriber.next(parsed.attendances);
-          }
-        });
-      };
-
-      source.onerror = () => {
-        this.zone.run(() => subscriber.error(new Error('Não foi possível acompanhar as presenças em tempo real.')));
-        source.close();
-      };
-
-      return () => source.close();
+    return watchReplayableEventSource(`/api/event-attendances/events/${encodeURIComponent(eventId)}/scanner-feed/events`, {
+      decode: (event) => {
+        const parsed = JSON.parse(event.data) as {
+          type: string;
+          attendances?: EventAttendanceScannerFeedItem[];
+        };
+        return parsed.type === 'event-attendance-scanner-feed' && parsed.attendances ? parsed.attendances : null;
+      },
+      errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
     });
   }
 

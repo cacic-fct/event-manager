@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, NgZone, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
 
@@ -102,7 +103,6 @@ const PUBLIC_EVENT_FIELDS = `
 @Injectable({ providedIn: 'root' })
 export class AttendanceCollectionApiService {
   private readonly http = inject(HttpClient);
-  private readonly zone = inject(NgZone);
 
   listCollectionEvents(): Observable<AttendanceCollectionEvent[]> {
     return this.query<{ currentUserAttendanceCollectionEvents: AttendanceCollectionEvent[] }>(
@@ -141,29 +141,14 @@ export class AttendanceCollectionApiService {
   }
 
   watchFeed(eventId: string): Observable<AttendanceScannerFeedItem[]> {
-    return new Observable<AttendanceScannerFeedItem[]>((subscriber) => {
-      const source = new EventSource(`/api/attendance-collection/events/${encodeURIComponent(eventId)}/feed/events`, {
-        withCredentials: true,
-      });
-
-      source.onmessage = (event) => {
-        this.zone.run(() => {
-          const parsed = JSON.parse(event.data) as {
-            type: string;
-            attendances?: AttendanceScannerFeedItem[];
-          };
-          if (parsed.type === 'event-attendance-scanner-feed' && parsed.attendances) {
-            subscriber.next(parsed.attendances);
-          }
-        });
-      };
-
-      source.onerror = () => {
-        this.zone.run(() => subscriber.error(new Error('Não foi possível acompanhar as presenças em tempo real.')));
-        source.close();
-      };
-
-      return () => source.close();
+    return watchReplayableEventSource(`/api/attendance-collection/events/${encodeURIComponent(eventId)}/feed/events`, {
+      decode: (event) =>
+        decodeTypedSseEvent<AttendanceScannerFeedItem[], 'attendances'>(
+          event,
+          'event-attendance-scanner-feed',
+          'attendances',
+        ),
+      errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
     });
   }
 

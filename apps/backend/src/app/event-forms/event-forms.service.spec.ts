@@ -57,7 +57,10 @@ describe('EventFormsService', () => {
       notifications as unknown as jest.Mocked<NovuNotificationsService>,
       featureFlags as unknown as BackendFeatureFlagService,
     );
-    const resultEvents = new EventFormResultEventsService();
+    const resultEvents = new EventFormResultEventsService({
+      scope: jest.fn((channel: string, formId: string) => `${channel}:${formId}`),
+      record: jest.fn().mockResolvedValue(undefined),
+    } as never);
     const listings = new EventFormListingsService(
       prisma as unknown as jest.Mocked<PrismaService>,
       authorizationPolicy as unknown as jest.Mocked<AuthorizationPolicyService>,

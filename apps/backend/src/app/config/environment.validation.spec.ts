@@ -24,6 +24,7 @@ describe('validateBackendEnvironment', () => {
         'ACCOUNT_MANAGER_M2M_AUDIENCE is required.',
         'CALENDAR_FEED_KEY_PEPPER is required.',
         'TURNSTILE_SECRET_KEY is required.',
+        'SSE_REPLAY_CURSOR_SECRET is required.',
       ].join('\n- '),
     );
   });

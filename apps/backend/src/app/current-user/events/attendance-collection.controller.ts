@@ -1,4 +1,4 @@
-import { Controller, MessageEvent, Param, Req, Sse } from '@nestjs/common';
+import { Controller, Headers, MessageEvent, Param, Req, Sse } from '@nestjs/common';
 import { AttendanceCreationMethod, SubscriptionStatus } from '@prisma/client';
 import {
   ApiBearerAuth,
@@ -18,6 +18,7 @@ import { AuthorizationPolicyService } from '../../authorization/authorization-po
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { EventAttendancesScannerFeedSupport } from '../../events/attendances/shared/scanner-feed-support';
+import { SseReplayService } from '../../realtime/sse-replay.service';
 import { CurrentUserContextService } from '../context.service';
 
 type RequestWithUser = Request & {
@@ -124,6 +125,7 @@ export class CurrentUserAttendanceCollectionController extends EventAttendancesS
     attendanceCategories: AttendanceCategoryService,
     private readonly currentUserContext: CurrentUserContextService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly replay: SseReplayService,
   ) {
     super(prisma, attendanceCategories);
   }
@@ -149,8 +151,12 @@ export class CurrentUserAttendanceCollectionController extends EventAttendancesS
       'Returned when the current person is not configured as an attendance collector for the event, the event is deleted or not public, attendance collection is disabled, or the collection window is closed.',
   })
   @ApiBearerAuth()
-  streamFeed(@Param('eventId') eventId: string, @Req() request: RequestWithUser): Observable<MessageEvent> {
-    return interval(2_000).pipe(
+  streamFeed(
+    @Param('eventId') eventId: string,
+    @Headers('last-event-id') lastEventId: string | undefined,
+    @Req() request: RequestWithUser,
+  ): Observable<MessageEvent> {
+    const snapshots = interval(2_000).pipe(
       startWith(0),
       switchMap(async () => {
         await this.requireCollector(eventId, request, true);
@@ -162,6 +168,12 @@ export class CurrentUserAttendanceCollectionController extends EventAttendancesS
           attendances,
         },
       })),
+    );
+
+    return this.replay.replay(
+      this.replay.scope('current-user-attendance-collection-feed', eventId, request.user?.sub ?? request.headers.cookie),
+      lastEventId,
+      snapshots,
     );
   }
 

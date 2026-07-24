@@ -1,4 +1,4 @@
-import { Controller, MessageEvent, Param, Sse } from '@nestjs/common';
+import { Controller, Headers, MessageEvent, Param, Req, Sse } from '@nestjs/common';
 import { AttendanceCreationMethod, SubscriptionStatus } from '@prisma/client';
 import {
   ApiBearerAuth,
@@ -12,11 +12,15 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Observable, interval, map, startWith, switchMap } from 'rxjs';
+import { Request } from 'express';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceCategoryService } from './attendance-category.service';
 import { EventAttendancesScannerFeedSupport } from './attendances/shared/scanner-feed-support';
+import { SseReplayService } from '../realtime/sse-replay.service';
+
+type RequestWithUser = Request & { user?: { sub?: string } };
 
 class EventAttendanceScannerFeedItemDto {
   @ApiProperty({
@@ -114,7 +118,11 @@ class EventAttendanceScannerFeedMessageDto {
 @ApiBearerAuth()
 @Controller('event-attendances')
 export class EventAttendancesController extends EventAttendancesScannerFeedSupport {
-  constructor(prisma: PrismaService, attendanceCategories: AttendanceCategoryService) {
+  constructor(
+    prisma: PrismaService,
+    attendanceCategories: AttendanceCategoryService,
+    private readonly replay: SseReplayService,
+  ) {
     super(prisma, attendanceCategories);
   }
 
@@ -145,8 +153,12 @@ export class EventAttendancesController extends EventAttendancesScannerFeedSuppo
   @ApiForbiddenResponse({
     description: `Returned when the authenticated principal does not have the required permission: ${Permission.EventAttendance.Read}.`,
   })
-  streamScannerFeed(@Param('eventId') eventId: string): Observable<MessageEvent> {
-    return interval(2_000).pipe(
+  streamScannerFeed(
+    @Param('eventId') eventId: string,
+    @Headers('last-event-id') lastEventId: string | undefined,
+    @Req() request: RequestWithUser,
+  ): Observable<MessageEvent> {
+    const snapshots = interval(2_000).pipe(
       startWith(0),
       switchMap(() => this.getScannerFeed(eventId)),
       map((attendances) => ({
@@ -155,6 +167,12 @@ export class EventAttendancesController extends EventAttendancesScannerFeedSuppo
           attendances,
         },
       })),
+    );
+
+    return this.replay.replay(
+      this.replay.scope('event-attendance-scanner-feed', eventId, request.user?.sub ?? request.headers.cookie),
+      lastEventId,
+      snapshots,
     );
   }
 

@@ -1,4 +1,5 @@
 import { once } from 'node:events';
+import { createHash } from 'node:crypto';
 import { FactoryProvider } from '@nestjs/common';
 import Redis from 'ioredis';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
@@ -26,6 +27,7 @@ interface RedisTestClient {
   set(key: string, value: string, ...args: unknown[]): Promise<'OK' | null>;
   del(...keys: string[]): Promise<number>;
   exists(key: string): Promise<number>;
+  lpush(key: string, ...values: string[]): Promise<number>;
   eval(script: string, keyCount: number, ...args: unknown[]): Promise<unknown>;
   scanStream(options?: { match?: string }): NodeJS.ReadableStream;
   disconnect(): void;
@@ -214,6 +216,30 @@ describe('redisProvider e2e in-memory infrastructure', () => {
       attempts: 3,
       cooldownSeconds: 4,
     });
+  });
+
+  it('rejects rate-limit hashes when the key already holds a string or list', async () => {
+    const redis = createInMemoryRedis();
+    const key = `cacic:rate-limit:test-policy:${createHash('sha256').update('test-policy|ip:127.0.0.1|').digest('hex')}`;
+    const consumeRateLimit = () =>
+      redis.eval(
+        "redis.call('HMGET', KEYS[1]) redis.call('HSET', KEYS[1]) redis.call('PEXPIRE', KEYS[1])",
+        1,
+        key,
+        '1000',
+        '60000',
+        '1',
+        '0',
+        '2000',
+        '10000',
+      );
+
+    await redis.set(key, 'value');
+    await expect(consumeRateLimit()).rejects.toThrow(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+
+    await redis.del(key);
+    await redis.lpush(key, 'value');
+    await expect(consumeRateLimit()).rejects.toThrow(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
   });
 
   it('clears in-memory keys on disconnect and module destroy', async () => {

@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, NgZone, inject } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { Observable, map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 
@@ -75,7 +76,6 @@ export interface ReceiptValidationResult {
 export class ReceiptValidationApiService {
   private readonly http = inject(HttpClient);
   private readonly graphqlHttp = inject(GraphqlHttpService);
-  private readonly zone = inject(NgZone);
 
   getPendingCount(): Observable<{ pendingCount: number }> {
     return this.graphqlHttp
@@ -103,29 +103,11 @@ export class ReceiptValidationApiService {
   }
 
   watchQueue(majorEventId?: string): Observable<ReceiptValidationQueue> {
-    return new Observable<ReceiptValidationQueue>((subscriber) => {
-      const queryString = majorEventId ? `?majorEventId=${encodeURIComponent(majorEventId)}` : '';
-      const source = new EventSource(`/api/major-event-receipts/admin/queue/events${queryString}`, {
-        withCredentials: true,
-      });
-
-      source.onmessage = (event) => {
-        this.zone.run(() => {
-          const parsed = JSON.parse(event.data) as {
-            type: string;
-            queue?: ReceiptValidationQueue;
-          };
-          if (parsed.type === 'receipt-validation-queue' && parsed.queue) {
-            subscriber.next(parsed.queue);
-          }
-        });
-      };
-      source.onerror = () => {
-        this.zone.run(() => subscriber.error(new Error('Não foi possível acompanhar a fila de comprovantes.')));
-        source.close();
-      };
-
-      return () => source.close();
+    const queryString = majorEventId ? `?majorEventId=${encodeURIComponent(majorEventId)}` : '';
+    return watchReplayableEventSource(`/api/major-event-receipts/admin/queue/events${queryString}`, {
+      decode: (event) =>
+        decodeTypedSseEvent<ReceiptValidationQueue, 'queue'>(event, 'receipt-validation-queue', 'queue'),
+      errorMessage: 'Não foi possível acompanhar a fila de comprovantes.',
     });
   }
 

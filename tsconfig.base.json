@@ -19,6 +19,7 @@
       "@cacic-fct/shared-permissions": ["./libs/shared-permissions/src/index.ts"],
       "@cacic-fct/shared-frontend-types": ["./libs/shared-data-types/src/lib/frontend-types.ts"],
       "@cacic-fct/shared-angular": ["./libs/shared-angular/src/index.ts"],
+      "@cacic-fct/shared-angular/testing": ["./libs/shared-angular/src/lib/testing/fake-event-source.fixture.ts"],
       "@cacic-fct/shared-angular/auth": ["./libs/shared-angular/src/lib/auth/auth.service.ts"],
       "@cacic-fct/shared-angular/auth/guard": ["./libs/shared-angular/src/lib/auth/auth.guard.ts"],
       "@cacic-fct/shared-angular/auth/interceptor": ["./libs/shared-angular/src/lib/auth/auth.interceptor.ts"],

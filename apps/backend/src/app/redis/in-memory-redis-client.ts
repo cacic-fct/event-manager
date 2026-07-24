@@ -4,11 +4,12 @@ import { Readable } from 'node:stream';
 export class InMemoryRedisClient implements OnModuleDestroy {
   private readonly values = new Map<string, string>();
   private readonly hashes = new Map<string, Map<string, string>>();
+  private readonly lists = new Map<string, string[]>();
   private readonly expirations = new Map<string, number>();
 
   async get(key: string): Promise<string | null> {
     this.deleteIfExpired(key);
-    if (this.hashes.has(key)) {
+    if (this.hashes.has(key) || this.lists.has(key)) {
       throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
     }
     return this.values.get(key) ?? null;
@@ -17,12 +18,13 @@ export class InMemoryRedisClient implements OnModuleDestroy {
   async set(key: string, value: string, ...args: unknown[]): Promise<'OK' | null> {
     this.deleteIfExpired(key);
 
-    if (this.usesNx(args) && (this.values.has(key) || this.hashes.has(key))) {
+    if (this.usesNx(args) && (this.values.has(key) || this.hashes.has(key) || this.lists.has(key))) {
       return null;
     }
 
     this.values.set(key, value);
     this.hashes.delete(key);
+    this.lists.delete(key);
     this.setExpiration(key, args);
     return 'OK';
   }
@@ -33,7 +35,8 @@ export class InMemoryRedisClient implements OnModuleDestroy {
       this.expirations.delete(key);
       const deletedValue = this.values.delete(key);
       const deletedHash = this.hashes.delete(key);
-      if (deletedValue || deletedHash) {
+      const deletedList = this.lists.delete(key);
+      if (deletedValue || deletedHash || deletedList) {
         deleted += 1;
       }
     }
@@ -42,7 +45,69 @@ export class InMemoryRedisClient implements OnModuleDestroy {
 
   async exists(key: string): Promise<number> {
     this.deleteIfExpired(key);
-    return this.values.has(key) || this.hashes.has(key) ? 1 : 0;
+    return this.values.has(key) || this.hashes.has(key) || this.lists.has(key) ? 1 : 0;
+  }
+
+  async incr(key: string): Promise<number> {
+    const current = await this.get(key);
+    const next = Number(current ?? '0') + 1;
+    if (!Number.isSafeInteger(next)) {
+      throw new Error('ERR increment or decrement would overflow');
+    }
+    await this.set(key, next.toString());
+    return next;
+  }
+
+  async lpush(key: string, ...values: string[]): Promise<number> {
+    this.deleteIfExpired(key);
+    if (this.values.has(key) || this.hashes.has(key)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    }
+    const list = this.lists.get(key) ?? [];
+    list.unshift(...values);
+    this.lists.set(key, list);
+    return list.length;
+  }
+
+  async lrange(key: string, start: number, stop: number): Promise<string[]> {
+    this.deleteIfExpired(key);
+    if (this.values.has(key) || this.hashes.has(key)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    }
+    const list = this.lists.get(key) ?? [];
+    const normalizedStart = start < 0 ? Math.max(list.length + start, 0) : start;
+    const normalizedStop = stop < 0 ? list.length + stop : stop;
+    if (normalizedStop < 0 || normalizedStart > normalizedStop || normalizedStart >= list.length) {
+      return [];
+    }
+    return list.slice(normalizedStart, normalizedStop + 1);
+  }
+
+  async ltrim(key: string, start: number, stop: number): Promise<'OK'> {
+    this.deleteIfExpired(key);
+    if (this.values.has(key) || this.hashes.has(key)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    }
+    if (!this.lists.has(key)) {
+      return 'OK';
+    }
+    const values = await this.lrange(key, start, stop);
+    if (values.length === 0) {
+      this.lists.delete(key);
+      this.expirations.delete(key);
+    } else {
+      this.lists.set(key, values);
+    }
+    return 'OK';
+  }
+
+  async expire(key: string, seconds: number): Promise<number> {
+    this.deleteIfExpired(key);
+    if (!this.values.has(key) && !this.hashes.has(key) && !this.lists.has(key)) {
+      return 0;
+    }
+    this.expirations.set(key, Date.now() + seconds * 1000);
+    return 1;
   }
 
   async eval(script: string, keyCount: number, ...args: unknown[]): Promise<unknown> {
@@ -71,6 +136,10 @@ export class InMemoryRedisClient implements OnModuleDestroy {
       return this.consumeRateLimit(keys[0], values);
     }
 
+    if (this.isSseReplayPublishScript(script)) {
+      return this.publishSseReplayEvent(keys, values);
+    }
+
     throw new Error('Unsupported in-memory Redis eval script.');
   }
 
@@ -81,6 +150,7 @@ export class InMemoryRedisClient implements OnModuleDestroy {
   disconnect(): void {
     this.values.clear();
     this.hashes.clear();
+    this.lists.clear();
     this.expirations.clear();
   }
 
@@ -100,8 +170,63 @@ export class InMemoryRedisClient implements OnModuleDestroy {
     );
   }
 
+  private isSseReplayPublishScript(script: string): boolean {
+    return script.includes('-- sse-replay-publish');
+  }
+
+  private publishSseReplayEvent(keys: string[], args: unknown[]): string {
+    const [eventsKey, sequenceKey] = keys;
+    const fingerprint = String(args[0]);
+    const idPrefix = String(args[2]);
+    const maxEvents = this.numberArg(args, 3);
+    const ttlSeconds = this.numberArg(args, 4);
+    this.deleteIfExpired(eventsKey);
+    if (this.values.has(eventsKey) || this.hashes.has(eventsKey)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${eventsKey}`);
+    }
+
+    const events = this.lists.get(eventsKey) ?? [];
+    const latest = events[0];
+    if (latest) {
+      try {
+        const previous = JSON.parse(latest) as { fingerprint?: unknown };
+        if (previous.fingerprint === fingerprint) {
+          return latest;
+        }
+      } catch {
+        // Match the Lua script by appending after malformed journal entries.
+      }
+    }
+
+    this.deleteIfExpired(sequenceKey);
+    if (this.hashes.has(sequenceKey) || this.lists.has(sequenceKey)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${sequenceKey}`);
+    }
+    const sequence = Number(this.values.get(sequenceKey) ?? '0') + 1;
+    if (!Number.isSafeInteger(sequence)) {
+      throw new Error('ERR increment or decrement would overflow');
+    }
+    this.values.set(sequenceKey, sequence.toString());
+
+    const stored = JSON.parse(String(args[1])) as Record<string, unknown>;
+    stored.id = `${idPrefix}${sequence}`;
+    stored.fingerprint = fingerprint;
+    const serialized = JSON.stringify(stored);
+    events.unshift(serialized);
+    events.splice(maxEvents);
+    this.lists.set(eventsKey, events);
+    this.expirations.set(eventsKey, Date.now() + ttlSeconds * 1000);
+    this.expirations.set(sequenceKey, Date.now() + ttlSeconds * 1000);
+
+    return serialized;
+  }
+
   private consumeRateLimit(key: string, args: unknown[]): number[] {
     this.deleteIfExpired(key);
+
+    if (this.values.has(key) || this.lists.has(key)) {
+      throw new Error(`WRONGTYPE Operation against a key holding the wrong kind of value: ${key}`);
+    }
 
     const now = this.numberArg(args, 0);
     const windowMs = this.numberArg(args, 1);
@@ -155,7 +280,6 @@ export class InMemoryRedisClient implements OnModuleDestroy {
       blockedUntilMs = 0;
     }
 
-    this.values.delete(key);
     this.hashes.set(
       key,
       new Map([
@@ -214,15 +338,16 @@ export class InMemoryRedisClient implements OnModuleDestroy {
       this.expirations.delete(key);
       this.values.delete(key);
       this.hashes.delete(key);
+      this.lists.delete(key);
     }
   }
 
   private keys(pattern?: string): string[] {
-    for (const key of [...this.values.keys(), ...this.hashes.keys()]) {
+    for (const key of [...this.values.keys(), ...this.hashes.keys(), ...this.lists.keys()]) {
       this.deleteIfExpired(key);
     }
 
-    const keys = [...new Set([...this.values.keys(), ...this.hashes.keys()])];
+    const keys = [...new Set([...this.values.keys(), ...this.hashes.keys(), ...this.lists.keys()])];
     if (!pattern) {
       return keys;
     }
