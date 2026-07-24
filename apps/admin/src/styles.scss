@@ -60,3 +60,45 @@ body {
   font-feature-settings: 'liga';
   -webkit-font-feature-settings: 'liga';
 }
+.mat-mdc-list-base .mat-mdc-list-item {
+  height: auto;
+  min-height: var(--mat-list-list-item-one-line-container-height, 48px);
+  overflow: visible;
+}
+
+.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-one-line,
+.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-two-lines {
+  height: auto;
+}
+
+.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-two-lines {
+  min-height: var(--mat-list-list-item-two-line-container-height, 64px);
+}
+
+.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-three-lines {
+  height: auto;
+  min-height: var(--mat-list-list-item-three-line-container-height, 88px);
+}
+
+.mat-mdc-list-base .mat-mdc-list-item .mdc-list-item__content {
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+}
+
+.mat-mdc-list-base .mat-mdc-list-item .mdc-list-item__primary-text,
+.mat-mdc-list-base .mat-mdc-list-item .mdc-list-item__secondary-text {
+  max-height: none;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-three-lines .mat-mdc-list-item-line.mdc-list-item__secondary-text,
+.mat-mdc-list-base .mat-mdc-list-item.mdc-list-item--with-three-lines .mat-mdc-list-item-unscoped-content.mdc-list-item__secondary-text {
+  display: block;
+  -webkit-box-orient: initial;
+  -webkit-line-clamp: unset;
+  white-space: normal;
+}
