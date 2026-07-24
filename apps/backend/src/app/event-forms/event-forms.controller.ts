@@ -1,4 +1,4 @@
-import { Controller, Get, Header, MessageEvent, Param, Query, Req, Res, Sse } from '@nestjs/common';
+import { Controller, Get, Header, Headers, MessageEvent, Param, Query, Req, Res, Sse } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
@@ -10,19 +10,23 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { Observable } from 'rxjs';
+import { defer, Observable, switchMap } from 'rxjs';
 import { EventFormTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { EventFormsService } from './event-forms.service';
+import { SseReplayService } from '../realtime/sse-replay.service';
 
 type RequestWithUser = Request & { user?: AuthenticatedUser };
 
 @ApiTags('event-forms')
 @Controller('event-forms')
 export class EventFormsController {
-  constructor(private readonly forms: EventFormsService) {}
+  constructor(
+    private readonly forms: EventFormsService,
+    private readonly replay: SseReplayService,
+  ) {}
 
   @Sse(':formId/results/events')
   @RequirePermissions(Permission.EventForm.Results)
@@ -50,8 +54,15 @@ export class EventFormsController {
   @ApiForbiddenResponse({
     description: `Returned when the authenticated user does not have the required scope: ${Permission.EventForm.Results}.`,
   })
-  streamResults(@Param('formId') formId: string): Observable<MessageEvent> {
-    return this.forms.watchResults(formId);
+  streamResults(
+    @Param('formId') formId: string,
+    @Headers('last-event-id') lastEventId: string | undefined,
+  ): Observable<MessageEvent> {
+    return this.replay.replay(
+      this.replay.scope('event-form-results', formId),
+      lastEventId,
+      this.forms.watchResults(formId),
+    );
   }
 
   @Sse(':formId/current-user-results/events')
@@ -102,15 +113,24 @@ export class EventFormsController {
     @Query('eventId') eventId: string | undefined,
     @Query('majorEventId') majorEventId: string | undefined,
     @Req() request: RequestWithUser,
+    @Headers('last-event-id') lastEventId: string | undefined,
   ): Observable<MessageEvent> {
-    return this.forms.watchCurrentUserResults(
-      { req: request },
-      {
-        formId,
-        targetType,
-        eventId,
-        majorEventId,
-      },
+    const context = { req: request };
+    const input = {
+      formId,
+      targetType,
+      eventId,
+      majorEventId,
+    };
+
+    return defer(() => this.forms.assertCurrentUserLiveResultsAccess(context, input)).pipe(
+      switchMap(() =>
+        this.replay.replay(
+          this.replay.scope('event-form-results', formId),
+          lastEventId,
+          this.forms.watchCurrentUserResults(context, input),
+        ),
+      ),
     );
   }
 

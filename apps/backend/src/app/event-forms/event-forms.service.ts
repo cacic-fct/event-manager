@@ -191,6 +191,13 @@ export class EventFormsService {
     return this.resultEvents.watchResults(formId);
   }
 
+  assertCurrentUserLiveResultsAccess(
+    context: GraphqlContext,
+    input: TargetInput & { formId: string },
+  ): Promise<void> {
+    return this.results.assertCurrentUserLiveResultsAccess(context, input);
+  }
+
   watchCurrentUserResults(
     context: GraphqlContext,
     input: TargetInput & { formId: string },
