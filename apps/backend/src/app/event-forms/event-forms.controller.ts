@@ -10,7 +10,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { Observable } from 'rxjs';
+import { defer, Observable, switchMap } from 'rxjs';
 import { EventFormTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
@@ -115,24 +115,21 @@ export class EventFormsController {
     @Req() request: RequestWithUser,
     @Headers('last-event-id') lastEventId: string | undefined,
   ): Observable<MessageEvent> {
-    return this.replay.replay(
-      this.replay.scope(
-        'event-form-current-user-results',
-        formId,
-        request.user?.sub,
-        targetType,
-        eventId,
-        majorEventId,
-      ),
-      lastEventId,
-      this.forms.watchCurrentUserResults(
-        { req: request },
-        {
-          formId,
-          targetType,
-          eventId,
-          majorEventId,
-        },
+    const context = { req: request };
+    const input = {
+      formId,
+      targetType,
+      eventId,
+      majorEventId,
+    };
+
+    return defer(() => this.forms.assertCurrentUserLiveResultsAccess(context, input)).pipe(
+      switchMap(() =>
+        this.replay.replay(
+          this.replay.scope('event-form-results', formId),
+          lastEventId,
+          this.forms.watchCurrentUserResults(context, input),
+        ),
       ),
     );
   }
