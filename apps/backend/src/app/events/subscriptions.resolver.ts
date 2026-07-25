@@ -326,14 +326,29 @@ export class EventSubscriptionsResolver {
   @RequirePermissions(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
   async workspaceMajorEventSubscriptions(
     @Args('majorEventId', { type: () => String }) majorEventId: string,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ): Promise<WorkspaceMajorEventSubscription[]> {
     const pagination = resolvePagination(skip, take);
+    const searchQuery = query?.trim();
     const subscriptions = await this.prisma.majorEventSubscription.findMany({
       where: {
         majorEventId,
         deletedAt: null,
+        ...(searchQuery
+          ? {
+              person: {
+                OR: [
+                  { name: { contains: searchQuery, mode: 'insensitive' } },
+                  { email: { contains: searchQuery, mode: 'insensitive' } },
+                  { phone: { contains: searchQuery, mode: 'insensitive' } },
+                  { identityDocument: { contains: searchQuery, mode: 'insensitive' } },
+                  { academicId: { contains: searchQuery, mode: 'insensitive' } },
+                ],
+              },
+            }
+          : {}),
       },
       select: this.majorEventSubscriptionSelect(),
       orderBy: {
@@ -344,6 +359,34 @@ export class EventSubscriptionsResolver {
     });
 
     return this.attachMajorEventSubscriptionEvents(majorEventId, subscriptions);
+  }
+
+  @Query(() => WorkspaceMajorEventSubscription, {
+    name: 'workspaceMajorEventSubscription',
+  })
+  @RequirePermissions(...WORKSPACE_SUBSCRIPTION_READ_SCOPES)
+  async workspaceMajorEventSubscription(
+    @Args('majorEventId', { type: () => String }) majorEventId: string,
+    @Args('subscriptionId', { type: () => String }) subscriptionId: string,
+  ): Promise<WorkspaceMajorEventSubscription> {
+    const subscription = await this.prisma.majorEventSubscription.findFirst({
+      where: {
+        id: subscriptionId,
+        majorEventId,
+        deletedAt: null,
+      },
+      select: this.majorEventSubscriptionSelect(),
+    });
+    if (!subscription) {
+      throw new NotFoundException('Inscrição não encontrada.');
+    }
+
+    const [withEvents] = await this.attachMajorEventSubscriptionEvents(majorEventId, [subscription]);
+    if (!withEvents) {
+      throw new NotFoundException('Inscrição não encontrada.');
+    }
+
+    return withEvents;
   }
 
   @Mutation(() => WorkspaceMajorEventSubscription, {

@@ -18,6 +18,12 @@ describe('EventSubscriptionsResolver', () => {
         EventSubscriptionsResolver.prototype.workspaceMajorEventSubscriptions,
       ),
     ).toEqual(requiredReadScopes);
+    expect(
+      Reflect.getMetadata(
+        REQUIRED_PERMISSIONS_KEY,
+        EventSubscriptionsResolver.prototype.workspaceMajorEventSubscription,
+      ),
+    ).toEqual(requiredReadScopes);
   });
 
   it('requires workflow permissions when mutation responses return contextual limited person data', () => {
@@ -276,7 +282,7 @@ describe('EventSubscriptionsResolver', () => {
       {} as never,
     );
 
-    await expect(resolver.workspaceMajorEventSubscriptions('major-1', 5, 10)).resolves.toEqual([
+    await expect(resolver.workspaceMajorEventSubscriptions('major-1', undefined, 5, 10)).resolves.toEqual([
       expect.objectContaining({
         id: 'major-subscription-1',
         events: [
@@ -342,6 +348,73 @@ describe('EventSubscriptionsResolver', () => {
 
     expect(prisma.event.findMany).not.toHaveBeenCalled();
     expect(prisma.majorEventSubscriptionEventSelection.findMany).not.toHaveBeenCalled();
+  });
+
+  it('filters major-event subscriptions by subscriber details', async () => {
+    const prisma = {
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      event: {
+        findMany: jest.fn(),
+      },
+      majorEventSubscriptionEventSelection: {
+        findMany: jest.fn(),
+      },
+    };
+    const resolver = new EventSubscriptionsResolver(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await resolver.workspaceMajorEventSubscriptions('major-1', '  Ada  ');
+
+    expect(prisma.majorEventSubscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          person: {
+            OR: expect.arrayContaining([{ name: { contains: 'Ada', mode: 'insensitive' } }]),
+          },
+        }),
+      }),
+    );
+  });
+
+  it('loads a single major-event subscription only within its major event', async () => {
+    const subscription = majorEventSubscriptionRecord({ id: 'major-subscription-1', majorEventId: 'major-1' });
+    const prisma = {
+      majorEventSubscription: {
+        findFirst: jest.fn().mockResolvedValue(subscription),
+      },
+      event: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      majorEventSubscriptionEventSelection: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const resolver = new EventSubscriptionsResolver(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await resolver.workspaceMajorEventSubscription('major-1', 'major-subscription-1');
+
+    expect(prisma.majorEventSubscription.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'major-subscription-1',
+          majorEventId: 'major-1',
+          deletedAt: null,
+        },
+      }),
+    );
   });
 
   it('creates a workspace event subscription through a serializable transaction', async () => {

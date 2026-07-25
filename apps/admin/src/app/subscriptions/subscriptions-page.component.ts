@@ -43,6 +43,7 @@ export class SubscriptionsPageComponent {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const eventId = params.get('eventId');
       const majorEventId = params.get('majorEventId');
+      const majorEventSubscriptionId = params.get('subscriptionId');
 
       if (eventId) {
         this.selectedTabIndex.set(0);
@@ -52,12 +53,21 @@ export class SubscriptionsPageComponent {
 
       if (majorEventId) {
         this.selectedTabIndex.set(1);
-        void this.workspace.selectMajorEventById(majorEventId);
+        void this.openMajorEventSubscriptionRoute(majorEventId, majorEventSubscriptionId);
         return;
       }
 
       this.selectedTabIndex.set(0);
     });
+  }
+
+  private async openMajorEventSubscriptionRoute(majorEventId: string, subscriptionId: string | null): Promise<void> {
+    if (this.workspace.majorEventForm.controls.majorEventId.value !== majorEventId) {
+      await this.workspace.selectMajorEventById(majorEventId, false);
+    }
+    if (subscriptionId && this.workspace.selectedMajorEventSubscription()?.id !== subscriptionId) {
+      await this.workspace.selectMajorEventSubscriptionById(majorEventId, subscriptionId);
+    }
   }
 
   private async initializeReceiptValidation(): Promise<void> {

@@ -114,8 +114,8 @@
               <mat-icon matListItemIcon>{{ notificationIcon(notification) }}</mat-icon>
             }
 
-            <span matListItemTitle class="notification-title">
-              {{ notification.subject || notification.workflow?.name || 'Notificação' }}
+            <span matListItemTitle class="notification-title"
+              >{{ notification.subject || notification.workflow?.name || 'Notificação' }}
             </span>
             <span matListItemLine class="notification-body" [innerHTML]="notificationBody(notification)"></span>
             <span matListItemLine>{{ notification.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>

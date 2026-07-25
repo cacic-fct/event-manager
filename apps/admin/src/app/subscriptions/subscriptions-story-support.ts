@@ -16,9 +16,18 @@ import { SubscriptionsService } from './subscriptions.service';
 import { createAdminEvent, createAdminMajorEvent, createAdminPerson } from '../testing/admin-entity-fixtures';
 
 interface StoryWorkspaceOptions {
-  majorEventId?: string;
+  majorEventId?: string | null;
+  selectedMajorEventSubscriptionId?: string | null;
   pendingReceiptsCount?: number;
   permissions?: WorkspacePermissionScope[];
+}
+
+function createStoryPagination() {
+  return {
+    label: () => '1–2 de 2',
+    hasPreviousPage: () => false,
+    hasNextPage: () => false,
+  };
 }
 
 export function createWorkspaceSubscriptionsStoryProviders(options: StoryWorkspaceOptions = {}) {
@@ -53,7 +62,7 @@ function createReceiptValidationStoryApi(pendingReceiptsCount: number) {
 }
 
 function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions) {
-  const selectedMajorEventId = options.majorEventId ?? 'major-event-1';
+  const selectedMajorEventId = options.majorEventId === undefined ? 'major-event-1' : options.majorEventId;
   const majorEvents = signal<MajorEvent[]>([
     buildMajorEvent('major-event-1', 'Semana da Computação', '💻'),
     buildMajorEvent('major-event-2', 'Jornada de Dados', '📊'),
@@ -61,10 +70,17 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
   const eventResults = signal<Event[]>([buildEvent('event-1', 'Arquitetura Angular', '💻')]);
   const selectedEvent = signal<Event | null>(eventResults()[0] ?? null);
   const majorEventSubscriptions = signal<WorkspaceMajorEventSubscription[]>([
-    buildMajorEventSubscription('subscription-1', selectedMajorEventId, 'Ada Lovelace', 'RECEIPT_UNDER_REVIEW'),
-    buildMajorEventSubscription('subscription-2', selectedMajorEventId, 'Grace Hopper', 'CONFIRMED'),
+    buildMajorEventSubscription(
+      'subscription-1',
+      selectedMajorEventId || 'major-event-1',
+      'Ada Lovelace',
+      'RECEIPT_UNDER_REVIEW',
+    ),
+    buildMajorEventSubscription('subscription-2', selectedMajorEventId || 'major-event-1', 'Grace Hopper', 'CONFIRMED'),
   ]);
-  const selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(majorEventSubscriptions()[0]);
+  const selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(
+    majorEventSubscriptions().find((subscription) => subscription.id === options.selectedMajorEventSubscriptionId) ?? null,
+  );
   const majorEventPaymentTiers = computed(() => {
     const tiers =
       majorEvents().find((majorEvent) => majorEvent.id === majorEventForm.controls.majorEventId.value)
@@ -89,14 +105,19 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       createdByMethod: 'ADMIN_DASHBOARD',
     },
   ]);
-  const selectedEventIds = signal(new Set(['major-event-item-1']));
+  const selectedEventIds = signal(
+    new Set(selectedMajorEventSubscription()?.events.filter((event) => event.subscribed).map((event) => event.eventId) ?? []),
+  );
   const majorEventForm = new FormGroup({
-    majorEventId: new FormControl(selectedMajorEventId, { nonNullable: true }),
+    majorEventId: new FormControl(selectedMajorEventId ?? '', { nonNullable: true }),
   });
   const majorEventSearchForm = new FormGroup({
     query: new FormControl('', { nonNullable: true }),
   });
-  const selectedMajorEventIdSignal = signal(selectedMajorEventId);
+  const majorEventSubscriptionSearchForm = new FormGroup({
+    query: new FormControl('', { nonNullable: true }),
+  });
+  const selectedMajorEventIdSignal = signal(selectedMajorEventId ?? '');
   const majorEventSearchQuery = signal('');
   majorEventSearchForm.controls.query.valueChanges.subscribe((query) => majorEventSearchQuery.set(query));
   const editMode = signal(false);
@@ -111,8 +132,10 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       query: new FormControl('', { nonNullable: true }),
     }),
     eventResults,
+    eventResultsPagination: createStoryPagination(),
     selectedEvent,
     eventSubscriptions,
+    eventSubscriptionsPagination: createStoryPagination(),
     eventRegularSubscriptions: computed(() =>
       eventSubscriptions().filter((subscription) => !subscription.isLecturerSubscription),
     ),
@@ -127,6 +150,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     }),
     majorEventForm,
     majorEventSearchForm,
+    majorEventSubscriptionSearchForm,
     selectedMajorEvent: computed(
       () => majorEvents().find((majorEvent) => majorEvent.id === selectedMajorEventIdSignal()) ?? null,
     ),
@@ -149,6 +173,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       paymentTier: new FormControl<string | null>('Estudante'),
     }),
     majorEventSubscriptions,
+    majorEventSubscriptionsPagination: createStoryPagination(),
     majorEventEvents,
     selectedMajorEventSubscription,
     majorEventPaymentTiers,
@@ -160,20 +185,38 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     selectedMajorEventEvents: computed(() => selectedMajorEventSubscription()?.events ?? majorEventEvents()),
     searchEvents: () => Promise.resolve(),
     resetEventFilters: () => Promise.resolve(),
+    previousEventResultsPage: () => Promise.resolve(),
+    nextEventResultsPage: () => Promise.resolve(),
     selectEvent: (event: Event) => {
       selectedEvent.set(event);
       return Promise.resolve();
     },
     loadEventSubscriptions: () => Promise.resolve(),
+    previousEventSubscriptionsPage: () => Promise.resolve(),
+    nextEventSubscriptionsPage: () => Promise.resolve(),
     exportEventSubscriptionsCsv: () => Promise.resolve(),
     findEventPerson: () => Promise.resolve(),
     createEventSubscription: () => Promise.resolve(),
     selectMajorEventById: (majorEventId: string): Promise<void> => {
       majorEventForm.controls.majorEventId.setValue(majorEventId);
       selectedMajorEventIdSignal.set(majorEventId);
+      selectedMajorEventSubscription.set(null);
+      editMode.set(false);
       return Promise.resolve();
     },
     loadMajorEventSubscriptions: () => Promise.resolve(),
+    searchMajorEventSubscriptions: () => Promise.resolve(),
+    previousMajorEventSubscriptionsPage: () => Promise.resolve(),
+    nextMajorEventSubscriptionsPage: () => Promise.resolve(),
+    selectMajorEventSubscriptionById: (_majorEventId: string, subscriptionId: string): Promise<void> => {
+      const subscription = majorEventSubscriptions().find((item) => item.id === subscriptionId) ?? null;
+      selectedMajorEventSubscription.set(subscription);
+      return Promise.resolve();
+    },
+    closeMajorEventSubscriptionDetail: () => {
+      selectedMajorEventSubscription.set(null);
+      editMode.set(false);
+    },
     exportMajorEventSubscriptionsCsv: () => Promise.resolve(),
     startNewMajorEventSubscription: () => {
       selectedMajorEventSubscription.set(null);
@@ -182,6 +225,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     importMajorEventSubscriptionsFromCsv: () => Promise.resolve(),
     selectMajorEventSubscription: (subscription: WorkspaceMajorEventSubscription | null) => {
       selectedMajorEventSubscription.set(subscription);
+      editMode.set(false);
       selectedEventIds.set(
         new Set(subscription?.events.filter((event) => event.subscribed).map((event) => event.eventId) ?? []),
       );

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SubscriptionsPageComponent } from './subscriptions-page.component';
 import { createWorkspaceSubscriptionsStoryProviders } from './subscriptions-story-support';
 
@@ -59,22 +59,39 @@ export const NoReceiptsToValidate: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const link = await canvas.findByRole('link', { name: /validar comprovantes/i });
-    await expect(link).toBeVisible();
+    await waitFor(() => expect(link).toBeVisible());
     await expect(link).toHaveAttribute('aria-disabled', 'true');
   },
 };
 
-function createSubscriptionsTabStoryProviders(pendingReceiptsCount: number) {
+export const DeepLinkedSubscriberDetail: Story = {
+  args: {},
+  decorators: [
+    applicationConfig({
+      providers: createSubscriptionsTabStoryProviders(3, 'subscription-1'),
+    }),
+  ],
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Ada Lovelace' })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de eventos/i })).toBeVisible());
+  },
+};
+
+function createSubscriptionsTabStoryProviders(pendingReceiptsCount: number, subscriptionId?: string) {
   return [
     provideRouter([]),
     {
       provide: ActivatedRoute,
       useValue: {
-        paramMap: of(convertToParamMap({ majorEventId: 'major-event-1' })),
+        paramMap: of(convertToParamMap({ majorEventId: 'major-event-1', subscriptionId })),
       },
     },
     ...createWorkspaceSubscriptionsStoryProviders({
       majorEventId: 'major-event-1',
+      selectedMajorEventSubscriptionId: subscriptionId,
       pendingReceiptsCount,
     }),
   ];

@@ -151,6 +151,11 @@ export const routes: Route[] = [
         data: subscriptionsData,
         loadComponent: () => import('./permission-denied.component').then((m) => m.PermissionDeniedComponent),
       },
+      ...guardedFeatureRoute(
+        `${subscriptionsData.path}/major-event/:majorEventId/subscription/:subscriptionId`,
+        subscriptionsData,
+        () => import('../subscriptions/subscriptions-page.component').then((m) => m.SubscriptionsPageComponent),
+      ),
       ...guardedFeatureRoute(`${subscriptionsData.path}/major-event/:majorEventId`, subscriptionsData, () =>
         import('../subscriptions/subscriptions-page.component').then((m) => m.SubscriptionsPageComponent),
       ),

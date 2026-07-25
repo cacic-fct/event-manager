@@ -92,6 +92,9 @@ export class SubscriptionsService {
   readonly majorEventSearchForm = this.formBuilder.nonNullable.group({
     query: [''],
   });
+  readonly majorEventSubscriptionSearchForm = this.formBuilder.nonNullable.group({
+    query: [''],
+  });
   private readonly selectedMajorEventId = signal('');
   private readonly majorEventSearchQuery = signal('');
   readonly majorEventPersonForm = this.formBuilder.nonNullable.group({
@@ -159,6 +162,11 @@ export class SubscriptionsService {
       control: this.eventFiltersForm,
       destroyRef: this.destroyRef,
       search: () => this.searchEvents(),
+    });
+    bindLiveSearch({
+      control: this.majorEventSubscriptionSearchForm.controls.query,
+      destroyRef: this.destroyRef,
+      search: () => this.searchMajorEventSubscriptions(),
     });
   }
 
@@ -258,9 +266,11 @@ export class SubscriptionsService {
     }
   }
 
-  async selectMajorEventById(majorEventId: string): Promise<void> {
+  async selectMajorEventById(majorEventId: string, navigate = true): Promise<void> {
     this.majorEventForm.controls.majorEventId.setValue(majorEventId);
-    void this.router.navigate(['/subscriptions/major-event', majorEventId]);
+    if (navigate) {
+      void this.router.navigate(['/subscriptions/major-event', majorEventId]);
+    }
     resetPagination(this.majorEventSubscriptionsPagination);
     await this.loadMajorEventSubscriptions();
   }
@@ -272,9 +282,9 @@ export class SubscriptionsService {
       this.selectedMajorEventSubscription.set(null);
       return;
     }
-    void this.router.navigate(['/subscriptions/major-event', majorEventId]);
     const subscriptions = await firstValueFrom(
       this.api.listMajorEventSubscriptions(majorEventId, {
+        query: this.majorEventSubscriptionSearchForm.controls.query.value.trim() || undefined,
         ...pageVariables(this.majorEventSubscriptionsPagination.pageIndex()),
       }),
     );
@@ -290,7 +300,12 @@ export class SubscriptionsService {
     this.majorEventEvents.set(events);
     const visibleSubscriptions = applyPagedResult(subscriptions, this.majorEventSubscriptionsPagination);
     this.majorEventSubscriptions.set(visibleSubscriptions);
-    this.selectMajorEventSubscription(visibleSubscriptions[0] ?? null);
+    this.selectMajorEventSubscription(null, false);
+  }
+
+  async searchMajorEventSubscriptions(): Promise<void> {
+    resetPagination(this.majorEventSubscriptionsPagination);
+    await this.loadMajorEventSubscriptions();
   }
 
   async previousMajorEventSubscriptionsPage(): Promise<void> {
@@ -301,13 +316,21 @@ export class SubscriptionsService {
     await loadNextPage(this.majorEventSubscriptionsPagination, () => this.loadMajorEventSubscriptions());
   }
 
-  selectMajorEventSubscription(subscription: WorkspaceMajorEventSubscription | null): void {
+  async selectMajorEventSubscriptionById(majorEventId: string, subscriptionId: string): Promise<void> {
+    const subscription = await firstValueFrom(this.api.getMajorEventSubscription(majorEventId, subscriptionId));
+    this.selectMajorEventSubscription(subscription, false);
+  }
+
+  selectMajorEventSubscription(subscription: WorkspaceMajorEventSubscription | null, navigate = true): void {
     this.selectedMajorEventSubscription.set(subscription);
     this.selectedMajorEventPerson.set(null);
     this.editMode.set(false);
     if (!subscription) {
       this.selectedEventIds.set(new Set());
       return;
+    }
+    if (navigate) {
+      void this.router.navigate(['/subscriptions/major-event', subscription.majorEventId, 'subscription', subscription.id]);
     }
     this.majorEventEditForm.reset({
       subscriptionStatus: subscription.subscriptionStatus,
@@ -318,6 +341,12 @@ export class SubscriptionsService {
     this.selectedEventIds.set(
       new Set(subscription.events.filter((eventItem) => eventItem.subscribed).map((eventItem) => eventItem.eventId)),
     );
+  }
+
+  closeMajorEventSubscriptionDetail(): void {
+    this.selectMajorEventSubscription(null, false);
+    const majorEventId = this.majorEventForm.controls.majorEventId.value;
+    void this.router.navigate(majorEventId ? ['/subscriptions/major-event', majorEventId] : ['/subscriptions']);
   }
 
   startNewMajorEventSubscription(): void {

@@ -11,6 +11,114 @@
   padding-block: 1rem;
 }
 
+.major-subscription-layout {
+  --major-subscription-transition: 180ms cubic-bezier(0.2, 0, 0, 1);
+  --major-selector-width: clamp(18rem, 22vw, 24rem);
+  --subscriber-rail-width: clamp(18rem, 20vw, 22rem);
+
+  display: flex;
+  align-items: flex-start;
+  transition: gap var(--major-subscription-transition);
+}
+
+.major-selector {
+  flex: 0 0 var(--major-selector-width);
+  max-height: 80rem;
+  overflow: hidden;
+  transition:
+    flex-basis var(--major-subscription-transition),
+    max-height var(--major-subscription-transition),
+    opacity var(--major-subscription-transition),
+    padding var(--major-subscription-transition),
+    border-width var(--major-subscription-transition),
+    transform var(--major-subscription-transition);
+}
+
+.major-subscription-workspace {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  transition: padding-left var(--major-subscription-transition);
+}
+
+.major-subscription-placeholder,
+.subscription-detail {
+  animation: subscription-panel-enter var(--major-subscription-transition);
+}
+
+.subscription-browser {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  transform-origin: left top;
+  transition: width var(--major-subscription-transition);
+}
+
+.major-subscription-layout.detail-active {
+  gap: 0;
+}
+
+.major-subscription-layout.detail-active .major-selector {
+  flex-basis: 0;
+  padding-inline: 0;
+  border-inline-width: 0;
+  opacity: 0;
+  transform: translateX(-1rem);
+  pointer-events: none;
+}
+
+.major-subscription-layout.detail-active .major-subscription-workspace {
+  padding-left: 1rem;
+}
+
+.major-subscription-layout.detail-active .subscription-browser {
+  width: var(--subscriber-rail-width);
+}
+
+.major-subscription-layout.detail-active .subscription-detail {
+  position: absolute;
+  top: 0;
+  left: calc(var(--subscriber-rail-width) + 1rem);
+  width: calc(100% - var(--subscriber-rail-width) - 1rem);
+}
+
+.major-subscription-workspace > .panel {
+  box-sizing: border-box;
+}
+
+.major-subscription-placeholder {
+  min-height: 20rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.5rem;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.major-subscription-placeholder h3,
+.major-subscription-placeholder p {
+  margin: 0;
+}
+
+.major-subscription-placeholder mat-icon {
+  width: 3rem;
+  height: 3rem;
+  font-size: 3rem;
+}
+
+@keyframes subscription-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(0.75rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .panel,
 .surface {
   border: 1px solid var(--mat-sys-outline-variant);
@@ -58,6 +166,11 @@
 .major-event-form mat-form-field,
 .detail-form mat-form-field {
   min-width: 12rem;
+}
+
+.detail-form mat-form-field {
+  flex: 1 1 12rem;
+  min-width: min(12rem, 100%);
 }
 
 .event-result-list,
@@ -162,6 +275,65 @@
   .subtab-layout,
   .workbench-grid {
     grid-template-columns: 1fr;
+  }
+
+  .major-subscription-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .major-subscription-layout.detail-active {
+    gap: 1rem;
+  }
+
+  .major-subscription-layout.detail-active .major-selector {
+    max-height: 0;
+    padding-block: 0;
+    padding-inline: 1rem;
+    border-width: 0;
+    transform: translateY(-1rem);
+  }
+
+  .major-subscription-workspace,
+  .major-subscription-layout.detail-active .major-subscription-workspace {
+    display: grid;
+    padding-left: 0;
+  }
+
+  .major-subscription-layout.detail-active .subscription-browser {
+    width: 100%;
+  }
+
+  .major-subscription-layout.detail-active .subscription-detail {
+    position: static;
+    width: auto;
+  }
+
+  .major-subscription-placeholder,
+  .subscription-detail {
+    animation-name: subscription-panel-enter-mobile;
+  }
+}
+
+@keyframes subscription-panel-enter-mobile {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .major-subscription-layout,
+  .major-selector,
+  .major-subscription-placeholder,
+  .subscription-detail {
+    animation: none;
+    transition: none;
   }
 }
 
