@@ -99,6 +99,7 @@ export class Wallet {
           picture: snapshot.picture,
           unespRole: snapshot.unespRole,
           identityDocument: snapshot.identityDocument,
+          enrollmentNumber: snapshot.enrollmentNumber,
         }
       : null;
   });
@@ -135,7 +136,7 @@ export class Wallet {
 
     effect(() => {
       const userId = this.cardUser()?.userId;
-      if (userId) this.restaurantCard.load(userId);
+      if (userId) void this.restaurantCard.load(userId);
     });
 
     this.destroyRef.onDestroy(() => {

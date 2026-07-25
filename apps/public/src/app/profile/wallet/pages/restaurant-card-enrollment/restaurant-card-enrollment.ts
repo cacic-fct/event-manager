@@ -82,10 +82,10 @@ export class RestaurantCardEnrollment {
     this.cardNumber.setValue(value);
   }
 
-  save(): void {
+  async save(): Promise<void> {
     const userId = this.authService.user()?.sub;
     if (!userId || this.cardNumber.invalid) return;
-    this.restaurantCard.save(userId, this.cardNumber.value);
+    await this.restaurantCard.save(userId, this.cardNumber.value);
     void this.router.navigateByUrl('/profile/wallet');
   }
 

@@ -1,34 +1,34 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
-
-const STORAGE_PREFIX = 'cacic-eventos:wallet:restaurant-card:';
+import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
 
 @Injectable({ providedIn: 'root' })
 export class RestaurantCardService {
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly offlineData = inject(OfflinePublicDataAccessService);
   private readonly numbers = signal<Record<string, string>>({});
+  private loadRequest = 0;
 
-  load(userId: string): void {
+  async load(userId: string): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
 
-    const value = this.sanitize(window.localStorage.getItem(this.storageKey(userId)) ?? '');
-    this.numbers.update((numbers) => ({ ...numbers, [userId]: value }));
+    const request = ++this.loadRequest;
+    const storedCard = await this.offlineData.getRestaurantCard(userId);
+    if (request !== this.loadRequest) return;
+
+    this.numbers.update((numbers) => ({ ...numbers, [userId]: storedCard?.cardNumber ?? '' }));
   }
 
   get(userId: string): string | null {
     return this.numbers()[userId] || null;
   }
 
-  save(userId: string, number: string): void {
+  async save(userId: string, number: string): Promise<void> {
     const value = this.sanitize(number);
     if (!value || !isPlatformBrowser(this.platformId)) return;
 
-    window.localStorage.setItem(this.storageKey(userId), value);
+    await this.offlineData.replaceRestaurantCard({ userId, cardNumber: value, updatedAt: Date.now() });
     this.numbers.update((numbers) => ({ ...numbers, [userId]: value }));
-  }
-
-  private storageKey(userId: string): string {
-    return `${STORAGE_PREFIX}${userId}`;
   }
 
   private sanitize(value: string): string {
