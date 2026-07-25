@@ -167,6 +167,7 @@ import { BackendFeatureFlagService } from './feature-flags/backend-feature-flags
 import { ServerVersionResolver } from './server-version/server-version.resolver';
 import { EventSitemapResolver } from './public-events/event-sitemap.resolver';
 import { EventSitemapService } from './public-events/event-sitemap.service';
+import { AccountManagerGrpcClient } from './grpc/account-manager-grpc.client';
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
@@ -382,6 +383,7 @@ const schedulerProviders = useInMemoryTestInfra
     ReceiptAnalysisService,
     AccountManagerPrivacySyncService,
     AccountManagerTotpService,
+    AccountManagerGrpcClient,
     CertificatesResolver,
     WeatherResolver,
     CertificateTargetsService,

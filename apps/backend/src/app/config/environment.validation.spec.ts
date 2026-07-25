@@ -21,6 +21,7 @@ describe('validateBackendEnvironment', () => {
         'KEYCLOAK_M2M_CLIENT_SECRET is required.',
         'KEYCLOAK_M2M_AUDIENCE is required.',
         'KEYCLOAK_M2M_ALLOWED_CLIENTS is required.',
+        'ACCOUNT_MANAGER_GRPC_URL is required.',
         'ACCOUNT_MANAGER_M2M_AUDIENCE is required.',
         'CALENDAR_FEED_KEY_PEPPER is required.',
         'TURNSTILE_SECRET_KEY is required.',

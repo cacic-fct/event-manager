@@ -92,7 +92,7 @@ COPY --chown=app:app certificate-templates ./certificate-templates
 
 USER app
 
-EXPOSE 3000
+EXPOSE 3000 50051
 
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "main.js"]

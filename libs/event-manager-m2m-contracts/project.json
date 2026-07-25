@@ -10,7 +10,7 @@
       "outputs": ["{workspaceRoot}/dist/libs/event-manager-m2m-contracts"],
       "options": {
         "cwd": "libs/event-manager-m2m-contracts",
-        "command": "bun run tsc -p tsconfig.lib.json && cp package.json README.md ../../dist/libs/event-manager-m2m-contracts/"
+        "command": "bun run tsc -p tsconfig.lib.json && cp package.json README.md ../../dist/libs/event-manager-m2m-contracts/ && mkdir -p ../../dist/libs/event-manager-m2m-contracts/proto && cp ../../apps/backend/src/assets/grpc/event-manager-m2m.proto ../../dist/libs/event-manager-m2m-contracts/proto/"
       }
     },
     "publish": {

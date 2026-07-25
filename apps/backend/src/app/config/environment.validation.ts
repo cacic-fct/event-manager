@@ -15,6 +15,7 @@ const REQUIRED_IN_PRODUCTION = [
   'KEYCLOAK_M2M_CLIENT_SECRET',
   'KEYCLOAK_M2M_AUDIENCE',
   'KEYCLOAK_M2M_ALLOWED_CLIENTS',
+  'ACCOUNT_MANAGER_GRPC_URL',
   'ACCOUNT_MANAGER_M2M_AUDIENCE',
   'CALENDAR_FEED_KEY_PEPPER',
   'TURNSTILE_SECRET_KEY',
@@ -59,7 +60,8 @@ export function validateBackendEnvironment(config: Environment): Environment {
   requireHttpUrl(config, 'KEYCLOAK_POST_LOGOUT_REDIRECT_URI', errors);
   requireUrlPath(config, 'KEYCLOAK_REDIRECT_URI', '/api/auth/callback', errors);
   requireOneOf(config, 'KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD', KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHODS, errors);
-  requireHttpUrl(config, 'ACCOUNT_MANAGER_API_URL', errors);
+  requireGrpcTarget(config, 'ACCOUNT_MANAGER_GRPC_URL', errors);
+  requireGrpcTarget(config, 'EVENT_MANAGER_GRPC_BIND_URL', errors);
   requireHttpUrl(config, 'NOVU_API_URL', errors);
   requireHttpUrl(config, 'NOVU_CLIENT_API_URL', errors);
   requireHttpUrl(config, 'NOVU_CLIENT_SOCKET_URL', errors);
@@ -134,6 +136,17 @@ function requireHttpUrl(config: Environment, key: string, errors: string[]): voi
     }
   } catch {
     errors.push(`${key} must be a valid URL.`);
+  }
+}
+
+function requireGrpcTarget(config: Environment, key: string, errors: string[]): void {
+  const value = readString(config, key);
+  if (!value) {
+    return;
+  }
+
+  if (!/^[a-zA-Z0-9._-]+:\d{1,5}$/.test(value)) {
+    errors.push(`${key} must use the host:port format without a URL scheme or path.`);
   }
 }
 
