@@ -1,13 +1,88 @@
 .export-form,
-.field-list {
+.field-list,
+.badge-options {
   display: grid;
   gap: 0.75rem;
 }
 
+.export-columns {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.export-columns.with-badge-options {
+  grid-template-columns: repeat(2, minmax(15rem, 1fr));
+}
+
 .field-list {
-  margin-top: 1rem;
+  margin: 1rem 0;
 }
 
 .identity-document-options {
   margin-left: 2rem;
+}
+
+.badge-codes-toggle {
+  margin-top: 0.5rem;
+}
+
+.badge-options {
+  align-content: start;
+  border-left: 1px solid var(--mat-sys-outline-variant);
+  padding-left: 1.5rem;
+}
+
+.badge-options-heading h3,
+.badge-options-heading p,
+.barcode-copy,
+.error-correction-copy {
+  margin: 0;
+}
+
+.badge-options-heading h3 {
+  font: var(--mat-sys-title-medium);
+}
+
+.badge-options-heading p,
+.barcode-copy,
+.error-correction-copy {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.badge-preview {
+  align-items: center;
+  background: var(--mat-sys-surface-container-low);
+  display: grid;
+  justify-content: center;
+  min-height: 10rem;
+  padding: 1rem;
+}
+
+.badge-preview div {
+  height: 10rem;
+  width: 10rem;
+}
+
+:host ::ng-deep .badge-preview svg {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+code {
+  font: var(--mat-sys-body-small);
+}
+
+@media (max-width: 44rem) {
+  .export-columns.with-badge-options {
+    grid-template-columns: 1fr;
+  }
+
+  .badge-options {
+    border-left: 0;
+    border-top: 1px solid var(--mat-sys-outline-variant);
+    padding-left: 0;
+    padding-top: 1.5rem;
+  }
 }

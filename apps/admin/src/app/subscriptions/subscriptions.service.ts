@@ -1,4 +1,5 @@
 import { DOCUMENT } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, computed, inject, Injectable, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, Validators } from '@angular/forms';
@@ -23,6 +24,7 @@ import { SubscriptionApiService } from '../graphql/subscription-api.service';
 import { SubscriptionCsvColumnDialogComponent } from './dialogs/import/subscription-csv-column-dialog.component';
 import { SubscriptionCsvImportResultDialogComponent } from './dialogs/import/subscription-csv-import-result-dialog.component';
 import { SubscriberCsvExportDialogComponent } from './dialogs/export/subscriber-csv-export-dialog.component';
+import { SubscriberBadgeExportErrorDialogComponent } from './dialogs/export/subscriber-badge-export-error-dialog.component';
 import { getErrorMessage } from '../feedback/error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-filters/event-list-filters';
 import { bindLiveSearch } from '../search/live-search';
@@ -35,7 +37,7 @@ import {
   pageVariables,
   resetPagination,
 } from '../pagination/list-pagination';
-import { buildSubscriberCsv } from './subscriber-csv-export';
+import { buildSubscriberCsv, SubscriberCsvExportDialogOptions } from './subscriber-csv-export';
 import { MajorEventsService } from '../major-events/major-events.service';
 import { AttendancesService } from '../attendances/attendances.service';
 
@@ -550,14 +552,24 @@ export class SubscriptionsService {
       return;
     }
 
-    const subscriptions = await this.fetchAllEventSubscriptions(eventId);
-    this.eventSubscriptions.set(subscriptions);
-    const options = await this.openExportDialog('Baixar inscrições do evento', subscriptions.length);
-    if (!options) {
-      return;
-    }
+    try {
+      const subscriptions = await this.fetchAllEventSubscriptions(eventId);
+      this.eventSubscriptions.set(subscriptions);
+      const options = await this.openExportDialog('Baixar inscrições do evento', subscriptions.length);
+      if (!options) {
+        return;
+      }
 
-    this.downloadCsv(`inscricoes-${this.slugify(event.name)}.csv`, buildSubscriberCsv(subscriptions, options));
+      if (options.badgeCodes.enabled) {
+        const archive = await firstValueFrom(this.api.downloadEventSubscriptionBadgeArchive(eventId, options));
+        this.downloadBlob(archive.fileName, archive.blob);
+        return;
+      }
+
+      this.downloadCsv(`inscricoes-${this.slugify(event.name)}.csv`, buildSubscriberCsv(subscriptions, options));
+    } catch (error) {
+      await this.openBadgeExportError(error);
+    }
   }
 
   async exportMajorEventSubscriptionsCsv(): Promise<void> {
@@ -568,18 +580,28 @@ export class SubscriptionsService {
       return;
     }
 
-    const subscriptions = await this.fetchAllMajorEventSubscriptions(majorEventId);
-    this.majorEventSubscriptions.set(subscriptions);
-    const options = await this.openExportDialog('Baixar inscrições do grande evento', subscriptions.length);
-    if (!options) {
-      return;
-    }
+    try {
+      const subscriptions = await this.fetchAllMajorEventSubscriptions(majorEventId);
+      this.majorEventSubscriptions.set(subscriptions);
+      const options = await this.openExportDialog('Baixar inscrições do grande evento', subscriptions.length);
+      if (!options) {
+        return;
+      }
 
-    const majorEventName =
-      subscriptions[0]?.majorEvent?.name ??
-      this.majorEvents().find((item) => item.id === majorEventId)?.name ??
-      majorEventId;
-    this.downloadCsv(`inscricoes-${this.slugify(majorEventName)}.csv`, buildSubscriberCsv(subscriptions, options));
+      if (options.badgeCodes.enabled) {
+        const archive = await firstValueFrom(this.api.downloadMajorEventSubscriptionBadgeArchive(majorEventId, options));
+        this.downloadBlob(archive.fileName, archive.blob);
+        return;
+      }
+
+      const majorEventName =
+        subscriptions[0]?.majorEvent?.name ??
+        this.majorEvents().find((item) => item.id === majorEventId)?.name ??
+        majorEventId;
+      this.downloadCsv(`inscricoes-${this.slugify(majorEventName)}.csv`, buildSubscriberCsv(subscriptions, options));
+    } catch (error) {
+      await this.openBadgeExportError(error);
+    }
   }
 
   private async fetchAllEventSubscriptions(eventId: string): Promise<WorkspaceEventSubscription[]> {
@@ -606,32 +628,70 @@ export class SubscriptionsService {
     }
   }
 
-  private async openExportDialog(title: string, recordCount: number) {
-    const dialogRef = this.dialog.open(SubscriberCsvExportDialogComponent, {
-      width: '32rem',
+  private async openExportDialog(title: string, recordCount: number): Promise<SubscriberCsvExportDialogOptions | null> {
+    const dialogRef = this.dialog.open<
+      SubscriberCsvExportDialogComponent,
+      { title: string; recordCount: number },
+      SubscriberCsvExportDialogOptions | null
+    >(SubscriberCsvExportDialogComponent, {
+      width: 'min(58rem, calc(100vw - 2rem))',
+      maxWidth: 'calc(100vw - 2rem)',
+      maxHeight: '90vh',
       data: {
         title,
         recordCount,
       },
     });
 
-    return firstValueFrom(dialogRef.afterClosed());
+    return (await firstValueFrom(dialogRef.afterClosed())) ?? null;
   }
 
   private downloadCsv(fileName: string, csvContent: string): void {
+    this.downloadBlob(fileName, new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8' }));
+  }
+
+  private downloadBlob(fileName: string, blob: Blob): void {
     const windowRef = this.document.defaultView;
     const body = this.document.body;
     if (!windowRef || !body) {
       return;
     }
 
-    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8' });
     const url = windowRef.URL.createObjectURL(blob);
     const anchor = this.document.createElement('a');
     anchor.href = url;
     anchor.download = fileName;
+    body.append(anchor);
     anchor.click();
+    anchor.remove();
     windowRef.URL.revokeObjectURL(url);
+  }
+
+  private async openBadgeExportError(error: unknown): Promise<void> {
+    this.dialog.open(SubscriberBadgeExportErrorDialogComponent, {
+      width: 'min(32rem, calc(100vw - 2rem))',
+      data: {
+        message: await this.badgeExportErrorMessage(error),
+      },
+    });
+  }
+
+  private async badgeExportErrorMessage(error: unknown): Promise<string> {
+    if (error instanceof HttpErrorResponse && error.error instanceof Blob) {
+      try {
+        const payload = JSON.parse(await error.error.text()) as { message?: string | string[] };
+        if (typeof payload.message === 'string') {
+          return payload.message;
+        }
+        if (Array.isArray(payload.message)) {
+          return payload.message.join(' ');
+        }
+      } catch {
+        // Fall through to the generic error message.
+      }
+    }
+
+    return getErrorMessage(error, 'Não foi possível gerar o arquivo de inscrições.');
   }
 
   private slugify(value: string): string {

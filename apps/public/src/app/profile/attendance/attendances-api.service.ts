@@ -43,6 +43,11 @@ export type {
 } from '@cacic-fct/shared-utils';
 export type { CertificateDownload, PublicEvent, PublicEventGroup } from '@cacic-fct/event-manager-public-contracts';
 
+export type CertificateArchiveDownload = {
+  blob: Blob;
+  fileName: string;
+};
+
 type GraphqlVariable = string | number | boolean | null | undefined | readonly string[] | object;
 type GraphqlVariables = Record<string, GraphqlVariable>;
 
@@ -554,18 +559,15 @@ export class AttendancesApiService {
     ).pipe(map((data) => data.downloadCurrentUserCertificate));
   }
 
-  downloadCurrentUserCertificatesArchive(): Observable<CertificateDownload> {
-    return this.query<{ downloadCurrentUserCertificatesArchive: CertificateDownload }>(
-      `
-        query DownloadCurrentUserCertificatesArchive {
-          downloadCurrentUserCertificatesArchive {
-            fileName
-            mimeType
-            contentBase64
-          }
-        }
-      `,
-    ).pipe(map((data) => data.downloadCurrentUserCertificatesArchive));
+  downloadCurrentUserCertificatesArchive(): Observable<CertificateArchiveDownload> {
+    return this.http
+      .get('/api/current-user/certificates/archive.zip', { observe: 'response', responseType: 'blob' })
+      .pipe(
+        map((response) => ({
+          blob: response.body ?? new Blob(),
+          fileName: this.readDownloadFileName(response.headers.get('content-disposition')),
+        })),
+      );
   }
 
   private getCurrentUserCertificates(scope: CertificateScope, targetId: string): Observable<Certificate[]> {
@@ -579,6 +581,11 @@ export class AttendancesApiService {
       `,
       { scope, targetId },
     ).pipe(map((data) => data.currentUserCertificates));
+  }
+
+  private readDownloadFileName(contentDisposition: string | null): string {
+    const match = /filename="?([^";]+)"?/i.exec(contentDisposition ?? '');
+    return match?.[1] ?? 'certificados.zip';
   }
 
   private getPublicEvent(eventId: string): Observable<PublicEvent | null> {

@@ -3,6 +3,7 @@ import { NotFoundException } from '@nestjs/common';
 import { mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { PassThrough } from 'node:stream';
 import { chromium } from 'playwright';
 import { CertificateDownloadService } from './certificate-download.service';
 
@@ -208,55 +209,61 @@ describe('CertificateDownloadService', () => {
   });
 
   it('builds certificate archives with normalized filenames and metadata', async () => {
+    const archiveStream = createArchive();
     const service = new CertificateDownloadService({} as never, {} as never);
+    jest.spyOn(service as never, 'loadZipArchive').mockResolvedValue(jest.fn(() => archiveStream) as never);
     jest
-      .spyOn(service, 'downloadCertificate')
+      .spyOn(service as never, 'renderCertificateFile')
       .mockResolvedValueOnce({
         fileName: 'primeiro-certificado.pdf',
-        mimeType: 'application/pdf',
-        contentBase64: Buffer.from('pdf-1').toString('base64'),
+        content: Buffer.from('pdf-1'),
       })
       .mockResolvedValueOnce({
         fileName: 'segundo-certificado.pdf',
-        mimeType: 'application/pdf',
-        contentBase64: Buffer.from('pdf-2').toString('base64'),
+        content: Buffer.from('pdf-2'),
       });
 
-    const archive = await service.downloadCertificatesArchive(
+    const archive = await service.createCertificatesArchive(
       ' João da Silva / CACiC ',
       ['certificate-1', 'certificate-2'],
       {
         events: [{ id: 'event-1', name: 'Evento' }],
       },
     );
-    const zip = Buffer.from(archive.contentBase64, 'base64');
-
-    expect(archive.fileName).toBe('joao-da-silva-cacic_certificados.zip');
-    expect(archive.mimeType).toBe('application/zip');
-    expect(service.downloadCertificate).toHaveBeenNthCalledWith(1, 'certificate-1');
-    expect(service.downloadCertificate).toHaveBeenNthCalledWith(2, 'certificate-2');
-    expect(zip.readUInt32LE(0)).toBe(0x04034b50);
-    expect(zip.indexOf(Buffer.from('primeiro-certificado.pdf'))).toBeGreaterThan(-1);
-    expect(zip.indexOf(Buffer.from('segundo-certificado.pdf'))).toBeGreaterThan(-1);
-    expect(zip.indexOf(Buffer.from('pdf-1'))).toBeGreaterThan(-1);
-    expect(zip.indexOf(Buffer.from('pdf-2'))).toBeGreaterThan(-1);
-    expect(zip.indexOf(Buffer.from('joao-da-silva-cacic_events.json'))).toBeGreaterThan(-1);
-    expect(zip.indexOf(Buffer.from('"name": "Evento"'))).toBeGreaterThan(-1);
-    expect(zip.indexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]))).toBeGreaterThan(-1);
+    expect(archive.fileName).toMatch(/^certificados-\d{4}-\d{2}-\d{2}-joao-da-silva-cacic\.zip$/);
+    await new Promise<void>(setImmediate);
+    expect(service['renderCertificateFile']).toHaveBeenNthCalledWith(1, 'certificate-1', false);
+    expect(service['renderCertificateFile']).toHaveBeenNthCalledWith(2, 'certificate-2', false);
+    expect(archiveStream.append).toHaveBeenNthCalledWith(1, Buffer.from('pdf-1'), { name: 'primeiro-certificado.pdf' });
+    expect(archiveStream.append).toHaveBeenNthCalledWith(2, Buffer.from('pdf-2'), { name: 'segundo-certificado.pdf' });
+    expect(archiveStream.append).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('"name": "Evento"'),
+      { name: 'joao-da-silva-cacic_events.json' },
+    );
+    expect(archiveStream.finalize).toHaveBeenCalledTimes(1);
   });
 
   it('uses fallback archive names when the person name has no safe characters', async () => {
+    const archiveStream = createArchive();
     const service = new CertificateDownloadService({} as never, {} as never);
-    jest.spyOn(service, 'downloadCertificate').mockResolvedValue({
+    jest.spyOn(service as never, 'loadZipArchive').mockResolvedValue(jest.fn(() => archiveStream) as never);
+    jest.spyOn(service as never, 'renderCertificateFile').mockResolvedValue({
       fileName: 'certificado.pdf',
-      mimeType: 'application/pdf',
-      contentBase64: Buffer.from('pdf').toString('base64'),
+      content: Buffer.from('pdf'),
     });
 
-    const archive = await service.downloadCertificatesArchive(' !!! ', ['certificate-1'], {});
-    const zip = Buffer.from(archive.contentBase64, 'base64');
-
-    expect(archive.fileName).toBe('certificados_certificados.zip');
-    expect(zip.indexOf(Buffer.from('certificados_events.json'))).toBeGreaterThan(-1);
+    const archive = await service.createCertificatesArchive(' !!! ', ['certificate-1'], {});
+    expect(archive.fileName).toMatch(/^certificados-\d{4}-\d{2}-\d{2}-certificados\.zip$/);
+    await new Promise<void>(setImmediate);
+    expect(archiveStream.append).toHaveBeenLastCalledWith(expect.any(String), { name: 'certificados_events.json' });
   });
 });
+
+function createArchive() {
+  const archive = new PassThrough();
+  return Object.assign(archive, {
+    append: jest.fn(),
+    finalize: jest.fn().mockResolvedValue(undefined),
+  });
+}

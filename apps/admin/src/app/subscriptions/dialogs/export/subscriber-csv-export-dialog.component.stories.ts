@@ -2,7 +2,7 @@ import { NgComponentOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Injector, computed, inject, input } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SubscriberCsvExportDialogComponent } from './subscriber-csv-export-dialog.component';
 
 type SubscriberCsvExportStoryArgs = {
@@ -80,5 +80,20 @@ export const EmptySelection: Story = {
   args: {
     title: 'Exportar lista filtrada',
     recordCount: 0,
+  },
+};
+
+export const WithBadgeCodes: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByLabelText(/códigos para crachá/i));
+    const preview = await canvas.findByRole('img', { name: /prévia do código aztec/i });
+    const initialSvg = preview.innerHTML;
+    const errorCorrectionLevel = await canvas.findByLabelText(/nível de correção de erros/i);
+    await userEvent.clear(errorCorrectionLevel);
+    await userEvent.type(errorCorrectionLevel, '95');
+
+    await waitFor(() => expect(preview.innerHTML).not.toBe(initialSvg));
+    await expect(await canvas.findByText(/mesmo conteúdo apresentado em carteira/i)).toBeVisible();
   },
 };

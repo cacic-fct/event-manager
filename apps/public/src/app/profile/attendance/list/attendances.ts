@@ -248,7 +248,7 @@ export class Attendances {
     this.isDownloadingCertificates.set(true);
     this.api.downloadCurrentUserCertificatesArchive().subscribe({
       next: (download) => {
-        this.certificateFileDownload.save(download);
+        this.certificateFileDownload.saveBlob(download.blob, download.fileName);
         this.snackBar.open('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
         this.isDownloadingCertificates.set(false);
       },

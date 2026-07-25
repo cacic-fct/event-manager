@@ -142,11 +142,7 @@ describe('Attendances', () => {
 
     component.downloadCertificatesArchive();
 
-    expect(fileDownload.save).toHaveBeenCalledWith({
-      fileName: 'certificados.zip',
-      mimeType: 'application/zip',
-      contentBase64: 'UEs=',
-    });
+    expect(fileDownload.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'certificados.zip');
     expect(snackBar.open).toHaveBeenCalledWith('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
     expect(component.isDownloadingCertificates()).toBe(false);
   });
@@ -192,7 +188,7 @@ async function createFixture({
     downloadCurrentUserCertificatesArchive: ReturnType<typeof vi.fn>;
   };
   component: Attendances;
-  fileDownload: { save: ReturnType<typeof vi.fn> };
+  fileDownload: { saveBlob: ReturnType<typeof vi.fn> };
   fixture: ComponentFixture<Attendances>;
   dialog: { open: ReturnType<typeof vi.fn> };
   offlineData: {
@@ -207,9 +203,8 @@ async function createFixture({
     getSubscriptionsFeed: vi.fn(() => (onlineFeedError ? throwError(() => onlineFeedError) : of(onlineFeed))),
     downloadCurrentUserCertificatesArchive: vi.fn(() =>
       of({
+        blob: new Blob(['PK']),
         fileName: 'certificados.zip',
-        mimeType: 'application/zip',
-        contentBase64: 'UEs=',
       }),
     ),
   };
@@ -220,7 +215,7 @@ async function createFixture({
     replaceAttendanceFeed: vi.fn(() => Promise.resolve()),
   };
   const fileDownload = {
-    save: vi.fn(),
+    saveBlob: vi.fn(),
   };
   const snackBar = {
     open: vi.fn(),

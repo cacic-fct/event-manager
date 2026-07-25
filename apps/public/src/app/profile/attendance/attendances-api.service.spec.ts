@@ -248,23 +248,13 @@ describe('AttendancesApiService', () => {
   it('downloads all current-user certificates as an archive', async () => {
     const responsePromise = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
 
-    const request = httpTesting.expectOne('/api/graphql');
-    expect(String(request.request.body.query)).toContain('downloadCurrentUserCertificatesArchive');
-
-    request.flush({
-      data: {
-        downloadCurrentUserCertificatesArchive: {
-          fileName: 'certificados.zip',
-          mimeType: 'application/zip',
-          contentBase64: 'UEs=',
-        },
-      },
-    });
+    const request = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
+    expect(request.request.method).toBe('GET');
+    request.flush(new Blob(['PK']), { headers: { 'content-disposition': 'attachment; filename="certificados.zip"' } });
 
     await expect(responsePromise).resolves.toEqual({
+      blob: expect.any(Blob),
       fileName: 'certificados.zip',
-      mimeType: 'application/zip',
-      contentBase64: 'UEs=',
     });
   });
 });
