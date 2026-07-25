@@ -47,6 +47,7 @@ import { WalletCardUser } from './wallet-card.types';
       gap: 1rem;
     }
     .restaurant-barcode {
+      max-height: 9rem;
       min-height: 5rem;
       padding: 0.75rem;
       color: #10233f;
