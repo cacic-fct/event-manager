@@ -36,6 +36,32 @@ TYPESENSE_URL="https://typesense.cacic.com.br"
 TYPESENSE_API_KEY="<chave-real>"
 ```
 
+Use a chave completa retornada no campo `value` pela criação da chave. Não use o
+`id`, nem o `value_prefix` como chave.
+
+O backend cria coleções, indexa documentos e troca aliases para publicar uma reindexação de forma atômica; portanto, uma chave somente com permissões de coleções e documentos é insuficiente. 
+
+Crie uma chave administrativa restrita ao namespace da aplicação:
+
+```bash
+curl -X POST "$TYPESENSE_HOST/keys" \
+  -H "Content-Type: application/json" \
+  -H "X-TYPESENSE-API-KEY: $TYPESENSE_BOOTSTRAP_API_KEY" \
+  --data-binary '{
+    "description": "Event Manager indexing key",
+    "actions": [
+      "collections:*",
+      "documents:*",
+      "aliases:*"
+    ],
+    "collections": [
+      "^cacic_event_manager_.*"
+    ]
+  }'
+```
+
+A chave de bootstrap é usada somente para criar e rotacionar chaves; não a configure no backend para uso normal.
+
 ## Coleções indexadas
 
 O backend cria e atualiza automaticamente as coleções necessárias na inicialização:
