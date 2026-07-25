@@ -274,7 +274,7 @@ describe('AttendancesApiService', () => {
     const fallbackResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
     const fallbackRequest = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
     fallbackRequest.event(new HttpResponse<Blob>({ body: null, status: 200 }));
-    await expect(fallbackResponse).rejects.toThrow('Download response did not include a file.');
+    await expect(fallbackResponse).rejects.toThrow('O arquivo de certificados não foi retornado pelo servidor.');
   });
 });
 
