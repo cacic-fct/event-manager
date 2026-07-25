@@ -185,7 +185,12 @@ function subscriptionHandlers(scenario: StoryScenario) {
             publicMajorEventSubscriptionPage: {
               majorEvent: storyData.majorEvent,
               events: storyData.events,
-              subscriptionSummaries: storyData.events.map((event) => ({ eventId: event.id, hasAvailableSlots: true })),
+              subscriptionSummaries: storyData.events.map((event) => ({
+                eventId: event.id,
+                hasAvailableSlots: true,
+                availableSlots: event.slotsAvailable,
+                projectedQueuePosition: (event.queueCount ?? 0) + 1,
+              })),
             },
           },
         });

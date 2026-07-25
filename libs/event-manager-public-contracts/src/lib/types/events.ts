@@ -112,6 +112,8 @@ export interface PublicEvent {
 export interface PublicEventSubscriptionSummary {
   eventId: string;
   hasAvailableSlots: boolean;
+  availableSlots?: number | null;
+  projectedQueuePosition: number;
 }
 
 export interface PublicMajorEventSubscriptionPage {

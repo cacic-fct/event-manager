@@ -286,6 +286,8 @@ async function fulfillGraphql(
               subscriptionSummaries: rankedSubscriptionEventsFixture().map((event) => ({
                 eventId: event.id,
                 hasAvailableSlots: true,
+                availableSlots: event.slotsAvailable,
+                projectedQueuePosition: (event.queueCount ?? 0) + 1,
               })),
             },
           }
@@ -296,6 +298,8 @@ async function fulfillGraphql(
               subscriptionSummaries: standardSubscriptionEventsFixture().map((event) => ({
                 eventId: event.id,
                 hasAvailableSlots: true,
+                availableSlots: event.slotsAvailable,
+                projectedQueuePosition: (event.queueCount ?? 0) + 1,
               })),
             },
           },

@@ -491,6 +491,7 @@ export class PublicEventsResolver {
       select: {
         id: true,
         slots: true,
+        queueCount: true,
       },
     });
 
@@ -599,6 +600,7 @@ export class PublicEventsResolver {
     event: {
       id: string;
       slots: number | null;
+      queueCount: number;
     },
     subscribedPeopleCount: number,
   ): PublicEventSubscriptionSummary {
@@ -606,6 +608,8 @@ export class PublicEventsResolver {
     return {
       eventId: event.id,
       hasAvailableSlots: availableSlots == null || availableSlots > 0,
+      availableSlots,
+      projectedQueuePosition: event.queueCount + 1,
     };
   }
 

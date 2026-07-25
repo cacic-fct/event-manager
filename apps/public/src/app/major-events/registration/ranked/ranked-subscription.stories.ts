@@ -309,6 +309,8 @@ function rankedHandlers(scenario: StoryScenario) {
               subscriptionSummaries: storyData.events.map((event) => ({
                 eventId: event.id,
                 hasAvailableSlots: event.slotsAvailable !== 0,
+                availableSlots: event.slotsAvailable,
+                projectedQueuePosition: (event.queueCount ?? 0) + 1,
               })),
             },
           },

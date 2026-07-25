@@ -141,7 +141,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
   it('computes standalone event availability only for public events', async () => {
     const prisma = {
       event: {
-        findFirst: jest.fn().mockResolvedValue({ id: 'event-1', slots: 2 }),
+        findFirst: jest.fn().mockResolvedValue({ id: 'event-1', slots: 2, queueCount: 3 }),
       },
       eventSubscription: {
         groupBy: jest.fn().mockResolvedValue([
@@ -159,6 +159,8 @@ describe('PublicEventsResolver lecturer profiles', () => {
     await expect(resolver.publicEventSubscriptionSummary('event-1')).resolves.toEqual({
       eventId: 'event-1',
       hasAvailableSlots: true,
+      availableSlots: 1,
+      projectedQueuePosition: 4,
     });
 
     expect(prisma.event.findFirst).toHaveBeenCalledWith({
@@ -168,6 +170,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
       select: {
         id: true,
         slots: true,
+        queueCount: true,
       },
     });
     expect(prisma.eventSubscription.groupBy).toHaveBeenCalledWith({
@@ -239,6 +242,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
     const event = {
       id: 'event-1',
       slots: 1,
+      queueCount: 2,
       startDate: new Date('2026-06-24T12:00:00.000Z'),
     };
     const prisma = {
@@ -271,6 +275,8 @@ describe('PublicEventsResolver lecturer profiles', () => {
         {
           eventId: 'event-1',
           hasAvailableSlots: false,
+          availableSlots: 0,
+          projectedQueuePosition: 3,
         },
       ],
     });

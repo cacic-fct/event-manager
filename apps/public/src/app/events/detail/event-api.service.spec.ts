@@ -40,6 +40,8 @@ describe('EventApiService', () => {
         publicEventSubscriptionSummary: {
           eventId: 'event-1',
           hasAvailableSlots: true,
+          availableSlots: 2,
+          projectedQueuePosition: 1,
         },
         publicEventWeather: null,
         currentUserEventSubscription: null,
@@ -52,6 +54,8 @@ describe('EventApiService', () => {
       subscriptionSummary: {
         eventId: 'event-1',
         hasAvailableSlots: true,
+        availableSlots: 2,
+        projectedQueuePosition: 1,
       },
       weather: null,
       currentUserSubscription: null,
@@ -83,6 +87,8 @@ describe('EventApiService', () => {
       subscriptionSummary: {
         eventId: 'event-1',
         hasAvailableSlots: true,
+        availableSlots: null,
+        projectedQueuePosition: 1,
       },
       weather: null,
       currentUserSubscription: null,

@@ -219,6 +219,8 @@ export const PUBLIC_ATTENDANCE_EVENT_FIELDS = `
 export const PUBLIC_EVENT_SUBSCRIPTION_SUMMARY_FIELDS = `
   eventId
   hasAvailableSlots
+  availableSlots
+  projectedQueuePosition
 `;
 
 export const PUBLIC_EVENT_WEATHER_FIELDS = `

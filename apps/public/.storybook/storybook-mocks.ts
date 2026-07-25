@@ -310,7 +310,12 @@ function graphqlData(query: string, variables: Record<string, unknown>) {
       publicMajorEventSubscriptionPage: {
         majorEvent,
         events,
-        subscriptionSummaries: events.map((event) => ({ eventId: event.id, hasAvailableSlots: true })),
+        subscriptionSummaries: events.map((event) => ({
+          eventId: event.id,
+          hasAvailableSlots: true,
+          availableSlots: event.slotsAvailable,
+          projectedQueuePosition: (event.queueCount ?? 0) + 1,
+        })),
       },
     };
   }

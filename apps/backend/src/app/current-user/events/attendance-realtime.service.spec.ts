@@ -157,6 +157,8 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
         {
           eventId: 'event-1',
           hasAvailableSlots: true,
+          availableSlots: 2,
+          projectedQueuePosition: 1,
         },
       ],
     });
@@ -183,6 +185,8 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
               {
                 eventId: 'event-1',
                 hasAvailableSlots: true,
+                availableSlots: 2,
+                projectedQueuePosition: 1,
               },
             ],
           },

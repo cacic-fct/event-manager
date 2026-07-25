@@ -133,8 +133,13 @@ describe('public event models', () => {
       }),
     ).toMatchObject({ id: 'event-1', queueCount: 0 });
     expect(
-      Object.assign(new PublicEventSubscriptionSummary(), { eventId: 'event-1', hasAvailableSlots: true }),
-    ).toMatchObject({ eventId: 'event-1', hasAvailableSlots: true });
+      Object.assign(new PublicEventSubscriptionSummary(), {
+        eventId: 'event-1',
+        hasAvailableSlots: true,
+        availableSlots: 2,
+        projectedQueuePosition: 1,
+      }),
+    ).toMatchObject({ eventId: 'event-1', availableSlots: 2, projectedQueuePosition: 1 });
     expect(
       Object.assign(new PublicMajorEventSubscriptionPage(), {
         majorEvent: new PublicMajorEvent(),

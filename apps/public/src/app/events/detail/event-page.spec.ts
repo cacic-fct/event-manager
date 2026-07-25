@@ -133,6 +133,8 @@ function defaultEventPageData(overrides: Partial<EventPageData> = {}): EventPage
     subscriptionSummary: {
       eventId: 'event-1',
       hasAvailableSlots: true,
+      availableSlots: 2,
+      projectedQueuePosition: 1,
     },
     weather: null,
     currentUserSubscription: null,

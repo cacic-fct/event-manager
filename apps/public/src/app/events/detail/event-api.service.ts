@@ -116,6 +116,8 @@ export class EventApiService {
           subscriptionSummary: {
             eventId: event.id,
             hasAvailableSlots: true,
+            availableSlots: null,
+            projectedQueuePosition: 1,
           },
           weather: null,
           currentUserSubscription: null,

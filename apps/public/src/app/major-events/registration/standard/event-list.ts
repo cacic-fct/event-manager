@@ -66,11 +66,15 @@ export class SubscriptionEventList {
 
   slotsLine(event: PublicEvent): string {
     const summary = this.summariesByEventId().get(event.id);
-    if (!summary?.hasAvailableSlots) {
-      return 'Sem vagas disponíveis';
+    if (!summary) {
+      return 'Disponibilidade não informada';
     }
 
-    return 'Vagas disponíveis';
+    const slots =
+      summary.availableSlots == null
+        ? 'Vagas ilimitadas'
+        : `${summary.availableSlots} ${summary.availableSlots === 1 ? 'vaga disponível' : 'vagas disponíveis'}`;
+    return `${slots} · Posição ${summary.projectedQueuePosition} na fila`;
   }
 
   onItemClick(event: PublicEvent): void {

@@ -97,7 +97,17 @@ export const OfflineFallback: Story = {
 };
 
 function buildSummaries(events: ReturnType<typeof createPublicStoryEvents>) {
-  return new Map(events.map((item) => [item.id, { eventId: item.id, hasAvailableSlots: item.slotsAvailable !== 0 }]));
+  return new Map(
+    events.map((item) => [
+      item.id,
+      {
+        eventId: item.id,
+        hasAvailableSlots: item.slotsAvailable !== 0,
+        availableSlots: item.slotsAvailable,
+        projectedQueuePosition: (item.queueCount ?? 0) + 1,
+      },
+    ]),
+  );
 }
 
 function buildDisabledReasons(events: ReturnType<typeof createPublicStoryEvents>) {

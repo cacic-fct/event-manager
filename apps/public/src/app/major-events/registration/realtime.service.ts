@@ -10,6 +10,8 @@ const subscriptionDeltaSchema = z.object({
     z.object({
       eventId: z.string(),
       hasAvailableSlots: z.boolean(),
+      availableSlots: z.number().int().nullable(),
+      projectedQueuePosition: z.number().int().positive(),
     }),
   ),
 });

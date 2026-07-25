@@ -722,6 +722,17 @@ export class PublicEventSubscriptionSummary {
     description: 'Whether the event currently has available slots according to the public subscription calculation.',
   })
   hasAvailableSlots!: boolean;
+
+  @Field(() => Int, {
+    nullable: true,
+    description: 'Number of slots currently available. Null means the event has unlimited capacity.',
+  })
+  availableSlots?: number | null;
+
+  @Field(() => Int, {
+    description: 'Position a new major-event subscription would occupy in this event queue.',
+  })
+  projectedQueuePosition!: number;
 }
 
 @ObjectType({
