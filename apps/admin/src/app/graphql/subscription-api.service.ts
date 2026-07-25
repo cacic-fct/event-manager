@@ -209,7 +209,8 @@ export class SubscriptionApiService {
   }
 
   private fileNameFromDisposition(disposition: string | null): string {
-    const match = disposition?.match(/filename="?([^";]+)"?/i);
-    return match?.[1] ?? 'codigos-para-cracha.zip';
+    const encodedMatch = disposition?.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+    const fileName = encodedMatch ? decodeURIComponent(encodedMatch[1]) : disposition?.match(/filename="?([^";]+)"?/i)?.[1];
+    return fileName?.replace(/[\\/]/g, '') || 'codigos-para-cracha.zip';
   }
 }

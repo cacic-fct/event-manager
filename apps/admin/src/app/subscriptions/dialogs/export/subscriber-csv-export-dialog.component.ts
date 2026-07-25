@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { toSVG } from '@bwip-js/browser';
 import { startWith } from 'rxjs';
+import { isValidErrorCorrectionLevel } from '@cacic-fct/shared-utils';
 import {
   DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS,
   DEFAULT_SUBSCRIBER_CSV_EXPORT_OPTIONS,
@@ -181,7 +182,10 @@ export class SubscriberCsvExportDialogComponent {
     phone: [DEFAULT_SUBSCRIBER_CSV_EXPORT_OPTIONS.fields.includes('phone')],
     identityDocumentMode: [DEFAULT_SUBSCRIBER_CSV_EXPORT_OPTIONS.identityDocumentMode],
     badgeCodes: [DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS.enabled],
-    badgeErrorCorrectionLevel: [DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS.errorCorrectionLevel],
+    badgeErrorCorrectionLevel: [
+      DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS.errorCorrectionLevel,
+      [Validators.required, Validators.pattern(/^(?:[5-9]|[1-8]\d|9[0-5])$/)],
+    ],
     badgeCodeFormat: [DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS.format],
     badgeFileName: [DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS.fileName],
   });
@@ -192,9 +196,10 @@ export class SubscriberCsvExportDialogComponent {
 
   readonly isIdentityDocumentSelected = computed(() => Boolean(this.formValue().identityDocument));
   readonly hasBadgeCodes = computed(() => this.formValue().badgeCodes);
-  readonly hasInvalidErrorCorrectionLevel = computed(
-    () => !isValidErrorCorrectionLevel(this.formValue().badgeErrorCorrectionLevel),
-  );
+  readonly hasInvalidErrorCorrectionLevel = computed(() => {
+    this.formValue();
+    return this.form.controls.badgeErrorCorrectionLevel.invalid;
+  });
   readonly previewValue = computed(() => (this.previewUserId ? `user:${this.previewUserId}` : 'user:id'));
   readonly trustedPreviewSvg = computed<SafeHtml | ''>(() => {
     const errorCorrectionLevel = this.formValue().badgeErrorCorrectionLevel;
@@ -249,9 +254,4 @@ export class SubscriberCsvExportDialogComponent {
     const value = this.formValue();
     return FIELD_CONFIGS.filter((config) => Boolean(value[config.field])).map((config) => config.field);
   }
-}
-
-function isValidErrorCorrectionLevel(value: string | undefined): boolean {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 5 && parsed <= 95;
 }

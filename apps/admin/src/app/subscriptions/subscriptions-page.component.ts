@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { ReceiptValidationApiService } from '../graphql/receipt-validation-api.service';
@@ -29,6 +30,7 @@ export class SubscriptionsPageComponent {
   private readonly workspace = inject(SubscriptionsService);
   protected readonly permissions = inject(PermissionsService);
   private readonly receiptValidationApi = inject(ReceiptValidationApiService);
+  private readonly snackBar = inject(MatSnackBar);
 
   protected readonly selectedTabIndex = signal(0);
   protected readonly selectedMajorEventPendingReceiptsCount = signal(0);
@@ -53,7 +55,10 @@ export class SubscriptionsPageComponent {
 
       if (majorEventId) {
         this.selectedTabIndex.set(1);
-        void this.openMajorEventSubscriptionRoute(majorEventId, majorEventSubscriptionId);
+        void this.openMajorEventSubscriptionRoute(majorEventId, majorEventSubscriptionId).catch(() => {
+          this.snackBar.open('Inscrição não encontrada.', 'Fechar', { duration: 5000 });
+          void this.router.navigate(['/subscriptions']);
+        });
         return;
       }
 
@@ -67,6 +72,8 @@ export class SubscriptionsPageComponent {
     }
     if (subscriptionId && this.workspace.selectedMajorEventSubscription()?.id !== subscriptionId) {
       await this.workspace.selectMajorEventSubscriptionById(majorEventId, subscriptionId);
+    } else if (!subscriptionId) {
+      this.workspace.closeMajorEventSubscriptionDetail();
     }
   }
 

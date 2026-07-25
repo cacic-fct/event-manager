@@ -114,7 +114,11 @@
       <mat-list class="subscription-list">
         @for (subscription of workspace.majorEventSubscriptions(); track subscription.id) {
           <mat-list-item
+            role="button"
+            tabindex="0"
             (click)="workspace.selectMajorEventSubscription(subscription)"
+            (keydown.enter)="workspace.selectMajorEventSubscription(subscription)"
+            (keydown.space)="$event.preventDefault(); workspace.selectMajorEventSubscription(subscription)"
             [class.selected-list-item]="workspace.selectedMajorEventSubscription()?.id === subscription.id">
             <span matListItemTitle>{{ subscription.person?.name ?? subscription.personId }}</span>
             <span matListItemLine>
@@ -148,13 +152,7 @@
         } @empty {
           <mat-list-item>
             <span matListItemTitle>Nenhum inscrito encontrado</span>
-            <span matListItemLine>
-              @if (workspace.majorEventForm.controls.majorEventId.value) {
-                Ajuste a busca e tente novamente.
-              } @else {
-                Escolha um grande evento para consultar.
-              }
-            </span>
+            <span matListItemLine>Ajuste a busca e tente novamente.</span>
           </mat-list-item>
         }
       </mat-list>
@@ -191,8 +189,7 @@
       </section>
     }
 
-    @if (workspace.selectedMajorEventSubscription() || workspace.editMode()) {
-      <section class="panel subscription-detail">
+    <section class="panel subscription-detail">
       @if (workspace.selectedMajorEventSubscription() || workspace.editMode()) {
         <div class="panel-heading">
           <div>
@@ -217,7 +214,7 @@
           <div class="panel-actions">
             <button mat-button type="button" (click)="workspace.closeMajorEventSubscriptionDetail()">
               <mat-icon>arrow_back</mat-icon>
-              Voltar para lista de eventos
+              Voltar para lista de inscrições
             </button>
             @if (workspace.selectedMajorEventSubscription(); as selectedSubscription) {
               <button
@@ -407,6 +404,5 @@
         </div>
       }
       </section>
-    }
   </div>
 </section>

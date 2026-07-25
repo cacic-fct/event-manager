@@ -1,14 +1,14 @@
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, resolve } from 'node:path';
-import { Readable } from 'node:stream';
 import { chromium } from 'playwright';
 import { toBuffer } from '@bwip-js/node';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
+import { createZipArchive, type ZipArchiveStream } from '../shared/zip-archive';
 
 type PlaywrightTemplateConfig = {
   engine: 'playwright';
@@ -29,21 +29,15 @@ type RenderedCertificate = {
   content: Buffer;
 };
 
-type CertificateArchiveStream = Readable & {
-  append(source: Buffer | string, data: { name: string }): void;
-  destroy(error?: Error): void;
-  finalize(): Promise<void>;
-};
-
-type ZipArchiveConstructor = new (options: { zlib: { level: number } }) => CertificateArchiveStream;
-
 export type CertificateArchive = {
   fileName: string;
-  stream: CertificateArchiveStream;
+  stream: ZipArchiveStream;
 };
 
 @Injectable()
 export class CertificateDownloadService {
+  private readonly logger = new Logger(CertificateDownloadService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly validation: CertificateValidationService,
@@ -134,8 +128,9 @@ export class CertificateDownloadService {
     metadata: unknown,
   ): Promise<CertificateArchive> {
     const safeName = this.normalizeFileNamePart(personName) || 'certificados';
-    const ZipArchive = await this.loadZipArchive();
-    const stream = new ZipArchive({ zlib: { level: 9 } });
+    const stream = await createZipArchive();
+    stream.on('warning', (error) => this.logger.warn(error.message, error.stack));
+    stream.on('error', (error) => this.logger.error(error.message, error.stack));
     void this.appendCertificatesToArchive(stream, safeName, certificateIds, metadata);
 
     return {
@@ -145,7 +140,7 @@ export class CertificateDownloadService {
   }
 
   private async appendCertificatesToArchive(
-    archive: CertificateArchiveStream,
+    archive: ZipArchiveStream,
     safeName: string,
     certificateIds: readonly string[],
     metadata: unknown,
@@ -167,11 +162,6 @@ export class CertificateDownloadService {
     } catch (error) {
       archive.destroy(error instanceof Error ? error : new Error('Failed to create certificate archive.'));
     }
-  }
-
-  private async loadZipArchive(): Promise<ZipArchiveConstructor> {
-    const { ZipArchive } = (await import('archiver')) as unknown as { ZipArchive: ZipArchiveConstructor };
-    return ZipArchive;
   }
 
   private parseTemplateConfig(template: Prisma.JsonValue): PlaywrightTemplateConfig {

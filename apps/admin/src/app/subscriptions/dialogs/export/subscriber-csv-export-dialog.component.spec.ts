@@ -17,6 +17,19 @@ describe('SubscriberCsvExportDialogComponent', () => {
 
     expect(previewSvg(fixture)).not.toBe(initialPreview);
   });
+
+  it('rejects an out-of-range badge error correction level', async () => {
+    const fixture = await createFixture();
+    const component = fixture.componentInstance;
+
+    component.form.controls.badgeCodes.setValue(true);
+    component.form.controls.badgeErrorCorrectionLevel.setValue('4');
+    component.form.controls.badgeErrorCorrectionLevel.markAsTouched();
+    fixture.detectChanges();
+
+    expect(component.canConfirm()).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Informe um valor inteiro entre 5 e 95.');
+  });
 });
 
 async function createFixture(): Promise<ComponentFixture<SubscriberCsvExportDialogComponent>> {

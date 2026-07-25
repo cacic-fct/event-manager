@@ -68,6 +68,9 @@
 }
 
 .major-subscription-layout.detail-active .major-subscription-workspace {
+  display: grid;
+  grid-template-columns: var(--subscriber-rail-width) minmax(0, 1fr);
+  gap: 1rem;
   padding-left: 1rem;
 }
 
@@ -76,10 +79,7 @@
 }
 
 .major-subscription-layout.detail-active .subscription-detail {
-  position: absolute;
-  top: 0;
-  left: calc(var(--subscriber-rail-width) + 1rem);
-  width: calc(100% - var(--subscriber-rail-width) - 1rem);
+  min-width: 0;
 }
 
 .major-subscription-workspace > .panel {
@@ -197,6 +197,11 @@
 
 .selected-list-item {
   background: var(--mat-sys-secondary-container);
+}
+
+.subscription-list mat-list-item[role='button']:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: -2px;
 }
 
 .workbench-grid {

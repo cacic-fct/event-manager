@@ -564,7 +564,7 @@ export class AttendancesApiService {
       .get('/api/current-user/certificates/archive.zip', { observe: 'response', responseType: 'blob' })
       .pipe(
         map((response) => ({
-          blob: response.body ?? new Blob(),
+          blob: this.requireDownloadBody(response.body),
           fileName: this.readDownloadFileName(response.headers.get('content-disposition')),
         })),
       );
@@ -584,8 +584,17 @@ export class AttendancesApiService {
   }
 
   private readDownloadFileName(contentDisposition: string | null): string {
-    const match = /filename="?([^";]+)"?/i.exec(contentDisposition ?? '');
-    return match?.[1] ?? 'certificados.zip';
+    const encodedMatch = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(contentDisposition ?? '');
+    const fileName = encodedMatch ? decodeURIComponent(encodedMatch[1]) : /filename="?([^";]+)"?/i.exec(contentDisposition ?? '')?.[1];
+    return fileName?.replace(/[\\/]/g, '') || 'certificados.zip';
+  }
+
+  private requireDownloadBody(body: Blob | null): Blob {
+    if (!body) {
+      throw new Error('O arquivo de certificados não foi retornado pelo servidor.');
+    }
+
+    return body;
   }
 
   private getPublicEvent(eventId: string): Observable<PublicEvent | null> {

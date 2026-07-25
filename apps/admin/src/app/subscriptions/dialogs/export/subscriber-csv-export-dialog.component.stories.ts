@@ -94,6 +94,6 @@ export const WithBadgeCodes: Story = {
     await userEvent.type(errorCorrectionLevel, '95');
 
     await waitFor(() => expect(preview.innerHTML).not.toBe(initialSvg));
-    await expect(await canvas.findByText(/mesmo conteúdo apresentado em carteira/i)).toBeVisible();
+    await expect(await canvas.findByText(/mesmo conteúdo apresentado na/i)).toBeVisible();
   },
 };

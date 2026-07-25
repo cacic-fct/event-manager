@@ -552,14 +552,14 @@ export class SubscriptionsService {
       return;
     }
 
-    try {
-      const subscriptions = await this.fetchAllEventSubscriptions(eventId);
-      this.eventSubscriptions.set(subscriptions);
-      const options = await this.openExportDialog('Baixar inscrições do evento', subscriptions.length);
-      if (!options) {
-        return;
-      }
+    const subscriptions = await this.fetchAllEventSubscriptions(eventId);
+    this.eventSubscriptions.set(subscriptions);
+    const options = await this.openExportDialog('Baixar inscrições do evento', subscriptions.length);
+    if (!options) {
+      return;
+    }
 
+    try {
       if (options.badgeCodes.enabled) {
         const archive = await firstValueFrom(this.api.downloadEventSubscriptionBadgeArchive(eventId, options));
         this.downloadBlob(archive.fileName, archive.blob);
@@ -580,14 +580,14 @@ export class SubscriptionsService {
       return;
     }
 
-    try {
-      const subscriptions = await this.fetchAllMajorEventSubscriptions(majorEventId);
-      this.majorEventSubscriptions.set(subscriptions);
-      const options = await this.openExportDialog('Baixar inscrições do grande evento', subscriptions.length);
-      if (!options) {
-        return;
-      }
+    const subscriptions = await this.fetchAllMajorEventSubscriptions(majorEventId);
+    this.majorEventSubscriptions.set(subscriptions);
+    const options = await this.openExportDialog('Baixar inscrições do grande evento', subscriptions.length);
+    if (!options) {
+      return;
+    }
 
+    try {
       if (options.badgeCodes.enabled) {
         const archive = await firstValueFrom(this.api.downloadMajorEventSubscriptionBadgeArchive(majorEventId, options));
         this.downloadBlob(archive.fileName, archive.blob);

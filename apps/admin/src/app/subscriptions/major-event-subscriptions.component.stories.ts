@@ -63,9 +63,9 @@ export const SubscriberBrowser: Story = {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
     await userEvent.click(canvas.getByText('Ada Lovelace'));
-    await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de eventos/i })).toBeVisible());
+    await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de inscrições/i })).toBeVisible());
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Ada Lovelace' })).toBeVisible());
-    await userEvent.click(canvas.getByRole('button', { name: /voltar para lista de eventos/i }));
+    await userEvent.click(canvas.getByRole('button', { name: /voltar para lista de inscrições/i }));
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
   },
 };
@@ -78,8 +78,8 @@ export const SubscriberDetail: Story = {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Ada Lovelace' })).toBeVisible());
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Inscritos' })).toBeVisible());
-    await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de eventos/i })).toBeVisible());
-    await userEvent.click(canvas.getByText('Grace Hopper'));
+    await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de inscrições/i })).toBeVisible());
+    await userEvent.click(await canvas.findByText('Grace Hopper'));
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Grace Hopper' })).toBeVisible());
   },
 };
@@ -91,7 +91,7 @@ export const CompactSubscriberBrowser: Story = {
   parameters: { viewport: { defaultViewport: 'mobile1' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByText('Grace Hopper'));
+    await userEvent.click(await canvas.findByText('Grace Hopper'));
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Grace Hopper' })).toBeVisible());
   },
 };

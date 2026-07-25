@@ -11,6 +11,11 @@ export type SubscriberCsvField = (typeof SUBSCRIBER_CSV_FIELDS)[number];
 
 export type IdentityDocumentExportMode = 'masked' | 'complete';
 
+export function isValidErrorCorrectionLevel(value: string | number | undefined | null): boolean {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 5 && parsed <= 95;
+}
+
 export interface SubscriberCsvExportOptions {
   fields: SubscriberCsvField[];
   identityDocumentMode: IdentityDocumentExportMode;
@@ -135,7 +140,7 @@ function serializeSubscriberCsvRow(values: string[]): string {
   return values.map(escapeCsvValue).join(';');
 }
 
-function escapeCsvValue(value: string): string {
+export function escapeCsvValue(value: string): string {
   const safeValue = CSV_FORMULA_PREFIX_PATTERN.test(value) ? `'${value}` : value;
   if (!/[;\r\n"]/.test(safeValue)) {
     return safeValue;

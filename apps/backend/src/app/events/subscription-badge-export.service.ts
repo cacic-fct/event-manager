@@ -4,12 +4,14 @@ import { toBuffer, toSVG } from '@bwip-js/node';
 import { Readable } from 'node:stream';
 import {
   isValidCpf,
+  isValidErrorCorrectionLevel,
   subscriberCsvHeader,
   subscriberCsvRow,
   type IdentityDocumentExportMode,
   type SubscriberCsvField,
 } from '@cacic-fct/shared-utils';
 import { PrismaService } from '../prisma/prisma.service';
+import { createZipArchive, type ZipArchiveStream } from '../shared/zip-archive';
 
 const EXPORT_PAGE_SIZE = 500;
 const BADGE_CODE_PATH_CSV_HEADER = 'Caminho relativo do código Aztec';
@@ -136,7 +138,7 @@ export class SubscriptionBadgeExportService {
   }
 
   private async appendBadgeCodes(
-    archive: ZipArchive,
+    archive: ZipArchiveStream,
     target: ExportTarget,
     input: SubscriberBadgeExportInput,
     codePathContext: BadgeCodePathContext,
@@ -298,11 +300,6 @@ export interface SubscriptionBadgeExport {
   fileName: string;
 }
 
-function isValidErrorCorrectionLevel(value: string): boolean {
-  const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 5 && parsed <= 95;
-}
-
 function createBadgeCodePathResolver(
   input: Pick<SubscriberBadgeExportInput, 'fileName' | 'format'>,
   context: BadgeCodePathContext,
@@ -382,19 +379,4 @@ function sanitizeFileName(value: string): string {
 
 function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error('Não foi possível gerar o arquivo de códigos para crachá.');
-}
-
-type ZipArchive = Readable & {
-  append(source: Readable | Buffer | string, data: { name: string }): ZipArchive;
-  finalize(): Promise<void>;
-  destroy(error?: Error): ZipArchive;
-  destroyed: boolean;
-  on(event: 'warning' | 'error', listener: (error: { code: string } & Error) => void): ZipArchive;
-};
-
-type ZipArchiveConstructor = new (options: { zlib: { level: number } }) => ZipArchive;
-
-async function createZipArchive(): Promise<ZipArchive> {
-  const module = (await import('archiver')) as unknown as { ZipArchive: ZipArchiveConstructor };
-  return new module.ZipArchive({ zlib: { level: 9 } });
 }

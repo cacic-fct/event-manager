@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { chromium } from 'playwright';
 import { CertificateDownloadService } from './certificate-download.service';
+import { createZipArchive } from '../shared/zip-archive';
 
 jest.mock('@bwip-js/node', () => ({
   toBuffer: jest.fn(),
@@ -17,10 +18,15 @@ jest.mock('playwright', () => ({
   },
 }));
 
+jest.mock('../shared/zip-archive', () => ({
+  createZipArchive: jest.fn(),
+}));
+
 describe('CertificateDownloadService', () => {
   beforeEach(() => {
     jest.mocked(toBuffer).mockReset();
     jest.mocked(chromium.launch).mockReset();
+    jest.mocked(createZipArchive).mockReset();
   });
 
   it('filters inactive or deleted configs from public downloads', async () => {
@@ -211,7 +217,7 @@ describe('CertificateDownloadService', () => {
   it('builds certificate archives with normalized filenames and metadata', async () => {
     const archiveStream = createArchive();
     const service = new CertificateDownloadService({} as never, {} as never);
-    jest.spyOn(service as never, 'loadZipArchive').mockResolvedValue(jest.fn(() => archiveStream) as never);
+    jest.mocked(createZipArchive).mockResolvedValue(archiveStream as never);
     jest
       .spyOn(service as never, 'renderCertificateFile')
       .mockResolvedValueOnce({
@@ -231,7 +237,7 @@ describe('CertificateDownloadService', () => {
       },
     );
     expect(archive.fileName).toMatch(/^certificados-\d{4}-\d{2}-\d{2}-joao-da-silva-cacic\.zip$/);
-    await new Promise<void>(setImmediate);
+    await archiveStream.completed;
     expect(service['renderCertificateFile']).toHaveBeenNthCalledWith(1, 'certificate-1', false);
     expect(service['renderCertificateFile']).toHaveBeenNthCalledWith(2, 'certificate-2', false);
     expect(archiveStream.append).toHaveBeenNthCalledWith(1, Buffer.from('pdf-1'), { name: 'primeiro-certificado.pdf' });
@@ -247,7 +253,7 @@ describe('CertificateDownloadService', () => {
   it('uses fallback archive names when the person name has no safe characters', async () => {
     const archiveStream = createArchive();
     const service = new CertificateDownloadService({} as never, {} as never);
-    jest.spyOn(service as never, 'loadZipArchive').mockResolvedValue(jest.fn(() => archiveStream) as never);
+    jest.mocked(createZipArchive).mockResolvedValue(archiveStream as never);
     jest.spyOn(service as never, 'renderCertificateFile').mockResolvedValue({
       fileName: 'certificado.pdf',
       content: Buffer.from('pdf'),
@@ -255,15 +261,34 @@ describe('CertificateDownloadService', () => {
 
     const archive = await service.createCertificatesArchive(' !!! ', ['certificate-1'], {});
     expect(archive.fileName).toMatch(/^certificados-\d{4}-\d{2}-\d{2}-certificados\.zip$/);
-    await new Promise<void>(setImmediate);
+    await archiveStream.completed;
     expect(archiveStream.append).toHaveBeenLastCalledWith(expect.any(String), { name: 'certificados_events.json' });
+  });
+
+  it('destroys the archive when rendering a certificate fails without emitting an unhandled error', async () => {
+    const archiveStream = createArchive();
+    const service = new CertificateDownloadService({} as never, {} as never);
+    jest.mocked(createZipArchive).mockResolvedValue(archiveStream as never);
+    jest.spyOn(service as never, 'renderCertificateFile').mockRejectedValue(new Error('render failed'));
+
+    const closed = new Promise<void>((resolve) => archiveStream.once('close', resolve));
+    await service.createCertificatesArchive('Ana', ['certificate-1'], {});
+    await closed;
+
+    expect(archiveStream.destroyed).toBe(true);
+    expect(archiveStream.finalize).not.toHaveBeenCalled();
   });
 });
 
 function createArchive() {
   const archive = new PassThrough();
+  let complete!: () => void;
+  const completed = new Promise<void>((resolve) => {
+    complete = resolve;
+  });
   return Object.assign(archive, {
     append: jest.fn(),
-    finalize: jest.fn().mockResolvedValue(undefined),
+    finalize: jest.fn().mockImplementation(async () => complete()),
+    completed,
   });
 }
