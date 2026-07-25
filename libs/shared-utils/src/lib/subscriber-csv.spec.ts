@@ -3,6 +3,7 @@ import {
   escapeCsvValue,
   formatIdentityDocumentForExport,
   isValidCpf,
+  isValidErrorCorrectionLevel,
   subscriberCsvHeader,
   subscriberCsvRow,
 } from './subscriber-csv';
@@ -28,5 +29,15 @@ describe('subscriber CSV rows', () => {
 
   it('escapes CSV formula values', () => {
     expect(escapeCsvValue('=SUM(A1:A2)')).toBe("'=SUM(A1:A2)");
+  });
+
+  it('validates the supported Aztec error-correction range', () => {
+    expect(isValidErrorCorrectionLevel(5)).toBe(true);
+    expect(isValidErrorCorrectionLevel('05')).toBe(true);
+    expect(isValidErrorCorrectionLevel(' 23')).toBe(true);
+    expect(isValidErrorCorrectionLevel(95)).toBe(true);
+    expect(isValidErrorCorrectionLevel(4)).toBe(false);
+    expect(isValidErrorCorrectionLevel(96)).toBe(false);
+    expect(isValidErrorCorrectionLevel('23.5')).toBe(false);
   });
 });

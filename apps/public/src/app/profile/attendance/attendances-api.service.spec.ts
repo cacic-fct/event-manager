@@ -1,4 +1,4 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
@@ -256,6 +256,25 @@ describe('AttendancesApiService', () => {
       blob: expect.any(Blob),
       fileName: 'certificados.zip',
     });
+  });
+
+  it('requires a Blob body and safely reads encoded and fallback download names', async () => {
+    const encodedResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
+    const encodedRequest = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
+    encodedRequest.flush(new Blob(['PK']), {
+      headers: { 'content-disposition': "attachment; filename*=UTF-8''certificados%20da%20ana.zip" },
+    });
+    await expect(encodedResponse).resolves.toEqual({ blob: expect.any(Blob), fileName: 'certificados da ana.zip' });
+
+    const fallbackNameResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
+    const fallbackNameRequest = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
+    fallbackNameRequest.flush(new Blob(['PK']));
+    await expect(fallbackNameResponse).resolves.toEqual({ blob: expect.any(Blob), fileName: 'certificados.zip' });
+
+    const fallbackResponse = firstValueFrom(service.downloadCurrentUserCertificatesArchive());
+    const fallbackRequest = httpTesting.expectOne('/api/current-user/certificates/archive.zip');
+    fallbackRequest.event(new HttpResponse<Blob>({ body: null, status: 200 }));
+    await expect(fallbackResponse).rejects.toThrow('Download response did not include a file.');
   });
 });
 

@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, resolve } from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, type Browser } from 'playwright';
 import { toBuffer } from '@bwip-js/node';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
@@ -61,7 +61,11 @@ export class CertificateDownloadService {
     };
   }
 
-  private async renderCertificateFile(certificateId: string, publicOnly: boolean): Promise<RenderedCertificate> {
+  private async renderCertificateFile(
+    certificateId: string,
+    publicOnly: boolean,
+    browser?: Browser,
+  ): Promise<RenderedCertificate> {
     const normalizedCertificateId = this.validation.normalizeRequiredId('certificateId', certificateId);
     const certificate = await this.prisma.certificate.findFirst({
       where: {
@@ -114,7 +118,7 @@ export class CertificateDownloadService {
       : undefined;
     const cssContent = cssTemplate ? await this.inlineCssLocalAssets(cssTemplate.content, cssTemplate.path) : undefined;
     const renderedHtml = this.renderTemplate(this.inlineCss(htmlTemplate.content, cssContent), templateVariables);
-    const pdf = await this.renderPdf(renderedHtml);
+    const pdf = await this.renderPdf(renderedHtml, browser);
 
     return {
       fileName: this.buildFileName(certificate.person.name, certificate.id),
@@ -145,13 +149,15 @@ export class CertificateDownloadService {
     certificateIds: readonly string[],
     metadata: unknown,
   ): Promise<void> {
+    let browser: Browser | undefined;
     try {
+      browser = await chromium.launch({ headless: true });
       for (const certificateId of certificateIds) {
         if (archive.destroyed) {
           return;
         }
 
-        const certificate = await this.renderCertificateFile(certificateId, false);
+        const certificate = await this.renderCertificateFile(certificateId, false, browser);
         archive.append(certificate.content, { name: certificate.fileName });
       }
 
@@ -161,6 +167,8 @@ export class CertificateDownloadService {
       }
     } catch (error) {
       archive.destroy(error instanceof Error ? error : new Error('Failed to create certificate archive.'));
+    } finally {
+      await browser?.close();
     }
   }
 
@@ -327,8 +335,8 @@ export class CertificateDownloadService {
     return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, key: string) => this.escapeHtml(variables[key] ?? ''));
   }
 
-  private async renderPdf(renderedHtml: string): Promise<Buffer> {
-    const browser = await chromium.launch({ headless: true });
+  private async renderPdf(renderedHtml: string, sharedBrowser?: Browser): Promise<Buffer> {
+    const browser = sharedBrowser ?? (await chromium.launch({ headless: true }));
     try {
       const page = await browser.newPage();
       await page.setContent(renderedHtml, { waitUntil: 'networkidle' });
@@ -339,7 +347,9 @@ export class CertificateDownloadService {
     } catch {
       throw new InternalServerErrorException('Failed to render certificate PDF.');
     } finally {
-      await browser.close();
+      if (!sharedBrowser) {
+        await browser.close();
+      }
     }
   }
 

@@ -218,6 +218,8 @@ describe('CertificateDownloadService', () => {
     const archiveStream = createArchive();
     const service = new CertificateDownloadService({} as never, {} as never);
     jest.mocked(createZipArchive).mockResolvedValue(archiveStream as never);
+    const browser = { close: jest.fn().mockResolvedValue(undefined) };
+    jest.mocked(chromium.launch).mockResolvedValue(browser as never);
     jest
       .spyOn(service as never, 'renderCertificateFile')
       .mockResolvedValueOnce({
@@ -238,8 +240,10 @@ describe('CertificateDownloadService', () => {
     );
     expect(archive.fileName).toMatch(/^certificados-\d{4}-\d{2}-\d{2}-joao-da-silva-cacic\.zip$/);
     await archiveStream.completed;
-    expect(service['renderCertificateFile']).toHaveBeenNthCalledWith(1, 'certificate-1', false);
-    expect(service['renderCertificateFile']).toHaveBeenNthCalledWith(2, 'certificate-2', false);
+    await Promise.resolve();
+    expect(service['renderCertificateFile']).toHaveBeenNthCalledWith(1, 'certificate-1', false, browser);
+    expect(service['renderCertificateFile']).toHaveBeenNthCalledWith(2, 'certificate-2', false, browser);
+    expect(browser.close).toHaveBeenCalledTimes(1);
     expect(archiveStream.append).toHaveBeenNthCalledWith(1, Buffer.from('pdf-1'), { name: 'primeiro-certificado.pdf' });
     expect(archiveStream.append).toHaveBeenNthCalledWith(2, Buffer.from('pdf-2'), { name: 'segundo-certificado.pdf' });
     expect(archiveStream.append).toHaveBeenNthCalledWith(
@@ -254,6 +258,7 @@ describe('CertificateDownloadService', () => {
     const archiveStream = createArchive();
     const service = new CertificateDownloadService({} as never, {} as never);
     jest.mocked(createZipArchive).mockResolvedValue(archiveStream as never);
+    jest.mocked(chromium.launch).mockResolvedValue({ close: jest.fn().mockResolvedValue(undefined) } as never);
     jest.spyOn(service as never, 'renderCertificateFile').mockResolvedValue({
       fileName: 'certificado.pdf',
       content: Buffer.from('pdf'),
@@ -269,6 +274,7 @@ describe('CertificateDownloadService', () => {
     const archiveStream = createArchive();
     const service = new CertificateDownloadService({} as never, {} as never);
     jest.mocked(createZipArchive).mockResolvedValue(archiveStream as never);
+    jest.mocked(chromium.launch).mockResolvedValue({ close: jest.fn().mockResolvedValue(undefined) } as never);
     jest.spyOn(service as never, 'renderCertificateFile').mockRejectedValue(new Error('render failed'));
 
     const closed = new Promise<void>((resolve) => archiveStream.once('close', resolve));

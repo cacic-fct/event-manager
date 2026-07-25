@@ -51,6 +51,7 @@ type ExportTarget =
   | { kind: 'majorEvent'; majorEventId: string; name: string };
 
 type BadgeCodePathContext = {
+  people: readonly ExportPerson[];
   duplicateFullNameStems: ReadonlySet<string>;
 };
 
@@ -70,7 +71,7 @@ export class SubscriptionBadgeExportService {
     const target: ExportTarget = { kind: 'event', eventId: event.id, name: event.name };
     const normalizedInput = this.normalizeInput(input);
     const codePathContext = await this.createBadgeCodePathContext(target, normalizedInput);
-    await this.assertBadgeExportPreconditions(target, normalizedInput, codePathContext);
+    this.assertBadgeExportPreconditions(normalizedInput, codePathContext);
     return this.createArchive(target, normalizedInput, codePathContext);
   }
 
@@ -86,7 +87,7 @@ export class SubscriptionBadgeExportService {
     const target: ExportTarget = { kind: 'majorEvent', majorEventId: majorEvent.id, name: majorEvent.name };
     const normalizedInput = this.normalizeInput(input);
     const codePathContext = await this.createBadgeCodePathContext(target, normalizedInput);
-    await this.assertBadgeExportPreconditions(target, normalizedInput, codePathContext);
+    this.assertBadgeExportPreconditions(normalizedInput, codePathContext);
     return this.createArchive(target, normalizedInput, codePathContext);
   }
 
@@ -103,8 +104,8 @@ export class SubscriptionBadgeExportService {
     });
     archive.on('error', (error: Error) => archive.destroy(error));
 
-    archive.append(this.createCsvStream(target, input, codePathContext), { name: 'inscricoes.csv' });
-    void this.appendBadgeCodes(archive, target, input, codePathContext)
+    archive.append(this.createCsvStream(input, codePathContext), { name: 'inscricoes.csv' });
+    void this.appendBadgeCodes(archive, input, codePathContext)
       .then(() => archive.finalize())
       .catch((error: unknown) => archive.destroy(asError(error)));
 
@@ -115,68 +116,52 @@ export class SubscriptionBadgeExportService {
   }
 
   private createCsvStream(
-    target: ExportTarget,
     input: SubscriberBadgeExportInput,
     codePathContext: BadgeCodePathContext,
   ): Readable {
-    return Readable.from(this.csvChunks(target, input, codePathContext));
+    return Readable.from(this.csvChunks(input, codePathContext));
   }
 
   private async *csvChunks(
-    target: ExportTarget,
     input: SubscriberBadgeExportInput,
     codePathContext: BadgeCodePathContext,
   ): AsyncGenerator<string> {
     const resolveCodePath = createBadgeCodePathResolver(input, codePathContext);
     yield `\uFEFF${subscriberCsvHeader(input, [BADGE_CODE_PATH_CSV_HEADER])}\r\n`;
 
-    for await (const people of this.peoplePages(target)) {
-      for (const person of people) {
-        yield `${subscriberCsvRow(person, input, [resolveCodePath(person)])}\r\n`;
-      }
+    for (const person of codePathContext.people) {
+      yield `${subscriberCsvRow(person, input, [resolveCodePath(person)])}\r\n`;
     }
   }
 
   private async appendBadgeCodes(
     archive: ZipArchiveStream,
-    target: ExportTarget,
     input: SubscriberBadgeExportInput,
     codePathContext: BadgeCodePathContext,
   ): Promise<void> {
     const resolveCodePath = createBadgeCodePathResolver(input, codePathContext);
-    for await (const people of this.peoplePages(target)) {
-      for (const person of people) {
-        if (!person.userId) {
-          throw new BadRequestException(
-            `Não foi possível gerar o código de crachá para ${person.name}: a pessoa não possui uma conta de usuário.`,
-          );
-        }
-
-        const code = await this.renderBadgeCode(`user:${person.userId}`, input);
-        archive.append(code, { name: resolveCodePath(person) });
-      }
+    for (const person of codePathContext.people) {
+      const code = await this.renderBadgeCode(`user:${person.userId}`, input);
+      archive.append(code, { name: resolveCodePath(person) });
     }
   }
 
-  private async assertBadgeExportPreconditions(
-    target: ExportTarget,
+  private assertBadgeExportPreconditions(
     input: SubscriberBadgeExportInput,
     codePathContext: BadgeCodePathContext,
-  ): Promise<void> {
-    for await (const people of this.peoplePages(target)) {
-      for (const person of people) {
-        if (!person.userId) {
-          throw new BadRequestException(
-            `Não foi possível gerar o código de crachá para ${person.name}: a pessoa não possui uma conta de usuário.`,
-          );
-        }
-        if (
-          (input.fileName === 'identityDocument' ||
-            (input.fileName === 'fullName' && codePathContext.duplicateFullNameStems.has(slugify(person.name)))) &&
-          !person.identityDocument?.trim()
-        ) {
-          throw new BadRequestException(`Não foi possível nomear o código de ${person.name}: documento não informado.`);
-        }
+  ): void {
+    for (const person of codePathContext.people) {
+      if (!person.userId) {
+        throw new BadRequestException(
+          `Não foi possível gerar o código de crachá para ${person.name}: a pessoa não possui uma conta de usuário.`,
+        );
+      }
+      if (
+        (input.fileName === 'identityDocument' ||
+          (input.fileName === 'fullName' && codePathContext.duplicateFullNameStems.has(slugify(person.name)))) &&
+        !person.identityDocument?.trim()
+      ) {
+        throw new BadRequestException(`Não foi possível nomear o código de ${person.name}: documento não informado.`);
       }
     }
   }
@@ -185,21 +170,29 @@ export class SubscriptionBadgeExportService {
     target: ExportTarget,
     input: SubscriberBadgeExportInput,
   ): Promise<BadgeCodePathContext> {
+    const people = await this.findPeople(target);
     if (input.fileName !== 'fullName') {
-      return { duplicateFullNameStems: new Set() };
+      return { people, duplicateFullNameStems: new Set() };
     }
 
     const counts = new Map<string, number>();
-    for await (const people of this.peoplePages(target)) {
-      for (const person of people) {
-        const stem = slugify(person.name);
-        counts.set(stem, (counts.get(stem) ?? 0) + 1);
-      }
+    for (const person of people) {
+      const stem = slugify(person.name);
+      counts.set(stem, (counts.get(stem) ?? 0) + 1);
     }
 
     return {
+      people,
       duplicateFullNameStems: new Set([...counts].flatMap(([stem, count]) => (count > 1 ? [stem] : []))),
     };
+  }
+
+  private async findPeople(target: ExportTarget): Promise<ExportPerson[]> {
+    const people: ExportPerson[] = [];
+    for await (const page of this.peoplePages(target)) {
+      people.push(...page);
+    }
+    return people;
   }
 
   private async *peoplePages(target: ExportTarget): AsyncGenerator<ExportPerson[]> {
@@ -217,7 +210,7 @@ export class SubscriptionBadgeExportService {
   }
 
   private findPeoplePage(target: ExportTarget, skip: number): Promise<ExportPerson[]> {
-    const select = {
+    const eventSubscriptionSelect = {
       person: {
         select: {
           id: true,
@@ -240,7 +233,7 @@ export class SubscriptionBadgeExportService {
       return this.prisma.eventSubscription
         .findMany({
           where: { eventId: target.eventId, deletedAt: null },
-          select,
+          select: eventSubscriptionSelect,
           orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
           skip,
           take: EXPORT_PAGE_SIZE,
@@ -248,10 +241,29 @@ export class SubscriptionBadgeExportService {
         .then((subscriptions) => subscriptions.map((subscription) => subscription.person));
     }
 
+    const majorEventSubscriptionSelect = {
+      person: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          identityDocument: true,
+          academicId: true,
+          userId: true,
+          user: {
+            select: {
+              role: true,
+            },
+          },
+        },
+      },
+    } satisfies Prisma.MajorEventSubscriptionSelect;
+
     return this.prisma.majorEventSubscription
       .findMany({
         where: { majorEventId: target.majorEventId, deletedAt: null },
-        select,
+        select: majorEventSubscriptionSelect,
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip,
         take: EXPORT_PAGE_SIZE,

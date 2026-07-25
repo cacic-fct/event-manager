@@ -12,6 +12,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Response } from 'express';
+import { ArrayNotEmpty, IsArray, IsIn, IsString, Validate, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import {
@@ -20,7 +21,7 @@ import {
   SubscriptionBadgeExportService,
 } from './subscription-badge-export.service';
 import { ApiProperty } from '@nestjs/swagger';
-import type { IdentityDocumentExportMode, SubscriberCsvField } from '@cacic-fct/shared-utils';
+import { isValidErrorCorrectionLevel, type IdentityDocumentExportMode, type SubscriberCsvField } from '@cacic-fct/shared-utils';
 
 const EVENT_SUBSCRIPTION_EXPORT_PERMISSIONS = [
   Permission.Subscription.Read,
@@ -31,20 +32,39 @@ const MAJOR_EVENT_SUBSCRIPTION_EXPORT_PERMISSIONS = [
   Permission.MajorEvent.Read,
 ] as const;
 
+@ValidatorConstraint({ name: 'isValidErrorCorrectionLevel' })
+class IsValidErrorCorrectionLevelConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown): boolean {
+    return typeof value === 'string' && isValidErrorCorrectionLevel(value);
+  }
+
+  defaultMessage(): string {
+    return 'errorCorrectionLevel must be an integer from 5 through 95.';
+  }
+}
+
 export class SubscriberBadgeExportInput {
   @ApiProperty({ enum: ['fullName', 'email', 'identityDocument', 'enrollmentNumber', 'unespRole', 'phone'], isArray: true })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsIn(['fullName', 'email', 'identityDocument', 'enrollmentNumber', 'unespRole', 'phone'], { each: true })
   fields!: SubscriberCsvField[];
 
   @ApiProperty({ enum: ['masked', 'complete'] })
+  @IsIn(['masked', 'complete'])
   identityDocumentMode!: IdentityDocumentExportMode;
 
   @ApiProperty({ example: '23', description: 'Integer from 5 through 95.' })
+  @IsString()
+  @Validate(IsValidErrorCorrectionLevelConstraint)
   errorCorrectionLevel!: string;
 
   @ApiProperty({ enum: ['svg', 'png'] })
+  @IsIn(['svg', 'png'])
   format!: SubscriberBadgeCodeFormat;
 
   @ApiProperty({ enum: ['id', 'fullName', 'identityDocument'] })
+  @IsIn(['id', 'fullName', 'identityDocument'])
   fileName!: SubscriberBadgeCodeFileName;
 }
 

@@ -114,13 +114,15 @@
       <mat-list class="subscription-list">
         @for (subscription of workspace.majorEventSubscriptions(); track subscription.id) {
           <mat-list-item
-            role="button"
-            tabindex="0"
-            (click)="workspace.selectMajorEventSubscription(subscription)"
-            (keydown.enter)="workspace.selectMajorEventSubscription(subscription)"
-            (keydown.space)="$event.preventDefault(); workspace.selectMajorEventSubscription(subscription)"
             [class.selected-list-item]="workspace.selectedMajorEventSubscription()?.id === subscription.id">
-            <span matListItemTitle>{{ subscription.person?.name ?? subscription.personId }}</span>
+            <button
+              matListItemTitle
+              class="subscription-selection-button"
+              type="button"
+              [attr.aria-pressed]="workspace.selectedMajorEventSubscription()?.id === subscription.id"
+              (click)="workspace.selectMajorEventSubscription(subscription)">
+              {{ subscription.person?.name ?? subscription.personId }}
+            </button>
             <span matListItemLine>
               {{ statusLabel(subscription.subscriptionStatus) }} ·
               {{ subscription.createdByMethod }}

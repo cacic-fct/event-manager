@@ -34,6 +34,7 @@ export class SubscriptionsPageComponent {
 
   protected readonly selectedTabIndex = signal(0);
   protected readonly selectedMajorEventPendingReceiptsCount = signal(0);
+  private majorEventRouteRequest = 0;
 
   constructor() {
     void this.initializeReceiptValidation();
@@ -43,6 +44,7 @@ export class SubscriptionsPageComponent {
     });
 
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const routeRequest = ++this.majorEventRouteRequest;
       const eventId = params.get('eventId');
       const majorEventId = params.get('majorEventId');
       const majorEventSubscriptionId = params.get('subscriptionId');
@@ -55,7 +57,10 @@ export class SubscriptionsPageComponent {
 
       if (majorEventId) {
         this.selectedTabIndex.set(1);
-        void this.openMajorEventSubscriptionRoute(majorEventId, majorEventSubscriptionId).catch(() => {
+        void this.openMajorEventSubscriptionRoute(majorEventId, majorEventSubscriptionId, routeRequest).catch(() => {
+          if (routeRequest !== this.majorEventRouteRequest) {
+            return;
+          }
           this.snackBar.open('Inscrição não encontrada.', 'Fechar', { duration: 5000 });
           void this.router.navigate(['/subscriptions']);
         });
@@ -66,13 +71,20 @@ export class SubscriptionsPageComponent {
     });
   }
 
-  private async openMajorEventSubscriptionRoute(majorEventId: string, subscriptionId: string | null): Promise<void> {
+  private async openMajorEventSubscriptionRoute(
+    majorEventId: string,
+    subscriptionId: string | null,
+    routeRequest: number,
+  ): Promise<void> {
     if (this.workspace.majorEventForm.controls.majorEventId.value !== majorEventId) {
       await this.workspace.selectMajorEventById(majorEventId, false);
     }
+    if (routeRequest !== this.majorEventRouteRequest) {
+      return;
+    }
     if (subscriptionId && this.workspace.selectedMajorEventSubscription()?.id !== subscriptionId) {
       await this.workspace.selectMajorEventSubscriptionById(majorEventId, subscriptionId);
-    } else if (!subscriptionId) {
+    } else if (!subscriptionId && routeRequest === this.majorEventRouteRequest) {
       this.workspace.closeMajorEventSubscriptionDetail();
     }
   }

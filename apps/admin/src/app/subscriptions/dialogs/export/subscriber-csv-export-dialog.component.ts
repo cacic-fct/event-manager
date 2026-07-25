@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -40,6 +40,9 @@ const FIELD_CONFIGS: SubscriberCsvFieldConfig[] = [
   { field: 'unespRole', label: 'Vínculo Unesp' },
   { field: 'phone', label: 'Telefone' },
 ];
+
+const errorCorrectionLevelValidator: ValidatorFn = (control) =>
+  isValidErrorCorrectionLevel(control.value) ? null : { invalidErrorCorrectionLevel: true };
 
 @Component({
   selector: 'app-subscriber-csv-export-dialog',
@@ -184,7 +187,7 @@ export class SubscriberCsvExportDialogComponent {
     badgeCodes: [DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS.enabled],
     badgeErrorCorrectionLevel: [
       DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS.errorCorrectionLevel,
-      [Validators.required, Validators.pattern(/^(?:[5-9]|[1-8]\d|9[0-5])$/)],
+      [Validators.required, errorCorrectionLevelValidator],
     ],
     badgeCodeFormat: [DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS.format],
     badgeFileName: [DEFAULT_SUBSCRIBER_CSV_BADGE_OPTIONS.fileName],

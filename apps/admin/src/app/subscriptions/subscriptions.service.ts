@@ -99,6 +99,7 @@ export class SubscriptionsService {
   });
   private readonly selectedMajorEventId = signal('');
   private readonly majorEventSearchQuery = signal('');
+  private majorEventSubscriptionSelectionRequest = 0;
   readonly majorEventPersonForm = this.formBuilder.nonNullable.group({
     identifierType: ['email'],
     identifier: ['', [Validators.required]],
@@ -269,6 +270,7 @@ export class SubscriptionsService {
   }
 
   async selectMajorEventById(majorEventId: string, navigate = true): Promise<void> {
+    this.majorEventSubscriptionSelectionRequest++;
     this.majorEventForm.controls.majorEventId.setValue(majorEventId);
     if (navigate) {
       void this.router.navigate(['/subscriptions/major-event', majorEventId]);
@@ -319,7 +321,11 @@ export class SubscriptionsService {
   }
 
   async selectMajorEventSubscriptionById(majorEventId: string, subscriptionId: string): Promise<void> {
+    const selectionRequest = ++this.majorEventSubscriptionSelectionRequest;
     const subscription = await firstValueFrom(this.api.getMajorEventSubscription(majorEventId, subscriptionId));
+    if (selectionRequest !== this.majorEventSubscriptionSelectionRequest) {
+      return;
+    }
     this.selectMajorEventSubscription(subscription, false);
   }
 
@@ -346,6 +352,7 @@ export class SubscriptionsService {
   }
 
   closeMajorEventSubscriptionDetail(): void {
+    this.majorEventSubscriptionSelectionRequest++;
     this.selectMajorEventSubscription(null, false);
     const majorEventId = this.majorEventForm.controls.majorEventId.value;
     void this.router.navigate(majorEventId ? ['/subscriptions/major-event', majorEventId] : ['/subscriptions']);
@@ -552,9 +559,18 @@ export class SubscriptionsService {
       return;
     }
 
-    const subscriptions = await this.fetchAllEventSubscriptions(eventId);
-    this.eventSubscriptions.set(subscriptions);
-    const options = await this.openExportDialog('Baixar inscrições do evento', subscriptions.length);
+    let subscriptions: WorkspaceEventSubscription[];
+    let options: SubscriberCsvExportDialogOptions | null;
+    try {
+      subscriptions = await this.fetchAllEventSubscriptions(eventId);
+      this.eventSubscriptions.set(subscriptions);
+      options = await this.openExportDialog('Baixar inscrições do evento', subscriptions.length);
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível preparar a exportação do CSV.'), 'Fechar', {
+        duration: 5000,
+      });
+      return;
+    }
     if (!options) {
       return;
     }
@@ -580,9 +596,18 @@ export class SubscriptionsService {
       return;
     }
 
-    const subscriptions = await this.fetchAllMajorEventSubscriptions(majorEventId);
-    this.majorEventSubscriptions.set(subscriptions);
-    const options = await this.openExportDialog('Baixar inscrições do grande evento', subscriptions.length);
+    let subscriptions: WorkspaceMajorEventSubscription[];
+    let options: SubscriberCsvExportDialogOptions | null;
+    try {
+      subscriptions = await this.fetchAllMajorEventSubscriptions(majorEventId);
+      this.majorEventSubscriptions.set(subscriptions);
+      options = await this.openExportDialog('Baixar inscrições do grande evento', subscriptions.length);
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível preparar a exportação do CSV.'), 'Fechar', {
+        duration: 5000,
+      });
+      return;
+    }
     if (!options) {
       return;
     }

@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -145,6 +146,32 @@ describe('Attendances', () => {
     expect(fileDownload.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'certificados.zip');
     expect(snackBar.open).toHaveBeenCalledWith('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
     expect(component.isDownloadingCertificates()).toBe(false);
+  });
+
+  it('shows the empty-certificates message only for a missing archive', async () => {
+    const { api, component, snackBar } = await createFixture();
+    api.downloadCurrentUserCertificatesArchive.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 404 })),
+    );
+
+    component.downloadCertificatesArchive();
+
+    expect(snackBar.open).toHaveBeenCalledWith('Nenhum certificado disponível para download.', 'Fechar', {
+      duration: 5000,
+    });
+  });
+
+  it('shows a generic message when the archive download fails for another reason', async () => {
+    const { api, component, snackBar } = await createFixture();
+    api.downloadCurrentUserCertificatesArchive.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 })),
+    );
+
+    component.downloadCertificatesArchive();
+
+    expect(snackBar.open).toHaveBeenCalledWith('Não foi possível baixar seus certificados.', 'Fechar', {
+      duration: 5000,
+    });
   });
 
   it('opens standalone certificate folders in the certificate dialog', async () => {

@@ -199,7 +199,17 @@
   background: var(--mat-sys-secondary-container);
 }
 
-.subscription-list mat-list-item[role='button']:focus-visible {
+.subscription-selection-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.subscription-selection-button:focus-visible {
   outline: 2px solid var(--mat-sys-primary);
   outline-offset: -2px;
 }
