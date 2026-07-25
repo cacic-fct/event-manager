@@ -39,10 +39,6 @@ Instale as dependências do monorepo:
 bun install
 ```
 
-Se o comando ainda retornar `401`, verifique se o token tem `read:packages` e se sua conta tem acesso ao pacote no GitHub Packages.
-
-Este projeto usa o [Nx](https://nx.dev) para gerenciar o monorepo.
-
 #### Serviços locais
 
 O backend depende de PostgreSQL, Redis e Typesense. Para subir os serviços locais de desenvolvimento, use:
@@ -50,6 +46,8 @@ O backend depende de PostgreSQL, Redis e Typesense. Para subir os serviços loca
 ```bash
 docker compose -f docker/docker-compose.dev.yml up -d
 ```
+
+Este projeto usa o [Nx](https://nx.dev) para gerenciar o monorepo.
 
 Para iniciar um aplicativo em modo de desenvolvimento, use:
 
