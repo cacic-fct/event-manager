@@ -40,6 +40,7 @@ export class WalletBarcodeComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly userId = input('');
+  readonly barcodeType = input<'aztec' | 'code128'>('aztec');
   readonly errorCorrectionLevel = input('35');
   readonly label = input('Código de barras');
   readonly ariaHidden = input(false);
@@ -50,7 +51,7 @@ export class WalletBarcodeComponent {
       return '';
     }
 
-    const svg = this.renderAztecCode(userId);
+    const svg = this.renderBarcode(userId);
     if (!svg) {
       return '';
     }
@@ -58,13 +59,23 @@ export class WalletBarcodeComponent {
     return this.sanitizer.bypassSecurityTrustHtml(svg);
   });
 
-  private renderAztecCode(userId: string): string {
+  private renderBarcode(value: string): string {
     try {
       // We use bwip here instead of zxing-wasm,
       // because its compressed size is smaller, and it generates code instantly
+      if (this.barcodeType() === 'code128') {
+        return toSVG({
+          bcid: 'code128',
+          text: value,
+          height: 18,
+          includetext: true,
+          textxalign: 'center',
+        });
+      }
+
       return toSVG({
         bcid: 'azteccode',
-        text: `user:${userId}`,
+        text: `user:${value}`,
         height: 300,
         width: 300,
         includetext: false,
@@ -73,7 +84,7 @@ export class WalletBarcodeComponent {
         eclevel: this.errorCorrectionLevel() || '90',
       });
     } catch (err) {
-      console.error('Failed to render Aztec code:', err);
+      console.error('Failed to render wallet barcode:', err);
 
       return '';
     }

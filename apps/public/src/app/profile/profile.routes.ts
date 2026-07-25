@@ -9,7 +9,18 @@ export const routes: Route[] = [
   {
     path: 'wallet',
     title: 'Crachá',
-    loadComponent: () => import('./wallet/wallet').then((m) => m.Wallet),
+    loadComponent: () => import('./wallet/pages/wallet/wallet').then((m) => m.Wallet),
+  },
+  {
+    path: 'wallet/add-card',
+    title: 'Adicionar cartão',
+    loadComponent: () => import('./wallet/pages/add-card/add-card').then((m) => m.WalletAddCard),
+  },
+  {
+    path: 'wallet/add-card/restaurant',
+    title: 'Cartão do R.U.',
+    loadComponent: () =>
+      import('./wallet/pages/restaurant-card-enrollment/restaurant-card-enrollment').then((m) => m.RestaurantCardEnrollment),
   },
   {
     path: 'forms/:formId',

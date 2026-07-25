@@ -4,6 +4,7 @@ import { WalletBarcodeComponent } from './barcode';
 
 type WalletBarcodeStoryArgs = {
   userId: string;
+  barcodeType: 'aztec' | 'code128';
   errorCorrectionLevel: string;
   label: string;
   ariaHidden: boolean;
@@ -15,12 +16,17 @@ const meta: Meta<WalletBarcodeStoryArgs> = {
   tags: ['autodocs'],
   args: {
     userId: 'user-storybook-123',
+    barcodeType: 'aztec',
     errorCorrectionLevel: '35',
     label: 'Código de identificação da carteira',
     ariaHidden: false,
   },
   argTypes: {
     userId: { control: 'text' },
+    barcodeType: {
+      control: 'select',
+      options: ['aztec', 'code128'],
+    },
     errorCorrectionLevel: {
       control: 'select',
       options: ['5', '23', '35', '50', '90'],
@@ -63,6 +69,14 @@ export const Decorative: Story = {
   args: {
     ariaHidden: true,
     label: 'Código decorativo oculto da tecnologia assistiva',
+  },
+};
+
+export const Restaurantcode128: Story = {
+  args: {
+    userId: '000123456',
+    barcodeType: 'code128',
+    label: 'Código de barras do Cartão do R.U.',
   },
 };
 

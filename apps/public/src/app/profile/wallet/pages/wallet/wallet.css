@@ -1,0 +1,80 @@
+.wallet-page {
+  max-width: 32rem;
+  padding-block: 1.5rem 2.5rem;
+  --wallet-stack-header-height: 4.75rem;
+  --wallet-toolbar-height: 4rem;
+}
+
+.wallet-page-detail {
+  min-height: calc(100vh - var(--wallet-toolbar-height) + 1px);
+  min-height: calc(100dvh - var(--wallet-toolbar-height) + 1px);
+  margin-bottom: 0;
+}
+
+.wallet-card-list,
+.wallet-card-detail {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.wallet-card-list {
+  gap: 0;
+  padding-bottom: calc((var(--wallet-card-count) - 1) * var(--wallet-stack-header-height));
+}
+
+.wallet-primary-card {
+  margin-bottom: 2rem;
+  transition: opacity 180ms ease-out, filter 180ms ease-out;
+}
+
+.wallet-primary-card-fading { opacity: 0; filter: blur(2px); }
+
+.wallet-card-list app-wallet-card {
+  grid-area: 1 / 1;
+  position: relative;
+  z-index: var(--wallet-stack-index);
+  isolation: isolate;
+  translate: 0 calc(var(--wallet-stack-index) * var(--wallet-stack-header-height));
+  transition:
+    opacity 180ms ease-out,
+    transform 240ms cubic-bezier(0.16, 1, 0.3, 1),
+    filter 180ms ease-out;
+}
+
+.wallet-card-list-transitioning { pointer-events: none; }
+.wallet-card-list-selecting .wallet-card-selected { z-index: var(--wallet-card-count); }
+.wallet-card-list-transitioning .wallet-card-before-selected,
+.wallet-card-list-transitioning .wallet-card-after-selected {
+  opacity: 0;
+  filter: blur(2px);
+  transform: scale(0.98);
+}
+
+.wallet-primary-card-returning,
+.wallet-card-returning {
+  animation: wallet-card-return 240ms 100ms both cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes wallet-card-return {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+    transform: scale(0.98);
+  }
+}
+
+@media screen and (max-width: 599px) {
+  .wallet-page {
+    --wallet-toolbar-height: 3.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wallet-primary-card,
+  .wallet-primary-card-returning,
+  .wallet-card-returning,
+  .wallet-card-list app-wallet-card {
+    animation: none;
+    transition: none;
+  }
+}

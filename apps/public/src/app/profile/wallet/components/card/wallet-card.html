@@ -1,0 +1,18 @@
+<mat-card class="wallet-ticket" [class.wallet-ticket-stacked]="stacked()" [class]="'wallet-ticket-' + kind()">
+  <app-wallet-card-header [kind]="kind()" (selected)="selectCard()" />
+
+  @switch (kind()) {
+    @case ('eventos') {
+      <app-wallet-event-card [user]="user()" />
+    }
+    @case ('offline-code') {
+      <section class="ticket-details"><app-wallet-offline-code-card /></section>
+    }
+    @case ('academic-record') {
+      <app-wallet-academic-record-card [user]="user()" />
+    }
+    @case ('restaurant') {
+      <app-wallet-restaurant-card [user]="user()" [restaurantNumber]="restaurantNumber()" />
+    }
+  }
+</mat-card>

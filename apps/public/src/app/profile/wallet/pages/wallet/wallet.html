@@ -1,0 +1,81 @@
+<app-wallet-print-styles />
+
+<mat-toolbar class="wallet-toolbar">
+  @if (walletView() === 'list') {
+    <a matIconButton routerLink="/menu" aria-label="Voltar para o menu">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+  } @else {
+    <button
+      matIconButton
+      type="button"
+      aria-label="Voltar para a lista de cartões"
+      [disabled]="walletView() === 'closing'"
+      (click)="returnToCardList()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+  }
+  <span>Carteira</span>
+  <span class="global-toolbar-spacer"></span>
+  @if (walletView() === 'list') {
+    <button matIconButton aria-label="Imprimir crachá" matTooltip="Imprimir crachá" (click)="print()">
+      <mat-icon>printer</mat-icon>
+    </button>
+  }
+  <a matIconButton routerLink="/profile/wallet/add-card" aria-label="Adicionar cartão" matTooltip="Adicionar cartão">
+    <mat-icon>add</mat-icon>
+  </a>
+  @if (serviceWorkerService.hasServiceWorker()) {
+  <button matIconButton aria-label="Disponível off-line" matTooltip="Disponível off-line" (click)="availableOffline()">
+    <mat-icon>cloud_done</mat-icon>
+  </button>
+  } @else {
+  <button
+    matIconButton
+    aria-label="Não está disponível off-line"
+    matTooltip="Não está disponível off-line"
+    (click)="availableOffline()">
+    <mat-icon>cloud_off</mat-icon>
+  </button>
+  }
+</mat-toolbar>
+
+<main class="global-container wallet-page" [class.wallet-page-detail]="walletView() === 'detail'">
+  @if (walletView() !== 'detail') {
+    <section
+      #topCardSlot
+      class="wallet-primary-card"
+      [class.wallet-primary-card-fading]="walletView() === 'selecting'"
+      [class.wallet-primary-card-returning]="walletView() === 'closing'"
+      aria-label="Cartão CACiC Eventos">
+      <app-wallet-card [user]="cardUser()" [kind]="'eventos'" (cardSelected)="selectCard($event)" />
+    </section>
+
+    <section
+      #walletCardList
+      class="wallet-card-list"
+      [class.wallet-card-list-transitioning]="walletView() !== 'list'"
+      [class.wallet-card-list-selecting]="walletView() === 'selecting'"
+      [style.--wallet-card-count]="stackedCards().length"
+      aria-label="Outros cartões">
+      @for (card of stackedCards(); track card; let cardIndex = $index) {
+        <app-wallet-card
+          [class]="cardMotionClass(card)"
+          [style.--wallet-stack-index]="cardIndex"
+          [user]="cardUser()"
+          [kind]="card"
+          [restaurantNumber]="restaurantNumber()"
+          [stacked]="true"
+          (cardSelected)="selectCard($event)" />
+      }
+    </section>
+  } @else {
+    <section #detailCardSlot class="wallet-card-detail" aria-label="Cartão selecionado">
+      <app-wallet-card
+        [user]="cardUser()"
+        [kind]="selectedCard()!"
+        [restaurantNumber]="restaurantNumber()"
+        (cardSelected)="selectCard($event)" />
+    </section>
+  }
+</main>
