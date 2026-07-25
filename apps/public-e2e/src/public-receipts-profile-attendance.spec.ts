@@ -186,6 +186,19 @@ async function mockPublicApi(
       return;
     }
 
+    if (url.pathname === '/api/current-user/certificates/archive.zip') {
+      certificateArchiveDownloads++;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/zip',
+        headers: {
+          'content-disposition': 'attachment; filename="certificados.zip"',
+        },
+        body: 'PK',
+      });
+      return;
+    }
+
     if (url.pathname === '/api/major-event-receipts/major-events/paid-major') {
       receiptUploads.push({
         majorEventId: 'paid-major',
@@ -211,9 +224,6 @@ async function mockPublicApi(
 
     if (url.pathname === '/api/graphql') {
       await fulfillGraphql(route, {
-        certificateArchiveDownloads: () => {
-          certificateArchiveDownloads++;
-        },
         getOnlineAttendanceConfirmed: () => onlineAttendanceConfirmed,
         setOnlineAttendanceConfirmed: (nextValue) => {
           onlineAttendanceConfirmed = nextValue;
@@ -242,7 +252,6 @@ async function mockPublicApi(
 async function fulfillGraphql(
   route: Route,
   state: {
-    certificateArchiveDownloads: () => void;
     getOnlineAttendanceConfirmed: () => boolean;
     setOnlineAttendanceConfirmed: (nextValue: boolean) => void;
     formSubmissions: Record<string, unknown>[];
@@ -288,18 +297,6 @@ async function fulfillGraphql(
 
   if (query.includes('currentUserSubscriptionFeed')) {
     await fulfillGraphqlData(route, subscriptionsFeedFixture());
-    return;
-  }
-
-  if (query.includes('query DownloadCurrentUserCertificatesArchive')) {
-    state.certificateArchiveDownloads();
-    await fulfillGraphqlData(route, {
-      downloadCurrentUserCertificatesArchive: {
-        fileName: 'certificados.zip',
-        mimeType: 'application/zip',
-        contentBase64: 'UEs=',
-      },
-    });
     return;
   }
 

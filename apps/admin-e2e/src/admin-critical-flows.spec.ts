@@ -64,6 +64,7 @@ test('subscription management loads event and major event subscriptions', async 
   await expect(page.getByRole('tab', { name: 'Grandes eventos' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('Semana da Computação').first()).toBeVisible();
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Ada Lovelace', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Eventos inscritos' })).toBeVisible();
   await expect(page.getByText('Oficina de Angular')).toBeVisible();
 });
