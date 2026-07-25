@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
@@ -142,13 +143,35 @@ describe('Attendances', () => {
 
     component.downloadCertificatesArchive();
 
-    expect(fileDownload.save).toHaveBeenCalledWith({
-      fileName: 'certificados.zip',
-      mimeType: 'application/zip',
-      contentBase64: 'UEs=',
-    });
+    expect(fileDownload.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'certificados.zip');
     expect(snackBar.open).toHaveBeenCalledWith('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
     expect(component.isDownloadingCertificates()).toBe(false);
+  });
+
+  it('shows the empty-certificates message only for a missing archive', async () => {
+    const { api, component, snackBar } = await createFixture();
+    api.downloadCurrentUserCertificatesArchive.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 404 })),
+    );
+
+    component.downloadCertificatesArchive();
+
+    expect(snackBar.open).toHaveBeenCalledWith('Nenhum certificado disponível para download.', 'Fechar', {
+      duration: 5000,
+    });
+  });
+
+  it('shows a generic message when the archive download fails for another reason', async () => {
+    const { api, component, snackBar } = await createFixture();
+    api.downloadCurrentUserCertificatesArchive.mockReturnValue(
+      throwError(() => new HttpErrorResponse({ status: 500 })),
+    );
+
+    component.downloadCertificatesArchive();
+
+    expect(snackBar.open).toHaveBeenCalledWith('Não foi possível baixar seus certificados.', 'Fechar', {
+      duration: 5000,
+    });
   });
 
   it('opens standalone certificate folders in the certificate dialog', async () => {
@@ -192,7 +215,7 @@ async function createFixture({
     downloadCurrentUserCertificatesArchive: ReturnType<typeof vi.fn>;
   };
   component: Attendances;
-  fileDownload: { save: ReturnType<typeof vi.fn> };
+  fileDownload: { saveBlob: ReturnType<typeof vi.fn> };
   fixture: ComponentFixture<Attendances>;
   dialog: { open: ReturnType<typeof vi.fn> };
   offlineData: {
@@ -207,9 +230,8 @@ async function createFixture({
     getSubscriptionsFeed: vi.fn(() => (onlineFeedError ? throwError(() => onlineFeedError) : of(onlineFeed))),
     downloadCurrentUserCertificatesArchive: vi.fn(() =>
       of({
+        blob: new Blob(['PK']),
         fileName: 'certificados.zip',
-        mimeType: 'application/zip',
-        contentBase64: 'UEs=',
       }),
     ),
   };
@@ -220,7 +242,7 @@ async function createFixture({
     replaceAttendanceFeed: vi.fn(() => Promise.resolve()),
   };
   const fileDownload = {
-    save: vi.fn(),
+    saveBlob: vi.fn(),
   };
   const snackBar = {
     open: vi.fn(),

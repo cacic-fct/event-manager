@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
@@ -7,6 +8,12 @@ import {
   WorkspaceMajorEventSubscription,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { PERSON_EXPORT_FIELDS } from './graphql-query-fragments';
+import { SubscriberCsvExportDialogOptions } from '../subscriptions/subscriber-csv-export';
+
+export interface SubscriptionBadgeArchiveDownload {
+  blob: Blob;
+  fileName: string;
+}
 
 const WORKSPACE_EVENT_SUBSCRIPTION_FIELDS = `
   id
@@ -53,6 +60,7 @@ const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
 @Injectable({ providedIn: 'root' })
 export class SubscriptionApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
+  private readonly http = inject(HttpClient);
 
   listEventSubscriptions(eventId: string, filters?: { skip?: number; take?: number }) {
     return this.graphqlHttp
@@ -164,5 +172,45 @@ export class SubscriptionApiService {
         { id, input },
       )
       .pipe(map((data) => data.updateWorkspaceMajorEventSubscription));
+  }
+
+  downloadEventSubscriptionBadgeArchive(eventId: string, options: SubscriberCsvExportDialogOptions) {
+    return this.downloadBadgeArchive(`/api/subscription-exports/events/${encodeURIComponent(eventId)}/badges.zip`, options);
+  }
+
+  downloadMajorEventSubscriptionBadgeArchive(majorEventId: string, options: SubscriberCsvExportDialogOptions) {
+    return this.downloadBadgeArchive(
+      `/api/subscription-exports/major-events/${encodeURIComponent(majorEventId)}/badges.zip`,
+      options,
+    );
+  }
+
+  private downloadBadgeArchive(url: string, options: SubscriberCsvExportDialogOptions) {
+    return this.http
+      .post(url, {
+        fields: options.fields,
+        identityDocumentMode: options.identityDocumentMode,
+        errorCorrectionLevel: options.badgeCodes.errorCorrectionLevel,
+        format: options.badgeCodes.format,
+        fileName: options.badgeCodes.fileName,
+      }, { observe: 'response', responseType: 'blob' })
+      .pipe(
+        map((response): SubscriptionBadgeArchiveDownload => {
+          if (!response.body) {
+            throw new Error('O arquivo de códigos não foi retornado pelo servidor.');
+          }
+
+          return {
+            blob: response.body,
+            fileName: this.fileNameFromDisposition(response.headers.get('content-disposition')),
+          };
+        }),
+      );
+  }
+
+  private fileNameFromDisposition(disposition: string | null): string {
+    const encodedMatch = disposition?.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+    const fileName = encodedMatch ? decodeURIComponent(encodedMatch[1]) : disposition?.match(/filename="?([^";]+)"?/i)?.[1];
+    return fileName?.replace(/[\\/]/g, '') || 'codigos-para-cracha.zip';
   }
 }

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { ReceiptValidationApiService } from '../graphql/receipt-validation-api.service';
@@ -29,9 +30,11 @@ export class SubscriptionsPageComponent {
   private readonly workspace = inject(SubscriptionsService);
   protected readonly permissions = inject(PermissionsService);
   private readonly receiptValidationApi = inject(ReceiptValidationApiService);
+  private readonly snackBar = inject(MatSnackBar);
 
   protected readonly selectedTabIndex = signal(0);
   protected readonly selectedMajorEventPendingReceiptsCount = signal(0);
+  private majorEventRouteRequest = 0;
 
   constructor() {
     void this.initializeReceiptValidation();
@@ -41,6 +44,7 @@ export class SubscriptionsPageComponent {
     });
 
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const routeRequest = ++this.majorEventRouteRequest;
       const eventId = params.get('eventId');
       const majorEventId = params.get('majorEventId');
       const majorEventSubscriptionId = params.get('subscriptionId');
@@ -53,7 +57,13 @@ export class SubscriptionsPageComponent {
 
       if (majorEventId) {
         this.selectedTabIndex.set(1);
-        void this.openMajorEventSubscriptionRoute(majorEventId, majorEventSubscriptionId);
+        void this.openMajorEventSubscriptionRoute(majorEventId, majorEventSubscriptionId, routeRequest).catch(() => {
+          if (routeRequest !== this.majorEventRouteRequest) {
+            return;
+          }
+          this.snackBar.open('Inscrição não encontrada.', 'Fechar', { duration: 5000 });
+          void this.router.navigate(['/subscriptions']);
+        });
         return;
       }
 
@@ -61,12 +71,21 @@ export class SubscriptionsPageComponent {
     });
   }
 
-  private async openMajorEventSubscriptionRoute(majorEventId: string, subscriptionId: string | null): Promise<void> {
+  private async openMajorEventSubscriptionRoute(
+    majorEventId: string,
+    subscriptionId: string | null,
+    routeRequest: number,
+  ): Promise<void> {
     if (this.workspace.majorEventForm.controls.majorEventId.value !== majorEventId) {
       await this.workspace.selectMajorEventById(majorEventId, false);
     }
+    if (routeRequest !== this.majorEventRouteRequest) {
+      return;
+    }
     if (subscriptionId && this.workspace.selectedMajorEventSubscription()?.id !== subscriptionId) {
       await this.workspace.selectMajorEventSubscriptionById(majorEventId, subscriptionId);
+    } else if (!subscriptionId && routeRequest === this.majorEventRouteRequest) {
+      this.workspace.closeMajorEventSubscriptionDetail();
     }
   }
 

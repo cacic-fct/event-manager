@@ -12,13 +12,18 @@ export class CertificateFileDownloadService {
       return;
     }
 
-    const blob = new Blob([this.decodeBase64(download.contentBase64)], {
-      type: download.mimeType,
-    });
+    this.saveBlob(new Blob([this.decodeBase64(download.contentBase64)], { type: download.mimeType }), download.fileName);
+  }
+
+  saveBlob(blob: Blob, fileName: string): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
     const url = URL.createObjectURL(blob);
     const anchor = this.document.createElement('a');
     anchor.href = url;
-    anchor.download = download.fileName;
+    anchor.download = fileName;
     anchor.click();
     URL.revokeObjectURL(url);
   }

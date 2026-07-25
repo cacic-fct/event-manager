@@ -1,13 +1,14 @@
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, extname, isAbsolute, resolve } from 'node:path';
-import { chromium } from 'playwright';
+import { chromium, type Browser } from 'playwright';
 import { toBuffer } from '@bwip-js/node';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
+import { createZipArchive, type ZipArchiveStream } from '../shared/zip-archive';
 
 type PlaywrightTemplateConfig = {
   engine: 'playwright';
@@ -23,14 +24,19 @@ type TemplateFile = {
   path: string;
 };
 
-type ZipEntry = {
+type RenderedCertificate = {
   fileName: string;
   content: Buffer;
 };
 
+export type CertificateArchive = {
+  fileName: string;
+  stream: ZipArchiveStream;
+};
+
 @Injectable()
 export class CertificateDownloadService {
-  private static readonly crc32Table = CertificateDownloadService.buildCrc32Table();
+  private readonly logger = new Logger(CertificateDownloadService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -46,6 +52,20 @@ export class CertificateDownloadService {
   }
 
   private async renderCertificate(certificateId: string, publicOnly: boolean): Promise<CertificateDownload> {
+    const certificate = await this.renderCertificateFile(certificateId, publicOnly);
+
+    return {
+      fileName: certificate.fileName,
+      mimeType: 'application/pdf',
+      contentBase64: certificate.content.toString('base64'),
+    };
+  }
+
+  private async renderCertificateFile(
+    certificateId: string,
+    publicOnly: boolean,
+    browser?: Browser,
+  ): Promise<RenderedCertificate> {
     const normalizedCertificateId = this.validation.normalizeRequiredId('certificateId', certificateId);
     const certificate = await this.prisma.certificate.findFirst({
       where: {
@@ -98,42 +118,58 @@ export class CertificateDownloadService {
       : undefined;
     const cssContent = cssTemplate ? await this.inlineCssLocalAssets(cssTemplate.content, cssTemplate.path) : undefined;
     const renderedHtml = this.renderTemplate(this.inlineCss(htmlTemplate.content, cssContent), templateVariables);
-    const pdf = await this.renderPdf(renderedHtml);
+    const pdf = await this.renderPdf(renderedHtml, browser);
 
     return {
       fileName: this.buildFileName(certificate.person.name, certificate.id),
-      mimeType: 'application/pdf',
-      contentBase64: pdf.toString('base64'),
+      content: pdf,
     };
   }
 
-  async downloadCertificatesArchive(
+  async createCertificatesArchive(
     personName: string,
     certificateIds: string[],
     metadata: unknown,
-  ): Promise<CertificateDownload> {
+  ): Promise<CertificateArchive> {
     const safeName = this.normalizeFileNamePart(personName) || 'certificados';
-    const certificateDownloads: CertificateDownload[] = [];
-    for (const certificateId of certificateIds) {
-      certificateDownloads.push(await this.downloadCertificate(certificateId));
-    }
-    const entries: ZipEntry[] = [
-      ...certificateDownloads.map((certificate) => ({
-        fileName: certificate.fileName,
-        content: Buffer.from(certificate.contentBase64, 'base64'),
-      })),
-      {
-        fileName: `${safeName}_events.json`,
-        content: Buffer.from(`${JSON.stringify(metadata, null, 2)}\n`, 'utf8'),
-      },
-    ];
-    const zip = this.createZip(entries);
+    const stream = await createZipArchive();
+    stream.on('warning', (error) => this.logger.warn(error.message, error.stack));
+    stream.on('error', (error) => this.logger.error(error.message, error.stack));
+    void this.appendCertificatesToArchive(stream, safeName, certificateIds, metadata);
 
     return {
-      fileName: `${safeName}_certificados.zip`,
-      mimeType: 'application/zip',
-      contentBase64: zip.toString('base64'),
+      fileName: `certificados-${new Date().toISOString().slice(0, 10)}-${safeName}.zip`,
+      stream,
     };
+  }
+
+  private async appendCertificatesToArchive(
+    archive: ZipArchiveStream,
+    safeName: string,
+    certificateIds: readonly string[],
+    metadata: unknown,
+  ): Promise<void> {
+    let browser: Browser | undefined;
+    try {
+      browser = await chromium.launch({ headless: true });
+      for (const certificateId of certificateIds) {
+        if (archive.destroyed) {
+          return;
+        }
+
+        const certificate = await this.renderCertificateFile(certificateId, false, browser);
+        archive.append(certificate.content, { name: certificate.fileName });
+      }
+
+      if (!archive.destroyed) {
+        archive.append(`${JSON.stringify(metadata, null, 2)}\n`, { name: `${safeName}_events.json` });
+        await archive.finalize();
+      }
+    } catch (error) {
+      archive.destroy(error instanceof Error ? error : new Error('Failed to create certificate archive.'));
+    } finally {
+      await browser?.close();
+    }
   }
 
   private parseTemplateConfig(template: Prisma.JsonValue): PlaywrightTemplateConfig {
@@ -299,8 +335,8 @@ export class CertificateDownloadService {
     return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, key: string) => this.escapeHtml(variables[key] ?? ''));
   }
 
-  private async renderPdf(renderedHtml: string): Promise<Buffer> {
-    const browser = await chromium.launch({ headless: true });
+  private async renderPdf(renderedHtml: string, sharedBrowser?: Browser): Promise<Buffer> {
+    const browser = sharedBrowser ?? (await chromium.launch({ headless: true }));
     try {
       const page = await browser.newPage();
       await page.setContent(renderedHtml, { waitUntil: 'networkidle' });
@@ -311,7 +347,9 @@ export class CertificateDownloadService {
     } catch {
       throw new InternalServerErrorException('Failed to render certificate PDF.');
     } finally {
-      await browser.close();
+      if (!sharedBrowser) {
+        await browser.close();
+      }
     }
   }
 
@@ -397,99 +435,4 @@ export class CertificateDownloadService {
       .replace(/'/g, '&#39;');
   }
 
-  private createZip(entries: ZipEntry[]): Buffer {
-    const localParts: Buffer[] = [];
-    const centralParts: Buffer[] = [];
-    let offset = 0;
-    const now = new Date();
-    const dosTime = this.toDosTime(now);
-    const dosDate = this.toDosDate(now);
-
-    for (const entry of entries) {
-      const fileName = Buffer.from(entry.fileName, 'utf8');
-      const content = entry.content;
-      const crc32 = this.crc32(content);
-      const localHeader = Buffer.alloc(30);
-      localHeader.writeUInt32LE(0x04034b50, 0);
-      localHeader.writeUInt16LE(20, 4);
-      localHeader.writeUInt16LE(0x0800, 6);
-      localHeader.writeUInt16LE(0, 8);
-      localHeader.writeUInt16LE(dosTime, 10);
-      localHeader.writeUInt16LE(dosDate, 12);
-      localHeader.writeUInt32LE(crc32, 14);
-      localHeader.writeUInt32LE(content.length, 18);
-      localHeader.writeUInt32LE(content.length, 22);
-      localHeader.writeUInt16LE(fileName.length, 26);
-      localHeader.writeUInt16LE(0, 28);
-
-      localParts.push(localHeader, fileName, content);
-
-      const centralHeader = Buffer.alloc(46);
-      centralHeader.writeUInt32LE(0x02014b50, 0);
-      centralHeader.writeUInt16LE(20, 4);
-      centralHeader.writeUInt16LE(20, 6);
-      centralHeader.writeUInt16LE(0x0800, 8);
-      centralHeader.writeUInt16LE(0, 10);
-      centralHeader.writeUInt16LE(dosTime, 12);
-      centralHeader.writeUInt16LE(dosDate, 14);
-      centralHeader.writeUInt32LE(crc32, 16);
-      centralHeader.writeUInt32LE(content.length, 20);
-      centralHeader.writeUInt32LE(content.length, 24);
-      centralHeader.writeUInt16LE(fileName.length, 28);
-      centralHeader.writeUInt16LE(0, 30);
-      centralHeader.writeUInt16LE(0, 32);
-      centralHeader.writeUInt16LE(0, 34);
-      centralHeader.writeUInt16LE(0, 36);
-      centralHeader.writeUInt32LE(0, 38);
-      centralHeader.writeUInt32LE(offset, 42);
-      centralParts.push(centralHeader, fileName);
-
-      offset += localHeader.length + fileName.length + content.length;
-    }
-
-    const centralDirectory = Buffer.concat(centralParts);
-    const localFiles = Buffer.concat(localParts);
-    const endOfCentralDirectory = Buffer.alloc(22);
-    endOfCentralDirectory.writeUInt32LE(0x06054b50, 0);
-    endOfCentralDirectory.writeUInt16LE(0, 4);
-    endOfCentralDirectory.writeUInt16LE(0, 6);
-    endOfCentralDirectory.writeUInt16LE(entries.length, 8);
-    endOfCentralDirectory.writeUInt16LE(entries.length, 10);
-    endOfCentralDirectory.writeUInt32LE(centralDirectory.length, 12);
-    endOfCentralDirectory.writeUInt32LE(localFiles.length, 16);
-    endOfCentralDirectory.writeUInt16LE(0, 20);
-
-    return Buffer.concat([localFiles, centralDirectory, endOfCentralDirectory]);
-  }
-
-  private crc32(content: Buffer): number {
-    let crc = 0xffffffff;
-    for (const byte of content) {
-      crc = CertificateDownloadService.crc32Table[(crc ^ byte) & 0xff] ^ (crc >>> 8);
-    }
-
-    return (crc ^ 0xffffffff) >>> 0;
-  }
-
-  private static buildCrc32Table(): number[] {
-    const table: number[] = [];
-    for (let index = 0; index < 256; index++) {
-      let value = index;
-      for (let bit = 0; bit < 8; bit++) {
-        value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
-      }
-      table[index] = value >>> 0;
-    }
-
-    return table;
-  }
-
-  private toDosTime(date: Date): number {
-    return (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
-  }
-
-  private toDosDate(date: Date): number {
-    const year = Math.max(date.getFullYear(), 1980);
-    return ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
-  }
 }

@@ -42,7 +42,7 @@ export const navigationItems = [
     id: 'events',
     path: 'events',
     label: 'Eventos',
-    description: 'Gerencie eventos individuais, datas, inscrições e aponte locais.',
+    description: 'Gerencie eventos, datas, inscrições e locais.',
     icon: 'event',
     group: 'Estrutura do evento',
     helpLink: 'https://docs.eventos.cacic.com.br/Manual/Gerenciar%20Eventos/Criar%20um%20evento',

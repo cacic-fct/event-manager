@@ -58,6 +58,8 @@ import { AttendanceCategoryService } from './events/attendance-category.service'
 import { EventSubscriptionSyncService } from './events/event-subscription-sync.service';
 import { EventSubscriptionCountersService } from './events/subscription-counters.service';
 import { EventSubscriptionsResolver } from './events/subscriptions.resolver';
+import { SubscriptionBadgeExportController } from './events/subscription-badge-export.controller';
+import { SubscriptionBadgeExportService } from './events/subscription-badge-export.service';
 import { EventDraftsResolver } from './events/event-drafts.resolver';
 import { EventDraftsService } from './events/event-drafts.service';
 import { EventFormsController } from './event-forms/event-forms.controller';
@@ -73,6 +75,7 @@ import { EventFormsResolver } from './event-forms/event-forms.resolver';
 import { EventFormsScheduler } from './event-forms/event-forms.scheduler';
 import { EventFormsService } from './event-forms/event-forms.service';
 import { CurrentUserCertificatesResolver } from './current-user/certificates/resolver';
+import { CurrentUserCertificatesDownloadController } from './current-user/certificates/certificates-download.controller';
 import { CurrentUserContextService } from './current-user/context.service';
 import { CurrentUserEventMapperService } from './current-user/mapper.service';
 import { AccountProfileUpdateController } from './current-user/profile-update.controller';
@@ -285,6 +288,7 @@ const schedulerProviders = useInMemoryTestInfra
     CalendarController,
     AccountProfileUpdateController,
     EventAttendancesController,
+    SubscriptionBadgeExportController,
     EventFormsController,
     MajorEventReceiptsController,
     NovuNotificationsController,
@@ -292,6 +296,7 @@ const schedulerProviders = useInMemoryTestInfra
     TrackingController,
     TotpController,
     VotingIntegrationController,
+    CurrentUserCertificatesDownloadController,
   ],
   providers: [
     NovuNotificationsService,
@@ -357,6 +362,7 @@ const schedulerProviders = useInMemoryTestInfra
     EventAttendancesQueriesResolver,
     MajorEventSubscriptionCsvImportResolver,
     EventSubscriptionsResolver,
+    SubscriptionBadgeExportService,
     EventFormsResolver,
     EventFormEditorService,
     EventFormListingsService,

@@ -28,6 +28,7 @@ import { EmojiService } from '../../../shared/emoji.service';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
 import type { StandaloneCertificateFolderItem, SubscribedEventGroupItem } from '@cacic-fct/shared-utils';
@@ -248,13 +249,13 @@ export class Attendances {
     this.isDownloadingCertificates.set(true);
     this.api.downloadCurrentUserCertificatesArchive().subscribe({
       next: (download) => {
-        this.certificateFileDownload.save(download);
+        this.certificateFileDownload.saveBlob(download.blob, download.fileName);
         this.snackBar.open('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
         this.isDownloadingCertificates.set(false);
       },
       error: (error: unknown) => {
         const message =
-          error instanceof Error && error.message.includes('No certificates')
+          error instanceof HttpErrorResponse && error.status === 404
             ? 'Nenhum certificado disponível para download.'
             : 'Não foi possível baixar seus certificados.';
         this.snackBar.open(message, 'Fechar', { duration: 5000 });
