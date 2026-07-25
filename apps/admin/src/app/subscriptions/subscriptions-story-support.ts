@@ -22,9 +22,9 @@ interface StoryWorkspaceOptions {
   permissions?: WorkspacePermissionScope[];
 }
 
-function createStoryPagination() {
+function createStoryPagination(total: number) {
   return {
-    label: () => '1–2 de 2',
+    label: () => `1–${total} de ${total}`,
     hasPreviousPage: () => false,
     hasNextPage: () => false,
   };
@@ -132,10 +132,10 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       query: new FormControl('', { nonNullable: true }),
     }),
     eventResults,
-    eventResultsPagination: createStoryPagination(),
+    eventResultsPagination: createStoryPagination(eventResults().length),
     selectedEvent,
     eventSubscriptions,
-    eventSubscriptionsPagination: createStoryPagination(),
+    eventSubscriptionsPagination: createStoryPagination(eventSubscriptions().length),
     eventRegularSubscriptions: computed(() =>
       eventSubscriptions().filter((subscription) => !subscription.isLecturerSubscription),
     ),
@@ -173,7 +173,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       paymentTier: new FormControl<string | null>('Estudante'),
     }),
     majorEventSubscriptions,
-    majorEventSubscriptionsPagination: createStoryPagination(),
+    majorEventSubscriptionsPagination: createStoryPagination(majorEventSubscriptions().length),
     majorEventEvents,
     selectedMajorEventSubscription,
     majorEventPaymentTiers,
@@ -211,6 +211,10 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     selectMajorEventSubscriptionById: (_majorEventId: string, subscriptionId: string): Promise<void> => {
       const subscription = majorEventSubscriptions().find((item) => item.id === subscriptionId) ?? null;
       selectedMajorEventSubscription.set(subscription);
+      editMode.set(false);
+      selectedEventIds.set(
+        new Set(subscription?.events.filter((event) => event.subscribed).map((event) => event.eventId) ?? []),
+      );
       return Promise.resolve();
     },
     closeMajorEventSubscriptionDetail: () => {

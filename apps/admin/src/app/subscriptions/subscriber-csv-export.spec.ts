@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { createAdminPerson } from '../testing/admin-entity-fixtures';
 import { buildSubscriberCsv, formatIdentityDocumentForExport, isValidCpf } from './subscriber-csv-export';
 
 describe('subscriber CSV export helpers', () => {
@@ -26,7 +25,7 @@ describe('subscriber CSV export helpers', () => {
       const csv = buildSubscriberCsv(
         [
           {
-            person: createAdminPerson({ name: `${prefix}HYPERLINK("https://example.com")` }),
+            person: { name: `${prefix}HYPERLINK("https://example.com")` },
           },
         ],
         { fields: ['fullName'], identityDocumentMode: 'masked' },
@@ -39,8 +38,8 @@ describe('subscriber CSV export helpers', () => {
   it('keeps delimiter and quote escaping after formula prefixing', () => {
     const csv = buildSubscriberCsv(
       [
-        {
-          person: createAdminPerson({ name: '=SUM(1;2)' }),
+          {
+            person: { name: '=SUM(1;2)' },
         },
       ],
       { fields: ['fullName'], identityDocumentMode: 'masked' },

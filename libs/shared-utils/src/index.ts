@@ -5,5 +5,6 @@ export * from './lib/detail-view-model';
 export * from './lib/feed-view-model';
 export * from './lib/cpf';
 export * from './lib/csp-nonce';
+export * from './lib/subscriber-csv';
 export * from './lib/unesp-role-formatters';
 export * from './lib/turnstile';
