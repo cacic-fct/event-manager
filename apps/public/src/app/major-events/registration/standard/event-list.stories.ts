@@ -102,7 +102,7 @@ function buildSummaries(events: ReturnType<typeof createPublicStoryEvents>) {
       item.id,
       {
         eventId: item.id,
-        hasAvailableSlots: item.slotsAvailable !== 0,
+        hasAvailableSlots: item.slotsAvailable == null || item.slotsAvailable > 0,
         availableSlots: item.slotsAvailable,
         projectedQueuePosition: (item.queueCount ?? 0) + 1,
       },
@@ -112,6 +112,8 @@ function buildSummaries(events: ReturnType<typeof createPublicStoryEvents>) {
 
 function buildDisabledReasons(events: ReturnType<typeof createPublicStoryEvents>) {
   return new Map(
-    events.filter((event) => event.slotsAvailable === 0).map((event) => [event.id, 'Sem vagas disponíveis']),
+    events
+      .filter((event) => event.slotsAvailable != null && event.slotsAvailable <= 0)
+      .map((event) => [event.id, 'Sem vagas disponíveis']),
   );
 }

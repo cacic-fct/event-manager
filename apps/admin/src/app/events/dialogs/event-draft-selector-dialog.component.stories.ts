@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { Event, EventDraft } from '@cacic-fct/event-manager-admin-contracts';
+import { adminFixtureDateFromNow } from '../../testing/admin-entity-fixtures';
 import {
   EventDraftSelectorDialogComponent,
   EventDraftSelectorDialogData,
@@ -21,8 +22,8 @@ const eventFixture: Event = {
   id: 'event-1',
   name: 'Oficina de Publicação',
   creditMinutes: 120,
-  startDate: '2026-07-20T12:00:00.000Z',
-  endDate: '2026-07-20T14:00:00.000Z',
+  startDate: adminFixtureDateFromNow(5),
+  endDate: adminFixtureDateFromNow(5, 14),
   emoji: '🗓️',
   type: 'MINICURSO',
   description: 'Evento publicado.',
@@ -52,15 +53,15 @@ const eventFixture: Event = {
   displayLecturerProfile: true,
   publicationState: 'PUBLISHED',
   scheduledPublishAt: null,
-  publishedAt: '2026-06-20T12:00:00.000Z',
+  publishedAt: adminFixtureDateFromNow(-1),
   unpublishedAt: null,
   youtubeCode: null,
   buttonText: null,
   buttonLink: null,
   deletedAt: null,
-  createdAt: '2026-06-10T12:00:00.000Z',
+  createdAt: adminFixtureDateFromNow(-10),
   createdById: 'admin-1',
-  updatedAt: '2026-06-20T12:00:00.000Z',
+  updatedAt: adminFixtureDateFromNow(-1),
   updatedById: 'admin-1',
 };
 
@@ -82,7 +83,7 @@ function draftFixture(index: number): EventDraft {
     updatedByEmail: `editor-${index}@example.com`,
     createdAt: `2026-06-2${index}T12:00:00.000Z`,
     updatedAt: `2026-06-2${index}T18:30:00.000Z`,
-    expiresAt: `2026-08-19T14:00:00.000Z`,
+    expiresAt: adminFixtureDateFromNow(30, 14),
   };
 }
 

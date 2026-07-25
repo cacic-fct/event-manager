@@ -9,8 +9,15 @@ import type {
   PublicPaymentInfo,
 } from '@cacic-fct/event-manager-public-contracts/types';
 
-export const publicFixtureDate = '2026-05-21T12:00:00.000Z';
-export const publicStoryFixtureDate = '2026-08-01T12:00:00.000Z';
+export const publicFixtureDate = publicFixtureDateFromNow();
+export const publicStoryFixtureDate = publicFixtureDateFromNow();
+
+export function publicFixtureDateFromNow(days = 0, hour = 12): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  date.setUTCHours(hour, 0, 0, 0);
+  return date.toISOString();
+}
 
 export interface PublicStoryFixtureOptions {
   count?: number;
@@ -53,11 +60,11 @@ export function createPublicMajorEvent(overrides: Partial<PublicMajorEvent> = {}
     id: 'major-1',
     name: 'CACiC Storybook',
     emoji: 'event',
-    startDate: '2026-05-20T12:00:00.000Z',
-    endDate: '2026-05-23T21:00:00.000Z',
+    startDate: publicFixtureDateFromNow(-1),
+    endDate: publicFixtureDateFromNow(2, 21),
     description: 'Evento de demonstracao para Storybook.',
-    subscriptionStartDate: '2026-05-01T12:00:00.000Z',
-    subscriptionEndDate: '2026-05-19T21:00:00.000Z',
+    subscriptionStartDate: publicFixtureDateFromNow(-20),
+    subscriptionEndDate: publicFixtureDateFromNow(1, 21),
     maxCoursesPerAttendee: 2,
     maxLecturesPerAttendee: 8,
     maxUncategorizedPerAttendee: 1,
@@ -113,7 +120,7 @@ export function createPublicEvent(overrides: Partial<PublicEvent> = {}): PublicE
     name: 'Arquitetura Angular com Signals',
     creditMinutes: 120,
     startDate: publicFixtureDate,
-    endDate: '2026-05-21T14:00:00.000Z',
+    endDate: publicFixtureDateFromNow(0, 14),
     emoji: 'event',
     type: 'MINICURSO',
     description: 'Uma sessao pratica com componentes standalone.',
@@ -126,8 +133,8 @@ export function createPublicEvent(overrides: Partial<PublicEvent> = {}): PublicE
     eventGroupId: eventGroup?.id ?? overrides.eventGroupId ?? null,
     eventGroup,
     allowSubscription: true,
-    subscriptionStartDate: '2026-05-01T12:00:00.000Z',
-    subscriptionEndDate: '2026-05-21T16:00:00.000Z',
+    subscriptionStartDate: publicFixtureDateFromNow(-10),
+    subscriptionEndDate: publicFixtureDateFromNow(1, 16),
     slots: 40,
     slotsAvailable: 12,
     queueCount: 3,
@@ -406,10 +413,7 @@ function hasOwn<T extends object, K extends PropertyKey>(value: T, property: K):
 }
 
 function storyDate(days: number, hour = 12): string {
-  const date = new Date(publicStoryFixtureDate);
-  date.setUTCDate(date.getUTCDate() + days);
-  date.setUTCHours(hour, 0, 0, 0);
-  return date.toISOString();
+  return publicFixtureDateFromNow(days, hour);
 }
 
 function boundedStoryCount(value: number): number {

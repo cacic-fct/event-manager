@@ -1,6 +1,6 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import type { PublicEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
-import { publicStoryFixtureDate } from '@cacic-fct/event-manager-public-testing';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
@@ -214,8 +214,8 @@ function previewParameters(context: EventStoryContext) {
 function buildPreview(args: EventStoryArgs) {
   const event = buildEvent(args);
   return {
-    previewAt: publicStoryFixtureDate,
-    expiresAt: '2026-08-01T13:00:00.000Z',
+    previewAt: publicFixtureDateFromNow(),
+    expiresAt: publicFixtureDateFromNow(1, 13),
     event,
   };
 }
@@ -321,13 +321,13 @@ function publicEventForm(event: PublicEvent): PublicEventForm {
         allowLecturerManualPublish: false,
         lastNotifiedAt: null,
         responseCount: 0,
-        createdAt: '2026-07-01T10:00:00.000Z',
-        updatedAt: '2026-07-01T10:00:00.000Z',
+        createdAt: publicFixtureDateFromNow(-1, 10),
+        updatedAt: publicFixtureDateFromNow(-1, 10),
       },
     ],
     responseCount: 0,
-    createdAt: '2026-07-01T10:00:00.000Z',
-    updatedAt: '2026-07-01T10:00:00.000Z',
+    createdAt: publicFixtureDateFromNow(-1, 10),
+    updatedAt: publicFixtureDateFromNow(-1, 10),
   };
 }
 

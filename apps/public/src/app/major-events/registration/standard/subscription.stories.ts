@@ -14,7 +14,7 @@ import { expect, screen, userEvent, within } from 'storybook/test';
 import { MajorEventSubscription } from './subscription';
 import { MajorEventSubscriptionRealtimeService } from '../realtime.service';
 
-const now = new Date('2026-07-01T12:00:00.000-03:00');
+const now = new Date();
 
 interface SubscriptionStoryData {
   majorEvent: PublicMajorEvent;
@@ -101,6 +101,8 @@ function createStoryData(scenario: StoryScenario): SubscriptionStoryData {
       eventGroup: null,
       subscriptionStartDate: isoDaysFromNow(-3, 8),
       subscriptionEndDate: isoDaysFromNow(10, 23),
+      slots: 40,
+      slotsAvailable: 0,
       autoSubscribe: false,
     }),
   ];
@@ -187,7 +189,7 @@ function subscriptionHandlers(scenario: StoryScenario) {
               events: storyData.events,
               subscriptionSummaries: storyData.events.map((event) => ({
                 eventId: event.id,
-                hasAvailableSlots: true,
+                hasAvailableSlots: event.slotsAvailable == null || event.slotsAvailable > 0,
                 availableSlots: event.slotsAvailable,
                 projectedQueuePosition: (event.queueCount ?? 0) + 1,
               })),
@@ -280,6 +282,7 @@ function subscriptionHandlers(scenario: StoryScenario) {
 
 async function completeSubscriptionFlow(canvasElement: HTMLElement): Promise<void> {
   const canvas = within(canvasElement);
+  await expect(await canvas.findByRole('checkbox', { name: /Selecionar Palestra de acessibilidade/i })).toBeDisabled();
   await userEvent.click(await canvas.findByRole('checkbox', { name: /Selecionar Oficina de Angular/i }));
   await userEvent.click(await canvas.findByRole('button', { name: /Inscrever-se/i }));
 

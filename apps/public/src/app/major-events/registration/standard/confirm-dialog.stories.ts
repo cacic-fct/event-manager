@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { publicStoryDate } from '../../../testing/public-event-story-fixtures';
 import { ConfirmSubscriptionDialog } from './confirm-dialog';
 
 const meta: Meta<ConfirmSubscriptionDialog> = {
@@ -18,8 +19,8 @@ const meta: Meta<ConfirmSubscriptionDialog> = {
               id: 'major-1',
               name: 'SECOMPP',
               emoji: '🎓',
-              startDate: '2026-07-01T09:00:00.000Z',
-              endDate: '2026-07-05T18:00:00.000Z',
+              startDate: publicStoryDate(1, 9),
+              endDate: publicStoryDate(5, 18),
             },
             events: [
               {
@@ -27,8 +28,8 @@ const meta: Meta<ConfirmSubscriptionDialog> = {
                 name: 'Minicurso de Angular',
                 emoji: '🧩',
                 type: 'MINICURSO',
-                startDate: '2026-07-01T09:00:00.000Z',
-                endDate: '2026-07-01T12:00:00.000Z',
+                startDate: publicStoryDate(1, 9),
+                endDate: publicStoryDate(1, 12),
               },
             ],
             forms: [
@@ -58,8 +59,8 @@ const meta: Meta<ConfirmSubscriptionDialog> = {
                   publicationState: 'PUBLISHED',
                   links: [],
                   responseCount: 0,
-                  createdAt: '2026-06-28T12:00:00.000Z',
-                  updatedAt: '2026-06-28T12:00:00.000Z',
+                  createdAt: publicStoryDate(-2),
+                  updatedAt: publicStoryDate(-2),
                 },
                 targetType: 'MAJOR_EVENT',
                 targetId: 'major-1',

@@ -1,5 +1,5 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import { createStoryPublicMajorEvent } from '@cacic-fct/event-manager-public-testing';
+import { createStoryPublicMajorEvent, publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
@@ -125,7 +125,7 @@ function previewParameters(context: MajorEventStoryContext) {
           HttpResponse.json({
             data: {
               publicationPreview: {
-                expiresAt: '2026-08-01T13:00:00.000Z',
+                expiresAt: publicFixtureDateFromNow(1, 13),
                 majorEvent: buildMajorEvent(context.args),
               },
             },

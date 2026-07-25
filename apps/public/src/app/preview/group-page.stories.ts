@@ -6,7 +6,12 @@ import { HttpResponse, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
-import { createPublicEvent, createPublicEventGroup, createPublicMajorEvent } from '../testing/public-entity-fixtures';
+import {
+  createPublicEvent,
+  createPublicEventGroup,
+  createPublicMajorEvent,
+  publicFixtureDateFromNow,
+} from '../testing/public-entity-fixtures';
 import { GroupPreviewComponent } from './group-page';
 
 interface GroupPreviewStoryArgs {
@@ -140,16 +145,16 @@ function buildPreview(args: GroupPreviewStoryArgs) {
     : null;
 
   return {
-    previewAt: '2026-08-01T12:00:00.000Z',
-    expiresAt: '2026-08-01T13:00:00.000Z',
+    previewAt: publicFixtureDateFromNow(),
+    expiresAt: publicFixtureDateFromNow(1, 13),
     eventGroup,
     events: Array.from({ length: args.eventCount }, (_, index) =>
       createPublicEvent({
         id: `event-${index}`,
         name: faker.helpers.arrayElement(['Minicurso Angular', 'Minicurso NestJS', 'Workshop Docker', 'Palestra Web']),
         creditMinutes: 120,
-        startDate: new Date(Date.UTC(2026, 7, index + 1, 12, 0, 0)).toISOString(),
-        endDate: new Date(Date.UTC(2026, 7, index + 1, 14, 0, 0)).toISOString(),
+        startDate: publicFixtureDateFromNow(index + 1),
+        endDate: publicFixtureDateFromNow(index + 1, 14),
         type: index % 2 === 0 ? 'MINICURSO' : 'PALESTRA',
         emoji: index % 2 === 0 ? '💻' : '🔐',
         description: faker.lorem.paragraph(),

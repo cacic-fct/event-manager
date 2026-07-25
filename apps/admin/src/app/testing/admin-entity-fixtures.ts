@@ -32,7 +32,14 @@ import type {
 } from '@cacic-fct/shared-frontend-types';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
 
-export const adminFixtureDate = '2026-05-21T12:00:00.000Z';
+export const adminFixtureDate = adminFixtureDateFromNow();
+
+export function adminFixtureDateFromNow(days = 0, hour = 12): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  date.setUTCHours(hour, 0, 0, 0);
+  return date.toISOString();
+}
 
 export function createAdminAuthenticatedUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
   return {
@@ -73,15 +80,15 @@ export function createAdminDashboardCalendarEvent(
     emoji: 'clipboard',
     type: 'OTHER',
     startDate: adminFixtureDate,
-    endDate: '2026-05-21T14:00:00.000Z',
+    endDate: adminFixtureDateFromNow(0, 14),
     locationDescription: 'Auditório principal',
     majorEventName: 'Semana da Computação',
     eventGroupName: null,
     attendancesCount: 12,
     subscriptionsCount: 40,
     allowSubscription: true,
-    subscriptionStartDate: '2026-05-01T12:00:00.000Z',
-    subscriptionEndDate: '2026-05-20T21:00:00.000Z',
+    subscriptionStartDate: adminFixtureDateFromNow(-20),
+    subscriptionEndDate: adminFixtureDateFromNow(-1, 21),
     slots: 60,
     shouldCollectAttendance: true,
     canCollectAttendanceNow: true,
@@ -97,7 +104,7 @@ export function createAdminDashboardPendingReceiptMajorEvent(
     name: 'Semana da Computação',
     emoji: 'festival',
     startDate: adminFixtureDate,
-    endDate: '2026-05-23T21:00:00.000Z',
+    endDate: adminFixtureDateFromNow(2, 21),
     pendingCount: 3,
     ...overrides,
   };
@@ -214,8 +221,8 @@ export function createAdminMajorEvent(overrides: Partial<MajorEvent> = {}): Majo
     id,
     name: 'Grande evento',
     emoji: 'event',
-    startDate: '2026-05-20T12:00:00.000Z',
-    endDate: '2026-05-23T21:00:00.000Z',
+    startDate: adminFixtureDateFromNow(-1),
+    endDate: adminFixtureDateFromNow(2, 21),
     description: null,
     subscriptionStartDate: null,
     subscriptionEndDate: null,
@@ -253,8 +260,8 @@ export function createAdminMajorEventFromInput(input: MajorEventInput = {}): Maj
     id,
     name: input.name ?? 'Grande evento',
     emoji: input.emoji ?? 'event',
-    startDate: input.startDate ?? '2026-05-20T12:00:00.000Z',
-    endDate: input.endDate ?? '2026-05-23T21:00:00.000Z',
+    startDate: input.startDate ?? adminFixtureDateFromNow(-1),
+    endDate: input.endDate ?? adminFixtureDateFromNow(2, 21),
     description: input.description,
     subscriptionStartDate: input.subscriptionStartDate,
     subscriptionEndDate: input.subscriptionEndDate,
@@ -318,8 +325,8 @@ export function createAdminEvent(overrides: Partial<Event> = {}): Event {
     id: 'event-1',
     name: 'Evento',
     creditMinutes: 120,
-    startDate: '2026-05-21T17:00:00.000Z',
-    endDate: '2026-05-21T19:00:00.000Z',
+    startDate: adminFixtureDateFromNow(0, 17),
+    endDate: adminFixtureDateFromNow(0, 19),
     emoji: 'event',
     type: 'MINICURSO',
     description: null,
@@ -383,8 +390,8 @@ export function createAdminEventFromInput(input: EventInput = {}): Event {
     id: input.id ?? 'event-1',
     name: input.name ?? 'Evento',
     creditMinutes: input.creditMinutes,
-    startDate: input.startDate ?? '2026-05-21T17:00:00.000Z',
-    endDate: input.endDate ?? '2026-05-21T19:00:00.000Z',
+    startDate: input.startDate ?? adminFixtureDateFromNow(0, 17),
+    endDate: input.endDate ?? adminFixtureDateFromNow(0, 19),
     emoji: input.emoji ?? 'event',
     type: input.type ?? 'MINICURSO',
     description: input.description,
@@ -432,7 +439,7 @@ export function createAdminEventDraft(overrides: Partial<EventDraft> = {}, paylo
     updatedByEmail: 'admin@example.edu',
     createdAt: adminFixtureDate,
     updatedAt: adminFixtureDate,
-    expiresAt: '2026-06-21T12:00:00.000Z',
+    expiresAt: adminFixtureDateFromNow(30),
     ...overrides,
   };
 }

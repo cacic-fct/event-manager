@@ -23,7 +23,7 @@ import {
 import { RankedMajorEventSubscription } from './ranked-subscription';
 import { MajorEventSubscriptionRealtimeService } from '../realtime.service';
 
-const now = new Date('2026-05-20T12:00:00.000-03:00');
+const now = new Date();
 
 const meta: Meta<RankedMajorEventSubscription> = {
   component: RankedMajorEventSubscription,
@@ -308,7 +308,7 @@ function rankedHandlers(scenario: StoryScenario) {
               events: storyData.events,
               subscriptionSummaries: storyData.events.map((event) => ({
                 eventId: event.id,
-                hasAvailableSlots: event.slotsAvailable !== 0,
+                hasAvailableSlots: event.slotsAvailable == null || event.slotsAvailable > 0,
                 availableSlots: event.slotsAvailable,
                 projectedQueuePosition: (event.queueCount ?? 0) + 1,
               })),

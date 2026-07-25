@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { ReceiptValidationApiService, ReceiptValidationQueue } from '../../graphql/receipt-validation-api.service';
 import { PermissionsService } from '../../permissions/permissions.service';
+import { adminFixtureDateFromNow } from '../../testing/admin-entity-fixtures';
 import { ReceiptValidationPageComponent } from './receipt-validation-page.component';
 
 const meta: Meta<ReceiptValidationPageComponent> = {
@@ -114,8 +115,8 @@ function buildQueue(count: number, frozen = false): ReceiptValidationQueue {
       subscriptionId: `subscription-${index + 1}`,
       majorEventId: 'major-event-1',
       majorEventName: 'Semana da Computação',
-      majorEventCreatedAt: frozen ? '2025-01-01T12:00:00.000Z' : '2026-05-01T12:00:00.000Z',
-      majorEventEndDate: frozen ? '2025-02-01T12:00:00.000Z' : '2026-06-05T21:00:00.000Z',
+      majorEventCreatedAt: adminFixtureDateFromNow(frozen ? -30 : -20),
+      majorEventEndDate: adminFixtureDateFromNow(frozen ? -1 : 5, 21),
       personId: `person-${index + 1}`,
       personName: index === 0 ? 'Ada Lovelace' : `Participante ${index + 1}`,
       personEmail: `participante-${index + 1}@cacic.com.br`,
@@ -127,14 +128,14 @@ function buildQueue(count: number, frozen = false): ReceiptValidationQueue {
       desiredLectures: 1,
       desiredUncategorized: 0,
       subscriptionStatus: 'RECEIPT_UNDER_REVIEW',
-      subscriptionUpdatedAt: '2026-05-20T15:30:00.000Z',
+      subscriptionUpdatedAt: adminFixtureDateFromNow(-1, 15),
       receipt: {
         id: `receipt-${index + 1}`,
         fileName: 'comprovante.png',
         mimeType: 'image/png',
         sizeBytes: 240000,
-        uploadedAt: '2026-05-20T14:30:00.000Z',
-        expiresAt: '2026-05-27T14:30:00.000Z',
+        uploadedAt: adminFixtureDateFromNow(-1, 14),
+        expiresAt: adminFixtureDateFromNow(6, 14),
         imageUrl:
           'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200"><rect width="900" height="1200" fill="%23f7f2ec"/><rect x="90" y="90" width="720" height="1020" rx="18" fill="white" stroke="%23988f86"/><text x="450" y="180" text-anchor="middle" font-family="Arial" font-size="42" fill="%23231f20">Comprovante</text><text x="140" y="300" font-family="Arial" font-size="30" fill="%23231f20">FUNDACTE</text><text x="140" y="360" font-family="Arial" font-size="26" fill="%235f5a55">Valor: R$ 120,00</text><text x="140" y="420" font-family="Arial" font-size="26" fill="%235f5a55">Nome do participante</text></svg>',
         processingStatus: 'PROCESSED',
@@ -150,8 +151,8 @@ function buildQueue(count: number, frozen = false): ReceiptValidationQueue {
           name: 'Arquitetura Angular',
           emoji: '💻',
           type: 'MINICURSO',
-          startDate: '2026-06-02T12:00:00.000Z',
-          endDate: '2026-06-02T15:00:00.000Z',
+          startDate: adminFixtureDateFromNow(2),
+          endDate: adminFixtureDateFromNow(2, 15),
           locationDescription: 'Lab 3',
           slots: 40,
           slotsAvailable: 8,
@@ -168,8 +169,8 @@ function buildQueue(count: number, frozen = false): ReceiptValidationQueue {
           name: 'GraphQL com NestJS',
           emoji: '🚀',
           type: 'PALESTRA',
-          startDate: '2026-06-03T13:00:00.000Z',
-          endDate: '2026-06-03T14:00:00.000Z',
+          startDate: adminFixtureDateFromNow(3, 13),
+          endDate: adminFixtureDateFromNow(3, 14),
           locationDescription: 'Auditório',
           slots: 120,
           slotsAvailable: 0,

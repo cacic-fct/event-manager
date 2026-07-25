@@ -13,6 +13,7 @@ import type {
   PersonLinkedDataSummary,
   PersonLinkedResourcePage,
 } from '@cacic-fct/event-manager-admin-contracts';
+import { adminFixtureDateFromNow } from '../testing/admin-entity-fixtures';
 import { PeoplePageComponent } from './people-page.component';
 
 faker.seed(20260621);
@@ -51,7 +52,7 @@ type GraphqlBody = {
   variables?: Record<string, unknown>;
 };
 
-const now = new Date('2026-06-21T12:00:00.000-03:00');
+const now = new Date(adminFixtureDateFromNow());
 const storyRoles = signal<string[]>([EventManagerKeycloakRole.SuperAdmin]);
 const storyAuthService = {
   user: computed(() => ({

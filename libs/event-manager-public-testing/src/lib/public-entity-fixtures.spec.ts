@@ -9,6 +9,7 @@ import {
   createStoryPublicEvents,
   createStoryPublicMajorEvents,
   publicFixtureDate,
+  publicFixtureDateFromNow,
 } from './public-entity-fixtures';
 
 describe('public entity fixtures', () => {
@@ -27,6 +28,19 @@ describe('public entity fixtures', () => {
     expect(event.eventGroupId).toBe('group-test');
     expect(event.eventGroup).toBe(eventGroup);
     expect(event.publiclyVisible).toBe(true);
+  });
+
+  it('generates fixture dates relative to the current run', () => {
+    const now = Date.now();
+    const todayAtNoon = new Date(now);
+    todayAtNoon.setUTCHours(12, 0, 0, 0);
+    const majorEvent = createPublicMajorEvent();
+    const event = createPublicEvent();
+
+    expect(publicFixtureDateFromNow()).toBe(todayAtNoon.toISOString());
+    expect(new Date(majorEvent.startDate).getTime()).toBeLessThan(now);
+    expect(new Date(majorEvent.endDate).getTime()).toBeGreaterThan(now);
+    expect(new Date(event.subscriptionEndDate ?? '').getTime()).toBeGreaterThan(now);
   });
 
   it('creates payment fixtures that can be embedded in paid major-event stories', () => {
