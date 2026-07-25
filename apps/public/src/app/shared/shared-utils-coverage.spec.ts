@@ -29,6 +29,7 @@ import {
   createPublicEvent as eventFixture,
   createPublicEventGroup as eventGroupFixture,
   createPublicMajorEvent as majorEventFixture,
+  publicFixtureDateFromNow,
 } from '../testing/public-entity-fixtures';
 
 describe('shared utility coverage from public app', () => {
@@ -100,7 +101,7 @@ describe('shared utility coverage from public app', () => {
         id: 'group-subscription-1',
         eventGroupId: group.id,
         eventGroup: group,
-        events: [event, eventFixture({ id: 'event-2', name: 'Day 2', startDate: '2026-05-22T09:00:00' })],
+        events: [event, eventFixture({ id: 'event-2', name: 'Day 2', startDate: publicFixtureDateFromNow(1, 9) })],
         createdAt: '2026-05-20T10:00:00',
       },
       attendances: [{ eventId: event.id, attendedAt: '2026-05-21T09:30:00' }],
@@ -142,13 +143,13 @@ describe('shared utility coverage from public app', () => {
         {
           id: 'old',
           majorEventId: 'major-old',
-          majorEvent: majorEventFixture({ id: 'major-old', startDate: '2026-05-20T09:00:00' }),
+          majorEvent: majorEventFixture({ id: 'major-old', startDate: publicFixtureDateFromNow(-1, 9) }),
           participation: participationFixture(),
         },
         {
           id: 'new',
           majorEventId: 'major-new',
-          majorEvent: majorEventFixture({ id: 'major-new', startDate: '2026-05-22T09:00:00' }),
+          majorEvent: majorEventFixture({ id: 'major-new', startDate: publicFixtureDateFromNow(1, 9) }),
           participation: participationFixture(),
         },
       ],
@@ -157,7 +158,7 @@ describe('shared utility coverage from public app', () => {
           __typename: 'SubscribedEventGroupItem',
           id: 'group-item',
           type: 'group',
-          startDate: '2026-05-22T09:00:00',
+          startDate: publicFixtureDateFromNow(1, 9),
           eventGroup: group,
           events: [event],
           participation: participationFixture({ isLecturer: true }),
@@ -166,7 +167,7 @@ describe('shared utility coverage from public app', () => {
           __typename: 'SubscribedSingleEventItem',
           id: 'single-item',
           type: 'single',
-          startDate: '2026-05-21T09:00:00',
+          startDate: publicFixtureDateFromNow(),
           event,
           participation: participationFixture(),
         },
@@ -178,7 +179,9 @@ describe('shared utility coverage from public app', () => {
     expect(feed.majorEventItems.map((item) => item.id)).toEqual(['new', 'old']);
     expect(getSubscribedItemEmoji(feed.eventItems[0])).toBe(group.emoji);
     expect(getSubscribedItemTitle(feed.eventItems[1])).toBe(event.name);
-    expect(getSubscribedItemDateLine(feed.eventItems[0])).toContain('21/05/2026');
+    expect(getSubscribedItemDateLine(feed.eventItems[0])).toContain(
+      new Intl.DateTimeFormat('pt-BR').format(new Date(event.startDate)),
+    );
     expect(
       getSubscribedItemStatusLine(feed.eventItems[0], [{ eventId: event.id, attendedAt: '2026-05-21T10:00:00' }]),
     ).toContain('Presença registrada em 1 de 1 eventos');

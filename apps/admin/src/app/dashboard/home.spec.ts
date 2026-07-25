@@ -7,6 +7,7 @@ import { of, throwError } from 'rxjs';
 import { DashboardApiService } from '../graphql/dashboard-api.service';
 import {
   adminFixtureDate,
+  adminFixtureDateFromNow,
   createAdminAuthenticatedUser,
   createAdminDashboardCalendarEvent,
   createAdminDashboardInconsistency,
@@ -89,14 +90,14 @@ describe('Home', () => {
           createAdminDashboardCalendarEvent({
             id: 'event-2',
             name: 'Palestra de encerramento',
-            startDate: '2026-05-22T17:00:00.000Z',
+            startDate: adminFixtureDateFromNow(1, 17),
             canCollectAttendanceNow: false,
           }),
           createAdminDashboardCalendarEvent({
             id: 'event-3',
             name: 'Fora da próxima semana',
-            startDate: '2026-05-29T17:00:00.000Z',
-            endDate: '2026-05-29T18:00:00.000Z',
+            startDate: adminFixtureDateFromNow(8, 17),
+            endDate: adminFixtureDateFromNow(8, 18),
             canCollectAttendanceNow: false,
           }),
         ],
@@ -143,8 +144,8 @@ describe('Home', () => {
             createAdminDashboardCalendarEvent({
               id: 'event-2',
               name: 'Palestra de encerramento',
-              startDate: '2026-05-22T17:00:00.000Z',
-              endDate: '2026-05-22T18:00:00.000Z',
+              startDate: adminFixtureDateFromNow(1, 17),
+              endDate: adminFixtureDateFromNow(1, 18),
               subscriptionsCount: 42,
               slots: 50,
               canCollectAttendanceNow: false,
@@ -156,7 +157,7 @@ describe('Home', () => {
               eventName: 'Credenciamento',
               summary: 'Calor intenso',
               materialIcon: 'thermostat',
-              forecastTime: '2026-05-21T15:00:00.000Z',
+              forecastTime: adminFixtureDateFromNow(0, 15),
               temperature: 31,
             },
             {
@@ -164,7 +165,7 @@ describe('Home', () => {
               eventName: 'Palestra de encerramento',
               summary: 'Chuva moderada',
               materialIcon: 'rainy',
-              forecastTime: '2026-05-22T18:00:00.000Z',
+              forecastTime: adminFixtureDateFromNow(1, 18),
               temperature: 22,
             },
           ],
