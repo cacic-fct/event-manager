@@ -103,6 +103,22 @@ describe('CacicTrustedTypesService', () => {
     expect(createPolicy).toHaveBeenCalledTimes(1);
   });
 
+  it('continues when another integration already registered the default policy', () => {
+    const createPolicy = vi.fn((name: string) => {
+      if (name === 'default') {
+        throw new TypeError('TrustedTypePolicyFactory.createPolicy: Tried to create a second default policy');
+      }
+
+      return { createScriptURL: (value: string) => value };
+    });
+    vi.stubGlobal('trustedTypes', { createPolicy });
+
+    const service = createService('browser');
+
+    expect(() => service.initialize()).not.toThrow();
+    expect(createPolicy).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps contextual errors for failures other than duplicate policies', () => {
     const createPolicy = vi.fn(() => {
       throw new Error('mock failure');
