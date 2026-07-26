@@ -19,7 +19,7 @@ export interface WalletCardBrand {
 export const WALLET_CARD_BRANDS: Readonly<Record<WalletCardKind, WalletCardBrand>> = {
   eventos: {
     name: 'CACiC Eventos',
-    imageSource: '/icons/favicon.svg',
+    imageSource: '/app/icons/favicon.svg',
     imageClass: 'cacic-logo',
   },
   'offline-code': {
@@ -28,12 +28,12 @@ export const WALLET_CARD_BRANDS: Readonly<Record<WalletCardKind, WalletCardBrand
   },
   'academic-record': {
     name: 'Registro Acadêmico',
-    imageSource: '/assets/unesp/unesp-symbol-white.svg',
+    imageSource: '/app/assets/unesp/unesp-symbol-white.svg',
     imageClass: 'unesp-symbol',
   },
   restaurant: {
     name: 'Cartão do R.U.',
-    imageSource: '/assets/unesp/unesp-symbol-white.svg',
+    imageSource: '/app/assets/unesp/unesp-symbol-white.svg',
     imageClass: 'unesp-symbol',
   },
 };
