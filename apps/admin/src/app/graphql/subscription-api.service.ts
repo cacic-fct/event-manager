@@ -190,7 +190,6 @@ export class SubscriptionApiService {
 
   private downloadBadgeArchive(url: string, options: SubscriberCsvExportDialogOptions) {
     return this.http
-        errorCorrectionLevel: options.badgeCodes.errorCorrectionLevel,
       .post(
         url,
         {
