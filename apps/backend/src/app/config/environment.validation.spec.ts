@@ -137,6 +137,30 @@ describe('validateBackendEnvironment', () => {
     expect(validateBackendEnvironment(config)).toBe(config);
   });
 
+  it('validates gRPC targets as host:port values with valid ports', () => {
+    const config = {
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+      ACCOUNT_MANAGER_GRPC_URL: 'account-manager:50051',
+      EVENT_MANAGER_GRPC_BIND_URL: '0.0.0.0:65535',
+    };
+
+    expect(validateBackendEnvironment(config)).toBe(config);
+
+    expect(() =>
+      validateBackendEnvironment({
+        ...config,
+        ACCOUNT_MANAGER_GRPC_URL: 'https://account-manager:50051/service',
+      }),
+    ).toThrow('ACCOUNT_MANAGER_GRPC_URL must use the host:port format without a URL scheme or path.');
+
+    expect(() =>
+      validateBackendEnvironment({
+        ...config,
+        EVENT_MANAGER_GRPC_BIND_URL: '0.0.0.0:65536',
+      }),
+    ).toThrow('EVENT_MANAGER_GRPC_BIND_URL must use the host:port format without a URL scheme or path.');
+  });
+
   it('accepts the minimal development configuration', () => {
     const config = {
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',

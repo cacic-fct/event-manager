@@ -43,4 +43,22 @@ describe('AccountManagerPrivacySyncService', () => {
       updatedAt: new Date('2026-07-25T11:00:00.000Z'),
     });
   });
+
+  it('uses the fallback timestamp when Account Manager returns an invalid update timestamp', async () => {
+    const before = Date.now();
+    accountManager.getPrivacySettings.mockResolvedValue([
+      {
+        settingType: 'analytics_tracking',
+        enabled: false,
+        lastUpdated: 'not-a-date',
+      },
+    ]);
+
+    const result = await service.getUserPrivacySettings('user-1');
+
+    expect(result.settings.analytics_tracking).toBe(false);
+    expect(result.updatedAt).toBeInstanceOf(Date);
+    expect(result.updatedAt.getTime()).toBeGreaterThanOrEqual(before);
+    expect(result.updatedAt.getTime()).toBeLessThanOrEqual(Date.now());
+  });
 });

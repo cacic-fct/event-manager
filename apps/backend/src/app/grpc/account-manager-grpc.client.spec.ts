@@ -1,4 +1,5 @@
 import { ConfigService } from '@nestjs/config';
+import { ServiceUnavailableException } from '@nestjs/common';
 import type { KeycloakM2mTokenService } from '../auth/keycloak-m2m-token.service';
 import { AccountManagerGrpcClient } from './account-manager-grpc.client';
 import { GrpcUnaryClient } from './grpc-runtime';
@@ -43,6 +44,66 @@ describe('AccountManagerGrpcClient', () => {
       { userId: 'user-1' },
       expect.anything(),
       { idempotent: true, maxAttempts: 3, timeoutMs: 10_000 },
+    );
+    expect((call.mock.calls[0][2] as import('@grpc/grpc-js').Metadata).get('authorization')).toEqual([
+      'Bearer access-token',
+    ]);
+  });
+
+  it('uses authenticated idempotent gRPC calls for cookie consent and TOTP seed relay', async () => {
+    call.mockResolvedValueOnce({ success: true }).mockResolvedValueOnce({
+      userId: 'user-1',
+      primaryEmail: 'user@example.com',
+      seed: 'seed',
+      algorithm: 'SHA512',
+      digits: 6,
+      periodSeconds: 30,
+      serverTime: '2026-07-25T10:00:00.000Z',
+    });
+
+    await expect(client.recordCookieConsent('user-1')).resolves.toBeUndefined();
+    await expect(client.relayTotpSeed('user-1')).resolves.toMatchObject({ userId: 'user-1', seed: 'seed' });
+
+    expect(call).toHaveBeenNthCalledWith(
+      1,
+      'RecordCookieConsent',
+      { userId: 'user-1' },
+      expect.anything(),
+      { idempotent: true, maxAttempts: 3, timeoutMs: 10_000 },
+    );
+    expect((call.mock.calls[1][2] as import('@grpc/grpc-js').Metadata).get('authorization')).toEqual([
+      'Bearer access-token',
+    ]);
+    expect(call).toHaveBeenNthCalledWith(
+      2,
+      'EnsureTotpSeed',
+      { userId: 'user-1' },
+      expect.anything(),
+      { idempotent: true, maxAttempts: 3, timeoutMs: 10_000 },
+    );
+  });
+
+  it('rejects malformed privacy responses and maps gRPC failures to service unavailable', async () => {
+    call.mockResolvedValueOnce({ settings: {} });
+    await expect(client.getPrivacySettings('user-1')).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    call.mockResolvedValueOnce({
+      settings: [
+        {
+          settingType: 'unknown_setting',
+          enabled: true,
+          lastUpdated: '2026-07-25T10:00:00.000Z',
+        },
+      ],
+    });
+    await expect(client.getPrivacySettings('user-1')).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    call.mockRejectedValueOnce(new Error('connection refused'));
+    await expect(client.recordCookieConsent('user-1')).rejects.toEqual(
+      expect.objectContaining({
+        message: 'Account Manager M2M service is unavailable.',
+        status: 503,
+      }),
     );
   });
 });

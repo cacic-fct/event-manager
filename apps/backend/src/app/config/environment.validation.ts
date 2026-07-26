@@ -145,7 +145,8 @@ function requireGrpcTarget(config: Environment, key: string, errors: string[]): 
     return;
   }
 
-  if (!/^[a-zA-Z0-9._-]+:\d{1,5}$/.test(value)) {
+  const match = /^([a-zA-Z0-9._-]+):(\d{1,5})$/.exec(value);
+  if (!match || Number(match[2]) > 65_535) {
     errors.push(`${key} must use the host:port format without a URL scheme or path.`);
   }
 }

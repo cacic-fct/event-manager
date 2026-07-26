@@ -4,7 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import type {
   M2MPrivacySettingResponse,
   M2MTotpSeedRelayResponse,
+  PrivacySettingTypeValue,
 } from '@cacic-fct/account-manager-m2m-contracts';
+import { PRIVACY_SETTING_TYPE_VALUES } from '@cacic-fct/account-manager-m2m-contracts';
 import { KeycloakM2mTokenService } from '../auth/keycloak-m2m-token.service';
 import {
   GrpcUnaryClient,
@@ -36,7 +38,7 @@ export class AccountManagerGrpcClient implements OnModuleDestroy {
     this.client = new GrpcUnaryClient(
       target,
       loadGrpcServiceDefinition(
-        resolveGrpcProtoPath('account-manager-m2m.proto'),
+        resolveGrpcProtoPath('cacic/m2m/account_manager/v1/account-manager-m2m.proto'),
         ['cacic', 'm2m', 'account_manager', 'v1'],
         'AccountManagerM2M',
       ),
@@ -98,11 +100,16 @@ export class AccountManagerGrpcClient implements OnModuleDestroy {
     const settingType = value['settingType'];
     const enabled = value['enabled'];
     const lastUpdated = value['lastUpdated'];
-    if (typeof settingType !== 'string' || typeof enabled !== 'boolean' || typeof lastUpdated !== 'string') {
+    if (
+      typeof settingType !== 'string' ||
+      !isPrivacySettingType(settingType) ||
+      typeof enabled !== 'boolean' ||
+      typeof lastUpdated !== 'string'
+    ) {
       throw new ServiceUnavailableException('Account Manager returned an invalid privacy setting.');
     }
     return {
-      settingType: settingType as M2MPrivacySettingResponse['settingType'],
+      settingType,
       enabled,
       lastUpdated,
     };
@@ -111,4 +118,8 @@ export class AccountManagerGrpcClient implements OnModuleDestroy {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isPrivacySettingType(value: string): value is PrivacySettingTypeValue {
+  return PRIVACY_SETTING_TYPE_VALUES.includes(value as PrivacySettingTypeValue);
 }

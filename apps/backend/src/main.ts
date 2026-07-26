@@ -9,7 +9,15 @@ import { startEventManagerGrpcServer } from './app/grpc/event-manager-grpc.serve
 
 async function bootstrap() {
   const app = await createBackendHttpApp();
-  await startEventManagerGrpcServer(app);
+  const grpcServer = await startEventManagerGrpcServer(app);
+  const shutdown = (signal: NodeJS.Signals) => {
+    Logger.log(`Received ${signal}; stopping Event Manager gRPC server.`);
+    grpcServer.tryShutdown(() => {
+      void app.close().finally(() => process.exit(0));
+    });
+  };
+  process.once('SIGTERM', () => shutdown('SIGTERM'));
+  process.once('SIGINT', () => shutdown('SIGINT'));
   const port = process.env.PORT || 3000;
   await app.listen(port);
   Logger.log(`🚀 Application is running on: http://localhost:${port}/${getBackendGlobalPrefix()}`);

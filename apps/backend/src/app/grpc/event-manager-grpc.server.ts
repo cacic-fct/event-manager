@@ -44,7 +44,7 @@ export async function startEventManagerGrpcServer(app: INestApplication): Promis
     'grpc.max_send_message_length': 4 * 1024 * 1024,
   });
   const service = loadGrpcServiceDefinition(
-    resolveGrpcProtoPath('event-manager-m2m.proto'),
+    resolveGrpcProtoPath('cacic/m2m/event_manager/v1/event-manager-m2m.proto'),
     ['cacic', 'm2m', 'event_manager', 'v1'],
     'EventManagerM2M',
   );
@@ -130,11 +130,15 @@ export function createEventManagerGrpcHandlers(
     }),
     applyAccountMerge: unary(async (call) => {
       const principal = await authorize(call.metadata, dependencies.auth, ['account-merge:write']);
+      const type = requiredString(call.request, 'type');
+      if (type !== 'account.merged') {
+        throw new BadRequestException('type must be account.merged.');
+      }
       return {
         ...(await dependencies.accountMerge.acknowledgeAccountMerge(
         {
           eventId: requiredString(call.request, 'eventId'),
-          type: requiredString(call.request, 'type') as 'account.merged',
+          type,
           oldUserId: requiredString(call.request, 'oldUserId'),
           newUserId: requiredString(call.request, 'newUserId'),
           occurredAt: requiredString(call.request, 'occurredAt'),
@@ -235,14 +239,9 @@ function toDateTime(value: string | Date): string {
   return value instanceof Date ? value.toISOString() : value;
 }
 
-function toServiceError(error: unknown): ServiceError {
+export function toServiceError(error: unknown): ServiceError {
   const code = error instanceof HttpException ? grpcStatusForHttpStatus(error.getStatus()) : status.INTERNAL;
-  const details =
-    error instanceof HttpException
-      ? error.message
-      : error instanceof Error
-        ? error.message
-        : 'Internal gRPC service error.';
+  const details = error instanceof HttpException ? error.message : 'Internal gRPC service error.';
 
   return Object.assign(new Error(details), {
     code,

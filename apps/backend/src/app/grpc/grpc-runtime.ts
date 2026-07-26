@@ -93,20 +93,25 @@ export class GrpcUnaryClient {
     const method = this.findMethod(methodName);
     const maxAttempts = options.idempotent ? (options.maxAttempts ?? 3) : 1;
     const timeoutMs = options.timeoutMs ?? 30_000;
+    const deadline = Date.now() + timeoutMs;
     let lastError: unknown;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      if (Date.now() >= deadline) {
+        throw deadlineExceeded();
+      }
+
       try {
-        await this.waitForReady(timeoutMs);
-        return await this.makeUnaryRequest<TResponse>(method, request, metadata, timeoutMs);
+        await this.waitForReady(deadline);
+        return await this.makeUnaryRequest<TResponse>(method, request, metadata, deadline);
       } catch (error) {
         lastError = error;
-        if (!this.shouldRetry(error, attempt, maxAttempts)) {
+        if (Date.now() >= deadline || !this.shouldRetry(error, attempt, maxAttempts)) {
           throw error;
         }
         const backoffMs = Math.min(100 * 2 ** (attempt - 1), 1_000);
         const jitteredBackoffMs = Math.round(backoffMs * (0.8 + Math.random() * 0.4));
-        await new Promise((resolve) => setTimeout(resolve, jitteredBackoffMs));
+        await new Promise((resolve) => setTimeout(resolve, Math.min(jitteredBackoffMs, deadline - Date.now())));
       }
     }
 
@@ -127,9 +132,9 @@ export class GrpcUnaryClient {
     return method;
   }
 
-  private waitForReady(timeoutMs: number): Promise<void> {
+  private waitForReady(deadline: number): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.client.waitForReady(Date.now() + timeoutMs, (error) => (error ? reject(error) : resolve()));
+      this.client.waitForReady(deadline, (error) => (error ? reject(error) : resolve()));
     });
   }
 
@@ -137,7 +142,7 @@ export class GrpcUnaryClient {
     method: UnknownMethodDefinition,
     request: unknown,
     metadata: Metadata,
-    timeoutMs: number,
+    deadline: number,
   ): Promise<TResponse> {
     return new Promise((resolve, reject) => {
       this.client.makeUnaryRequest(
@@ -146,7 +151,7 @@ export class GrpcUnaryClient {
         method.responseDeserialize,
         request,
         metadata,
-        { deadline: Date.now() + timeoutMs },
+        { deadline },
         (error, response) => (error ? reject(error) : resolve(response as TResponse)),
       );
     });
@@ -170,4 +175,8 @@ export function grpcUnavailable(message: string, _cause: unknown): ServiceUnavai
 
 function isGrpcObject(value: unknown): value is GrpcObject {
   return typeof value === 'object' && value !== null;
+}
+
+function deadlineExceeded(): Error & { code: number } {
+  return Object.assign(new Error('gRPC deadline exceeded.'), { code: status.DEADLINE_EXCEEDED });
 }
