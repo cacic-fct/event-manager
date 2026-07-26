@@ -160,6 +160,11 @@ export function createEventManagerGrpcHandlers(
       const response = await dependencies.lgpd.scheduleDeletion(lgpdDeletionInput(call.request));
       return { json: JSON.stringify(response) };
     }),
+    cancelLgpdDeletion: unary(async (call) => {
+      await authorize(call.metadata, dependencies.auth, ['lgpd:delete']);
+      const response = await dependencies.lgpd.cancelDeletion(lgpdDeletionInput(call.request));
+      return { json: JSON.stringify(response) };
+    }),
     deleteLgpdData: unary(async (call) => {
       await authorize(call.metadata, dependencies.auth, ['lgpd:delete']);
       const response = await dependencies.lgpd.hardDelete(lgpdDeletionInput(call.request));

@@ -213,9 +213,6 @@ export class LgpdService {
       return { success: true, peopleUpdated: 0, recordsUpdated: 0 };
     }
 
-    const receiptObjectKeys = await findReceiptObjectKeys(this.prisma, personIds);
-    await deleteReceiptObjects(this.s3, this.logger, receiptObjectKeys);
-
     const now = new Date();
     const result = await this.prisma.$transaction(async (tx) => {
       const people = await tx.people.updateMany({
@@ -229,12 +226,6 @@ export class LgpdService {
       const eventGroupSubscriptions = await tx.eventGroupSubscription.updateMany({
         where: { personId: { in: personIds }, deletedAt: null },
         data: { deletedAt: now },
-      });
-      const receiptValidationActions = await tx.majorEventReceiptValidationAction.deleteMany({
-        where: { subscription: { personId: { in: personIds } } },
-      });
-      const majorEventReceipts = await tx.majorEventReceipt.deleteMany({
-        where: { personId: { in: personIds } },
       });
       const majorEventSubscriptions = await tx.majorEventSubscription.updateMany({
         where: { personId: { in: personIds }, deletedAt: null },
@@ -251,31 +242,70 @@ export class LgpdService {
         where: { personId: { in: personIds }, deletedAt: null },
         data: { deletedAt: now },
       });
-      const anonymizedSubjectId = buildAnonymizedAuditSubjectId(input.requestId);
-      const offlineAttendanceSubmissions = await anonymizeOfflineAttendanceSubmissions(
-        tx,
-        dataSubject,
-        anonymizedSubjectId,
-      );
-      const eventDrafts = await anonymizeEventDrafts(tx, dataSubject, anonymizedSubjectId);
+      return {
+        people,
+        recordsUpdated:
+          eventSubscriptions.count +
+          eventGroupSubscriptions.count +
+          majorEventSubscriptions.count +
+          selections.count +
+          certificates.count,
+      };
+    });
+
+    this.logger.log(
+      `Scheduled LGPD deletion request=${input.requestId}, user=${input.userId}, people=${result.people.count}, related=${result.recordsUpdated}.`,
+    );
+
+    return { success: true, peopleUpdated: result.people.count, recordsUpdated: result.recordsUpdated };
+  }
+
+  async cancelDeletion(input: { userId: string; email?: string; requestId: string }) {
+    const dataSubject = await resolveDataSubject(this.prisma, input);
+    const { personIds, userIds } = dataSubject;
+    if (personIds.length === 0 && userIds.length === 0) {
+      return { success: true, peopleUpdated: 0, recordsUpdated: 0 };
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const people = await tx.people.updateMany({
+        where: { id: { in: personIds }, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
+      const eventSubscriptions = await tx.eventSubscription.updateMany({
+        where: { personId: { in: personIds }, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
+      const eventGroupSubscriptions = await tx.eventGroupSubscription.updateMany({
+        where: { personId: { in: personIds }, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
+      const majorEventSubscriptions = await tx.majorEventSubscription.updateMany({
+        where: { personId: { in: personIds }, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
+      const selections = await tx.majorEventSubscriptionEventSelection.updateMany({
+        where: { subscription: { personId: { in: personIds } }, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
+      const certificates = await tx.certificate.updateMany({
+        where: { personId: { in: personIds }, deletedAt: { not: null } },
+        data: { deletedAt: null },
+      });
 
       return {
         people,
         recordsUpdated:
           eventSubscriptions.count +
           eventGroupSubscriptions.count +
-          receiptValidationActions.count +
-          majorEventReceipts.count +
           majorEventSubscriptions.count +
           selections.count +
-          certificates.count +
-          offlineAttendanceSubmissions +
-          eventDrafts,
+          certificates.count,
       };
     });
 
     this.logger.log(
-      `Scheduled LGPD deletion request=${input.requestId}, user=${input.userId}, people=${result.people.count}, related=${result.recordsUpdated}.`,
+      `Cancelled scheduled LGPD deletion request=${input.requestId}, user=${input.userId}, people=${result.people.count}, related=${result.recordsUpdated}.`,
     );
 
     return { success: true, peopleUpdated: result.people.count, recordsUpdated: result.recordsUpdated };

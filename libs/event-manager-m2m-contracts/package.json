@@ -11,7 +11,7 @@
       "types": "./index.d.ts",
       "default": "./index.js"
     },
-    "./proto/event-manager-m2m.proto": "./proto/event-manager-m2m.proto"
+    "./proto/cacic/m2m/event_manager/v1/event-manager-m2m.proto": "./proto/cacic/m2m/event_manager/v1/event-manager-m2m.proto"
   },
   "repository": {
     "type": "git",

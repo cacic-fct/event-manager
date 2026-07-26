@@ -3,7 +3,7 @@
 Framework-agnostic contracts for CACiC Event Manager machine-to-machine APIs.
 
 The package exports Event Manager M2M role names, compatibility DTO types, and
-the canonical `proto/event-manager-m2m.proto` gRPC contract used by other CACiC services.
+the canonical `proto/cacic/m2m/event_manager/v1/event-manager-m2m.proto` gRPC contract used by other CACiC services.
 
 ## Install
 

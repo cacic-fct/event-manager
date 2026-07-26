@@ -10,6 +10,7 @@ service EventManagerM2M {
   rpc ApplyAccountMerge (ApplyAccountMergeRequest) returns (ApplyAccountMergeResponse);
   rpc CollectLgpdUserData (LgpdUserRequest) returns (JsonResponse);
   rpc ScheduleLgpdDeletion (LgpdDeletionRequest) returns (JsonResponse);
+  rpc CancelLgpdDeletion (LgpdDeletionRequest) returns (JsonResponse);
   rpc DeleteLgpdData (LgpdDeletionRequest) returns (JsonResponse);
 }
 
