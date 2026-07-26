@@ -17,7 +17,7 @@ const meta: Meta<RestaurantCardEnrollment> = {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: { user: () => ({ sub: walletStoryUser.userId }) } },
-        { provide: RestaurantCardService, useValue: { save: saveRestaurantCard } },
+        { provide: RestaurantCardService, useValue: { get: () => null, load: () => Promise.resolve(), save: saveRestaurantCard } },
       ],
     }),
   ],

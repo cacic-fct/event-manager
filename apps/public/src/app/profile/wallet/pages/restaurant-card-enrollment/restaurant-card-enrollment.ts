@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -34,8 +34,14 @@ import { RestaurantCardService } from '../../services/restaurant-card.service';
     <main class="global-container restaurant-enrollment-page">
       <mat-card>
         <mat-card-header>
-          <mat-card-title>Cartão do R.U.</mat-card-title>
-          <mat-card-subtitle>Obtenha o número do Cartão de Cliente a partir do SISRU</mat-card-subtitle>
+          <mat-card-title>{{ existingCardNumber() ? 'Editar cartão do R.U.' : 'Cartão do R.U.' }}</mat-card-title>
+          <mat-card-subtitle>
+            @if (existingCardNumber()) {
+            Atualize o número do Cartão de Cliente obtido no SISRU.
+            } @else {
+            Obtenha o número do Cartão de Cliente a partir do SISRU.
+            }
+          </mat-card-subtitle>
         </mat-card-header>
 
         <mat-card-content>
@@ -53,7 +59,9 @@ import { RestaurantCardService } from '../../services/restaurant-card.service';
                 <mat-error>Informe apenas números.</mat-error>
               }
             </mat-form-field>
-            <button mat-flat-button type="submit" [disabled]="!canSave()">Adicionar cartão</button>
+            <button mat-flat-button type="submit" [disabled]="!canSave()">
+              {{ existingCardNumber() ? 'Salvar alterações' : 'Adicionar cartão' }}
+            </button>
           </form>
         </mat-card-content>
       </mat-card>
@@ -87,6 +95,26 @@ export class RestaurantCardEnrollment {
     nonNullable: true,
     validators: [Validators.required, Validators.pattern(/^\d+$/)],
   });
+  readonly existingCardNumber = computed(() => {
+    const userId = this.authService.user()?.sub;
+    return userId ? this.restaurantCard.get(userId) : null;
+  });
+
+  constructor() {
+    effect(() => {
+      const userId = this.authService.user()?.sub;
+      const existingCardNumber = this.existingCardNumber();
+
+      if (!userId) return;
+      if (existingCardNumber) {
+        if (this.cardNumber.pristine) this.cardNumber.setValue(existingCardNumber);
+        return;
+      }
+
+      void this.restaurantCard.load(userId);
+    });
+  }
+
   keepOnlyNumbers(event: Event): void {
     if (!(event.target instanceof HTMLInputElement)) return;
     const value = event.target.value.replace(/\D/g, '');
@@ -101,7 +129,7 @@ export class RestaurantCardEnrollment {
       await this.restaurantCard.save(userId, this.cardNumber.value);
       await this.router.navigateByUrl('/profile/wallet');
     } catch {
-      this.snackBar.open('Não foi possível adicionar o cartão. Tente novamente.', 'Fechar', { duration: 5000 });
+      this.snackBar.open('Não foi possível salvar o cartão. Tente novamente.', 'Fechar', { duration: 5000 });
     }
   }
 

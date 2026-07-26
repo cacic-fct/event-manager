@@ -30,4 +30,20 @@ describe('WalletCard', () => {
     expect(card.querySelector('.identity-document')?.textContent).toContain('529.982.247-25');
     expect(card.querySelector('[aria-label="Código de barras"]')).not.toBeNull();
   });
+
+  it('requests a 512px rendition of Google profile pictures', () => {
+    fixture.componentRef.setInput('user', {
+      userId: 'user-123',
+      name: 'Marina da Silva',
+      picture: 'https://lh3.googleusercontent.com/a/test-user=s96-c',
+      unespRole: 'aluno-graduacao',
+      enrollmentNumber: '00123456',
+      identityDocument: '52998224725',
+    } satisfies WalletCardUser);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.avatar')?.getAttribute('src')).toBe(
+      'https://lh3.googleusercontent.com/a/test-user=s512-c',
+    );
+  });
 });

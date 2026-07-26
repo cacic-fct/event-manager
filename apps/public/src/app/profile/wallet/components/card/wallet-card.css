@@ -68,6 +68,7 @@
   .wallet-ticket {
     width: 5.4cm;
     height: 8.6cm;
+    margin-left: 0.5cm;
     padding: 0.35cm;
     color: #000 !important;
     background-color: #fff !important;

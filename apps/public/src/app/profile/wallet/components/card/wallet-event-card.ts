@@ -11,7 +11,7 @@ import { WalletCardUser } from './wallet-card.types';
     <section class="ticket-holder" aria-label="Dados do portador">
       <div class="avatar-frame">
         <img
-          [ngSrc]="user()?.picture || '/assets/icons/avatar-placeholder.avif'"
+          [ngSrc]="googlePictureUrl(user()?.picture) || '/assets/icons/avatar-placeholder.avif'"
           fill
           alt="Avatar"
           class="avatar"
@@ -193,6 +193,7 @@ import { WalletCardUser } from './wallet-card.types';
         margin-top: 0.5rem !important;
         margin-bottom: 0;
         font-size: 12pt !important;
+        text-align: center;
       }
     }
   `,
@@ -203,6 +204,14 @@ export class WalletEventCard {
   protected readonly formatRole = computed(() =>
     formatUnespRole(this.user()?.unespRole, this.user()?.enrollmentNumber?.toString()),
   );
+
+  googlePictureUrl(url: string | null | undefined): string {
+    if (!url?.includes('lh3.googleusercontent.com')) {
+      return url ?? '';
+    }
+
+    return url.replace(/([=/])s\d+(?=[-/=]|$)/, '$1s512');
+  }
 
   protected formatDocument(document: string): string {
     return isValidCPF(document) ? formatCPF(document) : document;
