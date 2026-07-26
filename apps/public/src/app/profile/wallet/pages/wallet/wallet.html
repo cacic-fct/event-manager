@@ -18,8 +18,8 @@
   <span>Carteira</span>
   <span class="global-toolbar-spacer"></span>
   @if (walletView() === 'list') {
-  <button matIconButton aria-label="Imprimir crachá" matTooltip="Imprimir crachá" (click)="print()">
-    <mat-icon>printer</mat-icon>
+  <button matIconButton type="button" aria-label="Imprimir crachá" matTooltip="Imprimir crachá" (click)="print()">
+    <mat-icon>print</mat-icon>
   </button>
   }
   <a matIconButton routerLink="/profile/wallet/add-card" aria-label="Adicionar cartão" matTooltip="Adicionar cartão">

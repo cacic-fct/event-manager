@@ -40,7 +40,9 @@ describe('WalletBarcodeComponent', () => {
     fixture.componentRef.setInput('value', '<script>alert(1)</script>');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('svg')).not.toBeNull();
+    const svg = fixture.nativeElement.querySelector('svg');
+    expect(svg).not.toBeNull();
+    expect(svg.getAttribute('viewBox')).toBe('0 0 620 122');
     expect(fixture.nativeElement.querySelector('script')).toBeNull();
   });
 });

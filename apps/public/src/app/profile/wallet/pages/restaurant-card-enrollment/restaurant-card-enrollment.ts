@@ -6,6 +6,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { RestaurantCardService } from '../../services/restaurant-card.service';
@@ -80,6 +81,7 @@ export class RestaurantCardEnrollment {
   private readonly authService = inject(AuthService);
   private readonly restaurantCard = inject(RestaurantCardService);
   private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly cardNumber = new FormControl('', {
     nonNullable: true,
@@ -95,8 +97,12 @@ export class RestaurantCardEnrollment {
   async save(): Promise<void> {
     const userId = this.authService.user()?.sub;
     if (!userId || this.cardNumber.invalid) return;
-    await this.restaurantCard.save(userId, this.cardNumber.value);
-    void this.router.navigateByUrl('/profile/wallet');
+    try {
+      await this.restaurantCard.save(userId, this.cardNumber.value);
+      await this.router.navigateByUrl('/profile/wallet');
+    } catch {
+      this.snackBar.open('Não foi possível adicionar o cartão. Tente novamente.', 'Fechar', { duration: 5000 });
+    }
   }
 
   canSave(): boolean {

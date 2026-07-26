@@ -189,11 +189,7 @@ export class Wallet {
     this.selectedCard.set(card);
     this.walletView.set('selecting');
 
-    const prefersReducedMotion =
-      this.isBrowser &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (!this.isBrowser || prefersReducedMotion) {
+    if (!this.isBrowser || this.prefersReducedMotion) {
       if (this.isBrowser) window.scrollTo(window.scrollX, 0);
       this.walletView.set('detail');
       return;
@@ -246,12 +242,7 @@ export class Wallet {
   private animateCardToList(): boolean {
     const selectedCard = this.selectedCard();
     const detailCardTop = this.detailCardSlot()?.nativeElement.getBoundingClientRect().top;
-    const prefersReducedMotion =
-      this.isBrowser &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (!this.isBrowser || prefersReducedMotion || !selectedCard || detailCardTop === undefined) {
+    if (!this.isBrowser || this.prefersReducedMotion || !selectedCard || detailCardTop === undefined) {
       if (this.isBrowser) window.scrollTo(window.scrollX, this.listScrollPosition);
       return false;
     }
@@ -292,6 +283,10 @@ export class Wallet {
     }
     this.selectionAnimation?.cancel();
     this.selectionAnimation = null;
+  }
+
+  private get prefersReducedMotion(): boolean {
+    return this.isBrowser && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
   public availableOffline(): void {

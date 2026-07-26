@@ -17,6 +17,9 @@ import { WalletRestaurantCard } from './wallet-restaurant-card';
     WalletOfflineCodeCard,
     WalletRestaurantCard,
   ],
+  host: {
+    '[class]': "'wallet-ticket-' + kind()",
+  },
   templateUrl: './wallet-card.html',
   styleUrl: './wallet-card.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -199,7 +199,15 @@ export class WalletOfflineCodeCard {
   }
 
   private async copyToClipboard(value: string): Promise<void> {
-    if (navigator.clipboard?.writeText) return navigator.clipboard.writeText(value);
+    const clipboard = navigator.clipboard;
+    if (clipboard?.writeText) {
+      try {
+        await clipboard.writeText(value);
+        return;
+      } catch {
+        // Fall back to the legacy copy mechanism when the Clipboard API rejects the write.
+      }
+    }
     const textarea = this.document.createElement('textarea');
     textarea.value = value;
     textarea.setAttribute('readonly', 'true');

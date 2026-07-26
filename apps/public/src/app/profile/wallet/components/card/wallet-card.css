@@ -61,7 +61,7 @@
 }
 
 @media print {
-  :host:not(:has(.wallet-ticket-eventos)) {
+  :host(:not(.wallet-ticket-eventos)) {
     display: none;
   }
 

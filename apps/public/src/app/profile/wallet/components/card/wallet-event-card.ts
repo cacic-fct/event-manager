@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { formatCPF, formatUnespRole, isValidCPF } from '@cacic-fct/shared-utils';
 import { WalletBarcodeComponent } from '../barcode/barcode';
@@ -5,12 +6,13 @@ import { WalletCardUser } from './wallet-card.types';
 
 @Component({
   selector: 'app-wallet-event-card',
-  imports: [WalletBarcodeComponent],
+  imports: [NgOptimizedImage, WalletBarcodeComponent],
   template: `
     <section class="ticket-holder" aria-label="Dados do portador">
       <div class="avatar-frame">
         <img
-          [src]="user()?.picture || '/assets/icons/avatar-placeholder.avif'"
+          [ngSrc]="user()?.picture || '/assets/icons/avatar-placeholder.avif'"
+          fill
           alt="Avatar"
           class="avatar"
           referrerpolicy="no-referrer" />
@@ -51,6 +53,7 @@ import { WalletCardUser } from './wallet-card.types';
       box-sizing: border-box;
       width: 4.25rem;
       height: 4.25rem;
+      position: relative;
       overflow: hidden;
       background: #3d3f97;
       border-radius: 50%;
