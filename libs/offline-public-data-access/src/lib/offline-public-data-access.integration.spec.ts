@@ -318,6 +318,7 @@ describe('offline public data access integration', () => {
       picture: null,
       unespRole: 'professor',
       identityDocument: '52998224725',
+      enrollmentNumber: '00123456',
       updatedAt: 10,
     });
     await service.replaceUserSnapshot({
@@ -326,7 +327,18 @@ describe('offline public data access integration', () => {
       picture: null,
       unespRole: null,
       identityDocument: null,
+      enrollmentNumber: null,
       updatedAt: 20,
+    });
+    await service.replaceRestaurantCard({
+      userId: 'user-1',
+      cardNumber: '000123456',
+      updatedAt: 30,
+    });
+    await service.replaceRestaurantCard({
+      userId: 'user-1',
+      cardNumber: '000654321',
+      updatedAt: 40,
     });
     await service.replaceAttendanceFeed('user-1', feed);
     await service.replaceAttendanceDetail('user-1', 'event-1', detail);
@@ -339,12 +351,19 @@ describe('offline public data access integration', () => {
     );
     await expect(service.getAttendanceFeed('user-1')).resolves.toEqual(feed);
     await expect(service.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toEqual(detail);
+    await expect(service.getRestaurantCard('user-1')).resolves.toEqual({
+      userId: 'user-1',
+      cardNumber: '000654321',
+      updatedAt: 40,
+    });
+    await expect(database.restaurantCards.where('userId').equals('user-1').count()).resolves.toBe(1);
 
     await service.purgeUserData();
 
     await expect(service.getLatestUserSnapshot()).resolves.toBeNull();
     await expect(service.getAttendanceFeed('user-1')).resolves.toBeNull();
     await expect(service.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toBeNull();
+    await expect(service.getRestaurantCard('user-1')).resolves.toBeNull();
   });
 
   it('returns safe fallback values when offline storage is unavailable', async () => {

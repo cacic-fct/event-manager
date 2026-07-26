@@ -42,6 +42,7 @@ export class OfflineUserDataService {
       picture: this.stringClaim(user, 'picture'),
       unespRole: this.roleClaim(user),
       identityDocument: this.stringClaim(user, 'identity_document'),
+      enrollmentNumber: this.enrollmentNumberClaim(user),
       updatedAt: Date.now(),
     };
   }
@@ -64,5 +65,11 @@ export class OfflineUserDataService {
     }
 
     return null;
+  }
+
+  private enrollmentNumberClaim(user: AuthenticatedUser): string | number | null {
+    const value = user.claims?.enrollment_number;
+
+    return typeof value === 'string' || typeof value === 'number' ? value : null;
   }
 }

@@ -175,7 +175,10 @@ export class SubscriptionApiService {
   }
 
   downloadEventSubscriptionBadgeArchive(eventId: string, options: SubscriberCsvExportDialogOptions) {
-    return this.downloadBadgeArchive(`/api/subscription-exports/events/${encodeURIComponent(eventId)}/badges.zip`, options);
+    return this.downloadBadgeArchive(
+      `/api/subscription-exports/events/${encodeURIComponent(eventId)}/badges.zip`,
+      options,
+    );
   }
 
   downloadMajorEventSubscriptionBadgeArchive(majorEventId: string, options: SubscriberCsvExportDialogOptions) {
@@ -187,13 +190,17 @@ export class SubscriptionApiService {
 
   private downloadBadgeArchive(url: string, options: SubscriberCsvExportDialogOptions) {
     return this.http
-      .post(url, {
-        fields: options.fields,
-        identityDocumentMode: options.identityDocumentMode,
-        errorCorrectionLevel: options.badgeCodes.errorCorrectionLevel,
-        format: options.badgeCodes.format,
-        fileName: options.badgeCodes.fileName,
-      }, { observe: 'response', responseType: 'blob' })
+      .post(
+        url,
+        {
+          fields: options.fields,
+          identityDocumentMode: options.identityDocumentMode,
+          errorCorrectionLevel: options.badgeCodes.errorCorrectionLevel,
+          format: options.badgeCodes.format,
+          fileName: options.badgeCodes.fileName,
+        },
+        { observe: 'response', responseType: 'blob' },
+      )
       .pipe(
         map((response): SubscriptionBadgeArchiveDownload => {
           if (!response.body) {
@@ -210,7 +217,9 @@ export class SubscriptionApiService {
 
   private fileNameFromDisposition(disposition: string | null): string {
     const encodedMatch = disposition?.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
-    const fileName = encodedMatch ? decodeURIComponent(encodedMatch[1]) : disposition?.match(/filename="?([^";]+)"?/i)?.[1];
+    const fileName = encodedMatch
+      ? decodeURIComponent(encodedMatch[1])
+      : disposition?.match(/filename="?([^";]+)"?/i)?.[1];
     return fileName?.replace(/[\\/]/g, '') || 'codigos-para-cracha.zip';
   }
 }

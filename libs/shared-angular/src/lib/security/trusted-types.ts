@@ -138,7 +138,8 @@ export function provideCacicTrustedTypes() {
 function isDuplicateTrustedTypesPolicyError(error: unknown): boolean {
   return (
     error instanceof Error &&
-    (/policy with name .+ already exists/i.test(error.message) || /tried to create a second default policy/i.test(error.message))
+    (/policy with name .+ already exists/i.test(error.message) ||
+      /tried to create a second default policy/i.test(error.message))
   );
 }
 

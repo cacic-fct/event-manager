@@ -147,5 +147,4 @@ export class CurrentUserCertificatesResolver {
 
     return this.downloadService.downloadCertificate(normalizedCertificateId);
   }
-
 }

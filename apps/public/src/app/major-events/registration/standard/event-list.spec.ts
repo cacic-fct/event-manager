@@ -21,10 +21,7 @@ describe('SubscriptionEventList', () => {
     fixture.componentRef.setInput(
       'summariesByEventId',
       new Map([
-        [
-          event.id,
-          { eventId: event.id, hasAvailableSlots: true, availableSlots: 2, projectedQueuePosition: 4 },
-        ],
+        [event.id, { eventId: event.id, hasAvailableSlots: true, availableSlots: 2, projectedQueuePosition: 4 }],
       ]),
     );
     fixture.componentRef.setInput('selectedEventIds', new Set());
@@ -53,7 +50,9 @@ describe('SubscriptionEventList', () => {
     fixture.componentRef.setInput('events', [event]);
     fixture.componentRef.setInput(
       'summariesByEventId',
-      new Map([[event.id, { eventId: event.id, hasAvailableSlots: false, availableSlots: 0, projectedQueuePosition: 1 }]]),
+      new Map([
+        [event.id, { eventId: event.id, hasAvailableSlots: false, availableSlots: 0, projectedQueuePosition: 1 }],
+      ]),
     );
     fixture.componentRef.setInput('selectedEventIds', new Set());
     fixture.componentRef.setInput('autoSelectedEventIds', new Set());

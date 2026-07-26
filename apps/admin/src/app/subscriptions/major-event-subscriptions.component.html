@@ -96,92 +96,92 @@
   <div class="major-subscription-workspace">
     @if (workspace.majorEventForm.controls.majorEventId.value) {
       <section class="panel subscription-browser">
-      <div class="panel-heading">
-        <div>
-          <h3>Inscritos</h3>
-          <p>Busque e selecione uma inscrição para consultar os detalhes.</p>
+        <div class="panel-heading">
+          <div>
+            <h3>Inscritos</h3>
+            <p>Busque e selecione uma inscrição para consultar os detalhes.</p>
+          </div>
         </div>
-      </div>
 
-      <form [formGroup]="workspace.majorEventSubscriptionSearchForm" class="major-event-search">
-        <mat-form-field class="query-field">
-          <mat-label>Buscar inscrito</mat-label>
-          <mat-icon matPrefix>search</mat-icon>
-          <input matInput formControlName="query" autocomplete="off" />
-        </mat-form-field>
-      </form>
+        <form [formGroup]="workspace.majorEventSubscriptionSearchForm" class="major-event-search">
+          <mat-form-field class="query-field">
+            <mat-label>Buscar inscrito</mat-label>
+            <mat-icon matPrefix>search</mat-icon>
+            <input matInput formControlName="query" autocomplete="off" />
+          </mat-form-field>
+        </form>
 
-      <mat-list class="subscription-list">
-        @for (subscription of workspace.majorEventSubscriptions(); track subscription.id) {
-          <mat-list-item
-            [class.selected-list-item]="workspace.selectedMajorEventSubscription()?.id === subscription.id">
-            <button
-              matListItemTitle
-              class="subscription-selection-button"
-              type="button"
-              [attr.aria-pressed]="workspace.selectedMajorEventSubscription()?.id === subscription.id"
-              (click)="workspace.selectMajorEventSubscription(subscription)">
-              {{ subscription.person?.name ?? subscription.personId }}
-            </button>
-            <span matListItemLine>
-              {{ statusLabel(subscription.subscriptionStatus) }} ·
-              {{ subscription.createdByMethod }}
-              @if (hasSubscribedLecturer(subscription)) {
-                · Palestrante inscrito no próprio evento
-              }
-            </span>
-            <div matListItemMeta class="item-actions">
+        <mat-list class="subscription-list">
+          @for (subscription of workspace.majorEventSubscriptions(); track subscription.id) {
+            <mat-list-item
+              [class.selected-list-item]="workspace.selectedMajorEventSubscription()?.id === subscription.id">
               <button
-                mat-icon-button
+                matListItemTitle
+                class="subscription-selection-button"
                 type="button"
-                aria-label="Ver histórico da inscrição"
-                matTooltip="Histórico"
-                (click)="
-                  $event.stopPropagation();
-                  auditLog.openHistory(
-                    'MAJOR_EVENT_SUBSCRIPTION',
-                    subscription.id,
-                    subscription.person?.name ?? subscription.personId
-                  )
-                ">
-                <mat-icon>history</mat-icon>
+                [attr.aria-pressed]="workspace.selectedMajorEventSubscription()?.id === subscription.id"
+                (click)="workspace.selectMajorEventSubscription(subscription)">
+                {{ subscription.person?.name ?? subscription.personId }}
               </button>
-              @if (hasSubscribedLecturer(subscription)) {
-                <mat-icon class="warning-icon">warning</mat-icon>
-              }
-            </div>
-          </mat-list-item>
-        } @empty {
-          <mat-list-item>
-            <span matListItemTitle>Nenhum inscrito encontrado</span>
-            <span matListItemLine>Ajuste a busca e tente novamente.</span>
-          </mat-list-item>
-        }
-      </mat-list>
+              <span matListItemLine>
+                {{ statusLabel(subscription.subscriptionStatus) }} ·
+                {{ subscription.createdByMethod }}
+                @if (hasSubscribedLecturer(subscription)) {
+                  · Palestrante inscrito no próprio evento
+                }
+              </span>
+              <div matListItemMeta class="item-actions">
+                <button
+                  mat-icon-button
+                  type="button"
+                  aria-label="Ver histórico da inscrição"
+                  matTooltip="Histórico"
+                  (click)="
+                    $event.stopPropagation();
+                    auditLog.openHistory(
+                      'MAJOR_EVENT_SUBSCRIPTION',
+                      subscription.id,
+                      subscription.person?.name ?? subscription.personId
+                    )
+                  ">
+                  <mat-icon>history</mat-icon>
+                </button>
+                @if (hasSubscribedLecturer(subscription)) {
+                  <mat-icon class="warning-icon">warning</mat-icon>
+                }
+              </div>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhum inscrito encontrado</span>
+              <span matListItemLine>Ajuste a busca e tente novamente.</span>
+            </mat-list-item>
+          }
+        </mat-list>
 
-      <div class="list-pager" aria-label="Paginação de inscrições do grande evento">
-        <span>Itens {{ workspace.majorEventSubscriptionsPagination.label() }}</span>
-        <div class="list-pager-actions">
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="Página anterior de inscrições"
-            matTooltip="Anterior"
-            [disabled]="!workspace.majorEventSubscriptionsPagination.hasPreviousPage()"
-            (click)="workspace.previousMajorEventSubscriptionsPage()">
-            <mat-icon>chevron_left</mat-icon>
-          </button>
-          <button
-            mat-icon-button
-            type="button"
-            aria-label="Próxima página de inscrições"
-            matTooltip="Próxima"
-            [disabled]="!workspace.majorEventSubscriptionsPagination.hasNextPage()"
-            (click)="workspace.nextMajorEventSubscriptionsPage()">
-            <mat-icon>chevron_right</mat-icon>
-          </button>
+        <div class="list-pager" aria-label="Paginação de inscrições do grande evento">
+          <span>Itens {{ workspace.majorEventSubscriptionsPagination.label() }}</span>
+          <div class="list-pager-actions">
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Página anterior de inscrições"
+              matTooltip="Anterior"
+              [disabled]="!workspace.majorEventSubscriptionsPagination.hasPreviousPage()"
+              (click)="workspace.previousMajorEventSubscriptionsPage()">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Próxima página de inscrições"
+              matTooltip="Próxima"
+              [disabled]="!workspace.majorEventSubscriptionsPagination.hasNextPage()"
+              (click)="workspace.nextMajorEventSubscriptionsPage()">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
         </div>
-      </div>
       </section>
     } @else {
       <section class="panel major-subscription-placeholder">
@@ -405,6 +405,6 @@
           <p>Os dados completos e a seleção de eventos aparecem neste painel.</p>
         </div>
       }
-      </section>
+    </section>
   </div>
 </section>

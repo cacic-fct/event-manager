@@ -3,10 +3,7 @@ import { ChangeDetectionStrategy, Component, Injector, computed, inject, input }
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
-import {
-  AttendanceIncognitoWarningDialog,
-  type AttendanceIncognitoWarningDialogData,
-} from './dialog';
+import { AttendanceIncognitoWarningDialog, type AttendanceIncognitoWarningDialogData } from './dialog';
 
 interface IncognitoWarningStoryArgs {
   step: AttendanceIncognitoWarningDialogData['step'];
@@ -52,8 +49,7 @@ const meta: Meta<IncognitoWarningStoryArgs> = {
   parameters: {
     docs: {
       description: {
-        component:
-          'Aviso em duas etapas para explicar o risco de perder presenças off-line em uma janela anônima.',
+        component: 'Aviso em duas etapas para explicar o risco de perder presenças off-line em uma janela anônima.',
       },
     },
   },

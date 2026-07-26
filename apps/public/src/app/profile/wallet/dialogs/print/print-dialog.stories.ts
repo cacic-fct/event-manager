@@ -1,4 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/angular';
+import { MatDialogRef } from '@angular/material/dialog';
+import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { PrintDialog } from './print-dialog';
 
@@ -6,6 +7,7 @@ const meta: Meta<PrintDialog> = {
   component: PrintDialog,
   title: 'Public/Profile/Wallet/Print Dialog',
   tags: ['autodocs'],
+  decorators: [applicationConfig({ providers: [{ provide: MatDialogRef, useValue: { close: () => undefined } }] })],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },

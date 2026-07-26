@@ -585,7 +585,9 @@ export class AttendancesApiService {
 
   private readDownloadFileName(contentDisposition: string | null): string {
     const encodedMatch = /filename\*\s*=\s*UTF-8''([^;]+)/i.exec(contentDisposition ?? '');
-    const fileName = encodedMatch ? decodeURIComponent(encodedMatch[1]) : /filename="?([^";]+)"?/i.exec(contentDisposition ?? '')?.[1];
+    const fileName = encodedMatch
+      ? decodeURIComponent(encodedMatch[1])
+      : /filename="?([^";]+)"?/i.exec(contentDisposition ?? '')?.[1];
     return fileName?.replace(/[\\/]/g, '') || 'certificados.zip';
   }
 

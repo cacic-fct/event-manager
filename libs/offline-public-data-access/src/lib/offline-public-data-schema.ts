@@ -21,6 +21,13 @@ export interface OfflineUserSnapshot {
   picture: string | null;
   unespRole: string | string[] | null;
   identityDocument: string | null;
+  enrollmentNumber: string | number | null;
+  updatedAt: number;
+}
+
+export interface OfflineRestaurantCard {
+  userId: string;
+  cardNumber: string;
   updatedAt: number;
 }
 
@@ -111,6 +118,7 @@ export class OfflinePublicDataDatabase extends Dexie {
   calendarEvents!: Table<OfflineCalendarEvent, string>;
   syncMetadata!: Table<OfflinePublicDataSyncMetadata, string>;
   userSnapshots!: Table<OfflineUserSnapshot, string>;
+  restaurantCards!: Table<OfflineRestaurantCard, string>;
   attendanceFeeds!: Table<OfflineAttendanceFeedRecord, string>;
   attendanceDetails!: Table<OfflineAttendanceDetailRecord, string>;
   featureFlagCache!: Table<OfflineFeatureFlagCacheRecord, string>;
@@ -211,6 +219,30 @@ export class OfflinePublicDataDatabase extends Dexie {
       calendarEvents: 'id, startDate, cachedAt',
       syncMetadata: 'key',
       userSnapshots: 'userId, updatedAt',
+      attendanceFeeds: 'key, userId, updatedAt',
+      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+      featureFlagCache: 'key, updatedAt',
+      calendarPreferences: 'key, updatedAt',
+      totpSeeds: 'userId, primaryEmail, sessionExpiresAt, updatedAt',
+      attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      attendanceQueue: [
+        'clientId',
+        'queuedByUserId',
+        'eventId',
+        'status',
+        'queuedAt',
+        'updatedAt',
+        '[queuedByUserId+eventId]',
+        '[queuedByUserId+status]',
+        '[eventId+status]',
+      ].join(', '),
+    });
+
+    this.version(8).stores({
+      calendarEvents: 'id, startDate, cachedAt',
+      syncMetadata: 'key',
+      userSnapshots: 'userId, updatedAt',
+      restaurantCards: 'userId, updatedAt',
       attendanceFeeds: 'key, userId, updatedAt',
       attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
       featureFlagCache: 'key, updatedAt',

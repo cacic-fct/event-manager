@@ -1,5 +1,11 @@
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -434,5 +440,4 @@ export class CertificateDownloadService {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
-
 }

@@ -38,8 +38,8 @@ describe('subscriber CSV export helpers', () => {
   it('keeps delimiter and quote escaping after formula prefixing', () => {
     const csv = buildSubscriberCsv(
       [
-          {
-            person: { name: '=SUM(1;2)' },
+        {
+          person: { name: '=SUM(1;2)' },
         },
       ],
       { fields: ['fullName'], identityDocumentMode: 'masked' },
