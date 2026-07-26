@@ -15,7 +15,7 @@ describe('HomeComponent', () => {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: { isAuthenticated: authState } },
-        { provide: DefaultRedirectService, useValue: { navigateToDefault } },
+        { provide: DefaultRedirectService, useValue: { navigateToDefault, navigateOfflineReturningUser: vi.fn() } },
       ],
     });
     TestBed.overrideComponent(HomeComponent, { set: { imports: [], template: '' } });
@@ -27,5 +27,25 @@ describe('HomeComponent', () => {
 
     expect(navigateToDefault).toHaveBeenCalledWith(TestBed.inject(Router));
     expect(navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('checks for a saved offline login when the live authentication session is unavailable', async () => {
+    const navigateOfflineReturningUser = vi.fn().mockResolvedValue(undefined);
+
+    TestBed.configureTestingModule({
+      imports: [HomeComponent],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: { isAuthenticated: signal(false) } },
+        { provide: DefaultRedirectService, useValue: { navigateOfflineReturningUser } },
+      ],
+    });
+    TestBed.overrideComponent(HomeComponent, { set: { imports: [], template: '' } });
+
+    const fixture = TestBed.createComponent(HomeComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(navigateOfflineReturningUser).toHaveBeenCalledWith(TestBed.inject(Router));
   });
 });

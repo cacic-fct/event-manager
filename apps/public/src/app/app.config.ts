@@ -26,6 +26,7 @@ import { CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG } from '@cacic-fct/shared-angular/
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
 import { AnalyticsService } from './analytics/analytics.service';
+import { AuthReconnectLoginService } from './auth/auth-reconnect-login.service';
 import { OnlineAttendanceCoordinatorService } from './attendance/self-registration/coordinator.service';
 import { AttendanceOfflineSyncService } from './attendance/collection/offline/sync.service';
 import { RequiredSubscriptionFormInterruptionFlow } from './forms/required-subscription-form-interruption.flow';
@@ -182,6 +183,7 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       inject(NetworkStatusService).start();
       inject(NetworkStatusSnackbarService).start();
+      inject(AuthReconnectLoginService).start();
       inject(OfflineUserDataService).start();
       inject(TotpSeedSessionService).start();
     }),
