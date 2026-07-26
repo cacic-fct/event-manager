@@ -94,7 +94,6 @@ import { WalletCardUser } from './wallet-card.types';
       justify-items: center;
       padding: 1.25rem;
       color: #10233f;
-      background: #f7f9ff;
     }
     .aztec-code {
       display: block;
