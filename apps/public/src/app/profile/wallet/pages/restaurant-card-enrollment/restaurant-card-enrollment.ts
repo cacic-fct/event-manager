@@ -59,10 +59,20 @@ import { RestaurantCardService } from '../../services/restaurant-card.service';
     </main>
   `,
   styles: `
-    .restaurant-enrollment-page { max-width: 32rem; padding-block: 2rem; }
-    mat-card-content { padding-top: 1rem; }
-    form { display: grid; gap: 0.25rem; }
-    mat-form-field { width: 100%; }
+    .restaurant-enrollment-page {
+      max-width: 32rem;
+      padding-block: 2rem;
+    }
+    mat-card-content {
+      padding-top: 1rem;
+    }
+    form {
+      display: grid;
+      gap: 0.25rem;
+    }
+    mat-form-field {
+      width: 100%;
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

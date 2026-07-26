@@ -20,7 +20,9 @@ export const routes: Route[] = [
     path: 'wallet/add-card/restaurant',
     title: 'Cartão do R.U.',
     loadComponent: () =>
-      import('./wallet/pages/restaurant-card-enrollment/restaurant-card-enrollment').then((m) => m.RestaurantCardEnrollment),
+      import('./wallet/pages/restaurant-card-enrollment/restaurant-card-enrollment').then(
+        (m) => m.RestaurantCardEnrollment,
+      ),
   },
   {
     path: 'forms/:formId',

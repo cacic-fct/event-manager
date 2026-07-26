@@ -115,10 +115,7 @@ export class SubscriptionBadgeExportService {
     };
   }
 
-  private createCsvStream(
-    input: SubscriberBadgeExportInput,
-    codePathContext: BadgeCodePathContext,
-  ): Readable {
+  private createCsvStream(input: SubscriberBadgeExportInput, codePathContext: BadgeCodePathContext): Readable {
     return Readable.from(this.csvChunks(input, codePathContext));
   }
 

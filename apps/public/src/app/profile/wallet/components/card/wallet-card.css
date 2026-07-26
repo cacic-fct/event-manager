@@ -66,11 +66,8 @@
   }
 
   .wallet-ticket {
-    grid-template-columns: minmax(0, 1fr) 3.2cm;
-    grid-template-rows: auto 1fr auto;
-    gap: 0.2cm 0.3cm;
-    width: 85.6mm;
-    height: 53.98mm;
+    width: 5.4cm;
+    height: 8.6cm;
     padding: 0.35cm;
     color: #000 !important;
     background-color: #fff !important;

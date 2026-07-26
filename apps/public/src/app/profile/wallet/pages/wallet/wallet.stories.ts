@@ -64,7 +64,7 @@ const meta: Meta<WalletStoryArgs> = {
           {
             provide: TotpSeedSessionService,
             useValue: {
-            ...createWalletStoryTotpSession(),
+              ...createWalletStoryTotpSession(),
             },
           },
         ],

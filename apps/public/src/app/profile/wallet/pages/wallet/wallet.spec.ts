@@ -101,14 +101,11 @@ describe('Wallet', () => {
     component.selectCard('offline-code');
 
     expect(scrollToSpy).toHaveBeenCalledWith(window.scrollX, 0);
-    expect(animate).toHaveBeenCalledWith(
-      [{ transform: 'translateY(-100px)' }, { transform: 'translateY(-556px)' }],
-      {
-        duration: 420,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        fill: 'forwards',
-      },
-    );
+    expect(animate).toHaveBeenCalledWith([{ transform: 'translateY(-100px)' }, { transform: 'translateY(-556px)' }], {
+      duration: 420,
+      easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+      fill: 'forwards',
+    });
 
     vi.advanceTimersByTime(420);
     expect(component.walletView()).toBe('detail');
@@ -137,26 +134,23 @@ describe('Wallet', () => {
       configurable: true,
       value: animate,
     });
-    const rectSpy = vi
-      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
-      .mockImplementation(function (this: HTMLElement) {
-        if (this.classList.contains('wallet-card-detail')) return DOMRect.fromRect({ y: 84 });
-        if (this.matches('.wallet-card-list app-wallet-card')) return DOMRect.fromRect({ y: 540 });
-        return DOMRect.fromRect();
-      });
+    const rectSpy = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.classList.contains('wallet-card-detail')) return DOMRect.fromRect({ y: 84 });
+      if (this.matches('.wallet-card-list app-wallet-card')) return DOMRect.fromRect({ y: 540 });
+      return DOMRect.fromRect();
+    });
 
     component.returnToCardList();
 
     expect(component.walletView()).toBe('closing');
     expect(scrollToSpy).toHaveBeenCalledWith(window.scrollX, 320);
-    expect(animate).toHaveBeenCalledWith(
-      [{ transform: 'translateY(-456px)' }, { transform: 'translateY(0)' }],
-      {
-        duration: 420,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        fill: 'forwards',
-      },
-    );
+    expect(animate).toHaveBeenCalledWith([{ transform: 'translateY(-456px)' }, { transform: 'translateY(0)' }], {
+      duration: 420,
+      easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+      fill: 'forwards',
+    });
 
     vi.advanceTimersByTime(420);
     expect(component.selectedCard()).toBeNull();

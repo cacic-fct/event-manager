@@ -79,7 +79,8 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     buildMajorEventSubscription('subscription-2', selectedMajorEventId || 'major-event-1', 'Grace Hopper', 'CONFIRMED'),
   ]);
   const selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(
-    majorEventSubscriptions().find((subscription) => subscription.id === options.selectedMajorEventSubscriptionId) ?? null,
+    majorEventSubscriptions().find((subscription) => subscription.id === options.selectedMajorEventSubscriptionId) ??
+      null,
   );
   const majorEventPaymentTiers = computed(() => {
     const tiers =
@@ -106,7 +107,11 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     },
   ]);
   const selectedEventIds = signal(
-    new Set(selectedMajorEventSubscription()?.events.filter((event) => event.subscribed).map((event) => event.eventId) ?? []),
+    new Set(
+      selectedMajorEventSubscription()
+        ?.events.filter((event) => event.subscribed)
+        .map((event) => event.eventId) ?? [],
+    ),
   );
   const majorEventForm = new FormGroup({
     majorEventId: new FormControl(selectedMajorEventId ?? '', { nonNullable: true }),

@@ -246,11 +246,9 @@ describe('CertificateDownloadService', () => {
     expect(browser.close).toHaveBeenCalledTimes(1);
     expect(archiveStream.append).toHaveBeenNthCalledWith(1, Buffer.from('pdf-1'), { name: 'primeiro-certificado.pdf' });
     expect(archiveStream.append).toHaveBeenNthCalledWith(2, Buffer.from('pdf-2'), { name: 'segundo-certificado.pdf' });
-    expect(archiveStream.append).toHaveBeenNthCalledWith(
-      3,
-      expect.stringContaining('"name": "Evento"'),
-      { name: 'joao-da-silva-cacic_events.json' },
-    );
+    expect(archiveStream.append).toHaveBeenNthCalledWith(3, expect.stringContaining('"name": "Evento"'), {
+      name: 'joao-da-silva-cacic_events.json',
+    });
     expect(archiveStream.finalize).toHaveBeenCalledTimes(1);
   });
 

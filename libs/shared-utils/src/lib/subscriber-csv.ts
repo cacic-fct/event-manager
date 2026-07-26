@@ -55,7 +55,10 @@ export function buildSubscriberCsv(records: SubscriberCsvRecord[], options: Subs
 }
 
 export function subscriberCsvHeader(options: SubscriberCsvExportOptions, extraHeaders: string[] = []): string {
-  return serializeSubscriberCsvRow([...options.fields.map((field) => SUBSCRIBER_FIELD_HEADERS[field]), ...extraHeaders]);
+  return serializeSubscriberCsvRow([
+    ...options.fields.map((field) => SUBSCRIBER_FIELD_HEADERS[field]),
+    ...extraHeaders,
+  ]);
 }
 
 export function subscriberCsvRow(
@@ -63,9 +66,10 @@ export function subscriberCsvRow(
   options: SubscriberCsvExportOptions,
   extraValues: string[] = [],
 ): string {
-  return serializeSubscriberCsvRow(
-    [...options.fields.map((field) => getSubscriberFieldValue(person, field, options.identityDocumentMode)), ...extraValues],
-  );
+  return serializeSubscriberCsvRow([
+    ...options.fields.map((field) => getSubscriberFieldValue(person, field, options.identityDocumentMode)),
+    ...extraValues,
+  ]);
 }
 
 export function getSubscriberFieldValue(

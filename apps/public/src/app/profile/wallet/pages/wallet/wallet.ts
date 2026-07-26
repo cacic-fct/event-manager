@@ -107,8 +107,7 @@ export class Wallet {
   public readonly hasAcademicRecord = computed(() => {
     const user = this.cardUser();
     const roles = user?.unespRole;
-    const isUndergraduate =
-      roles === 'aluno-graduacao' || (Array.isArray(roles) && roles.includes('aluno-graduacao'));
+    const isUndergraduate = roles === 'aluno-graduacao' || (Array.isArray(roles) && roles.includes('aluno-graduacao'));
     return isUndergraduate && Boolean(user?.enrollmentNumber);
   });
 
@@ -187,7 +186,9 @@ export class Wallet {
     this.walletView.set('selecting');
 
     const prefersReducedMotion =
-      this.isBrowser && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.isBrowser &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (!this.isBrowser || prefersReducedMotion) {
       if (this.isBrowser) window.scrollTo(window.scrollX, 0);
       this.walletView.set('detail');
@@ -203,10 +204,7 @@ export class Wallet {
       const endOffset = topSlotPosition - cardTopAfterScroll;
 
       this.selectionAnimation = cardElement.animate(
-        [
-          { transform: `translateY(${startOffset}px)` },
-          { transform: `translateY(${endOffset}px)` },
-        ],
+        [{ transform: `translateY(${startOffset}px)` }, { transform: `translateY(${endOffset}px)` }],
         {
           duration: Wallet.CARD_SELECTION_DURATION_MS,
           easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
@@ -245,7 +243,9 @@ export class Wallet {
     const selectedCard = this.selectedCard();
     const detailCardTop = this.detailCardSlot()?.nativeElement.getBoundingClientRect().top;
     const prefersReducedMotion =
-      this.isBrowser && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.isBrowser &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     if (!this.isBrowser || prefersReducedMotion || !selectedCard || detailCardTop === undefined) {
       if (this.isBrowser) window.scrollTo(window.scrollX, this.listScrollPosition);
@@ -270,10 +270,7 @@ export class Wallet {
         fill: 'forwards',
       },
     );
-    this.selectionTimeout = window.setTimeout(
-      () => this.finishCardListTransition(),
-      Wallet.CARD_SELECTION_DURATION_MS,
-    );
+    this.selectionTimeout = window.setTimeout(() => this.finishCardListTransition(), Wallet.CARD_SELECTION_DURATION_MS);
     return true;
   }
 
