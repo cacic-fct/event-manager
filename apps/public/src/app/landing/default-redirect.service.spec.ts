@@ -15,7 +15,11 @@ describe('DefaultRedirectService', () => {
     unreadCount: ReturnType<typeof vi.fn>;
   };
   let network: { isOnline: ReturnType<typeof vi.fn> };
-  let offlineData: { getCalendarEvents: ReturnType<typeof vi.fn> };
+  let auth: { isAuthenticated: ReturnType<typeof vi.fn> };
+  let offlineData: {
+    getCalendarEvents: ReturnType<typeof vi.fn>;
+    getLatestUserSnapshot: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     api = { getCurrentUserDefaultRedirect: vi.fn(() => of('CALENDAR')) };
@@ -24,12 +28,16 @@ describe('DefaultRedirectService', () => {
       unreadCount: vi.fn(() => 0),
     };
     network = { isOnline: vi.fn(() => true) };
-    offlineData = { getCalendarEvents: vi.fn(() => Promise.resolve([])) };
+    auth = { isAuthenticated: vi.fn(() => true) };
+    offlineData = {
+      getCalendarEvents: vi.fn(() => Promise.resolve([])),
+      getLatestUserSnapshot: vi.fn(() => Promise.resolve(null)),
+    };
 
     TestBed.configureTestingModule({
       providers: [
         DefaultRedirectService,
-        { provide: AuthService, useValue: { isAuthenticated: () => true } },
+        { provide: AuthService, useValue: auth },
         { provide: DefaultRedirectApiService, useValue: api },
         { provide: NovuNotificationsService, useValue: notifications },
         { provide: NetworkStatusService, useValue: network },
@@ -78,6 +86,29 @@ describe('DefaultRedirectService', () => {
 
     await expect(TestBed.inject(DefaultRedirectService).resolve()).resolves.toBe('/notifications');
     expect(offlineData.getCalendarEvents).not.toHaveBeenCalled();
+  });
+
+  it('redirects a previously logged-in offline user from home using cached calendar data', async () => {
+    network.isOnline.mockReturnValue(false);
+    auth.isAuthenticated.mockReturnValue(false);
+    offlineData.getLatestUserSnapshot.mockResolvedValue({ userId: 'offline-user' });
+    offlineData.getCalendarEvents.mockResolvedValue([{ endDate: new Date(Date.now() + 60_000).toISOString() }]);
+    const router = { navigateByUrl: vi.fn(() => Promise.resolve(true)) } as unknown as import('@angular/router').Router;
+
+    await TestBed.inject(DefaultRedirectService).navigateOfflineReturningUser(router);
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/calendar');
+    expect(api.getCurrentUserDefaultRedirect).not.toHaveBeenCalled();
+  });
+
+  it('keeps an offline user without a saved login on home', async () => {
+    network.isOnline.mockReturnValue(false);
+    auth.isAuthenticated.mockReturnValue(false);
+    const router = { navigateByUrl: vi.fn(() => Promise.resolve(true)) } as unknown as import('@angular/router').Router;
+
+    await TestBed.inject(DefaultRedirectService).navigateOfflineReturningUser(router);
+
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
   it('falls back to the feature-flagged route when the online decision times out', async () => {

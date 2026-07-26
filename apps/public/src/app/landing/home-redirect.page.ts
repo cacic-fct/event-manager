@@ -27,10 +27,17 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     if (this.authService.isAuthenticated()) {
       void this.navigateToDefaultRoute();
+      return;
     }
+
+    void this.navigateOfflineReturningUser();
   }
 
   private async navigateToDefaultRoute(): Promise<void> {
     await this.defaultRedirect.navigateToDefault(this.router);
+  }
+
+  private async navigateOfflineReturningUser(): Promise<void> {
+    await this.defaultRedirect.navigateOfflineReturningUser(this.router);
   }
 }

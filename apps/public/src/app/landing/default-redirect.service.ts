@@ -57,6 +57,21 @@ export class DefaultRedirectService {
     await router.navigateByUrl(route ?? (await this.resolve()));
   }
 
+  async navigateOfflineReturningUser(router: Router): Promise<void> {
+    if (this.auth.isAuthenticated() || this.networkStatus.isOnline()) {
+      return;
+    }
+
+    try {
+      const snapshot = await this.offlineData.getLatestUserSnapshot();
+      if (snapshot) {
+        await router.navigateByUrl(await this.resolveOffline(this.featureFlagFallback()));
+      }
+    } catch {
+      // Offline storage may be unavailable (for example, in private browsing).
+    }
+  }
+
   private async resolveOffline(fallback: string): Promise<string> {
     if (this.notifications.unreadCount() > 0) {
       return '/notifications';
