@@ -7,14 +7,14 @@ export class RestaurantCardService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly offlineData = inject(OfflinePublicDataAccessService);
   private readonly numbers = signal<Record<string, string>>({});
-  private loadRequest = 0;
+  private readonly versions = new Map<string, number>();
 
   async load(userId: string): Promise<void> {
     if (!isPlatformBrowser(this.platformId)) return;
 
-    const request = ++this.loadRequest;
+    const version = this.versions.get(userId) ?? 0;
     const storedCard = await this.offlineData.getRestaurantCard(userId);
-    if (request !== this.loadRequest) return;
+    if (version !== (this.versions.get(userId) ?? 0)) return;
 
     this.numbers.update((numbers) => ({ ...numbers, [userId]: storedCard?.cardNumber ?? '' }));
   }
@@ -27,6 +27,7 @@ export class RestaurantCardService {
     const value = this.sanitize(number);
     if (!value || !isPlatformBrowser(this.platformId)) return;
 
+    this.versions.set(userId, (this.versions.get(userId) ?? 0) + 1);
     await this.offlineData.replaceRestaurantCard({ userId, cardNumber: value, updatedAt: Date.now() });
     this.numbers.update((numbers) => ({ ...numbers, [userId]: value }));
   }

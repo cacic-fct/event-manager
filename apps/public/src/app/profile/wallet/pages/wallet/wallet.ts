@@ -63,6 +63,7 @@ export class Wallet {
   private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly offlineSnapshot = signal<OfflineUserSnapshot | null>(null);
+  private offlineSnapshotRequest = 0;
   private selectionTimeout: number | null = null;
   private selectionAnimation: Animation | null = null;
   private listScrollPosition = 0;
@@ -125,12 +126,15 @@ export class Wallet {
 
   constructor() {
     effect(() => {
+      const request = ++this.offlineSnapshotRequest;
       if (this.authService.isAuthenticated() || this.networkStatus.isOnline()) {
         this.offlineSnapshot.set(null);
         return;
       }
 
-      void this.offlineUserData.getOfflineSnapshot().then((snapshot) => this.offlineSnapshot.set(snapshot));
+      void this.offlineUserData.getOfflineSnapshot().then((snapshot) => {
+        if (request === this.offlineSnapshotRequest) this.offlineSnapshot.set(snapshot);
+      });
     });
 
     effect(() => {

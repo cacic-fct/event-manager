@@ -111,11 +111,13 @@ export class UserOfflineDataService {
       database.userSnapshots,
       database.attendanceFeeds,
       database.attendanceDetails,
+      database.restaurantCards,
       database.totpSeeds,
       async () => {
         await database.userSnapshots.clear();
         await database.attendanceFeeds.clear();
         await database.attendanceDetails.clear();
+        await database.restaurantCards.clear();
         await database.totpSeeds.clear();
       },
     );

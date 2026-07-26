@@ -39,19 +39,19 @@ export class WalletBarcodeComponent {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
-  readonly userId = input('');
+  readonly value = input('');
   readonly barcodeType = input<'aztec' | 'code128'>('aztec');
   readonly errorCorrectionLevel = input('35');
   readonly label = input('Código de barras');
   readonly ariaHidden = input(false);
 
   readonly trustedSvg = computed<SafeHtml | ''>(() => {
-    const userId = this.userId().trim();
-    if (!this.isBrowser || !userId) {
+    const value = this.value().trim();
+    if (!this.isBrowser || !value) {
       return '';
     }
 
-    const svg = this.renderBarcode(userId);
+    const svg = this.renderBarcode(value);
     if (!svg) {
       return '';
     }

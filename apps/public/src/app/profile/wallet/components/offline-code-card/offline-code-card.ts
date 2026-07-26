@@ -127,9 +127,10 @@ export class WalletOfflineCodeCard {
   });
   readonly displayCode = computed(() => (this.code() ? formatTotpCode(this.code()) : '--- ---'));
   readonly progressValue = computed(() => ((TOTP_PERIOD_MS - (this.now() % TOTP_PERIOD_MS)) / TOTP_PERIOD_MS) * 100);
+  readonly periodBucket = computed(() => Math.floor(this.now() / TOTP_PERIOD_MS));
 
   constructor() {
-    this.loadSeed();
+    if (this.isBrowser) this.loadSeed();
 
     if (this.isBrowser) {
       const tick = () => {
@@ -150,11 +151,13 @@ export class WalletOfflineCodeCard {
         this.code.set('');
         return;
       }
-      void this.updateCode(seed.seed, Math.floor(this.now() / TOTP_PERIOD_MS) * TOTP_PERIOD_MS);
+      void this.updateCode(seed.seed, this.periodBucket() * TOTP_PERIOD_MS);
     });
   }
 
   loadSeed(): void {
+    if (!this.isBrowser) return;
+
     this.state.set({ status: 'loading' });
     this.session.getWalletSeed().then(
       (seed) => {

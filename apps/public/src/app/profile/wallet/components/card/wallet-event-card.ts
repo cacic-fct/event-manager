@@ -10,7 +10,7 @@ import { WalletCardUser } from './wallet-card.types';
     <section class="ticket-holder" aria-label="Dados do portador">
       <div class="avatar-frame">
         <img
-          [src]="user()?.picture || '/assets/shared/avatar-placeholder.svg'"
+          [src]="user()?.picture || '/assets/icons/avatar-placeholder.avif'"
           alt="Avatar"
           class="avatar"
           referrerpolicy="no-referrer" />

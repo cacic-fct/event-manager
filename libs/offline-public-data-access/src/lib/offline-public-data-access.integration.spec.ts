@@ -357,6 +357,7 @@ describe('offline public data access integration', () => {
     await expect(service.getLatestUserSnapshot()).resolves.toBeNull();
     await expect(service.getAttendanceFeed('user-1')).resolves.toBeNull();
     await expect(service.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toBeNull();
+    await expect(service.getRestaurantCard('user-1')).resolves.toBeNull();
   });
 
   it('returns safe fallback values when offline storage is unavailable', async () => {

@@ -1,10 +1,12 @@
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
-import { expect, within } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
 import { RestaurantCardService } from '../../services/restaurant-card.service';
 import { walletStoryUser } from '../../testing/wallet-story-fixtures';
 import { RestaurantCardEnrollment } from './restaurant-card-enrollment';
+
+const saveRestaurantCard = fn();
 
 const meta: Meta<RestaurantCardEnrollment> = {
   component: RestaurantCardEnrollment,
@@ -15,7 +17,7 @@ const meta: Meta<RestaurantCardEnrollment> = {
       providers: [
         provideRouter([]),
         { provide: AuthService, useValue: { user: () => ({ sub: walletStoryUser.userId }) } },
-        { provide: RestaurantCardService, useValue: { save: () => undefined } },
+        { provide: RestaurantCardService, useValue: { save: saveRestaurantCard } },
       ],
     }),
   ],
@@ -29,7 +31,12 @@ type Story = StoryObj<RestaurantCardEnrollment>;
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByRole('textbox', { name: /Número do Cartão de Cliente/i })).toBeVisible();
-    await expect(canvas.getByRole('button', { name: /Adicionar cartão/i })).toBeDisabled();
+    const cardNumber = await canvas.findByRole('textbox', { name: /Número do Cartão de Cliente/i });
+    const saveButton = canvas.getByRole('button', { name: /Adicionar cartão/i });
+    await expect(saveButton).toBeDisabled();
+    await userEvent.type(cardNumber, '12ab34');
+    await expect(saveButton).toBeEnabled();
+    await userEvent.click(saveButton);
+    await expect(saveRestaurantCard).toHaveBeenCalledWith(walletStoryUser.userId, '1234');
   },
 };

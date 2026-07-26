@@ -12,7 +12,7 @@ import { WalletCardUser } from './wallet-card.types';
       <app-wallet-barcode
         class="restaurant-barcode"
         [barcodeType]="'code128'"
-        [userId]="restaurantNumber() || ''"
+        [value]="restaurantNumber() || ''"
         label="Código de barras do Cartão do R.U." />
       <p>Apresente este cartão na catraca do Restaurante Universitário.</p>
     </section>
