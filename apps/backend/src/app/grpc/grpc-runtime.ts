@@ -168,9 +168,8 @@ export class GrpcUnaryClient {
   }
 }
 
-export function grpcUnavailable(message: string, _cause: unknown): ServiceUnavailableException {
-  void _cause;
-  return new ServiceUnavailableException(message);
+export function grpcUnavailable(message: string, cause: unknown): ServiceUnavailableException {
+  return new ServiceUnavailableException(message, { cause });
 }
 
 function isGrpcObject(value: unknown): value is GrpcObject {

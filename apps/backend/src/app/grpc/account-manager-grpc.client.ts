@@ -88,7 +88,7 @@ export class AccountManagerGrpcClient implements OnModuleDestroy {
         timeoutMs: 10_000,
       });
     } catch (error) {
-      this.logger.warn(`Account Manager gRPC call ${method} failed.`);
+      this.logger.warn(`Account Manager gRPC call ${method} failed.`, error);
       throw grpcUnavailable('Account Manager M2M service is unavailable.', error);
     }
   }

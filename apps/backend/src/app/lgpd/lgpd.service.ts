@@ -217,30 +217,30 @@ export class LgpdService {
     const result = await this.prisma.$transaction(async (tx) => {
       const people = await tx.people.updateMany({
         where: { id: { in: personIds }, deletedAt: null },
-        data: { deletedAt: now, updatedById: input.userId },
+        data: { deletedAt: now, lgpdDeletionRequestId: input.requestId, updatedById: input.userId },
       });
       const eventSubscriptions = await tx.eventSubscription.updateMany({
         where: { personId: { in: personIds }, deletedAt: null },
-        data: { deletedAt: now },
+        data: { deletedAt: now, lgpdDeletionRequestId: input.requestId },
       });
       const eventGroupSubscriptions = await tx.eventGroupSubscription.updateMany({
         where: { personId: { in: personIds }, deletedAt: null },
-        data: { deletedAt: now },
+        data: { deletedAt: now, lgpdDeletionRequestId: input.requestId },
       });
       const majorEventSubscriptions = await tx.majorEventSubscription.updateMany({
         where: { personId: { in: personIds }, deletedAt: null },
-        data: { deletedAt: now },
+        data: { deletedAt: now, lgpdDeletionRequestId: input.requestId },
       });
       const selections = await tx.majorEventSubscriptionEventSelection.updateMany({
         where: {
           subscription: { personId: { in: personIds } },
           deletedAt: null,
         },
-        data: { deletedAt: now },
+        data: { deletedAt: now, lgpdDeletionRequestId: input.requestId },
       });
       const certificates = await tx.certificate.updateMany({
         where: { personId: { in: personIds }, deletedAt: null },
-        data: { deletedAt: now },
+        data: { deletedAt: now, lgpdDeletionRequestId: input.requestId },
       });
       return {
         people,
@@ -269,28 +269,28 @@ export class LgpdService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       const people = await tx.people.updateMany({
-        where: { id: { in: personIds }, deletedAt: { not: null } },
-        data: { deletedAt: null },
+        where: { id: { in: personIds }, lgpdDeletionRequestId: input.requestId },
+        data: { deletedAt: null, lgpdDeletionRequestId: null },
       });
       const eventSubscriptions = await tx.eventSubscription.updateMany({
-        where: { personId: { in: personIds }, deletedAt: { not: null } },
-        data: { deletedAt: null },
+        where: { personId: { in: personIds }, lgpdDeletionRequestId: input.requestId },
+        data: { deletedAt: null, lgpdDeletionRequestId: null },
       });
       const eventGroupSubscriptions = await tx.eventGroupSubscription.updateMany({
-        where: { personId: { in: personIds }, deletedAt: { not: null } },
-        data: { deletedAt: null },
+        where: { personId: { in: personIds }, lgpdDeletionRequestId: input.requestId },
+        data: { deletedAt: null, lgpdDeletionRequestId: null },
       });
       const majorEventSubscriptions = await tx.majorEventSubscription.updateMany({
-        where: { personId: { in: personIds }, deletedAt: { not: null } },
-        data: { deletedAt: null },
+        where: { personId: { in: personIds }, lgpdDeletionRequestId: input.requestId },
+        data: { deletedAt: null, lgpdDeletionRequestId: null },
       });
       const selections = await tx.majorEventSubscriptionEventSelection.updateMany({
-        where: { subscription: { personId: { in: personIds } }, deletedAt: { not: null } },
-        data: { deletedAt: null },
+        where: { subscription: { personId: { in: personIds } }, lgpdDeletionRequestId: input.requestId },
+        data: { deletedAt: null, lgpdDeletionRequestId: null },
       });
       const certificates = await tx.certificate.updateMany({
-        where: { personId: { in: personIds }, deletedAt: { not: null } },
-        data: { deletedAt: null },
+        where: { personId: { in: personIds }, lgpdDeletionRequestId: input.requestId },
+        data: { deletedAt: null, lgpdDeletionRequestId: null },
       });
 
       return {

@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 import type { KeycloakM2mTokenService } from '../auth/keycloak-m2m-token.service';
 import { AccountManagerGrpcClient } from './account-manager-grpc.client';
 import { GrpcUnaryClient } from './grpc-runtime';
@@ -98,12 +98,17 @@ describe('AccountManagerGrpcClient', () => {
     });
     await expect(client.getPrivacySettings('user-1')).rejects.toBeInstanceOf(ServiceUnavailableException);
 
-    call.mockRejectedValueOnce(new Error('connection refused'));
+    const grpcError = Object.assign(new Error('connection refused'), { code: 14 });
+    const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+    call.mockRejectedValueOnce(grpcError);
     await expect(client.recordCookieConsent('user-1')).rejects.toEqual(
       expect.objectContaining({
+        cause: grpcError,
         message: 'Account Manager M2M service is unavailable.',
         status: 503,
       }),
     );
+    expect(warn).toHaveBeenCalledWith('Account Manager gRPC call RecordCookieConsent failed.', grpcError);
+    warn.mockRestore();
   });
 });

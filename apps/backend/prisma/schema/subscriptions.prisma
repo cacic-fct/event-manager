@@ -42,12 +42,14 @@ model EventSubscription {
   createdById     String?
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
-  deletedAt DateTime?
+  deletedAt              DateTime?
+  lgpdDeletionRequestId String?
 
   @@unique([eventId, personId, deletedAt])
   @@index([eventId])
   @@index([personId, deletedAt, eventId])
   @@index([eventGroupSubscriptionId])
+  @@index([lgpdDeletionRequestId])
   @@map("event_subscriptions")
 }
 
@@ -66,11 +68,13 @@ model EventGroupSubscription {
   createdById     String?
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
-  deletedAt DateTime?
+  deletedAt              DateTime?
+  lgpdDeletionRequestId String?
 
   @@unique([eventGroupId, personId, deletedAt])
   @@index([eventGroupId])
   @@index([personId])
+  @@index([lgpdDeletionRequestId])
   @@map("event_group_subscriptions")
 }
 
@@ -105,11 +109,13 @@ model MajorEventSubscription {
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
   updatedAt       DateTime                   @updatedAt
 
-  deletedAt DateTime?
+  deletedAt              DateTime?
+  lgpdDeletionRequestId String?
 
   @@unique([majorEventId, personId, deletedAt])
   @@index([majorEventId])
   @@index([personId, deletedAt, subscriptionStatus, majorEventId])
+  @@index([lgpdDeletionRequestId])
   @@map("major_event_subscriptions")
 }
 
@@ -126,10 +132,12 @@ model MajorEventSubscriptionEventSelection {
 
   createdAt   DateTime @default(now())
   createdById String?
-  deletedAt   DateTime?
+  deletedAt             DateTime?
+  lgpdDeletionRequestId String?
 
   @@index([eventId])
   @@index([subscriptionId])
   @@index([subscriptionId, eventId])
+  @@index([lgpdDeletionRequestId])
   @@map("major_event_subscription_event_selections")
 }

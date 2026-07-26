@@ -15,7 +15,7 @@ describe('LgpdService cancellation', () => {
     restoreLgpdServiceTestContext();
   });
 
-  it('restores soft-deleted records for a cancelled scheduled deletion', async () => {
+  it('restores only records soft-deleted by the cancelled request', async () => {
     const { service, tx } = context;
 
     await expect(
@@ -23,19 +23,19 @@ describe('LgpdService cancellation', () => {
     ).resolves.toEqual({ success: true, peopleUpdated: 2, recordsUpdated: 2 });
 
     expect(tx.people.updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ['source-person', 'target-person'] }, deletedAt: { not: null } },
-      data: { deletedAt: null },
+      where: { id: { in: ['source-person', 'target-person'] }, lgpdDeletionRequestId: 'cancel-1' },
+      data: { deletedAt: null, lgpdDeletionRequestId: null },
     });
     expect(tx.eventSubscription.updateMany).toHaveBeenCalledWith({
-      where: { personId: { in: ['source-person', 'target-person'] }, deletedAt: { not: null } },
-      data: { deletedAt: null },
+      where: { personId: { in: ['source-person', 'target-person'] }, lgpdDeletionRequestId: 'cancel-1' },
+      data: { deletedAt: null, lgpdDeletionRequestId: null },
     });
     expect(tx.majorEventSubscriptionEventSelection.updateMany).toHaveBeenCalledWith({
       where: {
         subscription: { personId: { in: ['source-person', 'target-person'] } },
-        deletedAt: { not: null },
+        lgpdDeletionRequestId: 'cancel-1',
       },
-      data: { deletedAt: null },
+      data: { deletedAt: null, lgpdDeletionRequestId: null },
     });
   });
 });
