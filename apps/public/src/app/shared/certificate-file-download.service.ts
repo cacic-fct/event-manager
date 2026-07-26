@@ -12,7 +12,10 @@ export class CertificateFileDownloadService {
       return;
     }
 
-    this.saveBlob(new Blob([this.decodeBase64(download.contentBase64)], { type: download.mimeType }), download.fileName);
+    this.saveBlob(
+      new Blob([this.decodeBase64(download.contentBase64)], { type: download.mimeType }),
+      download.fileName,
+    );
   }
 
   saveBlob(blob: Blob, fileName: string): void {

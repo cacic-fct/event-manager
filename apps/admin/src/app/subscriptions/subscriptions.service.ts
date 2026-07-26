@@ -338,7 +338,12 @@ export class SubscriptionsService {
       return;
     }
     if (navigate) {
-      void this.router.navigate(['/subscriptions/major-event', subscription.majorEventId, 'subscription', subscription.id]);
+      void this.router.navigate([
+        '/subscriptions/major-event',
+        subscription.majorEventId,
+        'subscription',
+        subscription.id,
+      ]);
     }
     this.majorEventEditForm.reset({
       subscriptionStatus: subscription.subscriptionStatus,
@@ -614,7 +619,9 @@ export class SubscriptionsService {
 
     try {
       if (options.badgeCodes.enabled) {
-        const archive = await firstValueFrom(this.api.downloadMajorEventSubscriptionBadgeArchive(majorEventId, options));
+        const archive = await firstValueFrom(
+          this.api.downloadMajorEventSubscriptionBadgeArchive(majorEventId, options),
+        );
         this.downloadBlob(archive.fileName, archive.blob);
         return;
       }

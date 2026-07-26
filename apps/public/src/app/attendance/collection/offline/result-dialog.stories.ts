@@ -4,10 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
-import {
-  AttendanceOfflineSyncResultDialog,
-  type AttendanceOfflineSyncResultDialogData,
-} from './result-dialog';
+import { AttendanceOfflineSyncResultDialog, type AttendanceOfflineSyncResultDialogData } from './result-dialog';
 
 interface OfflineResultStoryArgs {
   createdCount: number;

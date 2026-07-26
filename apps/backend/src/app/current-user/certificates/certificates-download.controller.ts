@@ -27,7 +27,9 @@ export class CurrentUserCertificatesDownloadController {
     description: 'Streams rendered certificates into the archive without buffering the complete ZIP in server memory.',
   })
   @ApiProduces('application/zip')
-  @ApiOkResponse({ description: 'A streamed ZIP archive containing the current user certificates and events manifest.' })
+  @ApiOkResponse({
+    description: 'A streamed ZIP archive containing the current user certificates and events manifest.',
+  })
   @ApiNotFoundResponse({ description: 'Returned when the current user has no certificates.' })
   async downloadArchive(@Req() request: RequestWithUser): Promise<StreamableFile> {
     const person = await this.currentUserContext.requireCurrentPerson({ req: request });

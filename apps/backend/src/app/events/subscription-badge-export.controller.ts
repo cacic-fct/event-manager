@@ -12,7 +12,15 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Response } from 'express';
-import { ArrayNotEmpty, IsArray, IsIn, IsString, Validate, ValidatorConstraint, ValidatorConstraintInterface } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsIn,
+  IsString,
+  Validate,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+} from 'class-validator';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import {
@@ -21,16 +29,14 @@ import {
   SubscriptionBadgeExportService,
 } from './subscription-badge-export.service';
 import { ApiProperty } from '@nestjs/swagger';
-import { isValidErrorCorrectionLevel, type IdentityDocumentExportMode, type SubscriberCsvField } from '@cacic-fct/shared-utils';
+import {
+  isValidErrorCorrectionLevel,
+  type IdentityDocumentExportMode,
+  type SubscriberCsvField,
+} from '@cacic-fct/shared-utils';
 
-const EVENT_SUBSCRIPTION_EXPORT_PERMISSIONS = [
-  Permission.Subscription.Read,
-  Permission.Event.Read,
-] as const;
-const MAJOR_EVENT_SUBSCRIPTION_EXPORT_PERMISSIONS = [
-  Permission.Subscription.Read,
-  Permission.MajorEvent.Read,
-] as const;
+const EVENT_SUBSCRIPTION_EXPORT_PERMISSIONS = [Permission.Subscription.Read, Permission.Event.Read] as const;
+const MAJOR_EVENT_SUBSCRIPTION_EXPORT_PERMISSIONS = [Permission.Subscription.Read, Permission.MajorEvent.Read] as const;
 
 @ValidatorConstraint({ name: 'isValidErrorCorrectionLevel' })
 class IsValidErrorCorrectionLevelConstraint implements ValidatorConstraintInterface {
@@ -44,7 +50,10 @@ class IsValidErrorCorrectionLevelConstraint implements ValidatorConstraintInterf
 }
 
 export class SubscriberBadgeExportInput {
-  @ApiProperty({ enum: ['fullName', 'email', 'identityDocument', 'enrollmentNumber', 'unespRole', 'phone'], isArray: true })
+  @ApiProperty({
+    enum: ['fullName', 'email', 'identityDocument', 'enrollmentNumber', 'unespRole', 'phone'],
+    isArray: true,
+  })
   @IsArray()
   @ArrayNotEmpty()
   @IsIn(['fullName', 'email', 'identityDocument', 'enrollmentNumber', 'unespRole', 'phone'], { each: true })
@@ -81,7 +90,20 @@ export class SubscriptionBadgeExportController {
   @ApiOperation({ summary: 'Export event subscriptions with Aztec badge codes as a ZIP archive' })
   @ApiParam({ name: 'eventId', description: 'Event identifier.' })
   @ApiProduces('application/zip')
-  @ApiBody({ type: SubscriberBadgeExportInput, examples: { default: { value: { fields: ['fullName'], identityDocumentMode: 'masked', errorCorrectionLevel: '23', format: 'svg', fileName: 'id' } } } })
+  @ApiBody({
+    type: SubscriberBadgeExportInput,
+    examples: {
+      default: {
+        value: {
+          fields: ['fullName'],
+          identityDocumentMode: 'masked',
+          errorCorrectionLevel: '23',
+          format: 'svg',
+          fileName: 'id',
+        },
+      },
+    },
+  })
   @ApiOkResponse({ description: 'ZIP stream containing inscricoes.csv and the codigos directory.' })
   @ApiBadRequestResponse({ description: 'Returned when export options or subscriber data cannot produce badge codes.' })
   @ApiNotFoundResponse({ description: 'Returned when the event does not exist.' })
@@ -103,7 +125,20 @@ export class SubscriptionBadgeExportController {
   @ApiOperation({ summary: 'Export major-event subscriptions with Aztec badge codes as a ZIP archive' })
   @ApiParam({ name: 'majorEventId', description: 'Major event identifier.' })
   @ApiProduces('application/zip')
-  @ApiBody({ type: SubscriberBadgeExportInput, examples: { default: { value: { fields: ['fullName'], identityDocumentMode: 'masked', errorCorrectionLevel: '23', format: 'svg', fileName: 'id' } } } })
+  @ApiBody({
+    type: SubscriberBadgeExportInput,
+    examples: {
+      default: {
+        value: {
+          fields: ['fullName'],
+          identityDocumentMode: 'masked',
+          errorCorrectionLevel: '23',
+          format: 'svg',
+          fileName: 'id',
+        },
+      },
+    },
+  })
   @ApiOkResponse({ description: 'ZIP stream containing inscricoes.csv and the codigos directory.' })
   @ApiBadRequestResponse({ description: 'Returned when export options or subscriber data cannot produce badge codes.' })
   @ApiNotFoundResponse({ description: 'Returned when the major event does not exist.' })

@@ -80,10 +80,12 @@ describe('SubscriptionBadgeExportService', () => {
         findFirst: jest.fn().mockResolvedValue({ id: 'event-1', name: 'Evento de teste' }),
       },
       eventSubscription: {
-        findMany: jest.fn().mockResolvedValue([
-          personSubscription({ id: 'person-1', name: 'Ana Silva', identityDocument: '123.456.789-09' }),
-          personSubscription({ id: 'person-2', name: 'ANA SILVA', identityDocument: null }),
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            personSubscription({ id: 'person-1', name: 'Ana Silva', identityDocument: '123.456.789-09' }),
+            personSubscription({ id: 'person-2', name: 'ANA SILVA', identityDocument: null }),
+          ]),
       },
     };
     const service = new SubscriptionBadgeExportService(prisma as never);
@@ -92,7 +94,6 @@ describe('SubscriptionBadgeExportService', () => {
       'documento não informado',
     );
   });
-
 });
 
 function personSubscription({

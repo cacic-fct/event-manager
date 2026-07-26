@@ -1,8 +1,5 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
-import {
-  createPublicEventForm,
-  createPublicEventFormLink,
-} from '@cacic-fct/event-manager-public-testing';
+import { createPublicEventForm, createPublicEventFormLink } from '@cacic-fct/event-manager-public-testing';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
