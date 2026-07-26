@@ -51,20 +51,20 @@ describe('offline public data access integration', () => {
     const service = injectService(CalendarOfflineDataService);
     await database.calendarEvents.put({
       id: 'expired-event',
-      startDate: '2000-04-20T09:00:00.000Z',
+      startDate: fixtureDate(-3650),
       cachedAt: Date.now() - 1,
-      event: event('expired-event', '2000-04-20T09:00:00.000Z'),
+      event: event('expired-event', fixtureDate(-3650)),
     });
 
     await service.upsertEvents([
-      event('later-event', '2026-06-27T14:00:00.000Z'),
-      event('early-event', '2026-06-26T09:00:00.000Z'),
+      event('later-event', fixtureDate(31, 14)),
+      event('early-event', fixtureDate(30)),
     ]);
 
     await expect(service.getLastRefresh('calendarEvents')).resolves.toEqual(expect.any(Number));
-    await expect(service.getEvents('2026-06-01T00:00:00.000Z')).resolves.toEqual([
-      event('early-event', '2026-06-26T09:00:00.000Z'),
-      event('later-event', '2026-06-27T14:00:00.000Z'),
+    await expect(service.getEvents(fixtureDate(1, 0))).resolves.toEqual([
+      event('early-event', fixtureDate(30)),
+      event('later-event', fixtureDate(31, 14)),
     ]);
     await expect(database.calendarEvents.get('expired-event')).resolves.toBeUndefined();
   });
@@ -73,16 +73,16 @@ describe('offline public data access integration', () => {
     const service = injectService(AttendanceOfflineQueueService);
 
     await service.replaceCollectionEvents('user-1', [
-      { eventId: 'late-event', event: event('late-event', '2026-06-27T14:00:00.000Z') },
-      { eventId: 'early-event', event: event('early-event', '2026-06-26T09:00:00.000Z') },
+      { eventId: 'late-event', event: event('late-event', fixtureDate(31, 14)) },
+      { eventId: 'early-event', event: event('early-event', fixtureDate(30)) },
     ]);
     await service.replaceCollectionEvents('user-2', [
-      { eventId: 'other-user-event', event: event('other-user-event', '2026-06-25T09:00:00.000Z') },
+      { eventId: 'other-user-event', event: event('other-user-event', fixtureDate(29)) },
     ]);
 
     await expect(service.getCollectionEvents('user-1')).resolves.toEqual([
-      { eventId: 'early-event', event: event('early-event', '2026-06-26T09:00:00.000Z') },
-      { eventId: 'late-event', event: event('late-event', '2026-06-27T14:00:00.000Z') },
+      { eventId: 'early-event', event: event('early-event', fixtureDate(30)) },
+      { eventId: 'late-event', event: event('late-event', fixtureDate(31, 14)) },
     ]);
     await expect(service.getCollectionEvent('user-1', 'other-user-event')).resolves.toBeNull();
   });
@@ -111,24 +111,24 @@ describe('offline public data access integration', () => {
     await database.attendanceQueue.bulkPut([
       queueItem('newer-event-item', 'PENDING', {
         eventId: 'event-1',
-        collectedAt: '2026-06-26T12:00:00.000Z',
+        collectedAt: fixtureDate(30, 12),
       }),
       queueItem('older-event-item', 'FAILED', {
         eventId: 'event-1',
-        collectedAt: '2026-06-26T09:00:00.000Z',
+        collectedAt: fixtureDate(30),
       }),
       queueItem('syncing-event-item', 'SYNCING', {
         eventId: 'event-1',
-        collectedAt: '2026-06-26T13:00:00.000Z',
+        collectedAt: fixtureDate(30, 13),
       }),
       queueItem('other-event-item', 'PENDING', {
         eventId: 'event-2',
-        collectedAt: '2026-06-26T14:00:00.000Z',
+        collectedAt: fixtureDate(30, 14),
       }),
       queueItem('other-user-item', 'PENDING', {
         queuedByUserId: 'user-2',
         eventId: 'event-1',
-        collectedAt: '2026-06-26T15:00:00.000Z',
+        collectedAt: fixtureDate(30, 15),
       }),
     ]);
 
@@ -306,7 +306,7 @@ describe('offline public data access integration', () => {
       eventType: 'event',
       details: {
         subscription: null,
-        event: event('event-1', '2026-06-26T09:00:00.000Z'),
+        event: event('event-1', fixtureDate(30)),
         hasIssuedCertificate: true,
         attendance: null,
       },
@@ -394,9 +394,9 @@ describe('offline public data access integration', () => {
       const userData = runInInjectionContext(unavailableInjector, () => new UserOfflineDataService());
       const totpSeeds = runInInjectionContext(unavailableInjector, () => new TotpSeedCacheService());
 
-      await expect(calendarData.getEvents('2026-01-01T00:00:00.000Z')).resolves.toEqual([]);
+      await expect(calendarData.getEvents(fixtureDate(-3650))).resolves.toEqual([]);
       await expect(calendarData.getLastRefresh('calendarEvents')).resolves.toBeNull();
-      await expect(calendarData.upsertEvents([event('event-1', '2026-06-26T09:00:00.000Z')])).resolves.toBeUndefined();
+      await expect(calendarData.upsertEvents([event('event-1', fixtureDate(30))])).resolves.toBeUndefined();
       await expect(calendarPreferences.getDefaultItemView()).resolves.toBe('automatic');
       await expect(firstValueFrom(calendarPreferences.watchDefaultItemView())).resolves.toBe('automatic');
       await expect(calendarPreferences.setDefaultItemView('list')).resolves.toBeUndefined();
@@ -525,7 +525,7 @@ function queueItem(
       longitude: -51.4,
       accuracyMeters: 10,
     },
-    collectedAt: '2026-06-26T09:00:00.000Z',
+    collectedAt: fixtureDate(30),
     queuedAt: 100,
     updatedAt: 100,
     authorUserId: 'collector-1',
@@ -545,7 +545,7 @@ function totpSeed(userId: string, overrides: Partial<OfflineTotpSeedRecord> = {}
     algorithm: 'SHA512',
     digits: 6,
     periodSeconds: 30,
-    serverTime: '2026-06-26T09:00:00.000Z',
+    serverTime: fixtureDate(30),
     sessionExpiresAt: 2_000,
     updatedAt: 10,
     ...overrides,
@@ -555,6 +555,16 @@ function totpSeed(userId: string, overrides: Partial<OfflineTotpSeedRecord> = {}
 function addOneHour(value: string): string {
   const date = new Date(value);
   date.setHours(date.getHours() + 1);
+
+  return date.toISOString();
+}
+
+const fixtureRunDate = new Date();
+
+function fixtureDate(daysFromRunDate: number, hour = 9): string {
+  const date = new Date(fixtureRunDate);
+  date.setUTCHours(hour, 0, 0, 0);
+  date.setUTCDate(date.getUTCDate() + daysFromRunDate);
 
   return date.toISOString();
 }
