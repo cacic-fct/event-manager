@@ -13,10 +13,15 @@
 
 <main class="calendar-page">
   <form class="filter-form" aria-label="Filtros do calendário">
-    <mat-form-field appearance="outline" class="search-field">
-      <mat-label>Buscar eventos</mat-label>
-      <mat-icon matPrefix>search</mat-icon>
-      <input matInput type="search" [formField]="filterForm.query" autocomplete="off" />
+    <div class="search-controls">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search-field">
+        <input
+          matInput
+          type="search"
+          [formField]="filterForm.query"
+          autocomplete="off"
+          placeholder="Buscar eventos"
+          aria-label="Buscar eventos" />
       @if (filterModel().query) {
       <button
         matIconButton
@@ -27,32 +32,47 @@
         <mat-icon>close</mat-icon>
       </button>
       }
-    </mat-form-field>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline" class="type-field">
-      <mat-label>Tipo</mat-label>
-      <mat-select [formField]="filterForm.eventType">
-        @for (option of eventTypeOptions; track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+      <button mat-icon-button type="button" class="search-button" (click)="searchNow()" aria-label="Buscar eventos">
+        <mat-icon>search</mat-icon>
+      </button>
 
-    @if (isAuthenticated()) {
-    <mat-form-field appearance="outline" class="subscription-field">
-      <mat-label>Inscrição</mat-label>
-      <mat-select [formField]="filterForm.subscription">
-        @for (option of subscriptionOptions; track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
+      <button
+        matIconButton
+        type="button"
+        class="filters-button"
+        [attr.aria-expanded]="filtersOpen()"
+        [attr.aria-label]="filtersOpen() ? 'Ocultar filtros' : 'Mostrar filtros'"
+        aria-controls="calendar-filter-panel"
+        (click)="toggleFilters()">
+        <mat-icon>filter_list</mat-icon>
+      </button>
+    </div>
+
+    @if (filtersOpen()) {
+    <section id="calendar-filter-panel" class="filter-panel" aria-label="Opções de filtro">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="type-field">
+        <mat-label>Tipo</mat-label>
+        <mat-select [formField]="filterForm.eventType">
+          @for (option of eventTypeOptions; track option.value) {
+          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (isAuthenticated()) {
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="subscription-field">
+        <mat-label>Inscrição</mat-label>
+        <mat-select [formField]="filterForm.subscription">
+          @for (option of subscriptionOptions; track option.value) {
+          <mat-option [value]="option.value">{{ option.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      }
+    </section>
     }
-
-    <button mat-stroked-button type="button" class="search-button" (click)="searchNow()">
-      <mat-icon>search</mat-icon>
-      Buscar
-    </button>
   </form>
 
   @let state = calendarState(); @if (state.status === 'loading') {

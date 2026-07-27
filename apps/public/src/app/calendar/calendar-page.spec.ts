@@ -68,6 +68,21 @@ describe('Calendar', () => {
     });
   });
 
+  it('keeps the optional filters hidden until the filter control is used', () => {
+    fixture.detectChanges();
+
+    expect(component.filtersOpen()).toBe(false);
+    expect(fixture.nativeElement.querySelector('#calendar-filter-panel')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.filters-button')?.getAttribute('aria-expanded')).toBe('false');
+
+    component.toggleFilters();
+    fixture.detectChanges();
+
+    expect(component.filtersOpen()).toBe(true);
+    expect(fixture.nativeElement.querySelector('#calendar-filter-panel')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.filters-button')?.getAttribute('aria-expanded')).toBe('true');
+  });
+
   it('uses the stored default item view as the initial calendar view', async () => {
     calendarPreferences.watchDefaultItemView.mockReturnValueOnce(of('week'));
     fixture = TestBed.createComponent(Calendar);

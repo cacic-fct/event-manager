@@ -89,6 +89,7 @@ export class Calendar {
     subscription: 'ALL',
   });
   readonly filterForm = form(this.filterModel);
+  readonly filtersOpen = signal(false);
 
   readonly viewMode = signal<CalendarViewMode>('list');
   readonly isAuthenticated = this.auth.isAuthenticated;
@@ -197,6 +198,10 @@ export class Calendar {
 
   searchNow(): void {
     this.refreshCounter.update((value) => value + 1);
+  }
+
+  toggleFilters(): void {
+    this.filtersOpen.update((isOpen) => !isOpen);
   }
 
   selectDate(date: Date): void {

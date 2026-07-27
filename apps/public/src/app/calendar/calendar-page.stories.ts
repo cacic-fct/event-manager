@@ -51,12 +51,15 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await expect(await canvas.findByText('Inscrito')).toBeVisible();
 
   const searchInput = canvas.getByRole('searchbox', { name: 'Buscar eventos' });
+  await expect(canvas.queryByLabelText('Tipo')).not.toBeInTheDocument();
+  await userEvent.click(canvas.getByRole('button', { name: 'Mostrar filtros' }));
+  await expect(canvas.getByLabelText('Tipo')).toBeVisible();
   await userEvent.clear(searchInput);
   await userEvent.type(searchInput, 'sem resultado storybook');
-  await userEvent.click(canvas.getByRole('button', { name: 'Buscar' }));
+  await userEvent.click(canvas.getByRole('button', { name: 'Buscar eventos' }));
   await expect(await canvas.findByText('Nenhum evento encontrado.')).toBeVisible();
   await userEvent.clear(searchInput);
-  await userEvent.click(canvas.getByRole('button', { name: 'Buscar' }));
+  await userEvent.click(canvas.getByRole('button', { name: 'Buscar eventos' }));
   await expectCalendarEventVisible(canvasElement);
 
   await userEvent.click(await canvas.findByRole('button', { name: 'Visualização semanal' }));
