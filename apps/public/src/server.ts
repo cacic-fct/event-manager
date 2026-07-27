@@ -5,7 +5,7 @@ import {
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
 import { applyCspToHtmlResponse } from '@cacic-fct/shared-utils';
-import express, { type Response as ExpressResponse } from 'express';
+import express, { type NextFunction, type Request, type Response as ExpressResponse } from 'express';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,7 +20,10 @@ const turnstileSiteKeyMetaName = 'cacic-turnstile-site-key';
 const turnstileSiteKey = process.env['TURNSTILE_SITE_KEY']?.trim() ?? '';
 const publicAppVersion = 'APP_VERSION_PLACEHOLDER';
 const publicAppOrigin = 'https://eventos.cacic.com.br';
-const sitemapGraphqlUrl = process.env['SITEMAP_API_URL']?.trim() || 'http://localhost:3000/api/graphql';
+const sitemapGraphqlUrl =
+  process.env['SITEMAP_API_URL']?.trim() ||
+  (process.env['NODE_ENV'] === 'production' ? 'http://backend:3000/api/graphql' : 'http://localhost:3000/api/graphql');
+const sitemapRequestTimeoutMs = 10_000;
 
 type PublicEventSitemapEntry = {
   id: string;
@@ -178,6 +181,30 @@ app.use('/{*splat}', (req, res, next) => {
     .catch(next);
 });
 
+app.use((error: unknown, req: Request, res: ExpressResponse, next: NextFunction) => {
+  const sitemapRequest = req.path.startsWith('/app/sitemaps/');
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      event: sitemapRequest ? 'public_sitemap_request_failed' : 'public_request_failed',
+      request: {
+        method: req.method,
+        path: req.originalUrl,
+        id: req.get('x-request-id') ?? req.get('cf-ray') ?? undefined,
+      },
+      ...(sitemapRequest ? { sitemapApi: safeUrlForLog(sitemapGraphqlUrl) } : {}),
+      error: describeError(error),
+    }),
+  );
+
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
+
+  res.status(sitemapRequest ? 502 : 500).type('text/plain').send(sitemapRequest ? 'Sitemap temporarily unavailable.' : 'Internal Server Error');
+});
+
 /**
  * Start the server if this module is the main entry point, or it is ran via PM2.
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
@@ -215,6 +242,7 @@ async function getPublicEventSitemapPage(page: number): Promise<PublicEventSitem
       `,
       variables: { page },
     }),
+    signal: AbortSignal.timeout(sitemapRequestTimeoutMs),
   });
   if (!response.ok) {
     throw new Error(`Unable to load public event sitemap: API returned ${response.status}.`);
@@ -292,6 +320,27 @@ function addTurnstileSiteKeyMeta(html: string): string {
 
 function escapeHtmlAttribute(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function safeUrlForLog(value: string): string {
+  try {
+    const url = new URL(value);
+    return `${url.protocol}//${url.host}${url.pathname}`;
+  } catch {
+    return 'invalid-configured-url';
+  }
+}
+
+function describeError(error: unknown): { message: string; name?: string; stack?: string } {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      name: error.name,
+      stack: error.stack,
+    };
+  }
+
+  return { message: String(error) };
 }
 
 function validateServerEnvironment(): void {
