@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package cacic.m2m.event_manager.v1;
+
+service EventManagerM2M {
+  rpc ListVotingEvents (ListVotingEventsRequest) returns (ListVotingEventsResponse);
+  rpc CheckVotingAttendance (CheckVotingAttendanceRequest) returns (CheckVotingAttendanceResponse);
+  rpc SyncAccountProfile (SyncAccountProfileRequest) returns (SyncAccountProfileResponse);
+  rpc ScoreAccountMerge (ScoreAccountMergeRequest) returns (ScoreAccountMergeResponse);
+  rpc ApplyAccountMerge (ApplyAccountMergeRequest) returns (ApplyAccountMergeResponse);
+  rpc CollectLgpdUserData (LgpdUserRequest) returns (JsonResponse);
+  rpc ScheduleLgpdDeletion (LgpdDeletionRequest) returns (JsonResponse);
+  rpc CancelLgpdDeletion (LgpdDeletionRequest) returns (JsonResponse);
+  rpc DeleteLgpdData (LgpdDeletionRequest) returns (JsonResponse);
+}
+
+message ListVotingEventsRequest {}
+
+message VotingEvent {
+  string id = 1;
+  string name = 2;
+  string start_date = 3;
+  string end_date = 4;
+  optional string location_description = 5;
+  bool should_collect_attendance = 6;
+}
+
+message ListVotingEventsResponse {
+  repeated VotingEvent events = 1;
+}
+
+message CheckVotingAttendanceRequest {
+  string event_id = 1;
+  string user_id = 2;
+}
+
+message CheckVotingAttendanceResponse {
+  string event_id = 1;
+  string user_id = 2;
+  bool attended = 3;
+  optional string attended_at = 4;
+}
+
+message SyncAccountProfileRequest {
+  string user_id = 1;
+  optional string email = 2;
+  optional string name = 3;
+  optional string fullname = 4;
+  optional string phone = 5;
+  optional string identity_document = 6;
+  optional string academic_id = 7;
+  repeated string unesp_role = 8;
+  optional bool is_onboarded = 9;
+}
+
+message SyncAccountProfileResponse {
+  string status = 1;
+  optional string user_id = 2;
+  optional string person_id = 3;
+}
+
+message ScoreAccountMergeRequest {
+  repeated string user_ids = 1;
+}
+
+message UserScore {
+  string user_id = 1;
+  double score = 2;
+}
+
+message ScoreAccountMergeResponse {
+  repeated UserScore scores = 1;
+}
+
+message ApplyAccountMergeRequest {
+  string event_id = 1;
+  string type = 2;
+  string old_user_id = 3;
+  string new_user_id = 4;
+  string occurred_at = 5;
+}
+
+message ApplyAccountMergeResponse {
+  string event_id = 1;
+  string type = 2;
+  string old_user_id = 3;
+  string new_user_id = 4;
+  string status = 5;
+}
+
+message LgpdUserRequest {
+  string user_id = 1;
+  optional string email = 2;
+}
+
+message LgpdDeletionRequest {
+  string request_id = 1;
+  string user_id = 2;
+  optional string email = 3;
+}
+
+message JsonResponse {
+  string json = 1;
+}

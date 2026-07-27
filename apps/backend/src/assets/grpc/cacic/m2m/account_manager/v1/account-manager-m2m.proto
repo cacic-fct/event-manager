@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package cacic.m2m.account_manager.v1;
+
+service AccountManagerM2M {
+  rpc RecordCookieConsent (UserRequest) returns (OperationResponse);
+  rpc GetPrivacySettings (UserRequest) returns (PrivacySettingsResponse);
+  rpc EnsureTotpSeed (UserRequest) returns (TotpSeedResponse);
+  rpc ValidateTotp (ValidateTotpRequest) returns (ValidateTotpResponse);
+  rpc LookupUsersByEnrollment (EnrollmentLookupRequest) returns (UserLookupResponse);
+  rpc LookupUsersByIdentifier (IdentifierLookupRequest) returns (IdentifierLookupResponse);
+}
+
+message UserRequest {
+  string user_id = 1;
+}
+
+message OperationResponse {
+  bool success = 1;
+}
+
+message PrivacySetting {
+  string setting_type = 1;
+  bool enabled = 2;
+  string last_updated = 3;
+}
+
+message PrivacySettingsResponse {
+  repeated PrivacySetting settings = 1;
+}
+
+message TotpSeedResponse {
+  string user_id = 1;
+  string primary_email = 2;
+  string seed = 3;
+  string algorithm = 4;
+  int32 digits = 5;
+  int32 period_seconds = 6;
+  string server_time = 7;
+}
+
+message ValidateTotpRequest {
+  string primary_email = 1;
+  string code = 2;
+}
+
+message ValidateTotpResponse {
+  bool valid = 1;
+  string server_time = 2;
+  optional string user_id = 3;
+  optional string primary_email = 4;
+  optional int32 matched_step_offset = 5;
+}
+
+message EnrollmentLookupRequest {
+  repeated string enrollment_numbers = 1;
+}
+
+message UserProfile {
+  string user_id = 1;
+  optional string enrollment_number = 2;
+  string name = 3;
+  optional string email = 4;
+}
+
+message UserLookupResponse {
+  repeated UserProfile users = 1;
+}
+
+message IdentifierLookupItem {
+  string request_id = 1;
+  string identifier_type = 2;
+  string identifier_value = 3;
+}
+
+message IdentifierLookupRequest {
+  repeated IdentifierLookupItem identifiers = 1;
+}
+
+message IdentifierLookupMatch {
+  string request_id = 1;
+  string user_id = 2;
+  optional string enrollment_number = 3;
+  string name = 4;
+  optional string email = 5;
+}
+
+message IdentifierLookupResponse {
+  repeated IdentifierLookupMatch users = 1;
+}

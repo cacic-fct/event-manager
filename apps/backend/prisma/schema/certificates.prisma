@@ -138,10 +138,12 @@ model Certificate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  deletedAt DateTime?
+  deletedAt              DateTime?
+  lgpdDeletionRequestId String?
 
   @@unique([personId, configId])
   @@index([personId])
   @@index([configId])
+  @@index([lgpdDeletionRequestId])
   @@map("certificates")
 }

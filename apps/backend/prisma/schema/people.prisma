@@ -36,7 +36,8 @@ model People {
 
   externalRef String? @unique // external system reference (optional)
 
-  deletedAt DateTime?
+  deletedAt               DateTime?
+  lgpdDeletionRequestId  String?
 
   createdAt   DateTime @default(now())
   createdById String?
@@ -51,5 +52,6 @@ model People {
   @@index([userId])
   @@index([mergedIntoId])
   @@index([deletedAt])
+  @@index([lgpdDeletionRequestId])
   @@map("people")
 }
