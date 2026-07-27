@@ -21,6 +21,7 @@ import type {
   SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService, MailtoService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
+import { DocumentSeoService } from '@cacic-fct/shared-seo-angular';
 import { formatDateRange, getEventTypeLabel, isOnlineAttendanceRegistrationOpen } from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -65,6 +66,38 @@ type EventFormPageLink = {
   displayOrder: number;
 };
 
+const PUBLIC_APP_ORIGIN = 'https://eventos.cacic.com.br';
+const PAGE_TITLE_SUFFIX = 'CACiC Eventos';
+const DEFAULT_DESCRIPTION = 'Calendário de eventos dos estudantes da FCT-Unesp.';
+const DEFAULT_OG_IMAGE = `${PUBLIC_APP_ORIGIN}/app/icons/ogp.png`;
+const STRUCTURED_DATA_ID = 'event-page-structured-data';
+
+type EventStructuredData = {
+  '@context': 'https://schema.org';
+  '@type': 'Event';
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  url: string;
+  image: string;
+  organizer: {
+    '@type': 'Organization';
+    name: string;
+    url: string;
+  };
+  location?: {
+    '@type': 'Place';
+    name: string;
+    geo?: {
+      '@type': 'GeoCoordinates';
+      latitude: number;
+      longitude: number;
+    };
+  };
+  performer?: { '@type': 'Person'; name: string }[];
+};
+
 @Component({
   selector: 'app-event',
   imports: [
@@ -99,6 +132,7 @@ export class Event {
   private readonly realtime = inject(EventSubscriptionRealtimeService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly mailto = inject(MailtoService);
+  private readonly seo = inject(DocumentSeoService);
   private readonly standaloneSubscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
@@ -143,6 +177,16 @@ export class Event {
   });
 
   readonly backUrl = computed(() => this.returnUrl());
+
+  private readonly seoWatcher = effect((onCleanup) => {
+    const currentState = this.eventState();
+    if (currentState.status !== 'ready') {
+      return;
+    }
+
+    this.updateSeo(currentState.data);
+    onCleanup(() => this.resetSeo());
+  });
 
   private readonly realtimeAvailabilityWatcher = effect((onCleanup) => {
     if (!this.isAuthenticated()) {
@@ -547,6 +591,147 @@ export class Event {
 
   private reload(): void {
     this.reloadCounter.update((value) => value + 1);
+  }
+
+  private updateSeo(data: EventPageData): void {
+    const { event } = data;
+    const isPreview = Boolean(data.preview);
+    const title = isPreview
+      ? `Pré-visualização: ${event.name} - ${PAGE_TITLE_SUFFIX}`
+      : `${event.name} - ${PAGE_TITLE_SUFFIX}`;
+    const description = this.eventDescription(event);
+
+    this.seo.setTitle(title);
+    this.seo.setNameMeta('description', description);
+    this.seo.setNameMeta('keywords', this.eventKeywords(event));
+    this.seo.setPropertyMeta('og:type', 'website');
+    this.seo.setPropertyMeta('og:locale', 'pt_BR');
+    this.seo.setPropertyMeta('og:site_name', PAGE_TITLE_SUFFIX);
+    this.seo.setPropertyMeta('og:title', title);
+    this.seo.setPropertyMeta('og:description', description);
+    this.seo.setPropertyMeta('og:image', DEFAULT_OG_IMAGE);
+    this.seo.setNameMeta('twitter:card', 'summary_large_image');
+    this.seo.setNameMeta('twitter:title', title);
+    this.seo.setNameMeta('twitter:description', description);
+    this.seo.setNameMeta('twitter:image', DEFAULT_OG_IMAGE);
+
+    if (isPreview) {
+      this.seo.setNameMeta('robots', 'noindex, nofollow, noarchive, nosnippet');
+      this.seo.removePropertyMeta('og:url');
+      this.seo.removeCanonicalUrl();
+      this.seo.removeJsonLd(STRUCTURED_DATA_ID);
+      return;
+    }
+
+    const canonicalUrl = `${PUBLIC_APP_ORIGIN}/app/event/${encodeURIComponent(event.id)}`;
+    this.seo.setNameMeta('robots', 'index, follow, max-image-preview:large');
+    this.seo.setPropertyMeta('og:url', canonicalUrl);
+    this.seo.setCanonicalUrl(canonicalUrl);
+    this.updateStructuredData(event, description, canonicalUrl);
+  }
+
+  private resetSeo(): void {
+    this.seo.setTitle(PAGE_TITLE_SUFFIX);
+    this.seo.setNameMeta('description', DEFAULT_DESCRIPTION);
+    this.seo.setNameMeta(
+      'keywords',
+      'Calendário de eventos, FCT-Unesp, Unesp Presidente Prudente, Faculdade de Ciência e Tecnologia, Universidade Estadual Paulista Júlio de Mesquita Filho, CACiC, Centro Acadêmico de Ciência da Computação',
+    );
+    this.seo.setPropertyMeta('og:type', 'website');
+    this.seo.setPropertyMeta('og:locale', 'pt_BR');
+    this.seo.setPropertyMeta('og:site_name', PAGE_TITLE_SUFFIX);
+    this.seo.setPropertyMeta('og:title', PAGE_TITLE_SUFFIX);
+    this.seo.setPropertyMeta('og:description', DEFAULT_DESCRIPTION);
+    this.seo.setPropertyMeta('og:image', DEFAULT_OG_IMAGE);
+    this.seo.removePropertyMeta('og:url');
+    this.seo.removeNameMeta('twitter:card');
+    this.seo.removeNameMeta('twitter:title');
+    this.seo.removeNameMeta('twitter:description');
+    this.seo.removeNameMeta('twitter:image');
+    this.seo.removeNameMeta('robots');
+    this.seo.removeCanonicalUrl();
+    this.seo.removeJsonLd(STRUCTURED_DATA_ID);
+  }
+
+  private eventDescription(event: PublicEvent): string {
+    const summary = event.shortDescription || event.description;
+    if (summary) {
+      return this.normalizedText(summary, 160);
+    }
+
+    return this.normalizedText(
+      `${event.name}. ${this.dateLine(event)}${event.locationDescription ? `. ${event.locationDescription}` : ''}`,
+      160,
+    );
+  }
+
+  private eventKeywords(event: PublicEvent): string {
+    return [
+      event.name,
+      event.majorEvent?.name,
+      event.eventGroup?.name,
+      this.eventTypeLabel(event),
+      'eventos FCT-Unesp',
+      'CACiC',
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(', ');
+  }
+
+  private normalizedText(value: string, maximumLength: number): string {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maximumLength) {
+      return normalized;
+    }
+
+    return `${normalized.slice(0, maximumLength - 1).trimEnd()}…`;
+  }
+
+  private updateStructuredData(event: PublicEvent, description: string, canonicalUrl: string): void {
+    const location = this.structuredLocation(event);
+    const structuredData: EventStructuredData = {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: event.name,
+      description,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      url: canonicalUrl,
+      image: DEFAULT_OG_IMAGE,
+      organizer: {
+        '@type': 'Organization',
+        name: 'CACiC',
+        url: PUBLIC_APP_ORIGIN,
+      },
+      ...(location ? { location } : {}),
+      ...(event.lecturers?.length
+        ? { performer: event.lecturers.map((lecturer) => ({ '@type': 'Person' as const, name: lecturer.displayName })) }
+        : {}),
+    };
+    this.seo.setJsonLd(STRUCTURED_DATA_ID, structuredData);
+  }
+
+  private structuredLocation(event: PublicEvent): EventStructuredData['location'] | undefined {
+    const latitude = event.latitude;
+    const longitude = event.longitude;
+    const hasCoordinates = typeof latitude === 'number' && typeof longitude === 'number';
+    if (!event.locationDescription && !hasCoordinates) {
+      return undefined;
+    }
+
+    return {
+      '@type': 'Place',
+      name: event.locationDescription || 'FCT-Unesp',
+      ...(hasCoordinates
+        ? {
+            geo: {
+              '@type': 'GeoCoordinates' as const,
+              latitude,
+              longitude,
+            },
+          }
+        : {}),
+    };
   }
 
   private hasAvailableSlots(data: EventPageData): boolean {

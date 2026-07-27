@@ -19,6 +19,7 @@ interface EventComponentFixtureOptions {
   eventApi?: Partial<EventApiService>;
   formsApi?: Partial<PublicEventFormApiService>;
   dialog?: Partial<MatDialog>;
+  routeParams?: Params;
 }
 
 async function createEventComponentFixture(
@@ -41,7 +42,7 @@ async function createEventComponentFixture(
       {
         provide: ActivatedRoute,
         useValue: {
-          paramMap: of(convertToParamMap({ eventId: 'event-1' })),
+          paramMap: of(convertToParamMap({ eventId: 'event-1', ...options.routeParams })),
           queryParamMap: of(convertToParamMap(queryParamMap)),
         },
       },
@@ -208,6 +209,72 @@ describe('Event', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('publishes complete metadata and structured data for public events', async () => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData();
+    eventPageData.event = {
+      ...eventPageData.event,
+      shortDescription: 'Uma introdução prática à computação para estudantes.',
+      locationDescription: 'Auditório da FCT-Unesp',
+      latitude: -22.123,
+      longitude: -51.456,
+    };
+    const newFixture = await createEventComponentFixture({}, { eventPageData });
+    await newFixture.whenStable();
+
+    expect(document.title).toBe('Evento teste - CACiC Eventos');
+    expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
+      'Uma introdução prática à computação para estudantes.',
+    );
+    expect(document.querySelector('meta[property="og:url"]')?.getAttribute('content')).toBe(
+      'https://eventos.cacic.com.br/app/event/event-1',
+    );
+    expect(document.querySelector('meta[name="twitter:card"]')?.getAttribute('content')).toBe('summary_large_image');
+    expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
+      'https://eventos.cacic.com.br/app/event/event-1',
+    );
+
+    const structuredData = JSON.parse(document.getElementById('event-page-structured-data')?.textContent ?? '') as {
+      '@type': string;
+      location: { name: string; geo: { latitude: number; longitude: number } };
+    };
+    expect(structuredData).toMatchObject({
+      '@type': 'Event',
+      name: 'Evento teste',
+      location: {
+        name: 'Auditório da FCT-Unesp',
+        geo: { latitude: -22.123, longitude: -51.456 },
+      },
+    });
+  });
+
+  it('prevents temporary previews from being indexed or canonicalized', async () => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData({
+      preview: {
+        previewAt: '2026-07-01T10:00:00.000Z',
+        expiresAt: '2026-07-01T11:00:00.000Z',
+      },
+    });
+    const newFixture = await createEventComponentFixture(
+      {},
+      {
+        eventPageData,
+        routeParams: { previewToken: 'preview-token' },
+        eventApi: { getPreviewEventPageData: () => of(eventPageData) },
+      },
+    );
+    await newFixture.whenStable();
+
+    expect(document.title).toBe('Pré-visualização: Evento teste - CACiC Eventos');
+    expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe(
+      'noindex, nofollow, noarchive, nosnippet',
+    );
+    expect(document.querySelector('meta[property="og:url"]')).toBeNull();
+    expect(document.querySelector('link[rel="canonical"]')).toBeNull();
+    expect(document.getElementById('event-page-structured-data')).toBeNull();
   });
 
   it('should use back query parameter as return URL', async () => {

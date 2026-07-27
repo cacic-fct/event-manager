@@ -1,0 +1,33 @@
+{
+  "name": "shared-seo-angular",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "root": "libs/shared-seo-angular",
+  "sourceRoot": "libs/shared-seo-angular/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:ui"],
+  "targets": {
+    "lint": {
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/.eslintrc.json",
+        "{workspaceRoot}/.eslintignore",
+        "{workspaceRoot}/eslint.config.mjs",
+        "{workspaceRoot}/tools/eslint-rules/**/*",
+        {
+          "externalDependencies": ["eslint"]
+        }
+      ],
+      "options": {
+        "args": ["**/*.ts"]
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/coverage/libs/shared-seo-angular"],
+      "options": {
+        "command": "bunx vitest run --coverage --config libs/shared-seo-angular/vitest.config.ts"
+      }
+    }
+  }
+}

@@ -105,6 +105,7 @@ jobs:
           - backend
           - offline-public-data-access
           - public
+          - shared-seo-angular
           - shared-utils
 
     if: >
@@ -160,6 +161,9 @@ jobs:
               ;;
             public)
               coverage_roots=(coverage/apps/public coverage/public)
+              ;;
+            shared-seo-angular)
+              coverage_roots=(coverage/libs/shared-seo-angular)
               ;;
             shared-utils)
               coverage_roots=(coverage/libs/shared-utils)
@@ -658,7 +662,7 @@ jobs:
         uses: nrwl/nx-set-shas@v5
 
       - name: Run unit tests with coverage
-        run: bunx nx run-many -t test -p admin,backend,offline-public-data-access,public,shared-utils --parallel=3 --coverage
+        run: bunx nx run-many -t test -p admin,backend,offline-public-data-access,public,shared-seo-angular,shared-utils --parallel=3 --coverage
 
   untrusted-pr-frontend-e2e:
     name: Untrusted PR frontend E2E (${{ matrix.project }})
