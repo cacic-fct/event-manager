@@ -30,11 +30,23 @@ describe('LgpdService cancellation', () => {
       where: { personId: { in: ['source-person', 'target-person'] }, lgpdDeletionRequestId: 'cancel-1' },
       data: { deletedAt: null, lgpdDeletionRequestId: null },
     });
+    expect(tx.eventGroupSubscription.updateMany).toHaveBeenCalledWith({
+      where: { personId: { in: ['source-person', 'target-person'] }, lgpdDeletionRequestId: 'cancel-1' },
+      data: { deletedAt: null, lgpdDeletionRequestId: null },
+    });
+    expect(tx.majorEventSubscription.updateMany).toHaveBeenCalledWith({
+      where: { personId: { in: ['source-person', 'target-person'] }, lgpdDeletionRequestId: 'cancel-1' },
+      data: { deletedAt: null, lgpdDeletionRequestId: null },
+    });
     expect(tx.majorEventSubscriptionEventSelection.updateMany).toHaveBeenCalledWith({
       where: {
         subscription: { personId: { in: ['source-person', 'target-person'] } },
         lgpdDeletionRequestId: 'cancel-1',
       },
+      data: { deletedAt: null, lgpdDeletionRequestId: null },
+    });
+    expect(tx.certificate.updateMany).toHaveBeenCalledWith({
+      where: { personId: { in: ['source-person', 'target-person'] }, lgpdDeletionRequestId: 'cancel-1' },
       data: { deletedAt: null, lgpdDeletionRequestId: null },
     });
   });

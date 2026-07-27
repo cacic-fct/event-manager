@@ -1,4 +1,5 @@
 ALTER TABLE "people" ADD COLUMN "lgpdDeletionRequestId" TEXT;
+ALTER TABLE "people" ALTER COLUMN "deletedAt" DROP NOT NULL;
 ALTER TABLE "event_subscriptions" ADD COLUMN "lgpdDeletionRequestId" TEXT;
 ALTER TABLE "event_group_subscriptions" ADD COLUMN "lgpdDeletionRequestId" TEXT;
 ALTER TABLE "major_event_subscriptions" ADD COLUMN "lgpdDeletionRequestId" TEXT;

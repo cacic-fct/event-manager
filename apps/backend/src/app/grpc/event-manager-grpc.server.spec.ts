@@ -42,6 +42,7 @@ describe('CancelLgpdDeletion', () => {
       );
     });
 
+    expect(auth.authenticateAccessToken).toHaveBeenCalledWith('m2m-token');
     expect(auth.assertMachineToMachinePrincipal).toHaveBeenCalledWith({}, { requiredRoles: ['lgpd:delete'] });
     expect(lgpd.cancelDeletion).toHaveBeenCalledWith({
       requestId: 'request-1',
