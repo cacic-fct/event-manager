@@ -6,7 +6,10 @@ import Dexie from 'dexie';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceOfflineQueueService } from './attendance-offline-queue.service';
 import type { OfflineAttendanceQueueItem, OfflineTotpSeedRecord } from './offline-public-data-schema';
-import { OfflinePublicDataDatabase } from './offline-public-data-schema';
+import {
+  normalizeOfflineAttendanceQueueOwnership,
+  OfflinePublicDataDatabase,
+} from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 import { OralAttendanceOfflineService } from './oral-attendance-offline.service';
 import { CalendarOfflineDataService } from './calendar-offline-data.service';
@@ -169,6 +172,19 @@ describe('offline public data access integration', () => {
     await expect(database.oralAttendanceDecisions.get('pending')).resolves.toEqual(
       expect.objectContaining({ syncedAt: expect.any(Number) }),
     );
+  });
+
+  it.each([
+    [{ authorUserId: null, queuedByUserId: 'queued-user' }, 'queued-user'],
+    [{ authorUserId: 'author-user', queuedByUserId: null }, 'author-user'],
+    [{ authorUserId: null, queuedByUserId: null }, ''],
+  ])('normalizes nullable legacy attendance queue ownership fields', (ownership, expectedUserId) => {
+    const item = queueItem('legacy-owner', 'PENDING', ownership as never);
+
+    normalizeOfflineAttendanceQueueOwnership(item);
+
+    expect(item.authorUserId).toBe(expectedUserId);
+    expect(item.queuedByUserId).toBe(expectedUserId);
   });
 
   it('stores the calendar default item view preference in IndexedDB', async () => {

@@ -48,6 +48,7 @@ describe('event form eligibility helpers', () => {
     expect(prisma.eventAttendance.findFirst).toHaveBeenCalledWith({
       where: {
         personId: 'person-1',
+        status: 'PRESENT',
         event: {
           majorEventId: 'major-1',
         },

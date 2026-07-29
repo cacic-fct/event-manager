@@ -124,6 +124,7 @@ export async function getAttendanceOralRoster(
   eventId: string,
 ): Promise<EventAttendanceScannerFeedItem[]> {
   const event = await findOralRosterEvent(prisma, eventId);
+  const majorEventSubscriptionFilter = majorEventSubscriptionWhere(eventId, event);
   const subscribers = await prisma.people.findMany({
     where: oralRosterPeopleWhere(eventId, event),
     select: {
@@ -133,16 +134,7 @@ export async function getAttendanceOralRoster(
       isCPF: true,
       user: { select: { unespRole: true } },
       majorEventSubscriptions: {
-        where: event.majorEventId
-          ? {
-              majorEventId: event.majorEventId,
-              deletedAt: null,
-              subscriptionStatus: 'CONFIRMED',
-              ...(event.autoSubscribe
-                ? {}
-                : { selectedEvents: { some: { eventId, deletedAt: null } } }),
-            }
-          : { majorEventId: '__standalone-event__' },
+        where: majorEventSubscriptionFilter ?? { majorEventId: '__standalone-event__' },
         select: { subscriptionStatus: true },
         take: 1,
       },
@@ -241,17 +233,11 @@ function oralRosterPeopleWhere(
   const subscriptionFilters: Prisma.PeopleWhereInput[] = [
     { eventSubscriptions: { some: { eventId, deletedAt: null } } },
   ];
-  if (event.majorEventId) {
+  const majorEventSubscriptionFilter = majorEventSubscriptionWhere(eventId, event);
+  if (majorEventSubscriptionFilter) {
     subscriptionFilters.push({
       majorEventSubscriptions: {
-        some: {
-          majorEventId: event.majorEventId,
-          deletedAt: null,
-          subscriptionStatus: 'CONFIRMED',
-          ...(event.autoSubscribe
-            ? {}
-            : { selectedEvents: { some: { eventId, deletedAt: null } } }),
-        },
+        some: majorEventSubscriptionFilter,
       },
     });
   }
@@ -259,6 +245,21 @@ function oralRosterPeopleWhere(
     deletedAt: null,
     mergedIntoId: null,
     OR: subscriptionFilters,
+  };
+}
+
+function majorEventSubscriptionWhere(
+  eventId: string,
+  event: { majorEventId: string | null; autoSubscribe: boolean },
+): Prisma.MajorEventSubscriptionWhereInput | null {
+  if (!event.majorEventId) {
+    return null;
+  }
+  return {
+    majorEventId: event.majorEventId,
+    deletedAt: null,
+    subscriptionStatus: 'CONFIRMED',
+    ...(event.autoSubscribe ? {} : { selectedEvents: { some: { eventId, deletedAt: null } } }),
   };
 }
 

@@ -167,13 +167,13 @@ export class AttendanceApiService {
       .pipe(map((data) => data.eventAttendances));
   }
 
-  getEventAttendanceCount(eventId: string) {
+  getEventAttendanceCount(eventId: string, status?: EventAttendanceStatus) {
     return this.graphqlHttp
       .request<{ eventAttendanceCount: number }>(
-        `query EventAttendanceCount($eventId: String!) {
-          eventAttendanceCount(eventId: $eventId)
+        `query EventAttendanceCount($eventId: String!, $status: EventAttendanceStatus) {
+          eventAttendanceCount(eventId: $eventId, status: $status)
         }`,
-        { eventId },
+        { eventId, status },
       )
       .pipe(map((data) => data.eventAttendanceCount));
   }

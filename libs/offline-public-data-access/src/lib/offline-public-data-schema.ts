@@ -115,6 +115,17 @@ export interface OfflineAttendanceQueueItem {
   lastError?: string | null;
 }
 
+export function normalizeOfflineAttendanceQueueOwnership(item: OfflineAttendanceQueueItem): void {
+  const legacyItem = item as OfflineAttendanceQueueItem & {
+    queuedByUserId?: string | null;
+    authorUserId?: string | null;
+  };
+  const authorUserId = legacyItem.authorUserId ?? legacyItem.queuedByUserId ?? '';
+  const queuedByUserId = legacyItem.queuedByUserId ?? legacyItem.authorUserId ?? '';
+  item.authorUserId = authorUserId;
+  item.queuedByUserId = queuedByUserId;
+}
+
 export interface OfflineOralAttendancePerson {
   personId: string;
   fullName: string;
@@ -314,13 +325,7 @@ export class OfflinePublicDataDatabase extends Dexie {
       await transaction
         .table<OfflineAttendanceQueueItem, string>('attendanceQueue')
         .toCollection()
-        .modify((item) => {
-          const legacyItem = item as OfflineAttendanceQueueItem & {
-            queuedByUserId?: string | null;
-            authorUserId?: string | null;
-          };
-          item.queuedByUserId = legacyItem.queuedByUserId ?? legacyItem.authorUserId ?? '';
-        });
+        .modify(normalizeOfflineAttendanceQueueOwnership);
     });
   }
 }

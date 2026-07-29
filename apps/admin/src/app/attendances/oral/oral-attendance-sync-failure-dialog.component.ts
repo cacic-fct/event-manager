@@ -18,8 +18,8 @@ export interface OralAttendanceSyncFailureDialogData {
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>
           {{ data.failedCount }}
-          {{ data.failedCount === 1 ? 'decisão não pôde' : 'decisões não puderam' }} ser registrada após três
-          tentativas.
+          {{ data.failedCount === 1 ? 'decisão não pôde' : 'decisões não puderam' }} ser
+          {{ data.failedCount === 1 ? 'registrada' : 'registradas' }}.
         </p>
       </div>
       <p>

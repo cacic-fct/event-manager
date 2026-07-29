@@ -19,9 +19,12 @@ describe('EventAttendanceCsvImportResolver', () => {
       personMatch({ id: 'person-1', name: 'Ada', email: 'ada@example.com' }),
       personMatch({ id: 'person-2', name: 'Grace', email: 'grace@example.com' }),
     ]);
-    prisma.eventAttendance.findMany.mockResolvedValue([{ personId: 'person-2' }]);
+    prisma.eventAttendance.findMany.mockResolvedValue([{ personId: 'person-2', status: 'PRESENT' }]);
     const createMany = jest.fn().mockResolvedValue({ count: 1 });
-    prisma.$transaction.mockImplementation(async (callback) => callback({ eventAttendance: { createMany } }));
+    const updateMany = jest.fn().mockResolvedValue({ count: 0 });
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({ eventAttendance: { createMany, updateMany } }),
+    );
 
     await expect(
       resolver.importEventAttendancesFromCsv(
@@ -61,7 +64,10 @@ describe('EventAttendanceCsvImportResolver', () => {
     ]);
     prisma.eventAttendance.findMany.mockResolvedValue([]);
     const createMany = jest.fn().mockResolvedValue({ count: 1 });
-    prisma.$transaction.mockImplementation(async (callback) => callback({ eventAttendance: { createMany } }));
+    const updateMany = jest.fn().mockResolvedValue({ count: 0 });
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({ eventAttendance: { createMany, updateMany } }),
+    );
 
     await expect(
       resolver.importEventAttendancesFromCsv(
@@ -151,7 +157,10 @@ describe('EventAttendanceCsvImportResolver', () => {
     ]);
     prisma.eventAttendance.findMany.mockResolvedValue([]);
     const createMany = jest.fn().mockResolvedValue({ count: 1 });
-    prisma.$transaction.mockImplementation(async (callback) => callback({ eventAttendance: { createMany } }));
+    const updateMany = jest.fn().mockResolvedValue({ count: 0 });
+    prisma.$transaction.mockImplementation(async (callback) =>
+      callback({ eventAttendance: { createMany, updateMany } }),
+    );
 
     await expect(
       resolver.importEventAttendancesFromCsv(

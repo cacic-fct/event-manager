@@ -346,7 +346,9 @@ export function createTxMock(attendance: unknown) {
   return {
     eventAttendance: {
       create: jest.fn().mockResolvedValue(undefined),
+      findUnique: jest.fn().mockResolvedValue(null),
       findUniqueOrThrow: jest.fn().mockResolvedValue(attendance),
+      update: jest.fn().mockResolvedValue(attendance),
     },
   };
 }

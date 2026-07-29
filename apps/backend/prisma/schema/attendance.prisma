@@ -21,6 +21,7 @@ model EventAttendance {
 
   @@id([personId, eventId])
   @@index([eventId])
+  @@index([eventId, status])
   @@index([personId])
   @@index([committedById])
   @@map("event_attendances")

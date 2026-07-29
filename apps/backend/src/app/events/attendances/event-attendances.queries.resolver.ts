@@ -120,9 +120,15 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
 
   @Query(() => Int, { name: 'eventAttendanceCount' })
   @RequirePermissions(Permission.EventAttendance.Read)
-  eventAttendanceCount(@Args('eventId', { type: () => String, nullable: true }) eventId?: string): Promise<number> {
+  eventAttendanceCount(
+    @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
+    @Args('status', { type: () => EventAttendanceStatus, nullable: true }) status?: EventAttendanceStatus,
+  ): Promise<number> {
     return this.prisma.eventAttendance.count({
-      where: eventId ? { eventId } : {},
+      where: {
+        ...(eventId ? { eventId } : {}),
+        ...(status ? { status } : {}),
+      },
     });
   }
 

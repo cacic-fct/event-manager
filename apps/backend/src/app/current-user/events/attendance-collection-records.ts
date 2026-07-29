@@ -88,11 +88,11 @@ export async function createAttendance(params: {
       return attendance;
     });
   } catch (error: unknown) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      (error.code === 'P2002' || error.code === 'P2025')
-    ) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       throw new ConflictException('Presença já registrada para este evento.');
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      throw new ConflictException('Registro de presença não encontrado para atualização.');
     }
 
     throw error;

@@ -217,11 +217,13 @@ export class OralAttendancePage implements OnInit {
       this.offline.getRoster(userId, eventId),
       this.offline.listAll(userId, eventId),
     ]);
-    if (event?.event.shouldAllowOralAttendance) {
-      this.event.set(event);
-      this.people.set(people);
-      this.decisions.set(new Map(savedDecisions.map((item) => [item.personId, item.status])));
+    if (!event?.event.shouldAllowOralAttendance) {
+      void this.router.navigate(['/attendance/collect']);
+      return;
     }
+    this.event.set(event);
+    this.people.set(people);
+    this.decisions.set(new Map(savedDecisions.map((item) => [item.personId, item.status])));
   }
 
 }

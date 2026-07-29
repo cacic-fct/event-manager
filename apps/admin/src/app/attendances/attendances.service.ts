@@ -472,16 +472,17 @@ export class AttendancesService {
       firstValueFrom(
         this.api.listEventAttendances(eventId, {
           ...pageVariables(this.attendancesPagination.pageIndex()),
+          status: 'PRESENT',
         }),
       ),
       this.fetchAllEventAttendances(eventId, 'ABSENT'),
       firstValueFrom(this.api.listEventAttendanceScannerFeed(eventId)),
-      firstValueFrom(this.api.getEventAttendanceCount(eventId)),
+      firstValueFrom(this.api.getEventAttendanceCount(eventId, 'PRESENT')),
       firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
     ]);
     const visibleAttendances = applyPagedResult(data, this.attendancesPagination);
     this.attendanceTotalCount.set(attendanceTotalCount);
-    this.attendances.set(visibleAttendances.filter((item) => item.status === 'PRESENT').map(mapAttendanceListItem));
+    this.attendances.set(visibleAttendances.map(mapAttendanceListItem));
     this.explicitAbsences.set(explicitAbsences.map(mapAttendanceListItem));
     this.implicitAbsences.set(roster.filter((item) => !item.status));
     this.offlineAttendanceSubmissions.set(

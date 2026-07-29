@@ -48,6 +48,11 @@ const EVENT_ATTENDANCE_AUDIT_SELECT = {
 } satisfies Prisma.EventAttendanceSelect;
 
 const MAX_OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE = 1000;
+const ORAL_ATTENDANCE_TRANSACTION_BATCH_SIZE = 100;
+
+type EventAttendanceAuditRecord = Prisma.EventAttendanceGetPayload<{
+  select: typeof EVENT_ATTENDANCE_AUDIT_SELECT;
+}>;
 
 @Resolver(() => EventAttendance)
 export class EventAttendancesMutationsResolver extends EventAttendancesResolverBase {
@@ -182,39 +187,52 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     const eventId = inputs[0].eventId;
     await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
     const actorId = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
-    const attendances = await this.prisma.$transaction(async (tx) => {
-      const results = [];
-      for (const input of inputs) {
-        const before = await tx.eventAttendance.findUnique({
-          where: { personId_eventId: { personId: input.personId, eventId } },
-          select: EVENT_ATTENDANCE_AUDIT_SELECT,
-        });
-        const attendance = await tx.eventAttendance.upsert({
-          where: { personId_eventId: { personId: input.personId, eventId } },
-          create: {
-            personId: input.personId,
+    const attendances: EventAttendanceAuditRecord[] = [];
+    for (let offset = 0; offset < inputs.length; offset += ORAL_ATTENDANCE_TRANSACTION_BATCH_SIZE) {
+      const chunk = inputs.slice(offset, offset + ORAL_ATTENDANCE_TRANSACTION_BATCH_SIZE);
+      const chunkAttendances = await this.prisma.$transaction(async (tx) => {
+        const previousAttendances = await tx.eventAttendance.findMany({
+          where: {
             eventId,
-            status: input.status,
-            attendedAt: input.collectedAt,
-            createdByMethod: AttendanceCreationMethod.ORAL_CALL,
-            createdById: input.collectedByUserId,
-            committedById: actorId,
-          },
-          update: {
-            status: input.status,
-            attendedAt: input.collectedAt,
-            createdByMethod: AttendanceCreationMethod.ORAL_CALL,
-            createdById: input.collectedByUserId,
-            committedById: actorId,
+            personId: { in: [...new Set(chunk.map((input) => input.personId))] },
           },
           select: EVENT_ATTENDANCE_AUDIT_SELECT,
         });
-        await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx);
-        await this.recordAttendanceSet(attendance, before, context, tx);
-        results.push(attendance);
-      }
-      return results;
-    });
+        const beforeByPersonId = new Map(
+          previousAttendances.map((attendance) => [attendance.personId, attendance]),
+        );
+        const results: EventAttendanceAuditRecord[] = [];
+        for (const input of chunk) {
+          const before = beforeByPersonId.get(input.personId) ?? null;
+          const attendance = await tx.eventAttendance.upsert({
+            where: { personId_eventId: { personId: input.personId, eventId } },
+            create: {
+              personId: input.personId,
+              eventId,
+              status: input.status,
+              attendedAt: input.collectedAt,
+              createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+              createdById: input.collectedByUserId,
+              committedById: actorId,
+            },
+            update: {
+              status: input.status,
+              attendedAt: input.collectedAt,
+              createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+              createdById: input.collectedByUserId,
+              committedById: actorId,
+            },
+            select: EVENT_ATTENDANCE_AUDIT_SELECT,
+          });
+          await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx);
+          await this.recordAttendanceSet(attendance, before, context, tx);
+          beforeByPersonId.set(input.personId, attendance);
+          results.push(attendance);
+        }
+        return results;
+      });
+      attendances.push(...chunkAttendances);
+    }
     await this.dashboardInsights.invalidateCachedInsights();
     return attendances;
   }

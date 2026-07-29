@@ -55,8 +55,10 @@ describe('EventAttendancesQueriesResolver', () => {
   it('counts attendances for an event', async () => {
     prisma.eventAttendance.count.mockResolvedValue(74);
 
-    await expect(resolver.eventAttendanceCount('event-1')).resolves.toBe(74);
-    expect(prisma.eventAttendance.count).toHaveBeenCalledWith({ where: { eventId: 'event-1' } });
+    await expect(resolver.eventAttendanceCount('event-1', 'PRESENT')).resolves.toBe(74);
+    expect(prisma.eventAttendance.count).toHaveBeenCalledWith({
+      where: { eventId: 'event-1', status: 'PRESENT' },
+    });
   });
 
   it('builds major event attendance rows from paginated subscriptions', async () => {

@@ -1,4 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -36,6 +37,8 @@ interface PendingAdminDecision {
   queuedByUserId: string;
   queuedByLabel: string;
 }
+
+type SyncOutcome = 'synced' | 'failed' | 'retry';
 
 @Component({
   selector: 'app-admin-oral-attendance-page',
@@ -160,25 +163,34 @@ export class AdminOralAttendancePageComponent implements OnInit {
       return;
     }
     const items = [...this.pending().values()];
+    const attemptedByPersonId = new Map(items.map((item) => [item.personId, item.collectedAt]));
     this.syncing.set(true);
     const failedItems: PendingAdminDecision[] = [];
     try {
       for (const item of items) {
-        if (!(await this.syncItem(item))) {
+        const outcome = await this.syncItem(item);
+        if (outcome !== 'synced') {
           failedItems.push(item);
         }
-        this.pending.update((current) => {
-          const next = new Map(current);
-          if (next.get(item.personId)?.collectedAt === item.collectedAt) {
-            next.delete(item.personId);
-          }
-          return next;
-        });
-        this.persistPending();
+        if (outcome !== 'retry') {
+          this.pending.update((current) => {
+            const next = new Map(current);
+            if (next.get(item.personId)?.collectedAt === item.collectedAt) {
+              next.delete(item.personId);
+            }
+            return next;
+          });
+          this.persistPending();
+        }
       }
     } finally {
       this.syncing.set(false);
-      this.scheduleSync();
+      const hasNewPendingItem = [...this.pending().values()].some(
+        (item) => attemptedByPersonId.get(item.personId) !== item.collectedAt,
+      );
+      if (hasNewPendingItem) {
+        this.scheduleSync();
+      }
     }
     if (failedItems.length) {
       this.dialog.open(OralAttendanceSyncFailureDialogComponent, {
@@ -189,7 +201,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
     }
   }
 
-  private async syncItem(item: PendingAdminDecision): Promise<boolean> {
+  private async syncItem(item: PendingAdminDecision): Promise<SyncOutcome> {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         await firstValueFrom(
@@ -203,14 +215,17 @@ export class AdminOralAttendancePageComponent implements OnInit {
             },
           ]),
         );
-        return true;
-      } catch {
+        return 'synced';
+      } catch (error: unknown) {
+        if (!isRetryableSyncError(error)) {
+          return 'failed';
+        }
         if (attempt < 2) {
           await new Promise((resolve) => setTimeout(resolve, 700 * 2 ** attempt));
         }
       }
     }
-    return false;
+    return 'retry';
   }
 
   private storageKey(): string {
@@ -261,4 +276,11 @@ export class AdminOralAttendancePageComponent implements OnInit {
       typeof item.queuedByLabel === 'string'
     );
   }
+}
+
+export function isRetryableSyncError(error: unknown): boolean {
+  return (
+    error instanceof HttpErrorResponse &&
+    (error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500)
+  );
 }

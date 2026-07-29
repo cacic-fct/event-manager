@@ -16,7 +16,7 @@ describe('EventAttendancesMutationsResolver', () => {
   it('upserts an admin oral-call batch without requiring the public event toggle', async () => {
     const collectedAt = new Date('2026-07-29T12:30:00.000Z');
     const tx = createTxMock();
-    tx.eventAttendance.findUnique.mockResolvedValue(null);
+    tx.eventAttendance.findMany.mockResolvedValue([]);
     tx.eventAttendance.upsert.mockImplementation(async ({ create }) => create);
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
     const { resolver: resolverWithDependencies, frozenResources, auditLog } = createResolverWithDependencies(
@@ -95,6 +95,41 @@ describe('EventAttendancesMutationsResolver', () => {
         after: expect.objectContaining({ personId: 'person-2', status: 'ABSENT' }),
       }),
       tx,
+    );
+  });
+
+  it('processes large admin oral-call batches in independent transactions', async () => {
+    const tx = createTxMock();
+    tx.eventAttendance.findMany.mockResolvedValue([]);
+    tx.eventAttendance.upsert.mockImplementation(async ({ create }) => create);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    const { resolver: resolverWithDependencies } = createResolverWithDependencies(prisma, attendanceCategories);
+    const inputs = Array.from({ length: 101 }, (_, index) => ({
+      eventId: 'event-1',
+      personId: `person-${index}`,
+      status: 'PRESENT' as const,
+      collectedAt: new Date('2026-07-29T12:30:00.000Z'),
+      collectedByUserId: 'original-collector',
+    }));
+
+    await expect(
+      resolverWithDependencies.setEventOralAttendances(inputs, {
+        req: { user: { sub: 'collector-1' } },
+      } as never),
+    ).resolves.toHaveLength(101);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(tx.eventAttendance.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({ personId: { in: inputs.slice(0, 100).map((input) => input.personId) } }),
+      }),
+    );
+    expect(tx.eventAttendance.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({ personId: { in: ['person-100'] } }),
+      }),
     );
   });
 
@@ -1183,6 +1218,7 @@ function createTxMock() {
   return {
     eventAttendance: {
       create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
