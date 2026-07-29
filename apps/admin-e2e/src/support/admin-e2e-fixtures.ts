@@ -157,11 +157,29 @@ export async function mockAdminApi(
     }
 
     if (url.pathname === '/api/graphql') {
+      const requestBody = route.request().postDataJSON() as unknown;
+      const query = graphqlQuery(requestBody);
+
+      if (query.includes('offlineEventAttendanceSubmissions')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              offlineEventAttendanceSubmissions: graphqlState.offlineEventAttendanceSubmission
+                ? [graphqlState.offlineEventAttendanceSubmission]
+                : [],
+            },
+          }),
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: graphqlData(route.request().postDataJSON() as unknown, options.dashboardInsights, graphqlState),
+          data: graphqlData(requestBody, options.dashboardInsights, graphqlState),
         }),
       });
       return;
@@ -722,7 +740,7 @@ function graphqlData(
   dashboardInsights: AdminE2EDashboardInsights | undefined,
   state: AdminE2EGraphqlState,
 ): Record<string, unknown> {
-  const query = isRecord(body) && typeof body['query'] === 'string' ? body['query'] : '';
+  const query = graphqlQuery(body);
   const variables = isRecord(body) && isRecord(body['variables']) ? body['variables'] : {};
   const event = createAdminE2EEvent({ id: 'event-1' });
   const majorEvent = createAdminE2EMajorEvent({ id: 'major-event-1' });
@@ -1078,4 +1096,8 @@ function permissionGrantTargetLabel(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function graphqlQuery(body: unknown): string {
+  return isRecord(body) && typeof body['query'] === 'string' ? body['query'] : '';
 }
