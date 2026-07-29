@@ -73,8 +73,9 @@ async function mockPublicApi(
   );
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
+    const apiPath = url.pathname.replace(/^\/app(?=\/api\/)/, '');
 
-    if (url.pathname === '/api/auth/me') {
+    if (apiPath === '/api/auth/me') {
       await route.fulfill({
         status: options.user ? 200 : 403,
         contentType: 'application/json',
@@ -83,7 +84,7 @@ async function mockPublicApi(
       return;
     }
 
-    if (url.pathname === '/api/auth/login/redirect') {
+    if (apiPath === '/api/auth/login/redirect') {
       options.onLoginRedirect?.(url);
       await route.fulfill({
         status: 200,
@@ -93,7 +94,7 @@ async function mockPublicApi(
       return;
     }
 
-    if (url.pathname === '/api/graphql') {
+    if (apiPath === '/api/graphql') {
       const body = route.request().postDataJSON() as { query?: unknown };
       if (
         typeof body.query === 'string' &&
