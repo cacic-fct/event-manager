@@ -19,6 +19,8 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CurrentUserContextService } from '../../current-user/context.service';
+import { recordAttendanceSet as recordSharedAttendanceSet } from '../../current-user/events/attendance-collection-audit';
 import { normalizeOptionalString } from '../../current-user/events/attendance-collection-context';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT, GraphqlContext } from './event-attendances.shared';
@@ -65,6 +67,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     private readonly authorizationPolicy: AuthorizationPolicyService = {
       assertPermissions: async () => undefined,
     } as unknown as AuthorizationPolicyService,
+    private readonly currentUserContext: CurrentUserContextService = {
+      getAuthenticatedUser: () => undefined,
+    } as unknown as CurrentUserContextService,
   ) {
     super(prisma, attendanceCategories);
   }
@@ -1022,25 +1027,18 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     context: GraphqlContext,
     prisma: Prisma.TransactionClient,
   ): Promise<void> {
-    await this.auditLog.record(
-      {
-        entityType: AuditLogEntityType.EVENT_ATTENDANCE,
-        entityId: this.auditLog.buildCompositeEntityId([attendance.personId, attendance.eventId]),
-        entityLabel: attendance.personId,
-        operation: before ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
-        actor: this.getUser(context),
-        before,
-        after: attendance,
-        scope: {
-          permission: Permission.EventAttendance.Collect,
-          eventId: attendance.eventId,
-        },
-        summary:
-          attendance.status === 'ABSENT'
-            ? 'Ausência explícita registrada pela chamada oral administrativa.'
-            : 'Presença registrada pela chamada oral administrativa.',
-      },
+    await recordSharedAttendanceSet({
+      auditLog: this.auditLog,
+      currentUserContext: this.currentUserContext,
+      context,
+      attendance,
+      before,
       prisma,
-    );
+      createOperation: AuditLogOperation.CREATE,
+      summary:
+        attendance.status === 'ABSENT'
+          ? 'Ausência explícita registrada pela chamada oral administrativa.'
+          : 'Presença registrada pela chamada oral administrativa.',
+    });
   }
 }

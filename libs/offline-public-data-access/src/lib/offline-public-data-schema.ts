@@ -310,6 +310,17 @@ export class OfflinePublicDataDatabase extends Dexie {
       oralAttendanceRosters: 'key, userId, eventId, cachedAt, [userId+eventId]',
       oralAttendanceDecisions:
         'clientId, queuedByUserId, eventId, personId, queuedAt, [queuedByUserId+eventId], [queuedByUserId+eventId+personId]',
+    }).upgrade(async (transaction) => {
+      await transaction
+        .table<OfflineAttendanceQueueItem, string>('attendanceQueue')
+        .toCollection()
+        .modify((item) => {
+          const legacyItem = item as OfflineAttendanceQueueItem & {
+            queuedByUserId?: string | null;
+            authorUserId?: string | null;
+          };
+          item.queuedByUserId = legacyItem.queuedByUserId ?? legacyItem.authorUserId ?? '';
+        });
     });
   }
 }

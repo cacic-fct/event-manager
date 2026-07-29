@@ -22,7 +22,7 @@ test('chooses oral attendance, loads the full roster, and submits a decision wit
 
   await expect(page.getByRole('heading', { name: 'Como você quer coletar?' })).toBeVisible();
   await page.getByRole('link', { name: 'Fazer chamada oral' }).click();
-  await expect(page.getByText('Chamada oral · Credenciamento')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Credenciamento' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Ana Beatriz Silva' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Marcar como presente' }).click();
@@ -99,9 +99,9 @@ async function fulfillGraphql(route: Route, submittedBatches: unknown[][]): Prom
     });
     return;
   }
-  if (body.query.includes('query CurrentUserAttendanceCollectionFeed')) {
+  if (body.query.includes('query CurrentUserAttendanceOralRoster')) {
     await fulfillData(route, {
-      currentUserAttendanceCollectionFeed: [
+      currentUserAttendanceOralRoster: [
         {
           personId: 'person-1',
           eventId: 'event-1',

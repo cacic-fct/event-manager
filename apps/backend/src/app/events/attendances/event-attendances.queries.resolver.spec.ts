@@ -113,6 +113,7 @@ describe('EventAttendancesQueriesResolver', () => {
           personId: {
             in: ['person-1'],
           },
+          status: 'PRESENT',
         },
       }),
     );

@@ -468,13 +468,13 @@ export class AttendancesService {
       this.offlineAttendanceSubmissions.set([]);
       return;
     }
-    const [data, allAttendanceRecords, roster, attendanceTotalCount, submissions] = await Promise.all([
+    const [data, explicitAbsences, roster, attendanceTotalCount, submissions] = await Promise.all([
       firstValueFrom(
         this.api.listEventAttendances(eventId, {
           ...pageVariables(this.attendancesPagination.pageIndex()),
         }),
       ),
-      this.fetchAllEventAttendances(eventId),
+      this.fetchAllEventAttendances(eventId, 'ABSENT'),
       firstValueFrom(this.api.listEventAttendanceScannerFeed(eventId)),
       firstValueFrom(this.api.getEventAttendanceCount(eventId)),
       firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
@@ -482,9 +482,7 @@ export class AttendancesService {
     const visibleAttendances = applyPagedResult(data, this.attendancesPagination);
     this.attendanceTotalCount.set(attendanceTotalCount);
     this.attendances.set(visibleAttendances.filter((item) => item.status === 'PRESENT').map(mapAttendanceListItem));
-    this.explicitAbsences.set(
-      allAttendanceRecords.filter((item) => item.status === 'ABSENT').map(mapAttendanceListItem),
-    );
+    this.explicitAbsences.set(explicitAbsences.map(mapAttendanceListItem));
     this.implicitAbsences.set(roster.filter((item) => !item.status));
     this.offlineAttendanceSubmissions.set(
       submissions.map((submission) => ({
@@ -976,10 +974,15 @@ export class AttendancesService {
     return firstValueFrom(dialogRef.afterClosed());
   }
 
-  private async fetchAllEventAttendances(eventId: string): Promise<EventAttendance[]> {
+  private async fetchAllEventAttendances(
+    eventId: string,
+    status?: EventAttendance['status'],
+  ): Promise<EventAttendance[]> {
     const attendances: EventAttendance[] = [];
     for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
-      const page = await firstValueFrom(this.api.listEventAttendances(eventId, { skip, take: EXPORT_PAGE_SIZE }));
+      const page = await firstValueFrom(
+        this.api.listEventAttendances(eventId, { skip, take: EXPORT_PAGE_SIZE, status }),
+      );
       attendances.push(...page);
       if (page.length < EXPORT_PAGE_SIZE) {
         return attendances;

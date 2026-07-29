@@ -102,4 +102,30 @@ describe('getAttendanceOralRoster', () => {
       }),
     );
   });
+
+  it('includes every confirmed major-event subscriber when the event auto-subscribes', async () => {
+    const prisma = {
+      event: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'event-1',
+          majorEventId: 'major-1',
+          autoSubscribe: true,
+        }),
+      },
+      people: { findMany: jest.fn().mockResolvedValue([]) },
+      eventAttendance: { findMany: jest.fn().mockResolvedValue([]) },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+
+    await getAttendanceOralRoster(prisma as never, 'event-1');
+
+    const peopleWhere = prisma.people.findMany.mock.calls[0][0].where;
+    const majorEventFilter = peopleWhere.OR[1].majorEventSubscriptions.some;
+    expect(majorEventFilter).toEqual({
+      majorEventId: 'major-1',
+      deletedAt: null,
+      subscriptionStatus: 'CONFIRMED',
+    });
+    expect(majorEventFilter).not.toHaveProperty('selectedEvents');
+  });
 });

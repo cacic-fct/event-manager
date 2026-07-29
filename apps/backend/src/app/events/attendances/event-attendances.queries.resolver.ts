@@ -1,6 +1,7 @@
 import {
   EventAttendance,
   EventAttendanceScannerFeedItem,
+  EventAttendanceStatus,
   MajorEventUserAttendance,
   OfflineEventAttendanceSubmission,
   OfflineEventAttendanceSubmissionStatus,
@@ -40,6 +41,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('status', { type: () => EventAttendanceStatus, nullable: true }) status?: EventAttendanceStatus,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.EventAttendanceWhereInput = {};
@@ -50,6 +52,9 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
 
     if (eventId) {
       where.eventId = eventId;
+    }
+    if (status) {
+      where.status = status;
     }
 
     const attendances = await this.prisma.eventAttendance.findMany({

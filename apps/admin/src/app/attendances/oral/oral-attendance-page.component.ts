@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   AuthService,
@@ -25,6 +26,7 @@ import {
 import { firstValueFrom, fromEvent } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
+import { OralAttendanceSyncFailureDialogComponent } from './oral-attendance-sync-failure-dialog.component';
 
 interface PendingAdminDecision {
   eventId: string;
@@ -54,6 +56,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
   private readonly api = inject(AttendanceApiService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
   private readonly eventApi = inject(EventApiService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
@@ -89,10 +92,6 @@ export class AdminOralAttendancePageComponent implements OnInit {
         .subscribe(() => this.scheduleSync());
     }
     this.api.listEventAttendanceOralRoster(this.eventId).subscribe((items) => this.applyRoster(items));
-    this.api
-      .watchEventAttendanceOralRoster(this.eventId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((items) => this.applyRoster(items));
     this.scheduleSync();
   }
 
@@ -162,44 +161,56 @@ export class AdminOralAttendancePageComponent implements OnInit {
     }
     const items = [...this.pending().values()];
     this.syncing.set(true);
+    const failedItems: PendingAdminDecision[] = [];
     try {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          await firstValueFrom(
-            this.api.setEventOralAttendances(
-              items.map(({ eventId, personId, status, collectedAt, queuedByUserId }) => ({
-                eventId,
-                personId,
-                status,
-                collectedAt,
-                collectedByUserId: queuedByUserId,
-              })),
-            ),
-          );
-          this.pending.update((current) => {
-            const next = new Map(current);
-            items.forEach((item) => {
-              if (next.get(item.personId)?.collectedAt === item.collectedAt) {
-                next.delete(item.personId);
-              }
-            });
-            return next;
-          });
-          this.persistPending();
-          this.scheduleSync();
-          return;
-        } catch {
-          if (attempt < 2) {
-            await new Promise((resolve) => setTimeout(resolve, 700 * 2 ** attempt));
-          }
+      for (const item of items) {
+        if (!(await this.syncItem(item))) {
+          failedItems.push(item);
         }
+        this.pending.update((current) => {
+          const next = new Map(current);
+          if (next.get(item.personId)?.collectedAt === item.collectedAt) {
+            next.delete(item.personId);
+          }
+          return next;
+        });
+        this.persistPending();
       }
-      this.snackbar.open('Não foi possível sincronizar após 3 tentativas. As alterações continuam salvas.', 'Fechar', {
-        duration: 6000,
-      });
     } finally {
       this.syncing.set(false);
+      this.scheduleSync();
     }
+    if (failedItems.length) {
+      this.dialog.open(OralAttendanceSyncFailureDialogComponent, {
+        width: 'min(30rem, 94vw)',
+        maxWidth: '94vw',
+        data: { failedCount: failedItems.length },
+      });
+    }
+  }
+
+  private async syncItem(item: PendingAdminDecision): Promise<boolean> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        await firstValueFrom(
+          this.api.setEventOralAttendances([
+            {
+              eventId: item.eventId,
+              personId: item.personId,
+              status: item.status,
+              collectedAt: item.collectedAt,
+              collectedByUserId: item.queuedByUserId,
+            },
+          ]),
+        );
+        return true;
+      } catch {
+        if (attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 700 * 2 ** attempt));
+        }
+      }
+    }
+    return false;
   }
 
   private storageKey(): string {

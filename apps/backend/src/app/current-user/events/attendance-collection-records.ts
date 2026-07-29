@@ -31,41 +31,38 @@ export async function createAttendance(params: {
   afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
 }) {
   const locationData = getRequiredAttendanceLocationData(params.input.location);
-  const existing = await params.prisma.eventAttendance.findUnique({
-    where: {
-      personId_eventId: {
-        eventId: params.input.eventId,
-        personId: params.input.personId,
-      },
-    },
-    select: { status: true },
-  });
-  if (existing?.status === EventAttendanceStatus.ABSENT) {
-    return params.prisma.$transaction(async (tx) => {
-      const attendance = await tx.eventAttendance.update({
+  try {
+    return await params.prisma.$transaction(async (tx) => {
+      const existing = await tx.eventAttendance.findUnique({
         where: {
           personId_eventId: {
             eventId: params.input.eventId,
             personId: params.input.personId,
           },
         },
-        data: {
-          status: EventAttendanceStatus.PRESENT,
-          attendedAt: params.input.attendedAt ?? new Date(),
-          createdById: params.input.createdById,
-          committedById: params.input.committedById,
-          createdByMethod: params.input.createdByMethod,
-          ...locationData,
-        },
+        select: { status: true },
       });
-      await params.attendanceCategories.refreshForAttendance(params.input.personId, params.input.eventId, tx);
-      await params.afterCreate?.(attendance, tx);
-      return attendance;
-    });
-  }
-
-  try {
-    return await params.prisma.$transaction(async (tx) => {
+      if (existing?.status === EventAttendanceStatus.ABSENT) {
+        const attendance = await tx.eventAttendance.update({
+          where: {
+            personId_eventId: {
+              eventId: params.input.eventId,
+              personId: params.input.personId,
+            },
+          },
+          data: {
+            status: params.input.status ?? EventAttendanceStatus.PRESENT,
+            attendedAt: params.input.attendedAt ?? new Date(),
+            createdById: params.input.createdById,
+            committedById: params.input.committedById,
+            createdByMethod: params.input.createdByMethod,
+            ...locationData,
+          },
+        });
+        await params.attendanceCategories.refreshForAttendance(params.input.personId, params.input.eventId, tx);
+        await params.afterCreate?.(attendance, tx);
+        return attendance;
+      }
       await tx.eventAttendance.create({
         data: {
           eventId: params.input.eventId,
@@ -91,7 +88,10 @@ export async function createAttendance(params: {
       return attendance;
     });
   } catch (error: unknown) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === 'P2002' || error.code === 'P2025')
+    ) {
       throw new ConflictException('Presença já registrada para este evento.');
     }
 

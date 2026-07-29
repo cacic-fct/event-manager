@@ -55,9 +55,12 @@ describe('EventAttendancesMutationsResolver', () => {
       'edit',
     );
     expect(tx.eventAttendance.upsert).toHaveBeenCalledTimes(2);
-    expect(tx.eventAttendance.upsert).toHaveBeenCalledWith(
+    expect(tx.eventAttendance.upsert).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
         create: expect.objectContaining({
+          personId: 'person-1',
+          status: 'PRESENT',
           attendedAt: collectedAt,
           createdByMethod: AttendanceCreationMethod.ORAL_CALL,
           createdById: 'original-collector',
@@ -65,11 +68,31 @@ describe('EventAttendancesMutationsResolver', () => {
         }),
       }),
     );
+    expect(tx.eventAttendance.upsert).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        create: expect.objectContaining({
+          personId: 'person-2',
+          status: 'ABSENT',
+        }),
+      }),
+    );
     expect(auditLog.record).toHaveBeenCalledTimes(2);
-    expect(auditLog.record).toHaveBeenCalledWith(
+    expect(auditLog.record).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        operation: 'CREATE',
+        summary: 'Presença registrada pela chamada oral administrativa.',
+        after: expect.objectContaining({ personId: 'person-1', status: 'PRESENT' }),
+      }),
+      tx,
+    );
+    expect(auditLog.record).toHaveBeenNthCalledWith(
+      2,
       expect.objectContaining({
         operation: 'CREATE',
         summary: 'Ausência explícita registrada pela chamada oral administrativa.',
+        after: expect.objectContaining({ personId: 'person-2', status: 'ABSENT' }),
       }),
       tx,
     );

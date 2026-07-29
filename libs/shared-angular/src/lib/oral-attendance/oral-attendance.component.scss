@@ -1,4 +1,7 @@
 :host {
+  --oral-absent-color: light-dark(#a6253f, #ff9bae);
+  --oral-present-color: light-dark(#146b45, #71e6aa);
+
   display: block;
 }
 
@@ -91,7 +94,7 @@
   position: absolute;
   top: 2rem;
   padding: 0.35rem 0.6rem;
-  border: 0.2rem solid currentColor;
+  border: 0.2rem solid currentcolor;
   border-radius: 0.4rem;
   opacity: 0;
   font-weight: 800;
@@ -106,12 +109,12 @@
 
 .decision-stamp.absent {
   left: 2rem;
-  color: var(--mat-sys-error);
+  color: var(--oral-absent-color);
 }
 
 .decision-stamp.present {
   right: 2rem;
-  color: #16803c;
+  color: var(--oral-present-color);
   transform: rotate(8deg) scale(0.85);
 }
 
@@ -134,11 +137,11 @@
 }
 
 .absent-action {
-  color: var(--mat-sys-error);
+  color: var(--oral-absent-color);
 }
 
 .present-action {
-  color: #16803c;
+  color: var(--oral-present-color);
 }
 
 .card-actions .active {
@@ -187,7 +190,7 @@
 }
 
 .selected {
-  background: color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, currentcolor 18%, transparent);
 }
 
 .checkpoint,

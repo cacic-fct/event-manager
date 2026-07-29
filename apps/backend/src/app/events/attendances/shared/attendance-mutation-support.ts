@@ -3,6 +3,21 @@ import { AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma
 import { getBrazilianPhoneCandidates } from '../../../common/brazilian-phone';
 import { EventAttendancesScannerFeedSupport } from './scanner-feed-support';
 
+const ATTENDANCE_WRITE_SELECT = {
+  personId: true,
+  eventId: true,
+  attendedAt: true,
+  createdAt: true,
+  createdById: true,
+  committedById: true,
+  createdByMethod: true,
+  status: true,
+  category: true,
+  collectedLatitude: true,
+  collectedLongitude: true,
+  collectedAccuracyMeters: true,
+} satisfies Prisma.EventAttendanceSelect;
+
 export abstract class EventAttendancesMutationSupport extends EventAttendancesScannerFeedSupport {
   protected async createAttendanceWithMetadata(
     input: {
@@ -23,41 +38,39 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
           collectedAccuracyMeters: input.location.accuracyMeters,
         }
       : {};
-    const existing = await this.prisma.eventAttendance.findUnique({
-      where: {
-        personId_eventId: {
-          personId: input.personId,
-          eventId: input.eventId,
-        },
-      },
-      select: { status: true },
-    });
-    if (existing?.status === EventAttendanceStatus.ABSENT) {
-      return this.prisma.$transaction(async (tx) => {
-        const attendance = await tx.eventAttendance.update({
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const existing = await tx.eventAttendance.findUnique({
           where: {
             personId_eventId: {
               personId: input.personId,
               eventId: input.eventId,
             },
           },
-          data: {
-            status: EventAttendanceStatus.PRESENT,
-            attendedAt: input.attendedAt ?? new Date(),
-            createdById: input.createdById,
-            committedById: input.committedById,
-            createdByMethod: input.createdByMethod,
-            ...locationData,
-          },
+          select: { status: true },
         });
-        await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-        await afterCreate?.(attendance, tx);
-        return attendance;
-      });
-    }
-
-    try {
-      return await this.prisma.$transaction(async (tx) => {
+        if (existing?.status === EventAttendanceStatus.ABSENT) {
+          const attendance = await tx.eventAttendance.update({
+            where: {
+              personId_eventId: {
+                personId: input.personId,
+                eventId: input.eventId,
+              },
+            },
+            data: {
+              status: EventAttendanceStatus.PRESENT,
+              attendedAt: input.attendedAt ?? new Date(),
+              createdById: input.createdById,
+              committedById: input.committedById,
+              createdByMethod: input.createdByMethod,
+              ...locationData,
+            },
+            select: ATTENDANCE_WRITE_SELECT,
+          });
+          await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+          await afterCreate?.(attendance, tx);
+          return attendance;
+        }
         await tx.eventAttendance.create({
           data: {
             eventId: input.eventId,
@@ -77,26 +90,16 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
               eventId: input.eventId,
             },
           },
-          select: {
-            personId: true,
-            eventId: true,
-            attendedAt: true,
-            createdAt: true,
-            createdById: true,
-            committedById: true,
-            createdByMethod: true,
-            status: true,
-            category: true,
-            collectedLatitude: true,
-            collectedLongitude: true,
-            collectedAccuracyMeters: true,
-          },
+          select: ATTENDANCE_WRITE_SELECT,
         });
         await afterCreate?.(attendance, tx);
         return attendance;
       });
     } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === 'P2002' || error.code === 'P2025')
+      ) {
         throw new ConflictException('Presença já registrada para este evento.');
       }
 

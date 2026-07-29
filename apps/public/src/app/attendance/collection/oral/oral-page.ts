@@ -48,8 +48,8 @@ export class OralAttendancePage implements OnInit {
   private readonly access = inject(AttendanceCollectionAccessService);
   private readonly api = inject(AttendanceCollectionApiService);
   private readonly auth = inject(AuthService);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly collectionEventsQueue = inject(AttendanceOfflineQueueService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly manualQueue = inject(AttendanceOfflineQueueService);
   private readonly offlineSync = inject(AttendanceOfflineSyncService);
   private readonly network = inject(NetworkStatusService);
@@ -89,10 +89,6 @@ export class OralAttendancePage implements OnInit {
       .watchPending(userId, eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((items) => this.pendingCount.set(items.length));
-    this.api
-      .watchOralRoster(eventId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((items) => void this.applyRoster(items, userId, eventId));
     this.api.listCollectionEvents().subscribe({
       next: (events) => {
         const selected = events.find((item) => item.eventId === eventId) ?? null;

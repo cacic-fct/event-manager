@@ -22,7 +22,12 @@ import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { NovuNotificationsService } from '../../notifications/novu-notifications.service';
 import { recordAttendanceCreate, recordAttendanceSet } from './attendance-collection-audit';
 import { findCurrentUserAttendanceCollectionEvents, requireAttendanceCollector } from './attendance-collection-events';
-import { getAttendanceOralRoster, getAttendanceScannerFeed } from './attendance-collection-feed';
+import {
+  findAttendanceOralRosterPersonIds,
+  getAttendanceOralRoster,
+  getAttendanceScannerFeed,
+  isOnAttendanceOralRoster,
+} from './attendance-collection-feed';
 import { OfflineAttendanceCommitter } from './attendance-collection-offline-commit';
 import {
   createAttendance,
@@ -201,9 +206,7 @@ export class CurrentUserAttendanceCollectionResolver {
       getAuthenticatedUser(this.currentUserContext, context),
       'edit',
     );
-    const subscriber = await getAttendanceOralRoster(this.prisma, input.eventId).then((items) =>
-      items.some((item) => item.personId === input.personId),
-    );
+    const subscriber = await isOnAttendanceOralRoster(this.prisma, input.eventId, input.personId);
     if (!subscriber) {
       throw new NotFoundException('Pessoa não inscrita neste evento.');
     }
@@ -279,7 +282,11 @@ export class CurrentUserAttendanceCollectionResolver {
       getAuthenticatedUser(this.currentUserContext, context),
       'edit',
     );
-    const rosterIds = new Set((await getAttendanceOralRoster(this.prisma, eventId)).map((item) => item.personId));
+    const rosterIds = await findAttendanceOralRosterPersonIds(
+      this.prisma,
+      eventId,
+      inputs.map((input) => input.personId),
+    );
     if (inputs.some((input) => !rosterIds.has(input.personId))) {
       throw new NotFoundException('Uma ou mais pessoas não estão inscritas neste evento.');
     }

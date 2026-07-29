@@ -127,6 +127,50 @@ describe('offline public data access integration', () => {
     ]);
   });
 
+  it('removes only oral decisions synchronized outside the retention window', async () => {
+    const service = injectService(OralAttendanceOfflineService);
+    const now = Date.now();
+    const decision = {
+      queuedByUserId: 'user-1',
+      eventId: 'event-1',
+      status: 'PRESENT' as const,
+      location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 9 },
+      collectedAt: '2026-07-29T12:00:00.000Z',
+      queuedAt: now,
+      attempts: 0,
+    };
+    await database.oralAttendanceDecisions.bulkPut([
+      {
+        ...decision,
+        clientId: 'expired',
+        personId: 'person-1',
+        syncedAt: now - 8 * 24 * 60 * 60 * 1000,
+      },
+      {
+        ...decision,
+        clientId: 'recent',
+        personId: 'person-2',
+        syncedAt: now - 6 * 24 * 60 * 60 * 1000,
+      },
+      {
+        ...decision,
+        clientId: 'pending',
+        personId: 'person-3',
+        syncedAt: null,
+      },
+    ]);
+
+    await service.markSynced(['pending']);
+
+    await expect(database.oralAttendanceDecisions.get('expired')).resolves.toBeUndefined();
+    await expect(database.oralAttendanceDecisions.get('recent')).resolves.toEqual(
+      expect.objectContaining({ syncedAt: expect.any(Number) }),
+    );
+    await expect(database.oralAttendanceDecisions.get('pending')).resolves.toEqual(
+      expect.objectContaining({ syncedAt: expect.any(Number) }),
+    );
+  });
+
   it('stores the calendar default item view preference in IndexedDB', async () => {
     const service = injectService(CalendarPreferencesStorageService);
 

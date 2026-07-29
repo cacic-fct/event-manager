@@ -123,11 +123,121 @@ export async function getAttendanceOralRoster(
   prisma: PrismaService,
   eventId: string,
 ): Promise<EventAttendanceScannerFeedItem[]> {
-  const event = await prisma.event.findUniqueOrThrow({
+  const event = await findOralRosterEvent(prisma, eventId);
+  const subscribers = await prisma.people.findMany({
+    where: oralRosterPeopleWhere(eventId, event),
+    select: {
+      id: true,
+      name: true,
+      identityDocument: true,
+      isCPF: true,
+      user: { select: { unespRole: true } },
+      majorEventSubscriptions: {
+        where: event.majorEventId
+          ? {
+              majorEventId: event.majorEventId,
+              deletedAt: null,
+              subscriptionStatus: 'CONFIRMED',
+              ...(event.autoSubscribe
+                ? {}
+                : { selectedEvents: { some: { eventId, deletedAt: null } } }),
+            }
+          : { majorEventId: '__standalone-event__' },
+        select: { subscriptionStatus: true },
+        take: 1,
+      },
+    },
+    orderBy: [{ name: 'asc' }, { id: 'asc' }],
+  });
+
+  const attendances = await prisma.eventAttendance.findMany({
+    where: {
+      eventId,
+      personId: { in: subscribers.map((subscriber) => subscriber.id) },
+    },
+    select: {
+      personId: true,
+      eventId: true,
+      status: true,
+      attendedAt: true,
+      createdById: true,
+      committedById: true,
+      createdByMethod: true,
+    },
+  });
+
+  const attendanceByPersonId = new Map(attendances.map((attendance) => [attendance.personId, attendance]));
+  const collectorIds = getCollectorIds(attendances);
+  const collectors = await findCollectors(prisma, collectorIds);
+  const collectorFirstNameById = new Map(collectors.map((collector) => [collector.id, firstName(collector.name)]));
+
+  return subscribers.map((subscriber) => {
+    const attendance = attendanceByPersonId.get(subscriber.id);
+    return {
+      personId: subscriber.id,
+      eventId,
+      fullName: subscriber.name,
+      identityDocument: maskIdentityDocument(subscriber.identityDocument, subscriber.isCPF),
+      unespRole: subscriber.user?.unespRole?.length ? subscriber.user.unespRole.join(', ') : undefined,
+      subscriptionStatus: subscriber.majorEventSubscriptions?.[0]?.subscriptionStatus,
+      attendedAt: attendance?.attendedAt,
+      status: attendance?.status,
+      createdByMethod: attendance?.createdByMethod,
+      collectedByFirstName: attendance?.createdById
+        ? collectorFirstNameById.get(attendance.createdById)
+        : undefined,
+      committedByFirstName:
+        attendance?.committedById && attendance.committedById !== attendance.createdById
+          ? collectorFirstNameById.get(attendance.committedById)
+          : undefined,
+    };
+  });
+}
+
+export async function isOnAttendanceOralRoster(
+  prisma: PrismaService,
+  eventId: string,
+  personId: string,
+): Promise<boolean> {
+  const event = await findOralRosterEvent(prisma, eventId);
+  return Boolean(
+    await prisma.people.findFirst({
+      where: {
+        ...oralRosterPeopleWhere(eventId, event),
+        id: personId,
+      },
+      select: { id: true },
+    }),
+  );
+}
+
+export async function findAttendanceOralRosterPersonIds(
+  prisma: PrismaService,
+  eventId: string,
+  personIds: readonly string[],
+): Promise<Set<string>> {
+  const event = await findOralRosterEvent(prisma, eventId);
+  const people = await prisma.people.findMany({
+    where: {
+      ...oralRosterPeopleWhere(eventId, event),
+      id: { in: [...new Set(personIds)] },
+    },
+    select: { id: true },
+  });
+  return new Set(people.map((person) => person.id));
+}
+
+function findOralRosterEvent(prisma: PrismaService, eventId: string) {
+  return prisma.event.findUniqueOrThrow({
     where: { id: eventId },
     select: { id: true, majorEventId: true, autoSubscribe: true },
   });
+}
 
+function oralRosterPeopleWhere(
+  eventId: string,
+  event: { majorEventId: string | null; autoSubscribe: boolean },
+): Prisma.PeopleWhereInput {
   const subscriptionFilters: Prisma.PeopleWhereInput[] = [
     { eventSubscriptions: { some: { eventId, deletedAt: null } } },
   ];
@@ -145,63 +255,11 @@ export async function getAttendanceOralRoster(
       },
     });
   }
-
-  const [subscribers, attendances] = await Promise.all([
-    prisma.people.findMany({
-      where: {
-        deletedAt: null,
-        mergedIntoId: null,
-        OR: subscriptionFilters,
-      },
-      select: {
-        id: true,
-        name: true,
-        identityDocument: true,
-        isCPF: true,
-        user: { select: { unespRole: true } },
-      },
-      orderBy: [{ name: 'asc' }, { id: 'asc' }],
-    }),
-    prisma.eventAttendance.findMany({
-      where: { eventId },
-      select: {
-        personId: true,
-        eventId: true,
-        status: true,
-        attendedAt: true,
-        createdById: true,
-        committedById: true,
-        createdByMethod: true,
-      },
-    }),
-  ]);
-
-  const attendanceByPersonId = new Map(attendances.map((attendance) => [attendance.personId, attendance]));
-  const collectorIds = getCollectorIds(attendances);
-  const collectors = await findCollectors(prisma, collectorIds);
-  const collectorFirstNameById = new Map(collectors.map((collector) => [collector.id, firstName(collector.name)]));
-
-  return subscribers.map((subscriber) => {
-    const attendance = attendanceByPersonId.get(subscriber.id);
-    return {
-      personId: subscriber.id,
-      eventId,
-      fullName: subscriber.name,
-      identityDocument: maskIdentityDocument(subscriber.identityDocument, subscriber.isCPF),
-      unespRole: subscriber.user?.unespRole?.length ? subscriber.user.unespRole.join(', ') : undefined,
-      subscriptionStatus: 'CONFIRMED',
-      attendedAt: attendance?.attendedAt,
-      status: attendance?.status,
-      createdByMethod: attendance?.createdByMethod,
-      collectedByFirstName: attendance?.createdById
-        ? collectorFirstNameById.get(attendance.createdById)
-        : undefined,
-      committedByFirstName:
-        attendance?.committedById && attendance.committedById !== attendance.createdById
-          ? collectorFirstNameById.get(attendance.committedById)
-          : undefined,
-    };
-  });
+  return {
+    deletedAt: null,
+    mergedIntoId: null,
+    OR: subscriptionFilters,
+  };
 }
 
 function getCollectorIds(

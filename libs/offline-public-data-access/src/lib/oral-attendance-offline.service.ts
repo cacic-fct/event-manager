@@ -7,6 +7,8 @@ import {
 } from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 
+const SYNCED_DECISION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
 @Injectable({ providedIn: 'root' })
 export class OralAttendanceOfflineService {
   private readonly databaseProvider = inject(OfflinePublicDatabaseProvider);
@@ -97,12 +99,27 @@ export class OralAttendanceOfflineService {
   }
 
   async markSynced(clientIds: readonly string[]): Promise<void> {
-    const table = this.databaseProvider.getDatabase()?.oralAttendanceDecisions;
-    if (!table) {
+    const database = this.databaseProvider.getDatabase();
+    if (!database) {
       return;
     }
     const syncedAt = Date.now();
-    await Promise.all(clientIds.map((clientId) => table.update(clientId, { syncedAt, lastError: null })));
+    await database.transaction('rw', database.oralAttendanceDecisions, async () => {
+      await Promise.all(
+        clientIds.map((clientId) =>
+          database.oralAttendanceDecisions.update(clientId, { syncedAt, lastError: null }),
+        ),
+      );
+      const expiredIds = await database.oralAttendanceDecisions
+        .filter(
+          (item) =>
+            item.syncedAt != null && item.syncedAt < syncedAt - SYNCED_DECISION_RETENTION_MS,
+        )
+        .primaryKeys();
+      if (expiredIds.length) {
+        await database.oralAttendanceDecisions.bulkDelete(expiredIds);
+      }
+    });
   }
 
   async recordFailure(clientIds: readonly string[], message: string): Promise<void> {

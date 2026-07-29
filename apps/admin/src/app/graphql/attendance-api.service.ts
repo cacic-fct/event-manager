@@ -125,11 +125,19 @@ export class AttendanceApiService {
       .pipe(map((data) => data.importMajorEventSubscriptionsFromCsv));
   }
 
-  listEventAttendances(eventId?: string, filters?: { skip?: number; take?: number }) {
+  listEventAttendances(
+    eventId?: string,
+    filters?: { skip?: number; take?: number; status?: EventAttendanceStatus },
+  ) {
     return this.graphqlHttp
       .request<{ eventAttendances: EventAttendance[] }>(
-        `query ListEventAttendances($eventId: String, $skip: Int, $take: Int) {
-          eventAttendances(eventId: $eventId, skip: $skip, take: $take) {
+        `query ListEventAttendances(
+          $eventId: String
+          $status: EventAttendanceStatus
+          $skip: Int
+          $take: Int
+        ) {
+          eventAttendances(eventId: $eventId, status: $status, skip: $skip, take: $take) {
             eventId
             personId
             attendedAt
@@ -154,7 +162,7 @@ export class AttendanceApiService {
             }
           }
         }`,
-        { eventId, skip: filters?.skip, take: filters?.take },
+        { eventId, status: filters?.status, skip: filters?.skip, take: filters?.take },
       )
       .pipe(map((data) => data.eventAttendances));
   }
@@ -353,22 +361,6 @@ export class AttendanceApiService {
           return parsed.type === 'event-attendance-scanner-feed' && parsed.attendances ? parsed.attendances : null;
         },
         errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
-      },
-    );
-  }
-
-  watchEventAttendanceOralRoster(eventId: string): Observable<EventAttendanceScannerFeedItem[]> {
-    return watchReplayableEventSource(
-      `/api/event-attendances/events/${encodeURIComponent(eventId)}/oral-roster/events`,
-      {
-        decode: (event) => {
-          const parsed = JSON.parse(event.data) as {
-            type: string;
-            attendances?: EventAttendanceScannerFeedItem[];
-          };
-          return parsed.type === 'event-attendance-oral-roster' && parsed.attendances ? parsed.attendances : null;
-        },
-        errorMessage: 'Não foi possível acompanhar a chamada oral em tempo real.',
       },
     );
   }

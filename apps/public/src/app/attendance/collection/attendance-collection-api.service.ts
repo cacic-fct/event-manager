@@ -182,21 +182,6 @@ export class AttendanceCollectionApiService {
     });
   }
 
-  watchOralRoster(eventId: string): Observable<AttendanceScannerFeedItem[]> {
-    return watchReplayableEventSource(
-      `/api/attendance-collection/events/${encodeURIComponent(eventId)}/oral-roster/events`,
-      {
-        decode: (event) =>
-          decodeTypedSseEvent<AttendanceScannerFeedItem[], 'attendances'>(
-            event,
-            'event-attendance-oral-roster',
-            'attendances',
-          ),
-        errorMessage: 'Não foi possível acompanhar a chamada oral em tempo real.',
-      },
-    );
-  }
-
   registerScannerCode(
     eventId: string,
     code: string,

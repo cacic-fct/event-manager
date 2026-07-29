@@ -102,6 +102,9 @@ export class AttendanceOfflineSyncService {
     }
 
     const items = await this.oralQueue.listPending(userId);
+    if (this.oralSyncRunning) {
+      return;
+    }
     if (items.length === 0) {
       return;
     }

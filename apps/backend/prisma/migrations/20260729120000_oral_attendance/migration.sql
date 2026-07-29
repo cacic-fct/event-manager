@@ -1,6 +1,6 @@
 CREATE TYPE "EventAttendanceStatus" AS ENUM ('PRESENT', 'ABSENT');
 
-ALTER TYPE "AttendanceCreationMethod" ADD VALUE 'ORAL_CALL';
+ALTER TYPE "AttendanceCreationMethod" ADD VALUE 'ORAL_CALL' BEFORE 'SCANNER';
 
 ALTER TABLE "event_attendances"
 ADD COLUMN "status" "EventAttendanceStatus" NOT NULL DEFAULT 'PRESENT';

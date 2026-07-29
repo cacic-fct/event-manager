@@ -22,20 +22,6 @@ describe('AttendanceCollectionApiService', () => {
     expect(source.close).toHaveBeenCalledOnce();
   });
 
-  it('watches the oral roster without reusing the scanner feed contract', async () => {
-    installFakeEventSource();
-    TestBed.configureTestingModule({ providers: [provideHttpClient()] });
-    const service = TestBed.inject(AttendanceCollectionApiService);
-    const roster = firstValueFrom(service.watchOralRoster('event / 1'));
-    const source = FakeEventSource.instances[0] as FakeEventSource;
-
-    expect(source.url).toBe('/api/attendance-collection/events/event%20%2F%201/oral-roster/events');
-    source.emitMessage({ type: 'event-attendance-oral-roster', attendances: [] });
-
-    await expect(roster).resolves.toEqual([]);
-    expect(source.close).toHaveBeenCalledOnce();
-  });
-
   it('sends an oral-call decision batch with original collection times and locations', async () => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     const service = TestBed.inject(AttendanceCollectionApiService);
