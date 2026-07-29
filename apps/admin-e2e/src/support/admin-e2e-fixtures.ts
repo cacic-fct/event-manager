@@ -946,7 +946,7 @@ function graphqlData(
     return { eventAttendances: [createAdminE2EEventAttendance()] };
   }
 
-  if (query.includes('query OfflineEventAttendanceSubmissions')) {
+  if (query.includes('offlineEventAttendanceSubmissions(eventId: $eventId)')) {
     return {
       offlineEventAttendanceSubmissions: state.offlineEventAttendanceSubmission
         ? [state.offlineEventAttendanceSubmission]
@@ -954,7 +954,7 @@ function graphqlData(
     };
   }
 
-  if (query.includes('mutation UpdateOfflineEventAttendanceSubmission')) {
+  if (query.includes('updateOfflineEventAttendanceSubmission(')) {
     const input = isRecord(variables['input']) ? variables['input'] : {};
     const personId = typeof input['personId'] === 'string' ? input['personId'] : 'person-1';
     const person = createAdminE2EPerson({ id: personId });
