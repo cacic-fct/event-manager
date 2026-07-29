@@ -16,6 +16,7 @@ import {
   EventAttendanceStatus,
 } from '@cacic-fct/event-manager-admin-contracts';
 import {
+  EVENT_ATTENDANCE_SCANNER_FEED_FIELDS,
   EVENT_ATTENDANCE_WRITE_FIELDS,
   MAJOR_EVENT_USER_ATTENDANCE_FIELDS,
   OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS,
@@ -287,17 +288,7 @@ export class AttendanceApiService {
       .request<{ eventAttendanceScannerFeed: EventAttendanceScannerFeedItem[] }>(
         `query EventAttendanceScannerFeed($eventId: String!) {
           eventAttendanceScannerFeed(eventId: $eventId) {
-            personId
-            eventId
-            fullName
-            identityDocument
-            unespRole
-            subscriptionStatus
-            attendedAt
-            status
-            createdByMethod
-            collectedByFirstName
-            committedByFirstName
+            ${EVENT_ATTENDANCE_SCANNER_FEED_FIELDS}
           }
         }`,
         { eventId },
@@ -310,17 +301,7 @@ export class AttendanceApiService {
       .request<{ eventAttendanceOralRoster: EventAttendanceScannerFeedItem[] }>(
         `query EventAttendanceOralRoster($eventId: String!) {
           eventAttendanceOralRoster(eventId: $eventId) {
-            personId
-            eventId
-            fullName
-            identityDocument
-            unespRole
-            subscriptionStatus
-            attendedAt
-            status
-            createdByMethod
-            collectedByFirstName
-            committedByFirstName
+            ${EVENT_ATTENDANCE_SCANNER_FEED_FIELDS}
           }
         }`,
         { eventId },

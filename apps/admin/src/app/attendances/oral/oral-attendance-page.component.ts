@@ -188,7 +188,10 @@ export class AdminOralAttendancePageComponent implements OnInit {
       const hasNewPendingItem = [...this.pending().values()].some(
         (item) => attemptedByPersonId.get(item.personId) !== item.collectedAt,
       );
-      if (hasNewPendingItem) {
+      const hasRetryPending = failedItems.some(
+        (item) => this.pending().get(item.personId)?.collectedAt === item.collectedAt,
+      );
+      if (hasNewPendingItem || hasRetryPending) {
         this.scheduleSync();
       }
     }
@@ -241,9 +244,20 @@ export class AdminOralAttendancePageComponent implements OnInit {
       const items = Array.isArray(stored)
         ? stored.filter((item): item is PendingAdminDecision => this.isPendingDecision(item))
         : [];
-      this.pending.set(new Map(items.map((item) => [item.personId, item])));
       const currentUserId = this.auth.user()?.sub;
       const recoveredFromAnotherUser = items.filter((item) => item.queuedByUserId !== currentUserId);
+      const currentUserLabel = this.auth.user()?.preferredUsername ?? this.auth.user()?.email ?? currentUserId;
+      this.pending.set(
+        new Map(
+          items.map((item) => [
+            item.personId,
+            item.queuedByUserId === currentUserId || !currentUserId || !currentUserLabel
+              ? item
+              : { ...item, queuedByUserId: currentUserId, queuedByLabel: currentUserLabel },
+          ]),
+        ),
+      );
+      this.persistPending();
       if (recoveredFromAnotherUser.length) {
         this.snackbar.open(
           `${recoveredFromAnotherUser.length} decisão(ões) salvas por outra conta serão enviadas pela conta atual se ela tiver permissão.`,
