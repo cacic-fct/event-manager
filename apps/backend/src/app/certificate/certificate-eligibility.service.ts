@@ -12,6 +12,11 @@ import {
   EventRecord,
   PersonRecord,
 } from './certificate.constants';
+import { CertificateSportsEligibility } from './certificate-sports-eligibility';
+import {
+  isAutomaticSportsCertificateIssuedTo,
+  isManualCertificateIssuedTo,
+} from './certificate-sports-roles';
 
 const MAJOR_EVENT_SUBSCRIPTION_SELECT = {
   majorEventId: true,
@@ -32,7 +37,11 @@ export type EligibleCertificateRecipient = {
 
 @Injectable()
 export class CertificateEligibilityService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly sportsEligibility: CertificateSportsEligibility;
+
+  constructor(private readonly prisma: PrismaService) {
+    this.sportsEligibility = new CertificateSportsEligibility(prisma);
+  }
 
   async getConfigById(configId: string): Promise<CertificateConfigRecord> {
     const config = await this.prisma.certificateConfig.findFirst({
@@ -54,12 +63,16 @@ export class CertificateEligibilityService {
     config: CertificateConfigRecord,
     personId?: string,
   ): Promise<EligibleCertificateRecipient[]> {
-    if (config.issuedTo === CertificateIssuedTo.OTHER) {
+    if (isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
       return personId ? this.resolveManualRecipient(config, personId) : [];
     }
 
     if (config.issuedTo === CertificateIssuedTo.LECTURER) {
       return this.resolveLecturerRecipients(config, personId);
+    }
+
+    if (isAutomaticSportsCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
+      return this.sportsEligibility.resolve(config, personId);
     }
 
     if (config.scope === CertificateScope.EVENT) {

@@ -80,6 +80,14 @@ export function getPermissionScopeLabel(scope: string): string {
       return 'Resultados';
     case 'export':
       return 'Exportar';
+    case 'duplicate':
+      return 'Duplicar';
+    case 'review':
+      return 'Revisar';
+    case 'operate':
+      return 'Operar';
+    case 'assign-representative':
+      return 'Atribuir representante';
     default:
       return scope;
   }
@@ -119,6 +127,20 @@ export function getPermissionResourceLabel(resource: string): string {
       return 'Comprovante';
     case 'subscription':
       return 'Inscrição';
+    case 'sports-tournament':
+      return 'Torneio esportivo';
+    case 'sports-category':
+      return 'Modalidade esportiva';
+    case 'sports-team':
+      return 'Equipe esportiva';
+    case 'sports-registration':
+      return 'Inscrição esportiva';
+    case 'sports-match':
+      return 'Partida esportiva';
+    case 'sports-official':
+      return 'Equipe de arbitragem';
+    case 'sports-score':
+      return 'Placar esportivo';
     case 'user':
       return 'Usuário';
     default:
@@ -158,6 +180,20 @@ export function getPermissionResourceIcon(resource: string): string {
       return 'receipt_long';
     case 'subscription':
       return 'how_to_reg';
+    case 'sports-tournament':
+      return 'emoji_events';
+    case 'sports-category':
+      return 'sports';
+    case 'sports-team':
+      return 'groups';
+    case 'sports-registration':
+      return 'app_registration';
+    case 'sports-match':
+      return 'scoreboard';
+    case 'sports-official':
+      return 'sports_score';
+    case 'sports-score':
+      return 'leaderboard';
     case 'user':
       return 'account_circle';
     default:
@@ -199,6 +235,14 @@ export function getPermissionScopeIcon(scope: string): string {
       return 'bar_chart';
     case 'export':
       return 'download';
+    case 'duplicate':
+      return 'content_copy';
+    case 'review':
+      return 'rate_review';
+    case 'operate':
+      return 'sports_score';
+    case 'assign-representative':
+      return 'manage_accounts';
     default:
       return 'help';
   }

@@ -3,6 +3,7 @@ import {
   EVENT_MANAGER_PERMISSION_SET,
   EventManagerKeycloakRole,
   Permission,
+  isPermissionGrantScopeCompatible,
   parsePermission,
   requiresGlobalPermissionGrantScope,
 } from '@cacic-fct/shared-permissions';
@@ -25,6 +26,17 @@ export type AuthorizationResourceContext = {
   eventFormId?: string;
   eventFormLinkId?: string;
   eventFormResponseId?: string;
+  sportsTournamentId?: string;
+  sportsCategoryId?: string;
+  sportsTeamId?: string;
+  sportsRegistrationId?: string;
+  sportsMatchId?: string;
+  sportsOfficialAssignmentId?: string;
+  sportsTeamChangeRequestId?: string;
+  sportsTeamRepresentativeId?: string;
+  sportsPlayerApplicationId?: string;
+  sportsMatchActionId?: string;
+  sportsMatchRosterId?: string;
   scope?: string;
   targetId?: string;
   genericId?: string;
@@ -292,6 +304,17 @@ export class AuthorizationPolicyService {
           deletedAt: true,
           publiclyVisible: true,
           shouldCollectAttendance: true,
+          sportsMatch: {
+            select: {
+              id: true,
+              categoryId: true,
+              category: {
+                select: {
+                  tournamentId: true,
+                },
+              },
+            },
+          },
         },
       }),
     ]);
@@ -306,6 +329,26 @@ export class AuthorizationPolicyService {
 
     if (collector && event.publiclyVisible) {
       return;
+    }
+
+    if (event.sportsMatch) {
+      const assignment = await this.prisma.sportsOfficialAssignment.findFirst({
+        where: {
+          personId,
+          active: true,
+          revokedAt: null,
+          tournamentId: event.sportsMatch.category.tournamentId,
+          OR: [
+            { matchId: event.sportsMatch.id },
+            { matchId: null, categoryId: event.sportsMatch.categoryId },
+            { matchId: null, categoryId: null },
+          ],
+        },
+        select: { id: true },
+      });
+      if (assignment) {
+        return;
+      }
     }
 
     if (await this.hasAnyPermission(options.user, ATTENDANCE_COLLECTION_PERMISSIONS, { eventId })) {
@@ -364,7 +407,10 @@ export class AuthorizationPolicyService {
     }
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
-    if (grants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+    const compatibleGrants = grants.filter((grant) =>
+      isPermissionGrantScopeCompatible(permission, grant.scope),
+    );
+    if (compatibleGrants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
       return true;
     }
 
@@ -374,9 +420,9 @@ export class AuthorizationPolicyService {
 
     const target = await this.resolveGrantTarget(permission, context);
     if (context.allowScopedCollection && this.isEmptyGrantTarget(target)) {
-      return grants.some((grant) => grant.scope !== EventManagerPermissionGrantScope.GLOBAL);
+      return compatibleGrants.some((grant) => grant.scope !== EventManagerPermissionGrantScope.GLOBAL);
     }
-    return grants.some((grant) => this.matchesScopedGrant(grant, target));
+    return compatibleGrants.some((grant) => this.matchesScopedGrant(grant, target));
   }
 
   private async hasAnyPermission(
@@ -510,6 +556,50 @@ export class AuthorizationPolicyService {
       await this.addEventFormResponseTarget(target, context.eventFormResponseId);
     }
 
+    if (context.sportsTournamentId) {
+      await this.addSportsTournamentTarget(target, context.sportsTournamentId);
+    }
+
+    if (context.sportsCategoryId) {
+      await this.addSportsCategoryTarget(target, context.sportsCategoryId);
+    }
+
+    if (context.sportsTeamId) {
+      await this.addSportsTeamTarget(target, context.sportsTeamId);
+    }
+
+    if (context.sportsRegistrationId) {
+      await this.addSportsRegistrationTarget(target, context.sportsRegistrationId);
+    }
+
+    if (context.sportsMatchId) {
+      await this.addSportsMatchTarget(target, context.sportsMatchId);
+    }
+
+    if (context.sportsOfficialAssignmentId) {
+      await this.addSportsOfficialTarget(target, context.sportsOfficialAssignmentId);
+    }
+
+    if (context.sportsTeamChangeRequestId) {
+      await this.addSportsTeamChangeRequestTarget(target, context.sportsTeamChangeRequestId);
+    }
+
+    if (context.sportsTeamRepresentativeId) {
+      await this.addSportsTeamRepresentativeTarget(target, context.sportsTeamRepresentativeId);
+    }
+
+    if (context.sportsPlayerApplicationId) {
+      await this.addSportsPlayerApplicationTarget(target, context.sportsPlayerApplicationId);
+    }
+
+    if (context.sportsMatchActionId) {
+      await this.addSportsMatchActionTarget(target, context.sportsMatchActionId);
+    }
+
+    if (context.sportsMatchRosterId) {
+      await this.addSportsMatchRosterTarget(target, context.sportsMatchRosterId);
+    }
+
     if (context.scope && context.targetId) {
       await this.addCertificateScopeTarget(target, context.scope, context.targetId);
     }
@@ -559,6 +649,25 @@ export class AuthorizationPolicyService {
         return true;
       case 'event-form':
         await this.addEventFormTarget(target, id);
+        return true;
+      case 'sports-tournament':
+        await this.addSportsTournamentTarget(target, id);
+        return true;
+      case 'sports-category':
+        await this.addSportsCategoryTarget(target, id);
+        return true;
+      case 'sports-team':
+        await this.addSportsTeamTarget(target, id);
+        return true;
+      case 'sports-registration':
+        await this.addSportsRegistrationTarget(target, id);
+        return true;
+      case 'sports-match':
+      case 'sports-score':
+        await this.addSportsMatchTarget(target, id);
+        return true;
+      case 'sports-official':
+        await this.addSportsOfficialTarget(target, id);
         return true;
       default:
         return false;
@@ -834,6 +943,202 @@ export class AuthorizationPolicyService {
     await this.addEventFormTarget(target, response.formId);
   }
 
+  private async addSportsTournamentTarget(target: ResolvedGrantTarget, tournamentId: string): Promise<void> {
+    const tournament = await this.prisma.sportsTournament.findUnique({
+      where: { id: tournamentId },
+      select: {
+        majorEventId: true,
+        categories: {
+          where: { deletedAt: null },
+          select: {
+            eventGroupId: true,
+            matches: {
+              where: { deletedAt: null },
+              select: { eventId: true },
+            },
+          },
+        },
+      },
+    });
+    if (tournament) {
+      target.majorEventIds.add(tournament.majorEventId);
+      for (const category of tournament.categories) {
+        target.eventGroupIds.add(category.eventGroupId);
+        for (const match of category.matches) {
+          target.eventIds.add(match.eventId);
+        }
+      }
+    }
+  }
+
+  private async addSportsCategoryTarget(target: ResolvedGrantTarget, categoryId: string): Promise<void> {
+    const category = await this.prisma.sportsCategory.findUnique({
+      where: { id: categoryId },
+      select: {
+        eventGroupId: true,
+        tournament: {
+          select: { majorEventId: true },
+        },
+      },
+    });
+    if (category) {
+      target.eventGroupIds.add(category.eventGroupId);
+      target.majorEventIds.add(category.tournament.majorEventId);
+    }
+  }
+
+  private async addSportsTeamTarget(target: ResolvedGrantTarget, teamId: string): Promise<void> {
+    const team = await this.prisma.sportsTeam.findUnique({
+      where: { id: teamId },
+      select: {
+        tournament: {
+          select: { majorEventId: true },
+        },
+        registrations: {
+          where: { deletedAt: null },
+          select: {
+            category: {
+              select: { eventGroupId: true },
+            },
+          },
+        },
+      },
+    });
+    if (team) {
+      target.majorEventIds.add(team.tournament.majorEventId);
+      for (const registration of team.registrations) {
+        target.eventGroupIds.add(registration.category.eventGroupId);
+      }
+    }
+  }
+
+  private async addSportsRegistrationTarget(target: ResolvedGrantTarget, registrationId: string): Promise<void> {
+    const registration = await this.prisma.sportsRegistration.findUnique({
+      where: { id: registrationId },
+      select: {
+        category: {
+          select: {
+            eventGroupId: true,
+            tournament: {
+              select: { majorEventId: true },
+            },
+          },
+        },
+      },
+    });
+    if (registration) {
+      target.eventGroupIds.add(registration.category.eventGroupId);
+      target.majorEventIds.add(registration.category.tournament.majorEventId);
+    }
+  }
+
+  private async addSportsMatchTarget(target: ResolvedGrantTarget, matchId: string): Promise<void> {
+    const match = await this.prisma.sportsMatch.findUnique({
+      where: { id: matchId },
+      select: { eventId: true },
+    });
+    if (match) {
+      await this.addEventTarget(target, match.eventId);
+    }
+  }
+
+  private async addSportsOfficialTarget(target: ResolvedGrantTarget, assignmentId: string): Promise<void> {
+    const assignment = await this.prisma.sportsOfficialAssignment.findUnique({
+      where: { id: assignmentId },
+      select: {
+        matchId: true,
+        categoryId: true,
+        tournamentId: true,
+      },
+    });
+    if (!assignment) {
+      return;
+    }
+    if (assignment.matchId) {
+      await this.addSportsMatchTarget(target, assignment.matchId);
+      return;
+    }
+    if (assignment.categoryId) {
+      await this.addSportsCategoryTarget(target, assignment.categoryId);
+      return;
+    }
+    await this.addSportsTournamentTarget(target, assignment.tournamentId);
+  }
+
+  private async addSportsTeamChangeRequestTarget(target: ResolvedGrantTarget, requestId: string): Promise<void> {
+    const request = await this.prisma.sportsTeamChangeRequest.findUnique({
+      where: { id: requestId },
+      select: { teamId: true },
+    });
+    if (request) {
+      await this.addSportsTeamTarget(target, request.teamId);
+    }
+  }
+
+  private async addSportsTeamRepresentativeTarget(
+    target: ResolvedGrantTarget,
+    representativeId: string,
+  ): Promise<void> {
+    const representative = await this.prisma.sportsTeamRepresentative.findUnique({
+      where: { id: representativeId },
+      select: { teamId: true },
+    });
+    if (representative) {
+      await this.addSportsTeamTarget(target, representative.teamId);
+    }
+  }
+
+  private async addSportsPlayerApplicationTarget(
+    target: ResolvedGrantTarget,
+    applicationId: string,
+  ): Promise<void> {
+    const application = await this.prisma.sportsPlayerApplication.findUnique({
+      where: { id: applicationId },
+      select: {
+        tournamentId: true,
+        categoryChoices: {
+          select: {
+            category: {
+              select: { eventGroupId: true },
+            },
+          },
+        },
+      },
+    });
+    if (application) {
+      await this.addSportsTournamentTarget(target, application.tournamentId);
+      for (const choice of application.categoryChoices) {
+        target.eventGroupIds.add(choice.category.eventGroupId);
+      }
+    }
+  }
+
+  private async addSportsMatchActionTarget(
+    target: ResolvedGrantTarget,
+    actionId: string,
+  ): Promise<void> {
+    const action = await this.prisma.sportsMatchAction.findUnique({
+      where: { id: actionId },
+      select: { matchId: true },
+    });
+    if (action) {
+      await this.addSportsMatchTarget(target, action.matchId);
+    }
+  }
+
+  private async addSportsMatchRosterTarget(
+    target: ResolvedGrantTarget,
+    rosterId: string,
+  ): Promise<void> {
+    const roster = await this.prisma.sportsMatchRoster.findUnique({
+      where: { id: rosterId },
+      select: { matchId: true },
+    });
+    if (roster) {
+      await this.addSportsMatchTarget(target, roster.matchId);
+    }
+  }
+
   private matchesScopedGrant(grant: ActiveGrant, target: ResolvedGrantTarget): boolean {
     switch (grant.scope) {
       case EventManagerPermissionGrantScope.EVENT:
@@ -923,6 +1228,49 @@ export class AuthorizationPolicyService {
           case 'actionId':
           case 'receiptValidationActionId':
             context.receiptValidationActionId ??= id;
+            break;
+          case 'tournamentId':
+          case 'sportsTournamentId':
+            context.sportsTournamentId ??= id;
+            break;
+          case 'categoryId':
+          case 'sportsCategoryId':
+            context.sportsCategoryId ??= id;
+            break;
+          case 'teamId':
+          case 'sportsTeamId':
+            context.sportsTeamId ??= id;
+            break;
+          case 'registrationId':
+          case 'sportsRegistrationId':
+            context.sportsRegistrationId ??= id;
+            break;
+          case 'matchId':
+          case 'sportsMatchId':
+            context.sportsMatchId ??= id;
+            break;
+          case 'officialAssignmentId':
+          case 'sportsOfficialAssignmentId':
+            context.sportsOfficialAssignmentId ??= id;
+            break;
+          case 'changeRequestId':
+          case 'sportsTeamChangeRequestId':
+            context.sportsTeamChangeRequestId ??= id;
+            break;
+          case 'representativeId':
+          case 'sportsTeamRepresentativeId':
+            context.sportsTeamRepresentativeId ??= id;
+            break;
+          case 'applicationId':
+          case 'sportsPlayerApplicationId':
+            context.sportsPlayerApplicationId ??= id;
+            break;
+          case 'sportsMatchActionId':
+            context.sportsMatchActionId ??= id;
+            break;
+          case 'rosterId':
+          case 'sportsMatchRosterId':
+            context.sportsMatchRosterId ??= id;
             break;
         }
         continue;

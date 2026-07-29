@@ -228,6 +228,13 @@ registerEnumType(CertificateScope, {
 export const CertificateIssuedTo = {
   ATTENDEE: 'ATTENDEE',
   LECTURER: 'LECTURER',
+  SPORTS_PLAYER: 'SPORTS_PLAYER',
+  SPORTS_CAPTAIN: 'SPORTS_CAPTAIN',
+  SPORTS_COACH: 'SPORTS_COACH',
+  SPORTS_REFEREE: 'SPORTS_REFEREE',
+  SPORTS_INTERMEDIATOR: 'SPORTS_INTERMEDIATOR',
+  SPORTS_SCOREKEEPER: 'SPORTS_SCOREKEEPER',
+  SPORTS_ORGANIZER: 'SPORTS_ORGANIZER',
   OTHER: 'OTHER',
 } as const;
 export type CertificateIssuedTo = (typeof CertificateIssuedTo)[keyof typeof CertificateIssuedTo];

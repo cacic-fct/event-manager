@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   GoneException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,6 +22,8 @@ import { AttendanceCategoryService } from '../../events/attendance-category.serv
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { S3Service } from '../../s3/s3.service';
+import { refreshSportsParticipantForSubscription } from '../../sports/sports-payment.service';
+import { SportsPlayerApplicationRealtimeService } from '../../sports/applications/sports-player-application-realtime.service';
 import { mapReceipt } from '../mappers/receipt-queue.mapper';
 import {
   CurrentUserReceiptResponse,
@@ -50,6 +53,13 @@ export class ReceiptUploadService {
     private readonly frozenResources: FrozenResourceService = {
       assertMajorEventMutable: async () => undefined,
     } as unknown as FrozenResourceService,
+    @Inject(SportsPlayerApplicationRealtimeService)
+    private readonly sportsApplicationRealtime: Pick<
+      SportsPlayerApplicationRealtimeService,
+      'publishPaymentChanged'
+    > = {
+      publishPaymentChanged: async () => undefined,
+    },
   ) {}
 
   async getCurrentReceipt(
@@ -173,10 +183,15 @@ export class ReceiptUploadService {
       if (updateResult.count !== 1) {
         throw new ConflictException(`Subscription for major event ${majorEventId} cannot receive a new receipt.`);
       }
+      await refreshSportsParticipantForSubscription(tx, subscription.id);
       await this.attendanceCategories.refreshForMajorEventPerson(majorEventId, person.id, tx);
 
       return createdReceipt;
     });
+    await this.sportsApplicationRealtime.publishPaymentChanged(
+      subscription.id,
+      'RECEIPT_UPLOADED',
+    );
 
     await this.receiptQueue.add(
       'process',

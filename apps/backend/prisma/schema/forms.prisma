@@ -57,6 +57,7 @@ model EventForm {
   links     EventFormLink[]
   responses EventFormResponse[]
   drafts    EventFormDraft[]
+  sportsCategoryRegistrationForms SportsCategory[] @relation("SportsCategoryRegistrationForm")
 
   deletedAt DateTime?
 

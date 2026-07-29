@@ -77,6 +77,17 @@ export const MAJOR_EVENT_BASE_SELECT = {
   scheduledPublishAt: true,
   publishedAt: true,
   unpublishedAt: true,
+  sportsTournament: {
+    where: {
+      deletedAt: null,
+      status: {
+        not: 'DRAFT',
+      },
+    },
+    select: {
+      id: true,
+    },
+  },
   certificateConfigs: {
     where: {
       deletedAt: null,
@@ -210,6 +221,17 @@ export const EVENT_SELECT = {
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,
+  sportsMatch: {
+    select: {
+      id: true,
+      categoryId: true,
+      category: {
+        select: {
+          tournamentId: true,
+        },
+      },
+    },
+  },
   deletedAt: true,
   createdAt: true,
   createdById: true,

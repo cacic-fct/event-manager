@@ -11,7 +11,14 @@ export async function getPrivateFeedEvents(prisma: PrismaService, personIds: str
 
   const eventWhere = privateFeedEventWhere();
 
-  const [eventSubscriptions, majorEventSelections, lecturerEvents, eventAttendances, certificates] = await Promise.all([
+  const [
+    eventSubscriptions,
+    majorEventSelections,
+    sportsMatches,
+    lecturerEvents,
+    eventAttendances,
+    certificates,
+  ] = await Promise.all([
     prisma.eventSubscription.findMany({
       where: {
         personId: {
@@ -49,6 +56,47 @@ export async function getPrivateFeedEvents(prisma: PrismaService, personIds: str
           },
         },
         event: eventWhere,
+      },
+      select: {
+        event: {
+          select: CALENDAR_EVENT_SELECT,
+        },
+      },
+      orderBy: {
+        event: {
+          startDate: 'desc',
+        },
+      },
+      take: PRIVATE_FEED_EVENT_TAKE,
+    }),
+    prisma.sportsMatch.findMany({
+      where: {
+        deletedAt: null,
+        event: eventWhere,
+        rosters: {
+          some: {
+            deletedAt: null,
+            status: 'APPROVED',
+            entries: {
+              some: {
+                deletedAt: null,
+                status: 'APPROVED',
+                registrationMember: {
+                  deletedAt: null,
+                  eligibility: 'ELIGIBLE',
+                  teamMember: {
+                    deletedAt: null,
+                    participant: {
+                      deletedAt: null,
+                      status: 'ACTIVE',
+                      personId: { in: personIds },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       select: {
         event: {
@@ -137,6 +185,7 @@ export async function getPrivateFeedEvents(prisma: PrismaService, personIds: str
   for (const event of [
     ...eventSubscriptions.map((subscription) => subscription.event),
     ...majorEventSelections.map((selection) => selection.event),
+    ...sportsMatches.map((match) => match.event),
     ...lecturerEvents.map((lecturer) => lecturer.event),
     ...eventAttendances.map((attendance) => attendance.event),
     ...certificates

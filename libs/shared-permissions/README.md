@@ -14,6 +14,7 @@ This package is the source of truth for permission names used by the backend and
 - `WORKSPACE_TAB_PERMISSIONS`: permission requirements used by admin workspace tabs.
 - `WORKSPACE_PERMISSION_EVALUATION_SET`: complete catalog alias used by the frontend when asking the backend to evaluate the current user.
 - `EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS`: permissions that cannot be scoped to one event, event group, or major event.
+- `EVENT_MANAGER_PERMISSION_SCOPE_COMPATIBILITY`: resource-to-scope compatibility, including the sports mapping from tournament to major event, category to event group, and match to event.
 - Permission labels, icons, included-data descriptions, and presets used by the grant-management UI.
 
 ## Authorization model
@@ -34,6 +35,14 @@ Business permissions are Event Manager grants stored in the application database
 - optional `validFrom` and `validUntil` dates.
 
 The backend policy layer is still the security boundary. Frontend checks only decide which tabs, buttons, and diagnostics are shown.
+
+Sports reuse the existing authorization hierarchy instead of adding parallel scope columns:
+
+- a sports tournament is backed by a major event;
+- a sports category is backed by an event group;
+- a sports match is backed by an event.
+
+Read permissions may flow down to a nested target so operators can see the minimum parent context needed for a category or match. Tournament and tournament-wide team mutations remain global or major-event scoped. Category and registration mutations may be event-group scoped, while match, official, and score operations may also be event scoped. Creation permissions stop at the nearest existing parent because the new target does not exist yet.
 
 ## Maintenance rules
 

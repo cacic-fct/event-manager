@@ -12,6 +12,10 @@ import {
 import { CurrentUserMajorEventFeedItem } from '../models';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
+import {
+  normalizeMajorEventPaymentTier,
+  resolveMajorEventSelfServicePayment,
+} from './major-event-payment-selection';
 
 type RankedCategory = 'course' | 'lecture' | 'uncategorized';
 
@@ -62,20 +66,7 @@ export class CurrentUserMajorEventSubscriptionService {
   }
 
   normalizePaymentTier(paymentTier?: string | null): string | null | undefined {
-    if (paymentTier === undefined) {
-      return undefined;
-    }
-
-    if (paymentTier === null) {
-      return null;
-    }
-
-    const normalizedPaymentTier = paymentTier.trim();
-    if (normalizedPaymentTier.length === 0) {
-      return null;
-    }
-
-    return normalizedPaymentTier;
+    return normalizeMajorEventPaymentTier(paymentTier);
   }
 
   resolveSelfServicePayment(
@@ -85,43 +76,10 @@ export class CurrentUserMajorEventSubscriptionService {
     amountPaid: number | null;
     paymentTier: string | null;
   } {
-    if (!majorEvent.isPaymentRequired) {
-      return {
-        amountPaid: null,
-        paymentTier: null,
-      };
-    }
-
-    const tiers = majorEvent.majorEventPrices.flatMap((price) => price.tiers);
-    if (tiers.length === 0) {
-      return {
-        amountPaid: null,
-        paymentTier: null,
-      };
-    }
-
-    if (tiers.length === 1) {
-      const [tier] = tiers;
-      return {
-        amountPaid: tier.value,
-        paymentTier: tier.name,
-      };
-    }
-
-    const normalizedPaymentTier = this.normalizePaymentTier(paymentTierInput);
-    if (!normalizedPaymentTier) {
-      throw new BadRequestException('paymentTier is required for this major event.');
-    }
-
-    const selectedTier = tiers.find((tier) => tier.name.trim().toLowerCase() === normalizedPaymentTier.toLowerCase());
-    if (!selectedTier) {
-      throw new BadRequestException('paymentTier is not valid for this major event.');
-    }
-
-    return {
-      amountPaid: selectedTier.value,
-      paymentTier: selectedTier.name,
-    };
+    return resolveMajorEventSelfServicePayment(
+      majorEvent,
+      paymentTierInput,
+    );
   }
 
   normalizeDesiredCount(value: number | null | undefined, fallback: number): number {
