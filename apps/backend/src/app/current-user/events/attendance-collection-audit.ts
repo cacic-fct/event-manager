@@ -36,3 +36,37 @@ export async function recordAttendanceCreate(params: {
     params.prisma,
   );
 }
+
+export async function recordAttendanceSet(params: {
+  auditLog: AuditLogService;
+  currentUserContext: CurrentUserContextService;
+  context: GraphqlContext;
+  attendance: {
+    personId: string;
+    eventId: string;
+    status: string;
+  };
+  before: Record<string, unknown> | null;
+  prisma: PrismaService | Prisma.TransactionClient;
+}): Promise<void> {
+  await params.auditLog.record(
+    {
+      entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+      entityId: params.auditLog.buildCompositeEntityId([params.attendance.personId, params.attendance.eventId]),
+      entityLabel: params.attendance.personId,
+      operation: params.before ? AuditLogOperation.UPDATE : AuditLogOperation.USER_CREATE,
+      actor: getAuthenticatedUser(params.currentUserContext, params.context),
+      before: params.before,
+      after: params.attendance,
+      scope: {
+        permission: Permission.EventAttendance.Collect,
+        eventId: params.attendance.eventId,
+      },
+      summary:
+        params.attendance.status === 'ABSENT'
+          ? 'Ausência explícita registrada pelo coletor via chamada oral.'
+          : 'Presença registrada pelo coletor via chamada oral.',
+    },
+    params.prisma,
+  );
+}

@@ -207,7 +207,7 @@ export class AttendanceScannerDialogComponent implements OnInit {
       .watchEventAttendanceScannerFeed(this.data.eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (attendances) => this.attendances.set(attendances),
+        next: (attendances) => this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
       });
   }
 
@@ -255,7 +255,7 @@ export class AttendanceScannerDialogComponent implements OnInit {
 
   protected loadInitialFeed(): void {
     this.api.listEventAttendanceScannerFeed(this.data.eventId).subscribe({
-      next: (attendances) => this.attendances.set(attendances),
+      next: (attendances) => this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
     });
   }
 
@@ -275,6 +275,8 @@ export class AttendanceScannerDialogComponent implements OnInit {
         return 'duplicação de evento';
       case 'MANUAL_INPUT':
         return 'manual';
+      case 'ORAL_CALL':
+        return 'chamada oral';
       case 'SCANNER':
         return 'scanner';
       case 'ONLINE_CODE':

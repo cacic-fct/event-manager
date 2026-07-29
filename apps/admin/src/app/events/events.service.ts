@@ -292,6 +292,7 @@ export class EventsService {
       shouldIssueCertificateForNonPayingAttendees: false,
       shouldIssueCertificateForNonSubscribedAttendees: false,
       shouldCollectAttendance: false,
+      shouldAllowOralAttendance: false,
       isOnlineAttendanceAllowed: false,
       shouldProvideSubscriberListToLecturer: false,
       onlineAttendanceCode: '',
@@ -967,6 +968,7 @@ export class EventsService {
         this.selectedEventGroupAllowsNonSubscribedCertificates() !== false &&
         raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: raw.shouldCollectAttendance,
+      shouldAllowOralAttendance: raw.shouldAllowOralAttendance,
       isOnlineAttendanceAllowed,
       shouldProvideSubscriberListToLecturer: raw.shouldProvideSubscriberListToLecturer,
       onlineAttendanceCode: isOnlineAttendanceAllowed ? raw.onlineAttendanceCode.trim() || null : null,
@@ -1073,6 +1075,7 @@ export class EventsService {
       shouldIssueCertificateForNonPayingAttendees: eventItem.shouldIssueCertificateForNonPayingAttendees,
       shouldIssueCertificateForNonSubscribedAttendees: eventItem.shouldIssueCertificateForNonSubscribedAttendees,
       shouldCollectAttendance: eventItem.shouldCollectAttendance,
+      shouldAllowOralAttendance: eventItem.shouldAllowOralAttendance,
       isOnlineAttendanceAllowed: eventItem.isOnlineAttendanceAllowed,
       shouldProvideSubscriberListToLecturer: eventItem.shouldProvideSubscriberListToLecturer ?? false,
       onlineAttendanceCode: eventItem.onlineAttendanceCode ?? '',

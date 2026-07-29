@@ -40,6 +40,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
     expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith({
       where: {
         personId: 'person-1',
+        status: 'PRESENT',
         event: {
           deletedAt: null,
         },
@@ -83,6 +84,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
       where: {
         personId: 'person-1',
         eventId: 'event-1',
+        status: 'PRESENT',
         event: {
           deletedAt: null,
         },
@@ -258,7 +260,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
         findFirst: jest.fn().mockResolvedValue(createOnlineAttendanceEvent()),
       },
       eventAttendance: {
-        findUnique: jest.fn().mockResolvedValue({ personId: 'person-1' }),
+        findUnique: jest.fn().mockResolvedValue({ personId: 'person-1', status: 'PRESENT' }),
       },
     };
     const { resolver } = createResolverWithDependencies(prisma);
@@ -276,6 +278,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
       },
       select: {
         personId: true,
+        status: true,
       },
     });
   });
@@ -285,7 +288,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
     const mappedAttendance = { eventId: 'event-1', attendedAt: new Date('2026-01-01T00:00:00.000Z') };
     const tx = {
       eventAttendance: {
-        create: jest.fn().mockResolvedValue(undefined),
+        upsert: jest.fn().mockResolvedValue(undefined),
         findUniqueOrThrow: jest.fn().mockResolvedValue(createdAttendance),
       },
     };
@@ -323,10 +326,23 @@ describe('CurrentUserEventAttendanceResolver', () => {
       resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: ' 123456 ' }, {} as never),
     ).resolves.toBe(mappedAttendance);
 
-    expect(tx.eventAttendance.create).toHaveBeenCalledWith({
-      data: {
+    expect(tx.eventAttendance.upsert).toHaveBeenCalledWith({
+      where: {
+        personId_eventId: {
+          personId: 'person-1',
+          eventId: 'event-1',
+        },
+      },
+      create: {
         personId: 'person-1',
         eventId: 'event-1',
+        createdByMethod: 'ONLINE_CODE',
+        createdById: 'user-1',
+        committedById: 'user-1',
+      },
+      update: {
+        status: 'PRESENT',
+        attendedAt: expect.any(Date),
         createdByMethod: 'ONLINE_CODE',
         createdById: 'user-1',
         committedById: 'user-1',

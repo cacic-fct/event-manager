@@ -388,7 +388,7 @@ export class DashboardInsightsService {
               deletedAt: null,
               endDate: { lt: now },
               shouldIssueCertificate: true,
-              attendances: { none: {} },
+              attendances: { none: { status: 'PRESENT' } },
               OR: [
                 { majorEventId: null },
                 {

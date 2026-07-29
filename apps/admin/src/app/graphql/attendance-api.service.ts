@@ -13,6 +13,7 @@ import {
   MajorEventUserAttendance,
   OfflineEventAttendanceSubmission,
   SubscriptionStatus,
+  EventAttendanceStatus,
 } from '@cacic-fct/event-manager-admin-contracts';
 import {
   EVENT_ATTENDANCE_WRITE_FIELDS,
@@ -136,6 +137,7 @@ export class AttendanceApiService {
             createdById
             committedById
             category
+            status
             createdByMethod
             collectedByFullName
             committedByFullName
@@ -280,9 +282,11 @@ export class AttendanceApiService {
             personId
             eventId
             fullName
+            identityDocument
             unespRole
             subscriptionStatus
             attendedAt
+            status
             createdByMethod
             collectedByFirstName
             committedByFirstName
@@ -291,6 +295,50 @@ export class AttendanceApiService {
         { eventId },
       )
       .pipe(map((data) => data.eventAttendanceScannerFeed));
+  }
+
+  listEventAttendanceOralRoster(eventId: string) {
+    return this.graphqlHttp
+      .request<{ eventAttendanceOralRoster: EventAttendanceScannerFeedItem[] }>(
+        `query EventAttendanceOralRoster($eventId: String!) {
+          eventAttendanceOralRoster(eventId: $eventId) {
+            personId
+            eventId
+            fullName
+            identityDocument
+            unespRole
+            subscriptionStatus
+            attendedAt
+            status
+            createdByMethod
+            collectedByFirstName
+            committedByFirstName
+          }
+        }`,
+        { eventId },
+      )
+      .pipe(map((data) => data.eventAttendanceOralRoster));
+  }
+
+  setEventOralAttendances(
+    inputs: readonly {
+      eventId: string;
+      personId: string;
+      status: EventAttendanceStatus;
+      collectedAt: string;
+      collectedByUserId: string;
+    }[],
+  ) {
+    return this.graphqlHttp
+      .request<{ setEventOralAttendances: EventAttendance[] }>(
+        `mutation SetEventOralAttendances($inputs: [EventOralAttendanceInput!]!) {
+          setEventOralAttendances(inputs: $inputs) {
+            ${EVENT_ATTENDANCE_WRITE_FIELDS}
+          }
+        }`,
+        { inputs },
+      )
+      .pipe(map((data) => data.setEventOralAttendances));
   }
 
   watchEventAttendanceScannerFeed(eventId: string): Observable<EventAttendanceScannerFeedItem[]> {
@@ -305,6 +353,22 @@ export class AttendanceApiService {
           return parsed.type === 'event-attendance-scanner-feed' && parsed.attendances ? parsed.attendances : null;
         },
         errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
+      },
+    );
+  }
+
+  watchEventAttendanceOralRoster(eventId: string): Observable<EventAttendanceScannerFeedItem[]> {
+    return watchReplayableEventSource(
+      `/api/event-attendances/events/${encodeURIComponent(eventId)}/oral-roster/events`,
+      {
+        decode: (event) => {
+          const parsed = JSON.parse(event.data) as {
+            type: string;
+            attendances?: EventAttendanceScannerFeedItem[];
+          };
+          return parsed.type === 'event-attendance-oral-roster' && parsed.attendances ? parsed.attendances : null;
+        },
+        errorMessage: 'Não foi possível acompanhar a chamada oral em tempo real.',
       },
     );
   }

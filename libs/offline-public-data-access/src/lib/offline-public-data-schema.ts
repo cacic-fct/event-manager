@@ -106,11 +106,41 @@ export interface OfflineAttendanceQueueItem {
   collectedAt: string;
   queuedAt: number;
   updatedAt: number;
-  authorUserId: string | null;
+  authorUserId: string;
   authorName: string | null;
   authorEmail: string | null;
   status: OfflineAttendanceQueueStatus;
   attempts: number;
+  syncedAt?: number | null;
+  lastError?: string | null;
+}
+
+export interface OfflineOralAttendancePerson {
+  personId: string;
+  fullName: string;
+  identityDocument?: string | null;
+  unespRole?: string | null;
+}
+
+export interface OfflineOralAttendanceRosterRecord {
+  key: string;
+  userId: string;
+  eventId: string;
+  cachedAt: number;
+  people: OfflineOralAttendancePerson[];
+}
+
+export interface OfflineOralAttendanceDecision {
+  clientId: string;
+  queuedByUserId: string;
+  eventId: string;
+  personId: string;
+  status: 'PRESENT' | 'ABSENT';
+  location: OfflineAttendanceQueueLocation;
+  collectedAt: string;
+  queuedAt: number;
+  attempts: number;
+  syncedAt?: number | null;
   lastError?: string | null;
 }
 
@@ -126,6 +156,8 @@ export class OfflinePublicDataDatabase extends Dexie {
   totpSeeds!: Table<OfflineTotpSeedRecord, string>;
   attendanceCollectionEvents!: Table<OfflineAttendanceCollectionEventRecord, string>;
   attendanceQueue!: Table<OfflineAttendanceQueueItem, string>;
+  oralAttendanceRosters!: Table<OfflineOralAttendanceRosterRecord, string>;
+  oralAttendanceDecisions!: Table<OfflineOralAttendanceDecision, string>;
 
   constructor() {
     super('cacic-public-offline-data');
@@ -163,35 +195,26 @@ export class OfflinePublicDataDatabase extends Dexie {
       attendanceQueue: 'clientId, eventId, status, queuedAt, updatedAt, [eventId+status]',
     });
 
-    this.version(5)
-      .stores({
-        calendarEvents: 'id, startDate, cachedAt',
-        syncMetadata: 'key',
-        userSnapshots: 'userId, updatedAt',
-        attendanceFeeds: 'key, userId, updatedAt',
-        attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
-        featureFlagCache: 'key, updatedAt',
-        attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
-        attendanceQueue: [
-          'clientId',
-          'queuedByUserId',
-          'eventId',
-          'status',
-          'queuedAt',
-          'updatedAt',
-          '[queuedByUserId+eventId]',
-          '[queuedByUserId+status]',
-          '[eventId+status]',
-        ].join(', '),
-      })
-      .upgrade((transaction) =>
-        transaction
-          .table<OfflineAttendanceQueueItem, string>('attendanceQueue')
-          .toCollection()
-          .modify((item) => {
-            item.queuedByUserId = item.queuedByUserId ?? item.authorUserId ?? '';
-          }),
-      );
+    this.version(5).stores({
+      calendarEvents: 'id, startDate, cachedAt',
+      syncMetadata: 'key',
+      userSnapshots: 'userId, updatedAt',
+      attendanceFeeds: 'key, userId, updatedAt',
+      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+      featureFlagCache: 'key, updatedAt',
+      attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      attendanceQueue: [
+        'clientId',
+        'queuedByUserId',
+        'eventId',
+        'status',
+        'queuedAt',
+        'updatedAt',
+        '[queuedByUserId+eventId]',
+        '[queuedByUserId+status]',
+        '[eventId+status]',
+      ].join(', '),
+    });
 
     this.version(6).stores({
       calendarEvents: 'id, startDate, cachedAt',
@@ -260,6 +283,33 @@ export class OfflinePublicDataDatabase extends Dexie {
         '[queuedByUserId+status]',
         '[eventId+status]',
       ].join(', '),
+    });
+
+    this.version(9).stores({
+      calendarEvents: 'id, startDate, cachedAt',
+      syncMetadata: 'key',
+      userSnapshots: 'userId, updatedAt',
+      restaurantCards: 'userId, updatedAt',
+      attendanceFeeds: 'key, userId, updatedAt',
+      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+      featureFlagCache: 'key, updatedAt',
+      calendarPreferences: 'key, updatedAt',
+      totpSeeds: 'userId, primaryEmail, sessionExpiresAt, updatedAt',
+      attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      attendanceQueue: [
+        'clientId',
+        'queuedByUserId',
+        'eventId',
+        'status',
+        'queuedAt',
+        'updatedAt',
+        '[queuedByUserId+eventId]',
+        '[queuedByUserId+status]',
+        '[eventId+status]',
+      ].join(', '),
+      oralAttendanceRosters: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      oralAttendanceDecisions:
+        'clientId, queuedByUserId, eventId, personId, queuedAt, [queuedByUserId+eventId], [queuedByUserId+eventId+personId]',
     });
   }
 }

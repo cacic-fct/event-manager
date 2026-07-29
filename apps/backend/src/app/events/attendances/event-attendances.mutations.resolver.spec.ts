@@ -13,6 +13,68 @@ describe('EventAttendancesMutationsResolver', () => {
     resolver = new EventAttendancesMutationsResolver(prisma as never, attendanceCategories as never);
   });
 
+  it('upserts an admin oral-call batch without requiring the public event toggle', async () => {
+    const collectedAt = new Date('2026-07-29T12:30:00.000Z');
+    const tx = createTxMock();
+    tx.eventAttendance.findUnique.mockResolvedValue(null);
+    tx.eventAttendance.upsert.mockImplementation(async ({ create }) => create);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    const { resolver: resolverWithDependencies, frozenResources, auditLog } = createResolverWithDependencies(
+      prisma,
+      attendanceCategories,
+    );
+
+    await expect(
+      resolverWithDependencies.setEventOralAttendances(
+        [
+          {
+            eventId: 'event-1',
+            personId: 'person-1',
+            status: 'PRESENT',
+            collectedAt,
+            collectedByUserId: 'original-collector',
+          },
+          {
+            eventId: 'event-1',
+            personId: 'person-2',
+            status: 'ABSENT',
+            collectedAt,
+            collectedByUserId: 'original-collector',
+          },
+        ],
+        { req: { user: { sub: 'collector-1' } } } as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({ personId: 'person-1', status: 'PRESENT' }),
+      expect.objectContaining({ personId: 'person-2', status: 'ABSENT' }),
+    ]);
+
+    expect(frozenResources.assertEventMutable).toHaveBeenCalledWith(
+      'event-1',
+      { sub: 'collector-1' },
+      'edit',
+    );
+    expect(tx.eventAttendance.upsert).toHaveBeenCalledTimes(2);
+    expect(tx.eventAttendance.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          attendedAt: collectedAt,
+          createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+          createdById: 'original-collector',
+          committedById: 'collector-1',
+        }),
+      }),
+    );
+    expect(auditLog.record).toHaveBeenCalledTimes(2);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'CREATE',
+        summary: 'Ausência explícita registrada pela chamada oral administrativa.',
+      }),
+      tx,
+    );
+  });
+
   it('creates, updates, and deletes attendances while refreshing categories', async () => {
     const tx = createTxMock();
     tx.eventAttendance.findUniqueOrThrow.mockResolvedValue({
@@ -1028,6 +1090,7 @@ function createFullPrisma() {
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),
       deleteMany: jest.fn(),
+      upsert: jest.fn(),
     },
     offlineEventAttendanceSubmission: {
       findUnique: jest.fn(),
@@ -1101,6 +1164,7 @@ function createTxMock() {
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      upsert: jest.fn(),
     },
     offlineEventAttendanceSubmission: {
       updateMany: jest.fn(),

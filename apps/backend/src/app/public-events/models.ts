@@ -89,6 +89,7 @@ export const PUBLIC_EVENT_SELECT = {
   autoSubscribe: true,
   shouldIssueCertificate: true,
   shouldCollectAttendance: true,
+  shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
@@ -656,6 +657,9 @@ export class PublicEvent {
     description: 'Whether the event supports attendance collection by organizers or authorized collectors.',
   })
   shouldCollectAttendance?: boolean | null;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldAllowOralAttendance?: boolean | null;
 
   @Field(() => Boolean, {
     nullable: true,

@@ -203,6 +203,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
         attendances: {
           none: {
             personId,
+            status: 'PRESENT',
           },
         },
 

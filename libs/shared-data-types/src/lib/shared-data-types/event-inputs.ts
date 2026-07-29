@@ -74,6 +74,9 @@ export class EventCreateInput {
   shouldCollectAttendance?: boolean;
 
   @Field(() => Boolean, { nullable: true })
+  shouldAllowOralAttendance?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
   isOnlineAttendanceAllowed?: boolean;
 
   @Field(() => Boolean, { nullable: true })

@@ -139,6 +139,25 @@ export const appRoutes: Route[] = [
     canActivate: [attendanceCollectionScannerGuard],
   },
   {
+    path: 'attendance/collect/:eventId/method',
+    loadComponent: () =>
+      import('./attendance/collection/method/method-page').then((m) => m.AttendanceMethodPage),
+    title: 'Escolher forma de coleta',
+    canActivate: [attendanceCollectionScannerGuard],
+  },
+  {
+    path: 'attendance/collect/:eventId/scanner',
+    loadComponent: () => import('./attendance/collection/scanner/scanner-page').then((m) => m.AttendanceScanner),
+    title: 'Coletar presença',
+    canActivate: [attendanceCollectionScannerGuard],
+  },
+  {
+    path: 'attendance/collect/:eventId/oral',
+    loadComponent: () => import('./attendance/collection/oral/oral-page').then((m) => m.OralAttendancePage),
+    title: 'Chamada oral',
+    canActivate: [attendanceCollectionScannerGuard],
+  },
+  {
     path: 'profile',
     loadChildren: () => import('./profile/profile.routes').then((m) => m.routes),
   },

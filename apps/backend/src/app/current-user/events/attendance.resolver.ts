@@ -49,6 +49,7 @@ export class CurrentUserEventAttendanceResolver {
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
         personId: person.id,
+        status: 'PRESENT',
         event: {
           deletedAt: null,
         },
@@ -80,6 +81,7 @@ export class CurrentUserEventAttendanceResolver {
       where: {
         personId: person.id,
         eventId,
+        status: 'PRESENT',
         event: {
           deletedAt: null,
         },
@@ -172,18 +174,32 @@ export class CurrentUserEventAttendanceResolver {
       },
       select: {
         personId: true,
+        status: true,
       },
     });
 
-    if (existingAttendance) {
+    if (existingAttendance?.status === 'PRESENT') {
       throw new ConflictException(`Attendance is already confirmed for event ${input.eventId}.`);
     }
 
     const createdAttendance = await this.prisma.$transaction(async (tx) => {
-      await tx.eventAttendance.create({
-        data: {
+      await tx.eventAttendance.upsert({
+        where: {
+          personId_eventId: {
+            personId: person.id,
+            eventId: event.id,
+          },
+        },
+        create: {
           personId: person.id,
           eventId: event.id,
+          createdByMethod: AttendanceCreationMethod.ONLINE_CODE,
+          createdById: authenticatedUser.sub,
+          committedById: authenticatedUser.sub,
+        },
+        update: {
+          status: 'PRESENT',
+          attendedAt: now,
           createdByMethod: AttendanceCreationMethod.ONLINE_CODE,
           createdById: authenticatedUser.sub,
           committedById: authenticatedUser.sub,

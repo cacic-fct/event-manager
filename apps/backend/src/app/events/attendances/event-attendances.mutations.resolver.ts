@@ -3,6 +3,7 @@ import {
   EventAttendance,
   EventAttendanceCreateInput,
   EventAttendanceManualInput,
+  EventOralAttendanceInput,
   EventAttendanceScannerCodeInput,
   EventAttendanceUpdateInput,
   OfflineEventAttendanceSubmission,
@@ -38,6 +39,7 @@ const EVENT_ATTENDANCE_AUDIT_SELECT = {
   committedById: true,
   createdByMethod: true,
   category: true,
+  status: true,
   collectedLatitude: true,
   collectedLongitude: true,
   collectedAccuracyMeters: true,
@@ -115,6 +117,101 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
 
       throw error;
     }
+  }
+
+  @Mutation(() => EventAttendance, { name: 'setEventOralAttendance' })
+  @RequirePermissions(Permission.EventAttendance.Collect)
+  async setEventOralAttendance(
+    @Args('input', { type: () => EventOralAttendanceInput })
+    input: EventOralAttendanceInput,
+    @Context() context: GraphqlContext,
+  ) {
+    await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
+    const actorId = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+    const attendance = await this.prisma.$transaction(async (tx) => {
+      const before = await tx.eventAttendance.findUnique({
+        where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
+        select: EVENT_ATTENDANCE_AUDIT_SELECT,
+      });
+      const result = await tx.eventAttendance.upsert({
+        where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
+        create: {
+          personId: input.personId,
+          eventId: input.eventId,
+          status: input.status,
+          attendedAt: input.collectedAt,
+          createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+          createdById: input.collectedByUserId,
+          committedById: actorId,
+        },
+        update: {
+          status: input.status,
+          attendedAt: input.collectedAt,
+          createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+          createdById: input.collectedByUserId,
+          committedById: actorId,
+        },
+        select: EVENT_ATTENDANCE_AUDIT_SELECT,
+      });
+      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+      await this.recordAttendanceSet(result, before, context, tx);
+      return result;
+    });
+    await this.dashboardInsights.invalidateCachedInsights();
+    return attendance;
+  }
+
+  @Mutation(() => [EventAttendance], { name: 'setEventOralAttendances' })
+  @RequirePermissions(Permission.EventAttendance.Collect)
+  async setEventOralAttendances(
+    @Args('inputs', { type: () => [EventOralAttendanceInput] })
+    inputs: EventOralAttendanceInput[],
+    @Context() context: GraphqlContext,
+  ) {
+    if (!inputs.length) {
+      return [];
+    }
+    if (inputs.length > 1000 || inputs.some((input) => input.eventId !== inputs[0].eventId)) {
+      throw new BadRequestException('Envie até 1000 decisões de um único evento por sincronização.');
+    }
+    const eventId = inputs[0].eventId;
+    await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
+    const actorId = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+    const attendances = await this.prisma.$transaction(async (tx) => {
+      const results = [];
+      for (const input of inputs) {
+        const before = await tx.eventAttendance.findUnique({
+          where: { personId_eventId: { personId: input.personId, eventId } },
+          select: EVENT_ATTENDANCE_AUDIT_SELECT,
+        });
+        const attendance = await tx.eventAttendance.upsert({
+          where: { personId_eventId: { personId: input.personId, eventId } },
+          create: {
+            personId: input.personId,
+            eventId,
+            status: input.status,
+            attendedAt: input.collectedAt,
+            createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+            createdById: input.collectedByUserId,
+            committedById: actorId,
+          },
+          update: {
+            status: input.status,
+            attendedAt: input.collectedAt,
+            createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+            createdById: input.collectedByUserId,
+            committedById: actorId,
+          },
+          select: EVENT_ATTENDANCE_AUDIT_SELECT,
+        });
+        await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx);
+        await this.recordAttendanceSet(attendance, before, context, tx);
+        results.push(attendance);
+      }
+      return results;
+    });
+    await this.dashboardInsights.invalidateCachedInsights();
+    return attendances;
   }
 
   @Mutation(() => EventAttendance, {
@@ -914,6 +1011,34 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           eventId: attendance.eventId,
         },
         summary,
+      },
+      prisma,
+    );
+  }
+
+  private async recordAttendanceSet(
+    attendance: Prisma.EventAttendanceGetPayload<{ select: typeof EVENT_ATTENDANCE_AUDIT_SELECT }>,
+    before: Prisma.EventAttendanceGetPayload<{ select: typeof EVENT_ATTENDANCE_AUDIT_SELECT }> | null,
+    context: GraphqlContext,
+    prisma: Prisma.TransactionClient,
+  ): Promise<void> {
+    await this.auditLog.record(
+      {
+        entityType: AuditLogEntityType.EVENT_ATTENDANCE,
+        entityId: this.auditLog.buildCompositeEntityId([attendance.personId, attendance.eventId]),
+        entityLabel: attendance.personId,
+        operation: before ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+        actor: this.getUser(context),
+        before,
+        after: attendance,
+        scope: {
+          permission: Permission.EventAttendance.Collect,
+          eventId: attendance.eventId,
+        },
+        summary:
+          attendance.status === 'ABSENT'
+            ? 'Ausência explícita registrada pela chamada oral administrativa.'
+            : 'Presença registrada pela chamada oral administrativa.',
       },
       prisma,
     );

@@ -181,6 +181,7 @@ export interface Event {
   shouldIssueCertificateForNonPayingAttendees: boolean;
   shouldIssueCertificateForNonSubscribedAttendees: boolean;
   shouldCollectAttendance: boolean;
+  shouldAllowOralAttendance: boolean;
   isOnlineAttendanceAllowed: boolean;
   onlineAttendanceCode?: string | null;
   onlineAttendanceStartDate?: string | null;

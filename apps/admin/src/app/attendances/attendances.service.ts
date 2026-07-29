@@ -14,6 +14,7 @@ import {
   AttendanceCategory,
   Event,
   EventAttendance,
+  EventAttendanceScannerFeedItem,
   EventAttendanceCsvImportResolution,
   MajorEventPriceTier,
   MajorEventUserAttendance,
@@ -62,6 +63,7 @@ type AttendanceListItem = {
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
   category: AttendanceCategory;
+  status: EventAttendance['status'];
   person?: Person | null;
 };
 
@@ -101,6 +103,28 @@ const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; de
   },
 };
 
+function mapAttendanceListItem(attendance: EventAttendance): AttendanceListItem {
+  return {
+    eventId: attendance.eventId,
+    eventName: attendance.event?.name ?? attendance.eventId,
+    personId: attendance.personId,
+    personName: attendance.person?.name ?? attendance.personId,
+    attendedAt: attendance.attendedAt,
+    createdAt: attendance.createdAt,
+    createdById: attendance.createdById,
+    committedById: attendance.committedById,
+    createdByMethod: attendance.createdByMethod,
+    collectedByFullName: attendance.collectedByFullName,
+    committedByFullName: attendance.committedByFullName,
+    collectedLatitude: attendance.collectedLatitude,
+    collectedLongitude: attendance.collectedLongitude,
+    collectedAccuracyMeters: attendance.collectedAccuracyMeters,
+    category: attendance.category,
+    status: attendance.status,
+    person: attendance.person,
+  };
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -132,6 +156,8 @@ export class AttendancesService {
   readonly selectedAttendanceEvent = signal<Event | null>(null);
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
+  readonly explicitAbsences = signal<AttendanceListItem[]>([]);
+  readonly implicitAbsences = signal<EventAttendanceScannerFeedItem[]>([]);
   readonly attendanceTotalCount = signal(0);
   readonly attendancesPagination = createWorkspaceListPagination();
   readonly offlineAttendanceSubmissions = signal<OfflineAttendanceSubmissionListItem[]>([]);
@@ -140,7 +166,7 @@ export class AttendancesService {
       ATTENDANCE_CATEGORY_ORDER.map((category) => [category, []]),
     );
 
-    for (const attendance of this.attendances()) {
+    for (const attendance of this.attendances().filter((item) => item.status === 'PRESENT')) {
       groups.get(attendance.category)?.push(attendance);
     }
 
@@ -436,41 +462,30 @@ export class AttendancesService {
   async loadAttendances(eventId: string): Promise<void> {
     if (!eventId) {
       this.attendances.set([]);
+      this.explicitAbsences.set([]);
+      this.implicitAbsences.set([]);
       this.attendanceTotalCount.set(0);
       this.offlineAttendanceSubmissions.set([]);
       return;
     }
-    const [data, attendanceTotalCount, submissions] = await Promise.all([
+    const [data, allAttendanceRecords, roster, attendanceTotalCount, submissions] = await Promise.all([
       firstValueFrom(
         this.api.listEventAttendances(eventId, {
           ...pageVariables(this.attendancesPagination.pageIndex()),
         }),
       ),
+      this.fetchAllEventAttendances(eventId),
+      firstValueFrom(this.api.listEventAttendanceScannerFeed(eventId)),
       firstValueFrom(this.api.getEventAttendanceCount(eventId)),
       firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
     ]);
     const visibleAttendances = applyPagedResult(data, this.attendancesPagination);
     this.attendanceTotalCount.set(attendanceTotalCount);
-    this.attendances.set(
-      visibleAttendances.map((attendance) => ({
-        eventId: attendance.eventId,
-        eventName: attendance.event?.name ?? attendance.eventId,
-        personId: attendance.personId,
-        personName: attendance.person?.name ?? attendance.personId,
-        attendedAt: attendance.attendedAt,
-        createdAt: attendance.createdAt,
-        createdById: attendance.createdById,
-        committedById: attendance.committedById,
-        createdByMethod: attendance.createdByMethod,
-        collectedByFullName: attendance.collectedByFullName,
-        committedByFullName: attendance.committedByFullName,
-        collectedLatitude: attendance.collectedLatitude,
-        collectedLongitude: attendance.collectedLongitude,
-        collectedAccuracyMeters: attendance.collectedAccuracyMeters,
-        category: attendance.category,
-        person: attendance.person,
-      })),
+    this.attendances.set(visibleAttendances.filter((item) => item.status === 'PRESENT').map(mapAttendanceListItem));
+    this.explicitAbsences.set(
+      allAttendanceRecords.filter((item) => item.status === 'ABSENT').map(mapAttendanceListItem),
     );
+    this.implicitAbsences.set(roster.filter((item) => !item.status));
     this.offlineAttendanceSubmissions.set(
       submissions.map((submission) => ({
         ...submission,
@@ -917,6 +932,7 @@ export class AttendancesService {
         collectedLongitude: attendance.collectedLongitude,
         collectedAccuracyMeters: attendance.collectedAccuracyMeters,
         category: attendance.category,
+        status: attendance.status,
         person: attendance.person,
       })),
     );

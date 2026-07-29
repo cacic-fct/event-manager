@@ -13,6 +13,10 @@ import { RequirePermissions } from '../../auth/decorators/require-permissions.de
 import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
+import {
+  getAttendanceOralRoster,
+  getAttendanceScannerFeed,
+} from '../../current-user/events/attendance-collection-feed';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT } from './event-attendances.shared';
 import {
   mapOfflineSubmissionForResponse,
@@ -58,6 +62,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         createdById: true,
         committedById: true,
         createdByMethod: true,
+        status: true,
         collectedLatitude: true,
         collectedLongitude: true,
         collectedAccuracyMeters: true,
@@ -119,7 +124,13 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
   @Query(() => [EventAttendanceScannerFeedItem], { name: 'eventAttendanceScannerFeed' })
   @RequirePermissions(Permission.EventAttendance.Read)
   eventAttendanceScannerFeed(@Args('eventId', { type: () => String }) eventId: string) {
-    return this.getScannerFeed(eventId);
+    return getAttendanceScannerFeed(this.prisma, eventId);
+  }
+
+  @Query(() => [EventAttendanceScannerFeedItem], { name: 'eventAttendanceOralRoster' })
+  @RequirePermissions(Permission.EventAttendance.Read)
+  eventAttendanceOralRoster(@Args('eventId', { type: () => String }) eventId: string) {
+    return getAttendanceOralRoster(this.prisma, eventId);
   }
 
   @Query(() => [OfflineEventAttendanceSubmission], { name: 'offlineEventAttendanceSubmissions' })
@@ -219,6 +230,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
 
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
+        status: 'PRESENT',
         eventId: {
           in: eventIds,
         },
@@ -300,6 +312,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         createdById: true,
         committedById: true,
         createdByMethod: true,
+        status: true,
         category: true,
         person: true,
         event: {

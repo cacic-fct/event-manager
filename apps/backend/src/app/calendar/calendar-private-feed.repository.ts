@@ -67,6 +67,7 @@ export async function getPrivateFeedEvents(prisma: PrismaService, personIds: str
         personId: {
           in: personIds,
         },
+        status: 'PRESENT',
         event: eventWhere,
       },
       select: {

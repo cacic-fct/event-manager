@@ -583,6 +583,7 @@ function adaptEvent(
     shouldIssueCertificateForNonPayingAttendees: Boolean(eventItem.shouldIssueCertificateForNonPayingAttendees),
     shouldIssueCertificateForNonSubscribedAttendees: Boolean(eventItem.shouldIssueCertificateForNonSubscribedAttendees),
     shouldCollectAttendance: Boolean(eventItem.shouldCollectAttendance),
+    shouldAllowOralAttendance: Boolean(eventItem.shouldAllowOralAttendance),
     isOnlineAttendanceAllowed: Boolean(eventItem.isOnlineAttendanceAllowed),
     shouldProvideSubscriberListToLecturer: true,
     onlineAttendanceCode: eventItem.isOnlineAttendanceAllowed ? 'A7K9' : null,

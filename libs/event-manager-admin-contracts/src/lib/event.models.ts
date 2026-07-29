@@ -114,6 +114,7 @@ export interface Event {
   shouldIssueCertificateForNonPayingAttendees: boolean;
   shouldIssueCertificateForNonSubscribedAttendees: boolean;
   shouldCollectAttendance: boolean;
+  shouldAllowOralAttendance: boolean;
   isOnlineAttendanceAllowed: boolean;
   shouldProvideSubscriberListToLecturer?: boolean;
   onlineAttendanceCode?: string | null;
@@ -267,6 +268,7 @@ export interface EventInput {
   shouldIssueCertificateForNonPayingAttendees?: boolean;
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
   shouldCollectAttendance?: boolean;
+  shouldAllowOralAttendance?: boolean;
   isOnlineAttendanceAllowed?: boolean;
   shouldProvideSubscriberListToLecturer?: boolean;
   onlineAttendanceCode?: string | null;

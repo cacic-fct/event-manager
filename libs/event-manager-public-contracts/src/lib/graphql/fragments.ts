@@ -147,6 +147,7 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   slots
   shouldIssueCertificate
   shouldCollectAttendance
+  shouldAllowOralAttendance
   isOnlineAttendanceAllowed
   onlineAttendanceStartDate
   onlineAttendanceEndDate
@@ -199,6 +200,7 @@ export const PUBLIC_ATTENDANCE_EVENT_FIELDS = `
   slots
   shouldIssueCertificate
   shouldCollectAttendance
+  shouldAllowOralAttendance
   isOnlineAttendanceAllowed
   onlineAttendanceStartDate
   onlineAttendanceEndDate

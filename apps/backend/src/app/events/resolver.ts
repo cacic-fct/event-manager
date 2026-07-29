@@ -110,6 +110,7 @@ const EVENT_BASE_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldCollectAttendance: true,
+  shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
   shouldProvideSubscriberListToLecturer: true,
   onlineAttendanceCode: true,
@@ -155,6 +156,7 @@ const EVENT_AUDIT_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldCollectAttendance: true,
+  shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
   shouldProvideSubscriberListToLecturer: true,
   onlineAttendanceCode: true,
@@ -555,6 +557,7 @@ export class EventsResolver {
         ...(shouldCopyAttendances
           ? {
               attendances: {
+                where: { status: 'PRESENT' },
                 select: EVENT_CLONE_ATTENDANCE_SELECT,
               },
             }
@@ -624,6 +627,7 @@ export class EventsResolver {
       ...(parts?.attendanceSettings
         ? {
             shouldCollectAttendance: source.shouldCollectAttendance,
+            shouldAllowOralAttendance: source.shouldAllowOralAttendance,
             isOnlineAttendanceAllowed: source.isOnlineAttendanceAllowed,
             shouldProvideSubscriberListToLecturer: source.shouldProvideSubscriberListToLecturer,
             onlineAttendanceStartDate: source.onlineAttendanceStartDate ?? undefined,

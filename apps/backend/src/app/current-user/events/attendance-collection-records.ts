@@ -1,6 +1,6 @@
 import { EventAttendance } from '@cacic-fct/shared-data-types';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
 import { getBrazilianPhoneCandidates } from '../../common/brazilian-phone';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -21,6 +21,7 @@ type CreateAttendanceInput = {
   committedById?: string;
   attendedAt?: Date;
   location?: AttendanceLocationInput;
+  status?: EventAttendanceStatus;
 };
 
 export async function createAttendance(params: {
@@ -30,6 +31,38 @@ export async function createAttendance(params: {
   afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
 }) {
   const locationData = getRequiredAttendanceLocationData(params.input.location);
+  const existing = await params.prisma.eventAttendance.findUnique({
+    where: {
+      personId_eventId: {
+        eventId: params.input.eventId,
+        personId: params.input.personId,
+      },
+    },
+    select: { status: true },
+  });
+  if (existing?.status === EventAttendanceStatus.ABSENT) {
+    return params.prisma.$transaction(async (tx) => {
+      const attendance = await tx.eventAttendance.update({
+        where: {
+          personId_eventId: {
+            eventId: params.input.eventId,
+            personId: params.input.personId,
+          },
+        },
+        data: {
+          status: EventAttendanceStatus.PRESENT,
+          attendedAt: params.input.attendedAt ?? new Date(),
+          createdById: params.input.createdById,
+          committedById: params.input.committedById,
+          createdByMethod: params.input.createdByMethod,
+          ...locationData,
+        },
+      });
+      await params.attendanceCategories.refreshForAttendance(params.input.personId, params.input.eventId, tx);
+      await params.afterCreate?.(attendance, tx);
+      return attendance;
+    });
+  }
 
   try {
     return await params.prisma.$transaction(async (tx) => {
@@ -41,6 +74,7 @@ export async function createAttendance(params: {
           createdById: params.input.createdById,
           committedById: params.input.committedById,
           createdByMethod: params.input.createdByMethod,
+          status: params.input.status,
           ...locationData,
         },
       });
@@ -161,6 +195,7 @@ export function toEventAttendance(attendance: {
   personId: string;
   eventId: string;
   category: EventAttendance['category'];
+  status: EventAttendance['status'];
   attendedAt: Date;
   createdAt: Date;
   createdById: string | null;

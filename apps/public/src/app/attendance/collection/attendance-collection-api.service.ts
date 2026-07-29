@@ -8,10 +8,12 @@ export type AttendanceCreationMethod =
   | 'CSV_IMPORT'
   | 'EVENT_DUPLICATION'
   | 'MANUAL_INPUT'
+  | 'ORAL_CALL'
   | 'SCANNER'
   | 'ONLINE_CODE'
   | 'UNKNOWN';
 export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
+export type EventAttendanceStatus = 'PRESENT' | 'ABSENT';
 
 export interface AttendanceCollectionEvent {
   eventId: string;
@@ -28,9 +30,11 @@ export interface AttendanceScannerFeedItem {
   personId: string;
   eventId: string;
   fullName?: string | null;
+  identityDocument?: string | null;
   unespRole?: string | null;
   subscriptionStatus?: string | null;
   attendedAt?: string | null;
+  status?: EventAttendanceStatus | null;
   createdByMethod?: AttendanceCreationMethod | null;
   collectedByFirstName?: string | null;
   committedByFirstName?: string | null;
@@ -53,7 +57,7 @@ export interface OfflineAttendanceCommitPayload {
   value?: string;
   location: AttendanceCollectionLocation;
   collectedAt: string;
-  authorUserId?: string | null;
+  authorUserId: string;
   authorName?: string | null;
   authorEmail?: string | null;
 }
@@ -88,6 +92,7 @@ const PUBLIC_EVENT_FIELDS = `
   locationDescription
   onlineAttendanceStartDate
   onlineAttendanceEndDate
+  shouldAllowOralAttendance
   majorEventId
   eventGroupId
   majorEvent {
@@ -127,9 +132,11 @@ export class AttendanceCollectionApiService {
             personId
             eventId
             fullName
+            identityDocument
             unespRole
             subscriptionStatus
             attendedAt
+            status
             createdByMethod
             collectedByFirstName
             committedByFirstName
@@ -138,6 +145,29 @@ export class AttendanceCollectionApiService {
       `,
       { eventId },
     ).pipe(map((data) => data.currentUserAttendanceCollectionFeed));
+  }
+
+  listOralRoster(eventId: string): Observable<AttendanceScannerFeedItem[]> {
+    return this.query<{ currentUserAttendanceOralRoster: AttendanceScannerFeedItem[] }>(
+      `
+        query CurrentUserAttendanceOralRoster($eventId: String!) {
+          currentUserAttendanceOralRoster(eventId: $eventId) {
+            personId
+            eventId
+            fullName
+            identityDocument
+            unespRole
+            subscriptionStatus
+            attendedAt
+            status
+            createdByMethod
+            collectedByFirstName
+            committedByFirstName
+          }
+        }
+      `,
+      { eventId },
+    ).pipe(map((data) => data.currentUserAttendanceOralRoster));
   }
 
   watchFeed(eventId: string): Observable<AttendanceScannerFeedItem[]> {
@@ -150,6 +180,21 @@ export class AttendanceCollectionApiService {
         ),
       errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
     });
+  }
+
+  watchOralRoster(eventId: string): Observable<AttendanceScannerFeedItem[]> {
+    return watchReplayableEventSource(
+      `/api/attendance-collection/events/${encodeURIComponent(eventId)}/oral-roster/events`,
+      {
+        decode: (event) =>
+          decodeTypedSseEvent<AttendanceScannerFeedItem[], 'attendances'>(
+            event,
+            'event-attendance-oral-roster',
+            'attendances',
+          ),
+        errorMessage: 'Não foi possível acompanhar a chamada oral em tempo real.',
+      },
+    );
   }
 
   registerScannerCode(
@@ -190,6 +235,31 @@ export class AttendanceCollectionApiService {
       `,
       { input: { eventId, value, location } },
     ).pipe(map((data) => data.collectCurrentUserManualAttendance));
+  }
+
+  registerOralBatch(
+    inputs: readonly {
+      eventId: string;
+      personId: string;
+      status: EventAttendanceStatus;
+      collectedAt: string;
+      collectedByUserId: string;
+      location: AttendanceCollectionLocation;
+    }[],
+  ): Observable<AttendanceRegistrationResult[]> {
+    return this.query<{ collectCurrentUserOralAttendances: AttendanceRegistrationResult[] }>(
+      `
+        mutation CollectCurrentUserOralAttendances($inputs: [EventOralAttendanceInput!]!) {
+          collectCurrentUserOralAttendances(inputs: $inputs) {
+            eventId
+            personId
+            attendedAt
+            category
+          }
+        }
+      `,
+      { inputs },
+    ).pipe(map((data) => data.collectCurrentUserOralAttendances));
   }
 
   commitOfflineAttendances(

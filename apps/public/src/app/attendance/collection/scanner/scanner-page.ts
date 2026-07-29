@@ -113,7 +113,7 @@ export class AttendanceScanner implements OnInit {
       .watchFeed(eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (attendances) => this.attendances.set(attendances),
+        next: (attendances) => this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
         error: () =>
           this.snackbar.open('Não foi possível acompanhar as presenças em tempo real.', 'Fechar', { duration: 3500 }),
       });
@@ -237,6 +237,8 @@ export class AttendanceScanner implements OnInit {
         return 'duplicação de evento';
       case 'MANUAL_INPUT':
         return 'manual';
+      case 'ORAL_CALL':
+        return 'chamada oral';
       case 'SCANNER':
         return 'scanner';
       case 'ONLINE_CODE':
@@ -267,7 +269,7 @@ export class AttendanceScanner implements OnInit {
 
   private loadFeed(eventId: string): void {
     this.api.listFeed(eventId).subscribe({
-      next: (attendances) => this.attendances.set(attendances),
+      next: (attendances) => this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
     });
   }
 

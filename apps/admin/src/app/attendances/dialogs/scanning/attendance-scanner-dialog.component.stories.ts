@@ -45,6 +45,7 @@ function attendance(eventId: string, category: AttendanceCategory): EventAttenda
     eventId,
     personId: 'person-created',
     category,
+    status: 'PRESENT',
     attendedAt: new Date('2026-05-21T17:15:00.000Z').toISOString(),
     createdAt: new Date('2026-05-21T17:15:00.000Z').toISOString(),
     createdById: 'storybook-admin',

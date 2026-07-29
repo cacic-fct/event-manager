@@ -1,71 +1,105 @@
-import { getAttendanceScannerFeed } from './attendance-collection-feed';
-import { createPrisma, scannerAttendance } from './attendance-collection.resolver.spec-support';
+import { getAttendanceOralRoster } from './attendance-collection-feed';
 
-describe('getAttendanceScannerFeed', () => {
-  it('marks subscribed standalone event attendees as confirmed', async () => {
-    const prisma = createPrisma({
-      attendances: [
-        scannerAttendance({
-          personId: 'person-subscribed',
-          eventId: 'standalone-event',
-          allowSubscription: true,
+describe('getAttendanceOralRoster', () => {
+  it('returns the entire subscriber roster with masked CPF and explicit decisions', async () => {
+    const prisma = {
+      event: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'event-1',
           majorEventId: null,
+          autoSubscribe: false,
         }),
-        scannerAttendance({
-          personId: 'person-unsubscribed',
-          eventId: 'standalone-event',
-          allowSubscription: true,
-          majorEventId: null,
-        }),
-      ],
-      eventSubscriptions: [{ personId: 'person-subscribed', eventId: 'standalone-event' }],
-      majorEventSubscriptions: [],
-      collectors: [],
-      people: [],
-      collectorUsers: [],
-    });
-    const feed = await getAttendanceScannerFeed(prisma as never, 'standalone-event');
+      },
+      people: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'person-absent',
+            name: 'Ada Lovelace',
+            identityDocument: '52998224725',
+            isCPF: true,
+            user: { unespRole: ['Graduação'] },
+          },
+          {
+            id: 'person-undecided',
+            name: 'Grace Hopper',
+            identityDocument: '18999999999',
+            isCPF: null,
+            user: null,
+          },
+        ]),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            personId: 'person-absent',
+            eventId: 'event-1',
+            status: 'ABSENT',
+            attendedAt: new Date('2026-07-29T12:00:00.000Z'),
+            createdById: 'collector-1',
+            committedById: 'collector-1',
+            createdByMethod: 'ORAL_CALL',
+          },
+        ]),
+      },
+      user: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'collector-1', name: 'Katherine Johnson' }]),
+      },
+    };
 
-    expect(feed).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          personId: 'person-subscribed',
-          subscriptionStatus: 'CONFIRMED',
+    await expect(getAttendanceOralRoster(prisma as never, 'event-1')).resolves.toEqual([
+      expect.objectContaining({
+        personId: 'person-absent',
+        identityDocument: '•••.982.247-••',
+        status: 'ABSENT',
+        collectedByFirstName: 'Katherine',
+      }),
+      expect.objectContaining({
+        personId: 'person-undecided',
+        identityDocument: '18999999999',
+        status: undefined,
+      }),
+    ]);
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [expect.objectContaining({ eventSubscriptions: expect.any(Object) })],
         }),
-        expect.objectContaining({
-          personId: 'person-unsubscribed',
-          subscriptionStatus: undefined,
-        }),
-      ]),
+      }),
     );
   });
 
-  it('uses major event subscription statuses and collector first names in the scanner feed', async () => {
-    const prisma = createPrisma({
-      attendances: [
-        scannerAttendance({
-          personId: 'person-confirmed',
-          eventId: 'major-session',
-          allowSubscription: true,
-          majorEventId: 'major-event',
-          createdById: 'collector-user',
+  it('includes confirmed major-event subscribers selected for the event', async () => {
+    const prisma = {
+      event: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'event-1',
+          majorEventId: 'major-1',
+          autoSubscribe: false,
         }),
-      ],
-      eventSubscriptions: [],
-      majorEventSubscriptions: [{ personId: 'person-confirmed', subscriptionStatus: 'CONFIRMED' }],
-      collectors: [],
-      people: [],
-      collectorUsers: [{ id: 'collector-user', name: ' Grace Hopper ' }],
-    });
-    const feed = await getAttendanceScannerFeed(prisma as never, 'major-session');
+      },
+      people: { findMany: jest.fn().mockResolvedValue([]) },
+      eventAttendance: { findMany: jest.fn().mockResolvedValue([]) },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
+    };
 
-    expect(feed).toEqual([
+    await getAttendanceOralRoster(prisma as never, 'event-1');
+
+    expect(prisma.people.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        personId: 'person-confirmed',
-        subscriptionStatus: 'CONFIRMED',
-        collectedByFirstName: 'Grace',
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              majorEventSubscriptions: {
+                some: expect.objectContaining({
+                  majorEventId: 'major-1',
+                  subscriptionStatus: 'CONFIRMED',
+                  selectedEvents: { some: { eventId: 'event-1', deletedAt: null } },
+                }),
+              },
+            }),
+          ]),
+        }),
       }),
-    ]);
-    expect(prisma.eventSubscription.findMany).not.toHaveBeenCalled();
+    );
   });
 });

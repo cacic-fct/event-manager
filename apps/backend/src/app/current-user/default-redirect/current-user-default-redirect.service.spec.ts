@@ -42,7 +42,7 @@ describe('CurrentUserDefaultRedirectService', () => {
               startDate: { lte: now },
               endDate: { gte: now },
               subscriptions: { some: { personId: 'person-1', deletedAt: null } },
-              attendances: { none: { personId: 'person-1' } },
+              attendances: { none: { personId: 'person-1', status: 'PRESENT' } },
             }),
           ]),
         }),

@@ -45,6 +45,7 @@ export const EVENT_DETAIL_FIELDS = `
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees
   shouldCollectAttendance
+  shouldAllowOralAttendance
   isOnlineAttendanceAllowed
   shouldProvideSubscriberListToLecturer
   onlineAttendanceCode
@@ -279,6 +280,7 @@ export const EVENT_ATTENDANCE_WRITE_FIELDS = `
   personId
   attendedAt
   category
+  status
   createdByMethod
 `;
 

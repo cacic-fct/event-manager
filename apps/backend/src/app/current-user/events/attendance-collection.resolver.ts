@@ -2,13 +2,14 @@ import {
   CommitOfflineEventAttendancesInput,
   EventAttendance,
   EventAttendanceManualInput,
+  EventOralAttendanceInput,
   EventAttendanceScannerCodeInput,
   EventAttendanceScannerFeedItem,
   OfflineEventAttendanceCommitResult,
 } from '@cacic-fct/shared-data-types';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AttendanceCreationMethod } from '@prisma/client';
+import { AttendanceCreationMethod, EventAttendanceStatus } from '@prisma/client';
 import { CurrentUserAttendanceCollectionEvent } from '../models';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
@@ -19,11 +20,15 @@ import { AuthorizationPolicyService } from '../../authorization/authorization-po
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { NovuNotificationsService } from '../../notifications/novu-notifications.service';
-import { recordAttendanceCreate } from './attendance-collection-audit';
+import { recordAttendanceCreate, recordAttendanceSet } from './attendance-collection-audit';
 import { findCurrentUserAttendanceCollectionEvents, requireAttendanceCollector } from './attendance-collection-events';
-import { getAttendanceScannerFeed } from './attendance-collection-feed';
+import { getAttendanceOralRoster, getAttendanceScannerFeed } from './attendance-collection-feed';
 import { OfflineAttendanceCommitter } from './attendance-collection-offline-commit';
-import { createAttendance, findSinglePersonForManualInput } from './attendance-collection-records';
+import {
+  createAttendance,
+  findSinglePersonForManualInput,
+  getRequiredAttendanceLocationData,
+} from './attendance-collection-records';
 import { getActorId, getAuthenticatedUser, parseUserAztecCode } from './attendance-collection-context';
 
 @Resolver(() => CurrentUserAttendanceCollectionEvent)
@@ -76,6 +81,15 @@ export class CurrentUserAttendanceCollectionResolver {
   ): Promise<EventAttendanceScannerFeedItem[]> {
     await this.requireCollector(eventId, context, true);
     return getAttendanceScannerFeed(this.prisma, eventId);
+  }
+
+  @Query(() => [EventAttendanceScannerFeedItem], { name: 'currentUserAttendanceOralRoster' })
+  async currentUserAttendanceOralRoster(
+    @Args('eventId', { type: () => String }) eventId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<EventAttendanceScannerFeedItem[]> {
+    await this.requireCollector(eventId, context, true);
+    return getAttendanceOralRoster(this.prisma, eventId);
   }
 
   @Mutation(() => EventAttendance, { name: 'collectCurrentUserAttendanceFromScannerCode' })
@@ -166,6 +180,148 @@ export class CurrentUserAttendanceCollectionResolver {
           prisma: tx,
         }),
     });
+  }
+
+  @Mutation(() => EventAttendance, { name: 'collectCurrentUserOralAttendance' })
+  async collectCurrentUserOralAttendance(
+    @Args('input', { type: () => EventOralAttendanceInput })
+    input: EventOralAttendanceInput,
+    @Context() context: GraphqlContext,
+  ) {
+    const collector = await this.requireCollector(input.eventId, context, true);
+    const event = await this.prisma.event.findUnique({
+      where: { id: input.eventId },
+      select: { shouldAllowOralAttendance: true },
+    });
+    if (!event?.shouldAllowOralAttendance) {
+      throw new BadRequestException('A chamada oral não está habilitada para este evento.');
+    }
+    await this.frozenResources.assertEventMutable(
+      input.eventId,
+      getAuthenticatedUser(this.currentUserContext, context),
+      'edit',
+    );
+    const subscriber = await getAttendanceOralRoster(this.prisma, input.eventId).then((items) =>
+      items.some((item) => item.personId === input.personId),
+    );
+    if (!subscriber) {
+      throw new NotFoundException('Pessoa não inscrita neste evento.');
+    }
+
+    const actorId = getActorId(context) ?? collector.userId ?? undefined;
+    if (!actorId || input.collectedByUserId !== actorId) {
+      throw new BadRequestException('O coletor informado deve ser o usuário autenticado.');
+    }
+    const locationData = getRequiredAttendanceLocationData(input.location);
+    const attendance = await this.prisma.$transaction(async (tx) => {
+      const before = await tx.eventAttendance.findUnique({
+        where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
+      });
+      const result = await tx.eventAttendance.upsert({
+        where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
+        create: {
+          personId: input.personId,
+          eventId: input.eventId,
+          status: input.status as EventAttendanceStatus,
+          attendedAt: input.collectedAt,
+          createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+          createdById: input.collectedByUserId,
+          committedById: actorId,
+          ...locationData,
+        },
+        update: {
+          status: input.status as EventAttendanceStatus,
+          attendedAt: input.collectedAt,
+          createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+          createdById: input.collectedByUserId,
+          committedById: actorId,
+          ...locationData,
+        },
+      });
+      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+      await recordAttendanceSet({
+        auditLog: this.auditLog,
+        currentUserContext: this.currentUserContext,
+        context,
+        attendance: result,
+        before,
+        prisma: tx,
+      });
+      return result;
+    });
+    await this.dashboardInsights.invalidateCachedInsights();
+    return attendance;
+  }
+
+  @Mutation(() => [EventAttendance], { name: 'collectCurrentUserOralAttendances' })
+  async collectCurrentUserOralAttendances(
+    @Args('inputs', { type: () => [EventOralAttendanceInput] })
+    inputs: EventOralAttendanceInput[],
+    @Context() context: GraphqlContext,
+  ) {
+    if (inputs.length === 0) {
+      return [];
+    }
+    if (inputs.length > 1000 || inputs.some((input) => input.eventId !== inputs[0].eventId)) {
+      throw new BadRequestException('Envie até 1000 decisões de um único evento por sincronização.');
+    }
+    const eventId = inputs[0].eventId;
+    const collector = await this.requireCollector(eventId, context, true);
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { shouldAllowOralAttendance: true },
+    });
+    if (!event?.shouldAllowOralAttendance) {
+      throw new BadRequestException('A chamada oral não está habilitada para este evento.');
+    }
+    await this.frozenResources.assertEventMutable(
+      eventId,
+      getAuthenticatedUser(this.currentUserContext, context),
+      'edit',
+    );
+    const rosterIds = new Set((await getAttendanceOralRoster(this.prisma, eventId)).map((item) => item.personId));
+    if (inputs.some((input) => !rosterIds.has(input.personId))) {
+      throw new NotFoundException('Uma ou mais pessoas não estão inscritas neste evento.');
+    }
+    const actorId = getActorId(context) ?? collector.userId ?? undefined;
+    if (!actorId || inputs.some((input) => input.collectedByUserId !== actorId)) {
+      throw new BadRequestException('Todas as decisões devem pertencer ao usuário autenticado.');
+    }
+    const attendances = await this.prisma.$transaction(async (tx) => {
+      const results = [];
+      for (const input of inputs) {
+        const locationData = getRequiredAttendanceLocationData(input.location);
+        const data = {
+          status: input.status as EventAttendanceStatus,
+          attendedAt: input.collectedAt,
+          createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+          createdById: input.collectedByUserId,
+          committedById: actorId,
+          ...locationData,
+        };
+        const before = await tx.eventAttendance.findUnique({
+          where: { personId_eventId: { personId: input.personId, eventId } },
+        });
+        const attendance = await tx.eventAttendance.upsert({
+          where: { personId_eventId: { personId: input.personId, eventId } },
+          create: { personId: input.personId, eventId, ...data },
+          update: data,
+        });
+        await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx);
+        await recordAttendanceSet({
+          auditLog: this.auditLog,
+          currentUserContext: this.currentUserContext,
+          context,
+          attendance,
+          before,
+          prisma: tx,
+        });
+        results.push(attendance);
+      }
+      return results;
+    });
+    await this.dashboardInsights.invalidateCachedInsights();
+    return attendances;
   }
 
   @Mutation(() => [OfflineEventAttendanceCommitResult], { name: 'commitCurrentUserOfflineAttendances' })

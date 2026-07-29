@@ -90,6 +90,9 @@ export class Event {
   shouldCollectAttendance!: boolean;
 
   @Field(() => Boolean)
+  shouldAllowOralAttendance!: boolean;
+
+  @Field(() => Boolean)
   isOnlineAttendanceAllowed!: boolean;
 
   @Field(() => Boolean, { nullable: true })

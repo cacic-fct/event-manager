@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
 import { getBrazilianPhoneCandidates } from '../../../common/brazilian-phone';
 import { EventAttendancesScannerFeedSupport } from './scanner-feed-support';
 
@@ -23,6 +23,38 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
           collectedAccuracyMeters: input.location.accuracyMeters,
         }
       : {};
+    const existing = await this.prisma.eventAttendance.findUnique({
+      where: {
+        personId_eventId: {
+          personId: input.personId,
+          eventId: input.eventId,
+        },
+      },
+      select: { status: true },
+    });
+    if (existing?.status === EventAttendanceStatus.ABSENT) {
+      return this.prisma.$transaction(async (tx) => {
+        const attendance = await tx.eventAttendance.update({
+          where: {
+            personId_eventId: {
+              personId: input.personId,
+              eventId: input.eventId,
+            },
+          },
+          data: {
+            status: EventAttendanceStatus.PRESENT,
+            attendedAt: input.attendedAt ?? new Date(),
+            createdById: input.createdById,
+            committedById: input.committedById,
+            createdByMethod: input.createdByMethod,
+            ...locationData,
+          },
+        });
+        await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+        await afterCreate?.(attendance, tx);
+        return attendance;
+      });
+    }
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -53,6 +85,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
             createdById: true,
             committedById: true,
             createdByMethod: true,
+            status: true,
             category: true,
             collectedLatitude: true,
             collectedLongitude: true,

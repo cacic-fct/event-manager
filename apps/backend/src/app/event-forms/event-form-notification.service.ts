@@ -148,6 +148,7 @@ export class EventFormNotificationService {
         const attendances = await this.prisma.eventAttendance.findMany({
           where: {
             eventId: link.eventId,
+            status: 'PRESENT',
           },
           select: {
             person: this.notificationPersonSelect(),
@@ -177,6 +178,7 @@ export class EventFormNotificationService {
       if (link.audience !== EventFormAudience.SUBSCRIBERS) {
         const attendances = await this.prisma.eventAttendance.findMany({
           where: {
+            status: 'PRESENT',
             event: {
               majorEventId: link.majorEventId,
             },

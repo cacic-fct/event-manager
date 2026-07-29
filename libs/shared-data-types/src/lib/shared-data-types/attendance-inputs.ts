@@ -1,7 +1,7 @@
 import { Field, InputType } from '@nestjs/graphql';
 
 import { AttendanceCollectionLocationInput } from './attendance';
-import { OfflineAttendanceCreationMethod } from './enums';
+import { EventAttendanceStatus, OfflineAttendanceCreationMethod } from './enums';
 
 @InputType()
 export class EventAttendanceCreateInput {
@@ -43,6 +43,27 @@ export class EventAttendanceManualInput {
 }
 
 @InputType()
+export class EventOralAttendanceInput {
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => String)
+  personId!: string;
+
+  @Field(() => EventAttendanceStatus)
+  status!: EventAttendanceStatus;
+
+  @Field(() => Date)
+  collectedAt!: Date;
+
+  @Field(() => String)
+  collectedByUserId!: string;
+
+  @Field(() => AttendanceCollectionLocationInput, { nullable: true })
+  location?: AttendanceCollectionLocationInput;
+}
+
+@InputType()
 export class OfflineEventAttendanceCommitInput {
   @Field(() => String)
   clientId!: string;
@@ -65,8 +86,8 @@ export class OfflineEventAttendanceCommitInput {
   @Field(() => Date)
   collectedAt!: Date;
 
-  @Field(() => String, { nullable: true })
-  authorUserId?: string;
+  @Field(() => String)
+  authorUserId!: string;
 
   @Field(() => String, { nullable: true })
   authorName?: string;

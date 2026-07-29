@@ -43,6 +43,13 @@ class EventAttendanceScannerFeedItemDto {
   fullName!: string | null;
 
   @ApiPropertyOptional({
+    description: 'Identity document, masked when it is a CPF.',
+    example: '•••.982.247-••',
+    nullable: true,
+  })
+  identityDocument!: string | null;
+
+  @ApiPropertyOptional({
     description: 'Formatted UNESP role list joined for compact display in the scanner feed.',
     example: 'aluno-graduacao',
     nullable: true,
@@ -64,6 +71,13 @@ class EventAttendanceScannerFeedItemDto {
     nullable: true,
   })
   attendedAt!: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Explicit oral-attendance decision. Null means no explicit decision exists.',
+    enum: ['PRESENT', 'ABSENT'],
+    nullable: true,
+  })
+  status!: 'PRESENT' | 'ABSENT' | null;
 
   @ApiPropertyOptional({
     description:
@@ -170,6 +184,31 @@ export class EventAttendancesController extends EventAttendancesScannerFeedSuppo
 
     return this.replay.replay(
       this.replay.scope('event-attendance-scanner-feed', eventId, request.user?.sub ?? request.headers.cookie),
+      lastEventId,
+      snapshots,
+    );
+  }
+
+  @Sse('events/:eventId/oral-roster/events')
+  @RequirePermissions(Permission.EventAttendance.Read)
+  streamOralRoster(
+    @Param('eventId') eventId: string,
+    @Headers('last-event-id') lastEventId: string | undefined,
+    @Req() request: RequestWithUser,
+  ): Observable<MessageEvent> {
+    const snapshots = interval(2_000).pipe(
+      startWith(0),
+      switchMap(() => this.getOralRoster(eventId)),
+      map((attendances) => ({
+        data: {
+          type: 'event-attendance-oral-roster',
+          attendances,
+        },
+      })),
+    );
+
+    return this.replay.replay(
+      this.replay.scope('event-attendance-oral-roster', eventId, request.user?.sub ?? request.headers.cookie),
       lastEventId,
       snapshots,
     );

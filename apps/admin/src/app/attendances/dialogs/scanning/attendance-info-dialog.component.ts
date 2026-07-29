@@ -22,6 +22,7 @@ type AttendanceInfoDialogData = {
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
   category: AttendanceCategory;
+  status: 'PRESENT' | 'ABSENT';
 };
 
 type AttendanceDetail = {
@@ -34,7 +35,7 @@ type AttendanceDetail = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [AttendanceLocationMapComponent, DecimalPipe, MatButtonModule, MatDialogModule, MatIconModule],
   template: `
-    <h2 mat-dialog-title>Detalhes da presença</h2>
+    <h2 mat-dialog-title>{{ data.status === 'ABSENT' ? 'Detalhes da ausência' : 'Detalhes da presença' }}</h2>
 
     <mat-dialog-content class="attendance-dialog-content">
       <section class="summary">
@@ -168,6 +169,10 @@ export class AttendanceInfoDialogComponent {
   protected readonly hasLocation = computed(() => this.location() !== null);
 
   protected readonly details = computed<AttendanceDetail[]>(() => [
+    {
+      label: 'Situação',
+      value: this.data.status === 'ABSENT' ? 'Ausência explícita' : 'Presença',
+    },
     { label: 'ID da Pessoa', value: this.data.personId },
     { label: 'ID do Evento', value: this.data.eventId },
     { label: 'Categoria', value: this.getCategoryLabel(this.data.category) },
@@ -214,6 +219,7 @@ export class AttendanceInfoDialogComponent {
       EVENT_DUPLICATION: 'Duplicação de evento',
       MANUAL_INPUT: 'Manual',
       ONLINE_CODE: 'Online',
+      ORAL_CALL: 'Chamada oral',
       SCANNER: 'Scanner',
       UNKNOWN: 'Desconhecido',
     };

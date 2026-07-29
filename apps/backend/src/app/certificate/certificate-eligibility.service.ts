@@ -263,6 +263,7 @@ export class CertificateEligibilityService {
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
         eventId: event.id,
+        status: 'PRESENT',
         ...(personId ? { personId } : {}),
         person: {
           deletedAt: null,
@@ -334,6 +335,7 @@ export class CertificateEligibilityService {
 
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
+        status: 'PRESENT',
         eventId: {
           in: [...groupEventIds],
         },
@@ -471,6 +473,7 @@ export class CertificateEligibilityService {
     const groupedIssuableEvents = this.groupMajorEventEvents(issuableEvents);
     const attendancesByPerson = await this.prisma.eventAttendance.findMany({
       where: {
+        status: 'PRESENT',
         ...(includeAttendanceWithoutMajorEventSubscription
           ? personId
             ? { personId }
