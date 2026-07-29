@@ -56,7 +56,7 @@ export function resolveMajorEventSelfServicePayment(
 
   const normalizedPaymentTier = normalizeMajorEventPaymentTier(paymentTierInput);
   if (!normalizedPaymentTier) {
-    throw new BadRequestException('paymentTier is required for this major event.');
+    throw new BadRequestException('A faixa de pagamento é obrigatória para este grande evento.');
   }
 
   const selectedTier = tiers.find(
@@ -65,7 +65,7 @@ export function resolveMajorEventSelfServicePayment(
       normalizedPaymentTier.toLocaleLowerCase('pt-BR'),
   );
   if (!selectedTier) {
-    throw new BadRequestException('paymentTier is not valid for this major event.');
+    throw new BadRequestException('A faixa de pagamento não é válida para este grande evento.');
   }
 
   return {

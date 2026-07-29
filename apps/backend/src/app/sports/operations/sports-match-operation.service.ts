@@ -97,9 +97,7 @@ export class SportsMatchOperationService {
     private readonly autorouting: SportsAutoroutingService,
     private readonly defaultRedirect: CurrentUserDefaultRedirectService,
     private readonly auditLog: AuditLogService,
-    private readonly frozen: FrozenResourceService = {
-      assertEventMutable: async () => undefined,
-    } as unknown as FrozenResourceService,
+    private readonly frozen: FrozenResourceService,
   ) {}
 
   async commit(
@@ -710,11 +708,8 @@ export class SportsMatchOperationService {
       }
     }
     if (type === SportsMatchActionType.SCORE_CORRECTION) {
-      const scoreboard = normalizeSportsScoreboard(payload['scoreboard']);
-      const rules = normalizeSportsScoreRules(match.category.scoreRules);
       try {
-        assertSportsScoreDeltaMatchesRules(scoreboard.home, rules);
-        assertSportsScoreDeltaMatchesRules(scoreboard.away, rules);
+        normalizeSportsScoreboard(payload['scoreboard']);
       } catch (error) {
         throw new BadRequestException(
           error instanceof Error ? error.message : 'Correção de placar inválida.',

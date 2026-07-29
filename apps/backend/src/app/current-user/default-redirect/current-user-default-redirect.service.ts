@@ -7,6 +7,8 @@ import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-event
 import { DefaultRedirectRoute } from '../models';
 
 const CACHE_TTL_SECONDS = 15 * 60;
+const UPCOMING_MATCH_WINDOW_MINUTES = 45;
+const RECENT_MATCH_WINDOW_MINUTES = 30;
 const CACHE_KEY_PREFIX = 'current-user:default-redirect:v1';
 
 @Injectable()
@@ -36,17 +38,22 @@ export class CurrentUserDefaultRedirectService {
       return;
     }
     try {
-      await this.redis.del(...keys);
+      const pipeline = this.redis.pipeline();
+      for (const key of keys) {
+        pipeline.del(key);
+      }
+      await pipeline.exec();
     } catch (error) {
       this.logger.warn(`Could not invalidate sports redirect cache: ${this.formatError(error)}`);
     }
   }
 
   private async resolveUncached(personId: string, now: Date): Promise<DefaultRedirectRoute> {
-    if (
-      (await this.hasUpcomingSportsMatch(personId, now)) ||
-      (await this.hasPendingInPersonAttendance(personId, now))
-    ) {
+    const [hasUpcomingSportsMatch, hasPendingInPersonAttendance] = await Promise.all([
+      this.hasUpcomingSportsMatch(personId, now),
+      this.hasPendingInPersonAttendance(personId, now),
+    ]);
+    if (hasUpcomingSportsMatch || hasPendingInPersonAttendance) {
       return DefaultRedirectRoute.WALLET;
     }
 
@@ -68,8 +75,8 @@ export class CurrentUserDefaultRedirectService {
           AND: [
             PUBLIC_EVENT_WHERE,
             {
-              startDate: { lte: addMinutes(now, 45) },
-              endDate: { gte: subMinutes(now, 30) },
+              startDate: { lte: addMinutes(now, UPCOMING_MATCH_WINDOW_MINUTES) },
+              endDate: { gte: subMinutes(now, RECENT_MATCH_WINDOW_MINUTES) },
             },
           ],
         },

@@ -103,7 +103,7 @@ model MajorEventSubscription {
   receiptValidatedAt     DateTime?
   receiptValidatedBy     String?
   validationActions      MajorEventReceiptValidationAction[]
-  sportsTournamentParticipant SportsTournamentParticipant?
+  sportsTournamentParticipants SportsTournamentParticipant[]
 
   createdAt       DateTime                   @default(now())
   createdById     String?

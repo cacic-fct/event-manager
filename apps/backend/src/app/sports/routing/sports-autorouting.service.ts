@@ -79,7 +79,6 @@ export class SportsAutoroutingService {
         event: { select: { startDate: true, endDate: true } },
       },
       orderBy: { event: { startDate: 'asc' } },
-      take: 20,
     });
     const selected = [...matches].sort(
       (left, right) =>

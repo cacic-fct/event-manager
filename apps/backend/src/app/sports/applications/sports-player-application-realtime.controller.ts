@@ -8,6 +8,7 @@ import {
 import {
   ApiBearerAuth,
   ApiOperation,
+  ApiOkResponse,
   ApiProduces,
   ApiTags,
 } from '@nestjs/swagger';
@@ -39,6 +40,15 @@ export class SportsPlayerApplicationRealtimeController {
       'Replayable person-scoped stream. The authenticated person is resolved before any replayed event is disclosed.',
   })
   @ApiProduces('text/event-stream')
+  @ApiOkResponse({
+    description: 'Fluxo SSE reproduzível de alterações em solicitações esportivas e pagamentos do usuário atual.',
+    content: {
+      'text/event-stream': {
+        example:
+          'id: 42\nevent: SPORTS_PLAYER_APPLICATION_CHANGED\ndata: {"type":"SPORTS_PLAYER_APPLICATION_CHANGED","applicationId":"01900000-0000-7000-8000-000000000001","reason":"SUBMITTED"}\n\n',
+      },
+    },
+  })
   streamCurrentUserApplications(
     @Headers('last-event-id') lastEventId: string | undefined,
     @Req() request: RequestWithUser,

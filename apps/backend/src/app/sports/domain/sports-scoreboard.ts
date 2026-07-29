@@ -38,7 +38,7 @@ export function normalizeSportsScoreboard(input: unknown): SportsScoreboard {
     return { ...EMPTY_SCOREBOARD };
   }
   if (!isRecord(input)) {
-    throw new TypeError('Sports scoreboard must be an object.');
+    throw new TypeError('O placar esportivo deve ser um objeto.');
   }
 
   const periods = normalizePeriods(input.periods);
@@ -76,7 +76,7 @@ export function applySportsScoreDelta(
     };
   }
   if (!Number.isInteger(periodNumber) || periodNumber < 1) {
-    throw new RangeError('Score period number must be a positive integer.');
+    throw new RangeError('O número do período deve ser um inteiro positivo.');
   }
 
   let foundPeriod = false;
@@ -85,7 +85,7 @@ export function applySportsScoreDelta(
       return period;
     }
     if (period.closed) {
-      throw new Error('Closed score periods cannot receive live score deltas.');
+      throw new Error('Períodos encerrados não podem receber alterações de placar.');
     }
 
     foundPeriod = true;
@@ -97,7 +97,7 @@ export function applySportsScoreDelta(
   });
 
   if (!foundPeriod) {
-    throw new Error(`Score period ${periodNumber} does not exist.`);
+    throw new Error(`O período ${periodNumber} não existe.`);
   }
 
   return {
@@ -119,7 +119,7 @@ export function rollSportsScorePeriod(
     normalized.periods.reduce((maximum, period) => Math.max(maximum, period.number), 0) + 1;
   if (options.maximumPeriods !== null && options.maximumPeriods !== undefined) {
     if (nextPeriodNumber > options.maximumPeriods) {
-      throw new Error(`The configured maximum of ${options.maximumPeriods} periods was reached.`);
+      throw new Error(`O máximo configurado de ${options.maximumPeriods} períodos foi atingido.`);
     }
   }
 

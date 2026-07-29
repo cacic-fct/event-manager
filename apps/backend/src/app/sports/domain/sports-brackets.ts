@@ -207,7 +207,7 @@ export function planSportsWinnerAdvancement(
   input: PlanWinnerAdvancementInput,
 ): WinnerAdvancementPlan {
   const source = input.source;
-  if (source.state !== 'FINISHED') {
+  if (source.outcome === 'FINALIZED' && source.state !== 'FINISHED') {
     return { status: 'BLOCKED', reason: 'SOURCE_NOT_FINAL' };
   }
   if (!source.winnerRegistrationId) {

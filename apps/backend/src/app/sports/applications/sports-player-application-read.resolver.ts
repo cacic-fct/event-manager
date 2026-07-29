@@ -1,7 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { SportsApplicationStatus } from '@cacic-fct/shared-data-types';
 import { Args, Context, Query, Resolver } from '@nestjs/graphql';
-import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUserContextService } from '../../current-user/context.service';
 import { GraphqlContext } from '../../current-user/selects';
@@ -15,6 +14,7 @@ import { SportsPlayerApplicationReadService } from './sports-player-application-
 export class SportsPlayerApplicationAdminReadResolver {
   constructor(
     private readonly applications: SportsPlayerApplicationReadService,
+    private readonly currentUser: CurrentUserContextService,
   ) {}
 
   @Query(() => [AdminSportsPlayerApplicationRead], {
@@ -31,7 +31,7 @@ export class SportsPlayerApplicationAdminReadResolver {
     @Context() context: GraphqlContext,
   ): Promise<AdminSportsPlayerApplicationRead[]> {
     return this.applications.adminQueue(
-      this.getUser(context),
+      this.currentUser.getAuthenticatedUser(context),
       tournamentId,
       statuses,
     );
@@ -46,15 +46,9 @@ export class SportsPlayerApplicationAdminReadResolver {
     @Context() context: GraphqlContext,
   ): Promise<AdminSportsPlayerApplicationRead> {
     return this.applications.adminDetail(
-      this.getUser(context),
+      this.currentUser.getAuthenticatedUser(context),
       applicationId,
     );
-  }
-
-  private getUser(
-    context: GraphqlContext,
-  ): AuthenticatedUser | undefined {
-    return context.req?.user ?? context.request?.user;
   }
 }
 

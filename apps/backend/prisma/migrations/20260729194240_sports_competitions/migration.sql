@@ -611,7 +611,9 @@ CREATE TABLE "sports_player_application_categories" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "sports_tournaments_majorEventId_key" ON "sports_tournaments"("majorEventId");
+CREATE UNIQUE INDEX "sports_tournaments_active_majorEventId_key"
+ON "sports_tournaments"("majorEventId")
+WHERE "deletedAt" IS NULL;
 
 -- CreateIndex
 CREATE INDEX "sports_tournaments_status_idx" ON "sports_tournaments"("status");
@@ -623,7 +625,9 @@ CREATE INDEX "sports_tournaments_finishedAt_idx" ON "sports_tournaments"("finish
 CREATE INDEX "sports_tournaments_deletedAt_idx" ON "sports_tournaments"("deletedAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "sports_categories_eventGroupId_key" ON "sports_categories"("eventGroupId");
+CREATE UNIQUE INDEX "sports_categories_active_eventGroupId_key"
+ON "sports_categories"("eventGroupId")
+WHERE "deletedAt" IS NULL;
 
 -- CreateIndex
 CREATE INDEX "sports_categories_tournamentId_status_idx" ON "sports_categories"("tournamentId", "status");
@@ -653,7 +657,7 @@ CREATE INDEX "sports_teams_tournamentId_name_idx" ON "sports_teams"("tournamentI
 CREATE INDEX "sports_teams_deletedAt_idx" ON "sports_teams"("deletedAt");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "sports_tournament_participants_majorEventSubscriptionId_key" ON "sports_tournament_participants"("majorEventSubscriptionId");
+CREATE INDEX "sports_tournament_participants_majorEventSubscriptionId_idx" ON "sports_tournament_participants"("majorEventSubscriptionId");
 
 -- CreateIndex
 CREATE INDEX "sports_tournament_participants_tournamentId_personId_idx" ON "sports_tournament_participants"("tournamentId", "personId");
@@ -688,6 +692,8 @@ CREATE INDEX "sports_team_members_participantId_idx" ON "sports_team_members"("p
 -- CreateIndex
 CREATE INDEX "sports_team_members_deletedAt_idx" ON "sports_team_members"("deletedAt");
 
+CREATE UNIQUE INDEX "sports_team_members_active_team_participant_key" ON "sports_team_members"("teamId", "participantId") WHERE "deletedAt" IS NULL;
+
 -- CreateIndex
 CREATE INDEX "sports_team_representatives_personId_active_idx" ON "sports_team_representatives"("personId", "active");
 
@@ -709,6 +715,8 @@ CREATE INDEX "sports_registrations_seed_idx" ON "sports_registrations"("seed");
 -- CreateIndex
 CREATE INDEX "sports_registrations_deletedAt_idx" ON "sports_registrations"("deletedAt");
 
+CREATE UNIQUE INDEX "sports_registrations_active_team_category_key" ON "sports_registrations"("teamId", "categoryId") WHERE "deletedAt" IS NULL;
+
 -- CreateIndex
 CREATE INDEX "sports_registration_members_registrationId_teamMemberId_idx" ON "sports_registration_members"("registrationId", "teamMemberId");
 
@@ -720,6 +728,8 @@ CREATE INDEX "sports_registration_members_teamMemberId_idx" ON "sports_registrat
 
 -- CreateIndex
 CREATE INDEX "sports_registration_members_deletedAt_idx" ON "sports_registration_members"("deletedAt");
+
+CREATE UNIQUE INDEX "sports_registration_members_active_registration_member_key" ON "sports_registration_members"("registrationId", "teamMemberId") WHERE "deletedAt" IS NULL;
 
 -- CreateIndex
 CREATE UNIQUE INDEX "sports_team_change_requests_pendingKey_key" ON "sports_team_change_requests"("pendingKey");
@@ -811,6 +821,8 @@ CREATE INDEX "sports_match_rosters_copiedFromRosterId_idx" ON "sports_match_rost
 -- CreateIndex
 CREATE INDEX "sports_match_rosters_deletedAt_idx" ON "sports_match_rosters"("deletedAt");
 
+CREATE UNIQUE INDEX "sports_match_rosters_active_match_registration_key" ON "sports_match_rosters"("matchId", "registrationId") WHERE "deletedAt" IS NULL;
+
 -- CreateIndex
 CREATE INDEX "sports_match_roster_entries_rosterId_registrationMemberId_idx" ON "sports_match_roster_entries"("rosterId", "registrationMemberId");
 
@@ -819,6 +831,8 @@ CREATE INDEX "sports_match_roster_entries_registrationMemberId_idx" ON "sports_m
 
 -- CreateIndex
 CREATE INDEX "sports_match_roster_entries_deletedAt_idx" ON "sports_match_roster_entries"("deletedAt");
+
+CREATE UNIQUE INDEX "sports_roster_entries_active_roster_member_key" ON "sports_match_roster_entries"("rosterId", "registrationMemberId") WHERE "deletedAt" IS NULL;
 
 -- CreateIndex
 CREATE INDEX "sports_official_assignments_tournamentId_personId_role_idx" ON "sports_official_assignments"("tournamentId", "personId", "role");

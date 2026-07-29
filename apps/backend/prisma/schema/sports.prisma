@@ -247,7 +247,7 @@ enum SportsApplicationStatus {
 model SportsTournament {
   id String @id @default(uuid(7))
 
-  majorEventId String     @unique
+  majorEventId String
   majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
 
   status                   SportsTournamentStatus @default(DRAFT)
@@ -274,6 +274,7 @@ model SportsTournament {
   @@index([status])
   @@index([finishedAt])
   @@index([deletedAt])
+  @@unique([majorEventId], map: "sports_tournaments_active_majorEventId_key", where: { deletedAt: null })
   @@map("sports_tournaments")
 }
 
@@ -283,7 +284,7 @@ model SportsCategory {
   tournamentId String
   tournament   SportsTournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
 
-  eventGroupId String     @unique
+  eventGroupId String
   eventGroup   EventGroup @relation(fields: [eventGroupId], references: [id], onDelete: Restrict)
 
   name            String
@@ -337,6 +338,7 @@ model SportsCategory {
   @@index([registrationFormId])
   @@index([finishedAt])
   @@index([deletedAt])
+  @@unique([eventGroupId], map: "sports_categories_active_eventGroupId_key", where: { deletedAt: null })
   @@map("sports_categories")
 }
 
@@ -393,7 +395,7 @@ model SportsTournamentParticipant {
   status        SportsParticipantStatus @default(PENDING)
   paymentStatus SportsPaymentStatus     @default(NOT_REQUIRED)
 
-  majorEventSubscriptionId String?                 @unique
+  majorEventSubscriptionId String?
   majorEventSubscription   MajorEventSubscription? @relation(fields: [majorEventSubscriptionId], references: [id], onDelete: SetNull)
 
   approvedAt      DateTime?
@@ -448,6 +450,7 @@ model SportsTeamMember {
   @@index([teamId, status])
   @@index([participantId])
   @@index([deletedAt])
+  @@unique([teamId, participantId], map: "sports_team_members_active_team_participant_key", where: { deletedAt: null })
   @@map("sports_team_members")
 }
 
@@ -516,6 +519,7 @@ model SportsRegistration {
   @@index([teamId])
   @@index([seed])
   @@index([deletedAt])
+  @@unique([teamId, categoryId], map: "sports_registrations_active_team_category_key", where: { deletedAt: null })
   @@map("sports_registrations")
 }
 
@@ -550,6 +554,7 @@ model SportsRegistrationMember {
   @@index([categoryId, role, eligibility])
   @@index([teamMemberId])
   @@index([deletedAt])
+  @@unique([registrationId, teamMemberId], map: "sports_registration_members_active_registration_member_key", where: { deletedAt: null })
   @@map("sports_registration_members")
 }
 
@@ -793,6 +798,7 @@ model SportsMatchRoster {
   @@index([registrationId])
   @@index([copiedFromRosterId])
   @@index([deletedAt])
+  @@unique([matchId, registrationId], map: "sports_match_rosters_active_match_registration_key", where: { deletedAt: null })
   @@map("sports_match_rosters")
 }
 
@@ -822,6 +828,7 @@ model SportsMatchRosterEntry {
   @@index([rosterId, registrationMemberId])
   @@index([registrationMemberId])
   @@index([deletedAt])
+  @@unique([rosterId, registrationMemberId], map: "sports_roster_entries_active_roster_member_key", where: { deletedAt: null })
   @@map("sports_match_roster_entries")
 }
 

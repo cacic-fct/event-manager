@@ -2,9 +2,11 @@ import {
   Controller,
   Headers,
   MessageEvent,
+  NotFoundException,
   Param,
   Req,
   Sse,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -25,6 +27,9 @@ import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.inte
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SseReplayService } from '../../realtime/sse-replay.service';
+import { RateLimit } from '../../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { SportsRealtimeService } from './sports-realtime.service';
 import { PUBLIC_SPORTS_MATCH_RELATIONS_WHERE } from '../security/sports-public-visibility';
 
@@ -42,6 +47,8 @@ export class SportsRealtimeController {
 
   @Public()
   @Sse('matches/:matchId/events')
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'matchId' }])
   @ApiOperation({
     summary: 'Stream live public match projections',
     description:
@@ -63,6 +70,8 @@ export class SportsRealtimeController {
 
   @Public()
   @Sse('tournaments/:tournamentId/events')
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'tournamentId' }])
   @ApiOperation({
     summary: 'Stream live public tournament projections',
     description:
@@ -120,6 +129,8 @@ export class SportsRealtimeController {
     description:
       'Replayable scoped invalidations for teams, registrations, brackets, officials, and review queues.',
   })
+  @ApiParam({ name: 'tournamentId', description: 'Sports tournament review scope.' })
+  @ApiProduces('text/event-stream')
   streamTournamentReview(
     @Param('tournamentId') tournamentId: string,
     @Headers('last-event-id') lastEventId: string | undefined,
@@ -140,7 +151,7 @@ export class SportsRealtimeController {
   }
 
   private async assertPublicMatch(matchId: string): Promise<void> {
-    await this.prisma.sportsMatch.findFirstOrThrow({
+    const match = await this.prisma.sportsMatch.findFirst({
       where: {
         id: matchId,
         deletedAt: null,
@@ -148,6 +159,9 @@ export class SportsRealtimeController {
       },
       select: { id: true },
     });
+    if (!match) {
+      throw new NotFoundException('Partida esportiva pública não encontrada.');
+    }
   }
 
   private async assertPublicTournament(tournamentId: string): Promise<void> {

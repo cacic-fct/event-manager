@@ -32,7 +32,7 @@ import {
   SportsVenueUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { Args, Context, Int, Mutation, Resolver } from '@nestjs/graphql';
 import {
   Prisma,
@@ -65,6 +65,8 @@ import { SportsTeamChangeService } from './teams/sports-team-change.service';
 
 @Resolver()
 export class SportsMutationsResolver {
+  private readonly logger = new Logger(SportsMutationsResolver.name);
+
   constructor(
     private readonly policy: AuthorizationPolicyService,
     private readonly frozen: FrozenResourceService,
@@ -436,10 +438,17 @@ export class SportsMutationsResolver {
     @Context() context: GraphqlContext,
   ): Promise<string> {
     const actor = this.authenticated(context);
+    const venue = await this.prisma.sportsVenue.findFirst({
+      where: { id: input.id, deletedAt: null },
+      select: { tournamentId: true },
+    });
+    if (!venue) {
+      throw new NotFoundException('Local esportivo não encontrado.');
+    }
     await this.policy.assertPermissions(
       actor,
       [Permission.SportsTournament.Update],
-      { sportsTournamentId: input.tournamentId },
+      { sportsTournamentId: venue.tournamentId },
     );
     return (
       await this.publishMutation(
@@ -887,10 +896,21 @@ export class SportsMutationsResolver {
       sportsMatchActionId: input.actionId,
     });
     await this.assertMatchActionReviewMutable(input.actionId, actor);
+    const decision =
+      input.decision === 'APPROVED'
+        ? SportsReviewStatus.APPROVED
+        : input.decision === 'REJECTED'
+          ? SportsReviewStatus.REJECTED
+          : input.decision === 'CHANGES_REQUESTED'
+            ? SportsReviewStatus.CHANGES_REQUESTED
+            : null;
+    if (!decision) {
+      throw new BadRequestException('Decisão de revisão inválida.');
+    }
     return (
       await this.operations.review(
         input.actionId,
-        input.decision as SportsReviewStatus,
+        decision,
         actor,
         {
           reviewMessage: input.reviewMessage,
@@ -1375,11 +1395,19 @@ export class SportsMutationsResolver {
     includePublic: boolean,
   ): Promise<T> {
     const result = await mutation;
-    await this.mutationEvents.publishForEntity(
-      entity,
-      result.id,
-      includePublic,
-    );
+    try {
+      await this.mutationEvents.publishForEntity(
+        entity,
+        result.id,
+        includePublic,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Could not publish sports mutation event for ${entity} ${result.id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
     return result;
   }
 

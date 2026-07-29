@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SportsIdentityType } from '@prisma/client';
-import { createCipheriv, createDecipheriv, createHmac, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto';
 
 const ENCRYPTION_VERSION = 'v1';
 const LOCAL_DEVELOPMENT_SECRET = 'local-development-sports-identity-secret';
@@ -14,17 +14,24 @@ export interface ProtectedSportsIdentity {
 
 @Injectable()
 export class SportsIdentityProtectionService {
-  private readonly secret: string;
   private readonly encryptionKey: Buffer;
+  private readonly lookupKey: Buffer;
 
   constructor(config: ConfigService) {
     const configuredSecret = config.get<string>('SPORTS_IDENTITY_SECRET')?.trim();
-    if (!configuredSecret && process.env.NODE_ENV === 'production') {
-      throw new InternalServerErrorException('SPORTS_IDENTITY_SECRET is required in production.');
+    const environment = config.get<string>('NODE_ENV')?.trim();
+    const isLocalEnvironment = environment === 'development' || environment === 'test';
+    if (!configuredSecret && !isLocalEnvironment) {
+      throw new InternalServerErrorException('SPORTS_IDENTITY_SECRET is required outside development and test.');
     }
 
-    this.secret = configuredSecret || LOCAL_DEVELOPMENT_SECRET;
-    this.encryptionKey = createHash('sha256').update(this.secret).digest();
+    const secret = configuredSecret || LOCAL_DEVELOPMENT_SECRET;
+    this.encryptionKey = Buffer.from(
+      hkdfSync('sha256', secret, '', 'sports-identity-encryption', 32),
+    );
+    this.lookupKey = Buffer.from(
+      hkdfSync('sha256', secret, '', 'sports-identity-lookup', 32),
+    );
   }
 
   protect(type: SportsIdentityType, rawValue: string): ProtectedSportsIdentity {
@@ -49,7 +56,7 @@ export class SportsIdentityProtectionService {
   reveal(type: SportsIdentityType, encryptedValue: string): string {
     const [version, initializationVector, authenticationTag, encrypted] = encryptedValue.split('.');
     if (version !== ENCRYPTION_VERSION || !initializationVector || !authenticationTag || !encrypted) {
-      throw new BadRequestException('Invalid encrypted sports identity.');
+      throw new BadRequestException('Identidade esportiva criptografada inválida.');
     }
 
     try {
@@ -64,7 +71,7 @@ export class SportsIdentityProtectionService {
         decipher.final(),
       ]).toString('utf8');
     } catch {
-      throw new BadRequestException('Invalid encrypted sports identity.');
+      throw new BadRequestException('Identidade esportiva criptografada inválida.');
     }
   }
 
@@ -105,7 +112,7 @@ export class SportsIdentityProtectionService {
   }
 
   private hash(type: SportsIdentityType, normalizedValue: string): string {
-    return createHmac('sha256', this.secret)
+    return createHmac('sha256', this.lookupKey)
       .update(`sports-identity:${type}:${normalizedValue}`)
       .digest('base64url');
   }

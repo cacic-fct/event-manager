@@ -364,6 +364,7 @@ export class SportsTeamChangeService {
         where: {
           id: request.teamId,
           revision: request.team.revision,
+          deletedAt: null,
         },
         data: {
           ...teamFields,
@@ -1203,7 +1204,7 @@ export class SportsTeamChangeService {
           deletedAt: null,
           OR: [
             { email: { equals: normalizedValue, mode: 'insensitive' } },
-            { secondaryEmails: { has: normalizedValue } },
+            { secondaryEmails: { has: normalizedValue.toLocaleLowerCase('pt-BR') } },
           ],
         },
         select: { id: true },

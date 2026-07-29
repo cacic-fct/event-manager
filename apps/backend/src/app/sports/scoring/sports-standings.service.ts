@@ -254,8 +254,8 @@ export class SportsStandingsService {
         away,
         standingByGroupPosition,
       );
-      const match = await tx.sportsMatch.findUniqueOrThrow({
-        where: { id: matchId },
+      const match = await tx.sportsMatch.findFirst({
+        where: { id: matchId, deletedAt: null },
         include: {
           category: { select: { tournamentId: true } },
           event: {
@@ -267,6 +267,9 @@ export class SportsStandingsService {
           },
         },
       });
+      if (!match) {
+        continue;
+      }
       if (match.canonicalState !== SportsMatchState.SCHEDULED) {
         continue;
       }
@@ -681,6 +684,10 @@ export class SportsStandingsService {
       data: {
         deletedAt: new Date(),
         deletedById: actorId,
+        updatedById: actorId,
+        revision: {
+          increment: 1,
+        },
       },
     });
     const scoreEntries = placements.flatMap((placement) => {

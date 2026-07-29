@@ -1,3 +1,4 @@
+import { SportsParticipantPaymentChangedPayload } from '@cacic-fct/shared-data-types';
 import { Injectable, Logger } from '@nestjs/common';
 import { CurrentUserDefaultRedirectService } from '../../current-user/default-redirect/current-user-default-redirect.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -96,7 +97,7 @@ export class SportsPlayerApplicationRealtimeService {
         where: { id: subscriptionId },
         select: {
           subscriptionStatus: true,
-          sportsTournamentParticipant: {
+          sportsTournamentParticipants: {
             select: {
               tournamentId: true,
               personId: true,
@@ -106,12 +107,12 @@ export class SportsPlayerApplicationRealtimeService {
           },
         },
       });
-    const participant = subscription?.sportsTournamentParticipant;
-    if (!subscription || !participant) {
+    const participants = subscription?.sportsTournamentParticipants ?? [];
+    if (!subscription || participants.length === 0) {
       return;
     }
-    const applications =
-      await this.prisma.sportsPlayerApplication.findMany({
+    await Promise.all(participants.map(async (participant) => {
+      const applications = await this.prisma.sportsPlayerApplication.findMany({
         where: {
           tournamentId: participant.tournamentId,
           applicantPersonId: participant.personId,
@@ -121,28 +122,29 @@ export class SportsPlayerApplicationRealtimeService {
           id: true,
           status: true,
         },
-      });
-    const payload = {
-      type: 'SPORTS_PARTICIPANT_PAYMENT_CHANGED',
-      reason,
-      tournamentId: participant.tournamentId,
-      subscriptionId,
-      subscriptionStatus: subscription.subscriptionStatus,
-      participantStatus: participant.status,
-      paymentStatus: participant.paymentStatus,
-      applications,
-      occurredAt: new Date().toISOString(),
-    };
-    await Promise.all([
-      this.realtime.publish(this.scope(participant.personId), payload),
-      this.realtime.publish(
-        this.realtime.scope(
-          'admin-tournament',
-          participant.tournamentId,
+        });
+      const payload: SportsParticipantPaymentChangedPayload = {
+        type: 'SPORTS_PARTICIPANT_PAYMENT_CHANGED',
+        reason,
+        tournamentId: participant.tournamentId,
+        subscriptionId,
+        subscriptionStatus: subscription.subscriptionStatus,
+        participantStatus: participant.status,
+        paymentStatus: participant.paymentStatus,
+        applications,
+        occurredAt: new Date().toISOString(),
+      };
+      await Promise.all([
+        this.realtime.publish(this.scope(participant.personId), payload),
+        this.realtime.publish(
+          this.realtime.scope(
+            'admin-tournament',
+            participant.tournamentId,
+          ),
+          payload,
         ),
-        payload,
-      ),
-      this.defaultRedirect.invalidatePeople([participant.personId]),
-    ]);
+        this.defaultRedirect.invalidatePeople([participant.personId]),
+      ]);
+    }));
   }
 }

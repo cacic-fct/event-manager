@@ -1,5 +1,5 @@
 import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   SportsEligibilityStatus,
   SportsMatchState,
@@ -41,6 +41,7 @@ type SportsRecipientAccumulator = {
 const EFFECTIVE_PAYMENT_STATUSES = [SportsPaymentStatus.NOT_REQUIRED, SportsPaymentStatus.PAID];
 const ACCEPTED_MATCH_REVIEW_STATUSES = [SportsReviewStatus.NOT_REQUIRED, SportsReviewStatus.APPROVED];
 
+@Injectable()
 export class CertificateSportsEligibility {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -75,6 +76,9 @@ export class CertificateSportsEligibility {
         select: {
           id: true,
         },
+        orderBy: {
+          id: 'asc',
+        },
       });
       if (!tournament) {
         throw new BadRequestException(`Major event ${config.majorEventId} is not backed by a sports tournament.`);
@@ -101,6 +105,9 @@ export class CertificateSportsEligibility {
         select: {
           id: true,
           tournamentId: true,
+        },
+        orderBy: {
+          id: 'asc',
         },
       });
       if (!category) {
@@ -140,6 +147,9 @@ export class CertificateSportsEligibility {
               tournamentId: true,
             },
           },
+        },
+        orderBy: {
+          id: 'asc',
         },
       });
       if (!match) {
@@ -365,6 +375,8 @@ export class CertificateSportsEligibility {
       where: {
         tournamentId: target.tournamentId,
         role,
+        active: true,
+        revokedAt: null,
         ...(personId ? { personId } : {}),
         person: {
           deletedAt: null,

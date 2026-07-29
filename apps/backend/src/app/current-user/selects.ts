@@ -78,14 +78,10 @@ export const MAJOR_EVENT_BASE_SELECT = {
   publishedAt: true,
   unpublishedAt: true,
   sportsTournament: {
-    where: {
-      deletedAt: null,
-      status: {
-        not: 'DRAFT',
-      },
-    },
     select: {
       id: true,
+      deletedAt: true,
+      status: true,
     },
   },
   certificateConfigs: {
@@ -222,6 +218,9 @@ export const EVENT_SELECT = {
   buttonText: true,
   buttonLink: true,
   sportsMatch: {
+    where: {
+      deletedAt: null,
+    },
     select: {
       id: true,
       categoryId: true,
@@ -238,6 +237,7 @@ export const EVENT_SELECT = {
   updatedAt: true,
   updatedById: true,
 } satisfies Prisma.EventSelect;
+
 
 export type UserRecord = Prisma.UserGetPayload<{ select: typeof USER_SELECT }>;
 export type PersonRecord = Prisma.PeopleGetPayload<{

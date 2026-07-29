@@ -191,6 +191,7 @@ export class SportsPaymentService {
         existingSubscription.subscriptionStatus,
         input.paymentRequired,
       );
+      const wasReopened = reopenedStatus !== existingSubscription.subscriptionStatus;
       const shouldUpdatePayment =
         existingSubscription.subscriptionStatus !==
           SubscriptionStatus.CONFIRMED &&
@@ -207,9 +208,13 @@ export class SportsPaymentService {
         where: { id: existingSubscription.id },
         data: {
           subscriptionStatus: reopenedStatus,
-          receiptRejectionReason: null,
-          receiptValidatedAt: null,
-          receiptValidatedBy: null,
+          ...(wasReopened
+            ? {
+                receiptRejectionReason: null,
+                receiptValidatedAt: null,
+                receiptValidatedBy: null,
+              }
+            : {}),
           ...(shouldUpdatePayment
             ? {
                 amountPaid: input.paymentSelection.amountPaid,
@@ -293,7 +298,7 @@ export async function refreshSportsParticipantForSubscription(
           isPaymentRequired: true,
         },
       },
-      sportsTournamentParticipant: {
+      sportsTournamentParticipants: {
         select: {
           id: true,
           tournamentId: true,
@@ -303,25 +308,26 @@ export async function refreshSportsParticipantForSubscription(
       },
     },
   });
-  const participant = subscription?.sportsTournamentParticipant;
-  if (!subscription || !participant) {
+  const participants = subscription?.sportsTournamentParticipants ?? [];
+  if (!subscription || participants.length === 0) {
     return;
   }
 
-  const approved = participant.approvedAt !== null;
-  const participantStatus = resolveParticipantStatus(subscription.subscriptionStatus, approved);
-  const paymentStatus = resolvePaymentStatus(
-    subscription.majorEvent.isPaymentRequired,
-    subscription.subscriptionStatus,
-    approved,
-  );
-  await tx.sportsTournamentParticipant.update({
-    where: { id: participant.id },
-    data: {
-      status: participantStatus,
-      paymentStatus,
-    },
-  });
+  for (const participant of participants) {
+    const approved = participant.approvedAt !== null;
+    const participantStatus = resolveParticipantStatus(subscription.subscriptionStatus, approved);
+    const paymentStatus = resolvePaymentStatus(
+      subscription.majorEvent.isPaymentRequired,
+      subscription.subscriptionStatus,
+      approved,
+    );
+    await tx.sportsTournamentParticipant.update({
+      where: { id: participant.id },
+      data: {
+        status: participantStatus,
+        paymentStatus,
+      },
+    });
 
   await tx.sportsRegistrationMember.updateMany({
     where: {
@@ -343,7 +349,7 @@ export async function refreshSportsParticipantForSubscription(
     },
   });
 
-  await tx.sportsPlayerApplication.updateMany({
+    await tx.sportsPlayerApplication.updateMany({
     where: {
       tournamentId: participant.tournamentId,
       applicantPersonId: participant.personId,
@@ -362,7 +368,8 @@ export async function refreshSportsParticipantForSubscription(
           ? SportsApplicationStatus.ACTIVE
           : SportsApplicationStatus.WAITING_PAYMENT,
     },
-  });
+    });
+  }
 }
 
 function resolveReusableSubscriptionStatus(

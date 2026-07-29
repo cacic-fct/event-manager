@@ -23,6 +23,7 @@ import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { S3Service } from '../../s3/s3.service';
 import { SportsTeamChangeService } from '../teams/sports-team-change.service';
+import { runSerializableSportsTransaction } from '../sports-transaction';
 
 export const MAX_SPORTS_TEAM_LOGO_SIZE_BYTES = 2 * 1024 * 1024;
 export const MIN_SPORTS_TEAM_LOGO_DIMENSION = 16;
@@ -224,7 +225,7 @@ export class SportsTeamLogoService {
       });
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const nextRevision = team.revision + 1;
       const update = await tx.sportsTeam.updateMany({
         where: {

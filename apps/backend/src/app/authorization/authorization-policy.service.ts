@@ -380,8 +380,6 @@ export class AuthorizationPolicyService {
 
   buildResourceContext(raw: unknown, requiredPermissions: readonly string[] = []): AuthorizationResourceContext {
     const context: AuthorizationResourceContext = {};
-    this.collectResourceIds(raw, context);
-
     const resources = new Set(
       this.normalizePermissionRequirements(requiredPermissions).map(
         (permission) => parsePermission(permission).resource,
@@ -390,6 +388,7 @@ export class AuthorizationPolicyService {
     if (resources.size === 1) {
       context.primaryResource = [...resources][0];
     }
+    this.collectResourceIds(raw, context);
     if (context.genericId && resources.has('subscription')) {
       context.subscriptionId ??= context.genericId;
     }
@@ -1229,48 +1228,88 @@ export class AuthorizationPolicyService {
           case 'receiptValidationActionId':
             context.receiptValidationActionId ??= id;
             break;
-          case 'tournamentId':
           case 'sportsTournamentId':
             context.sportsTournamentId ??= id;
             break;
-          case 'categoryId':
+          case 'tournamentId':
+            if (context.primaryResource === 'sports-tournament') {
+              context.sportsTournamentId ??= id;
+            }
+            break;
           case 'sportsCategoryId':
             context.sportsCategoryId ??= id;
             break;
-          case 'teamId':
+          case 'categoryId':
+            if (context.primaryResource === 'sports-category') {
+              context.sportsCategoryId ??= id;
+            }
+            break;
           case 'sportsTeamId':
             context.sportsTeamId ??= id;
             break;
-          case 'registrationId':
+          case 'teamId':
+            if (context.primaryResource === 'sports-team') {
+              context.sportsTeamId ??= id;
+            }
+            break;
           case 'sportsRegistrationId':
             context.sportsRegistrationId ??= id;
             break;
-          case 'matchId':
+          case 'registrationId':
+            if (context.primaryResource === 'sports-registration') {
+              context.sportsRegistrationId ??= id;
+            }
+            break;
           case 'sportsMatchId':
             context.sportsMatchId ??= id;
             break;
-          case 'officialAssignmentId':
+          case 'matchId':
+            if (context.primaryResource === 'sports-match') {
+              context.sportsMatchId ??= id;
+            }
+            break;
           case 'sportsOfficialAssignmentId':
             context.sportsOfficialAssignmentId ??= id;
             break;
-          case 'changeRequestId':
+          case 'officialAssignmentId':
+            if (context.primaryResource === 'sports-official') {
+              context.sportsOfficialAssignmentId ??= id;
+            }
+            break;
           case 'sportsTeamChangeRequestId':
             context.sportsTeamChangeRequestId ??= id;
             break;
-          case 'representativeId':
+          case 'changeRequestId':
+            if (context.primaryResource === 'sports-team') {
+              context.sportsTeamChangeRequestId ??= id;
+            }
+            break;
           case 'sportsTeamRepresentativeId':
             context.sportsTeamRepresentativeId ??= id;
             break;
-          case 'applicationId':
+          case 'representativeId':
+            if (context.primaryResource === 'sports-team') {
+              context.sportsTeamRepresentativeId ??= id;
+            }
+            break;
           case 'sportsPlayerApplicationId':
             context.sportsPlayerApplicationId ??= id;
+            break;
+          case 'applicationId':
+            if (context.primaryResource === 'sports-registration') {
+              context.sportsPlayerApplicationId ??= id;
+            }
             break;
           case 'sportsMatchActionId':
             context.sportsMatchActionId ??= id;
             break;
-          case 'rosterId':
           case 'sportsMatchRosterId':
             context.sportsMatchRosterId ??= id;
+            break;
+          case 'rosterId':
+            if (context.primaryResource === 'sports-match') {
+              context.sportsMatchRosterId ??= id;
+            }
             break;
         }
         continue;

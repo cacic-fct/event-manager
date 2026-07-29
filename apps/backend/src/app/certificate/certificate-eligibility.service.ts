@@ -37,11 +37,10 @@ export type EligibleCertificateRecipient = {
 
 @Injectable()
 export class CertificateEligibilityService {
-  private readonly sportsEligibility: CertificateSportsEligibility;
-
-  constructor(private readonly prisma: PrismaService) {
-    this.sportsEligibility = new CertificateSportsEligibility(prisma);
-  }
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sportsEligibility: CertificateSportsEligibility,
+  ) {}
 
   async getConfigById(configId: string): Promise<CertificateConfigRecord> {
     const config = await this.prisma.certificateConfig.findFirst({

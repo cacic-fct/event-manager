@@ -95,12 +95,6 @@ export function resolvePublicSportsMatchState(input: {
   readonly intendedState: SportsMatchState | null;
   readonly reviewStatus: SportsReviewStatus;
 }): SportsMatchState {
-  if (
-    input.intendedState &&
-    (input.reviewStatus === 'PENDING' || input.reviewStatus === 'CHANGES_REQUESTED')
-  ) {
-    return input.intendedState;
-  }
   if (input.intendedState && input.reviewStatus === 'APPROVED') {
     return input.intendedState;
   }

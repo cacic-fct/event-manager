@@ -469,8 +469,6 @@ export class SportsMatchRosterService {
         update: {
           attendedAt: checkedInAt,
           status: EventAttendanceStatus.PRESENT,
-          createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
-          createdById: officialPersonId,
           committedById: officialPersonId,
         },
       });

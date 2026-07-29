@@ -208,7 +208,7 @@ function createDeterministicFallbackPairings(
         return comparePairingCandidates(home, left.standing, right.standing);
       })[0]?.index;
     if (opponentIndex === undefined) {
-      throw new Error('Swiss pairing pool must contain an even number of registrations.');
+      throw new Error('O conjunto de pareamento suíço deve conter um número par de inscrições.');
     }
     const [away] = remaining.splice(opponentIndex, 1);
     pairs.push([home, away]);

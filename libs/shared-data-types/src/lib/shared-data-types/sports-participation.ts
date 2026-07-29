@@ -627,3 +627,24 @@ export class SportsPlayerApplication {
   @Field(() => Date, { nullable: true })
   deletedAt?: Date | null;
 }
+
+export interface SportsParticipantPaymentChangedPayload {
+  type: 'SPORTS_PARTICIPANT_PAYMENT_CHANGED';
+  reason:
+    | 'SUBMITTED'
+    | 'REVIEWED'
+    | 'RECEIPT_UPLOADED'
+    | 'PAYMENT_APPROVED'
+    | 'PAYMENT_REJECTED'
+    | 'PAYMENT_REVIEW_UNDONE';
+  tournamentId: string;
+  subscriptionId: string;
+  subscriptionStatus: string;
+  participantStatus: SportsParticipantStatus;
+  paymentStatus: SportsPaymentStatus;
+  applications: Array<{
+    id: string;
+    status: SportsApplicationStatus;
+  }>;
+  occurredAt: string;
+}

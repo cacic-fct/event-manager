@@ -124,10 +124,7 @@ export class SportsBracketAdvancementService {
     }
 
     const invalidations: SportsStructuralInvalidation[][] = [];
-    const advancementKind: SportsStructuralInvalidationKind =
-      resetRule?.sourceMatchId === replayRootId
-        ? 'GRAND_FINAL_RESET_ACTIVATED'
-        : 'BRACKET_ADVANCEMENT';
+    const advancementKind: SportsStructuralInvalidationKind = 'BRACKET_ADVANCEMENT';
     if (source.winnerAdvancesToId && source.winnerAdvancesToSide) {
       const plan = planSportsWinnerAdvancement({
         source: {
@@ -638,6 +635,15 @@ export class SportsBracketAdvancementService {
         source.id,
         resetMatch.id,
         desiredHomeRegistrationId,
+        actorId,
+      );
+    }
+    if (desiredAwayRegistrationId) {
+      await this.rosters.copyApprovedRosterForWinner(
+        tx,
+        source.id,
+        resetMatch.id,
+        desiredAwayRegistrationId,
         actorId,
       );
     }

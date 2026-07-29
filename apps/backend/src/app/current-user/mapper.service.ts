@@ -1,6 +1,6 @@
 import { Person, User, UserRole } from '@cacic-fct/shared-data-types';
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, SportsTournamentStatus } from '@prisma/client';
 import {
   CurrentUserEventParticipation,
   CurrentUserEventAttendance,
@@ -28,7 +28,11 @@ type MappablePublicMajorEventRecord = Omit<
   PublicMajorEventRecord,
   'sportsTournament'
 > & {
-  sportsTournament?: PublicMajorEventRecord['sportsTournament'];
+  sportsTournament?: {
+    id: string;
+    deletedAt?: Date | null;
+    status?: SportsTournamentStatus;
+  } | null;
 };
 
 @Injectable()
@@ -71,7 +75,12 @@ export class CurrentUserEventMapperService {
           value: tier.value,
         })),
       })),
-      sportsTournament: majorEvent.sportsTournament ?? undefined,
+      sportsTournament:
+        majorEvent.sportsTournament &&
+        !majorEvent.sportsTournament.deletedAt &&
+        majorEvent.sportsTournament.status !== SportsTournamentStatus.DRAFT
+          ? { id: majorEvent.sportsTournament.id }
+          : undefined,
     };
   }
 

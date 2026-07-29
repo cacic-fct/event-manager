@@ -8,6 +8,7 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   Prisma,
+  SportsCategoryStatus,
   SportsParticipantSource,
   SportsRegistrationStatus,
   SportsTeamMemberStatus,
@@ -355,6 +356,9 @@ export class SportsDuplicationService {
           customSportName: source.customSportName,
           division: source.division,
           format: source.format,
+          status: SportsCategoryStatus.DRAFT,
+          registrationStartDate: null,
+          registrationEndDate: null,
           minimumRosterSize: source.minimumRosterSize,
           maximumRosterSize: source.maximumRosterSize,
           maximumCaptains: source.maximumCaptains,
@@ -500,14 +504,6 @@ export class SportsDuplicationService {
           name: input.name?.trim() || source.name,
           institution: source.institution,
           status: SportsTeamStatus.DRAFT,
-          ...(input.includeLogo
-            ? {
-                logoObjectKey: source.logoObjectKey,
-                logoSha256: source.logoSha256,
-                logoMimeType: source.logoMimeType,
-                logoSizeBytes: source.logoSizeBytes,
-              }
-            : {}),
           fieldRevisions: { name: 1, institution: 1, logo: 1 },
           createdById: actorId,
           updatedById: actorId,

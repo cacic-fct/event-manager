@@ -17,10 +17,17 @@ export async function runSerializableSportsTransaction<T>(
       if (!isRetryableTransactionError(error) || attempt === SERIALIZABLE_RETRY_ATTEMPTS - 1) {
         throw error;
       }
+      await waitBeforeRetry(attempt);
     }
   }
 
   throw new ConflictException('Não foi possível concluir a alteração concorrente. Tente novamente.');
+}
+
+function waitBeforeRetry(attempt: number): Promise<void> {
+  const exponentialDelayMs = 10 * 2 ** attempt;
+  const jitterMs = Math.floor(Math.random() * 11);
+  return new Promise((resolve) => setTimeout(resolve, exponentialDelayMs + jitterMs));
 }
 
 function isRetryableTransactionError(error: unknown): boolean {

@@ -107,7 +107,6 @@ export class SportsPlayerApplicationReadService {
       },
       select: APPLICATION_SELECT,
       orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
-      take: 200,
     });
     const participants = await this.loadParticipantStates(
       tournamentId,
@@ -163,6 +162,7 @@ export class SportsPlayerApplicationReadService {
         deletedAt: null,
         tournament: { deletedAt: null },
         requestedTeam: { deletedAt: null },
+        applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],

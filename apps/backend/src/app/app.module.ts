@@ -29,6 +29,7 @@ import { CertificateConfigsService } from './certificate/certificate-configs.ser
 import { CertificateCsvImportResolver } from './certificate/certificate-csv-import.resolver';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
+import { CertificateSportsEligibility } from './certificate/certificate-sports-eligibility';
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
 import { CertificateNotificationJobsProcessor } from './certificate/certificate-notification-jobs.processor';
 import {
@@ -466,6 +467,7 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateCsvImportResolver,
     CertificateDownloadService,
     CertificateEligibilityService,
+    CertificateSportsEligibility,
     CertificateIssuingService,
     CertificateNotificationJobsService,
     PublicCertificateValidationService,

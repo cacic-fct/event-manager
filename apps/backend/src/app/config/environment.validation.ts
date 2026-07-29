@@ -2,7 +2,10 @@ type Environment = Record<string, unknown>;
 
 const REQUIRED_ALWAYS = ['DATABASE_URL'] as const;
 
-const REQUIRED_OUTSIDE_LOCAL_DEVELOPMENT = ['PUBLIC_APP_ORIGIN', 'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET'] as const;
+const REQUIRED_OUTSIDE_LOCAL_DEVELOPMENT = [
+  'PUBLIC_APP_ORIGIN',
+  'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET',
+] as const;
 
 const REQUIRED_IN_PRODUCTION = [
   'KEYCLOAK_REALM_URL',
@@ -34,6 +37,9 @@ export function validateBackendEnvironment(config: Environment): Environment {
 
   if (!isLocalDevelopment(config)) {
     requireKeys(config, REQUIRED_OUTSIDE_LOCAL_DEVELOPMENT, errors);
+    if (!production) {
+      requireKeys(config, ['SPORTS_IDENTITY_SECRET'], errors);
+    }
   }
 
   if (production) {

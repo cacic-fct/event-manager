@@ -1,4 +1,12 @@
-import { Prisma, SubscriptionStatus } from '@prisma/client';
+import {
+  Prisma,
+  SportsEligibilityStatus,
+  SportsParticipantStatus,
+  SportsRosterEntryStatus,
+  SportsRosterStatus,
+  SportsTeamMemberStatus,
+  SubscriptionStatus,
+} from '@prisma/client';
 import { CALENDAR_FEED_ENTRY_LIMIT, PRIVATE_FEED_EVENT_TAKE } from './calendar-feed.constants';
 import { CALENDAR_EVENT_SELECT, CalendarEventRecord } from './calendar-records';
 import { PrismaService } from '../prisma/prisma.service';
@@ -76,19 +84,20 @@ export async function getPrivateFeedEvents(prisma: PrismaService, personIds: str
         rosters: {
           some: {
             deletedAt: null,
-            status: 'APPROVED',
+            status: SportsRosterStatus.APPROVED,
             entries: {
               some: {
                 deletedAt: null,
-                status: 'APPROVED',
+                status: SportsRosterEntryStatus.APPROVED,
                 registrationMember: {
                   deletedAt: null,
-                  eligibility: 'ELIGIBLE',
+                  eligibility: SportsEligibilityStatus.ELIGIBLE,
                   teamMember: {
                     deletedAt: null,
+                    status: SportsTeamMemberStatus.APPROVED,
                     participant: {
                       deletedAt: null,
-                      status: 'ACTIVE',
+                      status: SportsParticipantStatus.ACTIVE,
                       personId: { in: personIds },
                     },
                   },

@@ -1,4 +1,11 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -64,6 +71,7 @@ export class ReceiptValidationService {
     private readonly queue: ReceiptAdminQueueService,
     private readonly sync: ReceiptSubscriptionSyncService,
     private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
+    @Optional()
     @Inject(SportsPlayerApplicationRealtimeService)
     private readonly sportsApplicationRealtime: Pick<
       SportsPlayerApplicationRealtimeService,

@@ -648,7 +648,7 @@ export class SportsAdminService {
           name,
           institution: input.institution?.trim() || null,
           status: input.status ?? SportsTeamStatus.ACTIVE,
-          fieldRevisions: { name: 1, institution: 1 },
+          fieldRevisions: { name: 1, institution: 1, logo: 1 },
           createdById: actorId,
           updatedById: actorId,
         },
@@ -1623,14 +1623,14 @@ export class SportsAdminService {
       venueId?: string | null;
       homeRegistrationId?: string | null;
       awayRegistrationId?: string | null;
-      state?: import('@prisma/client').SportsMatchState;
+      state?: SportsMatchState;
       roundNumber?: number | null;
       bracketPosition?: number | null;
       groupKey?: string | null;
       winnerAdvancesToId?: string | null;
-      winnerAdvancesToSide?: import('@prisma/client').SportsBracketSide | null;
+      winnerAdvancesToSide?: SportsBracketSide | null;
       loserAdvancesToId?: string | null;
-      loserAdvancesToSide?: import('@prisma/client').SportsBracketSide | null;
+      loserAdvancesToSide?: SportsBracketSide | null;
     },
     actor: AuthenticatedUser,
   ) {

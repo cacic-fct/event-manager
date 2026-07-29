@@ -6,4 +6,5 @@ export * from './sports-presets';
 export * from './sports-public-name';
 export * from './sports-round-robin';
 export * from './sports-scoreboard';
+export * from './sports-score-rules';
 export * from './sports-swiss';

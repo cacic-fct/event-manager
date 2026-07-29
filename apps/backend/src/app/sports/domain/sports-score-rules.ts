@@ -51,6 +51,9 @@ export function assertSportsScoreDeltaMatchesRules(
   amount: number,
   rules: SportsScoreRules,
 ): void {
+  if (!Number.isFinite(amount)) {
+    throw new RangeError('A alteração de placar deve ser um número finito.');
+  }
   const units = Math.abs(amount) / rules.pointStep;
   if (Math.abs(units - Math.round(units)) > 1e-9) {
     throw new RangeError(
@@ -73,12 +76,11 @@ export function assertSportsOutcomeMatchesRules(input: {
     }
     return;
   }
-  if (
-    input.lossReason !== SportsLossReason.SCORE ||
-    input.winnerSide === null ||
-    input.scoreboard.home === input.scoreboard.away
-  ) {
+  if (input.lossReason !== SportsLossReason.SCORE || input.winnerSide === null) {
     return;
+  }
+  if (input.scoreboard.home === input.scoreboard.away) {
+    throw new RangeError('Um placar empatado não pode definir um vencedor.');
   }
   const expectedWinnerSide = input.rules.higherWins
     ? input.scoreboard.home > input.scoreboard.away
