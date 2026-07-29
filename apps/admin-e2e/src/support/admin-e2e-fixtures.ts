@@ -946,7 +946,7 @@ function graphqlData(
     return { eventAttendances: [createAdminE2EEventAttendance()] };
   }
 
-  if (query.includes('offlineEventAttendanceSubmissions(eventId: $eventId)')) {
+  if (query.includes('offlineEventAttendanceSubmissions')) {
     return {
       offlineEventAttendanceSubmissions: state.offlineEventAttendanceSubmission
         ? [state.offlineEventAttendanceSubmission]
