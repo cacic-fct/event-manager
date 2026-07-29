@@ -308,6 +308,24 @@ export class SportsTeamChangeService {
         );
       }
 
+      if (
+        decision === 'APPROVE' &&
+        (
+          request.team.tournament.deletedAt ||
+          request.team.tournament.finishedAt ||
+          (
+            [
+              SportsTournamentStatus.FINISHED,
+              SportsTournamentStatus.CANCELED,
+            ] as SportsTournamentStatus[]
+          ).includes(request.team.tournament.status)
+        )
+      ) {
+        throw new ConflictException(
+          'Solicitações de equipes não podem ser aprovadas em um torneio finalizado ou cancelado.',
+        );
+      }
+
       if (decision !== 'APPROVE') {
         const status =
           decision === 'REJECT'
@@ -1275,12 +1293,21 @@ export class SportsTeamChangeService {
         );
       }
       const logo = input.logo;
-      if (
-        !/^sports\/tournaments\/[^/]+\/teams\/[^/]+\/logos\/sha256\/[a-f0-9]{64}\.(?:png|jpg|webp)$/.test(
+      const objectKeyMatch =
+        /^sports\/tournaments\/[^/]+\/teams\/[^/]+\/logos\/sha256\/([a-f0-9]{64})\.(png|jpg|webp)$/.exec(
           logo.objectKey,
-        ) ||
+        );
+      const expectedExtensionByMimeType: Readonly<Record<string, string>> = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/webp': 'webp',
+      };
+      if (
+        !objectKeyMatch ||
         !/^[a-f0-9]{64}$/.test(logo.sha256) ||
         !['image/png', 'image/jpeg', 'image/webp'].includes(logo.mimeType) ||
+        objectKeyMatch?.[1] !== logo.sha256 ||
+        objectKeyMatch?.[2] !== expectedExtensionByMimeType[logo.mimeType] ||
         !Number.isInteger(logo.sizeBytes) ||
         logo.sizeBytes <= 0 ||
         logo.sizeBytes > 2 * 1024 * 1024
