@@ -22,9 +22,11 @@ type TrustedTypesPolicyFactory = {
     name: string,
     rules: {
       createScriptURL: (value: string) => string;
+      createScript?: (value: string) => string;
     },
   ) => {
     createScriptURL: (value: string) => string;
+    createScript?: (value: string) => string;
   };
 };
 
@@ -108,12 +110,21 @@ export class CacicTrustedTypesService {
       externalScriptPolicy = trustedTypes.createPolicy(EXTERNAL_SCRIPT_POLICY_NAME, {
         createScriptURL: createTrustedScriptUrl,
       });
+    } catch (error: unknown) {
+      if (!isDuplicateTrustedTypesPolicyError(error)) {
+        this.initialized = false;
+        const detail = error instanceof Error ? ` ${error.message}` : '';
+        throw new Error(`Could not initialize the CACiC Trusted Types policies.${detail}`);
+      }
+    }
 
+    try {
       // ngx-umami currently assigns its configured script URL directly. The
-      // default policy keeps that vetted dependency compatible with enforcement
-      // without accepting arbitrary script URLs.
+      // default policy keeps that vetted dependency and JSON-LD assignments
+      // compatible with enforcement without accepting arbitrary script URLs.
       trustedTypes.createPolicy(DEFAULT_POLICY_NAME, {
         createScriptURL: createTrustedScriptUrl,
+        createScript: (value) => value,
       });
     } catch (error: unknown) {
       if (isDuplicateTrustedTypesPolicyError(error)) {

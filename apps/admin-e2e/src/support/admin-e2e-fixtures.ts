@@ -555,6 +555,7 @@ export function createAdminE2EEventAttendance(overrides: Record<string, unknown>
     personId: person.id,
     person,
     category: 'REGULAR',
+    status: 'PRESENT',
     attendedAt,
     createdAt: attendedAt,
     createdById: 'admin-1',

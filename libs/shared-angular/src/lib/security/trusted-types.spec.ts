@@ -91,8 +91,12 @@ describe('CacicTrustedTypesService', () => {
   });
 
   it('continues when HMR encounters policies created by an earlier module instance', () => {
-    const createPolicy = vi.fn(() => {
-      throw new TypeError('Policy with name "cacic#external-script" already exists.');
+    const createPolicy = vi.fn((name: string) => {
+      if (name === 'cacic#external-script') {
+        throw new TypeError('Policy with name "cacic#external-script" already exists.');
+      }
+
+      return { createScriptURL: (value: string) => value, createScript: (value: string) => value };
     });
     vi.stubGlobal('trustedTypes', { createPolicy });
 
@@ -100,7 +104,7 @@ describe('CacicTrustedTypesService', () => {
 
     expect(() => service.initialize()).not.toThrow();
     service.initialize();
-    expect(createPolicy).toHaveBeenCalledTimes(1);
+    expect(createPolicy).toHaveBeenCalledTimes(2);
   });
 
   it('continues when another integration already registered the default policy', () => {
