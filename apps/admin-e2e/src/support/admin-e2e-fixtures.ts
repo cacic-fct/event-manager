@@ -964,6 +964,14 @@ function graphqlData(
     return { eventAttendances: [createAdminE2EEventAttendance()] };
   }
 
+  if (query.includes('query EventAttendanceScannerFeed')) {
+    return { eventAttendanceScannerFeed: [] };
+  }
+
+  if (query.includes('query EventAttendanceCount')) {
+    return { eventAttendanceCount: 1 };
+  }
+
   if (query.includes('offlineEventAttendanceSubmissions')) {
     return {
       offlineEventAttendanceSubmissions: state.offlineEventAttendanceSubmission
