@@ -56,7 +56,6 @@ export interface PaymentInfo {
   holder: string;
   document: string;
   pixKey?: string | null;
-  pixCity?: string | null;
   majorEventId: string;
 }
 
@@ -209,7 +208,6 @@ export interface PaymentInfoInput {
   holder: string;
   document: string;
   pixKey?: string;
-  pixCity?: string;
 }
 
 export interface PriceTierInput {

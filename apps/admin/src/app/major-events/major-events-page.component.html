@@ -317,11 +317,6 @@
               <input matInput formControlName="pixKey" />
             </mat-form-field>
 
-            <mat-form-field>
-              <mat-label>Cidade do Pix</mat-label>
-              <input matInput formControlName="pixCity" />
-            </mat-form-field>
-
             @if (workspace.majorEventForm.hasError('incompleteBankPaymentInfo')) {
               <mat-error class="span-2"> Banco, agência, conta e titular devem ser preenchidos juntos. </mat-error>
             }
