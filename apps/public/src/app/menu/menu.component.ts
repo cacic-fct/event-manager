@@ -13,6 +13,8 @@ import { AttendanceCollectionApiService } from '../attendance/collection/attenda
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { isPlatformBrowser } from '@angular/common';
 import { catchError, of } from 'rxjs';
+import { DefaultRedirectApiService } from '../landing/default-redirect-api.service';
+import { sportsAutorouteUrl } from '../landing/default-redirect.service';
 
 @Component({
   selector: 'app-menu.component',
@@ -33,9 +35,11 @@ export class MenuComponent {
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly offlineUserData = inject(OfflineUserDataService);
   private readonly attendanceCollectionApi = inject(AttendanceCollectionApiService);
+  private readonly defaultRedirectApi = inject(DefaultRedirectApiService);
   private readonly offlineSnapshot = signal<OfflineUserSnapshot | null>(null);
   readonly canCollectAttendances = signal(false);
   readonly canAccessWorkspace = signal(false);
+  readonly hasSportsShortcut = signal(false);
   readonly hasCollaborationLinks = computed(() => this.canCollectAttendances() || this.canAccessWorkspace());
   public isDevMode = isDevMode();
 
@@ -76,6 +80,7 @@ export class MenuComponent {
       if (!this.authService.isAuthenticated()) {
         this.canCollectAttendances.set(false);
         this.canAccessWorkspace.set(false);
+        this.hasSportsShortcut.set(false);
         return;
       }
 
@@ -87,10 +92,15 @@ export class MenuComponent {
         .evaluatePermissions(WORKSPACE_ENTRY_PERMISSIONS)
         .pipe(catchError(() => of([])))
         .subscribe((permissions) => this.canAccessWorkspace.set(permissions.length > 0));
+      const sportsSubscription = this.defaultRedirectApi
+        .getCurrentUserSportsAutoroute()
+        .pipe(catchError(() => of(null)))
+        .subscribe((route) => this.hasSportsShortcut.set(Boolean(route && sportsAutorouteUrl(route))));
 
       onCleanup(() => {
         attendanceSubscription.unsubscribe();
         permissionSubscription.unsubscribe();
+        sportsSubscription.unsubscribe();
       });
     });
 

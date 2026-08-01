@@ -1,0 +1,49 @@
+:host { display: block; min-height: 100dvh; background: var(--mat-sys-surface); }
+.team-toolbar { display: flex; align-items: center; gap: .75rem; padding: .7rem max(1rem, calc((100vw - 900px) / 2)); background: var(--mat-sys-surface); border-bottom: 1px solid var(--mat-sys-outline-variant); }
+.team-toolbar div { display: grid; }
+.team-toolbar span { font-size: .8rem; color: var(--mat-sys-on-surface-variant); }
+.team-shell { width: min(900px, 100%); margin: 0 auto; padding: 1rem; }
+.privacy-note { display: flex; gap: .85rem; margin-bottom: 1rem; padding: 1rem; border-radius: 14px; background: var(--mat-sys-secondary-container); color: var(--mat-sys-on-secondary-container); }
+.privacy-note p { margin: .3rem 0 0; color: inherit; }
+.form-panel, .queue-panel { display: grid; gap: 1rem; padding: clamp(1rem, 4vw, 2rem) .25rem; max-width: 760px; }
+.people-panel { display: grid; gap: 1rem; }
+.logo-panel { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 1rem; max-width: 760px; padding: 1rem .25rem 2rem; }
+.logo-panel h2 { margin: 0; }
+.logo-panel p { margin: .3rem 0; }
+.logo-panel small { display: block; color: var(--mat-sys-on-surface-variant); overflow-wrap: anywhere; }
+.logo-preview { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--mat-sys-surface-container-highest); overflow: hidden; }
+.logo-preview img { width: 72px; height: 72px; object-fit: contain; }
+.logo-preview mat-icon { width: 40px; height: 40px; font-size: 40px; }
+.logo-actions { display: grid; gap: .5rem; }
+.file-button { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 40px; padding-inline: 1rem; border: 1px solid var(--mat-sys-outline); border-radius: 999px; cursor: pointer; font: var(--mat-sys-label-large); }
+.file-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.file-button:focus-within { outline: 3px solid var(--mat-sys-primary); outline-offset: 2px; }
+.field-error { color: var(--mat-sys-error) !important; }
+.member-request { padding-block-end: 1.5rem; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+.identity-fields { display: grid; grid-template-columns: minmax(180px, .75fr) minmax(0, 1.25fr); gap: .75rem; }
+h1 { margin: 0; letter-spacing: -.025em; }
+p { margin: -.5rem 0 .5rem; color: var(--mat-sys-on-surface-variant); }
+.member-list { display: grid; gap: .5rem; padding: .5rem; border-radius: 12px; background: var(--mat-sys-surface-container-low); }
+.member-list article { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, .8fr); align-items: center; gap: .75rem; padding: .65rem; border-radius: 12px; }
+.member-list article.selected { background: var(--mat-sys-surface-container); }
+.member-list mat-checkbox { min-width: 0; }
+.member-list strong { white-space: normal; overflow-wrap: anywhere; }
+.member-fields { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(92px, .45fr); gap: .5rem; }
+.empty-list { display: flex; align-items: center; gap: .7rem; padding: 1rem; border-radius: 12px; background: var(--mat-sys-surface-container); color: var(--mat-sys-on-surface-variant); }
+.danger-action { color: var(--mat-sys-error); }
+.queue-panel article { padding: 1rem; border-radius: 12px; background: var(--mat-sys-surface-container-low); }
+.queue-panel article > div { display: flex; justify-content: space-between; gap: 1rem; }
+.queue-panel article span { color: var(--mat-sys-primary); font-weight: 600; }
+.queue-panel article p { margin: .65rem 0 0; }
+.queue-panel ul { margin-bottom: 0; color: var(--mat-sys-on-surface-variant); }
+.state { min-height: 70dvh; display: grid; place-content: center; justify-items: center; gap: .75rem; text-align: center; padding: 2rem; }
+@media (max-width: 600px) {
+  .team-shell { padding: .75rem; }
+  .queue-panel article > div { display: grid; }
+  .identity-fields { grid-template-columns: 1fr; }
+  .logo-panel { grid-template-columns: auto minmax(0, 1fr); }
+  .logo-actions { grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
+  .member-list { padding: .25rem; }
+  .member-list article { grid-template-columns: 1fr; gap: .55rem; padding: .75rem .55rem; }
+  .member-fields { grid-template-columns: minmax(0, 1fr) 92px; }
+}

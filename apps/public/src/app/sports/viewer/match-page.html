@@ -1,0 +1,186 @@
+<mat-toolbar>
+  <button matIconButton type="button" aria-label="Voltar" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Partida</span>
+</mat-toolbar>
+
+<main class="match-page">
+  @let state = pageState(); @if (state.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" />
+  <section class="message-state" aria-live="polite">
+    <mat-icon aria-hidden="true">scoreboard</mat-icon>
+    <p>Carregando a partida...</p>
+  </section>
+  } @else if (state.status === 'error') {
+  <section class="message-state" aria-live="assertive">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ state.message }}</p>
+  </section>
+  } @else { @let match = state.data; @if (state.liveConnectionLost) {
+  <section class="connection-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">cloud_off</mat-icon>
+    <p>Atualizações ao vivo indisponíveis. O último placar recebido continua visível.</p>
+  </section>
+  }
+
+  <section class="score-hero" [class.live]="isLive(match)">
+    <header>
+      <mat-chip [class.live-chip]="isLive(match)">
+        @if (isLive(match)) {
+        <span class="live-dot" aria-hidden="true"></span>
+        } {{ stateLabel(match) }}
+      </mat-chip>
+      <time [attr.datetime]="match.schedule.startDate">
+        {{ match.schedule.startDate | date: 'EEEE, dd/MM · HH:mm' }}
+      </time>
+    </header>
+
+    @if (match.livestreamUrl) {
+    <a class="livestream-action" mat-flat-button [href]="match.livestreamUrl" target="_blank" rel="noopener noreferrer">
+      <mat-icon>live_tv</mat-icon>
+      {{ livestreamLabel(match.livestreamProvider) }}
+    </a>
+    }
+
+    <div class="scoreboard" aria-label="Placar da partida">
+      <article class="team home-team">
+        @if (match.homeTeam?.logoUrl) {
+        <img [src]="match.homeTeam.logoUrl" alt="" width="72" height="72" />
+        } @else {
+        <span class="team-placeholder" aria-hidden="true">{{ teamName(match, 'home').charAt(0) }}</span>
+        }
+        <h1>{{ teamName(match, 'home') }}</h1>
+        @if (match.homeTeam?.institution) {
+        <p>{{ match.homeTeam.institution }}</p>
+        }
+      </article>
+
+      <div class="score">
+        <strong>{{ match.scoreboard.homeScore }}</strong>
+        <span>×</span>
+        <strong>{{ match.scoreboard.awayScore }}</strong>
+      </div>
+
+      <article class="team away-team">
+        @if (match.awayTeam?.logoUrl) {
+        <img [src]="match.awayTeam.logoUrl" alt="" width="72" height="72" />
+        } @else {
+        <span class="team-placeholder" aria-hidden="true">{{ teamName(match, 'away').charAt(0) }}</span>
+        }
+        <h1>{{ teamName(match, 'away') }}</h1>
+        @if (match.awayTeam?.institution) {
+        <p>{{ match.awayTeam.institution }}</p>
+        }
+      </article>
+    </div>
+
+    @if (match.state === 'PAUSED') {
+    <p class="match-note"><mat-icon aria-hidden="true">pause_circle</mat-icon> Cronômetro pausado</p>
+    } @else if (match.state === 'AWAITING_REVIEW') {
+    <p class="match-note">
+      <mat-icon aria-hidden="true">fact_check</mat-icon>
+      Resultado enviado e aguardando revisão administrativa
+    </p>
+    } @else if (match.state === 'DRAW' && match.drawWillReschedule) {
+    <p class="match-note">
+      <mat-icon aria-hidden="true">event_repeat</mat-icon>
+      Empate com nova partida a agendar
+    </p>
+    }
+  </section>
+
+  <section class="match-grid">
+    <article class="information-section">
+      <h2>Informações</h2>
+      <dl>
+        <div>
+          <dt><mat-icon aria-hidden="true">event</mat-icon> Data</dt>
+          <dd>{{ match.schedule.startDate | date: 'fullDate' }}</dd>
+        </div>
+        <div>
+          <dt><mat-icon aria-hidden="true">schedule</mat-icon> Horário</dt>
+          <dd>{{ match.schedule.startDate | date: 'HH:mm' }}-{{ match.schedule.endDate | date: 'HH:mm' }}</dd>
+        </div>
+        <div>
+          <dt><mat-icon aria-hidden="true">place</mat-icon> Local</dt>
+          <dd>{{ locationLabel(match) }}</dd>
+        </div>
+      </dl>
+    </article>
+
+    @if (match.scoreboard.periods.length) {
+    <article class="information-section">
+      <h2>Períodos</h2>
+      <div class="period-list">
+        @for (period of match.scoreboard.periods; track period.number) {
+        <div [class.active-period]="period.number === match.scoreboard.activePeriod">
+          <span>{{ period.label }}</span>
+          <strong>{{ period.homeScore }}-{{ period.awayScore }}</strong>
+          @if (period.number === match.scoreboard.activePeriod) {
+          <small>Em andamento</small>
+          } @else if (period.completed) {
+          <small>Concluído</small>
+          }
+        </div>
+        }
+      </div>
+    </article>
+    }
+  </section>
+
+  @if (match.lossReason) {
+  <section class="result-section">
+    <h2>Resultado</h2>
+    <p>
+      @if (match.winner) {
+      <strong>{{ match.winner.name }}</strong> venceu. } Motivo: {{ lossReasonLabel(match.lossReason) }}. @if
+      (match.lossReasonDetail) { {{ match.lossReasonDetail }} }
+    </p>
+  </section>
+  } @if (match.officials.length) {
+  <section class="officials-section">
+    <h2>Organização da partida</h2>
+    <div class="official-list">
+      @for (official of match.officials; track official.name + official.role) {
+      <div>
+        <mat-icon aria-hidden="true">sports</mat-icon>
+        <span>
+          <strong>{{ officialName(official.name) }}</strong>
+          <small>{{ officialRoleLabel(official.role) }}</small>
+        </span>
+      </div>
+      }
+    </div>
+  </section>
+  }
+
+  <section class="roster-section">
+    <h2>Escalações</h2>
+    @if (rosterIsPublic(match)) { @if (match.rosters.length) {
+    <div class="roster-grid">
+      @for (roster of match.rosters; track roster.team.id) {
+      <article>
+        <h3>{{ roster.team.name }}</h3>
+        <ul>
+          @for (entry of roster.entries; track entry.name + entry.role) {
+          <li>
+            <span>{{ playerName(entry.name) }}</span>
+            <small>{{ rosterRoleLabel(entry.role) }}</small>
+          </li>
+          }
+        </ul>
+      </article>
+      }
+    </div>
+    } @else {
+    <p class="quiet-state">Nenhuma escalação foi publicada para esta partida.</p>
+    } } @else {
+    <div class="privacy-notice">
+      <mat-icon aria-hidden="true">visibility_off</mat-icon>
+      <p>As escalações são disponibilizadas após o encerramento da partida.</p>
+    </div>
+    }
+  </section>
+  }
+</main>

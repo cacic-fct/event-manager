@@ -4,6 +4,7 @@ import { Event, PlacePreset } from './events';
 import { Person } from './people';
 import {
   SportsBracketSide,
+  SportsLivestreamProvider,
   SportsLossReason,
   SportsMatchActionType,
   SportsMatchState,
@@ -208,6 +209,18 @@ export class SportsMatch {
   @Field(() => Boolean, { nullable: true })
   drawWillReschedule?: boolean | null;
 
+  @Field(() => String, { nullable: true })
+  notes?: string | null;
+
+  @Field(() => String)
+  occurrencesJson!: string;
+
+  @Field(() => SportsLivestreamProvider, { nullable: true })
+  livestreamProvider?: SportsLivestreamProvider | null;
+
+  @Field(() => String, { nullable: true })
+  livestreamUrl?: string | null;
+
   @Field(() => Date, { nullable: true })
   timerStartedAt?: Date | null;
 
@@ -318,6 +331,12 @@ export class SportsMatchRosterEntry {
 
   @Field(() => SportsRosterRole)
   role!: SportsRosterRole;
+
+  @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
+
+  @Field(() => String, { nullable: true })
+  roleMetadataJson?: string | null;
 
   @Field(() => Date, { nullable: true })
   checkedInAt?: Date | null;

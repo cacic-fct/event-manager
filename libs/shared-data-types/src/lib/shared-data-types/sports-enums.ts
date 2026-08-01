@@ -226,6 +226,7 @@ export const SportsMatchActionType = {
   SCORE_DELTA: 'SCORE_DELTA',
   SCORE_CORRECTION: 'SCORE_CORRECTION',
   PERIOD_ROLL: 'PERIOD_ROLL',
+  OCCURRENCE: 'OCCURRENCE',
   FINALIZE: 'FINALIZE',
   CANCEL: 'CANCEL',
   RESCHEDULE: 'RESCHEDULE',
@@ -234,6 +235,17 @@ export const SportsMatchActionType = {
 } as const;
 export type SportsMatchActionType = (typeof SportsMatchActionType)[keyof typeof SportsMatchActionType];
 registerEnumType(SportsMatchActionType, { name: 'SportsMatchActionType' });
+
+export const SportsLivestreamProvider = {
+  YOUTUBE: 'YOUTUBE',
+  TWITCH: 'TWITCH',
+  GENERAL: 'GENERAL',
+} as const;
+export type SportsLivestreamProvider =
+  (typeof SportsLivestreamProvider)[keyof typeof SportsLivestreamProvider];
+registerEnumType(SportsLivestreamProvider, {
+  name: 'SportsLivestreamProvider',
+});
 
 export const SportsLossReason = {
   SCORE: 'SCORE',

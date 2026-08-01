@@ -350,6 +350,9 @@ export class SportsMatchOperationService {
 
     const current = await this.loadProjection(tx, match.id, false);
     this.validateCommand(input.type, payload, current, match, actor.kind);
+    if (input.type === SportsMatchActionType.OCCURRENCE) {
+      await this.validateOccurrence(tx, match, this.requireRecord(payload));
+    }
     if (input.scorerRosterEntryId) {
       await this.validateScorer(
         tx,
@@ -476,6 +479,26 @@ export class SportsMatchOperationService {
       approvedOnly: true,
     });
     const reviewStatus = this.resolveMatchReviewStatus(match.actions);
+    const terminalStates: SportsMatchState[] = [
+      SportsMatchState.FINISHED,
+      SportsMatchState.DRAW,
+      SportsMatchState.CANCELED,
+    ];
+    const consolidatedOccurrences = match.actions
+      .filter(
+        (action) =>
+          action.type === SportsMatchActionType.OCCURRENCE &&
+          action.reviewStatus !== SportsReviewStatus.REJECTED,
+      )
+      .map((action) => ({
+        id: action.id,
+        clientId: action.clientId,
+        sequence: action.sequence,
+        authoredAt: action.authoredAt.toISOString(),
+        actorRole: action.actorRole,
+        reviewStatus: action.reviewStatus,
+        payload: action.payload,
+      }));
     return tx.sportsMatch.update({
       where: { id: match.id },
       data: {
@@ -492,6 +515,9 @@ export class SportsMatchOperationService {
         timerStartedAt: provisional.timerStartedAt,
         timerPausedAt: provisional.timerPausedAt,
         elapsedBeforePauseMs: provisional.elapsedBeforePauseMs,
+        ...(terminalStates.includes(provisional.state)
+          ? { occurrences: this.toJson(consolidatedOccurrences) }
+          : {}),
         updatedById: actorId,
       },
       include: {
@@ -593,6 +619,29 @@ export class SportsMatchOperationService {
       !activeStates.includes(current.state)
     ) {
       throw new ConflictException('A partida precisa estar ao vivo para registrar placar.');
+    }
+    if (type === SportsMatchActionType.OCCURRENCE) {
+      const kind =
+        typeof payload['kind'] === 'string' ? payload['kind'].trim() : '';
+      const occurrenceId =
+        typeof payload['occurrenceId'] === 'string'
+          ? payload['occurrenceId'].trim()
+          : '';
+      const note =
+        typeof payload['note'] === 'string' ? payload['note'].trim() : '';
+      if (!occurrenceId || occurrenceId.length > 100) {
+        throw new BadRequestException(
+          'Informe um identificador válido para a ocorrência.',
+        );
+      }
+      if (!kind || kind.length > 80) {
+        throw new BadRequestException('Informe o tipo da ocorrência.');
+      }
+      if (note.length > 1000) {
+        throw new BadRequestException(
+          'A observação da ocorrência deve ter no máximo 1000 caracteres.',
+        );
+      }
     }
     if (
       type === SportsMatchActionType.PERIOD_ROLL &&
@@ -840,6 +889,49 @@ export class SportsMatchOperationService {
     }
   }
 
+  private async validateOccurrence(
+    tx: Prisma.TransactionClient,
+    match: MatchProjectionContext,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const registrationId =
+      typeof payload['registrationId'] === 'string'
+        ? payload['registrationId'].trim()
+        : null;
+    if (
+      registrationId &&
+      registrationId !== match.homeRegistrationId &&
+      registrationId !== match.awayRegistrationId
+    ) {
+      throw new BadRequestException(
+        'A equipe da ocorrência não participa desta partida.',
+      );
+    }
+    const rosterEntryId =
+      typeof payload['rosterEntryId'] === 'string'
+        ? payload['rosterEntryId'].trim()
+        : null;
+    if (!rosterEntryId) {
+      return;
+    }
+    const entry = await tx.sportsMatchRosterEntry.findFirst({
+      where: {
+        id: rosterEntryId,
+        deletedAt: null,
+        roster: {
+          matchId: match.id,
+          deletedAt: null,
+        },
+      },
+      select: { id: true },
+    });
+    if (!entry) {
+      throw new BadRequestException(
+        'A pessoa da ocorrência não pertence à escalação da partida.',
+      );
+    }
+  }
+
   private assertActorMaySubmit(
     type: SportsMatchActionType,
     actorKind: SportsMatchActorKind,
@@ -1023,7 +1115,10 @@ export class SportsMatchOperationService {
 
   private async invalidateRoutes(matchId: string): Promise<void> {
     const people = await this.autorouting.affectedPeopleForMatch(matchId);
-    await this.defaultRedirect.invalidatePeople(people);
+    await Promise.all([
+      this.defaultRedirect.invalidatePeople(people),
+      this.realtime.publishAutorouteInvalidations(people),
+    ]);
   }
 
   private normalizeClientId(value: string): string {

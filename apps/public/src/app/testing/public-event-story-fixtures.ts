@@ -226,6 +226,29 @@ export function createPublicStoryEvent(options: PublicEventStoryOptions = {}): P
   });
 }
 
+export function createPublicStorySportsMatchEvent(overrides: Partial<PublicEvent> = {}): PublicEvent {
+  const event = createPublicStoryEvent({
+    id: 'sports-match-event-story',
+    name: 'Atlética FCT × Ciência da Computação',
+    emoji: '⚽',
+    type: 'OTHER',
+    context: 'short-description',
+    shortDescription: 'Futsal aberto · Semifinal',
+    locationDescription: 'Ginásio da FCT',
+    dayOffset: 1,
+    startHour: 19,
+    durationHours: 2,
+    sportsMatch: {
+      id: 'sports-match-story',
+      categoryId: 'futsal-open',
+      category: {
+        tournamentId: 'interfct-2026',
+      },
+    },
+  });
+  return { ...event, ...overrides };
+}
+
 export function createPublicStoryEventFromControls(
   controls: Partial<PublicEventStoryControls> = {},
   options: PublicEventStoryOptions = {},

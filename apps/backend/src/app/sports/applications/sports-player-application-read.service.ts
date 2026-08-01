@@ -110,7 +110,10 @@ export class SportsPlayerApplicationReadService {
         status: { in: normalizedStatuses },
         deletedAt: null,
         tournament: { deletedAt: null },
-        requestedTeam: { deletedAt: null },
+        OR: [
+          { requestedTeamId: null },
+          { requestedTeam: { deletedAt: null } },
+        ],
         applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
@@ -146,7 +149,10 @@ export class SportsPlayerApplicationReadService {
         id: applicationId,
         deletedAt: null,
         tournament: { deletedAt: null },
-        requestedTeam: { deletedAt: null },
+        OR: [
+          { requestedTeamId: null },
+          { requestedTeam: { deletedAt: null } },
+        ],
         applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
@@ -176,7 +182,10 @@ export class SportsPlayerApplicationReadService {
         applicantPersonId: personId,
         deletedAt: null,
         tournament: { deletedAt: null },
-        requestedTeam: { deletedAt: null },
+        OR: [
+          { requestedTeamId: null },
+          { requestedTeam: { deletedAt: null } },
+        ],
         applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
@@ -243,7 +252,9 @@ export class SportsPlayerApplicationReadService {
     return {
       id: application.id,
       tournamentId: application.tournamentId,
-      requestedTeam: this.mapTeam(application.requestedTeam),
+      requestedTeam: application.requestedTeam
+        ? this.mapTeam(application.requestedTeam)
+        : null,
       categories: application.categoryChoices.map(({ category }) =>
         this.mapCategory(category),
       ),

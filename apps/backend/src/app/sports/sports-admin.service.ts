@@ -15,8 +15,10 @@ import {
   SportsBracketSide,
   SportsEligibilityStatus,
   SportsFormat,
+  SportsLivestreamProvider,
   SportsMatchState,
   SportsOfficialRole,
+  SportsParticipantSource,
   SportsPreset,
   SportsRegistrationStatus,
   SportsRosterRole,
@@ -33,6 +35,7 @@ import { normalizeAnswers } from '../event-forms/event-form-answer-normalization
 import { PrismaService } from '../prisma/prisma.service';
 import { runSerializableSportsTransaction } from './sports-transaction';
 import { syncSportsMatchEventName } from './sports-match-event-sync';
+import { SportsPaymentService } from './sports-payment.service';
 
 export interface CreateSportsTournamentInput {
   name: string;
@@ -43,6 +46,8 @@ export interface CreateSportsTournamentInput {
   registrationStartDate?: Date | null;
   registrationEndDate?: Date | null;
   selfSubscriptionEnabled?: boolean;
+  selfSubscriptionAllowNoTeam?: boolean;
+  selfSubscriptionAllowNoCategory?: boolean;
   allowPlayerMultipleTeams?: boolean;
   scoringMode?: SportsScoringMode;
 }
@@ -52,6 +57,8 @@ export interface UpdateSportsTournamentInput {
   status?: SportsTournamentStatus;
   finishedAt?: Date | null;
   selfSubscriptionEnabled?: boolean;
+  selfSubscriptionAllowNoTeam?: boolean;
+  selfSubscriptionAllowNoCategory?: boolean;
   allowPlayerMultipleTeams?: boolean;
   scoringMode?: SportsScoringMode;
 }
@@ -97,6 +104,9 @@ export interface CreateSportsMatchInput {
   roundNumber?: number | null;
   bracketPosition?: number | null;
   groupKey?: string | null;
+  notes?: string | null;
+  livestreamProvider?: SportsLivestreamProvider | null;
+  livestreamUrl?: string | null;
   publishImmediately?: boolean;
   winnerAdvancesToId?: string | null;
   winnerAdvancesToSide?: SportsBracketSide | null;
@@ -110,6 +120,7 @@ export class SportsAdminService {
     private readonly prisma: PrismaService,
     private readonly frozen: FrozenResourceService,
     private readonly auditLog: AuditLogService,
+    private readonly payments: SportsPaymentService,
   ) {}
 
   async attachTournament(
@@ -117,6 +128,8 @@ export class SportsAdminService {
       majorEventId: string;
       status?: SportsTournamentStatus;
       selfSubscriptionEnabled?: boolean;
+      selfSubscriptionAllowNoTeam?: boolean;
+      selfSubscriptionAllowNoCategory?: boolean;
       allowPlayerMultipleTeams?: boolean;
       scoringMode?: SportsScoringMode;
     },
@@ -144,6 +157,10 @@ export class SportsAdminService {
               deletedAt: null,
               status: input.status ?? SportsTournamentStatus.DRAFT,
               selfSubscriptionEnabled: input.selfSubscriptionEnabled ?? false,
+              selfSubscriptionAllowNoTeam:
+                input.selfSubscriptionAllowNoTeam ?? false,
+              selfSubscriptionAllowNoCategory:
+                input.selfSubscriptionAllowNoCategory ?? false,
               allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? false,
               scoringMode: input.scoringMode ?? SportsScoringMode.PER_SPORT,
               revision: { increment: 1 },
@@ -155,6 +172,10 @@ export class SportsAdminService {
               majorEventId: majorEvent.id,
               status: input.status ?? SportsTournamentStatus.DRAFT,
               selfSubscriptionEnabled: input.selfSubscriptionEnabled ?? false,
+              selfSubscriptionAllowNoTeam:
+                input.selfSubscriptionAllowNoTeam ?? false,
+              selfSubscriptionAllowNoCategory:
+                input.selfSubscriptionAllowNoCategory ?? false,
               allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? false,
               scoringMode: input.scoringMode ?? SportsScoringMode.PER_SPORT,
               createdById: actorId,
@@ -208,6 +229,10 @@ export class SportsAdminService {
           majorEventId: majorEvent.id,
           status: SportsTournamentStatus.DRAFT,
           selfSubscriptionEnabled: input.selfSubscriptionEnabled ?? false,
+          selfSubscriptionAllowNoTeam:
+            input.selfSubscriptionAllowNoTeam ?? false,
+          selfSubscriptionAllowNoCategory:
+            input.selfSubscriptionAllowNoCategory ?? false,
           allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? false,
           scoringMode: input.scoringMode ?? SportsScoringMode.PER_SPORT,
           createdById: actorId,
@@ -268,6 +293,18 @@ export class SportsAdminService {
           ...(input.status !== undefined ? { status: input.status } : {}),
           ...(input.selfSubscriptionEnabled !== undefined
             ? { selfSubscriptionEnabled: input.selfSubscriptionEnabled }
+            : {}),
+          ...(input.selfSubscriptionAllowNoTeam !== undefined
+            ? {
+                selfSubscriptionAllowNoTeam:
+                  input.selfSubscriptionAllowNoTeam,
+              }
+            : {}),
+          ...(input.selfSubscriptionAllowNoCategory !== undefined
+            ? {
+                selfSubscriptionAllowNoCategory:
+                  input.selfSubscriptionAllowNoCategory,
+              }
             : {}),
           ...(input.allowPlayerMultipleTeams !== undefined
             ? { allowPlayerMultipleTeams: input.allowPlayerMultipleTeams }
@@ -580,10 +617,20 @@ export class SportsAdminService {
       if (updated.count !== 1) {
         throw new ConflictException('A modalidade mudou. Recarregue e tente novamente.');
       }
-      if (name !== undefined) {
+      if (name !== undefined || input.emoji !== undefined) {
         await tx.eventGroup.update({
           where: { id: existing.eventGroupId },
-          data: { name, updatedById: actorId },
+          data: {
+            ...(name !== undefined ? { name } : {}),
+            ...(input.emoji !== undefined
+              ? {
+                  emoji:
+                    input.emoji.trim() ||
+                    this.defaultSportEmoji(input.sport ?? existing.sport),
+                }
+              : {}),
+            updatedById: actorId,
+          },
         });
       }
       const result = await tx.sportsCategory.findUniqueOrThrow({
@@ -760,6 +807,180 @@ export class SportsAdminService {
         tx,
       );
       return result;
+    });
+  }
+
+  async createTeamMember(
+    teamId: string,
+    personId: string,
+    actor: AuthenticatedUser,
+  ) {
+    const actorId = this.requireActorId(actor);
+    const team = await this.prisma.sportsTeam.findFirst({
+      where: { id: teamId, deletedAt: null },
+      select: {
+        id: true,
+        name: true,
+        tournamentId: true,
+        tournament: { select: { majorEventId: true } },
+      },
+    });
+    if (!team) {
+      throw new NotFoundException(`Sports team ${teamId} was not found.`);
+    }
+    await this.frozen.assertMajorEventMutable(team.tournament.majorEventId, actor, 'edit');
+
+    return runSerializableSportsTransaction(this.prisma, async (tx) => {
+      const person = await tx.people.findFirst({
+        where: { id: personId, deletedAt: null },
+        select: { id: true, name: true },
+      });
+      if (!person) {
+        throw new NotFoundException(`Person ${personId} was not found.`);
+      }
+      const participant = await this.payments.ensureParticipant(tx, {
+        tournamentId: team.tournamentId,
+        personId,
+        source: SportsParticipantSource.TEAM_ASSIGNMENT,
+        actorId,
+        approved: true,
+      });
+      const existing = await tx.sportsTeamMember.findFirst({
+        where: { teamId, participantId: participant.id },
+      });
+      const member = existing
+        ? await tx.sportsTeamMember.update({
+            where: { id: existing.id },
+            data: {
+              deletedAt: null,
+              status: SportsTeamMemberStatus.APPROVED,
+              approvedAt: existing.approvedAt ?? new Date(),
+              approvedById: existing.approvedById ?? actorId,
+              rejectedAt: null,
+              rejectedById: null,
+              rejectionReason: null,
+              revision: { increment: 1 },
+              updatedById: actorId,
+            },
+          })
+        : await tx.sportsTeamMember.create({
+            data: {
+              teamId,
+              participantId: participant.id,
+              status: SportsTeamMemberStatus.APPROVED,
+              approvedAt: new Date(),
+              approvedById: actorId,
+              createdById: actorId,
+              updatedById: actorId,
+            },
+          });
+      await tx.sportsTeam.update({
+        where: { id: teamId },
+        data: { revision: { increment: 1 }, updatedById: actorId },
+      });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
+          entityId: member.id,
+          entityLabel: `${person.name} - ${team.name}`,
+          operation: existing ? AuditLogOperation.UPDATE : AuditLogOperation.CREATE,
+          actor,
+          before: existing,
+          after: member,
+          summary: 'Integrante incluído diretamente por administrador.',
+          scope: {
+            permission: Permission.SportsTeam.Update,
+            majorEventId: team.tournament.majorEventId,
+          },
+        },
+        tx,
+      );
+      return member;
+    });
+  }
+
+  async updateTeamMember(
+    memberId: string,
+    expectedRevision: number,
+    status: SportsTeamMemberStatus,
+    actor: AuthenticatedUser,
+  ) {
+    const actorId = this.requireActorId(actor);
+    const existing = await this.prisma.sportsTeamMember.findFirst({
+      where: { id: memberId, deletedAt: null },
+      include: {
+        participant: { select: { person: { select: { name: true } } } },
+        team: {
+          select: {
+            id: true,
+            name: true,
+            tournament: { select: { majorEventId: true } },
+          },
+        },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException(`Sports team member ${memberId} was not found.`);
+    }
+    await this.frozen.assertMajorEventMutable(
+      existing.team.tournament.majorEventId,
+      actor,
+      'edit',
+    );
+    return runSerializableSportsTransaction(this.prisma, async (tx) => {
+      const updated = await tx.sportsTeamMember.updateMany({
+        where: { id: memberId, revision: expectedRevision, deletedAt: null },
+        data: {
+          status,
+          ...(status === SportsTeamMemberStatus.APPROVED
+            ? {
+                approvedAt: existing.approvedAt ?? new Date(),
+                approvedById: existing.approvedById ?? actorId,
+                rejectedAt: null,
+                rejectedById: null,
+                rejectionReason: null,
+              }
+            : {}),
+          revision: { increment: 1 },
+          updatedById: actorId,
+        },
+      });
+      if (updated.count !== 1) {
+        throw new ConflictException('O integrante mudou. Recarregue e tente novamente.');
+      }
+      if (status !== SportsTeamMemberStatus.APPROVED) {
+        await tx.sportsRegistrationMember.updateMany({
+          where: { teamMemberId: memberId, deletedAt: null },
+          data: {
+            eligibility: SportsEligibilityStatus.INELIGIBLE,
+            rejectionReason: 'Integrante suspenso ou removido por administrador.',
+            updatedById: actorId,
+          },
+        });
+      }
+      await tx.sportsTeam.update({
+        where: { id: existing.team.id },
+        data: { revision: { increment: 1 }, updatedById: actorId },
+      });
+      const member = await tx.sportsTeamMember.findUniqueOrThrow({ where: { id: memberId } });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
+          entityId: member.id,
+          entityLabel: `${existing.participant.person.name} - ${existing.team.name}`,
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          before: existing,
+          after: member,
+          summary: 'Status do integrante alterado diretamente por administrador.',
+          scope: {
+            permission: Permission.SportsTeam.Update,
+            majorEventId: existing.team.tournament.majorEventId,
+          },
+        },
+        tx,
+      );
+      return member;
     });
   }
 
@@ -1583,6 +1804,12 @@ export class SportsAdminService {
           roundNumber: input.roundNumber ?? null,
           bracketPosition: input.bracketPosition ?? null,
           groupKey: input.groupKey?.trim() || null,
+          notes: this.optionalText(input.notes, 'observações da partida', 4000),
+          livestreamProvider: input.livestreamProvider ?? null,
+          livestreamUrl: this.normalizeLivestreamUrl(
+            input.livestreamProvider,
+            input.livestreamUrl,
+          ),
           winnerAdvancesToId: input.winnerAdvancesToId ?? null,
           winnerAdvancesToSide: input.winnerAdvancesToSide ?? null,
           loserAdvancesToId: input.loserAdvancesToId ?? null,
@@ -1592,6 +1819,17 @@ export class SportsAdminService {
         },
         include: { event: true },
       });
+      const youtubeCode = this.youtubeCodeForLivestream(
+        input.livestreamProvider,
+        input.livestreamUrl,
+      );
+      if (youtubeCode) {
+        await tx.event.update({
+          where: { id: event.id },
+          data: { youtubeCode, updatedById: actorId },
+        });
+        match.event.youtubeCode = youtubeCode;
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.SPORTS_MATCH,
@@ -1627,6 +1865,9 @@ export class SportsAdminService {
       roundNumber?: number | null;
       bracketPosition?: number | null;
       groupKey?: string | null;
+      notes?: string | null;
+      livestreamProvider?: SportsLivestreamProvider | null;
+      livestreamUrl?: string | null;
       winnerAdvancesToId?: string | null;
       winnerAdvancesToSide?: SportsBracketSide | null;
       loserAdvancesToId?: string | null;
@@ -1724,6 +1965,26 @@ export class SportsAdminService {
           ...(input.groupKey !== undefined
             ? { groupKey: input.groupKey?.trim() || null }
             : {}),
+          ...(input.notes !== undefined
+            ? {
+                notes: this.optionalText(
+                  input.notes,
+                  'observações da partida',
+                  4000,
+                ),
+              }
+            : {}),
+          ...(input.livestreamProvider !== undefined
+            ? { livestreamProvider: input.livestreamProvider }
+            : {}),
+          ...(input.livestreamUrl !== undefined
+            ? {
+                livestreamUrl: this.normalizeLivestreamUrl(
+                  input.livestreamProvider ?? match.livestreamProvider,
+                  input.livestreamUrl,
+                ),
+              }
+            : {}),
           ...(input.winnerAdvancesToId !== undefined
             ? { winnerAdvancesToId: input.winnerAdvancesToId }
             : {}),
@@ -1768,6 +2029,17 @@ export class SportsAdminService {
                 }
               : {}),
           updatedById: actorId,
+          ...(input.livestreamProvider !== undefined ||
+          input.livestreamUrl !== undefined
+            ? {
+                youtubeCode: this.youtubeCodeForLivestream(
+                  input.livestreamProvider ?? match.livestreamProvider,
+                  input.livestreamUrl === undefined
+                    ? match.livestreamUrl
+                    : input.livestreamUrl,
+                ),
+              }
+            : {}),
         },
       });
       if (
@@ -3526,7 +3798,7 @@ export class SportsAdminService {
   }
 
   private buildMatchName(categoryName: string, home?: string, away?: string): string {
-    return `${home ?? 'A definir'} × ${away ?? 'A definir'} — ${categoryName}`;
+    return `${home ?? 'A definir'} × ${away ?? 'A definir'} - ${categoryName}`;
   }
 
   private defaultSportEmoji(sport: SportsPreset): string {
@@ -3573,6 +3845,84 @@ export class SportsAdminService {
     return normalized;
   }
 
+  private optionalText(
+    value: string | null | undefined,
+    label: string,
+    maximum: number,
+  ): string | null {
+    const normalized = value?.trim() ?? '';
+    if (!normalized) {
+      return null;
+    }
+    if (normalized.length > maximum) {
+      throw new BadRequestException(
+        `${label} deve ter no máximo ${maximum} caracteres.`,
+      );
+    }
+    return normalized;
+  }
+
+  private normalizeLivestreamUrl(
+    provider: SportsLivestreamProvider | null | undefined,
+    value: string | null | undefined,
+  ): string | null {
+    const normalized = value?.trim() ?? '';
+    if (!normalized) {
+      if (provider) {
+        throw new BadRequestException(
+          'Informe a URL da transmissão ao selecionar um provedor.',
+        );
+      }
+      return null;
+    }
+    let url: URL;
+    try {
+      url = new URL(normalized);
+    } catch {
+      throw new BadRequestException('Informe uma URL de transmissão válida.');
+    }
+    if (url.protocol !== 'https:') {
+      throw new BadRequestException(
+        'A transmissão deve utilizar uma URL HTTPS.',
+      );
+    }
+    const hostname = url.hostname.toLocaleLowerCase('en-US');
+    if (
+      provider === SportsLivestreamProvider.YOUTUBE &&
+      hostname !== 'youtu.be' &&
+      !hostname.endsWith('.youtube.com') &&
+      hostname !== 'youtube.com'
+    ) {
+      throw new BadRequestException('Informe uma URL válida do YouTube.');
+    }
+    if (
+      provider === SportsLivestreamProvider.TWITCH &&
+      hostname !== 'twitch.tv' &&
+      !hostname.endsWith('.twitch.tv')
+    ) {
+      throw new BadRequestException('Informe uma URL válida da Twitch.');
+    }
+    return url.toString();
+  }
+
+  private youtubeCodeForLivestream(
+    provider: SportsLivestreamProvider | null | undefined,
+    value: string | null | undefined,
+  ): string | null {
+    if (provider !== SportsLivestreamProvider.YOUTUBE || !value?.trim()) {
+      return null;
+    }
+    const url = new URL(this.normalizeLivestreamUrl(provider, value) as string);
+    if (url.hostname.toLocaleLowerCase('en-US') === 'youtu.be') {
+      return url.pathname.split('/').filter(Boolean)[0] ?? null;
+    }
+    return (
+      url.searchParams.get('v') ??
+      url.pathname.match(/\/(?:live|embed|shorts)\/([^/?#]+)/)?.[1] ??
+      null
+    );
+  }
+
   private requireDate(value: Date | undefined, label: string): Date {
     if (!(value instanceof Date)) {
       throw new BadRequestException(`Informe ${label}.`);
@@ -3605,6 +3955,8 @@ export class SportsAdminService {
     status: SportsTournamentStatus;
     scoringMode: SportsScoringMode;
     selfSubscriptionEnabled: boolean;
+    selfSubscriptionAllowNoTeam: boolean;
+    selfSubscriptionAllowNoCategory: boolean;
     allowPlayerMultipleTeams: boolean;
     revision: number;
   }) {
@@ -3614,6 +3966,10 @@ export class SportsAdminService {
       status: tournament.status,
       scoringMode: tournament.scoringMode,
       selfSubscriptionEnabled: tournament.selfSubscriptionEnabled,
+      selfSubscriptionAllowNoTeam:
+        tournament.selfSubscriptionAllowNoTeam,
+      selfSubscriptionAllowNoCategory:
+        tournament.selfSubscriptionAllowNoCategory,
       allowPlayerMultipleTeams: tournament.allowPlayerMultipleTeams,
       revision: tournament.revision,
     };

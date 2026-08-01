@@ -69,6 +69,16 @@ export const navigationItems = [
   },
   {
     kind: 'link',
+    id: 'sports',
+    path: 'sports',
+    label: 'Esportes',
+    description: 'Organize torneios, equipes, tabelas, partidas e revisões esportivas.',
+    icon: 'sports',
+    group: 'Estrutura do evento',
+    helpLink: undefined,
+  },
+  {
+    kind: 'link',
     id: 'publication',
     path: 'publication',
     label: 'Publicação',

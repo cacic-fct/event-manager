@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SportsAutoroutingService } from '../routing/sports-autorouting.service';
 import { SportsRealtimeService } from './sports-realtime.service';
 
 export type SportsMutationEntity =
@@ -22,6 +23,7 @@ export class SportsMutationEventsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly realtime: SportsRealtimeService,
+    private readonly autorouting: SportsAutoroutingService,
   ) {}
 
   async publishForEntity(
@@ -40,6 +42,7 @@ export class SportsMutationEventsService {
     const matchIds = includePublic
       ? await this.resolveAffectedMatchIds(entity, entityId, tournamentId)
       : [];
+    const autoroutePeople = await this.resolveAutoroutePeople(entity, entityId);
     await Promise.all([
       this.realtime.publish(
         this.realtime.scope('admin-tournament', tournamentId),
@@ -59,7 +62,43 @@ export class SportsMutationEventsService {
             ),
           ]
         : []),
+      this.realtime.publishAutorouteInvalidations(autoroutePeople),
     ]);
+  }
+
+  private async resolveAutoroutePeople(
+    entity: SportsMutationEntity,
+    entityId: string,
+  ): Promise<string[]> {
+    if (entity === 'MATCH') {
+      return this.autorouting.affectedPeopleForMatch(entityId);
+    }
+    if (entity === 'ROSTER') {
+      const roster = await this.prisma.sportsMatchRoster.findUnique({
+        where: { id: entityId },
+        select: { matchId: true },
+      });
+      return roster
+        ? this.autorouting.affectedPeopleForMatch(roster.matchId)
+        : [];
+    }
+    if (entity === 'OFFICIAL') {
+      const assignment =
+        await this.prisma.sportsOfficialAssignment.findUnique({
+          where: { id: entityId },
+          select: { personId: true },
+        });
+      return assignment ? [assignment.personId] : [];
+    }
+    if (entity === 'REPRESENTATIVE') {
+      const representative =
+        await this.prisma.sportsTeamRepresentative.findUnique({
+          where: { id: entityId },
+          select: { personId: true },
+        });
+      return representative ? [representative.personId] : [];
+    }
+    return [];
   }
 
   private async resolveTournamentId(

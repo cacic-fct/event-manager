@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import Redis from 'ioredis';
 import { Observable, Subject } from 'rxjs';
 import { SseReplayService } from '../../realtime/sse-replay.service';
@@ -44,7 +45,12 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
   private readonly scopeTargets = new Map<
     string,
     {
-      channel: 'match' | 'tournament' | 'review' | 'admin-tournament';
+      channel:
+        | 'match'
+        | 'tournament'
+        | 'review'
+        | 'admin-tournament'
+        | 'autoroute';
       id: string;
     }
   >();
@@ -86,7 +92,12 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
   }
 
   scope(
-    channel: 'match' | 'tournament' | 'review' | 'admin-tournament',
+    channel:
+      | 'match'
+      | 'tournament'
+      | 'review'
+      | 'admin-tournament'
+      | 'autoroute',
     id: string,
   ): string {
     const scope = this.replay.scope(`sports-${channel}`, id);
@@ -170,6 +181,20 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
             ),
           ];
         },
+      ),
+    );
+  }
+
+  async publishAutorouteInvalidations(
+    personIds: readonly string[],
+  ): Promise<void> {
+    const revision = randomUUID();
+    await Promise.all(
+      [...new Set(personIds.filter(Boolean))].map((personId) =>
+        this.publish(this.scope('autoroute', personId), {
+          type: 'SPORTS_AUTOROUTE_INVALIDATED',
+          revision,
+        }),
       ),
     );
   }

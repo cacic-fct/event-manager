@@ -14,6 +14,7 @@ export const INTERRUPTION_PRIORITIES = {
  * sparse so new flows can be inserted without changing existing ordering.
  */
 export const INTERRUPTION_PRIORITY_ORDERS = {
+  SPORTS_MATCH: 50,
   ONLINE_ATTENDANCE: 100,
   REQUIRED_SUBSCRIPTION_FORM: 200,
 } as const;

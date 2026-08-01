@@ -219,6 +219,72 @@ export class SportsAccessService {
     };
   }
 
+  async requireLineupReader(context: GraphqlContext, registrationId: string) {
+    const actor = await this.currentUser.requireCurrentPerson(context);
+    const registration = await this.prisma.sportsRegistration.findFirst({
+      where: {
+        id: registrationId,
+        deletedAt: null,
+        status: {
+          in: [
+            SportsRegistrationStatus.APPROVED,
+            SportsRegistrationStatus.ACTIVE,
+          ],
+        },
+      },
+      select: {
+        id: true,
+        teamId: true,
+        categoryId: true,
+        members: {
+          where: {
+            deletedAt: null,
+            eligibility: SportsEligibilityStatus.ELIGIBLE,
+            teamMember: {
+              deletedAt: null,
+              status: SportsTeamMemberStatus.APPROVED,
+              participant: {
+                deletedAt: null,
+                personId: actor.id,
+                status: SportsParticipantStatus.ACTIVE,
+              },
+            },
+          },
+          select: { id: true, role: true },
+          take: 1,
+        },
+        team: {
+          select: {
+            representatives: {
+              where: {
+                personId: actor.id,
+                active: true,
+                revokedAt: null,
+              },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+    if (
+      !registration ||
+      (registration.members.length === 0 &&
+        registration.team.representatives.length === 0)
+    ) {
+      throw new ForbiddenException(
+        'Você não participa desta equipe nesta modalidade.',
+      );
+    }
+    return {
+      actor,
+      registration,
+      membership: registration.members[0] ?? null,
+      representative: registration.team.representatives[0] ?? null,
+    };
+  }
+
   async requireMatchOfficial(context: GraphqlContext, matchId: string) {
     const actor = await this.currentUser.requireCurrentPerson(context);
     const match = await this.prisma.sportsMatch.findFirst({

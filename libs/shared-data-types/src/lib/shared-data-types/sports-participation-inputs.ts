@@ -34,6 +34,12 @@ export class SportsTournamentCreateInput {
   selfSubscriptionEnabled?: boolean;
 
   @Field(() => Boolean, { nullable: true })
+  selfSubscriptionAllowNoTeam?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  selfSubscriptionAllowNoCategory?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
   allowPlayerMultipleTeams?: boolean;
 }
 
@@ -53,6 +59,12 @@ export class SportsTournamentUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   selfSubscriptionEnabled?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  selfSubscriptionAllowNoTeam?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  selfSubscriptionAllowNoCategory?: boolean;
 
   @Field(() => Boolean, { nullable: true })
   allowPlayerMultipleTeams?: boolean;
@@ -182,6 +194,9 @@ export class SportsCategoryUpdateInput {
 
   @Field(() => String, { nullable: true })
   name?: string;
+
+  @Field(() => String, { nullable: true })
+  emoji?: string;
 
   @Field(() => SportsPreset, { nullable: true })
   sport?: SportsPreset;
@@ -496,8 +511,8 @@ export class SportsPlayerApplicationCreateInput {
   @Field(() => String)
   tournamentId!: string;
 
-  @Field(() => String)
-  requestedTeamId!: string;
+  @Field(() => String, { nullable: true })
+  requestedTeamId?: string | null;
 
   @Field(() => [String])
   categoryIds!: string[];
@@ -514,6 +529,21 @@ export class SportsPlayerApplicationCreateInput {
 
   @Field(() => String, { nullable: true })
   pendingKey?: string;
+}
+
+@InputType()
+export class SportsRepresentativeApplicationReviewInput {
+  @Field(() => String)
+  applicationId!: string;
+
+  @Field(() => String)
+  teamId!: string;
+
+  @Field(() => Boolean)
+  approved!: boolean;
+
+  @Field(() => String, { nullable: true })
+  reviewMessage?: string | null;
 }
 
 @InputType()

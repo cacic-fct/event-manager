@@ -1,0 +1,265 @@
+<mat-toolbar>
+  <button matIconButton type="button" aria-label="Voltar" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+  <span>Torneio</span>
+</mat-toolbar>
+
+<!--
+THESIS: O torneio é um placar público vivo, não um catálogo de cartões.
+OWN-WORLD: Material existente, superfícies claras, tabelas e chaves esportivas legíveis.
+STORY: Identidade e jogos agora; modalidades, classificação, chaves e equipes em seguida.
+FIRST VIEWPORT: Nome, datas, status ao vivo e próximos confrontos sem rolagem lateral.
+FORM: Página informativa responsiva; densidade alta, toque confortável e estados inequívocos.
+-->
+<main class="tournament-page">
+  @let state = pageState();
+  @if (state.status === 'loading') {
+    <mat-progress-bar mode="indeterminate" />
+    <section class="message-state" aria-live="polite">
+      <mat-icon aria-hidden="true">sports_score</mat-icon>
+      <p>Carregando o torneio...</p>
+    </section>
+  } @else if (state.status === 'error') {
+    <section class="message-state" aria-live="assertive">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <p>{{ state.message }}</p>
+    </section>
+  } @else {
+    @let tournament = state.data;
+    @if (state.liveConnectionLost) {
+      <section class="connection-notice" aria-live="polite">
+        <mat-icon aria-hidden="true">cloud_off</mat-icon>
+        <p>Atualizações ao vivo indisponíveis. Os últimos dados recebidos continuam visíveis.</p>
+      </section>
+    }
+
+    <header class="tournament-header">
+      <app-twemoji class="tournament-emoji" [emoji]="tournament.emoji" />
+      <div>
+        <h1>{{ tournament.name }}</h1>
+        <p class="date-line">
+          {{ tournament.startDate | date: 'dd/MM/yyyy' }} a {{ tournament.endDate | date: 'dd/MM/yyyy' }}
+        </p>
+      </div>
+    </header>
+
+    @if (tournament.description) {
+      <p class="description">{{ tournament.description }}</p>
+    }
+
+    @if (tournament.selfSubscriptionEnabled) {
+      <section class="registration-action" aria-label="Inscrição individual">
+        <div>
+          <strong>Quer jogar neste torneio?</strong>
+          <p>
+            Escolha uma equipe e as modalidades de interesse.
+            @if (tournament.isPaymentRequired) {
+              O pagamento será solicitado somente depois da aprovação.
+            }
+          </p>
+        </div>
+        <a mat-flat-button [routerLink]="['/tournament', tournament.id, 'subscribe']">
+          <mat-icon>how_to_reg</mat-icon>
+          Solicitar inscrição
+        </a>
+      </section>
+    }
+
+    <section class="match-ribbon" aria-label="Partidas em destaque">
+      @if (liveMatches().length) {
+        <div class="section-heading">
+          <h2>Agora</h2>
+          <span class="live-label"><span aria-hidden="true"></span>Ao vivo</span>
+        </div>
+        <div class="match-strip">
+          @for (match of liveMatches(); track match.id) {
+            <a class="featured-match" [routerLink]="['/sports/match', match.id]">
+              <span>{{ participantName(match, 'home') }}</span>
+              <strong>{{ match.scoreboard.homeScore }} × {{ match.scoreboard.awayScore }}</strong>
+              <span>{{ participantName(match, 'away') }}</span>
+            </a>
+          }
+        </div>
+      } @else if (upcomingMatches().length) {
+        <div class="section-heading">
+          <h2>Próximas partidas</h2>
+        </div>
+        <div class="match-strip">
+          @for (match of upcomingMatches().slice(0, 4); track match.id) {
+            <a class="featured-match" [routerLink]="['/sports/match', match.id]">
+              <span>{{ match.schedule.startDate | date: 'dd/MM · HH:mm' }}</span>
+              <strong>{{ participantName(match, 'home') }} × {{ participantName(match, 'away') }}</strong>
+              <small>{{ locationLabel(match) }}</small>
+            </a>
+          }
+        </div>
+      } @else {
+        <p class="quiet-state">Nenhuma próxima partida foi publicada.</p>
+      }
+    </section>
+
+    <mat-tab-group
+      animationDuration="180ms"
+      [selectedIndex]="0"
+      (selectedIndexChange)="selectCategory($event)">
+      @for (category of tournament.categories; track category.id) {
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <span class="category-tab-label">
+              <app-twemoji [emoji]="category.emoji" />
+              {{ category.name }}
+            </span>
+          </ng-template>
+          <section class="category-panel">
+            <header class="category-heading">
+              <div>
+                <h2 class="category-title">
+                  <app-twemoji [emoji]="category.emoji" />
+                  {{ categoryTitle(category) }}
+                </h2>
+                <p>{{ formatLabel(category) }}</p>
+              </div>
+              <mat-chip-set aria-label="Resumo da modalidade">
+                <mat-chip>{{ category.matches.length }} partidas</mat-chip>
+                @if (category.placements.length) {
+                  <mat-chip>{{ category.placements.length }} colocações</mat-chip>
+                }
+              </mat-chip-set>
+            </header>
+
+            @if (category.rulesText) {
+              <details class="rules">
+                <summary>Regras publicadas</summary>
+                <p>{{ category.rulesText }}</p>
+              </details>
+            }
+
+            @if (category.standings.length) {
+              <section class="data-section">
+                <h3>Classificação</h3>
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th scope="col">#</th>
+                        <th scope="col">Equipe</th>
+                        <th scope="col">J</th>
+                        <th scope="col">V</th>
+                        <th scope="col">E</th>
+                        <th scope="col">D</th>
+                        <th scope="col">Pró</th>
+                        <th scope="col">Contra</th>
+                        <th scope="col">Pts.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (standing of category.standings; track standing.team.id) {
+                        <tr>
+                          <td>{{ standing.rank ?? '-' }}</td>
+                          <th scope="row">{{ standing.team.name }}</th>
+                          <td>{{ standing.played }}</td>
+                          <td>{{ standing.wins }}</td>
+                          <td>{{ standing.draws }}</td>
+                          <td>{{ standing.losses }}</td>
+                          <td>{{ standing.scoreFor }}</td>
+                          <td>{{ standing.scoreAgainst }}</td>
+                          <td><strong>{{ standing.points }}</strong></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            }
+
+            @if (category.brackets.length) {
+              <section class="data-section">
+                <h3>Chaves</h3>
+                <lib-sports-bracket
+                  [format]="category.format"
+                  [emoji]="category.emoji"
+                  [stages]="category.brackets"
+                  [standings]="category.standings"
+                  [currentMatchId]="currentMatchId(category)"
+                  (matchSelected)="openMatch($event)"
+                />
+              </section>
+            }
+
+            <section class="data-section">
+              <h3>Partidas</h3>
+              @if (category.matches.length) {
+                <div class="schedule-list">
+                  @for (match of category.matches; track match.id) {
+                    <a class="schedule-match" [routerLink]="['/sports/match', match.id]">
+                      <time [attr.datetime]="match.schedule.startDate">
+                        {{ match.schedule.startDate | date: 'dd/MM' }}
+                        <strong>{{ match.schedule.startDate | date: 'HH:mm' }}</strong>
+                      </time>
+                      <span class="schedule-teams">
+                        <strong>{{ participantName(match, 'home') }} × {{ participantName(match, 'away') }}</strong>
+                        <small>{{ locationLabel(match) }}</small>
+                      </span>
+                      <span class="schedule-score">
+                        @if (match.state === 'SCHEDULED' || match.state === 'CHECK_IN') {
+                          {{ stateLabel(match) }}
+                        } @else {
+                          <strong>{{ match.scoreboard.homeScore }} x {{ match.scoreboard.awayScore }}</strong>
+                          {{ stateLabel(match) }}
+                        }
+                      </span>
+                      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                    </a>
+                  }
+                </div>
+              } @else {
+                <p class="quiet-state">A tabela desta modalidade ainda não foi publicada.</p>
+              }
+            </section>
+          </section>
+        </mat-tab>
+      }
+    </mat-tab-group>
+
+    @if (tournament.overallScores.length) {
+      <section class="overall-section">
+        <h2>Placar geral</h2>
+        <ol>
+          @for (entry of tournament.overallScores; track entry.team.id; let position = $index) {
+            <li>
+              <span class="position">{{ position + 1 }}</span>
+              <span>{{ entry.team.name }}</span>
+              <strong>{{ entry.points }} pts.</strong>
+            </li>
+          }
+        </ol>
+      </section>
+    }
+
+    <section class="teams-section">
+      <h2>Equipes</h2>
+      @if (tournament.teams.length) {
+        <div class="team-list">
+          @for (team of tournament.teams; track team.id) {
+            <article>
+              @if (team.logoUrl) {
+                <img [src]="team.logoUrl" alt="" width="44" height="44" />
+              } @else {
+                <span class="team-placeholder" aria-hidden="true">{{ team.name.charAt(0) }}</span>
+              }
+              <span>
+                <strong>{{ team.name }}</strong>
+                @if (team.institution) {
+                  <small>{{ team.institution }}</small>
+                }
+              </span>
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="quiet-state">As equipes ainda não foram publicadas.</p>
+      }
+    </section>
+  }
+</main>

@@ -146,6 +146,8 @@ function applyAction(
               : options.periodLabel ?? undefined,
         }),
       };
+    case SportsMatchActionType.OCCURRENCE:
+      return current;
     case SportsMatchActionType.FINALIZE:
     case SportsMatchActionType.FORFEIT: {
       assertState(current.state, [

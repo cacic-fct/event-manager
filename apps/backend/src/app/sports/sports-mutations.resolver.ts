@@ -16,12 +16,15 @@ import {
   SportsRegistrationMemberUpsertInput,
   SportsRegistrationUpdateInput,
   SportsRepresentativeAssignInput,
+  SportsRepresentativeApplicationReviewInput,
   SportsRepresentativeRevokeInput,
   SportsRosterCheckInInput,
   SportsTeamChangeRequestInput,
   SportsTeamChangeReviewInput,
   SportsTeamCloneInput,
   SportsTeamCreateInput,
+  SportsTeamMemberCreateInput,
+  SportsTeamMemberUpdateInput,
   SportsTeamUpdateInput,
   SportsTournamentCloneInput,
   SportsTournamentCreateInput,
@@ -105,6 +108,10 @@ export class SportsMutationsResolver {
           status: input.status,
           scoringMode: input.scoringMode,
           selfSubscriptionEnabled: input.selfSubscriptionEnabled,
+          selfSubscriptionAllowNoTeam:
+            input.selfSubscriptionAllowNoTeam,
+          selfSubscriptionAllowNoCategory:
+            input.selfSubscriptionAllowNoCategory,
           allowPlayerMultipleTeams: input.allowPlayerMultipleTeams,
         },
         actor,
@@ -137,6 +144,10 @@ export class SportsMutationsResolver {
           status: input.status,
           scoringMode: input.scoringMode,
           selfSubscriptionEnabled: input.selfSubscriptionEnabled,
+          selfSubscriptionAllowNoTeam:
+            input.selfSubscriptionAllowNoTeam,
+          selfSubscriptionAllowNoCategory:
+            input.selfSubscriptionAllowNoCategory,
           allowPlayerMultipleTeams: input.allowPlayerMultipleTeams,
           finishedAt: input.finishedAt,
         },
@@ -263,6 +274,61 @@ export class SportsMutationsResolver {
       await this.publishMutation(
         'TEAM',
         this.admin.updateTeam(input.id, input, actor),
+        true,
+      )
+    ).id;
+  }
+
+  @Mutation(() => String, { name: 'createSportsTeamMember' })
+  @RequirePermissions(Permission.SportsTeam.Update)
+  async createTeamMember(
+    @Args('input', { type: () => SportsTeamMemberCreateInput })
+    input: SportsTeamMemberCreateInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    if (!input.personId) {
+      throw new BadRequestException('Administradores devem selecionar uma pessoa autorizada.');
+    }
+    const actor = this.authenticated(context);
+    await this.policy.assertPermissions(actor, [Permission.SportsTeam.Update], {
+      sportsTeamId: input.teamId,
+    });
+    return (
+      await this.publishMutation(
+        'TEAM',
+        this.admin.createTeamMember(input.teamId, input.personId, actor),
+        true,
+      )
+    ).id;
+  }
+
+  @Mutation(() => String, { name: 'updateSportsTeamMember' })
+  @RequirePermissions(Permission.SportsTeam.Update)
+  async updateTeamMember(
+    @Args('input', { type: () => SportsTeamMemberUpdateInput })
+    input: SportsTeamMemberUpdateInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    const actor = this.authenticated(context);
+    const member = await this.prisma.sportsTeamMember.findFirst({
+      where: { id: input.id, deletedAt: null },
+      select: { teamId: true },
+    });
+    if (!member) {
+      throw new NotFoundException(`Sports team member ${input.id} was not found.`);
+    }
+    await this.policy.assertPermissions(actor, [Permission.SportsTeam.Update], {
+      sportsTeamId: member.teamId,
+    });
+    return (
+      await this.publishMutation(
+        'TEAM',
+        this.admin.updateTeamMember(
+          input.id,
+          input.expectedRevision,
+          input.status ?? 'APPROVED',
+          actor,
+        ),
         true,
       )
     ).id;
@@ -589,6 +655,16 @@ export class SportsMutationsResolver {
           entries: input.entries.map((entry) => ({
             registrationMemberId: entry.registrationMemberId,
             role: entry.role ?? 'PLAYER',
+            shirtNumber: entry.shirtNumber,
+            roleMetadata:
+              entry.roleMetadataJson === null
+                ? Prisma.DbNull
+                : entry.roleMetadataJson === undefined
+                  ? undefined
+                  : this.parseJson(
+                      entry.roleMetadataJson,
+                      'metadados da função na escalação',
+                    ),
           })),
         },
         actor.sub,
@@ -1151,6 +1227,28 @@ export class SportsMutationsResolver {
     ).id;
   }
 
+  @Mutation(() => String, {
+    name: 'reviewRepresentativeSportsPlayerApplication',
+  })
+  async reviewRepresentativePlayerApplication(
+    @Args('input', {
+      type: () => SportsRepresentativeApplicationReviewInput,
+    })
+    input: SportsRepresentativeApplicationReviewInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    await this.access.requireTeamRepresentative(context, input.teamId);
+    return (
+      await this.applications.reviewByRepresentative(
+        input.applicationId,
+        input.teamId,
+        input.approved,
+        this.authenticated(context),
+        input.reviewMessage,
+      )
+    ).id;
+  }
+
   @Mutation(() => String, { name: 'submitSportsMatchRoster' })
   async submitRoster(
     @Args('input', { type: () => SportsMatchRosterUpsertInput })
@@ -1170,6 +1268,16 @@ export class SportsMutationsResolver {
           entries: input.entries.map((entry) => ({
             registrationMemberId: entry.registrationMemberId,
             role: entry.role ?? 'PLAYER',
+            shirtNumber: entry.shirtNumber,
+            roleMetadata:
+              entry.roleMetadataJson === null
+                ? Prisma.DbNull
+                : entry.roleMetadataJson === undefined
+                  ? undefined
+                  : this.parseJson(
+                      entry.roleMetadataJson,
+                      'metadados da função na escalação',
+                    ),
           })),
         },
         actor.id,
@@ -1186,12 +1294,20 @@ export class SportsMutationsResolver {
     input: SportsRosterCheckInInput,
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
-    const { actor } = await this.access.requireMatchOfficial(context, matchId);
+    const { actor, assignment } = await this.access.requireMatchOfficial(
+      context,
+      matchId,
+    );
     await this.rosters.checkIn(
       matchId,
       input.rosterEntryId,
-      input.checkedInAt ?? new Date(),
+      input.checkedInAt,
+      input.clientId,
+      input.offline ?? false,
+      input.present ?? true,
       actor.id,
+      this.authenticated(context).sub ?? null,
+      assignment.role,
       createSportsAuditActor(actor),
     );
     return true;

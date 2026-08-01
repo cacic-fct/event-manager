@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import {
   AuditLogEntityType,
   AuditLogActorType,
@@ -28,11 +29,13 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { getBrazilianPhoneCandidates } from '../../common/brazilian-phone';
 import { PrismaService } from '../../prisma/prisma.service';
+import { S3Service } from '../../s3/s3.service';
 import { SportsPaymentService } from '../sports-payment.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsIdentityProtectionService } from '../security/sports-identity-protection.service';
 
 const TEAM_EDITABLE_FIELDS = ['name', 'institution', 'logo'] as const;
+const MAX_QUEUED_LOGO_BYTES = 2 * 1024 * 1024;
 type SportsTeamEditableField = (typeof TEAM_EDITABLE_FIELDS)[number];
 
 export interface SportsTeamDeltaInput {
@@ -43,6 +46,7 @@ export interface SportsTeamDeltaInput {
   categoryIds?: string[];
   logo?: {
     objectKey: string;
+    queuedObjectKey?: string;
     sha256: string;
     mimeType: string;
     sizeBytes: number;
@@ -90,6 +94,7 @@ export class SportsTeamChangeService {
     private readonly identities: SportsIdentityProtectionService,
     private readonly payments: SportsPaymentService,
     private readonly auditLog: AuditLogService,
+    private readonly s3: S3Service,
   ) {}
 
   async submit(
@@ -267,6 +272,10 @@ export class SportsTeamChangeService {
     if (!actorId) {
       throw new BadRequestException('O usuário administrador não possui identificador.');
     }
+    const queuedLogo = await this.readQueuedLogo(requestId);
+    if (decision === 'APPROVE' && queuedLogo) {
+      await this.promoteQueuedLogo(queuedLogo);
+    }
     const outcome = await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const request = await tx.sportsTeamChangeRequest.findUnique({
         where: { id: requestId },
@@ -440,6 +449,12 @@ export class SportsTeamChangeService {
         conflictingFields: outcome.conflictingFields,
         request: outcome.request,
       });
+    }
+    if (
+      queuedLogo &&
+      (decision === 'APPROVE' || decision === 'REJECT')
+    ) {
+      await this.s3.deleteFile(queuedLogo.queuedObjectKey);
     }
     return outcome.value;
   }
@@ -1294,20 +1309,25 @@ export class SportsTeamChangeService {
       }
       const logo = input.logo;
       const objectKeyMatch =
-        /^sports\/tournaments\/[^/]+\/teams\/[^/]+\/logos\/sha256\/([a-f0-9]{64})\.(png|jpg|webp)$/.exec(
+        /^sports\/tournaments\/[^/]+\/teams\/[^/]+\/logos\/sha256\/([a-f0-9]{64})\.avif$/.exec(
           logo.objectKey,
         );
+      const queuedObjectKeyMatch =
+        /^sports\/private\/team-logo-review\/[^/]+\/[^/]+\/([a-f0-9]{64})\.avif$/.exec(
+          logo.queuedObjectKey ?? '',
+        );
       const expectedExtensionByMimeType: Readonly<Record<string, string>> = {
-        'image/png': 'png',
-        'image/jpeg': 'jpg',
-        'image/webp': 'webp',
+        'image/avif': 'avif',
       };
       if (
         !objectKeyMatch ||
+        !queuedObjectKeyMatch ||
         !/^[a-f0-9]{64}$/.test(logo.sha256) ||
-        !['image/png', 'image/jpeg', 'image/webp'].includes(logo.mimeType) ||
+        logo.mimeType !== 'image/avif' ||
         objectKeyMatch?.[1] !== logo.sha256 ||
+        queuedObjectKeyMatch?.[1] !== logo.sha256 ||
         objectKeyMatch?.[2] !== expectedExtensionByMimeType[logo.mimeType] ||
+        queuedObjectKeyMatch?.[2] !== expectedExtensionByMimeType[logo.mimeType] ||
         !Number.isInteger(logo.sizeBytes) ||
         logo.sizeBytes <= 0 ||
         logo.sizeBytes > 2 * 1024 * 1024
@@ -1431,6 +1451,90 @@ export class SportsTeamChangeService {
       this.assertDeltaMatchesType(requestType, normalized);
     }
     return normalized;
+  }
+
+  private async readQueuedLogo(requestId: string): Promise<{
+    objectKey: string;
+    queuedObjectKey: string;
+    sha256: string;
+    mimeType: string;
+    sizeBytes: number;
+  } | null> {
+    const request = await this.prisma.sportsTeamChangeRequest.findUnique({
+      where: { id: requestId },
+      select: {
+        type: true,
+        status: true,
+        delta: true,
+      },
+    });
+    if (
+      !request ||
+      request.type !== SportsTeamChangeRequestType.LOGO ||
+      !(
+        [
+          SportsTeamChangeRequestStatus.PENDING,
+          SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
+          SportsTeamChangeRequestStatus.CONFLICT,
+        ] as SportsTeamChangeRequestStatus[]
+      ).includes(request.status)
+    ) {
+      return null;
+    }
+    const logo = this.readDelta(request.delta).logo;
+    if (!logo?.queuedObjectKey) {
+      throw new ConflictException(
+        'A solicitação de logo não possui um objeto privado para análise.',
+      );
+    }
+    return {
+      objectKey: logo.objectKey,
+      queuedObjectKey: logo.queuedObjectKey,
+      sha256: logo.sha256,
+      mimeType: logo.mimeType,
+      sizeBytes: logo.sizeBytes,
+    };
+  }
+
+  private async promoteQueuedLogo(logo: {
+    objectKey: string;
+    queuedObjectKey: string;
+    sha256: string;
+    mimeType: string;
+    sizeBytes: number;
+  }): Promise<void> {
+    if (await this.s3.fileExists(logo.objectKey)) {
+      return;
+    }
+    const object = await this.s3.downloadFile(logo.queuedObjectKey);
+    const chunks: Buffer[] = [];
+    let sizeBytes = 0;
+    for await (const chunk of object.stream) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      sizeBytes += buffer.length;
+      if (sizeBytes > MAX_QUEUED_LOGO_BYTES) {
+        throw new BadRequestException(
+          'O logo em análise excede o limite permitido.',
+        );
+      }
+      chunks.push(buffer);
+    }
+    const content = Buffer.concat(chunks);
+    const sha256 = createHash('sha256').update(content).digest('hex');
+    if (
+      sha256 !== logo.sha256 ||
+      content.length !== logo.sizeBytes ||
+      object.contentType !== logo.mimeType
+    ) {
+      throw new ConflictException(
+        'O arquivo de logo em análise não corresponde aos metadados aprovados.',
+      );
+    }
+    await this.s3.uploadFile(logo.objectKey, content, logo.mimeType, {
+      sha256,
+      immutable: 'true',
+      approved: 'true',
+    });
   }
 
   private mergeDelta(current: Prisma.JsonValue, incoming: SportsTeamDeltaInput): SportsTeamDeltaInput {

@@ -1,0 +1,202 @@
+<header class="team-toolbar">
+  <a mat-icon-button routerLink="/calendar" aria-label="Voltar"><mat-icon>arrow_back</mat-icon></a>
+  <div><strong>{{ workspace()?.team?.name || 'Equipe' }}</strong><span>Área de representantes e escalação</span></div>
+</header>
+
+@if (loading()) {
+<main class="state"><p>Carregando equipe…</p></main>
+} @else if (error()) {
+<main class="state">
+  <mat-icon>error_outline</mat-icon>
+  <h1>Não foi possível abrir a equipe</h1>
+  <p>{{ error() }}</p>
+  <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
+</main>
+} @else if (workspace(); as currentWorkspace) {
+<main class="team-shell">
+  <section class="privacy-note">
+    <mat-icon>verified_user</mat-icon>
+    <div>
+      <strong>Proteção de dados</strong>
+      <p>As pessoas só serão vinculadas após aprovação administrativa da escalação.</p>
+    </div>
+  </section>
+
+  <mat-tab-group animationDuration="180ms">
+    <mat-tab label="Dados da equipe">
+      <form [formGroup]="profileForm" class="form-panel" (ngSubmit)="saveProfile()">
+        <h1>Informações da equipe</h1>
+        <p>Alterações novas são combinadas com o pedido que já estiver na fila.</p>
+        <mat-form-field><mat-label>Nome da equipe</mat-label><input matInput formControlName="name" /></mat-form-field>
+        <mat-form-field>
+          <mat-label>Vínculo da equipe</mat-label>
+          <input matInput formControlName="institution" />
+          <mat-hint>Turma, curso, campus, instituição ou outro vínculo</mat-hint>
+        </mat-form-field>
+        <button mat-flat-button type="submit" [disabled]="busy() || profileForm.invalid">
+          {{ profileRequest ? 'Atualizar pedido pendente' : 'Enviar para aprovação' }}
+        </button>
+      </form>
+      <section class="logo-panel" aria-labelledby="team-logo-title">
+        <div class="logo-preview">
+          @if (logoPreviewUrl(); as previewUrl) {
+            <img [src]="previewUrl" alt="Prévia do novo escudo" width="72" height="72" />
+          } @else if (currentWorkspace.team.logoUrl) {
+            <img [src]="currentWorkspace.team.logoUrl" alt="" width="72" height="72" />
+          } @else {
+            <mat-icon aria-hidden="true">shield</mat-icon>
+          }
+        </div>
+        <div>
+          <h2 id="team-logo-title">Escudo da equipe</h2>
+          <p>
+            AVIF, SVG, PNG, JPEG ou WebP de até 2 MiB. O arquivo fica privado até a aprovação administrativa.
+          </p>
+          @if (logoFile(); as file) {
+            <small>{{ file.name }}</small>
+          }
+          @if (logoError()) {
+            <small class="field-error">{{ logoError() }}</small>
+          }
+        </div>
+        <div class="logo-actions">
+          <label class="file-button">
+            <input
+              type="file"
+              accept="image/avif,image/svg+xml,image/png,image/jpeg,image/webp"
+              (change)="selectLogo($event)" />
+            <mat-icon>upload</mat-icon>Escolher arquivo
+          </label>
+          <button mat-flat-button type="button" [disabled]="busy() || !logoFile()" (click)="uploadLogo()">
+            Enviar escudo
+          </button>
+        </div>
+      </section>
+    </mat-tab>
+
+    <mat-tab label="Integrantes e escalação">
+      <section class="people-panel">
+        <form [formGroup]="identityForm" class="form-panel member-request" (ngSubmit)="addMember()">
+          <h1>Adicionar integrante</h1>
+          <p>Informe apenas um identificador. Você verá a solicitação, nunca os dados da pessoa encontrada.</p>
+          <div class="identity-fields">
+            <mat-form-field>
+              <mat-label>Tipo de identificação</mat-label>
+              <mat-select formControlName="type">
+                <mat-option value="EMAIL">E-mail</mat-option>
+                <mat-option value="PHONE">Telefone</mat-option>
+                <mat-option value="IDENTITY_DOCUMENT">Documento de identidade</mat-option>
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>Identificação</mat-label>
+              <input matInput formControlName="value" autocomplete="off" />
+            </mat-form-field>
+          </div>
+          <button mat-flat-button type="submit" [disabled]="busy() || identityForm.invalid">Enviar solicitação</button>
+        </form>
+
+        <form [formGroup]="lineupForm" class="form-panel lineup-panel" (ngSubmit)="saveLineup()">
+          <h1>Integrantes nesta partida</h1>
+          <p>
+            Marque quem será escalado e defina a função e o número de camisa para esta partida. A escalação fica privada
+            até o jogo terminar.
+          </p>
+          @if (!lineupForm.controls.matchId.value || !lineupForm.controls.registrationId.value) {
+          <div class="empty-list">
+            <mat-icon>event</mat-icon>
+            <span>Abra esta área pelo atalho de uma partida para editar a escalação.</span>
+          </div>
+          } @if (lineupLoading()) {
+          <div class="empty-list"><mat-icon>hourglass_top</mat-icon><span>Carregando atletas elegíveis…</span></div>
+          } @else if (lineupError()) {
+          <div class="empty-list">
+            <mat-icon>error_outline</mat-icon><span>{{ lineupError() }}</span>
+            <button mat-button type="button" (click)="loadLineup()">Tentar novamente</button>
+          </div>
+          } @else if (lineupMembers().length === 0) {
+          <div class="empty-list">
+            <mat-icon>groups</mat-icon><span>A lista de atletas elegíveis ainda não está disponível.</span>
+          </div>
+          } @else {
+          <div class="member-list">
+            @for (member of lineupMembers(); track member.registrationMemberId) {
+            <article [class.selected]="member.selected">
+              <mat-checkbox
+                [checked]="member.selected"
+                [attr.aria-label]="'Escalar ' + member.name"
+                (change)="toggleLineup(member, $event.checked)">
+                <strong>{{ member.name }}</strong>
+              </mat-checkbox>
+              <div class="member-fields">
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>Função</mat-label>
+                  <mat-select
+                    [value]="member.role"
+                    [disabled]="!member.selected"
+                    (valueChange)="setLineupRole(member, $event)">
+                    <mat-option value="PLAYER">Atleta</mat-option>
+                    <mat-option value="CAPTAIN">Capitão</mat-option>
+                    <mat-option value="COACH">Técnico</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>Camisa</mat-label>
+                  <input
+                  #shirtNumberInput
+                  matInput
+                  type="text"
+                  maxlength="12"
+                  inputmode="text"
+                  pattern="[\p{L}\p{N}._-]{1,12}"
+                    [disabled]="!member.selected"
+                    [value]="member.shirtNumber ?? ''"
+                    (change)="setShirtNumber(member, shirtNumberInput.value)" />
+                </mat-form-field>
+              </div>
+            </article>
+            }
+          </div>
+          }
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="busy() || lineupForm.invalid || lineupMembers().length === 0">
+            Enviar escalação
+          </button>
+          <button
+            mat-stroked-button
+            class="danger-action"
+            type="button"
+            [disabled]="busy() || lineupForm.invalid"
+            (click)="forfeit()">
+            Desistir desta partida
+          </button>
+        </form>
+      </section>
+    </mat-tab>
+
+    <mat-tab label="Acompanhamento">
+      <section class="queue-panel">
+        <h1>Pedidos enviados</h1>
+        @for (change of currentWorkspace.queuedChanges; track change.id) {
+        <article>
+          <div><strong>{{ changeLabel(change) }}</strong><span>{{ statusLabel(change.status) }}</span></div>
+          @if (change.reviewMessage) {
+          <p>{{ change.reviewMessage }}</p>
+          } @if (change.identityHints.length) {
+          <ul>
+            @for (hint of change.identityHints; track hint.clientKey) {
+            <li>{{ hint.displayHint }}</li>
+            }
+          </ul>
+          }
+        </article>
+        } @empty {
+        <div class="empty-list"><mat-icon>inbox</mat-icon><span>Nenhum pedido enviado.</span></div>
+        }
+      </section>
+    </mat-tab>
+  </mat-tab-group>
+</main>
+}
