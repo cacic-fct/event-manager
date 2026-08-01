@@ -79,7 +79,6 @@ export class MajorEventsService {
       paymentHolder: [''],
       paymentDocument: [''],
       pixKey: [''],
-      pixCity: [''],
       priceType: ['SINGLE' as PriceType],
       priceTiers: this.formBuilder.array([this.createPriceTierGroup('Preço único', '')]),
     },
@@ -269,7 +268,6 @@ export class MajorEventsService {
       paymentHolder: '',
       paymentDocument: '',
       pixKey: '',
-      pixCity: '',
       priceType: 'SINGLE',
     });
     this.resetPriceTiers([this.createPriceTierGroup('Preço único', '')]);
@@ -332,7 +330,6 @@ export class MajorEventsService {
       paymentHolder: majorEvent.paymentInfo?.holder ?? '',
       paymentDocument: majorEvent.paymentInfo?.document ?? '',
       pixKey: majorEvent.paymentInfo?.pixKey ?? '',
-      pixCity: majorEvent.paymentInfo?.pixCity ?? '',
       priceType,
     });
     this.resetPriceTiers(
@@ -444,7 +441,6 @@ export class MajorEventsService {
       holder: raw.paymentHolder.trim(),
       document: raw.paymentDocument.trim(),
       pixKey: raw.pixKey.trim(),
-      pixCity: raw.pixCity.trim(),
     };
     const hasAnyPaymentInfo = Object.values(paymentInfoInput).some((value) => value.length > 0);
     const priceTiers = this.priceTiers.controls

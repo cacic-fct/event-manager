@@ -169,7 +169,6 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
     holder
     document
     pixKey
-    pixCity
     majorEventId
   }
   majorEventPrices {
