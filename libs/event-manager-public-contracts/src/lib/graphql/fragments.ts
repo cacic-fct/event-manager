@@ -6,7 +6,6 @@ export const PUBLIC_PAYMENT_INFO_FIELDS = `
   holder
   document
   pixKey
-  pixCity
   majorEventId
 `;
 
