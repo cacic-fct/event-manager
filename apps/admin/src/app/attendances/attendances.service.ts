@@ -1006,6 +1006,11 @@ export class AttendancesService {
     if (!explicitAbsences) {
       explicitAbsences = this.fetchAllEventAttendances(eventId, 'ABSENT');
       this.explicitAbsencesByEventId.set(eventId, explicitAbsences);
+      void explicitAbsences.catch(() => {
+        if (this.explicitAbsencesByEventId.get(eventId) === explicitAbsences) {
+          this.explicitAbsencesByEventId.delete(eventId);
+        }
+      });
     }
     return explicitAbsences;
   }

@@ -140,7 +140,6 @@ export async function getAttendanceOralRoster(
       },
     },
     orderBy: [{ name: 'asc' }, { id: 'asc' }],
-    take: 80,
   });
 
   const attendances = await prisma.eventAttendance.findMany({

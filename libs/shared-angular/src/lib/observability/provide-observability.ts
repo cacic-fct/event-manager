@@ -14,7 +14,7 @@ import {
   runInInjectionContext,
 } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { provideUmami } from '@cacic-fct/ngx-umami';
+import { provideUmamiWithFactory } from '@cacic-fct/ngx-umami';
 import type { ErrorEvent as SentryErrorEvent } from '@sentry/angular';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { AuthService } from '../auth/auth.service';
@@ -195,12 +195,12 @@ export function provideCacicObservability(config: CacicObservabilityConfig) {
 
   if (config.analytics.websiteId) {
     providers.push(
-      provideUmami({
+      provideUmamiWithFactory(() => ({
         websiteId: config.analytics.websiteId,
-        src: analyticsScriptUrl,
+        src: trustedExternalScriptUrl(analyticsScriptUrl),
         autoTrack: false,
         domains: config.analytics.domains,
-      }),
+      })),
     );
   }
 

@@ -31,9 +31,13 @@ test('public landing login starts backend auth with the public app return path',
 
   await expect(page.getByRole('heading', { name: 'CACiC Eventos' })).toBeVisible();
   const loginRequest = page.waitForRequest(
-    (request) =>
-      new URL(request.url()).pathname === '/api/auth/login/redirect' &&
-      new URL(request.url()).searchParams.get('returnTo') === '/app',
+    (request) => {
+      const url = new URL(request.url());
+      return (
+        ['/api/auth/login/redirect', '/app/api/auth/login/redirect'].includes(url.pathname) &&
+        url.searchParams.get('returnTo') === '/app'
+      );
+    },
   );
   await page.getByRole('button', { name: 'Entrar com o Google' }).click();
   await loginRequest;

@@ -40,6 +40,10 @@ interface PendingAdminDecision {
 
 type SyncOutcome = 'synced' | 'failed' | 'retry';
 
+const INITIAL_SYNC_DELAY_MS = 300;
+const SYNC_RETRY_BASE_DELAY_MS = 1_000;
+const SYNC_RETRY_MAX_DELAY_MS = 30_000;
+
 @Component({
   selector: 'app-admin-oral-attendance-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -68,6 +72,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   private eventId = '';
   private syncTimer: ReturnType<typeof setTimeout> | null = null;
+  private syncRetryAttempt = 0;
 
   protected readonly people = signal<OralAttendancePerson[]>([]);
   protected readonly eventName = signal('Chamada oral');
@@ -130,14 +135,14 @@ export class AdminOralAttendancePageComponent implements OnInit {
       );
   }
 
-  private scheduleSync(): void {
-    if (!this.pending().size || this.syncTimer) {
+  private scheduleSync(delayMs = this.syncRetryAttempt ? this.syncRetryDelay() : INITIAL_SYNC_DELAY_MS): void {
+    if (!this.pending().size || this.syncTimer || (this.isBrowser && !navigator.onLine)) {
       return;
     }
     this.syncTimer = setTimeout(() => {
       this.syncTimer = null;
       void this.syncPending();
-    }, 300);
+    }, delayMs);
   }
 
   private applyRoster(items: EventAttendanceScannerFeedItem[]): void {
@@ -159,18 +164,22 @@ export class AdminOralAttendancePageComponent implements OnInit {
   }
 
   private async syncPending(): Promise<void> {
-    if (this.syncing() || !this.pending().size) {
+    if (this.syncing() || !this.pending().size || (this.isBrowser && !navigator.onLine)) {
       return;
     }
     const items = [...this.pending().values()];
     const attemptedByPersonId = new Map(items.map((item) => [item.personId, item.collectedAt]));
     this.syncing.set(true);
     const failedItems: PendingAdminDecision[] = [];
+    const permanentFailureItems: PendingAdminDecision[] = [];
     try {
       for (const item of items) {
         const outcome = await this.syncItem(item);
         if (outcome !== 'synced') {
           failedItems.push(item);
+        }
+        if (outcome === 'failed') {
+          permanentFailureItems.push(item);
         }
         if (outcome !== 'retry') {
           this.pending.update((current) => {
@@ -191,17 +200,30 @@ export class AdminOralAttendancePageComponent implements OnInit {
       const hasRetryPending = failedItems.some(
         (item) => this.pending().get(item.personId)?.collectedAt === item.collectedAt,
       );
-      if (hasNewPendingItem || hasRetryPending) {
-        this.scheduleSync();
+      if (hasRetryPending) {
+        this.syncRetryAttempt += 1;
+        this.scheduleSync(this.syncRetryDelay());
+      } else {
+        this.syncRetryAttempt = 0;
+        if (hasNewPendingItem) {
+          this.scheduleSync();
+        }
       }
     }
-    if (failedItems.length) {
+    if (permanentFailureItems.length) {
       this.dialog.open(OralAttendanceSyncFailureDialogComponent, {
         width: 'min(30rem, 94vw)',
         maxWidth: '94vw',
-        data: { failedCount: failedItems.length },
+        data: { failedCount: permanentFailureItems.length },
       });
     }
+  }
+
+  private syncRetryDelay(): number {
+    return Math.min(
+      SYNC_RETRY_MAX_DELAY_MS,
+      SYNC_RETRY_BASE_DELAY_MS * 2 ** Math.min(this.syncRetryAttempt - 1, 5),
+    );
   }
 
   private async syncItem(item: PendingAdminDecision): Promise<SyncOutcome> {

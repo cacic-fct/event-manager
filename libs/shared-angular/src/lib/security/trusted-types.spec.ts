@@ -123,6 +123,19 @@ describe('CacicTrustedTypesService', () => {
     expect(createPolicy).toHaveBeenCalledTimes(2);
   });
 
+  it('does not register a permissive script-content handler', () => {
+    const createPolicy = vi.fn(() => ({
+      createScriptURL: (value: string) => value,
+    }));
+    vi.stubGlobal('trustedTypes', { createPolicy });
+
+    const service = createService('browser');
+
+    service.initialize();
+
+    expect(createPolicy.mock.calls[1][1]).not.toHaveProperty('createScript');
+  });
+
   it('keeps contextual errors for failures other than duplicate policies', () => {
     const createPolicy = vi.fn(() => {
       throw new Error('mock failure');
