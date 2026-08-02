@@ -139,6 +139,7 @@ async function isPersonAttendee(
         where: {
           eventId: link.eventId,
           personId,
+          status: 'PRESENT',
         },
         select: { eventId: true },
       }),
@@ -150,6 +151,7 @@ async function isPersonAttendee(
       await prisma.eventAttendance.findFirst({
         where: {
           personId,
+          status: 'PRESENT',
           event: {
             majorEventId: link.majorEventId,
           },

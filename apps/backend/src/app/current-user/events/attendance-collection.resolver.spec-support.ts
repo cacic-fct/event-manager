@@ -171,6 +171,7 @@ export function createPrisma(input: {
     },
     eventAttendance: {
       findMany: jest.fn().mockResolvedValue(input.attendances),
+      findUnique: jest.fn().mockResolvedValue(null),
     },
     event: {
       findFirst: jest.fn().mockResolvedValue({ id: 'event-1' }),
@@ -345,7 +346,9 @@ export function createTxMock(attendance: unknown) {
   return {
     eventAttendance: {
       create: jest.fn().mockResolvedValue(undefined),
+      findUnique: jest.fn().mockResolvedValue(null),
       findUniqueOrThrow: jest.fn().mockResolvedValue(attendance),
+      update: jest.fn().mockResolvedValue(attendance),
     },
   };
 }

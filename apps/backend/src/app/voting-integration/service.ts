@@ -95,6 +95,7 @@ export class VotingIntegrationService {
     const attendance = await this.prisma.eventAttendance.findFirst({
       where: {
         eventId: normalizedEventId,
+        status: 'PRESENT',
         person: {
           deletedAt: null,
           OR: [

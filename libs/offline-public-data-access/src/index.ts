@@ -5,4 +5,5 @@ export * from './lib/calendar-preferences-storage.service';
 export * from './lib/user-offline-data.service';
 export * from './lib/attendance-offline-queue.service';
 export * from './lib/offline-public-database-provider';
+export * from './lib/oral-attendance-offline.service';
 export * from './lib/totp-seed-cache.service';

@@ -45,6 +45,7 @@ export class EventFormStateService {
         shouldIssueCertificateForNonPayingAttendees: [false],
         shouldIssueCertificateForNonSubscribedAttendees: [false],
         shouldCollectAttendance: [false],
+        shouldAllowOralAttendance: [false],
         isOnlineAttendanceAllowed: [false],
         shouldProvideSubscriberListToLecturer: [false],
         onlineAttendanceCode: [''],

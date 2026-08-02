@@ -65,11 +65,12 @@ export const EVENT_INSIGHT_SELECT = {
     select: { personId: true },
   },
   attendances: {
+    where: { status: 'PRESENT' },
     select: { personId: true },
   },
   _count: {
     select: {
-      attendances: true,
+      attendances: { where: { status: 'PRESENT' } },
       subscriptions: { where: { deletedAt: null } },
     },
   },

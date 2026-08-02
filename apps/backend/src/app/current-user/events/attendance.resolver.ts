@@ -1,7 +1,7 @@
 import { isValidCPF } from '@cacic-fct/shared-utils';
 import { BadRequestException, ConflictException, NotFoundException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AttendanceCreationMethod, SubscriptionStatus } from '@prisma/client';
+import { AttendanceCreationMethod, Prisma, SubscriptionStatus } from '@prisma/client';
 import { CertificateDownload } from '@cacic-fct/shared-data-types';
 import {
   ConfirmCurrentUserOnlineAttendanceInput,
@@ -49,6 +49,7 @@ export class CurrentUserEventAttendanceResolver {
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
         personId: person.id,
+        status: 'PRESENT',
         event: {
           deletedAt: null,
         },
@@ -80,6 +81,7 @@ export class CurrentUserEventAttendanceResolver {
       where: {
         personId: person.id,
         eventId,
+        status: 'PRESENT',
         event: {
           deletedAt: null,
         },
@@ -163,43 +165,54 @@ export class CurrentUserEventAttendanceResolver {
 
     await this.assertCurrentPersonCanConfirmOnlineAttendance(person.id, event);
 
-    const existingAttendance = await this.prisma.eventAttendance.findUnique({
-      where: {
-        personId_eventId: {
-          personId: person.id,
-          eventId: event.id,
-        },
-      },
-      select: {
-        personId: true,
-      },
-    });
-
-    if (existingAttendance) {
-      throw new ConflictException(`Attendance is already confirmed for event ${input.eventId}.`);
-    }
-
-    const createdAttendance = await this.prisma.$transaction(async (tx) => {
-      await tx.eventAttendance.create({
-        data: {
-          personId: person.id,
-          eventId: event.id,
-          createdByMethod: AttendanceCreationMethod.ONLINE_CODE,
-          createdById: authenticatedUser.sub,
-          committedById: authenticatedUser.sub,
-        },
-      });
-      await this.attendanceCategories.refreshForAttendance(person.id, event.id, tx);
-      return tx.eventAttendance.findUniqueOrThrow({
-        where: {
-          personId_eventId: {
-            personId: person.id,
-            eventId: event.id,
-          },
-        },
-        select: CURRENT_USER_EVENT_ATTENDANCE_SELECT,
-      });
-    });
+    const createdAttendance = await (async () => {
+      try {
+        return await this.prisma.$transaction(async (tx) => {
+          const transitioned = await tx.eventAttendance.updateMany({
+            where: {
+              personId: person.id,
+              eventId: event.id,
+              status: {
+                not: 'PRESENT',
+              },
+            },
+            data: {
+              status: 'PRESENT',
+              attendedAt: now,
+              createdByMethod: AttendanceCreationMethod.ONLINE_CODE,
+              createdById: authenticatedUser.sub,
+              committedById: authenticatedUser.sub,
+            },
+          });
+          if (transitioned.count === 0) {
+            await tx.eventAttendance.create({
+              data: {
+                personId: person.id,
+                eventId: event.id,
+                createdByMethod: AttendanceCreationMethod.ONLINE_CODE,
+                createdById: authenticatedUser.sub,
+                committedById: authenticatedUser.sub,
+              },
+            });
+          }
+          await this.attendanceCategories.refreshForAttendance(person.id, event.id, tx);
+          return tx.eventAttendance.findUniqueOrThrow({
+            where: {
+              personId_eventId: {
+                personId: person.id,
+                eventId: event.id,
+              },
+            },
+            select: CURRENT_USER_EVENT_ATTENDANCE_SELECT,
+          });
+        });
+      } catch (error: unknown) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          throw new ConflictException(`Attendance is already confirmed for event ${input.eventId}.`);
+        }
+        throw error;
+      }
+    })();
 
     await this.attendanceRealtime.notifyPerson(person.id);
 

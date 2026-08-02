@@ -14,6 +14,7 @@ import {
   AttendanceCategory,
   Event,
   EventAttendance,
+  EventAttendanceScannerFeedItem,
   EventAttendanceCsvImportResolution,
   MajorEventPriceTier,
   MajorEventUserAttendance,
@@ -62,6 +63,7 @@ type AttendanceListItem = {
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
   category: AttendanceCategory;
+  status: EventAttendance['status'];
   person?: Person | null;
 };
 
@@ -101,6 +103,28 @@ const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; de
   },
 };
 
+function mapAttendanceListItem(attendance: EventAttendance): AttendanceListItem {
+  return {
+    eventId: attendance.eventId,
+    eventName: attendance.event?.name ?? attendance.eventId,
+    personId: attendance.personId,
+    personName: attendance.person?.name ?? attendance.personId,
+    attendedAt: attendance.attendedAt,
+    createdAt: attendance.createdAt,
+    createdById: attendance.createdById,
+    committedById: attendance.committedById,
+    createdByMethod: attendance.createdByMethod,
+    collectedByFullName: attendance.collectedByFullName,
+    committedByFullName: attendance.committedByFullName,
+    collectedLatitude: attendance.collectedLatitude,
+    collectedLongitude: attendance.collectedLongitude,
+    collectedAccuracyMeters: attendance.collectedAccuracyMeters,
+    category: attendance.category,
+    status: attendance.status,
+    person: attendance.person,
+  };
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -132,6 +156,9 @@ export class AttendancesService {
   readonly selectedAttendanceEvent = signal<Event | null>(null);
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
+  readonly explicitAbsences = signal<AttendanceListItem[]>([]);
+  private readonly explicitAbsencesByEventId = new Map<string, Promise<EventAttendance[]>>();
+  readonly implicitAbsences = signal<EventAttendanceScannerFeedItem[]>([]);
   readonly attendanceTotalCount = signal(0);
   readonly attendancesPagination = createWorkspaceListPagination();
   readonly offlineAttendanceSubmissions = signal<OfflineAttendanceSubmissionListItem[]>([]);
@@ -140,7 +167,7 @@ export class AttendancesService {
       ATTENDANCE_CATEGORY_ORDER.map((category) => [category, []]),
     );
 
-    for (const attendance of this.attendances()) {
+    for (const attendance of this.attendances().filter((item) => item.status === 'PRESENT')) {
       groups.get(attendance.category)?.push(attendance);
     }
 
@@ -302,6 +329,7 @@ export class AttendancesService {
         personId: person.id,
       }),
     );
+    this.invalidateExplicitAbsences(eventId);
     await this.loadAttendances(eventId);
     this.snackbar.open('Presença registrada.', 'Fechar', { duration: 2500 });
   }
@@ -325,6 +353,7 @@ export class AttendancesService {
     });
 
     dialogRef.afterClosed().subscribe(() => {
+      this.invalidateExplicitAbsences(eventId);
       void this.loadAttendances(eventId);
     });
   }
@@ -337,6 +366,7 @@ export class AttendancesService {
           code,
         }),
       );
+      this.invalidateExplicitAbsences(eventId);
       await this.loadAttendances(eventId);
       this.snackbar.open('Presença registrada pelo scanner.', 'Fechar', {
         duration: 2500,
@@ -418,6 +448,7 @@ export class AttendancesService {
         );
       }
 
+      this.invalidateExplicitAbsences(eventId);
       await this.loadAttendances(eventId);
       this.dialog.open(AttendanceCsvImportResultDialogComponent, {
         width: '36rem',
@@ -436,41 +467,29 @@ export class AttendancesService {
   async loadAttendances(eventId: string): Promise<void> {
     if (!eventId) {
       this.attendances.set([]);
+      this.explicitAbsences.set([]);
+      this.implicitAbsences.set([]);
       this.attendanceTotalCount.set(0);
       this.offlineAttendanceSubmissions.set([]);
       return;
     }
-    const [data, attendanceTotalCount, submissions] = await Promise.all([
+    const [data, explicitAbsences, roster, attendanceTotalCount, submissions] = await Promise.all([
       firstValueFrom(
         this.api.listEventAttendances(eventId, {
           ...pageVariables(this.attendancesPagination.pageIndex()),
+          status: 'PRESENT',
         }),
       ),
-      firstValueFrom(this.api.getEventAttendanceCount(eventId)),
+      this.fetchExplicitAbsences(eventId),
+      firstValueFrom(this.api.listEventAttendanceScannerFeed(eventId)),
+      firstValueFrom(this.api.getEventAttendanceCount(eventId, 'PRESENT')),
       firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
     ]);
     const visibleAttendances = applyPagedResult(data, this.attendancesPagination);
     this.attendanceTotalCount.set(attendanceTotalCount);
-    this.attendances.set(
-      visibleAttendances.map((attendance) => ({
-        eventId: attendance.eventId,
-        eventName: attendance.event?.name ?? attendance.eventId,
-        personId: attendance.personId,
-        personName: attendance.person?.name ?? attendance.personId,
-        attendedAt: attendance.attendedAt,
-        createdAt: attendance.createdAt,
-        createdById: attendance.createdById,
-        committedById: attendance.committedById,
-        createdByMethod: attendance.createdByMethod,
-        collectedByFullName: attendance.collectedByFullName,
-        committedByFullName: attendance.committedByFullName,
-        collectedLatitude: attendance.collectedLatitude,
-        collectedLongitude: attendance.collectedLongitude,
-        collectedAccuracyMeters: attendance.collectedAccuracyMeters,
-        category: attendance.category,
-        person: attendance.person,
-      })),
-    );
+    this.attendances.set(visibleAttendances.map(mapAttendanceListItem));
+    this.explicitAbsences.set(explicitAbsences.map(mapAttendanceListItem));
+    this.implicitAbsences.set(roster.filter((item) => !item.status));
     this.offlineAttendanceSubmissions.set(
       submissions.map((submission) => ({
         ...submission,
@@ -513,12 +532,14 @@ export class AttendancesService {
       }),
     );
 
+    this.invalidateExplicitAbsences(attendance.eventId);
     await this.loadAttendances(attendance.eventId);
     this.snackbar.open('Presença removida.', 'Fechar', { duration: 2500 });
   }
 
   async approveOfflineAttendanceSubmission(submission: OfflineAttendanceSubmissionListItem): Promise<void> {
     await firstValueFrom(this.api.approveOfflineEventAttendanceSubmission(submission.id));
+    this.invalidateExplicitAbsences(submission.eventId);
     await this.loadAttendances(submission.eventId);
     this.snackbar.open('Presença off-line aprovada.', 'Fechar', { duration: 2500 });
   }
@@ -550,6 +571,7 @@ export class AttendancesService {
       submissions.map((submission) => submission.id),
       (submissionIds) => firstValueFrom(this.api.approveOfflineEventAttendanceSubmissions(submissionIds)),
     );
+    this.invalidateExplicitAbsences(submissions[0].eventId);
     await this.loadAttendances(submissions[0].eventId);
     this.snackbar.open('Presenças off-line aprovadas.', 'Fechar', { duration: 2500 });
   }
@@ -572,6 +594,7 @@ export class AttendancesService {
     }
 
     await firstValueFrom(this.api.rejectOfflineEventAttendanceSubmission(submission.id));
+    this.invalidateExplicitAbsences(submission.eventId);
     await this.loadAttendances(submission.eventId);
     this.snackbar.open('Presença off-line rejeitada.', 'Fechar', { duration: 2500 });
   }
@@ -609,6 +632,7 @@ export class AttendancesService {
           ),
         ),
     );
+    this.invalidateExplicitAbsences(submissions[0].eventId);
     await this.loadAttendances(submissions[0].eventId);
     this.snackbar.open('Presenças off-line rejeitadas.', 'Fechar', { duration: 2500 });
   }
@@ -631,6 +655,7 @@ export class AttendancesService {
     }
 
     const updated = await firstValueFrom(this.api.updateOfflineEventAttendanceSubmission(submission.id, correction));
+    this.invalidateExplicitAbsences(submission.eventId);
     await this.loadAttendances(submission.eventId);
     this.snackbar.open(
       updated.resolutionError
@@ -843,12 +868,14 @@ export class AttendancesService {
       for (const eventId of selectedEventIds) {
         if (!previousEventIds.has(eventId)) {
           await firstValueFrom(this.api.createEventAttendance({ eventId, personId: selected.personId }));
+          this.invalidateExplicitAbsences(eventId);
         }
       }
 
       for (const eventId of previousEventIds) {
         if (!selectedEventIds.has(eventId)) {
           await firstValueFrom(this.api.deleteEventAttendance({ eventId, personId: selected.personId }));
+          this.invalidateExplicitAbsences(eventId);
         }
       }
 
@@ -917,6 +944,7 @@ export class AttendancesService {
         collectedLongitude: attendance.collectedLongitude,
         collectedAccuracyMeters: attendance.collectedAccuracyMeters,
         category: attendance.category,
+        status: attendance.status,
         person: attendance.person,
       })),
     );
@@ -960,14 +988,43 @@ export class AttendancesService {
     return firstValueFrom(dialogRef.afterClosed());
   }
 
-  private async fetchAllEventAttendances(eventId: string): Promise<EventAttendance[]> {
+  private async fetchAllEventAttendances(
+    eventId: string,
+    status?: EventAttendance['status'],
+  ): Promise<EventAttendance[]> {
     const attendances: EventAttendance[] = [];
     for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
-      const page = await firstValueFrom(this.api.listEventAttendances(eventId, { skip, take: EXPORT_PAGE_SIZE }));
+      const page = await firstValueFrom(
+        this.api.listEventAttendances(eventId, { skip, take: EXPORT_PAGE_SIZE, status }),
+      );
       attendances.push(...page);
       if (page.length < EXPORT_PAGE_SIZE) {
         return attendances;
       }
+    }
+  }
+
+  private fetchExplicitAbsences(eventId: string): Promise<EventAttendance[]> {
+    let explicitAbsences = this.explicitAbsencesByEventId.get(eventId);
+    if (!explicitAbsences) {
+      const request = this.fetchAllEventAttendances(eventId, 'ABSENT');
+      explicitAbsences = request;
+      this.explicitAbsencesByEventId.set(eventId, request);
+      void request.then(
+        () => this.clearExplicitAbsencesRequest(eventId, request),
+        () => this.clearExplicitAbsencesRequest(eventId, request),
+      );
+    }
+    return explicitAbsences;
+  }
+
+  invalidateExplicitAbsences(eventId: string): void {
+    this.explicitAbsencesByEventId.delete(eventId);
+  }
+
+  private clearExplicitAbsencesRequest(eventId: string, request: Promise<EventAttendance[]>): void {
+    if (this.explicitAbsencesByEventId.get(eventId) === request) {
+      this.explicitAbsencesByEventId.delete(eventId);
     }
   }
 

@@ -283,6 +283,7 @@ export class PublicCertificateValidationService {
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
         personId: certificate.personId,
+        status: 'PRESENT',
         event: {
           majorEventId,
           deletedAt: null,
@@ -332,6 +333,7 @@ export class PublicCertificateValidationService {
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
         personId,
+        status: 'PRESENT',
         event: {
           eventGroupId,
           deletedAt: null,

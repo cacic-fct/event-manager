@@ -488,6 +488,7 @@ describe('EventsResolver', () => {
       expect.objectContaining({
         select: expect.objectContaining({
           attendances: {
+            where: { status: 'PRESENT' },
             select: {
               personId: true,
               attendedAt: true,

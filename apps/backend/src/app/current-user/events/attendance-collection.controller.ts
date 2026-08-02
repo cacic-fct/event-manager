@@ -1,5 +1,5 @@
 import { Controller, Headers, MessageEvent, Param, Req, Sse } from '@nestjs/common';
-import { AttendanceCreationMethod, SubscriptionStatus } from '@prisma/client';
+import { AttendanceCreationMethod, EventAttendanceStatus, SubscriptionStatus } from '@prisma/client';
 import {
   ApiBearerAuth,
   ApiForbiddenResponse,
@@ -47,6 +47,13 @@ class EventAttendanceScannerFeedItemDto {
   fullName!: string | null;
 
   @ApiPropertyOptional({
+    description: 'Identity document, masked when it is a CPF.',
+    example: '•••.982.247-••',
+    nullable: true,
+  })
+  identityDocument!: string | null;
+
+  @ApiPropertyOptional({
     description: 'Unesp role list joined for compact display in the scanner feed.',
     example: 'aluno-graduacao',
     nullable: true,
@@ -67,6 +74,14 @@ class EventAttendanceScannerFeedItemDto {
     nullable: true,
   })
   attendedAt!: Date | null;
+
+  @ApiPropertyOptional({
+    description: 'Explicit oral-attendance decision. Null means no explicit decision exists.',
+    enum: EventAttendanceStatus,
+    enumName: 'EventAttendanceStatus',
+    nullable: true,
+  })
+  status!: EventAttendanceStatus | null;
 
   @ApiPropertyOptional({
     description:

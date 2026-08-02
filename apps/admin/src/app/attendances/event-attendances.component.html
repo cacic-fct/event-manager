@@ -113,6 +113,12 @@
             <mat-icon>qr_code_scanner</mat-icon>
             Escanear presenças
           </button>
+          <a
+            mat-flat-button
+            [routerLink]="['/attendances/event', workspace.selectedAttendanceEvent()?.id, 'oral']">
+            <mat-icon>record_voice_over</mat-icon>
+            Chamada oral
+          </a>
         }
       </div>
     </div>
@@ -278,7 +284,7 @@
       <section class="surface event-presence-list">
         <div class="surface-heading">
           <h4>Presenças do evento</h4>
-          <span>{{ workspace.attendanceTotalCount() }} registros</span>
+          <span>{{ workspace.attendanceTotalCount() - workspace.explicitAbsences().length }} registros</span>
         </div>
 
         <mat-list class="attendance-list categorized-list">
@@ -374,6 +380,61 @@
           </div>
         </div>
       </section>
+
+      @if (workspace.explicitAbsences().length || workspace.implicitAbsences().length) {
+        <section class="surface event-presence-list">
+          <div class="surface-heading">
+            <h4>Ausências do evento</h4>
+            <span>
+              {{ workspace.explicitAbsences().length }} explícitas ·
+              {{ workspace.implicitAbsences().length }} implícitas
+            </span>
+          </div>
+
+          <mat-list class="attendance-list">
+            @for (attendance of workspace.explicitAbsences(); track attendance.personId) {
+              <mat-list-item>
+                <span matListItemTitle class="attendance-item-title">{{ attendance.personName }}</span>
+                <span matListItemLine class="attendance-item-line">
+                  Ausência explícita · chamada oral em {{ attendance.attendedAt | date: 'short' }}
+                </span>
+                <div matListItemMeta class="attendance-item-actions">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Ver detalhes da ausência explícita"
+                    matTooltip="Detalhes"
+                    (click)="workspace.showAttendanceInfo(attendance)">
+                    <mat-icon>info</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Ver histórico da ausência explícita"
+                    matTooltip="Histórico"
+                    (click)="
+                      auditLog.openEventAttendanceHistory(
+                        attendance.personId,
+                        attendance.eventId,
+                        attendance.personName
+                      )
+                    ">
+                    <mat-icon>history</mat-icon>
+                  </button>
+                </div>
+              </mat-list-item>
+            }
+            @for (person of workspace.implicitAbsences(); track person.personId) {
+              <mat-list-item>
+                <span matListItemTitle class="attendance-item-title">{{ person.fullName }}</span>
+                <span matListItemLine class="attendance-item-line">
+                  Ausência implícita · nenhuma decisão registrada
+                </span>
+              </mat-list-item>
+            }
+          </mat-list>
+        </section>
+      }
     </div>
   </section>
 </section>

@@ -93,6 +93,7 @@ export interface PublicEvent {
   shouldIssueCertificateForNonPayingAttendees?: boolean | null;
   shouldIssueCertificateForNonSubscribedAttendees?: boolean | null;
   shouldCollectAttendance?: boolean | null;
+  shouldAllowOralAttendance?: boolean | null;
   isOnlineAttendanceAllowed?: boolean | null;
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;

@@ -67,7 +67,7 @@ describe('EVENT_INSIGHT_SELECT', () => {
       },
       _count: {
         select: {
-          attendances: true,
+          attendances: { where: { status: 'PRESENT' } },
           subscriptions: { where: { deletedAt: null } },
         },
       },

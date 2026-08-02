@@ -3,6 +3,7 @@ import {
   EventAttendance,
   EventAttendanceCreateInput,
   EventAttendanceManualInput,
+  EventOralAttendanceInput,
   EventAttendanceScannerCodeInput,
   EventAttendanceUpdateInput,
   OfflineEventAttendanceSubmission,
@@ -18,6 +19,8 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CurrentUserContextService } from '../../current-user/context.service';
+import { recordAttendanceSet as recordSharedAttendanceSet } from '../../current-user/events/attendance-collection-audit';
 import { normalizeOptionalString } from '../../current-user/events/attendance-collection-context';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT, GraphqlContext } from './event-attendances.shared';
@@ -38,12 +41,18 @@ const EVENT_ATTENDANCE_AUDIT_SELECT = {
   committedById: true,
   createdByMethod: true,
   category: true,
+  status: true,
   collectedLatitude: true,
   collectedLongitude: true,
   collectedAccuracyMeters: true,
 } satisfies Prisma.EventAttendanceSelect;
 
 const MAX_OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE = 1000;
+const ORAL_ATTENDANCE_TRANSACTION_BATCH_SIZE = 100;
+
+type EventAttendanceAuditRecord = Prisma.EventAttendanceGetPayload<{
+  select: typeof EVENT_ATTENDANCE_AUDIT_SELECT;
+}>;
 
 @Resolver(() => EventAttendance)
 export class EventAttendancesMutationsResolver extends EventAttendancesResolverBase {
@@ -63,6 +72,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     private readonly authorizationPolicy: AuthorizationPolicyService = {
       assertPermissions: async () => undefined,
     } as unknown as AuthorizationPolicyService,
+    private readonly currentUserContext: CurrentUserContextService = {
+      getAuthenticatedUser: () => undefined,
+    } as unknown as CurrentUserContextService,
   ) {
     super(prisma, attendanceCategories);
   }
@@ -115,6 +127,115 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
 
       throw error;
     }
+  }
+
+  @Mutation(() => EventAttendance, { name: 'setEventOralAttendance' })
+  @RequirePermissions(Permission.EventAttendance.Collect)
+  async setEventOralAttendance(
+    @Args('input', { type: () => EventOralAttendanceInput })
+    input: EventOralAttendanceInput,
+    @Context() context: GraphqlContext,
+  ) {
+    await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
+    const actorId = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+    const attendance = await this.prisma.$transaction(async (tx) => {
+      const before = await tx.eventAttendance.findUnique({
+        where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
+        select: EVENT_ATTENDANCE_AUDIT_SELECT,
+      });
+      const result = await tx.eventAttendance.upsert({
+        where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
+        create: {
+          personId: input.personId,
+          eventId: input.eventId,
+          status: input.status,
+          attendedAt: input.collectedAt,
+          createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+          createdById: actorId,
+          committedById: actorId,
+        },
+        update: {
+          status: input.status,
+          attendedAt: input.collectedAt,
+          createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+          createdById: actorId,
+          committedById: actorId,
+        },
+        select: EVENT_ATTENDANCE_AUDIT_SELECT,
+      });
+      await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+      await this.recordAttendanceSet(result, before, context, tx);
+      return result;
+    });
+    await this.dashboardInsights.invalidateCachedInsights();
+    return attendance;
+  }
+
+  @Mutation(() => [EventAttendance], { name: 'setEventOralAttendances' })
+  @RequirePermissions(Permission.EventAttendance.Collect)
+  async setEventOralAttendances(
+    @Args('inputs', { type: () => [EventOralAttendanceInput] })
+    inputs: EventOralAttendanceInput[],
+    @Context() context: GraphqlContext,
+  ) {
+    if (!inputs.length) {
+      return [];
+    }
+    if (inputs.length > 1000 || inputs.some((input) => input.eventId !== inputs[0].eventId)) {
+      throw new BadRequestException('Envie até 1000 decisões de um único evento por sincronização.');
+    }
+    const eventId = inputs[0].eventId;
+    await this.assertOralAttendanceAllowed(eventId);
+    await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
+    const actorId = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+    const attendances: EventAttendanceAuditRecord[] = [];
+    for (let offset = 0; offset < inputs.length; offset += ORAL_ATTENDANCE_TRANSACTION_BATCH_SIZE) {
+      const chunk = inputs.slice(offset, offset + ORAL_ATTENDANCE_TRANSACTION_BATCH_SIZE);
+      const chunkAttendances = await this.prisma.$transaction(async (tx) => {
+        const previousAttendances = await tx.eventAttendance.findMany({
+          where: {
+            eventId,
+            personId: { in: [...new Set(chunk.map((input) => input.personId))] },
+          },
+          select: EVENT_ATTENDANCE_AUDIT_SELECT,
+        });
+        const beforeByPersonId = new Map(
+          previousAttendances.map((attendance) => [attendance.personId, attendance]),
+        );
+        const results: EventAttendanceAuditRecord[] = [];
+        for (const input of chunk) {
+          const before = beforeByPersonId.get(input.personId) ?? null;
+          const attendance = await tx.eventAttendance.upsert({
+            where: { personId_eventId: { personId: input.personId, eventId } },
+            create: {
+              personId: input.personId,
+              eventId,
+              status: input.status,
+              attendedAt: input.collectedAt,
+              createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+              createdById: actorId,
+              committedById: actorId,
+            },
+            update: {
+              status: input.status,
+              attendedAt: input.collectedAt,
+              createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+              createdById: actorId,
+              committedById: actorId,
+            },
+            select: EVENT_ATTENDANCE_AUDIT_SELECT,
+          });
+          await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx);
+          await this.recordAttendanceSet(attendance, before, context, tx);
+          beforeByPersonId.set(input.personId, attendance);
+          results.push(attendance);
+        }
+        return results;
+      });
+      attendances.push(...chunkAttendances);
+    }
+    await this.dashboardInsights.invalidateCachedInsights();
+    return attendances;
   }
 
   @Mutation(() => EventAttendance, {
@@ -887,6 +1008,16 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     });
   }
 
+  private async assertOralAttendanceAllowed(eventId: string): Promise<void> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { shouldAllowOralAttendance: true },
+    });
+    if (!event?.shouldAllowOralAttendance) {
+      throw new BadRequestException('A chamada oral não está habilitada para este evento.');
+    }
+  }
+
   private getUser(context: GraphqlContext | undefined) {
     return context?.req?.user ?? context?.request?.user;
   }
@@ -917,5 +1048,26 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       },
       prisma,
     );
+  }
+
+  private async recordAttendanceSet(
+    attendance: Prisma.EventAttendanceGetPayload<{ select: typeof EVENT_ATTENDANCE_AUDIT_SELECT }>,
+    before: Prisma.EventAttendanceGetPayload<{ select: typeof EVENT_ATTENDANCE_AUDIT_SELECT }> | null,
+    context: GraphqlContext,
+    prisma: Prisma.TransactionClient,
+  ): Promise<void> {
+    await recordSharedAttendanceSet({
+      auditLog: this.auditLog,
+      currentUserContext: this.currentUserContext,
+      context,
+      attendance,
+      before,
+      prisma,
+      createOperation: AuditLogOperation.CREATE,
+      summary:
+        attendance.status === 'ABSENT'
+          ? 'Ausência explícita registrada pela chamada oral administrativa.'
+          : 'Presença registrada pela chamada oral administrativa.',
+    });
   }
 }

@@ -13,8 +13,10 @@ import {
   MajorEventUserAttendance,
   OfflineEventAttendanceSubmission,
   SubscriptionStatus,
+  EventAttendanceStatus,
 } from '@cacic-fct/event-manager-admin-contracts';
 import {
+  EVENT_ATTENDANCE_SCANNER_FEED_FIELDS,
   EVENT_ATTENDANCE_WRITE_FIELDS,
   MAJOR_EVENT_USER_ATTENDANCE_FIELDS,
   OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS,
@@ -124,11 +126,19 @@ export class AttendanceApiService {
       .pipe(map((data) => data.importMajorEventSubscriptionsFromCsv));
   }
 
-  listEventAttendances(eventId?: string, filters?: { skip?: number; take?: number }) {
+  listEventAttendances(
+    eventId?: string,
+    filters?: { skip?: number; take?: number; status?: EventAttendanceStatus },
+  ) {
     return this.graphqlHttp
       .request<{ eventAttendances: EventAttendance[] }>(
-        `query ListEventAttendances($eventId: String, $skip: Int, $take: Int) {
-          eventAttendances(eventId: $eventId, skip: $skip, take: $take) {
+        `query ListEventAttendances(
+          $eventId: String
+          $status: EventAttendanceStatus
+          $skip: Int
+          $take: Int
+        ) {
+          eventAttendances(eventId: $eventId, status: $status, skip: $skip, take: $take) {
             eventId
             personId
             attendedAt
@@ -136,6 +146,7 @@ export class AttendanceApiService {
             createdById
             committedById
             category
+            status
             createdByMethod
             collectedByFullName
             committedByFullName
@@ -152,18 +163,18 @@ export class AttendanceApiService {
             }
           }
         }`,
-        { eventId, skip: filters?.skip, take: filters?.take },
+        { eventId, status: filters?.status, skip: filters?.skip, take: filters?.take },
       )
       .pipe(map((data) => data.eventAttendances));
   }
 
-  getEventAttendanceCount(eventId: string) {
+  getEventAttendanceCount(eventId: string, status?: EventAttendanceStatus) {
     return this.graphqlHttp
       .request<{ eventAttendanceCount: number }>(
-        `query EventAttendanceCount($eventId: String!) {
-          eventAttendanceCount(eventId: $eventId)
+        `query EventAttendanceCount($eventId: String!, $status: EventAttendanceStatus) {
+          eventAttendanceCount(eventId: $eventId, status: $status)
         }`,
-        { eventId },
+        { eventId, status },
       )
       .pipe(map((data) => data.eventAttendanceCount));
   }
@@ -277,20 +288,46 @@ export class AttendanceApiService {
       .request<{ eventAttendanceScannerFeed: EventAttendanceScannerFeedItem[] }>(
         `query EventAttendanceScannerFeed($eventId: String!) {
           eventAttendanceScannerFeed(eventId: $eventId) {
-            personId
-            eventId
-            fullName
-            unespRole
-            subscriptionStatus
-            attendedAt
-            createdByMethod
-            collectedByFirstName
-            committedByFirstName
+            ${EVENT_ATTENDANCE_SCANNER_FEED_FIELDS}
           }
         }`,
         { eventId },
       )
       .pipe(map((data) => data.eventAttendanceScannerFeed));
+  }
+
+  listEventAttendanceOralRoster(eventId: string) {
+    return this.graphqlHttp
+      .request<{ eventAttendanceOralRoster: EventAttendanceScannerFeedItem[] }>(
+        `query EventAttendanceOralRoster($eventId: String!) {
+          eventAttendanceOralRoster(eventId: $eventId) {
+            ${EVENT_ATTENDANCE_SCANNER_FEED_FIELDS}
+          }
+        }`,
+        { eventId },
+      )
+      .pipe(map((data) => data.eventAttendanceOralRoster));
+  }
+
+  setEventOralAttendances(
+    inputs: readonly {
+      eventId: string;
+      personId: string;
+      status: EventAttendanceStatus;
+      collectedAt: string;
+      collectedByUserId: string;
+    }[],
+  ) {
+    return this.graphqlHttp
+      .request<{ setEventOralAttendances: EventAttendance[] }>(
+        `mutation SetEventOralAttendances($inputs: [EventOralAttendanceInput!]!) {
+          setEventOralAttendances(inputs: $inputs) {
+            ${EVENT_ATTENDANCE_WRITE_FIELDS}
+          }
+        }`,
+        { inputs },
+      )
+      .pipe(map((data) => data.setEventOralAttendances));
   }
 
   watchEventAttendanceScannerFeed(eventId: string): Observable<EventAttendanceScannerFeedItem[]> {

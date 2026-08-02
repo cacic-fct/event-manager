@@ -44,6 +44,7 @@ const eventFixture: Event = {
   shouldIssueCertificateForNonPayingAttendees: false,
   shouldIssueCertificateForNonSubscribedAttendees: false,
   shouldCollectAttendance: true,
+  shouldAllowOralAttendance: false,
   isOnlineAttendanceAllowed: false,
   shouldProvideSubscriberListToLecturer: false,
   onlineAttendanceCode: null,

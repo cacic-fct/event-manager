@@ -77,6 +77,7 @@ describe('CurrentUserSubscriptionFeedService', () => {
       expect.objectContaining({
         where: {
           personId: 'person-1',
+          status: 'PRESENT',
           event: {
             AND: [PUBLIC_EVENT_WHERE],
           },

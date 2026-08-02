@@ -1,6 +1,7 @@
 import {
   EventAttendance,
   EventAttendanceScannerFeedItem,
+  EventAttendanceStatus,
   MajorEventUserAttendance,
   OfflineEventAttendanceSubmission,
   OfflineEventAttendanceSubmissionStatus,
@@ -13,6 +14,10 @@ import { RequirePermissions } from '../../auth/decorators/require-permissions.de
 import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
+import {
+  getAttendanceOralRoster,
+  getAttendanceScannerFeed,
+} from '../../current-user/events/attendance-collection-feed';
 import { EventAttendancesResolverBase, EVENT_RELATION_SELECT } from './event-attendances.shared';
 import {
   mapOfflineSubmissionForResponse,
@@ -36,6 +41,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
+    @Args('status', { type: () => EventAttendanceStatus, nullable: true }) status?: EventAttendanceStatus,
   ) {
     const pagination = resolvePagination(skip, take);
     const where: Prisma.EventAttendanceWhereInput = {};
@@ -46,6 +52,9 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
 
     if (eventId) {
       where.eventId = eventId;
+    }
+    if (status) {
+      where.status = status;
     }
 
     const attendances = await this.prisma.eventAttendance.findMany({
@@ -58,6 +67,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         createdById: true,
         committedById: true,
         createdByMethod: true,
+        status: true,
         collectedLatitude: true,
         collectedLongitude: true,
         collectedAccuracyMeters: true,
@@ -110,16 +120,28 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
 
   @Query(() => Int, { name: 'eventAttendanceCount' })
   @RequirePermissions(Permission.EventAttendance.Read)
-  eventAttendanceCount(@Args('eventId', { type: () => String, nullable: true }) eventId?: string): Promise<number> {
+  eventAttendanceCount(
+    @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
+    @Args('status', { type: () => EventAttendanceStatus, nullable: true }) status?: EventAttendanceStatus,
+  ): Promise<number> {
     return this.prisma.eventAttendance.count({
-      where: eventId ? { eventId } : {},
+      where: {
+        ...(eventId ? { eventId } : {}),
+        ...(status ? { status } : {}),
+      },
     });
   }
 
   @Query(() => [EventAttendanceScannerFeedItem], { name: 'eventAttendanceScannerFeed' })
   @RequirePermissions(Permission.EventAttendance.Read)
   eventAttendanceScannerFeed(@Args('eventId', { type: () => String }) eventId: string) {
-    return this.getScannerFeed(eventId);
+    return getAttendanceScannerFeed(this.prisma, eventId);
+  }
+
+  @Query(() => [EventAttendanceScannerFeedItem], { name: 'eventAttendanceOralRoster' })
+  @RequirePermissions(Permission.EventAttendance.Read)
+  eventAttendanceOralRoster(@Args('eventId', { type: () => String }) eventId: string) {
+    return getAttendanceOralRoster(this.prisma, eventId);
   }
 
   @Query(() => [OfflineEventAttendanceSubmission], { name: 'offlineEventAttendanceSubmissions' })
@@ -219,6 +241,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
 
     const attendances = await this.prisma.eventAttendance.findMany({
       where: {
+        status: 'PRESENT',
         eventId: {
           in: eventIds,
         },
@@ -300,6 +323,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         createdById: true,
         committedById: true,
         createdByMethod: true,
+        status: true,
         category: true,
         person: true,
         event: {

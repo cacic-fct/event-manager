@@ -67,6 +67,7 @@ model Event {
   certificateConfigs                              CertificateConfig[]
 
   shouldCollectAttendance   Boolean   @default(false)
+  shouldAllowOralAttendance Boolean   @default(false)
   isOnlineAttendanceAllowed Boolean   @default(false)
   onlineAttendanceCode      String?
   onlineAttendanceStartDate DateTime?

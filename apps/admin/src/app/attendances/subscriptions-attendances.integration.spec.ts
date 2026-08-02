@@ -12,6 +12,7 @@ import { SubscriptionApiService } from '../graphql/subscription-api.service';
 import {
   createAdminMajorEvent,
   createAdminMajorEventUserAttendance,
+  createAdminEventAttendance,
   createAdminOfflineEventAttendanceSubmission,
   createAdminPerson,
   createAdminWorkspaceMajorEventSubscription,
@@ -35,6 +36,7 @@ describe('workspace subscription and attendance management integration', () => {
   let attendanceApi: {
     listEventAttendances: ReturnType<typeof vi.fn>;
     getEventAttendanceCount: ReturnType<typeof vi.fn>;
+    listEventAttendanceScannerFeed: ReturnType<typeof vi.fn>;
     listOfflineEventAttendanceSubmissions: ReturnType<typeof vi.fn>;
     createEventAttendance: ReturnType<typeof vi.fn>;
     deleteEventAttendance: ReturnType<typeof vi.fn>;
@@ -74,6 +76,7 @@ describe('workspace subscription and attendance management integration', () => {
     attendanceApi = {
       listEventAttendances: vi.fn(() => of([])),
       getEventAttendanceCount: vi.fn(() => of(0)),
+      listEventAttendanceScannerFeed: vi.fn(() => of([])),
       listOfflineEventAttendanceSubmissions: vi.fn(() => of([])),
       createEventAttendance: vi.fn(() => of(null)),
       deleteEventAttendance: vi.fn(() => of({ deleted: true })),
@@ -218,6 +221,31 @@ describe('workspace subscription and attendance management integration', () => {
     expect(attendancesService.majorEventAttendanceEditMode()).toBe(false);
   });
 
+  it('reloads explicit absences after the scanner changes ABSENT to PRESENT', async () => {
+    const person = createAdminPerson({ id: 'person-1' });
+    let attendance = createAdminEventAttendance({ status: 'ABSENT' }, person);
+    const absentQueries = (): number =>
+      attendanceApi.listEventAttendances.mock.calls.filter(([, filters]) => filters?.status === 'ABSENT').length;
+    attendanceApi.listEventAttendances.mockImplementation((_eventId: string, filters: { status?: string }) =>
+      of(filters.status === attendance.status ? [attendance] : []),
+    );
+    dialog.open.mockImplementation(() => {
+      attendance = createAdminEventAttendance({ status: 'PRESENT' }, person);
+      return { afterClosed: () => of(null) };
+    });
+
+    attendancesService.attendanceForm.controls.eventId.setValue('event-1');
+    await attendancesService.loadAttendances('event-1');
+    expect(attendancesService.explicitAbsences()).toHaveLength(1);
+
+    await attendancesService.scanAttendance();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(absentQueries()).toBe(2);
+    expect(attendancesService.explicitAbsences()).toHaveLength(0);
+    expect(attendancesService.attendances()).toHaveLength(1);
+  });
+
   it('opens correction flow and updates an offline attendance submission', async () => {
     const submission = createAdminOfflineEventAttendanceSubmission({
       eventId: 'event-1',
@@ -251,8 +279,12 @@ describe('workspace subscription and attendance management integration', () => {
     expect(attendanceApi.updateOfflineEventAttendanceSubmission).toHaveBeenCalledWith('offline-attendance-1', {
       personId: 'person-1',
     });
-    expect(attendanceApi.listEventAttendances).toHaveBeenCalledWith('event-1', { skip: 0, take: 51 });
-    expect(attendanceApi.getEventAttendanceCount).toHaveBeenCalledWith('event-1');
+    expect(attendanceApi.listEventAttendances).toHaveBeenCalledWith('event-1', {
+      skip: 0,
+      take: 51,
+      status: 'PRESENT',
+    });
+    expect(attendanceApi.getEventAttendanceCount).toHaveBeenCalledWith('event-1', 'PRESENT');
     expect(attendanceApi.listOfflineEventAttendanceSubmissions).toHaveBeenCalledWith('event-1');
     expect(snackbar.open).toHaveBeenCalledWith('Presença off-line corrigida.', 'Fechar', { duration: 3000 });
   });
@@ -360,7 +392,11 @@ describe('workspace subscription and attendance management integration', () => {
       selectedHeader: 'identifier',
       resolutions: [{ value: '11999999975', personId: 'phone-person' }],
     });
-    expect(attendanceApi.listEventAttendances).toHaveBeenCalledWith('event-1', { skip: 0, take: 51 });
-    expect(attendanceApi.getEventAttendanceCount).toHaveBeenCalledWith('event-1');
+    expect(attendanceApi.listEventAttendances).toHaveBeenCalledWith('event-1', {
+      skip: 0,
+      take: 51,
+      status: 'PRESENT',
+    });
+    expect(attendanceApi.getEventAttendanceCount).toHaveBeenCalledWith('event-1', 'PRESENT');
   });
 });

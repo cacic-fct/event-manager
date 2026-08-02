@@ -2,7 +2,11 @@ import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { AttendanceOfflineQueueService, OfflineAttendanceQueueItem } from '@cacic-fct/offline-public-data-access';
+import {
+  AttendanceOfflineQueueService,
+  OfflineAttendanceQueueItem,
+  OralAttendanceOfflineService,
+} from '@cacic-fct/offline-public-data-access';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { firstValueFrom } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
@@ -30,11 +34,13 @@ export class AttendanceOfflineSyncService {
   private readonly network = inject(NetworkStatusService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly queue = inject(AttendanceOfflineQueueService);
+  private readonly oralQueue = inject(OralAttendanceOfflineService);
   private readonly snackbar = inject(MatSnackBar);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   private initializedUserId: string | null = null;
   private initializationRunning = false;
+  private oralSyncRunning = false;
   private syncRunning = false;
   private reminderTimer: ReturnType<typeof setInterval> | null = null;
   private lastReminderAt = 0;
@@ -60,12 +66,20 @@ export class AttendanceOfflineSyncService {
   }
 
   async syncPending(): Promise<void> {
-    if (!this.isBrowser || this.syncRunning || !this.network.isOnline()) {
+    if (!this.isBrowser || !this.network.isOnline()) {
       return;
     }
 
     const userId = this.auth.user()?.sub;
     if (!userId) {
+      return;
+    }
+
+    await Promise.all([this.syncAttendanceQueue(userId), this.syncOralQueue(userId)]);
+  }
+
+  private async syncAttendanceQueue(userId: string): Promise<void> {
+    if (this.syncRunning) {
       return;
     }
 
@@ -79,6 +93,82 @@ export class AttendanceOfflineSyncService {
       await this.syncWithRetries(userId, items);
     } finally {
       this.syncRunning = false;
+    }
+  }
+
+  private async syncOralQueue(userId: string): Promise<void> {
+    if (this.oralSyncRunning) {
+      return;
+    }
+
+    const items = await this.oralQueue.listPending(userId);
+    if (this.oralSyncRunning) {
+      return;
+    }
+    if (items.length === 0) {
+      return;
+    }
+
+    this.oralSyncRunning = true;
+    let failedCount = 0;
+    try {
+      const itemsByEvent = new Map<string, typeof items>();
+      for (const item of items) {
+        const eventItems = itemsByEvent.get(item.eventId) ?? [];
+        eventItems.push(item);
+        itemsByEvent.set(item.eventId, eventItems);
+      }
+
+      for (const eventItems of itemsByEvent.values()) {
+        for (let offset = 0; offset < eventItems.length; offset += 1000) {
+          const batch = eventItems.slice(offset, offset + 1000);
+          let lastError: unknown;
+          let synced = false;
+          for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS; attempt++) {
+            try {
+              await firstValueFrom(
+                this.api.registerOralBatch(
+                  batch.map((item) => ({
+                    eventId: item.eventId,
+                    personId: item.personId,
+                    status: item.status,
+                    collectedAt: item.collectedAt,
+                    collectedByUserId: item.queuedByUserId,
+                    location: item.location,
+                  })),
+                ),
+              );
+              await this.oralQueue.markSynced(batch.map((item) => item.clientId));
+              synced = true;
+              break;
+            } catch (error: unknown) {
+              lastError = error;
+              if (attempt < MAX_SYNC_ATTEMPTS) {
+                await this.waitBeforeRetry(attempt);
+              }
+            }
+          }
+
+          if (!synced) {
+            failedCount += batch.length;
+            const message = lastError instanceof Error ? lastError.message : 'Falha de sincronização.';
+            await this.oralQueue.recordFailure(
+              batch.map((item) => item.clientId),
+              message,
+            );
+          }
+        }
+      }
+    } finally {
+      this.oralSyncRunning = false;
+    }
+
+    if (failedCount > 0) {
+      this.snackbar.open(
+        `${failedCount} decisão(ões) da chamada oral continuam salvas e serão tentadas novamente.`,
+        'Fechar',
+        { duration: 6000 },
+      );
     }
   }
 

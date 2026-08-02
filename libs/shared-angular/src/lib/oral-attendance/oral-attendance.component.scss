@@ -1,0 +1,260 @@
+:host {
+  --oral-absent-color: light-dark(#a6253f, #ff9bae);
+  --oral-present-color: light-dark(#146b45, #71e6aa);
+
+  display: block;
+}
+
+.oral-call {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding-bottom: 2rem;
+}
+
+.oral-toolbar {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  background: var(--mat-sys-surface);
+}
+
+.title {
+  font-weight: 650;
+}
+
+.sync-label {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.78rem;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.progress-copy {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 1rem 0.5rem;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.85rem;
+}
+
+.card-stage {
+  display: grid;
+  min-height: min(68vh, 42rem);
+  place-items: center;
+  align-content: center;
+  gap: 1.5rem;
+  padding: 1.5rem;
+}
+
+.person-card {
+  position: relative;
+  display: grid;
+  width: min(100%, 30rem);
+  min-height: 25rem;
+  box-sizing: border-box;
+  place-items: center;
+  align-content: center;
+  gap: 0.7rem;
+  overflow: hidden;
+  padding: 2rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 1.5rem;
+  background: var(--mat-sys-surface-container-low);
+  box-shadow: var(--mat-sys-level2);
+  text-align: center;
+  touch-action: pan-y;
+}
+
+.person-card h2,
+.person-card p {
+  margin: 0;
+}
+
+.person-card .role {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.avatar {
+  display: grid;
+  width: 5rem;
+  height: 5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.decision-stamp {
+  position: absolute;
+  top: 2rem;
+  padding: 0.35rem 0.6rem;
+  border: 0.2rem solid currentcolor;
+  border-radius: 0.4rem;
+  opacity: 0;
+  font-weight: 800;
+  transform: rotate(-8deg) scale(0.85);
+  transition: 120ms ease;
+}
+
+.decision-stamp.visible {
+  opacity: 1;
+  transform: rotate(-8deg) scale(1);
+}
+
+.decision-stamp.absent {
+  left: 2rem;
+  color: var(--oral-absent-color);
+}
+
+.decision-stamp.present {
+  right: 2rem;
+  color: var(--oral-present-color);
+  transform: rotate(8deg) scale(0.85);
+}
+
+.decision-stamp.present.visible {
+  transform: rotate(8deg) scale(1);
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.history-actions {
+  display: flex;
+  min-width: 7.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+}
+
+.absent-action {
+  color: var(--oral-absent-color);
+}
+
+.present-action {
+  color: var(--oral-present-color);
+}
+
+.card-actions .active {
+  transform: scale(1.16);
+}
+
+.card-actions .hidden {
+  opacity: 0;
+}
+
+.person-list {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.list-finish {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 1rem 3rem;
+}
+
+.person-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.75rem;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.person-row div {
+  display: grid;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.person-row span {
+  overflow: hidden;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected {
+  background: color-mix(in srgb, currentcolor 18%, transparent);
+}
+
+.checkpoint,
+.manual-entry {
+  display: grid;
+  max-width: 34rem;
+  min-height: 55vh;
+  margin: 0 auto;
+  place-items: center;
+  align-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.checkpoint mat-icon {
+  width: 3rem;
+  height: 3rem;
+  font-size: 3rem;
+}
+
+.checkpoint h2,
+.checkpoint p,
+.manual-entry h2,
+.manual-entry p {
+  margin: 0;
+}
+
+.checkpoint p {
+  font-size: clamp(1.5rem, 5vw, 2.4rem);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.manual-entry form {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.manual-entry mat-form-field {
+  flex: 1 1 18rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decision-stamp,
+  .card-actions button {
+    transition: none;
+  }
+}
+
+@media (max-width: 38rem) {
+  .oral-toolbar {
+    padding-inline: 0.5rem;
+  }
+
+  .sync-label {
+    display: none;
+  }
+
+  .person-card {
+    min-height: 22rem;
+  }
+}

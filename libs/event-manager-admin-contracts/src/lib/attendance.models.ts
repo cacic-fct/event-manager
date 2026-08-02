@@ -5,11 +5,13 @@ export type AttendanceCreationMethod =
   | 'CSV_IMPORT'
   | 'EVENT_DUPLICATION'
   | 'MANUAL_INPUT'
+  | 'ORAL_CALL'
   | 'SCANNER'
   | 'ONLINE_CODE'
   | 'UNKNOWN';
 export type AttendanceImportMatchType = 'IDENTITY_DOCUMENT' | 'EMAIL' | 'FULL_NAME';
 export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
+export type EventAttendanceStatus = 'PRESENT' | 'ABSENT';
 export type SubscriptionStatus =
   | 'WAITING_RECEIPT_UPLOAD'
   | 'RECEIPT_UNDER_REVIEW'
@@ -27,6 +29,7 @@ export interface EventAttendance {
   person?: Person | null;
   event?: Event | null;
   category: AttendanceCategory;
+  status: EventAttendanceStatus;
   attendedAt: string;
   createdAt: string;
   createdById?: string | null;
@@ -99,9 +102,11 @@ export interface EventAttendanceScannerFeedItem {
   personId: string;
   eventId: string;
   fullName?: string | null;
+  identityDocument?: string | null;
   unespRole?: string | null;
   subscriptionStatus?: SubscriptionStatus | null;
   attendedAt?: string | null;
+  status?: EventAttendanceStatus | null;
   createdByMethod?: AttendanceCreationMethod | null;
   collectedByFirstName?: string | null;
 }

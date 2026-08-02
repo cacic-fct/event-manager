@@ -60,6 +60,7 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
           attendances: {
             none: {
               personId: 'person-1',
+              status: 'PRESENT',
             },
           },
           OR: [

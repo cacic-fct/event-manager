@@ -561,6 +561,7 @@ export class CurrentUserMajorEventSubscriptionService {
       this.prisma.eventAttendance.findMany({
         where: {
           personId,
+          status: 'PRESENT',
           event: {
             deletedAt: null,
             majorEvent: {

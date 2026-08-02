@@ -116,6 +116,7 @@ export const AttendanceCreationMethod = {
   CSV_IMPORT: 'CSV_IMPORT',
   EVENT_DUPLICATION: 'EVENT_DUPLICATION',
   MANUAL_INPUT: 'MANUAL_INPUT',
+  ORAL_CALL: 'ORAL_CALL',
   SCANNER: 'SCANNER',
   ONLINE_CODE: 'ONLINE_CODE',
   UNKNOWN: 'UNKNOWN',
@@ -123,6 +124,15 @@ export const AttendanceCreationMethod = {
 export type AttendanceCreationMethod = (typeof AttendanceCreationMethod)[keyof typeof AttendanceCreationMethod];
 registerEnumType(AttendanceCreationMethod, {
   name: 'AttendanceCreationMethod',
+});
+
+export const EventAttendanceStatus = {
+  PRESENT: 'PRESENT',
+  ABSENT: 'ABSENT',
+} as const;
+export type EventAttendanceStatus = (typeof EventAttendanceStatus)[keyof typeof EventAttendanceStatus];
+registerEnumType(EventAttendanceStatus, {
+  name: 'EventAttendanceStatus',
 });
 
 export const OfflineAttendanceCreationMethod = {

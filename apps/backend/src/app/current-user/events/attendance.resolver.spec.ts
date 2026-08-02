@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { CurrentUserEventAttendanceResolver } from './attendance.resolver';
 
@@ -40,6 +41,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
     expect(prisma.eventAttendance.findMany).toHaveBeenCalledWith({
       where: {
         personId: 'person-1',
+        status: 'PRESENT',
         event: {
           deletedAt: null,
         },
@@ -83,6 +85,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
       where: {
         personId: 'person-1',
         eventId: 'event-1',
+        status: 'PRESENT',
         event: {
           deletedAt: null,
         },
@@ -252,14 +255,24 @@ describe('CurrentUserEventAttendanceResolver', () => {
     expect(prisma.eventAttendance.findUnique).not.toHaveBeenCalled();
   });
 
-  it('rejects duplicate online attendance confirmation before creating attendance', async () => {
+  it('rejects an online attendance confirmation when no record can transition and creation conflicts', async () => {
+    const tx = {
+      eventAttendance: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: jest.fn().mockRejectedValue(
+          new Prisma.PrismaClientKnownRequestError('Duplicate attendance', {
+            code: 'P2002',
+            clientVersion: 'test',
+          }),
+        ),
+        findUniqueOrThrow: jest.fn(),
+      },
+    };
     const prisma = {
       event: {
         findFirst: jest.fn().mockResolvedValue(createOnlineAttendanceEvent()),
       },
-      eventAttendance: {
-        findUnique: jest.fn().mockResolvedValue({ personId: 'person-1' }),
-      },
+      $transaction: jest.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
     const { resolver } = createResolverWithDependencies(prisma);
 
@@ -267,17 +280,23 @@ describe('CurrentUserEventAttendanceResolver', () => {
       resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: '123456' }, {} as never),
     ).rejects.toBeInstanceOf(ConflictException);
 
-    expect(prisma.eventAttendance.findUnique).toHaveBeenCalledWith({
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalledWith({
       where: {
-        personId_eventId: {
-          personId: 'person-1',
-          eventId: 'event-1',
+        personId: 'person-1',
+        eventId: 'event-1',
+        status: {
+          not: 'PRESENT',
         },
       },
-      select: {
-        personId: true,
+      data: {
+        status: 'PRESENT',
+        attendedAt: expect.any(Date),
+        createdByMethod: 'ONLINE_CODE',
+        createdById: 'user-1',
+        committedById: 'user-1',
       },
     });
+    expect(tx.eventAttendance.create).toHaveBeenCalledTimes(1);
   });
 
   it('creates online attendance inside a transaction and notifies realtime listeners', async () => {
@@ -285,6 +304,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
     const mappedAttendance = { eventId: 'event-1', attendedAt: new Date('2026-01-01T00:00:00.000Z') };
     const tx = {
       eventAttendance: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         create: jest.fn().mockResolvedValue(undefined),
         findUniqueOrThrow: jest.fn().mockResolvedValue(createdAttendance),
       },
@@ -308,9 +328,6 @@ describe('CurrentUserEventAttendanceResolver', () => {
       majorEventSubscription: {
         findFirst: jest.fn().mockResolvedValue({ id: 'major-subscription-1' }),
       },
-      eventAttendance: {
-        findUnique: jest.fn().mockResolvedValue(null),
-      },
       $transaction: jest.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
     const { resolver, attendanceCategories, attendanceRealtime, mapper } = createResolverWithDependencies(prisma, {
@@ -323,6 +340,22 @@ describe('CurrentUserEventAttendanceResolver', () => {
       resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: ' 123456 ' }, {} as never),
     ).resolves.toBe(mappedAttendance);
 
+    expect(tx.eventAttendance.updateMany).toHaveBeenCalledWith({
+      where: {
+        personId: 'person-1',
+        eventId: 'event-1',
+        status: {
+          not: 'PRESENT',
+        },
+      },
+      data: {
+        status: 'PRESENT',
+        attendedAt: expect.any(Date),
+        createdByMethod: 'ONLINE_CODE',
+        createdById: 'user-1',
+        committedById: 'user-1',
+      },
+    });
     expect(tx.eventAttendance.create).toHaveBeenCalledWith({
       data: {
         personId: 'person-1',
@@ -344,6 +377,41 @@ describe('CurrentUserEventAttendanceResolver', () => {
     });
     expect(attendanceRealtime.notifyPerson).toHaveBeenCalledWith('person-1');
     expect(mapper.mapCurrentUserEventAttendance).toHaveBeenCalledWith(createdAttendance);
+  });
+
+  it('allows only one of two competing online confirmations to create the attendance', async () => {
+    const attendance = { personId: 'person-1', eventId: 'event-1' };
+    const tx = {
+      eventAttendance: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: jest
+          .fn()
+          .mockResolvedValueOnce(undefined)
+          .mockRejectedValueOnce(
+            new Prisma.PrismaClientKnownRequestError('Duplicate attendance', {
+              code: 'P2002',
+              clientVersion: 'test',
+            }),
+          ),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(attendance),
+      },
+    };
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue(createOnlineAttendanceEvent()),
+      },
+      $transaction: jest.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
+    };
+    const { resolver } = createResolverWithDependencies(prisma);
+
+    const results = await Promise.allSettled([
+      resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: '123456' }, {} as never),
+      resolver.confirmCurrentUserOnlineAttendance({ eventId: 'event-1', code: '123456' }, {} as never),
+    ]);
+
+    expect(results[0]).toEqual({ status: 'fulfilled', value: attendance });
+    expect(results[1]).toEqual({ status: 'rejected', reason: expect.any(ConflictException) });
+    expect(tx.eventAttendance.create).toHaveBeenCalledTimes(2);
   });
 
   it('returns pending online attendance events for the current person', async () => {

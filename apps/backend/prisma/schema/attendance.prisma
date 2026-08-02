@@ -6,6 +6,7 @@ model EventAttendance {
   event  Event  @relation(fields: [eventId], references: [id])
 
   category AttendanceCategory @default(UNKNOWN)
+  status   EventAttendanceStatus @default(PRESENT)
 
   attendedAt DateTime @default(now())
 
@@ -20,6 +21,7 @@ model EventAttendance {
 
   @@id([personId, eventId])
   @@index([eventId])
+  @@index([eventId, status])
   @@index([personId])
   @@index([committedById])
   @@map("event_attendances")
@@ -92,9 +94,15 @@ enum AttendanceCreationMethod {
   CSV_IMPORT
   EVENT_DUPLICATION
   MANUAL_INPUT
+  ORAL_CALL
   SCANNER
   ONLINE_CODE
   UNKNOWN
+}
+
+enum EventAttendanceStatus {
+  PRESENT
+  ABSENT
 }
 
 enum AttendanceCategory {

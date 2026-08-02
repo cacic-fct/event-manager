@@ -209,6 +209,7 @@ export class CurrentUserSubscriptionFeedService {
       this.prisma.eventAttendance.findMany({
         where: {
           personId,
+          status: 'PRESENT',
           event: {
             AND: [PUBLIC_EVENT_WHERE],
           },

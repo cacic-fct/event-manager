@@ -77,7 +77,11 @@ export class ScannerEventList implements OnInit {
       return;
     }
 
-    await this.router.navigate(['/attendance/collect', item.eventId]);
+    await this.router.navigate(
+      item.event.shouldAllowOralAttendance
+        ? ['/attendance/collect', item.eventId, 'method']
+        : ['/attendance/collect', item.eventId, 'scanner'],
+    );
   }
 
   protected async requestPreciseLocation(): Promise<void> {

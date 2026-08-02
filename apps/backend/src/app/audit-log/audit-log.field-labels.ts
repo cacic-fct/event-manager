@@ -40,6 +40,7 @@ const FIELD_LABELS: Record<string, string> = {
   onlineAttendanceCode: 'Código de presença online',
   onlineAttendanceEndDate: 'Fim da presença online',
   onlineAttendanceStartDate: 'Início da presença online',
+  shouldAllowOralAttendance: 'Permitir chamada oral',
   paymentDate: 'Data de pagamento',
   paymentTier: 'Faixa de pagamento',
   permission: 'Permissão',

@@ -6,8 +6,12 @@ import Dexie from 'dexie';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceOfflineQueueService } from './attendance-offline-queue.service';
 import type { OfflineAttendanceQueueItem, OfflineTotpSeedRecord } from './offline-public-data-schema';
-import { OfflinePublicDataDatabase } from './offline-public-data-schema';
+import {
+  normalizeOfflineAttendanceQueueOwnership,
+  OfflinePublicDataDatabase,
+} from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
+import { OralAttendanceOfflineService } from './oral-attendance-offline.service';
 import { CalendarOfflineDataService } from './calendar-offline-data.service';
 import { CalendarPreferencesStorageService } from './calendar-preferences-storage.service';
 import { TotpSeedCacheService } from './totp-seed-cache.service';
@@ -36,6 +40,7 @@ describe('offline public data access integration', () => {
         UserOfflineDataService,
         TotpSeedCacheService,
         OfflinePublicDataAccessService,
+        OralAttendanceOfflineService,
       ],
       rootEnvironmentInjector,
     );
@@ -85,6 +90,101 @@ describe('offline public data access integration', () => {
       { eventId: 'late-event', event: event('late-event', fixtureDate(31, 14)) },
     ]);
     await expect(service.getCollectionEvent('user-1', 'other-user-event')).resolves.toBeNull();
+  });
+
+  it('persists the oral-call roster and replaces queued decisions for the same person without losing collection time', async () => {
+    const service = injectService(OralAttendanceOfflineService);
+    const people = [
+      {
+        personId: 'person-1',
+        fullName: 'Ada Lovelace',
+        identityDocument: '•••.982.247-••',
+        unespRole: 'Graduação',
+      },
+    ];
+    await service.cacheRoster('user-1', 'event-1', people);
+    await service.enqueue({
+      queuedByUserId: 'user-1',
+      eventId: 'event-1',
+      personId: 'person-1',
+      status: 'ABSENT',
+      collectedAt: '2026-07-29T12:00:00.000Z',
+      location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 9 },
+    });
+    await service.enqueue({
+      queuedByUserId: 'user-1',
+      eventId: 'event-1',
+      personId: 'person-1',
+      status: 'PRESENT',
+      collectedAt: '2026-07-29T12:01:00.000Z',
+      location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 9 },
+    });
+
+    await expect(service.getRoster('user-1', 'event-1')).resolves.toEqual(people);
+    await expect(service.listPending('user-1', 'event-1')).resolves.toEqual([
+      expect.objectContaining({
+        personId: 'person-1',
+        status: 'PRESENT',
+        collectedAt: '2026-07-29T12:01:00.000Z',
+      }),
+    ]);
+  });
+
+  it('removes only oral decisions synchronized outside the retention window', async () => {
+    const service = injectService(OralAttendanceOfflineService);
+    const now = Date.now();
+    const decision = {
+      queuedByUserId: 'user-1',
+      eventId: 'event-1',
+      status: 'PRESENT' as const,
+      location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 9 },
+      collectedAt: '2026-07-29T12:00:00.000Z',
+      queuedAt: now,
+      attempts: 0,
+    };
+    await database.oralAttendanceDecisions.bulkPut([
+      {
+        ...decision,
+        clientId: 'expired',
+        personId: 'person-1',
+        syncedAt: now - 8 * 24 * 60 * 60 * 1000,
+      },
+      {
+        ...decision,
+        clientId: 'recent',
+        personId: 'person-2',
+        syncedAt: now - 6 * 24 * 60 * 60 * 1000,
+      },
+      {
+        ...decision,
+        clientId: 'pending',
+        personId: 'person-3',
+        syncedAt: null,
+      },
+    ]);
+
+    await service.markSynced(['pending']);
+
+    await expect(database.oralAttendanceDecisions.get('expired')).resolves.toBeUndefined();
+    await expect(database.oralAttendanceDecisions.get('recent')).resolves.toEqual(
+      expect.objectContaining({ syncedAt: expect.any(Number) }),
+    );
+    await expect(database.oralAttendanceDecisions.get('pending')).resolves.toEqual(
+      expect.objectContaining({ syncedAt: expect.any(Number) }),
+    );
+  });
+
+  it.each([
+    [{ authorUserId: null, queuedByUserId: 'queued-user' }, 'queued-user'],
+    [{ authorUserId: 'author-user', queuedByUserId: null }, 'author-user'],
+    [{ authorUserId: null, queuedByUserId: null }, ''],
+  ])('normalizes nullable legacy attendance queue ownership fields', (ownership, expectedUserId) => {
+    const item = queueItem('legacy-owner', 'PENDING', ownership as never);
+
+    normalizeOfflineAttendanceQueueOwnership(item);
+
+    expect(item.authorUserId).toBe(expectedUserId);
+    expect(item.queuedByUserId).toBe(expectedUserId);
   });
 
   it('stores the calendar default item view preference in IndexedDB', async () => {

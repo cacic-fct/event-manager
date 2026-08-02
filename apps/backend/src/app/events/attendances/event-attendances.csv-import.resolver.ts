@@ -90,9 +90,15 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
       },
       select: {
         personId: true,
+        status: true,
       },
     });
-    const existingPersonIds = new Set(existingAttendances.map((attendance) => attendance.personId));
+    const presentPersonIds = new Set(
+      existingAttendances.filter((attendance) => attendance.status === 'PRESENT').map((attendance) => attendance.personId),
+    );
+    const absentPersonIds = new Set(
+      existingAttendances.filter((attendance) => attendance.status === 'ABSENT').map((attendance) => attendance.personId),
+    );
 
     const failedValues: string[] = [];
     let duplicateCount = 0;
@@ -108,7 +114,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
         continue;
       }
 
-      if (existingPersonIds.has(person.id) || personIdsToCreate.has(person.id)) {
+      if (presentPersonIds.has(person.id) || personIdsToCreate.has(person.id)) {
         duplicateCount += 1;
         continue;
       }
@@ -122,7 +128,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
       createdPersonIds.length > 0
         ? await this.prisma.$transaction(async (tx) => {
             const result = await tx.eventAttendance.createMany({
-              data: createdPersonIds.map((personId) => ({
+              data: createdPersonIds.filter((personId) => !absentPersonIds.has(personId)).map((personId) => ({
                 personId,
                 eventId: input.eventId,
                 createdById,
@@ -131,8 +137,22 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
               })),
               skipDuplicates: true,
             });
+            await tx.eventAttendance.updateMany({
+              where: {
+                eventId: input.eventId,
+                personId: { in: createdPersonIds.filter((personId) => absentPersonIds.has(personId)) },
+                status: 'ABSENT',
+              },
+              data: {
+                status: 'PRESENT',
+                attendedAt: new Date(),
+                createdById,
+                committedById: createdById,
+                createdByMethod: AttendanceCreationMethod.CSV_IMPORT,
+              },
+            });
             await this.attendanceCategories.refreshForEventPersons([input.eventId], createdPersonIds, tx);
-            return result;
+            return { count: createdPersonIds.length || result.count };
           })
         : { count: 0 };
 

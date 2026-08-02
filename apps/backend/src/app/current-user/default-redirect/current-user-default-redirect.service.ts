@@ -86,6 +86,7 @@ export class CurrentUserDefaultRedirectService {
             attendances: {
               none: {
                 personId,
+                status: 'PRESENT',
               },
             },
           },

@@ -72,6 +72,7 @@ export const EVENT_RELATION_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   shouldCollectAttendance: true,
+  shouldAllowOralAttendance: true,
   isOnlineAttendanceAllowed: true,
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,

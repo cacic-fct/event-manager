@@ -16,7 +16,11 @@ test.beforeEach(async ({ page }) => {
 test('displays a public standalone event and lets the user subscribe and unsubscribe', async ({ page }) => {
   const api = await mockPublicCriticalFlowApi(page);
 
-  await page.goto('/app/event/standalone-event');
+  await page.goto('/app/');
+  await page.evaluate(() => {
+    window.history.pushState({}, '', '/app/event/standalone-event');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  });
 
   await expect(page.getByRole('heading', { name: 'Oficina pública de TypeScript' })).toBeVisible();
   await expect(page.getByText('Inscrições abertas.')).toBeVisible();
@@ -143,8 +147,9 @@ async function mockPublicCriticalFlowApi(page: Page): Promise<{
 
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
+    const apiPath = url.pathname.replace(/^\/app(?=\/api\/)/, '');
 
-    if (url.pathname === '/api/auth/me') {
+    if (apiPath === '/api/auth/me') {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -153,7 +158,7 @@ async function mockPublicCriticalFlowApi(page: Page): Promise<{
       return;
     }
 
-    if (url.pathname === '/api/current-user/events/realtime') {
+    if (apiPath === '/api/current-user/events/realtime') {
       await route.fulfill({
         status: 200,
         contentType: 'text/event-stream',
@@ -162,7 +167,7 @@ async function mockPublicCriticalFlowApi(page: Page): Promise<{
       return;
     }
 
-    if (url.pathname === '/api/graphql') {
+    if (apiPath === '/api/graphql') {
       await fulfillGraphql(route, {
         getStandaloneSubscribed: () => standaloneSubscribed,
         setStandaloneSubscribed: (nextValue) => {

@@ -1,0 +1,159 @@
+<section class="oral-call">
+  <mat-toolbar class="oral-toolbar">
+    <button mat-icon-button type="button" aria-label="Voltar" (click)="backRequested.emit()">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <span class="title">{{ title() }}</span>
+    @if (syncLabel(); as label) {
+      <span class="sync-label" aria-live="polite">{{ label }}</span>
+    }
+    <span class="toolbar-spacer"></span>
+    <mat-button-toggle-group
+      aria-label="Modo de exibição da chamada"
+      [value]="viewMode()"
+      (change)="setViewMode($event.value)">
+      <mat-button-toggle value="CARDS" aria-label="Exibir cartões"><mat-icon>style</mat-icon></mat-button-toggle>
+      <mat-button-toggle value="LIST" aria-label="Exibir lista"><mat-icon>view_list</mat-icon></mat-button-toggle>
+    </mat-button-toggle-group>
+  </mat-toolbar>
+
+  <div class="progress-copy">
+    <span>{{ decidedCount() }} de {{ people().length }} pessoas classificadas</span>
+    <strong>{{ progress() }}%</strong>
+  </div>
+  <mat-progress-bar mode="determinate" [value]="progress()" />
+
+  @if (shouldShowReminder()) {
+    <section class="checkpoint" aria-labelledby="oral-reminder-title">
+      <mat-icon>campaign</mat-icon>
+      <h2 id="oral-reminder-title">Pergunte:</h2>
+      <p>Alguém não foi chamado?</p>
+      <button mat-flat-button type="button" (click)="continueAfterReminder()">Continuar</button>
+    </section>
+  } @else if (shouldShowManual() && !manualStep()) {
+    <section class="checkpoint">
+      <mat-icon>done_all</mat-icon>
+      <h2>Todas as pessoas foram classificadas</h2>
+      <p>Continue para registrar alguém que não estava na lista.</p>
+      <button mat-flat-button type="button" (click)="continueToManual()">Continuar</button>
+    </section>
+  } @else if (shouldShowManual() && manualStep()) {
+    <section class="manual-entry">
+      <h2>Adicionar presença manual</h2>
+      <p>Use documento, e-mail ou telefone. CPF e telefone serão verificados separadamente.</p>
+      <form (ngSubmit)="submitManual()">
+        <mat-form-field>
+          <mat-label>Documento, e-mail ou telefone</mat-label>
+          <input matInput autocomplete="off" [formControl]="manualValue" />
+          @if (manualValue.touched && manualValue.invalid) {
+            <mat-error>Informe um identificador.</mat-error>
+          }
+        </mat-form-field>
+        <button mat-flat-button type="submit">Registrar presença</button>
+      </form>
+    </section>
+  } @else if (viewMode() === 'CARDS') {
+    @if (currentPerson(); as person) {
+      <section class="card-stage">
+        <article
+          class="person-card"
+          cdkDrag
+          [cdkDragDisabled]="!swipingEnabled()"
+          cdkDragLockAxis="x"
+          (cdkDragMoved)="onDragMoved($event)"
+          (cdkDragEnded)="onDragEnded($event, person)">
+          <span class="decision-stamp absent" [class.visible]="dragDirection() === 'LEFT'">FALTOU</span>
+          <span class="decision-stamp present" [class.visible]="dragDirection() === 'RIGHT'">PRESENTE</span>
+          <div class="avatar" aria-hidden="true">{{ person.fullName.slice(0, 1).toUpperCase() }}</div>
+          <h2>{{ person.fullName }}</h2>
+          <p>{{ person.identityDocument || 'Documento não informado' }}</p>
+          <p class="role">{{ person.unespRole || 'Vínculo não informado' }}</p>
+        </article>
+        <div class="card-actions">
+          <button
+            mat-fab
+            type="button"
+            class="absent-action"
+            aria-label="Marcar como faltou"
+            [class.active]="dragDirection() === 'LEFT'"
+            [class.hidden]="dragDirection() === 'RIGHT'"
+            [disabled]="dragDirection() === 'RIGHT'"
+            (click)="decide(person, 'ABSENT')">
+            <mat-icon>close</mat-icon>
+          </button>
+          <div class="history-actions" aria-label="Histórico da chamada">
+            <button
+              mat-icon-button
+              type="button"
+              aria-label="Voltar para a pessoa anterior"
+              [disabled]="undoPersonIds().length === 0"
+              (click)="undo()">
+              <mat-icon>undo</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              [attr.aria-pressed]="!swipingEnabled()"
+              [attr.aria-label]="swipingEnabled() ? 'Desativar gestos de deslizar' : 'Ativar gestos de deslizar'"
+              (click)="toggleSwiping()">
+              <mat-icon>{{ swipingEnabled() ? 'swipe' : 'do_not_touch' }}</mat-icon>
+            </button>
+            @if (redoPersonIds().length > 0) {
+              <button mat-icon-button type="button" aria-label="Avançar novamente" (click)="redo()">
+                <mat-icon>redo</mat-icon>
+              </button>
+            }
+          </div>
+          <button
+            mat-fab
+            type="button"
+            class="present-action"
+            aria-label="Marcar como presente"
+            [class.active]="dragDirection() === 'RIGHT'"
+            [class.hidden]="dragDirection() === 'LEFT'"
+            [disabled]="dragDirection() === 'LEFT'"
+            (click)="decide(person, 'PRESENT')">
+            <mat-icon>check</mat-icon>
+          </button>
+        </div>
+      </section>
+    }
+  } @else {
+    <div class="person-list" role="list" aria-label="Pessoas inscritas">
+      @for (person of visiblePeople(); track person.personId) {
+        <article class="person-row" role="listitem">
+          <button
+            mat-icon-button
+            type="button"
+            class="absent-action"
+            aria-label="Marcar {{ person.fullName }} como faltou"
+            [attr.aria-pressed]="decisions().get(person.personId) === 'ABSENT'"
+            [class.selected]="decisions().get(person.personId) === 'ABSENT'"
+            (click)="decide(person, 'ABSENT')">
+            <mat-icon>{{ decisions().get(person.personId) === 'ABSENT' ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+          </button>
+          <div>
+            <strong>{{ person.fullName }}</strong>
+            <span>{{ person.identityDocument || 'Documento não informado' }}</span>
+            <span>{{ person.unespRole || 'Vínculo não informado' }}</span>
+          </div>
+          <button
+            mat-icon-button
+            type="button"
+            class="present-action"
+            aria-label="Marcar {{ person.fullName }} como presente"
+            [attr.aria-pressed]="decisions().get(person.personId) === 'PRESENT'"
+            [class.selected]="decisions().get(person.personId) === 'PRESENT'"
+            (click)="decide(person, 'PRESENT')">
+            <mat-icon>{{ decisions().get(person.personId) === 'PRESENT' ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+          </button>
+        </article>
+      }
+    </div>
+    @if (!reminderConfirmed()) {
+      <div class="list-finish">
+        <button mat-flat-button type="button" (click)="finishFirstPass()">Finalizar primeira chamada</button>
+      </div>
+    }
+  }
+</section>

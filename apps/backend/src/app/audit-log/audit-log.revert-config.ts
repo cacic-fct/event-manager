@@ -30,6 +30,7 @@ const EVENT_MUTABLE_FIELDS = [
   'shouldProvideSubscriberListToLecturer',
   'onlineAttendanceCode',
   'onlineAttendanceStartDate',
+  'shouldAllowOralAttendance',
   'onlineAttendanceEndDate',
   'publiclyVisible',
   'youtubeCode',

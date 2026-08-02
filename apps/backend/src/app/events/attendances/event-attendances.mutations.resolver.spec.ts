@@ -13,6 +13,146 @@ describe('EventAttendancesMutationsResolver', () => {
     resolver = new EventAttendancesMutationsResolver(prisma as never, attendanceCategories as never);
   });
 
+  it('upserts an admin oral-call batch when oral attendance is enabled', async () => {
+    const collectedAt = new Date('2026-07-29T12:30:00.000Z');
+    const tx = createTxMock();
+    tx.eventAttendance.findMany.mockResolvedValue([]);
+    tx.eventAttendance.upsert.mockImplementation(async ({ create }) => create);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    const { resolver: resolverWithDependencies, frozenResources, auditLog } = createResolverWithDependencies(
+      prisma,
+      attendanceCategories,
+    );
+
+    await expect(
+      resolverWithDependencies.setEventOralAttendances(
+        [
+          {
+            eventId: 'event-1',
+            personId: 'person-1',
+            status: 'PRESENT',
+            collectedAt,
+            collectedByUserId: 'original-collector',
+          },
+          {
+            eventId: 'event-1',
+            personId: 'person-2',
+            status: 'ABSENT',
+            collectedAt,
+            collectedByUserId: 'original-collector',
+          },
+        ],
+        { req: { user: { sub: 'collector-1' } } } as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({ personId: 'person-1', status: 'PRESENT' }),
+      expect.objectContaining({ personId: 'person-2', status: 'ABSENT' }),
+    ]);
+
+    expect(frozenResources.assertEventMutable).toHaveBeenCalledWith(
+      'event-1',
+      { sub: 'collector-1' },
+      'edit',
+    );
+    expect(tx.eventAttendance.upsert).toHaveBeenCalledTimes(2);
+    expect(tx.eventAttendance.upsert).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        create: expect.objectContaining({
+          personId: 'person-1',
+          status: 'PRESENT',
+          attendedAt: collectedAt,
+          createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+          createdById: 'collector-1',
+          committedById: 'collector-1',
+        }),
+      }),
+    );
+    expect(tx.eventAttendance.upsert).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        create: expect.objectContaining({
+          personId: 'person-2',
+          status: 'ABSENT',
+        }),
+      }),
+    );
+    expect(auditLog.record).toHaveBeenCalledTimes(2);
+    expect(auditLog.record).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        operation: 'CREATE',
+        summary: 'Presença registrada pela chamada oral administrativa.',
+        after: expect.objectContaining({ personId: 'person-1', status: 'PRESENT' }),
+      }),
+      tx,
+    );
+    expect(auditLog.record).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        operation: 'CREATE',
+        summary: 'Ausência explícita registrada pela chamada oral administrativa.',
+        after: expect.objectContaining({ personId: 'person-2', status: 'ABSENT' }),
+      }),
+      tx,
+    );
+  });
+
+  it('rejects admin oral-call batches when oral attendance is disabled', async () => {
+    prisma.event.findUnique.mockResolvedValue({ shouldAllowOralAttendance: false });
+
+    await expect(
+      resolver.setEventOralAttendances(
+        [
+          {
+            eventId: 'event-1',
+            personId: 'person-1',
+            status: 'PRESENT',
+            collectedAt: new Date('2026-07-29T12:30:00.000Z'),
+            collectedByUserId: 'collector-1',
+          },
+        ],
+        { req: { user: { sub: 'collector-1' } } } as never,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('processes large admin oral-call batches in independent transactions', async () => {
+    const tx = createTxMock();
+    tx.eventAttendance.findMany.mockResolvedValue([]);
+    tx.eventAttendance.upsert.mockImplementation(async ({ create }) => create);
+    prisma.$transaction.mockImplementation(async (callback) => callback(tx));
+    const { resolver: resolverWithDependencies } = createResolverWithDependencies(prisma, attendanceCategories);
+    const inputs = Array.from({ length: 101 }, (_, index) => ({
+      eventId: 'event-1',
+      personId: `person-${index}`,
+      status: 'PRESENT' as const,
+      collectedAt: new Date('2026-07-29T12:30:00.000Z'),
+      collectedByUserId: 'original-collector',
+    }));
+
+    await expect(
+      resolverWithDependencies.setEventOralAttendances(inputs, {
+        req: { user: { sub: 'collector-1' } },
+      } as never),
+    ).resolves.toHaveLength(101);
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(tx.eventAttendance.findMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({ personId: { in: inputs.slice(0, 100).map((input) => input.personId) } }),
+      }),
+    );
+    expect(tx.eventAttendance.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({ personId: { in: ['person-100'] } }),
+      }),
+    );
+  });
+
   it('creates, updates, and deletes attendances while refreshing categories', async () => {
     const tx = createTxMock();
     tx.eventAttendance.findUniqueOrThrow.mockResolvedValue({
@@ -1028,6 +1168,7 @@ function createFullPrisma() {
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),
       deleteMany: jest.fn(),
+      upsert: jest.fn(),
     },
     offlineEventAttendanceSubmission: {
       findUnique: jest.fn(),
@@ -1043,6 +1184,7 @@ function createFullPrisma() {
     event: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
+      findUnique: jest.fn().mockResolvedValue({ shouldAllowOralAttendance: true }),
     },
     majorEventSubscription: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -1097,10 +1239,12 @@ function createTxMock() {
   return {
     eventAttendance: {
       create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      upsert: jest.fn(),
     },
     offlineEventAttendanceSubmission: {
       updateMany: jest.fn(),

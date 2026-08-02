@@ -3,6 +3,7 @@ import { Field, Float, InputType, Int, ObjectType } from '@nestjs/graphql';
 import {
   AttendanceCategory,
   AttendanceCreationMethod,
+  EventAttendanceStatus,
   AttendanceImportMatchType,
   OfflineEventAttendanceCommitStatus,
   OfflineEventAttendanceResolutionIssue,
@@ -28,6 +29,9 @@ export class EventAttendance {
 
   @Field(() => AttendanceCategory)
   category!: AttendanceCategory;
+
+  @Field(() => EventAttendanceStatus)
+  status!: EventAttendanceStatus;
 
   @Field(() => Date)
   attendedAt!: Date;
@@ -72,6 +76,9 @@ export class EventAttendanceScannerFeedItem {
   fullName?: string;
 
   @Field(() => String, { nullable: true })
+  identityDocument?: string;
+
+  @Field(() => String, { nullable: true })
   unespRole?: string;
 
   @Field(() => SubscriptionStatus, { nullable: true })
@@ -79,6 +86,9 @@ export class EventAttendanceScannerFeedItem {
 
   @Field(() => Date, { nullable: true })
   attendedAt?: Date;
+
+  @Field(() => EventAttendanceStatus, { nullable: true })
+  status?: EventAttendanceStatus;
 
   @Field(() => AttendanceCreationMethod, { nullable: true })
   createdByMethod?: AttendanceCreationMethod;

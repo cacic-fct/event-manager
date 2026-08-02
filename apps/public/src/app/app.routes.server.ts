@@ -50,6 +50,18 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Client,
   },
   {
+    path: 'attendance/collect/:eventId/method',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'attendance/collect/:eventId/scanner',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'attendance/collect/:eventId/oral',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'auth/error',
     renderMode: RenderMode.Client,
   },
