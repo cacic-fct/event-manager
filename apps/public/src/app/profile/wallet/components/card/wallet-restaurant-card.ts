@@ -14,7 +14,7 @@ import { WalletCardUser } from './wallet-card.types';
         [barcodeType]="'code128'"
         [value]="restaurantNumber() || ''"
         label="Código de barras do Cartão do R.U." />
-      <p>Apresente este cartão na catraca do Restaurante Universitário.</p>
+      <p>Realize a leitura deste cartão na catraca do Restaurante Universitário.</p>
     </section>
   `,
   styles: `

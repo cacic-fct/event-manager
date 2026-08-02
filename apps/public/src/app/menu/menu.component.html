@@ -47,13 +47,15 @@
 
         <a mat-list-item routerLink="/profile/wallet">
           <mat-icon matListItemIcon>badge</mat-icon>
+          <span matListItemTitle>Carteira</span>
           <!-- https://github.com/cacic-fct/event-manager/discussions/247 -->
-          <span matListItemTitle>Crachá e QR Code</span>
+          <span matListItemLine>Crachá e QR Code</span>
         </a>
 
         <a mat-list-item routerLink="/profile/attendances">
           <mat-icon matListItemIcon>list</mat-icon>
           <span matListItemTitle>Participações</span>
+          <span matListItemLine>Presenças e certificados</span>
         </a>
 
         @if (hasSportsShortcut()) {

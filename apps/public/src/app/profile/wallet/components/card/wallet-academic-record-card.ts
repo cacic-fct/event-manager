@@ -8,7 +8,6 @@ import { WalletCardUser } from './wallet-card.types';
       <p class="card-overline">Aluno de graduação</p>
       <h1>{{ user()?.name || 'Desconhecido' }}</h1>
       <p class="card-value">{{ user()?.enrollmentNumber }}</p>
-      <p>Registro acadêmico</p>
     </section>
   `,
   styles: `
