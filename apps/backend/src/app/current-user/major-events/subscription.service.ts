@@ -704,7 +704,6 @@ export class CurrentUserMajorEventSubscriptionService {
                     holder: true,
                     document: true,
                     pixKey: true,
-                    pixCity: true,
                     majorEventId: true,
                   },
                 },
