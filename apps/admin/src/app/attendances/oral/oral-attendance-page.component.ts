@@ -27,6 +27,7 @@ import {
 import { firstValueFrom, fromEvent } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
+import { AttendancesService } from '../attendances.service';
 import { OralAttendanceSyncFailureDialogComponent } from './oral-attendance-sync-failure-dialog.component';
 
 interface PendingAdminDecision {
@@ -61,6 +62,7 @@ const SYNC_RETRY_MAX_DELAY_MS = 30_000;
 })
 export class AdminOralAttendancePageComponent implements OnInit {
   private readonly api = inject(AttendanceApiService);
+  private readonly attendancesService = inject(AttendancesService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
@@ -129,6 +131,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
 
   protected registerManual(value: string): void {
     void firstValueFrom(this.api.createEventAttendanceFromManualInput({ eventId: this.eventId, value }))
+      .then(() => this.attendancesService.invalidateExplicitAbsences(this.eventId))
       .then(() => this.snackbar.open('Presença manual registrada.', 'Fechar', { duration: 2500 }))
       .catch(() =>
         this.snackbar.open('Não foi possível registrar a presença manual.', 'Fechar', { duration: 5000 }),
@@ -240,6 +243,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
             },
           ]),
         );
+        this.attendancesService.invalidateExplicitAbsences(item.eventId);
         return 'synced';
       } catch (error: unknown) {
         if (!isRetryableSyncError(error)) {

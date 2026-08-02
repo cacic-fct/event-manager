@@ -12,6 +12,7 @@ import { SubscriptionApiService } from '../graphql/subscription-api.service';
 import {
   createAdminMajorEvent,
   createAdminMajorEventUserAttendance,
+  createAdminEventAttendance,
   createAdminOfflineEventAttendanceSubmission,
   createAdminPerson,
   createAdminWorkspaceMajorEventSubscription,
@@ -218,6 +219,31 @@ describe('workspace subscription and attendance management integration', () => {
     expect(attendanceApi.createEventAttendance).toHaveBeenCalledWith({ eventId: 'event-2', personId: 'person-1' });
     expect(attendanceApi.deleteEventAttendance).toHaveBeenCalledWith({ eventId: 'event-1', personId: 'person-1' });
     expect(attendancesService.majorEventAttendanceEditMode()).toBe(false);
+  });
+
+  it('reloads explicit absences after the scanner changes ABSENT to PRESENT', async () => {
+    const person = createAdminPerson({ id: 'person-1' });
+    let attendance = createAdminEventAttendance({ status: 'ABSENT' }, person);
+    const absentQueries = (): number =>
+      attendanceApi.listEventAttendances.mock.calls.filter(([, filters]) => filters?.status === 'ABSENT').length;
+    attendanceApi.listEventAttendances.mockImplementation((_eventId: string, filters: { status?: string }) =>
+      of(filters.status === attendance.status ? [attendance] : []),
+    );
+    dialog.open.mockImplementation(() => {
+      attendance = createAdminEventAttendance({ status: 'PRESENT' }, person);
+      return { afterClosed: () => of(null) };
+    });
+
+    attendancesService.attendanceForm.controls.eventId.setValue('event-1');
+    await attendancesService.loadAttendances('event-1');
+    expect(attendancesService.explicitAbsences()).toHaveLength(1);
+
+    await attendancesService.scanAttendance();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(absentQueries()).toBe(2);
+    expect(attendancesService.explicitAbsences()).toHaveLength(0);
+    expect(attendancesService.attendances()).toHaveLength(1);
   });
 
   it('opens correction flow and updates an offline attendance submission', async () => {

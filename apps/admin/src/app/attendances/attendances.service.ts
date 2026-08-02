@@ -353,6 +353,7 @@ export class AttendancesService {
     });
 
     dialogRef.afterClosed().subscribe(() => {
+      this.invalidateExplicitAbsences(eventId);
       void this.loadAttendances(eventId);
     });
   }
@@ -867,12 +868,14 @@ export class AttendancesService {
       for (const eventId of selectedEventIds) {
         if (!previousEventIds.has(eventId)) {
           await firstValueFrom(this.api.createEventAttendance({ eventId, personId: selected.personId }));
+          this.invalidateExplicitAbsences(eventId);
         }
       }
 
       for (const eventId of previousEventIds) {
         if (!selectedEventIds.has(eventId)) {
           await firstValueFrom(this.api.deleteEventAttendance({ eventId, personId: selected.personId }));
+          this.invalidateExplicitAbsences(eventId);
         }
       }
 
@@ -1004,19 +1007,25 @@ export class AttendancesService {
   private fetchExplicitAbsences(eventId: string): Promise<EventAttendance[]> {
     let explicitAbsences = this.explicitAbsencesByEventId.get(eventId);
     if (!explicitAbsences) {
-      explicitAbsences = this.fetchAllEventAttendances(eventId, 'ABSENT');
-      this.explicitAbsencesByEventId.set(eventId, explicitAbsences);
-      void explicitAbsences.catch(() => {
-        if (this.explicitAbsencesByEventId.get(eventId) === explicitAbsences) {
-          this.explicitAbsencesByEventId.delete(eventId);
-        }
-      });
+      const request = this.fetchAllEventAttendances(eventId, 'ABSENT');
+      explicitAbsences = request;
+      this.explicitAbsencesByEventId.set(eventId, request);
+      void request.then(
+        () => this.clearExplicitAbsencesRequest(eventId, request),
+        () => this.clearExplicitAbsencesRequest(eventId, request),
+      );
     }
     return explicitAbsences;
   }
 
-  private invalidateExplicitAbsences(eventId: string): void {
+  invalidateExplicitAbsences(eventId: string): void {
     this.explicitAbsencesByEventId.delete(eventId);
+  }
+
+  private clearExplicitAbsencesRequest(eventId: string, request: Promise<EventAttendance[]>): void {
+    if (this.explicitAbsencesByEventId.get(eventId) === request) {
+      this.explicitAbsencesByEventId.delete(eventId);
+    }
   }
 
   private async fetchAllMajorEventUserAttendances(majorEventId: string): Promise<MajorEventUserAttendance[]> {
