@@ -178,6 +178,21 @@ export class Event {
 
   readonly backUrl = computed(() => this.returnUrl());
 
+  private readonly sportsMatchRedirect = effect(() => {
+    const currentState = this.eventState();
+    if (currentState.status !== 'ready' || currentState.data.preview) {
+      return;
+    }
+
+    const sportsMatchId = currentState.data.event.sportsMatch?.id;
+    if (sportsMatchId) {
+      void this.router.navigate(['/sports/match', sportsMatchId], {
+        queryParams: { returnUrl: this.backUrl() },
+        replaceUrl: true,
+      });
+    }
+  });
+
   private readonly seoWatcher = effect((onCleanup) => {
     const currentState = this.eventState();
     if (currentState.status !== 'ready') {

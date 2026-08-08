@@ -157,6 +157,7 @@ export class AttendancesService {
   readonly attendancePersonMatches = signal<Person[]>([]);
   readonly attendances = signal<AttendanceListItem[]>([]);
   readonly explicitAbsences = signal<AttendanceListItem[]>([]);
+  private readonly explicitAbsencesByEventId = new Map<string, Promise<EventAttendance[]>>();
   readonly implicitAbsences = signal<EventAttendanceScannerFeedItem[]>([]);
   readonly attendanceTotalCount = signal(0);
   readonly attendancesPagination = createWorkspaceListPagination();
@@ -328,6 +329,7 @@ export class AttendancesService {
         personId: person.id,
       }),
     );
+    this.invalidateExplicitAbsences(eventId);
     await this.loadAttendances(eventId);
     this.snackbar.open('Presença registrada.', 'Fechar', { duration: 2500 });
   }
@@ -351,6 +353,7 @@ export class AttendancesService {
     });
 
     dialogRef.afterClosed().subscribe(() => {
+      this.invalidateExplicitAbsences(eventId);
       void this.loadAttendances(eventId);
     });
   }
@@ -363,6 +366,7 @@ export class AttendancesService {
           code,
         }),
       );
+      this.invalidateExplicitAbsences(eventId);
       await this.loadAttendances(eventId);
       this.snackbar.open('Presença registrada pelo scanner.', 'Fechar', {
         duration: 2500,
@@ -444,6 +448,7 @@ export class AttendancesService {
         );
       }
 
+      this.invalidateExplicitAbsences(eventId);
       await this.loadAttendances(eventId);
       this.dialog.open(AttendanceCsvImportResultDialogComponent, {
         width: '36rem',
@@ -475,7 +480,7 @@ export class AttendancesService {
           status: 'PRESENT',
         }),
       ),
-      this.fetchAllEventAttendances(eventId, 'ABSENT'),
+      this.fetchExplicitAbsences(eventId),
       firstValueFrom(this.api.listEventAttendanceScannerFeed(eventId)),
       firstValueFrom(this.api.getEventAttendanceCount(eventId, 'PRESENT')),
       firstValueFrom(this.api.listOfflineEventAttendanceSubmissions(eventId)),
@@ -527,12 +532,14 @@ export class AttendancesService {
       }),
     );
 
+    this.invalidateExplicitAbsences(attendance.eventId);
     await this.loadAttendances(attendance.eventId);
     this.snackbar.open('Presença removida.', 'Fechar', { duration: 2500 });
   }
 
   async approveOfflineAttendanceSubmission(submission: OfflineAttendanceSubmissionListItem): Promise<void> {
     await firstValueFrom(this.api.approveOfflineEventAttendanceSubmission(submission.id));
+    this.invalidateExplicitAbsences(submission.eventId);
     await this.loadAttendances(submission.eventId);
     this.snackbar.open('Presença off-line aprovada.', 'Fechar', { duration: 2500 });
   }
@@ -564,6 +571,7 @@ export class AttendancesService {
       submissions.map((submission) => submission.id),
       (submissionIds) => firstValueFrom(this.api.approveOfflineEventAttendanceSubmissions(submissionIds)),
     );
+    this.invalidateExplicitAbsences(submissions[0].eventId);
     await this.loadAttendances(submissions[0].eventId);
     this.snackbar.open('Presenças off-line aprovadas.', 'Fechar', { duration: 2500 });
   }
@@ -586,6 +594,7 @@ export class AttendancesService {
     }
 
     await firstValueFrom(this.api.rejectOfflineEventAttendanceSubmission(submission.id));
+    this.invalidateExplicitAbsences(submission.eventId);
     await this.loadAttendances(submission.eventId);
     this.snackbar.open('Presença off-line rejeitada.', 'Fechar', { duration: 2500 });
   }
@@ -623,6 +632,7 @@ export class AttendancesService {
           ),
         ),
     );
+    this.invalidateExplicitAbsences(submissions[0].eventId);
     await this.loadAttendances(submissions[0].eventId);
     this.snackbar.open('Presenças off-line rejeitadas.', 'Fechar', { duration: 2500 });
   }
@@ -645,6 +655,7 @@ export class AttendancesService {
     }
 
     const updated = await firstValueFrom(this.api.updateOfflineEventAttendanceSubmission(submission.id, correction));
+    this.invalidateExplicitAbsences(submission.eventId);
     await this.loadAttendances(submission.eventId);
     this.snackbar.open(
       updated.resolutionError
@@ -857,12 +868,14 @@ export class AttendancesService {
       for (const eventId of selectedEventIds) {
         if (!previousEventIds.has(eventId)) {
           await firstValueFrom(this.api.createEventAttendance({ eventId, personId: selected.personId }));
+          this.invalidateExplicitAbsences(eventId);
         }
       }
 
       for (const eventId of previousEventIds) {
         if (!selectedEventIds.has(eventId)) {
           await firstValueFrom(this.api.deleteEventAttendance({ eventId, personId: selected.personId }));
+          this.invalidateExplicitAbsences(eventId);
         }
       }
 
@@ -988,6 +1001,30 @@ export class AttendancesService {
       if (page.length < EXPORT_PAGE_SIZE) {
         return attendances;
       }
+    }
+  }
+
+  private fetchExplicitAbsences(eventId: string): Promise<EventAttendance[]> {
+    let explicitAbsences = this.explicitAbsencesByEventId.get(eventId);
+    if (!explicitAbsences) {
+      const request = this.fetchAllEventAttendances(eventId, 'ABSENT');
+      explicitAbsences = request;
+      this.explicitAbsencesByEventId.set(eventId, request);
+      void request.then(
+        () => this.clearExplicitAbsencesRequest(eventId, request),
+        () => this.clearExplicitAbsencesRequest(eventId, request),
+      );
+    }
+    return explicitAbsences;
+  }
+
+  invalidateExplicitAbsences(eventId: string): void {
+    this.explicitAbsencesByEventId.delete(eventId);
+  }
+
+  private clearExplicitAbsencesRequest(eventId: string, request: Promise<EventAttendance[]>): void {
+    if (this.explicitAbsencesByEventId.get(eventId) === request) {
+      this.explicitAbsencesByEventId.delete(eventId);
     }
   }
 

@@ -30,6 +30,7 @@ import {
   SubscriptionStatus,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { AttendancePersonResolutionDialogComponent } from '../import/attendance-person-resolution-dialog.component';
+import { AttendancesService } from '../../attendances.service';
 
 export interface AttendanceScannerDialogData {
   eventId: string;
@@ -188,6 +189,7 @@ const DUPLICATE_PERSON_ERROR_PREFIX = 'Pessoa tem registros duplicados';
 })
 export class AttendanceScannerDialogComponent implements OnInit {
   private readonly api = inject(AttendanceApiService);
+  private readonly attendancesService = inject(AttendancesService);
   private readonly data = inject<AttendanceScannerDialogData>(MAT_DIALOG_DATA);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
@@ -219,6 +221,7 @@ export class AttendanceScannerDialogComponent implements OnInit {
           code,
         }),
       );
+      this.attendancesService.invalidateExplicitAbsences(this.data.eventId);
       this.feedback.show(this.feedbackKindForCategory(attendance.category));
       this.snackbar.open('Presença registrada pelo scanner.', 'Fechar', {
         duration: 2500,
@@ -242,6 +245,7 @@ export class AttendanceScannerDialogComponent implements OnInit {
           value: this.manualForm.controls.value.value,
         }),
       );
+      this.attendancesService.invalidateExplicitAbsences(this.data.eventId);
       this.feedback.show(this.feedbackKindForCategory(attendance.category));
       this.manualForm.reset({ value: '' });
       this.snackbar.open('Presença registrada manualmente.', 'Fechar', {
@@ -343,6 +347,7 @@ export class AttendanceScannerDialogComponent implements OnInit {
           personId: selectedPersonId,
         }),
       );
+      this.attendancesService.invalidateExplicitAbsences(this.data.eventId);
       this.feedback.show(this.feedbackKindForCategory(attendance.category));
       this.manualForm.reset({ value: '' });
       this.snackbar.open('Presença registrada manualmente.', 'Fechar', {

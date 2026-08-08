@@ -39,6 +39,9 @@ export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
   buttonText
   buttonLink
   isPaymentRequired
+  sportsTournament {
+    id
+  }
 `;
 
 export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
@@ -82,6 +85,9 @@ export const PUBLIC_MAJOR_EVENT_PROFILE_FIELDS = `
   isPaymentRequired
   additionalPaymentInfo
   shouldIssueCertificate
+  sportsTournament {
+    id
+  }
 `;
 
 export const PUBLIC_NAMED_ENTITY_FIELDS = `
@@ -123,6 +129,13 @@ export const PUBLIC_CALENDAR_EVENT_FIELDS = `
   eventGroup {
     ${PUBLIC_NAMED_ENTITY_FIELDS}
   }
+  sportsMatch {
+    id
+    categoryId
+    category {
+      tournamentId
+    }
+  }
 `;
 
 export const PUBLIC_EVENT_PAGE_FIELDS = `
@@ -159,6 +172,13 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   }
   eventGroup {
     ${PUBLIC_NAMED_ENTITY_FIELDS}
+  }
+  sportsMatch {
+    id
+    categoryId
+    category {
+      tournamentId
+    }
   }
   lecturers {
     ${PUBLIC_LECTURER_PROFILE_FIELDS}
@@ -211,6 +231,13 @@ export const PUBLIC_ATTENDANCE_EVENT_FIELDS = `
   }
   eventGroup {
     ${PUBLIC_EVENT_GROUP_DETAIL_FIELDS}
+  }
+  sportsMatch {
+    id
+    categoryId
+    category {
+      tournamentId
+    }
   }
   lecturers {
     ${PUBLIC_LECTURER_PROFILE_FIELDS}

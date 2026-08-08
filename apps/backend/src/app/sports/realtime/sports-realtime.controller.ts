@@ -25,6 +25,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { Public } from '../../auth/decorators/public.decorator';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
+import { CurrentUserContextService } from '../../current-user/context.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SseReplayService } from '../../realtime/sse-replay.service';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
@@ -41,9 +42,36 @@ export class SportsRealtimeController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly policy: AuthorizationPolicyService,
+    private readonly currentUser: CurrentUserContextService,
     private readonly replay: SseReplayService,
     private readonly realtime: SportsRealtimeService,
   ) {}
+
+  @Sse('current/autoroute-events')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Stream current-user sports autoroute invalidations',
+    description:
+      'Authenticated, person-scoped and replayable invalidations. Payloads disclose only an opaque revision and instruct the client to refetch the current route.',
+  })
+  @ApiProduces('text/event-stream')
+  streamCurrentUserAutoroute(
+    @Headers('last-event-id') lastEventId: string | undefined,
+    @Req() request: RequestWithUser,
+  ): Observable<MessageEvent> {
+    return defer(() =>
+      this.currentUser.requireCurrentPerson({ req: request }),
+    ).pipe(
+      switchMap((person) => {
+        const scope = this.realtime.scope('autoroute', person.id);
+        return this.replay.replay(
+          scope,
+          lastEventId,
+          this.realtime.watch(scope),
+        );
+      }),
+    );
+  }
 
   @Public()
   @Sse('matches/:matchId/events')

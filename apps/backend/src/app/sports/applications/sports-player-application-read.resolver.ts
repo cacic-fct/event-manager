@@ -1,6 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { SportsApplicationStatus } from '@cacic-fct/shared-data-types';
-import { Args, Context, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Query, Resolver } from '@nestjs/graphql';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { CurrentUserContextService } from '../../current-user/context.service';
 import { GraphqlContext } from '../../current-user/selects';
@@ -28,12 +28,17 @@ export class SportsPlayerApplicationAdminReadResolver {
       nullable: true,
     })
     statuses: SportsApplicationStatus[] | undefined,
+    @Args('cursor', { type: () => String, nullable: true })
+    cursor: string | undefined,
+    @Args('limit', { type: () => Int, nullable: true })
+    limit: number | undefined,
     @Context() context: GraphqlContext,
   ): Promise<AdminSportsPlayerApplicationRead[]> {
     return this.applications.adminQueue(
       this.currentUser.getAuthenticatedUser(context),
       tournamentId,
       statuses,
+      { cursor, limit },
     );
   }
 

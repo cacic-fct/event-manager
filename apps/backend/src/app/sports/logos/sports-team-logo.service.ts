@@ -9,12 +9,13 @@ import {
   AuditLogOperation,
   Prisma,
   PublicationState,
+  SportsTeamChangeRequestStatus,
   SportsTeamChangeRequestType,
   SportsTeamStatus,
   SportsTournamentStatus,
 } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 import sharp from 'sharp';
 import { AuditLogService } from '../../audit-log/audit-log.service';
@@ -25,11 +26,10 @@ import { S3Service } from '../../s3/s3.service';
 import { SportsTeamChangeService } from '../teams/sports-team-change.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 
-export const MAX_SPORTS_TEAM_LOGO_SIZE_BYTES = 2 * 1024 * 1024;
+export const MAX_SPORTS_TEAM_LOGO_SIZE_BYTES = 15 * 1024 * 1024;
 export const MIN_SPORTS_TEAM_LOGO_DIMENSION = 16;
-export const MAX_SPORTS_TEAM_LOGO_DIMENSION = 4096;
-export const MAX_SPORTS_TEAM_LOGO_PIXELS =
-  MAX_SPORTS_TEAM_LOGO_DIMENSION * MAX_SPORTS_TEAM_LOGO_DIMENSION;
+export const SPORTS_TEAM_LOGO_OUTPUT_DIMENSION = 1600;
+export const MAX_SPORTS_TEAM_LOGO_PIXELS = 64 * 1024 * 1024;
 
 const SPORTS_TEAM_LOGO_METADATA_TIMEOUT_SECONDS = 3;
 
@@ -45,6 +45,14 @@ const LOGO_FORMATS = {
   webp: {
     mimeType: 'image/webp',
     extension: 'webp',
+  },
+  avif: {
+    mimeType: 'image/avif',
+    extension: 'avif',
+  },
+  svg: {
+    mimeType: 'image/svg+xml',
+    extension: 'svg',
   },
 } as const;
 
@@ -118,38 +126,74 @@ export class SportsTeamLogoService {
     if (!team) {
       throw new NotFoundException(`Sports team ${sportsTeamId} was not found.`);
     }
-    const objectKey = this.buildObjectKey(
+    const previousRequest =
+      await this.prisma.sportsTeamChangeRequest.findFirst({
+        where: {
+          teamId: sportsTeamId,
+          submittedByPersonId: representativePersonId,
+          type: SportsTeamChangeRequestType.LOGO,
+          status: {
+            in: [
+              SportsTeamChangeRequestStatus.PENDING,
+              SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
+              SportsTeamChangeRequestStatus.CONFLICT,
+            ],
+          },
+        },
+        select: { delta: true },
+        orderBy: { updatedAt: 'desc' },
+      });
+    const previousQueuedObjectKey = this.readQueuedObjectKey(
+      previousRequest?.delta,
+    );
+    const permanentObjectKey = this.buildObjectKey(
       team.tournamentId,
       team.id,
       sha256,
       image.extension,
     );
-    if (!(await this.s3.fileExists(objectKey))) {
-      await this.s3.uploadFile(objectKey, image.buffer, image.mimeType, {
-        sha256,
-        immutable: 'true',
-        pendingReview: 'true',
-      });
-    }
+    const queuedObjectKey = this.buildQueuedObjectKey(
+      team.id,
+      sha256,
+      image.extension,
+    );
+    await this.s3.uploadFile(queuedObjectKey, image.buffer, image.mimeType, {
+      sha256,
+      private: 'true',
+      pendingReview: 'true',
+    });
 
-    const request = await this.teamChanges.submit(
-      sportsTeamId,
-      representativePersonId,
-      {
-        type: SportsTeamChangeRequestType.LOGO,
-        baseRevision,
-        expectedRequestRevision,
-        delta: {
-          logo: {
-            objectKey,
-            sha256,
-            mimeType: image.mimeType,
-            sizeBytes: image.buffer.length,
+    let request;
+    try {
+      request = await this.teamChanges.submit(
+        sportsTeamId,
+        representativePersonId,
+        {
+          type: SportsTeamChangeRequestType.LOGO,
+          baseRevision,
+          expectedRequestRevision,
+          delta: {
+            logo: {
+              objectKey: permanentObjectKey,
+              queuedObjectKey,
+              sha256,
+              mimeType: image.mimeType,
+              sizeBytes: image.buffer.length,
+            },
           },
         },
-      },
-      true,
-    );
+        true,
+      );
+    } catch (error) {
+      await this.s3.deleteFile(queuedObjectKey).catch(() => undefined);
+      throw error;
+    }
+    if (
+      previousQueuedObjectKey &&
+      previousQueuedObjectKey !== queuedObjectKey
+    ) {
+      await this.s3.deleteFile(previousQueuedObjectKey);
+    }
     return {
       requestId: request.id,
       requestRevision: request.requestRevision,
@@ -364,7 +408,7 @@ export class SportsTeamLogoService {
       file.size !== file.buffer.length ||
       file.buffer.length > MAX_SPORTS_TEAM_LOGO_SIZE_BYTES
     ) {
-      throw new BadRequestException('O logo da equipe deve ter no máximo 2 MiB.');
+      throw new BadRequestException('O logo da equipe deve ter no máximo 15 MiB.');
     }
 
     let metadata;
@@ -380,13 +424,21 @@ export class SportsTeamLogoService {
         .timeout({ seconds: SPORTS_TEAM_LOGO_METADATA_TIMEOUT_SECONDS })
         .metadata();
     } catch {
-      throw new BadRequestException('O logo deve ser uma imagem PNG, JPEG ou WebP válida.');
+      throw new BadRequestException(
+        'O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG válida.',
+      );
     }
 
-    if (!metadata.format || !(metadata.format in LOGO_FORMATS)) {
-      throw new BadRequestException('O logo deve ser uma imagem PNG, JPEG ou WebP.');
+    const detectedFormat =
+      metadata.format === 'heif' && file.mimetype.toLowerCase() === 'image/avif'
+        ? 'avif'
+        : metadata.format;
+    if (!detectedFormat || !(detectedFormat in LOGO_FORMATS)) {
+      throw new BadRequestException(
+        'O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG.',
+      );
     }
-    const format = metadata.format as SportsTeamLogoFormat;
+    const format = detectedFormat as SportsTeamLogoFormat;
     const formatDetails = LOGO_FORMATS[format];
     if (file.mimetype.toLowerCase() !== formatDetails.mimeType) {
       throw new BadRequestException('O tipo declarado do arquivo não corresponde ao conteúdo da imagem.');
@@ -397,24 +449,55 @@ export class SportsTeamLogoService {
     if (
       metadata.width < MIN_SPORTS_TEAM_LOGO_DIMENSION ||
       metadata.height < MIN_SPORTS_TEAM_LOGO_DIMENSION ||
-      metadata.width > MAX_SPORTS_TEAM_LOGO_DIMENSION ||
-      metadata.height > MAX_SPORTS_TEAM_LOGO_DIMENSION ||
       metadata.width * metadata.height > MAX_SPORTS_TEAM_LOGO_PIXELS
     ) {
       throw new BadRequestException(
-        `O logo deve ter entre ${MIN_SPORTS_TEAM_LOGO_DIMENSION}px e ${MAX_SPORTS_TEAM_LOGO_DIMENSION}px por lado.`,
+        `O logo deve ter ao menos ${MIN_SPORTS_TEAM_LOGO_DIMENSION}px por lado e no máximo 64 megapixels.`,
       );
     }
     if (metadata.pages && metadata.pages > 1) {
       throw new BadRequestException('O logo não pode ser animado ou ter várias páginas.');
     }
 
+    if (format === 'svg') {
+      const source = file.buffer.toString('utf8');
+      if (
+        /<!DOCTYPE|<!ENTITY|<script|<foreignObject|\son\w+\s*=|(?:href|src)\s*=\s*["'](?:https?:|data:|\/\/)/iu.test(
+          source,
+        )
+      ) {
+        throw new BadRequestException(
+          'O SVG contém recursos externos ou conteúdo executável.',
+        );
+      }
+    }
+    const normalizedBuffer = await sharp(file.buffer, {
+        animated: false,
+        failOn: 'warning',
+        limitInputPixels: MAX_SPORTS_TEAM_LOGO_PIXELS,
+        pages: 1,
+        sequentialRead: true,
+        unlimited: false,
+      })
+        .rotate()
+        .resize({
+          width: SPORTS_TEAM_LOGO_OUTPUT_DIMENSION,
+          height: SPORTS_TEAM_LOGO_OUTPUT_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .avif({ quality: 82, effort: 4 })
+        .toBuffer();
+    const normalizedMetadata = await sharp(normalizedBuffer).metadata();
+    const normalized = {
+      buffer: normalizedBuffer,
+      mimeType: 'image/avif',
+      extension: 'avif',
+    };
     return {
-      buffer: file.buffer,
-      mimeType: formatDetails.mimeType,
-      extension: formatDetails.extension,
-      width: metadata.width,
-      height: metadata.height,
+      ...normalized,
+      width: normalizedMetadata.width ?? metadata.width,
+      height: normalizedMetadata.height ?? metadata.height,
     };
   }
 
@@ -425,6 +508,29 @@ export class SportsTeamLogoService {
     extension: string,
   ): string {
     return `sports/tournaments/${tournamentId}/teams/${teamId}/logos/sha256/${sha256}.${extension}`;
+  }
+
+  private buildQueuedObjectKey(
+    teamId: string,
+    sha256: string,
+    extension: string,
+  ): string {
+    return `sports/private/team-logo-review/${teamId}/${randomUUID()}/${sha256}.${extension}`;
+  }
+
+  private readQueuedObjectKey(value: Prisma.JsonValue | undefined): string | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    const logo = value['logo'];
+    if (!logo || typeof logo !== 'object' || Array.isArray(logo)) {
+      return null;
+    }
+    const key = logo['queuedObjectKey'];
+    return typeof key === 'string' &&
+      /^sports\/private\/team-logo-review\//.test(key)
+      ? key
+      : null;
   }
 
   private bumpLogoFieldRevision(

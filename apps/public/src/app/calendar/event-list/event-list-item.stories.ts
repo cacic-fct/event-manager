@@ -7,6 +7,7 @@ import {
   calendarStoryEventControlArgTypes,
   calendarStoryEventDefaultControls,
   createCalendarStoryEventFromControls,
+  createPublicStorySportsMatchEvent,
 } from '../story-fixtures';
 
 type CalendarEventListItemStoryArgs = CalendarStoryEventControls & {
@@ -71,4 +72,26 @@ export const OfflineFallback: Story = {
   },
   globals: { theme: 'light', network: 'offline' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const SportsMatch: Story = {
+  args: {
+    isSubscribed: false,
+  },
+  render: (args) => ({
+    props: {
+      event: createPublicStorySportsMatchEvent(),
+      isSubscribed: args.isSubscribed,
+      returnUrl: args.returnUrl,
+    },
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const eventLink = await canvas.findByRole('link', {
+      name: /Atlética FCT × Ciência da Computação/i,
+    });
+
+    await expect(eventLink).toHaveAttribute('href', '/sports/match/sports-match-story');
+    await expect(canvas.getByText('Futsal aberto · Semifinal')).toBeVisible();
+  },
 };

@@ -27,6 +27,7 @@ import {
 import { firstValueFrom, fromEvent } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
+import { AttendancesService } from '../attendances.service';
 import { OralAttendanceSyncFailureDialogComponent } from './oral-attendance-sync-failure-dialog.component';
 
 interface PendingAdminDecision {
@@ -39,6 +40,10 @@ interface PendingAdminDecision {
 }
 
 type SyncOutcome = 'synced' | 'failed' | 'retry';
+
+const INITIAL_SYNC_DELAY_MS = 300;
+const SYNC_RETRY_BASE_DELAY_MS = 1_000;
+const SYNC_RETRY_MAX_DELAY_MS = 30_000;
 
 @Component({
   selector: 'app-admin-oral-attendance-page',
@@ -57,6 +62,7 @@ type SyncOutcome = 'synced' | 'failed' | 'retry';
 })
 export class AdminOralAttendancePageComponent implements OnInit {
   private readonly api = inject(AttendanceApiService);
+  private readonly attendancesService = inject(AttendancesService);
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialog = inject(MatDialog);
@@ -68,6 +74,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   private eventId = '';
   private syncTimer: ReturnType<typeof setTimeout> | null = null;
+  private syncRetryAttempt = 0;
 
   protected readonly people = signal<OralAttendancePerson[]>([]);
   protected readonly eventName = signal('Chamada oral');
@@ -124,20 +131,21 @@ export class AdminOralAttendancePageComponent implements OnInit {
 
   protected registerManual(value: string): void {
     void firstValueFrom(this.api.createEventAttendanceFromManualInput({ eventId: this.eventId, value }))
+      .then(() => this.attendancesService.invalidateExplicitAbsences(this.eventId))
       .then(() => this.snackbar.open('Presença manual registrada.', 'Fechar', { duration: 2500 }))
       .catch(() =>
         this.snackbar.open('Não foi possível registrar a presença manual.', 'Fechar', { duration: 5000 }),
       );
   }
 
-  private scheduleSync(): void {
-    if (!this.pending().size || this.syncTimer) {
+  private scheduleSync(delayMs = this.syncRetryAttempt ? this.syncRetryDelay() : INITIAL_SYNC_DELAY_MS): void {
+    if (!this.pending().size || this.syncTimer || (this.isBrowser && !navigator.onLine)) {
       return;
     }
     this.syncTimer = setTimeout(() => {
       this.syncTimer = null;
       void this.syncPending();
-    }, 300);
+    }, delayMs);
   }
 
   private applyRoster(items: EventAttendanceScannerFeedItem[]): void {
@@ -159,18 +167,22 @@ export class AdminOralAttendancePageComponent implements OnInit {
   }
 
   private async syncPending(): Promise<void> {
-    if (this.syncing() || !this.pending().size) {
+    if (this.syncing() || !this.pending().size || (this.isBrowser && !navigator.onLine)) {
       return;
     }
     const items = [...this.pending().values()];
     const attemptedByPersonId = new Map(items.map((item) => [item.personId, item.collectedAt]));
     this.syncing.set(true);
     const failedItems: PendingAdminDecision[] = [];
+    const permanentFailureItems: PendingAdminDecision[] = [];
     try {
       for (const item of items) {
         const outcome = await this.syncItem(item);
         if (outcome !== 'synced') {
           failedItems.push(item);
+        }
+        if (outcome === 'failed') {
+          permanentFailureItems.push(item);
         }
         if (outcome !== 'retry') {
           this.pending.update((current) => {
@@ -188,17 +200,33 @@ export class AdminOralAttendancePageComponent implements OnInit {
       const hasNewPendingItem = [...this.pending().values()].some(
         (item) => attemptedByPersonId.get(item.personId) !== item.collectedAt,
       );
-      if (hasNewPendingItem) {
-        this.scheduleSync();
+      const hasRetryPending = failedItems.some(
+        (item) => this.pending().get(item.personId)?.collectedAt === item.collectedAt,
+      );
+      if (hasRetryPending) {
+        this.syncRetryAttempt += 1;
+        this.scheduleSync(this.syncRetryDelay());
+      } else {
+        this.syncRetryAttempt = 0;
+        if (hasNewPendingItem) {
+          this.scheduleSync();
+        }
       }
     }
-    if (failedItems.length) {
+    if (permanentFailureItems.length) {
       this.dialog.open(OralAttendanceSyncFailureDialogComponent, {
         width: 'min(30rem, 94vw)',
         maxWidth: '94vw',
-        data: { failedCount: failedItems.length },
+        data: { failedCount: permanentFailureItems.length },
       });
     }
+  }
+
+  private syncRetryDelay(): number {
+    return Math.min(
+      SYNC_RETRY_MAX_DELAY_MS,
+      SYNC_RETRY_BASE_DELAY_MS * 2 ** Math.min(this.syncRetryAttempt - 1, 5),
+    );
   }
 
   private async syncItem(item: PendingAdminDecision): Promise<SyncOutcome> {
@@ -215,6 +243,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
             },
           ]),
         );
+        this.attendancesService.invalidateExplicitAbsences(item.eventId);
         return 'synced';
       } catch (error: unknown) {
         if (!isRetryableSyncError(error)) {
@@ -241,9 +270,20 @@ export class AdminOralAttendancePageComponent implements OnInit {
       const items = Array.isArray(stored)
         ? stored.filter((item): item is PendingAdminDecision => this.isPendingDecision(item))
         : [];
-      this.pending.set(new Map(items.map((item) => [item.personId, item])));
       const currentUserId = this.auth.user()?.sub;
       const recoveredFromAnotherUser = items.filter((item) => item.queuedByUserId !== currentUserId);
+      const currentUserLabel = this.auth.user()?.preferredUsername ?? this.auth.user()?.email ?? currentUserId;
+      this.pending.set(
+        new Map(
+          items.map((item) => [
+            item.personId,
+            item.queuedByUserId === currentUserId || !currentUserId || !currentUserLabel
+              ? item
+              : { ...item, queuedByUserId: currentUserId, queuedByLabel: currentUserLabel },
+          ]),
+        ),
+      );
+      this.persistPending();
       if (recoveredFromAnotherUser.length) {
         this.snackbar.open(
           `${recoveredFromAnotherUser.length} decisão(ões) salvas por outra conta serão enviadas pela conta atual se ela tiver permissão.`,

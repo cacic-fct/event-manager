@@ -157,11 +157,29 @@ export async function mockAdminApi(
     }
 
     if (url.pathname === '/api/graphql') {
+      const requestBody = route.request().postDataJSON() as unknown;
+      const query = graphqlQuery(requestBody);
+
+      if (query.includes('offlineEventAttendanceSubmissions')) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            data: {
+              offlineEventAttendanceSubmissions: graphqlState.offlineEventAttendanceSubmission
+                ? [graphqlState.offlineEventAttendanceSubmission]
+                : [],
+            },
+          }),
+        });
+        return;
+      }
+
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
-          data: graphqlData(route.request().postDataJSON() as unknown, options.dashboardInsights, graphqlState),
+          data: graphqlData(requestBody, options.dashboardInsights, graphqlState),
         }),
       });
       return;
@@ -555,6 +573,7 @@ export function createAdminE2EEventAttendance(overrides: Record<string, unknown>
     personId: person.id,
     person,
     category: 'REGULAR',
+    status: 'PRESENT',
     attendedAt,
     createdAt: attendedAt,
     createdById: 'admin-1',
@@ -721,7 +740,7 @@ function graphqlData(
   dashboardInsights: AdminE2EDashboardInsights | undefined,
   state: AdminE2EGraphqlState,
 ): Record<string, unknown> {
-  const query = isRecord(body) && typeof body['query'] === 'string' ? body['query'] : '';
+  const query = graphqlQuery(body);
   const variables = isRecord(body) && isRecord(body['variables']) ? body['variables'] : {};
   const event = createAdminE2EEvent({ id: 'event-1' });
   const majorEvent = createAdminE2EMajorEvent({ id: 'major-event-1' });
@@ -945,7 +964,15 @@ function graphqlData(
     return { eventAttendances: [createAdminE2EEventAttendance()] };
   }
 
-  if (query.includes('query OfflineEventAttendanceSubmissions')) {
+  if (query.includes('query EventAttendanceScannerFeed')) {
+    return { eventAttendanceScannerFeed: [] };
+  }
+
+  if (query.includes('query EventAttendanceCount')) {
+    return { eventAttendanceCount: 1 };
+  }
+
+  if (query.includes('offlineEventAttendanceSubmissions')) {
     return {
       offlineEventAttendanceSubmissions: state.offlineEventAttendanceSubmission
         ? [state.offlineEventAttendanceSubmission]
@@ -953,7 +980,7 @@ function graphqlData(
     };
   }
 
-  if (query.includes('mutation UpdateOfflineEventAttendanceSubmission')) {
+  if (query.includes('updateOfflineEventAttendanceSubmission(')) {
     const input = isRecord(variables['input']) ? variables['input'] : {};
     const personId = typeof input['personId'] === 'string' ? input['personId'] : 'person-1';
     const person = createAdminE2EPerson({ id: personId });
@@ -1077,4 +1104,8 @@ function permissionGrantTargetLabel(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function graphqlQuery(body: unknown): string {
+  return isRecord(body) && typeof body['query'] === 'string' ? body['query'] : '';
 }

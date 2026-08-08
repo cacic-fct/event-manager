@@ -11,6 +11,12 @@ import { graphqlError } from '../shared/rate-limit-error';
 
 export const DEFAULT_REDIRECT_TIMEOUT_MS = 400;
 
+export interface CurrentUserSportsAutoroute {
+  matchId?: string;
+  teamId?: string;
+  mode: 'CHECK_IN' | 'OPERATE' | 'FINALIZE' | 'MATCH_DETAIL' | 'WALLET' | 'TEAM';
+}
+
 const DEFAULT_REDIRECT_ROUTES = {
   MENU: true,
   CALENDAR: true,
@@ -44,6 +50,33 @@ export class DefaultRedirectApiService {
           }
 
           return route;
+        }),
+      );
+  }
+
+  getCurrentUserSportsAutoroute(): Observable<CurrentUserSportsAutoroute | null> {
+    return this.http
+      .post<GraphqlResponse<{ currentUserSportsAutoroute: CurrentUserSportsAutoroute | null }>>('/api/graphql', {
+        query: `
+          query CurrentUserSportsHomeAutoroute {
+            currentUserSportsAutoroute {
+              matchId
+              teamId
+              mode
+            }
+          }
+        `,
+      })
+      .pipe(
+        timeout({ first: DEFAULT_REDIRECT_TIMEOUT_MS }),
+        map((response) => {
+          if (response.errors?.length) {
+            throw graphqlError(response.errors);
+          }
+          if (!response.data) {
+            throw new Error('Resposta GraphQL sem dados.');
+          }
+          return response.data.currentUserSportsAutoroute;
         }),
       );
   }

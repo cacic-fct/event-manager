@@ -156,6 +156,7 @@ export async function getAttendanceOralRoster(
       committedById: true,
       createdByMethod: true,
     },
+    take: 80,
   });
 
   const attendanceByPersonId = new Map(attendances.map((attendance) => [attendance.personId, attendance]));

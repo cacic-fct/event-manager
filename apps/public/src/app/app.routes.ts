@@ -74,6 +74,40 @@ export const appRoutes: Route[] = [
     title: 'Evento',
   },
   {
+    path: 'tournament/:tournamentId/subscribe',
+    loadComponent: () =>
+      import('./sports/operations/self-subscription-page').then((m) => m.SportsSelfSubscriptionPage),
+    title: 'Inscrição no torneio',
+  },
+  {
+    path: 'tournament/:tournamentId',
+    loadComponent: () => import('./sports/viewer/tournament-page').then((m) => m.SportsTournamentPage),
+    title: 'Torneio',
+  },
+  {
+    path: 'sports/match/:matchId',
+    loadComponent: () => import('./sports/viewer/match-page').then((m) => m.SportsMatchPage),
+    title: 'Partida',
+  },
+  {
+    path: 'sports/operate/:matchId',
+    loadComponent: () =>
+      import('./sports/operations/official-match-page').then((m) => m.OfficialSportsMatchPage),
+    title: 'Operar partida',
+  },
+  {
+    path: 'sports/team/:teamId',
+    loadComponent: () =>
+      import('./sports/operations/team-operations-page').then((m) => m.SportsTeamOperationsPage),
+    title: 'Gerenciar equipe',
+  },
+  {
+    path: 'sports',
+    loadComponent: () =>
+      import('./sports/operations/sports-autoroute-page').then((m) => m.SportsAutoroutePage),
+    title: 'Minha próxima partida',
+  },
+  {
     path: 'major-event/:majorEventId/subscription',
     loadComponent: () =>
       import('./major-events/registration/standard/subscription').then((m) => m.MajorEventSubscription),

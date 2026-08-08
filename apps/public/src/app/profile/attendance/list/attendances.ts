@@ -159,6 +159,10 @@ export class Attendances {
   });
 
   majorEventRoute(subscription: CurrentUserMajorEventFeedItem): string[] {
+    if (subscription.majorEvent.sportsTournament) {
+      return ['/tournament', subscription.majorEvent.sportsTournament.id];
+    }
+
     return ['/profile/attendances', 'major-event', subscription.majorEvent.id];
   }
 

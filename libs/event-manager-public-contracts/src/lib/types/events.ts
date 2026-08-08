@@ -23,6 +23,18 @@ export interface PublicMajorEventPrice {
   tiers: PublicMajorEventPriceTier[];
 }
 
+export interface PublicSportsTournamentMarker {
+  id: string;
+}
+
+export interface PublicSportsMatchMarker {
+  id: string;
+  categoryId: string;
+  category: {
+    tournamentId: string;
+  };
+}
+
 export interface PublicMajorEvent {
   id: string;
   name: string;
@@ -47,6 +59,7 @@ export interface PublicMajorEvent {
   shouldIssueCertificate?: boolean | null;
   paymentInfo?: PublicPaymentInfo | null;
   majorEventPrices?: PublicMajorEventPrice[];
+  sportsTournament?: PublicSportsTournamentMarker | null;
 }
 
 export interface PublicEventGroup {
@@ -87,6 +100,7 @@ export interface PublicEvent {
   majorEvent?: PublicMajorEvent | null;
   eventGroupId?: string | null;
   eventGroup?: PublicEventGroup | null;
+  sportsMatch?: PublicSportsMatchMarker | null;
   allowSubscription?: boolean | null;
   subscriptionStartDate?: DateTimeString | null;
   subscriptionEndDate?: DateTimeString | null;

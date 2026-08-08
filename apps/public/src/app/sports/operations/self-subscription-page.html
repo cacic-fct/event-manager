@@ -1,0 +1,114 @@
+<header class="subscription-toolbar">
+  <a mat-icon-button [routerLink]="['/tournament', tournamentId]" aria-label="Voltar ao torneio">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <strong>Inscrição individual</strong>
+</header>
+
+@if (loading()) {
+<main class="state"><p>Carregando opções de inscrição…</p></main>
+} @else if (error()) {
+<main class="state">
+  <mat-icon>error_outline</mat-icon>
+  <h1>Inscrição indisponível</h1>
+  <p>{{ error() }}</p>
+  <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
+</main>
+} @else if (submitted()) {
+<main class="state success">
+  <mat-icon>check_circle</mat-icon>
+  <h1>Solicitação enviada</h1>
+  <p>
+    A organização ainda precisa aprovar sua participação. Se houver cobrança, o pagamento será liberado depois da
+    aprovação.
+  </p>
+  <a mat-flat-button [routerLink]="['/tournament', tournamentId]">Voltar ao torneio</a>
+</main>
+} @else if (data(); as currentData) {
+<main class="subscription-shell">
+  <div class="heading">
+    <h1>
+      <app-twemoji [emoji]="currentData.tournament.emoji" />
+      {{ currentData.tournament.name }}
+    </h1>
+    <p>Informe como você pretende participar deste torneio.</p>
+  </div>
+
+  <section class="important-notice">
+    <mat-icon>info</mat-icon>
+    <div>
+      <strong>Inscrever-se não garante sua escalação</strong>
+      <p>
+        A solicitação será analisada pelo time escolhido. Mesmo após a aprovação, capitães e técnicos definem a
+        escalação de cada partida.
+      </p>
+    </div>
+  </section>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <mat-form-field>
+      <mat-label>Equipe desejada</mat-label>
+      <mat-select formControlName="requestedTeamId">
+        @if (currentData.tournament.selfSubscriptionAllowNoTeam) {
+        <mat-option value="">Sem equipe específica</mat-option>
+        } @for (team of currentData.tournament.teams; track team.id) {
+        <mat-option [value]="team.id">{{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (currentData.tournament.teams.length === 0) {
+    <div class="empty-options" role="status">
+      <mat-icon>groups</mat-icon>
+      <span>Nenhuma equipe está aceitando solicitações neste momento.</span>
+    </div>
+    }
+
+    <fieldset>
+      <legend>Modalidades</legend>
+      <p>
+        Você pode escolher mais de uma. A organização aplicará as regras de elegibilidade do torneio. @if
+        (currentData.tournament.selfSubscriptionAllowNoCategory) { Você também pode deixar todas desmarcadas para
+        participar sem competir, por exemplo, apenas para adquirir a camiseta. }
+      </p>
+      <div class="category-list">
+        @for (category of currentData.tournament.categories; track category.id) {
+        <mat-checkbox
+          [checked]="selectedCategories().has(category.id)"
+          (change)="toggleCategory(category.id, $event.checked)">
+          <span class="category-name">
+            <app-twemoji [emoji]="category.emoji" />
+            {{ category.name }}
+          </span>
+          @if (category.division) { <small>{{ category.division }}</small> }
+        </mat-checkbox>
+        }
+      </div>
+      @if (currentData.tournament.categories.length === 0) {
+      <div class="empty-options" role="status">
+        <mat-icon>sports</mat-icon>
+        <span>Nenhuma modalidade está disponível para autoinscrição.</span>
+      </div>
+      }
+    </fieldset>
+
+    @if (currentData.tournament.isPaymentRequired && currentData.tournament.paymentTiers.length) {
+    <mat-form-field>
+      <mat-label>Faixa de pagamento</mat-label>
+      <mat-select formControlName="paymentTier">
+        @for (tier of currentData.tournament.paymentTiers; track tier.id) {
+        <mat-option [value]="tier.name"> {{ tier.name }} · {{ tier.value / 100 | currency: 'BRL' }} </mat-option>
+        }
+      </mat-select>
+      <mat-hint>O pagamento só será liberado após a aprovação.</mat-hint>
+    </mat-form-field>
+    }
+
+    <mat-checkbox formControlName="noticeAccepted">
+      Li e entendi que a inscrição não garante minha escalação.
+    </mat-checkbox>
+    <button mat-flat-button type="submit" [disabled]="!canSubmit()">
+      {{ busy() ? 'Enviando…' : 'Enviar solicitação' }}
+    </button>
+  </form>
+</main>
+}
