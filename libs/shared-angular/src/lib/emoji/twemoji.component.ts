@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { EmojiService } from './emoji.service';
 
 @Component({
-  selector: 'app-twemoji',
+  selector: 'lib-twemoji',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (emojiUrl()) {

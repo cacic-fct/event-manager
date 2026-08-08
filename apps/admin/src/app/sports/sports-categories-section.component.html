@@ -13,7 +13,7 @@
           [class.selected-list-item]="workspace.selectedCategoryId() === category.id"
           (click)="workspace.selectCategory(category)">
           <span matListItemTitle>
-            <app-twemoji [emoji]="category.eventGroup?.emoji || sportEmoji(category.sport)" />
+            <lib-twemoji [emoji]="category.eventGroup?.emoji || sportEmoji(category.sport)" />
             {{ category.name }}
           </span>
           <span matListItemLine>{{ category.division || 'Sem divisão' }} · {{ formatLabel(category.format) }}</span>
@@ -65,13 +65,13 @@
         <mat-label>Esporte</mat-label>
         <mat-select formControlName="sport" (selectionChange)="updateNewCategoryEmoji($event.value)">
           @for (sport of sports; track sport[0]) {
-            <mat-option [value]="sport[0]"> <app-twemoji [emoji]="sportEmoji(sport[0])" /> {{ sport[1] }} </mat-option>
+            <mat-option [value]="sport[0]"> <lib-twemoji [emoji]="sportEmoji(sport[0])" /> {{ sport[1] }} </mat-option>
           }
         </mat-select>
       </mat-form-field>
       <mat-form-field>
         <mat-label>Emoji da modalidade</mat-label>
-        <app-twemoji matPrefix [emoji]="workspace.categoryForm.controls.emoji.value" />
+        <lib-twemoji matPrefix [emoji]="workspace.categoryForm.controls.emoji.value" />
         <input matInput maxlength="16" formControlName="emoji" />
         <mat-hint>Usado no calendário e nas listas públicas.</mat-hint>
       </mat-form-field>

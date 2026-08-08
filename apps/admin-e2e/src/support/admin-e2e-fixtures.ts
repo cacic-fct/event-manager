@@ -322,6 +322,8 @@ export function createAdminE2EDashboardInsights(
         pendingCount: 2,
       },
     ],
+    sportsTournaments: [],
+    sportsMatches: [],
     inconsistencies: [
       {
         type: 'EVENT_WITHOUT_PLACE',

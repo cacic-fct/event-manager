@@ -1,5 +1,6 @@
 const STATUS_LABELS: Readonly<Record<string, string>> = {
   DRAFT: 'Rascunho',
+  PUBLISHED: 'Publicado',
   REGISTRATION_OPEN: 'Inscrições abertas',
   REGISTRATION_CLOSED: 'Inscrições encerradas',
   ACTIVE: 'Ativo',

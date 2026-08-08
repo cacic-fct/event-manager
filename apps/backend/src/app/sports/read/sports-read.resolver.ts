@@ -141,7 +141,7 @@ export class SportsCurrentUserReadResolver {
     @Context() context: GraphqlContext,
     @Args('teamId', { type: () => String }) teamId: string,
   ): Promise<RepresentativeSportsTeamWorkspace> {
-    const { actor } = await this.access.requireTeamRepresentative(context, teamId);
+    const { actor } = await this.access.requireTeamRepresentativeReader(context, teamId);
     return this.sportsRead.representativeTeamWorkspace(teamId, actor.id);
   }
 

@@ -58,7 +58,7 @@ export interface SportsCloneTournamentDialogResult {
           <mat-select formControlName="destinationMajorEventId">
             @for (destination of data.destinations; track destination.id) {
               <mat-option [value]="destination.id">
-                <app-twemoji [emoji]="destination.emoji" /> {{ destination.name }}
+                <lib-twemoji [emoji]="destination.emoji" /> {{ destination.name }}
               </mat-option>
             }
           </mat-select>

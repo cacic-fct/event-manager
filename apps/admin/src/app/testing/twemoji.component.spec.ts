@@ -4,7 +4,7 @@ import { EmojiService, TwemojiComponent } from '@cacic-fct/shared-angular';
 
 @Component({
   imports: [TwemojiComponent],
-  template: `<app-twemoji [emoji]="emoji()" />`,
+  template: `<lib-twemoji [emoji]="emoji()" />`,
 })
 class TestHostComponent {
   readonly emoji = input<string | null | undefined>('');

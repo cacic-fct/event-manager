@@ -393,56 +393,10 @@
       <mat-panel-title><mat-icon>live_tv</mat-icon>Overlay para transmissão</mat-panel-title>
       <mat-panel-description>Link configurável para OBS</mat-panel-description>
     </mat-expansion-panel-header>
-    <div class="overlay-builder-content">
-      <div>
-        <h2>Placar para transmissão</h2>
-        <p>
-          Abra o link em uma fonte de navegador do OBS. O fundo é transparente e o placar acompanha a partida ao vivo.
-        </p>
-      </div>
-      <form [formGroup]="overlayForm" class="overlay-builder-form">
-        <mat-form-field subscriptSizing="dynamic">
-          <mat-label>Equipe exibida</mat-label>
-          <mat-select formControlName="team">
-            <mat-option value="both">As duas equipes</mat-option>
-            <mat-option value="home">{{ teamName('home') }}</mat-option>
-            <mat-option value="away">{{ teamName('away') }}</mat-option>
-          </mat-select>
-        </mat-form-field>
-        <mat-form-field subscriptSizing="dynamic">
-          <mat-label>Palavra para rodada/turno</mat-label>
-          <mat-select formControlName="periodWord">
-            @for (periodWord of overlayPeriodWords; track periodWord) {
-            <mat-option [value]="periodWord">{{ periodWord }}</mat-option>
-            }
-          </mat-select>
-          <mat-hint>Escolha uma palavra permitida para o período</mat-hint>
-        </mat-form-field>
-        <mat-checkbox formControlName="showTeamName">Exibir nome da equipe</mat-checkbox>
-        <mat-checkbox formControlName="showTeamIcon">Exibir ícone da equipe</mat-checkbox>
-        <mat-checkbox formControlName="showScore">Exibir placar</mat-checkbox>
-        <mat-checkbox formControlName="showStopwatch">Exibir cronômetro</mat-checkbox>
-        <mat-checkbox formControlName="showPeriod">Exibir rodada/turno</mat-checkbox>
-        <mat-checkbox formControlName="showState">Exibir estado da partida</mat-checkbox>
-      </form>
-      <div class="overlay-url">
-        <mat-form-field class="overlay-url-field" subscriptSizing="dynamic">
-          <mat-label>Link do overlay</mat-label>
-          <input matInput [value]="overlayUrl()" readonly aria-describedby="overlay-url-help" />
-        </mat-form-field>
-        <div class="overlay-url-actions">
-          <button mat-flat-button type="button" [disabled]="!overlayUrl()" (click)="copyOverlayUrl()">
-            <mat-icon>content_copy</mat-icon>Copiar link
-          </button>
-          <a mat-stroked-button [href]="overlayUrl()" target="_blank" rel="noopener">Abrir teste</a>
-        </div>
-      </div>
-      <p id="overlay-url-help" class="overlay-help">
-        Para personalizar cores ou a fonte no OBS, use o campo de CSS personalizado da fonte de navegador. A fonte
-        padrão é
-        <code>Inter Variable</code>.
-      </p>
-    </div>
+    <lib-sports-match-overlay-builder
+      [matchId]="currentMatchId()"
+      [homeTeamName]="teamName('home')"
+      [awayTeamName]="teamName('away')" />
   </mat-expansion-panel>
 </main>
 }

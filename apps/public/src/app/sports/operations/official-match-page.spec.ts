@@ -1,5 +1,6 @@
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { NEVER, of } from 'rxjs';
@@ -9,6 +10,7 @@ import { createSportsOperationalMatch } from './sports-operations.fixtures';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import type { SportsMatchAction } from './sports-operations.types';
 import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
+import { SportsMatchOverlayBuilderComponent } from '@cacic-fct/shared-angular';
 
 describe('OfficialSportsMatchPage', () => {
   let fixture: ComponentFixture<OfficialSportsMatchPage>;
@@ -219,7 +221,9 @@ describe('OfficialSportsMatchPage', () => {
   });
 
   it('builds an OBS overlay link from the selected presentation options', () => {
-    component.overlayForm.patchValue({
+    const overlayBuilder = fixture.debugElement.query(By.directive(SportsMatchOverlayBuilderComponent))
+      .componentInstance as SportsMatchOverlayBuilderComponent;
+    overlayBuilder.overlayForm.patchValue({
       team: 'away',
       showTeamName: false,
       showTeamIcon: true,
@@ -230,10 +234,10 @@ describe('OfficialSportsMatchPage', () => {
       periodWord: 'Turno',
     });
 
-    expect(component.overlayUrl()).toContain('/api/sports/public/matches/match-story/overlay?');
-    expect(component.overlayUrl()).toContain('team=away');
-    expect(component.overlayUrl()).toContain('teamName=0');
-    expect(component.overlayUrl()).toContain('stopwatch=0');
-    expect(component.overlayUrl()).toContain('periodWord=Turno');
+    expect(overlayBuilder.overlayUrl()).toContain('/api/sports/public/matches/match-story/overlay?');
+    expect(overlayBuilder.overlayUrl()).toContain('team=away');
+    expect(overlayBuilder.overlayUrl()).toContain('teamName=0');
+    expect(overlayBuilder.overlayUrl()).toContain('stopwatch=0');
+    expect(overlayBuilder.overlayUrl()).toContain('periodWord=Turno');
   });
 });

@@ -30,6 +30,7 @@ describe('SportsWorkspaceService', () => {
   it('translates operational states into concise Portuguese labels', () => {
     expect(workspace.statusLabel('AWAITING_REVIEW')).toBe('Em revisão');
     expect(workspace.statusLabel('REGISTRATION_OPEN')).toBe('Inscrições abertas');
+    expect(workspace.statusLabel('PUBLISHED')).toBe('Publicado');
     expect(workspace.statusLabel('UNKNOWN_STATE')).toBe('UNKNOWN_STATE');
   });
 

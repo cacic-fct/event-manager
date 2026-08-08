@@ -28,7 +28,7 @@
 <main class="subscription-shell">
   <div class="heading">
     <h1>
-      <app-twemoji [emoji]="currentData.tournament.emoji" />
+      <lib-twemoji [emoji]="currentData.tournament.emoji" />
       {{ currentData.tournament.name }}
     </h1>
     <p>Informe como você pretende participar deste torneio.</p>
@@ -76,7 +76,7 @@
           [checked]="selectedCategories().has(category.id)"
           (change)="toggleCategory(category.id, $event.checked)">
           <span class="category-name">
-            <app-twemoji [emoji]="category.emoji" />
+            <lib-twemoji [emoji]="category.emoji" />
             {{ category.name }}
           </span>
           @if (category.division) { <small>{{ category.division }}</small> }

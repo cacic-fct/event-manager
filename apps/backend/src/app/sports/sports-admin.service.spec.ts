@@ -142,6 +142,51 @@ describe('SportsAdminService', () => {
     expect(auditLog.record).not.toHaveBeenCalled();
   });
 
+  it('clears the stored livestream URL when its provider is disabled', async () => {
+    tx.sportsMatch.findFirst.mockResolvedValue({
+      id: 'match-1',
+      eventId: 'event-1',
+      categoryId: 'category-1',
+      stageId: null,
+      venueId: null,
+      homeRegistrationId: null,
+      awayRegistrationId: null,
+      winnerAdvancesToId: null,
+      loserAdvancesToId: null,
+      revision: 3,
+      livestreamProvider: 'YOUTUBE',
+      livestreamUrl: 'https://www.youtube.com/watch?v=video-1',
+      event: createEvent(),
+      category: {
+        id: 'category-1',
+        eventGroupId: 'group-1',
+        tournamentId: 'tournament-1',
+        tournament: { majorEventId: 'major-1' },
+      },
+    });
+    tx.sportsMatch.updateMany.mockResolvedValue({ count: 1 });
+    tx.sportsMatch.findUniqueOrThrow.mockResolvedValue({
+      id: 'match-1',
+      eventId: 'event-1',
+      categoryId: 'category-1',
+      revision: 4,
+      livestreamProvider: null,
+      livestreamUrl: null,
+      event: createEvent(),
+    });
+
+    await service.updateMatch('match-1', { expectedRevision: 3, livestreamProvider: null }, actor);
+
+    expect(tx.sportsMatch.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ livestreamProvider: null, livestreamUrl: null }),
+      }),
+    );
+    expect(tx.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ youtubeCode: null }) }),
+    );
+  });
+
   it('normalizes registration answers and stores a server-derived form snapshot', async () => {
     prisma.sportsCategory.findFirst.mockResolvedValue({
       eventGroupId: 'group-1',
@@ -401,6 +446,7 @@ function createTransaction() {
     },
     sportsMatch: {
       create: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       findUniqueOrThrow: jest.fn(),
       updateMany: jest.fn(),

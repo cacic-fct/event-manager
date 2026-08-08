@@ -29,12 +29,19 @@ describe('SportsMatchRosterService check-in idempotency', () => {
       delete: jest.fn(),
     },
     sportsMatch: {
+      findFirst: jest.fn(),
       updateMany: jest.fn(),
     },
   };
   const prisma = {
     $transaction: jest.fn(),
     sportsMatch: {
+      findFirst: jest.fn(),
+    },
+    sportsMatchRosterEntry: {
+      findFirst: jest.fn(),
+    },
+    people: {
       findFirst: jest.fn(),
     },
   };
@@ -102,6 +109,11 @@ describe('SportsMatchRosterService check-in idempotency', () => {
       return { id: 'roster-entry-1' };
     });
     tx.sportsMatch.updateMany.mockResolvedValue({ count: 1 });
+    tx.sportsMatch.findFirst.mockResolvedValue({
+      revision: 5,
+      operationSequence: 2,
+      state: 'SCHEDULED',
+    });
   });
 
   function createService(): SportsMatchRosterService {
@@ -236,5 +248,52 @@ describe('SportsMatchRosterService check-in idempotency', () => {
         { id: 'official-person-1', name: 'Árbitro', type: 'USER' } as never,
       ),
     ).resolves.toEqual(attendance);
+  });
+
+  it('replays an identical non-roster scanner check-in without duplicating attendance or audit work', async () => {
+    const service = createService();
+    prisma.sportsMatch.findFirst.mockResolvedValue({
+      id: 'match-1',
+      eventId: 'event-1',
+      revision: 5,
+      state: 'SCHEDULED',
+      event: {
+        deletedAt: null,
+        publiclyVisible: true,
+        publicationState: 'PUBLISHED',
+      },
+      category: {
+        eventGroupId: 'event-group-1',
+        tournament: { majorEventId: 'major-event-1' },
+      },
+    });
+    prisma.people.findFirst.mockResolvedValue({ id: 'person-visitor' });
+    prisma.sportsMatchRosterEntry.findFirst.mockResolvedValue(null);
+    tx.eventAttendance.upsert.mockResolvedValue({
+      ...attendance,
+      personId: 'person-visitor',
+    });
+    tx.eventAttendance.findUnique.mockResolvedValue({
+      ...attendance,
+      personId: 'person-visitor',
+    });
+    const args = [
+      'match-1',
+      'user:user-visitor',
+      checkedInAt,
+      'offline-scanner-1',
+      true,
+      'official-person-1',
+      'official-user-1',
+      'REFEREE',
+      { id: 'official-person-1', name: 'Árbitro', type: 'USER' } as never,
+    ] as const;
+
+    await service.checkInFromScanner(...args);
+    await service.checkInFromScanner(...args);
+
+    expect(tx.eventAttendance.upsert).toHaveBeenCalledTimes(1);
+    expect(tx.sportsMatchAction.create).toHaveBeenCalledTimes(1);
+    expect(auditLog.record).toHaveBeenCalledTimes(1);
   });
 });

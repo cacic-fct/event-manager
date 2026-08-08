@@ -30,6 +30,7 @@ export * from './lib/security/trusted-types';
 export * from './lib/sports-bracket/sports-bracket.component';
 export * from './lib/sports-bracket/sports-bracket.fixtures';
 export * from './lib/sports-bracket/sports-bracket.models';
+export * from './lib/sports-match-overlay/sports-match-overlay-builder.component';
 export * from './lib/guards/guards';
 export * from './lib/guards/redirect-authenticated';
 export * from './lib/turnstile/cloudflare-turnstile.component';

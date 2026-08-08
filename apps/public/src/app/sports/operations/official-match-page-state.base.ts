@@ -4,12 +4,6 @@ import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ScannerFeedbackService } from '@cacic-fct/shared-angular';
-import {
-  DEFAULT_SPORTS_OVERLAY_PERIOD_WORD,
-  normalizeSportsOverlayPeriodWord,
-  SPORTS_OVERLAY_PERIOD_WORDS,
-  type SportsOverlayPeriodWord,
-} from '@cacic-fct/shared-data-types';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
@@ -23,8 +17,6 @@ import {
 } from './sports-operations.types';
 import { CheckInEntry, MatchOccurrence } from './official-match-page.utils';
 
-type SportsOverlayTeam = 'both' | 'home' | 'away';
-
 @Directive()
 export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   protected readonly api = inject(SportsOperationsApiService);
@@ -35,9 +27,6 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   protected readonly scannerFeedback = inject(ScannerFeedbackService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-
-  readonly overlayPeriodWords = SPORTS_OVERLAY_PERIOD_WORDS;
-
   readonly match = signal<SportsOperationalMatch | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -107,43 +96,9 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
       validators: [Validators.required, Validators.maxLength(1000)],
     }),
   });
-  readonly overlayForm = new FormGroup({
-    team: new FormControl<SportsOverlayTeam>('both', { nonNullable: true }),
-    showTeamName: new FormControl(true, { nonNullable: true }),
-    showTeamIcon: new FormControl(true, { nonNullable: true }),
-    showScore: new FormControl(true, { nonNullable: true }),
-    showStopwatch: new FormControl(true, { nonNullable: true }),
-    showPeriod: new FormControl(true, { nonNullable: true }),
-    showState: new FormControl(true, { nonNullable: true }),
-    periodWord: new FormControl<SportsOverlayPeriodWord>(DEFAULT_SPORTS_OVERLAY_PERIOD_WORD, {
-      nonNullable: true,
-      validators: Validators.required,
-    }),
-  });
   readonly occurrences = computed(() => this.parseOccurrences(this.match()?.occurrencesJson));
-  readonly overlayUrl = computed(() => {
-    this.overlayFormRevision();
-    const matchId = this.currentMatchId();
-    if (!matchId) {
-      return '';
-    }
-    const value = this.overlayForm.getRawValue();
-    const query = new URLSearchParams({
-      team: value.team,
-      teamName: value.showTeamName ? '1' : '0',
-      teamIcon: value.showTeamIcon ? '1' : '0',
-      score: value.showScore ? '1' : '0',
-      stopwatch: value.showStopwatch ? '1' : '0',
-      period: value.showPeriod ? '1' : '0',
-      state: value.showState ? '1' : '0',
-      periodWord: normalizeSportsOverlayPeriodWord(value.periodWord),
-    });
-    const origin = this.isBrowser ? window.location.origin : '';
-    return `${origin}/api/sports/public/matches/${encodeURIComponent(matchId)}/overlay?${query.toString()}`;
-  });
 
   protected matchId = '';
-  protected readonly overlayFormRevision = signal(0);
   protected timer: ReturnType<typeof setInterval> | null = null;
   protected holdTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly subscriptions = new Subscription();
@@ -159,9 +114,6 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.matchId = this.route.snapshot.paramMap.get('matchId') ?? '';
     this.currentMatchId.set(this.matchId);
-    this.subscriptions.add(
-      this.overlayForm.valueChanges.subscribe(() => this.overlayFormRevision.update((revision) => revision + 1)),
-    );
     this.offline.start();
     this.timer = setInterval(() => this.now.set(Date.now()), 1000);
     this.load();

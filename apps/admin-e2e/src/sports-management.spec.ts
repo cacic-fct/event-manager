@@ -72,7 +72,7 @@ test('opens sports management from workspace navigation and lists configured tou
 test('shows the sports permission boundary when every sports read permission is missing', async ({ page }) => {
   await mockAdminApi(page, {
     user: authenticatedAdminUserFixture(),
-    permissions: [],
+    permissions: ['event#read'],
   });
 
   await page.goto('/admin/sports');

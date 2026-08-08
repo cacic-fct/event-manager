@@ -23,6 +23,13 @@ export class SportsAccessService {
   ) {}
 
   async requireTeamRepresentative(context: GraphqlContext, teamId: string) {
+    const result = await this.requireTeamRepresentativeReader(context, teamId);
+    this.assertTournamentOpenForPublicEdits(result.team.tournament);
+    await this.frozen.assertMajorEventMutable(result.team.tournament.majorEventId, undefined, 'edit');
+    return result;
+  }
+
+  async requireTeamRepresentativeReader(context: GraphqlContext, teamId: string) {
     const actor = await this.currentUser.requireCurrentPerson(context);
     const team = await this.prisma.sportsTeam.findFirst({
       where: {
@@ -56,8 +63,6 @@ export class SportsAccessService {
     if (!team || team.tournament.deletedAt || team.representatives.length === 0) {
       throw new ForbiddenException('Você não representa esta equipe.');
     }
-    this.assertTournamentOpenForPublicEdits(team.tournament);
-    await this.frozen.assertMajorEventMutable(team.tournament.majorEventId, undefined, 'edit');
     return { actor, team };
   }
 

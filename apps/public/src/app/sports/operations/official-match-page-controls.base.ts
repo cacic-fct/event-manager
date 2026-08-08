@@ -105,21 +105,6 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     this.sidesSwapped.update((swapped) => !swapped);
   }
 
-  async copyOverlayUrl(): Promise<void> {
-    if (!this.isBrowser || !this.overlayUrl() || !navigator.clipboard) {
-      this.snackbar.open('Copie o link exibido manualmente para usar no OBS.', 'Fechar', { duration: 5000 });
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(this.overlayUrl());
-      this.snackbar.open('Link do overlay copiado.', 'Fechar', { duration: 2500 });
-    } catch {
-      this.snackbar.open('Não foi possível copiar o link. Selecione-o e copie manualmente.', 'Fechar', {
-        duration: 5000,
-      });
-    }
-  }
-
   async toggleCheckIn(entry: CheckInEntry): Promise<void> {
     if (this.busy() || !this.canEditCheckIn()) {
       return;

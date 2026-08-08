@@ -182,6 +182,11 @@
 
     @if (workspace.matchReview()) {
       <mat-divider />
+      <lib-sports-match-overlay-builder
+        [matchId]="workspace.matchReview()?.match?.id ?? ''"
+        [homeTeamName]="workspace.teamNameForRegistration(workspace.matchReview()?.match?.homeRegistrationId)"
+        [awayTeamName]="workspace.teamNameForRegistration(workspace.matchReview()?.match?.awayRegistrationId)" />
+      <mat-divider />
       <div class="subsection-title">
         <h4>Escalação desta partida</h4>
         <p>Marque somente quem poderá jogar. A lista permanece privada até o encerramento.</p>

@@ -189,7 +189,7 @@
           @if (selectedMatch(); as match) {
           <div class="match-selection-summary">
             @if (matchEmoji(match); as emoji) {
-            <app-twemoji [emoji]="emoji" />
+            <lib-twemoji [emoji]="emoji" />
             } @else {
             <mat-icon aria-hidden="true">event</mat-icon>
             }

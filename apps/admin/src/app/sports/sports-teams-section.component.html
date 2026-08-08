@@ -23,7 +23,7 @@
             @if (workspace.teamModalities(team.id); as modalities) {
               @for (modality of modalities; track modality.id) {
                 <span>
-                  <app-twemoji [emoji]="modality.categoryEmoji" />
+                  <lib-twemoji [emoji]="modality.categoryEmoji" />
                   {{ modality.categoryName }}
                 </span>
               } @empty {

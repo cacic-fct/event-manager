@@ -84,6 +84,18 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
         input.winnerAdvancesToId === undefined ? match.winnerAdvancesToId : input.winnerAdvancesToId,
         input.loserAdvancesToId === undefined ? match.loserAdvancesToId : input.loserAdvancesToId,
       ]);
+      const livestreamProvider =
+        input.livestreamProvider === undefined ? match.livestreamProvider : input.livestreamProvider;
+      const requestedLivestreamUrl =
+        input.livestreamProvider === null && input.livestreamUrl === undefined
+          ? null
+          : input.livestreamUrl === undefined
+            ? match.livestreamUrl
+            : input.livestreamUrl;
+      const livestreamUrl =
+        input.livestreamProvider !== undefined || input.livestreamUrl !== undefined
+          ? this.normalizeLivestreamUrl(livestreamProvider, requestedLivestreamUrl)
+          : match.livestreamUrl;
       const updated = await tx.sportsMatch.updateMany({
         where: {
           id: match.id,
@@ -104,14 +116,7 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
               }
             : {}),
           ...(input.livestreamProvider !== undefined ? { livestreamProvider: input.livestreamProvider } : {}),
-          ...(input.livestreamUrl !== undefined
-            ? {
-                livestreamUrl: this.normalizeLivestreamUrl(
-                  input.livestreamProvider ?? match.livestreamProvider,
-                  input.livestreamUrl,
-                ),
-              }
-            : {}),
+          ...(input.livestreamProvider !== undefined || input.livestreamUrl !== undefined ? { livestreamUrl } : {}),
           ...(input.winnerAdvancesToId !== undefined ? { winnerAdvancesToId: input.winnerAdvancesToId } : {}),
           ...(input.winnerAdvancesToSide !== undefined ? { winnerAdvancesToSide: input.winnerAdvancesToSide } : {}),
           ...(input.loserAdvancesToId !== undefined ? { loserAdvancesToId: input.loserAdvancesToId } : {}),
@@ -147,8 +152,8 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
           ...(input.livestreamProvider !== undefined || input.livestreamUrl !== undefined
             ? {
                 youtubeCode: this.youtubeCodeForLivestream(
-                  input.livestreamProvider ?? match.livestreamProvider,
-                  input.livestreamUrl === undefined ? match.livestreamUrl : input.livestreamUrl,
+                  livestreamProvider,
+                  livestreamUrl,
                 ),
               }
             : {}),

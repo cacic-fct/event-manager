@@ -40,7 +40,7 @@
           @for (item of workspace.tournaments(); track item.tournament.id) {
             <mat-list-item (click)="workspace.loadTournament(item.tournament.id)">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="item.majorEvent.emoji" />
+                <lib-twemoji [emoji]="item.majorEvent.emoji" />
                 {{ item.majorEvent.name }}
               </span>
               <span matListItemLine>
@@ -73,7 +73,7 @@
           @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
             @if (!workspace.tournaments().find(item => item.majorEvent.id === majorEvent.id)) {
               <mat-list-item (click)="workspace.openMajorEvent(majorEvent.id)">
-                <span matListItemTitle><app-twemoji [emoji]="majorEvent.emoji" /> {{ majorEvent.name }}</span>
+                <span matListItemTitle><lib-twemoji [emoji]="majorEvent.emoji" /> {{ majorEvent.name }}</span>
                 <span matListItemLine
                   >{{ majorEvent.startDate | date: 'shortDate' }} a {{ majorEvent.endDate | date: 'shortDate' }}</span
                 >

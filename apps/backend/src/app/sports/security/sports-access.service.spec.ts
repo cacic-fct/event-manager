@@ -90,6 +90,35 @@ describe('SportsAccessService', () => {
     expect(result.representative).toEqual({ id: 'representative-1' });
   });
 
+  it('allows a representative to read a finished team without requiring event mutability', async () => {
+    const service = new SportsAccessService(
+      {
+        sportsTeam: {
+          findFirst: jest.fn().mockResolvedValue({
+            id: 'team-1',
+            revision: 3,
+            fieldRevisions: {},
+            tournamentId: 'tournament-1',
+            tournament: {
+              status: 'FINISHED',
+              finishedAt: new Date('2026-08-01T12:00:00.000Z'),
+              deletedAt: null,
+              majorEventId: 'major-event-1',
+            },
+            representatives: [{ id: 'representative-1' }],
+          }),
+        },
+      } as never,
+      currentUser as never,
+      frozen as never,
+    );
+
+    await expect(service.requireTeamRepresentativeReader({} as never, 'team-1')).resolves.toEqual(
+      expect.objectContaining({ actor }),
+    );
+    expect(frozen.assertMajorEventMutable).not.toHaveBeenCalled();
+  });
+
   it('selects the most specific official assignment deterministically', async () => {
     const officialFindFirst = jest.fn().mockResolvedValue({
       id: 'official-1',

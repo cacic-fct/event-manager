@@ -25,7 +25,7 @@
   }
 
   <header class="tournament-header">
-    <app-twemoji class="tournament-emoji" [emoji]="tournament.emoji" />
+    <lib-twemoji class="tournament-emoji" [emoji]="tournament.emoji" />
     <div>
       <h1>{{ tournament.name }}</h1>
       <p class="date-line">
@@ -93,7 +93,7 @@
     <mat-tab>
       <ng-template mat-tab-label>
         <span class="category-tab-label">
-          <app-twemoji [emoji]="category.emoji" />
+          <lib-twemoji [emoji]="category.emoji" />
           {{ category.name }}
         </span>
       </ng-template>
@@ -101,7 +101,7 @@
         <header class="category-heading">
           <div>
             <h2 class="category-title">
-              <app-twemoji [emoji]="category.emoji" />
+              <lib-twemoji [emoji]="category.emoji" />
               {{ categoryTitle(category) }}
             </h2>
             <p>{{ formatLabel(category) }}</p>

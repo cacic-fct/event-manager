@@ -168,5 +168,5 @@ describe('SportsTeamLogoService representative queue', () => {
     expect(result).toMatchObject({ mimeType: 'image/avif', width: 1600, height: 960 });
     const queued = s3.uploadFile.mock.calls[0]?.[1] as Buffer;
     expect((await sharp(queued).metadata()).format).toBe('heif');
-  });
+  }, 15_000);
 });

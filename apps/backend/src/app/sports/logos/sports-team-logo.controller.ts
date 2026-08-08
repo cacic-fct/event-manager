@@ -224,7 +224,7 @@ export class SportsTeamRepresentativeLogoController {
     @Req() request: RequestWithUser,
     @Res({ passthrough: true }) response: Response,
   ): Promise<StreamableFile> {
-    await this.access.requireTeamRepresentative({ req: request }, sportsTeamId);
+    await this.access.requireTeamRepresentativeReader({ req: request }, sportsTeamId);
     const logo = await this.logos.download(sportsTeamId, sha256);
     response.setHeader('Content-Type', logo.mimeType);
     response.setHeader('Content-Length', String(logo.sizeBytes));
