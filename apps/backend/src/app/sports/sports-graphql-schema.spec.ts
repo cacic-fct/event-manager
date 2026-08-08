@@ -7,7 +7,15 @@ import {
   SportsPublicReadResolver,
 } from './read/sports-read.resolver';
 import { SportsAutoroutingResolver } from './routing/sports-autorouting.resolver';
-import { SportsMutationsResolver } from './sports-mutations.resolver';
+import {
+  SportsDuplicationMutationsResolver,
+  SportsLifecycleMutationsResolver,
+  SportsMatchAdminMutationsResolver,
+  SportsParticipantMutationsResolver,
+  SportsReviewMutationsResolver,
+  SportsTeamMutationsResolver,
+  SportsTournamentMutationsResolver,
+} from './sports-mutations.resolver';
 
 describe('sports GraphQL schema', () => {
   it('builds the complete sports query and mutation surface', async () => {
@@ -21,7 +29,13 @@ describe('sports GraphQL schema', () => {
       SportsPublicReadResolver,
       SportsCurrentUserReadResolver,
       SportsAutoroutingResolver,
-      SportsMutationsResolver,
+      SportsTournamentMutationsResolver,
+      SportsTeamMutationsResolver,
+      SportsMatchAdminMutationsResolver,
+      SportsLifecycleMutationsResolver,
+      SportsReviewMutationsResolver,
+      SportsDuplicationMutationsResolver,
+      SportsParticipantMutationsResolver,
     ]);
     const printed = printSchema(schema);
 

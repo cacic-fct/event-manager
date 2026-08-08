@@ -1,0 +1,314 @@
+        <div class="master-detail">
+          <aside class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Modalidades</h3>
+                <p>Esporte, divisão e formato competitivo.</p>
+              </div>
+              <button mat-stroked-button type="button" (click)="workspace.newCategory()">
+                <mat-icon>add</mat-icon>Novo
+              </button>
+            </div>
+            <mat-list class="result-list">
+              @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+                <mat-list-item
+                  [class.selected-list-item]="workspace.selectedCategoryId() === category.id"
+                  (click)="workspace.selectCategory(category)">
+                  <span matListItemTitle>
+                    <app-twemoji [emoji]="category.eventGroup?.emoji || sportEmoji(category.sport)" />
+                    {{ category.name }}
+                  </span>
+                  <span matListItemLine
+                    >{{ category.division || 'Sem divisão' }} · {{ formatLabel(category.format) }}</span
+                  >
+                  <span matListItemMeta class="state-label">{{ categoryStatusLabel(category.status) }}</span>
+                </mat-list-item>
+              } @empty {
+                <mat-list-item>
+                  <span matListItemTitle>Nenhuma modalidade</span>
+                  <span matListItemLine>Comece por um preset e ajuste somente o necessário.</span>
+                </mat-list-item>
+              }
+            </mat-list>
+          </aside>
+
+          <section class="panel panel-stack">
+            <div class="panel-heading">
+              <div>
+                <h3>{{ workspace.categoryRead() ? 'Editar modalidade' : 'Nova modalidade' }}</h3>
+                <p>Presets fornecem um ponto seguro, mas todas as regras continuam flexíveis.</p>
+              </div>
+              <div class="panel-actions">
+                @if (workspace.categoryRead(); as read) {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Duplicar modalidade"
+                    (click)="workspace.cloneSelectedCategory()">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Excluir"
+                    (click)="workspace.deleteCategory(read.category)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+                <button
+                  mat-flat-button
+                  type="button"
+                  (click)="workspace.saveCategory()"
+                  [disabled]="workspace.categoryForm.invalid">
+                  <mat-icon>save</mat-icon>Salvar
+                </button>
+              </div>
+            </div>
+            <form [formGroup]="workspace.categoryForm" class="form-grid">
+              <mat-form-field>
+                <mat-label>Nome</mat-label>
+                <input matInput formControlName="name" />
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Esporte</mat-label>
+                <mat-select formControlName="sport" (selectionChange)="updateNewCategoryEmoji($event.value)">
+                  @for (sport of sports; track sport[0]) {
+                    <mat-option [value]="sport[0]">
+                      <app-twemoji [emoji]="sportEmoji(sport[0])" /> {{ sport[1] }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Emoji da modalidade</mat-label>
+                <app-twemoji matPrefix [emoji]="workspace.categoryForm.controls.emoji.value" />
+                <input matInput maxlength="16" formControlName="emoji" />
+                <mat-hint>Usado no calendário e nas listas públicas.</mat-hint>
+              </mat-form-field>
+              @if (workspace.categoryForm.controls.sport.value === 'OTHER') {
+                <mat-form-field>
+                  <mat-label>Nome do esporte</mat-label>
+                  <input matInput formControlName="customSportName" />
+                </mat-form-field>
+              }
+              <mat-form-field>
+                <mat-label>Divisão</mat-label>
+                <input matInput formControlName="division" placeholder="Ex.: feminino, série A" />
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Formato</mat-label>
+                <mat-select formControlName="format">
+                  @for (format of formats; track format.value) {
+                    <mat-option [value]="format.value">{{ format.label }}</mat-option>
+                  }
+                </mat-select>
+                <mat-hint>{{ formatLabel(workspace.categoryForm.controls.format.value) }}</mat-hint>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Estado</mat-label>
+                <mat-select formControlName="status">
+                  @for (status of categoryStatuses; track status[0]) {
+                    <mat-option [value]="status[0]">{{ status[1] }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Início das inscrições</mat-label>
+                <input matInput type="datetime-local" formControlName="registrationStartDate" />
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Fim das inscrições</mat-label>
+                <input matInput type="datetime-local" formControlName="registrationEndDate" />
+              </mat-form-field>
+
+              <app-sports-format-guide
+                class="span-2"
+                [currentFormat]="workspace.categoryForm.controls.format.value"
+                (formatSelected)="workspace.categoryForm.controls.format.setValue($event)" />
+
+              <div class="subsection-title span-2">
+                <h4>Elenco por modalidade</h4>
+                <p>Zero significa sem limite definido.</p>
+              </div>
+              <mat-form-field
+                ><mat-label>Mínimo</mat-label><input matInput type="number" min="0" formControlName="minimumRosterSize"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Máximo</mat-label><input matInput type="number" min="0" formControlName="maximumRosterSize"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Capitães</mat-label><input matInput type="number" min="0" formControlName="maximumCaptains"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Técnicos</mat-label><input matInput type="number" min="0" formControlName="maximumCoaches"
+              /></mat-form-field>
+              <mat-slide-toggle formControlName="allowPlayerMultipleTeams"
+                >Permitir atleta em múltiplas equipes nesta modalidade</mat-slide-toggle
+              >
+              <mat-slide-toggle formControlName="periodsEnabled">Registrar tempos, sets ou rodadas</mat-slide-toggle>
+              @if (workspace.categoryForm.controls.periodsEnabled.value) {
+                <mat-form-field
+                  ><mat-label>Quantidade máxima</mat-label
+                  ><input matInput type="number" min="1" formControlName="maximumPeriods"
+                /></mat-form-field>
+                <mat-form-field
+                  ><mat-label>Nome do período</mat-label><input matInput formControlName="periodLabel"
+                /></mat-form-field>
+              }
+              <div class="subsection-title span-2">
+                <h4>Cronômetros</h4>
+                <p>
+                  Configure o tempo geral e o tempo de cada período. Durante a partida, o servidor usa instantes Unix
+                  para manter todos os dispositivos sincronizados.
+                </p>
+              </div>
+              <mat-form-field>
+                <mat-label>Preset de tempo</mat-label>
+                <mat-select
+                  formControlName="timerPreset"
+                  (selectionChange)="workspace.applyTimerPreset($event.value)">
+                  <mat-option value="SOCCER">Futebol - 2 tempos de 45 min</mat-option>
+                  <mat-option value="FUTSAL">Futsal - 2 tempos de 20 min</mat-option>
+                  <mat-option value="BASKETBALL">Basquete - 4 períodos de 10 min</mat-option>
+                  <mat-option value="VOLLEYBALL">Vôlei - sets sem duração fixa</mat-option>
+                  <mat-option value="TENNIS">Tênis - sets sem duração fixa</mat-option>
+                  <mat-option value="CHESS">Xadrez - somente tempo geral</mat-option>
+                  <mat-option value="ESPORTS">E-sports - rodadas sem duração fixa</mat-option>
+                  <mat-option value="CUSTOM">Configuração manual</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Duração prevista do período (minutos)</mat-label>
+                <input matInput type="number" min="0" max="1440" formControlName="timerPeriodDurationMinutes" />
+                <mat-hint>Zero significa duração livre.</mat-hint>
+              </mat-form-field>
+              <mat-form-field class="span-2">
+                <mat-label>Início previsto de cada período (minutos)</mat-label>
+                <input matInput formControlName="timerPeriodStartOffsetsMinutes" placeholder="0, 45" />
+                <mat-hint>
+                  Separe por vírgulas. Ex.: 0, 45 faz o segundo tempo começar em 45:00 mesmo com acréscimos.
+                </mat-hint>
+                @if (workspace.categoryForm.controls.timerPeriodStartOffsetsMinutes.invalid) {
+                  <mat-error>Use somente minutos positivos separados por vírgulas.</mat-error>
+                }
+              </mat-form-field>
+              <mat-slide-toggle formControlName="timerOverallEnabled">Exibir cronômetro geral</mat-slide-toggle>
+              <mat-slide-toggle formControlName="timerPeriodEnabled">Exibir cronômetro por período</mat-slide-toggle>
+              <mat-slide-toggle formControlName="timerAllowOvertime">Permitir acréscimos além do limite</mat-slide-toggle>
+              <mat-form-field class="span-2">
+                <mat-label>Regras públicas</mat-label>
+                <textarea matInput rows="4" formControlName="rulesText"></textarea>
+              </mat-form-field>
+
+              <mat-expansion-panel class="span-2 rule-editor">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Regras avançadas</mat-panel-title>
+                  <mat-panel-description
+                    >JSON validado para placar, elenco, chave e classificação</mat-panel-description
+                  >
+                </mat-expansion-panel-header>
+                <p class="advanced-warning">
+                  <mat-icon>warning</mat-icon>
+                  Use somente para regras não cobertas pelos controles acima. O valor deve ser um objeto JSON com no
+                  máximo seis níveis. Em placar, use apenas strategy, allowDraw, higherWins e pointStep.
+                </p>
+                <div class="advanced-docs">
+                  <mat-icon aria-hidden="true">menu_book</mat-icon>
+                  <div>
+                    <strong>Quando usar estes campos?</strong>
+                    <p>
+                      Eles existem para extensões raras ainda sem um controle visual, importações e compatibilidade com
+                      torneios antigos. Prefira sempre os controles normais. O servidor rejeita chaves desconhecidas nas
+                      regras tipadas, objetos perigosos, valores infinitos e estruturas excessivamente profundas.
+                    </p>
+                    <p>
+                      Placar aceita <code>strategy</code>, <code>allowDraw</code>, <code>higherWins</code> e
+                      <code>pointStep</code>. Elenco, chave e classificação devem seguir a documentação da versão da API;
+                      mudanças são protegidas pela validação no envio e pela revisão do esquema compartilhado.
+                    </p>
+                  </div>
+                </div>
+                <div class="form-grid">
+                  <mat-form-field
+                    ><mat-label>Placar</mat-label
+                    ><textarea matInput rows="5" formControlName="scoreRulesJson"></textarea>
+                    @if (workspace.categoryForm.controls.scoreRulesJson.invalid) {
+                      <mat-error>Revise a sintaxe e o esquema das regras de placar.</mat-error>
+                    }
+                  </mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Elenco</mat-label
+                    ><textarea matInput rows="5" formControlName="rosterRulesJson"></textarea>
+                    @if (workspace.categoryForm.controls.rosterRulesJson.invalid) {
+                      <mat-error>Informe um objeto JSON seguro e válido.</mat-error>
+                    }
+                  </mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Chave</mat-label
+                    ><textarea matInput rows="5" formControlName="bracketRulesJson"></textarea>
+                    @if (workspace.categoryForm.controls.bracketRulesJson.invalid) {
+                      <mat-error>Informe um objeto JSON seguro e válido.</mat-error>
+                    }
+                  </mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Classificação</mat-label
+                    ><textarea matInput rows="5" formControlName="standingsRulesJson"></textarea>
+                    @if (workspace.categoryForm.controls.standingsRulesJson.invalid) {
+                      <mat-error>Informe um objeto JSON seguro e válido.</mat-error>
+                    }
+                  </mat-form-field>
+                </div>
+              </mat-expansion-panel>
+            </form>
+
+            @if (workspace.categoryRead(); as read) {
+              <mat-divider />
+              <div class="subsection-title">
+                <h4>Equipes inscritas</h4>
+                <p>A aprovação pode preceder o pagamento; “ativa” significa que todas as condições foram concluídas.</p>
+              </div>
+              <div class="registration-list">
+                @for (registration of read.registrations; track registration.id) {
+                  <div>
+                    <span>
+                      <strong>{{ workspace.teamNameForRegistration(registration.id) }}</strong>
+                      <small
+                        >Seed {{ registration.seed || 'não definido' }} ·
+                        {{ workspace.statusLabel(registration.status) }}</small
+                      >
+                    </span>
+                    <div class="review-actions">
+                      <button
+                        mat-icon-button
+                        type="button"
+                        matTooltip="Excluir inscrição"
+                        (click)="workspace.deleteRegistration(registration)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="workspace.setRegistrationStatus(registration, 'CHANGES_REQUESTED')">
+                        Pedir ajuste
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        (click)="workspace.setRegistrationStatus(registration, 'APPROVED')">
+                        Aprovar
+                      </button>
+                      <button
+                        mat-flat-button
+                        type="button"
+                        (click)="workspace.setRegistrationStatus(registration, 'ACTIVE')">
+                        Ativar
+                      </button>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="empty-copy">Nenhuma equipe inscrita nesta modalidade.</p>
+                }
+              </div>
+            }
+          </section>
+        </div>

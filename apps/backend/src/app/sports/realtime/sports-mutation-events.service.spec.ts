@@ -4,6 +4,13 @@ describe('SportsMutationEventsService', () => {
   const realtime = {
     scope: jest.fn((channel: string, id: string) => `${channel}:${id}`),
     publish: jest.fn().mockResolvedValue(undefined),
+    publishAutorouteInvalidations: jest.fn().mockResolvedValue(undefined),
+  };
+  const autorouting = {
+    affectedPeopleForMatch: jest.fn().mockResolvedValue([]),
+  };
+  const dashboardInsights = {
+    invalidateCachedInsights: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(() => {
@@ -21,6 +28,8 @@ describe('SportsMutationEventsService', () => {
     const service = new SportsMutationEventsService(
       prisma as never,
       realtime as never,
+      autorouting as never,
+      dashboardInsights as never,
     );
 
     await service.publishForEntity('MATCH', 'match-1', true);
@@ -56,6 +65,8 @@ describe('SportsMutationEventsService', () => {
     const service = new SportsMutationEventsService(
       prisma as never,
       realtime as never,
+      autorouting as never,
+      dashboardInsights as never,
     );
 
     await service.publishForEntity('TEAM_CHANGE', 'change-1', false);
@@ -83,6 +94,8 @@ describe('SportsMutationEventsService', () => {
     const service = new SportsMutationEventsService(
       prisma as never,
       realtime as never,
+      autorouting as never,
+      dashboardInsights as never,
     );
 
     await service.publishForEntity('TEAM', 'team-1', true);

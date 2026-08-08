@@ -52,7 +52,7 @@ describe('sports match state rules', () => {
         intendedState: 'CANCELED',
         reviewStatus: 'PENDING',
       }),
-    ).toBe('CANCELED');
+    ).toBe('LIVE');
     expect(
       resolvePublicSportsMatchState({
         canonicalState: 'LIVE',

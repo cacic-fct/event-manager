@@ -1,0 +1,155 @@
+.person-list,
+.member-grid,
+.registration-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.logo-control {
+  align-items: center;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: 3.5rem 1fr auto;
+  padding: 0.8rem;
+}
+
+.logo-control > img,
+.logo-control > mat-icon {
+  border-radius: 10px;
+  height: 3.5rem;
+  object-fit: contain;
+  width: 3.5rem;
+}
+
+.logo-control > mat-icon {
+  font-size: 3.5rem;
+}
+
+.logo-control > div {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.logo-control span {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8rem;
+}
+
+.material-upload {
+  align-items: center;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 999px;
+  color: var(--mat-sys-primary);
+  cursor: pointer;
+  display: flex;
+  font-weight: 600;
+  gap: 0.4rem;
+  padding: 0.55rem 0.8rem;
+}
+
+.material-upload input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.danger-zone {
+  align-items: center;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  display: flex;
+  justify-content: space-between;
+  padding-block-start: 0.8rem;
+}
+
+.danger-zone > span {
+  display: grid;
+  font-size: 0.84rem;
+}
+
+.person-list > div,
+.member-grid > div,
+.registration-list > div {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+}
+
+.registration-list > div > span {
+  display: grid;
+}
+
+.registration-list small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.person-list > div > span,
+.member-grid > div > span {
+  display: grid;
+  flex: 1;
+}
+
+.person-list small,
+.member-grid small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.person-search,
+.official-form {
+  grid-template-columns: minmax(15rem, 1fr) auto;
+}
+
+.team-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.team-heading img,
+.team-heading mat-icon {
+  border-radius: 6px;
+  height: 2rem;
+  object-fit: contain;
+  width: 2rem;
+}
+
+.lineup-member {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 0.65fr) minmax(5rem, 0.35fr);
+  padding-block: 0.35rem;
+}
+
+.official-form {
+  grid-template-columns: minmax(13rem, 1.5fr) minmax(10rem, 1fr) minmax(11rem, 1fr) auto;
+}
+
+.search-results {
+  background: var(--mat-sys-surface-container-high);
+  border-radius: 12px;
+  display: grid;
+  margin-block-start: -0.75rem;
+  padding: 0.35rem;
+}
+
+.search-results button {
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0.65rem;
+  text-align: start;
+}
+
+.search-results button:hover,
+.search-results button:focus-visible {
+  background: var(--mat-sys-surface);
+}
+

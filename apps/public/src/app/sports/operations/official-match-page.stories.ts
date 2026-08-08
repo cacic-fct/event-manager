@@ -150,6 +150,7 @@ export const ShirtNumberOrderingDuringMatch: Story = {
     const homeTeam = canvas.getByRole('region', { name: 'Atletas de Engenharia Atlética' });
     const athletes = within(homeTeam).getAllByRole('button');
     await expect(athletes[0]).toHaveTextContent('camisa 7');
+    await expect(athletes[1]).toHaveTextContent('camisa 8');
     await expect(canvas.getByRole('button', { name: 'Editar check-in' })).toBeVisible();
   },
 };

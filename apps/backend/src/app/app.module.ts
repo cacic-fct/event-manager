@@ -208,7 +208,15 @@ import { SportsStandingsService } from './sports/scoring/sports-standings.servic
 import { SportsAccessService } from './sports/security/sports-access.service';
 import { SportsIdentityProtectionService } from './sports/security/sports-identity-protection.service';
 import { SportsAdminService } from './sports/sports-admin.service';
-import { SportsMutationsResolver } from './sports/sports-mutations.resolver';
+import {
+  SportsDuplicationMutationsResolver,
+  SportsLifecycleMutationsResolver,
+  SportsMatchAdminMutationsResolver,
+  SportsParticipantMutationsResolver,
+  SportsReviewMutationsResolver,
+  SportsTeamMutationsResolver,
+  SportsTournamentMutationsResolver,
+} from './sports/sports-mutations.resolver';
 import { SportsPaymentService } from './sports/sports-payment.service';
 import { SportsTeamChangeService } from './sports/teams/sports-team-change.service';
 
@@ -397,7 +405,13 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserOnlineAttendanceRealtimeService,
     CurrentUserSubscriptionFeedResolver,
     CurrentUserDefaultRedirectResolver,
-    SportsMutationsResolver,
+    SportsTournamentMutationsResolver,
+    SportsTeamMutationsResolver,
+    SportsMatchAdminMutationsResolver,
+    SportsLifecycleMutationsResolver,
+    SportsReviewMutationsResolver,
+    SportsDuplicationMutationsResolver,
+    SportsParticipantMutationsResolver,
     SportsPlayerApplicationAdminReadResolver,
     SportsPlayerApplicationCurrentUserReadResolver,
     SportsAdminReadResolver,

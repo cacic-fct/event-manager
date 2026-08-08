@@ -169,8 +169,8 @@ describe('SportsRealtimeService', () => {
     expect(redis.eval).toHaveBeenCalledWith(
       expect.stringContaining("redis.call('INCR'"),
       2,
-      'sports:public-tournament:v1:tournament-1',
-      'sports:public-tournament-version:v1:tournament-1',
+      'sports:public-tournament:v2:tournament-1',
+      'sports:public-tournament-version:v2:tournament-1',
     );
   });
 

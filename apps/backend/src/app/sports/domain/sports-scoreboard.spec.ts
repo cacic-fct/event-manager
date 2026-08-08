@@ -77,7 +77,7 @@ describe('sports scoreboard', () => {
     expect(closeActiveSportsScorePeriod(second).activePeriodNumber).toBeNull();
     expect(() =>
       rollSportsScorePeriod(second, { label: 'Tempo', maximumPeriods: 2 }),
-    ).toThrow('maximum of 2 periods');
+    ).toThrow('O máximo configurado de 2 períodos foi atingido.');
   });
 
   it('rejects drifted scoreboards with ambiguous open periods', () => {
@@ -104,6 +104,6 @@ describe('sports scoreboard', () => {
 
     expect(() =>
       applySportsScoreDelta(scoreboard, { side: 'HOME', amount: 1, periodNumber: 1 }),
-    ).toThrow('Closed score periods');
+    ).toThrow('Períodos encerrados não podem receber alterações de placar.');
   });
 });

@@ -185,7 +185,7 @@ describe('winner advancement planning', () => {
     });
   });
 
-  it('blocks invalid winners and changes to matches that already started', () => {
+  it('blocks invalid winners and changes to matches that already started while allowing structural byes', () => {
     expect(
       planSportsWinnerAdvancement(input({ winnerRegistrationId: 'not-a-participant' })),
     ).toEqual({
@@ -202,8 +202,11 @@ describe('winner advancement planning', () => {
         input({ outcome: 'AUTOMATIC_BYE', state: 'SCHEDULED' }),
       ),
     ).toEqual({
-      status: 'BLOCKED',
-      reason: 'SOURCE_NOT_FINAL',
+      status: 'ASSIGN',
+      targetMatchId: 'final',
+      side: 'HOME',
+      registrationId: 'team-a',
+      expectedCurrentRegistrationId: null,
     });
   });
 });

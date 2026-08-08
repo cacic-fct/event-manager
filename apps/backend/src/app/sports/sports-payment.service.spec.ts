@@ -150,12 +150,14 @@ describe('SportsPaymentService', () => {
     tx.majorEventSubscription.findUnique.mockResolvedValue({
       subscriptionStatus: SubscriptionStatus.CONFIRMED,
       majorEvent: { isPaymentRequired: true },
-      sportsTournamentParticipant: {
-        id: 'participant-1',
-        tournamentId: 'tournament-1',
-        personId: 'person-1',
-        approvedAt: new Date(),
-      },
+      sportsTournamentParticipants: [
+        {
+          id: 'participant-1',
+          tournamentId: 'tournament-1',
+          personId: 'person-1',
+          approvedAt: new Date(),
+        },
+      ],
     });
 
     await refreshSportsParticipantForSubscription(tx as never, 'subscription-1');

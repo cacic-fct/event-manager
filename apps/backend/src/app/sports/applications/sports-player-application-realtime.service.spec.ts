@@ -66,12 +66,14 @@ describe('SportsPlayerApplicationRealtimeService', () => {
   it('publishes payment changes to the person and admin scopes and invalidates routing', async () => {
     prisma.majorEventSubscription.findUnique.mockResolvedValue({
       subscriptionStatus: 'CONFIRMED',
-      sportsTournamentParticipant: {
-        tournamentId: 'tournament-1',
-        personId: 'person-1',
-        status: 'ACTIVE',
-        paymentStatus: 'PAID',
-      },
+      sportsTournamentParticipants: [
+        {
+          tournamentId: 'tournament-1',
+          personId: 'person-1',
+          status: 'ACTIVE',
+          paymentStatus: 'PAID',
+        },
+      ],
     });
     prisma.sportsPlayerApplication.findMany.mockResolvedValue([
       { id: 'application-1', status: 'ACTIVE' },
@@ -105,7 +107,7 @@ describe('SportsPlayerApplicationRealtimeService', () => {
   it('does nothing for subscriptions unrelated to sports', async () => {
     prisma.majorEventSubscription.findUnique.mockResolvedValue({
       subscriptionStatus: 'CONFIRMED',
-      sportsTournamentParticipant: null,
+      sportsTournamentParticipants: [],
     });
 
     await service.publishPaymentChanged(

@@ -17,7 +17,6 @@ import {
 import { Permission } from '@cacic-fct/shared-permissions';
 import { createHash, randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
-import sharp from 'sharp';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
@@ -25,38 +24,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { S3Service } from '../../s3/s3.service';
 import { SportsTeamChangeService } from '../teams/sports-team-change.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
+import { validateSportsTeamLogoImage } from './sports-team-logo-validation';
 
 export const MAX_SPORTS_TEAM_LOGO_SIZE_BYTES = 15 * 1024 * 1024;
 export const MIN_SPORTS_TEAM_LOGO_DIMENSION = 16;
 export const SPORTS_TEAM_LOGO_OUTPUT_DIMENSION = 1600;
 export const MAX_SPORTS_TEAM_LOGO_PIXELS = 64 * 1024 * 1024;
-
-const SPORTS_TEAM_LOGO_METADATA_TIMEOUT_SECONDS = 3;
-
-const LOGO_FORMATS = {
-  jpeg: {
-    mimeType: 'image/jpeg',
-    extension: 'jpg',
-  },
-  png: {
-    mimeType: 'image/png',
-    extension: 'png',
-  },
-  webp: {
-    mimeType: 'image/webp',
-    extension: 'webp',
-  },
-  avif: {
-    mimeType: 'image/avif',
-    extension: 'avif',
-  },
-  svg: {
-    mimeType: 'image/svg+xml',
-    extension: 'svg',
-  },
-} as const;
-
-type SportsTeamLogoFormat = keyof typeof LOGO_FORMATS;
 
 export interface SportsTeamLogoUploadFile {
   buffer: Buffer;
@@ -111,7 +84,7 @@ export class SportsTeamLogoService {
     representativePersonId: string,
   ): Promise<SportsTeamLogoChangeRecord> {
     this.assertExpectedRevision(baseRevision);
-    const image = await this.validateImage(file);
+    const image = await validateSportsTeamLogoImage(file);
     const sha256 = createHash('sha256').update(image.buffer).digest('hex');
     const team = await this.prisma.sportsTeam.findFirst({
       where: {
@@ -213,7 +186,7 @@ export class SportsTeamLogoService {
   ): Promise<SportsTeamLogoRecord> {
     const actorId = this.requireActorId(actor);
     this.assertExpectedRevision(expectedRevision);
-    const image = await this.validateImage(file);
+    const image = await validateSportsTeamLogoImage(file);
     const sha256 = createHash('sha256').update(image.buffer).digest('hex');
 
     const team = await this.prisma.sportsTeam.findFirst({
@@ -394,112 +367,6 @@ export class SportsTeamLogoService {
     };
   }
 
-  private async validateImage(file: SportsTeamLogoUploadFile | undefined): Promise<{
-    buffer: Buffer;
-    mimeType: string;
-    extension: string;
-    width: number;
-    height: number;
-  }> {
-    if (!file?.buffer?.length) {
-      throw new BadRequestException('O arquivo de logo da equipe é obrigatório.');
-    }
-    if (
-      file.size !== file.buffer.length ||
-      file.buffer.length > MAX_SPORTS_TEAM_LOGO_SIZE_BYTES
-    ) {
-      throw new BadRequestException('O logo da equipe deve ter no máximo 15 MiB.');
-    }
-
-    let metadata;
-    try {
-      metadata = await sharp(file.buffer, {
-        animated: false,
-        failOn: 'warning',
-        limitInputPixels: MAX_SPORTS_TEAM_LOGO_PIXELS,
-        pages: 1,
-        sequentialRead: true,
-        unlimited: false,
-      })
-        .timeout({ seconds: SPORTS_TEAM_LOGO_METADATA_TIMEOUT_SECONDS })
-        .metadata();
-    } catch {
-      throw new BadRequestException(
-        'O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG válida.',
-      );
-    }
-
-    const detectedFormat =
-      metadata.format === 'heif' && file.mimetype.toLowerCase() === 'image/avif'
-        ? 'avif'
-        : metadata.format;
-    if (!detectedFormat || !(detectedFormat in LOGO_FORMATS)) {
-      throw new BadRequestException(
-        'O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG.',
-      );
-    }
-    const format = detectedFormat as SportsTeamLogoFormat;
-    const formatDetails = LOGO_FORMATS[format];
-    if (file.mimetype.toLowerCase() !== formatDetails.mimeType) {
-      throw new BadRequestException('O tipo declarado do arquivo não corresponde ao conteúdo da imagem.');
-    }
-    if (!metadata.width || !metadata.height) {
-      throw new BadRequestException('Não foi possível determinar as dimensões do logo.');
-    }
-    if (
-      metadata.width < MIN_SPORTS_TEAM_LOGO_DIMENSION ||
-      metadata.height < MIN_SPORTS_TEAM_LOGO_DIMENSION ||
-      metadata.width * metadata.height > MAX_SPORTS_TEAM_LOGO_PIXELS
-    ) {
-      throw new BadRequestException(
-        `O logo deve ter ao menos ${MIN_SPORTS_TEAM_LOGO_DIMENSION}px por lado e no máximo 64 megapixels.`,
-      );
-    }
-    if (metadata.pages && metadata.pages > 1) {
-      throw new BadRequestException('O logo não pode ser animado ou ter várias páginas.');
-    }
-
-    if (format === 'svg') {
-      const source = file.buffer.toString('utf8');
-      if (
-        /<!DOCTYPE|<!ENTITY|<script|<foreignObject|\son\w+\s*=|(?:href|src)\s*=\s*["'](?:https?:|data:|\/\/)/iu.test(
-          source,
-        )
-      ) {
-        throw new BadRequestException(
-          'O SVG contém recursos externos ou conteúdo executável.',
-        );
-      }
-    }
-    const normalizedBuffer = await sharp(file.buffer, {
-        animated: false,
-        failOn: 'warning',
-        limitInputPixels: MAX_SPORTS_TEAM_LOGO_PIXELS,
-        pages: 1,
-        sequentialRead: true,
-        unlimited: false,
-      })
-        .rotate()
-        .resize({
-          width: SPORTS_TEAM_LOGO_OUTPUT_DIMENSION,
-          height: SPORTS_TEAM_LOGO_OUTPUT_DIMENSION,
-          fit: 'inside',
-          withoutEnlargement: true,
-        })
-        .avif({ quality: 82, effort: 4 })
-        .toBuffer();
-    const normalizedMetadata = await sharp(normalizedBuffer).metadata();
-    const normalized = {
-      buffer: normalizedBuffer,
-      mimeType: 'image/avif',
-      extension: 'avif',
-    };
-    return {
-      ...normalized,
-      width: normalizedMetadata.width ?? metadata.width,
-      height: normalizedMetadata.height ?? metadata.height,
-    };
-  }
 
   private buildObjectKey(
     tournamentId: string,

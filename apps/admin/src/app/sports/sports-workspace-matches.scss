@@ -1,0 +1,182 @@
+.bracket-controls {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.safety-note {
+  align-items: start;
+  background: var(--mat-sys-tertiary-container);
+  border-radius: 12px;
+  color: var(--mat-sys-on-tertiary-container) !important;
+  display: flex;
+  font-size: 0.84rem;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+
+.advanced-warning {
+  align-items: start;
+  background: var(--mat-sys-tertiary-container);
+  border-radius: 10px;
+  color: var(--mat-sys-on-tertiary-container) !important;
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0.7rem;
+}
+
+.lineup-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.lineup-grid section {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.75rem;
+}
+
+.lineup-grid h5 {
+  margin: 0 0 0.35rem;
+}
+
+.review-item {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.9rem;
+}
+
+.review-heading > div {
+  display: grid;
+}
+
+.review-heading span:not(.state-label),
+.review-item p,
+.review-item small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.review-item p {
+  margin: 0;
+}
+
+.review-item pre {
+  background: var(--mat-sys-surface-container-highest);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  margin: 0;
+  max-height: 9rem;
+  overflow: auto;
+  padding: 0.65rem;
+  white-space: pre-wrap;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.action-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.empty-state {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  justify-items: center;
+  min-height: 10rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.empty-state mat-icon {
+  font-size: 2.4rem;
+  height: 2.4rem;
+  margin-block-end: 0.5rem;
+  width: 2.4rem;
+}
+
+.empty-copy {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 1100px) {
+  .onboarding-grid,
+  .content-grid,
+  .review-columns,
+  .master-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .official-form,
+  .venue-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .sports-header {
+    align-items: start;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .logo-control {
+    grid-template-columns: 3.5rem 1fr;
+  }
+
+  .material-upload {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .area-nav {
+    margin-inline: -0.75rem;
+    border-radius: 0;
+    padding-inline: 0.75rem;
+  }
+
+  .form-grid,
+  .compact-form,
+  .official-form,
+  .person-search,
+  .action-grid,
+  .venue-layout,
+  .lineup-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lineup-member {
+    align-items: stretch;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lineup-member > mat-checkbox {
+    grid-column: 1 / -1;
+  }
+
+  .span-2 {
+    grid-column: auto;
+  }
+
+  .panel-heading {
+    align-items: start;
+    gap: 0.75rem;
+  }
+
+  .panel-actions {
+    flex-wrap: wrap;
+  }
+}

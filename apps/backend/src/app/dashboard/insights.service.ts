@@ -21,11 +21,11 @@ import { buildSuggestions } from './insights/suggestions';
 import { buildWeatherAlerts } from './insights/weather-alerts';
 import { buildPublicationConsistencyWarnings } from '../publishing/publishing-consistency';
 import { normalizeSportsScoreboard } from '../sports/domain/sports-scoreboard';
+import { loadSportsDashboardRecords } from './insights/sports-dashboard-records';
 import { addDays, startOfDay, subDays } from 'date-fns';
 
 export const DASHBOARD_INSIGHTS_QUEUE = 'dashboard-insights';
 const DASHBOARD_INCONSISTENCY_LIMIT = 30;
-const ACTIVE_SPORTS_MATCH_STATES = ['CHECK_IN', 'LIVE', 'PAUSED', 'AWAITING_REVIEW'] as const;
 
 @Injectable()
 export class DashboardInsightsService {
@@ -192,8 +192,7 @@ export class DashboardInsightsService {
       pastCertificateEventsWithoutAttendance,
       pastCertificateEventsWithoutAttendanceCollection,
       publicationMajorEvents,
-      sportsTournaments,
-      sportsMatches,
+      sportsDashboard,
     ] = await Promise.all([
       canReadEvents ? this.prisma.event.count({ where: { deletedAt: null } }) : Promise.resolve(0),
       canReadEvents ? this.prisma.eventGroup.count({ where: { deletedAt: null } }) : Promise.resolve(0),
@@ -539,98 +538,7 @@ export class DashboardInsightsService {
             take: DASHBOARD_INCONSISTENCY_LIMIT,
           })
         : Promise.resolve([]),
-      canReadSports
-        ? this.prisma.sportsTournament.findMany({
-            where: {
-              deletedAt: null,
-              status: { notIn: ['FINISHED', 'CANCELED'] },
-            },
-            select: {
-              id: true,
-              majorEventId: true,
-              status: true,
-              majorEvent: {
-                select: {
-                  name: true,
-                  emoji: true,
-                  startDate: true,
-                  endDate: true,
-                },
-              },
-              _count: {
-                select: {
-                  categories: { where: { deletedAt: null } },
-                  teams: { where: { deletedAt: null } },
-                  playerApplications: {
-                    where: { deletedAt: null, status: 'PENDING' },
-                  },
-                },
-              },
-              categories: {
-                where: { deletedAt: null },
-                select: {
-                  _count: {
-                    select: {
-                      matches: {
-                        where: { deletedAt: null, reviewStatus: 'PENDING' },
-                      },
-                      registrations: {
-                        where: {
-                          deletedAt: null,
-                          status: { in: ['PENDING', 'CHANGES_REQUESTED'] },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-              teams: {
-                where: { deletedAt: null },
-                select: {
-                  _count: {
-                    select: {
-                      changeRequests: {
-                        where: {
-                          status: { in: ['PENDING', 'CONFLICT', 'CHANGES_REQUESTED'] },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-            orderBy: [{ majorEvent: { startDate: 'asc' } }, { id: 'asc' }],
-            take: 10,
-          })
-        : Promise.resolve([]),
-      canReadSports
-        ? this.prisma.sportsMatch.findMany({
-            where: {
-              deletedAt: null,
-              state: { in: [...ACTIVE_SPORTS_MATCH_STATES] },
-              category: {
-                deletedAt: null,
-                tournament: { deletedAt: null },
-              },
-            },
-            select: {
-              id: true,
-              state: true,
-              scoreboard: true,
-              event: { select: { name: true, startDate: true } },
-              category: {
-                select: {
-                  name: true,
-                  tournamentId: true,
-                },
-              },
-              homeRegistration: { select: { team: { select: { name: true } } } },
-              awayRegistration: { select: { team: { select: { name: true } } } },
-            },
-            orderBy: [{ event: { startDate: 'asc' } }, { id: 'asc' }],
-            take: 100,
-          })
-        : Promise.resolve([]),
+      loadSportsDashboardRecords(this.prisma, canReadSports),
     ]);
 
     return {
@@ -675,7 +583,7 @@ export class DashboardInsightsService {
             pendingCount: event._count.offlineAttendanceSubmissions,
           }))
         : [],
-      sportsTournaments: sportsTournaments.map((tournament) => ({
+      sportsTournaments: sportsDashboard.tournaments.map((tournament) => ({
         tournamentId: tournament.id,
         majorEventId: tournament.majorEventId,
         name: tournament.majorEvent.name,
@@ -693,9 +601,11 @@ export class DashboardInsightsService {
             0,
           ) +
           tournament.teams.reduce((total, team) => total + team._count.changeRequests, 0),
-        activeMatchCount: sportsMatches.filter((match) => match.category.tournamentId === tournament.id).length,
+        activeMatchCount: sportsDashboard.matches.filter(
+          (match) => match.category.tournamentId === tournament.id,
+        ).length,
       })),
-      sportsMatches: sportsMatches.slice(0, 12).map((match) => {
+      sportsMatches: sportsDashboard.matches.slice(0, 12).map((match) => {
         const scoreboard = this.safeSportsScoreboard(match.scoreboard);
         return {
           matchId: match.id,

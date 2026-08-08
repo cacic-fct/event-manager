@@ -125,6 +125,16 @@ describe('SportsPlayerApplicationService', () => {
     ]);
 
     await service.review('application-1', 'APPROVE', actor);
+    tx.sportsPlayerApplication.findUnique.mockResolvedValue({
+      ...application,
+      status: SportsApplicationStatus.APPROVED,
+    });
+    await service.reviewByRepresentative(
+      'application-1',
+      'team-1',
+      true,
+      actor,
+    );
 
     expect(payments.ensureParticipant).toHaveBeenCalledWith(tx, {
       tournamentId: 'tournament-1',
@@ -162,7 +172,8 @@ describe('SportsPlayerApplicationService', () => {
   });
 
   it('makes unpaid or already-paid participation effective immediately after approval', async () => {
-    tx.sportsPlayerApplication.findUnique.mockResolvedValue(createReviewApplication(['category-1']));
+    const application = createReviewApplication(['category-1']);
+    tx.sportsPlayerApplication.findUnique.mockResolvedValue(application);
     tx.sportsRegistration.findMany.mockResolvedValue([
       { id: 'registration-1', categoryId: 'category-1' },
     ]);
@@ -172,6 +183,16 @@ describe('SportsPlayerApplicationService', () => {
     });
 
     await service.review('application-1', 'APPROVE', actor);
+    tx.sportsPlayerApplication.findUnique.mockResolvedValue({
+      ...application,
+      status: SportsApplicationStatus.APPROVED,
+    });
+    await service.reviewByRepresentative(
+      'application-1',
+      'team-1',
+      true,
+      actor,
+    );
 
     expect(tx.sportsRegistrationMember.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -190,15 +211,27 @@ describe('SportsPlayerApplicationService', () => {
   });
 
   it('blocks approval into a second team when the tournament disallows it', async () => {
-    tx.sportsPlayerApplication.findUnique.mockResolvedValue(createReviewApplication(['category-1']));
+    const application = createReviewApplication(['category-1']);
+    tx.sportsPlayerApplication.findUnique.mockResolvedValue(application);
     tx.sportsRegistration.findMany.mockResolvedValue([
       { id: 'registration-1', categoryId: 'category-1' },
     ]);
     tx.sportsTeamMember.findFirst.mockResolvedValueOnce({ id: 'other-membership' });
 
-    await expect(service.review('application-1', 'APPROVE', actor)).rejects.toThrow(
-      ConflictException,
-    );
+    await service.review('application-1', 'APPROVE', actor);
+    tx.sportsPlayerApplication.findUnique.mockResolvedValue({
+      ...application,
+      status: SportsApplicationStatus.APPROVED,
+    });
+
+    await expect(
+      service.reviewByRepresentative(
+        'application-1',
+        'team-1',
+        true,
+        actor,
+      ),
+    ).rejects.toThrow(ConflictException);
 
     expect(payments.ensureParticipant).not.toHaveBeenCalled();
     expect(tx.sportsRegistrationMember.create).not.toHaveBeenCalled();

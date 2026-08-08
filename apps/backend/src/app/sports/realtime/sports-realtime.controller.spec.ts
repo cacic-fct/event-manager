@@ -10,7 +10,7 @@ describe('SportsRealtimeController', () => {
   };
   const prisma = {
     sportsMatch: {
-      findFirstOrThrow: jest.fn().mockResolvedValue({ id: 'match-1' }),
+      findFirst: jest.fn().mockResolvedValue({ id: 'match-1' }),
     },
     sportsTournament: {
       findFirstOrThrow: jest
@@ -24,6 +24,7 @@ describe('SportsRealtimeController', () => {
   const replay = {
     replay: jest.fn().mockReturnValue(of(event)),
   };
+  const currentUser = {};
   const realtime = {
     scope: jest.fn((channel: string, id: string) => `${channel}:${id}`),
     watch: jest.fn(() => of()),
@@ -33,7 +34,7 @@ describe('SportsRealtimeController', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    prisma.sportsMatch.findFirstOrThrow.mockResolvedValue({ id: 'match-1' });
+    prisma.sportsMatch.findFirst.mockResolvedValue({ id: 'match-1' });
     prisma.sportsTournament.findFirstOrThrow.mockResolvedValue({
       id: 'tournament-1',
     });
@@ -42,6 +43,7 @@ describe('SportsRealtimeController', () => {
     controller = new SportsRealtimeController(
       prisma as never,
       policy as never,
+      currentUser as never,
       replay as never,
       realtime as never,
     );
@@ -54,7 +56,7 @@ describe('SportsRealtimeController', () => {
       ),
     ).resolves.toEqual(event);
 
-    expect(prisma.sportsMatch.findFirstOrThrow).toHaveBeenCalledWith({
+    expect(prisma.sportsMatch.findFirst).toHaveBeenCalledWith({
       where: expect.objectContaining({
         id: 'match-1',
         deletedAt: null,
@@ -79,13 +81,11 @@ describe('SportsRealtimeController', () => {
   });
 
   it('does not disclose replay history when the match is not public', async () => {
-    prisma.sportsMatch.findFirstOrThrow.mockRejectedValueOnce(
-      new Error('not public'),
-    );
+    prisma.sportsMatch.findFirst.mockResolvedValueOnce(null);
 
     await expect(
       firstValueFrom(controller.streamPublicMatch('match-1', undefined)),
-    ).rejects.toThrow('not public');
+    ).rejects.toThrow('Partida esportiva pública não encontrada.');
 
     expect(replay.replay).not.toHaveBeenCalled();
   });

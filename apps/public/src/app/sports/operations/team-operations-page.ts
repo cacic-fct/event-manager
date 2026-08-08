@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
-import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -21,14 +21,21 @@ import {
   SportsLineupRead,
   SportsMatchAction,
 } from './sports-operations.types';
-
-interface LineupMember {
-  registrationMemberId: string;
-  name: string;
-  role: 'PLAYER' | 'CAPTAIN' | 'COACH';
-  shirtNumber: string | null;
-  selected: boolean;
-}
+import {
+  createSportsOperationId,
+  lineupMembersFromRead,
+  normalizeShirtNumber,
+  parseRepresentativeChangeDelta,
+  readRepresentativeRecord,
+  representativeChangeLabel,
+  representativeChangeStatusLabel,
+  representativeLineupRoleLabel,
+  representativeMatchStateLabel,
+  representativeMatchupLabel,
+  representativeMemberStatusLabel,
+  type LineupMember,
+} from './team-operations-page.utils';
+import { createTeamOperationsForms } from './team-operations-page.forms';
 
 @Component({
   selector: 'app-sports-team-operations-page',
@@ -77,20 +84,10 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     return state != null && state !== 'SCHEDULED' && state !== 'CHECK_IN';
   });
 
-  readonly profileForm = new FormGroup({
-    name: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    institution: new FormControl('', { nonNullable: true }),
-  });
-  readonly identityForm = new FormGroup({
-    type: new FormControl<'IDENTITY_DOCUMENT' | 'PHONE' | 'EMAIL'>('EMAIL', { nonNullable: true }),
-    value: new FormControl('', { nonNullable: true, validators: Validators.required }),
-  });
-  readonly lineupForm = new FormGroup({
-    matchId: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    registrationId: new FormControl('', { nonNullable: true, validators: Validators.required }),
-    expectedRevision: new FormControl<number | null>(null),
-    memberIds: new FormArray<FormControl<string>>([]),
-  });
+  private readonly forms = createTeamOperationsForms();
+  readonly profileForm = this.forms.profile;
+  readonly identityForm = this.forms.identity;
+  readonly lineupForm = this.forms.lineup;
 
   private teamId = '';
   protected profileRequest: RepresentativeTeamChange | null = null;
@@ -184,7 +181,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   matchupLabel(match: RepresentativeTeamWorkspace['matches'][number]): string {
-    return `${match.homeTeam?.name ?? 'Equipe a definir'} x ${match.awayTeam?.name ?? 'Equipe a definir'}`;
+    return representativeMatchupLabel(match);
   }
 
   matchEmoji(match: RepresentativeTeamWorkspace['matches'][number]): string {
@@ -193,26 +190,11 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   matchStateLabel(state: RepresentativeTeamWorkspace['matches'][number]['state']): string {
-    return {
-      SCHEDULED: 'Agendada',
-      CHECK_IN: 'Check-in',
-      LIVE: 'Ao vivo',
-      PAUSED: 'Pausada',
-      AWAITING_REVIEW: 'Em revisão - somente leitura',
-      CANCELED: 'Cancelada para remarcação',
-      DRAW: 'Empate - somente leitura',
-      FINISHED: 'Finalizada - somente leitura',
-    }[state];
+    return representativeMatchStateLabel(state);
   }
 
   memberStatusLabel(status: RepresentativeTeamWorkspace['members'][number]['status']): string {
-    return {
-      PENDING: 'Aguardando aprovação',
-      APPROVED: 'Ativo',
-      REJECTED: 'Não aprovado',
-      SUSPENDED: 'Suspenso',
-      WITHDRAWN: 'Saiu da equipe',
-    }[status];
+    return representativeMemberStatusLabel(status);
   }
 
   async reviewJoinRequest(applicationId: string, applicantName: string, approved: boolean): Promise<void> {
@@ -380,11 +362,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   roleLabel(role: LineupMember['role']): string {
-    return {
-      PLAYER: 'Atleta',
-      CAPTAIN: 'Capitão',
-      COACH: 'Técnico',
-    }[role];
+    return representativeLineupRoleLabel(role);
   }
 
   async saveLineup(): Promise<void> {
@@ -459,28 +437,11 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   changeLabel(change: RepresentativeTeamChange): string {
-    const labels: Record<RepresentativeTeamChange['type'], string> = {
-      TEAM_DETAILS: 'Dados da equipe',
-      MEMBER_ADD: 'Inclusão de atleta',
-      MEMBER_REMOVE: 'Remoção de integrante',
-      MEMBER_UPDATE: 'Alteração de integrante',
-      LOGO: 'Logo da equipe',
-      REPRESENTATIVE: 'Representante',
-      CATEGORY_ROLE: 'Função na modalidade',
-      LINEUP: 'Escalação',
-    };
-    return labels[change.type];
+    return representativeChangeLabel(change.type);
   }
 
   statusLabel(status: RepresentativeTeamChange['status']): string {
-    return {
-      PENDING: 'Aguardando análise',
-      CHANGES_REQUESTED: 'Ajustes solicitados',
-      CONFLICT: 'Conflito - revise os dados',
-      APPROVED: 'Aprovada',
-      REJECTED: 'Negada',
-      SUPERSEDED: 'Substituída por outro pedido',
-    }[status];
+    return representativeChangeStatusLabel(status);
   }
 
   private async submitChange(input: {
@@ -518,37 +479,17 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   private parseDelta(value?: string): Record<string, unknown> {
-    try {
-      const parsed = JSON.parse(value ?? '{}') as unknown;
-      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
-    } catch {
-      return {};
-    }
+    return parseRepresentativeChangeDelta(value);
   }
 
   private readRecord(value: unknown): Record<string, unknown> {
-    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+    return readRepresentativeRecord(value);
   }
 
   private applyLineup(lineup: SportsLineupRead): void {
-    const selectedEntries = new Map(
-      lineup.roster?.entries
-        .filter((entry) => entry.status !== 'REMOVED')
-        .map((entry) => [entry.registrationMemberId, entry]) ?? [],
-    );
     this.matchRevision.set(lineup.matchRevision);
     this.lineupForm.controls.expectedRevision.setValue(lineup.roster?.revision ?? null);
-    this.lineupMembers.set(
-      lineup.eligibleMembers.map((member) => {
-        const rosterEntry = selectedEntries.get(member.registrationMemberId);
-        return {
-          ...member,
-          role: rosterEntry?.role ?? member.role,
-          shirtNumber: rosterEntry?.shirtNumber ?? member.shirtNumber ?? null,
-          selected: Boolean(rosterEntry),
-        };
-      }),
-    );
+    this.lineupMembers.set(lineupMembersFromRead(lineup));
   }
 
   private selectInitialMatch(workspace: RepresentativeTeamWorkspace): void {
@@ -560,10 +501,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   private readShirtNumber(value: string | null): string | null {
-    const normalized = value?.trim() ?? '';
-    return normalized && /^[\p{L}\p{N}._-]{1,12}$/u.test(normalized)
-      ? normalized
-      : null;
+    return normalizeShirtNumber(value);
   }
 
   private revokeLogoPreview(): void {
@@ -575,7 +513,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   private uuid(): string {
-    return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return createSportsOperationId();
   }
 
   private showError(error: unknown): void {

@@ -11,42 +11,18 @@ import {
   rollSportsScorePeriod,
   SportsScoreboard,
 } from '../domain/sports-scoreboard';
+import {
+  SportsProjectedOutcome,
+  SportsProjectedPeriodTimer,
+  SportsProjectionAction,
+} from './sports-match-projection.models';
+import { createSportsProjectionReset } from './sports-match-projection.defaults';
 
-export interface SportsProjectedOutcome {
-  state: SportsMatchState;
-  scoreboard: SportsScoreboard;
-  winnerRegistrationId: string | null;
-  loserRegistrationId: string | null;
-  lossReason: SportsLossReason | null;
-  lossReasonDetail: string | null;
-  drawWillReschedule: boolean | null;
-  timerStartedAt: Date | null;
-  timerPausedAt: Date | null;
-  elapsedBeforePauseMs: number;
-  periodTimers: SportsProjectedPeriodTimer[];
-  overallTimerEnabled: boolean;
-  periodTimerEnabled: boolean;
-  timerPeriodDurationMs: number | null;
-  timerPeriodStartOffsetsMs: number[];
-  timerAllowOvertime: boolean;
-}
-
-export interface SportsProjectedPeriodTimer {
-  periodNumber: number;
-  startedAtUnixMs: number | null;
-  pausedAtUnixMs: number | null;
-  elapsedBeforePauseMs: number;
-  scheduledStartOffsetMs: number;
-  capMs: number | null;
-  allowOvertime: boolean;
-}
-
-export interface SportsProjectionAction {
-  type: SportsMatchActionType;
-  payload: unknown;
-  authoredAt: Date;
-  reviewStatus: SportsReviewStatus;
-}
+export type {
+  SportsProjectedOutcome,
+  SportsProjectedPeriodTimer,
+  SportsProjectionAction,
+} from './sports-match-projection.models';
 
 export function projectSportsMatch(
   actions: readonly SportsProjectionAction[],
@@ -251,7 +227,7 @@ function applyAction(
     case SportsMatchActionType.RESCHEDULE:
     case SportsMatchActionType.RESET:
       return {
-        ...projectionReset(),
+        ...createSportsProjectionReset(),
         state: SportsMatchState.SCHEDULED,
         overallTimerEnabled: current.overallTimerEnabled,
         periodTimerEnabled: current.periodTimerEnabled,
@@ -280,27 +256,6 @@ function stopTimer(
       current.state === SportsMatchState.LIVE || current.state === SportsMatchState.PAUSED
         ? at
         : current.timerPausedAt,
-  };
-}
-
-function projectionReset(): SportsProjectedOutcome {
-  return {
-    state: SportsMatchState.SCHEDULED,
-    scoreboard: normalizeSportsScoreboard(undefined),
-    winnerRegistrationId: null,
-    loserRegistrationId: null,
-    lossReason: null,
-    lossReasonDetail: null,
-    drawWillReschedule: null,
-    timerStartedAt: null,
-    timerPausedAt: null,
-    elapsedBeforePauseMs: 0,
-    periodTimers: [],
-    overallTimerEnabled: true,
-    periodTimerEnabled: true,
-    timerPeriodDurationMs: null,
-    timerPeriodStartOffsetsMs: [],
-    timerAllowOvertime: true,
   };
 }
 

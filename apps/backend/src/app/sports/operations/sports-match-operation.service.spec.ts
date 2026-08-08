@@ -25,6 +25,7 @@ describe('SportsMatchOperationService offline command log', () => {
     scope: jest.fn((channel: string, id: string) => `${channel}:${id}`),
     publish: jest.fn().mockResolvedValue(undefined),
     publishStructuralInvalidations: jest.fn().mockResolvedValue(undefined),
+    publishAutorouteInvalidations: jest.fn().mockResolvedValue(undefined),
   };
   const autorouting = {
     affectedPeopleForMatch: jest.fn().mockResolvedValue(['person-1']),
