@@ -35,9 +35,10 @@ test('shows a live tournament and opens the privacy-safe match detail', async ({
     .click();
 
   await expect(page).toHaveURL(/\/app\/sports\/match\/match-1/);
-  await expect(page.getByRole('heading', { name: /Equipe Azul.*Equipe Verde/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipe Azul', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipe Verde', exact: true })).toBeVisible();
   await expect(page.getByText('2', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Escalações')).toBeHidden();
+  await expect(page.getByText('As escalações são disponibilizadas após o encerramento da partida.')).toBeVisible();
 });
 
 test('uses the authenticated personalized tournament projection and exposes self-subscription', async ({ page }) => {

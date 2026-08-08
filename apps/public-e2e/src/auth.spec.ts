@@ -37,8 +37,7 @@ test('public landing login starts backend auth with the public app return path',
       url.searchParams.get('returnTo') === '/app'
     );
   });
-  await page.getByRole('button', { name: 'Entrar com o Google' }).click();
-  await loginRequest;
+  await Promise.all([loginRequest, page.getByRole('button', { name: 'Entrar com o Google' }).click()]);
 });
 
 test('authenticated public users keep their local session and see account actions', async ({ page }) => {
