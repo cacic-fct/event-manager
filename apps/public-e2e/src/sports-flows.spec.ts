@@ -40,14 +40,39 @@ test('shows a live tournament and opens the privacy-safe match detail', async ({
   await expect(page.getByText('Escalações')).toBeHidden();
 });
 
-async function mockSportsApi(page: Page): Promise<void> {
+test('uses the authenticated personalized tournament projection and exposes self-subscription', async ({ page }) => {
+  await mockSportsApi(page, { authenticated: true });
+
+  await page.goto('/app/tournament/tournament-1');
+
+  await expect(page.getByRole('heading', { name: 'Jogos Universitários' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Solicitar inscrição' })).toHaveAttribute(
+    'href',
+    /tournament\/tournament-1\/subscribe/,
+  );
+  await expect(page.getByText('Equipe Verde').first()).toBeVisible();
+});
+
+test('shows the GraphQL error without leaking a stale tournament', async ({ page }) => {
+  await mockSportsApi(page, { tournamentError: 'Este torneio não está disponível.' });
+
+  await page.goto('/app/tournament/tournament-1');
+
+  await expect(page.getByText('Este torneio não está disponível.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Jogos Universitários' })).toHaveCount(0);
+});
+
+async function mockSportsApi(
+  page: Page,
+  options: { authenticated?: boolean; tournamentError?: string } = {},
+): Promise<void> {
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/auth/me') {
       await route.fulfill({
-        status: 403,
+        status: options.authenticated ? 200 : 403,
         contentType: 'application/json',
-        body: JSON.stringify({ message: 'User is not authenticated.' }),
+        body: JSON.stringify(options.authenticated ? authenticatedUserFixture() : { message: 'User is not authenticated.' }),
       });
       return;
     }
@@ -60,21 +85,47 @@ async function mockSportsApi(page: Page): Promise<void> {
       return;
     }
     if (url.pathname === '/api/graphql') {
-      await fulfillSportsGraphql(route);
+      await fulfillSportsGraphql(route, options);
       return;
     }
     await route.fulfill({ status: 204, body: '' });
   });
 }
 
-async function fulfillSportsGraphql(route: Route): Promise<void> {
+async function fulfillSportsGraphql(
+  route: Route,
+  options: { authenticated?: boolean; tournamentError?: string },
+): Promise<void> {
   const body = route.request().postDataJSON() as { query?: string };
   const query = body.query ?? '';
   if (query.includes('query PublicSportsTournamentDetail')) {
+    if (options.tournamentError) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ errors: [{ message: options.tournamentError }] }),
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { publicSportsTournamentDetail: tournamentFixture() } }),
+    });
+    return;
+  }
+  if (query.includes('query CurrentUserSportsTournamentDetail')) {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          currentUserSportsTournamentDetail: {
+            tournament: tournamentFixture(),
+            orderedMatches: [matchFixture()],
+          },
+        },
+      }),
     });
     return;
   }
@@ -91,6 +142,24 @@ async function fulfillSportsGraphql(route: Route): Promise<void> {
     contentType: 'application/json',
     body: JSON.stringify({ data: {} }),
   });
+}
+
+function authenticatedUserFixture(): Record<string, unknown> {
+  return {
+    realm_access: { roles: [] },
+    sub: 'athlete-1',
+    preferredUsername: 'atleta.teste',
+    email: 'atleta@example.edu',
+    roles: [],
+    permissions: [],
+    scopes: ['openid'],
+    claims: {
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      is_onboarded: true,
+      name: 'Atleta Teste',
+      picture: null,
+    },
+  };
 }
 
 function matchFixture() {

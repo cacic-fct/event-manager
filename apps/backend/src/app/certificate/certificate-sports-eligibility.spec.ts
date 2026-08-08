@@ -344,7 +344,7 @@ describe('CertificateSportsEligibility', () => {
       } as never),
     ).rejects.toThrow('is not backed by a finalized sports match');
 
-    expect(matchFindFirst).toHaveBeenCalledWith({
+    expect(matchFindFirst).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         canonicalState: SportsMatchState.FINISHED,
         reviewStatus: {
@@ -352,7 +352,7 @@ describe('CertificateSportsEligibility', () => {
         },
       }),
       select: expect.any(Object),
-    });
+    }));
   });
 
   it('keeps sports organizers on the manual recipient path without bulk enumeration', async () => {

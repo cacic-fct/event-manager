@@ -141,12 +141,14 @@ describe('ReceiptUploadService', () => {
         findUnique: jest.fn().mockResolvedValue({
           subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
           majorEvent: { isPaymentRequired: true },
-          sportsTournamentParticipant: {
-            id: 'participant-1',
-            tournamentId: 'tournament-1',
-            personId: 'person-1',
-            approvedAt: new Date(),
-          },
+          sportsTournamentParticipants: [
+            {
+              id: 'participant-1',
+              tournamentId: 'tournament-1',
+              personId: 'person-1',
+              approvedAt: new Date(),
+            },
+          ],
         }),
       },
       sportsTournamentParticipant: {

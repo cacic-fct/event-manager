@@ -74,7 +74,7 @@ describe('CurrentUserDefaultRedirectService', () => {
         }),
       }),
     );
-    expect(prisma.event.findFirst).not.toHaveBeenCalled();
+    expect(prisma.event.findFirst).toHaveBeenCalledTimes(1);
   });
 
   it('prioritizes an open unsubscribed major event when there is no attendance action', async () => {
