@@ -1,24 +1,19 @@
 import '@angular/compiler';
-import { DOCUMENT } from '@angular/common';
-import { EnvironmentInjector, createEnvironmentInjector } from '@angular/core';
-import { Meta, Title } from '@angular/platform-browser';
+import { TestBed } from '@angular/core/testing';
 import { DocumentSeoService } from './document-seo.service';
 
 describe('DocumentSeoService', () => {
   let service: DocumentSeoService;
-  let injector: EnvironmentInjector;
-  const rootEnvironmentInjector = null as unknown as EnvironmentInjector;
 
   beforeEach(() => {
     document.head.querySelectorAll('link[rel="canonical"], #test-structured-data').forEach((element) => element.remove());
-    injector = createEnvironmentInjector(
-      [DocumentSeoService, Meta, Title, { provide: DOCUMENT, useValue: document }],
-      rootEnvironmentInjector,
-    );
-    service = injector.get(DocumentSeoService);
+    TestBed.configureTestingModule({
+      providers: [DocumentSeoService],
+    });
+    service = TestBed.inject(DocumentSeoService);
   });
 
-  afterEach(() => injector.destroy());
+  afterEach(() => TestBed.resetTestingModule());
 
   it('updates document title and named or Open Graph metadata', () => {
     service.setTitle('Evento teste - CACiC Eventos');
