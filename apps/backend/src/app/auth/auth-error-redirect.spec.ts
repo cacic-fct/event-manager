@@ -10,6 +10,9 @@ describe('getAuthorizationErrorRedirectUri', () => {
 
     expect(uri).not.toContain('raw=');
     expect(uri).not.toContain('database');
+    expect(uri).not.toContain('title=');
+    expect(uri).not.toContain('description=');
+    expect(uri).not.toContain('message=');
   });
 
   it('classifies every 5xx response as a server error', () => {
@@ -20,6 +23,6 @@ describe('getAuthorizationErrorRedirectUri', () => {
 
     const url = new URL(uri, 'https://eventos.cacic.local');
     expect(url.searchParams.get('reason')).toBe('server-error');
-    expect(url.searchParams.get('title')).toBe('Ocorreu um erro.');
+    expect([...url.searchParams.keys()]).toEqual(['reason']);
   });
 });

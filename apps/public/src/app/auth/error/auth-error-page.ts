@@ -26,20 +26,43 @@ export interface AuthErrorPageContent {
   rawError: string;
 }
 
+type AuthErrorReason = 'login-expired' | 'server-error';
+type AuthErrorPageCopy = Omit<AuthErrorPageContent, 'returnTo'>;
+
+const AUTH_ERROR_COPY: Record<AuthErrorReason, AuthErrorPageCopy> = {
+  'login-expired': {
+    title: 'O tempo de login expirou.',
+    description: 'Entre novamente para continuar.',
+    actionLabel: 'Entrar com o Google',
+    rawError: JSON.stringify(
+      {
+        message: 'Invalid authorization state.',
+        error: 'Bad Request',
+        statusCode: 400,
+      },
+      null,
+      2,
+    ),
+  },
+  'server-error': {
+    title: 'Ocorreu um erro.',
+    description: 'Tente novamente mais tarde',
+    actionLabel: 'Entrar com o Google',
+    rawError: JSON.stringify(
+      {
+        message: 'Internal server error',
+        statusCode: 500,
+      },
+      null,
+      2,
+    ),
+  },
+};
+
+const DEFAULT_AUTH_ERROR_REASON: AuthErrorReason = 'login-expired';
 const DEFAULT_AUTH_ERROR_CONTENT: AuthErrorPageContent = {
-  title: 'O tempo de login expirou.',
-  description: 'Entre novamente para continuar.',
-  actionLabel: 'Entrar com o Google',
+  ...AUTH_ERROR_COPY[DEFAULT_AUTH_ERROR_REASON],
   returnTo: '/calendar',
-  rawError: JSON.stringify(
-    {
-      message: 'Invalid authorization state.',
-      error: 'Bad Request',
-      statusCode: 400,
-    },
-    null,
-    2,
-  ),
 };
 
 @Component({
@@ -71,12 +94,11 @@ export class AuthErrorPage {
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const reason = this.readReason(params.get('reason'));
+
       this.routeContent.set({
-        title: this.readQueryValue(params.get('title'), DEFAULT_AUTH_ERROR_CONTENT.title),
-        description: this.readQueryValue(params.get('description'), DEFAULT_AUTH_ERROR_CONTENT.description),
-        actionLabel: this.readQueryValue(params.get('actionLabel'), DEFAULT_AUTH_ERROR_CONTENT.actionLabel),
+        ...AUTH_ERROR_COPY[reason],
         returnTo: this.readSafeReturnTo(params.get('returnTo')),
-        rawError: this.readRawError(params.get('raw')),
       });
     });
 
@@ -111,8 +133,8 @@ export class AuthErrorPage {
     this.snackBar.open('Detalhes técnicos copiados.', 'OK', { duration: 3000 });
   }
 
-  private readQueryValue(value: string | null, fallback: string): string {
-    return value?.trim() || fallback;
+  private readReason(value: string | null): AuthErrorReason {
+    return value === 'server-error' ? 'server-error' : DEFAULT_AUTH_ERROR_REASON;
   }
 
   private readSafeReturnTo(value: string | null): string {
@@ -122,18 +144,5 @@ export class AuthErrorPage {
     }
 
     return returnTo;
-  }
-
-  private readRawError(value: string | null): string {
-    const rawError = value?.trim();
-    if (!rawError) {
-      return DEFAULT_AUTH_ERROR_CONTENT.rawError;
-    }
-
-    try {
-      return JSON.stringify(JSON.parse(rawError), null, 2);
-    } catch {
-      return rawError;
-    }
   }
 }
