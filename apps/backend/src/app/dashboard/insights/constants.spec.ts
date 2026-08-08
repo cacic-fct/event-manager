@@ -31,6 +31,14 @@ describe('dashboard insights constants', () => {
       'receipt#read',
       'receipt#approve',
       'receipt#reject',
+      'sports-tournament#read',
+      'sports-category#read',
+      'sports-team#read',
+      'sports-registration#read',
+      'sports-match#read',
+      'sports-match#review',
+      'sports-score#read',
+      'sports-score#review',
     ]);
   });
 });

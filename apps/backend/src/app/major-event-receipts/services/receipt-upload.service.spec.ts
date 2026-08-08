@@ -1,5 +1,9 @@
 import { BadRequestException, ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
-import { SubscriptionStatus } from '@prisma/client';
+import {
+  SportsParticipantStatus,
+  SportsPaymentStatus,
+  SubscriptionStatus,
+} from '@prisma/client';
 import sharp from 'sharp';
 import { Readable } from 'stream';
 import { RECEIPT_ADMIN_PERMISSION, RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';
@@ -132,15 +136,35 @@ describe('ReceiptUploadService', () => {
     });
     prisma.majorEventReceipt.findFirst.mockResolvedValue(null);
     s3.uploadFile.mockResolvedValue({ key: 'object-key', size: 123 });
-    prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-      callback({
-        majorEventReceipt: {
-          create: jest.fn().mockResolvedValue(createReceipt()),
-        },
-        majorEventSubscription: {
-          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        },
-      }),
+    const tx = {
+      majorEventReceipt: {
+        create: jest.fn().mockResolvedValue(createReceipt()),
+      },
+      majorEventSubscription: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUnique: jest.fn().mockResolvedValue({
+          subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
+          majorEvent: { isPaymentRequired: true },
+          sportsTournamentParticipant: {
+            id: 'participant-1',
+            tournamentId: 'tournament-1',
+            personId: 'person-1',
+            approvedAt: new Date(),
+          },
+        }),
+      },
+      sportsTournamentParticipant: {
+        update: jest.fn(),
+      },
+      sportsRegistrationMember: {
+        updateMany: jest.fn(),
+      },
+      sportsPlayerApplication: {
+        updateMany: jest.fn(),
+      },
+    };
+    prisma.$transaction.mockImplementation(async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+      callback(tx),
     );
 
     await expect(service.uploadReceipt('major-1', createValidFile(), user)).resolves.toEqual(
@@ -169,6 +193,13 @@ describe('ReceiptUploadService', () => {
         attempts: RECEIPT_PROCESSING_ATTEMPTS,
       }),
     );
+    expect(tx.sportsTournamentParticipant.update).toHaveBeenCalledWith({
+      where: { id: 'participant-1' },
+      data: {
+        status: SportsParticipantStatus.WAITING_PAYMENT,
+        paymentStatus: SportsPaymentStatus.UNDER_REVIEW,
+      },
+    });
     expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalled();
   });
 
