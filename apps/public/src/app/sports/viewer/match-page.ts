@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute } from '@angular/router';
-import { Subject, catchError, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
+import { Subject, Subscription, catchError, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
 import { SportsViewerApiService } from './sports-viewer-api.service';
 import { SportsViewerRealtimeService } from './sports-viewer-realtime.service';
 import type { PublicSportsMatch, SportsViewerPageState } from './sports-viewer.types';
@@ -44,6 +44,7 @@ export class SportsMatchPage {
   private readonly realtime = inject(SportsViewerRealtimeService);
   private readonly route = inject(ActivatedRoute);
   private readonly reload = new Subject<string>();
+  private realtimeSubscription?: Subscription;
 
   readonly pageState = signal<SportsViewerPageState<PublicSportsMatch>>({ status: 'loading' });
   readonly now = signal(Date.now());
@@ -168,7 +169,8 @@ export class SportsMatchPage {
   }
 
   private watchMatch(matchId: string): void {
-    this.realtime
+    this.realtimeSubscription?.unsubscribe();
+    this.realtimeSubscription = this.realtime
       .watchMatch(matchId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({

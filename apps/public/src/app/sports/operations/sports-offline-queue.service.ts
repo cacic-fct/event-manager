@@ -1,4 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, OnDestroy, PLATFORM_ID, inject, signal } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { firstValueFrom, Subscription } from 'rxjs';
@@ -147,12 +148,18 @@ export class SportsOfflineQueueService implements OnDestroy {
   }
 
   pendingForMatch(matchId: string): number {
-    return this.pendingState().filter((item) =>
-      item.kind === 'ACTION'
-        ? item.action.matchId === matchId
-        : item.kind === 'CHECK_IN'
-          ? item.checkIn.matchId === matchId
-          : item.scannerCheckIn.matchId === matchId,
+    const userScope = this.auth.user()?.sub;
+    if (!userScope) {
+      return 0;
+    }
+    return this.pendingState().filter(
+      (item) =>
+        item.userScope === userScope &&
+        (item.kind === 'ACTION'
+          ? item.action.matchId === matchId
+          : item.kind === 'CHECK_IN'
+            ? item.checkIn.matchId === matchId
+            : item.scannerCheckIn.matchId === matchId),
     ).length;
   }
 
@@ -166,9 +173,10 @@ export class SportsOfflineQueueService implements OnDestroy {
     }
     this.syncing = true;
     try {
+      const pendingAtStart = this.pendingState();
       const remaining: QueuedSportsOperation[] = [];
       const conflictedMatches = new Set<string>();
-      for (const item of this.pendingState()) {
+      for (const item of pendingAtStart) {
         if (item.userScope !== userScope) {
           remaining.push(item);
           continue;
@@ -201,8 +209,9 @@ export class SportsOfflineQueueService implements OnDestroy {
           if (item.kind === 'ACTION' && item.timerSnapshot && this.isTimerConflict(lastError)) {
             const matchId = item.action.matchId;
             conflictedMatches.add(matchId);
-            const timerItems = this.pendingState().filter((candidate) =>
+            const timerItems = pendingAtStart.filter((candidate) =>
               candidate.kind === 'ACTION' &&
+              candidate.userScope === userScope &&
               candidate.action.matchId === matchId &&
               candidate.timerSnapshot &&
               this.isTimerAction(candidate.action.type));
@@ -222,7 +231,10 @@ export class SportsOfflineQueueService implements OnDestroy {
           });
         }
       }
-      this.persist(remaining);
+      const queuedDuringSync = this.pendingState().filter(
+        (item) => !pendingAtStart.some((initial) => initial.id === item.id),
+      );
+      this.persist([...remaining, ...queuedDuringSync]);
     } finally {
       this.syncing = false;
     }
@@ -233,10 +245,18 @@ export class SportsOfflineQueueService implements OnDestroy {
   }
 
   resolveTimerConflict(matchId: string, queuedActionIds: readonly string[], baseRevision: number): void {
+    const userScope = this.auth.user()?.sub;
+    if (!userScope) {
+      return;
+    }
     const ids = new Set(queuedActionIds);
     let nextRevision = baseRevision;
     const rebased = this.pendingState().flatMap((item): QueuedSportsOperation[] => {
-      if (item.kind !== 'ACTION' || item.action.matchId !== matchId) {
+      if (
+        item.userScope !== userScope ||
+        item.kind !== 'ACTION' ||
+        item.action.matchId !== matchId
+      ) {
         return [item];
       }
       if (ids.has(item.id)) {
@@ -282,6 +302,9 @@ export class SportsOfflineQueueService implements OnDestroy {
   }
 
   private isConnectionFailure(error: unknown): boolean {
+    if (error instanceof HttpErrorResponse) {
+      return error.status === 0;
+    }
     if (!(error instanceof Error)) {
       return true;
     }

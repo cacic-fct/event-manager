@@ -226,7 +226,7 @@ export class SportsApiService {
   uploadTeamLogo(teamId: string, expectedRevision: number, file: File) {
     const body = new FormData();
     body.append('expectedRevision', String(expectedRevision));
-    body.append('logo', file);
+    body.append('file', file);
     return this.http.post<{
       teamId: string;
       revision: number;

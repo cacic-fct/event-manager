@@ -24,13 +24,13 @@ return version
 export const SPORTS_PUBLIC_TOURNAMENT_CACHE_TTL_SECONDS = 45;
 
 export function sportsPublicTournamentCacheKey(tournamentId: string): string {
-  return `sports:public-tournament:v1:${tournamentId}`;
+  return `sports:public-tournament:v2:${tournamentId}`;
 }
 
 export function sportsPublicTournamentCacheVersionKey(
   tournamentId: string,
 ): string {
-  return `sports:public-tournament-version:v1:${tournamentId}`;
+  return `sports:public-tournament-version:v2:${tournamentId}`;
 }
 
 interface SportsRealtimeEnvelope {

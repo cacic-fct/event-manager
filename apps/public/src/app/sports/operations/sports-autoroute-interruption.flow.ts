@@ -27,7 +27,7 @@ export class SportsAutorouteInterruptionFlow implements InterruptionFlow {
     return this.api.getCurrentUserSportsAutoroute().pipe(
       take(1),
       map((route) => {
-        if (!route || route.mode === 'MATCH_DETAIL') {
+        if (!route || route.mode === 'MATCH_DETAIL' || route.mode === 'TEAM') {
           return null;
         }
         const targetUrl = sportsAutorouteUrl(route);
