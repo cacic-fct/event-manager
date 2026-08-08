@@ -8,6 +8,7 @@ describe('CurrentUserDefaultRedirectService', () => {
   let prisma: {
     event: { findFirst: jest.Mock };
     majorEvent: { findFirst: jest.Mock };
+    sportsMatch: { findFirst: jest.Mock };
   };
   let redis: { get: jest.Mock; set: jest.Mock };
   let service: CurrentUserDefaultRedirectService;
@@ -17,6 +18,7 @@ describe('CurrentUserDefaultRedirectService', () => {
     prisma = {
       event: { findFirst: jest.fn().mockResolvedValue(null) },
       majorEvent: { findFirst: jest.fn().mockResolvedValue(null) },
+      sportsMatch: { findFirst: jest.fn().mockResolvedValue(null) },
     };
     redis = {
       get: jest.fn().mockResolvedValue(null),
@@ -49,6 +51,32 @@ describe('CurrentUserDefaultRedirectService', () => {
         select: { id: true },
       }),
     );
+  });
+
+  it('routes a player with a nearby approved sports roster to the wallet', async () => {
+    prisma.sportsMatch.findFirst.mockResolvedValue({ id: 'match-1' });
+
+    await expect(service.resolve('person-1')).resolves.toBe(
+      DefaultRedirectRoute.WALLET,
+    );
+
+    expect(prisma.sportsMatch.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          rosters: {
+            some: expect.objectContaining({
+              status: 'APPROVED',
+              entries: {
+                some: expect.objectContaining({
+                  status: 'APPROVED',
+                }),
+              },
+            }),
+          },
+        }),
+      }),
+    );
+    expect(prisma.event.findFirst).not.toHaveBeenCalled();
   });
 
   it('prioritizes an open unsubscribed major event when there is no attendance action', async () => {

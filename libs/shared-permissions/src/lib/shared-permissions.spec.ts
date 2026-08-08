@@ -3,6 +3,7 @@ import {
   EVENT_MANAGER_PERMISSION_CATALOG,
   EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS,
   EVENT_MANAGER_PERMISSION_PRESETS,
+  EVENT_MANAGER_PERMISSION_SCOPE_COMPATIBILITY,
   EVENT_MANAGER_PERMISSION_SET,
   EventManagerPermissionGrantScope,
   Permission,
@@ -13,10 +14,12 @@ import {
   formatPermissionGroups,
   getPermissionIncludedData,
   getPermissionIncludedDataSummary,
+  getCompatiblePermissionGrantScopes,
   getPermissionResourceIcon,
   getPermissionResourceLabel,
   getPermissionScopeIcon,
   getPermissionScopeLabel,
+  isPermissionGrantScopeCompatible,
   parsePermission,
   requiresGlobalPermissionGrantScope,
 } from './shared-permissions';
@@ -38,6 +41,10 @@ const permissionScopeExpectations = [
   ['publish', 'Publicar', 'campaign'],
   ['results', 'Resultados', 'bar_chart'],
   ['export', 'Exportar', 'download'],
+  ['duplicate', 'Duplicar', 'content_copy'],
+  ['review', 'Revisar', 'rate_review'],
+  ['operate', 'Operar', 'sports_score'],
+  ['assign-representative', 'Atribuir representante', 'manage_accounts'],
   ['custom-action', 'custom-action', 'help'],
 ] as const;
 
@@ -58,6 +65,13 @@ const permissionResourceExpectations = [
   ['place-preset', 'Local', 'place'],
   ['receipt', 'Comprovante', 'receipt_long'],
   ['subscription', 'Inscrição', 'how_to_reg'],
+  ['sports-tournament', 'Torneio esportivo', 'emoji_events'],
+  ['sports-category', 'Modalidade esportiva', 'sports'],
+  ['sports-team', 'Equipe esportiva', 'groups'],
+  ['sports-registration', 'Inscrição esportiva', 'app_registration'],
+  ['sports-match', 'Partida esportiva', 'scoreboard'],
+  ['sports-official', 'Equipe de arbitragem', 'sports_score'],
+  ['sports-score', 'Placar esportivo', 'leaderboard'],
   ['user', 'Usuário', 'account_circle'],
   ['custom-resource', 'custom-resource', 'shield'],
 ] as const;
@@ -67,6 +81,8 @@ describe('shared permissions contract', () => {
     expect(Permission.EventForm.Export).toBe('event-form#export');
     expect(EVENT_MANAGER_PERMISSION_CATALOG).toContain(Permission.PermissionGrant.Update);
     expect(EVENT_MANAGER_PERMISSION_SET.has(Permission.Frozen.Delete)).toBe(true);
+    expect(EVENT_MANAGER_PERMISSION_SET.has(Permission.SportsMatch.Operate)).toBe(true);
+    expect(EVENT_MANAGER_PERMISSION_SET.has(Permission.SportsScore.Review)).toBe(true);
     expect(requiresGlobalPermissionGrantScope(Permission.Person.Delete)).toBe(true);
     expect(requiresGlobalPermissionGrantScope(Permission.EventAttendance.Collect)).toBe(false);
   });
@@ -93,9 +109,45 @@ describe('shared permissions contract', () => {
         grantScopes.has(scope),
       ),
     ).toBe(true);
+    expect(
+      EVENT_MANAGER_PERMISSION_PRESETS.every((preset) =>
+        preset.allowedScopes.every((scope) =>
+          preset.permissions.every((permission) => isPermissionGrantScopeCompatible(permission, scope)),
+        ),
+      ),
+    ).toBe(true);
     expect(workspacePermissions.every((permission) => catalog.has(permission))).toBe(true);
     expect(new Set(WORKSPACE_PERMISSION_EVALUATION_SET)).toEqual(catalog);
     expect(EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS.every((permission) => catalog.has(permission))).toBe(true);
+    expect(Object.keys(EVENT_MANAGER_PERMISSION_SCOPE_COMPATIBILITY).every((permission) => catalog.has(permission as Permission)))
+      .toBe(true);
+  });
+
+  it('maps sports permissions onto existing event hierarchy scopes', () => {
+    expect(getCompatiblePermissionGrantScopes(Permission.Person.Read)).toEqual([
+      EventManagerPermissionGrantScope.Global,
+    ]);
+    expect(getCompatiblePermissionGrantScopes(Permission.SportsTournament.Update)).toEqual([
+      EventManagerPermissionGrantScope.Global,
+      EventManagerPermissionGrantScope.MajorEvent,
+    ]);
+    expect(getCompatiblePermissionGrantScopes(Permission.SportsCategory.Update)).toEqual([
+      EventManagerPermissionGrantScope.Global,
+      EventManagerPermissionGrantScope.MajorEvent,
+      EventManagerPermissionGrantScope.EventGroup,
+    ]);
+    expect(getCompatiblePermissionGrantScopes(Permission.SportsMatch.Operate)).toEqual([
+      EventManagerPermissionGrantScope.Global,
+      EventManagerPermissionGrantScope.MajorEvent,
+      EventManagerPermissionGrantScope.EventGroup,
+      EventManagerPermissionGrantScope.Event,
+    ]);
+    expect(isPermissionGrantScopeCompatible(Permission.SportsTournament.Update, EventManagerPermissionGrantScope.EventGroup))
+      .toBe(false);
+    expect(isPermissionGrantScopeCompatible(Permission.SportsCategory.Update, EventManagerPermissionGrantScope.EventGroup))
+      .toBe(true);
+    expect(isPermissionGrantScopeCompatible(Permission.SportsMatch.Operate, EventManagerPermissionGrantScope.Event))
+      .toBe(true);
   });
 
   it('formats permission groups with stable labels, icons, and duplicate removal', () => {
@@ -168,6 +220,17 @@ describe('shared permissions contract', () => {
     );
     expect(getPermissionIncludedData(Permission.Event.Read)).toEqual([]);
     expect(getPermissionIncludedDataSummary(Permission.Event.Read)).toBe('');
+    expect(getPermissionIncludedData(Permission.SportsTeam.Review)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'Identificação necessária para conciliação',
+          fields: expect.arrayContaining(['documento', 'ID acadêmico']),
+        }),
+      ]),
+    );
+    expect(getPermissionIncludedDataSummary(Permission.SportsMatch.Operate)).toContain(
+      'Identidade mínima para check-in',
+    );
 
     const peopleManager = EVENT_MANAGER_PERMISSION_PRESETS.find((preset) => preset.id === 'people-manager');
     expect(peopleManager).toEqual(
@@ -220,8 +283,58 @@ describe('shared permissions contract', () => {
             Permission.Receipt.Read,
           ]),
         }),
+        expect.objectContaining({
+          id: 'sports-tournament-admin',
+          allowedScopes: [EventManagerPermissionGrantScope.MajorEvent],
+          permissions: expect.arrayContaining([
+            Permission.SportsTournament.Update,
+            Permission.SportsTeam.AssignRepresentative,
+            Permission.SportsMatch.Review,
+          ]),
+        }),
+        expect.objectContaining({
+          id: 'sports-category-manager',
+          allowedScopes: [
+            EventManagerPermissionGrantScope.MajorEvent,
+            EventManagerPermissionGrantScope.EventGroup,
+          ],
+          permissions: expect.arrayContaining([
+            Permission.SportsCategory.Update,
+            Permission.SportsRegistration.Approve,
+            Permission.SportsOfficial.Update,
+          ]),
+        }),
+        expect.objectContaining({
+          id: 'sports-roster-reviewer',
+          permissions: expect.arrayContaining([
+            Permission.SportsTeam.Read,
+            Permission.SportsRegistration.Approve,
+          ]),
+        }),
+        expect.objectContaining({
+          id: 'sports-match-operator',
+          allowedScopes: [
+            EventManagerPermissionGrantScope.Event,
+            EventManagerPermissionGrantScope.MajorEvent,
+            EventManagerPermissionGrantScope.EventGroup,
+          ],
+          permissions: expect.arrayContaining([
+            Permission.SportsMatch.Operate,
+            Permission.SportsScore.Update,
+            Permission.EventAttendance.Collect,
+          ]),
+        }),
+        expect.objectContaining({
+          id: 'sports-match-reviewer',
+          permissions: expect.arrayContaining([Permission.SportsMatch.Review, Permission.SportsScore.Review]),
+        }),
       ]),
     );
+    expect(
+      EVENT_MANAGER_PERMISSION_PRESETS.filter((preset) => preset.id.startsWith('sports-')).every(
+        (preset) => !preset.permissions.includes(Permission.Person.Read),
+      ),
+    ).toBe(true);
     expect(DASHBOARD_PERMISSION_REQUIREMENTS).toEqual(
       expect.arrayContaining([Permission.Certificate.Issue, Permission.Receipt.Approve]),
     );
@@ -230,6 +343,7 @@ describe('shared permissions contract', () => {
   it('keeps workspace tabs and evaluation permissions aligned', () => {
     const permissionsTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.Permissions);
     const dashboardTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.Dashboard);
+    const sportsTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.Sports);
     const preferencesTab = WORKSPACE_TAB_PERMISSIONS.find((tab) => tab.id === WorkspacePermissionTab.Preferences);
 
     expect(permissionsTab).toEqual(
@@ -252,6 +366,26 @@ describe('shared permissions contract', () => {
         delete: [],
       }),
     );
+    expect(sportsTab).toEqual(
+      expect.objectContaining({
+        label: 'Esportes',
+        read: expect.arrayContaining([
+          Permission.SportsTournament.Read,
+          Permission.SportsTeam.Read,
+          Permission.SportsMatch.Read,
+        ]),
+        edit: expect.arrayContaining([
+          Permission.SportsTeam.AssignRepresentative,
+          Permission.SportsRegistration.Approve,
+          Permission.SportsMatch.Operate,
+          Permission.SportsScore.Review,
+        ]),
+        delete: expect.arrayContaining([
+          Permission.SportsTournament.Delete,
+          Permission.SportsMatch.Delete,
+        ]),
+      }),
+    );
     expect(WORKSPACE_PERMISSION_EVALUATION_SET).toEqual(
       expect.arrayContaining([
         Permission.Event.Read,
@@ -262,6 +396,10 @@ describe('shared permissions contract', () => {
         Permission.Frozen.Update,
         Permission.PermissionGrant.Update,
         Permission.Receipt.Read,
+        Permission.SportsTournament.Read,
+        Permission.SportsRegistration.Approve,
+        Permission.SportsMatch.Operate,
+        Permission.SportsScore.Review,
       ]),
     );
   });
