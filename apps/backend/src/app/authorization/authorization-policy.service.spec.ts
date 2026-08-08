@@ -168,7 +168,7 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('matches event-group scoped grants when opening a tournament containing that group', async () => {
+  it('does not authorize a tournament from one of its child event groups', async () => {
     prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
       grant({
         permission: Permission.SportsTournament.Read,
@@ -185,7 +185,7 @@ describe('AuthorizationPolicyService', () => {
       service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.SportsTournament.Read], {
         sportsTournamentId: 'tournament-1',
       }),
-    ).resolves.toBeUndefined();
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('denies scoped grants when the operation has no matching target', async () => {

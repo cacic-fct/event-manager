@@ -14,26 +14,10 @@ export abstract class SportsAuthorizationTargetService {
       where: { id: tournamentId },
       select: {
         majorEventId: true,
-        categories: {
-          where: { deletedAt: null },
-          select: {
-            eventGroupId: true,
-            matches: {
-              where: { deletedAt: null },
-              select: { eventId: true },
-            },
-          },
-        },
       },
     });
     if (tournament) {
       target.majorEventIds.add(tournament.majorEventId);
-      for (const category of tournament.categories) {
-        target.eventGroupIds.add(category.eventGroupId);
-        for (const match of category.matches) {
-          await this.addEventTarget(target, match.eventId);
-        }
-      }
     }
   }
 
@@ -206,4 +190,3 @@ export abstract class SportsAuthorizationTargetService {
   }
 
 }
-

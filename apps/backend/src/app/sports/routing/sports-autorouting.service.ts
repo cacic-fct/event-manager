@@ -204,12 +204,22 @@ export class SportsAutoroutingService {
         rosters: {
           some: {
             deletedAt: null,
+            status: 'APPROVED',
             entries: {
               some: {
                 deletedAt: null,
+                status: 'APPROVED',
                 registrationMember: {
+                  deletedAt: null,
+                  eligibility: 'ELIGIBLE',
                   teamMember: {
-                    participant: { personId },
+                    deletedAt: null,
+                    status: 'APPROVED',
+                    participant: {
+                      personId,
+                      deletedAt: null,
+                      status: 'ACTIVE',
+                    },
                   },
                 },
               },
@@ -237,7 +247,13 @@ export class SportsAutoroutingService {
         revokedAt: null,
         team: {
           deletedAt: null,
-          tournament: { deletedAt: null },
+          tournament: {
+            deletedAt: null,
+            finishedAt: null,
+            status: {
+              notIn: ['FINISHED', 'CANCELED'],
+            },
+          },
         },
       },
       select: { teamId: true },
