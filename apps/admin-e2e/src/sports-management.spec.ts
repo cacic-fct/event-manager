@@ -79,8 +79,9 @@ test('shows the sports permission boundary when every sports read permission is 
 
   await expect(page.getByRole('heading', { name: 'Seção indisponível' })).toBeVisible();
   await expect(page.getByText('Faltam permissões de leitura para abrir')).toBeVisible();
-  await expect(page.getByText('sports-tournament#read')).toBeVisible();
-  await expect(page.getByText('sports-score#read')).toBeVisible();
+  const missingPermissions = page.getByLabel('Permissões ausentes');
+  await expect(missingPermissions.getByText('sports-tournament#read', { exact: true })).toBeVisible();
+  await expect(missingPermissions.getByText('sports-score#read', { exact: true })).toBeVisible();
 });
 
 async function fulfillGraphql(route: Route, data: Record<string, unknown>): Promise<void> {

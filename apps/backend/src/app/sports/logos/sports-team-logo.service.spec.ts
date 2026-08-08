@@ -154,9 +154,9 @@ describe('SportsTeamLogoService representative queue', () => {
 
   it('downscales a high-resolution input and recompresses an existing AVIF', async () => {
     const avif = await sharp({
-      create: { width: 5000, height: 3000, channels: 3, background: '#1565c0' },
+      create: { width: 3200, height: 1920, channels: 3, background: '#1565c0' },
     })
-      .avif({ quality: 100 })
+      .avif({ quality: 82 })
       .toBuffer();
     const result = await createService().submitRepresentativeUpload(
       'team-1',
@@ -168,5 +168,5 @@ describe('SportsTeamLogoService representative queue', () => {
     expect(result).toMatchObject({ mimeType: 'image/avif', width: 1600, height: 960 });
     const queued = s3.uploadFile.mock.calls[0]?.[1] as Buffer;
     expect((await sharp(queued).metadata()).format).toBe('heif');
-  }, 15_000);
+  });
 });

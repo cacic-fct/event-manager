@@ -21,7 +21,7 @@ test('shows a live tournament and opens the privacy-safe match detail', async ({
   await page.goto('/app/tournament/tournament-1');
 
   await expect(page.getByRole('heading', { name: 'Jogos Universitários' })).toBeVisible();
-  await expect(page.getByText('Ao vivo')).toBeVisible();
+  await expect(page.getByText('Ao vivo', { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Classificação' })).toBeVisible();
   await expect(page.getByText('Equipe Azul').first()).toBeVisible();
   await expect(page.getByRole('link', { name: /Equipe Azul/ }).first()).toHaveAttribute(
