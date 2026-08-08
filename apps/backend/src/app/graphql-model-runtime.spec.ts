@@ -33,6 +33,8 @@ import {
   DashboardInsightSeverity,
   DashboardPendingOfflineAttendanceEvent,
   DashboardPendingReceiptMajorEvent,
+  DashboardSportsMatch,
+  DashboardSportsTournament,
   DashboardPermissionAction,
   DashboardPermissionGroup,
   DashboardSummary,
@@ -219,6 +221,8 @@ describe('GraphQL model runtime metadata', () => {
       DashboardCertificatePendingItem,
       DashboardPendingReceiptMajorEvent,
       DashboardPendingOfflineAttendanceEvent,
+      DashboardSportsTournament,
+      DashboardSportsMatch,
       DashboardInconsistency,
       DashboardPermissionAction,
       DashboardPermissionGroup,
@@ -240,9 +244,16 @@ describe('GraphQL model runtime metadata', () => {
           nullable: undefined,
           type: '[DashboardInconsistency]',
         },
+        {
+          field: 'sportsMatches',
+          model: 'WorkspaceDashboardInsights',
+          nullable: undefined,
+          type: '[DashboardSportsMatch]',
+        },
       ]),
     );
     expect(DashboardInsightAction.OPEN_PUBLICATION).toBe('OPEN_PUBLICATION');
+    expect(DashboardInsightAction.OPEN_SPORTS).toBe('OPEN_SPORTS');
     expect(DashboardInsightSeverity.CRITICAL).toBe('CRITICAL');
     expect(DashboardCertificateTargetType.MAJOR_EVENT).toBe('MAJOR_EVENT');
     expect(DashboardInconsistencyType.EVENT_WITHOUT_PLACE).toBe('EVENT_WITHOUT_PLACE');

@@ -20,10 +20,12 @@ import { buildPendingCertificates } from './insights/pending-certificates';
 import { buildSuggestions } from './insights/suggestions';
 import { buildWeatherAlerts } from './insights/weather-alerts';
 import { buildPublicationConsistencyWarnings } from '../publishing/publishing-consistency';
+import { normalizeSportsScoreboard } from '../sports/domain/sports-scoreboard';
 import { addDays, startOfDay, subDays } from 'date-fns';
 
 export const DASHBOARD_INSIGHTS_QUEUE = 'dashboard-insights';
 const DASHBOARD_INCONSISTENCY_LIMIT = 30;
+const ACTIVE_SPORTS_MATCH_STATES = ['CHECK_IN', 'LIVE', 'PAUSED', 'AWAITING_REVIEW'] as const;
 
 @Injectable()
 export class DashboardInsightsService {
@@ -158,6 +160,16 @@ export class DashboardInsightsService {
       permissionSet.has(Permission.Receipt.Reject) ||
       permissionSet.has(Permission.Receipt.Undo);
     const canReviewOfflineAttendances = permissionSet.has(Permission.EventAttendance.Update);
+    const canReadSports = [
+      Permission.SportsTournament.Read,
+      Permission.SportsCategory.Read,
+      Permission.SportsTeam.Read,
+      Permission.SportsRegistration.Read,
+      Permission.SportsMatch.Read,
+      Permission.SportsMatch.Review,
+      Permission.SportsScore.Read,
+      Permission.SportsScore.Review,
+    ].some((permission) => permissionSet.has(permission));
     const shouldBuildEventInconsistencies = canManageEvents || canManageCertificates;
     const shouldBuildMajorEventInconsistencies = canManageMajorEvents;
     const shouldBuildInconsistencies = shouldBuildEventInconsistencies || shouldBuildMajorEventInconsistencies;
@@ -180,6 +192,8 @@ export class DashboardInsightsService {
       pastCertificateEventsWithoutAttendance,
       pastCertificateEventsWithoutAttendanceCollection,
       publicationMajorEvents,
+      sportsTournaments,
+      sportsMatches,
     ] = await Promise.all([
       canReadEvents ? this.prisma.event.count({ where: { deletedAt: null } }) : Promise.resolve(0),
       canReadEvents ? this.prisma.eventGroup.count({ where: { deletedAt: null } }) : Promise.resolve(0),
@@ -525,6 +539,98 @@ export class DashboardInsightsService {
             take: DASHBOARD_INCONSISTENCY_LIMIT,
           })
         : Promise.resolve([]),
+      canReadSports
+        ? this.prisma.sportsTournament.findMany({
+            where: {
+              deletedAt: null,
+              status: { notIn: ['FINISHED', 'CANCELED'] },
+            },
+            select: {
+              id: true,
+              majorEventId: true,
+              status: true,
+              majorEvent: {
+                select: {
+                  name: true,
+                  emoji: true,
+                  startDate: true,
+                  endDate: true,
+                },
+              },
+              _count: {
+                select: {
+                  categories: { where: { deletedAt: null } },
+                  teams: { where: { deletedAt: null } },
+                  playerApplications: {
+                    where: { deletedAt: null, status: 'PENDING' },
+                  },
+                },
+              },
+              categories: {
+                where: { deletedAt: null },
+                select: {
+                  _count: {
+                    select: {
+                      matches: {
+                        where: { deletedAt: null, reviewStatus: 'PENDING' },
+                      },
+                      registrations: {
+                        where: {
+                          deletedAt: null,
+                          status: { in: ['PENDING', 'CHANGES_REQUESTED'] },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              teams: {
+                where: { deletedAt: null },
+                select: {
+                  _count: {
+                    select: {
+                      changeRequests: {
+                        where: {
+                          status: { in: ['PENDING', 'CONFLICT', 'CHANGES_REQUESTED'] },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: [{ majorEvent: { startDate: 'asc' } }, { id: 'asc' }],
+            take: 10,
+          })
+        : Promise.resolve([]),
+      canReadSports
+        ? this.prisma.sportsMatch.findMany({
+            where: {
+              deletedAt: null,
+              state: { in: [...ACTIVE_SPORTS_MATCH_STATES] },
+              category: {
+                deletedAt: null,
+                tournament: { deletedAt: null },
+              },
+            },
+            select: {
+              id: true,
+              state: true,
+              scoreboard: true,
+              event: { select: { name: true, startDate: true } },
+              category: {
+                select: {
+                  name: true,
+                  tournamentId: true,
+                },
+              },
+              homeRegistration: { select: { team: { select: { name: true } } } },
+              awayRegistration: { select: { team: { select: { name: true } } } },
+            },
+            orderBy: [{ event: { startDate: 'asc' } }, { id: 'asc' }],
+            take: 100,
+          })
+        : Promise.resolve([]),
     ]);
 
     return {
@@ -534,11 +640,16 @@ export class DashboardInsightsService {
         eventGroupsCount,
         majorEventsCount,
       },
-      suggestions: buildSuggestions({
-        upcomingActivitiesCount: calendarEvents.length + upcomingMajorEventsCount,
-        canManageEvents,
-        canManageMajorEvents,
-      }),
+      suggestions: [
+        ...buildSuggestions({
+          upcomingActivitiesCount: calendarEvents.length + upcomingMajorEventsCount,
+          canManageEvents,
+          canManageMajorEvents,
+        }),
+        ...(canReadSports
+          ? [{ action: 'OPEN_SPORTS' as const, label: 'Gerenciar esportes' }]
+          : []),
+      ],
       calendarEvents: calendarEvents.map((event) => mapCalendarEvent(event, now)),
       weatherAlerts: await buildWeatherAlerts(this.weatherService, calendarEvents),
       pendingCertificates: canManageCertificates ? await buildPendingCertificates(this.prisma, now) : [],
@@ -564,6 +675,41 @@ export class DashboardInsightsService {
             pendingCount: event._count.offlineAttendanceSubmissions,
           }))
         : [],
+      sportsTournaments: sportsTournaments.map((tournament) => ({
+        tournamentId: tournament.id,
+        majorEventId: tournament.majorEventId,
+        name: tournament.majorEvent.name,
+        emoji: tournament.majorEvent.emoji,
+        startDate: tournament.majorEvent.startDate,
+        endDate: tournament.majorEvent.endDate,
+        status: tournament.status,
+        categoryCount: tournament._count.categories,
+        teamCount: tournament._count.teams,
+        pendingApplicationCount: tournament._count.playerApplications,
+        pendingReviewCount:
+          tournament.categories.reduce(
+            (total, category) =>
+              total + category._count.matches + category._count.registrations,
+            0,
+          ) +
+          tournament.teams.reduce((total, team) => total + team._count.changeRequests, 0),
+        activeMatchCount: sportsMatches.filter((match) => match.category.tournamentId === tournament.id).length,
+      })),
+      sportsMatches: sportsMatches.slice(0, 12).map((match) => {
+        const scoreboard = this.safeSportsScoreboard(match.scoreboard);
+        return {
+          matchId: match.id,
+          tournamentId: match.category.tournamentId,
+          categoryName: match.category.name,
+          eventName: match.event.name,
+          startDate: match.event.startDate,
+          state: match.state,
+          homeTeamName: match.homeRegistration?.team.name ?? null,
+          awayTeamName: match.awayRegistration?.team.name ?? null,
+          homeScore: scoreboard.home,
+          awayScore: scoreboard.away,
+        };
+      }),
       inconsistencies: shouldBuildInconsistencies
         ? [
             ...buildInconsistencies({
@@ -585,5 +731,14 @@ export class DashboardInsightsService {
       duplicatePeopleCount: canManageMergeCandidates ? duplicatePeopleCount : 0,
       permissions: formatPermissions(permissions),
     };
+  }
+
+  private safeSportsScoreboard(scoreboard: unknown): { home: number; away: number } {
+    try {
+      const normalized = normalizeSportsScoreboard(scoreboard);
+      return { home: normalized.home, away: normalized.away };
+    } catch {
+      return { home: 0, away: 0 };
+    }
   }
 }

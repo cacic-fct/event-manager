@@ -184,6 +184,9 @@ export class AttendancesApiService {
               startDate
               endDate
               description
+              sportsTournament {
+                id
+              }
             }
             participation {
               isSubscribed

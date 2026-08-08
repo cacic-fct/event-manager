@@ -1,5 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   Prisma,
   SportsApplicationStatus,
@@ -86,6 +86,10 @@ export class SportsPlayerApplicationReadService {
     actor: AuthenticatedUser | undefined,
     tournamentId: string,
     statuses?: SportsApplicationStatus[],
+    pagination: {
+      cursor?: string;
+      limit?: number;
+    } = {},
   ): Promise<AdminSportsPlayerApplicationRead[]> {
     await this.policy.assertPermissions(
       actor,
@@ -96,17 +100,31 @@ export class SportsPlayerApplicationReadService {
       statuses && statuses.length > 0
         ? [...new Set(statuses)]
         : [...DEFAULT_QUEUE_STATUSES];
+    const limit = pagination.limit ?? 200;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+      throw new BadRequestException('O limite deve ser um inteiro entre 1 e 200.');
+    }
     const applications = await this.prisma.sportsPlayerApplication.findMany({
       where: {
         tournamentId,
         status: { in: normalizedStatuses },
         deletedAt: null,
         tournament: { deletedAt: null },
-        requestedTeam: { deletedAt: null },
+        OR: [
+          { requestedTeamId: null },
+          { requestedTeam: { deletedAt: null } },
+        ],
         applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
       orderBy: [{ updatedAt: 'asc' }, { id: 'asc' }],
+      ...(pagination.cursor
+        ? {
+            cursor: { id: pagination.cursor },
+            skip: 1,
+          }
+        : {}),
+      take: limit,
     });
     const participants = await this.loadParticipantStates(
       tournamentId,
@@ -131,7 +149,10 @@ export class SportsPlayerApplicationReadService {
         id: applicationId,
         deletedAt: null,
         tournament: { deletedAt: null },
-        requestedTeam: { deletedAt: null },
+        OR: [
+          { requestedTeamId: null },
+          { requestedTeam: { deletedAt: null } },
+        ],
         applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
@@ -161,7 +182,10 @@ export class SportsPlayerApplicationReadService {
         applicantPersonId: personId,
         deletedAt: null,
         tournament: { deletedAt: null },
-        requestedTeam: { deletedAt: null },
+        OR: [
+          { requestedTeamId: null },
+          { requestedTeam: { deletedAt: null } },
+        ],
         applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
@@ -228,7 +252,9 @@ export class SportsPlayerApplicationReadService {
     return {
       id: application.id,
       tournamentId: application.tournamentId,
-      requestedTeam: this.mapTeam(application.requestedTeam),
+      requestedTeam: application.requestedTeam
+        ? this.mapTeam(application.requestedTeam)
+        : null,
       categories: application.categoryChoices.map(({ category }) =>
         this.mapCategory(category),
       ),

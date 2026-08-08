@@ -1,0 +1,1434 @@
+<section class="section workspace-tab-shell sports-workspace">
+  @if (workspace.loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Carregando gestão esportiva" />
+  }
+
+  <header class="sports-header">
+    <div>
+      <h2>Gestão esportiva</h2>
+      <p>Organize modalidades, equipes, chaves e revisões sem perder o vínculo com o grande evento.</p>
+    </div>
+    @if (workspace.tournamentRead(); as read) {
+      <div class="header-status">
+        <span class="status-dot" aria-hidden="true"></span>
+        <strong>{{ workspace.statusLabel(read.tournament.status) }}</strong>
+      </div>
+    }
+  </header>
+
+  @if (workspace.error(); as error) {
+    <div class="feedback-banner feedback-banner--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error }}</span>
+    </div>
+  }
+
+  @if (!workspace.tournamentRead()) {
+    <div class="onboarding-grid">
+      <section class="panel panel-stack">
+        <div class="panel-heading">
+          <div>
+            <h3>Torneios esportivos</h3>
+            <p>Abra um torneio existente ou vincule o modo esportivo a outro grande evento.</p>
+          </div>
+        </div>
+
+        <mat-list class="result-list">
+          @for (item of workspace.tournaments(); track item.tournament.id) {
+            <mat-list-item (click)="workspace.loadTournament(item.tournament.id)">
+              <span matListItemTitle class="list-title">
+                <app-twemoji [emoji]="item.majorEvent.emoji" />
+                {{ item.majorEvent.name }}
+              </span>
+              <span matListItemLine>
+                {{ item.categoryCount }} modalidades · {{ item.teamCount }} equipes ·
+                {{ workspace.statusLabel(item.tournament.status) }}
+              </span>
+              @if (item.pendingApplicationCount + item.pendingReviewCount) {
+                <span matListItemMeta class="state-label">
+                  {{ item.pendingApplicationCount + item.pendingReviewCount }} pendências
+                </span>
+              }
+              <button matIconButton type="button" aria-label="Abrir gestão esportiva">
+                <mat-icon>arrow_forward</mat-icon>
+              </button>
+            </mat-list-item>
+          } @empty {
+            <mat-list-item>
+              <span matListItemTitle>Nenhum torneio configurado</span>
+              <span matListItemLine>Escolha um grande evento abaixo para ativar o modo esportivo.</span>
+            </mat-list-item>
+          }
+        </mat-list>
+
+        <mat-divider />
+        <div>
+          <h4>Ativar em outro grande evento</h4>
+          <p>O torneio reaproveita publicação, pagamentos, datas e certificados.</p>
+        </div>
+        <mat-list class="result-list compact-major-events">
+          @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+            @if (!workspace.tournaments().find(item => item.majorEvent.id === majorEvent.id)) {
+              <mat-list-item (click)="workspace.openMajorEvent(majorEvent.id)">
+                <span matListItemTitle><app-twemoji [emoji]="majorEvent.emoji" /> {{ majorEvent.name }}</span>
+                <span matListItemLine
+                  >{{ majorEvent.startDate | date: 'shortDate' }} a {{ majorEvent.endDate | date: 'shortDate' }}</span
+                >
+                <button matIconButton type="button" aria-label="Ativar modo esportivo"><mat-icon>add</mat-icon></button>
+              </mat-list-item>
+            }
+          }
+        </mat-list>
+      </section>
+
+      <aside class="panel panel-stack lookup-panel">
+        <div>
+          <h3>Abrir pelo identificador</h3>
+          <p>Use em vínculos existentes enquanto a listagem esportiva é sincronizada.</p>
+        </div>
+        <form [formGroup]="workspace.tournamentLookupForm" (ngSubmit)="workspace.openTournamentFromLookup()">
+          <mat-form-field>
+            <mat-label>ID do torneio</mat-label>
+            <input matInput formControlName="tournamentId" autocomplete="off" />
+            <mat-hint>O acesso continua limitado pelas suas permissões.</mat-hint>
+          </mat-form-field>
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="!workspace.tournamentLookupForm.controls.tournamentId.value">
+            <mat-icon>login</mat-icon>
+            Abrir torneio
+          </button>
+        </form>
+      </aside>
+    </div>
+  } @else {
+    <nav class="area-nav" aria-label="Áreas da gestão esportiva">
+      <button type="button" [class.active]="workspace.activeArea() === 'overview'" (click)="setArea('overview')">
+        <mat-icon>tune</mat-icon>
+        Visão geral
+      </button>
+      <button type="button" [class.active]="workspace.activeArea() === 'categories'" (click)="setArea('categories')">
+        <mat-icon>sports</mat-icon>
+        Modalidades
+        <span>{{ workspace.tournamentRead()?.categories?.length ?? 0 }}</span>
+      </button>
+      <button type="button" [class.active]="workspace.activeArea() === 'teams'" (click)="setArea('teams')">
+        <mat-icon>groups</mat-icon>
+        Equipes
+        <span>{{ workspace.tournamentRead()?.teams?.length ?? 0 }}</span>
+      </button>
+      <button type="button" [class.active]="workspace.activeArea() === 'matches'" (click)="setArea('matches')">
+        <mat-icon>scoreboard</mat-icon>
+        Partidas e chaves
+      </button>
+      <button type="button" [class.active]="workspace.activeArea() === 'reviews'" (click)="setArea('reviews')">
+        <mat-icon>fact_check</mat-icon>
+        Revisões
+        @if (workspace.pendingCount()) {
+          <span class="pending-count">{{ workspace.pendingCount() }}</span>
+        }
+      </button>
+    </nav>
+
+    @switch (workspace.activeArea()) {
+      @case ('overview') {
+        <div class="content-grid">
+          <section class="panel panel-stack">
+            <div class="panel-heading">
+              <div>
+                <h3>Regras gerais</h3>
+                <p>O estado controla inscrições e edições não administrativas.</p>
+              </div>
+              <button
+                mat-flat-button
+                type="button"
+                (click)="workspace.saveTournament()"
+                [disabled]="workspace.loading()">
+                <mat-icon>save</mat-icon>
+                Salvar
+              </button>
+            </div>
+            <form [formGroup]="workspace.tournamentForm" class="form-grid">
+              <mat-form-field>
+                <mat-label>Estado do torneio</mat-label>
+                <mat-select formControlName="status">
+                  @for (status of tournamentStatuses; track status[0]) {
+                    <mat-option [value]="status[0]">{{ status[1] }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Classificação geral</mat-label>
+                <mat-select formControlName="scoringMode">
+                  <mat-option value="PER_SPORT">Somente por modalidade</mat-option>
+                  <mat-option value="OVERALL">Somente placar geral</mat-option>
+                  <mat-option value="BOTH">Por modalidade e geral</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-slide-toggle formControlName="selfSubscriptionEnabled">
+                Permitir autoinscrição de participantes
+              </mat-slide-toggle>
+              <mat-slide-toggle formControlName="allowPlayerMultipleTeams">
+                Permitir uma pessoa em mais de uma equipe
+              </mat-slide-toggle>
+              @if (workspace.tournamentForm.controls.selfSubscriptionEnabled.value) {
+                <div class="subsection-title span-2">
+                  <h4>Opções da autoinscrição</h4>
+                  <p>
+                    Sem estas opções, cada candidatura deve indicar uma equipe e ao menos uma modalidade.
+                  </p>
+                </div>
+                <mat-slide-toggle formControlName="selfSubscriptionAllowNoTeam">
+                  Aceitar candidatura sem equipe escolhida
+                </mat-slide-toggle>
+                <mat-slide-toggle formControlName="selfSubscriptionAllowNoCategory">
+                  Aceitar candidatura sem modalidade escolhida
+                </mat-slide-toggle>
+              }
+            </form>
+          </section>
+
+          <aside class="panel panel-stack">
+            <div>
+              <h3>Pontuação geral</h3>
+              <p>Ajustes manuais e penalidades ficam registrados com motivo.</p>
+            </div>
+            <div class="score-list">
+              @for (entry of workspace.tournamentRead()?.scoreEntries ?? []; track entry.id) {
+                <div>
+                  <strong>{{ workspace.tournamentRead()?.teams?.find(team => team.id === entry.teamId)?.name }}</strong>
+                  <span>{{ scoreSourceLabel(entry.source) }}: {{ entry.reason }}</span>
+                  <b [class.negative]="entry.points < 0">{{ entry.points > 0 ? '+' : '' }}{{ entry.points }}</b>
+                </div>
+              } @empty {
+                <p class="empty-copy">Nenhum ajuste manual. Resultados automáticos aparecerão aqui.</p>
+              }
+            </div>
+            <form [formGroup]="workspace.scoreEntryForm" class="compact-form" (ngSubmit)="workspace.createScoreEntry()">
+              <mat-form-field>
+                <mat-label>Equipe</mat-label>
+                <mat-select formControlName="teamId">
+                  @for (team of workspace.tournamentRead()?.teams ?? []; track team.id) {
+                    <mat-option [value]="team.id">{{ team.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Origem</mat-label>
+                <mat-select formControlName="source">
+                  <mat-option value="MANUAL">Ajuste manual</mat-option>
+                  <mat-option value="PENALTY">Penalidade</mat-option>
+                  <mat-option value="PLACEMENT">Colocação</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Pontos</mat-label>
+                <input matInput type="number" formControlName="points" />
+              </mat-form-field>
+              <mat-form-field class="span-2">
+                <mat-label>Motivo auditável</mat-label>
+                <input matInput formControlName="reason" />
+              </mat-form-field>
+              <button mat-stroked-button type="submit" [disabled]="workspace.scoreEntryForm.invalid">
+                Registrar ajuste
+              </button>
+            </form>
+          </aside>
+
+          <section class="panel panel-stack span-all">
+            <div class="panel-heading">
+              <div>
+                <h3>Locais esportivos</h3>
+                <p>Derivados de locais conhecidos; quadras e raias podem pertencer ao mesmo complexo.</p>
+              </div>
+              <button mat-stroked-button type="button" (click)="workspace.newVenue()">
+                <mat-icon>add_location</mat-icon>Novo local
+              </button>
+            </div>
+            <div class="venue-layout">
+              <mat-list class="result-list">
+                @for (venue of workspace.tournamentRead()?.venues ?? []; track venue.id) {
+                  <mat-list-item
+                    [class.selected-list-item]="workspace.selectedVenueId() === venue.id"
+                    (click)="workspace.selectVenue(venue)">
+                    <mat-icon matListItemIcon>location_on</mat-icon>
+                    <span matListItemTitle>{{ venue.name }}</span>
+                    <span matListItemLine
+                      >{{ venue.courtLabel || 'Área principal'
+                      }}{{ venue.capacity ? ' · ' + venue.capacity + ' pessoas' : '' }}</span
+                    >
+                  </mat-list-item>
+                } @empty {
+                  <mat-list-item
+                    ><span matListItemTitle>Nenhum local esportivo</span
+                    ><span matListItemLine>Cadastre quadras, piscinas ou arenas.</span></mat-list-item
+                  >
+                }
+              </mat-list>
+              <form [formGroup]="workspace.venueForm" class="form-grid" (ngSubmit)="workspace.saveVenue()">
+                <mat-form-field
+                  ><mat-label>Local base</mat-label
+                  ><mat-select formControlName="placePresetId">
+                    @for (place of workspace.places(); track place.id) {
+                      <mat-option [value]="place.id">{{ place.name }}</mat-option>
+                    }
+                  </mat-select></mat-form-field
+                >
+                <mat-form-field
+                  ><mat-label>Nome público</mat-label><input matInput formControlName="name"
+                /></mat-form-field>
+                <mat-form-field
+                  ><mat-label>Quadra, raia ou sala</mat-label><input matInput formControlName="courtLabel"
+                /></mat-form-field>
+                <mat-form-field
+                  ><mat-label>Capacidade</mat-label><input matInput type="number" min="0" formControlName="capacity"
+                /></mat-form-field>
+                <mat-form-field
+                  ><mat-label>Local pai</mat-label
+                  ><mat-select formControlName="parentVenueId">
+                    <mat-option value="">Nenhum</mat-option>
+                    @for (venue of workspace.tournamentRead()?.venues ?? []; track venue.id) {
+                      @if (venue.id !== workspace.venueForm.controls.id.value) {
+                        <mat-option [value]="venue.id">{{ venue.name }}</mat-option>
+                      }
+                    }
+                  </mat-select></mat-form-field
+                >
+                <mat-form-field
+                  ><mat-label>Orientações internas</mat-label><input matInput formControlName="notes"
+                /></mat-form-field>
+                <div class="panel-actions">
+                  @if (workspace.selectedVenueId()) {
+                    <button mat-button type="button" (click)="workspace.deleteSelectedVenue()">
+                      <mat-icon>delete</mat-icon>Excluir
+                    </button>
+                  }
+                  <button mat-flat-button type="submit" [disabled]="workspace.venueForm.invalid">
+                    <mat-icon>save</mat-icon>Salvar local
+                  </button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <section class="panel panel-stack span-all">
+            <div class="panel-heading">
+              <div>
+                <h3>Reutilizar ou remover</h3>
+                <p>Duplique configurações em outro grande evento ou remova somente o modo esportivo.</p>
+              </div>
+              <button mat-flat-button type="button" (click)="workspace.cloneTournament()">
+                <mat-icon>content_copy</mat-icon>
+                Duplicar torneio
+              </button>
+            </div>
+            <div class="danger-zone">
+              <span><strong>Remover somente o modo esportivo</strong>O grande evento e seu conteúdo comum serão preservados.</span>
+              <button mat-stroked-button type="button" (click)="workspace.deleteTournament()"><mat-icon>delete</mat-icon>Excluir torneio</button>
+            </div>
+          </section>
+        </div>
+      }
+
+      @case ('categories') {
+        <div class="master-detail">
+          <aside class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Modalidades</h3>
+                <p>Esporte, divisão e formato competitivo.</p>
+              </div>
+              <button mat-stroked-button type="button" (click)="workspace.newCategory()">
+                <mat-icon>add</mat-icon>Novo
+              </button>
+            </div>
+            <mat-list class="result-list">
+              @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+                <mat-list-item
+                  [class.selected-list-item]="workspace.selectedCategoryId() === category.id"
+                  (click)="workspace.selectCategory(category)">
+                  <span matListItemTitle>
+                    <app-twemoji [emoji]="category.eventGroup?.emoji || sportEmoji(category.sport)" />
+                    {{ category.name }}
+                  </span>
+                  <span matListItemLine
+                    >{{ category.division || 'Sem divisão' }} · {{ formatLabel(category.format) }}</span
+                  >
+                  <span matListItemMeta class="state-label">{{ categoryStatusLabel(category.status) }}</span>
+                </mat-list-item>
+              } @empty {
+                <mat-list-item>
+                  <span matListItemTitle>Nenhuma modalidade</span>
+                  <span matListItemLine>Comece por um preset e ajuste somente o necessário.</span>
+                </mat-list-item>
+              }
+            </mat-list>
+          </aside>
+
+          <section class="panel panel-stack">
+            <div class="panel-heading">
+              <div>
+                <h3>{{ workspace.categoryRead() ? 'Editar modalidade' : 'Nova modalidade' }}</h3>
+                <p>Presets fornecem um ponto seguro, mas todas as regras continuam flexíveis.</p>
+              </div>
+              <div class="panel-actions">
+                @if (workspace.categoryRead(); as read) {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Duplicar modalidade"
+                    (click)="workspace.cloneSelectedCategory()">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Excluir"
+                    (click)="workspace.deleteCategory(read.category)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+                <button
+                  mat-flat-button
+                  type="button"
+                  (click)="workspace.saveCategory()"
+                  [disabled]="workspace.categoryForm.invalid">
+                  <mat-icon>save</mat-icon>Salvar
+                </button>
+              </div>
+            </div>
+            <form [formGroup]="workspace.categoryForm" class="form-grid">
+              <mat-form-field>
+                <mat-label>Nome</mat-label>
+                <input matInput formControlName="name" />
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Esporte</mat-label>
+                <mat-select formControlName="sport" (selectionChange)="updateNewCategoryEmoji($event.value)">
+                  @for (sport of sports; track sport[0]) {
+                    <mat-option [value]="sport[0]">
+                      <app-twemoji [emoji]="sportEmoji(sport[0])" /> {{ sport[1] }}
+                    </mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Emoji da modalidade</mat-label>
+                <app-twemoji matPrefix [emoji]="workspace.categoryForm.controls.emoji.value" />
+                <input matInput maxlength="16" formControlName="emoji" />
+                <mat-hint>Usado no calendário e nas listas públicas.</mat-hint>
+              </mat-form-field>
+              @if (workspace.categoryForm.controls.sport.value === 'OTHER') {
+                <mat-form-field>
+                  <mat-label>Nome do esporte</mat-label>
+                  <input matInput formControlName="customSportName" />
+                </mat-form-field>
+              }
+              <mat-form-field>
+                <mat-label>Divisão</mat-label>
+                <input matInput formControlName="division" placeholder="Ex.: feminino, série A" />
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Formato</mat-label>
+                <mat-select formControlName="format">
+                  @for (format of formats; track format.value) {
+                    <mat-option [value]="format.value">{{ format.label }}</mat-option>
+                  }
+                </mat-select>
+                <mat-hint>{{ formatLabel(workspace.categoryForm.controls.format.value) }}</mat-hint>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Estado</mat-label>
+                <mat-select formControlName="status">
+                  @for (status of categoryStatuses; track status[0]) {
+                    <mat-option [value]="status[0]">{{ status[1] }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Início das inscrições</mat-label>
+                <input matInput type="datetime-local" formControlName="registrationStartDate" />
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Fim das inscrições</mat-label>
+                <input matInput type="datetime-local" formControlName="registrationEndDate" />
+              </mat-form-field>
+
+              <app-sports-format-guide
+                class="span-2"
+                [currentFormat]="workspace.categoryForm.controls.format.value"
+                (formatSelected)="workspace.categoryForm.controls.format.setValue($event)" />
+
+              <div class="subsection-title span-2">
+                <h4>Elenco por modalidade</h4>
+                <p>Zero significa sem limite definido.</p>
+              </div>
+              <mat-form-field
+                ><mat-label>Mínimo</mat-label><input matInput type="number" min="0" formControlName="minimumRosterSize"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Máximo</mat-label><input matInput type="number" min="0" formControlName="maximumRosterSize"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Capitães</mat-label><input matInput type="number" min="0" formControlName="maximumCaptains"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Técnicos</mat-label><input matInput type="number" min="0" formControlName="maximumCoaches"
+              /></mat-form-field>
+              <mat-slide-toggle formControlName="allowPlayerMultipleTeams"
+                >Permitir atleta em múltiplas equipes nesta modalidade</mat-slide-toggle
+              >
+              <mat-slide-toggle formControlName="periodsEnabled">Registrar tempos, sets ou rodadas</mat-slide-toggle>
+              @if (workspace.categoryForm.controls.periodsEnabled.value) {
+                <mat-form-field
+                  ><mat-label>Quantidade máxima</mat-label
+                  ><input matInput type="number" min="1" formControlName="maximumPeriods"
+                /></mat-form-field>
+                <mat-form-field
+                  ><mat-label>Nome do período</mat-label><input matInput formControlName="periodLabel"
+                /></mat-form-field>
+              }
+              <div class="subsection-title span-2">
+                <h4>Cronômetros</h4>
+                <p>
+                  Configure o tempo geral e o tempo de cada período. Durante a partida, o servidor usa instantes Unix
+                  para manter todos os dispositivos sincronizados.
+                </p>
+              </div>
+              <mat-form-field>
+                <mat-label>Preset de tempo</mat-label>
+                <mat-select
+                  formControlName="timerPreset"
+                  (selectionChange)="workspace.applyTimerPreset($event.value)">
+                  <mat-option value="SOCCER">Futebol - 2 tempos de 45 min</mat-option>
+                  <mat-option value="FUTSAL">Futsal - 2 tempos de 20 min</mat-option>
+                  <mat-option value="BASKETBALL">Basquete - 4 períodos de 10 min</mat-option>
+                  <mat-option value="VOLLEYBALL">Vôlei - sets sem duração fixa</mat-option>
+                  <mat-option value="TENNIS">Tênis - sets sem duração fixa</mat-option>
+                  <mat-option value="CHESS">Xadrez - somente tempo geral</mat-option>
+                  <mat-option value="ESPORTS">E-sports - rodadas sem duração fixa</mat-option>
+                  <mat-option value="CUSTOM">Configuração manual</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Duração prevista do período (minutos)</mat-label>
+                <input matInput type="number" min="0" max="1440" formControlName="timerPeriodDurationMinutes" />
+                <mat-hint>Zero significa duração livre.</mat-hint>
+              </mat-form-field>
+              <mat-form-field class="span-2">
+                <mat-label>Início previsto de cada período (minutos)</mat-label>
+                <input matInput formControlName="timerPeriodStartOffsetsMinutes" placeholder="0, 45" />
+                <mat-hint>
+                  Separe por vírgulas. Ex.: 0, 45 faz o segundo tempo começar em 45:00 mesmo com acréscimos.
+                </mat-hint>
+                @if (workspace.categoryForm.controls.timerPeriodStartOffsetsMinutes.invalid) {
+                  <mat-error>Use somente minutos positivos separados por vírgulas.</mat-error>
+                }
+              </mat-form-field>
+              <mat-slide-toggle formControlName="timerOverallEnabled">Exibir cronômetro geral</mat-slide-toggle>
+              <mat-slide-toggle formControlName="timerPeriodEnabled">Exibir cronômetro por período</mat-slide-toggle>
+              <mat-slide-toggle formControlName="timerAllowOvertime">Permitir acréscimos além do limite</mat-slide-toggle>
+              <mat-form-field class="span-2">
+                <mat-label>Regras públicas</mat-label>
+                <textarea matInput rows="4" formControlName="rulesText"></textarea>
+              </mat-form-field>
+
+              <mat-expansion-panel class="span-2 rule-editor">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Regras avançadas</mat-panel-title>
+                  <mat-panel-description
+                    >JSON validado para placar, elenco, chave e classificação</mat-panel-description
+                  >
+                </mat-expansion-panel-header>
+                <p class="advanced-warning">
+                  <mat-icon>warning</mat-icon>
+                  Use somente para regras não cobertas pelos controles acima. O valor deve ser um objeto JSON com no
+                  máximo seis níveis. Em placar, use apenas strategy, allowDraw, higherWins e pointStep.
+                </p>
+                <div class="advanced-docs">
+                  <mat-icon aria-hidden="true">menu_book</mat-icon>
+                  <div>
+                    <strong>Quando usar estes campos?</strong>
+                    <p>
+                      Eles existem para extensões raras ainda sem um controle visual, importações e compatibilidade com
+                      torneios antigos. Prefira sempre os controles normais. O servidor rejeita chaves desconhecidas nas
+                      regras tipadas, objetos perigosos, valores infinitos e estruturas excessivamente profundas.
+                    </p>
+                    <p>
+                      Placar aceita <code>strategy</code>, <code>allowDraw</code>, <code>higherWins</code> e
+                      <code>pointStep</code>. Elenco, chave e classificação devem seguir a documentação da versão da API;
+                      mudanças são protegidas pela validação no envio e pela revisão do esquema compartilhado.
+                    </p>
+                  </div>
+                </div>
+                <div class="form-grid">
+                  <mat-form-field
+                    ><mat-label>Placar</mat-label
+                    ><textarea matInput rows="5" formControlName="scoreRulesJson"></textarea>
+                    @if (workspace.categoryForm.controls.scoreRulesJson.invalid) {
+                      <mat-error>Revise a sintaxe e o esquema das regras de placar.</mat-error>
+                    }
+                  </mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Elenco</mat-label
+                    ><textarea matInput rows="5" formControlName="rosterRulesJson"></textarea>
+                    @if (workspace.categoryForm.controls.rosterRulesJson.invalid) {
+                      <mat-error>Informe um objeto JSON seguro e válido.</mat-error>
+                    }
+                  </mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Chave</mat-label
+                    ><textarea matInput rows="5" formControlName="bracketRulesJson"></textarea>
+                    @if (workspace.categoryForm.controls.bracketRulesJson.invalid) {
+                      <mat-error>Informe um objeto JSON seguro e válido.</mat-error>
+                    }
+                  </mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Classificação</mat-label
+                    ><textarea matInput rows="5" formControlName="standingsRulesJson"></textarea>
+                    @if (workspace.categoryForm.controls.standingsRulesJson.invalid) {
+                      <mat-error>Informe um objeto JSON seguro e válido.</mat-error>
+                    }
+                  </mat-form-field>
+                </div>
+              </mat-expansion-panel>
+            </form>
+
+            @if (workspace.categoryRead(); as read) {
+              <mat-divider />
+              <div class="subsection-title">
+                <h4>Equipes inscritas</h4>
+                <p>A aprovação pode preceder o pagamento; “ativa” significa que todas as condições foram concluídas.</p>
+              </div>
+              <div class="registration-list">
+                @for (registration of read.registrations; track registration.id) {
+                  <div>
+                    <span>
+                      <strong>{{ workspace.teamNameForRegistration(registration.id) }}</strong>
+                      <small
+                        >Seed {{ registration.seed || 'não definido' }} ·
+                        {{ workspace.statusLabel(registration.status) }}</small
+                      >
+                    </span>
+                    <div class="review-actions">
+                      <button
+                        mat-icon-button
+                        type="button"
+                        matTooltip="Excluir inscrição"
+                        (click)="workspace.deleteRegistration(registration)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="workspace.setRegistrationStatus(registration, 'CHANGES_REQUESTED')">
+                        Pedir ajuste
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        (click)="workspace.setRegistrationStatus(registration, 'APPROVED')">
+                        Aprovar
+                      </button>
+                      <button
+                        mat-flat-button
+                        type="button"
+                        (click)="workspace.setRegistrationStatus(registration, 'ACTIVE')">
+                        Ativar
+                      </button>
+                    </div>
+                  </div>
+                } @empty {
+                  <p class="empty-copy">Nenhuma equipe inscrita nesta modalidade.</p>
+                }
+              </div>
+            }
+          </section>
+        </div>
+      }
+
+      @case ('teams') {
+        <div class="master-detail">
+          <aside class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Equipes</h3>
+                <p>Vínculos exclusivos deste torneio.</p>
+              </div>
+              <button mat-stroked-button type="button" (click)="workspace.newTeam()">
+                <mat-icon>add</mat-icon>Nova
+              </button>
+            </div>
+            <mat-list class="result-list">
+              @for (team of workspace.tournamentRead()?.teams ?? []; track team.id) {
+                <mat-list-item
+                  [class.selected-list-item]="workspace.selectedTeamId() === team.id"
+                  (click)="workspace.selectTeam(team)">
+                  @if (team.logoUrl) {
+                    <img matListItemAvatar [src]="team.logoUrl" [alt]="'Escudo de ' + team.name" />
+                  } @else {
+                    <mat-icon matListItemIcon>shield</mat-icon>
+                  }
+                  <span matListItemTitle>{{ team.name }}</span>
+                  <span matListItemLine>{{ workspace.statusLabel(team.status) }}</span>
+                  <span matListItemLine>
+                    @if (workspace.teamModalities(team.id); as modalities) {
+                      @for (modality of modalities; track modality.id) {
+                        <span>
+                          <app-twemoji [emoji]="modality.categoryEmoji" />
+                          {{ modality.categoryName }}
+                        </span>
+                      } @empty {
+                        <span>Sem modalidade</span>
+                      }
+                    } @else {
+                      <span>Modalidades ainda não carregadas</span>
+                    }
+                  </span>
+                </mat-list-item>
+              } @empty {
+                <mat-list-item
+                  ><span matListItemTitle>Nenhuma equipe</span
+                  ><span matListItemLine>Cadastre a primeira equipe do torneio.</span></mat-list-item
+                >
+              }
+            </mat-list>
+          </aside>
+
+          <section class="panel panel-stack">
+            <div class="panel-heading">
+              <div>
+                <h3>{{ workspace.teamRead() ? 'Equipe' : 'Nova equipe' }}</h3>
+                <p>Identidade, representantes e inscrições por modalidade.</p>
+              </div>
+              <div class="panel-actions">
+                @if (workspace.teamRead()) {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Duplicar equipe"
+                    (click)="workspace.cloneSelectedTeam()">
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Excluir equipe"
+                    (click)="workspace.deleteSelectedTeam()">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+                <button
+                  mat-flat-button
+                  type="button"
+                  (click)="workspace.saveTeam()"
+                  [disabled]="workspace.teamForm.invalid">
+                  <mat-icon>save</mat-icon>Salvar
+                </button>
+              </div>
+            </div>
+            <form [formGroup]="workspace.teamForm" class="form-grid">
+              <mat-form-field><mat-label>Nome</mat-label><input matInput formControlName="name" /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Turma, curso ou instituição</mat-label><input matInput formControlName="institution"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Estado</mat-label
+                ><mat-select formControlName="status">
+                  @for (status of teamStatuses; track status[0]) {
+                    <mat-option [value]="status[0]">{{ status[1] }}</mat-option>
+                  }
+                </mat-select></mat-form-field
+              >
+            </form>
+
+            @if (workspace.teamRead(); as read) {
+              <div class="logo-control">
+                @if (read.team.logoUrl) {
+                  <img [src]="read.team.logoUrl" [alt]="'Escudo de ' + read.team.name" />
+                } @else {
+                  <mat-icon>shield</mat-icon>
+                }
+                <div>
+                  <strong>Escudo da equipe</strong>
+                  <span>AVIF, SVG, PNG, JPEG ou WebP, até 15 MB. O arquivo será convertido para AVIF.</span>
+                </div>
+                <label class="material-upload">
+                  <input
+                    type="file"
+                    accept="image/avif,image/svg+xml,image/png,image/jpeg,image/webp"
+                    (change)="uploadTeamLogo($event)" />
+                  <mat-icon>upload</mat-icon>
+                  Enviar escudo
+                </label>
+              </div>
+              <mat-divider />
+              <div class="subsection-title">
+                <h4>Representantes</h4>
+                <p>Administram somente esta equipe; toda alteração feita por eles entra na fila de revisão.</p>
+              </div>
+              <div class="person-list">
+                @for (representative of read.representatives; track representative.id) {
+                  <div>
+                    <mat-icon>admin_panel_settings</mat-icon>
+                    <span
+                      ><strong>{{ representative.person.name }}</strong
+                      ><small>Desde {{ representative.assignedAt | date: 'shortDate' }}</small></span
+                    >
+                    <button
+                      mat-icon-button
+                      type="button"
+                      matTooltip="Revogar acesso"
+                      (click)="workspace.revokeRepresentative(representative.id)">
+                      <mat-icon>person_remove</mat-icon>
+                    </button>
+                  </div>
+                } @empty {
+                  <p class="empty-copy">Nenhum representante ativo.</p>
+                }
+              </div>
+              <form
+                [formGroup]="workspace.representativeForm"
+                class="person-search"
+                (ngSubmit)="workspace.assignRepresentative()">
+                <mat-form-field>
+                  <mat-label>Buscar pessoa autorizada</mat-label>
+                  <input
+                    matInput
+                    formControlName="personQuery"
+                    (input)="
+                      workspace.searchPeople(workspace.representativeForm.controls.personQuery.value, 'representative')
+                    " />
+                  <mat-icon matSuffix>search</mat-icon>
+                </mat-form-field>
+                <button mat-stroked-button type="submit" [disabled]="workspace.representativeForm.invalid">
+                  <mat-icon>person_add</mat-icon>Atribuir
+                </button>
+              </form>
+              @if (workspace.people().length && workspace.peopleTarget() === 'representative') {
+                <div class="search-results">
+                  @for (person of workspace.people(); track person.id) {
+                    <button type="button" (click)="workspace.pickPerson(person, 'representative')">
+                      {{ person.name }}
+                    </button>
+                  }
+                </div>
+              }
+
+              <mat-divider />
+              <div class="subsection-title">
+                <h4>Elenco conhecido</h4>
+                <p>Pessoas resolvidas e aprovadas pelos administradores.</p>
+              </div>
+              <form [formGroup]="workspace.memberForm" class="person-search" (ngSubmit)="workspace.addTeamMember()">
+                <mat-form-field>
+                  <mat-label>Buscar pessoa para o elenco</mat-label>
+                  <input
+                    matInput
+                    formControlName="personQuery"
+                    (input)="workspace.searchPeople(workspace.memberForm.controls.personQuery.value, 'member')" />
+                  <mat-icon matSuffix>search</mat-icon>
+                </mat-form-field>
+                <button mat-stroked-button type="submit" [disabled]="workspace.memberForm.invalid">
+                  <mat-icon>person_add</mat-icon>Adicionar
+                </button>
+              </form>
+              @if (workspace.people().length && workspace.peopleTarget() === 'member') {
+                <div class="search-results">
+                  @for (person of workspace.people(); track person.id) {
+                    <button type="button" (click)="workspace.pickPerson(person, 'member')">{{ person.name }}</button>
+                  }
+                </div>
+              }
+              <div class="member-grid">
+                @for (member of read.members; track member.id) {
+                  <div>
+                    <mat-icon>person</mat-icon>
+                    <span
+                      ><strong>{{ member.person.name }}</strong
+                      ><small>{{ workspace.statusLabel(member.status) }}</small></span
+                    >
+                    <mat-form-field subscriptSizing="dynamic">
+                      <mat-label>Status</mat-label>
+                      <mat-select
+                        [value]="member.status"
+                        (selectionChange)="workspace.updateTeamMember(member, $event.value)">
+                        <mat-option value="PENDING">Pendente</mat-option>
+                        <mat-option value="APPROVED">Aprovado</mat-option>
+                        <mat-option value="CHANGES_REQUESTED">Ajustes solicitados</mat-option>
+                        <mat-option value="REJECTED">Rejeitado</mat-option>
+                        <mat-option value="SUSPENDED">Suspenso</mat-option>
+                        <mat-option value="WITHDRAWN">Removido</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+                } @empty {
+                  <p class="empty-copy">Nenhum integrante aprovado.</p>
+                }
+              </div>
+
+              <div class="subsection-title">
+                <h4>Função por modalidade</h4>
+                <p>Capitães e técnicos recebem acesso à escalação apenas na modalidade atribuída.</p>
+              </div>
+              <form [formGroup]="workspace.categoryRoleForm" class="compact-form" (ngSubmit)="workspace.assignCategoryRole()">
+                <mat-form-field><mat-label>Inscrição</mat-label><mat-select formControlName="registrationId">
+                  @for (registration of read.registrations; track registration.id) {
+                    <mat-option [value]="registration.id">{{ categoryName(registration.categoryId) }}</mat-option>
+                  }
+                </mat-select></mat-form-field>
+                <mat-form-field><mat-label>Integrante</mat-label><mat-select formControlName="teamMemberId">
+                  @for (member of read.members; track member.id) {
+                    <mat-option [value]="member.id">{{ member.person.name }}</mat-option>
+                  }
+                </mat-select></mat-form-field>
+                <mat-form-field><mat-label>Função</mat-label><mat-select formControlName="role">
+                  <mat-option value="PLAYER">Atleta</mat-option>
+                  <mat-option value="CAPTAIN">Capitão</mat-option>
+                  <mat-option value="COACH">Técnico</mat-option>
+                </mat-select></mat-form-field>
+                <button mat-stroked-button type="submit" [disabled]="workspace.categoryRoleForm.invalid">
+                  <mat-icon>badge</mat-icon>Salvar função
+                </button>
+              </form>
+
+              <mat-divider />
+              <div class="subsection-title">
+                <h4>Inscrever em modalidade</h4>
+                <p>A inscrição cria o vínculo da equipe com uma divisão específica.</p>
+              </div>
+              <form
+                [formGroup]="workspace.registrationForm"
+                class="compact-form"
+                (ngSubmit)="workspace.createRegistration()">
+                <mat-form-field
+                  ><mat-label>Modalidade</mat-label
+                  ><mat-select formControlName="categoryId">
+                    @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+                      <mat-option [value]="category.id"
+                        >{{ category.name }}{{ category.division ? ' · ' + category.division : '' }}</mat-option
+                      >
+                    }
+                  </mat-select></mat-form-field
+                >
+                <mat-form-field
+                  ><mat-label>Seed inicial</mat-label><input matInput type="number" min="0" formControlName="seed"
+                /></mat-form-field>
+                <mat-expansion-panel class="span-2 rule-editor">
+                  <mat-expansion-panel-header>
+                    <mat-panel-title>Respostas avançadas do formulário</mat-panel-title>
+                    <mat-panel-description>Use somente em importações administrativas</mat-panel-description>
+                  </mat-expansion-panel-header>
+                  <p class="advanced-warning">
+                    Prefira o formulário vinculado à modalidade. Este campo aceita apenas um objeto JSON seguro.
+                  </p>
+                  <mat-form-field>
+                    <mat-label>Respostas do formulário</mat-label>
+                    <textarea matInput rows="3" formControlName="formAnswersJson"></textarea>
+                    @if (workspace.registrationForm.controls.formAnswersJson.invalid) {
+                      <mat-error>Informe um objeto JSON válido.</mat-error>
+                    }
+                  </mat-form-field>
+                </mat-expansion-panel>
+                <button mat-stroked-button type="submit" [disabled]="workspace.registrationForm.invalid">
+                  <mat-icon>how_to_reg</mat-icon>Inscrever equipe
+                </button>
+              </form>
+            }
+          </section>
+        </div>
+      }
+
+      @case ('matches') {
+        <div class="master-detail">
+          <aside class="panel panel-stack">
+            <div>
+              <h3>Chave e agenda</h3>
+              <p>Escolha uma modalidade para gerar ou editar confrontos.</p>
+            </div>
+            <mat-form-field>
+              <mat-label>Modalidade</mat-label>
+              <mat-select [value]="workspace.selectedCategoryId()" (selectionChange)="selectCategoryById($event.value)">
+                @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+                  <mat-option [value]="category.id">{{ category.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            @if (workspace.categoryRead(); as read) {
+              <form
+                [formGroup]="workspace.bracketForm"
+                class="bracket-controls"
+                (ngSubmit)="workspace.generateBracket()">
+                <mat-checkbox formControlName="randomizeUnseeded">Sortear equipes sem seed</mat-checkbox>
+                <mat-form-field
+                  ><mat-label>Semente reproduzível</mat-label><input matInput formControlName="randomSeed"
+                /></mat-form-field>
+                <mat-checkbox formControlName="replaceExistingDraft">Substituir chave em rascunho</mat-checkbox>
+                <button mat-flat-button type="submit"><mat-icon>account_tree</mat-icon>Gerar chave</button>
+              </form>
+              <p class="safety-note">
+                <mat-icon>info</mat-icon>Byes avançam automaticamente. A geração nunca substitui resultados finalizados.
+              </p>
+              <lib-sports-bracket
+                [format]="read.category.format"
+                [stages]="bracketStages()"
+                [standings]="bracketStandings()"
+                [currentMatchId]="currentLiveMatchId()"
+                [editingMatchId]="workspace.selectedMatchId() || null"
+                (matchSelected)="selectBracketMatch(read, $event)" />
+              <mat-list class="result-list">
+                @for (match of read.matches; track match.id) {
+                  <mat-list-item
+                    [class.selected-list-item]="workspace.selectedMatchId() === match.id"
+                    (click)="workspace.selectMatch(match)">
+                    @if (teamLogoForRegistration(match.homeRegistrationId); as logoUrl) {
+                      <img
+                        matListItemAvatar
+                        [src]="logoUrl"
+                        [alt]="'Escudo de ' + workspace.teamNameForRegistration(match.homeRegistrationId)" />
+                    } @else {
+                      <mat-icon matListItemIcon>sports</mat-icon>
+                    }
+                    <span matListItemTitle
+                      >{{ workspace.teamNameForRegistration(match.homeRegistrationId) }} ×
+                      {{ workspace.teamNameForRegistration(match.awayRegistrationId) }}</span
+                    >
+                    <span matListItemLine
+                      >Rodada {{ match.roundNumber || 'não definida' }} ·
+                      {{ workspace.matchStatusLabel(match.state) }}</span
+                    >
+                    <span matListItemMeta class="score"
+                      >{{ match.scoreboard.homeScore }} a {{ match.scoreboard.awayScore }}</span
+                    >
+                  </mat-list-item>
+                } @empty {
+                  <mat-list-item
+                    ><span matListItemTitle>Chave ainda não gerada</span
+                    ><span matListItemLine>Inscreva pelo menos duas equipes.</span></mat-list-item
+                  >
+                }
+              </mat-list>
+            }
+          </aside>
+
+          <section class="panel panel-stack">
+            <div class="panel-heading">
+              <div>
+                <h3>{{ workspace.matchReview() ? 'Editar partida' : 'Nova partida' }}</h3>
+                <p>Partidas herdam agenda, local e presença do evento associado.</p>
+              </div>
+              <div class="panel-actions">
+                <button mat-button type="button" (click)="workspace.newMatch()">Limpar</button>
+                @if (workspace.matchReview()) {
+                  <button
+                    mat-icon-button
+                    type="button"
+                    matTooltip="Excluir partida"
+                    (click)="workspace.deleteSelectedMatch()">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                }
+                <button
+                  mat-flat-button
+                  type="button"
+                  (click)="workspace.saveMatch()"
+                  [disabled]="workspace.matchForm.invalid">
+                  <mat-icon>save</mat-icon>Salvar
+                </button>
+              </div>
+            </div>
+            <form [formGroup]="workspace.matchForm" class="form-grid">
+              <mat-form-field
+                ><mat-label>Modalidade</mat-label
+                ><mat-select formControlName="categoryId">
+                  @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+                    <mat-option [value]="category.id">{{ category.name }}</mat-option>
+                  }
+                </mat-select></mat-form-field
+              >
+              <mat-form-field
+                ><mat-label>Nome no calendário</mat-label><input matInput formControlName="name"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Início</mat-label><input matInput type="datetime-local" formControlName="startDate"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Fim</mat-label><input matInput type="datetime-local" formControlName="endDate"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Equipe da casa</mat-label
+                ><mat-select formControlName="homeRegistrationId">
+                  <mat-option value="">Bye / a definir</mat-option>
+                  @for (registration of workspace.categoryRead()?.registrations ?? []; track registration.id) {
+                    <mat-option [value]="registration.id">{{
+                      workspace.teamNameForRegistration(registration.id)
+                    }}</mat-option>
+                  }
+                </mat-select></mat-form-field
+              >
+              <mat-form-field
+                ><mat-label>Equipe visitante</mat-label
+                ><mat-select formControlName="awayRegistrationId">
+                  <mat-option value="">Bye / a definir</mat-option>
+                  @for (registration of workspace.categoryRead()?.registrations ?? []; track registration.id) {
+                    <mat-option [value]="registration.id">{{
+                      workspace.teamNameForRegistration(registration.id)
+                    }}</mat-option>
+                  }
+                </mat-select></mat-form-field
+              >
+              <mat-form-field
+                ><mat-label>Estado</mat-label
+                ><mat-select formControlName="state">
+                  @for (state of matchStates; track state[0]) {
+                    <mat-option [value]="state[0]">
+                      <span>{{ state[1] }}</span>
+                      @if (state[0] === 'CANCELED') {
+                        <small class="option-description">A partida precisará ser reagendada</small>
+                      }
+                    </mat-option>
+                  }
+                </mat-select>
+                @if (workspace.matchForm.controls.state.value === 'CANCELED') {
+                  <mat-hint>Use quando esta partida será remarcada para outra data.</mat-hint>
+                }
+              </mat-form-field
+              >
+              <mat-form-field
+                ><mat-label>Fase (ID)</mat-label><input matInput formControlName="stageId"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Local esportivo</mat-label
+                ><mat-select formControlName="venueId">
+                  <mat-option value="">A definir</mat-option>
+                  @for (venue of workspace.tournamentRead()?.venues ?? []; track venue.id) {
+                    <mat-option [value]="venue.id"
+                      >{{ venue.name }}{{ venue.courtLabel ? ' · ' + venue.courtLabel : '' }}</mat-option
+                    >
+                  }
+                </mat-select></mat-form-field
+              >
+              <mat-form-field
+                ><mat-label>Rodada</mat-label><input matInput type="number" min="1" formControlName="roundNumber"
+              /></mat-form-field>
+              <mat-form-field
+                ><mat-label>Posição na chave</mat-label
+                ><input matInput type="number" min="1" formControlName="bracketPosition"
+              /></mat-form-field>
+              <mat-form-field><mat-label>Grupo</mat-label><input matInput formControlName="groupKey" /></mat-form-field>
+              <mat-form-field>
+                <mat-label>Transmissão</mat-label>
+                <mat-select formControlName="livestreamProvider">
+                  <mat-option value="">Sem transmissão</mat-option>
+                  <mat-option value="YOUTUBE">YouTube</mat-option>
+                  <mat-option value="TWITCH">Twitch</mat-option>
+                  <mat-option value="GENERAL">Outro serviço</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Link da transmissão</mat-label>
+                <input matInput type="url" inputmode="url" formControlName="livestreamUrl" placeholder="https://" />
+                <mat-hint>Use o endereço público completo da live.</mat-hint>
+                @if (workspace.matchForm.controls.livestreamUrl.invalid) {
+                  <mat-error>Informe um endereço HTTPS válido.</mat-error>
+                } @else if (workspace.matchForm.hasError('incompleteLivestream')) {
+                  <mat-error>Escolha a plataforma e informe o link.</mat-error>
+                }
+              </mat-form-field>
+              <mat-form-field class="span-2">
+                <mat-label>Notas administrativas da partida</mat-label>
+                <textarea matInput rows="3" maxlength="2000" formControlName="notes"></textarea>
+                <mat-hint>Contexto para oficiais e para a revisão do encerramento.</mat-hint>
+              </mat-form-field>
+            </form>
+
+            @if (workspace.matchReview()) {
+              <mat-divider />
+              <div class="subsection-title">
+                <h4>Escalação desta partida</h4>
+                <p>Marque somente quem poderá jogar. A lista permanece privada até o encerramento.</p>
+              </div>
+              <div class="lineup-grid">
+                @for (
+                  registrationId of [
+                    workspace.matchReview()?.match?.homeRegistrationId,
+                    workspace.matchReview()?.match?.awayRegistrationId,
+                  ];
+                  track registrationId
+                ) {
+                  @if (registrationId && workspace.registrationReads()[registrationId]; as registration) {
+                    <section>
+                      <h5 class="team-heading">
+                        @if (teamLogoForRegistration(registrationId); as logoUrl) {
+                          <img [src]="logoUrl" [alt]="'Escudo de ' + workspace.teamNameForRegistration(registrationId)" />
+                        } @else {
+                          <mat-icon aria-hidden="true">shield</mat-icon>
+                        }
+                        {{ workspace.teamNameForRegistration(registrationId) }}
+                      </h5>
+                      @for (member of registration.members; track member.id) {
+                        <div class="lineup-member">
+                          <mat-checkbox
+                            [checked]="workspace.isLineupSelected(registrationId, member.id)"
+                            (change)="workspace.toggleLineup(registrationId, member.id, $event.checked)">
+                            {{ member.person.name }}
+                          </mat-checkbox>
+                          <mat-form-field subscriptSizing="dynamic">
+                            <mat-label>Função</mat-label>
+                            <mat-select
+                              [value]="workspace.lineupRole(registrationId, member.id, member.role)"
+                              (selectionChange)="workspace.updateLineupDetail(registrationId, member.id, 'role', $event.value, member.role)">
+                              <mat-option value="PLAYER">Atleta</mat-option>
+                              <mat-option value="CAPTAIN">Capitão</mat-option>
+                              <mat-option value="COACH">Técnico</mat-option>
+                              <mat-option value="STAFF">Apoio</mat-option>
+                            </mat-select>
+                          </mat-form-field>
+                          <mat-form-field subscriptSizing="dynamic">
+                            <mat-label>Número</mat-label>
+                            <input
+                              matInput
+                              maxlength="12"
+                              [value]="workspace.lineupShirtNumber(registrationId, member.id)"
+                              (input)="workspace.updateLineupDetail(registrationId, member.id, 'shirtNumber', $any($event.target).value, member.role)" />
+                          </mat-form-field>
+                        </div>
+                      } @empty {
+                        <p class="empty-copy">Nenhum integrante elegível nesta inscrição.</p>
+                      }
+                      <button mat-stroked-button type="button" (click)="workspace.saveLineup(registrationId)">
+                        <mat-icon>groups</mat-icon>Salvar escalação
+                      </button>
+                    </section>
+                  }
+                }
+              </div>
+              <mat-divider />
+              <div class="subsection-title">
+                <h4>Equipe de arbitragem e apoio</h4>
+                <p>Funções são separadas para certificados, mas compartilham a mesma operação pública.</p>
+              </div>
+              <form [formGroup]="workspace.officialForm" class="official-form" (ngSubmit)="workspace.assignOfficial()">
+                <mat-form-field
+                  ><mat-label>Buscar pessoa</mat-label
+                  ><input
+                    matInput
+                    formControlName="personQuery"
+                    (input)="workspace.searchPeople(workspace.officialForm.controls.personQuery.value, 'official')"
+                /></mat-form-field>
+                <mat-form-field
+                  ><mat-label>Função</mat-label
+                  ><mat-select formControlName="role">
+                    <mat-option value="REFEREE">Árbitro</mat-option>
+                    <mat-option value="INTERMEDIATOR">Intermediador</mat-option>
+                    <mat-option value="SCOREKEEPER">Mesário (scorekeeper)</mat-option>
+                  </mat-select></mat-form-field
+                >
+                <mat-form-field
+                  ><mat-label>Escopo</mat-label
+                  ><mat-select formControlName="scope">
+                    <mat-option value="MATCH">Somente esta partida</mat-option>
+                    <mat-option value="CATEGORY">Toda a modalidade</mat-option>
+                    <mat-option value="TOURNAMENT">Todo o torneio</mat-option>
+                  </mat-select></mat-form-field
+                >
+                <button mat-stroked-button type="submit" [disabled]="workspace.officialForm.invalid">
+                  <mat-icon>person_add</mat-icon>Atribuir
+                </button>
+              </form>
+              @if (workspace.people().length && workspace.peopleTarget() === 'official') {
+                <div class="search-results">
+                  @for (person of workspace.people(); track person.id) {
+                    <button type="button" (click)="workspace.pickPerson(person, 'official')">{{ person.name }}</button>
+                  }
+                </div>
+              }
+              <div class="person-list">
+                @for (official of workspace.tournamentRead()?.officials ?? []; track official.id) {
+                  <div>
+                    <mat-icon>emoji_events</mat-icon
+                    ><span
+                      ><strong>{{ officialRoleLabel(official.role) }}</strong
+                      ><small>Torneio inteiro · {{ official.personId }}</small></span
+                    >
+                  </div>
+                }
+                @for (official of workspace.categoryRead()?.officials ?? []; track official.id) {
+                  <div>
+                    <mat-icon>category</mat-icon
+                    ><span
+                      ><strong>{{ officialRoleLabel(official.role) }}</strong
+                      ><small>Modalidade · {{ official.personId }}</small></span
+                    >
+                  </div>
+                }
+                @for (official of workspace.matchReview()?.officials ?? []; track official.id) {
+                  <div>
+                    <mat-icon>sports</mat-icon
+                    ><span
+                      ><strong>{{ officialRoleLabel(official.role) }}</strong
+                      ><small>Partida · {{ official.personId }}</small></span
+                    >
+                  </div>
+                }
+                @if (
+                  !(workspace.tournamentRead()?.officials?.length ?? 0) &&
+                  !(workspace.categoryRead()?.officials?.length ?? 0) &&
+                  !(workspace.matchReview()?.officials?.length ?? 0)
+                ) {
+                  <p class="empty-copy">
+                    Nenhuma pessoa exclusiva; participantes autorizados ainda podem exercer a função quando permitido.
+                  </p>
+                }
+              </div>
+            }
+          </section>
+        </div>
+      }
+
+      @case ('reviews') {
+        <div class="review-columns">
+          <section class="panel panel-stack">
+            <div>
+              <h3>Autoinscrições</h3>
+              <p>A aprovação resolve a pessoa e, quando pago, libera a etapa de pagamento.</p>
+            </div>
+            @for (application of workspace.applications(); track application.id) {
+              <article class="review-item">
+                <div class="review-heading">
+                  <div>
+                    <strong>{{ application.applicant.name }}</strong
+                    ><span>{{ application.requestedTeam.name }}</span>
+                  </div>
+                  <span class="state-label">{{ workspace.statusLabel(application.status) }}</span>
+                </div>
+                <p>
+                  {{ application.categories.length ? categoryName(application.categories[0].id) : 'Sem modalidade' }} ·
+                  {{ application.createdAt | date: 'short' }}
+                </p>
+                @if (application.paymentStatus) {
+                  <small>Pagamento: {{ workspace.statusLabel(application.paymentStatus) }}</small>
+                }
+                <div class="review-actions">
+                  <button mat-button type="button" (click)="workspace.reviewApplication(application, 'REJECTED')">
+                    Negar
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="workspace.reviewApplication(application, 'CHANGES_REQUESTED')">
+                    Pedir ajuste
+                  </button>
+                  <button mat-flat-button type="button" (click)="workspace.reviewApplication(application, 'APPROVED')">
+                    Aprovar
+                  </button>
+                </div>
+              </article>
+            } @empty {
+              <div class="empty-state">
+                <mat-icon>task_alt</mat-icon><strong>Fila em dia</strong
+                ><span>Nenhuma autoinscrição aguarda análise.</span>
+              </div>
+            }
+          </section>
+
+          <section class="panel panel-stack">
+            <div>
+              <h3>Alterações de equipes</h3>
+              <p>Deltas concorrentes permanecem explícitos; conflitos nunca são aprovados silenciosamente.</p>
+            </div>
+            @if (workspace.teamRead(); as read) {
+              @for (request of read.changeRequests; track request.id) {
+                @if (
+                  request.status === 'PENDING' ||
+                  request.status === 'CONFLICT' ||
+                  request.status === 'CHANGES_REQUESTED'
+                ) {
+                  <article class="review-item">
+                    <div class="review-heading">
+                      <strong>{{ changeTypeLabel(request.type) }}</strong
+                      ><span class="state-label">{{ workspace.statusLabel(request.status) }}</span>
+                    </div>
+                    <pre>{{ request.deltaJson }}</pre>
+                    <div class="review-actions">
+                      <button mat-button type="button" (click)="workspace.reviewTeamChange(request, 'REJECTED')">
+                        Negar
+                      </button>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        (click)="workspace.reviewTeamChange(request, 'CHANGES_REQUESTED')">
+                        Pedir ajuste
+                      </button>
+                      <button
+                        mat-flat-button
+                        type="button"
+                        [disabled]="request.status === 'CONFLICT'"
+                        (click)="workspace.reviewTeamChange(request, 'APPROVED')">
+                        Aprovar delta
+                      </button>
+                    </div>
+                  </article>
+                }
+              } @empty {
+                <p class="empty-copy">Selecione uma equipe na área Equipes para revisar suas solicitações.</p>
+              }
+            } @else {
+              <p class="empty-copy">Selecione uma equipe na área Equipes para revisar suas solicitações.</p>
+            }
+          </section>
+
+          <section class="panel panel-stack span-all">
+            <div>
+              <h3>Ações de partida</h3>
+              <p>Dados pendentes continuam alimentando o placar ao vivo; negar remove a projeção pública.</p>
+            </div>
+            @if (workspace.matchReview(); as review) {
+              <div class="action-grid">
+                @for (action of review.actions; track action.id) {
+                  <article class="review-item">
+                    <div class="review-heading">
+                      <strong>{{ actionTypeLabel(action.type) }}</strong>
+                      <span class="state-label">{{ workspace.statusLabel(action.reviewStatus) }}</span>
+                    </div>
+                    <small
+                      >{{ action.authoredAt | date: 'short' }}{{ action.offline ? ' · enviado off-line' : '' }}</small
+                    >
+                    <pre>{{ action.payloadJson }}</pre>
+                    @if (action.reviewStatus === 'PENDING') {
+                      <div class="review-actions">
+                        <button mat-button type="button" (click)="workspace.reviewAction(action.id, 'REJECTED')">
+                          Negar
+                        </button>
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          (click)="workspace.reviewAction(action.id, 'CHANGES_REQUESTED')">
+                          Pedir ajuste
+                        </button>
+                        <button mat-flat-button type="button" (click)="workspace.reviewAction(action.id, 'APPROVED')">
+                          Aprovar
+                        </button>
+                      </div>
+                    }
+                  </article>
+                } @empty {
+                  <div class="empty-state">
+                    <mat-icon>sports_score</mat-icon><strong>Sem ações registradas</strong
+                    ><span>Selecione uma partida na área Partidas e chaves.</span>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="empty-state">
+                <mat-icon>touch_app</mat-icon><strong>Selecione uma partida</strong
+                ><span>A fila de placar, presença e finalização aparecerá aqui.</span>
+              </div>
+            }
+          </section>
+        </div>
+      }
+    }
+  }
+</section>

@@ -1,4 +1,5 @@
-import { Field, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
+import { Field, Float, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
+import { SportsMatchState, SportsTournamentStatus } from '@cacic-fct/shared-data-types';
 
 export const DashboardInsightSeverity = {
   INFO: 'INFO',
@@ -21,6 +22,7 @@ export const DashboardInsightAction = {
   OPEN_CERTIFICATES: 'OPEN_CERTIFICATES',
   OPEN_MERGE_CANDIDATES: 'OPEN_MERGE_CANDIDATES',
   OPEN_PUBLICATION: 'OPEN_PUBLICATION',
+  OPEN_SPORTS: 'OPEN_SPORTS',
 } as const;
 export type DashboardInsightAction = (typeof DashboardInsightAction)[keyof typeof DashboardInsightAction];
 registerEnumType(DashboardInsightAction, {
@@ -227,6 +229,78 @@ export class DashboardPendingOfflineAttendanceEvent {
 }
 
 @ObjectType()
+export class DashboardSportsTournament {
+  @Field(() => String)
+  tournamentId!: string;
+
+  @Field(() => String)
+  majorEventId!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  emoji!: string;
+
+  @Field(() => Date)
+  startDate!: Date;
+
+  @Field(() => Date)
+  endDate!: Date;
+
+  @Field(() => SportsTournamentStatus)
+  status!: SportsTournamentStatus;
+
+  @Field(() => Int)
+  categoryCount!: number;
+
+  @Field(() => Int)
+  teamCount!: number;
+
+  @Field(() => Int)
+  pendingApplicationCount!: number;
+
+  @Field(() => Int)
+  pendingReviewCount!: number;
+
+  @Field(() => Int)
+  activeMatchCount!: number;
+}
+
+@ObjectType()
+export class DashboardSportsMatch {
+  @Field(() => String)
+  matchId!: string;
+
+  @Field(() => String)
+  tournamentId!: string;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => String)
+  eventName!: string;
+
+  @Field(() => Date)
+  startDate!: Date;
+
+  @Field(() => SportsMatchState)
+  state!: SportsMatchState;
+
+  @Field(() => String, { nullable: true })
+  homeTeamName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  awayTeamName?: string | null;
+
+  @Field(() => Float)
+  homeScore!: number;
+
+  @Field(() => Float)
+  awayScore!: number;
+}
+
+@ObjectType()
 export class DashboardInconsistency {
   @Field(() => DashboardInconsistencyType)
   type!: DashboardInconsistencyType;
@@ -314,6 +388,12 @@ export class WorkspaceDashboardInsights {
 
   @Field(() => [DashboardPendingOfflineAttendanceEvent])
   pendingOfflineAttendanceEvents!: DashboardPendingOfflineAttendanceEvent[];
+
+  @Field(() => [DashboardSportsTournament])
+  sportsTournaments!: DashboardSportsTournament[];
+
+  @Field(() => [DashboardSportsMatch])
+  sportsMatches!: DashboardSportsMatch[];
 
   @Field(() => [DashboardInconsistency])
   inconsistencies!: DashboardInconsistency[];

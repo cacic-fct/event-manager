@@ -71,6 +71,9 @@ export function assertSportsOutcomeMatchesRules(input: {
   rules: SportsScoreRules;
 }): void {
   if (input.draw) {
+    if (input.scoreboard.home !== input.scoreboard.away) {
+      throw new RangeError('Um empate exige placares iguais.');
+    }
     if (!input.rules.allowDraw && !input.drawWillReschedule) {
       throw new RangeError('Esta modalidade não permite empate como resultado final.');
     }

@@ -28,6 +28,7 @@ import Redis from 'ioredis';
 import {
   Prisma,
   PublicationState,
+  SportsApplicationStatus,
   SportsCategoryStatus,
   SportsMatchState,
   SportsRegistrationStatus,
@@ -53,6 +54,9 @@ import {
   AdminSportsTeamRepresentativeSummary,
   AdminSportsTeamRead,
   AdminSportsTournamentRead,
+  AdminSportsTournamentListItem,
+  CurrentUserSportsLineupRead,
+  CurrentUserSportsMatchOperationsRead,
   CurrentUserSportsTournamentDetail,
   PublicSportsBracket,
   PublicSportsCategory,
@@ -95,6 +99,8 @@ const ADMIN_TOURNAMENT_SELECT = {
   status: true,
   scoringMode: true,
   selfSubscriptionEnabled: true,
+  selfSubscriptionAllowNoTeam: true,
+  selfSubscriptionAllowNoCategory: true,
   allowPlayerMultipleTeams: true,
   revision: true,
   finishedAt: true,
@@ -126,6 +132,7 @@ const ADMIN_CATEGORY_SELECT = {
   periodsEnabled: true,
   maximumPeriods: true,
   periodLabel: true,
+  timerRules: true,
   scoreRules: true,
   rosterRules: true,
   bracketRules: true,
@@ -228,6 +235,8 @@ const PUBLIC_MATCH_SELECT = {
   roundNumber: true,
   bracketPosition: true,
   groupKey: true,
+  livestreamProvider: true,
+  livestreamUrl: true,
   event: {
     select: {
       startDate: true,
@@ -247,6 +256,8 @@ const PUBLIC_MATCH_SELECT = {
     select: {
       maximumPeriods: true,
       periodLabel: true,
+      periodsEnabled: true,
+      timerRules: true,
     },
   },
   rosters: {
@@ -356,6 +367,241 @@ export class SportsReadService {
     @Optional() private readonly redis?: Redis,
   ) {}
 
+  async adminTournamentList(
+    user: AuthenticatedUser | undefined,
+    input: { query?: string; skip?: number; take?: number },
+  ): Promise<AdminSportsTournamentListItem[]> {
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(
+      user,
+      Permission.SportsTournament.Read,
+    );
+    const where: Prisma.SportsTournamentWhereInput = {
+      deletedAt: null,
+    };
+
+    if (accessibleTargets) {
+      const scopes: Prisma.SportsTournamentWhereInput[] = [];
+      if (accessibleTargets.majorEventIds.size > 0) {
+        scopes.push({ majorEventId: { in: [...accessibleTargets.majorEventIds] } });
+      }
+      if (accessibleTargets.eventGroupIds.size > 0) {
+        scopes.push({
+          categories: {
+            some: {
+              deletedAt: null,
+              eventGroupId: { in: [...accessibleTargets.eventGroupIds] },
+            },
+          },
+        });
+      }
+      if (accessibleTargets.eventIds.size > 0) {
+        scopes.push({
+          categories: {
+            some: {
+              deletedAt: null,
+              matches: {
+                some: {
+                  deletedAt: null,
+                  eventId: { in: [...accessibleTargets.eventIds] },
+                },
+              },
+            },
+          },
+        });
+      }
+      if (scopes.length === 0) {
+        return [];
+      }
+      where.OR = scopes;
+    }
+
+    const normalizedQuery = input.query?.trim();
+    if (normalizedQuery) {
+      where.majorEvent = {
+        deletedAt: null,
+        name: { contains: normalizedQuery, mode: 'insensitive' },
+      };
+    } else {
+      where.majorEvent = { deletedAt: null };
+    }
+
+    const skip = Math.max(0, input.skip ?? 0);
+    const take = Math.min(100, Math.max(1, input.take ?? 25));
+    const categoryVisibility: Prisma.SportsCategoryWhereInput = accessibleTargets
+      ? {
+          OR: [
+            ...(accessibleTargets.majorEventIds.size > 0
+              ? [{ tournament: { majorEventId: { in: [...accessibleTargets.majorEventIds] } } }]
+              : []),
+            ...(accessibleTargets.eventGroupIds.size > 0
+              ? [{ eventGroupId: { in: [...accessibleTargets.eventGroupIds] } }]
+              : []),
+            ...(accessibleTargets.eventIds.size > 0
+              ? [
+                  {
+                    matches: {
+                      some: {
+                        deletedAt: null,
+                        eventId: { in: [...accessibleTargets.eventIds] },
+                      },
+                    },
+                  },
+                ]
+              : []),
+          ],
+        }
+      : {};
+    const categoryManagementVisibility: Prisma.SportsCategoryWhereInput = accessibleTargets
+      ? {
+          OR: [
+            ...(accessibleTargets.majorEventIds.size > 0
+              ? [{ tournament: { majorEventId: { in: [...accessibleTargets.majorEventIds] } } }]
+              : []),
+            ...(accessibleTargets.eventGroupIds.size > 0
+              ? [{ eventGroupId: { in: [...accessibleTargets.eventGroupIds] } }]
+              : []),
+          ],
+        }
+      : {};
+    const matchVisibility: Prisma.SportsMatchWhereInput = accessibleTargets
+      ? {
+          OR: [
+            ...(accessibleTargets.majorEventIds.size > 0
+              ? [{ category: { tournament: { majorEventId: { in: [...accessibleTargets.majorEventIds] } } } }]
+              : []),
+            ...(accessibleTargets.eventGroupIds.size > 0
+              ? [{ category: { eventGroupId: { in: [...accessibleTargets.eventGroupIds] } } }]
+              : []),
+            ...(accessibleTargets.eventIds.size > 0
+              ? [{ eventId: { in: [...accessibleTargets.eventIds] } }]
+              : []),
+          ],
+        }
+      : {};
+    const teamVisibility: Prisma.SportsTeamWhereInput = accessibleTargets
+      ? {
+          OR: [
+            ...(accessibleTargets.majorEventIds.size > 0
+              ? [{ tournament: { majorEventId: { in: [...accessibleTargets.majorEventIds] } } }]
+              : []),
+            {
+              registrations: {
+                some: {
+                  deletedAt: null,
+                  category: categoryVisibility,
+                },
+              },
+            },
+          ],
+        }
+      : {};
+    const fullTournamentVisibility: Prisma.SportsTournamentWhereInput = accessibleTargets
+      ? { majorEventId: { in: [...accessibleTargets.majorEventIds] } }
+      : {};
+    const tournaments = await this.prisma.sportsTournament.findMany({
+      where,
+      orderBy: [{ majorEvent: { startDate: 'desc' } }, { id: 'asc' }],
+      skip,
+      take,
+      select: {
+        ...ADMIN_TOURNAMENT_SELECT,
+        majorEvent: {
+          select: {
+            id: true,
+            name: true,
+            emoji: true,
+            startDate: true,
+            endDate: true,
+            isPaymentRequired: true,
+          },
+        },
+        _count: {
+          select: {
+            categories: {
+              where: { deletedAt: null, ...categoryVisibility },
+            },
+            teams: { where: { deletedAt: null, ...teamVisibility } },
+            playerApplications: {
+              where: {
+                deletedAt: null,
+                status: 'PENDING',
+                tournament: fullTournamentVisibility,
+              },
+            },
+          },
+        },
+        categories: {
+          where: { deletedAt: null, ...categoryVisibility },
+          select: {
+            _count: {
+              select: {
+                matches: {
+                  where: {
+                    deletedAt: null,
+                    reviewStatus: 'PENDING',
+                    ...matchVisibility,
+                  },
+                },
+                registrations: {
+                  where: {
+                    deletedAt: null,
+                    status: { in: ['PENDING', 'CHANGES_REQUESTED'] },
+                    category: categoryManagementVisibility,
+                  },
+                },
+              },
+            },
+          },
+        },
+        teams: {
+          where: { deletedAt: null, ...teamVisibility },
+          select: {
+            _count: {
+              select: {
+                changeRequests: {
+                  where: {
+                    deletedAt: null,
+                    status: { in: ['PENDING', 'CONFLICT', 'CHANGES_REQUESTED'] },
+                    team: {
+                      tournament: fullTournamentVisibility,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return tournaments.map((record) => {
+      const {
+        majorEvent,
+        _count,
+        categories,
+        teams,
+        ...tournament
+      } = record;
+      return {
+        tournament,
+        majorEvent,
+        categoryCount: _count.categories,
+        teamCount: _count.teams,
+        pendingApplicationCount: _count.playerApplications,
+        pendingReviewCount:
+          categories.reduce(
+            (total, category) =>
+              total + category._count.matches + category._count.registrations,
+            0,
+          ) +
+          teams.reduce(
+            (total, team) => total + team._count.changeRequests,
+            0,
+          ),
+      };
+    });
+  }
+
   async adminTournament(user: AuthenticatedUser | undefined, tournamentId: string): Promise<AdminSportsTournamentRead> {
     await this.authorizationPolicy.assertPermissions(user, [Permission.SportsTournament.Read], {
       sportsTournamentId: tournamentId,
@@ -391,7 +637,12 @@ export class SportsReadService {
     const readableCategoryIds = readableCategories.map(
       (category) => category.id,
     );
-    const [teams, scoreEntries] = await Promise.all([
+    const canReadOfficials = await this.hasScopedPermission(
+      user,
+      Permission.SportsOfficial.Read,
+      { sportsTournamentId: tournamentId },
+    );
+    const [teams, scoreEntries, venues, officials] = await Promise.all([
       this.prisma.sportsTeam.findMany({
         where: {
           tournamentId,
@@ -407,7 +658,29 @@ export class SportsReadService {
                 },
               }),
         },
-        select: ADMIN_TEAM_SELECT,
+        select: {
+          ...ADMIN_TEAM_SELECT,
+          registrations: {
+            where: {
+              deletedAt: null,
+              ...(canReadAllCategories
+                ? {}
+                : { categoryId: { in: readableCategoryIds } }),
+            },
+            select: {
+              id: true,
+              categoryId: true,
+              status: true,
+              category: {
+                select: {
+                  name: true,
+                  eventGroup: { select: { emoji: true } },
+                },
+              },
+            },
+            orderBy: [{ category: { name: 'asc' } }, { id: 'asc' }],
+          },
+        },
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
       }),
       this.prisma.sportsTournamentScoreEntry.findMany({
@@ -420,6 +693,22 @@ export class SportsReadService {
         },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
+      this.prisma.sportsVenue.findMany({
+        where: { tournamentId, deletedAt: null },
+        orderBy: [{ name: 'asc' }, { courtLabel: 'asc' }, { id: 'asc' }],
+      }),
+      canReadOfficials
+        ? this.prisma.sportsOfficialAssignment.findMany({
+            where: {
+              tournamentId,
+              categoryId: null,
+              matchId: null,
+              active: true,
+              revokedAt: null,
+            },
+            orderBy: [{ role: 'asc' }, { assignedAt: 'asc' }, { id: 'asc' }],
+          })
+        : Promise.resolve([]),
     ]);
     return {
       tournament: this.mapAdminTournament(tournament),
@@ -428,6 +717,18 @@ export class SportsReadService {
       ),
       teams: teams.map((team) => this.mapAdminTeam(team)),
       scoreEntries: scoreEntries.map((entry) => this.mapAdminScoreEntry(entry)),
+      venues,
+      officials,
+      teamSummaries: teams.map((team) => ({
+        team: this.mapAdminTeam(team),
+        registrations: team.registrations.map((registration) => ({
+          id: registration.id,
+          categoryId: registration.categoryId,
+          categoryName: registration.category.name,
+          categoryEmoji: registration.category.eventGroup.emoji || '🏅',
+          status: registration.status,
+        })),
+      })),
     };
   }
 
@@ -435,7 +736,12 @@ export class SportsReadService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.SportsCategory.Read], {
       sportsCategoryId: categoryId,
     });
-    const [category, registrations, stages, matches, standings, placements] = await Promise.all([
+    const canReadOfficials = await this.hasScopedPermission(
+      user,
+      Permission.SportsOfficial.Read,
+      { sportsCategoryId: categoryId },
+    );
+    const [category, registrations, stages, matches, standings, placements, officials] = await Promise.all([
       this.prisma.sportsCategory.findFirst({
         where: { id: categoryId, deletedAt: null },
         select: ADMIN_CATEGORY_SELECT,
@@ -462,6 +768,17 @@ export class SportsReadService {
         where: { categoryId },
         orderBy: [{ placement: 'asc' }, { id: 'asc' }],
       }),
+      canReadOfficials
+        ? this.prisma.sportsOfficialAssignment.findMany({
+            where: {
+              categoryId,
+              matchId: null,
+              active: true,
+              revokedAt: null,
+            },
+            orderBy: [{ role: 'asc' }, { assignedAt: 'asc' }, { id: 'asc' }],
+          })
+        : Promise.resolve([]),
     ]);
     if (!category) {
       throw new NotFoundException(`Sports category ${categoryId} was not found.`);
@@ -473,6 +790,7 @@ export class SportsReadService {
       matches: matches.map((match) => this.mapAdminMatch(match)),
       standings: standings.map((standing) => this.mapAdminStanding(standing)),
       placements: placements.map((placement) => this.mapAdminPlacement(placement)),
+      officials,
     };
   }
 
@@ -687,6 +1005,9 @@ export class SportsReadService {
       select: {
         id: true,
         majorEventId: true,
+        selfSubscriptionEnabled: true,
+        selfSubscriptionAllowNoTeam: true,
+        selfSubscriptionAllowNoCategory: true,
         majorEvent: {
           select: {
             name: true,
@@ -694,6 +1015,18 @@ export class SportsReadService {
             description: true,
             startDate: true,
             endDate: true,
+            isPaymentRequired: true,
+            majorEventPrices: {
+              select: {
+                tiers: {
+                  select: {
+                    id: true,
+                    name: true,
+                    value: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -850,6 +1183,96 @@ export class SportsReadService {
     if (!team) {
       throw new NotFoundException(`Sports team ${teamId} was not found.`);
     }
+    const [members, registrations, matches, joinQueue] = await Promise.all([
+      this.prisma.sportsTeamMember.findMany({
+        where: { teamId, deletedAt: null },
+        select: {
+          id: true,
+          status: true,
+          revision: true,
+          participant: {
+            select: {
+              person: { select: { name: true } },
+            },
+          },
+          categoryAssignments: {
+            where: { deletedAt: null },
+            select: {
+              registrationId: true,
+              categoryId: true,
+              role: true,
+              eligibility: true,
+              category: { select: { name: true } },
+            },
+            orderBy: [{ category: { name: 'asc' } }, { id: 'asc' }],
+          },
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+      this.prisma.sportsRegistration.findMany({
+        where: { teamId, deletedAt: null },
+        select: {
+          id: true,
+          categoryId: true,
+          status: true,
+          category: {
+            select: {
+              name: true,
+              eventGroup: { select: { emoji: true } },
+            },
+          },
+        },
+        orderBy: [{ category: { name: 'asc' } }, { id: 'asc' }],
+      }),
+      this.prisma.sportsMatch.findMany({
+        where: {
+          deletedAt: null,
+          OR: [
+            { homeRegistration: { teamId, deletedAt: null } },
+            { awayRegistration: { teamId, deletedAt: null } },
+          ],
+        },
+        select: {
+          id: true,
+          eventId: true,
+          state: true,
+          categoryId: true,
+          category: { select: { name: true, eventGroup: { select: { emoji: true } } } },
+          homeRegistrationId: true,
+          awayRegistrationId: true,
+          homeRegistration: { select: { team: { select: PUBLIC_TEAM_SELECT } } },
+          awayRegistration: { select: { team: { select: PUBLIC_TEAM_SELECT } } },
+          event: {
+            select: { startDate: true, endDate: true },
+          },
+        },
+        orderBy: [{ event: { startDate: 'asc' } }, { id: 'asc' }],
+      }),
+      this.prisma.sportsPlayerApplication.findMany({
+        where: {
+          requestedTeamId: teamId,
+          status: SportsApplicationStatus.APPROVED,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          status: true,
+          applicantPerson: {
+            select: {
+              name: true,
+              identityDocument: true,
+            },
+          },
+          categoryChoices: {
+            select: {
+              category: { select: { name: true } },
+            },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
+        orderBy: [{ reviewedAt: 'asc' }, { id: 'asc' }],
+      }),
+    ]);
     return {
       team: {
         id: team.id,
@@ -871,18 +1294,301 @@ export class SportsReadService {
         identityHints: request.identityClaims,
         updatedAt: request.updatedAt,
       })),
+      members: members.map((member) => ({
+        id: member.id,
+        name: member.participant.person.name,
+        status: member.status,
+        revision: member.revision,
+        categoryRoles: member.categoryAssignments.map((assignment) => ({
+          registrationId: assignment.registrationId,
+          categoryId: assignment.categoryId,
+          categoryName: assignment.category.name,
+          role: assignment.role,
+          eligibility: assignment.eligibility,
+        })),
+      })),
+      registrations: registrations.map((registration) => ({
+        id: registration.id,
+        categoryId: registration.categoryId,
+        categoryName: registration.category.name,
+        categoryEmoji: registration.category.eventGroup.emoji || '🏅',
+        status: registration.status,
+      })),
+      matches: matches.map((match) => ({
+        id: match.id,
+        eventId: match.eventId,
+        state: match.state,
+        startDate: match.event.startDate,
+        endDate: match.event.endDate,
+        homeRegistrationId: match.homeRegistrationId,
+        awayRegistrationId: match.awayRegistrationId,
+        categoryId: match.categoryId,
+        categoryName: match.category.name,
+        categoryEmoji: match.category.eventGroup.emoji || '🏅',
+        homeTeam: match.homeRegistration
+          ? this.mapPublicTeam(match.homeRegistration.team)
+          : null,
+        awayTeam: match.awayRegistration
+          ? this.mapPublicTeam(match.awayRegistration.team)
+          : null,
+      })),
+      joinQueue: joinQueue.map((application) => ({
+        id: application.id,
+        applicantName: application.applicantPerson.name,
+        identityDocumentHint: this.censorIdentityDocument(
+          application.applicantPerson.identityDocument,
+        ),
+        categoryNames: application.categoryChoices.map(
+          (choice) => choice.category.name,
+        ),
+        status: application.status,
+      })),
+    };
+  }
+
+  async currentUserMatchOperations(
+    matchId: string,
+  ): Promise<CurrentUserSportsMatchOperationsRead> {
+    const match = await this.prisma.sportsMatch.findFirst({
+      where: { id: matchId, deletedAt: null },
+      select: {
+        id: true,
+        revision: true,
+        state: true,
+        notes: true,
+        occurrences: true,
+        homeRegistrationId: true,
+        awayRegistrationId: true,
+        rosters: {
+          where: {
+            deletedAt: null,
+            status: SportsRosterStatus.APPROVED,
+          },
+          select: {
+            id: true,
+            registrationId: true,
+            revision: true,
+            status: true,
+            registration: {
+              select: {
+                team: {
+                  select: PUBLIC_TEAM_SELECT,
+                },
+              },
+            },
+            entries: {
+              where: {
+                deletedAt: null,
+                status: SportsRosterEntryStatus.APPROVED,
+              },
+              select: {
+                id: true,
+                role: true,
+                status: true,
+                checkedInAt: true,
+                shirtNumber: true,
+                roleMetadata: true,
+                registrationMember: {
+                  select: {
+                    teamMember: {
+                      select: {
+                        participant: {
+                          select: {
+                            person: {
+                              select: { name: true },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: [{ role: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+            },
+          },
+          orderBy: [{ registrationId: 'asc' }, { id: 'asc' }],
+        },
+      },
+    });
+    if (!match) {
+      throw new NotFoundException(`Sports match ${matchId} was not found.`);
+    }
+    return {
+      matchId: match.id,
+      revision: match.revision,
+      state: match.state,
+      homeRegistrationId: match.homeRegistrationId,
+      awayRegistrationId: match.awayRegistrationId,
+      notes: match.notes,
+      occurrencesJson: this.serializeJson(match.occurrences),
+      rosters: match.rosters.map((roster) => ({
+        id: roster.id,
+        registrationId: roster.registrationId,
+        revision: roster.revision,
+        status: roster.status,
+        team: this.mapPublicTeam(roster.registration.team),
+        entries: roster.entries.map((entry) => ({
+          id: entry.id,
+          name: toSportsPublicPlayerName(
+            entry.registrationMember.teamMember.participant.person.name,
+          ),
+          role: entry.role,
+          status: entry.status,
+          checkedInAt: entry.checkedInAt,
+          shirtNumber: entry.shirtNumber,
+          roleMetadataJson:
+            entry.roleMetadata === null
+              ? null
+              : this.serializeJson(entry.roleMetadata),
+        })),
+      })),
+    };
+  }
+
+  async currentUserLineup(
+    matchId: string,
+    registrationId: string,
+  ): Promise<CurrentUserSportsLineupRead> {
+    const match = await this.prisma.sportsMatch.findFirst({
+      where: {
+        id: matchId,
+        deletedAt: null,
+        OR: [
+          { homeRegistrationId: registrationId },
+          { awayRegistrationId: registrationId },
+        ],
+      },
+      select: {
+        id: true,
+        revision: true,
+        categoryId: true,
+        homeRegistrationId: true,
+        awayRegistrationId: true,
+      },
+    });
+    if (!match) {
+      throw new NotFoundException(
+        'A inscrição não participa desta partida.',
+      );
+    }
+    const [eligibleMembers, roster] = await Promise.all([
+      this.prisma.sportsRegistrationMember.findMany({
+        where: {
+          registrationId,
+          categoryId: match.categoryId,
+          deletedAt: null,
+          eligibility: 'ELIGIBLE',
+          registration: {
+            deletedAt: null,
+            status: {
+              in: [
+                SportsRegistrationStatus.APPROVED,
+                SportsRegistrationStatus.ACTIVE,
+              ],
+            },
+          },
+          teamMember: {
+            deletedAt: null,
+            status: 'APPROVED',
+            participant: {
+              deletedAt: null,
+              status: 'ACTIVE',
+            },
+          },
+        },
+        select: {
+          id: true,
+          role: true,
+          teamMember: {
+            select: {
+              participant: {
+                select: {
+                  person: {
+                    select: { name: true },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: [{ role: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+      }),
+      this.prisma.sportsMatchRoster.findFirst({
+        where: {
+          matchId,
+          registrationId,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          revision: true,
+          status: true,
+          entries: {
+            where: { deletedAt: null },
+            select: {
+              id: true,
+              registrationMemberId: true,
+              role: true,
+              status: true,
+              checkedInAt: true,
+              shirtNumber: true,
+              roleMetadata: true,
+            },
+            orderBy: [{ role: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+          },
+        },
+      }),
+    ]);
+    return {
+      matchId: match.id,
+      matchRevision: match.revision,
+      registrationId,
+      homeRegistrationId: match.homeRegistrationId,
+      awayRegistrationId: match.awayRegistrationId,
+      eligibleMembers: eligibleMembers.map((member) => ({
+        registrationMemberId: member.id,
+        name: toSportsPublicPlayerName(
+          member.teamMember.participant.person.name,
+        ),
+        role: member.role,
+      })),
+      roster: roster
+        ? {
+            ...roster,
+            entries: roster.entries.map((entry) => ({
+              id: entry.id,
+              registrationMemberId: entry.registrationMemberId,
+              role: entry.role,
+              status: entry.status,
+              checkedInAt: entry.checkedInAt,
+              shirtNumber: entry.shirtNumber,
+              roleMetadataJson:
+                entry.roleMetadata === null
+                  ? null
+                  : this.serializeJson(entry.roleMetadata),
+            })),
+          }
+        : null,
     };
   }
 
   private async loadPublicTournament(tournament: {
     id: string;
     majorEventId: string;
+    selfSubscriptionEnabled: boolean;
+    selfSubscriptionAllowNoTeam: boolean;
+    selfSubscriptionAllowNoCategory: boolean;
     majorEvent: {
       name: string;
       emoji: string;
       description: string | null;
       startDate: Date;
       endDate: Date;
+      isPaymentRequired: boolean;
+      majorEventPrices: Array<{
+        tiers: Array<{ id: string; name: string; value: number }>;
+      }>;
     };
   }): Promise<PublicSportsTournamentDetail> {
     const cached = await this.getCachedPublicTournament(tournament.id);
@@ -895,6 +1601,15 @@ export class SportsReadService {
         description: tournament.majorEvent.description,
         startDate: tournament.majorEvent.startDate,
         endDate: tournament.majorEvent.endDate,
+        selfSubscriptionEnabled: tournament.selfSubscriptionEnabled,
+        selfSubscriptionAllowNoTeam:
+          tournament.selfSubscriptionAllowNoTeam,
+        selfSubscriptionAllowNoCategory:
+          tournament.selfSubscriptionAllowNoCategory,
+        isPaymentRequired: tournament.majorEvent.isPaymentRequired,
+        paymentTiers: tournament.majorEvent.majorEventPrices.flatMap(
+          (price) => price.tiers,
+        ),
       };
     }
 
@@ -915,12 +1630,19 @@ export class SportsReadService {
   private async generateAndCachePublicTournament(tournament: {
     id: string;
     majorEventId: string;
+    selfSubscriptionEnabled: boolean;
+    selfSubscriptionAllowNoTeam: boolean;
+    selfSubscriptionAllowNoCategory: boolean;
     majorEvent: {
       name: string;
       emoji: string;
       description: string | null;
       startDate: Date;
       endDate: Date;
+      isPaymentRequired: boolean;
+      majorEventPrices: Array<{
+        tiers: Array<{ id: string; name: string; value: number }>;
+      }>;
     };
   }): Promise<PublicSportsTournamentDetail> {
     const cacheVersion = await this.readPublicTournamentCacheVersion(
@@ -944,6 +1666,9 @@ export class SportsReadService {
             division: true,
             format: true,
             rulesText: true,
+            eventGroup: {
+              select: { emoji: true },
+            },
           },
           orderBy: [{ name: 'asc' }, { id: 'asc' }],
         }),
@@ -1095,7 +1820,14 @@ export class SportsReadService {
     const publicCategories: PublicSportsCategory[] = categories.map((category) => {
       const categoryMatches = matchesByCategory.get(category.id) ?? [];
       return {
-        ...category,
+        id: category.id,
+        name: category.name,
+        emoji: category.eventGroup.emoji || '🏅',
+        sport: category.sport,
+        customSportName: category.customSportName,
+        division: category.division,
+        format: category.format,
+        rulesText: category.rulesText,
         standings: (standingsByCategory.get(category.id) ?? []).map(
           (standing): PublicSportsStanding => ({
             team: this.mapPublicTeam(standing.registration.team),
@@ -1150,6 +1882,15 @@ export class SportsReadService {
       description: tournament.majorEvent.description,
       startDate: tournament.majorEvent.startDate,
       endDate: tournament.majorEvent.endDate,
+      selfSubscriptionEnabled: tournament.selfSubscriptionEnabled,
+      selfSubscriptionAllowNoTeam:
+        tournament.selfSubscriptionAllowNoTeam,
+      selfSubscriptionAllowNoCategory:
+        tournament.selfSubscriptionAllowNoCategory,
+      isPaymentRequired: tournament.majorEvent.isPaymentRequired,
+      paymentTiers: tournament.majorEvent.majorEventPrices.flatMap(
+        (price) => price.tiers,
+      ),
       teams: teams.map((team) => this.mapPublicTeam(team)),
       categories: publicCategories,
       matches: publicMatches,
@@ -1499,6 +2240,8 @@ export class SportsReadService {
       hasCheckedInPlayers: match.rosters.some((roster) => roster.entries.length > 0),
       maximumPeriods: match.category.maximumPeriods,
       periodLabel: match.category.periodLabel,
+      periodsEnabled: match.category.periodsEnabled,
+      timerRules: match.category.timerRules,
     });
   }
 
@@ -1537,11 +2280,21 @@ export class SportsReadService {
       lossReasonDetail: projection.lossReasonDetail,
       drawWillReschedule: projection.drawWillReschedule,
       timerStartedAt: projection.timerStartedAt,
+      timerStartedAtUnixMs: projection.timerStartedAt?.getTime() ?? null,
       timerPausedAt: projection.timerPausedAt,
+      timerPausedAtUnixMs: projection.timerPausedAt?.getTime() ?? null,
       elapsedBeforePauseMs: projection.elapsedBeforePauseMs,
+      periodTimers: projection.periodTimers,
+      overallTimerEnabled: projection.overallTimerEnabled,
+      periodTimerEnabled: projection.periodTimerEnabled,
+      timerPeriodDurationMs: projection.timerPeriodDurationMs,
+      timerPeriodStartOffsetsMs: projection.timerPeriodStartOffsetsMs,
+      timerAllowOvertime: projection.timerAllowOvertime,
       roundNumber: match.roundNumber,
       bracketPosition: match.bracketPosition,
       groupKey: match.groupKey,
+      livestreamProvider: match.livestreamProvider,
+      livestreamUrl: match.livestreamUrl,
       schedule: {
         startDate: match.event.startDate,
         endDate: match.event.endDate,
@@ -1681,7 +2434,9 @@ export class SportsReadService {
   private mapAdminCategory(record: AdminCategoryRecord): SportsCategory {
     return {
       ...record,
+      emoji: record.eventGroup.emoji || '🏅',
       scoreRulesJson: this.serializeJson(record.scoreRules),
+      timerRulesJson: this.serializeJson(record.timerRules),
       rosterRulesJson: this.serializeJson(record.rosterRules),
       bracketRulesJson: this.serializeJson(record.bracketRules),
       standingsRulesJson: this.serializeJson(record.standingsRules),
@@ -1721,6 +2476,12 @@ export class SportsReadService {
       ...record,
       scoreboard: this.mapAdminScoreboard(record.scoreboard),
       canonicalScoreboard: this.mapAdminScoreboard(record.canonicalScoreboard),
+      occurrencesJson: this.serializeJson(record.occurrences),
+      timerStartedAtUnixMs: record.timerStartedAt?.getTime() ?? null,
+      timerPausedAtUnixMs: record.timerPausedAt?.getTime() ?? null,
+      periodTimers: [],
+      overallTimerEnabled: true,
+      periodTimerEnabled: true,
     };
   }
 
@@ -1858,7 +2619,15 @@ export class SportsReadService {
   ): SportsMatchRoster {
     return {
       ...record,
-      entries: record.entries.map((entry): SportsMatchRosterEntry => entry),
+      entries: record.entries.map(
+        (entry): SportsMatchRosterEntry => ({
+          ...entry,
+          roleMetadataJson:
+            entry.roleMetadata === null
+              ? null
+              : this.serializeJson(entry.roleMetadata),
+        }),
+      ),
     };
   }
 
@@ -1883,6 +2652,14 @@ export class SportsReadService {
 
   private serializeJson(value: Prisma.JsonValue | Prisma.InputJsonValue): string {
     return JSON.stringify(value);
+  }
+
+  private censorIdentityDocument(value: string | null): string | null {
+    const digits = value?.replace(/\D/g, '') ?? '';
+    if (!digits) {
+      return null;
+    }
+    return `•••••••${digits.slice(-4)}`;
   }
 
   private groupBy<T, K, V = T>(

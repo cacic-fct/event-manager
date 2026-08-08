@@ -18,6 +18,8 @@ import type {
   DashboardInsightSeverity,
   DashboardPendingOfflineAttendanceEvent,
   DashboardPendingReceiptMajorEvent,
+  DashboardSportsMatch,
+  DashboardSportsTournament,
   DashboardWeatherAlert,
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
@@ -30,6 +32,7 @@ type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissi
 
 type DashboardStoryState = 'loaded' | 'empty' | 'loading' | 'error';
 type FutureRegistrationMode = 'mixed' | 'with-slots' | 'unlimited' | 'disabled';
+type SportsDashboardMode = 'none' | 'registration-open' | 'live' | 'review' | 'live-and-review';
 
 interface HomeStoryArgs {
   state: DashboardStoryState;
@@ -42,6 +45,7 @@ interface HomeStoryArgs {
   upcomingEvents: number;
   attendanceActions: boolean;
   futureRegistrationMode: FutureRegistrationMode;
+  sportsMode: SportsDashboardMode;
   suggestions: DashboardInsightAction[];
   weatherAlerts: number;
   pendingCertificates: number;
@@ -67,7 +71,8 @@ const defaultArgs: HomeStoryArgs = {
   upcomingEvents: 3,
   attendanceActions: true,
   futureRegistrationMode: 'mixed',
-  suggestions: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT'],
+  sportsMode: 'live-and-review',
+  suggestions: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT', 'OPEN_SPORTS'],
   weatherAlerts: 1,
   pendingCertificates: 2,
   pendingOfflineAttendancesCount: 5,
@@ -123,9 +128,13 @@ const meta: Meta<HomeStoryArgs> = {
       control: 'select',
       options: ['mixed', 'with-slots', 'unlimited', 'disabled'],
     },
+    sportsMode: {
+      control: 'select',
+      options: ['none', 'registration-open', 'live', 'review', 'live-and-review'],
+    },
     suggestions: {
       control: 'check',
-      options: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT'],
+      options: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT', 'OPEN_SPORTS'],
     },
     weatherAlerts: { control: { type: 'range', min: 0, max: 5, step: 1 } },
     pendingCertificates: { control: { type: 'range', min: 0, max: 6, step: 1 } },
@@ -237,6 +246,7 @@ export const UpcomingEventsWithRegistration: Story = {
     todayEvents: 0,
     upcomingEvents: 4,
     futureRegistrationMode: 'mixed',
+    sportsMode: 'none',
     weatherAlerts: 0,
     pendingCertificates: 0,
     pendingOfflineAttendancesCount: 0,
@@ -266,6 +276,7 @@ export const UpcomingEventsWithoutRegistration: Story = {
     todayEvents: 0,
     upcomingEvents: 3,
     futureRegistrationMode: 'disabled',
+    sportsMode: 'none',
     weatherAlerts: 0,
     pendingCertificates: 0,
     pendingOfflineAttendancesCount: 0,
@@ -291,6 +302,7 @@ export const WeatherAlertsInEventRows: Story = {
     upcomingEvents: 2,
     attendanceActions: false,
     futureRegistrationMode: 'mixed',
+    sportsMode: 'none',
     weatherAlerts: 2,
     pendingCertificates: 0,
     pendingOfflineAttendancesCount: 0,
@@ -306,6 +318,80 @@ export const WeatherAlertsInEventRows: Story = {
     await expect(canvas.queryByText('Clima')).not.toBeInTheDocument();
     const weatherRows = await canvas.findAllByText(/°C/);
     await expect(weatherRows).toHaveLength(2);
+  },
+};
+
+export const SportsLiveOperations: Story = {
+  args: {
+    showTodayEvents: false,
+    showActionQueue: false,
+    showMonitoring: false,
+    showSystemHealth: false,
+    todayEvents: 0,
+    upcomingEvents: 0,
+    sportsMode: 'live',
+    weatherAlerts: 0,
+    pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    duplicatePeopleCount: 0,
+    inconsistencies: 0,
+  },
+  globals: { theme: 'dark' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Partidas em operação')).toBeVisible();
+    await expect(await canvas.findByText('Atlética FCT × Engenharia')).toBeVisible();
+    await expect(canvas.queryByText('Revisões esportivas pendentes')).not.toBeInTheDocument();
+  },
+};
+
+export const SportsReviewQueue: Story = {
+  args: {
+    showTodayEvents: false,
+    showActionQueue: true,
+    showMonitoring: false,
+    showSystemHealth: false,
+    todayEvents: 0,
+    upcomingEvents: 0,
+    sportsMode: 'review',
+    weatherAlerts: 0,
+    pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    duplicatePeopleCount: 0,
+    inconsistencies: 0,
+  },
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Revisões esportivas pendentes')).toBeVisible();
+    await expect(await canvas.findByText('5 pendências para revisar')).toBeVisible();
+    await expect(await canvas.findByText('Torneios em acompanhamento')).toBeVisible();
+  },
+};
+
+export const SportsRegistrationOpen: Story = {
+  args: {
+    showTodayEvents: false,
+    showActionQueue: false,
+    showMonitoring: false,
+    showSystemHealth: false,
+    todayEvents: 0,
+    upcomingEvents: 0,
+    sportsMode: 'registration-open',
+    weatherAlerts: 0,
+    pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    duplicatePeopleCount: 0,
+    inconsistencies: 0,
+  },
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Inscrições abertas')).toBeVisible();
+    await expect(await canvas.findByText('Sem pendências operacionais')).toBeVisible();
   },
 };
 
@@ -363,9 +449,69 @@ function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsi
     pendingOfflineAttendanceEvents: buildPendingOfflineAttendanceEvents(pendingOfflineAttendancesCount),
     pendingReceiptValidationsCount,
     pendingReceiptMajorEvents: buildPendingReceiptMajorEvents(pendingReceiptValidationsCount),
+    sportsTournaments: buildSportsTournaments(args, empty),
+    sportsMatches: buildSportsMatches(args, empty),
     inconsistencies: buildInconsistencies(args),
     duplicatePeopleCount,
   };
+}
+
+function buildSportsTournaments(args: HomeStoryArgs, empty: boolean): DashboardSportsTournament[] {
+  if (empty || args.sportsMode === 'none') {
+    return [];
+  }
+
+  const hasReview = args.showActionQueue && ['review', 'live-and-review'].includes(args.sportsMode);
+  const isLive = ['live', 'live-and-review'].includes(args.sportsMode);
+  return [
+    {
+      tournamentId: 'sports-tournament-1',
+      majorEventId: 'sports-major-event-1',
+      name: 'Jogos Universitários 2026',
+      emoji: '🏆',
+      startDate: dateFromNow(0, 8).toISOString(),
+      endDate: dateFromNow(3, 20).toISOString(),
+      status: args.sportsMode === 'registration-open' ? 'REGISTRATION_OPEN' : isLive ? 'LIVE' : 'DRAFT',
+      categoryCount: 6,
+      teamCount: 18,
+      pendingApplicationCount: hasReview ? 3 : 0,
+      pendingReviewCount: hasReview ? 2 : 0,
+      activeMatchCount: isLive ? 2 : 0,
+    },
+  ];
+}
+
+function buildSportsMatches(args: HomeStoryArgs, empty: boolean): DashboardSportsMatch[] {
+  if (empty || !['live', 'live-and-review'].includes(args.sportsMode)) {
+    return [];
+  }
+
+  return [
+    {
+      matchId: 'sports-match-1',
+      tournamentId: 'sports-tournament-1',
+      categoryName: 'Futsal aberto',
+      eventName: 'Atlética FCT × Engenharia',
+      startDate: dateFromNow(0, 14).toISOString(),
+      state: 'LIVE',
+      homeTeamName: 'Atlética FCT',
+      awayTeamName: 'Engenharia',
+      homeScore: 2,
+      awayScore: 1,
+    },
+    {
+      matchId: 'sports-match-2',
+      tournamentId: 'sports-tournament-1',
+      categoryName: 'Vôlei misto',
+      eventName: 'Computação × Matemática',
+      startDate: dateFromNow(0, 16).toISOString(),
+      state: 'AWAITING_REVIEW',
+      homeTeamName: 'Computação',
+      awayTeamName: 'Matemática',
+      homeScore: 3,
+      awayScore: 2,
+    },
+  ];
 }
 
 function buildInconsistencies(args: HomeStoryArgs): DashboardInconsistency[] {

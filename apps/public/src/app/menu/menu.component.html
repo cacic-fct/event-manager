@@ -57,6 +57,14 @@
           <span matListItemTitle>Participações</span>
           <span matListItemLine>Presenças e certificados</span>
         </a>
+
+        @if (hasSportsShortcut()) {
+          <a mat-list-item routerLink="/sports">
+            <mat-icon matListItemIcon>sports_score</mat-icon>
+            <span matListItemTitle>Minha próxima partida</span>
+            <span matListItemLine>Atleta, equipe e arbitragem</span>
+          </a>
+        }
       </mat-nav-list>
     }
 

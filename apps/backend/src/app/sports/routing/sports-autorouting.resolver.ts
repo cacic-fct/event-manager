@@ -8,12 +8,15 @@ import {
 
 @ObjectType()
 export class CurrentUserSportsAutoroute {
-  @Field(() => String)
-  matchId!: string;
+  @Field(() => String, { nullable: true })
+  matchId?: string;
+
+  @Field(() => String, { nullable: true })
+  teamId?: string;
 
   @Field(() => String, {
     description:
-      'CHECK_IN, OPERATE, FINALIZE, or MATCH_DETAIL. The client maps this stable mode to a route.',
+      'CHECK_IN, OPERATE, FINALIZE, MATCH_DETAIL, WALLET, or TEAM. The client maps this stable mode to a route.',
   })
   mode!: string;
 }
@@ -33,6 +36,6 @@ export class SportsAutoroutingResolver {
     @Context() context: GraphqlContext,
   ): Promise<SportsAutoroute | null> {
     const person = await this.currentUser.requireCurrentPerson(context);
-    return this.autorouting.resolveOfficialRoute(person.id);
+    return this.autorouting.resolveCurrentUserRoute(person.id);
   }
 }

@@ -20,6 +20,10 @@ export class CalendarEventListItem {
   readonly emoji = inject(EmojiService);
 
   readonly eventTypeLabel = computed(() => getEventTypeLabel(this.event().type));
+  readonly detailRoute = computed(() => {
+    const sportsMatchId = this.event().sportsMatch?.id;
+    return sportsMatchId ? ['/sports/match', sportsMatchId] : ['/event', this.event().id];
+  });
 
   readonly contextLine = computed(() => {
     const event = this.event();

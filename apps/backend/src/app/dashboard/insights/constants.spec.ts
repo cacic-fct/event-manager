@@ -12,7 +12,7 @@ import {
 describe('dashboard insights constants', () => {
   it('exposes cache, time, weather, and permission settings used by dashboard insights', () => {
     expect(CACHE_TTL_SECONDS).toBe(300);
-    expect(CACHE_KEY_PREFIX).toBe('dashboard:workspace:v6');
+    expect(CACHE_KEY_PREFIX).toBe('dashboard:workspace:v7');
     expect(DEFAULT_EMOJI).toBe('❔');
     expect(TWO_HOURS_MS).toBe(7200000);
     expect(EIGHT_HOURS_MS).toBe(28800000);
@@ -31,6 +31,14 @@ describe('dashboard insights constants', () => {
       'receipt#read',
       'receipt#approve',
       'receipt#reject',
+      'sports-tournament#read',
+      'sports-category#read',
+      'sports-team#read',
+      'sports-registration#read',
+      'sports-match#read',
+      'sports-match#review',
+      'sports-score#read',
+      'sports-score#review',
     ]);
   });
 });

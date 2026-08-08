@@ -6,6 +6,30 @@ export const serverRoutes: ServerRoute[] = [
     renderMode: RenderMode.Server,
   },
   {
+    path: 'tournament/:tournamentId',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'sports/match/:matchId',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'tournament/:tournamentId/subscribe',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'sports/operate/:matchId',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'sports/team/:teamId',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'sports',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'profile/attendances',
     renderMode: RenderMode.Client,
   },

@@ -1,0 +1,132 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import { firstValueFrom } from 'rxjs';
+import { SportsOperationsApiService } from './sports-operations-api.service';
+
+describe('SportsOperationsApiService', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+  });
+
+  it('commits the original idempotency key and offline timestamp', async () => {
+    const api = TestBed.inject(SportsOperationsApiService);
+    const http = TestBed.inject(HttpTestingController);
+    const action = {
+      clientId: 'device-action-1',
+      matchId: 'match-1',
+      baseRevision: 4,
+      type: 'SCORE_DELTA' as const,
+      payloadJson: JSON.stringify({ side: 'HOME', amount: 1 }),
+      authoredAt: '2026-08-01T18:04:00.000Z',
+      offline: true,
+    };
+
+    const result = firstValueFrom(api.commit([action]));
+    const request = http.expectOne('/api/graphql');
+    expect(request.request.body.variables).toEqual({ input: { actions: [action] } });
+    expect(request.request.body.query).toContain('commitSportsMatchActions');
+    request.flush({ data: { commitSportsMatchActions: ['action-1'] } });
+
+    await expect(result).resolves.toEqual(['action-1']);
+    http.verify();
+  });
+
+  it('submits identity claims without resolving or querying a person', async () => {
+    const api = TestBed.inject(SportsOperationsApiService);
+    const http = TestBed.inject(HttpTestingController);
+    const input = {
+      teamId: 'team-1',
+      type: 'ADD_MEMBER',
+      baseRevision: 2,
+      baseFieldRevisionsJson: '{}',
+      deltaJson: '{"role":"PLAYER"}',
+      pendingKey: 'pending-1',
+      identityClaims: [{ clientKey: 'claim-1', type: 'EMAIL', value: 'atleta@example.com' }],
+    };
+
+    const result = firstValueFrom(api.submitTeamChange(input));
+    const request = http.expectOne('/api/graphql');
+    expect(request.request.body.query).not.toContain('person(');
+    expect(request.request.body.variables).toEqual({ input });
+    request.flush({ data: { submitSportsTeamChange: 'request-1' } });
+
+    await expect(result).resolves.toBe('request-1');
+    http.verify();
+  });
+
+  it('loads the authenticated operational snapshot with the public match projection', async () => {
+    const api = TestBed.inject(SportsOperationsApiService);
+    const http = TestBed.inject(HttpTestingController);
+
+    const result = firstValueFrom(api.match('match-1'));
+    const request = http.expectOne('/api/graphql');
+    expect(request.request.body.query).toContain('currentUserSportsMatchOperations');
+    expect(request.request.body.variables).toEqual({ matchId: 'match-1' });
+    request.flush({
+      data: {
+        publicSportsMatchDetail: {
+          id: 'match-1',
+          eventId: 'event-1',
+          categoryId: 'category-1',
+          state: 'CHECK_IN',
+          scoreboard: { homeScore: 0, awayScore: 0, periods: [] },
+          elapsedBeforePauseMs: 0,
+          periodTimers: [],
+          overallTimerEnabled: true,
+          periodTimerEnabled: true,
+          timerPeriodDurationMs: 2_700_000,
+          timerPeriodStartOffsetsMs: [0, 2_700_000],
+          timerAllowOvertime: true,
+          schedule: {
+            startDate: '2026-08-01T12:00:00.000Z',
+            endDate: '2026-08-01T13:00:00.000Z',
+          },
+        },
+        currentUserSportsMatchOperations: {
+          revision: 7,
+          homeRegistrationId: 'home-registration',
+          awayRegistrationId: 'away-registration',
+          rosters: [],
+        },
+      },
+    });
+
+    await expect(result).resolves.toEqual(expect.objectContaining({
+      id: 'match-1',
+      revision: 7,
+      homeRegistrationId: 'home-registration',
+    }));
+    http.verify();
+  });
+
+  it('sends replay metadata when checking in a roster entry', async () => {
+    const api = TestBed.inject(SportsOperationsApiService);
+    const http = TestBed.inject(HttpTestingController);
+    const input = {
+      clientId: 'check-in-1',
+      matchId: 'match-1',
+      rosterEntryId: 'entry-1',
+      checkedInAt: '2026-08-01T12:03:00.000Z',
+      offline: true,
+    };
+
+    const result = firstValueFrom(api.checkIn(input));
+    const request = http.expectOne('/api/graphql');
+    expect(request.request.body.variables).toEqual({
+      matchId: 'match-1',
+      input: {
+        clientId: 'check-in-1',
+        rosterEntryId: 'entry-1',
+        checkedInAt: '2026-08-01T12:03:00.000Z',
+        offline: true,
+      },
+    });
+    request.flush({ data: { checkInSportsRosterEntry: true } });
+
+    await expect(result).resolves.toBe(true);
+    http.verify();
+  });
+});

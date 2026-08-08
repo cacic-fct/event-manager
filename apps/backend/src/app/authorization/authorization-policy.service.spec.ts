@@ -168,6 +168,26 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('matches event-group scoped grants when opening a tournament containing that group', async () => {
+    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+      grant({
+        permission: Permission.SportsTournament.Read,
+        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        eventGroupId: 'group-1',
+      }),
+    ]);
+    prisma.sportsTournament.findUnique.mockResolvedValue({
+      majorEventId: 'major-1',
+      categories: [{ eventGroupId: 'group-1', matches: [] }],
+    });
+
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.SportsTournament.Read], {
+        sportsTournamentId: 'tournament-1',
+      }),
+    ).resolves.toBeUndefined();
+  });
+
   it('denies scoped grants when the operation has no matching target', async () => {
     prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
       grant({
@@ -715,6 +735,9 @@ function createPrisma() {
       findFirst: jest.fn().mockResolvedValue(null),
     },
     eventFormResponse: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
+    sportsTournament: {
       findUnique: jest.fn().mockResolvedValue(null),
     },
   };

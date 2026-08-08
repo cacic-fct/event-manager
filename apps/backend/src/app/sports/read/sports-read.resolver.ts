@@ -1,4 +1,4 @@
-import { Args, Context, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Query, Resolver } from '@nestjs/graphql';
 import { UseGuards } from '@nestjs/common';
 import { Public } from '../../auth/decorators/public.decorator';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -13,6 +13,9 @@ import {
   AdminSportsRegistrationRead,
   AdminSportsTeamRead,
   AdminSportsTournamentRead,
+  AdminSportsTournamentListItem,
+  CurrentUserSportsLineupRead,
+  CurrentUserSportsMatchOperationsRead,
   CurrentUserSportsTournamentDetail,
   PublicSportsMatch,
   PublicSportsTournamentDetail,
@@ -24,6 +27,24 @@ import { SportsAccessService } from '../security/sports-access.service';
 @Resolver()
 export class SportsAdminReadResolver {
   constructor(private readonly sportsRead: SportsReadService) {}
+
+  @Query(() => [AdminSportsTournamentListItem], {
+    name: 'adminSportsTournamentList',
+    description:
+      'Permission-scoped sports tournament summaries used by the admin workspace. Scoped grants only reveal their containing tournament.',
+  })
+  adminSportsTournamentList(
+    @Context() context: GraphqlContext,
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
+    @Args('take', { type: () => Int, nullable: true }) take?: number,
+  ): Promise<AdminSportsTournamentListItem[]> {
+    return this.sportsRead.adminTournamentList(this.getUser(context), {
+      query,
+      skip,
+      take,
+    });
+  }
 
   @Query(() => AdminSportsTournamentRead, { name: 'adminSportsTournamentRead' })
   adminSportsTournamentRead(
@@ -127,5 +148,32 @@ export class SportsCurrentUserReadResolver {
       teamId,
     );
     return this.sportsRead.representativeTeamWorkspace(teamId, actor.id);
+  }
+
+  @Query(() => CurrentUserSportsMatchOperationsRead, {
+    name: 'currentUserSportsMatchOperations',
+    description:
+      'Official-scoped operational match snapshot with approved roster entry identifiers and privacy-limited names.',
+  })
+  async currentUserSportsMatchOperations(
+    @Context() context: GraphqlContext,
+    @Args('matchId', { type: () => String }) matchId: string,
+  ): Promise<CurrentUserSportsMatchOperationsRead> {
+    await this.access.requireMatchOfficial(context, matchId);
+    return this.sportsRead.currentUserMatchOperations(matchId);
+  }
+
+  @Query(() => CurrentUserSportsLineupRead, {
+    name: 'currentUserSportsLineup',
+    description:
+      'Participant-scoped eligible members and current per-match lineup snapshot.',
+  })
+  async currentUserSportsLineup(
+    @Context() context: GraphqlContext,
+    @Args('matchId', { type: () => String }) matchId: string,
+    @Args('registrationId', { type: () => String }) registrationId: string,
+  ): Promise<CurrentUserSportsLineupRead> {
+    await this.access.requireLineupReader(context, registrationId);
+    return this.sportsRead.currentUserLineup(matchId, registrationId);
   }
 }

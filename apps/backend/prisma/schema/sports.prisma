@@ -181,11 +181,19 @@ enum SportsMatchActionType {
   SCORE_DELTA
   SCORE_CORRECTION
   PERIOD_ROLL
+  TIMER_RECONCILE
+  OCCURRENCE
   FINALIZE
   CANCEL
   RESCHEDULE
   FORFEIT
   RESET
+}
+
+enum SportsLivestreamProvider {
+  YOUTUBE
+  TWITCH
+  GENERAL
 }
 
 enum SportsLossReason {
@@ -253,6 +261,8 @@ model SportsTournament {
   status                   SportsTournamentStatus @default(DRAFT)
   scoringMode              SportsScoringMode      @default(PER_SPORT)
   selfSubscriptionEnabled  Boolean                @default(false)
+  selfSubscriptionAllowNoTeam     Boolean         @default(false)
+  selfSubscriptionAllowNoCategory Boolean         @default(false)
   allowPlayerMultipleTeams Boolean                @default(false)
   revision                 Int                    @default(1)
   finishedAt               DateTime?
@@ -305,6 +315,7 @@ model SportsCategory {
   periodsEnabled Boolean @default(false)
   maximumPeriods Int?
   periodLabel    String?
+  timerRules     Json @default("{}")
   scoreRules     Json
   rosterRules    Json
   bracketRules   Json
@@ -718,6 +729,11 @@ model SportsMatch {
   lossReason         SportsLossReason?
   lossReasonDetail   String?
   drawWillReschedule Boolean?
+  notes              String?
+  occurrences        Json @default("[]")
+
+  livestreamProvider SportsLivestreamProvider?
+  livestreamUrl      String?
 
   timerStartedAt       DateTime?
   timerPausedAt        DateTime?
@@ -813,6 +829,8 @@ model SportsMatchRosterEntry {
 
   status SportsRosterEntryStatus @default(DRAFT)
   role   SportsRosterRole        @default(PLAYER)
+  shirtNumber  String?
+  roleMetadata Json?
 
   checkedInAt   DateTime?
   checkedInById String?
@@ -1001,8 +1019,8 @@ model SportsPlayerApplication {
   applicantPersonId String
   applicantPerson   People @relation(fields: [applicantPersonId], references: [id], onDelete: Restrict)
 
-  requestedTeamId String
-  requestedTeam   SportsTeam @relation(fields: [requestedTeamId], references: [id], onDelete: Restrict)
+  requestedTeamId String?
+  requestedTeam   SportsTeam? @relation(fields: [requestedTeamId], references: [id], onDelete: Restrict)
 
   status           SportsApplicationStatus @default(PENDING)
   noticeAcceptedAt DateTime

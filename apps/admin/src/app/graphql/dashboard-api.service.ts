@@ -78,6 +78,32 @@ export class DashboardApiService {
               endDate
               pendingCount
             }
+            sportsTournaments {
+              tournamentId
+              majorEventId
+              name
+              emoji
+              startDate
+              endDate
+              status
+              categoryCount
+              teamCount
+              pendingApplicationCount
+              pendingReviewCount
+              activeMatchCount
+            }
+            sportsMatches {
+              matchId
+              tournamentId
+              categoryName
+              eventName
+              startDate
+              state
+              homeTeamName
+              awayTeamName
+              homeScore
+              awayScore
+            }
             inconsistencies {
               ${DASHBOARD_INCONSISTENCY_FIELDS}
             }

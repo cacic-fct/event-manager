@@ -1,10 +1,12 @@
 import {
+  SportsApplicationStatus,
   SportsCategory,
   SportsCategoryPlacement,
   SportsFormat,
   SportsIdentityType,
   SportsLossReason,
   SportsMatch,
+  SportsMatchPeriodTimer,
   SportsMatchAction,
   SportsMatchState,
   SportsMatchRoster,
@@ -12,7 +14,10 @@ import {
   SportsOfficialAssignment,
   SportsPreset,
   SportsRegistration,
+  SportsRegistrationStatus,
+  SportsRosterEntryStatus,
   SportsRosterRole,
+  SportsRosterStatus,
   SportsEligibilityStatus,
   SportsTeamMemberStatus,
   SportsStage,
@@ -24,8 +29,36 @@ import {
   SportsTeamChangeRequestType,
   SportsTournament,
   SportsTournamentScoreEntry,
+  SportsVenue,
 } from '@cacic-fct/shared-data-types';
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
+
+@ObjectType()
+export class AdminSportsTournamentTeamRegistrationSummary {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  categoryId!: string;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => String)
+  categoryEmoji!: string;
+
+  @Field(() => SportsRegistrationStatus)
+  status!: SportsRegistrationStatus;
+}
+
+@ObjectType()
+export class AdminSportsTournamentTeamSummary {
+  @Field(() => SportsTeam)
+  team!: SportsTeam;
+
+  @Field(() => [AdminSportsTournamentTeamRegistrationSummary])
+  registrations!: AdminSportsTournamentTeamRegistrationSummary[];
+}
 
 @ObjectType()
 export class AdminSportsTournamentRead {
@@ -40,6 +73,57 @@ export class AdminSportsTournamentRead {
 
   @Field(() => [SportsTournamentScoreEntry])
   scoreEntries!: SportsTournamentScoreEntry[];
+
+  @Field(() => [SportsVenue])
+  venues!: SportsVenue[];
+
+  @Field(() => [SportsOfficialAssignment])
+  officials!: SportsOfficialAssignment[];
+
+  @Field(() => [AdminSportsTournamentTeamSummary])
+  teamSummaries!: AdminSportsTournamentTeamSummary[];
+}
+
+@ObjectType()
+export class AdminSportsTournamentMajorEventSummary {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  emoji!: string;
+
+  @Field(() => Date)
+  startDate!: Date;
+
+  @Field(() => Date)
+  endDate!: Date;
+
+  @Field(() => Boolean)
+  isPaymentRequired!: boolean;
+}
+
+@ObjectType()
+export class AdminSportsTournamentListItem {
+  @Field(() => SportsTournament)
+  tournament!: SportsTournament;
+
+  @Field(() => AdminSportsTournamentMajorEventSummary)
+  majorEvent!: AdminSportsTournamentMajorEventSummary;
+
+  @Field(() => Int)
+  categoryCount!: number;
+
+  @Field(() => Int)
+  teamCount!: number;
+
+  @Field(() => Int)
+  pendingApplicationCount!: number;
+
+  @Field(() => Int)
+  pendingReviewCount!: number;
 }
 
 @ObjectType()
@@ -61,6 +145,9 @@ export class AdminSportsCategoryRead {
 
   @Field(() => [SportsCategoryPlacement])
   placements!: SportsCategoryPlacement[];
+
+  @Field(() => [SportsOfficialAssignment])
+  officials!: SportsOfficialAssignment[];
 }
 
 @ObjectType()
@@ -244,6 +331,117 @@ export class RepresentativeSportsTeamChange {
 }
 
 @ObjectType()
+export class RepresentativeSportsCategoryRoleRead {
+  @Field(() => String)
+  registrationId!: string;
+
+  @Field(() => String)
+  categoryId!: string;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => SportsRosterRole)
+  role!: SportsRosterRole;
+
+  @Field(() => SportsEligibilityStatus)
+  eligibility!: SportsEligibilityStatus;
+}
+
+@ObjectType()
+export class RepresentativeSportsTeamMemberRead {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => SportsTeamMemberStatus)
+  status!: SportsTeamMemberStatus;
+
+  @Field(() => Int)
+  revision!: number;
+
+  @Field(() => [RepresentativeSportsCategoryRoleRead])
+  categoryRoles!: RepresentativeSportsCategoryRoleRead[];
+}
+
+@ObjectType()
+export class RepresentativeSportsRegistrationRead {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  categoryId!: string;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => String)
+  categoryEmoji!: string;
+
+  @Field(() => SportsRegistrationStatus)
+  status!: SportsRegistrationStatus;
+}
+
+@ObjectType()
+export class RepresentativeSportsMatchRead {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  eventId!: string;
+
+  @Field(() => SportsMatchState)
+  state!: SportsMatchState;
+
+  @Field(() => Date)
+  startDate!: Date;
+
+  @Field(() => Date)
+  endDate!: Date;
+
+  @Field(() => String, { nullable: true })
+  homeRegistrationId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  awayRegistrationId?: string | null;
+
+  @Field(() => String)
+  categoryId!: string;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => String)
+  categoryEmoji!: string;
+
+  @Field(() => PublicSportsTeam, { nullable: true })
+  homeTeam?: PublicSportsTeam | null;
+
+  @Field(() => PublicSportsTeam, { nullable: true })
+  awayTeam?: PublicSportsTeam | null;
+}
+
+@ObjectType()
+export class RepresentativeSportsJoinQueueRead {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  applicantName!: string;
+
+  @Field(() => String, { nullable: true })
+  identityDocumentHint?: string | null;
+
+  @Field(() => [String])
+  categoryNames!: string[];
+
+  @Field(() => SportsApplicationStatus)
+  status!: SportsApplicationStatus;
+}
+
+@ObjectType()
 export class RepresentativeSportsTeamWorkspace {
   @Field(() => PublicSportsTeam)
   team!: PublicSportsTeam;
@@ -253,6 +451,165 @@ export class RepresentativeSportsTeamWorkspace {
 
   @Field(() => [RepresentativeSportsTeamChange])
   queuedChanges!: RepresentativeSportsTeamChange[];
+
+  @Field(() => [RepresentativeSportsTeamMemberRead])
+  members!: RepresentativeSportsTeamMemberRead[];
+
+  @Field(() => [RepresentativeSportsRegistrationRead])
+  registrations!: RepresentativeSportsRegistrationRead[];
+
+  @Field(() => [RepresentativeSportsMatchRead])
+  matches!: RepresentativeSportsMatchRead[];
+
+  @Field(() => [RepresentativeSportsJoinQueueRead])
+  joinQueue!: RepresentativeSportsJoinQueueRead[];
+}
+
+@ObjectType()
+export class CurrentUserSportsRosterEntryRead {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => SportsRosterRole)
+  role!: SportsRosterRole;
+
+  @Field(() => SportsRosterEntryStatus)
+  status!: SportsRosterEntryStatus;
+
+  @Field(() => Date, { nullable: true })
+  checkedInAt?: Date | null;
+
+  @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
+
+  @Field(() => String, { nullable: true })
+  roleMetadataJson?: string | null;
+}
+
+@ObjectType()
+export class CurrentUserSportsOperationsRosterRead {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  registrationId!: string;
+
+  @Field(() => Int)
+  revision!: number;
+
+  @Field(() => SportsRosterStatus)
+  status!: SportsRosterStatus;
+
+  @Field(() => PublicSportsTeam)
+  team!: PublicSportsTeam;
+
+  @Field(() => [CurrentUserSportsRosterEntryRead])
+  entries!: CurrentUserSportsRosterEntryRead[];
+}
+
+@ObjectType()
+export class CurrentUserSportsMatchOperationsRead {
+  @Field(() => String)
+  matchId!: string;
+
+  @Field(() => Int)
+  revision!: number;
+
+  @Field(() => SportsMatchState)
+  state!: SportsMatchState;
+
+  @Field(() => String, { nullable: true })
+  homeRegistrationId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  awayRegistrationId?: string | null;
+
+  @Field(() => [CurrentUserSportsOperationsRosterRead])
+  rosters!: CurrentUserSportsOperationsRosterRead[];
+
+  @Field(() => String, { nullable: true })
+  notes?: string | null;
+
+  @Field(() => String)
+  occurrencesJson!: string;
+}
+
+@ObjectType()
+export class CurrentUserSportsEligibleLineupMemberRead {
+  @Field(() => String)
+  registrationMemberId!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => SportsRosterRole)
+  role!: SportsRosterRole;
+}
+
+@ObjectType()
+export class CurrentUserSportsLineupRosterEntryRead {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  registrationMemberId!: string;
+
+  @Field(() => SportsRosterRole)
+  role!: SportsRosterRole;
+
+  @Field(() => SportsRosterEntryStatus)
+  status!: SportsRosterEntryStatus;
+
+  @Field(() => Date, { nullable: true })
+  checkedInAt?: Date | null;
+
+  @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
+
+  @Field(() => String, { nullable: true })
+  roleMetadataJson?: string | null;
+}
+
+@ObjectType()
+export class CurrentUserSportsLineupRosterRead {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => Int)
+  revision!: number;
+
+  @Field(() => SportsRosterStatus)
+  status!: SportsRosterStatus;
+
+  @Field(() => [CurrentUserSportsLineupRosterEntryRead])
+  entries!: CurrentUserSportsLineupRosterEntryRead[];
+}
+
+@ObjectType()
+export class CurrentUserSportsLineupRead {
+  @Field(() => String)
+  matchId!: string;
+
+  @Field(() => Int)
+  matchRevision!: number;
+
+  @Field(() => String)
+  registrationId!: string;
+
+  @Field(() => String, { nullable: true })
+  homeRegistrationId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  awayRegistrationId?: string | null;
+
+  @Field(() => [CurrentUserSportsEligibleLineupMemberRead])
+  eligibleMembers!: CurrentUserSportsEligibleLineupMemberRead[];
+
+  @Field(() => CurrentUserSportsLineupRosterRead, { nullable: true })
+  roster?: CurrentUserSportsLineupRosterRead | null;
 }
 
 @ObjectType()
@@ -383,11 +740,35 @@ export class PublicSportsMatch {
   @Field(() => Date, { nullable: true })
   timerStartedAt?: Date | null;
 
+  @Field(() => Float, { nullable: true })
+  timerStartedAtUnixMs?: number | null;
+
   @Field(() => Date, { nullable: true })
   timerPausedAt?: Date | null;
 
+  @Field(() => Float, { nullable: true })
+  timerPausedAtUnixMs?: number | null;
+
   @Field(() => Int)
   elapsedBeforePauseMs!: number;
+
+  @Field(() => [SportsMatchPeriodTimer])
+  periodTimers!: SportsMatchPeriodTimer[];
+
+  @Field(() => Boolean)
+  overallTimerEnabled!: boolean;
+
+  @Field(() => Boolean)
+  periodTimerEnabled!: boolean;
+
+  @Field(() => Float, { nullable: true })
+  timerPeriodDurationMs?: number | null;
+
+  @Field(() => [Float])
+  timerPeriodStartOffsetsMs!: number[];
+
+  @Field(() => Boolean)
+  timerAllowOvertime!: boolean;
 
   @Field(() => Int, { nullable: true })
   roundNumber?: number | null;
@@ -406,6 +787,12 @@ export class PublicSportsMatch {
 
   @Field(() => [PublicSportsOfficial])
   officials!: PublicSportsOfficial[];
+
+  @Field(() => String, { nullable: true })
+  livestreamProvider?: string | null;
+
+  @Field(() => String, { nullable: true })
+  livestreamUrl?: string | null;
 }
 
 @ObjectType()
@@ -476,6 +863,9 @@ export class PublicSportsCategory {
   @Field(() => String)
   name!: string;
 
+  @Field(() => String)
+  emoji!: string;
+
   @Field(() => SportsPreset)
   sport!: SportsPreset;
 
@@ -514,6 +904,18 @@ export class PublicSportsOverallScore {
 }
 
 @ObjectType()
+export class PublicSportsPaymentTier {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => Int)
+  value!: number;
+}
+
+@ObjectType()
 export class PublicSportsTournamentDetail {
   @Field(() => String)
   id!: string;
@@ -535,6 +937,21 @@ export class PublicSportsTournamentDetail {
 
   @Field(() => Date)
   endDate!: Date;
+
+  @Field(() => Boolean)
+  selfSubscriptionEnabled!: boolean;
+
+  @Field(() => Boolean)
+  selfSubscriptionAllowNoTeam!: boolean;
+
+  @Field(() => Boolean)
+  selfSubscriptionAllowNoCategory!: boolean;
+
+  @Field(() => Boolean)
+  isPaymentRequired!: boolean;
+
+  @Field(() => [PublicSportsPaymentTier])
+  paymentTiers!: PublicSportsPaymentTier[];
 
   @Field(() => [PublicSportsTeam])
   teams!: PublicSportsTeam[];

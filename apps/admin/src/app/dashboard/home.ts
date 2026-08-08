@@ -17,6 +17,8 @@ import type {
   DashboardInsightAction,
   DashboardPendingOfflineAttendanceEvent,
   DashboardPendingReceiptMajorEvent,
+  DashboardSportsMatch,
+  DashboardSportsTournament,
   DashboardWeatherAlert,
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
@@ -76,17 +78,28 @@ export class Home implements OnInit, OnDestroy {
   readonly followUpInconsistencies = computed(
     () => this.insights()?.inconsistencies.filter((issue) => issue.severity !== 'CRITICAL') ?? [],
   );
+  readonly sportsTournamentsNeedingReview = computed(
+    () =>
+      this.insights()?.sportsTournaments.filter(
+        (tournament) => tournament.pendingApplicationCount > 0 || tournament.pendingReviewCount > 0,
+      ) ?? [],
+  );
   readonly hasActionQueue = computed(() => {
     const dashboard = this.insights();
     return Boolean(
       dashboard &&
         (dashboard.pendingOfflineAttendanceEvents.length > 0 ||
           dashboard.pendingReceiptMajorEvents.length > 0 ||
+          this.sportsTournamentsNeedingReview().length > 0 ||
           this.criticalInconsistencies().length > 0),
     );
   });
   readonly hasMonitoring = computed(() => {
     return this.upcomingEvents().length > 0;
+  });
+  readonly hasSports = computed(() => {
+    const dashboard = this.insights();
+    return Boolean(dashboard && (dashboard.sportsTournaments.length > 0 || dashboard.sportsMatches.length > 0));
   });
   readonly hasSystemHealth = computed(() => {
     const dashboard = this.insights();
@@ -227,12 +240,61 @@ export class Home implements OnInit, OnDestroy {
     return [this.navMap()['attendances']?.path ?? 'attendances', 'event', item.eventId];
   }
 
+  sportsTournamentLink(item: DashboardSportsTournament | DashboardSportsMatch): string[] {
+    return [this.navMap()['sports']?.path ?? 'sports', item.tournamentId];
+  }
+
   receiptMajorEventSummary(count: number): string {
     return `${count} ${count === 1 ? 'comprovante pendente' : 'comprovantes pendentes'}`;
   }
 
   offlineAttendanceSummary(count: number): string {
     return `${count} ${count === 1 ? 'presença pendente' : 'presenças pendentes'}`;
+  }
+
+  sportsTournamentStatus(status: string): string {
+    return (
+      {
+        DRAFT: 'Rascunho',
+        REGISTRATION_OPEN: 'Inscrições abertas',
+        REGISTRATION_CLOSED: 'Inscrições encerradas',
+        LIVE: 'Em andamento',
+        FINISHED: 'Finalizado',
+        CANCELED: 'Cancelado',
+      }[status] ?? status
+    );
+  }
+
+  sportsMatchState(state: string): string {
+    return (
+      {
+        SCHEDULED: 'Agendada',
+        CHECK_IN: 'Check-in',
+        LIVE: 'Ao vivo',
+        PAUSED: 'Pausada',
+        AWAITING_REVIEW: 'Em revisão',
+        CANCELED: 'Cancelada',
+        DRAW: 'Empate',
+        FINISHED: 'Finalizada',
+      }[state] ?? state
+    );
+  }
+
+  sportsTournamentSummary(item: DashboardSportsTournament): string {
+    const categories = `${item.categoryCount} ${item.categoryCount === 1 ? 'modalidade' : 'modalidades'}`;
+    const teams = `${item.teamCount} ${item.teamCount === 1 ? 'equipe' : 'equipes'}`;
+    return `${categories} · ${teams}`;
+  }
+
+  sportsReviewSummary(item: DashboardSportsTournament): string {
+    const pending = item.pendingApplicationCount + item.pendingReviewCount;
+    if (pending === 0) {
+      return item.activeMatchCount === 0
+        ? 'Sem pendências operacionais'
+        : `${item.activeMatchCount} ${item.activeMatchCount === 1 ? 'partida ativa' : 'partidas ativas'}`;
+    }
+
+    return `${pending} ${pending === 1 ? 'pendência para revisar' : 'pendências para revisar'}`;
   }
 
   eventSubscriptionSummary(event: DashboardCalendarEvent): string {
@@ -281,6 +343,8 @@ export class Home implements OnInit, OnDestroy {
         return this.navMap()['merge-candidates']?.path ?? 'merge-candidates';
       case 'OPEN_PUBLICATION':
         return this.navMap()['publication']?.path ?? 'publication';
+      case 'OPEN_SPORTS':
+        return this.navMap()['sports']?.path ?? 'sports';
     }
   }
 

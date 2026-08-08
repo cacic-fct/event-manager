@@ -47,7 +47,7 @@ const ELIGIBLE_TEAM_REGISTRATION_STATUSES = [
 
 export interface SubmitSportsPlayerApplicationInput {
   tournamentId: string;
-  requestedTeamId: string;
+  requestedTeamId?: string | null;
   categoryIds: string[];
   noticeAccepted: boolean;
   paymentTier?: string | null;
@@ -83,11 +83,12 @@ export class SportsPlayerApplicationService {
         'Confirme que a inscrição não garante sua escalação antes de continuar.',
       );
     }
+    const requestedTeamId = input.requestedTeamId?.trim() || null;
     const categoryIds = this.normalizeCategoryIds(input.categoryIds);
     const pendingKey = this.applicationPendingKey(
       input.tournamentId,
       applicantPersonId,
-      input.requestedTeamId,
+      requestedTeamId,
     );
 
     const application = await runSerializableSportsTransaction(
@@ -96,7 +97,7 @@ export class SportsPlayerApplicationService {
       const target = await this.loadApplicationTarget(
         tx,
         input.tournamentId,
-        input.requestedTeamId,
+        requestedTeamId,
         categoryIds,
       );
       this.assertSelfApplicationOpen(target);
@@ -110,7 +111,14 @@ export class SportsPlayerApplicationService {
             where: {
               tournamentId: input.tournamentId,
               applicantPersonId,
-              requestedTeamId: { not: input.requestedTeamId },
+              ...(requestedTeamId
+                ? {
+                    OR: [
+                      { requestedTeamId: null },
+                      { requestedTeamId: { not: requestedTeamId } },
+                    ],
+                  }
+                : { requestedTeamId: { not: null } }),
               status: { in: [...REVIEWABLE_APPLICATION_STATUSES] },
               deletedAt: null,
             },
@@ -128,7 +136,7 @@ export class SportsPlayerApplicationService {
         create: {
           tournamentId: input.tournamentId,
           applicantPersonId,
-          requestedTeamId: input.requestedTeamId,
+          requestedTeamId,
           status: SportsApplicationStatus.PENDING,
           noticeAcceptedAt: new Date(),
           pendingKey,
@@ -146,7 +154,7 @@ export class SportsPlayerApplicationService {
         .sort();
       const normalizedCategoryIds = [...categoryIds].sort();
       const isIdenticalPendingSubmission =
-        application.requestedTeamId === input.requestedTeamId &&
+        application.requestedTeamId === requestedTeamId &&
         application.paymentTier === paymentSelection.paymentTier &&
         existingCategoryIds.length === normalizedCategoryIds.length &&
         existingCategoryIds.every((categoryId, index) => categoryId === normalizedCategoryIds[index]);
@@ -176,7 +184,7 @@ export class SportsPlayerApplicationService {
       await tx.sportsPlayerApplication.update({
         where: { id: application.id },
         data: {
-          requestedTeamId: input.requestedTeamId,
+          requestedTeamId,
           status: SportsApplicationStatus.PENDING,
           noticeAcceptedAt: new Date(),
           reviewedAt: null,
@@ -209,7 +217,7 @@ export class SportsPlayerApplicationService {
           },
           after: {
             status: SportsApplicationStatus.PENDING,
-            requestedTeamId: input.requestedTeamId,
+            requestedTeamId,
             categoryIds,
             noticeAccepted: true,
             paymentTier: paymentSelection.paymentTier,
@@ -279,6 +287,35 @@ export class SportsPlayerApplicationService {
           return this.getApplication(tx, application.id);
         }
         this.assertReviewable(application.status);
+        if (application.requestedTeamId) {
+          const staged = await tx.sportsPlayerApplication.updateMany({
+            where: {
+              id: application.id,
+              status: {
+                in: [...REVIEWABLE_APPLICATION_STATUSES],
+              },
+            },
+            data: {
+              status: SportsApplicationStatus.APPROVED,
+              reviewedAt: new Date(),
+              reviewedById: actorId,
+              reviewMessage,
+            },
+          });
+          if (staged.count !== 1) {
+            throw new ConflictException(
+              'A solicitação mudou durante a aprovação.',
+            );
+          }
+          await this.recordReviewAudit(
+            tx,
+            application,
+            actor,
+            SportsApplicationStatus.APPROVED,
+            { awaitingTeamRepresentative: true },
+          );
+          return this.getApplication(tx, application.id);
+        }
         return this.approveApplication(tx, application, actor, actorId, reviewMessage);
       }
 
@@ -308,12 +345,105 @@ export class SportsPlayerApplicationService {
     return application;
   }
 
+  async reviewByRepresentative(
+    applicationId: string,
+    teamId: string,
+    approved: boolean,
+    actor: AuthenticatedUser,
+    message?: string | null,
+  ) {
+    const actorId = this.requireActorId(actor);
+    const reviewMessage = message?.trim() || null;
+    const application = await runSerializableSportsTransaction(
+      this.prisma,
+      async (tx) => {
+        const application = await tx.sportsPlayerApplication.findUnique({
+          where: { id: applicationId },
+          include: {
+            categoryChoices: {
+              select: { categoryId: true },
+            },
+            tournament: {
+              select: {
+                id: true,
+                allowPlayerMultipleTeams: true,
+                deletedAt: true,
+                majorEventId: true,
+              },
+            },
+            requestedTeam: {
+              select: {
+                id: true,
+                name: true,
+                tournamentId: true,
+                status: true,
+                deletedAt: true,
+              },
+            },
+          },
+        });
+        if (
+          !application ||
+          application.deletedAt ||
+          application.tournament.deletedAt ||
+          application.requestedTeamId !== teamId ||
+          application.status !== SportsApplicationStatus.APPROVED
+        ) {
+          throw new NotFoundException(
+            'Solicitação aprovada para esta equipe não encontrada.',
+          );
+        }
+        if (approved) {
+          return this.approveApplication(
+            tx,
+            application,
+            actor,
+            actorId,
+            reviewMessage,
+          );
+        }
+        const rejected = await tx.sportsPlayerApplication.updateMany({
+          where: {
+            id: application.id,
+            requestedTeamId: teamId,
+            status: SportsApplicationStatus.APPROVED,
+          },
+          data: {
+            status: SportsApplicationStatus.REJECTED,
+            pendingKey: null,
+            reviewedAt: new Date(),
+            reviewedById: actorId,
+            reviewMessage,
+          },
+        });
+        if (rejected.count !== 1) {
+          throw new ConflictException(
+            'A solicitação mudou durante a análise da equipe.',
+          );
+        }
+        await this.recordReviewAudit(
+          tx,
+          application,
+          actor,
+          SportsApplicationStatus.REJECTED,
+          { representativeDecision: 'REJECTED' },
+        );
+        return this.getApplication(tx, application.id);
+      },
+    );
+    await this.realtime.publishApplicationChanged(
+      application.id,
+      'REVIEWED',
+    );
+    return application;
+  }
+
   private async approveApplication(
     tx: Prisma.TransactionClient,
     application: {
       id: string;
       applicantPersonId: string;
-      requestedTeamId: string;
+      requestedTeamId: string | null;
       status: SportsApplicationStatus;
       categoryChoices: Array<{ categoryId: string }>;
       tournament: {
@@ -328,28 +458,35 @@ export class SportsPlayerApplicationService {
         tournamentId: string;
         status: SportsTeamStatus;
         deletedAt: Date | null;
-      };
+      } | null;
     },
     actor: AuthenticatedUser,
     actorId: string,
     reviewMessage: string | null,
   ) {
     if (
-      application.requestedTeam.deletedAt ||
-      application.requestedTeam.tournamentId !== application.tournament.id ||
-      application.requestedTeam.status !== SportsTeamStatus.ACTIVE
+      application.requestedTeamId &&
+      (!application.requestedTeam ||
+        application.requestedTeam.deletedAt ||
+        application.requestedTeam.tournamentId !== application.tournament.id ||
+        application.requestedTeam.status !== SportsTeamStatus.ACTIVE)
     ) {
       throw new ConflictException('A equipe solicitada não está mais disponível.');
     }
     const categoryIds = application.categoryChoices.map((choice) => choice.categoryId);
-    const registrations = await this.loadApprovedTeamRegistrations(
-      tx,
-      application.tournament.id,
-      application.requestedTeamId,
-      categoryIds,
-    );
+    const registrations = application.requestedTeamId
+      ? await this.loadApprovedTeamRegistrations(
+          tx,
+          application.tournament.id,
+          application.requestedTeamId,
+          categoryIds,
+        )
+      : [];
 
-    if (!application.tournament.allowPlayerMultipleTeams) {
+    if (
+      application.requestedTeamId &&
+      !application.tournament.allowPlayerMultipleTeams
+    ) {
       const otherMembership = await tx.sportsTeamMember.findFirst({
         where: {
           deletedAt: null,
@@ -379,13 +516,15 @@ export class SportsPlayerApplicationService {
       approved: true,
       paymentTier: application.paymentTier,
     });
-    let teamMember = await tx.sportsTeamMember.findFirst({
+    let teamMember = application.requestedTeamId
+      ? await tx.sportsTeamMember.findFirst({
       where: {
         teamId: application.requestedTeamId,
         participantId: participant.id,
         deletedAt: null,
       },
-    });
+      })
+      : null;
     if (teamMember) {
       teamMember = await tx.sportsTeamMember.update({
         where: { id: teamMember.id },
@@ -399,7 +538,7 @@ export class SportsPlayerApplicationService {
           updatedById: actorId,
         },
       });
-    } else {
+    } else if (application.requestedTeamId) {
       teamMember = await tx.sportsTeamMember.create({
         data: {
           teamId: application.requestedTeamId,
@@ -418,6 +557,11 @@ export class SportsPlayerApplicationService {
         ? SportsEligibilityStatus.ELIGIBLE
         : SportsEligibilityStatus.PENDING;
     for (const registration of registrations) {
+      if (!teamMember) {
+        throw new ConflictException(
+          'Não foi possível criar o vínculo com a equipe.',
+        );
+      }
       const existingAssignment = await tx.sportsRegistrationMember.findFirst({
         where: {
           registrationId: registration.id,
@@ -469,7 +613,10 @@ export class SportsPlayerApplicationService {
       where: {
         id: application.id,
         status: {
-          in: [...REVIEWABLE_APPLICATION_STATUSES],
+          in: [
+            ...REVIEWABLE_APPLICATION_STATUSES,
+            SportsApplicationStatus.APPROVED,
+          ],
         },
       },
       data: {
@@ -486,7 +633,7 @@ export class SportsPlayerApplicationService {
     const result = await this.getApplication(tx, application.id);
     await this.recordReviewAudit(tx, application, actor, nextStatus, {
       participantId: participant.id,
-      teamMemberId: teamMember.id,
+      teamMemberId: teamMember?.id ?? null,
       paymentEffective: participant.status === SportsParticipantStatus.ACTIVE,
     });
     return result;
@@ -495,7 +642,7 @@ export class SportsPlayerApplicationService {
   private async loadApplicationTarget(
     tx: Prisma.TransactionClient,
     tournamentId: string,
-    requestedTeamId: string,
+    requestedTeamId: string | null,
     categoryIds: string[],
   ) {
     const tournament = await tx.sportsTournament.findFirst({
@@ -505,6 +652,8 @@ export class SportsPlayerApplicationService {
         majorEventId: true,
         status: true,
         selfSubscriptionEnabled: true,
+        selfSubscriptionAllowNoTeam: true,
+        selfSubscriptionAllowNoCategory: true,
         allowPlayerMultipleTeams: true,
         finishedAt: true,
         majorEvent: {
@@ -527,7 +676,7 @@ export class SportsPlayerApplicationService {
         },
         teams: {
           where: {
-            id: requestedTeamId,
+            id: requestedTeamId ?? '__no_requested_team__',
             deletedAt: null,
             status: SportsTeamStatus.ACTIVE,
           },
@@ -544,15 +693,19 @@ export class SportsPlayerApplicationService {
                 SportsCategoryStatus.ACTIVE,
               ],
             },
-            registrations: {
-              some: {
-                teamId: requestedTeamId,
-                deletedAt: null,
-                status: {
-                  in: [...ELIGIBLE_TEAM_REGISTRATION_STATUSES],
-                },
-              },
-            },
+            ...(requestedTeamId
+              ? {
+                  registrations: {
+                    some: {
+                      teamId: requestedTeamId,
+                      deletedAt: null,
+                      status: {
+                        in: [...ELIGIBLE_TEAM_REGISTRATION_STATUSES],
+                      },
+                    },
+                  },
+                }
+              : {}),
           },
           select: {
             id: true,
@@ -564,11 +717,28 @@ export class SportsPlayerApplicationService {
     });
     if (
       !tournament ||
-      tournament.majorEvent.deletedAt ||
-      tournament.teams.length !== 1 ||
+      tournament.majorEvent.deletedAt
+    ) {
+      throw new BadRequestException(
+        'O torneio selecionado não está disponível.',
+      );
+    }
+    if (
+      (!requestedTeamId && !tournament.selfSubscriptionAllowNoTeam) ||
+      (requestedTeamId && tournament.teams.length !== 1)
+    ) {
+      throw new BadRequestException(
+        'Selecione uma equipe disponível para este torneio.',
+      );
+    }
+    if (
+      (categoryIds.length === 0 &&
+        !tournament.selfSubscriptionAllowNoCategory) ||
       tournament.categories.length !== categoryIds.length
     ) {
-      throw new BadRequestException('A equipe ou uma das modalidades selecionadas não está disponível.');
+      throw new BadRequestException(
+        'Selecione ao menos uma modalidade disponível para este torneio.',
+      );
     }
     return tournament;
   }
@@ -576,6 +746,8 @@ export class SportsPlayerApplicationService {
   private assertSelfApplicationOpen(target: {
     status: SportsTournamentStatus;
     selfSubscriptionEnabled: boolean;
+    selfSubscriptionAllowNoTeam: boolean;
+    selfSubscriptionAllowNoCategory: boolean;
     allowPlayerMultipleTeams: boolean;
     finishedAt: Date | null;
     majorEvent: {
@@ -654,19 +826,19 @@ export class SportsPlayerApplicationService {
   }
 
   private normalizeCategoryIds(categoryIds: string[]): string[] {
-    const normalized = [...new Set(categoryIds.map((categoryId) => categoryId.trim()).filter(Boolean))];
-    if (normalized.length === 0) {
-      throw new BadRequestException('Selecione ao menos uma modalidade.');
-    }
-    return normalized;
+    return [
+      ...new Set(
+        categoryIds.map((categoryId) => categoryId.trim()).filter(Boolean),
+      ),
+    ];
   }
 
   private applicationPendingKey(
     tournamentId: string,
     applicantPersonId: string,
-    requestedTeamId: string,
+    requestedTeamId: string | null,
   ): string {
-    return `self:${tournamentId}:${applicantPersonId}:${requestedTeamId}`;
+    return `self:${tournamentId}:${applicantPersonId}:${requestedTeamId ?? 'no-team'}`;
   }
 
   private requireActorId(actor: AuthenticatedUser): string {
@@ -707,7 +879,7 @@ export class SportsPlayerApplicationService {
     application: {
       id: string;
       status: SportsApplicationStatus;
-      requestedTeamId: string;
+      requestedTeamId: string | null;
       categoryChoices: Array<{ categoryId: string }>;
       tournament: {
         majorEventId: string;

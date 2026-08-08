@@ -13,7 +13,7 @@ describe('EventAttendancesMutationsResolver', () => {
     resolver = new EventAttendancesMutationsResolver(prisma as never, attendanceCategories as never);
   });
 
-  it('upserts an admin oral-call batch without requiring the public event toggle', async () => {
+  it('upserts an admin oral-call batch when oral attendance is enabled', async () => {
     const collectedAt = new Date('2026-07-29T12:30:00.000Z');
     const tx = createTxMock();
     tx.eventAttendance.findMany.mockResolvedValue([]);
@@ -63,7 +63,7 @@ describe('EventAttendancesMutationsResolver', () => {
           status: 'PRESENT',
           attendedAt: collectedAt,
           createdByMethod: AttendanceCreationMethod.ORAL_CALL,
-          createdById: 'original-collector',
+          createdById: 'collector-1',
           committedById: 'collector-1',
         }),
       }),
@@ -96,6 +96,26 @@ describe('EventAttendancesMutationsResolver', () => {
       }),
       tx,
     );
+  });
+
+  it('rejects admin oral-call batches when oral attendance is disabled', async () => {
+    prisma.event.findUnique.mockResolvedValue({ shouldAllowOralAttendance: false });
+
+    await expect(
+      resolver.setEventOralAttendances(
+        [
+          {
+            eventId: 'event-1',
+            personId: 'person-1',
+            status: 'PRESENT',
+            collectedAt: new Date('2026-07-29T12:30:00.000Z'),
+            collectedByUserId: 'collector-1',
+          },
+        ],
+        { req: { user: { sub: 'collector-1' } } } as never,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('processes large admin oral-call batches in independent transactions', async () => {
@@ -1164,6 +1184,7 @@ function createFullPrisma() {
     event: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn(),
+      findUnique: jest.fn().mockResolvedValue({ shouldAllowOralAttendance: true }),
     },
     majorEventSubscription: {
       findMany: jest.fn().mockResolvedValue([]),

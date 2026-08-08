@@ -49,8 +49,8 @@ export class CurrentUserSportsPlayerApplicationRead {
   @Field(() => String)
   tournamentId!: string;
 
-  @Field(() => SportsPlayerApplicationTeamSummary)
-  requestedTeam!: SportsPlayerApplicationTeamSummary;
+  @Field(() => SportsPlayerApplicationTeamSummary, { nullable: true })
+  requestedTeam?: SportsPlayerApplicationTeamSummary | null;
 
   @Field(() => [SportsPlayerApplicationCategorySummary])
   categories!: SportsPlayerApplicationCategorySummary[];

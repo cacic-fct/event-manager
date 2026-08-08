@@ -4,6 +4,7 @@ import { Event, PlacePreset } from './events';
 import { Person } from './people';
 import {
   SportsBracketSide,
+  SportsLivestreamProvider,
   SportsLossReason,
   SportsMatchActionType,
   SportsMatchState,
@@ -141,6 +142,30 @@ export class SportsStage {
 }
 
 @ObjectType()
+export class SportsMatchPeriodTimer {
+  @Field(() => Int)
+  periodNumber!: number;
+
+  @Field(() => Float, { nullable: true })
+  startedAtUnixMs?: number | null;
+
+  @Field(() => Float, { nullable: true })
+  pausedAtUnixMs?: number | null;
+
+  @Field(() => Float)
+  elapsedBeforePauseMs!: number;
+
+  @Field(() => Float)
+  scheduledStartOffsetMs!: number;
+
+  @Field(() => Float, { nullable: true })
+  capMs?: number | null;
+
+  @Field(() => Boolean)
+  allowOvertime!: boolean;
+}
+
+@ObjectType()
 export class SportsMatch {
   @Field(() => String)
   id!: string;
@@ -208,14 +233,41 @@ export class SportsMatch {
   @Field(() => Boolean, { nullable: true })
   drawWillReschedule?: boolean | null;
 
+  @Field(() => String, { nullable: true })
+  notes?: string | null;
+
+  @Field(() => String)
+  occurrencesJson!: string;
+
+  @Field(() => SportsLivestreamProvider, { nullable: true })
+  livestreamProvider?: SportsLivestreamProvider | null;
+
+  @Field(() => String, { nullable: true })
+  livestreamUrl?: string | null;
+
   @Field(() => Date, { nullable: true })
   timerStartedAt?: Date | null;
+
+  @Field(() => Float, { nullable: true })
+  timerStartedAtUnixMs?: number | null;
 
   @Field(() => Date, { nullable: true })
   timerPausedAt?: Date | null;
 
+  @Field(() => Float, { nullable: true })
+  timerPausedAtUnixMs?: number | null;
+
   @Field(() => Int)
   elapsedBeforePauseMs!: number;
+
+  @Field(() => [SportsMatchPeriodTimer])
+  periodTimers!: SportsMatchPeriodTimer[];
+
+  @Field(() => Boolean)
+  overallTimerEnabled!: boolean;
+
+  @Field(() => Boolean)
+  periodTimerEnabled!: boolean;
 
   @Field(() => Int, { nullable: true })
   roundNumber?: number | null;
@@ -318,6 +370,12 @@ export class SportsMatchRosterEntry {
 
   @Field(() => SportsRosterRole)
   role!: SportsRosterRole;
+
+  @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
+
+  @Field(() => String, { nullable: true })
+  roleMetadataJson?: string | null;
 
   @Field(() => Date, { nullable: true })
   checkedInAt?: Date | null;

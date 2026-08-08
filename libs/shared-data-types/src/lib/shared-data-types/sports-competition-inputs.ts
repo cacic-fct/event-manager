@@ -2,6 +2,7 @@ import { Field, InputType, Int } from '@nestjs/graphql';
 
 import {
   SportsBracketSide,
+  SportsLivestreamProvider,
   SportsLossReason,
   SportsMatchActionType,
   SportsMatchState,
@@ -173,6 +174,15 @@ export class SportsMatchCreateInput {
   groupKey?: string | null;
 
   @Field(() => String, { nullable: true })
+  notes?: string | null;
+
+  @Field(() => SportsLivestreamProvider, { nullable: true })
+  livestreamProvider?: SportsLivestreamProvider | null;
+
+  @Field(() => String, { nullable: true })
+  livestreamUrl?: string | null;
+
+  @Field(() => String, { nullable: true })
   winnerAdvancesToId?: string | null;
 
   @Field(() => SportsBracketSide, { nullable: true })
@@ -222,6 +232,15 @@ export class SportsMatchUpdateInput {
 
   @Field(() => String, { nullable: true })
   groupKey?: string | null;
+
+  @Field(() => String, { nullable: true })
+  notes?: string | null;
+
+  @Field(() => SportsLivestreamProvider, { nullable: true })
+  livestreamProvider?: SportsLivestreamProvider | null;
+
+  @Field(() => String, { nullable: true })
+  livestreamUrl?: string | null;
 
   @Field(() => String, { nullable: true })
   winnerAdvancesToId?: string | null;
@@ -312,6 +331,12 @@ export class SportsRosterEntryInput {
 
   @Field(() => SportsRosterEntryStatus, { nullable: true })
   status?: SportsRosterEntryStatus;
+
+  @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
+
+  @Field(() => String, { nullable: true })
+  roleMetadataJson?: string | null;
 }
 
 @InputType()
@@ -346,11 +371,42 @@ export class SportsMatchRosterCopyInput {
 
 @InputType()
 export class SportsRosterCheckInInput {
+  @Field(() => String, {
+    description:
+      'Client-generated idempotency key. Replaying the same key and payload is safe; reusing it for another check-in is rejected.',
+  })
+  clientId!: string;
+
   @Field(() => String)
   rosterEntryId!: string;
 
   @Field(() => Date, { nullable: true })
   checkedInAt?: Date;
+
+  @Field(() => Boolean, { nullable: true })
+  offline?: boolean;
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description:
+      'Whether the player is present. False safely reverses an accidental check-in.',
+  })
+  present?: boolean;
+}
+
+@InputType()
+export class SportsRosterScannerCheckInInput {
+  @Field(() => String)
+  clientId!: string;
+
+  @Field(() => String, { description: 'Código Aztec do usuário lido pelo scanner.' })
+  code!: string;
+
+  @Field(() => Date, { nullable: true })
+  checkedInAt?: Date;
+
+  @Field(() => Boolean, { nullable: true })
+  offline?: boolean;
 }
 
 @InputType()

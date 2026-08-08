@@ -80,6 +80,12 @@ describe('Home', () => {
         }),
       ),
     ).toEqual(['events', 'event-1']);
+    expect(
+      component.routerLinkForAction({
+        action: 'OPEN_SPORTS',
+        label: 'Gerenciar esportes',
+      }),
+    ).toEqual(['sports']);
   });
 
   it('derives today, queue, and system-health state from dashboard insights', () => {
@@ -122,6 +128,7 @@ describe('Home', () => {
       ),
     ).toBe('12 inscrições');
     expect(component.hasActionQueue()).toBe(true);
+    expect(component.hasSports()).toBe(true);
     expect(component.hasSystemHealth()).toBe(true);
   });
 
@@ -182,6 +189,7 @@ describe('Home', () => {
     expect(dashboardApi.getWorkspaceDashboardInsights).toHaveBeenCalledTimes(1);
     expect(text).toContain('Novo grupo de eventos');
     expect(text).toContain('Novo evento');
+    expect(text).toContain('Gerenciar esportes');
     expect(text).toContain('Hoje');
     expect(text).toContain('Próximos 7 dias');
     expect(text).toContain('42 de 50 vagas preenchidas');
@@ -199,6 +207,9 @@ describe('Home', () => {
     expect(text).toContain('Inconsistências críticas');
     expect(text).toContain('Certificados pendentes');
     expect(text).toContain('Pessoas duplicadas');
+    expect(text).toContain('Revisões esportivas pendentes');
+    expect(text).toContain('Partidas em operação');
+    expect(text).toContain('Jogos Universitários');
   });
 
   it('renders the backend dashboard error state', async () => {

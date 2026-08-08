@@ -16,12 +16,16 @@ import {
   SportsRegistrationMemberUpsertInput,
   SportsRegistrationUpdateInput,
   SportsRepresentativeAssignInput,
+  SportsRepresentativeApplicationReviewInput,
   SportsRepresentativeRevokeInput,
   SportsRosterCheckInInput,
+  SportsRosterScannerCheckInInput,
   SportsTeamChangeRequestInput,
   SportsTeamChangeReviewInput,
   SportsTeamCloneInput,
   SportsTeamCreateInput,
+  SportsTeamMemberCreateInput,
+  SportsTeamMemberUpdateInput,
   SportsTeamUpdateInput,
   SportsTournamentCloneInput,
   SportsTournamentCreateInput,
@@ -105,6 +109,10 @@ export class SportsMutationsResolver {
           status: input.status,
           scoringMode: input.scoringMode,
           selfSubscriptionEnabled: input.selfSubscriptionEnabled,
+          selfSubscriptionAllowNoTeam:
+            input.selfSubscriptionAllowNoTeam,
+          selfSubscriptionAllowNoCategory:
+            input.selfSubscriptionAllowNoCategory,
           allowPlayerMultipleTeams: input.allowPlayerMultipleTeams,
         },
         actor,
@@ -137,6 +145,10 @@ export class SportsMutationsResolver {
           status: input.status,
           scoringMode: input.scoringMode,
           selfSubscriptionEnabled: input.selfSubscriptionEnabled,
+          selfSubscriptionAllowNoTeam:
+            input.selfSubscriptionAllowNoTeam,
+          selfSubscriptionAllowNoCategory:
+            input.selfSubscriptionAllowNoCategory,
           allowPlayerMultipleTeams: input.allowPlayerMultipleTeams,
           finishedAt: input.finishedAt,
         },
@@ -167,6 +179,7 @@ export class SportsMutationsResolver {
         {
           ...input,
           scoreRules: this.parseJson(input.scoreRulesJson, 'regras de placar'),
+          timerRules: this.parseTimerRules(input.timerRulesJson),
           rosterRules: this.parseJson(input.rosterRulesJson, 'regras de elenco'),
           bracketRules: this.parseJson(input.bracketRulesJson, 'regras da chave'),
           standingsRules: this.parseJson(
@@ -205,6 +218,10 @@ export class SportsMutationsResolver {
             input.scoreRulesJson === undefined
               ? undefined
               : this.parseJson(input.scoreRulesJson, 'regras de placar'),
+          timerRules:
+            input.timerRulesJson === undefined
+              ? undefined
+              : this.parseTimerRules(input.timerRulesJson),
           rosterRules:
             input.rosterRulesJson === undefined
               ? undefined
@@ -263,6 +280,61 @@ export class SportsMutationsResolver {
       await this.publishMutation(
         'TEAM',
         this.admin.updateTeam(input.id, input, actor),
+        true,
+      )
+    ).id;
+  }
+
+  @Mutation(() => String, { name: 'createSportsTeamMember' })
+  @RequirePermissions(Permission.SportsTeam.Update)
+  async createTeamMember(
+    @Args('input', { type: () => SportsTeamMemberCreateInput })
+    input: SportsTeamMemberCreateInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    if (!input.personId) {
+      throw new BadRequestException('Administradores devem selecionar uma pessoa autorizada.');
+    }
+    const actor = this.authenticated(context);
+    await this.policy.assertPermissions(actor, [Permission.SportsTeam.Update], {
+      sportsTeamId: input.teamId,
+    });
+    return (
+      await this.publishMutation(
+        'TEAM',
+        this.admin.createTeamMember(input.teamId, input.personId, actor),
+        true,
+      )
+    ).id;
+  }
+
+  @Mutation(() => String, { name: 'updateSportsTeamMember' })
+  @RequirePermissions(Permission.SportsTeam.Update)
+  async updateTeamMember(
+    @Args('input', { type: () => SportsTeamMemberUpdateInput })
+    input: SportsTeamMemberUpdateInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    const actor = this.authenticated(context);
+    const member = await this.prisma.sportsTeamMember.findFirst({
+      where: { id: input.id, deletedAt: null },
+      select: { teamId: true },
+    });
+    if (!member) {
+      throw new NotFoundException(`Sports team member ${input.id} was not found.`);
+    }
+    await this.policy.assertPermissions(actor, [Permission.SportsTeam.Update], {
+      sportsTeamId: member.teamId,
+    });
+    return (
+      await this.publishMutation(
+        'TEAM',
+        this.admin.updateTeamMember(
+          input.id,
+          input.expectedRevision,
+          input.status ?? 'APPROVED',
+          actor,
+        ),
         true,
       )
     ).id;
@@ -589,6 +661,16 @@ export class SportsMutationsResolver {
           entries: input.entries.map((entry) => ({
             registrationMemberId: entry.registrationMemberId,
             role: entry.role ?? 'PLAYER',
+            shirtNumber: entry.shirtNumber,
+            roleMetadata:
+              entry.roleMetadataJson === null
+                ? Prisma.DbNull
+                : entry.roleMetadataJson === undefined
+                  ? undefined
+                  : this.parseJson(
+                      entry.roleMetadataJson,
+                      'metadados da função na escalação',
+                    ),
           })),
         },
         actor.sub,
@@ -1151,6 +1233,28 @@ export class SportsMutationsResolver {
     ).id;
   }
 
+  @Mutation(() => String, {
+    name: 'reviewRepresentativeSportsPlayerApplication',
+  })
+  async reviewRepresentativePlayerApplication(
+    @Args('input', {
+      type: () => SportsRepresentativeApplicationReviewInput,
+    })
+    input: SportsRepresentativeApplicationReviewInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    await this.access.requireTeamRepresentative(context, input.teamId);
+    return (
+      await this.applications.reviewByRepresentative(
+        input.applicationId,
+        input.teamId,
+        input.approved,
+        this.authenticated(context),
+        input.reviewMessage,
+      )
+    ).id;
+  }
+
   @Mutation(() => String, { name: 'submitSportsMatchRoster' })
   async submitRoster(
     @Args('input', { type: () => SportsMatchRosterUpsertInput })
@@ -1170,6 +1274,16 @@ export class SportsMutationsResolver {
           entries: input.entries.map((entry) => ({
             registrationMemberId: entry.registrationMemberId,
             role: entry.role ?? 'PLAYER',
+            shirtNumber: entry.shirtNumber,
+            roleMetadata:
+              entry.roleMetadataJson === null
+                ? Prisma.DbNull
+                : entry.roleMetadataJson === undefined
+                  ? undefined
+                  : this.parseJson(
+                      entry.roleMetadataJson,
+                      'metadados da função na escalação',
+                    ),
           })),
         },
         actor.id,
@@ -1186,12 +1300,42 @@ export class SportsMutationsResolver {
     input: SportsRosterCheckInInput,
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
-    const { actor } = await this.access.requireMatchOfficial(context, matchId);
+    const { actor, assignment } = await this.access.requireMatchOfficial(
+      context,
+      matchId,
+    );
     await this.rosters.checkIn(
       matchId,
       input.rosterEntryId,
-      input.checkedInAt ?? new Date(),
+      input.checkedInAt,
+      input.clientId,
+      input.offline ?? false,
+      input.present ?? true,
       actor.id,
+      this.authenticated(context).sub ?? null,
+      assignment.role,
+      createSportsAuditActor(actor),
+    );
+    return true;
+  }
+
+  @Mutation(() => Boolean, { name: 'checkInSportsMatchFromScannerCode' })
+  async checkInSportsMatchFromScannerCode(
+    @Args('matchId', { type: () => String }) matchId: string,
+    @Args('input', { type: () => SportsRosterScannerCheckInInput })
+    input: SportsRosterScannerCheckInInput,
+    @Context() context: GraphqlContext,
+  ): Promise<boolean> {
+    const { actor, assignment } = await this.access.requireMatchOfficial(context, matchId);
+    await this.rosters.checkInFromScanner(
+      matchId,
+      input.code,
+      input.checkedInAt,
+      input.clientId,
+      input.offline ?? false,
+      actor.id,
+      this.authenticated(context).sub ?? null,
+      assignment.role,
       createSportsAuditActor(actor),
     );
     return true;
@@ -1428,6 +1572,50 @@ export class SportsMutationsResolver {
     } catch {
       throw new BadRequestException(`JSON inválido em ${label}.`);
     }
+  }
+
+  private parseTimerRules(value: string | undefined): Prisma.InputJsonValue {
+    if (value === undefined || !value.trim()) {
+      return {};
+    }
+    const rules = this.parseObject(value, 'regras do cronômetro');
+    const allowed = new Set([
+      'overallEnabled',
+      'periodEnabled',
+      'periodDurationMs',
+      'allowOvertime',
+      'periodStartOffsetsMs',
+    ]);
+    const unknownKeys = Object.keys(rules).filter((key) => !allowed.has(key));
+    if (unknownKeys.length) {
+      throw new BadRequestException(
+        `Campos desconhecidos nas regras do cronômetro: ${unknownKeys.join(', ')}.`,
+      );
+    }
+    for (const key of ['overallEnabled', 'periodEnabled', 'allowOvertime']) {
+      if (rules[key] !== undefined && typeof rules[key] !== 'boolean') {
+        throw new BadRequestException(`${key} deve ser booleano.`);
+      }
+    }
+    if (
+      rules['periodDurationMs'] !== undefined &&
+      (!Number.isSafeInteger(rules['periodDurationMs']) ||
+        (rules['periodDurationMs'] as number) < 0 ||
+        (rules['periodDurationMs'] as number) > 24 * 60 * 60 * 1000)
+    ) {
+      throw new BadRequestException('periodDurationMs deve ser um inteiro entre 0 e 86400000.');
+    }
+    if (rules['periodStartOffsetsMs'] !== undefined) {
+      if (
+        !Array.isArray(rules['periodStartOffsetsMs']) ||
+        rules['periodStartOffsetsMs'].some(
+          (offset) => !Number.isSafeInteger(offset) || offset < 0 || offset > 7 * 24 * 60 * 60 * 1000,
+        )
+      ) {
+        throw new BadRequestException('periodStartOffsetsMs deve conter deslocamentos inteiros não negativos.');
+      }
+    }
+    return rules as Prisma.InputJsonValue;
   }
 
   private parseObject(

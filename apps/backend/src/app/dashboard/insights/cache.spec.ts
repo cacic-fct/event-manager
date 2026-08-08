@@ -6,8 +6,8 @@ describe('dashboard insights cache helpers', () => {
       get: jest.fn().mockResolvedValue(null),
     };
 
-    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v6:none')).resolves.toBeNull();
-    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v6:none');
+    await expect(getCachedInsights(redis as never, 'dashboard:workspace:v7:none')).resolves.toBeNull();
+    expect(redis.get).toHaveBeenCalledWith('dashboard:workspace:v7:none');
   });
 
   it('restores cached date strings to Date instances', async () => {
@@ -83,6 +83,36 @@ describe('dashboard insights cache helpers', () => {
               pendingCount: 3,
             },
           ],
+          sportsTournaments: [
+            {
+              tournamentId: 'tournament-1',
+              majorEventId: 'major-1',
+              name: 'Jogos Universitários',
+              emoji: '🏆',
+              startDate: '2026-05-21T12:00:00.000Z',
+              endDate: '2026-05-24T22:00:00.000Z',
+              status: 'LIVE',
+              categoryCount: 3,
+              teamCount: 12,
+              pendingApplicationCount: 2,
+              pendingReviewCount: 1,
+              activeMatchCount: 1,
+            },
+          ],
+          sportsMatches: [
+            {
+              matchId: 'match-1',
+              tournamentId: 'tournament-1',
+              categoryName: 'Futsal',
+              eventName: 'Time A × Time B',
+              startDate: '2026-05-21T15:00:00.000Z',
+              state: 'LIVE',
+              homeTeamName: 'Time A',
+              awayTeamName: 'Time B',
+              homeScore: 1,
+              awayScore: 0,
+            },
+          ],
           inconsistencies: [],
           duplicatePeopleCount: 0,
           permissions: [],
@@ -103,6 +133,9 @@ describe('dashboard insights cache helpers', () => {
     expect(result?.pendingReceiptMajorEvents[0].endDate).toEqual(new Date('2026-05-26T12:00:00.000Z'));
     expect(result?.pendingOfflineAttendanceEvents[0].startDate).toEqual(new Date('2026-05-18T12:00:00.000Z'));
     expect(result?.pendingOfflineAttendanceEvents[0].endDate).toEqual(new Date('2026-05-18T13:00:00.000Z'));
+    expect(result?.sportsTournaments[0].startDate).toEqual(new Date('2026-05-21T12:00:00.000Z'));
+    expect(result?.sportsTournaments[0].endDate).toEqual(new Date('2026-05-24T22:00:00.000Z'));
+    expect(result?.sportsMatches[0].startDate).toEqual(new Date('2026-05-21T15:00:00.000Z'));
   });
 
   it('returns null for invalid cache payloads', async () => {
@@ -114,12 +147,12 @@ describe('dashboard insights cache helpers', () => {
   });
 
   it('builds permission-aware cache keys', () => {
-    expect(getCacheKey([])).toBe('dashboard:workspace:v6:none');
+    expect(getCacheKey([])).toBe('dashboard:workspace:v7:none');
     expect(getCacheKey(['event#update', 'certificate#issue', 'event#update'])).toBe(
-      'dashboard:workspace:v6:certificate#issue,event#update',
+      'dashboard:workspace:v7:certificate#issue,event#update',
     );
     expect(getCacheKey(['certificate#issue', 'event#update'])).toBe(
-      'dashboard:workspace:v6:certificate#issue,event#update',
+      'dashboard:workspace:v7:certificate#issue,event#update',
     );
   });
 });

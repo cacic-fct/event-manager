@@ -46,6 +46,12 @@ export class SportsTournament {
   selfSubscriptionEnabled!: boolean;
 
   @Field(() => Boolean)
+  selfSubscriptionAllowNoTeam!: boolean;
+
+  @Field(() => Boolean)
+  selfSubscriptionAllowNoCategory!: boolean;
+
+  @Field(() => Boolean)
   allowPlayerMultipleTeams!: boolean;
 
   @Field(() => Int)
@@ -93,6 +99,9 @@ export class SportsCategory {
   @Field(() => String)
   name!: string;
 
+  @Field(() => String)
+  emoji!: string;
+
   @Field(() => SportsPreset)
   sport!: SportsPreset;
 
@@ -137,6 +146,9 @@ export class SportsCategory {
 
   @Field(() => String, { nullable: true })
   periodLabel?: string | null;
+
+  @Field(() => String)
+  timerRulesJson!: string;
 
   @Field(() => String)
   scoreRulesJson!: string;
@@ -588,8 +600,8 @@ export class SportsPlayerApplication {
   @Field(() => Person, { nullable: true })
   applicantPerson?: Person | null;
 
-  @Field(() => String)
-  requestedTeamId!: string;
+  @Field(() => String, { nullable: true })
+  requestedTeamId?: string | null;
 
   @Field(() => SportsTeam, { nullable: true })
   requestedTeam?: SportsTeam | null;

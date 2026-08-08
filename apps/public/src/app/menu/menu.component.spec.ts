@@ -8,6 +8,7 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { MenuComponent } from './menu.component';
+import { DefaultRedirectApiService } from '../landing/default-redirect-api.service';
 
 describe('MenuComponent', () => {
   let component: MenuComponent;
@@ -56,6 +57,10 @@ describe('MenuComponent', () => {
               queryParamMap: new Map(),
             },
           },
+        },
+        {
+          provide: DefaultRedirectApiService,
+          useValue: { getCurrentUserSportsAutoroute: () => of(null) },
         },
       ],
     }).compileComponents();

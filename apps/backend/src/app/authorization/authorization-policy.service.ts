@@ -964,7 +964,7 @@ export class AuthorizationPolicyService {
       for (const category of tournament.categories) {
         target.eventGroupIds.add(category.eventGroupId);
         for (const match of category.matches) {
-          target.eventIds.add(match.eventId);
+          await this.addEventTarget(target, match.eventId);
         }
       }
     }

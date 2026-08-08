@@ -1458,6 +1458,9 @@ function createPrismaMock(overrides: Record<string, unknown>) {
     majorEventSubscriptionEventSelection: {
       findMany: jest.fn().mockResolvedValue([]),
     },
+    sportsMatch: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     eventLecturer: {
       findMany: jest.fn().mockResolvedValue([]),
     },

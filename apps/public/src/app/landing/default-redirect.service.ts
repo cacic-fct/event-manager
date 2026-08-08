@@ -7,7 +7,11 @@ import type { DefaultRedirectRoute } from '@cacic-fct/event-manager-public-contr
 import { firstValueFrom } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { NetworkStatusService } from '../shared/network-status.service';
-import { DEFAULT_REDIRECT_TIMEOUT_MS, DefaultRedirectApiService } from './default-redirect-api.service';
+import {
+  DEFAULT_REDIRECT_TIMEOUT_MS,
+  DefaultRedirectApiService,
+  type CurrentUserSportsAutoroute,
+} from './default-redirect-api.service';
 
 const APP_ROUTE_BY_REDIRECT: Record<DefaultRedirectRoute, string> = {
   MENU: '/menu',
@@ -36,12 +40,20 @@ export class DefaultRedirectService {
     }
 
     try {
-      const [redirect, hasUnreadNotifications] = await this.withTimeout(
+      const [redirect, sportsRoute, hasUnreadNotifications] = await this.withTimeout(
         Promise.all([
           firstValueFrom(this.api.getCurrentUserDefaultRedirect()),
+          firstValueFrom(this.api.getCurrentUserSportsAutoroute()),
           this.notifications.hasUnreadNotifications(),
         ]),
       );
+
+      if (sportsRoute) {
+        const sportsTarget = sportsAutorouteUrl(sportsRoute);
+        if (sportsTarget) {
+          return sportsTarget;
+        }
+      }
 
       if (redirect === 'WALLET') {
         return APP_ROUTE_BY_REDIRECT.WALLET;
@@ -104,4 +116,23 @@ export class DefaultRedirectService {
       }
     }
   }
+}
+
+export function sportsAutorouteUrl(route: CurrentUserSportsAutoroute): string | null {
+  if (route.mode === 'WALLET' && route.matchId) {
+    return `/profile/wallet?sportsMatchId=${encodeURIComponent(route.matchId)}`;
+  }
+  if (route.mode === 'TEAM' && route.teamId) {
+    return `/sports/team/${encodeURIComponent(route.teamId)}`;
+  }
+  if (route.mode === 'MATCH_DETAIL' && route.matchId) {
+    return `/sports/match/${encodeURIComponent(route.matchId)}`;
+  }
+  if (
+    route.matchId &&
+    (route.mode === 'CHECK_IN' || route.mode === 'OPERATE' || route.mode === 'FINALIZE')
+  ) {
+    return `/sports/operate/${encodeURIComponent(route.matchId)}?mode=${route.mode}`;
+  }
+  return null;
 }

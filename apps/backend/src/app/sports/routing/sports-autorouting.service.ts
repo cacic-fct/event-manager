@@ -7,16 +7,30 @@ export type SportsAutorouteMode =
   | 'CHECK_IN'
   | 'OPERATE'
   | 'FINALIZE'
-  | 'MATCH_DETAIL';
+  | 'MATCH_DETAIL'
+  | 'WALLET'
+  | 'TEAM';
 
 export interface SportsAutoroute {
-  matchId: string;
+  matchId?: string;
+  teamId?: string;
   mode: SportsAutorouteMode;
 }
 
 @Injectable()
 export class SportsAutoroutingService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async resolveCurrentUserRoute(
+    personId: string,
+    now = new Date(),
+  ): Promise<SportsAutoroute | null> {
+    return (
+      (await this.resolveOfficialRoute(personId, now)) ??
+      (await this.resolvePlayerRoute(personId, now)) ??
+      this.resolveRepresentativeRoute(personId)
+    );
+  }
 
   async resolveOfficialRoute(
     personId: string,
@@ -165,6 +179,73 @@ export class SportsAutoroutingService {
         ),
       ]),
     ];
+  }
+
+  private async resolvePlayerRoute(
+    personId: string,
+    now: Date,
+  ): Promise<SportsAutoroute | null> {
+    const match = await this.prisma.sportsMatch.findFirst({
+      where: {
+        deletedAt: null,
+        state: {
+          in: [
+            SportsMatchState.SCHEDULED,
+            SportsMatchState.CHECK_IN,
+            SportsMatchState.LIVE,
+            SportsMatchState.PAUSED,
+          ],
+        },
+        event: {
+          deletedAt: null,
+          startDate: { lte: addHours(now, 2) },
+          endDate: { gte: subHours(now, 1) },
+        },
+        rosters: {
+          some: {
+            deletedAt: null,
+            entries: {
+              some: {
+                deletedAt: null,
+                registrationMember: {
+                  teamMember: {
+                    participant: { personId },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+      orderBy: {
+        event: { startDate: 'asc' },
+      },
+    });
+    return match ? { matchId: match.id, mode: 'WALLET' } : null;
+  }
+
+  private async resolveRepresentativeRoute(
+    personId: string,
+  ): Promise<SportsAutoroute | null> {
+    const representative = await this.prisma.sportsTeamRepresentative.findFirst({
+      where: {
+        personId,
+        active: true,
+        revokedAt: null,
+        team: {
+          deletedAt: null,
+          tournament: { deletedAt: null },
+        },
+      },
+      select: { teamId: true },
+      orderBy: { assignedAt: 'desc' },
+    });
+    return representative
+      ? { teamId: representative.teamId, mode: 'TEAM' }
+      : null;
   }
 
   private modeForState(state: SportsMatchState): SportsAutorouteMode {
