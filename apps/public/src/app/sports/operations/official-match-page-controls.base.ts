@@ -20,6 +20,22 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     }, 900);
   }
 
+  startKeyboardHold(event: KeyboardEvent): void {
+    if ((event.key !== 'Enter' && event.key !== ' ') || event.repeat) {
+      return;
+    }
+    event.preventDefault();
+    this.startHold();
+  }
+
+  cancelKeyboardHold(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+    event.preventDefault();
+    this.cancelStartHold();
+  }
+
   cancelStartHold(): void {
     if (this.holdTimer) {
       clearTimeout(this.holdTimer);

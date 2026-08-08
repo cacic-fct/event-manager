@@ -184,10 +184,10 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     expect(tx.eventAttendance.upsert).toHaveBeenCalledTimes(1);
   });
 
-  it('undoes an accidental presence once and safely replays the removal', async () => {
+  it('clears an accidental roster check-in without deleting shared attendance', async () => {
     const service = createService();
     persistedCheckedInAt = checkedInAt;
-    tx.eventAttendance.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    tx.eventAttendance.findUnique.mockResolvedValue(attendance);
     const args = [
       'match-1',
       'roster-entry-1',
@@ -202,9 +202,9 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     ] as const;
 
     await expect(service.checkIn(...args)).resolves.toEqual(attendance);
-    await expect(service.checkIn(...args)).resolves.toBeNull();
+    await expect(service.checkIn(...args)).resolves.toEqual(attendance);
 
-    expect(tx.eventAttendance.delete).toHaveBeenCalledTimes(1);
+    expect(tx.eventAttendance.delete).not.toHaveBeenCalled();
     expect(tx.sportsMatchRosterEntry.update).toHaveBeenCalledWith({
       where: { id: 'roster-entry-1' },
       data: {

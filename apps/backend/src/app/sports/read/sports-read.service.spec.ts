@@ -1,3 +1,5 @@
+import { ForbiddenException } from '@nestjs/common';
+import { SportsReadAdminService } from './sports-read-admin.service';
 import { SportsReadService } from './sports-read.service';
 
 describe('SportsReadService admin tournament list', () => {
@@ -248,5 +250,83 @@ describe('SportsReadService admin tournament list', () => {
         revision: 4,
       },
     });
+  });
+});
+
+describe('SportsReadAdminService team privacy', () => {
+  it('does not return team representatives to a category-scoped reader', async () => {
+    const authorizationPolicy = {
+      assertPermissions: jest.fn().mockImplementation(
+        async (
+          _user: unknown,
+          _permissions: unknown,
+          context: { sportsTournamentId?: string; sportsCategoryId?: string; sportsTeamId?: string },
+        ) => {
+          if (context.sportsTournamentId) {
+            throw new ForbiddenException();
+          }
+          if (!context.sportsTeamId && !context.sportsCategoryId) {
+            throw new ForbiddenException();
+          }
+        },
+      ),
+    };
+    const prisma = {
+      sportsTeam: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'team-1',
+          tournamentId: 'tournament-1',
+          name: 'Equipe',
+          institution: null,
+          status: 'ACTIVE',
+          logoObjectKey: null,
+          logoSha256: null,
+          logoMimeType: null,
+          logoSizeBytes: null,
+          revision: 1,
+          fieldRevisions: {},
+          createdAt: new Date('2026-08-01T10:00:00.000Z'),
+          createdById: 'admin-1',
+          updatedAt: new Date('2026-08-01T10:00:00.000Z'),
+          updatedById: 'admin-1',
+          deletedAt: null,
+        }),
+      },
+      sportsTeamRepresentative: {
+        findMany: jest.fn(),
+      },
+      sportsRegistration: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'registration-1',
+            teamId: 'team-1',
+            categoryId: 'category-1',
+            status: 'ACTIVE',
+            seed: null,
+            formAnswers: null,
+            formSchemaSnapshot: null,
+            revision: 1,
+            createdAt: new Date('2026-08-01T10:00:00.000Z'),
+            createdById: 'admin-1',
+            updatedAt: new Date('2026-08-01T10:00:00.000Z'),
+            updatedById: 'admin-1',
+            deletedAt: null,
+          },
+        ]),
+      },
+      sportsTeamMember: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      sportsTeamChangeRequest: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    const service = new SportsReadAdminService(prisma as never, authorizationPolicy as never);
+
+    const result = await service.adminTeam({} as never, 'team-1');
+
+    expect(result.representatives).toEqual([]);
+    expect(prisma.sportsTeamRepresentative.findMany).not.toHaveBeenCalled();
+    expect(result.registrations).toHaveLength(1);
   });
 });

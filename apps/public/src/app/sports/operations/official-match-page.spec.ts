@@ -15,10 +15,12 @@ describe('OfficialSportsMatchPage', () => {
   let component: OfficialSportsMatchPage;
   let actions: SportsMatchAction[];
   let checkIns: Array<{ rosterEntryId: string; present?: boolean }>;
+  let scannerResult: 'sent' | 'queued';
 
   beforeEach(async () => {
     actions = [];
     checkIns = [];
+    scannerResult = 'sent';
     TestBed.configureTestingModule({
       imports: [OfficialSportsMatchPage],
       providers: [
@@ -52,7 +54,7 @@ describe('OfficialSportsMatchPage', () => {
               checkIns.push(submission);
               return Promise.resolve('sent');
             },
-            dispatchScannerCheckIn: () => Promise.resolve('sent'),
+            dispatchScannerCheckIn: () => Promise.resolve(scannerResult),
             attachTimerSnapshot: () => undefined,
           },
         },
@@ -64,7 +66,7 @@ describe('OfficialSportsMatchPage', () => {
     });
     TestBed.overrideComponent(OfficialSportsMatchPage, {
       add: {
-        providers: [{ provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of(true) }) } }],
+        providers: [{ provide: MatDialog, useValue: { open: () => ({ afterClosed: () => of('user:scanner') }) } }],
       },
     });
     await TestBed.compileComponents();
@@ -167,6 +169,29 @@ describe('OfficialSportsMatchPage', () => {
 
     component.lockCheckIn();
     expect(component.canEditCheckIn()).toBe(false);
+  });
+
+  it('advances the optimistic revision after queueing an offline scanner check-in', async () => {
+    component.match.update((match) => (match ? { ...match, state: 'CHECK_IN' } : match));
+    scannerResult = 'queued';
+    const revision = component.revision();
+
+    component.openCheckInScanner();
+    await fixture.whenStable();
+
+    expect(component.revision()).toBe(revision + 1);
+  });
+
+  it('supports holding the start control with the keyboard', () => {
+    component.match.update((match) => (match ? { ...match, state: 'SCHEDULED' } : match));
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('.hold-button') as HTMLButtonElement;
+
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(component.holdingStart()).toBe(true);
+
+    button.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
+    expect(component.holdingStart()).toBe(false);
   });
 
   it('sorts athletes alphabetically during check-in and by shirt number after the match starts', () => {

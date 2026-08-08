@@ -118,7 +118,10 @@
       (pointerdown)="startHold()"
       (pointerup)="cancelStartHold()"
       (pointerleave)="cancelStartHold()"
-      (pointercancel)="cancelStartHold()">
+      (pointercancel)="cancelStartHold()"
+      (keydown)="startKeyboardHold($event)"
+      (keyup)="cancelKeyboardHold($event)"
+      (blur)="cancelStartHold()">
       <mat-icon>play_arrow</mat-icon>
       <span class="hold-copy"
         ><strong>Pressione e segure para iniciar</strong><small>Mantenha pressionado até a barra completar</small></span

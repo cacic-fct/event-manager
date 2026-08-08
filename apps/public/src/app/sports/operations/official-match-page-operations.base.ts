@@ -72,7 +72,9 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
         'Fechar',
         { duration: 4000 },
       );
-      if (result === 'sent') {
+      if (result === 'queued') {
+        this.revision.update((revision) => revision + 1);
+      } else {
         this.load();
       }
     } catch (error: unknown) {

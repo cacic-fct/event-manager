@@ -164,7 +164,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         });
         if (
           (present && (!replayedAttendance || !entry.checkedInAt)) ||
-          (!present && (replayedAttendance || entry.checkedInAt))
+          (!present && entry.checkedInAt)
         ) {
           throw new ConflictException('O check-in offline foi registrado parcialmente. Recarregue a partida.');
         }
@@ -218,11 +218,9 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
               committedById: officialPersonId,
             },
           })
-        : await tx.eventAttendance
-            .delete({
-              where: { personId_eventId: { personId, eventId } },
-            })
-            .catch(() => null);
+        : await tx.eventAttendance.findUnique({
+            where: { personId_eventId: { personId, eventId } },
+          });
       await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
       await tx.sportsMatchRosterEntry.update({
         where: { id: entry.id },
@@ -261,11 +259,12 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
           actor,
           after: {
             rosterEntryId: entry.id,
-            attendanceStatus: present ? attendance?.status : 'REMOVED',
+            attendanceStatus: attendance?.status ?? null,
+            rosterCheckedIn: present,
           },
           summary: present
             ? 'Presença de atleta registrada na escalação.'
-            : 'Presença de atleta removida da escalação.',
+            : 'Check-in de atleta removido da escalação.',
           scope: {
             majorEventId: entry.roster.match.category.tournament.majorEventId,
             eventGroupId: entry.roster.match.category.eventGroupId,

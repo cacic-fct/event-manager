@@ -213,23 +213,10 @@ export class SportsReadAdminService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.SportsTeam.Read], {
       sportsTeamId: teamId,
     });
-    const [team, representatives, registrations] = await Promise.all([
+    const [team, registrations] = await Promise.all([
       this.prisma.sportsTeam.findFirst({
         where: { id: teamId, deletedAt: null },
         select: ADMIN_TEAM_SELECT,
-      }),
-      this.prisma.sportsTeamRepresentative.findMany({
-        where: { teamId },
-        select: {
-          id: true,
-          teamId: true,
-          personId: true,
-          person: { select: { id: true, name: true } },
-          active: true,
-          assignedAt: true,
-          revokedAt: true,
-        },
-        orderBy: [{ active: 'desc' }, { assignedAt: 'asc' }],
       }),
       this.prisma.sportsRegistration.findMany({
         where: { teamId, deletedAt: null },
@@ -240,6 +227,24 @@ export class SportsReadAdminService {
     if (!team) {
       throw new NotFoundException(`Sports team ${teamId} was not found.`);
     }
+    const canReadRepresentatives = await this.hasScopedPermission(user, Permission.SportsTeam.Read, {
+      sportsTournamentId: team.tournamentId,
+    });
+    const representatives = canReadRepresentatives
+      ? await this.prisma.sportsTeamRepresentative.findMany({
+          where: { teamId },
+          select: {
+            id: true,
+            teamId: true,
+            personId: true,
+            person: { select: { id: true, name: true } },
+            active: true,
+            assignedAt: true,
+            revokedAt: true,
+          },
+          orderBy: [{ active: 'desc' }, { assignedAt: 'asc' }],
+        })
+      : [];
     const readableRegistrations = [];
     for (const registration of registrations) {
       if (
