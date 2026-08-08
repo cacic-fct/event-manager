@@ -148,6 +148,9 @@ export class SportsCategory {
   periodLabel?: string | null;
 
   @Field(() => String)
+  timerRulesJson!: string;
+
+  @Field(() => String)
   scoreRulesJson!: string;
 
   @Field(() => String)

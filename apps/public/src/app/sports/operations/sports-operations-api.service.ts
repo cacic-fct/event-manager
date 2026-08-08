@@ -8,6 +8,7 @@ import {
   SportsMatchAction,
   SportsOperationalMatch,
   SportsRosterCheckIn,
+  SportsScannerCheckIn,
 } from './sports-operations.types';
 
 interface GraphqlError {
@@ -56,7 +57,13 @@ export class SportsOperationsApiService {
     }>(
       `query SportsOperationalMatch($matchId: String!) {
         publicSportsMatchDetail(matchId: $matchId) {
-          id eventId categoryId state timerStartedAt timerPausedAt elapsedBeforePauseMs
+          id eventId categoryId state timerStartedAt timerStartedAtUnixMs timerPausedAt timerPausedAtUnixMs
+          elapsedBeforePauseMs
+          periodTimers {
+            periodNumber startedAtUnixMs pausedAtUnixMs elapsedBeforePauseMs scheduledStartOffsetMs capMs allowOvertime
+          }
+          overallTimerEnabled periodTimerEnabled
+          timerPeriodDurationMs timerPeriodStartOffsetsMs timerAllowOvertime
           homeTeam { id name institution logoUrl }
           awayTeam { id name institution logoUrl }
           scoreboard {
@@ -110,6 +117,23 @@ export class SportsOperationsApiService {
     ).pipe(map((value) => value.checkInSportsRosterEntry));
   }
 
+  checkInFromScanner(input: SportsScannerCheckIn): Observable<boolean> {
+    return this.query<{ checkInSportsMatchFromScannerCode: boolean }>(
+      `mutation CheckInSportsMatchFromScannerCode($matchId: String!, $input: SportsRosterScannerCheckInInput!) {
+        checkInSportsMatchFromScannerCode(matchId: $matchId, input: $input)
+      }`,
+      {
+        matchId: input.matchId,
+        input: {
+          clientId: input.clientId,
+          code: input.code,
+          checkedInAt: input.checkedInAt,
+          offline: input.offline,
+        },
+      },
+    ).pipe(map((value) => value.checkInSportsMatchFromScannerCode));
+  }
+
   lineup(matchId: string, registrationId: string): Observable<SportsLineupRead> {
     return this.query<{ currentUserSportsLineup: SportsLineupRead }>(
       `query CurrentUserSportsLineup($matchId: String!, $registrationId: String!) {
@@ -136,6 +160,18 @@ export class SportsOperationsApiService {
             id type status requestRevision baseRevision deltaJson reviewMessage updatedAt
             identityHints { clientKey type displayHint }
           }
+          members {
+            id name status revision
+            categoryRoles { registrationId categoryId categoryName role eligibility }
+          }
+          registrations { id categoryId categoryName categoryEmoji status }
+          matches {
+            id eventId state startDate endDate homeRegistrationId awayRegistrationId
+            categoryId categoryName categoryEmoji
+            homeTeam { id name institution logoUrl }
+            awayTeam { id name institution logoUrl }
+          }
+          joinQueue { id applicantName identityDocumentHint categoryNames status }
         }
       }`,
       { teamId },
@@ -223,6 +259,20 @@ export class SportsOperationsApiService {
       }`,
       { input },
     ).pipe(map((value) => value.submitSportsMatchRoster));
+  }
+
+  reviewTeamApplication(input: {
+    applicationId: string;
+    teamId: string;
+    approved: boolean;
+    reviewMessage?: string;
+  }): Observable<string> {
+    return this.query<{ reviewRepresentativeSportsPlayerApplication: string }>(
+      `mutation ReviewRepresentativeSportsPlayerApplication($input: SportsRepresentativeApplicationReviewInput!) {
+        reviewRepresentativeSportsPlayerApplication(input: $input)
+      }`,
+      { input },
+    ).pipe(map((value) => value.reviewRepresentativeSportsPlayerApplication));
   }
 
   forfeit(action: SportsMatchAction): Observable<string> {

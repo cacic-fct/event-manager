@@ -75,6 +75,13 @@
       </article>
     </div>
 
+    @if (isLive(match) && match.overallTimerEnabled) {
+    <p class="public-clock" aria-label="Cronômetro geral da partida">
+      <mat-icon aria-hidden="true">timer</mat-icon>
+      <span><small>Cronômetro geral</small><strong>{{ overallClock(match) }}</strong></span>
+    </p>
+    }
+
     @if (match.state === 'PAUSED') {
     <p class="match-note"><mat-icon aria-hidden="true">pause_circle</mat-icon> Cronômetro pausado</p>
     } @else if (match.state === 'AWAITING_REVIEW') {
@@ -117,6 +124,9 @@
         <div [class.active-period]="period.number === match.scoreboard.activePeriod">
           <span>{{ period.label }}</span>
           <strong>{{ period.homeScore }}-{{ period.awayScore }}</strong>
+          @if (match.periodTimerEnabled && periodClock(match, period.number); as clock) {
+          <small class="period-clock"><mat-icon aria-hidden="true">timer</mat-icon>{{ clock }}</small>
+          }
           @if (period.number === match.scoreboard.activePeriod) {
           <small>Em andamento</small>
           } @else if (period.completed) {

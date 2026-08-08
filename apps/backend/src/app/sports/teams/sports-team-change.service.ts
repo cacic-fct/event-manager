@@ -1309,11 +1309,11 @@ export class SportsTeamChangeService {
       }
       const logo = input.logo;
       const objectKeyMatch =
-        /^sports\/tournaments\/[^/]+\/teams\/[^/]+\/logos\/sha256\/([a-f0-9]{64})\.avif$/.exec(
+        /^sports\/tournaments\/[^/]+\/teams\/[^/]+\/logos\/sha256\/([a-f0-9]{64})\.([a-z0-9]+)$/.exec(
           logo.objectKey,
         );
       const queuedObjectKeyMatch =
-        /^sports\/private\/team-logo-review\/[^/]+\/[^/]+\/([a-f0-9]{64})\.avif$/.exec(
+        /^sports\/private\/team-logo-review\/[^/]+\/[^/]+\/([a-f0-9]{64})\.([a-z0-9]+)$/.exec(
           logo.queuedObjectKey ?? '',
         );
       const expectedExtensionByMimeType: Readonly<Record<string, string>> = {
@@ -1330,7 +1330,7 @@ export class SportsTeamChangeService {
         queuedObjectKeyMatch?.[2] !== expectedExtensionByMimeType[logo.mimeType] ||
         !Number.isInteger(logo.sizeBytes) ||
         logo.sizeBytes <= 0 ||
-        logo.sizeBytes > 2 * 1024 * 1024
+        logo.sizeBytes > 15 * 1024 * 1024
       ) {
         throw new BadRequestException('Os metadados do logo enviado são inválidos.');
       }

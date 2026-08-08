@@ -395,6 +395,21 @@ export class SportsRosterCheckInInput {
 }
 
 @InputType()
+export class SportsRosterScannerCheckInInput {
+  @Field(() => String)
+  clientId!: string;
+
+  @Field(() => String, { description: 'Código Aztec do usuário lido pelo scanner.' })
+  code!: string;
+
+  @Field(() => Date, { nullable: true })
+  checkedInAt?: Date;
+
+  @Field(() => Boolean, { nullable: true })
+  offline?: boolean;
+}
+
+@InputType()
 export class SportsOfficialAssignInput {
   @Field(() => String)
   tournamentId!: string;

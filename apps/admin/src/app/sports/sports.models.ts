@@ -49,6 +49,7 @@ export interface SportsCategorySummary {
   periodsEnabled: boolean;
   maximumPeriods?: number | null;
   periodLabel?: string | null;
+  timerRulesJson: string;
   scoreRulesJson: string;
   rosterRulesJson: string;
   bracketRulesJson: string;
@@ -116,6 +117,9 @@ export interface SportsMatchSummary {
   roundNumber?: number | null;
   bracketPosition?: number | null;
   groupKey?: string | null;
+  notes?: string | null;
+  livestreamProvider?: 'YOUTUBE' | 'TWITCH' | 'GENERAL' | null;
+  livestreamUrl?: string | null;
 }
 
 export interface SportsStandingSummary {
@@ -254,7 +258,14 @@ export interface SportsMatchReview {
     registrationId: string;
     status: string;
     revision: number;
-    entries: { id: string; registrationMemberId: string; status: string; role: string }[];
+    entries: {
+      id: string;
+      registrationMemberId: string;
+      status: string;
+      role: string;
+      shirtNumber?: string | null;
+      roleMetadataJson?: string | null;
+    }[];
   }[];
   officials: {
     id: string;
@@ -282,7 +293,14 @@ export interface SportsRegistrationRead {
     registrationId: string;
     status: string;
     revision: number;
-    entries: { id: string; registrationMemberId: string; status: string; role: string }[];
+    entries: {
+      id: string;
+      registrationMemberId: string;
+      status: string;
+      role: string;
+      shirtNumber?: string | null;
+      roleMetadataJson?: string | null;
+    }[];
   }[];
 }
 

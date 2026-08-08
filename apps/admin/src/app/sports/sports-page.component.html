@@ -489,6 +489,46 @@
                   ><mat-label>Nome do período</mat-label><input matInput formControlName="periodLabel"
                 /></mat-form-field>
               }
+              <div class="subsection-title span-2">
+                <h4>Cronômetros</h4>
+                <p>
+                  Configure o tempo geral e o tempo de cada período. Durante a partida, o servidor usa instantes Unix
+                  para manter todos os dispositivos sincronizados.
+                </p>
+              </div>
+              <mat-form-field>
+                <mat-label>Preset de tempo</mat-label>
+                <mat-select
+                  formControlName="timerPreset"
+                  (selectionChange)="workspace.applyTimerPreset($event.value)">
+                  <mat-option value="SOCCER">Futebol - 2 tempos de 45 min</mat-option>
+                  <mat-option value="FUTSAL">Futsal - 2 tempos de 20 min</mat-option>
+                  <mat-option value="BASKETBALL">Basquete - 4 períodos de 10 min</mat-option>
+                  <mat-option value="VOLLEYBALL">Vôlei - sets sem duração fixa</mat-option>
+                  <mat-option value="TENNIS">Tênis - sets sem duração fixa</mat-option>
+                  <mat-option value="CHESS">Xadrez - somente tempo geral</mat-option>
+                  <mat-option value="ESPORTS">E-sports - rodadas sem duração fixa</mat-option>
+                  <mat-option value="CUSTOM">Configuração manual</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Duração prevista do período (minutos)</mat-label>
+                <input matInput type="number" min="0" max="1440" formControlName="timerPeriodDurationMinutes" />
+                <mat-hint>Zero significa duração livre.</mat-hint>
+              </mat-form-field>
+              <mat-form-field class="span-2">
+                <mat-label>Início previsto de cada período (minutos)</mat-label>
+                <input matInput formControlName="timerPeriodStartOffsetsMinutes" placeholder="0, 45" />
+                <mat-hint>
+                  Separe por vírgulas. Ex.: 0, 45 faz o segundo tempo começar em 45:00 mesmo com acréscimos.
+                </mat-hint>
+                @if (workspace.categoryForm.controls.timerPeriodStartOffsetsMinutes.invalid) {
+                  <mat-error>Use somente minutos positivos separados por vírgulas.</mat-error>
+                }
+              </mat-form-field>
+              <mat-slide-toggle formControlName="timerOverallEnabled">Exibir cronômetro geral</mat-slide-toggle>
+              <mat-slide-toggle formControlName="timerPeriodEnabled">Exibir cronômetro por período</mat-slide-toggle>
+              <mat-slide-toggle formControlName="timerAllowOvertime">Permitir acréscimos além do limite</mat-slide-toggle>
               <mat-form-field class="span-2">
                 <mat-label>Regras públicas</mat-label>
                 <textarea matInput rows="4" formControlName="rulesText"></textarea>
@@ -506,6 +546,22 @@
                   Use somente para regras não cobertas pelos controles acima. O valor deve ser um objeto JSON com no
                   máximo seis níveis. Em placar, use apenas strategy, allowDraw, higherWins e pointStep.
                 </p>
+                <div class="advanced-docs">
+                  <mat-icon aria-hidden="true">menu_book</mat-icon>
+                  <div>
+                    <strong>Quando usar estes campos?</strong>
+                    <p>
+                      Eles existem para extensões raras ainda sem um controle visual, importações e compatibilidade com
+                      torneios antigos. Prefira sempre os controles normais. O servidor rejeita chaves desconhecidas nas
+                      regras tipadas, objetos perigosos, valores infinitos e estruturas excessivamente profundas.
+                    </p>
+                    <p>
+                      Placar aceita <code>strategy</code>, <code>allowDraw</code>, <code>higherWins</code> e
+                      <code>pointStep</code>. Elenco, chave e classificação devem seguir a documentação da versão da API;
+                      mudanças são protegidas pela validação no envio e pela revisão do esquema compartilhado.
+                    </p>
+                  </div>
+                </div>
                 <div class="form-grid">
                   <mat-form-field
                     ><mat-label>Placar</mat-label
@@ -696,10 +752,13 @@
                 }
                 <div>
                   <strong>Escudo da equipe</strong>
-                  <span>PNG, JPEG ou WebP.</span>
+                  <span>AVIF, SVG, PNG, JPEG ou WebP, até 15 MB. O arquivo será convertido para AVIF.</span>
                 </div>
                 <label class="material-upload">
-                  <input type="file" accept="image/png,image/jpeg,image/webp" (change)="uploadTeamLogo($event)" />
+                  <input
+                    type="file"
+                    accept="image/avif,image/svg+xml,image/png,image/jpeg,image/webp"
+                    (change)="uploadTeamLogo($event)" />
                   <mat-icon>upload</mat-icon>
                   Enviar escudo
                 </label>
@@ -923,6 +982,14 @@
                   <mat-list-item
                     [class.selected-list-item]="workspace.selectedMatchId() === match.id"
                     (click)="workspace.selectMatch(match)">
+                    @if (teamLogoForRegistration(match.homeRegistrationId); as logoUrl) {
+                      <img
+                        matListItemAvatar
+                        [src]="logoUrl"
+                        [alt]="'Escudo de ' + workspace.teamNameForRegistration(match.homeRegistrationId)" />
+                    } @else {
+                      <mat-icon matListItemIcon>sports</mat-icon>
+                    }
                     <span matListItemTitle
                       >{{ workspace.teamNameForRegistration(match.homeRegistrationId) }} ×
                       {{ workspace.teamNameForRegistration(match.awayRegistrationId) }}</span
@@ -1015,9 +1082,18 @@
                 ><mat-label>Estado</mat-label
                 ><mat-select formControlName="state">
                   @for (state of matchStates; track state[0]) {
-                    <mat-option [value]="state[0]">{{ state[1] }}</mat-option>
+                    <mat-option [value]="state[0]">
+                      <span>{{ state[1] }}</span>
+                      @if (state[0] === 'CANCELED') {
+                        <small class="option-description">A partida precisará ser reagendada</small>
+                      }
+                    </mat-option>
                   }
-                </mat-select></mat-form-field
+                </mat-select>
+                @if (workspace.matchForm.controls.state.value === 'CANCELED') {
+                  <mat-hint>Use quando esta partida será remarcada para outra data.</mat-hint>
+                }
+              </mat-form-field
               >
               <mat-form-field
                 ><mat-label>Fase (ID)</mat-label><input matInput formControlName="stageId"
@@ -1041,6 +1117,30 @@
                 ><input matInput type="number" min="1" formControlName="bracketPosition"
               /></mat-form-field>
               <mat-form-field><mat-label>Grupo</mat-label><input matInput formControlName="groupKey" /></mat-form-field>
+              <mat-form-field>
+                <mat-label>Transmissão</mat-label>
+                <mat-select formControlName="livestreamProvider">
+                  <mat-option value="">Sem transmissão</mat-option>
+                  <mat-option value="YOUTUBE">YouTube</mat-option>
+                  <mat-option value="TWITCH">Twitch</mat-option>
+                  <mat-option value="GENERAL">Outro serviço</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Link da transmissão</mat-label>
+                <input matInput type="url" inputmode="url" formControlName="livestreamUrl" placeholder="https://" />
+                <mat-hint>Use o endereço público completo da live.</mat-hint>
+                @if (workspace.matchForm.controls.livestreamUrl.invalid) {
+                  <mat-error>Informe um endereço HTTPS válido.</mat-error>
+                } @else if (workspace.matchForm.hasError('incompleteLivestream')) {
+                  <mat-error>Escolha a plataforma e informe o link.</mat-error>
+                }
+              </mat-form-field>
+              <mat-form-field class="span-2">
+                <mat-label>Notas administrativas da partida</mat-label>
+                <textarea matInput rows="3" maxlength="2000" formControlName="notes"></textarea>
+                <mat-hint>Contexto para oficiais e para a revisão do encerramento.</mat-hint>
+              </mat-form-field>
             </form>
 
             @if (workspace.matchReview()) {
@@ -1059,13 +1159,41 @@
                 ) {
                   @if (registrationId && workspace.registrationReads()[registrationId]; as registration) {
                     <section>
-                      <h5>{{ workspace.teamNameForRegistration(registrationId) }}</h5>
+                      <h5 class="team-heading">
+                        @if (teamLogoForRegistration(registrationId); as logoUrl) {
+                          <img [src]="logoUrl" [alt]="'Escudo de ' + workspace.teamNameForRegistration(registrationId)" />
+                        } @else {
+                          <mat-icon aria-hidden="true">shield</mat-icon>
+                        }
+                        {{ workspace.teamNameForRegistration(registrationId) }}
+                      </h5>
                       @for (member of registration.members; track member.id) {
-                        <mat-checkbox
-                          [checked]="workspace.isLineupSelected(registrationId, member.id)"
-                          (change)="workspace.toggleLineup(registrationId, member.id, $event.checked)">
-                          {{ member.person.name }} · {{ member.role === 'CAPTAIN' ? 'Capitão' : member.role === 'COACH' ? 'Técnico' : 'Atleta' }}
-                        </mat-checkbox>
+                        <div class="lineup-member">
+                          <mat-checkbox
+                            [checked]="workspace.isLineupSelected(registrationId, member.id)"
+                            (change)="workspace.toggleLineup(registrationId, member.id, $event.checked)">
+                            {{ member.person.name }}
+                          </mat-checkbox>
+                          <mat-form-field subscriptSizing="dynamic">
+                            <mat-label>Função</mat-label>
+                            <mat-select
+                              [value]="workspace.lineupRole(registrationId, member.id, member.role)"
+                              (selectionChange)="workspace.updateLineupDetail(registrationId, member.id, 'role', $event.value, member.role)">
+                              <mat-option value="PLAYER">Atleta</mat-option>
+                              <mat-option value="CAPTAIN">Capitão</mat-option>
+                              <mat-option value="COACH">Técnico</mat-option>
+                              <mat-option value="STAFF">Apoio</mat-option>
+                            </mat-select>
+                          </mat-form-field>
+                          <mat-form-field subscriptSizing="dynamic">
+                            <mat-label>Número</mat-label>
+                            <input
+                              matInput
+                              maxlength="12"
+                              [value]="workspace.lineupShirtNumber(registrationId, member.id)"
+                              (input)="workspace.updateLineupDetail(registrationId, member.id, 'shirtNumber', $any($event.target).value, member.role)" />
+                          </mat-form-field>
+                        </div>
                       } @empty {
                         <p class="empty-copy">Nenhum integrante elegível nesta inscrição.</p>
                       }

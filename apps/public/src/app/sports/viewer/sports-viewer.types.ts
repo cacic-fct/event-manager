@@ -70,8 +70,24 @@ export interface PublicSportsMatch {
   lossReasonDetail?: string | null;
   drawWillReschedule?: boolean | null;
   timerStartedAt?: string | null;
+  timerStartedAtUnixMs?: number | null;
   timerPausedAt?: string | null;
+  timerPausedAtUnixMs?: number | null;
   elapsedBeforePauseMs: number;
+  periodTimers: Array<{
+    periodNumber: number;
+    startedAtUnixMs?: number | null;
+    pausedAtUnixMs?: number | null;
+    elapsedBeforePauseMs: number;
+    scheduledStartOffsetMs: number;
+    capMs?: number | null;
+    allowOvertime: boolean;
+  }>;
+  overallTimerEnabled: boolean;
+  periodTimerEnabled: boolean;
+  timerPeriodDurationMs?: number | null;
+  timerPeriodStartOffsetsMs: number[];
+  timerAllowOvertime: boolean;
   roundNumber?: number | null;
   bracketPosition?: number | null;
   groupKey?: string | null;

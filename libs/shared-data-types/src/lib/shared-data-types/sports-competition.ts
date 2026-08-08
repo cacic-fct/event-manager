@@ -142,6 +142,30 @@ export class SportsStage {
 }
 
 @ObjectType()
+export class SportsMatchPeriodTimer {
+  @Field(() => Int)
+  periodNumber!: number;
+
+  @Field(() => Float, { nullable: true })
+  startedAtUnixMs?: number | null;
+
+  @Field(() => Float, { nullable: true })
+  pausedAtUnixMs?: number | null;
+
+  @Field(() => Float)
+  elapsedBeforePauseMs!: number;
+
+  @Field(() => Float)
+  scheduledStartOffsetMs!: number;
+
+  @Field(() => Float, { nullable: true })
+  capMs?: number | null;
+
+  @Field(() => Boolean)
+  allowOvertime!: boolean;
+}
+
+@ObjectType()
 export class SportsMatch {
   @Field(() => String)
   id!: string;
@@ -224,11 +248,26 @@ export class SportsMatch {
   @Field(() => Date, { nullable: true })
   timerStartedAt?: Date | null;
 
+  @Field(() => Float, { nullable: true })
+  timerStartedAtUnixMs?: number | null;
+
   @Field(() => Date, { nullable: true })
   timerPausedAt?: Date | null;
 
+  @Field(() => Float, { nullable: true })
+  timerPausedAtUnixMs?: number | null;
+
   @Field(() => Int)
   elapsedBeforePauseMs!: number;
+
+  @Field(() => [SportsMatchPeriodTimer])
+  periodTimers!: SportsMatchPeriodTimer[];
+
+  @Field(() => Boolean)
+  overallTimerEnabled!: boolean;
+
+  @Field(() => Boolean)
+  periodTimerEnabled!: boolean;
 
   @Field(() => Int, { nullable: true })
   roundNumber?: number | null;

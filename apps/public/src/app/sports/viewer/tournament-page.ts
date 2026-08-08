@@ -1,5 +1,5 @@
-import { DatePipe, Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { DatePipe, Location, isPlatformBrowser } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -56,6 +56,7 @@ export class SportsTournamentPage {
 
   readonly pageState = signal<SportsViewerPageState<PublicSportsTournamentDetail>>({ status: 'loading' });
   readonly selectedCategoryId = signal<string | null>(null);
+  readonly now = signal(Date.now());
 
   readonly tournament = computed(() => {
     const state = this.pageState();
@@ -93,6 +94,10 @@ export class SportsTournamentPage {
   );
 
   constructor() {
+    if (isPlatformBrowser(inject(PLATFORM_ID))) {
+      const timer = setInterval(() => this.now.set(Date.now()), 1000);
+      this.destroyRef.onDestroy(() => clearInterval(timer));
+    }
     this.reload
       .pipe(
         switchMap((tournamentId) =>
@@ -166,6 +171,16 @@ export class SportsTournamentPage {
 
   locationLabel(match: PublicSportsMatch): string {
     return matchLocation(match);
+  }
+
+  overallClock(match: PublicSportsMatch): string {
+    const startedAt = match.timerStartedAtUnixMs ?? (match.timerStartedAt ? new Date(match.timerStartedAt).getTime() : null);
+    const elapsed = match.elapsedBeforePauseMs + (startedAt == null ? 0 : Math.max(0, this.now() - startedAt));
+    const totalSeconds = Math.floor(elapsed / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
   }
 
   currentMatchId(category: PublicSportsCategory): string | null {

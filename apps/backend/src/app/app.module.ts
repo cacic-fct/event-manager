@@ -190,6 +190,8 @@ import {
 } from './sports/logos/sports-team-logo.controller';
 import { SportsTeamLogoService } from './sports/logos/sports-team-logo.service';
 import { SportsMatchOperationService } from './sports/operations/sports-match-operation.service';
+import { SportsMatchOverlayController } from './sports/overlays/sports-match-overlay.controller';
+import { SportsMatchOverlayService } from './sports/overlays/sports-match-overlay.service';
 import {
   SportsAdminReadResolver,
   SportsCurrentUserReadResolver,
@@ -341,6 +343,7 @@ const schedulerProviders = useInMemoryTestInfra
     SportsTeamLogoController,
     PublicSportsTeamLogoController,
     SportsTeamRepresentativeLogoController,
+    SportsMatchOverlayController,
   ],
   providers: [
     NovuNotificationsService,
@@ -420,6 +423,7 @@ const schedulerProviders = useInMemoryTestInfra
     SportsDuplicationService,
     SportsReadService,
     SportsTeamLogoService,
+    SportsMatchOverlayService,
     DashboardInsightsResolver,
     DashboardInsightsService,
     PublicPlatformStatsService,

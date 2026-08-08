@@ -345,6 +345,9 @@ export const MatchBracketAndLineup: Story = {
     await expect(await canvas.findByText('Escalação desta partida')).toBeVisible();
     await expect(canvas.getByText('Ana Souza')).toBeVisible();
     await expect(canvas.getByText('Fernanda Luz')).toBeVisible();
+    await expect(canvas.getByLabelText('Transmissão')).toBeVisible();
+    await expect(canvas.getByLabelText('Notas administrativas da partida')).toBeVisible();
+    await expect(canvas.getAllByLabelText('Número').length).toBeGreaterThan(0);
   },
 };
 

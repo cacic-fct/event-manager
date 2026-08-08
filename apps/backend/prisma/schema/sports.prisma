@@ -181,6 +181,7 @@ enum SportsMatchActionType {
   SCORE_DELTA
   SCORE_CORRECTION
   PERIOD_ROLL
+  TIMER_RECONCILE
   OCCURRENCE
   FINALIZE
   CANCEL
@@ -314,6 +315,7 @@ model SportsCategory {
   periodsEnabled Boolean @default(false)
   maximumPeriods Int?
   periodLabel    String?
+  timerRules     Json @default("{}")
   scoreRules     Json
   rosterRules    Json
   bracketRules   Json

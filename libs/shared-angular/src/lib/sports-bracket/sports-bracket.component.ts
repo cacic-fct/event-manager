@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 import type { SportsStageType } from '@cacic-fct/shared-data-types';
 import { TwemojiComponent } from '../emoji/twemoji.component';
 import {
@@ -27,7 +28,7 @@ interface SportsBracketStageLayout {
 
 @Component({
   selector: 'lib-sports-bracket',
-  imports: [TwemojiComponent],
+  imports: [MatIconModule, TwemojiComponent],
   templateUrl: './sports-bracket.component.html',
   styleUrl: './sports-bracket.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

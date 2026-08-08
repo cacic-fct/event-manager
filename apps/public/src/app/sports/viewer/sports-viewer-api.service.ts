@@ -39,8 +39,24 @@ const PUBLIC_MATCH_FIELDS = `
   lossReasonDetail
   drawWillReschedule
   timerStartedAt
+  timerStartedAtUnixMs
   timerPausedAt
+  timerPausedAtUnixMs
   elapsedBeforePauseMs
+  periodTimers {
+    periodNumber
+    startedAtUnixMs
+    pausedAtUnixMs
+    elapsedBeforePauseMs
+    scheduledStartOffsetMs
+    capMs
+    allowOvertime
+  }
+  overallTimerEnabled
+  periodTimerEnabled
+  timerPeriodDurationMs
+  timerPeriodStartOffsetsMs
+  timerAllowOvertime
   roundNumber
   bracketPosition
   groupKey

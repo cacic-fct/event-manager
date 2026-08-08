@@ -1,5 +1,5 @@
-import { DatePipe, Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { DatePipe, Location, isPlatformBrowser } from '@angular/common';
+import { ChangeDetectionStrategy, Component, DestroyRef, PLATFORM_ID, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -46,8 +46,13 @@ export class SportsMatchPage {
   private readonly reload = new Subject<string>();
 
   readonly pageState = signal<SportsViewerPageState<PublicSportsMatch>>({ status: 'loading' });
+  readonly now = signal(Date.now());
 
   constructor() {
+    if (isPlatformBrowser(inject(PLATFORM_ID))) {
+      const timer = setInterval(() => this.now.set(Date.now()), 1000);
+      this.destroyRef.onDestroy(() => clearInterval(timer));
+    }
     this.reload
       .pipe(
         switchMap((matchId) =>
@@ -135,6 +140,31 @@ export class SportsMatchPage {
       TWITCH: 'Assistir na Twitch',
       GENERAL: 'Assistir à transmissão',
     }[provider ?? 'GENERAL'];
+  }
+
+  overallClock(match: PublicSportsMatch): string {
+    const startedAt = match.timerStartedAtUnixMs ?? (match.timerStartedAt ? new Date(match.timerStartedAt).getTime() : null);
+    const running = startedAt == null ? 0 : Math.max(0, this.now() - startedAt);
+    return this.formatElapsed(match.elapsedBeforePauseMs + running);
+  }
+
+  periodClock(match: PublicSportsMatch, periodNumber: number): string | null {
+    const timer = match.periodTimers.find((candidate) => candidate.periodNumber === periodNumber);
+    if (!timer) {
+      return null;
+    }
+    const running = timer.startedAtUnixMs == null ? 0 : Math.max(0, this.now() - timer.startedAtUnixMs);
+    const elapsed = timer.elapsedBeforePauseMs + running;
+    const displayed = timer.capMs != null && !timer.allowOvertime ? Math.min(elapsed, timer.capMs) : elapsed;
+    return this.formatElapsed(displayed);
+  }
+
+  private formatElapsed(value: number): string {
+    const totalSeconds = Math.floor(Math.max(0, value) / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
   }
 
   private watchMatch(matchId: string): void {

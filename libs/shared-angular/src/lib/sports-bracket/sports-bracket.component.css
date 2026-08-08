@@ -106,8 +106,7 @@ tbody th {
 }
 
 .standing-team img,
-.team-row img,
-.team-mark {
+.team-row img {
   border-radius: 50%;
   flex: 0 0 auto;
   height: 28px;
@@ -116,12 +115,13 @@ tbody th {
 }
 
 .team-mark {
-  align-items: center;
-  background: var(--mat-sys-secondary-container);
-  color: var(--mat-sys-on-secondary-container);
-  display: inline-flex;
-  font: var(--mat-sys-label-medium);
-  justify-content: center;
+  color: var(--mat-sys-outline);
+  flex: 0 0 auto;
+  font-size: 22px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  width: 28px;
 }
 
 .stage {
@@ -281,10 +281,11 @@ tbody th {
 }
 
 .live-dot {
-  animation: bracket-live-pulse 1.6s ease-out infinite;
-  background: var(--mat-sys-error);
+  animation: bracket-live-breathe 1.8s ease-in-out infinite;
+  background: #d32f2f;
   border-radius: 50%;
   height: 7px;
+  transform-origin: center;
   width: 7px;
 }
 
@@ -307,23 +308,11 @@ tbody th {
   text-align: center;
 }
 
-.empty-mark {
-  border: 2px solid var(--mat-sys-outline);
-  border-radius: 50%;
-  height: 28px;
+.empty-state > mat-icon {
+  color: var(--mat-sys-outline);
+  height: 32px;
   margin-bottom: 4px;
-  position: relative;
-  width: 28px;
-}
-
-.empty-mark::after {
-  background: var(--mat-sys-outline);
-  content: '';
-  height: 2px;
-  left: 5px;
-  position: absolute;
-  top: 11px;
-  width: 14px;
+  width: 32px;
 }
 
 .empty-state p {
@@ -331,14 +320,16 @@ tbody th {
   max-width: 52ch;
 }
 
-@keyframes bracket-live-pulse {
-  0% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--mat-sys-error) 35%, transparent);
+@keyframes bracket-live-breathe {
+  0%,
+  100% {
+    opacity: 0.58;
+    transform: scale(0.86);
   }
 
-  75%,
-  100% {
-    box-shadow: 0 0 0 6px transparent;
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
   }
 }
 

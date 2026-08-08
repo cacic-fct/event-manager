@@ -60,6 +60,9 @@ export class SportsWorkspaceService implements OnDestroy {
   readonly selectedVenueId = signal('');
   readonly registrationReads = signal<Record<string, SportsRegistrationRead>>({});
   readonly lineupSelections = signal<Record<string, string[]>>({});
+  readonly lineupDetails = signal<
+    Record<string, Record<string, { role: string; shirtNumber: string }>>
+  >({});
   readonly selectedMajorEventId = signal('');
   readonly activeArea = signal<'overview' | 'categories' | 'teams' | 'matches' | 'reviews'>('overview');
   readonly selectedCategoryId = signal('');
@@ -115,6 +118,15 @@ export class SportsWorkspaceService implements OnDestroy {
     periodsEnabled: [false],
     maximumPeriods: [0],
     periodLabel: ['Tempo'],
+    timerPreset: ['SOCCER'],
+    timerOverallEnabled: [true],
+    timerPeriodEnabled: [true],
+    timerPeriodDurationMinutes: [45, [Validators.min(0), Validators.max(1440)]],
+    timerAllowOvertime: [true],
+    timerPeriodStartOffsetsMinutes: [
+      '0, 45',
+      Validators.pattern(/^\s*\d+(?:\.\d+)?(?:\s*,\s*\d+(?:\.\d+)?)*\s*$/),
+    ],
     rulesText: [''],
     scoreRulesJson: ['{}', scoreRulesValidator],
     rosterRulesJson: ['{}', jsonObjectValidator],
@@ -137,21 +149,27 @@ export class SportsWorkspaceService implements OnDestroy {
     formAnswersJson: ['{}', jsonObjectValidator],
   });
 
-  readonly matchForm = this.fb.nonNullable.group({
-    id: [''],
-    categoryId: ['', Validators.required],
-    name: ['Partida'],
-    startDate: ['', Validators.required],
-    endDate: ['', Validators.required],
-    stageId: [''],
-    venueId: [''],
-    homeRegistrationId: [''],
-    awayRegistrationId: [''],
-    roundNumber: [1],
-    bracketPosition: [1],
-    groupKey: [''],
-    state: ['SCHEDULED'],
-  });
+  readonly matchForm = this.fb.nonNullable.group(
+    {
+      id: [''],
+      categoryId: ['', Validators.required],
+      name: ['Partida'],
+      startDate: ['', Validators.required],
+      endDate: ['', Validators.required],
+      stageId: [''],
+      venueId: [''],
+      homeRegistrationId: [''],
+      awayRegistrationId: [''],
+      roundNumber: [1],
+      bracketPosition: [1],
+      groupKey: [''],
+      state: ['SCHEDULED'],
+      notes: ['', Validators.maxLength(2_000)],
+      livestreamProvider: [''],
+      livestreamUrl: ['', Validators.pattern(/^https:\/\/.+/i)],
+    },
+    { validators: livestreamValidator },
+  );
 
   readonly representativeForm = this.fb.nonNullable.group({
     personQuery: ['', Validators.required],
@@ -198,6 +216,29 @@ export class SportsWorkspaceService implements OnDestroy {
     randomSeed: [''],
     replaceExistingDraft: [false],
   });
+
+  applyTimerPreset(preset: string): void {
+    const values = {
+      SOCCER: { overall: true, period: true, duration: 45, overtime: true, offsets: '0, 45' },
+      FUTSAL: { overall: true, period: true, duration: 20, overtime: true, offsets: '0, 20' },
+      BASKETBALL: { overall: true, period: true, duration: 10, overtime: true, offsets: '0, 10, 20, 30' },
+      VOLLEYBALL: { overall: true, period: true, duration: 0, overtime: true, offsets: '0' },
+      TENNIS: { overall: true, period: true, duration: 0, overtime: true, offsets: '0' },
+      CHESS: { overall: true, period: false, duration: 0, overtime: false, offsets: '0' },
+      ESPORTS: { overall: true, period: true, duration: 0, overtime: true, offsets: '0' },
+    }[preset];
+    if (!values) {
+      return;
+    }
+    this.categoryForm.patchValue({
+      timerPreset: preset,
+      timerOverallEnabled: values.overall,
+      timerPeriodEnabled: values.period,
+      timerPeriodDurationMinutes: values.duration,
+      timerAllowOvertime: values.overtime,
+      timerPeriodStartOffsetsMinutes: values.offsets,
+    });
+  }
 
   async initialize(): Promise<void> {
     await this.run('Não foi possível carregar os grandes eventos.', async () => {
@@ -323,6 +364,12 @@ export class SportsWorkspaceService implements OnDestroy {
       periodsEnabled: false,
       maximumPeriods: 0,
       periodLabel: 'Tempo',
+      timerPreset: 'SOCCER',
+      timerOverallEnabled: true,
+      timerPeriodEnabled: true,
+      timerPeriodDurationMinutes: 45,
+      timerAllowOvertime: true,
+      timerPeriodStartOffsetsMinutes: '0, 45',
       rulesText: '',
       scoreRulesJson: '{}',
       rosterRulesJson: '{}',
@@ -506,8 +553,12 @@ export class SportsWorkspaceService implements OnDestroy {
     if (!team) {
       return;
     }
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      this.notify('Use uma imagem PNG, JPEG ou WebP.', true);
+    if (!['image/avif', 'image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      this.notify('Use uma imagem AVIF, SVG, PNG, JPEG ou WebP.', true);
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      this.notify('O escudo deve ter no máximo 15 MB.', true);
       return;
     }
     await this.run('Não foi possível enviar o escudo.', async () => {
@@ -749,6 +800,9 @@ export class SportsWorkspaceService implements OnDestroy {
       bracketPosition: 1,
       groupKey: '',
       state: 'SCHEDULED',
+      notes: '',
+      livestreamProvider: '',
+      livestreamUrl: '',
     });
   }
 
@@ -771,6 +825,9 @@ export class SportsWorkspaceService implements OnDestroy {
         bracketPosition: match.bracketPosition ?? 1,
         groupKey: match.groupKey ?? '',
         state: match.state,
+        notes: match.notes ?? '',
+        livestreamProvider: match.livestreamProvider ?? '',
+        livestreamUrl: match.livestreamUrl ?? '',
       });
       await this.loadMatchRegistrations(read);
     });
@@ -792,6 +849,34 @@ export class SportsWorkspaceService implements OnDestroy {
     });
   }
 
+  lineupRole(registrationId: string, registrationMemberId: string, fallback: string): string {
+    return this.lineupDetails()[registrationId]?.[registrationMemberId]?.role ?? fallback;
+  }
+
+  lineupShirtNumber(registrationId: string, registrationMemberId: string): string {
+    return this.lineupDetails()[registrationId]?.[registrationMemberId]?.shirtNumber ?? '';
+  }
+
+  updateLineupDetail(
+    registrationId: string,
+    registrationMemberId: string,
+    field: 'role' | 'shirtNumber',
+    value: string,
+    fallbackRole: string,
+  ): void {
+    this.lineupDetails.update((current) => ({
+      ...current,
+      [registrationId]: {
+        ...(current[registrationId] ?? {}),
+        [registrationMemberId]: {
+          role: current[registrationId]?.[registrationMemberId]?.role ?? fallbackRole,
+          shirtNumber: current[registrationId]?.[registrationMemberId]?.shirtNumber ?? '',
+          [field]: value,
+        },
+      },
+    }));
+  }
+
   async saveLineup(registrationId: string): Promise<void> {
     const match = this.matchReview()?.match;
     const registration = this.registrationReads()[registrationId];
@@ -811,7 +896,8 @@ export class SportsWorkspaceService implements OnDestroy {
             .filter((member) => selected.has(member.id))
             .map((member) => ({
               registrationMemberId: member.id,
-              role: member.role,
+              role: this.lineupRole(registrationId, member.id, member.role),
+              shirtNumber: this.lineupShirtNumber(registrationId, member.id).trim() || null,
               status: 'APPROVED',
             })),
         }),
@@ -843,6 +929,9 @@ export class SportsWorkspaceService implements OnDestroy {
             bracketPosition: raw.bracketPosition || null,
             groupKey: raw.groupKey || null,
             state: raw.state,
+            notes: raw.notes || null,
+            livestreamProvider: raw.livestreamProvider || null,
+            livestreamUrl: raw.livestreamUrl || null,
           }
         : {
             categoryId: raw.categoryId,
@@ -856,6 +945,9 @@ export class SportsWorkspaceService implements OnDestroy {
             roundNumber: raw.roundNumber || null,
             bracketPosition: raw.bracketPosition || null,
             groupKey: raw.groupKey || null,
+            notes: raw.notes || null,
+            livestreamProvider: raw.livestreamProvider || null,
+            livestreamUrl: raw.livestreamUrl || null,
           };
       const id = await firstValueFrom(
         this.api.mutate<string>(
@@ -1315,6 +1407,28 @@ export class SportsWorkspaceService implements OnDestroy {
         }),
       ),
     );
+    this.lineupDetails.set(
+      Object.fromEntries(
+        reads.map((read) => {
+          const roster = review.rosters.find((item) => item.registrationId === read.registration.id);
+          return [
+            read.registration.id,
+            Object.fromEntries(
+              read.members.map((member) => {
+                const entry = roster?.entries.find((item) => item.registrationMemberId === member.id);
+                return [
+                  member.id,
+                  {
+                    role: entry?.role ?? member.role,
+                    shirtNumber: entry?.shirtNumber ?? '',
+                  },
+                ];
+              }),
+            ),
+          ];
+        }),
+      ),
+    );
   }
 
   private async refreshLiveSnapshot(): Promise<void> {
@@ -1417,6 +1531,7 @@ export class SportsWorkspaceService implements OnDestroy {
       allowPlayerMultipleTeams: category.allowPlayerMultipleTeams ?? false,
       maximumPeriods: category.maximumPeriods ?? 0,
       periodLabel: category.periodLabel ?? 'Tempo',
+      ...this.timerRulesToForm(category.timerRulesJson),
       rulesText: category.rulesText ?? '',
       registrationFormId: category.registrationFormId ?? '',
     };
@@ -1440,6 +1555,7 @@ export class SportsWorkspaceService implements OnDestroy {
       periodsEnabled: raw.periodsEnabled,
       maximumPeriods: raw.periodsEnabled ? raw.maximumPeriods || null : null,
       periodLabel: raw.periodsEnabled ? raw.periodLabel || null : null,
+      timerRulesJson: this.timerRulesFromForm(raw),
       scoreRulesJson: raw.scoreRulesJson,
       rosterRulesJson: raw.rosterRulesJson,
       bracketRulesJson: raw.bracketRulesJson,
@@ -1451,6 +1567,49 @@ export class SportsWorkspaceService implements OnDestroy {
 
   private dateOrNull(value?: string | null): string | null {
     return value ? new Date(value).toISOString() : null;
+  }
+
+  private timerRulesToForm(value: string) {
+    try {
+      const rules = JSON.parse(value || '{}') as Record<string, unknown>;
+      const offsets = Array.isArray(rules['periodStartOffsetsMs'])
+        ? rules['periodStartOffsetsMs'].filter((item): item is number => Number.isSafeInteger(item))
+        : [0];
+      return {
+        timerPreset: 'CUSTOM',
+        timerOverallEnabled: rules['overallEnabled'] !== false,
+        timerPeriodEnabled: rules['periodEnabled'] !== false,
+        timerPeriodDurationMinutes:
+          typeof rules['periodDurationMs'] === 'number' ? rules['periodDurationMs'] / 60_000 : 0,
+        timerAllowOvertime: rules['allowOvertime'] !== false,
+        timerPeriodStartOffsetsMinutes: offsets.map((item) => item / 60_000).join(', '),
+      };
+    } catch {
+      return {
+        timerPreset: 'CUSTOM',
+        timerOverallEnabled: true,
+        timerPeriodEnabled: true,
+        timerPeriodDurationMinutes: 0,
+        timerAllowOvertime: true,
+        timerPeriodStartOffsetsMinutes: '0',
+      };
+    }
+  }
+
+  private timerRulesFromForm(raw: typeof this.categoryForm.value): string {
+    const offsets = String(raw.timerPeriodStartOffsetsMinutes ?? '')
+      .split(',')
+      .map((value) => Number(value.trim()))
+      .filter((value) => Number.isFinite(value) && value >= 0)
+      .map((value) => Math.round(value * 60_000));
+    const periodDurationMs = Math.round((raw.timerPeriodDurationMinutes ?? 0) * 60_000);
+    return JSON.stringify({
+      overallEnabled: raw.timerOverallEnabled,
+      periodEnabled: raw.timerPeriodEnabled,
+      ...(periodDurationMs > 0 ? { periodDurationMs } : {}),
+      allowOvertime: raw.timerAllowOvertime,
+      periodStartOffsetsMs: offsets.length ? offsets : [0],
+    });
   }
 
   private defaultSportEmoji(sport: string): string {
@@ -1501,6 +1660,12 @@ function jsonObjectValidator(control: AbstractControl<string>): ValidationErrors
   } catch {
     return { json: true };
   }
+}
+
+function livestreamValidator(control: AbstractControl): ValidationErrors | null {
+  const provider = control.get('livestreamProvider')?.value;
+  const url = control.get('livestreamUrl')?.value;
+  return Boolean(provider) === Boolean(url) ? null : { incompleteLivestream: true };
 }
 
 function scoreRulesValidator(control: AbstractControl<string>): ValidationErrors | null {

@@ -29,6 +29,7 @@ import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.inte
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserDefaultRedirectService } from '../../current-user/default-redirect/current-user-default-redirect.service';
+import { parseUserAztecCode } from '../../events/attendances/user-scanner-code';
 import { SportsRealtimeService } from '../realtime/sports-realtime.service';
 import { SportsAutoroutingService } from '../routing/sports-autorouting.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
@@ -496,6 +497,8 @@ export class SportsMatchRosterService {
           [
             SportsMatchState.SCHEDULED,
             SportsMatchState.CHECK_IN,
+            SportsMatchState.LIVE,
+            SportsMatchState.PAUSED,
           ] as SportsMatchState[]
         ).includes(
           entry.roster.match.state,
@@ -633,6 +636,119 @@ export class SportsMatchRosterService {
       await this.afterRosterMutation(matchId, 'PLAYER_CHECKED_IN', rosterEntryId);
     }
     return result.attendance;
+  }
+
+  async checkInFromScanner(
+    matchId: string,
+    code: string,
+    checkedInAt: Date | undefined,
+    clientId: string,
+    offline: boolean,
+    officialPersonId: string,
+    officialUserId: string | null,
+    officialRole: string,
+    actor: SportsAuditActor,
+  ) {
+    const userId = parseUserAztecCode(code);
+    if (!userId) {
+      throw new BadRequestException('Código Aztec incompatível.');
+    }
+    const context = await this.prisma.sportsMatch.findFirst({
+      where: { id: matchId, deletedAt: null },
+      select: {
+        id: true,
+        eventId: true,
+        revision: true,
+        state: true,
+        category: { select: { eventGroupId: true, tournament: { select: { majorEventId: true } } } },
+      },
+    });
+    if (!context) throw new NotFoundException(`Sports match ${matchId} was not found.`);
+    if (
+      !(
+        [
+          SportsMatchState.SCHEDULED,
+          SportsMatchState.CHECK_IN,
+          SportsMatchState.LIVE,
+          SportsMatchState.PAUSED,
+        ] as SportsMatchState[]
+      ).includes(context.state)
+    ) {
+      throw new ConflictException('O check-in desta partida foi encerrado.');
+    }
+    const person = await this.prisma.people.findFirst({
+      where: { userId, deletedAt: null, mergedIntoId: null },
+      select: { id: true },
+    });
+    if (!person) throw new NotFoundException('A pessoa do código lido não foi encontrada.');
+    const athlete = await this.prisma.sportsMatchRosterEntry.findFirst({
+      where: {
+        deletedAt: null,
+        status: SportsRosterEntryStatus.APPROVED,
+        roster: { matchId, deletedAt: null, status: SportsRosterStatus.APPROVED },
+        registrationMember: {
+          deletedAt: null,
+          teamMember: { deletedAt: null, participant: { personId: person.id, deletedAt: null } },
+        },
+      },
+      select: { id: true },
+    });
+    if (athlete) {
+      return this.checkIn(
+        matchId,
+        athlete.id,
+        checkedInAt,
+        clientId,
+        offline,
+        true,
+        officialPersonId,
+        officialUserId,
+        officialRole,
+        actor,
+      );
+    }
+
+    const at = checkedInAt ?? new Date();
+    const attendance = await runSerializableSportsTransaction(this.prisma, async (tx) => {
+      const stored = await tx.eventAttendance.upsert({
+        where: { personId_eventId: { personId: person.id, eventId: context.eventId } },
+        create: {
+          personId: person.id,
+          eventId: context.eventId,
+          attendedAt: at,
+          status: EventAttendanceStatus.PRESENT,
+          createdByMethod: AttendanceCreationMethod.SCANNER,
+          createdById: officialPersonId,
+          committedById: officialPersonId,
+        },
+        update: { attendedAt: at, status: EventAttendanceStatus.PRESENT, committedById: officialPersonId },
+      });
+      await this.attendanceCategories.refreshForAttendance(person.id, context.eventId, tx);
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.SPORTS_MATCH_ROSTER,
+        entityId: matchId,
+        entityLabel: `Scanner da partida ${matchId}`,
+        operation: AuditLogOperation.SCAN,
+        actor,
+        after: { personId: person.id, attendanceKey: `${person.id}:${context.eventId}`, rosterAthlete: false, clientId, offline },
+        summary: 'Presença de pessoa fora da escalação registrada para auditoria.',
+        scope: {
+          majorEventId: context.category.tournament.majorEventId,
+          eventGroupId: context.category.eventGroupId,
+          eventId: context.eventId,
+        },
+        force: true,
+      }, tx);
+      return stored;
+    });
+    // The match feed is replayable. Consumers reload the roster; because this
+    // person is not an athlete, they remain intentionally absent from that list.
+    await this.afterRosterMutation(
+      matchId,
+      'NON_ROSTER_ATTENDANCE_SCANNED',
+      `${attendance.personId}:${attendance.eventId}`,
+    );
+    return attendance;
   }
 
   async copyApprovedRosterForWinner(

@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -9,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
@@ -40,8 +42,10 @@ interface LineupMember {
     MatSelectModule,
     MatSnackBarModule,
     MatTabsModule,
+    DatePipe,
     ReactiveFormsModule,
     RouterLink,
+    TwemojiComponent,
   ],
   templateUrl: './team-operations-page.html',
   styleUrl: './team-operations-page.css',
@@ -64,6 +68,14 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   readonly logoFile = signal<File | null>(null);
   readonly logoPreviewUrl = signal<string | null>(null);
   readonly logoError = signal<string | null>(null);
+  readonly selectedMatchId = signal('');
+  readonly selectedMatch = computed(() =>
+    this.workspace()?.matches.find((match) => match.id === this.selectedMatchId()) ?? null,
+  );
+  readonly lineupReadOnly = computed(() => {
+    const state = this.selectedMatch()?.state;
+    return state != null && state !== 'SCHEDULED' && state !== 'CHECK_IN';
+  });
 
   readonly profileForm = new FormGroup({
     name: new FormControl('', { nonNullable: true, validators: Validators.required }),
@@ -90,7 +102,6 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
       registrationId: this.route.snapshot.queryParamMap.get('registrationId') ?? '',
     });
     this.load();
-    this.loadLineup();
   }
 
   ngOnDestroy(): void {
@@ -137,6 +148,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
               ? queuedSet['institution']
               : (workspace.team.institution ?? ''),
         });
+        this.selectInitialMatch(workspace);
         this.loading.set(false);
         this.error.set(null);
       },
@@ -145,6 +157,99 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
         this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a equipe.');
       },
     });
+  }
+
+  selectMatch(matchId: string): void {
+    const workspace = this.workspace();
+    const match = workspace?.matches.find((candidate) => candidate.id === matchId);
+    if (!workspace || !match) {
+      this.selectedMatchId.set('');
+      this.lineupForm.reset({ matchId: '', registrationId: '', expectedRevision: null });
+      this.lineupMembers.set([]);
+      return;
+    }
+    this.selectedMatchId.set(matchId);
+    const registrationIds = new Set(workspace.registrations.map((registration) => registration.id));
+    const registrationId = [match.homeRegistrationId, match.awayRegistrationId]
+      .find((candidate): candidate is string => Boolean(candidate && registrationIds.has(candidate))) ?? '';
+    this.lineupForm.patchValue({ matchId, registrationId, expectedRevision: null });
+    this.lineupMembers.set([]);
+    this.loadLineup();
+  }
+
+  matchLabel(match: RepresentativeTeamWorkspace['matches'][number]): string {
+    const registration = this.workspace()?.registrations.find((candidate) =>
+      candidate.id === match.homeRegistrationId || candidate.id === match.awayRegistrationId);
+    return registration?.categoryName ?? 'Modalidade';
+  }
+
+  matchupLabel(match: RepresentativeTeamWorkspace['matches'][number]): string {
+    return `${match.homeTeam?.name ?? 'Equipe a definir'} x ${match.awayTeam?.name ?? 'Equipe a definir'}`;
+  }
+
+  matchEmoji(match: RepresentativeTeamWorkspace['matches'][number]): string {
+    return this.workspace()?.registrations.find((candidate) =>
+      candidate.id === match.homeRegistrationId || candidate.id === match.awayRegistrationId)?.categoryEmoji ?? '';
+  }
+
+  matchStateLabel(state: RepresentativeTeamWorkspace['matches'][number]['state']): string {
+    return {
+      SCHEDULED: 'Agendada',
+      CHECK_IN: 'Check-in',
+      LIVE: 'Ao vivo',
+      PAUSED: 'Pausada',
+      AWAITING_REVIEW: 'Em revisão - somente leitura',
+      CANCELED: 'Cancelada para remarcação',
+      DRAW: 'Empate - somente leitura',
+      FINISHED: 'Finalizada - somente leitura',
+    }[state];
+  }
+
+  memberStatusLabel(status: RepresentativeTeamWorkspace['members'][number]['status']): string {
+    return {
+      PENDING: 'Aguardando aprovação',
+      APPROVED: 'Ativo',
+      REJECTED: 'Não aprovado',
+      SUSPENDED: 'Suspenso',
+      WITHDRAWN: 'Saiu da equipe',
+    }[status];
+  }
+
+  async reviewJoinRequest(applicationId: string, applicantName: string, approved: boolean): Promise<void> {
+    if (this.busy()) {
+      return;
+    }
+    const confirmed = await firstValueFrom(
+      this.dialog.open<SportsConfirmationDialog, SportsConfirmationDialogData, boolean>(SportsConfirmationDialog, {
+        data: {
+          title: approved ? `Aprovar entrada de ${applicantName}?` : `Recusar entrada de ${applicantName}?`,
+          message: approved
+            ? 'A pessoa entrará diretamente na equipe, pois a inscrição já passou pela análise administrativa.'
+            : 'A solicitação será encerrada e não aparecerá mais nesta fila.',
+          confirmLabel: approved ? 'Sim, aprovar' : 'Sim, recusar',
+          destructive: !approved,
+        },
+      }).afterClosed(),
+    );
+    if (!confirmed) {
+      return;
+    }
+    this.busy.set(true);
+    try {
+      await firstValueFrom(this.api.reviewTeamApplication({
+        applicationId,
+        teamId: this.teamId,
+        approved,
+      }));
+      this.snackbar.open(approved ? 'Pessoa adicionada à equipe.' : 'Solicitação recusada.', 'Fechar', {
+        duration: 4000,
+      });
+      this.load();
+    } catch (error: unknown) {
+      this.showError(error);
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   async saveProfile(): Promise<void> {
@@ -206,8 +311,8 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
       input.value = '';
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      this.logoError.set('O arquivo deve ter no máximo 2 MiB.');
+    if (file.size > 15 * 1024 * 1024) {
+      this.logoError.set('O arquivo deve ter no máximo 15 MiB.');
       input.value = '';
       return;
     }
@@ -283,7 +388,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   async saveLineup(): Promise<void> {
-    if (this.lineupForm.invalid || this.busy()) {
+    if (this.lineupForm.invalid || this.busy() || this.lineupReadOnly()) {
       return;
     }
     const value = this.lineupForm.getRawValue();
@@ -444,6 +549,14 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
         };
       }),
     );
+  }
+
+  private selectInitialMatch(workspace: RepresentativeTeamWorkspace): void {
+    const requestedMatchId = this.lineupForm.controls.matchId.value;
+    const initial = workspace.matches.find((match) => match.id === requestedMatchId) ?? workspace.matches[0];
+    if (initial) {
+      this.selectMatch(initial.id);
+    }
   }
 
   private readShirtNumber(value: string | null): string | null {

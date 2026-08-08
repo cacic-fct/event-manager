@@ -215,6 +215,29 @@ export class SportsPageComponent implements OnInit {
     return this.categoryStatuses.find((item) => item[0] === status)?.[1] ?? status;
   }
 
+  protected teamLogoForRegistration(registrationId?: string | null): string | null {
+    if (!registrationId) {
+      return null;
+    }
+    const registration = this.workspace.categoryRead()?.registrations.find(
+      (item) => item.id === registrationId,
+    );
+    return (
+      this.workspace.tournamentRead()?.teams.find((team) => team.id === registration?.teamId)?.logoUrl ?? null
+    );
+  }
+
+  protected lineupRoleLabel(role: string): string {
+    return (
+      {
+        PLAYER: 'Atleta',
+        CAPTAIN: 'Capitão',
+        COACH: 'Técnico',
+        STAFF: 'Apoio',
+      }[role] ?? 'Integrante'
+    );
+  }
+
   protected selectCategoryById(categoryId: string): void {
     const category = this.workspace.tournamentRead()?.categories.find((item) => item.id === categoryId);
     if (category) {

@@ -75,12 +75,18 @@ h3 {
   display: inline-block;
   flex: 0 0 8px;
   animation: live-breathe 5s ease-in-out infinite;
-  background: var(--mat-sys-error);
+  background: #d32f2f;
   border-radius: 50%;
   height: 8px;
   margin-right: 6px;
   width: 8px;
 }
+.public-clock { display: inline-flex; align-items: center; align-self: center; gap: .55rem; margin: .5rem auto 0; color: var(--mat-sys-on-surface); }
+.public-clock span { display: grid; text-align: start; }
+.public-clock small { color: var(--mat-sys-on-surface-variant); }
+.public-clock strong, .period-clock { font-variant-numeric: tabular-nums; }
+.period-clock { display: inline-flex; align-items: center; gap: .25rem; }
+.period-clock mat-icon { width: 16px; height: 16px; font-size: 16px; }
 
 .scoreboard {
   align-items: center;
@@ -317,10 +323,10 @@ dd {
 @keyframes live-breathe {
   0%,
   100% {
-    opacity: .18;
+    opacity: 1;
   }
   50% {
-    opacity: 1;
+    opacity: .28;
   }
 }
 

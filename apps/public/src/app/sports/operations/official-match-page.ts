@@ -6,6 +6,7 @@ import {
   OnInit,
   PLATFORM_ID,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -14,6 +15,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -23,8 +25,15 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatStepper, MatStepperModule } from '@angular/material/stepper';
+import { AztecScannerDialogComponent, ScannerFeedbackService } from '@cacic-fct/shared-angular';
+import {
+  DEFAULT_SPORTS_OVERLAY_PERIOD_WORD,
+  normalizeSportsOverlayPeriodWord,
+  SPORTS_OVERLAY_PERIOD_WORDS,
+  type SportsOverlayPeriodWord,
+} from '@cacic-fct/shared-data-types';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, firstValueFrom } from 'rxjs';
 import { SportsViewerRealtimeService } from '../viewer/sports-viewer-realtime.service';
 import { SportsOfflineQueueService } from './sports-offline-queue.service';
 import { SportsOperationsApiService } from './sports-operations-api.service';
@@ -34,7 +43,10 @@ import {
   SportsMatchActionType,
   SportsOperationalMatch,
   SportsScoreboard,
+  SportsTimerConflict,
+  SportsTimerSnapshot,
 } from './sports-operations.types';
+import { SportsTimerConflictDialog } from './sports-timer-conflict-dialog';
 
 interface CheckInEntry {
   id: string;
@@ -52,6 +64,8 @@ interface MatchOccurrence {
   authoredAt?: string;
 }
 
+type SportsOverlayTeam = 'both' | 'home' | 'away';
+
 @Component({
   selector: 'app-official-sports-match-page',
   imports: [
@@ -59,6 +73,7 @@ interface MatchOccurrence {
     MatCardModule,
     MatCheckboxModule,
     MatDialogModule,
+    MatExpansionModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -81,8 +96,11 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
   protected readonly offline = inject(SportsOfflineQueueService);
   private readonly route = inject(ActivatedRoute);
   private readonly realtime = inject(SportsViewerRealtimeService);
+  private readonly scannerFeedback = inject(ScannerFeedbackService);
   private readonly snackbar = inject(MatSnackBar);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+
+  readonly overlayPeriodWords = SPORTS_OVERLAY_PERIOD_WORDS;
 
   readonly match = signal<SportsOperationalMatch | null>(null);
   readonly loading = signal(true);
@@ -97,10 +115,11 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
   readonly checkInOverrideEnabled = signal(false);
   readonly sidesSwapped = signal(false);
   readonly checkInEntries = signal<CheckInEntry[]>([]);
+  readonly currentMatchId = signal('');
   readonly revision = signal(1);
   readonly pendingCount = computed(() => this.offline.pendingForMatch(this.matchId));
-  readonly homeCheckInEntries = computed(() => this.checkInEntries().filter((entry) => entry.team === 'home'));
-  readonly awayCheckInEntries = computed(() => this.checkInEntries().filter((entry) => entry.team === 'away'));
+  readonly homeCheckInEntries = computed(() => this.sortedCheckInEntries('home'));
+  readonly awayCheckInEntries = computed(() => this.sortedCheckInEntries('away'));
   readonly canEditCheckIn = computed(() => {
     const state = this.match()?.state;
     return (
@@ -111,7 +130,7 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
   });
   readonly canRequestCheckInCorrection = computed(() => {
     const state = this.match()?.state;
-    return state === 'LIVE' || state === 'PAUSED' || state === 'AWAITING_REVIEW';
+    return state === 'LIVE' || state === 'PAUSED';
   });
   readonly elapsedLabel = computed(() => this.formatElapsed(this.elapsedMs()));
   readonly canEditScore = computed(() => {
@@ -152,15 +171,61 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
       validators: [Validators.required, Validators.maxLength(1000)],
     }),
   });
+  readonly overlayForm = new FormGroup({
+    team: new FormControl<SportsOverlayTeam>('both', { nonNullable: true }),
+    showTeamName: new FormControl(true, { nonNullable: true }),
+    showTeamIcon: new FormControl(true, { nonNullable: true }),
+    showScore: new FormControl(true, { nonNullable: true }),
+    showStopwatch: new FormControl(true, { nonNullable: true }),
+    showPeriod: new FormControl(true, { nonNullable: true }),
+    showState: new FormControl(true, { nonNullable: true }),
+    periodWord: new FormControl<SportsOverlayPeriodWord>(DEFAULT_SPORTS_OVERLAY_PERIOD_WORD, {
+      nonNullable: true,
+      validators: Validators.required,
+    }),
+  });
   readonly occurrences = computed(() => this.parseOccurrences(this.match()?.occurrencesJson));
+  readonly overlayUrl = computed(() => {
+    this.overlayFormRevision();
+    const matchId = this.currentMatchId();
+    if (!matchId) {
+      return '';
+    }
+    const value = this.overlayForm.getRawValue();
+    const query = new URLSearchParams({
+      team: value.team,
+      teamName: value.showTeamName ? '1' : '0',
+      teamIcon: value.showTeamIcon ? '1' : '0',
+      score: value.showScore ? '1' : '0',
+      stopwatch: value.showStopwatch ? '1' : '0',
+      period: value.showPeriod ? '1' : '0',
+      state: value.showState ? '1' : '0',
+      periodWord: normalizeSportsOverlayPeriodWord(value.periodWord),
+    });
+    const origin = this.isBrowser ? window.location.origin : '';
+    return `${origin}/api/sports/public/matches/${encodeURIComponent(matchId)}/overlay?${query.toString()}`;
+  });
 
   private matchId = '';
+  private readonly overlayFormRevision = signal(0);
   private timer: ReturnType<typeof setInterval> | null = null;
   private holdTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly subscriptions = new Subscription();
+  private handlingTimerConflict: string | null = null;
+  private readonly conflictEffect = effect(() => {
+    const conflict = this.offline.timerConflict();
+    if (conflict && conflict.matchId === this.currentMatchId() && this.handlingTimerConflict !== conflict.matchId) {
+      this.handlingTimerConflict = conflict.matchId;
+      void this.resolveTimerConflict(conflict);
+    }
+  });
 
   ngOnInit(): void {
     this.matchId = this.route.snapshot.paramMap.get('matchId') ?? '';
+    this.currentMatchId.set(this.matchId);
+    this.subscriptions.add(
+      this.overlayForm.valueChanges.subscribe(() => this.overlayFormRevision.update((revision) => revision + 1)),
+    );
     this.offline.start();
     this.timer = setInterval(() => this.now.set(Date.now()), 1000);
     this.load();
@@ -293,6 +358,21 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
     this.sidesSwapped.update((swapped) => !swapped);
   }
 
+  async copyOverlayUrl(): Promise<void> {
+    if (!this.isBrowser || !this.overlayUrl() || !navigator.clipboard) {
+      this.snackbar.open('Copie o link exibido manualmente para usar no OBS.', 'Fechar', { duration: 5000 });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(this.overlayUrl());
+      this.snackbar.open('Link do overlay copiado.', 'Fechar', { duration: 2500 });
+    } catch {
+      this.snackbar.open('Não foi possível copiar o link. Selecione-o e copie manualmente.', 'Fechar', {
+        duration: 5000,
+      });
+    }
+  }
+
   async toggleCheckIn(entry: CheckInEntry): Promise<void> {
     if (this.busy() || !this.canEditCheckIn()) {
       return;
@@ -351,6 +431,25 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
 
   lockCheckIn(): void {
     this.checkInOverrideEnabled.set(false);
+  }
+
+  openCheckInScanner(): void {
+    if (!this.canEditCheckIn() || this.busy()) {
+      return;
+    }
+    this.dialog.open<AztecScannerDialogComponent, unknown, string>(AztecScannerDialogComponent, {
+      width: 'min(560px, 96vw)',
+      maxWidth: '96vw',
+      data: {
+        acceptedPrefixes: ['user:'],
+        title: 'Escanear atleta da partida',
+        mode: ['Aztec'],
+      },
+    }).afterClosed().subscribe((code) => {
+      if (code) {
+        void this.registerScannedAttendance(code);
+      }
+    });
   }
 
   openFinalize(): void {
@@ -493,6 +592,41 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
     return entry.shirtNumber == null ? role : `${role} - camisa ${entry.shirtNumber}`;
   }
 
+  periodElapsedLabel(periodNumber: number): string | null {
+    const timer = this.match()?.periodTimers.find((candidate) => candidate.periodNumber === periodNumber);
+    if (!timer) {
+      return null;
+    }
+    const running = timer.startedAtUnixMs == null ? 0 : Math.max(0, this.now() - timer.startedAtUnixMs);
+    const elapsed = timer.elapsedBeforePauseMs + running;
+    const displayed = timer.capMs != null && !timer.allowOvertime ? Math.min(elapsed, timer.capMs) : elapsed;
+    return this.formatElapsed(displayed);
+  }
+
+  private sortedCheckInEntries(team: CheckInEntry['team']): CheckInEntry[] {
+    const entries = this.checkInEntries().filter((entry) => entry.team === team);
+    const sortByShirt = this.match()?.state !== 'SCHEDULED' && this.match()?.state !== 'CHECK_IN';
+    return [...entries].sort((left, right) => {
+      if (sortByShirt) {
+        const leftHasShirt = Boolean(left.shirtNumber?.trim());
+        const rightHasShirt = Boolean(right.shirtNumber?.trim());
+        if (leftHasShirt !== rightHasShirt) {
+          return leftHasShirt ? -1 : 1;
+        }
+        if (leftHasShirt && rightHasShirt) {
+          const shirtOrder = (left.shirtNumber ?? '').localeCompare(right.shirtNumber ?? '', 'pt-BR', {
+            numeric: true,
+            sensitivity: 'base',
+          });
+          if (shirtOrder !== 0) {
+            return shirtOrder;
+          }
+        }
+      }
+      return left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' });
+    });
+  }
+
   displaySide(position: 'left' | 'right'): 'home' | 'away' {
     if (position === 'left') {
       return this.sidesSwapped() ? 'away' : 'home';
@@ -555,6 +689,9 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
       const result = await this.offline.dispatch(action);
       this.revision.update((revision) => revision + 1);
       this.applyOptimistic(type, payload, action.authoredAt);
+      if (result === 'queued' && this.isTimerAction(type)) {
+        this.offline.attachTimerSnapshot(action.clientId, this.timerSnapshot());
+      }
       const message =
         result === 'queued'
           ? 'Ação salva neste dispositivo. Ela será enviada quando a conexão voltar.'
@@ -563,6 +700,35 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
         this.snackbar.open(message, 'Fechar', { duration: 3500 });
       }
     } catch (error: unknown) {
+      this.showError(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private async registerScannedAttendance(code: string): Promise<void> {
+    this.busy.set(true);
+    try {
+      const result = await this.offline.dispatchScannerCheckIn({
+        clientId: this.uuid(),
+        matchId: this.matchId,
+        code,
+        checkedInAt: new Date().toISOString(),
+        offline: false,
+      });
+      this.scannerFeedback.show('valid');
+      this.snackbar.open(
+        result === 'queued'
+          ? 'Leitura salva neste dispositivo. A presença será conferida quando a conexão voltar.'
+          : 'Presença registrada pelo scanner.',
+        'Fechar',
+        { duration: 4000 },
+      );
+      if (result === 'sent') {
+        this.load();
+      }
+    } catch (error: unknown) {
+      this.scannerFeedback.show('invalid');
       this.showError(error);
     } finally {
       this.busy.set(false);
@@ -578,6 +744,7 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
       SCORE_DELTA: null,
       SCORE_CORRECTION: 'Correção do placar aplicada.',
       PERIOD_ROLL: 'Novo período iniciado.',
+      TIMER_RECONCILE: 'Cronômetro reconciliado.',
       OCCURRENCE: 'Anotação salva.',
       FINALIZE: 'Resultado enviado para revisão.',
       CANCEL: 'Pedido de remarcação enviado.',
@@ -592,15 +759,57 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
         return match;
       }
       if (type === 'START' || type === 'RESUME') {
-        return { ...match, state: 'LIVE', timerStartedAt: authoredAt, timerPausedAt: null };
+        const startedAtUnixMs = new Date(authoredAt).getTime();
+        const periodNumber = match.scoreboard.activePeriod ?? match.scoreboard.periods.at(-1)?.number ?? 1;
+        const existingTimer = match.periodTimers.find((timer) => timer.periodNumber === periodNumber);
+        return {
+          ...match,
+          state: 'LIVE',
+          timerStartedAt: authoredAt,
+          timerStartedAtUnixMs: startedAtUnixMs,
+          timerPausedAt: null,
+          timerPausedAtUnixMs: null,
+          periodTimers: existingTimer
+            ? match.periodTimers.map((timer) => timer.periodNumber === periodNumber
+              ? { ...timer, startedAtUnixMs, pausedAtUnixMs: null }
+              : timer)
+            : [
+                ...match.periodTimers,
+                {
+                  periodNumber,
+                  startedAtUnixMs,
+                  pausedAtUnixMs: null,
+                  elapsedBeforePauseMs: 0,
+                  scheduledStartOffsetMs: 0,
+                  capMs: null,
+                  allowOvertime: true,
+                },
+              ],
+        };
       }
       if (type === 'PAUSE') {
+        const pausedAtUnixMs = new Date(authoredAt).getTime();
+        const activePeriod = match.scoreboard.activePeriod;
         return {
           ...match,
           state: 'PAUSED',
           elapsedBeforePauseMs: this.elapsedMs(),
           timerStartedAt: null,
+          timerStartedAtUnixMs: null,
           timerPausedAt: authoredAt,
+          timerPausedAtUnixMs: pausedAtUnixMs,
+          periodTimers: match.periodTimers.map((timer) => {
+            if (timer.periodNumber !== activePeriod || timer.startedAtUnixMs == null) {
+              return timer;
+            }
+            return {
+              ...timer,
+              elapsedBeforePauseMs:
+                timer.elapsedBeforePauseMs + Math.max(0, pausedAtUnixMs - timer.startedAtUnixMs),
+              startedAtUnixMs: null,
+              pausedAtUnixMs,
+            };
+          }),
         };
       }
       if (type === 'SCORE_DELTA') {
@@ -617,8 +826,41 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
       }
       if (type === 'PERIOD_ROLL') {
         const number = (match.scoreboard.periods.at(-1)?.number ?? 0) + 1;
+        const startedAtUnixMs = new Date(authoredAt).getTime();
+        const previous = match.periodTimers.find((timer) => timer.periodNumber === match.scoreboard.activePeriod);
+        const previousElapsed = previous
+          ? previous.elapsedBeforePauseMs +
+            (previous.startedAtUnixMs == null ? 0 : Math.max(0, startedAtUnixMs - previous.startedAtUnixMs))
+          : 0;
+        const scheduledStartOffsetMs =
+          match.timerPeriodStartOffsetsMs[number - 1] ??
+          (match.timerPeriodDurationMs ?? 0) * (number - 1);
         return {
           ...match,
+          elapsedBeforePauseMs: scheduledStartOffsetMs,
+          timerStartedAt: authoredAt,
+          timerStartedAtUnixMs: startedAtUnixMs,
+          timerPausedAt: null,
+          timerPausedAtUnixMs: null,
+          periodTimers: [
+            ...match.periodTimers.map((timer) => timer.periodNumber === match.scoreboard.activePeriod
+              ? {
+                  ...timer,
+                  elapsedBeforePauseMs: previousElapsed,
+                  startedAtUnixMs: null,
+                  pausedAtUnixMs: startedAtUnixMs,
+                }
+              : timer),
+            {
+              periodNumber: number,
+              startedAtUnixMs,
+              pausedAtUnixMs: null,
+              elapsedBeforePauseMs: 0,
+              scheduledStartOffsetMs,
+              capMs: match.timerPeriodDurationMs ?? null,
+              allowOvertime: match.timerAllowOvertime,
+            },
+          ],
           scoreboard: {
             ...match.scoreboard,
             activePeriod: number,
@@ -685,6 +927,74 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
     });
   }
 
+  private async resolveTimerConflict(conflict: SportsTimerConflict): Promise<void> {
+    try {
+      const server = await firstValueFrom(this.api.match(conflict.matchId));
+      const choice = await firstValueFrom(
+        this.dialog.open<SportsTimerConflictDialog, { server: SportsTimerSnapshot; device: SportsTimerSnapshot }, 'SERVER' | 'DEVICE'>(
+          SportsTimerConflictDialog,
+          {
+            disableClose: true,
+            width: 'min(620px, 96vw)',
+            maxWidth: '96vw',
+            data: { server: this.timerSnapshot(server), device: conflict.device },
+          },
+        ).afterClosed(),
+      );
+      if (choice === 'DEVICE') {
+        const action: SportsMatchAction = {
+          clientId: this.uuid(),
+          matchId: server.id,
+          baseRevision: server.revision,
+          type: 'TIMER_RECONCILE',
+          payloadJson: JSON.stringify({
+            resolution: 'DEVICE',
+            overall: conflict.device.overall,
+            periods: conflict.device.periods,
+            activePeriodNumber: conflict.device.activePeriod,
+          }),
+          authoredAt: new Date().toISOString(),
+          offline: false,
+        };
+        await firstValueFrom(this.api.commit([action]));
+      }
+      this.offline.resolveTimerConflict(
+        conflict.matchId,
+        conflict.queuedActionIds,
+        server.revision + (choice === 'DEVICE' ? 1 : 0),
+      );
+      this.handlingTimerConflict = null;
+      this.load();
+      this.snackbar.open(
+        choice === 'DEVICE' ? 'Cronômetro deste dispositivo mantido.' : 'Cronômetro do servidor mantido.',
+        'Fechar',
+        { duration: 4500 },
+      );
+    } catch (error: unknown) {
+      this.offline.postponeTimerConflict(conflict.matchId);
+      this.handlingTimerConflict = null;
+      this.showError(error);
+    }
+  }
+
+  private timerSnapshot(source: SportsOperationalMatch | null = this.match()): SportsTimerSnapshot {
+    return {
+      overall: {
+        startedAtUnixMs: source?.timerStartedAtUnixMs ??
+          (source?.timerStartedAt ? new Date(source.timerStartedAt).getTime() : null),
+        pausedAtUnixMs: source?.timerPausedAtUnixMs ??
+          (source?.timerPausedAt ? new Date(source.timerPausedAt).getTime() : null),
+        elapsedBeforePauseMs: source?.elapsedBeforePauseMs ?? 0,
+      },
+      periods: source?.periodTimers.map((timer) => ({ ...timer })) ?? [],
+      activePeriod: source?.scoreboard.activePeriod ?? null,
+    };
+  }
+
+  private isTimerAction(type: SportsMatchActionType): boolean {
+    return type === 'START' || type === 'PAUSE' || type === 'RESUME' || type === 'PERIOD_ROLL' || type === 'TIMER_RECONCILE';
+  }
+
   private parseOccurrences(value: string | null | undefined): MatchOccurrence[] {
     try {
       const parsed = JSON.parse(value ?? '[]') as unknown;
@@ -721,7 +1031,8 @@ export class OfficialSportsMatchPage implements OnInit, OnDestroy {
     if (!match) {
       return 0;
     }
-    const live = match.timerStartedAt ? Math.max(0, this.now() - new Date(match.timerStartedAt).getTime()) : 0;
+    const startedAt = match.timerStartedAtUnixMs ?? (match.timerStartedAt ? new Date(match.timerStartedAt).getTime() : null);
+    const live = startedAt == null ? 0 : Math.max(0, this.now() - startedAt);
     return match.elapsedBeforePauseMs + live;
   }
 

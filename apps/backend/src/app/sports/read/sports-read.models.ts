@@ -6,6 +6,7 @@ import {
   SportsIdentityType,
   SportsLossReason,
   SportsMatch,
+  SportsMatchPeriodTimer,
   SportsMatchAction,
   SportsMatchState,
   SportsMatchRoster,
@@ -405,6 +406,21 @@ export class RepresentativeSportsMatchRead {
 
   @Field(() => String, { nullable: true })
   awayRegistrationId?: string | null;
+
+  @Field(() => String)
+  categoryId!: string;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => String)
+  categoryEmoji!: string;
+
+  @Field(() => PublicSportsTeam, { nullable: true })
+  homeTeam?: PublicSportsTeam | null;
+
+  @Field(() => PublicSportsTeam, { nullable: true })
+  awayTeam?: PublicSportsTeam | null;
 }
 
 @ObjectType()
@@ -724,11 +740,35 @@ export class PublicSportsMatch {
   @Field(() => Date, { nullable: true })
   timerStartedAt?: Date | null;
 
+  @Field(() => Float, { nullable: true })
+  timerStartedAtUnixMs?: number | null;
+
   @Field(() => Date, { nullable: true })
   timerPausedAt?: Date | null;
 
+  @Field(() => Float, { nullable: true })
+  timerPausedAtUnixMs?: number | null;
+
   @Field(() => Int)
   elapsedBeforePauseMs!: number;
+
+  @Field(() => [SportsMatchPeriodTimer])
+  periodTimers!: SportsMatchPeriodTimer[];
+
+  @Field(() => Boolean)
+  overallTimerEnabled!: boolean;
+
+  @Field(() => Boolean)
+  periodTimerEnabled!: boolean;
+
+  @Field(() => Float, { nullable: true })
+  timerPeriodDurationMs?: number | null;
+
+  @Field(() => [Float])
+  timerPeriodStartOffsetsMs!: number[];
+
+  @Field(() => Boolean)
+  timerAllowOvertime!: boolean;
 
   @Field(() => Int, { nullable: true })
   roundNumber?: number | null;

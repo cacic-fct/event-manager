@@ -16,6 +16,7 @@ export type SportsMatchActionType =
   | 'SCORE_DELTA'
   | 'SCORE_CORRECTION'
   | 'PERIOD_ROLL'
+  | 'TIMER_RECONCILE'
   | 'OCCURRENCE'
   | 'FINALIZE'
   | 'CANCEL'
@@ -34,6 +35,16 @@ export interface SportsScorePeriod {
   homeScore: number;
   awayScore: number;
   completed: boolean;
+}
+
+export interface SportsMatchPeriodTimer {
+  periodNumber: number;
+  startedAtUnixMs?: number | null;
+  pausedAtUnixMs?: number | null;
+  elapsedBeforePauseMs: number;
+  scheduledStartOffsetMs: number;
+  capMs?: number | null;
+  allowOvertime: boolean;
 }
 
 export interface SportsScoreboard {
@@ -55,8 +66,16 @@ export interface SportsOperationalMatch {
   state: SportsMatchState;
   scoreboard: SportsScoreboard;
   timerStartedAt?: string | null;
+  timerStartedAtUnixMs?: number | null;
   timerPausedAt?: string | null;
+  timerPausedAtUnixMs?: number | null;
   elapsedBeforePauseMs: number;
+  periodTimers: SportsMatchPeriodTimer[];
+  overallTimerEnabled: boolean;
+  periodTimerEnabled: boolean;
+  timerPeriodDurationMs?: number | null;
+  timerPeriodStartOffsetsMs: number[];
+  timerAllowOvertime: boolean;
   schedule: {
     startDate: string;
     endDate: string;
@@ -134,6 +153,30 @@ export interface SportsRosterCheckIn {
   present?: boolean;
 }
 
+export interface SportsScannerCheckIn {
+  clientId: string;
+  matchId: string;
+  code: string;
+  checkedInAt: string;
+  offline: boolean;
+}
+
+export interface SportsTimerSnapshot {
+  overall: {
+    startedAtUnixMs: number | null;
+    pausedAtUnixMs: number | null;
+    elapsedBeforePauseMs: number;
+  };
+  periods: SportsMatchPeriodTimer[];
+  activePeriod: number | null;
+}
+
+export interface SportsTimerConflict {
+  matchId: string;
+  queuedActionIds: string[];
+  device: SportsTimerSnapshot;
+}
+
 interface QueuedSportsOperationBase {
   id: string;
   userScope: string;
@@ -143,8 +186,9 @@ interface QueuedSportsOperationBase {
 }
 
 export type QueuedSportsOperation =
-  | (QueuedSportsOperationBase & { kind: 'ACTION'; action: SportsMatchAction })
-  | (QueuedSportsOperationBase & { kind: 'CHECK_IN'; checkIn: SportsRosterCheckIn });
+  | (QueuedSportsOperationBase & { kind: 'ACTION'; action: SportsMatchAction; timerSnapshot?: SportsTimerSnapshot })
+  | (QueuedSportsOperationBase & { kind: 'CHECK_IN'; checkIn: SportsRosterCheckIn })
+  | (QueuedSportsOperationBase & { kind: 'SCANNER'; scannerCheckIn: SportsScannerCheckIn });
 
 export interface RepresentativeIdentityHint {
   clientKey: string;
@@ -182,6 +226,47 @@ export interface RepresentativeTeamWorkspace {
   team: SportsTeamSummary;
   teamRevision: number;
   queuedChanges: RepresentativeTeamChange[];
+  members: Array<{
+    id: string;
+    name: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'WITHDRAWN';
+    revision: number;
+    categoryRoles: Array<{
+      registrationId: string;
+      categoryId: string;
+      categoryName: string;
+      role: 'PLAYER' | 'CAPTAIN' | 'COACH';
+      eligibility: string;
+    }>;
+  }>;
+  registrations: Array<{
+    id: string;
+    categoryId: string;
+    categoryName: string;
+    categoryEmoji: string;
+    status: string;
+  }>;
+  matches: Array<{
+    id: string;
+    eventId: string;
+    state: SportsMatchState;
+    startDate: string;
+    endDate: string;
+    homeRegistrationId?: string | null;
+    awayRegistrationId?: string | null;
+    categoryId: string;
+    categoryName: string;
+    categoryEmoji: string;
+    homeTeam?: SportsTeamSummary | null;
+    awayTeam?: SportsTeamSummary | null;
+  }>;
+  joinQueue: Array<{
+    id: string;
+    applicantName: string;
+    identityDocumentHint?: string | null;
+    categoryNames: string[];
+    status: string;
+  }>;
 }
 
 export interface SportsApplicationOption {

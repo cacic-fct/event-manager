@@ -19,6 +19,7 @@ import {
   SportsRepresentativeApplicationReviewInput,
   SportsRepresentativeRevokeInput,
   SportsRosterCheckInInput,
+  SportsRosterScannerCheckInInput,
   SportsTeamChangeRequestInput,
   SportsTeamChangeReviewInput,
   SportsTeamCloneInput,
@@ -178,6 +179,7 @@ export class SportsMutationsResolver {
         {
           ...input,
           scoreRules: this.parseJson(input.scoreRulesJson, 'regras de placar'),
+          timerRules: this.parseTimerRules(input.timerRulesJson),
           rosterRules: this.parseJson(input.rosterRulesJson, 'regras de elenco'),
           bracketRules: this.parseJson(input.bracketRulesJson, 'regras da chave'),
           standingsRules: this.parseJson(
@@ -216,6 +218,10 @@ export class SportsMutationsResolver {
             input.scoreRulesJson === undefined
               ? undefined
               : this.parseJson(input.scoreRulesJson, 'regras de placar'),
+          timerRules:
+            input.timerRulesJson === undefined
+              ? undefined
+              : this.parseTimerRules(input.timerRulesJson),
           rosterRules:
             input.rosterRulesJson === undefined
               ? undefined
@@ -1313,6 +1319,28 @@ export class SportsMutationsResolver {
     return true;
   }
 
+  @Mutation(() => Boolean, { name: 'checkInSportsMatchFromScannerCode' })
+  async checkInSportsMatchFromScannerCode(
+    @Args('matchId', { type: () => String }) matchId: string,
+    @Args('input', { type: () => SportsRosterScannerCheckInInput })
+    input: SportsRosterScannerCheckInInput,
+    @Context() context: GraphqlContext,
+  ): Promise<boolean> {
+    const { actor, assignment } = await this.access.requireMatchOfficial(context, matchId);
+    await this.rosters.checkInFromScanner(
+      matchId,
+      input.code,
+      input.checkedInAt,
+      input.clientId,
+      input.offline ?? false,
+      actor.id,
+      this.authenticated(context).sub ?? null,
+      assignment.role,
+      createSportsAuditActor(actor),
+    );
+    return true;
+  }
+
   @Mutation(() => [String], { name: 'commitSportsMatchActions' })
   async commitMatchActions(
     @Args('input', { type: () => CommitSportsMatchActionsInput })
@@ -1544,6 +1572,50 @@ export class SportsMutationsResolver {
     } catch {
       throw new BadRequestException(`JSON inválido em ${label}.`);
     }
+  }
+
+  private parseTimerRules(value: string | undefined): Prisma.InputJsonValue {
+    if (value === undefined || !value.trim()) {
+      return {};
+    }
+    const rules = this.parseObject(value, 'regras do cronômetro');
+    const allowed = new Set([
+      'overallEnabled',
+      'periodEnabled',
+      'periodDurationMs',
+      'allowOvertime',
+      'periodStartOffsetsMs',
+    ]);
+    const unknownKeys = Object.keys(rules).filter((key) => !allowed.has(key));
+    if (unknownKeys.length) {
+      throw new BadRequestException(
+        `Campos desconhecidos nas regras do cronômetro: ${unknownKeys.join(', ')}.`,
+      );
+    }
+    for (const key of ['overallEnabled', 'periodEnabled', 'allowOvertime']) {
+      if (rules[key] !== undefined && typeof rules[key] !== 'boolean') {
+        throw new BadRequestException(`${key} deve ser booleano.`);
+      }
+    }
+    if (
+      rules['periodDurationMs'] !== undefined &&
+      (!Number.isSafeInteger(rules['periodDurationMs']) ||
+        (rules['periodDurationMs'] as number) < 0 ||
+        (rules['periodDurationMs'] as number) > 24 * 60 * 60 * 1000)
+    ) {
+      throw new BadRequestException('periodDurationMs deve ser um inteiro entre 0 e 86400000.');
+    }
+    if (rules['periodStartOffsetsMs'] !== undefined) {
+      if (
+        !Array.isArray(rules['periodStartOffsetsMs']) ||
+        rules['periodStartOffsetsMs'].some(
+          (offset) => !Number.isSafeInteger(offset) || offset < 0 || offset > 7 * 24 * 60 * 60 * 1000,
+        )
+      ) {
+        throw new BadRequestException('periodStartOffsetsMs deve conter deslocamentos inteiros não negativos.');
+      }
+    }
+    return rules as Prisma.InputJsonValue;
   }
 
   private parseObject(

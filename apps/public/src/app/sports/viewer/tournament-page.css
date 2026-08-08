@@ -140,7 +140,7 @@ h5 {
 
 .live-label {
   align-items: center;
-  color: var(--mat-sys-error);
+  color: #b3261e;
   display: inline-flex;
   font: var(--mat-sys-label-large);
   gap: 7px;
@@ -150,7 +150,7 @@ h5 {
   display: inline-block;
   flex: 0 0 8px;
   animation: live-breathe 5s ease-in-out infinite;
-  background: var(--mat-sys-error);
+  background: #d32f2f;
   border-radius: 50%;
   height: 8px;
   width: 8px;
@@ -172,6 +172,8 @@ h5 {
   text-decoration: none;
   transition: background-color 160ms ease-out, box-shadow 160ms ease-out;
 }
+.card-clock { display: inline-flex; align-items: center; justify-content: center; gap: 4px; color: var(--mat-sys-on-surface-variant); font-variant-numeric: tabular-nums; }
+.card-clock mat-icon { width: 16px; height: 16px; font-size: 16px; }
 
 .featured-match:hover {
   background: var(--mat-sys-surface-container-highest);
@@ -387,10 +389,10 @@ tbody th {
 @keyframes live-breathe {
   0%,
   100% {
-    opacity: .18;
+    opacity: 1;
   }
   50% {
-    opacity: 1;
+    opacity: .28;
   }
 }
 

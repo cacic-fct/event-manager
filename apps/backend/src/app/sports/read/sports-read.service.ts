@@ -132,6 +132,7 @@ const ADMIN_CATEGORY_SELECT = {
   periodsEnabled: true,
   maximumPeriods: true,
   periodLabel: true,
+  timerRules: true,
   scoreRules: true,
   rosterRules: true,
   bracketRules: true,
@@ -255,6 +256,8 @@ const PUBLIC_MATCH_SELECT = {
     select: {
       maximumPeriods: true,
       periodLabel: true,
+      periodsEnabled: true,
+      timerRules: true,
     },
   },
   rosters: {
@@ -1224,14 +1227,6 @@ export class SportsReadService {
       this.prisma.sportsMatch.findMany({
         where: {
           deletedAt: null,
-          state: {
-            in: [
-              SportsMatchState.SCHEDULED,
-              SportsMatchState.CHECK_IN,
-              SportsMatchState.LIVE,
-              SportsMatchState.PAUSED,
-            ],
-          },
           OR: [
             { homeRegistration: { teamId, deletedAt: null } },
             { awayRegistration: { teamId, deletedAt: null } },
@@ -1241,8 +1236,12 @@ export class SportsReadService {
           id: true,
           eventId: true,
           state: true,
+          categoryId: true,
+          category: { select: { name: true, eventGroup: { select: { emoji: true } } } },
           homeRegistrationId: true,
           awayRegistrationId: true,
+          homeRegistration: { select: { team: { select: PUBLIC_TEAM_SELECT } } },
+          awayRegistration: { select: { team: { select: PUBLIC_TEAM_SELECT } } },
           event: {
             select: { startDate: true, endDate: true },
           },
@@ -1323,6 +1322,15 @@ export class SportsReadService {
         endDate: match.event.endDate,
         homeRegistrationId: match.homeRegistrationId,
         awayRegistrationId: match.awayRegistrationId,
+        categoryId: match.categoryId,
+        categoryName: match.category.name,
+        categoryEmoji: match.category.eventGroup.emoji || '🏅',
+        homeTeam: match.homeRegistration
+          ? this.mapPublicTeam(match.homeRegistration.team)
+          : null,
+        awayTeam: match.awayRegistration
+          ? this.mapPublicTeam(match.awayRegistration.team)
+          : null,
       })),
       joinQueue: joinQueue.map((application) => ({
         id: application.id,
@@ -2232,6 +2240,8 @@ export class SportsReadService {
       hasCheckedInPlayers: match.rosters.some((roster) => roster.entries.length > 0),
       maximumPeriods: match.category.maximumPeriods,
       periodLabel: match.category.periodLabel,
+      periodsEnabled: match.category.periodsEnabled,
+      timerRules: match.category.timerRules,
     });
   }
 
@@ -2270,8 +2280,16 @@ export class SportsReadService {
       lossReasonDetail: projection.lossReasonDetail,
       drawWillReschedule: projection.drawWillReschedule,
       timerStartedAt: projection.timerStartedAt,
+      timerStartedAtUnixMs: projection.timerStartedAt?.getTime() ?? null,
       timerPausedAt: projection.timerPausedAt,
+      timerPausedAtUnixMs: projection.timerPausedAt?.getTime() ?? null,
       elapsedBeforePauseMs: projection.elapsedBeforePauseMs,
+      periodTimers: projection.periodTimers,
+      overallTimerEnabled: projection.overallTimerEnabled,
+      periodTimerEnabled: projection.periodTimerEnabled,
+      timerPeriodDurationMs: projection.timerPeriodDurationMs,
+      timerPeriodStartOffsetsMs: projection.timerPeriodStartOffsetsMs,
+      timerAllowOvertime: projection.timerAllowOvertime,
       roundNumber: match.roundNumber,
       bracketPosition: match.bracketPosition,
       groupKey: match.groupKey,
@@ -2418,6 +2436,7 @@ export class SportsReadService {
       ...record,
       emoji: record.eventGroup.emoji || '🏅',
       scoreRulesJson: this.serializeJson(record.scoreRules),
+      timerRulesJson: this.serializeJson(record.timerRules),
       rosterRulesJson: this.serializeJson(record.rosterRules),
       bracketRulesJson: this.serializeJson(record.bracketRules),
       standingsRulesJson: this.serializeJson(record.standingsRules),
@@ -2458,6 +2477,11 @@ export class SportsReadService {
       scoreboard: this.mapAdminScoreboard(record.scoreboard),
       canonicalScoreboard: this.mapAdminScoreboard(record.canonicalScoreboard),
       occurrencesJson: this.serializeJson(record.occurrences),
+      timerStartedAtUnixMs: record.timerStartedAt?.getTime() ?? null,
+      timerPausedAtUnixMs: record.timerPausedAt?.getTime() ?? null,
+      periodTimers: [],
+      overallTimerEnabled: true,
+      periodTimerEnabled: true,
     };
   }
 

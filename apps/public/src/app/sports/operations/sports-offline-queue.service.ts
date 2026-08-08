@@ -8,6 +8,9 @@ import {
   QueuedSportsOperation,
   SportsMatchAction,
   SportsRosterCheckIn,
+  SportsScannerCheckIn,
+  SportsTimerConflict,
+  SportsTimerSnapshot,
 } from './sports-operations.types';
 
 const STORAGE_KEY = 'fct:sports:operations:v2';
@@ -24,6 +27,8 @@ export class SportsOfflineQueueService implements OnDestroy {
 
   private readonly pendingState = signal<QueuedSportsOperation[]>(this.read());
   readonly pending = this.pendingState.asReadonly();
+  private readonly timerConflictState = signal<SportsTimerConflict | null>(null);
+  readonly timerConflict = this.timerConflictState.asReadonly();
 
   start(): void {
     if (!this.isBrowser) {
@@ -72,6 +77,34 @@ export class SportsOfflineQueueService implements OnDestroy {
     return 'queued';
   }
 
+  async dispatchScannerCheckIn(scannerCheckIn: SportsScannerCheckIn): Promise<'sent' | 'queued'> {
+    if (this.network.isOnline()) {
+      try {
+        await firstValueFrom(this.api.checkInFromScanner(scannerCheckIn));
+        return 'sent';
+      } catch (error: unknown) {
+        if (!this.isConnectionFailure(error)) {
+          throw error;
+        }
+      }
+    }
+    const userScope = this.auth.user()?.sub ?? 'anonymous';
+    if (!this.pendingState().some((item) => item.id === scannerCheckIn.clientId)) {
+      this.persist([
+        ...this.pendingState(),
+        {
+          kind: 'SCANNER',
+          id: scannerCheckIn.clientId,
+          userScope,
+          scannerCheckIn: { ...scannerCheckIn, offline: true },
+          attempts: 0,
+          queuedAt: new Date().toISOString(),
+        },
+      ]);
+    }
+    return 'queued';
+  }
+
   enqueueAction(action: SportsMatchAction): void {
     const userScope = this.auth.user()?.sub ?? 'anonymous';
     if (this.pendingState().some((item) => item.id === action.clientId)) {
@@ -88,6 +121,11 @@ export class SportsOfflineQueueService implements OnDestroy {
         queuedAt: new Date().toISOString(),
       },
     ]);
+  }
+
+  attachTimerSnapshot(clientId: string, snapshot: SportsTimerSnapshot): void {
+    this.persist(this.pendingState().map((item) =>
+      item.kind === 'ACTION' && item.id === clientId ? { ...item, timerSnapshot: snapshot } : item));
   }
 
   enqueueCheckIn(checkIn: SportsRosterCheckIn): void {
@@ -112,7 +150,9 @@ export class SportsOfflineQueueService implements OnDestroy {
     return this.pendingState().filter((item) =>
       item.kind === 'ACTION'
         ? item.action.matchId === matchId
-        : item.checkIn.matchId === matchId,
+        : item.kind === 'CHECK_IN'
+          ? item.checkIn.matchId === matchId
+          : item.scannerCheckIn.matchId === matchId,
     ).length;
   }
 
@@ -127,8 +167,13 @@ export class SportsOfflineQueueService implements OnDestroy {
     this.syncing = true;
     try {
       const remaining: QueuedSportsOperation[] = [];
+      const conflictedMatches = new Set<string>();
       for (const item of this.pendingState()) {
         if (item.userScope !== userScope) {
+          remaining.push(item);
+          continue;
+        }
+        if (item.kind === 'ACTION' && conflictedMatches.has(item.action.matchId)) {
           remaining.push(item);
           continue;
         }
@@ -138,8 +183,10 @@ export class SportsOfflineQueueService implements OnDestroy {
           try {
             if (item.kind === 'ACTION') {
               await firstValueFrom(this.api.commit([{ ...item.action, offline: true }]));
-            } else {
+            } else if (item.kind === 'CHECK_IN') {
               await firstValueFrom(this.api.checkIn({ ...item.checkIn, offline: true }));
+            } else {
+              await firstValueFrom(this.api.checkInFromScanner({ ...item.scannerCheckIn, offline: true }));
             }
             accepted = true;
             break;
@@ -151,6 +198,23 @@ export class SportsOfflineQueueService implements OnDestroy {
           }
         }
         if (!accepted) {
+          if (item.kind === 'ACTION' && item.timerSnapshot && this.isTimerConflict(lastError)) {
+            const matchId = item.action.matchId;
+            conflictedMatches.add(matchId);
+            const timerItems = this.pendingState().filter((candidate) =>
+              candidate.kind === 'ACTION' &&
+              candidate.action.matchId === matchId &&
+              candidate.timerSnapshot &&
+              this.isTimerAction(candidate.action.type));
+            const latest = timerItems.at(-1);
+            if (latest?.kind === 'ACTION' && latest.timerSnapshot) {
+              this.timerConflictState.set({
+                matchId,
+                queuedActionIds: timerItems.map((candidate) => candidate.id),
+                device: latest.timerSnapshot,
+              });
+            }
+          }
           remaining.push({
             ...item,
             attempts: item.attempts + 1,
@@ -166,6 +230,32 @@ export class SportsOfflineQueueService implements OnDestroy {
 
   discard(clientId: string): void {
     this.persist(this.pendingState().filter((item) => item.id !== clientId));
+  }
+
+  resolveTimerConflict(matchId: string, queuedActionIds: readonly string[], baseRevision: number): void {
+    const ids = new Set(queuedActionIds);
+    let nextRevision = baseRevision;
+    const rebased = this.pendingState().flatMap((item): QueuedSportsOperation[] => {
+      if (item.kind !== 'ACTION' || item.action.matchId !== matchId) {
+        return [item];
+      }
+      if (ids.has(item.id)) {
+        return [];
+      }
+      const result = { ...item, action: { ...item.action, baseRevision: nextRevision } };
+      nextRevision += 1;
+      return [result];
+    });
+    this.persist(rebased);
+    if (this.timerConflictState()?.matchId === matchId) {
+      this.timerConflictState.set(null);
+    }
+  }
+
+  postponeTimerConflict(matchId: string): void {
+    if (this.timerConflictState()?.matchId === matchId) {
+      this.timerConflictState.set(null);
+    }
   }
 
   ngOnDestroy(): void {
@@ -196,5 +286,13 @@ export class SportsOfflineQueueService implements OnDestroy {
       return true;
     }
     return /network|offline|fetch|connection|status 0/i.test(error.message);
+  }
+
+  private isTimerConflict(error: unknown): boolean {
+    return error instanceof Error && /partida mudou|expectedrevision|revis[aã]o|revision/i.test(error.message);
+  }
+
+  private isTimerAction(type: SportsMatchAction['type']): boolean {
+    return type === 'START' || type === 'PAUSE' || type === 'RESUME' || type === 'PERIOD_ROLL' || type === 'TIMER_RECONCILE';
   }
 }

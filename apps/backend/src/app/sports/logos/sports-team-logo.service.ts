@@ -26,11 +26,10 @@ import { S3Service } from '../../s3/s3.service';
 import { SportsTeamChangeService } from '../teams/sports-team-change.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 
-export const MAX_SPORTS_TEAM_LOGO_SIZE_BYTES = 2 * 1024 * 1024;
+export const MAX_SPORTS_TEAM_LOGO_SIZE_BYTES = 15 * 1024 * 1024;
 export const MIN_SPORTS_TEAM_LOGO_DIMENSION = 16;
-export const MAX_SPORTS_TEAM_LOGO_DIMENSION = 4096;
-export const MAX_SPORTS_TEAM_LOGO_PIXELS =
-  MAX_SPORTS_TEAM_LOGO_DIMENSION * MAX_SPORTS_TEAM_LOGO_DIMENSION;
+export const SPORTS_TEAM_LOGO_OUTPUT_DIMENSION = 1600;
+export const MAX_SPORTS_TEAM_LOGO_PIXELS = 64 * 1024 * 1024;
 
 const SPORTS_TEAM_LOGO_METADATA_TIMEOUT_SECONDS = 3;
 
@@ -409,7 +408,7 @@ export class SportsTeamLogoService {
       file.size !== file.buffer.length ||
       file.buffer.length > MAX_SPORTS_TEAM_LOGO_SIZE_BYTES
     ) {
-      throw new BadRequestException('O logo da equipe deve ter no máximo 2 MiB.');
+      throw new BadRequestException('O logo da equipe deve ter no máximo 15 MiB.');
     }
 
     let metadata;
@@ -430,12 +429,16 @@ export class SportsTeamLogoService {
       );
     }
 
-    if (!metadata.format || !(metadata.format in LOGO_FORMATS)) {
+    const detectedFormat =
+      metadata.format === 'heif' && file.mimetype.toLowerCase() === 'image/avif'
+        ? 'avif'
+        : metadata.format;
+    if (!detectedFormat || !(detectedFormat in LOGO_FORMATS)) {
       throw new BadRequestException(
         'O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG.',
       );
     }
-    const format = metadata.format as SportsTeamLogoFormat;
+    const format = detectedFormat as SportsTeamLogoFormat;
     const formatDetails = LOGO_FORMATS[format];
     if (file.mimetype.toLowerCase() !== formatDetails.mimeType) {
       throw new BadRequestException('O tipo declarado do arquivo não corresponde ao conteúdo da imagem.');
@@ -446,12 +449,10 @@ export class SportsTeamLogoService {
     if (
       metadata.width < MIN_SPORTS_TEAM_LOGO_DIMENSION ||
       metadata.height < MIN_SPORTS_TEAM_LOGO_DIMENSION ||
-      metadata.width > MAX_SPORTS_TEAM_LOGO_DIMENSION ||
-      metadata.height > MAX_SPORTS_TEAM_LOGO_DIMENSION ||
       metadata.width * metadata.height > MAX_SPORTS_TEAM_LOGO_PIXELS
     ) {
       throw new BadRequestException(
-        `O logo deve ter entre ${MIN_SPORTS_TEAM_LOGO_DIMENSION}px e ${MAX_SPORTS_TEAM_LOGO_DIMENSION}px por lado.`,
+        `O logo deve ter ao menos ${MIN_SPORTS_TEAM_LOGO_DIMENSION}px por lado e no máximo 64 megapixels.`,
       );
     }
     if (metadata.pages && metadata.pages > 1) {
@@ -470,8 +471,7 @@ export class SportsTeamLogoService {
         );
       }
     }
-    const normalized = {
-      buffer: await sharp(file.buffer, {
+    const normalizedBuffer = await sharp(file.buffer, {
         animated: false,
         failOn: 'warning',
         limitInputPixels: MAX_SPORTS_TEAM_LOGO_PIXELS,
@@ -480,15 +480,24 @@ export class SportsTeamLogoService {
         unlimited: false,
       })
         .rotate()
+        .resize({
+          width: SPORTS_TEAM_LOGO_OUTPUT_DIMENSION,
+          height: SPORTS_TEAM_LOGO_OUTPUT_DIMENSION,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
         .avif({ quality: 82, effort: 4 })
-        .toBuffer(),
+        .toBuffer();
+    const normalizedMetadata = await sharp(normalizedBuffer).metadata();
+    const normalized = {
+      buffer: normalizedBuffer,
       mimeType: 'image/avif',
       extension: 'avif',
     };
     return {
       ...normalized,
-      width: metadata.width,
-      height: metadata.height,
+      width: normalizedMetadata.width ?? metadata.width,
+      height: normalizedMetadata.height ?? metadata.height,
     };
   }
 

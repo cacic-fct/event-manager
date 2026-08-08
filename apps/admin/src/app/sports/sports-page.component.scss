@@ -118,7 +118,13 @@
 .area-nav button.active {
   background: var(--mat-sys-surface);
   color: var(--mat-sys-primary);
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--mat-sys-shadow) 16%, transparent);
+}
+
+.option-description {
+  color: var(--mat-sys-on-surface-variant);
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 .area-nav button > span {
@@ -219,6 +225,25 @@
 
 .subsection-title h4 {
   margin: 0 0 0.2rem;
+}
+
+.advanced-docs {
+  align-items: start;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.8rem;
+}
+
+.advanced-docs div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.advanced-docs p {
+  margin: 0;
+  max-width: 75ch;
 }
 
 .person-list,
@@ -324,6 +349,28 @@
 .person-search,
 .official-form {
   grid-template-columns: minmax(15rem, 1fr) auto;
+}
+
+.team-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.team-heading img,
+.team-heading mat-icon {
+  border-radius: 6px;
+  height: 2rem;
+  object-fit: contain;
+  width: 2rem;
+}
+
+.lineup-member {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 0.65fr) minmax(5rem, 0.35fr);
+  padding-block: 0.35rem;
 }
 
 .official-form {
@@ -512,6 +559,15 @@
   .venue-layout,
   .lineup-grid {
     grid-template-columns: 1fr;
+  }
+
+  .lineup-member {
+    align-items: stretch;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .lineup-member > mat-checkbox {
+    grid-column: 1 / -1;
   }
 
   .span-2 {

@@ -23,7 +23,7 @@ const TOURNAMENT_FIELDS = `
     id tournamentId eventGroupId eventGroup { id emoji } name sport customSportName division format status
     registrationStartDate registrationEndDate minimumRosterSize maximumRosterSize
     maximumCaptains maximumCoaches allowPlayerMultipleTeams periodsEnabled
-    maximumPeriods periodLabel scoreRulesJson rosterRulesJson bracketRulesJson
+    maximumPeriods periodLabel timerRulesJson scoreRulesJson rosterRulesJson bracketRulesJson
     standingsRulesJson rulesText registrationFormId revision
   }
   teams { id tournamentId name institution status logoUrl revision fieldRevisionsJson }
@@ -43,7 +43,7 @@ const CATEGORY_FIELDS = `
     id tournamentId eventGroupId eventGroup { id emoji } name sport customSportName division format status
     registrationStartDate registrationEndDate minimumRosterSize maximumRosterSize
     maximumCaptains maximumCoaches allowPlayerMultipleTeams periodsEnabled
-    maximumPeriods periodLabel scoreRulesJson rosterRulesJson bracketRulesJson
+    maximumPeriods periodLabel timerRulesJson scoreRulesJson rosterRulesJson bracketRulesJson
     standingsRulesJson rulesText registrationFormId revision
   }
   registrations { id teamId categoryId status seed formAnswersJson revision }
@@ -52,7 +52,7 @@ const CATEGORY_FIELDS = `
     id eventId event { id name startDate endDate locationDescription }
     categoryId stageId venueId homeRegistrationId awayRegistrationId
     state canonicalState reviewStatus scoreboard { homeScore awayScore }
-    revision roundNumber bracketPosition groupKey
+    revision roundNumber bracketPosition groupKey notes livestreamProvider livestreamUrl
   }
   standings { id registrationId played wins draws losses scoreFor scoreAgainst points }
   placements { id registrationId placement pointsAwarded }
@@ -74,12 +74,12 @@ const MATCH_REVIEW_FIELDS = `
     id eventId event { id name startDate endDate locationDescription }
     categoryId stageId venueId homeRegistrationId awayRegistrationId
     state canonicalState reviewStatus scoreboard { homeScore awayScore }
-    revision roundNumber bracketPosition groupKey
+    revision roundNumber bracketPosition groupKey notes livestreamProvider livestreamUrl
   }
   actions { id type payloadJson reviewStatus offline authoredAt }
   rosters {
     id registrationId status revision
-    entries { id registrationMemberId status role }
+    entries { id registrationMemberId status role shirtNumber roleMetadataJson }
   }
   officials { id personId role active revision }
 `;
@@ -92,7 +92,7 @@ const REGISTRATION_FIELDS = `
   }
   rosters {
     id matchId registrationId status revision
-    entries { id registrationMemberId status role }
+    entries { id registrationMemberId status role shirtNumber roleMetadataJson }
   }
 `;
 

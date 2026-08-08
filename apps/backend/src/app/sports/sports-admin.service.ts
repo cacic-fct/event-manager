@@ -83,6 +83,7 @@ export interface CreateSportsCategoryInput {
   periodsEnabled?: boolean;
   maximumPeriods?: number | null;
   periodLabel?: string | null;
+  timerRules?: Prisma.InputJsonValue;
   scoreRules: Prisma.InputJsonValue;
   rosterRules: Prisma.InputJsonValue;
   bracketRules: Prisma.InputJsonValue;
@@ -438,6 +439,7 @@ export class SportsAdminService {
           periodsEnabled: input.periodsEnabled ?? false,
           maximumPeriods: input.maximumPeriods ?? null,
           periodLabel: input.periodLabel?.trim() || null,
+          timerRules: input.timerRules ?? {},
           scoreRules: input.scoreRules,
           rosterRules: input.rosterRules,
           bracketRules: input.bracketRules,
@@ -503,6 +505,11 @@ export class SportsAdminService {
         ...existing,
         ...input,
         scoreRules: input.scoreRules ?? (existing.scoreRules as Prisma.InputJsonValue),
+        timerRules:
+          input.timerRules ??
+          (existing.timerRules === null
+            ? {}
+            : (existing.timerRules as Prisma.InputJsonValue)),
         rosterRules: input.rosterRules ?? (existing.rosterRules as Prisma.InputJsonValue),
         bracketRules: input.bracketRules ?? (existing.bracketRules as Prisma.InputJsonValue),
         standingsRules:
@@ -586,6 +593,9 @@ export class SportsAdminService {
             : {}),
           ...(input.periodLabel !== undefined
             ? { periodLabel: input.periodLabel?.trim() || null }
+            : {}),
+          ...(input.timerRules !== undefined
+            ? { timerRules: input.timerRules }
             : {}),
           ...(input.scoreRules !== undefined ? { scoreRules: input.scoreRules } : {}),
           ...(input.rosterRules !== undefined

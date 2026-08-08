@@ -165,6 +165,9 @@ export class SportsCategoryCreateInput {
   @Field(() => String, { nullable: true })
   periodLabel?: string | null;
 
+  @Field(() => String, { nullable: true })
+  timerRulesJson?: string;
+
   @Field(() => String)
   scoreRulesJson!: string;
 
@@ -242,6 +245,9 @@ export class SportsCategoryUpdateInput {
 
   @Field(() => String, { nullable: true })
   periodLabel?: string | null;
+
+  @Field(() => String, { nullable: true })
+  timerRulesJson?: string;
 
   @Field(() => String, { nullable: true })
   scoreRulesJson?: string;

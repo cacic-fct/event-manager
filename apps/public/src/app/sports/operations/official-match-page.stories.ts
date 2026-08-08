@@ -92,10 +92,13 @@ const meta: Meta<OfficialMatchStoryArgs> = {
           useValue: {
             pending: signal([]),
             pendingForMatch: () => activeArgs.pendingOfflineActions,
+            timerConflict: signal(null),
             start: () => undefined,
             sync: () => Promise.resolve(),
             dispatch: () => Promise.resolve(activeArgs.pendingOfflineActions ? 'queued' : 'sent'),
             dispatchCheckIn: () => Promise.resolve(activeArgs.pendingOfflineActions ? 'queued' : 'sent'),
+            dispatchScannerCheckIn: () => Promise.resolve(activeArgs.pendingOfflineActions ? 'queued' : 'sent'),
+            attachTimerSnapshot: () => undefined,
           },
         },
         {
@@ -117,6 +120,7 @@ type Story = StoryObj<OfficialMatchStoryArgs>;
 export const Playground: Story = {};
 
 export const Scheduled: Story = {
+  name: 'Agendada',
   args: { state: 'SCHEDULED' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -134,10 +138,24 @@ export const AthleteCheckIn: Story = {
     await expect(canvas.getByRole('heading', { name: 'Check-in dos atletas' })).toBeVisible();
     await expect(canvas.getByText('Ana Beatriz de Souza')).toBeVisible();
     await expect(canvas.getByText('Bruno Henrique Oliveira')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Escanear presença' })).toBeVisible();
+  },
+};
+
+export const ShirtNumberOrderingDuringMatch: Story = {
+  name: 'Check-in ordenado por camisa durante a partida',
+  args: { state: 'LIVE' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const homeTeam = canvas.getByRole('region', { name: 'Atletas de Engenharia Atlética' });
+    const athletes = within(homeTeam).getAllByRole('button');
+    await expect(athletes[0]).toHaveTextContent('camisa 7');
+    await expect(canvas.getByRole('button', { name: 'Editar check-in' })).toBeVisible();
   },
 };
 
 export const Live: Story = {
+  name: 'Ao vivo',
   args: { state: 'LIVE' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -152,7 +170,22 @@ export const Live: Story = {
   },
 };
 
+export const OverlayBuilder: Story = {
+  name: 'Builder do overlay para OBS',
+  args: { state: 'LIVE' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: /Overlay para transmissão/i }));
+    await expect(await canvas.findByText('Placar para transmissão')).toBeVisible();
+    await expect(canvas.getByRole('combobox', { name: 'Equipe exibida' })).toBeVisible();
+    await expect(canvas.getByRole('textbox', { name: 'Link do overlay' })).toHaveValue(
+      expect.stringContaining('/api/sports/public/matches/match-story/overlay'),
+    );
+  },
+};
+
 export const Paused: Story = {
+  name: 'Pausada',
   args: { state: 'PAUSED' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -185,14 +218,17 @@ export const AwaitingReview: Story = {
 };
 
 export const Canceled: Story = {
+  name: 'Cancelada para remarcação',
   args: { state: 'CANCELED' },
 };
 
 export const Draw: Story = {
+  name: 'Empate',
   args: { state: 'DRAW' },
 };
 
 export const Finished: Story = {
+  name: 'Finalizada',
   args: { state: 'FINISHED' },
 };
 

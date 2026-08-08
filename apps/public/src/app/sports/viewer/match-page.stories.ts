@@ -138,6 +138,7 @@ type Story = StoryObj<MatchStoryArgs>;
 export const Playground: Story = {};
 
 export const Scheduled: Story = {
+  name: 'Agendada',
   args: { state: 'SCHEDULED', homeScore: 0, awayScore: 0 },
 };
 
@@ -153,6 +154,7 @@ export const AthleteCheckIn: Story = {
 };
 
 export const Live: Story = {
+  name: 'Ao vivo',
   args: { state: 'LIVE' },
 };
 
@@ -167,6 +169,7 @@ export const TwitchLivestream: Story = {
 };
 
 export const Paused: Story = {
+  name: 'Pausada',
   args: { state: 'PAUSED' },
 };
 
@@ -176,6 +179,7 @@ export const AwaitingReview: Story = {
 };
 
 export const Canceled: Story = {
+  name: 'Cancelada para remarcação',
   args: { state: 'CANCELED', homeScore: 0, awayScore: 0 },
 };
 

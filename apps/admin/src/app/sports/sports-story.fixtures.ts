@@ -71,6 +71,13 @@ export function createAdminSportsCategory(index = 0): SportsCategorySummary {
     periodsEnabled,
     maximumPeriods: periodsEnabled ? 5 : null,
     periodLabel: periodsEnabled ? 'Período' : null,
+    timerRulesJson: JSON.stringify({
+      overallEnabled: true,
+      periodEnabled: periodsEnabled,
+      periodDurationMs: sport === 'SOCCER' ? 2_700_000 : 600_000,
+      allowOvertime: true,
+      periodStartOffsetsMs: sport === 'SOCCER' ? [0, 2_700_000] : [0],
+    }),
     rulesText: 'Regras públicas revisadas pela organização.',
     scoreRulesJson: '{"minimumDelta":1}',
     rosterRulesJson: '{"requireApprovedEligibility":true}',

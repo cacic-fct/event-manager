@@ -50,7 +50,8 @@
         <div>
           <h2 id="team-logo-title">Escudo da equipe</h2>
           <p>
-            AVIF, SVG, PNG, JPEG ou WebP de até 2 MiB. O arquivo fica privado até a aprovação administrativa.
+            AVIF, SVG, PNG, JPEG ou WebP de até 15 MiB. A imagem será convertida para AVIF e ficará privada até a
+            aprovação administrativa.
           </p>
           @if (logoFile(); as file) {
             <small>{{ file.name }}</small>
@@ -74,8 +75,65 @@
       </section>
     </mat-tab>
 
-    <mat-tab label="Integrantes e escalação">
+    <mat-tab label="Integrantes">
       <section class="people-panel">
+        <section class="form-panel member-overview" aria-labelledby="current-members-title">
+          <div>
+            <h1 id="current-members-title">Pessoas da equipe</h1>
+            <p>Esta lista vale para a equipe inteira. A escalação de cada partida fica em uma área separada.</p>
+          </div>
+          <div class="overall-member-list">
+            @for (member of currentWorkspace.members; track member.id) {
+            <article>
+              <mat-icon aria-hidden="true">person</mat-icon>
+              <div>
+                <strong>{{ member.name }}</strong>
+                <span>{{ memberStatusLabel(member.status) }}</span>
+                @if (member.categoryRoles.length) {
+                <small>
+                  @for (assignment of member.categoryRoles; track assignment.registrationId + assignment.categoryId) {
+                    {{ assignment.categoryName }} - {{ roleLabel(assignment.role) }}{{ !$last ? ', ' : '' }}
+                  }
+                </small>
+                }
+              </div>
+            </article>
+            } @empty {
+            <div class="empty-list"><mat-icon>group_off</mat-icon><span>Nenhum integrante ativo nesta equipe.</span></div>
+            }
+          </div>
+        </section>
+
+        @if (currentWorkspace.joinQueue.length) {
+        <section class="form-panel join-queue" aria-labelledby="join-queue-title">
+          <div>
+            <h1 id="join-queue-title">Solicitações para entrar</h1>
+            <p>
+              Estas pessoas já foram conferidas pela organização. Sua decisão não precisa de uma segunda aprovação
+              administrativa.
+            </p>
+          </div>
+          @for (request of currentWorkspace.joinQueue; track request.id) {
+          <article>
+            <mat-icon aria-hidden="true">person_add</mat-icon>
+            <div>
+              <strong>{{ request.applicantName }}</strong>
+              <span>CPF: {{ request.identityDocumentHint || 'não informado' }}</span>
+              <small>{{ request.categoryNames.length ? request.categoryNames.join(', ') : 'Sem modalidade escolhida' }}</small>
+            </div>
+            <div class="join-actions">
+              <button mat-button type="button" [disabled]="busy()" (click)="reviewJoinRequest(request.id, request.applicantName, false)">
+                Recusar
+              </button>
+              <button mat-flat-button type="button" [disabled]="busy()" (click)="reviewJoinRequest(request.id, request.applicantName, true)">
+                Aprovar
+              </button>
+            </div>
+          </article>
+          }
+        </section>
+        }
+
         <form [formGroup]="identityForm" class="form-panel member-request" (ngSubmit)="addMember()">
           <h1>Adicionar integrante</h1>
           <p>Informe apenas um identificador. Você verá a solicitação, nunca os dados da pessoa encontrada.</p>
@@ -95,17 +153,56 @@
           </div>
           <button mat-flat-button type="submit" [disabled]="busy() || identityForm.invalid">Enviar solicitação</button>
         </form>
+      </section>
+    </mat-tab>
 
+    <mat-tab label="Escalação por partida">
+      <section class="people-panel match-lineup-area">
         <form [formGroup]="lineupForm" class="form-panel lineup-panel" (ngSubmit)="saveLineup()">
-          <h1>Integrantes nesta partida</h1>
+          <h1>Escalação da partida</h1>
           <p>
-            Marque quem será escalado e defina a função e o número de camisa para esta partida. A escalação fica privada
-            até o jogo terminar.
+            Escolha uma partida, marque quem jogará e defina função e camisa. Depois que a partida começa, durante a
+            revisão e após a finalização, a escalação fica somente leitura.
           </p>
+          <mat-form-field>
+            <mat-label>Partida</mat-label>
+            <mat-select [value]="lineupForm.controls.matchId.value" (valueChange)="selectMatch($event)">
+              @for (match of currentWorkspace.matches; track match.id) {
+              <mat-option [value]="match.id">
+                {{ matchupLabel(match) }} - {{ match.startDate | date: 'dd/MM, HH:mm' }} - {{ matchStateLabel(match.state) }}
+              </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          @if (selectedMatch(); as match) {
+          <div class="match-selection-summary">
+            @if (matchEmoji(match); as emoji) {
+            <app-twemoji [emoji]="emoji" />
+            } @else {
+            <mat-icon aria-hidden="true">event</mat-icon>
+            }
+            <span><strong>{{ matchLabel(match) }}</strong><small>{{ matchStateLabel(match.state) }}</small></span>
+            <div class="matchup-identity">
+              <span class="matchup-logos" aria-hidden="true">
+                @if (match.homeTeam?.logoUrl; as homeLogo) { <img [src]="homeLogo" alt="" width="28" height="28" /> }
+                @else { <mat-icon>shield</mat-icon> }
+                @if (match.awayTeam?.logoUrl; as awayLogo) { <img [src]="awayLogo" alt="" width="28" height="28" /> }
+                @else { <mat-icon>shield</mat-icon> }
+              </span>
+              <strong>{{ matchupLabel(match) }}</strong>
+            </div>
+          </div>
+          }
+          @if (lineupReadOnly()) {
+          <div class="read-only-note" role="status">
+            <mat-icon>lock</mat-icon>
+            <span>Esta partida não aceita mais alterações de escalação.</span>
+          </div>
+          }
           @if (!lineupForm.controls.matchId.value || !lineupForm.controls.registrationId.value) {
           <div class="empty-list">
             <mat-icon>event</mat-icon>
-            <span>Abra esta área pelo atalho de uma partida para editar a escalação.</span>
+            <span>Nenhuma partida desta equipe está disponível.</span>
           </div>
           } @if (lineupLoading()) {
           <div class="empty-list"><mat-icon>hourglass_top</mat-icon><span>Carregando atletas elegíveis…</span></div>
@@ -124,6 +221,7 @@
             <article [class.selected]="member.selected">
               <mat-checkbox
                 [checked]="member.selected"
+                [disabled]="lineupReadOnly()"
                 [attr.aria-label]="'Escalar ' + member.name"
                 (change)="toggleLineup(member, $event.checked)">
                 <strong>{{ member.name }}</strong>
@@ -133,7 +231,7 @@
                   <mat-label>Função</mat-label>
                   <mat-select
                     [value]="member.role"
-                    [disabled]="!member.selected"
+                    [disabled]="!member.selected || lineupReadOnly()"
                     (valueChange)="setLineupRole(member, $event)">
                     <mat-option value="PLAYER">Atleta</mat-option>
                     <mat-option value="CAPTAIN">Capitão</mat-option>
@@ -149,7 +247,7 @@
                   maxlength="12"
                   inputmode="text"
                   pattern="[\p{L}\p{N}._-]{1,12}"
-                    [disabled]="!member.selected"
+                    [disabled]="!member.selected || lineupReadOnly()"
                     [value]="member.shirtNumber ?? ''"
                     (change)="setShirtNumber(member, shirtNumberInput.value)" />
                 </mat-form-field>
@@ -161,14 +259,14 @@
           <button
             mat-flat-button
             type="submit"
-            [disabled]="busy() || lineupForm.invalid || lineupMembers().length === 0">
+            [disabled]="busy() || lineupReadOnly() || lineupForm.invalid || lineupMembers().length === 0">
             Enviar escalação
           </button>
           <button
             mat-stroked-button
             class="danger-action"
             type="button"
-            [disabled]="busy() || lineupForm.invalid"
+            [disabled]="busy() || lineupReadOnly() || lineupForm.invalid"
             (click)="forfeit()">
             Desistir desta partida
           </button>

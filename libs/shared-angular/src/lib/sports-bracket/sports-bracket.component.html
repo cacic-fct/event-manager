@@ -1,10 +1,3 @@
-<!--
-  THESIS: A chave explica o caminho competitivo sem esconder formatos que não são eliminatórios.
-  OWN-WORLD: Superfícies Material, linhas de conexão precisas, placares densos e estados legíveis.
-  STORY: Identificar a fase, seguir confrontos entre rodadas e abrir a partida certa.
-  FIRST VIEWPORT: Título do formato, classificação quando relevante e primeira rodada visível no celular.
-  FORM: Operate mode aplicado à leitura pública; rolagem horizontal apenas onde a estrutura exige.
--->
 <section class="competition-view" [attr.aria-label]="'Visualização: ' + formatLabel()">
   <header class="competition-heading">
     <div class="competition-title">
@@ -12,8 +5,8 @@
         <app-twemoji class="competition-emoji" [emoji]="emoji()" />
       }
       <div>
-      <h4>{{ formatLabel() }}</h4>
-      <p>Toque em uma partida para ver horário, local e detalhes.</p>
+        <h4>{{ formatLabel() }}</h4>
+        <p>Toque em uma partida para ver horário, local e detalhes.</p>
       </div>
     </div>
     @if (currentMatchId()) {
@@ -44,7 +37,7 @@
                   @if (standing.team.logoUrl) {
                     <img [src]="standing.team.logoUrl" alt="" width="28" height="28" />
                   } @else {
-                    <span class="team-mark" aria-hidden="true">{{ standing.team.name.charAt(0) }}</span>
+                    <mat-icon class="team-mark" aria-hidden="true">shield</mat-icon>
                   }
                   {{ standing.team.name }}
                 </span>
@@ -53,7 +46,9 @@
               <td>{{ standing.wins }}</td>
               <td>{{ standing.draws }}</td>
               <td>{{ standing.losses }}</td>
-              <td><strong>{{ standing.points }}</strong></td>
+              <td>
+                <strong>{{ standing.points }}</strong>
+              </td>
             </tr>
           }
         </tbody>
@@ -89,15 +84,14 @@
                         [class.live]="match.state === 'LIVE'"
                         [attr.aria-current]="match.id === currentMatchId() ? 'true' : null"
                         [attr.aria-label]="
-                          teamName(match.homeTeam) + ' contra ' + teamName(match.awayTeam) +
-                          '. ' + stateLabel(match)
+                          teamName(match.homeTeam) + ' contra ' + teamName(match.awayTeam) + '. ' + stateLabel(match)
                         "
                         (click)="selectMatch(match.id)">
                         <span class="team-row">
                           @if (match.homeTeam?.logoUrl) {
-                            <img [src]="match.homeTeam?.logoUrl" alt="" width="28" height="28" />
+                            <img [src]="match.homeTeam.logoUrl" alt="" width="28" height="28" />
                           } @else {
-                            <span class="team-mark" aria-hidden="true">{{ teamName(match.homeTeam).charAt(0) }}</span>
+                            <mat-icon class="team-mark" aria-hidden="true">shield</mat-icon>
                           }
                           <span class="team-name">{{ teamName(match.homeTeam) }}</span>
                           @if (showScore(match)) {
@@ -106,9 +100,9 @@
                         </span>
                         <span class="team-row">
                           @if (match.awayTeam?.logoUrl) {
-                            <img [src]="match.awayTeam?.logoUrl" alt="" width="28" height="28" />
+                            <img [src]="match.awayTeam.logoUrl" alt="" width="28" height="28" />
                           } @else {
-                            <span class="team-mark" aria-hidden="true">{{ teamName(match.awayTeam).charAt(0) }}</span>
+                            <mat-icon class="team-mark" aria-hidden="true">shield</mat-icon>
                           }
                           <span class="team-name">{{ teamName(match.awayTeam) }}</span>
                           @if (showScore(match)) {
@@ -140,7 +134,7 @@
 
   @if (isEmpty()) {
     <div class="empty-state">
-      <span class="empty-mark" aria-hidden="true"></span>
+      <mat-icon aria-hidden="true">account_tree</mat-icon>
       <strong>Estrutura ainda não publicada</strong>
       <p>As equipes e os confrontos aparecerão aqui quando a organização concluir a montagem.</p>
     </div>

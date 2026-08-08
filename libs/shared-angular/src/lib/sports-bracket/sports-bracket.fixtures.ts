@@ -80,7 +80,7 @@ const eliminationMatches = (prefix: string): SportsBracketMatchView[] => [
 ];
 
 export const SPORTS_BRACKET_STANDINGS: readonly SportsBracketStandingView[] =
-  SPORTS_BRACKET_TEAMS.slice(0, 8).map((team, index) => ({
+  SPORTS_BRACKET_TEAMS.map((team, index) => ({
     team,
     played: 7,
     wins: Math.max(1, 7 - index),

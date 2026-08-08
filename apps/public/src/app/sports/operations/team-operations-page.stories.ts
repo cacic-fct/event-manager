@@ -90,6 +90,7 @@ const meta: Meta<TeamOperationsStoryArgs> = {
             }),
             submitRoster: () => of('roster-story'),
             forfeit: () => of('forfeit-story'),
+            reviewTeamApplication: () => of('application-story'),
           },
         },
       ],
@@ -116,8 +117,21 @@ export const AthleteIdentityRequest: Story = {
   name: 'Inclusão sem enumeração de pessoa',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes e escalação' }));
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes' }));
     await expect(canvas.getByText(/nunca dados da pessoa encontrada/)).toBeVisible();
+  },
+};
+
+export const OverallMembersAndJoinQueue: Story = {
+  name: 'Integrantes e fila de autoinscrição',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes' }));
+    await expect(canvas.getByRole('heading', { name: 'Pessoas da equipe' })).toBeVisible();
+    await expect(canvas.getByText('Mariana Luiza Ferreira')).toBeVisible();
+    await expect(canvas.getByText('CPF: ***.456.789-**')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Aprovar' })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Recusar' })).toBeVisible();
   },
 };
 
@@ -140,7 +154,7 @@ export const MatchLineup: Story = {
   name: 'Escalação por partida',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes e escalação' }));
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Escalação por partida' }));
     await expect(canvas.getByText('Ana Beatriz de Souza')).toBeVisible();
     await expect(canvas.getAllByRole('combobox', { name: 'Função' })[0]).toBeVisible();
     await expect(canvas.getAllByRole('textbox', { name: 'Camisa' })[0]).toHaveValue('10');
@@ -154,7 +168,7 @@ export const EmptyEligibleLineup: Story = {
   args: { lineupMode: 'empty' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes e escalação' }));
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Escalação por partida' }));
     await expect(canvas.getByText(/lista de atletas elegíveis ainda não está disponível/)).toBeVisible();
   },
 };
@@ -164,9 +178,22 @@ export const LineupConflict: Story = {
   args: { lineupMode: 'error' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes e escalação' }));
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Escalação por partida' }));
     await expect(canvas.getByText('A escalação mudou em outro dispositivo.')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
+  },
+};
+
+export const ReadOnlyMatchLineup: Story = {
+  name: 'Escalação em revisão somente leitura',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Escalação por partida' }));
+    await userEvent.click(canvas.getByRole('combobox', { name: 'Partida' }));
+    const options = within(document.body);
+    await userEvent.click(await options.findByRole('option', { name: /Em revisão/ }));
+    await expect(canvas.getByText('Esta partida não aceita mais alterações de escalação.')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Enviar escalação' })).toBeDisabled();
   },
 };
 

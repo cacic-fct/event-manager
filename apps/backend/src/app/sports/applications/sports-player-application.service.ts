@@ -433,7 +433,7 @@ export class SportsPlayerApplicationService {
     );
     await this.realtime.publishApplicationChanged(
       application.id,
-      'TEAM_REVIEWED',
+      'REVIEWED',
     );
     return application;
   }
@@ -704,7 +704,7 @@ export class SportsPlayerApplicationService {
                       },
                     },
                   },
-                },
+                }
               : {}),
           },
           select: {

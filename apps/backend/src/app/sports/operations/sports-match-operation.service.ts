@@ -80,6 +80,7 @@ interface MatchProjectionContext {
     maximumPeriods: number | null;
     periodLabel: string | null;
     periodsEnabled: boolean;
+    timerRules: Prisma.JsonValue;
     scoreRules: Prisma.JsonValue;
     tournament: {
       majorEventId: string;
@@ -192,6 +193,7 @@ export class SportsMatchOperationService {
                   eventGroupId: true,
                   maximumPeriods: true,
                   periodLabel: true,
+                  timerRules: true,
                   periodsEnabled: true,
                   scoreRules: true,
                   tournament: { select: { majorEventId: true } },
@@ -319,6 +321,7 @@ export class SportsMatchOperationService {
             eventGroupId: true,
             maximumPeriods: true,
             periodLabel: true,
+            timerRules: true,
             periodsEnabled: true,
             scoreRules: true,
             tournament: { select: { id: true, majorEventId: true } },
@@ -439,6 +442,7 @@ export class SportsMatchOperationService {
             eventGroupId: true,
             maximumPeriods: true,
             periodLabel: true,
+            timerRules: true,
             periodsEnabled: true,
             scoreRules: true,
             tournament: { select: { majorEventId: true } },
@@ -469,6 +473,8 @@ export class SportsMatchOperationService {
       hasCheckedInPlayers,
       maximumPeriods: match.category.maximumPeriods,
       periodLabel: match.category.periodLabel,
+      periodsEnabled: match.category.periodsEnabled,
+      timerRules: match.category.timerRules,
     };
     const provisional = projectSportsMatch(match.actions, {
       ...common,
@@ -566,6 +572,8 @@ export class SportsMatchOperationService {
           select: {
             maximumPeriods: true,
             periodLabel: true,
+            periodsEnabled: true,
+            timerRules: true,
           },
         },
         actions: {
@@ -591,6 +599,8 @@ export class SportsMatchOperationService {
       hasCheckedInPlayers: match.rosters.some((roster) => roster.entries.length > 0),
       maximumPeriods: match.category.maximumPeriods,
       periodLabel: match.category.periodLabel,
+      periodsEnabled: match.category.periodsEnabled,
+      timerRules: match.category.timerRules,
     });
   }
 
@@ -642,6 +652,32 @@ export class SportsMatchOperationService {
           'A observação da ocorrência deve ter no máximo 1000 caracteres.',
         );
       }
+    }
+    if (type === SportsMatchActionType.TIMER_RECONCILE) {
+      if (actorKind === 'LINEUP_MANAGER') {
+        throw new BadRequestException('Somente a arbitragem ou administradores podem reconciliar cronômetros.');
+      }
+      if (!activeStates.includes(current.state)) {
+        throw new ConflictException('O cronômetro só pode ser reconciliado durante a partida.');
+      }
+      // Reuse the projector's strict safe-integer and shape validation without
+      // changing the persisted match during command validation.
+      projectSportsMatch(
+        [{
+          type,
+          payload,
+          authoredAt: new Date(),
+          reviewStatus: SportsReviewStatus.PENDING,
+        }],
+        {
+          approvedOnly: false,
+          hasCheckedInPlayers: false,
+          maximumPeriods: match.category.maximumPeriods,
+          periodLabel: match.category.periodLabel,
+          periodsEnabled: match.category.periodsEnabled,
+          timerRules: match.category.timerRules,
+        },
+      );
     }
     if (
       type === SportsMatchActionType.PERIOD_ROLL &&
