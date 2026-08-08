@@ -1,4 +1,11 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -25,6 +32,7 @@ import {
 } from '../utils/receipt-validation.utils';
 import { ReceiptAdminQueueService } from './receipt-admin-queue.service';
 import { ReceiptSubscriptionSyncService } from './receipt-subscription-sync.service';
+import { SportsPlayerApplicationRealtimeService } from '../../sports/applications/sports-player-application-realtime.service';
 
 type ActionableReceiptSubscription = Prisma.MajorEventSubscriptionGetPayload<{
   include: {
@@ -63,6 +71,14 @@ export class ReceiptValidationService {
     private readonly queue: ReceiptAdminQueueService,
     private readonly sync: ReceiptSubscriptionSyncService,
     private readonly auditLog: AuditLogService = { record: async () => undefined } as unknown as AuditLogService,
+    @Optional()
+    @Inject(SportsPlayerApplicationRealtimeService)
+    private readonly sportsApplicationRealtime: Pick<
+      SportsPlayerApplicationRealtimeService,
+      'publishPaymentChanged'
+    > = {
+      publishPaymentChanged: async () => undefined,
+    },
   ) {}
 
   async approveReceipt(
@@ -109,6 +125,7 @@ export class ReceiptValidationService {
         SubscriptionStatus.CONFIRMED,
         actorId,
       );
+      await this.sync.refreshSportsParticipantPayment(tx, subscriptionId);
       await this.attendanceCategories.refreshForMajorEventPerson(subscription.majorEventId, subscription.personId, tx);
       await this.sync.refreshEventSubscriptionCounters(tx, [
         ...subscription.selectedEvents.map((selection) => selection.eventId),
@@ -138,6 +155,10 @@ export class ReceiptValidationService {
 
       return action;
     });
+    await this.sportsApplicationRealtime.publishPaymentChanged(
+      subscriptionId,
+      'PAYMENT_APPROVED',
+    );
 
     const item = await this.queue.getSubscriptionQueueItem(subscriptionId);
     if (!item) {
@@ -195,6 +216,7 @@ export class ReceiptValidationService {
         },
       });
 
+      await this.sync.refreshSportsParticipantPayment(tx, subscriptionId);
       await this.attendanceCategories.refreshForMajorEventPerson(subscription.majorEventId, subscription.personId, tx);
       await this.auditLog.record(
         {
@@ -215,6 +237,10 @@ export class ReceiptValidationService {
       );
       return createdAction;
     });
+    await this.sportsApplicationRealtime.publishPaymentChanged(
+      subscriptionId,
+      'PAYMENT_REJECTED',
+    );
 
     const item = await this.queue.getSubscriptionQueueItem(subscriptionId);
     if (!item) {
@@ -306,6 +332,7 @@ export class ReceiptValidationService {
         existingAction.previousStatus,
         actorId,
       );
+      await this.sync.refreshSportsParticipantPayment(tx, existingAction.subscriptionId);
       await this.attendanceCategories.refreshForMajorEventPerson(
         existingAction.subscription.majorEventId,
         existingAction.subscription.personId,
@@ -335,6 +362,10 @@ export class ReceiptValidationService {
 
       return existingAction;
     });
+    await this.sportsApplicationRealtime.publishPaymentChanged(
+      action.subscriptionId,
+      'PAYMENT_REVIEW_UNDONE',
+    );
 
     const item = await this.queue.getSubscriptionQueueItem(action.subscriptionId);
     if (!item) {

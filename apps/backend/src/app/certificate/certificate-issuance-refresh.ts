@@ -10,6 +10,7 @@ import {
 } from './certificate.constants';
 import { CertificateEligibilityService, EligibleCertificateRecipient } from './certificate-eligibility.service';
 import { CertificateIssuanceAudit } from './certificate-issuance-audit';
+import { isManualCertificateIssuedTo } from './certificate-sports-roles';
 import { CertificateValidationService } from './certificate-validation.service';
 
 type CertificateWriteClient = AuditPrismaClient;
@@ -188,7 +189,7 @@ export class CertificateIssuanceRefresh {
       select: { personId: true },
     });
 
-    if (config.issuedTo === CertificateIssuedTo.OTHER) {
+    if (isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
       return this.refreshManualConfig(
         config,
         existingCertificates.map((certificate) => certificate.personId),

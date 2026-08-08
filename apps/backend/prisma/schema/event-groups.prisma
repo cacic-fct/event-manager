@@ -7,6 +7,7 @@ model EventGroup {
   events        Event[]
   subscriptions EventGroupSubscription[]
   eventManagerPermissionGrants EventManagerPermissionGrant[]
+  sportsCategory               SportsCategory?
 
   shouldIssueCertificate                          Boolean @default(false)
   shouldIssueCertificateForNonPayingAttendees     Boolean @default(false)

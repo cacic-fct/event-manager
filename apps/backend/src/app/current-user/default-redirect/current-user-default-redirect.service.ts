@@ -1,11 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
+import { addMinutes, subMinutes } from 'date-fns';
 import Redis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-events/models';
 import { DefaultRedirectRoute } from '../models';
 
 const CACHE_TTL_SECONDS = 15 * 60;
+const UPCOMING_MATCH_WINDOW_MINUTES = 45;
+const RECENT_MATCH_WINDOW_MINUTES = 30;
 const CACHE_KEY_PREFIX = 'current-user:default-redirect:v1';
 
 @Injectable()
@@ -29,8 +32,28 @@ export class CurrentUserDefaultRedirectService {
     return route;
   }
 
+  async invalidatePeople(personIds: readonly string[]): Promise<void> {
+    const keys = [...new Set(personIds)].map((personId) => this.getCacheKey(personId));
+    if (keys.length === 0) {
+      return;
+    }
+    try {
+      const pipeline = this.redis.pipeline();
+      for (const key of keys) {
+        pipeline.del(key);
+      }
+      await pipeline.exec();
+    } catch (error) {
+      this.logger.warn(`Could not invalidate sports redirect cache: ${this.formatError(error)}`);
+    }
+  }
+
   private async resolveUncached(personId: string, now: Date): Promise<DefaultRedirectRoute> {
-    if (await this.hasPendingInPersonAttendance(personId, now)) {
+    const [hasUpcomingSportsMatch, hasPendingInPersonAttendance] = await Promise.all([
+      this.hasUpcomingSportsMatch(personId, now),
+      this.hasPendingInPersonAttendance(personId, now),
+    ]);
+    if (hasUpcomingSportsMatch || hasPendingInPersonAttendance) {
       return DefaultRedirectRoute.WALLET;
     }
 
@@ -39,6 +62,52 @@ export class CurrentUserDefaultRedirectService {
     }
 
     return (await this.hasCurrentOrFutureEvent(now)) ? DefaultRedirectRoute.CALENDAR : DefaultRedirectRoute.MENU;
+  }
+
+  private async hasUpcomingSportsMatch(personId: string, now: Date): Promise<boolean> {
+    const match = await this.prisma.sportsMatch.findFirst({
+      where: {
+        deletedAt: null,
+        state: {
+          in: ['SCHEDULED', 'CHECK_IN', 'LIVE', 'PAUSED'],
+        },
+        event: {
+          AND: [
+            PUBLIC_EVENT_WHERE,
+            {
+              startDate: { lte: addMinutes(now, UPCOMING_MATCH_WINDOW_MINUTES) },
+              endDate: { gte: subMinutes(now, RECENT_MATCH_WINDOW_MINUTES) },
+            },
+          ],
+        },
+        rosters: {
+          some: {
+            deletedAt: null,
+            status: 'APPROVED',
+            entries: {
+              some: {
+                deletedAt: null,
+                status: 'APPROVED',
+                registrationMember: {
+                  deletedAt: null,
+                  eligibility: 'ELIGIBLE',
+                  teamMember: {
+                    deletedAt: null,
+                    participant: {
+                      personId,
+                      deletedAt: null,
+                      status: 'ACTIVE',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+    return Boolean(match);
   }
 
   private async getCachedRoute(personId: string): Promise<DefaultRedirectRoute | null> {

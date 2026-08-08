@@ -29,6 +29,7 @@ import {
   mapCertificateTemplate,
 } from './certificate.constants';
 import { CertificateTargetsService } from './certificate-targets.service';
+import { sportsCertificateTypeLabel } from './certificate-sports-roles';
 import { CertificateValidationService } from './certificate-validation.service';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
@@ -1023,6 +1024,11 @@ export class CertificateConfigsService {
       }
 
       return this.validation.normalizeOptionalText(rawCustomLabel) ?? 'Palestrante/ministrante';
+    }
+
+    const sportsLabel = sportsCertificateTypeLabel(issuedTo);
+    if (sportsLabel) {
+      return this.validation.normalizeOptionalText(rawCustomLabel) ?? sportsLabel;
     }
 
     return this.validation.normalizeOptionalText(rawCustomLabel) ?? 'Manual';

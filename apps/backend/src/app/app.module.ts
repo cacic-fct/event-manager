@@ -29,6 +29,7 @@ import { CertificateConfigsService } from './certificate/certificate-configs.ser
 import { CertificateCsvImportResolver } from './certificate/certificate-csv-import.resolver';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
+import { CertificateSportsEligibility } from './certificate/certificate-sports-eligibility';
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
 import { CertificateNotificationJobsProcessor } from './certificate/certificate-notification-jobs.processor';
 import {
@@ -171,6 +172,43 @@ import { ServerVersionResolver } from './server-version/server-version.resolver'
 import { EventSitemapResolver } from './public-events/event-sitemap.resolver';
 import { EventSitemapService } from './public-events/event-sitemap.service';
 import { AccountManagerGrpcClient } from './grpc/account-manager-grpc.client';
+import { SportsPlayerApplicationService } from './sports/applications/sports-player-application.service';
+import {
+  SportsPlayerApplicationAdminReadResolver,
+  SportsPlayerApplicationCurrentUserReadResolver,
+} from './sports/applications/sports-player-application-read.resolver';
+import { SportsPlayerApplicationReadService } from './sports/applications/sports-player-application-read.service';
+import { SportsPlayerApplicationRealtimeController } from './sports/applications/sports-player-application-realtime.controller';
+import { SportsPlayerApplicationRealtimeService } from './sports/applications/sports-player-application-realtime.service';
+import { SportsBracketAdvancementService } from './sports/brackets/sports-bracket-advancement.service';
+import { SportsBracketService } from './sports/brackets/sports-bracket.service';
+import { SportsDuplicationService } from './sports/duplication/sports-duplication.service';
+import {
+  PublicSportsTeamLogoController,
+  SportsTeamRepresentativeLogoController,
+  SportsTeamLogoController,
+} from './sports/logos/sports-team-logo.controller';
+import { SportsTeamLogoService } from './sports/logos/sports-team-logo.service';
+import { SportsMatchOperationService } from './sports/operations/sports-match-operation.service';
+import {
+  SportsAdminReadResolver,
+  SportsCurrentUserReadResolver,
+  SportsPublicReadResolver,
+} from './sports/read/sports-read.resolver';
+import { SportsReadService } from './sports/read/sports-read.service';
+import { SportsRealtimeController } from './sports/realtime/sports-realtime.controller';
+import { SportsRealtimeService } from './sports/realtime/sports-realtime.service';
+import { SportsMutationEventsService } from './sports/realtime/sports-mutation-events.service';
+import { SportsMatchRosterService } from './sports/rosters/sports-match-roster.service';
+import { SportsAutoroutingResolver } from './sports/routing/sports-autorouting.resolver';
+import { SportsAutoroutingService } from './sports/routing/sports-autorouting.service';
+import { SportsStandingsService } from './sports/scoring/sports-standings.service';
+import { SportsAccessService } from './sports/security/sports-access.service';
+import { SportsIdentityProtectionService } from './sports/security/sports-identity-protection.service';
+import { SportsAdminService } from './sports/sports-admin.service';
+import { SportsMutationsResolver } from './sports/sports-mutations.resolver';
+import { SportsPaymentService } from './sports/sports-payment.service';
+import { SportsTeamChangeService } from './sports/teams/sports-team-change.service';
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
@@ -298,6 +336,11 @@ const schedulerProviders = useInMemoryTestInfra
     TotpController,
     VotingIntegrationController,
     CurrentUserCertificatesDownloadController,
+    SportsRealtimeController,
+    SportsPlayerApplicationRealtimeController,
+    SportsTeamLogoController,
+    PublicSportsTeamLogoController,
+    SportsTeamRepresentativeLogoController,
   ],
   providers: [
     NovuNotificationsService,
@@ -351,6 +394,32 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserOnlineAttendanceRealtimeService,
     CurrentUserSubscriptionFeedResolver,
     CurrentUserDefaultRedirectResolver,
+    SportsMutationsResolver,
+    SportsPlayerApplicationAdminReadResolver,
+    SportsPlayerApplicationCurrentUserReadResolver,
+    SportsAdminReadResolver,
+    SportsPublicReadResolver,
+    SportsCurrentUserReadResolver,
+    SportsAutoroutingResolver,
+    SportsAdminService,
+    SportsAccessService,
+    SportsIdentityProtectionService,
+    SportsPaymentService,
+    SportsPlayerApplicationService,
+    SportsPlayerApplicationReadService,
+    SportsPlayerApplicationRealtimeService,
+    SportsTeamChangeService,
+    SportsMatchRosterService,
+    SportsBracketAdvancementService,
+    SportsBracketService,
+    SportsStandingsService,
+    SportsMatchOperationService,
+    SportsRealtimeService,
+    SportsMutationEventsService,
+    SportsAutoroutingService,
+    SportsDuplicationService,
+    SportsReadService,
+    SportsTeamLogoService,
     DashboardInsightsResolver,
     DashboardInsightsService,
     PublicPlatformStatsService,
@@ -398,6 +467,7 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateCsvImportResolver,
     CertificateDownloadService,
     CertificateEligibilityService,
+    CertificateSportsEligibility,
     CertificateIssuingService,
     CertificateNotificationJobsService,
     PublicCertificateValidationService,

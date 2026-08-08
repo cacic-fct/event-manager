@@ -103,6 +103,7 @@ model MajorEventSubscription {
   receiptValidatedAt     DateTime?
   receiptValidatedBy     String?
   validationActions      MajorEventReceiptValidationAction[]
+  sportsTournamentParticipants SportsTournamentParticipant[]
 
   createdAt       DateTime                   @default(now())
   createdById     String?
@@ -114,7 +115,7 @@ model MajorEventSubscription {
 
   @@unique([majorEventId, personId, deletedAt])
   @@index([majorEventId])
-  @@index([personId, deletedAt, subscriptionStatus, majorEventId])
+  @@index([personId, deletedAt, subscriptionStatus, majorEventId], map: "major_event_subscriptions_personId_deletedAt_subscriptionStatus")
   @@index([lgpdDeletionRequestId])
   @@map("major_event_subscriptions")
 }
@@ -138,6 +139,6 @@ model MajorEventSubscriptionEventSelection {
   @@index([eventId])
   @@index([subscriptionId])
   @@index([subscriptionId, eventId])
-  @@index([lgpdDeletionRequestId])
+  @@index([lgpdDeletionRequestId], map: "major_event_subscription_event_selections_lgpdDeletionRequestId")
   @@map("major_event_subscription_event_selections")
 }

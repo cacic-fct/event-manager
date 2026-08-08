@@ -25,6 +25,17 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
   scheduledPublishAt: true,
   publishedAt: true,
   unpublishedAt: true,
+  sportsTournament: {
+    where: {
+      deletedAt: null,
+      status: {
+        not: 'DRAFT',
+      },
+    },
+    select: {
+      id: true,
+    },
+  },
   certificateConfigs: {
     where: {
       deletedAt: null,
@@ -102,6 +113,17 @@ export const PUBLIC_EVENT_SELECT = {
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,
+  sportsMatch: {
+    select: {
+      id: true,
+      categoryId: true,
+      category: {
+        select: {
+          tournamentId: true,
+        },
+      },
+    },
+  },
 } satisfies Prisma.EventSelect;
 
 export const PUBLIC_MAJOR_EVENT_WHERE = {
@@ -132,6 +154,13 @@ export type PublicEventRecord = Prisma.EventGetPayload<{
   select: typeof PUBLIC_EVENT_SELECT;
 }>;
 
+type PublicMajorEventMappable = Omit<
+  PublicMajorEventRecord,
+  'sportsTournament'
+> & {
+  sportsTournament?: PublicMajorEventRecord['sportsTournament'];
+};
+
 export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
   select: {
     id: true;
@@ -145,7 +174,9 @@ export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
   };
 }>;
 
-export function mapPublicMajorEvent(majorEvent: PublicMajorEventRecord): PublicMajorEvent {
+export function mapPublicMajorEvent(
+  majorEvent: PublicMajorEventMappable,
+): PublicMajorEvent {
   const paymentInfo =
     'paymentInfo' in majorEvent && majorEvent.paymentInfo
       ? mapPublicPaymentInfo(majorEvent.paymentInfo as PublicPaymentInfoRecord)
@@ -181,6 +212,7 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventRecord): PublicM
         value: tier.value,
       })),
     })),
+    sportsTournament: majorEvent.sportsTournament ?? undefined,
   };
 }
 
@@ -283,6 +315,14 @@ export class PublicMajorEventPrice {
     description: 'Participant-selectable tiers configured inside this price group.',
   })
   tiers!: PublicMajorEventPriceTier[];
+}
+
+@ObjectType({
+  description: 'Marker identifying the sports tournament backed by a public major event.',
+})
+export class PublicSportsTournamentMarker {
+  @Field(() => String)
+  id!: string;
 }
 
 @ObjectType({
@@ -415,6 +455,13 @@ export class PublicMajorEvent {
     description: 'Configured public price groups and tiers used by the subscription/payment flow.',
   })
   majorEventPrices!: PublicMajorEventPrice[];
+
+  @Field(() => PublicSportsTournamentMarker, {
+    nullable: true,
+    description:
+      'Present when this major event is also a sports tournament, allowing the client to route to the tournament detail experience.',
+  })
+  sportsTournament?: PublicSportsTournamentMarker | null;
 }
 
 @ObjectType({
@@ -595,6 +642,13 @@ export class PublicEvent {
   })
   eventGroup?: PublicEventGroup | null;
 
+  @Field(() => PublicSportsMatchMarker, {
+    nullable: true,
+    description:
+      'Present when this event is backed by a sports match. Calendar clients keep events mixed while routing match details correctly.',
+  })
+  sportsMatch?: PublicSportsMatchMarker | null;
+
   @Field(() => Boolean, {
     nullable: true,
     description:
@@ -703,6 +757,28 @@ export class PublicEvent {
     description: 'Public lecturers associated with this event.',
   })
   lecturers?: PublicLecturerProfile[];
+}
+
+@ObjectType({
+  description: 'Public tournament reference for a sports-match category.',
+})
+export class PublicSportsMatchCategoryMarker {
+  @Field(() => String)
+  tournamentId!: string;
+}
+
+@ObjectType({
+  description: 'Public routing context for an Event-backed sports match.',
+})
+export class PublicSportsMatchMarker {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  categoryId!: string;
+
+  @Field(() => PublicSportsMatchCategoryMarker)
+  category!: PublicSportsMatchCategoryMarker;
 }
 
 @ObjectType({

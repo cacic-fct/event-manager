@@ -60,6 +60,7 @@ model Event {
   // When true and only if event is part of a major event, users will be automatically subscribed to this event when subscribing to the major event
   autoSubscribe         Boolean             @default(false)
   majorEventSelections  MajorEventSubscriptionEventSelection[]
+  sportsMatch           SportsMatch?
 
   shouldIssueCertificate                          Boolean             @default(false)
   shouldIssueCertificateForNonPayingAttendees     Boolean             @default(false)
@@ -142,6 +143,8 @@ model PlacePreset {
 
   deletedAt DateTime?
 
+  sportsVenues SportsVenue[]
+
   createdAt   DateTime @default(now())
   createdById String?
   updatedAt   DateTime @updatedAt
@@ -168,9 +171,9 @@ model EventLecturer {
 }
 
 model PublicationPreview {
-  id String @id @default(uuid(7))
+  id String @id(map: "public_content_previews_pkey") @default(uuid(7))
 
-  previewTokenHash String @unique
+  previewTokenHash String @unique(map: "public_content_previews_previewTokenHash_key")
   targetType        PublicationPreviewTargetType
   targetId          String
   targetLabel       String
@@ -189,9 +192,9 @@ model PublicationPreview {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  @@unique([targetType, targetId, createdById])
-  @@index([targetType, targetId])
-  @@index([expiresAt])
-  @@index([trimAfter])
+  @@unique([targetType, targetId, createdById], map: "public_content_previews_targetType_targetId_createdById_key")
+  @@index([targetType, targetId], map: "public_content_previews_targetType_targetId_idx")
+  @@index([expiresAt], map: "public_content_previews_expiresAt_idx")
+  @@index([trimAfter], map: "public_content_previews_trimAfter_idx")
   @@map("publication_previews")
 }

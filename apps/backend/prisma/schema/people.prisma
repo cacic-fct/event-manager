@@ -21,6 +21,13 @@ model People {
   eventFormResponses       EventFormResponse[]
   lecturerProfile         LecturerProfile?
   eventManagerPermissionGrants EventManagerPermissionGrant[]
+  sportsTournamentParticipants SportsTournamentParticipant[]
+  sportsTeamRepresentatives    SportsTeamRepresentative[]
+  sportsSubmittedTeamChanges   SportsTeamChangeRequest[]
+  sportsResolvedIdentityClaims SportsIdentityClaim[]
+  sportsOfficialAssignments    SportsOfficialAssignment[]
+  sportsMatchActions           SportsMatchAction[]
+  sportsPlayerApplications     SportsPlayerApplication[]
 
   // Merge tracking
   mergedIntoId String?

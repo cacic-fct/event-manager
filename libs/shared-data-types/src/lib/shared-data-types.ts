@@ -12,4 +12,5 @@ export * from './shared-data-types/lecturer-profiles';
 export * from './shared-data-types/certificates';
 export * from './shared-data-types/common';
 export * from './shared-data-types/notifications';
+export * from './shared-data-types/sports';
 export * from './shared-data-types/inputs';

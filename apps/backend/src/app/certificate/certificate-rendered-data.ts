@@ -2,6 +2,7 @@ import { CertificateIssuedTo, CertificateScope, EventType } from '@cacic-fct/sha
 import { Prisma } from '@prisma/client';
 import { CertificateConfigRecord, EventRecord } from './certificate.constants';
 import { EligibleCertificateRecipient } from './certificate-eligibility.service';
+import { sportsCertificateTypeLabel, sportsParticipationText } from './certificate-sports-roles';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 
@@ -245,6 +246,11 @@ function normalizeCertificateFieldValue(value: Prisma.JsonValue | undefined): st
 }
 
 function buildParticipationType(config: CertificateConfigRecord): string {
+  const sportsText = sportsParticipationText(config.issuedTo as CertificateIssuedTo);
+  if (sportsText) {
+    return sportsText;
+  }
+
   if (config.issuedTo !== CertificateIssuedTo.LECTURER) {
     return 'Certificamos a participação de:';
   }
@@ -265,6 +271,10 @@ function buildCertificateTypeLabel(config: CertificateConfigRecord): string {
   const customLabel = config.certificateTypeLabel?.trim();
   if (config.issuedTo === CertificateIssuedTo.ATTENDEE) {
     return 'Participação';
+  }
+  const sportsLabel = sportsCertificateTypeLabel(config.issuedTo as CertificateIssuedTo);
+  if (sportsLabel) {
+    return customLabel || sportsLabel;
   }
   if (config.issuedTo !== CertificateIssuedTo.LECTURER) {
     return customLabel || 'Manual';

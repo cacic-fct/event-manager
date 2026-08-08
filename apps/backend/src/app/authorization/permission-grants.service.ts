@@ -1,6 +1,7 @@
 import {
   EVENT_MANAGER_PERMISSION_SET,
   Permission,
+  isPermissionGrantScopeCompatible,
   requiresGlobalPermissionGrantScope,
 } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
@@ -519,11 +520,14 @@ export class PermissionGrantsService {
   }
 
   private assertScopeAllowedForPermission(permission: Permission, scope: EventManagerPermissionGrantScope): void {
-    if (scope === EventManagerPermissionGrantScope.GLOBAL || !requiresGlobalPermissionGrantScope(permission)) {
+    if (
+      isPermissionGrantScopeCompatible(permission, scope) &&
+      (scope === EventManagerPermissionGrantScope.GLOBAL || !requiresGlobalPermissionGrantScope(permission))
+    ) {
       return;
     }
 
-    throw new BadRequestException('Essa permissão só pode ser concedida com escopo global.');
+    throw new BadRequestException('Essa permissão não é compatível com o escopo selecionado.');
   }
 
   private normalizeValidityWindow(

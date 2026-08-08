@@ -269,6 +269,76 @@ export const EVENT_MANAGER_PERMISSION_INCLUDED_DATA: Readonly<
       fields: ['pessoa certificada', 'configuração', 'evento ou grande evento'],
     },
   ],
+  [Permission.SportsTeam.Read]: [
+    {
+      label: 'Dados da equipe',
+      fields: ['nome', 'instituição', 'logo', 'situação', 'modalidades inscritas'],
+    },
+    {
+      label: 'Identidade pública limitada dos integrantes',
+      fields: ['primeiro e último nome', 'função esportiva', 'situação de elegibilidade'],
+    },
+  ],
+  [Permission.SportsTeam.Review]: [
+    {
+      label: 'Alterações pendentes da equipe',
+      fields: ['diferenças propostas', 'revisão base', 'autor', 'histórico de decisões'],
+    },
+    {
+      label: 'Identificação necessária para conciliação',
+      fields: ['nome', 'e-mail principal', 'telefone', 'documento', 'ID acadêmico'],
+    },
+  ],
+  [Permission.SportsRegistration.Read]: [
+    {
+      label: 'Dados limitados de atletas inscritos',
+      fields: ['nome', 'função esportiva', 'elegibilidade', 'pagamento', 'situação da inscrição'],
+    },
+    {
+      label: 'Contexto esportivo',
+      fields: ['torneio', 'modalidade', 'equipe', 'formulário e respostas autorizadas'],
+    },
+  ],
+  [Permission.SportsRegistration.Approve]: [
+    {
+      label: 'Dados necessários para aprovação',
+      fields: ['equipe', 'modalidade', 'elenco', 'elegibilidade', 'pagamento', 'alterações pendentes'],
+    },
+  ],
+  [Permission.SportsRegistration.Reject]: [
+    {
+      label: 'Dados necessários para recusa',
+      fields: ['equipe', 'modalidade', 'situação atual', 'alterações pendentes', 'histórico de decisões'],
+    },
+  ],
+  [Permission.SportsMatch.Operate]: [
+    {
+      label: 'Dados operacionais da partida',
+      fields: ['equipes', 'escalações', 'presenças', 'cronômetro', 'períodos', 'placar'],
+    },
+    {
+      label: 'Identidade mínima para check-in',
+      fields: ['nome', 'código de usuário', 'documento', 'perfil Unesp'],
+    },
+  ],
+  [Permission.SportsOfficial.Read]: [
+    {
+      label: 'Dados limitados da equipe de arbitragem',
+      fields: ['nome', 'função', 'partidas atribuídas'],
+    },
+  ],
+  [Permission.SportsScore.Update]: [
+    {
+      label: 'Dados do placar ao vivo',
+      fields: ['pontuação', 'períodos', 'cronômetro', 'autoria opcional do ponto', 'sequência de alterações'],
+    },
+  ],
+  [Permission.SportsScore.Review]: [
+    {
+      label: 'Dados para revisão do resultado',
+      fields: ['placar', 'vencedor', 'perdedor', 'empate', 'motivo da derrota', 'histórico de correções'],
+    },
+  ],
 };
 
 export function getPermissionIncludedData(permission: Permission): readonly PermissionIncludedData[] {
