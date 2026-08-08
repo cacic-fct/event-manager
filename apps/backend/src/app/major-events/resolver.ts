@@ -39,7 +39,6 @@ const PAYMENT_INFO_SELECT = {
   holder: true,
   document: true,
   pixKey: true,
-  pixCity: true,
   majorEventId: true,
 } satisfies Prisma.PaymentInfoSelect;
 
@@ -461,7 +460,6 @@ export class MajorEventsResolver {
                   holder: sourcePaymentInfo.holder,
                   document: sourcePaymentInfo.document,
                   pixKey: sourcePaymentInfo.pixKey ?? undefined,
-                  pixCity: sourcePaymentInfo.pixCity ?? undefined,
                 }
               : undefined,
             price: sourcePrice
@@ -793,7 +791,6 @@ export class MajorEventsResolver {
       holder: paymentInfo.holder.trim(),
       document: paymentInfo.document.trim(),
       pixKey: paymentInfo.pixKey?.trim() || null,
-      pixCity: paymentInfo.pixCity?.trim() || null,
     };
 
     const bankValues = [normalized.bankName, normalized.agency, normalized.account, normalized.holder];

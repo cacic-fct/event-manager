@@ -76,7 +76,6 @@ describe('MajorEventsResolver', () => {
         holder: 'CACiC',
         document: '00.000.000/0001-00',
         pixKey: 'pix@example.com',
-        pixCity: 'Presidente Prudente',
         majorEventId: 'major-source',
       },
       majorEventPrices: [
@@ -429,7 +428,6 @@ describe('MajorEventsResolver', () => {
             holder: ' CACiC ',
             document: ' 00.000.000/0001-00 ',
             pixKey: ' pix@example.com ',
-            pixCity: ' Presidente Prudente ',
           },
           price: {
             type: 'SINGLE',
@@ -456,7 +454,6 @@ describe('MajorEventsResolver', () => {
               holder: 'CACiC',
               document: '00.000.000/0001-00',
               pixKey: 'pix@example.com',
-              pixCity: 'Presidente Prudente',
             },
           },
           majorEventPrices: {
@@ -924,7 +921,6 @@ function paymentInfoRecord(overrides: Record<string, unknown> = {}) {
     holder: 'CACiC',
     document: '00.000.000/0001-00',
     pixKey: 'pix@example.com',
-    pixCity: 'Presidente Prudente',
     majorEventId: 'major-1',
     ...overrides,
   };
