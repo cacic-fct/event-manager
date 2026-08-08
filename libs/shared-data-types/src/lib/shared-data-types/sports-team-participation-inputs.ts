@@ -228,8 +228,7 @@ export class SportsTeamChangeReviewInput {
 
   @Field(() => Boolean, {
     nullable: true,
-    description:
-      'Admin-only explicit override for field revision conflicts. Defaults to false.',
+    description: 'Admin-only explicit override for field revision conflicts. Defaults to false.',
   })
   forceConflicts?: boolean;
 }

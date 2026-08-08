@@ -1,344 +1,334 @@
-        <div class="master-detail">
-          <aside class="panel panel-stack">
-            <div>
-              <h3>Chave e agenda</h3>
-              <p>Escolha uma modalidade para gerar ou editar confrontos.</p>
-            </div>
-            <mat-form-field>
-              <mat-label>Modalidade</mat-label>
-              <mat-select [value]="workspace.selectedCategoryId()" (selectionChange)="selectCategoryById($event.value)">
-                @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
-                  <mat-option [value]="category.id">{{ category.name }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-            @if (workspace.categoryRead(); as read) {
-              <form
-                [formGroup]="workspace.bracketForm"
-                class="bracket-controls"
-                (ngSubmit)="workspace.generateBracket()">
-                <mat-checkbox formControlName="randomizeUnseeded">Sortear equipes sem seed</mat-checkbox>
-                <mat-form-field
-                  ><mat-label>Semente reproduzível</mat-label><input matInput formControlName="randomSeed"
-                /></mat-form-field>
-                <mat-checkbox formControlName="replaceExistingDraft">Substituir chave em rascunho</mat-checkbox>
-                <button mat-flat-button type="submit"><mat-icon>account_tree</mat-icon>Gerar chave</button>
-              </form>
-              <p class="safety-note">
-                <mat-icon>info</mat-icon>Byes avançam automaticamente. A geração nunca substitui resultados finalizados.
-              </p>
-              <lib-sports-bracket
-                [format]="read.category.format"
-                [stages]="bracketStages()"
-                [standings]="bracketStandings()"
-                [currentMatchId]="currentLiveMatchId()"
-                [editingMatchId]="workspace.selectedMatchId() || null"
-                (matchSelected)="selectBracketMatch(read, $event)" />
-              <mat-list class="result-list">
-                @for (match of read.matches; track match.id) {
-                  <mat-list-item
-                    [class.selected-list-item]="workspace.selectedMatchId() === match.id"
-                    (click)="workspace.selectMatch(match)">
-                    @if (teamLogoForRegistration(match.homeRegistrationId); as logoUrl) {
-                      <img
-                        matListItemAvatar
-                        [src]="logoUrl"
-                        [alt]="'Escudo de ' + workspace.teamNameForRegistration(match.homeRegistrationId)" />
-                    } @else {
-                      <mat-icon matListItemIcon>sports</mat-icon>
-                    }
-                    <span matListItemTitle
-                      >{{ workspace.teamNameForRegistration(match.homeRegistrationId) }} ×
-                      {{ workspace.teamNameForRegistration(match.awayRegistrationId) }}</span
-                    >
-                    <span matListItemLine
-                      >Rodada {{ match.roundNumber || 'não definida' }} ·
-                      {{ workspace.matchStatusLabel(match.state) }}</span
-                    >
-                    <span matListItemMeta class="score"
-                      >{{ match.scoreboard.homeScore }} a {{ match.scoreboard.awayScore }}</span
-                    >
-                  </mat-list-item>
-                } @empty {
-                  <mat-list-item
-                    ><span matListItemTitle>Chave ainda não gerada</span
-                    ><span matListItemLine>Inscreva pelo menos duas equipes.</span></mat-list-item
-                  >
-                }
-              </mat-list>
+<div class="master-detail">
+  <aside class="panel panel-stack">
+    <div>
+      <h3>Chave e agenda</h3>
+      <p>Escolha uma modalidade para gerar ou editar confrontos.</p>
+    </div>
+    <mat-form-field>
+      <mat-label>Modalidade</mat-label>
+      <mat-select [value]="workspace.selectedCategoryId()" (selectionChange)="selectCategoryById($event.value)">
+        @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+          <mat-option [value]="category.id">{{ category.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (workspace.categoryRead(); as read) {
+      <form [formGroup]="workspace.bracketForm" class="bracket-controls" (ngSubmit)="workspace.generateBracket()">
+        <mat-checkbox formControlName="randomizeUnseeded">Sortear equipes sem seed</mat-checkbox>
+        <mat-form-field
+          ><mat-label>Semente reproduzível</mat-label><input matInput formControlName="randomSeed"
+        /></mat-form-field>
+        <mat-checkbox formControlName="replaceExistingDraft">Substituir chave em rascunho</mat-checkbox>
+        <button mat-flat-button type="submit"><mat-icon>account_tree</mat-icon>Gerar chave</button>
+      </form>
+      <p class="safety-note">
+        <mat-icon>info</mat-icon>Byes avançam automaticamente. A geração nunca substitui resultados finalizados.
+      </p>
+      <lib-sports-bracket
+        [format]="read.category.format"
+        [stages]="bracketStages()"
+        [standings]="bracketStandings()"
+        [currentMatchId]="currentLiveMatchId()"
+        [editingMatchId]="workspace.selectedMatchId() || null"
+        (matchSelected)="selectBracketMatch(read, $event)" />
+      <mat-list class="result-list">
+        @for (match of read.matches; track match.id) {
+          <mat-list-item
+            [class.selected-list-item]="workspace.selectedMatchId() === match.id"
+            (click)="workspace.selectMatch(match)">
+            @if (teamLogoForRegistration(match.homeRegistrationId); as logoUrl) {
+              <img
+                matListItemAvatar
+                [src]="logoUrl"
+                [alt]="'Escudo de ' + workspace.teamNameForRegistration(match.homeRegistrationId)" />
+            } @else {
+              <mat-icon matListItemIcon>sports</mat-icon>
             }
-          </aside>
+            <span matListItemTitle
+              >{{ workspace.teamNameForRegistration(match.homeRegistrationId) }} ×
+              {{ workspace.teamNameForRegistration(match.awayRegistrationId) }}</span
+            >
+            <span matListItemLine
+              >Rodada {{ match.roundNumber || 'não definida' }} · {{ workspace.matchStatusLabel(match.state) }}</span
+            >
+            <span matListItemMeta class="score"
+              >{{ match.scoreboard.homeScore }} a {{ match.scoreboard.awayScore }}</span
+            >
+          </mat-list-item>
+        } @empty {
+          <mat-list-item
+            ><span matListItemTitle>Chave ainda não gerada</span
+            ><span matListItemLine>Inscreva pelo menos duas equipes.</span></mat-list-item
+          >
+        }
+      </mat-list>
+    }
+  </aside>
 
-          <section class="panel panel-stack">
-            <div class="panel-heading">
-              <div>
-                <h3>{{ workspace.matchReview() ? 'Editar partida' : 'Nova partida' }}</h3>
-                <p>Partidas herdam agenda, local e presença do evento associado.</p>
-              </div>
-              <div class="panel-actions">
-                <button mat-button type="button" (click)="workspace.newMatch()">Limpar</button>
-                @if (workspace.matchReview()) {
-                  <button
-                    mat-icon-button
-                    type="button"
-                    matTooltip="Excluir partida"
-                    (click)="workspace.deleteSelectedMatch()">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                }
-                <button
-                  mat-flat-button
-                  type="button"
-                  (click)="workspace.saveMatch()"
-                  [disabled]="workspace.matchForm.invalid">
-                  <mat-icon>save</mat-icon>Salvar
-                </button>
-              </div>
-            </div>
-            <form [formGroup]="workspace.matchForm" class="form-grid">
-              <mat-form-field
-                ><mat-label>Modalidade</mat-label
-                ><mat-select formControlName="categoryId">
-                  @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
-                    <mat-option [value]="category.id">{{ category.name }}</mat-option>
-                  }
-                </mat-select></mat-form-field
-              >
-              <mat-form-field
-                ><mat-label>Nome no calendário</mat-label><input matInput formControlName="name"
-              /></mat-form-field>
-              <mat-form-field
-                ><mat-label>Início</mat-label><input matInput type="datetime-local" formControlName="startDate"
-              /></mat-form-field>
-              <mat-form-field
-                ><mat-label>Fim</mat-label><input matInput type="datetime-local" formControlName="endDate"
-              /></mat-form-field>
-              <mat-form-field
-                ><mat-label>Equipe da casa</mat-label
-                ><mat-select formControlName="homeRegistrationId">
-                  <mat-option value="">Bye / a definir</mat-option>
-                  @for (registration of workspace.categoryRead()?.registrations ?? []; track registration.id) {
-                    <mat-option [value]="registration.id">{{
-                      workspace.teamNameForRegistration(registration.id)
-                    }}</mat-option>
-                  }
-                </mat-select></mat-form-field
-              >
-              <mat-form-field
-                ><mat-label>Equipe visitante</mat-label
-                ><mat-select formControlName="awayRegistrationId">
-                  <mat-option value="">Bye / a definir</mat-option>
-                  @for (registration of workspace.categoryRead()?.registrations ?? []; track registration.id) {
-                    <mat-option [value]="registration.id">{{
-                      workspace.teamNameForRegistration(registration.id)
-                    }}</mat-option>
-                  }
-                </mat-select></mat-form-field
-              >
-              <mat-form-field
-                ><mat-label>Estado</mat-label
-                ><mat-select formControlName="state">
-                  @for (state of matchStates; track state[0]) {
-                    <mat-option [value]="state[0]">
-                      <span>{{ state[1] }}</span>
-                      @if (state[0] === 'CANCELED') {
-                        <small class="option-description">A partida precisará ser reagendada</small>
-                      }
-                    </mat-option>
-                  }
-                </mat-select>
-                @if (workspace.matchForm.controls.state.value === 'CANCELED') {
-                  <mat-hint>Use quando esta partida será remarcada para outra data.</mat-hint>
-                }
-              </mat-form-field
-              >
-              <mat-form-field
-                ><mat-label>Fase (ID)</mat-label><input matInput formControlName="stageId"
-              /></mat-form-field>
-              <mat-form-field
-                ><mat-label>Local esportivo</mat-label
-                ><mat-select formControlName="venueId">
-                  <mat-option value="">A definir</mat-option>
-                  @for (venue of workspace.tournamentRead()?.venues ?? []; track venue.id) {
-                    <mat-option [value]="venue.id"
-                      >{{ venue.name }}{{ venue.courtLabel ? ' · ' + venue.courtLabel : '' }}</mat-option
-                    >
-                  }
-                </mat-select></mat-form-field
-              >
-              <mat-form-field
-                ><mat-label>Rodada</mat-label><input matInput type="number" min="1" formControlName="roundNumber"
-              /></mat-form-field>
-              <mat-form-field
-                ><mat-label>Posição na chave</mat-label
-                ><input matInput type="number" min="1" formControlName="bracketPosition"
-              /></mat-form-field>
-              <mat-form-field><mat-label>Grupo</mat-label><input matInput formControlName="groupKey" /></mat-form-field>
-              <mat-form-field>
-                <mat-label>Transmissão</mat-label>
-                <mat-select formControlName="livestreamProvider">
-                  <mat-option value="">Sem transmissão</mat-option>
-                  <mat-option value="YOUTUBE">YouTube</mat-option>
-                  <mat-option value="TWITCH">Twitch</mat-option>
-                  <mat-option value="GENERAL">Outro serviço</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field>
-                <mat-label>Link da transmissão</mat-label>
-                <input matInput type="url" inputmode="url" formControlName="livestreamUrl" placeholder="https://" />
-                <mat-hint>Use o endereço público completo da live.</mat-hint>
-                @if (workspace.matchForm.controls.livestreamUrl.invalid) {
-                  <mat-error>Informe um endereço HTTPS válido.</mat-error>
-                } @else if (workspace.matchForm.hasError('incompleteLivestream')) {
-                  <mat-error>Escolha a plataforma e informe o link.</mat-error>
-                }
-              </mat-form-field>
-              <mat-form-field class="span-2">
-                <mat-label>Notas administrativas da partida</mat-label>
-                <textarea matInput rows="3" maxlength="2000" formControlName="notes"></textarea>
-                <mat-hint>Contexto para oficiais e para a revisão do encerramento.</mat-hint>
-              </mat-form-field>
-            </form>
-
-            @if (workspace.matchReview()) {
-              <mat-divider />
-              <div class="subsection-title">
-                <h4>Escalação desta partida</h4>
-                <p>Marque somente quem poderá jogar. A lista permanece privada até o encerramento.</p>
-              </div>
-              <div class="lineup-grid">
-                @for (
-                  registrationId of [
-                    workspace.matchReview()?.match?.homeRegistrationId,
-                    workspace.matchReview()?.match?.awayRegistrationId,
-                  ];
-                  track registrationId
-                ) {
-                  @if (registrationId && workspace.registrationReads()[registrationId]; as registration) {
-                    <section>
-                      <h5 class="team-heading">
-                        @if (teamLogoForRegistration(registrationId); as logoUrl) {
-                          <img [src]="logoUrl" [alt]="'Escudo de ' + workspace.teamNameForRegistration(registrationId)" />
-                        } @else {
-                          <mat-icon aria-hidden="true">shield</mat-icon>
-                        }
-                        {{ workspace.teamNameForRegistration(registrationId) }}
-                      </h5>
-                      @for (member of registration.members; track member.id) {
-                        <div class="lineup-member">
-                          <mat-checkbox
-                            [checked]="workspace.isLineupSelected(registrationId, member.id)"
-                            (change)="workspace.toggleLineup(registrationId, member.id, $event.checked)">
-                            {{ member.person.name }}
-                          </mat-checkbox>
-                          <mat-form-field subscriptSizing="dynamic">
-                            <mat-label>Função</mat-label>
-                            <mat-select
-                              [value]="workspace.lineupRole(registrationId, member.id, member.role)"
-                              (selectionChange)="workspace.updateLineupDetail(registrationId, member.id, 'role', $event.value, member.role)">
-                              <mat-option value="PLAYER">Atleta</mat-option>
-                              <mat-option value="CAPTAIN">Capitão</mat-option>
-                              <mat-option value="COACH">Técnico</mat-option>
-                              <mat-option value="STAFF">Apoio</mat-option>
-                            </mat-select>
-                          </mat-form-field>
-                          <mat-form-field subscriptSizing="dynamic">
-                            <mat-label>Número</mat-label>
-                            <input
-                              matInput
-                              maxlength="12"
-                              [value]="workspace.lineupShirtNumber(registrationId, member.id)"
-                              (input)="workspace.updateLineupDetail(registrationId, member.id, 'shirtNumber', $any($event.target).value, member.role)" />
-                          </mat-form-field>
-                        </div>
-                      } @empty {
-                        <p class="empty-copy">Nenhum integrante elegível nesta inscrição.</p>
-                      }
-                      <button mat-stroked-button type="button" (click)="workspace.saveLineup(registrationId)">
-                        <mat-icon>groups</mat-icon>Salvar escalação
-                      </button>
-                    </section>
-                  }
-                }
-              </div>
-              <mat-divider />
-              <div class="subsection-title">
-                <h4>Equipe de arbitragem e apoio</h4>
-                <p>Funções são separadas para certificados, mas compartilham a mesma operação pública.</p>
-              </div>
-              <form [formGroup]="workspace.officialForm" class="official-form" (ngSubmit)="workspace.assignOfficial()">
-                <mat-form-field
-                  ><mat-label>Buscar pessoa</mat-label
-                  ><input
-                    matInput
-                    formControlName="personQuery"
-                    (input)="workspace.searchPeople(workspace.officialForm.controls.personQuery.value, 'official')"
-                /></mat-form-field>
-                <mat-form-field
-                  ><mat-label>Função</mat-label
-                  ><mat-select formControlName="role">
-                    <mat-option value="REFEREE">Árbitro</mat-option>
-                    <mat-option value="INTERMEDIATOR">Intermediador</mat-option>
-                    <mat-option value="SCOREKEEPER">Mesário (scorekeeper)</mat-option>
-                  </mat-select></mat-form-field
-                >
-                <mat-form-field
-                  ><mat-label>Escopo</mat-label
-                  ><mat-select formControlName="scope">
-                    <mat-option value="MATCH">Somente esta partida</mat-option>
-                    <mat-option value="CATEGORY">Toda a modalidade</mat-option>
-                    <mat-option value="TOURNAMENT">Todo o torneio</mat-option>
-                  </mat-select></mat-form-field
-                >
-                <button mat-stroked-button type="submit" [disabled]="workspace.officialForm.invalid">
-                  <mat-icon>person_add</mat-icon>Atribuir
-                </button>
-              </form>
-              @if (workspace.people().length && workspace.peopleTarget() === 'official') {
-                <div class="search-results">
-                  @for (person of workspace.people(); track person.id) {
-                    <button type="button" (click)="workspace.pickPerson(person, 'official')">{{ person.name }}</button>
-                  }
-                </div>
+  <section class="panel panel-stack">
+    <div class="panel-heading">
+      <div>
+        <h3>{{ workspace.matchReview() ? 'Editar partida' : 'Nova partida' }}</h3>
+        <p>Partidas herdam agenda, local e presença do evento associado.</p>
+      </div>
+      <div class="panel-actions">
+        <button mat-button type="button" (click)="workspace.newMatch()">Limpar</button>
+        @if (workspace.matchReview()) {
+          <button mat-icon-button type="button" matTooltip="Excluir partida" (click)="workspace.deleteSelectedMatch()">
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
+        <button mat-flat-button type="button" (click)="workspace.saveMatch()" [disabled]="workspace.matchForm.invalid">
+          <mat-icon>save</mat-icon>Salvar
+        </button>
+      </div>
+    </div>
+    <form [formGroup]="workspace.matchForm" class="form-grid">
+      <mat-form-field
+        ><mat-label>Modalidade</mat-label
+        ><mat-select formControlName="categoryId">
+          @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+            <mat-option [value]="category.id">{{ category.name }}</mat-option>
+          }
+        </mat-select></mat-form-field
+      >
+      <mat-form-field
+        ><mat-label>Nome no calendário</mat-label><input matInput formControlName="name"
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Início</mat-label><input matInput type="datetime-local" formControlName="startDate"
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Fim</mat-label><input matInput type="datetime-local" formControlName="endDate"
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Equipe da casa</mat-label
+        ><mat-select formControlName="homeRegistrationId">
+          <mat-option value="">Bye / a definir</mat-option>
+          @for (registration of workspace.categoryRead()?.registrations ?? []; track registration.id) {
+            <mat-option [value]="registration.id">{{ workspace.teamNameForRegistration(registration.id) }}</mat-option>
+          }
+        </mat-select></mat-form-field
+      >
+      <mat-form-field
+        ><mat-label>Equipe visitante</mat-label
+        ><mat-select formControlName="awayRegistrationId">
+          <mat-option value="">Bye / a definir</mat-option>
+          @for (registration of workspace.categoryRead()?.registrations ?? []; track registration.id) {
+            <mat-option [value]="registration.id">{{ workspace.teamNameForRegistration(registration.id) }}</mat-option>
+          }
+        </mat-select></mat-form-field
+      >
+      <mat-form-field
+        ><mat-label>Estado</mat-label
+        ><mat-select formControlName="state">
+          @for (state of matchStates; track state[0]) {
+            <mat-option [value]="state[0]">
+              <span>{{ state[1] }}</span>
+              @if (state[0] === 'CANCELED') {
+                <small class="option-description">A partida precisará ser reagendada</small>
               }
-              <div class="person-list">
-                @for (official of workspace.tournamentRead()?.officials ?? []; track official.id) {
-                  <div>
-                    <mat-icon>emoji_events</mat-icon
-                    ><span
-                      ><strong>{{ officialRoleLabel(official.role) }}</strong
-                      ><small>Torneio inteiro · {{ official.personId }}</small></span
-                    >
-                  </div>
+            </mat-option>
+          }
+        </mat-select>
+        @if (workspace.matchForm.controls.state.value === 'CANCELED') {
+          <mat-hint>Use quando esta partida será remarcada para outra data.</mat-hint>
+        }
+      </mat-form-field>
+      <mat-form-field><mat-label>Fase (ID)</mat-label><input matInput formControlName="stageId" /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Local esportivo</mat-label
+        ><mat-select formControlName="venueId">
+          <mat-option value="">A definir</mat-option>
+          @for (venue of workspace.tournamentRead()?.venues ?? []; track venue.id) {
+            <mat-option [value]="venue.id"
+              >{{ venue.name }}{{ venue.courtLabel ? ' · ' + venue.courtLabel : '' }}</mat-option
+            >
+          }
+        </mat-select></mat-form-field
+      >
+      <mat-form-field
+        ><mat-label>Rodada</mat-label><input matInput type="number" min="1" formControlName="roundNumber"
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Posição na chave</mat-label><input matInput type="number" min="1" formControlName="bracketPosition"
+      /></mat-form-field>
+      <mat-form-field><mat-label>Grupo</mat-label><input matInput formControlName="groupKey" /></mat-form-field>
+      <mat-form-field>
+        <mat-label>Transmissão</mat-label>
+        <mat-select formControlName="livestreamProvider">
+          <mat-option value="">Sem transmissão</mat-option>
+          <mat-option value="YOUTUBE">YouTube</mat-option>
+          <mat-option value="TWITCH">Twitch</mat-option>
+          <mat-option value="GENERAL">Outro serviço</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Link da transmissão</mat-label>
+        <input matInput type="url" inputmode="url" formControlName="livestreamUrl" placeholder="https://" />
+        <mat-hint>Use o endereço público completo da live.</mat-hint>
+        @if (workspace.matchForm.controls.livestreamUrl.invalid) {
+          <mat-error>Informe um endereço HTTPS válido.</mat-error>
+        } @else if (workspace.matchForm.hasError('incompleteLivestream')) {
+          <mat-error>Escolha a plataforma e informe o link.</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field class="span-2">
+        <mat-label>Notas administrativas da partida</mat-label>
+        <textarea matInput rows="3" maxlength="2000" formControlName="notes"></textarea>
+        <mat-hint>Contexto para oficiais e para a revisão do encerramento.</mat-hint>
+      </mat-form-field>
+    </form>
+
+    @if (workspace.matchReview()) {
+      <mat-divider />
+      <div class="subsection-title">
+        <h4>Escalação desta partida</h4>
+        <p>Marque somente quem poderá jogar. A lista permanece privada até o encerramento.</p>
+      </div>
+      <div class="lineup-grid">
+        @for (
+          registrationId of [
+            workspace.matchReview()?.match?.homeRegistrationId,
+            workspace.matchReview()?.match?.awayRegistrationId,
+          ];
+          track registrationId
+        ) {
+          @if (registrationId && workspace.registrationReads()[registrationId]; as registration) {
+            <section>
+              <h5 class="team-heading">
+                @if (teamLogoForRegistration(registrationId); as logoUrl) {
+                  <img [src]="logoUrl" [alt]="'Escudo de ' + workspace.teamNameForRegistration(registrationId)" />
+                } @else {
+                  <mat-icon aria-hidden="true">shield</mat-icon>
                 }
-                @for (official of workspace.categoryRead()?.officials ?? []; track official.id) {
-                  <div>
-                    <mat-icon>category</mat-icon
-                    ><span
-                      ><strong>{{ officialRoleLabel(official.role) }}</strong
-                      ><small>Modalidade · {{ official.personId }}</small></span
-                    >
-                  </div>
-                }
-                @for (official of workspace.matchReview()?.officials ?? []; track official.id) {
-                  <div>
-                    <mat-icon>sports</mat-icon
-                    ><span
-                      ><strong>{{ officialRoleLabel(official.role) }}</strong
-                      ><small>Partida · {{ official.personId }}</small></span
-                    >
-                  </div>
-                }
-                @if (
-                  !(workspace.tournamentRead()?.officials?.length ?? 0) &&
-                  !(workspace.categoryRead()?.officials?.length ?? 0) &&
-                  !(workspace.matchReview()?.officials?.length ?? 0)
-                ) {
-                  <p class="empty-copy">
-                    Nenhuma pessoa exclusiva; participantes autorizados ainda podem exercer a função quando permitido.
-                  </p>
-                }
-              </div>
-            }
-          </section>
+                {{ workspace.teamNameForRegistration(registrationId) }}
+              </h5>
+              @for (member of registration.members; track member.id) {
+                <div class="lineup-member">
+                  <mat-checkbox
+                    [checked]="workspace.isLineupSelected(registrationId, member.id)"
+                    (change)="workspace.toggleLineup(registrationId, member.id, $event.checked)">
+                    {{ member.person.name }}
+                  </mat-checkbox>
+                  <mat-form-field subscriptSizing="dynamic">
+                    <mat-label>Função</mat-label>
+                    <mat-select
+                      [value]="workspace.lineupRole(registrationId, member.id, member.role)"
+                      (selectionChange)="
+                        workspace.updateLineupDetail(registrationId, member.id, 'role', $event.value, member.role)
+                      ">
+                      <mat-option value="PLAYER">Atleta</mat-option>
+                      <mat-option value="CAPTAIN">Capitão</mat-option>
+                      <mat-option value="COACH">Técnico</mat-option>
+                      <mat-option value="STAFF">Apoio</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field subscriptSizing="dynamic">
+                    <mat-label>Número</mat-label>
+                    <input
+                      matInput
+                      maxlength="12"
+                      [value]="workspace.lineupShirtNumber(registrationId, member.id)"
+                      (input)="
+                        workspace.updateLineupDetail(
+                          registrationId,
+                          member.id,
+                          'shirtNumber',
+                          $any($event.target).value,
+                          member.role
+                        )
+                      " />
+                  </mat-form-field>
+                </div>
+              } @empty {
+                <p class="empty-copy">Nenhum integrante elegível nesta inscrição.</p>
+              }
+              <button mat-stroked-button type="button" (click)="workspace.saveLineup(registrationId)">
+                <mat-icon>groups</mat-icon>Salvar escalação
+              </button>
+            </section>
+          }
+        }
+      </div>
+      <mat-divider />
+      <div class="subsection-title">
+        <h4>Equipe de arbitragem e apoio</h4>
+        <p>Funções são separadas para certificados, mas compartilham a mesma operação pública.</p>
+      </div>
+      <form [formGroup]="workspace.officialForm" class="official-form" (ngSubmit)="workspace.assignOfficial()">
+        <mat-form-field
+          ><mat-label>Buscar pessoa</mat-label
+          ><input
+            matInput
+            formControlName="personQuery"
+            (input)="workspace.searchPeople(workspace.officialForm.controls.personQuery.value, 'official')"
+        /></mat-form-field>
+        <mat-form-field
+          ><mat-label>Função</mat-label
+          ><mat-select formControlName="role">
+            <mat-option value="REFEREE">Árbitro</mat-option>
+            <mat-option value="INTERMEDIATOR">Intermediador</mat-option>
+            <mat-option value="SCOREKEEPER">Mesário (scorekeeper)</mat-option>
+          </mat-select></mat-form-field
+        >
+        <mat-form-field
+          ><mat-label>Escopo</mat-label
+          ><mat-select formControlName="scope">
+            <mat-option value="MATCH">Somente esta partida</mat-option>
+            <mat-option value="CATEGORY">Toda a modalidade</mat-option>
+            <mat-option value="TOURNAMENT">Todo o torneio</mat-option>
+          </mat-select></mat-form-field
+        >
+        <button mat-stroked-button type="submit" [disabled]="workspace.officialForm.invalid">
+          <mat-icon>person_add</mat-icon>Atribuir
+        </button>
+      </form>
+      @if (workspace.people().length && workspace.peopleTarget() === 'official') {
+        <div class="search-results">
+          @for (person of workspace.people(); track person.id) {
+            <button type="button" (click)="workspace.pickPerson(person, 'official')">{{ person.name }}</button>
+          }
         </div>
+      }
+      <div class="person-list">
+        @for (official of workspace.tournamentRead()?.officials ?? []; track official.id) {
+          <div>
+            <mat-icon>emoji_events</mat-icon
+            ><span
+              ><strong>{{ officialRoleLabel(official.role) }}</strong
+              ><small>Torneio inteiro · {{ official.personId }}</small></span
+            >
+          </div>
+        }
+        @for (official of workspace.categoryRead()?.officials ?? []; track official.id) {
+          <div>
+            <mat-icon>category</mat-icon
+            ><span
+              ><strong>{{ officialRoleLabel(official.role) }}</strong
+              ><small>Modalidade · {{ official.personId }}</small></span
+            >
+          </div>
+        }
+        @for (official of workspace.matchReview()?.officials ?? []; track official.id) {
+          <div>
+            <mat-icon>sports</mat-icon
+            ><span
+              ><strong>{{ officialRoleLabel(official.role) }}</strong
+              ><small>Partida · {{ official.personId }}</small></span
+            >
+          </div>
+        }
+        @if (
+          !(workspace.tournamentRead()?.officials?.length ?? 0) &&
+          !(workspace.categoryRead()?.officials?.length ?? 0) &&
+          !(workspace.matchReview()?.officials?.length ?? 0)
+        ) {
+          <p class="empty-copy">
+            Nenhuma pessoa exclusiva; participantes autorizados ainda podem exercer a função quando permitido.
+          </p>
+        }
+      </div>
+    }
+  </section>
+</div>

@@ -6,7 +6,6 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
-
 import { PublicSportsMatch, PublicSportsTeam } from './sports-read-public-match.models';
 import { PublicSportsTournamentDetail } from './sports-read-public-tournament.models';
 
@@ -156,7 +155,6 @@ export class CurrentUserSportsLineupRead {
   @Field(() => CurrentUserSportsLineupRosterRead, { nullable: true })
   roster?: CurrentUserSportsLineupRosterRead | null;
 }
-
 
 @ObjectType()
 export class CurrentUserSportsTournamentDetail {

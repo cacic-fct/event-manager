@@ -1,8 +1,4 @@
-import type {
-  SportsFormat,
-  SportsMatchState,
-  SportsStageType,
-} from '@cacic-fct/shared-data-types';
+import type { SportsFormat, SportsMatchState, SportsStageType } from '@cacic-fct/shared-data-types';
 
 export interface SportsBracketTeamView {
   id: string;

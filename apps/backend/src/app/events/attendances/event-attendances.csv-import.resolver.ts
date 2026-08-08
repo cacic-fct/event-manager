@@ -94,10 +94,14 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
       },
     });
     const presentPersonIds = new Set(
-      existingAttendances.filter((attendance) => attendance.status === 'PRESENT').map((attendance) => attendance.personId),
+      existingAttendances
+        .filter((attendance) => attendance.status === 'PRESENT')
+        .map((attendance) => attendance.personId),
     );
     const absentPersonIds = new Set(
-      existingAttendances.filter((attendance) => attendance.status === 'ABSENT').map((attendance) => attendance.personId),
+      existingAttendances
+        .filter((attendance) => attendance.status === 'ABSENT')
+        .map((attendance) => attendance.personId),
     );
 
     const failedValues: string[] = [];
@@ -128,13 +132,15 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
       createdPersonIds.length > 0
         ? await this.prisma.$transaction(async (tx) => {
             const result = await tx.eventAttendance.createMany({
-              data: createdPersonIds.filter((personId) => !absentPersonIds.has(personId)).map((personId) => ({
-                personId,
-                eventId: input.eventId,
-                createdById,
-                committedById: createdById,
-                createdByMethod: AttendanceCreationMethod.CSV_IMPORT,
-              })),
+              data: createdPersonIds
+                .filter((personId) => !absentPersonIds.has(personId))
+                .map((personId) => ({
+                  personId,
+                  eventId: input.eventId,
+                  createdById,
+                  committedById: createdById,
+                  createdByMethod: AttendanceCreationMethod.CSV_IMPORT,
+                })),
               skipDuplicates: true,
             });
             await tx.eventAttendance.updateMany({

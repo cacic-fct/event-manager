@@ -1,9 +1,4 @@
-import {
-  Prisma,
-  PublicationState,
-  SportsCategoryStatus,
-  SportsTournamentStatus,
-} from '@prisma/client';
+import { Prisma, PublicationState, SportsCategoryStatus, SportsTournamentStatus } from '@prisma/client';
 
 export const PUBLIC_SPORTS_MATCH_RELATIONS_WHERE = {
   category: {
@@ -45,9 +40,7 @@ export interface SportsMatchPublicationRecord {
   };
 }
 
-export function isSportsMatchPublic(
-  match: SportsMatchPublicationRecord,
-): boolean {
+export function isSportsMatchPublic(match: SportsMatchPublicationRecord): boolean {
   return (
     !match.event.deletedAt &&
     match.event.publiclyVisible &&
@@ -57,7 +50,6 @@ export function isSportsMatchPublic(
     !match.category.tournament.deletedAt &&
     match.category.tournament.status !== SportsTournamentStatus.DRAFT &&
     !match.category.tournament.majorEvent.deletedAt &&
-    match.category.tournament.majorEvent.publicationState ===
-      PublicationState.PUBLISHED
+    match.category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED
   );
 }

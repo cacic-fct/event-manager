@@ -12,10 +12,7 @@ import {
 import { CurrentUserMajorEventFeedItem } from '../models';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
-import {
-  normalizeMajorEventPaymentTier,
-  resolveMajorEventSelfServicePayment,
-} from './major-event-payment-selection';
+import { normalizeMajorEventPaymentTier, resolveMajorEventSelfServicePayment } from './major-event-payment-selection';
 
 type RankedCategory = 'course' | 'lecture' | 'uncategorized';
 
@@ -76,10 +73,7 @@ export class CurrentUserMajorEventSubscriptionService {
     amountPaid: number | null;
     paymentTier: string | null;
   } {
-    return resolveMajorEventSelfServicePayment(
-      majorEvent,
-      paymentTierInput,
-    );
+    return resolveMajorEventSelfServicePayment(majorEvent, paymentTierInput);
   }
 
   normalizeDesiredCount(value: number | null | undefined, fallback: number): number {

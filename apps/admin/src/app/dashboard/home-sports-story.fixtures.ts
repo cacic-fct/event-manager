@@ -1,14 +1,6 @@
-import type {
-  DashboardSportsMatch,
-  DashboardSportsTournament,
-} from '@cacic-fct/shared-frontend-types';
+import type { DashboardSportsMatch, DashboardSportsTournament } from '@cacic-fct/shared-frontend-types';
 
-export type SportsDashboardMode =
-  | 'none'
-  | 'registration-open'
-  | 'live'
-  | 'review'
-  | 'live-and-review';
+export type SportsDashboardMode = 'none' | 'registration-open' | 'live' | 'review' | 'live-and-review';
 
 interface SportsStoryArgs {
   showActionQueue: boolean;
@@ -26,8 +18,7 @@ export function buildSportsTournaments(
     return [];
   }
 
-  const hasReview =
-    args.showActionQueue && ['review', 'live-and-review'].includes(args.sportsMode);
+  const hasReview = args.showActionQueue && ['review', 'live-and-review'].includes(args.sportsMode);
   const isLive = ['live', 'live-and-review'].includes(args.sportsMode);
   return [
     {
@@ -37,12 +28,7 @@ export function buildSportsTournaments(
       emoji: '🏆',
       startDate: dateFromNow(0, 8).toISOString(),
       endDate: dateFromNow(3, 20).toISOString(),
-      status:
-        args.sportsMode === 'registration-open'
-          ? 'REGISTRATION_OPEN'
-          : isLive
-            ? 'LIVE'
-            : 'DRAFT',
+      status: args.sportsMode === 'registration-open' ? 'REGISTRATION_OPEN' : isLive ? 'LIVE' : 'DRAFT',
       categoryCount: 6,
       teamCount: 18,
       pendingApplicationCount: hasReview ? 3 : 0,
@@ -88,4 +74,3 @@ export function buildSportsMatches(
     },
   ];
 }
-

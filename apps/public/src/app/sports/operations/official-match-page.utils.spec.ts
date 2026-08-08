@@ -7,10 +7,14 @@ describe('official match page utilities', () => {
   });
 
   it('keeps only valid match occurrences', () => {
-    expect(parseMatchOccurrences(JSON.stringify([
-      { occurrenceId: 'valid', kind: 'INJURY', note: 'Atendimento' },
-      { occurrenceId: 'invalid', kind: 'UNKNOWN', note: 'Ignorar' },
-    ]))).toEqual([{ occurrenceId: 'valid', kind: 'INJURY', note: 'Atendimento' }]);
+    expect(
+      parseMatchOccurrences(
+        JSON.stringify([
+          { occurrenceId: 'valid', kind: 'INJURY', note: 'Atendimento' },
+          { occurrenceId: 'invalid', kind: 'UNKNOWN', note: 'Ignorar' },
+        ]),
+      ),
+    ).toEqual([{ occurrenceId: 'valid', kind: 'INJURY', note: 'Atendimento' }]);
     expect(parseMatchOccurrences('{')).toEqual([]);
   });
 

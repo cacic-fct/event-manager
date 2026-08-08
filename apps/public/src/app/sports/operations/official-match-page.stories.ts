@@ -34,9 +34,7 @@ function currentMatch(): SportsOperationalMatch {
     return createLongNameOperationalMatch(activeArgs.state);
   }
   return createSportsOperationalMatch(activeArgs.state, {
-    rosters: activeArgs.rosterMode === 'empty'
-      ? []
-      : createSportsOperationalMatch(activeArgs.state).rosters,
+    rosters: activeArgs.rosterMode === 'empty' ? [] : createSportsOperationalMatch(activeArgs.state).rosters,
   });
 }
 
@@ -237,9 +235,7 @@ export const OfflineWithPendingActions: Story = {
   name: 'Offline com ações pendentes',
   args: { state: 'CHECK_IN', pendingOfflineActions: 4 },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByRole('button', { name: /4 pendente/ }),
-    ).toBeVisible();
+    await expect(await within(canvasElement).findByRole('button', { name: /4 pendente/ })).toBeVisible();
   },
 };
 

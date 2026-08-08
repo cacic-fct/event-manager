@@ -104,8 +104,6 @@ export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBase
     label: string,
     initialValue?: string,
   ): Promise<string | null>;
-  protected abstract categoryToForm(
-    category: SportsCategorySummary,
-  ): Partial<typeof this.categoryForm.value>;
+  protected abstract categoryToForm(category: SportsCategorySummary): Partial<typeof this.categoryForm.value>;
   protected abstract nullableCategoryValues(raw: typeof this.categoryForm.value): Record<string, unknown>;
 }

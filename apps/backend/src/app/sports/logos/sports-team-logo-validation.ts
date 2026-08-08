@@ -26,10 +26,7 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
   if (!file?.buffer?.length) {
     throw new BadRequestException('O arquivo de logo da equipe é obrigatório.');
   }
-  if (
-    file.size !== file.buffer.length ||
-    file.buffer.length > MAX_SIZE_BYTES
-  ) {
+  if (file.size !== file.buffer.length || file.buffer.length > MAX_SIZE_BYTES) {
     throw new BadRequestException('O logo da equipe deve ter no máximo 15 MiB.');
   }
 
@@ -46,19 +43,13 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
       .timeout({ seconds: METADATA_TIMEOUT_SECONDS })
       .metadata();
   } catch {
-    throw new BadRequestException(
-      'O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG válida.',
-    );
+    throw new BadRequestException('O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG válida.');
   }
 
   const detectedFormat =
-    metadata.format === 'heif' && file.mimetype.toLowerCase() === 'image/avif'
-      ? 'avif'
-      : metadata.format;
+    metadata.format === 'heif' && file.mimetype.toLowerCase() === 'image/avif' ? 'avif' : metadata.format;
   if (!detectedFormat || !(detectedFormat in LOGO_FORMATS)) {
-    throw new BadRequestException(
-      'O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG.',
-    );
+    throw new BadRequestException('O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG.');
   }
   const format = detectedFormat as SportsTeamLogoFormat;
   const formatDetails = LOGO_FORMATS[format];
@@ -73,9 +64,7 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
     metadata.height < MIN_DIMENSION ||
     metadata.width * metadata.height > MAX_PIXELS
   ) {
-    throw new BadRequestException(
-      `O logo deve ter ao menos ${MIN_DIMENSION}px por lado e no máximo 64 megapixels.`,
-    );
+    throw new BadRequestException(`O logo deve ter ao menos ${MIN_DIMENSION}px por lado e no máximo 64 megapixels.`);
   }
   if (metadata.pages && metadata.pages > 1) {
     throw new BadRequestException('O logo não pode ser animado ou ter várias páginas.');
@@ -88,28 +77,26 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
         source,
       )
     ) {
-      throw new BadRequestException(
-        'O SVG contém recursos externos ou conteúdo executável.',
-      );
+      throw new BadRequestException('O SVG contém recursos externos ou conteúdo executável.');
     }
   }
   const normalizedBuffer = await sharp(file.buffer, {
-      animated: false,
-      failOn: 'warning',
-      limitInputPixels: MAX_PIXELS,
-      pages: 1,
-      sequentialRead: true,
-      unlimited: false,
+    animated: false,
+    failOn: 'warning',
+    limitInputPixels: MAX_PIXELS,
+    pages: 1,
+    sequentialRead: true,
+    unlimited: false,
+  })
+    .rotate()
+    .resize({
+      width: OUTPUT_DIMENSION,
+      height: OUTPUT_DIMENSION,
+      fit: 'inside',
+      withoutEnlargement: true,
     })
-      .rotate()
-      .resize({
-        width: OUTPUT_DIMENSION,
-        height: OUTPUT_DIMENSION,
-        fit: 'inside',
-        withoutEnlargement: true,
-      })
-      .avif({ quality: 82, effort: 4 })
-      .toBuffer();
+    .avif({ quality: 82, effort: 4 })
+    .toBuffer();
   const normalizedMetadata = await sharp(normalizedBuffer).metadata();
   const normalized = {
     buffer: normalizedBuffer,

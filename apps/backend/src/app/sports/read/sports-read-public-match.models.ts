@@ -8,7 +8,6 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 
-
 @ObjectType()
 export class PublicSportsTeam {
   @Field(() => String)
@@ -23,7 +22,6 @@ export class PublicSportsTeam {
   @Field(() => String, { nullable: true })
   logoUrl?: string | null;
 }
-
 
 @ObjectType()
 export class PublicSportsScorePeriod {

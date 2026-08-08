@@ -4,10 +4,7 @@ import type { ResolvedGrantTarget } from './authorization-policy.service';
 export abstract class SportsAuthorizationTargetService {
   protected constructor(protected readonly prisma: PrismaService) {}
 
-  protected abstract addEventTarget(
-    target: ResolvedGrantTarget,
-    eventId: string,
-  ): Promise<void>;
+  protected abstract addEventTarget(target: ResolvedGrantTarget, eventId: string): Promise<void>;
 
   protected async addSportsTournamentTarget(target: ResolvedGrantTarget, tournamentId: string): Promise<void> {
     const tournament = await this.prisma.sportsTournament.findUnique({
@@ -138,10 +135,7 @@ export abstract class SportsAuthorizationTargetService {
     }
   }
 
-  protected async addSportsPlayerApplicationTarget(
-    target: ResolvedGrantTarget,
-    applicationId: string,
-  ): Promise<void> {
+  protected async addSportsPlayerApplicationTarget(target: ResolvedGrantTarget, applicationId: string): Promise<void> {
     const application = await this.prisma.sportsPlayerApplication.findUnique({
       where: { id: applicationId },
       select: {
@@ -163,10 +157,7 @@ export abstract class SportsAuthorizationTargetService {
     }
   }
 
-  protected async addSportsMatchActionTarget(
-    target: ResolvedGrantTarget,
-    actionId: string,
-  ): Promise<void> {
+  protected async addSportsMatchActionTarget(target: ResolvedGrantTarget, actionId: string): Promise<void> {
     const action = await this.prisma.sportsMatchAction.findUnique({
       where: { id: actionId },
       select: { matchId: true },
@@ -176,10 +167,7 @@ export abstract class SportsAuthorizationTargetService {
     }
   }
 
-  protected async addSportsMatchRosterTarget(
-    target: ResolvedGrantTarget,
-    rosterId: string,
-  ): Promise<void> {
+  protected async addSportsMatchRosterTarget(target: ResolvedGrantTarget, rosterId: string): Promise<void> {
     const roster = await this.prisma.sportsMatchRoster.findUnique({
       where: { id: rosterId },
       select: { matchId: true },
@@ -188,5 +176,4 @@ export abstract class SportsAuthorizationTargetService {
       await this.addSportsMatchTarget(target, roster.matchId);
     }
   }
-
 }

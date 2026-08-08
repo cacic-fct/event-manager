@@ -61,10 +61,7 @@ export type SportsGrandFinalOutcomePlan =
     }
   | {
       readonly status: 'BLOCKED';
-      readonly reason:
-        | 'PARTICIPANTS_MISSING'
-        | 'WINNER_MISSING'
-        | 'WINNER_NOT_IN_GRAND_FINAL';
+      readonly reason: 'PARTICIPANTS_MISSING' | 'WINNER_MISSING' | 'WINNER_NOT_IN_GRAND_FINAL';
     };
 
 export interface SportsDoubleEliminationPlan {
@@ -83,10 +80,7 @@ export interface GenerateSportsDoubleEliminationInput {
   readonly random?: () => number;
 }
 
-type MutableSportsDoubleEliminationMatchPlan = Omit<
-  SportsDoubleEliminationMatchPlan,
-  'advancements'
-> & {
+type MutableSportsDoubleEliminationMatchPlan = Omit<SportsDoubleEliminationMatchPlan, 'advancements'> & {
   advancements: SportsDoubleEliminationAdvancement[];
 };
 
@@ -213,14 +207,7 @@ function createLosersRounds(
   for (let position = 1; position <= firstWinnersRound.length / 2; position += 1) {
     const firstSource = firstWinnersRound[(position - 1) * 2];
     const secondSource = firstWinnersRound[(position - 1) * 2 + 1];
-    firstLosersRound.push(
-      createLosersMatch(
-        1,
-        position,
-        loserSlot(firstSource),
-        loserSlot(secondSource),
-      ),
-    );
+    firstLosersRound.push(createLosersMatch(1, position, loserSlot(firstSource), loserSlot(secondSource)));
   }
   losersRounds.push(firstLosersRound);
 
@@ -295,13 +282,9 @@ function wireWinnersAdvancements(
               side: 'AWAY' as const,
             };
 
-      match.advancements.push(
-        advancement('WINNER', winnerTarget.key, winnerTarget.side),
-      );
+      match.advancements.push(advancement('WINNER', winnerTarget.key, winnerTarget.side));
       if (!match.automaticWinnerRegistrationId) {
-        match.advancements.push(
-          advancement('LOSER', loserTarget.key, loserTarget.side),
-        );
+        match.advancements.push(advancement('LOSER', loserTarget.key, loserTarget.side));
       }
     }
   }
@@ -322,17 +305,9 @@ function wireLosersAdvancements(
       }
 
       const nextRound = losersRounds[match.roundNumber];
-      const targetPosition =
-        nextRound.length === round.length ? match.position : Math.ceil(match.position / 2);
-      const targetSide =
-        nextRound.length === round.length
-          ? 'HOME'
-          : match.position % 2 === 1
-            ? 'HOME'
-            : 'AWAY';
-      match.advancements.push(
-        advancement('WINNER', nextRound[targetPosition - 1].key, targetSide),
-      );
+      const targetPosition = nextRound.length === round.length ? match.position : Math.ceil(match.position / 2);
+      const targetSide = nextRound.length === round.length ? 'HOME' : match.position % 2 === 1 ? 'HOME' : 'AWAY';
+      match.advancements.push(advancement('WINNER', nextRound[targetPosition - 1].key, targetSide));
     }
   }
 }
@@ -375,9 +350,7 @@ function createGrandFinal(
   };
 }
 
-function loserSlot(
-  source: MutableSportsDoubleEliminationMatchPlan,
-): SportsDoubleEliminationSlot {
+function loserSlot(source: MutableSportsDoubleEliminationMatchPlan): SportsDoubleEliminationSlot {
   if (source.automaticWinnerRegistrationId) {
     return BYE_SLOT;
   }
@@ -387,9 +360,7 @@ function loserSlot(
   };
 }
 
-function winnerSlot(
-  source: MutableSportsDoubleEliminationMatchPlan,
-): SportsDoubleEliminationSlot {
+function winnerSlot(source: MutableSportsDoubleEliminationMatchPlan): SportsDoubleEliminationSlot {
   if (source.isStructurallyEmpty) {
     return BYE_SLOT;
   }
@@ -409,10 +380,7 @@ function prefixWinnerSlot(slot: SportsBracketSlot): SportsDoubleEliminationSlot 
   };
 }
 
-function registrationOppositeBye(
-  home: SportsDoubleEliminationSlot,
-  away: SportsDoubleEliminationSlot,
-): string | null {
+function registrationOppositeBye(home: SportsDoubleEliminationSlot, away: SportsDoubleEliminationSlot): string | null {
   if (home.type === 'REGISTRATION' && away.type === 'BYE') {
     return home.registrationId;
   }

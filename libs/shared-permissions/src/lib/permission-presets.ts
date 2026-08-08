@@ -311,8 +311,7 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
   {
     id: 'sports-category-manager',
     label: 'Gestor de modalidade esportiva',
-    description:
-      'Gerencia inscrições, escalações, partidas, arbitragem e placares apenas nas modalidades escolhidas.',
+    description: 'Gerencia inscrições, escalações, partidas, arbitragem e placares apenas nas modalidades escolhidas.',
     icon: 'sports',
     preferredScope: EventManagerPermissionGrantScope.EventGroup,
     allowedScopes: SPORTS_CATEGORY_TARGET_SCOPES,
@@ -387,8 +386,7 @@ export const EVENT_MANAGER_PERMISSION_PRESETS = [
   {
     id: 'sports-match-reviewer',
     label: 'Revisor de partidas e placares',
-    description:
-      'Revisa encerramentos, correções e resultados sem obter permissão para operar partidas ao vivo.',
+    description: 'Revisa encerramentos, correções e resultados sem obter permissão para operar partidas ao vivo.',
     icon: 'rate_review',
     preferredScope: EventManagerPermissionGrantScope.Event,
     allowedScopes: EVENT_TARGET_SCOPES,

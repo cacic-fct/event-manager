@@ -105,9 +105,7 @@ export class SportsTeamLogoController {
   @Post(':sportsTeamId/logo')
   @RequirePermissions(Permission.SportsTeam.Update)
   @UseGuards(RateLimitGuard)
-  @RateLimit(RATE_LIMIT_POLICIES.receiptUpload, [
-    { source: 'params', path: 'sportsTeamId' },
-  ])
+  @RateLimit(RATE_LIMIT_POLICIES.receiptUpload, [{ source: 'params', path: 'sportsTeamId' }])
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
@@ -148,8 +146,7 @@ export class SportsTeamLogoController {
   @Header('X-Content-Type-Options', 'nosniff')
   @ApiOperation({
     summary: 'Download the current immutable sports team logo',
-    description:
-      'The SHA-256 path segment makes the response safe for long-lived immutable browser caching.',
+    description: 'The SHA-256 path segment makes the response safe for long-lived immutable browser caching.',
   })
   @ApiParam({ name: 'sportsTeamId', description: 'Sports team identifier.' })
   @ApiParam({ name: 'sha256', description: 'Exact SHA-256 hash returned by the upload endpoint.' })
@@ -240,9 +237,7 @@ export class SportsTeamRepresentativeLogoController {
 
   @Post(':sportsTeamId/logo-change')
   @UseGuards(RateLimitGuard)
-  @RateLimit(RATE_LIMIT_POLICIES.receiptUpload, [
-    { source: 'params', path: 'sportsTeamId' },
-  ])
+  @RateLimit(RATE_LIMIT_POLICIES.receiptUpload, [{ source: 'params', path: 'sportsTeamId' }])
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
@@ -267,10 +262,7 @@ export class SportsTeamRepresentativeLogoController {
     @UploadedFile() file: SportsTeamLogoUploadFile | undefined,
     @Req() request: RequestWithUser,
   ) {
-    const { actor } = await this.access.requireTeamRepresentative(
-      { req: request },
-      sportsTeamId,
-    );
+    const { actor } = await this.access.requireTeamRepresentative({ req: request }, sportsTeamId);
     return this.logos.submitRepresentativeUpload(
       sportsTeamId,
       expectedRevision,

@@ -189,5 +189,4 @@ export class EventAttendancesController extends EventAttendancesScannerFeedSuppo
       snapshots,
     );
   }
-
 }

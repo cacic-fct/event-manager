@@ -75,8 +75,7 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'tournament/:tournamentId/subscribe',
-    loadComponent: () =>
-      import('./sports/operations/self-subscription-page').then((m) => m.SportsSelfSubscriptionPage),
+    loadComponent: () => import('./sports/operations/self-subscription-page').then((m) => m.SportsSelfSubscriptionPage),
     title: 'Inscrição no torneio',
   },
   {
@@ -91,20 +90,17 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'sports/operate/:matchId',
-    loadComponent: () =>
-      import('./sports/operations/official-match-page').then((m) => m.OfficialSportsMatchPage),
+    loadComponent: () => import('./sports/operations/official-match-page').then((m) => m.OfficialSportsMatchPage),
     title: 'Operar partida',
   },
   {
     path: 'sports/team/:teamId',
-    loadComponent: () =>
-      import('./sports/operations/team-operations-page').then((m) => m.SportsTeamOperationsPage),
+    loadComponent: () => import('./sports/operations/team-operations-page').then((m) => m.SportsTeamOperationsPage),
     title: 'Gerenciar equipe',
   },
   {
     path: 'sports',
-    loadComponent: () =>
-      import('./sports/operations/sports-autoroute-page').then((m) => m.SportsAutoroutePage),
+    loadComponent: () => import('./sports/operations/sports-autoroute-page').then((m) => m.SportsAutoroutePage),
     title: 'Minha próxima partida',
   },
   {
@@ -174,8 +170,7 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'attendance/collect/:eventId/method',
-    loadComponent: () =>
-      import('./attendance/collection/method/method-page').then((m) => m.AttendanceMethodPage),
+    loadComponent: () => import('./attendance/collection/method/method-page').then((m) => m.AttendanceMethodPage),
     title: 'Escolher forma de coleta',
     canActivate: [attendanceCollectionScannerGuard],
   },

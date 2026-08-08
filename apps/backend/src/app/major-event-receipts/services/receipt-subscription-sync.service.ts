@@ -33,10 +33,7 @@ export class ReceiptSubscriptionSyncService {
     await this.counters.refresh(tx, eventIds);
   }
 
-  async refreshSportsParticipantPayment(
-    tx: Prisma.TransactionClient,
-    subscriptionId: string,
-  ): Promise<void> {
+  async refreshSportsParticipantPayment(tx: Prisma.TransactionClient, subscriptionId: string): Promise<void> {
     await refreshSportsParticipantForSubscription(tx, subscriptionId);
   }
 }

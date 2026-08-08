@@ -97,18 +97,9 @@ export function createEventManagerGrpcHandlers(
       await authorize(call.metadata, dependencies.auth, ['account-profile:write']);
       const { user, person } = await dependencies.currentUserContext.syncProfileUpdate({
         userId: requiredString(call.request, 'userId'),
-        ...optionalStringFields(call.request, [
-          'email',
-          'name',
-          'fullname',
-          'phone',
-          'identityDocument',
-          'academicId',
-        ]),
+        ...optionalStringFields(call.request, ['email', 'name', 'fullname', 'phone', 'identityDocument', 'academicId']),
         unespRole: stringArray(call.request, 'unespRole'),
-        ...(typeof call.request['isOnboarded'] === 'boolean'
-          ? { isOnboarded: call.request['isOnboarded'] }
-          : {}),
+        ...(typeof call.request['isOnboarded'] === 'boolean' ? { isOnboarded: call.request['isOnboarded'] } : {}),
       });
       return {
         status: 'success',
@@ -136,14 +127,14 @@ export function createEventManagerGrpcHandlers(
       }
       return {
         ...(await dependencies.accountMerge.acknowledgeAccountMerge(
-        {
-          eventId: requiredString(call.request, 'eventId'),
-          type,
-          oldUserId: requiredString(call.request, 'oldUserId'),
-          newUserId: requiredString(call.request, 'newUserId'),
-          occurredAt: requiredString(call.request, 'occurredAt'),
-        },
-        readClientId(principal),
+          {
+            eventId: requiredString(call.request, 'eventId'),
+            type,
+            oldUserId: requiredString(call.request, 'oldUserId'),
+            newUserId: requiredString(call.request, 'newUserId'),
+            occurredAt: requiredString(call.request, 'occurredAt'),
+          },
+          readClientId(principal),
         )),
       };
     }),
@@ -184,11 +175,7 @@ function unary(
   };
 }
 
-async function authorize(
-  metadata: Metadata,
-  auth: KeycloakAuthService,
-  roles: string[],
-): Promise<AuthenticatedUser> {
+async function authorize(metadata: Metadata, auth: KeycloakAuthService, roles: string[]): Promise<AuthenticatedUser> {
   const authorization = metadata.get('authorization')[0];
   const header = Buffer.isBuffer(authorization) ? authorization.toString('utf8') : authorization;
   if (typeof header !== 'string' || !header.startsWith('Bearer ')) {
@@ -220,7 +207,10 @@ function stringArray(value: GrpcRequest, key: string): string[] {
   if (!Array.isArray(raw)) {
     return [];
   }
-  return raw.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean);
+  return raw
+    .filter((item): item is string => typeof item === 'string')
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function optionalStringFields<T extends readonly string[]>(

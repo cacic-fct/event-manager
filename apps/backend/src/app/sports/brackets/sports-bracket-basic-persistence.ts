@@ -1,14 +1,5 @@
-import {
-  Prisma,
-  PublicationState,
-  SportsBracketSide,
-  SportsFormat,
-  SportsStageType
-} from '@prisma/client';
-import {
-  generateSingleEliminationBracket,
-  SportsBracketMatchPlan,
-} from '../domain/sports-brackets';
+import { Prisma, PublicationState, SportsBracketSide, SportsFormat, SportsStageType } from '@prisma/client';
+import { generateSingleEliminationBracket, SportsBracketMatchPlan } from '../domain/sports-brackets';
 import { generateSportsRoundRobin } from '../domain/sports-round-robin';
 
 export interface SportsBracketParticipant {
@@ -68,26 +59,16 @@ export abstract class SportsBracketBasicPersistence extends SportsBracketElimina
     const matchPlanByKey = new Map<string, SportsBracketMatchPlan>();
     for (const round of plan.rounds) {
       for (const matchPlan of round.matches) {
-        const homeRegistrationId =
-          matchPlan.home.type === 'REGISTRATION'
-            ? matchPlan.home.registrationId
-            : null;
-        const awayRegistrationId =
-          matchPlan.away.type === 'REGISTRATION'
-            ? matchPlan.away.registrationId
-            : null;
+        const homeRegistrationId = matchPlan.home.type === 'REGISTRATION' ? matchPlan.home.registrationId : null;
+        const awayRegistrationId = matchPlan.away.type === 'REGISTRATION' ? matchPlan.away.registrationId : null;
         const automaticWinnerRegistrationId = matchPlan.automaticWinnerRegistrationId;
         const match = await this.createBackedMatch(tx, {
           category,
           stageId: stage.id,
           name: this.matchName(
             category.name,
-            homeRegistrationId
-              ? teamNameByRegistration.get(homeRegistrationId)
-              : undefined,
-            awayRegistrationId
-              ? teamNameByRegistration.get(awayRegistrationId)
-              : undefined,
+            homeRegistrationId ? teamNameByRegistration.get(homeRegistrationId) : undefined,
+            awayRegistrationId ? teamNameByRegistration.get(awayRegistrationId) : undefined,
           ),
           homeRegistrationId,
           awayRegistrationId,
@@ -108,12 +89,9 @@ export abstract class SportsBracketBasicPersistence extends SportsBracketElimina
       await tx.sportsMatch.update({
         where: { id: matchId },
         data: {
-          winnerAdvancesToId:
-            matchIdByKey.get(matchPlan.winnerAdvancesToKey) ?? null,
+          winnerAdvancesToId: matchIdByKey.get(matchPlan.winnerAdvancesToKey) ?? null,
           winnerAdvancesToSide:
-            matchPlan.winnerAdvancesToSide === 'HOME'
-              ? SportsBracketSide.HOME
-              : SportsBracketSide.AWAY,
+            matchPlan.winnerAdvancesToSide === 'HOME' ? SportsBracketSide.HOME : SportsBracketSide.AWAY,
         },
       });
     }
@@ -194,9 +172,4 @@ export abstract class SportsBracketBasicPersistence extends SportsBracketElimina
     }
     return stage.id;
   }
-
 }
-
-
-
-

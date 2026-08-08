@@ -1,6 +1,4 @@
-import {
-  BadRequestException
-} from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import {
   AuditLogActorType,
   AuditLogEntityType,
@@ -10,7 +8,7 @@ import {
   SportsMatchAction,
   SportsMatchActionType,
   SportsMatchState,
-  SportsReviewStatus
+  SportsReviewStatus,
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { AuditLogService } from '../../audit-log/audit-log.service';
@@ -67,7 +65,6 @@ interface MatchProjectionContext {
   };
 }
 
-
 export abstract class SportsMatchOperationSupport {
   constructor(
     protected readonly prisma: PrismaService,
@@ -82,22 +79,15 @@ export abstract class SportsMatchOperationSupport {
     } as unknown as FrozenResourceService,
   ) {}
 
-  protected authenticatedActor(
-    actor: AuthenticatedUser | AuditActor,
-  ): AuthenticatedUser | undefined {
-    return 'permissions' in actor || 'permissionSet' in actor
-      ? (actor as AuthenticatedUser)
-      : undefined;
+  protected authenticatedActor(actor: AuthenticatedUser | AuditActor): AuthenticatedUser | undefined {
+    return 'permissions' in actor || 'permissionSet' in actor ? (actor as AuthenticatedUser) : undefined;
   }
 
   protected async recordAudit(
     tx: Prisma.TransactionClient,
     match: MatchProjectionContext,
     actor: AuthenticatedUser | AuditActor,
-    action: Pick<
-      SportsMatchAction,
-      'id' | 'type' | 'sequence' | 'reviewStatus' | 'offline'
-    >,
+    action: Pick<SportsMatchAction, 'id' | 'type' | 'sequence' | 'reviewStatus' | 'offline'>,
     operation: AuditLogOperation,
   ): Promise<void> {
     await this.auditLog.record(
@@ -187,26 +177,12 @@ export abstract class SportsMatchOperationSupport {
     await Promise.all([
       ...(isPublic
         ? [
-            this.realtime.publish(
-              this.realtime.scope('match', match.id),
-              payload,
-            ),
-            this.realtime.publish(
-              this.realtime.scope(
-                'tournament',
-                match.category.tournament.id,
-              ),
-              payload,
-            ),
+            this.realtime.publish(this.realtime.scope('match', match.id), payload),
+            this.realtime.publish(this.realtime.scope('tournament', match.category.tournament.id), payload),
           ]
         : []),
       ...(match.reviewStatus === SportsReviewStatus.PENDING
-        ? [
-            this.realtime.publish(
-              this.realtime.scope('review', match.id),
-              payload,
-            ),
-          ]
+        ? [this.realtime.publish(this.realtime.scope('review', match.id), payload)]
         : []),
     ]);
   }
@@ -259,10 +235,7 @@ export abstract class SportsMatchOperationSupport {
   }
 
   protected hashCommand(
-    input: Pick<
-      SportsMatchCommandInput,
-      'matchId' | 'type' | 'scorerRosterEntryId' | 'authoredAt'
-    >,
+    input: Pick<SportsMatchCommandInput, 'matchId' | 'type' | 'scorerRosterEntryId' | 'authoredAt'>,
     payload: Prisma.InputJsonValue,
   ): string {
     return createHash('sha256')
@@ -305,9 +278,7 @@ export abstract class SportsMatchOperationSupport {
   }
 }
 
-export function createSportsAuditActor(
-  person: { id: string; name: string; email?: string | null },
-): AuditActor {
+export function createSportsAuditActor(person: { id: string; name: string; email?: string | null }): AuditActor {
   return {
     id: person.id,
     name: person.name,
@@ -315,5 +286,3 @@ export function createSportsAuditActor(
     type: AuditLogActorType.USER,
   };
 }
-
-

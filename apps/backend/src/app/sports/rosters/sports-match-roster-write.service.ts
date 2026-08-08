@@ -1,10 +1,5 @@
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  
   AuditLogEntityType,
   AuditLogOperation,
   Prisma,
@@ -39,12 +34,7 @@ type SportsAuditActor = AuthenticatedUser | AuditActor;
 import { SportsMatchRosterCheckInService } from './sports-match-roster-check-in.service';
 
 export abstract class SportsMatchRosterWriteService extends SportsMatchRosterCheckInService {
-  async upsert(
-    input: SportsRosterWrite,
-    actorId: string,
-    actor: SportsAuditActor,
-    trustedAdmin: boolean,
-  ) {
+  async upsert(input: SportsRosterWrite, actorId: string, actor: SportsAuditActor, trustedAdmin: boolean) {
     const roster = await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const match = await tx.sportsMatch.findFirst({
         where: { id: input.matchId, deletedAt: null },
@@ -64,19 +54,11 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
       }
       if (
         !trustedAdmin &&
-        !(
-          [
-            SportsMatchState.SCHEDULED,
-            SportsMatchState.CHECK_IN,
-          ] as SportsMatchState[]
-        ).includes(match.state)
+        !([SportsMatchState.SCHEDULED, SportsMatchState.CHECK_IN] as SportsMatchState[]).includes(match.state)
       ) {
         throw new ConflictException('A escalação não pode ser alterada após o início da partida.');
       }
-      if (
-        input.registrationId !== match.homeRegistrationId &&
-        input.registrationId !== match.awayRegistrationId
-      ) {
+      if (input.registrationId !== match.homeRegistrationId && input.registrationId !== match.awayRegistrationId) {
         throw new BadRequestException('A equipe não participa desta partida.');
       }
 
@@ -106,25 +88,17 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
         select: { id: true, role: true },
       });
       if (members.length !== entries.length) {
-        throw new BadRequestException(
-          'Uma ou mais pessoas não estão aprovadas, elegíveis ou ativas nesta modalidade.',
-        );
+        throw new BadRequestException('Uma ou mais pessoas não estão aprovadas, elegíveis ou ativas nesta modalidade.');
       }
       const memberRoleById = new Map(members.map((member) => [member.id, member.role]));
-      if (
-        entries.some(
-          (entry) => memberRoleById.get(entry.registrationMemberId) !== entry.role,
-        )
-      ) {
+      if (entries.some((entry) => memberRoleById.get(entry.registrationMemberId) !== entry.role)) {
         throw new BadRequestException('A função da escalação não corresponde à função aprovada.');
       }
 
       const playerCount = entries.filter((entry) => entry.role === SportsRosterRole.PLAYER).length;
       const maximumRosterSize = match.category.maximumRosterSize;
       if (maximumRosterSize !== null && playerCount > maximumRosterSize) {
-        throw new BadRequestException(
-          `A escalação permite no máximo ${maximumRosterSize} jogadores.`,
-        );
+        throw new BadRequestException(`A escalação permite no máximo ${maximumRosterSize} jogadores.`);
       }
 
       const existing = await tx.sportsMatchRoster.findFirst({
@@ -135,17 +109,11 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
         },
         include: { entries: { where: { deletedAt: null } } },
       });
-      if (
-        existing &&
-        (input.expectedRevision === undefined ||
-          existing.revision !== input.expectedRevision)
-      ) {
+      if (existing && (input.expectedRevision === undefined || existing.revision !== input.expectedRevision)) {
         throw new ConflictException('A escalação mudou. Recarregue os dados e tente novamente.');
       }
 
-      const rosterStatus = trustedAdmin
-        ? SportsRosterStatus.APPROVED
-        : SportsRosterStatus.SUBMITTED;
+      const rosterStatus = trustedAdmin ? SportsRosterStatus.APPROVED : SportsRosterStatus.SUBMITTED;
       let roster;
       if (existing) {
         const changed = await tx.sportsMatchRoster.updateMany({
@@ -162,29 +130,25 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
           },
         });
         if (changed.count !== 1) {
-          throw new ConflictException(
-            'A escalação mudou. Recarregue os dados e tente novamente.',
-          );
+          throw new ConflictException('A escalação mudou. Recarregue os dados e tente novamente.');
         }
         roster = await tx.sportsMatchRoster.findUniqueOrThrow({
           where: { id: existing.id },
         });
       } else {
         roster = await tx.sportsMatchRoster.create({
-            data: {
-              matchId: match.id,
-              registrationId: input.registrationId,
-              status: rosterStatus,
-              manuallyEdited: true,
-              createdById: actorId,
-              updatedById: actorId,
-            },
-          });
+          data: {
+            matchId: match.id,
+            registrationId: input.registrationId,
+            status: rosterStatus,
+            manuallyEdited: true,
+            createdById: actorId,
+            updatedById: actorId,
+          },
+        });
       }
 
-      const requestedMemberIds = new Set(
-        entries.map((entry) => entry.registrationMemberId),
-      );
+      const requestedMemberIds = new Set(entries.map((entry) => entry.registrationMemberId));
       await tx.sportsMatchRosterEntry.updateMany({
         where: {
           rosterId: roster.id,
@@ -210,12 +174,8 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
             data: {
               role: entry.role,
               shirtNumber: entry.shirtNumber,
-              ...(entry.roleMetadata !== undefined
-                ? { roleMetadata: entry.roleMetadata }
-                : {}),
-              status: trustedAdmin
-                ? SportsRosterEntryStatus.APPROVED
-                : SportsRosterEntryStatus.SUBMITTED,
+              ...(entry.roleMetadata !== undefined ? { roleMetadata: entry.roleMetadata } : {}),
+              status: trustedAdmin ? SportsRosterEntryStatus.APPROVED : SportsRosterEntryStatus.SUBMITTED,
               updatedById: actorId,
             },
           });
@@ -226,12 +186,8 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
               registrationMemberId: entry.registrationMemberId,
               role: entry.role,
               shirtNumber: entry.shirtNumber,
-              ...(entry.roleMetadata !== undefined
-                ? { roleMetadata: entry.roleMetadata }
-                : {}),
-              status: trustedAdmin
-                ? SportsRosterEntryStatus.APPROVED
-                : SportsRosterEntryStatus.SUBMITTED,
+              ...(entry.roleMetadata !== undefined ? { roleMetadata: entry.roleMetadata } : {}),
+              status: trustedAdmin ? SportsRosterEntryStatus.APPROVED : SportsRosterEntryStatus.SUBMITTED,
               createdById: actorId,
               updatedById: actorId,
             },
@@ -262,9 +218,7 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
             revision: result.revision,
             entryCount: result.entries.length,
           },
-          summary: trustedAdmin
-            ? 'Escalação atualizada por administrador.'
-            : 'Escalação enviada para análise.',
+          summary: trustedAdmin ? 'Escalação atualizada por administrador.' : 'Escalação enviada para análise.',
           scope: {
             majorEventId: match.category.tournament.majorEventId,
             eventGroupId: match.category.eventGroupId,
@@ -275,20 +229,11 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
       );
       return result;
     });
-    await this.afterRosterMutation(
-      input.matchId,
-      trustedAdmin ? 'ROSTER_APPROVED' : 'ROSTER_SUBMITTED',
-      roster.id,
-    );
+    await this.afterRosterMutation(input.matchId, trustedAdmin ? 'ROSTER_APPROVED' : 'ROSTER_SUBMITTED', roster.id);
     return roster;
   }
 
-  async review(
-    rosterId: string,
-    decision: 'APPROVE' | 'REJECT',
-    actorId: string,
-    actor: AuthenticatedUser,
-  ) {
+  async review(rosterId: string, decision: 'APPROVE' | 'REJECT', actorId: string, actor: AuthenticatedUser) {
     const roster = await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const roster = await tx.sportsMatchRoster.findFirst({
         where: { id: rosterId, deletedAt: null },
@@ -314,9 +259,7 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
       }
       const approved = decision === 'APPROVE';
       const status = approved ? SportsRosterStatus.APPROVED : SportsRosterStatus.REJECTED;
-      const entryStatus = approved
-        ? SportsRosterEntryStatus.APPROVED
-        : SportsRosterEntryStatus.REJECTED;
+      const entryStatus = approved ? SportsRosterEntryStatus.APPROVED : SportsRosterEntryStatus.REJECTED;
       const result = await tx.sportsMatchRoster.update({
         where: { id: roster.id },
         data: {
@@ -360,5 +303,3 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
     return roster;
   }
 }
-
-

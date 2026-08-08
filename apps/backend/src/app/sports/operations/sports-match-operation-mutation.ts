@@ -1,13 +1,5 @@
-import {
-  ConflictException,
-  NotFoundException
-} from '@nestjs/common';
-import {
-  Prisma,
-  SportsMatchAction,
-  SportsMatchActionType,
-  SportsReviewStatus
-} from '@prisma/client';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma, SportsMatchAction, SportsMatchActionType, SportsReviewStatus } from '@prisma/client';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 
@@ -45,14 +37,8 @@ export abstract class SportsMatchOperationMutation extends SportsMatchOperationP
     const payloadHash = this.hashCommand(input, payload);
     const existing = await tx.sportsMatchAction.findUnique({ where: { clientId } });
     if (existing) {
-      if (
-        existing.matchId !== input.matchId ||
-        existing.type !== input.type ||
-        existing.payloadHash !== payloadHash
-      ) {
-        throw new ConflictException(
-          'O identificador offline já foi usado por uma ação diferente.',
-        );
+      if (existing.matchId !== input.matchId || existing.type !== input.type || existing.payloadHash !== payloadHash) {
+        throw new ConflictException('O identificador offline já foi usado por uma ação diferente.');
       }
       return existing;
     }
@@ -76,11 +62,7 @@ export abstract class SportsMatchOperationMutation extends SportsMatchOperationP
     if (!match) {
       throw new NotFoundException(`Sports match ${input.matchId} was not found.`);
     }
-    await this.frozen.assertEventMutable(
-      match.eventId,
-      this.authenticatedActor(actor.auditActor),
-      'edit',
-    );
+    await this.frozen.assertEventMutable(match.eventId, this.authenticatedActor(actor.auditActor), 'edit');
     this.assertActorMaySubmit(input.type, actor.kind);
     const authoredAt = this.validateAuthoredAt(input.authoredAt);
     const safeRebase =
@@ -101,12 +83,7 @@ export abstract class SportsMatchOperationMutation extends SportsMatchOperationP
       await this.validateOccurrence(tx, match, this.requireRecord(payload));
     }
     if (input.scorerRosterEntryId) {
-      await this.validateScorer(
-        tx,
-        match,
-        input.scorerRosterEntryId,
-        payload,
-      );
+      await this.validateScorer(tx, match, input.scorerRosterEntryId, payload);
     }
 
     const sequence = match.operationSequence + 1;
@@ -119,10 +96,7 @@ export abstract class SportsMatchOperationMutation extends SportsMatchOperationP
         sequence,
         type: input.type,
         payload,
-        reviewStatus:
-          actor.kind === 'ADMIN'
-            ? SportsReviewStatus.APPROVED
-            : SportsReviewStatus.PENDING,
+        reviewStatus: actor.kind === 'ADMIN' ? SportsReviewStatus.APPROVED : SportsReviewStatus.PENDING,
         scorerRosterEntryId: input.scorerRosterEntryId ?? null,
         actorPersonId: actor.personId ?? null,
         actorUserId: actor.userId ?? null,
@@ -163,18 +137,7 @@ export abstract class SportsMatchOperationMutation extends SportsMatchOperationP
         },
       });
     }
-    await this.recordAudit(
-      tx,
-      match,
-      actor.auditActor,
-      action,
-      this.auditOperation(action.type),
-    );
+    await this.recordAudit(tx, match, actor.auditActor, action, this.auditOperation(action.type));
     return action;
   }
-
 }
-
-
-
-

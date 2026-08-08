@@ -15,13 +15,11 @@ import { SportsTeamChangeService } from './sports-team-change.service';
 
 describe('SportsTeamChangeService category roles and eligibility', () => {
   const identities = {
-    protect: jest.fn(
-      (type: SportsIdentityType, value: string) => ({
-        encryptedValue: `encrypted:${type}:${value}`,
-        lookupHash: `hash:${type}:${value}`,
-        displayHint: type === SportsIdentityType.EMAIL ? 'ma***@example.com' : '••••1234',
-      }),
-    ),
+    protect: jest.fn((type: SportsIdentityType, value: string) => ({
+      encryptedValue: `encrypted:${type}:${value}`,
+      lookupHash: `hash:${type}:${value}`,
+      displayHint: type === SportsIdentityType.EMAIL ? 'ma***@example.com' : '••••1234',
+    })),
     reveal: jest.fn(),
   };
   const payments = {
@@ -42,18 +40,10 @@ describe('SportsTeamChangeService category roles and eligibility', () => {
     jest.clearAllMocks();
     tx = createTransaction();
     prisma = {
-      $transaction: jest.fn(
-        (callback: (transaction: typeof tx) => Promise<unknown>) =>
-          callback(tx),
-      ),
+      $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
       sportsTeamChangeRequest: tx.sportsTeamChangeRequest,
     };
-    service = new SportsTeamChangeService(
-      prisma as never,
-      identities as never,
-      payments as never,
-      auditLog as never,
-    );
+    service = new SportsTeamChangeService(prisma as never, identities as never, payments as never, auditLog as never);
   });
   it('enforces category captain limits against the final projected role set', async () => {
     tx.sportsTeamChangeRequest.findUnique.mockResolvedValue(
@@ -71,12 +61,8 @@ describe('SportsTeamChangeService category roles and eligibility', () => {
         ],
       }),
     );
-    tx.sportsRegistration.findFirst.mockResolvedValueOnce(
-      lifecycleRegistration({ maximumCaptains: 1 }),
-    );
-    tx.sportsTeamMember.findMany.mockResolvedValueOnce([
-      lifecycleMember({ id: 'member-2' }),
-    ]);
+    tx.sportsRegistration.findFirst.mockResolvedValueOnce(lifecycleRegistration({ maximumCaptains: 1 }));
+    tx.sportsTeamMember.findMany.mockResolvedValueOnce([lifecycleMember({ id: 'member-2' })]);
     tx.sportsRegistrationMember.findMany.mockResolvedValueOnce([
       lifecycleAssignment({
         id: 'assignment-1',
@@ -85,9 +71,7 @@ describe('SportsTeamChangeService category roles and eligibility', () => {
       }),
     ]);
 
-    await expect(
-      service.review('request-1', 'APPROVE', adminActor()),
-    ).rejects.toThrow('limite de capitães');
+    await expect(service.review('request-1', 'APPROVE', adminActor())).rejects.toThrow('limite de capitães');
 
     expect(tx.sportsRegistration.updateMany).not.toHaveBeenCalled();
     expect(tx.sportsRegistrationMember.create).not.toHaveBeenCalled();
@@ -109,9 +93,7 @@ describe('SportsTeamChangeService category roles and eligibility', () => {
         ],
       }),
     );
-    tx.sportsRegistration.findFirst.mockResolvedValueOnce(
-      lifecycleRegistration(),
-    );
+    tx.sportsRegistration.findFirst.mockResolvedValueOnce(lifecycleRegistration());
     tx.sportsTeamMember.findMany.mockResolvedValueOnce([
       lifecycleMember({
         participant: {
@@ -120,9 +102,7 @@ describe('SportsTeamChangeService category roles and eligibility', () => {
         },
       }),
     ]);
-    tx.sportsRegistrationMember.findMany.mockResolvedValueOnce([
-      lifecycleAssignment(),
-    ]);
+    tx.sportsRegistrationMember.findMany.mockResolvedValueOnce([lifecycleAssignment()]);
 
     await service.review('request-1', 'APPROVE', adminActor());
 
@@ -186,9 +166,7 @@ describe('SportsTeamChangeService category roles and eligibility', () => {
       id: 'other-team-assignment',
     });
 
-    await expect(
-      service.review('request-1', 'APPROVE', adminActor()),
-    ).rejects.toThrow('outra equipe');
+    await expect(service.review('request-1', 'APPROVE', adminActor())).rejects.toThrow('outra equipe');
 
     expect(payments.ensureParticipant).not.toHaveBeenCalled();
     expect(tx.sportsIdentityClaim.update).not.toHaveBeenCalled();
@@ -224,9 +202,7 @@ describe('SportsTeamChangeService category roles and eligibility', () => {
       id: 'other-team-member',
     });
 
-    await expect(
-      service.review('request-1', 'APPROVE', adminActor()),
-    ).rejects.toThrow('outra equipe');
+    await expect(service.review('request-1', 'APPROVE', adminActor())).rejects.toThrow('outra equipe');
 
     expect(tx.sportsTeamMember.findFirst).toHaveBeenCalledWith({
       where: expect.objectContaining({
@@ -299,12 +275,10 @@ function createTransaction() {
         delta: { categoryIds: ['category-1'] },
       }),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-      update: jest.fn().mockImplementation(
-        ({ data }: { data: Record<string, unknown> }) => ({
-          id: 'request-1',
-          ...data,
-        }),
-      ),
+      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
+        id: 'request-1',
+        ...data,
+      })),
     },
     sportsIdentityClaim: {
       upsert: jest.fn().mockResolvedValue({ id: 'claim-1' }),
@@ -366,9 +340,7 @@ function reviewRequest(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function categoryRoleRequest(delta: {
-  categoryRoleChanges: Array<Record<string, unknown>>;
-}) {
+function categoryRoleRequest(delta: { categoryRoleChanges: Array<Record<string, unknown>> }) {
   return reviewRequest({
     type: SportsTeamChangeRequestType.CATEGORY_ROLE,
     delta,
@@ -431,4 +403,3 @@ function adminActor() {
     permissionSet: new Set<string>(),
   } as never;
 }
-

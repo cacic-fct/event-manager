@@ -126,10 +126,7 @@ export class AttendanceApiService {
       .pipe(map((data) => data.importMajorEventSubscriptionsFromCsv));
   }
 
-  listEventAttendances(
-    eventId?: string,
-    filters?: { skip?: number; take?: number; status?: EventAttendanceStatus },
-  ) {
+  listEventAttendances(eventId?: string, filters?: { skip?: number; take?: number; status?: EventAttendanceStatus }) {
     return this.graphqlHttp
       .request<{ eventAttendances: EventAttendance[] }>(
         `query ListEventAttendances(

@@ -85,10 +85,7 @@ export function eventFromDraft(eventItem: Event, draft: EventDraft): Event {
       eventItem.shouldIssueCertificateForNonSubscribedAttendees,
     ),
     shouldCollectAttendance: booleanValue(payload.shouldCollectAttendance, eventItem.shouldCollectAttendance),
-    shouldAllowOralAttendance: booleanValue(
-      payload.shouldAllowOralAttendance,
-      eventItem.shouldAllowOralAttendance,
-    ),
+    shouldAllowOralAttendance: booleanValue(payload.shouldAllowOralAttendance, eventItem.shouldAllowOralAttendance),
     isOnlineAttendanceAllowed: booleanValue(payload.isOnlineAttendanceAllowed, eventItem.isOnlineAttendanceAllowed),
     shouldProvideSubscriberListToLecturer: booleanValue(
       payload.shouldProvideSubscriberListToLecturer,

@@ -30,15 +30,13 @@ const teamNames = [
 
 const colors = ['#315da8', '#9b3f52', '#26735c', '#7653a6', '#a45c22', '#286b82', '#4d6632', '#7a4f35'];
 
-export const SPORTS_BRACKET_TEAMS: readonly SportsBracketTeamView[] = teamNames.map(
-  (name, index) => ({
-    id: `team-${index + 1}`,
-    name,
-    logoUrl: `/api/storybook/sports/team-logo/team-${index + 1}?color=${encodeURIComponent(
-      colors[index % colors.length],
-    )}`,
-  }),
-);
+export const SPORTS_BRACKET_TEAMS: readonly SportsBracketTeamView[] = teamNames.map((name, index) => ({
+  id: `team-${index + 1}`,
+  name,
+  logoUrl: `/api/storybook/sports/team-logo/team-${index + 1}?color=${encodeURIComponent(
+    colors[index % colors.length],
+  )}`,
+}));
 
 const match = (
   id: string,
@@ -79,8 +77,8 @@ const eliminationMatches = (prefix: string): SportsBracketMatchView[] => [
   match(`${prefix}-r4-1`, 4, 1, null, null),
 ];
 
-export const SPORTS_BRACKET_STANDINGS: readonly SportsBracketStandingView[] =
-  SPORTS_BRACKET_TEAMS.map((team, index) => ({
+export const SPORTS_BRACKET_STANDINGS: readonly SportsBracketStandingView[] = SPORTS_BRACKET_TEAMS.map(
+  (team, index) => ({
     team,
     played: 7,
     wins: Math.max(1, 7 - index),
@@ -88,7 +86,8 @@ export const SPORTS_BRACKET_STANDINGS: readonly SportsBracketStandingView[] =
     losses: Math.min(index, 5),
     points: Math.max(3, 21 - index * 2),
     rank: index + 1,
-  }));
+  }),
+);
 
 export interface SportsBracketFixture {
   format: SportsBracketFormat;
@@ -129,13 +128,8 @@ export const SPORTS_BRACKET_FIXTURES: Readonly<Record<SportsBracketFormat, Sport
           const round = Math.floor(index / 4) + 1;
           const homeIndex = (index * 2) % 8;
           const awayIndex = (index * 2 + round) % 8;
-          const state: SportsBracketMatchView['state'] = index < 8
-            ? 'FINISHED'
-            : index === 8
-              ? 'LIVE'
-              : index === 9
-                ? 'AWAITING_REVIEW'
-                : 'SCHEDULED';
+          const state: SportsBracketMatchView['state'] =
+            index < 8 ? 'FINISHED' : index === 8 ? 'LIVE' : index === 9 ? 'AWAITING_REVIEW' : 'SCHEDULED';
           return match(
             `league-${index + 1}`,
             round,
@@ -238,13 +232,7 @@ export const SPORTS_BRACKET_FIXTURES: Readonly<Record<SportsBracketFormat, Sport
             (index % 4) + 1,
             (index * 2) % 8,
             (index * 2 + 1) % 8,
-            index < 10
-              ? 'FINISHED'
-              : index === 10
-                ? 'LIVE'
-                : index === 11
-                  ? 'AWAITING_REVIEW'
-                  : 'SCHEDULED',
+            index < 10 ? 'FINISHED' : index === 10 ? 'LIVE' : index === 11 ? 'AWAITING_REVIEW' : 'SCHEDULED',
             index < 12 ? faker.number.int({ min: 0, max: 2 }) : 0,
             index < 12 ? faker.number.int({ min: 0, max: 2 }) : 0,
           ),

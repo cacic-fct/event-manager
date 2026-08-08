@@ -61,7 +61,10 @@ export const SPORTS_FORMAT_OPTIONS = [
         <section class="format-explainer">
           <div>
             <mat-icon>account_tree</mat-icon>
-            <span><strong>{{ format.label }}</strong>{{ format.description }}</span>
+            <span
+              ><strong>{{ format.label }}</strong
+              >{{ format.description }}</span
+            >
           </div>
           <div
             class="dummy-bracket"
@@ -69,8 +72,8 @@ export const SPORTS_FORMAT_OPTIONS = [
             [attr.aria-label]="'Exemplo ilustrativo: ' + format.label">
             @switch (format.value) {
               @case ('SINGLE_ELIMINATION') {
-                <span>Equipe A × Equipe B</span><i>→</i><b>Vencedor avança</b>
-                <span>Equipe C × Equipe D</span><i>→</i><b>Vencedor avança</b>
+                <span>Equipe A × Equipe B</span><i>→</i><b>Vencedor avança</b> <span>Equipe C × Equipe D</span><i>→</i
+                ><b>Vencedor avança</b>
                 <em>Final</em>
               }
               @case ('ROUND_ROBIN') {
@@ -81,12 +84,11 @@ export const SPORTS_FORMAT_OPTIONS = [
                 <span>Grupo A</span><span>Grupo B</span><i>→</i><b>Semifinais</b><i>→</i><em>Final</em>
               }
               @case ('DOUBLE_ELIMINATION') {
-                <span>Chave de vencedores</span><i>↓ 1ª derrota</i>
-                <span>Chave de recuperação</span><i>→</i><em>Final</em>
+                <span>Chave de vencedores</span><i>↓ 1ª derrota</i> <span>Chave de recuperação</span><i>→</i
+                ><em>Final</em>
               }
               @case ('SWISS') {
-                <span>1 a 0 × 1 a 0</span><span>0 a 1 × 0 a 1</span>
-                <i>→</i><em>Nova rodada por campanha</em>
+                <span>1 a 0 × 1 a 0</span><span>0 a 1 × 0 a 1</span> <i>→</i><em>Nova rodada por campanha</em>
               }
               @default {
                 <span>Confrontos manuais</span><i>→</i>

@@ -410,9 +410,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
-    const compatibleGrants = grants.filter((grant) =>
-      isPermissionGrantScopeCompatible(permission, grant.scope),
-    );
+    const compatibleGrants = grants.filter((grant) => isPermissionGrantScopeCompatible(permission, grant.scope));
     if (compatibleGrants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
       return true;
     }

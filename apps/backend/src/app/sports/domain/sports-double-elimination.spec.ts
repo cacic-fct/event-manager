@@ -42,11 +42,7 @@ describe('double-elimination bracket generation', () => {
       entrants: entrants(16),
       seedingMode: 'MANUAL',
     });
-    const matches = [
-      ...bracket.winnersRounds.flat(),
-      ...bracket.losersRounds.flat(),
-      bracket.grandFinal,
-    ];
+    const matches = [...bracket.winnersRounds.flat(), ...bracket.losersRounds.flat(), bracket.grandFinal];
     const byKey = new Map(matches.map((match) => [match.key, match]));
 
     for (const source of matches) {
@@ -87,11 +83,7 @@ describe('double-elimination bracket generation', () => {
       hasStructuralBye: true,
       automaticWinnerRegistrationId: null,
     });
-    expect(
-      bracket.winnersRounds[0][0].advancements.some(
-        (route) => route.outcome === 'LOSER',
-      ),
-    ).toBe(false);
+    expect(bracket.winnersRounds[0][0].advancements.some((route) => route.outcome === 'LOSER')).toBe(false);
   });
 
   it('supports a two-registration double-elimination final without a fake losers round', () => {
@@ -131,19 +123,13 @@ describe('double-elimination bracket generation', () => {
       entrants: entrants(5),
       seedingMode: 'MANUAL',
     });
-    const empty = bracket.losersRounds[0].find(
-      (match) => match.home.type === 'BYE' && match.away.type === 'BYE',
-    );
+    const empty = bracket.losersRounds[0].find((match) => match.home.type === 'BYE' && match.away.type === 'BYE');
 
     expect(empty).toMatchObject({
       isStructurallyEmpty: true,
       advancements: [],
     });
-    expect(
-      bracket.losersRounds[1].some(
-        (match) => match.home.type === 'BYE' || match.away.type === 'BYE',
-      ),
-    ).toBe(true);
+    expect(bracket.losersRounds[1].some((match) => match.home.type === 'BYE' || match.away.type === 'BYE')).toBe(true);
   });
 });
 

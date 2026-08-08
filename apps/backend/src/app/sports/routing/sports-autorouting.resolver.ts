@@ -1,10 +1,7 @@
 import { Field, ObjectType, Query, Resolver, Context } from '@nestjs/graphql';
 import { CurrentUserContextService } from '../../current-user/context.service';
 import { GraphqlContext } from '../../current-user/selects';
-import {
-  SportsAutoroute,
-  SportsAutoroutingService,
-} from './sports-autorouting.service';
+import { SportsAutoroute, SportsAutoroutingService } from './sports-autorouting.service';
 
 @ObjectType()
 export class CurrentUserSportsAutoroute {
@@ -32,9 +29,7 @@ export class SportsAutoroutingResolver {
     name: 'currentUserSportsAutoroute',
     nullable: true,
   })
-  async currentUserSportsAutoroute(
-    @Context() context: GraphqlContext,
-  ): Promise<SportsAutoroute | null> {
+  async currentUserSportsAutoroute(@Context() context: GraphqlContext): Promise<SportsAutoroute | null> {
     const person = await this.currentUser.requireCurrentPerson(context);
     return this.autorouting.resolveCurrentUserRoute(person.id);
   }

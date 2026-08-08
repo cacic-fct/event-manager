@@ -1,17 +1,5 @@
-import {
-  Controller,
-  Headers,
-  MessageEvent,
-  Req,
-  Sse,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiOkResponse,
-  ApiProduces,
-  ApiTags,
-} from '@nestjs/swagger';
+import { Controller, Headers, MessageEvent, Req, Sse } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiOkResponse, ApiProduces, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { defer, Observable, switchMap } from 'rxjs';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -53,16 +41,10 @@ export class SportsPlayerApplicationRealtimeController {
     @Headers('last-event-id') lastEventId: string | undefined,
     @Req() request: RequestWithUser,
   ): Observable<MessageEvent> {
-    return defer(() =>
-      this.currentUser.requireCurrentPerson({ req: request }),
-    ).pipe(
+    return defer(() => this.currentUser.requireCurrentPerson({ req: request })).pipe(
       switchMap((person) => {
         const scope = this.applicationRealtime.scope(person.id);
-        return this.replay.replay(
-          scope,
-          lastEventId,
-          this.realtime.watch(scope),
-        );
+        return this.replay.replay(scope, lastEventId, this.realtime.watch(scope));
       }),
     );
   }

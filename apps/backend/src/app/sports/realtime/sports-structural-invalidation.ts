@@ -18,17 +18,11 @@ export interface SportsStructuralInvalidation {
 }
 
 export function mergeSportsStructuralInvalidations(
-  ...groups: Array<
-    readonly SportsStructuralInvalidation[] | null | undefined
-  >
+  ...groups: Array<readonly SportsStructuralInvalidation[] | null | undefined>
 ): SportsStructuralInvalidation[] {
   const merged = new Map<string, SportsStructuralInvalidation>();
   for (const invalidation of groups.flatMap((group) => group ?? [])) {
-    const key = [
-      invalidation.kind,
-      invalidation.tournamentId,
-      invalidation.categoryId,
-    ].join(':');
+    const key = [invalidation.kind, invalidation.tournamentId, invalidation.categoryId].join(':');
     const current = merged.get(key);
     if (!current) {
       merged.set(key, {
@@ -41,10 +35,7 @@ export function mergeSportsStructuralInvalidations(
     }
     current.stageIds = unique([...current.stageIds, ...invalidation.stageIds]);
     current.matchIds = unique([...current.matchIds, ...invalidation.matchIds]);
-    current.publicMatchIds = unique([
-      ...current.publicMatchIds,
-      ...invalidation.publicMatchIds,
-    ]);
+    current.publicMatchIds = unique([...current.publicMatchIds, ...invalidation.publicMatchIds]);
   }
   return [...merged.values()];
 }

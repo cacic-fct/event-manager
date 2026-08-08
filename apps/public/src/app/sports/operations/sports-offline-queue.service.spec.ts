@@ -21,9 +21,7 @@ describe('SportsOfflineQueueService', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('keeps the client id while replaying an offline action exactly once', async () => {
-    const commit = vi.fn((actions: readonly SportsMatchAction[]) =>
-      of(actions.length > 0 ? ['accepted-action'] : []),
-    );
+    const commit = vi.fn((actions: readonly SportsMatchAction[]) => of(actions.length > 0 ? ['accepted-action'] : []));
     TestBed.configureTestingModule({
       providers: [
         { provide: PLATFORM_ID, useValue: 'browser' },
@@ -47,11 +45,13 @@ describe('SportsOfflineQueueService', () => {
 
     expect(commit).toHaveBeenCalledOnce();
     const replayedAction = commit.mock.calls[0]?.[0]?.[0];
-    expect(replayedAction).toEqual(expect.objectContaining({
-      clientId: 'offline-1',
-      authoredAt: '2026-08-01T12:00:00.000Z',
-      offline: true,
-    }));
+    expect(replayedAction).toEqual(
+      expect.objectContaining({
+        clientId: 'offline-1',
+        authoredAt: '2026-08-01T12:00:00.000Z',
+        offline: true,
+      }),
+    );
     expect(queue.pending()).toEqual([]);
   });
 
@@ -98,8 +98,13 @@ describe('SportsOfflineQueueService', () => {
     });
     const queue = TestBed.inject(SportsOfflineQueueService);
     queue.enqueueAction({
-      clientId: 'timer-1', matchId: 'match-1', baseRevision: 2, type: 'PAUSE', payloadJson: '{}',
-      authoredAt: '2026-08-01T12:05:00.000Z', offline: true,
+      clientId: 'timer-1',
+      matchId: 'match-1',
+      baseRevision: 2,
+      type: 'PAUSE',
+      payloadJson: '{}',
+      authoredAt: '2026-08-01T12:05:00.000Z',
+      offline: true,
     });
     queue.attachTimerSnapshot('timer-1', {
       overall: { startedAtUnixMs: null, pausedAtUnixMs: 1_754_049_900_000, elapsedBeforePauseMs: 300_000 },
@@ -107,16 +112,23 @@ describe('SportsOfflineQueueService', () => {
       activePeriod: 1,
     });
     queue.enqueueAction({
-      clientId: 'score-1', matchId: 'match-1', baseRevision: 2, type: 'SCORE_DELTA',
-      payloadJson: '{"side":"HOME","amount":1}', authoredAt: '2026-08-01T12:05:01.000Z', offline: true,
+      clientId: 'score-1',
+      matchId: 'match-1',
+      baseRevision: 2,
+      type: 'SCORE_DELTA',
+      payloadJson: '{"side":"HOME","amount":1}',
+      authoredAt: '2026-08-01T12:05:01.000Z',
+      offline: true,
     });
 
     await queue.sync();
 
-    expect(queue.timerConflict()).toEqual(expect.objectContaining({
-      matchId: 'match-1',
-      queuedActionIds: ['timer-1'],
-    }));
+    expect(queue.timerConflict()).toEqual(
+      expect.objectContaining({
+        matchId: 'match-1',
+        queuedActionIds: ['timer-1'],
+      }),
+    );
     queue.resolveTimerConflict('match-1', ['timer-1'], 9);
     expect(queue.pending().map((item) => item.id)).toEqual(['score-1']);
     const remaining = queue.pending()[0];

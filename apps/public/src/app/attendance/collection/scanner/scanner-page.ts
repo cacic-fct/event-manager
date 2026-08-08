@@ -113,7 +113,8 @@ export class AttendanceScanner implements OnInit {
       .watchFeed(eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (attendances) => this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
+        next: (attendances) =>
+          this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
         error: () =>
           this.snackbar.open('Não foi possível acompanhar as presenças em tempo real.', 'Fechar', { duration: 3500 }),
       });

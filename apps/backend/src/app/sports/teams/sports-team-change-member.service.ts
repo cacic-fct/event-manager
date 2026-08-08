@@ -1,10 +1,5 @@
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  
   Prisma,
   SportsEligibilityStatus,
   SportsIdentityClaimStatus,
@@ -97,9 +92,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
       },
     });
     if (!tournament) {
-      throw new NotFoundException(
-        `Sports tournament ${request.team.tournamentId} was not found.`,
-      );
+      throw new NotFoundException(`Sports tournament ${request.team.tournamentId} was not found.`);
     }
     const categories =
       categoryIds.length === 0
@@ -126,10 +119,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
         await tx.sportsIdentityClaim.update({
           where: { id: claim.id },
           data: {
-            status:
-              people.length === 0
-                ? SportsIdentityClaimStatus.NOT_FOUND
-                : SportsIdentityClaimStatus.AMBIGUOUS,
+            status: people.length === 0 ? SportsIdentityClaimStatus.NOT_FOUND : SportsIdentityClaimStatus.AMBIGUOUS,
             resolvedAt: new Date(),
             resolvedById: actorId,
           },
@@ -138,13 +128,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
       }
 
       const person = people[0];
-      await this.assertPlayerMayJoinTeam(
-        tx,
-        request.teamId,
-        tournament,
-        categories,
-        person.id,
-      );
+      await this.assertPlayerMayJoinTeam(tx, request.teamId, tournament, categories, person.id);
       const participant = await this.payments.ensureParticipant(tx, {
         tournamentId: request.team.tournamentId,
         personId: person.id,
@@ -178,9 +162,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
           },
         });
         if (reactivated.count !== 1) {
-          throw new ConflictException(
-            'O integrante mudou durante a aprovação. Tente novamente.',
-          );
+          throw new ConflictException('O integrante mudou durante a aprovação. Tente novamente.');
         }
         member = await tx.sportsTeamMember.findUniqueOrThrow({
           where: { id: member.id },
@@ -224,10 +206,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
               categoryId: category.id,
               teamMemberId: member.id,
               role: SportsRosterRole.PLAYER,
-              eligibility: this.resolveCategoryRoleEligibility(
-                participant,
-                null,
-              ),
+              eligibility: this.resolveCategoryRoleEligibility(participant, null),
               approvedAt: new Date(),
               approvedById: actorId,
               createdById: actorId,
@@ -280,17 +259,13 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
         select: { id: true },
       });
       if (otherMembership) {
-        throw new ConflictException(
-          'A pessoa já integra outra equipe neste torneio.',
-        );
+        throw new ConflictException('A pessoa já integra outra equipe neste torneio.');
       }
       return;
     }
 
     const restrictedCategoryIds = categories
-      .filter(
-        (category) => category.allowPlayerMultipleTeams === false,
-      )
+      .filter((category) => category.allowPlayerMultipleTeams === false)
       .map((category) => category.id);
     if (restrictedCategoryIds.length === 0) {
       return;
@@ -325,9 +300,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
   protected async applyMemberChanges(
     tx: Prisma.TransactionClient,
     teamId: string,
-    requestType:
-      | typeof SportsTeamChangeRequestType.MEMBER_UPDATE
-      | typeof SportsTeamChangeRequestType.MEMBER_REMOVE,
+    requestType: typeof SportsTeamChangeRequestType.MEMBER_UPDATE | typeof SportsTeamChangeRequestType.MEMBER_REMOVE,
     changes: SportsTeamMemberDeltaInput[],
     actorId: string,
   ): Promise<void> {
@@ -348,17 +321,12 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
         },
       });
       if (!member) {
-        throw new NotFoundException(
-          `Sports team member ${change.teamMemberId} was not found.`,
-        );
+        throw new NotFoundException(`Sports team member ${change.teamMemberId} was not found.`);
       }
 
-      const removing =
-        requestType === SportsTeamChangeRequestType.MEMBER_REMOVE;
+      const removing = requestType === SportsTeamChangeRequestType.MEMBER_REMOVE;
       const deletedAt = removing ? new Date() : null;
-      const status = removing
-        ? SportsTeamMemberStatus.WITHDRAWN
-        : change.status;
+      const status = removing ? SportsTeamMemberStatus.WITHDRAWN : change.status;
       const updated = await tx.sportsTeamMember.updateMany({
         where: {
           id: member.id,
@@ -383,9 +351,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
         },
       });
       if (updated.count !== 1) {
-        throw new ConflictException(
-          'O integrante da equipe mudou. Recarregue os dados antes de aprovar.',
-        );
+        throw new ConflictException('O integrante da equipe mudou. Recarregue os dados antes de aprovar.');
       }
 
       if (removing) {
@@ -410,10 +376,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
             roster: {
               match: {
                 state: {
-                  in: [
-                    SportsMatchState.SCHEDULED,
-                    SportsMatchState.CHECK_IN,
-                  ],
+                  in: [SportsMatchState.SCHEDULED, SportsMatchState.CHECK_IN],
                 },
               },
             },
@@ -426,10 +389,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
         continue;
       }
 
-      if (
-        status === SportsTeamMemberStatus.SUSPENDED ||
-        status === SportsTeamMemberStatus.WITHDRAWN
-      ) {
+      if (status === SportsTeamMemberStatus.SUSPENDED || status === SportsTeamMemberStatus.WITHDRAWN) {
         await tx.sportsRegistrationMember.updateMany({
           where: {
             teamMemberId: member.id,
@@ -438,21 +398,14 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
           data: {
             eligibility: SportsEligibilityStatus.INELIGIBLE,
             rejectionReason:
-              status === SportsTeamMemberStatus.SUSPENDED
-                ? 'Integrante suspenso.'
-                : 'Integrante retirado da equipe.',
+              status === SportsTeamMemberStatus.SUSPENDED ? 'Integrante suspenso.' : 'Integrante retirado da equipe.',
             updatedById: actorId,
           },
         });
         continue;
       }
 
-      await this.refreshMemberEligibility(
-        tx,
-        member.id,
-        member.participant,
-        actorId,
-      );
+      await this.refreshMemberEligibility(tx, member.id, member.participant, actorId);
     }
   }
 
@@ -476,10 +429,7 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
         eligibility:
           targetEligibility === SportsEligibilityStatus.INELIGIBLE
             ? {
-                in: [
-                  SportsEligibilityStatus.PENDING,
-                  SportsEligibilityStatus.ELIGIBLE,
-                ],
+                in: [SportsEligibilityStatus.PENDING, SportsEligibilityStatus.ELIGIBLE],
               }
             : effective
               ? SportsEligibilityStatus.PENDING
@@ -492,4 +442,3 @@ export abstract class SportsTeamChangeMemberService extends SportsTeamChangeRole
     });
   }
 }
-

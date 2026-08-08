@@ -1,9 +1,5 @@
 import { Metadata, Server, ServerCredentials, status } from '@grpc/grpc-js';
-import {
-  GrpcUnaryClient,
-  loadGrpcServiceDefinition,
-  resolveGrpcProtoPath,
-} from './grpc-runtime';
+import { GrpcUnaryClient, loadGrpcServiceDefinition, resolveGrpcProtoPath } from './grpc-runtime';
 
 describe('gRPC runtime integration', () => {
   let server: Server;
@@ -39,12 +35,10 @@ describe('gRPC runtime integration', () => {
     metadata.set('authorization', 'Bearer integration-token');
 
     await expect(
-      client.call<{ events: { id: string; name: string }[] }>(
-        'ListVotingEvents',
-        {},
-        metadata,
-        { idempotent: true, timeoutMs: 2_000 },
-      ),
+      client.call<{ events: { id: string; name: string }[] }>('ListVotingEvents', {}, metadata, {
+        idempotent: true,
+        timeoutMs: 2_000,
+      }),
     ).resolves.toMatchObject({
       events: [{ id: 'event-1', name: 'Bearer integration-token' }],
     });

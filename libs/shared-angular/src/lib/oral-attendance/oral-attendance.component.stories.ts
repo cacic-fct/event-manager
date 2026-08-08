@@ -2,11 +2,7 @@ import { fakerPT_BR as faker } from '@faker-js/faker';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { expect, fn, userEvent, within } from 'storybook/test';
-import {
-  OralAttendanceComponent,
-  OralAttendanceDecision,
-  OralAttendancePerson,
-} from './oral-attendance.component';
+import { OralAttendanceComponent, OralAttendanceDecision, OralAttendancePerson } from './oral-attendance.component';
 
 type StoryArgs = {
   peopleCount: number;
@@ -45,10 +41,9 @@ const meta: Meta<StoryArgs> = {
   render: (args) => {
     const people = buildPeople(args.peopleCount);
     const decisions = new Map<string, OralAttendanceDecision>(
-      people.slice(0, Math.min(args.decidedCount, people.length)).map((person, index) => [
-        person.personId,
-        index % 4 === 0 ? 'ABSENT' : 'PRESENT',
-      ]),
+      people
+        .slice(0, Math.min(args.decidedCount, people.length))
+        .map((person, index) => [person.personId, index % 4 === 0 ? 'ABSENT' : 'PRESENT']),
     );
     return {
       template: `
@@ -87,9 +82,7 @@ export const Cartoes: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Voltar para a pessoa anterior' }));
     await expect(canvas.getByRole('button', { name: 'Avançar novamente' })).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Marcar como faltou' }));
-    await expect(args.decisionChanged).toHaveBeenLastCalledWith(
-      expect.objectContaining({ decision: 'ABSENT' }),
-    );
+    await expect(args.decisionChanged).toHaveBeenLastCalledWith(expect.objectContaining({ decision: 'ABSENT' }));
   },
 };
 

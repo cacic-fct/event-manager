@@ -1,14 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  AuditLogEntityType,
-  AuditLogOperation,
-  SportsScoreEntrySource
-} from '@prisma/client';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { AuditLogEntityType, AuditLogOperation, SportsScoreEntrySource } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';
@@ -32,20 +24,13 @@ export class SportsScoreEntryAdminService extends SportsAdminBaseService {
       select: { majorEventId: true },
     });
     if (!tournament) {
-      throw new NotFoundException(
-        `Sports tournament ${input.tournamentId} was not found.`,
-      );
+      throw new NotFoundException(`Sports tournament ${input.tournamentId} was not found.`);
     }
     await this.frozen.assertMajorEventMutable(tournament.majorEventId, actor, 'edit');
     this.assertManualScoreEntry(input);
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
-      await this.assertScoreEntryTargets(
-        tx,
-        input.tournamentId,
-        input.teamId,
-        input.categoryId,
-      );
+      await this.assertScoreEntryTargets(tx, input.tournamentId, input.teamId, input.categoryId);
       const entry = await tx.sportsTournamentScoreEntry.create({
         data: {
           tournamentId: input.tournamentId,
@@ -102,25 +87,15 @@ export class SportsScoreEntryAdminService extends SportsAdminBaseService {
     if (existing.tournamentId !== input.tournamentId) {
       throw new BadRequestException('O ajuste não pertence ao torneio informado.');
     }
-    await this.frozen.assertMajorEventMutable(
-      existing.tournament.majorEventId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(existing.tournament.majorEventId, actor, 'edit');
     const source = input.source ?? existing.source;
     const points = input.points ?? existing.points;
     this.assertManualScoreEntry({ source, points, sourceMatchId: null });
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const teamId = input.teamId ?? existing.teamId;
-      const categoryId =
-        input.categoryId === undefined ? existing.categoryId : input.categoryId;
-      await this.assertScoreEntryTargets(
-        tx,
-        existing.tournamentId,
-        teamId,
-        categoryId,
-      );
+      const categoryId = input.categoryId === undefined ? existing.categoryId : input.categoryId;
+      await this.assertScoreEntryTargets(tx, existing.tournamentId, teamId, categoryId);
       const changed = await tx.sportsTournamentScoreEntry.updateMany({
         where: {
           id: entryId,
@@ -128,20 +103,13 @@ export class SportsScoreEntryAdminService extends SportsAdminBaseService {
           deletedAt: null,
         },
         data: {
-          ...(input.categoryId !== undefined
-            ? { categoryId: input.categoryId }
-            : {}),
+          ...(input.categoryId !== undefined ? { categoryId: input.categoryId } : {}),
           ...(input.teamId !== undefined ? { teamId: input.teamId } : {}),
           ...(input.source !== undefined ? { source: input.source } : {}),
           ...(input.points !== undefined ? { points: input.points } : {}),
           ...(input.reason !== undefined
             ? {
-                reason: this.requireText(
-                  input.reason,
-                  'motivo do ajuste',
-                  2,
-                  240,
-                ),
+                reason: this.requireText(input.reason, 'motivo do ajuste', 2, 240),
               }
             : {}),
           revision: { increment: 1 },
@@ -149,9 +117,7 @@ export class SportsScoreEntryAdminService extends SportsAdminBaseService {
         },
       });
       if (changed.count !== 1) {
-        throw new ConflictException(
-          'O ajuste de pontuação mudou. Recarregue e tente novamente.',
-        );
+        throw new ConflictException('O ajuste de pontuação mudou. Recarregue e tente novamente.');
       }
       const result = await tx.sportsTournamentScoreEntry.findUniqueOrThrow({
         where: { id: entryId },
@@ -194,11 +160,7 @@ export class SportsScoreEntryAdminService extends SportsAdminBaseService {
     if (existing.tournamentId !== tournamentId) {
       throw new BadRequestException('O ajuste não pertence ao torneio informado.');
     }
-    await this.frozen.assertMajorEventMutable(
-      existing.tournament.majorEventId,
-      actor,
-      'delete',
-    );
+    await this.frozen.assertMajorEventMutable(existing.tournament.majorEventId, actor, 'delete');
     await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const deletedAt = new Date();
       const changed = await tx.sportsTournamentScoreEntry.updateMany({
@@ -215,9 +177,7 @@ export class SportsScoreEntryAdminService extends SportsAdminBaseService {
         },
       });
       if (changed.count !== 1) {
-        throw new ConflictException(
-          'O ajuste de pontuação mudou. Recarregue e tente novamente.',
-        );
+        throw new ConflictException('O ajuste de pontuação mudou. Recarregue e tente novamente.');
       }
       await this.auditLog.record(
         {
@@ -242,5 +202,4 @@ export class SportsScoreEntryAdminService extends SportsAdminBaseService {
       );
     });
   }
-
 }

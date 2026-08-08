@@ -1,8 +1,5 @@
 import { SportsLossReason } from '@prisma/client';
-import {
-  assertSportsOutcomeMatchesRules,
-  SportsScoreRules,
-} from './sports-score-rules';
+import { assertSportsOutcomeMatchesRules, SportsScoreRules } from './sports-score-rules';
 
 const rules: SportsScoreRules = {
   strategy: 'TOTAL',

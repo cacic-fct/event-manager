@@ -1,8 +1,4 @@
-import {
-  generateSingleEliminationBracket,
-  planSportsWinnerAdvancement,
-  SportsBracketEntrant,
-} from './sports-brackets';
+import { generateSingleEliminationBracket, planSportsWinnerAdvancement, SportsBracketEntrant } from './sports-brackets';
 
 describe('single-elimination bracket generation', () => {
   const entrants = (count: number): SportsBracketEntrant[] =>
@@ -98,10 +94,7 @@ describe('single-elimination bracket generation', () => {
   it('rejects duplicate registrations, duplicate seeds, and invalid random sources', () => {
     expect(() =>
       generateSingleEliminationBracket({
-        entrants: [
-          { registrationId: 'same' },
-          { registrationId: 'same' },
-        ],
+        entrants: [{ registrationId: 'same' }, { registrationId: 'same' }],
         seedingMode: 'MANUAL',
       }),
     ).toThrow('appears more than once');
@@ -127,9 +120,7 @@ describe('single-elimination bracket generation', () => {
 describe('winner advancement planning', () => {
   function input(
     overrides: Partial<Parameters<typeof planSportsWinnerAdvancement>[0]['source']> = {},
-    targetOverrides: Partial<
-      NonNullable<Parameters<typeof planSportsWinnerAdvancement>[0]['target']>
-    > = {},
+    targetOverrides: Partial<NonNullable<Parameters<typeof planSportsWinnerAdvancement>[0]['target']>> = {},
   ): Parameters<typeof planSportsWinnerAdvancement>[0] {
     return {
       source: {
@@ -164,18 +155,14 @@ describe('winner advancement planning', () => {
   });
 
   it('is idempotent when the same winner was already advanced', () => {
-    expect(
-      planSportsWinnerAdvancement(input({}, { homeRegistrationId: 'team-a' })),
-    ).toMatchObject({
+    expect(planSportsWinnerAdvancement(input({}, { homeRegistrationId: 'team-a' }))).toMatchObject({
       status: 'NOOP',
       reason: 'ALREADY_ASSIGNED',
     });
   });
 
   it('reports drift instead of overwriting another registration', () => {
-    expect(
-      planSportsWinnerAdvancement(input({}, { homeRegistrationId: 'different-team' })),
-    ).toEqual({
+    expect(planSportsWinnerAdvancement(input({}, { homeRegistrationId: 'different-team' }))).toEqual({
       status: 'CONFLICT',
       reason: 'TARGET_SLOT_OCCUPIED',
       targetMatchId: 'final',
@@ -186,9 +173,7 @@ describe('winner advancement planning', () => {
   });
 
   it('blocks invalid winners and changes to matches that already started while allowing structural byes', () => {
-    expect(
-      planSportsWinnerAdvancement(input({ winnerRegistrationId: 'not-a-participant' })),
-    ).toEqual({
+    expect(planSportsWinnerAdvancement(input({ winnerRegistrationId: 'not-a-participant' }))).toEqual({
       status: 'BLOCKED',
       reason: 'WINNER_NOT_IN_SOURCE_MATCH',
     });
@@ -197,11 +182,7 @@ describe('winner advancement planning', () => {
       status: 'BLOCKED',
       reason: 'TARGET_ALREADY_STARTED',
     });
-    expect(
-      planSportsWinnerAdvancement(
-        input({ outcome: 'AUTOMATIC_BYE', state: 'SCHEDULED' }),
-      ),
-    ).toEqual({
+    expect(planSportsWinnerAdvancement(input({ outcome: 'AUTOMATIC_BYE', state: 'SCHEDULED' }))).toEqual({
       status: 'ASSIGN',
       targetMatchId: 'final',
       side: 'HOME',

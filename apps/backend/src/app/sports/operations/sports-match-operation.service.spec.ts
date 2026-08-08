@@ -1,9 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import {
-  SportsMatchActionType,
-  SportsMatchState,
-  SportsReviewStatus,
-} from '@prisma/client';
+import { SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import {
   SPORTS_TEST_NOW,
   sportsMatchCommand,
@@ -48,10 +44,7 @@ describe('SportsMatchOperationService offline command log', () => {
     jest.clearAllMocks();
     tx = createTransaction();
     prisma = {
-      $transaction: jest.fn(
-        (callback: (transaction: typeof tx) => Promise<unknown>) =>
-          callback(tx),
-      ),
+      $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
     service = new SportsMatchOperationService(
       prisma as never,
@@ -86,16 +79,10 @@ describe('SportsMatchOperationService offline command log', () => {
   });
 
   it('rejects reuse of an offline client identifier for different command content', async () => {
-    await service.commit(
-      [sportsMatchCommand({ payload: { source: 'device-a' } })],
-      sportsOfficialActor(),
-    );
+    await service.commit([sportsMatchCommand({ payload: { source: 'device-a' } })], sportsOfficialActor());
 
     await expect(
-      service.commit(
-        [sportsMatchCommand({ payload: { source: 'device-b' } })],
-        sportsOfficialActor(),
-      ),
+      service.commit([sportsMatchCommand({ payload: { source: 'device-b' } })], sportsOfficialActor()),
     ).rejects.toThrow(ConflictException);
 
     expect(tx.sportsMatchAction.create).toHaveBeenCalledTimes(1);
@@ -190,9 +177,9 @@ describe('SportsMatchOperationService offline command log', () => {
   it('fails the compare-and-swap when the match changes during persistence', async () => {
     tx.sportsMatch.updateMany.mockImplementationOnce(() => ({ count: 0 }));
 
-    await expect(
-      service.commit([sportsMatchCommand()], sportsOfficialActor()),
-    ).rejects.toThrow('A partida mudou durante o envio da ação.');
+    await expect(service.commit([sportsMatchCommand()], sportsOfficialActor())).rejects.toThrow(
+      'A partida mudou durante o envio da ação.',
+    );
 
     expect(tx.sportsMatchAction.create).toHaveBeenCalledTimes(1);
     expect(realtime.publish).not.toHaveBeenCalled();
@@ -230,14 +217,8 @@ describe('SportsMatchOperationService offline command log', () => {
         revision: 2,
       }),
     );
-    expect(realtime.publish).toHaveBeenCalledWith(
-      'tournament:tournament-1',
-      expect.any(Object),
-    );
-    expect(realtime.publish).toHaveBeenCalledWith(
-      'review:match-1',
-      expect.any(Object),
-    );
+    expect(realtime.publish).toHaveBeenCalledWith('tournament:tournament-1', expect.any(Object));
+    expect(realtime.publish).toHaveBeenCalledWith('review:match-1', expect.any(Object));
     expect(defaultRedirect.invalidatePeople).toHaveBeenCalledWith(['person-1']);
   });
 
@@ -277,15 +258,11 @@ describe('SportsMatchOperationService offline command log', () => {
     tx.state.reviewStatus = SportsReviewStatus.PENDING;
 
     await expect(
-      service.review(
-        pendingStart.id,
-        SportsReviewStatus.APPROVED,
-        {
-          sub: 'admin-1',
-          token: 'token',
-          permissionSet: new Set<string>(),
-        } as never,
-      ),
+      service.review(pendingStart.id, SportsReviewStatus.APPROVED, {
+        sub: 'admin-1',
+        token: 'token',
+        permissionSet: new Set<string>(),
+      } as never),
     ).resolves.toMatchObject({
       id: pendingStart.id,
       reviewStatus: SportsReviewStatus.APPROVED,
@@ -344,42 +321,28 @@ function createTransaction() {
   const sportsMatchAction = {
     findUnique: jest.fn(
       ({ where }: { where: { clientId?: string; id?: string } }) =>
-        (where.clientId
-          ? actionByClientId.get(where.clientId)
-          : where.id
-            ? actionById.get(where.id)
-            : null) ?? null,
+        (where.clientId ? actionByClientId.get(where.clientId) : where.id ? actionById.get(where.id) : null) ?? null,
     ),
-    create: jest.fn(
-      ({ data }: { data: Record<string, unknown> }) => {
-        const action = {
-          id: `action-${++actionId}`,
-          ...data,
-          createdAt: SPORTS_TEST_NOW,
-          updatedAt: SPORTS_TEST_NOW,
-        };
-        actions.push(action);
-        actionByClientId.set(data['clientId'] as string, action);
-        actionById.set(action.id, action);
-        return action;
-      },
-    ),
-    update: jest.fn(
-      ({
-        where,
-        data,
-      }: {
-        where: { id: string };
-        data: Record<string, unknown>;
-      }) => {
-        const action = actionById.get(where.id);
-        if (!action) {
-          throw new Error(`Unknown action ${where.id}`);
-        }
-        Object.assign(action, data);
-        return action;
-      },
-    ),
+    create: jest.fn(({ data }: { data: Record<string, unknown> }) => {
+      const action = {
+        id: `action-${++actionId}`,
+        ...data,
+        createdAt: SPORTS_TEST_NOW,
+        updatedAt: SPORTS_TEST_NOW,
+      };
+      actions.push(action);
+      actionByClientId.set(data['clientId'] as string, action);
+      actionById.set(action.id, action);
+      return action;
+    }),
+    update: jest.fn(({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+      const action = actionById.get(where.id);
+      if (!action) {
+        throw new Error(`Unknown action ${where.id}`);
+      }
+      Object.assign(action, data);
+      return action;
+    }),
   };
   const sportsMatch = {
     findFirst: jest.fn(() => ({
@@ -392,33 +355,22 @@ function createTransaction() {
       actions,
       rosters: state.rosters,
     })),
-    updateMany: jest.fn(
-      ({
-        where,
-      }: {
-        where: { revision: number; operationSequence: number };
-      }) => {
-        if (
-          where.revision !== state.revision ||
-          where.operationSequence !== state.operationSequence
-        ) {
-          return { count: 0 };
-        }
-        state.revision += 1;
-        state.operationSequence += 1;
-        return { count: 1 };
-      },
-    ),
-    update: jest.fn(
-      ({ data }: { data: Record<string, unknown> }) => {
-        Object.assign(state, data);
-        return {
-          ...state,
-          actions: undefined,
-          rosters: undefined,
-        };
-      },
-    ),
+    updateMany: jest.fn(({ where }: { where: { revision: number; operationSequence: number } }) => {
+      if (where.revision !== state.revision || where.operationSequence !== state.operationSequence) {
+        return { count: 0 };
+      }
+      state.revision += 1;
+      state.operationSequence += 1;
+      return { count: 1 };
+    }),
+    update: jest.fn(({ data }: { data: Record<string, unknown> }) => {
+      Object.assign(state, data);
+      return {
+        ...state,
+        actions: undefined,
+        rosters: undefined,
+      };
+    }),
   };
 
   return {

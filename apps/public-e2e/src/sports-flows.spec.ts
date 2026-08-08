@@ -6,9 +6,7 @@ test.beforeEach(async ({ page }) => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
     window.localStorage.setItem('cacic.cookieBanner.enabled', 'false');
   });
-  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
-    route.fulfill({ status: 304, body: '' }),
-  );
+  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) => route.fulfill({ status: 304, body: '' }));
   await page.route('https://cdn.jsdelivr.net/**', (route) =>
     route.fulfill({
       status: 200,
@@ -31,7 +29,10 @@ test('shows a live tournament and opens the privacy-safe match detail', async ({
     /sports\/match\/match-1/,
   );
 
-  await page.getByRole('link', { name: /Equipe Azul/ }).first().click();
+  await page
+    .getByRole('link', { name: /Equipe Azul/ })
+    .first()
+    .click();
 
   await expect(page).toHaveURL(/\/app\/sports\/match\/match-1/);
   await expect(page.getByRole('heading', { name: /Equipe Azul.*Equipe Verde/ })).toBeVisible();

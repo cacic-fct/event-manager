@@ -56,9 +56,7 @@ describe('CurrentUserDefaultRedirectService', () => {
   it('routes a player with a nearby approved sports roster to the wallet', async () => {
     prisma.sportsMatch.findFirst.mockResolvedValue({ id: 'match-1' });
 
-    await expect(service.resolve('person-1')).resolves.toBe(
-      DefaultRedirectRoute.WALLET,
-    );
+    await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.WALLET);
 
     expect(prisma.sportsMatch.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -1,18 +1,9 @@
-import {
-  Injectable,
-  Logger,
-  MessageEvent,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import Redis from 'ioredis';
 import { Observable, Subject } from 'rxjs';
 import { SseReplayService } from '../../realtime/sse-replay.service';
-import {
-  mergeSportsStructuralInvalidations,
-  SportsStructuralInvalidation,
-} from './sports-structural-invalidation';
+import { mergeSportsStructuralInvalidations, SportsStructuralInvalidation } from './sports-structural-invalidation';
 
 const SPORTS_REDIS_CHANNEL = 'sports:realtime:v1';
 const INVALIDATE_PUBLIC_TOURNAMENT_CACHE_SCRIPT = `
@@ -27,9 +18,7 @@ export function sportsPublicTournamentCacheKey(tournamentId: string): string {
   return `sports:public-tournament:v2:${tournamentId}`;
 }
 
-export function sportsPublicTournamentCacheVersionKey(
-  tournamentId: string,
-): string {
+export function sportsPublicTournamentCacheVersionKey(tournamentId: string): string {
   return `sports:public-tournament-version:v2:${tournamentId}`;
 }
 
@@ -45,12 +34,7 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
   private readonly scopeTargets = new Map<
     string,
     {
-      channel:
-        | 'match'
-        | 'tournament'
-        | 'review'
-        | 'admin-tournament'
-        | 'autoroute';
+      channel: 'match' | 'tournament' | 'review' | 'admin-tournament' | 'autoroute';
       id: string;
     }
   >();
@@ -91,15 +75,7 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  scope(
-    channel:
-      | 'match'
-      | 'tournament'
-      | 'review'
-      | 'admin-tournament'
-      | 'autoroute',
-    id: string,
-  ): string {
+  scope(channel: 'match' | 'tournament' | 'review' | 'admin-tournament' | 'autoroute', id: string): string {
     const scope = this.replay.scope(`sports-${channel}`, id);
     this.scopeTargets.set(scope, { channel, id });
     return scope;
@@ -137,10 +113,7 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
     };
     if (this.subscriber && typeof redisWithPublish.publish === 'function') {
       try {
-        const subscriberCount = await redisWithPublish.publish(
-          SPORTS_REDIS_CHANNEL,
-          JSON.stringify(envelope),
-        );
+        const subscriberCount = await redisWithPublish.publish(SPORTS_REDIS_CHANNEL, JSON.stringify(envelope));
         if (subscriberCount === 0) {
           this.subject(scope).next(event);
         }
@@ -157,37 +130,26 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
     return event;
   }
 
-  async publishStructuralInvalidations(
-    invalidations: readonly SportsStructuralInvalidation[],
-  ): Promise<void> {
+  async publishStructuralInvalidations(invalidations: readonly SportsStructuralInvalidation[]): Promise<void> {
     await Promise.all(
-      mergeSportsStructuralInvalidations(invalidations).flatMap(
-        (invalidation) => {
-          const payload = {
-            type: 'SPORTS_STRUCTURE_INVALIDATED',
-            kind: invalidation.kind,
-            tournamentId: invalidation.tournamentId,
-            categoryId: invalidation.categoryId,
-            stageIds: invalidation.stageIds,
-            matchIds: invalidation.matchIds,
-          };
-          return [
-            this.publish(
-              this.scope('tournament', invalidation.tournamentId),
-              payload,
-            ),
-            ...invalidation.publicMatchIds.map((matchId) =>
-              this.publish(this.scope('match', matchId), payload),
-            ),
-          ];
-        },
-      ),
+      mergeSportsStructuralInvalidations(invalidations).flatMap((invalidation) => {
+        const payload = {
+          type: 'SPORTS_STRUCTURE_INVALIDATED',
+          kind: invalidation.kind,
+          tournamentId: invalidation.tournamentId,
+          categoryId: invalidation.categoryId,
+          stageIds: invalidation.stageIds,
+          matchIds: invalidation.matchIds,
+        };
+        return [
+          this.publish(this.scope('tournament', invalidation.tournamentId), payload),
+          ...invalidation.publicMatchIds.map((matchId) => this.publish(this.scope('match', matchId), payload)),
+        ];
+      }),
     );
   }
 
-  async publishAutorouteInvalidations(
-    personIds: readonly string[],
-  ): Promise<void> {
+  async publishAutorouteInvalidations(personIds: readonly string[]): Promise<void> {
     const revision = randomUUID();
     await Promise.all(
       [...new Set(personIds.filter(Boolean))].map((personId) =>
@@ -209,9 +171,7 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
     return subject;
   }
 
-  private async invalidatePublicTournamentCacheForScope(
-    scope: string,
-  ): Promise<void> {
+  private async invalidatePublicTournamentCacheForScope(scope: string): Promise<void> {
     const target = this.scopeTargets.get(scope);
     if (target?.channel !== 'tournament') {
       return;
@@ -225,10 +185,7 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
         sportsPublicTournamentCacheVersionKey(target.id),
       );
     } catch (error) {
-      this.logger.warn(
-        `Sports public tournament cache invalidation failed for tournament ${target.id}.`,
-        error,
-      );
+      this.logger.warn(`Sports public tournament cache invalidation failed for tournament ${target.id}.`, error);
     }
   }
 

@@ -6,18 +6,13 @@ describe('round-robin generation', () => {
       registrationIds: ['a', 'b', 'c', 'd'],
     });
     const pairs = rounds.flatMap((round) =>
-      round.matches.map((match) =>
-        [match.homeRegistrationId, match.awayRegistrationId].sort().join(':'),
-      ),
+      round.matches.map((match) => [match.homeRegistrationId, match.awayRegistrationId].sort().join(':')),
     );
 
     expect(rounds).toHaveLength(3);
     expect(new Set(pairs)).toEqual(new Set(['a:b', 'a:c', 'a:d', 'b:c', 'b:d', 'c:d']));
     for (const round of rounds) {
-      const participants = round.matches.flatMap((match) => [
-        match.homeRegistrationId,
-        match.awayRegistrationId,
-      ]);
+      const participants = round.matches.flatMap((match) => [match.homeRegistrationId, match.awayRegistrationId]);
       expect(new Set(participants).size).toBe(participants.length);
     }
   });
@@ -28,13 +23,7 @@ describe('round-robin generation', () => {
     });
 
     expect(rounds).toHaveLength(5);
-    expect(rounds.map((round) => round.byeRegistrationId).sort()).toEqual([
-      'a',
-      'b',
-      'c',
-      'd',
-      'e',
-    ]);
+    expect(rounds.map((round) => round.byeRegistrationId).sort()).toEqual(['a', 'b', 'c', 'd', 'e']);
     expect(rounds.every((round) => round.matches.length === 2)).toBe(true);
   });
 
@@ -58,11 +47,7 @@ describe('round-robin generation', () => {
   });
 
   it('rejects duplicate registrations and too-small stages', () => {
-    expect(() =>
-      generateSportsRoundRobin({ registrationIds: ['a', 'a'] }),
-    ).toThrow('appears more than once');
-    expect(() =>
-      generateSportsRoundRobin({ registrationIds: ['a'] }),
-    ).toThrow('requires at least two registrations');
+    expect(() => generateSportsRoundRobin({ registrationIds: ['a', 'a'] })).toThrow('appears more than once');
+    expect(() => generateSportsRoundRobin({ registrationIds: ['a'] })).toThrow('requires at least two registrations');
   });
 });

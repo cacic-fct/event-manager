@@ -119,8 +119,11 @@ describe('shared permissions contract', () => {
     expect(workspacePermissions.every((permission) => catalog.has(permission))).toBe(true);
     expect(new Set(WORKSPACE_PERMISSION_EVALUATION_SET)).toEqual(catalog);
     expect(EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS.every((permission) => catalog.has(permission))).toBe(true);
-    expect(Object.keys(EVENT_MANAGER_PERMISSION_SCOPE_COMPATIBILITY).every((permission) => catalog.has(permission as Permission)))
-      .toBe(true);
+    expect(
+      Object.keys(EVENT_MANAGER_PERMISSION_SCOPE_COMPATIBILITY).every((permission) =>
+        catalog.has(permission as Permission),
+      ),
+    ).toBe(true);
   });
 
   it('maps sports permissions onto existing event hierarchy scopes', () => {
@@ -142,12 +145,15 @@ describe('shared permissions contract', () => {
       EventManagerPermissionGrantScope.EventGroup,
       EventManagerPermissionGrantScope.Event,
     ]);
-    expect(isPermissionGrantScopeCompatible(Permission.SportsTournament.Update, EventManagerPermissionGrantScope.EventGroup))
-      .toBe(false);
-    expect(isPermissionGrantScopeCompatible(Permission.SportsCategory.Update, EventManagerPermissionGrantScope.EventGroup))
-      .toBe(true);
-    expect(isPermissionGrantScopeCompatible(Permission.SportsMatch.Operate, EventManagerPermissionGrantScope.Event))
-      .toBe(true);
+    expect(
+      isPermissionGrantScopeCompatible(Permission.SportsTournament.Update, EventManagerPermissionGrantScope.EventGroup),
+    ).toBe(false);
+    expect(
+      isPermissionGrantScopeCompatible(Permission.SportsCategory.Update, EventManagerPermissionGrantScope.EventGroup),
+    ).toBe(true);
+    expect(
+      isPermissionGrantScopeCompatible(Permission.SportsMatch.Operate, EventManagerPermissionGrantScope.Event),
+    ).toBe(true);
   });
 
   it('formats permission groups with stable labels, icons, and duplicate removal', () => {
@@ -294,10 +300,7 @@ describe('shared permissions contract', () => {
         }),
         expect.objectContaining({
           id: 'sports-category-manager',
-          allowedScopes: [
-            EventManagerPermissionGrantScope.MajorEvent,
-            EventManagerPermissionGrantScope.EventGroup,
-          ],
+          allowedScopes: [EventManagerPermissionGrantScope.MajorEvent, EventManagerPermissionGrantScope.EventGroup],
           permissions: expect.arrayContaining([
             Permission.SportsCategory.Update,
             Permission.SportsRegistration.Approve,
@@ -306,10 +309,7 @@ describe('shared permissions contract', () => {
         }),
         expect.objectContaining({
           id: 'sports-roster-reviewer',
-          permissions: expect.arrayContaining([
-            Permission.SportsTeam.Read,
-            Permission.SportsRegistration.Approve,
-          ]),
+          permissions: expect.arrayContaining([Permission.SportsTeam.Read, Permission.SportsRegistration.Approve]),
         }),
         expect.objectContaining({
           id: 'sports-match-operator',
@@ -380,10 +380,7 @@ describe('shared permissions contract', () => {
           Permission.SportsMatch.Operate,
           Permission.SportsScore.Review,
         ]),
-        delete: expect.arrayContaining([
-          Permission.SportsTournament.Delete,
-          Permission.SportsMatch.Delete,
-        ]),
+        delete: expect.arrayContaining([Permission.SportsTournament.Delete, Permission.SportsMatch.Delete]),
       }),
     );
     expect(WORKSPACE_PERMISSION_EVALUATION_SET).toEqual(

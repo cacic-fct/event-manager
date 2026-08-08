@@ -1,16 +1,8 @@
 import { PrismaService } from '../../prisma/prisma.service';
 
-const ACTIVE_SPORTS_MATCH_STATES = [
-  'CHECK_IN',
-  'LIVE',
-  'PAUSED',
-  'AWAITING_REVIEW',
-] as const;
+const ACTIVE_SPORTS_MATCH_STATES = ['CHECK_IN', 'LIVE', 'PAUSED', 'AWAITING_REVIEW'] as const;
 
-export async function loadSportsDashboardRecords(
-  prisma: PrismaService,
-  canReadSports: boolean,
-) {
+export async function loadSportsDashboardRecords(prisma: PrismaService, canReadSports: boolean) {
   const [tournaments, matches] = await Promise.all([
     canReadSports
       ? prisma.sportsTournament.findMany({

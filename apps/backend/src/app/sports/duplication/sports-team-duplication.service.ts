@@ -38,15 +38,9 @@ export class SportsTeamDuplicationService {
       select: { majorEventId: true },
     });
     if (!destinationScope) {
-      throw new NotFoundException(
-        'Torneio esportivo de destino não encontrado.',
-      );
+      throw new NotFoundException('Torneio esportivo de destino não encontrado.');
     }
-    await this.frozen.assertMajorEventMutable(
-      destinationScope.majorEventId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(destinationScope.majorEventId, actor, 'edit');
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const [source, destination] = await Promise.all([
         tx.sportsTeam.findFirst({

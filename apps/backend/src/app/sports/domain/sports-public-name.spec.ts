@@ -1,8 +1,4 @@
-import {
-  redactSportsPublicName,
-  toSportsPublicOfficialName,
-  toSportsPublicPlayerName,
-} from './sports-public-name';
+import { redactSportsPublicName, toSportsPublicOfficialName, toSportsPublicPlayerName } from './sports-public-name';
 
 describe('sports public names', () => {
   it('shows only the first and final names for players', () => {

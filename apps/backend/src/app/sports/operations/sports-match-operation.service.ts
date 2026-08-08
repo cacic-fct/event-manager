@@ -1,15 +1,10 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogOperation,
   Prisma,
   SportsMatchAction,
   SportsMatchActionType,
-  SportsReviewStatus
+  SportsReviewStatus,
 } from '@prisma/client';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -44,10 +39,7 @@ export { createSportsAuditActor } from './sports-match-operation-support';
 
 @Injectable()
 export class SportsMatchOperationService extends SportsMatchOperationMutation {
-  async commit(
-    inputs: SportsMatchCommandInput[],
-    actor: SportsMatchCommandActor,
-  ): Promise<SportsMatchAction[]> {
+  async commit(inputs: SportsMatchCommandInput[], actor: SportsMatchCommandActor): Promise<SportsMatchAction[]> {
     if (inputs.length === 0 || inputs.length > 100) {
       throw new BadRequestException('Envie de uma a cem ações de partida por lote.');
     }
@@ -63,39 +55,24 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
         committed.push(await this.commitOne(tx, input, actor));
       }
       const match = await this.refreshProjection(tx, inputs[0].matchId, actor.userId ?? actor.personId ?? null);
-      if (
-        actor.kind === 'ADMIN' &&
-        match.reviewStatus === SportsReviewStatus.APPROVED
-      ) {
+      if (actor.kind === 'ADMIN' && match.reviewStatus === SportsReviewStatus.APPROVED) {
         const actorId = actor.userId ?? actor.personId ?? 'system';
         structuralInvalidations.push(
-          (await this.standings.reconcileAfterProjectionChange(
-            tx,
-            match.id,
-            actorId,
-          )) ?? [],
+          (await this.standings.reconcileAfterProjectionChange(tx, match.id, actorId)) ?? [],
         );
         structuralInvalidations.push(
-          (await this.advancement.reconcileAfterProjectionChange(
-            tx,
-            match.id,
-            actorId,
-          )) ?? [],
+          (await this.advancement.reconcileAfterProjectionChange(tx, match.id, actorId)) ?? [],
         );
       }
       return {
         committed,
         match,
-        structuralInvalidations: mergeSportsStructuralInvalidations(
-          ...structuralInvalidations,
-        ),
+        structuralInvalidations: mergeSportsStructuralInvalidations(...structuralInvalidations),
       };
     });
 
     await this.publishProjection(result.match);
-    await this.realtime.publishStructuralInvalidations(
-      result.structuralInvalidations,
-    );
+    await this.realtime.publishStructuralInvalidations(result.structuralInvalidations);
     await this.invalidateRoutes(result.match.id);
     return result.committed;
   }
@@ -151,34 +128,18 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
       }
       await this.frozen.assertEventMutable(action.match.eventId, actor, 'edit');
       if (
-        !(
-          [
-            SportsReviewStatus.PENDING,
-            SportsReviewStatus.CHANGES_REQUESTED,
-          ] as SportsReviewStatus[]
-        ).includes(action.reviewStatus)
+        !([SportsReviewStatus.PENDING, SportsReviewStatus.CHANGES_REQUESTED] as SportsReviewStatus[]).includes(
+          action.reviewStatus,
+        )
       ) {
         throw new ConflictException('Esta ação já foi analisada.');
       }
 
       const payload =
-        options.correctedPayload === undefined
-          ? action.payload
-          : this.normalizePayload(options.correctedPayload);
+        options.correctedPayload === undefined ? action.payload : this.normalizePayload(options.correctedPayload);
       if (decision === SportsReviewStatus.APPROVED) {
-        const current = await this.loadProjection(
-          tx,
-          action.matchId,
-          true,
-          action.sequence,
-        );
-        this.validateCommand(
-          action.type,
-          payload,
-          current,
-          action.match,
-          'ADMIN',
-        );
+        const current = await this.loadProjection(tx, action.matchId, true, action.sequence);
+        this.validateCommand(action.type, payload, current, action.match, 'ADMIN');
       }
       const reviewed = await tx.sportsMatchAction.update({
         where: { id: action.id },
@@ -193,18 +154,10 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
       const match = await this.refreshProjection(tx, action.matchId, actorId);
       if (match.reviewStatus === SportsReviewStatus.APPROVED) {
         structuralInvalidations.push(
-          (await this.standings.reconcileAfterProjectionChange(
-            tx,
-            match.id,
-            actorId,
-          )) ?? [],
+          (await this.standings.reconcileAfterProjectionChange(tx, match.id, actorId)) ?? [],
         );
         structuralInvalidations.push(
-          (await this.advancement.reconcileAfterProjectionChange(
-            tx,
-            match.id,
-            actorId,
-          )) ?? [],
+          (await this.advancement.reconcileAfterProjectionChange(tx, match.id, actorId)) ?? [],
         );
       }
       await this.recordAudit(
@@ -221,17 +174,12 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
       return {
         action: reviewed,
         match,
-        structuralInvalidations: mergeSportsStructuralInvalidations(
-          ...structuralInvalidations,
-        ),
+        structuralInvalidations: mergeSportsStructuralInvalidations(...structuralInvalidations),
       };
     });
     await this.publishProjection(result.match);
-    await this.realtime.publishStructuralInvalidations(
-      result.structuralInvalidations,
-    );
+    await this.realtime.publishStructuralInvalidations(result.structuralInvalidations);
     await this.invalidateRoutes(result.match.id);
     return result.action;
   }
-
 }

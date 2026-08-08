@@ -109,7 +109,21 @@ export abstract class SportsWorkspaceSection {
   }
 
   protected sportEmoji(value: string): string {
-    return ({ SOCCER: '⚽', FUTSAL: '⚽', TENNIS: '🎾', BASKETBALL: '🏀', ESPORTS: '🎮', CHESS: '♟️', VOLLEYBALL: '🏐', SWIMMING: '🏊', TABLE_TENNIS: '🏓', HANDBALL: '🤾', OTHER: '🏅' }[value] ?? '🏅');
+    return (
+      {
+        SOCCER: '⚽',
+        FUTSAL: '⚽',
+        TENNIS: '🎾',
+        BASKETBALL: '🏀',
+        ESPORTS: '🎮',
+        CHESS: '♟️',
+        VOLLEYBALL: '🏐',
+        SWIMMING: '🏊',
+        TABLE_TENNIS: '🏓',
+        HANDBALL: '🤾',
+        OTHER: '🏅',
+      }[value] ?? '🏅'
+    );
   }
 
   protected updateNewCategoryEmoji(sport: string): void {
@@ -131,7 +145,7 @@ export abstract class SportsWorkspaceSection {
   }
 
   protected lineupRoleLabel(role: string): string {
-    return ({ PLAYER: 'Atleta', CAPTAIN: 'Capitão', COACH: 'Técnico', STAFF: 'Apoio' }[role] ?? 'Integrante');
+    return { PLAYER: 'Atleta', CAPTAIN: 'Capitão', COACH: 'Técnico', STAFF: 'Apoio' }[role] ?? 'Integrante';
   }
 
   protected selectCategoryById(categoryId: string): void {
@@ -145,19 +159,49 @@ export abstract class SportsWorkspaceSection {
   }
 
   protected officialRoleLabel(role: string): string {
-    return ({ REFEREE: 'Árbitro', INTERMEDIATOR: 'Intermediador', SCOREKEEPER: 'Mesário' }[role] ?? 'Função esportiva');
+    return { REFEREE: 'Árbitro', INTERMEDIATOR: 'Intermediador', SCOREKEEPER: 'Mesário' }[role] ?? 'Função esportiva';
   }
 
   protected changeTypeLabel(type: string): string {
-    return ({ TEAM_DETAILS: 'Dados da equipe', MEMBER_ADD: 'Inclusão de integrante', MEMBER_UPDATE: 'Alteração de integrante', MEMBER_REMOVE: 'Remoção de integrante', LOGO: 'Escudo da equipe', REPRESENTATIVE: 'Representante', CATEGORY_ROLE: 'Função na modalidade', LINEUP: 'Escalação' }[type] ?? 'Alteração da equipe');
+    return (
+      {
+        TEAM_DETAILS: 'Dados da equipe',
+        MEMBER_ADD: 'Inclusão de integrante',
+        MEMBER_UPDATE: 'Alteração de integrante',
+        MEMBER_REMOVE: 'Remoção de integrante',
+        LOGO: 'Escudo da equipe',
+        REPRESENTATIVE: 'Representante',
+        CATEGORY_ROLE: 'Função na modalidade',
+        LINEUP: 'Escalação',
+      }[type] ?? 'Alteração da equipe'
+    );
   }
 
   protected actionTypeLabel(type: string): string {
-    return ({ CHECK_IN: 'Credenciamento', START: 'Início da partida', PAUSE: 'Pausa', RESUME: 'Retomada', SCORE_DELTA: 'Alteração de placar', SCORE_CORRECTION: 'Correção de placar', PERIOD_ROLL: 'Troca de período', FINALIZE: 'Finalização', CANCEL: 'Cancelamento para reagendamento', RESCHEDULE: 'Reagendamento', FORFEIT: 'Desistência', RESET: 'Reinício administrativo' }[type] ?? 'Ação da partida');
+    return (
+      {
+        CHECK_IN: 'Credenciamento',
+        START: 'Início da partida',
+        PAUSE: 'Pausa',
+        RESUME: 'Retomada',
+        SCORE_DELTA: 'Alteração de placar',
+        SCORE_CORRECTION: 'Correção de placar',
+        PERIOD_ROLL: 'Troca de período',
+        FINALIZE: 'Finalização',
+        CANCEL: 'Cancelamento para reagendamento',
+        RESCHEDULE: 'Reagendamento',
+        FORFEIT: 'Desistência',
+        RESET: 'Reinício administrativo',
+      }[type] ?? 'Ação da partida'
+    );
   }
 
   protected scoreSourceLabel(source: string): string {
-    return ({ PLACEMENT: 'Colocação', MATCH: 'Resultado de partida', MANUAL: 'Ajuste manual', PENALTY: 'Penalidade' }[source] ?? 'Outra origem');
+    return (
+      { PLACEMENT: 'Colocação', MATCH: 'Resultado de partida', MANUAL: 'Ajuste manual', PENALTY: 'Penalidade' }[
+        source
+      ] ?? 'Outra origem'
+    );
   }
 
   protected uploadTeamLogo(event: Event): void {

@@ -1,10 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { liveQuery } from 'dexie';
 import { Observable, from, of } from 'rxjs';
-import {
-  OfflineOralAttendanceDecision,
-  OfflineOralAttendancePerson,
-} from './offline-public-data-schema';
+import { OfflineOralAttendanceDecision, OfflineOralAttendancePerson } from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 
 const SYNCED_DECISION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -24,9 +21,7 @@ export class OralAttendanceOfflineService {
   }
 
   async getRoster(userId: string, eventId: string): Promise<OfflineOralAttendancePerson[]> {
-    return (
-      (await this.databaseProvider.getDatabase()?.oralAttendanceRosters.get(`${userId}:${eventId}`))?.people ?? []
-    );
+    return (await this.databaseProvider.getDatabase()?.oralAttendanceRosters.get(`${userId}:${eventId}`))?.people ?? [];
   }
 
   async enqueue(
@@ -106,15 +101,10 @@ export class OralAttendanceOfflineService {
     const syncedAt = Date.now();
     await database.transaction('rw', database.oralAttendanceDecisions, async () => {
       await Promise.all(
-        clientIds.map((clientId) =>
-          database.oralAttendanceDecisions.update(clientId, { syncedAt, lastError: null }),
-        ),
+        clientIds.map((clientId) => database.oralAttendanceDecisions.update(clientId, { syncedAt, lastError: null })),
       );
       const expiredIds = await database.oralAttendanceDecisions
-        .filter(
-          (item) =>
-            item.syncedAt != null && item.syncedAt < syncedAt - SYNCED_DECISION_RETENTION_MS,
-        )
+        .filter((item) => item.syncedAt != null && item.syncedAt < syncedAt - SYNCED_DECISION_RETENTION_MS)
         .primaryKeys();
       if (expiredIds.length) {
         await database.oralAttendanceDecisions.bulkDelete(expiredIds);

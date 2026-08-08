@@ -96,10 +96,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
         return attendance;
       });
     } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        (error.code === 'P2002' || error.code === 'P2025')
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2002' || error.code === 'P2025')) {
         throw new ConflictException('Presença já registrada para este evento.');
       }
 

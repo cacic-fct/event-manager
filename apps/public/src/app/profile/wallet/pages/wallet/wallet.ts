@@ -286,7 +286,11 @@ export class Wallet {
   }
 
   private get prefersReducedMotion(): boolean {
-    return this.isBrowser && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return (
+      this.isBrowser &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
   }
 
   public availableOffline(): void {

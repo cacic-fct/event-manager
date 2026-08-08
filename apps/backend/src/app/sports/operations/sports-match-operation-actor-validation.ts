@@ -1,6 +1,4 @@
-import {
-  BadRequestException
-} from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import {
   Prisma,
   SportsMatchAction,
@@ -8,7 +6,7 @@ import {
   SportsMatchState,
   SportsReviewStatus,
   SportsRosterEntryStatus,
-  SportsRosterStatus
+  SportsRosterStatus,
 } from '@prisma/client';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -60,10 +58,7 @@ import { SportsMatchOperationSupport } from './sports-match-operation-support';
 export abstract class SportsMatchOperationActorValidation extends SportsMatchOperationSupport {
   protected async validateScorer(
     tx: Prisma.TransactionClient,
-    match: Pick<
-      MatchProjectionContext,
-      'id' | 'homeRegistrationId' | 'awayRegistrationId'
-    >,
+    match: Pick<MatchProjectionContext, 'id' | 'homeRegistrationId' | 'awayRegistrationId'>,
     rosterEntryId: string,
     payloadValue: Prisma.InputJsonValue,
   ): Promise<void> {
@@ -98,23 +93,11 @@ export abstract class SportsMatchOperationActorValidation extends SportsMatchOpe
     match: MatchProjectionContext,
     payload: Record<string, unknown>,
   ): Promise<void> {
-    const registrationId =
-      typeof payload['registrationId'] === 'string'
-        ? payload['registrationId'].trim()
-        : null;
-    if (
-      registrationId &&
-      registrationId !== match.homeRegistrationId &&
-      registrationId !== match.awayRegistrationId
-    ) {
-      throw new BadRequestException(
-        'A equipe da ocorrência não participa desta partida.',
-      );
+    const registrationId = typeof payload['registrationId'] === 'string' ? payload['registrationId'].trim() : null;
+    if (registrationId && registrationId !== match.homeRegistrationId && registrationId !== match.awayRegistrationId) {
+      throw new BadRequestException('A equipe da ocorrência não participa desta partida.');
     }
-    const rosterEntryId =
-      typeof payload['rosterEntryId'] === 'string'
-        ? payload['rosterEntryId'].trim()
-        : null;
+    const rosterEntryId = typeof payload['rosterEntryId'] === 'string' ? payload['rosterEntryId'].trim() : null;
     if (!rosterEntryId) {
       return;
     }
@@ -130,20 +113,12 @@ export abstract class SportsMatchOperationActorValidation extends SportsMatchOpe
       select: { id: true },
     });
     if (!entry) {
-      throw new BadRequestException(
-        'A pessoa da ocorrência não pertence à escalação da partida.',
-      );
+      throw new BadRequestException('A pessoa da ocorrência não pertence à escalação da partida.');
     }
   }
 
-  protected assertActorMaySubmit(
-    type: SportsMatchActionType,
-    actorKind: SportsMatchActorKind,
-  ): void {
-    if (
-      actorKind === 'LINEUP_MANAGER' &&
-      type !== SportsMatchActionType.FORFEIT
-    ) {
+  protected assertActorMaySubmit(type: SportsMatchActionType, actorKind: SportsMatchActorKind): void {
+    if (actorKind === 'LINEUP_MANAGER' && type !== SportsMatchActionType.FORFEIT) {
       throw new BadRequestException('Capitães e técnicos somente podem desistir antes da partida.');
     }
   }
@@ -154,16 +129,10 @@ export abstract class SportsMatchOperationActorValidation extends SportsMatchOpe
     if (actions.some((action) => action.reviewStatus === SportsReviewStatus.PENDING)) {
       return SportsReviewStatus.PENDING;
     }
-    if (
-      actions.some(
-        (action) => action.reviewStatus === SportsReviewStatus.CHANGES_REQUESTED,
-      )
-    ) {
+    if (actions.some((action) => action.reviewStatus === SportsReviewStatus.CHANGES_REQUESTED)) {
       return SportsReviewStatus.CHANGES_REQUESTED;
     }
-    const visible = actions.filter(
-      (action) => action.reviewStatus !== SportsReviewStatus.REJECTED,
-    );
+    const visible = actions.filter((action) => action.reviewStatus !== SportsReviewStatus.REJECTED);
     if (visible.length === 0) {
       return SportsReviewStatus.NOT_REQUIRED;
     }
@@ -181,15 +150,8 @@ export abstract class SportsMatchOperationActorValidation extends SportsMatchOpe
       !Number.isFinite(endDate.getTime()) ||
       endDate.getTime() <= startDate.getTime()
     ) {
-      throw new BadRequestException(
-        'Informe início e fim válidos para reagendar a partida.',
-      );
+      throw new BadRequestException('Informe início e fim válidos para reagendar a partida.');
     }
     return { startDate, endDate };
   }
-
 }
-
-
-
-

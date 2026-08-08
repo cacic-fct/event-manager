@@ -11,12 +11,7 @@ export const SPORTS_MATCH_STATES = [
 
 export type SportsMatchState = (typeof SPORTS_MATCH_STATES)[number];
 export type SportsMatchTransitionActor = 'OFFICIAL' | 'ADMIN' | 'SYSTEM';
-export type SportsReviewStatus =
-  | 'NOT_REQUIRED'
-  | 'PENDING'
-  | 'APPROVED'
-  | 'CHANGES_REQUESTED'
-  | 'REJECTED';
+export type SportsReviewStatus = 'NOT_REQUIRED' | 'PENDING' | 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED';
 
 export interface SportsMatchTransitionRequest {
   readonly from: SportsMatchState;
@@ -68,13 +63,9 @@ export function canTransitionSportsMatchState(request: SportsMatchTransitionRequ
   return transitions[request.from].has(request.to);
 }
 
-export function planSportsMatchStateTransition(
-  request: SportsMatchTransitionRequest,
-): SportsMatchTransitionPlan {
+export function planSportsMatchStateTransition(request: SportsMatchTransitionRequest): SportsMatchTransitionPlan {
   if (!canTransitionSportsMatchState(request)) {
-    throw new Error(
-      `${request.actor} cannot transition a sports match from ${request.from} to ${request.to}.`,
-    );
+    throw new Error(`${request.actor} cannot transition a sports match from ${request.from} to ${request.to}.`);
   }
 
   const requiresAdminReview =

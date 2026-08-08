@@ -81,12 +81,35 @@ h3 {
   margin-right: 6px;
   width: 8px;
 }
-.public-clock { display: inline-flex; align-items: center; align-self: center; gap: .55rem; margin: .5rem auto 0; color: var(--mat-sys-on-surface); }
-.public-clock span { display: grid; text-align: start; }
-.public-clock small { color: var(--mat-sys-on-surface-variant); }
-.public-clock strong, .period-clock { font-variant-numeric: tabular-nums; }
-.period-clock { display: inline-flex; align-items: center; gap: .25rem; }
-.period-clock mat-icon { width: 16px; height: 16px; font-size: 16px; }
+.public-clock {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  gap: 0.55rem;
+  margin: 0.5rem auto 0;
+  color: var(--mat-sys-on-surface);
+}
+.public-clock span {
+  display: grid;
+  text-align: start;
+}
+.public-clock small {
+  color: var(--mat-sys-on-surface-variant);
+}
+.public-clock strong,
+.period-clock {
+  font-variant-numeric: tabular-nums;
+}
+.period-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.period-clock mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
 
 .scoreboard {
   align-items: center;
@@ -326,7 +349,7 @@ dd {
     opacity: 1;
   }
   50% {
-    opacity: .28;
+    opacity: 0.28;
   }
 }
 

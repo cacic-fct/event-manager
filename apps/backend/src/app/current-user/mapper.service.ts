@@ -24,10 +24,7 @@ import {
 } from './selects';
 import { PublicEvent, PublicEventGroup, PublicMajorEvent, mapPublicPaymentInfo } from '../public-events/models';
 
-type MappablePublicMajorEventRecord = Omit<
-  PublicMajorEventRecord,
-  'sportsTournament'
-> & {
+type MappablePublicMajorEventRecord = Omit<PublicMajorEventRecord, 'sportsTournament'> & {
   sportsTournament?: {
     id: string;
     deletedAt?: Date | null;
@@ -37,9 +34,7 @@ type MappablePublicMajorEventRecord = Omit<
 
 @Injectable()
 export class CurrentUserEventMapperService {
-  mapPublicMajorEvent(
-    majorEvent: MappablePublicMajorEventRecord,
-  ): PublicMajorEvent {
+  mapPublicMajorEvent(majorEvent: MappablePublicMajorEventRecord): PublicMajorEvent {
     const paymentInfo =
       'paymentInfo' in majorEvent && majorEvent.paymentInfo
         ? mapPublicPaymentInfo(majorEvent.paymentInfo as Parameters<typeof mapPublicPaymentInfo>[0])
@@ -113,8 +108,7 @@ export class CurrentUserEventMapperService {
       majorEvent: event.majorEvent ? this.mapPublicMajorEvent(event.majorEvent as PublicMajorEventRecord) : undefined,
       eventGroupId: event.eventGroupId ?? undefined,
       eventGroup: event.eventGroup ? this.mapPublicEventGroup(event.eventGroup) : undefined,
-      sportsMatch:
-        'sportsMatch' in event ? event.sportsMatch ?? undefined : undefined,
+      sportsMatch: 'sportsMatch' in event ? (event.sportsMatch ?? undefined) : undefined,
       allowSubscription: event.allowSubscription,
       subscriptionStartDate: event.subscriptionStartDate ?? undefined,
       subscriptionEndDate: event.subscriptionEndDate ?? undefined,

@@ -22,16 +22,16 @@
           autocomplete="off"
           placeholder="Buscar eventos"
           aria-label="Buscar eventos" />
-      @if (filterModel().query) {
-      <button
-        matIconButton
-        matSuffix
-        type="button"
-        (click)="filterForm.query().value.set('')"
-        aria-label="Limpar busca">
-        <mat-icon>close</mat-icon>
-      </button>
-      }
+        @if (filterModel().query) {
+        <button
+          matIconButton
+          matSuffix
+          type="button"
+          (click)="filterForm.query().value.set('')"
+          aria-label="Limpar busca">
+          <mat-icon>close</mat-icon>
+        </button>
+        }
       </mat-form-field>
 
       <button mat-icon-button type="button" class="search-button" (click)="searchNow()" aria-label="Buscar eventos">

@@ -1,8 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  ConflictException,
-  NotFoundException
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -12,13 +9,10 @@ import {
   SportsScoringMode,
   SportsTeamMemberStatus,
   SportsTeamStatus,
-  SportsTournamentStatus
+  SportsTournamentStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import {
-  CreateSportsTournamentInput,
-  UpdateSportsTournamentInput
-} from '../sports-admin.types';
+import { CreateSportsTournamentInput, UpdateSportsTournamentInput } from '../sports-admin.types';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
@@ -57,10 +51,8 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
               deletedAt: null,
               status: input.status ?? SportsTournamentStatus.DRAFT,
               selfSubscriptionEnabled: input.selfSubscriptionEnabled ?? false,
-              selfSubscriptionAllowNoTeam:
-                input.selfSubscriptionAllowNoTeam ?? false,
-              selfSubscriptionAllowNoCategory:
-                input.selfSubscriptionAllowNoCategory ?? false,
+              selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam ?? false,
+              selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory ?? false,
               allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? false,
               scoringMode: input.scoringMode ?? SportsScoringMode.PER_SPORT,
               revision: { increment: 1 },
@@ -72,10 +64,8 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
               majorEventId: majorEvent.id,
               status: input.status ?? SportsTournamentStatus.DRAFT,
               selfSubscriptionEnabled: input.selfSubscriptionEnabled ?? false,
-              selfSubscriptionAllowNoTeam:
-                input.selfSubscriptionAllowNoTeam ?? false,
-              selfSubscriptionAllowNoCategory:
-                input.selfSubscriptionAllowNoCategory ?? false,
+              selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam ?? false,
+              selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory ?? false,
               allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? false,
               scoringMode: input.scoringMode ?? SportsScoringMode.PER_SPORT,
               createdById: actorId,
@@ -102,11 +92,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
   async createTournament(input: CreateSportsTournamentInput, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     this.assertDateRange(input.startDate, input.endDate, 'torneio');
-    this.assertOptionalDateRange(
-      input.registrationStartDate,
-      input.registrationEndDate,
-      'inscrições do torneio',
-    );
+    this.assertOptionalDateRange(input.registrationStartDate, input.registrationEndDate, 'inscrições do torneio');
     const name = this.requireText(input.name, 'nome do torneio', 2, 160);
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
@@ -129,10 +115,8 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
           majorEventId: majorEvent.id,
           status: SportsTournamentStatus.DRAFT,
           selfSubscriptionEnabled: input.selfSubscriptionEnabled ?? false,
-          selfSubscriptionAllowNoTeam:
-            input.selfSubscriptionAllowNoTeam ?? false,
-          selfSubscriptionAllowNoCategory:
-            input.selfSubscriptionAllowNoCategory ?? false,
+          selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam ?? false,
+          selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory ?? false,
           allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? false,
           scoringMode: input.scoringMode ?? SportsScoringMode.PER_SPORT,
           createdById: actorId,
@@ -157,11 +141,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
     });
   }
 
-  async updateTournament(
-    tournamentId: string,
-    input: UpdateSportsTournamentInput,
-    actor: AuthenticatedUser,
-  ) {
+  async updateTournament(tournamentId: string, input: UpdateSportsTournamentInput, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     const existing = await this.prisma.sportsTournament.findFirst({
       where: { id: tournamentId, deletedAt: null },
@@ -196,14 +176,12 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
             : {}),
           ...(input.selfSubscriptionAllowNoTeam !== undefined
             ? {
-                selfSubscriptionAllowNoTeam:
-                  input.selfSubscriptionAllowNoTeam,
+                selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam,
               }
             : {}),
           ...(input.selfSubscriptionAllowNoCategory !== undefined
             ? {
-                selfSubscriptionAllowNoCategory:
-                  input.selfSubscriptionAllowNoCategory,
+                selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory,
               }
             : {}),
           ...(input.allowPlayerMultipleTeams !== undefined
@@ -213,10 +191,10 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
           ...(input.finishedAt !== undefined
             ? { finishedAt: input.finishedAt }
             : input.status === SportsTournamentStatus.FINISHED
-            ? { finishedAt: new Date() }
-            : input.status !== undefined
-              ? { finishedAt: null }
-              : {}),
+              ? { finishedAt: new Date() }
+              : input.status !== undefined
+                ? { finishedAt: null }
+                : {}),
           revision: { increment: 1 },
           updatedById: actorId,
         },
@@ -246,12 +224,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
     });
   }
 
-
-  async deleteTournament(
-    tournamentId: string,
-    expectedRevision: number,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  async deleteTournament(tournamentId: string, expectedRevision: number, actor: AuthenticatedUser): Promise<void> {
     const actorId = this.requireActorId(actor);
     const tournament = await this.prisma.sportsTournament.findFirst({
       where: { id: tournamentId, deletedAt: null },
@@ -425,5 +398,4 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
       );
     });
   }
-
 }

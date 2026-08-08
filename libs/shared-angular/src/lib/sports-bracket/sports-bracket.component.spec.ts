@@ -1,8 +1,5 @@
 import { SPORTS_BRACKET_FIXTURES } from './sports-bracket.fixtures';
-import {
-  sportsBracketFormatLabel,
-  sportsBracketMatchStateLabel,
-} from './sports-bracket.models';
+import { sportsBracketFormatLabel, sportsBracketMatchStateLabel } from './sports-bracket.models';
 
 describe('sports bracket shared contract', () => {
   it('provides rich, deterministic examples for every supported format', () => {

@@ -7,17 +7,12 @@ import {
   SportsReviewStatus,
   SportsTournamentStatus,
 } from '@prisma/client';
-import {
-  SportsMatchCommandActor,
-  SportsMatchCommandInput,
-} from '../operations/sports-match-operation.service';
+import { SportsMatchCommandActor, SportsMatchCommandInput } from '../operations/sports-match-operation.service';
 import { SportsProjectionAction } from '../operations/sports-match-projector';
 
 export const SPORTS_TEST_NOW = new Date('2026-07-29T12:00:00.000Z');
 
-export function sportsProjectionAction(
-  overrides: Partial<SportsProjectionAction> = {},
-): SportsProjectionAction {
+export function sportsProjectionAction(overrides: Partial<SportsProjectionAction> = {}): SportsProjectionAction {
   return {
     type: SportsMatchActionType.START,
     payload: {},
@@ -27,9 +22,7 @@ export function sportsProjectionAction(
   };
 }
 
-export function sportsMatchCommand(
-  overrides: Partial<SportsMatchCommandInput> = {},
-): SportsMatchCommandInput {
+export function sportsMatchCommand(overrides: Partial<SportsMatchCommandInput> = {}): SportsMatchCommandInput {
   return {
     clientId: 'offline_action_0001',
     matchId: 'match-1',
@@ -42,9 +35,7 @@ export function sportsMatchCommand(
   };
 }
 
-export function sportsOfficialActor(
-  overrides: Partial<SportsMatchCommandActor> = {},
-): SportsMatchCommandActor {
+export function sportsOfficialActor(overrides: Partial<SportsMatchCommandActor> = {}): SportsMatchCommandActor {
   return {
     personId: 'official-person-1',
     userId: 'official-user-1',
@@ -59,9 +50,7 @@ export function sportsOfficialActor(
   };
 }
 
-export function sportsMatchRecord(
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+export function sportsMatchRecord(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     id: 'match-1',
     eventId: 'event-1',

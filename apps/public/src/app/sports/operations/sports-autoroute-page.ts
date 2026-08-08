@@ -24,19 +24,35 @@ import { SportsOperationsApiService } from './sports-operations-api.service';
     </main>
   `,
   styles: `
-    :host { display: block; min-height: 70dvh; }
+    :host {
+      display: block;
+      min-height: 70dvh;
+    }
     .route-state {
       min-height: 70dvh;
       padding: 2rem 1.25rem;
       display: grid;
       place-content: center;
       justify-items: center;
-      gap: .75rem;
+      gap: 0.75rem;
       text-align: center;
     }
-    h1 { margin: .5rem 0 0; font-size: clamp(1.5rem, 5vw, 2.25rem); letter-spacing: -.025em; }
-    p { max-width: 56ch; margin: 0 0 .5rem; color: var(--mat-sys-on-surface-variant); }
-    mat-icon { width: 3rem; height: 3rem; font-size: 3rem; color: var(--mat-sys-primary); }
+    h1 {
+      margin: 0.5rem 0 0;
+      font-size: clamp(1.5rem, 5vw, 2.25rem);
+      letter-spacing: -0.025em;
+    }
+    p {
+      max-width: 56ch;
+      margin: 0 0 0.5rem;
+      color: var(--mat-sys-on-surface-variant);
+    }
+    mat-icon {
+      width: 3rem;
+      height: 3rem;
+      font-size: 3rem;
+      color: var(--mat-sys-primary);
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -74,9 +90,7 @@ export class SportsAutoroutePage implements OnInit {
           return;
         }
         const destination =
-          route.mode === 'MATCH_DETAIL'
-            ? ['/sports/match', route.matchId]
-            : ['/sports/operate', route.matchId];
+          route.mode === 'MATCH_DETAIL' ? ['/sports/match', route.matchId] : ['/sports/operate', route.matchId];
         void this.router.navigate(destination, { queryParams: { mode: route.mode } });
       },
       error: (error: unknown) => {

@@ -1,15 +1,7 @@
-import {
-  Prisma,
-  SportsMatchActionType,
-  SportsMatchState,
-  SportsReviewStatus
-} from '@prisma/client';
+import { Prisma, SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import {
-  projectSportsMatch,
-  SportsProjectedOutcome,
-} from './sports-match-projector';
+import { projectSportsMatch, SportsProjectedOutcome } from './sports-match-projector';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
 
@@ -35,11 +27,7 @@ export interface SportsMatchCommandInput {
 import { SportsMatchOperationCommandValidation } from './sports-match-operation-command-validation';
 
 export abstract class SportsMatchOperationProjection extends SportsMatchOperationCommandValidation {
-  protected async refreshProjection(
-    tx: Prisma.TransactionClient,
-    matchId: string,
-    actorId: string | null,
-  ) {
+  protected async refreshProjection(tx: Prisma.TransactionClient, matchId: string, actorId: string | null) {
     const match = await tx.sportsMatch.findUniqueOrThrow({
       where: { id: matchId },
       include: {
@@ -99,8 +87,7 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
     const consolidatedOccurrences = match.actions
       .filter(
         (action) =>
-          action.type === SportsMatchActionType.OCCURRENCE &&
-          action.reviewStatus !== SportsReviewStatus.REJECTED,
+          action.type === SportsMatchActionType.OCCURRENCE && action.reviewStatus !== SportsReviewStatus.REJECTED,
       )
       .map((action) => ({
         id: action.id,
@@ -127,9 +114,7 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
         timerStartedAt: provisional.timerStartedAt,
         timerPausedAt: provisional.timerPausedAt,
         elapsedBeforePauseMs: provisional.elapsedBeforePauseMs,
-        ...(terminalStates.includes(provisional.state)
-          ? { occurrences: this.toJson(consolidatedOccurrences) }
-          : {}),
+        ...(terminalStates.includes(provisional.state) ? { occurrences: this.toJson(consolidatedOccurrences) } : {}),
         updatedById: actorId,
       },
       include: {
@@ -183,9 +168,7 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
           },
         },
         actions: {
-          ...(beforeSequence === undefined
-            ? {}
-            : { where: { sequence: { lt: beforeSequence } } }),
+          ...(beforeSequence === undefined ? {} : { where: { sequence: { lt: beforeSequence } } }),
           orderBy: { sequence: 'asc' },
         },
         rosters: {
@@ -209,9 +192,4 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
       timerRules: match.category.timerRules,
     });
   }
-
 }
-
-
-
-

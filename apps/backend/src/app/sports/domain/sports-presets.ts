@@ -326,9 +326,7 @@ const PRESET_CATALOG: Record<SportsPresetKey, SportsPresetDefinition> = {
   },
 };
 
-export function validateSportsPresetCatalog(
-  catalog: Readonly<Record<SportsPresetKey, SportsPresetDefinition>>,
-): void {
+export function validateSportsPresetCatalog(catalog: Readonly<Record<SportsPresetKey, SportsPresetDefinition>>): void {
   const formatKeys = new Set<string>(SPORTS_FORMAT_KEYS);
 
   for (const key of SPORTS_PRESET_KEYS) {
@@ -345,10 +343,7 @@ export function validateSportsPresetCatalog(
     validateOptionalLimit(preset.roster.maximumPlayers, `${key}.roster.maximumPlayers`);
     validateOptionalLimit(preset.roster.maximumCaptains, `${key}.roster.maximumCaptains`, true);
     validateOptionalLimit(preset.roster.maximumCoaches, `${key}.roster.maximumCoaches`, true);
-    if (
-      preset.roster.maximumPlayers !== null &&
-      preset.roster.maximumPlayers < preset.roster.minimumPlayers
-    ) {
+    if (preset.roster.maximumPlayers !== null && preset.roster.maximumPlayers < preset.roster.minimumPlayers) {
       throw new Error(`Sports preset ${key} has a maximum roster below its minimum.`);
     }
     if (!preset.periods.label.trim()) {

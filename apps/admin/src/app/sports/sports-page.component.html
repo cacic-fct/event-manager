@@ -135,11 +135,21 @@
     </nav>
 
     @switch (workspace.activeArea()) {
-      @case ('overview') { <app-sports-overview-section /> }
-      @case ('categories') { <app-sports-categories-section /> }
-      @case ('teams') { <app-sports-teams-section /> }
-      @case ('matches') { <app-sports-matches-section /> }
-      @case ('reviews') { <app-sports-reviews-section /> }
+      @case ('overview') {
+        <app-sports-overview-section />
+      }
+      @case ('categories') {
+        <app-sports-categories-section />
+      }
+      @case ('teams') {
+        <app-sports-teams-section />
+      }
+      @case ('matches') {
+        <app-sports-matches-section />
+      }
+      @case ('reviews') {
+        <app-sports-reviews-section />
+      }
     }
   }
 </section>

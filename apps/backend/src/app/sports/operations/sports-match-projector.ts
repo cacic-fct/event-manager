@@ -1,9 +1,4 @@
-import {
-  SportsLossReason,
-  SportsMatchActionType,
-  SportsMatchState,
-  SportsReviewStatus,
-} from '@prisma/client';
+import { SportsLossReason, SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import {
   applySportsScoreDelta,
   closeActiveSportsScorePeriod,
@@ -37,9 +32,7 @@ export function projectSportsMatch(
 ): SportsProjectedOutcome {
   const configuredTimers = timerRules(options.timerRules);
   let projection: SportsProjectedOutcome = {
-    state: options.hasCheckedInPlayers
-      ? SportsMatchState.CHECK_IN
-      : SportsMatchState.SCHEDULED,
+    state: options.hasCheckedInPlayers ? SportsMatchState.CHECK_IN : SportsMatchState.SCHEDULED,
     scoreboard: normalizeSportsScoreboard(undefined),
     winnerRegistrationId: null,
     loserRegistrationId: null,
@@ -90,10 +83,7 @@ function applyAction(
     case SportsMatchActionType.CHECK_IN:
       return {
         ...current,
-        state:
-          current.state === SportsMatchState.SCHEDULED
-            ? SportsMatchState.CHECK_IN
-            : current.state,
+        state: current.state === SportsMatchState.SCHEDULED ? SportsMatchState.CHECK_IN : current.state,
       };
     case SportsMatchActionType.START:
       assertState(current.state, [SportsMatchState.SCHEDULED, SportsMatchState.CHECK_IN]);
@@ -101,8 +91,7 @@ function applyAction(
         ...current,
         state: SportsMatchState.LIVE,
         scoreboard:
-          (options.periodsEnabled ?? options.maximumPeriods !== null) &&
-          current.scoreboard.periods.length === 0
+          (options.periodsEnabled ?? options.maximumPeriods !== null) && current.scoreboard.periods.length === 0
             ? rollSportsScorePeriod(current.scoreboard, {
                 maximumPeriods: options.maximumPeriods,
                 label: options.periodLabel ?? undefined,
@@ -113,8 +102,8 @@ function applyAction(
         periodTimers: !current.periodTimerEnabled
           ? []
           : current.periodTimers.length
-          ? current.periodTimers
-          : [startPeriodTimer(1, action.authoredAt, options.timerRules)],
+            ? current.periodTimers
+            : [startPeriodTimer(1, action.authoredAt, options.timerRules)],
       };
     case SportsMatchActionType.PAUSE:
       assertState(current.state, [SportsMatchState.LIVE]);
@@ -154,18 +143,14 @@ function applyAction(
       };
     case SportsMatchActionType.PERIOD_ROLL: {
       assertState(current.state, [SportsMatchState.LIVE, SportsMatchState.PAUSED]);
-      const nextPeriod =
-        (current.scoreboard.activePeriodNumber ?? current.scoreboard.periods.length) + 1;
+      const nextPeriod = (current.scoreboard.activePeriodNumber ?? current.scoreboard.periods.length) + 1;
       const closedTimers = pauseActivePeriod(current.periodTimers, action.authoredAt);
       const nextTimer = startPeriodTimer(nextPeriod, action.authoredAt, options.timerRules);
       return {
         ...current,
         scoreboard: rollSportsScorePeriod(current.scoreboard, {
           maximumPeriods: options.maximumPeriods,
-          label:
-            typeof payload['label'] === 'string'
-              ? payload['label']
-              : options.periodLabel ?? undefined,
+          label: typeof payload['label'] === 'string' ? payload['label'] : (options.periodLabel ?? undefined),
         }),
         // Competition clocks use their scheduled period baseline (for example
         // soccer's second half starts at 45:00 even when the first lasted 47:00).
@@ -189,9 +174,7 @@ function applyAction(
       ]);
       const draw = payload['draw'] === true;
       const scoreboard =
-        payload['scoreboard'] === undefined
-          ? current.scoreboard
-          : normalizeSportsScoreboard(payload['scoreboard']);
+        payload['scoreboard'] === undefined ? current.scoreboard : normalizeSportsScoreboard(payload['scoreboard']);
       const stopped = stopTimer(current, action.authoredAt);
       return {
         ...stopped,
@@ -240,10 +223,7 @@ function applyAction(
   }
 }
 
-function stopTimer(
-  current: SportsProjectedOutcome,
-  at: Date,
-): SportsProjectedOutcome {
+function stopTimer(current: SportsProjectedOutcome, at: Date): SportsProjectedOutcome {
   return {
     ...current,
     elapsedBeforePauseMs:
@@ -253,9 +233,7 @@ function stopTimer(
         : 0),
     timerStartedAt: null,
     timerPausedAt:
-      current.state === SportsMatchState.LIVE || current.state === SportsMatchState.PAUSED
-        ? at
-        : current.timerPausedAt,
+      current.state === SportsMatchState.LIVE || current.state === SportsMatchState.PAUSED ? at : current.timerPausedAt,
   };
 }
 
@@ -266,29 +244,19 @@ function timerRules(value: unknown): {
   periodStartOffsetsMs: number[];
   allowOvertime: boolean;
 } {
-  const record = value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+  const record = value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
   return {
     overallEnabled: record['overallEnabled'] !== false,
     periodEnabled: record['periodEnabled'] !== false,
-    periodDurationMs: Number.isSafeInteger(record['periodDurationMs'])
-      ? (record['periodDurationMs'] as number)
-      : null,
+    periodDurationMs: Number.isSafeInteger(record['periodDurationMs']) ? (record['periodDurationMs'] as number) : null,
     periodStartOffsetsMs: Array.isArray(record['periodStartOffsetsMs'])
-      ? record['periodStartOffsetsMs'].filter(
-          (entry): entry is number => Number.isSafeInteger(entry) && entry >= 0,
-        )
+      ? record['periodStartOffsetsMs'].filter((entry): entry is number => Number.isSafeInteger(entry) && entry >= 0)
       : [],
     allowOvertime: record['allowOvertime'] !== false,
   };
 }
 
-function startPeriodTimer(
-  periodNumber: number,
-  at: Date,
-  rawRules: unknown,
-): SportsProjectedPeriodTimer {
+function startPeriodTimer(periodNumber: number, at: Date, rawRules: unknown): SportsProjectedPeriodTimer {
   const rules = timerRules(rawRules);
   return {
     periodNumber,
@@ -296,38 +264,28 @@ function startPeriodTimer(
     pausedAtUnixMs: null,
     elapsedBeforePauseMs: 0,
     scheduledStartOffsetMs:
-      rules.periodStartOffsetsMs[periodNumber - 1] ??
-      (rules.periodDurationMs ?? 0) * (periodNumber - 1),
+      rules.periodStartOffsetsMs[periodNumber - 1] ?? (rules.periodDurationMs ?? 0) * (periodNumber - 1),
     capMs: rules.periodDurationMs,
     allowOvertime: rules.allowOvertime,
   };
 }
 
-function pauseActivePeriod(
-  timers: SportsProjectedPeriodTimer[],
-  at: Date,
-): SportsProjectedPeriodTimer[] {
+function pauseActivePeriod(timers: SportsProjectedPeriodTimer[], at: Date): SportsProjectedPeriodTimer[] {
   return timers.map((timer, index) =>
     index !== timers.length - 1 || timer.startedAtUnixMs === null
       ? timer
       : {
           ...timer,
-          elapsedBeforePauseMs:
-            timer.elapsedBeforePauseMs + Math.max(0, at.getTime() - timer.startedAtUnixMs),
+          elapsedBeforePauseMs: timer.elapsedBeforePauseMs + Math.max(0, at.getTime() - timer.startedAtUnixMs),
           startedAtUnixMs: null,
           pausedAtUnixMs: at.getTime(),
         },
   );
 }
 
-function resumeActivePeriod(
-  timers: SportsProjectedPeriodTimer[],
-  at: Date,
-): SportsProjectedPeriodTimer[] {
+function resumeActivePeriod(timers: SportsProjectedPeriodTimer[], at: Date): SportsProjectedPeriodTimer[] {
   return timers.map((timer, index) =>
-    index !== timers.length - 1
-      ? timer
-      : { ...timer, startedAtUnixMs: at.getTime(), pausedAtUnixMs: null },
+    index !== timers.length - 1 ? timer : { ...timer, startedAtUnixMs: at.getTime(), pausedAtUnixMs: null },
   );
 }
 
@@ -356,21 +314,14 @@ function applyTimerReconciliation(
       : requirePositiveInteger(payload['activePeriodNumber'], 'activePeriodNumber');
   return {
     ...current,
-    scoreboard: reconcileScoreboardActivePeriod(
-      current.scoreboard,
-      activePeriodNumber,
-      options,
-    ),
-    timerStartedAt: readUnixMs(overall['startedAtUnixMs']) === null
-      ? null
-      : new Date(readUnixMs(overall['startedAtUnixMs']) as number),
-    timerPausedAt: readUnixMs(overall['pausedAtUnixMs']) === null
-      ? null
-      : new Date(readUnixMs(overall['pausedAtUnixMs']) as number),
-    elapsedBeforePauseMs: requireNonNegativeInteger(
-      overall['elapsedBeforePauseMs'],
-      'elapsedBeforePauseMs',
-    ),
+    scoreboard: reconcileScoreboardActivePeriod(current.scoreboard, activePeriodNumber, options),
+    timerStartedAt:
+      readUnixMs(overall['startedAtUnixMs']) === null
+        ? null
+        : new Date(readUnixMs(overall['startedAtUnixMs']) as number),
+    timerPausedAt:
+      readUnixMs(overall['pausedAtUnixMs']) === null ? null : new Date(readUnixMs(overall['pausedAtUnixMs']) as number),
+    elapsedBeforePauseMs: requireNonNegativeInteger(overall['elapsedBeforePauseMs'], 'elapsedBeforePauseMs'),
     periodTimers: periods.map((entry, index) => {
       const timer = requireRecord(entry);
       return {
@@ -385,9 +336,7 @@ function applyTimerReconciliation(
           timer['scheduledStartOffsetMs'],
           `periods[${index}].scheduledStartOffsetMs`,
         ),
-        capMs: timer['capMs'] == null
-          ? null
-          : requireNonNegativeInteger(timer['capMs'], `periods[${index}].capMs`),
+        capMs: timer['capMs'] == null ? null : requireNonNegativeInteger(timer['capMs'], `periods[${index}].capMs`),
         allowOvertime: timer['allowOvertime'] !== false,
       };
     }),
@@ -403,19 +352,13 @@ function reconcileScoreboardActivePeriod(
   if (activePeriodNumber === null) {
     return closeActiveSportsScorePeriod(reconciled);
   }
-  let highestPeriod = reconciled.periods.reduce(
-    (highest, period) => Math.max(highest, period.number),
-    0,
-  );
+  let highestPeriod = reconciled.periods.reduce((highest, period) => Math.max(highest, period.number), 0);
   while (highestPeriod < activePeriodNumber) {
     reconciled = rollSportsScorePeriod(reconciled, {
       maximumPeriods: options.maximumPeriods,
       label: options.periodLabel ?? undefined,
     });
-    highestPeriod = reconciled.periods.reduce(
-      (highest, period) => Math.max(highest, period.number),
-      0,
-    );
+    highestPeriod = reconciled.periods.reduce((highest, period) => Math.max(highest, period.number), 0);
   }
   // Moving backward must preserve later period scores for audit/review. Only
   // the selected period is reopened; every other period remains present/closed.
@@ -484,10 +427,7 @@ function readOptionalString(value: unknown): string | null {
 }
 
 function readLossReason(value: unknown): SportsLossReason {
-  if (
-    typeof value !== 'string' ||
-    !Object.values(SportsLossReason).includes(value as SportsLossReason)
-  ) {
+  if (typeof value !== 'string' || !Object.values(SportsLossReason).includes(value as SportsLossReason)) {
     throw new TypeError('Loss reason is invalid.');
   }
   return value as SportsLossReason;

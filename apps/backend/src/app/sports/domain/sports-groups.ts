@@ -1,12 +1,5 @@
-import {
-  generateSingleEliminationBracket,
-  SportsBracketEntrant,
-  SportsBracketSide,
-} from './sports-brackets';
-import {
-  generateSportsRoundRobin,
-  SportsRoundRobinRoundPlan,
-} from './sports-round-robin';
+import { generateSingleEliminationBracket, SportsBracketEntrant, SportsBracketSide } from './sports-brackets';
+import { generateSportsRoundRobin, SportsRoundRobinRoundPlan } from './sports-round-robin';
 
 export interface SportsGroupEntrant {
   readonly registrationId: string;
@@ -80,9 +73,7 @@ export interface PlanSportsGroupEliminationInput {
   readonly qualifiersPerGroup: number;
 }
 
-export function allocateSportsGroups(
-  input: AllocateSportsGroupsInput,
-): readonly SportsGroupAllocation[] {
+export function allocateSportsGroups(input: AllocateSportsGroupsInput): readonly SportsGroupAllocation[] {
   validateGroupAllocationInput(input);
   const ordered = orderGroupEntrants(input.entrants);
   const groups: Array<{
@@ -108,9 +99,7 @@ export function allocateSportsGroups(
   return groups;
 }
 
-export function planSportsGroupStage(
-  input: PlanSportsGroupStageInput,
-): SportsGroupStagePlan {
+export function planSportsGroupStage(input: PlanSportsGroupStageInput): SportsGroupStagePlan {
   const groups = allocateSportsGroups(input);
   return {
     groups: groups.map((group) => ({
@@ -124,14 +113,10 @@ export function planSportsGroupStage(
   };
 }
 
-export function planSportsGroupElimination(
-  input: PlanSportsGroupEliminationInput,
-): SportsGroupEliminationPlan {
+export function planSportsGroupElimination(input: PlanSportsGroupEliminationInput): SportsGroupEliminationPlan {
   validateQualifierInput(input);
   const qualifiers = createQualifiers(input.groups, input.qualifiersPerGroup);
-  const qualifierByKey = new Map(
-    qualifiers.map((qualifier) => [qualifier.key, qualifier]),
-  );
+  const qualifierByKey = new Map(qualifiers.map((qualifier) => [qualifier.key, qualifier]));
   const bracket = generateSingleEliminationBracket({
     entrants: qualifiers.map(
       (qualifier): SportsBracketEntrant => ({
@@ -213,9 +198,7 @@ function mapQualifierSlot(
   };
 }
 
-function repairSameGroupFirstRound(
-  matches: SportsGroupEliminationMatch[],
-): void {
+function repairSameGroupFirstRound(matches: SportsGroupEliminationMatch[]): void {
   for (let matchIndex = 0; matchIndex < matches.length; matchIndex += 1) {
     const match = matches[matchIndex];
     if (!sameGroup(match.home, match.away)) {
@@ -227,9 +210,7 @@ function repairSameGroupFirstRound(
         continue;
       }
       const candidate = matches[candidateIndex];
-      if (
-        canSwapAwaySlots(match.home, match.away, candidate.home, candidate.away)
-      ) {
+      if (canSwapAwaySlots(match.home, match.away, candidate.home, candidate.away)) {
         const originalAway = match.away;
         replaceMatchAway(matches, matchIndex, candidate.away);
         replaceMatchAway(matches, candidateIndex, originalAway);
@@ -264,20 +245,11 @@ function replaceMatchAway(
   };
 }
 
-function sameGroup(
-  home: SportsGroupEliminationSlot,
-  away: SportsGroupEliminationSlot,
-): boolean {
-  return (
-    home.type === 'GROUP_POSITION' &&
-    away.type === 'GROUP_POSITION' &&
-    home.groupKey === away.groupKey
-  );
+function sameGroup(home: SportsGroupEliminationSlot, away: SportsGroupEliminationSlot): boolean {
+  return home.type === 'GROUP_POSITION' && away.type === 'GROUP_POSITION' && home.groupKey === away.groupKey;
 }
 
-function orderGroupEntrants(
-  entrants: readonly SportsGroupEntrant[],
-): SportsGroupEntrant[] {
+function orderGroupEntrants(entrants: readonly SportsGroupEntrant[]): SportsGroupEntrant[] {
   const positioned: Array<SportsGroupEntrant | undefined> = Array.from({
     length: entrants.length,
   });
@@ -314,9 +286,7 @@ function validateGroupAllocationInput(input: AllocateSportsGroupsInput): void {
       throw new Error('Group registration ids cannot be empty.');
     }
     if (ids.has(entrant.registrationId)) {
-      throw new Error(
-        `Registration ${entrant.registrationId} appears more than once in group allocation.`,
-      );
+      throw new Error(`Registration ${entrant.registrationId} appears more than once in group allocation.`);
     }
     ids.add(entrant.registrationId);
   }

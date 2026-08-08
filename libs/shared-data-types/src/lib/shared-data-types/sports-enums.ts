@@ -183,8 +183,7 @@ export const SportsIdentityClaimStatus = {
   AMBIGUOUS: 'AMBIGUOUS',
   REJECTED: 'REJECTED',
 } as const;
-export type SportsIdentityClaimStatus =
-  (typeof SportsIdentityClaimStatus)[keyof typeof SportsIdentityClaimStatus];
+export type SportsIdentityClaimStatus = (typeof SportsIdentityClaimStatus)[keyof typeof SportsIdentityClaimStatus];
 registerEnumType(SportsIdentityClaimStatus, { name: 'SportsIdentityClaimStatus' });
 
 export const SportsOfficialRole = {
@@ -242,8 +241,7 @@ export const SportsLivestreamProvider = {
   TWITCH: 'TWITCH',
   GENERAL: 'GENERAL',
 } as const;
-export type SportsLivestreamProvider =
-  (typeof SportsLivestreamProvider)[keyof typeof SportsLivestreamProvider];
+export type SportsLivestreamProvider = (typeof SportsLivestreamProvider)[keyof typeof SportsLivestreamProvider];
 registerEnumType(SportsLivestreamProvider, {
   name: 'SportsLivestreamProvider',
 });

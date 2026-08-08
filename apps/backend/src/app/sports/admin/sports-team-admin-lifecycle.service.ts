@@ -1,9 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -12,19 +8,14 @@ import {
   SportsParticipantSource,
   SportsRegistrationStatus,
   SportsTeamMemberStatus,
-  SportsTeamStatus
+  SportsTeamStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
-
 export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseService {
-  async createTeamMember(
-    teamId: string,
-    personId: string,
-    actor: AuthenticatedUser,
-  ) {
+  async createTeamMember(teamId: string, personId: string, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     const team = await this.prisma.sportsTeam.findFirst({
       where: { id: teamId, deletedAt: null },
@@ -132,11 +123,7 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
     if (!existing) {
       throw new NotFoundException(`Sports team member ${memberId} was not found.`);
     }
-    await this.frozen.assertMajorEventMutable(
-      existing.team.tournament.majorEventId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(existing.team.tournament.majorEventId, actor, 'edit');
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const updated = await tx.sportsTeamMember.updateMany({
         where: { id: memberId, revision: expectedRevision, deletedAt: null },
@@ -254,10 +241,7 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
     });
   }
 
-  async revokeRepresentative(
-    representativeId: string,
-    actor: AuthenticatedUser,
-  ) {
+  async revokeRepresentative(representativeId: string, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     const representative = await this.prisma.sportsTeamRepresentative.findUnique({
       where: { id: representativeId },
@@ -268,15 +252,9 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
       },
     });
     if (!representative) {
-      throw new NotFoundException(
-        `Sports representative ${representativeId} was not found.`,
-      );
+      throw new NotFoundException(`Sports representative ${representativeId} was not found.`);
     }
-    await this.frozen.assertMajorEventMutable(
-      representative.team.tournament.majorEventId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(representative.team.tournament.majorEventId, actor, 'edit');
     if (!representative.active) {
       return representative;
     }
@@ -290,9 +268,7 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
         },
       });
       if (changed.count !== 1) {
-        throw new ConflictException(
-          'A atribuição de representante mudou. Recarregue e tente novamente.',
-        );
+        throw new ConflictException('A atribuição de representante mudou. Recarregue e tente novamente.');
       }
       const result = await tx.sportsTeamRepresentative.findUniqueOrThrow({
         where: { id: representative.id },
@@ -327,12 +303,7 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
     });
   }
 
-
-  async deleteTeam(
-    teamId: string,
-    expectedRevision: number,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  async deleteTeam(teamId: string, expectedRevision: number, actor: AuthenticatedUser): Promise<void> {
     const actorId = this.requireActorId(actor);
     const team = await this.prisma.sportsTeam.findFirst({
       where: { id: teamId, deletedAt: null },
@@ -348,16 +319,9 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
         where: {
           deletedAt: null,
           state: {
-            notIn: [
-              SportsMatchState.FINISHED,
-              SportsMatchState.DRAW,
-              SportsMatchState.CANCELED,
-            ],
+            notIn: [SportsMatchState.FINISHED, SportsMatchState.DRAW, SportsMatchState.CANCELED],
           },
-          OR: [
-            { homeRegistration: { teamId, deletedAt: null } },
-            { awayRegistration: { teamId, deletedAt: null } },
-          ],
+          OR: [{ homeRegistration: { teamId, deletedAt: null } }, { awayRegistration: { teamId, deletedAt: null } }],
         },
         select: { id: true },
       });
@@ -440,6 +404,4 @@ export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseSer
       );
     });
   }
-
 }
-

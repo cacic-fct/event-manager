@@ -1,8 +1,4 @@
-import {
-  PublicationState,
-  SportsCategoryStatus,
-  SportsTournamentStatus,
-} from '@prisma/client';
+import { PublicationState, SportsCategoryStatus, SportsTournamentStatus } from '@prisma/client';
 import { isSportsMatchPublic } from './sports-public-visibility';
 
 describe('sports public visibility', () => {

@@ -1,10 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
-import {
-  AttendanceOfflineQueueService,
-  OralAttendanceOfflineService,
-} from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService, OralAttendanceOfflineService } from '@cacic-fct/offline-public-data-access';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { of, throwError } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';

@@ -1,9 +1,5 @@
 import { createHash } from 'node:crypto';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
   AttendanceCreationMethod,
   AuditLogEntityType,
@@ -58,9 +54,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
   ) {
     const clientId = clientIdValue.trim();
     if (!clientId || clientId.length > 200) {
-      throw new BadRequestException(
-        'Informe um identificador offline válido para o check-in.',
-      );
+      throw new BadRequestException('Informe um identificador offline válido para o check-in.');
     }
     const requestedCheckedInAt = checkedInAt?.toISOString() ?? null;
     const payloadHash = createHash('sha256')
@@ -85,9 +79,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
           existingAction.payloadHash !== payloadHash ||
           existingAction.actorPersonId !== officialPersonId)
       ) {
-        throw new ConflictException(
-          'O identificador offline já foi usado por um check-in diferente.',
-        );
+        throw new ConflictException('O identificador offline já foi usado por um check-in diferente.');
       }
       const entry = await tx.sportsMatchRosterEntry.findFirst({
         where: {
@@ -105,10 +97,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             registration: {
               deletedAt: null,
               status: {
-                in: [
-                  SportsRegistrationStatus.APPROVED,
-                  SportsRegistrationStatus.ACTIVE,
-                ],
+                in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
               },
             },
             teamMember: {
@@ -162,9 +151,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             SportsMatchState.LIVE,
             SportsMatchState.PAUSED,
           ] as SportsMatchState[]
-        ).includes(
-          entry.roster.match.state,
-        )
+        ).includes(entry.roster.match.state)
       ) {
         throw new ConflictException('O check-in desta partida foi encerrado.');
       }
@@ -179,9 +166,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
           (present && (!replayedAttendance || !entry.checkedInAt)) ||
           (!present && (replayedAttendance || entry.checkedInAt))
         ) {
-          throw new ConflictException(
-            'O check-in offline foi registrado parcialmente. Recarregue a partida.',
-          );
+          throw new ConflictException('O check-in offline foi registrado parcialmente. Recarregue a partida.');
         }
         return {
           attendance: replayedAttendance,
@@ -265,9 +250,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         },
       });
       if (updatedMatch.count !== 1) {
-        throw new ConflictException(
-          'A partida mudou durante o check-in. Tente enviar novamente.',
-        );
+        throw new ConflictException('A partida mudou durante o check-in. Tente enviar novamente.');
       }
       await this.auditLog.record(
         {
@@ -386,21 +369,30 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         update: { attendedAt: at, status: EventAttendanceStatus.PRESENT, committedById: officialPersonId },
       });
       await this.attendanceCategories.refreshForAttendance(person.id, context.eventId, tx);
-      await this.auditLog.record({
-        entityType: AuditLogEntityType.SPORTS_MATCH_ROSTER,
-        entityId: matchId,
-        entityLabel: `Scanner da partida ${matchId}`,
-        operation: AuditLogOperation.SCAN,
-        actor,
-        after: { personId: person.id, attendanceKey: `${person.id}:${context.eventId}`, rosterAthlete: false, clientId, offline },
-        summary: 'Presença de pessoa fora da escalação registrada para auditoria.',
-        scope: {
-          majorEventId: context.category.tournament.majorEventId,
-          eventGroupId: context.category.eventGroupId,
-          eventId: context.eventId,
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.SPORTS_MATCH_ROSTER,
+          entityId: matchId,
+          entityLabel: `Scanner da partida ${matchId}`,
+          operation: AuditLogOperation.SCAN,
+          actor,
+          after: {
+            personId: person.id,
+            attendanceKey: `${person.id}:${context.eventId}`,
+            rosterAthlete: false,
+            clientId,
+            offline,
+          },
+          summary: 'Presença de pessoa fora da escalação registrada para auditoria.',
+          scope: {
+            majorEventId: context.category.tournament.majorEventId,
+            eventGroupId: context.category.eventGroupId,
+            eventId: context.eventId,
+          },
+          force: true,
         },
-        force: true,
-      }, tx);
+        tx,
+      );
       return stored;
     });
     // The match feed is replayable. Consumers reload the roster; because this
@@ -413,5 +405,3 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
     return attendance;
   }
 }
-
-

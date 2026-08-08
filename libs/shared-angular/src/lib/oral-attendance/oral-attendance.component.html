@@ -130,7 +130,9 @@
             [attr.aria-pressed]="decisions().get(person.personId) === 'ABSENT'"
             [class.selected]="decisions().get(person.personId) === 'ABSENT'"
             (click)="decide(person, 'ABSENT')">
-            <mat-icon>{{ decisions().get(person.personId) === 'ABSENT' ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+            <mat-icon>{{
+              decisions().get(person.personId) === 'ABSENT' ? 'check_box' : 'check_box_outline_blank'
+            }}</mat-icon>
           </button>
           <div>
             <strong>{{ person.fullName }}</strong>
@@ -145,7 +147,9 @@
             [attr.aria-pressed]="decisions().get(person.personId) === 'PRESENT'"
             [class.selected]="decisions().get(person.personId) === 'PRESENT'"
             (click)="decide(person, 'PRESENT')">
-            <mat-icon>{{ decisions().get(person.personId) === 'PRESENT' ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+            <mat-icon>{{
+              decisions().get(person.personId) === 'PRESENT' ? 'check_box' : 'check_box_outline_blank'
+            }}</mat-icon>
           </button>
         </article>
       }

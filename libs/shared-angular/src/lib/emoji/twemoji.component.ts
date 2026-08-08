@@ -41,8 +41,6 @@ export class TwemojiComponent {
 
   private readonly emojiService = inject(EmojiService);
 
-  protected readonly emojiUrl = computed(() =>
-    this.emojiService.getTwemojiUrl(this.emoji()),
-  );
+  protected readonly emojiUrl = computed(() => this.emojiService.getTwemojiUrl(this.emoji()));
   protected readonly emojiAlt = computed(() => this.emoji()?.trim() || 'emoji');
 }

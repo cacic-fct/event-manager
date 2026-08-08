@@ -90,19 +90,13 @@ export abstract class SportsAdminSupport {
     return normalized;
   }
 
-  protected optionalText(
-    value: string | null | undefined,
-    label: string,
-    maximum: number,
-  ): string | null {
+  protected optionalText(value: string | null | undefined, label: string, maximum: number): string | null {
     const normalized = value?.trim() ?? '';
     if (!normalized) {
       return null;
     }
     if (normalized.length > maximum) {
-      throw new BadRequestException(
-        `${label} deve ter no máximo ${maximum} caracteres.`,
-      );
+      throw new BadRequestException(`${label} deve ter no máximo ${maximum} caracteres.`);
     }
     return normalized;
   }
@@ -114,9 +108,7 @@ export abstract class SportsAdminSupport {
     const normalized = value?.trim() ?? '';
     if (!normalized) {
       if (provider) {
-        throw new BadRequestException(
-          'Informe a URL da transmissão ao selecionar um provedor.',
-        );
+        throw new BadRequestException('Informe a URL da transmissão ao selecionar um provedor.');
       }
       return null;
     }
@@ -127,9 +119,7 @@ export abstract class SportsAdminSupport {
       throw new BadRequestException('Informe uma URL de transmissão válida.');
     }
     if (url.protocol !== 'https:') {
-      throw new BadRequestException(
-        'A transmissão deve utilizar uma URL HTTPS.',
-      );
+      throw new BadRequestException('A transmissão deve utilizar uma URL HTTPS.');
     }
     const hostname = url.hostname.toLocaleLowerCase('en-US');
     if (
@@ -140,11 +130,7 @@ export abstract class SportsAdminSupport {
     ) {
       throw new BadRequestException('Informe uma URL válida do YouTube.');
     }
-    if (
-      provider === SportsLivestreamProvider.TWITCH &&
-      hostname !== 'twitch.tv' &&
-      !hostname.endsWith('.twitch.tv')
-    ) {
+    if (provider === SportsLivestreamProvider.TWITCH && hostname !== 'twitch.tv' && !hostname.endsWith('.twitch.tv')) {
       throw new BadRequestException('Informe uma URL válida da Twitch.');
     }
     return url.toString();
@@ -161,11 +147,7 @@ export abstract class SportsAdminSupport {
     if (url.hostname.toLocaleLowerCase('en-US') === 'youtu.be') {
       return url.pathname.split('/').filter(Boolean)[0] ?? null;
     }
-    return (
-      url.searchParams.get('v') ??
-      url.pathname.match(/\/(?:live|embed|shorts)\/([^/?#]+)/)?.[1] ??
-      null
-    );
+    return url.searchParams.get('v') ?? url.pathname.match(/\/(?:live|embed|shorts)\/([^/?#]+)/)?.[1] ?? null;
   }
 
   protected requireDate(value: Date | undefined, label: string): Date {
@@ -188,8 +170,7 @@ export abstract class SportsAdminSupport {
     }
     return Object.fromEntries(
       Object.entries(value).filter(
-        (entry): entry is [string, number] =>
-          typeof entry[1] === 'number' && Number.isInteger(entry[1]),
+        (entry): entry is [string, number] => typeof entry[1] === 'number' && Number.isInteger(entry[1]),
       ),
     );
   }
@@ -211,10 +192,8 @@ export abstract class SportsAdminSupport {
       status: tournament.status,
       scoringMode: tournament.scoringMode,
       selfSubscriptionEnabled: tournament.selfSubscriptionEnabled,
-      selfSubscriptionAllowNoTeam:
-        tournament.selfSubscriptionAllowNoTeam,
-      selfSubscriptionAllowNoCategory:
-        tournament.selfSubscriptionAllowNoCategory,
+      selfSubscriptionAllowNoTeam: tournament.selfSubscriptionAllowNoTeam,
+      selfSubscriptionAllowNoCategory: tournament.selfSubscriptionAllowNoCategory,
       allowPlayerMultipleTeams: tournament.allowPlayerMultipleTeams,
       revision: tournament.revision,
     };

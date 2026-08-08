@@ -1,8 +1,4 @@
-import {
-  SportsApplicationStatus,
-  SportsParticipantStatus,
-  SportsPaymentStatus,
-} from '@cacic-fct/shared-data-types';
+import { SportsApplicationStatus, SportsParticipantStatus, SportsPaymentStatus } from '@cacic-fct/shared-data-types';
 import { Field, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()

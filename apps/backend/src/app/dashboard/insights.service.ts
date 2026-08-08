@@ -554,9 +554,7 @@ export class DashboardInsightsService {
           canManageEvents,
           canManageMajorEvents,
         }),
-        ...(canReadSports
-          ? [{ action: 'OPEN_SPORTS' as const, label: 'Gerenciar esportes' }]
-          : []),
+        ...(canReadSports ? [{ action: 'OPEN_SPORTS' as const, label: 'Gerenciar esportes' }] : []),
       ],
       calendarEvents: calendarEvents.map((event) => mapCalendarEvent(event, now)),
       weatherAlerts: await buildWeatherAlerts(this.weatherService, calendarEvents),
@@ -596,14 +594,11 @@ export class DashboardInsightsService {
         pendingApplicationCount: tournament._count.playerApplications,
         pendingReviewCount:
           tournament.categories.reduce(
-            (total, category) =>
-              total + category._count.matches + category._count.registrations,
+            (total, category) => total + category._count.matches + category._count.registrations,
             0,
-          ) +
-          tournament.teams.reduce((total, team) => total + team._count.changeRequests, 0),
-        activeMatchCount: sportsDashboard.matches.filter(
-          (match) => match.category.tournamentId === tournament.id,
-        ).length,
+          ) + tournament.teams.reduce((total, team) => total + team._count.changeRequests, 0),
+        activeMatchCount: sportsDashboard.matches.filter((match) => match.category.tournamentId === tournament.id)
+          .length,
       })),
       sportsMatches: sportsDashboard.matches.slice(0, 12).map((match) => {
         const scoreboard = this.safeSportsScoreboard(match.scoreboard);

@@ -13,9 +13,7 @@ describe('SportsRealtimeController', () => {
       findFirst: jest.fn().mockResolvedValue({ id: 'match-1' }),
     },
     sportsTournament: {
-      findFirstOrThrow: jest
-        .fn()
-        .mockResolvedValue({ id: 'tournament-1' }),
+      findFirstOrThrow: jest.fn().mockResolvedValue({ id: 'tournament-1' }),
     },
   };
   const policy = {
@@ -50,11 +48,7 @@ describe('SportsRealtimeController', () => {
   });
 
   it('authorizes public visibility before replaying from Last-Event-ID', async () => {
-    await expect(
-      firstValueFrom(
-        controller.streamPublicMatch('match-1', 'cursor-previous'),
-      ),
-    ).resolves.toEqual(event);
+    await expect(firstValueFrom(controller.streamPublicMatch('match-1', 'cursor-previous'))).resolves.toEqual(event);
 
     expect(prisma.sportsMatch.findFirst).toHaveBeenCalledWith({
       where: expect.objectContaining({
@@ -73,19 +67,15 @@ describe('SportsRealtimeController', () => {
       }),
       select: { id: true },
     });
-    expect(replay.replay).toHaveBeenCalledWith(
-      'match:match-1',
-      'cursor-previous',
-      expect.any(Object),
-    );
+    expect(replay.replay).toHaveBeenCalledWith('match:match-1', 'cursor-previous', expect.any(Object));
   });
 
   it('does not disclose replay history when the match is not public', async () => {
     prisma.sportsMatch.findFirst.mockResolvedValueOnce(null);
 
-    await expect(
-      firstValueFrom(controller.streamPublicMatch('match-1', undefined)),
-    ).rejects.toThrow('Partida esportiva pública não encontrada.');
+    await expect(firstValueFrom(controller.streamPublicMatch('match-1', undefined))).rejects.toThrow(
+      'Partida esportiva pública não encontrada.',
+    );
 
     expect(replay.replay).not.toHaveBeenCalled();
   });
@@ -98,35 +88,18 @@ describe('SportsRealtimeController', () => {
     };
 
     await expect(
-      firstValueFrom(
-        controller.streamReview(
-          'match-1',
-          'review-cursor',
-          { user } as never,
-        ),
-      ),
+      firstValueFrom(controller.streamReview('match-1', 'review-cursor', { user } as never)),
     ).resolves.toEqual(event);
 
-    expect(policy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.SportsMatch.Review],
-      { sportsMatchId: 'match-1' },
-    );
-    expect(replay.replay).toHaveBeenCalledWith(
-      'review:match-1',
-      'review-cursor',
-      expect.any(Object),
-    );
+    expect(policy.assertPermissions).toHaveBeenCalledWith(user, [Permission.SportsMatch.Review], {
+      sportsMatchId: 'match-1',
+    });
+    expect(replay.replay).toHaveBeenCalledWith('review:match-1', 'review-cursor', expect.any(Object));
   });
 
   it('applies the same publication gate to tournament replay streams', async () => {
     await expect(
-      firstValueFrom(
-        controller.streamPublicTournament(
-          'tournament-1',
-          'tournament-cursor',
-        ),
-      ),
+      firstValueFrom(controller.streamPublicTournament('tournament-1', 'tournament-cursor')),
     ).resolves.toEqual(event);
 
     expect(prisma.sportsTournament.findFirstOrThrow).toHaveBeenCalledWith({

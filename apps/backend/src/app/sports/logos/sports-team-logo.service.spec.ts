@@ -34,13 +34,7 @@ describe('SportsTeamLogoService representative queue', () => {
   });
 
   function createService(): SportsTeamLogoService {
-    return new SportsTeamLogoService(
-      prisma as never,
-      s3 as never,
-      {} as never,
-      {} as never,
-      teamChanges as never,
-    );
+    return new SportsTeamLogoService(prisma as never, s3 as never, {} as never, {} as never, teamChanges as never);
   }
 
   it('converts a representative raster upload to AVIF and queues it under a private key', async () => {
@@ -76,9 +70,7 @@ describe('SportsTeamLogoService representative queue', () => {
       height: 32,
     });
     expect(s3.uploadFile).toHaveBeenCalledWith(
-      expect.stringMatching(
-        /^sports\/private\/team-logo-review\/team-1\/[^/]+\/[a-f0-9]{64}\.avif$/,
-      ),
+      expect.stringMatching(/^sports\/private\/team-logo-review\/team-1\/[^/]+\/[a-f0-9]{64}\.avif$/),
       expect.any(Buffer),
       'image/avif',
       expect.objectContaining({
@@ -95,9 +87,7 @@ describe('SportsTeamLogoService representative queue', () => {
             objectKey: expect.stringMatching(
               /^sports\/tournaments\/tournament-1\/teams\/team-1\/logos\/sha256\/[a-f0-9]{64}\.avif$/,
             ),
-            queuedObjectKey: expect.stringMatching(
-              /^sports\/private\/team-logo-review\//,
-            ),
+            queuedObjectKey: expect.stringMatching(/^sports\/private\/team-logo-review\//),
             mimeType: 'image/avif',
           }),
         },
@@ -165,7 +155,9 @@ describe('SportsTeamLogoService representative queue', () => {
   it('downscales a high-resolution input and recompresses an existing AVIF', async () => {
     const avif = await sharp({
       create: { width: 5000, height: 3000, channels: 3, background: '#1565c0' },
-    }).avif({ quality: 100 }).toBuffer();
+    })
+      .avif({ quality: 100 })
+      .toBuffer();
     const result = await createService().submitRepresentativeUpload(
       'team-1',
       4,

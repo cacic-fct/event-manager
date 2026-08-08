@@ -37,13 +37,36 @@ import { AttendanceCollectionApiService, AttendanceCollectionEvent } from '../at
     </main>
   `,
   styles: `
-    .method-page { max-width: 42rem; margin: 0 auto; padding: clamp(1rem, 4vw, 3rem); }
-    header { display: flex; gap: 1rem; align-items: center; margin-bottom: 3rem; }
-    header > span { font-size: 3rem; }
-    h1, p { margin: 0; }
-    header p { color: var(--mat-sys-on-surface-variant); }
-    section { display: grid; gap: 1rem; }
-    section a { min-height: 4.5rem; justify-content: flex-start; font-size: 1rem; }
+    .method-page {
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: clamp(1rem, 4vw, 3rem);
+    }
+    header {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 3rem;
+    }
+    header > span {
+      font-size: 3rem;
+    }
+    h1,
+    p {
+      margin: 0;
+    }
+    header p {
+      color: var(--mat-sys-on-surface-variant);
+    }
+    section {
+      display: grid;
+      gap: 1rem;
+    }
+    section a {
+      min-height: 4.5rem;
+      justify-content: flex-start;
+      font-size: 1rem;
+    }
   `,
 })
 export class AttendanceMethodPage implements OnInit {

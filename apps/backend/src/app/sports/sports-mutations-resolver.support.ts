@@ -12,15 +12,11 @@ import { SportsPlayerApplicationService } from './applications/sports-player-app
 import { SportsBracketService } from './brackets/sports-bracket.service';
 import { SportsDuplicationService } from './duplication/sports-duplication.service';
 import { SportsMatchOperationService } from './operations/sports-match-operation.service';
-import {
-  SportsMutationEntity,
-  SportsMutationEventsService,
-} from './realtime/sports-mutation-events.service';
+import { SportsMutationEntity, SportsMutationEventsService } from './realtime/sports-mutation-events.service';
 import { SportsMatchRosterService } from './rosters/sports-match-roster.service';
 import { SportsAccessService } from './security/sports-access.service';
 import { SportsAdminService } from './sports-admin.service';
 import { SportsTeamChangeService } from './teams/sports-team-change.service';
-
 
 export abstract class SportsMutationsResolverSupport {
   protected readonly logger = new Logger(SportsMutationsResolverSupport.name);
@@ -45,10 +41,7 @@ export abstract class SportsMutationsResolverSupport {
     return this.currentUser.getAuthenticatedUser(context);
   }
 
-  protected async assertTeamChangeReviewMutable(
-    requestId: string,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  protected async assertTeamChangeReviewMutable(requestId: string, actor: AuthenticatedUser): Promise<void> {
     const request = await this.prisma.sportsTeamChangeRequest.findUnique({
       where: { id: requestId },
       select: {
@@ -62,18 +55,11 @@ export abstract class SportsMutationsResolverSupport {
       },
     });
     if (request) {
-      await this.frozen.assertMajorEventMutable(
-        request.team.tournament.majorEventId,
-        actor,
-        'edit',
-      );
+      await this.frozen.assertMajorEventMutable(request.team.tournament.majorEventId, actor, 'edit');
     }
   }
 
-  protected async assertPlayerApplicationReviewMutable(
-    applicationId: string,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  protected async assertPlayerApplicationReviewMutable(applicationId: string, actor: AuthenticatedUser): Promise<void> {
     const application = await this.prisma.sportsPlayerApplication.findUnique({
       where: { id: applicationId },
       select: {
@@ -87,24 +73,15 @@ export abstract class SportsMutationsResolverSupport {
     });
     if (application) {
       for (const choice of application.categoryChoices) {
-        await this.policy.assertPermissions(
-          actor,
-          [Permission.SportsRegistration.Approve],
-          { sportsCategoryId: choice.categoryId },
-        );
+        await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Approve], {
+          sportsCategoryId: choice.categoryId,
+        });
       }
-      await this.frozen.assertMajorEventMutable(
-        application.tournament.majorEventId,
-        actor,
-        'edit',
-      );
+      await this.frozen.assertMajorEventMutable(application.tournament.majorEventId, actor, 'edit');
     }
   }
 
-  protected async assertMatchActionReviewMutable(
-    actionId: string,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  protected async assertMatchActionReviewMutable(actionId: string, actor: AuthenticatedUser): Promise<void> {
     const action = await this.prisma.sportsMatchAction.findUnique({
       where: { id: actionId },
       select: { matchId: true },
@@ -114,10 +91,7 @@ export abstract class SportsMutationsResolverSupport {
     }
   }
 
-  protected async assertRosterReviewMutable(
-    rosterId: string,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  protected async assertRosterReviewMutable(rosterId: string, actor: AuthenticatedUser): Promise<void> {
     const roster = await this.prisma.sportsMatchRoster.findUnique({
       where: { id: rosterId },
       select: { matchId: true },
@@ -127,10 +101,7 @@ export abstract class SportsMutationsResolverSupport {
     }
   }
 
-  protected async assertMatchMutable(
-    matchId: string,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  protected async assertMatchMutable(matchId: string, actor: AuthenticatedUser): Promise<void> {
     const match = await this.prisma.sportsMatch.findUnique({
       where: { id: matchId },
       select: { eventId: true },
@@ -147,11 +118,7 @@ export abstract class SportsMutationsResolverSupport {
   ): Promise<T> {
     const result = await mutation;
     try {
-      await this.mutationEvents.publishForEntity(
-        entity,
-        result.id,
-        includePublic,
-      );
+      await this.mutationEvents.publishForEntity(entity, result.id, includePublic);
     } catch (error) {
       this.logger.warn(
         `Could not publish sports mutation event for ${entity} ${result.id}: ${
@@ -195,9 +162,7 @@ export abstract class SportsMutationsResolverSupport {
     ]);
     const unknownKeys = Object.keys(rules).filter((key) => !allowed.has(key));
     if (unknownKeys.length) {
-      throw new BadRequestException(
-        `Campos desconhecidos nas regras do cronômetro: ${unknownKeys.join(', ')}.`,
-      );
+      throw new BadRequestException(`Campos desconhecidos nas regras do cronômetro: ${unknownKeys.join(', ')}.`);
     }
     for (const key of ['overallEnabled', 'periodEnabled', 'allowOvertime']) {
       if (rules[key] !== undefined && typeof rules[key] !== 'boolean') {
@@ -225,10 +190,7 @@ export abstract class SportsMutationsResolverSupport {
     return rules as Prisma.InputJsonValue;
   }
 
-  protected parseObject(
-    value: string,
-    label: string,
-  ): Record<string, unknown> {
+  protected parseObject(value: string, label: string): Record<string, unknown> {
     const parsed = this.parseJson(value, label);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       throw new BadRequestException(`${label} deve ser um objeto JSON.`);
@@ -240,5 +202,3 @@ export abstract class SportsMutationsResolverSupport {
     return typeof value === 'string' && value.trim() ? value.trim() : null;
   }
 }
-
-

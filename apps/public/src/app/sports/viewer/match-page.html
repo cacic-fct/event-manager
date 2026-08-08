@@ -80,9 +80,7 @@
       <mat-icon aria-hidden="true">timer</mat-icon>
       <span><small>Cronômetro geral</small><strong>{{ overallClock(match) }}</strong></span>
     </p>
-    }
-
-    @if (match.state === 'PAUSED') {
+    } @if (match.state === 'PAUSED') {
     <p class="match-note"><mat-icon aria-hidden="true">pause_circle</mat-icon> Cronômetro pausado</p>
     } @else if (match.state === 'AWAITING_REVIEW') {
     <p class="match-note">
@@ -126,8 +124,7 @@
           <strong>{{ period.homeScore }}-{{ period.awayScore }}</strong>
           @if (match.periodTimerEnabled && periodClock(match, period.number); as clock) {
           <small class="period-clock"><mat-icon aria-hidden="true">timer</mat-icon>{{ clock }}</small>
-          }
-          @if (period.number === match.scoreboard.activePeriod) {
+          } @if (period.number === match.scoreboard.activePeriod) {
           <small>Em andamento</small>
           } @else if (period.completed) {
           <small>Concluído</small>

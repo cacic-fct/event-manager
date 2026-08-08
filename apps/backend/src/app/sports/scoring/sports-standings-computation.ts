@@ -1,9 +1,4 @@
-import {
-  Prisma,
-  SportsFormat,
-  SportsMatchState,
-  SportsReviewStatus
-} from '@prisma/client';
+import { Prisma, SportsFormat, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
 
 interface StandingAccumulator {
@@ -22,10 +17,7 @@ interface StandingAccumulator {
 import { SportsStandingsPlacement } from './sports-standings-placement';
 
 export abstract class SportsStandingsComputation extends SportsStandingsPlacement {
-  protected async recomputeStage(
-    tx: Prisma.TransactionClient,
-    stageId: string,
-  ): Promise<void> {
+  protected async recomputeStage(tx: Prisma.TransactionClient, stageId: string): Promise<void> {
     const stage = await tx.sportsStage.findUniqueOrThrow({
       where: { id: stageId },
       include: {
@@ -53,10 +45,7 @@ export abstract class SportsStandingsComputation extends SportsStandingsPlacemen
     const byePoints = this.readNumber(rules['byePoints'], 1);
     const accumulators = new Map<string, StandingAccumulator>(
       stage.standings.map((standing) => {
-        const byeCount = this.readNumber(
-          this.readRecord(standing.tiebreakData)['byeCount'],
-          0,
-        );
+        const byeCount = this.readNumber(this.readRecord(standing.tiebreakData)['byeCount'], 0);
         const tiebreakData = this.readRecord(standing.tiebreakData);
         return [
           standing.registrationId,
@@ -112,8 +101,7 @@ export abstract class SportsStandingsComputation extends SportsStandingsPlacemen
       standing.tiebreakData = {
         ...standing.tiebreakData,
         buchholz: standing.opponentRegistrationIds.reduce(
-          (total, registrationId) =>
-            total + (accumulators.get(registrationId)?.points ?? 0),
+          (total, registrationId) => total + (accumulators.get(registrationId)?.points ?? 0),
           0,
         ),
       };
@@ -122,8 +110,7 @@ export abstract class SportsStandingsComputation extends SportsStandingsPlacemen
       (left, right) =>
         right.points - left.points ||
         (stage.category.format === SportsFormat.SWISS
-          ? this.readNumber(right.tiebreakData['buchholz'], 0) -
-            this.readNumber(left.tiebreakData['buchholz'], 0)
+          ? this.readNumber(right.tiebreakData['buchholz'], 0) - this.readNumber(left.tiebreakData['buchholz'], 0)
           : 0) ||
         right.scoreFor - right.scoreAgainst - (left.scoreFor - left.scoreAgainst) ||
         right.scoreFor - left.scoreFor ||
@@ -149,9 +136,4 @@ export abstract class SportsStandingsComputation extends SportsStandingsPlacemen
       });
     }
   }
-
 }
-
-
-
-

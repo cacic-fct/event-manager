@@ -15,11 +15,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
     const actor = this.authenticated(context);
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsTournament.Delete],
-      { sportsTournamentId: id },
-    );
+    await this.policy.assertPermissions(actor, [Permission.SportsTournament.Delete], { sportsTournamentId: id });
     await this.admin.deleteTournament(id, expectedRevision, actor);
     await this.mutationEvents.publishForEntity('TOURNAMENT', id, true);
     return true;
@@ -65,11 +61,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
     const actor = this.authenticated(context);
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsRegistration.Delete],
-      { sportsRegistrationId: id },
-    );
+    await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Delete], { sportsRegistrationId: id });
     await this.admin.deleteRegistration(id, expectedRevision, actor);
     await this.mutationEvents.publishForEntity('REGISTRATION', id, true);
     return true;
@@ -100,11 +92,9 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
     const actor = this.authenticated(context);
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsTournament.Update],
-      { sportsTournamentId: tournamentId },
-    );
+    await this.policy.assertPermissions(actor, [Permission.SportsTournament.Update], {
+      sportsTournamentId: tournamentId,
+    });
     await this.admin.deleteVenue(id, expectedRevision, actor, tournamentId);
     await this.mutationEvents.publishForEntity('VENUE', id, true);
     return true;
@@ -134,18 +124,10 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
     @Context() context: GraphqlContext,
   ): Promise<string> {
     const actor = this.authenticated(context);
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsTournament.Update],
-      { sportsTournamentId: input.tournamentId },
-    );
-    return (
-      await this.publishMutation(
-        'SCORE_ENTRY',
-        this.admin.createTournamentScoreEntry(input, actor),
-        true,
-      )
-    ).id;
+    await this.policy.assertPermissions(actor, [Permission.SportsTournament.Update], {
+      sportsTournamentId: input.tournamentId,
+    });
+    return (await this.publishMutation('SCORE_ENTRY', this.admin.createTournamentScoreEntry(input, actor), true)).id;
   }
 
   @Mutation(() => String, { name: 'updateSportsTournamentScoreEntry' })
@@ -156,17 +138,11 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
     @Context() context: GraphqlContext,
   ): Promise<string> {
     const actor = this.authenticated(context);
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsTournament.Update],
-      { sportsTournamentId: input.tournamentId },
-    );
+    await this.policy.assertPermissions(actor, [Permission.SportsTournament.Update], {
+      sportsTournamentId: input.tournamentId,
+    });
     return (
-      await this.publishMutation(
-        'SCORE_ENTRY',
-        this.admin.updateTournamentScoreEntry(input.id, input, actor),
-        true,
-      )
+      await this.publishMutation('SCORE_ENTRY', this.admin.updateTournamentScoreEntry(input.id, input, actor), true)
     ).id;
   }
 
@@ -179,20 +155,11 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
     const actor = this.authenticated(context);
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsTournament.Update],
-      { sportsTournamentId: tournamentId },
-    );
-    await this.admin.deleteTournamentScoreEntry(
-      id,
-      tournamentId,
-      expectedRevision,
-      actor,
-    );
+    await this.policy.assertPermissions(actor, [Permission.SportsTournament.Update], {
+      sportsTournamentId: tournamentId,
+    });
+    await this.admin.deleteTournamentScoreEntry(id, tournamentId, expectedRevision, actor);
     await this.mutationEvents.publishForEntity('SCORE_ENTRY', id, true);
     return true;
   }
-
 }
-

@@ -27,10 +27,7 @@ export class SportsReadAdminService {
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {
-    this.listReader = new SportsReadAdminListService(
-      prisma,
-      authorizationPolicy,
-    );
+    this.listReader = new SportsReadAdminListService(prisma, authorizationPolicy);
   }
 
   async adminTournamentList(
@@ -59,26 +56,15 @@ export class SportsReadAdminService {
     }
     const readableCategories = [];
     for (const category of categories) {
-      if (
-        await this.hasScopedPermission(
-          user,
-          Permission.SportsTournament.Read,
-          { sportsCategoryId: category.id },
-        )
-      ) {
+      if (await this.hasScopedPermission(user, Permission.SportsTournament.Read, { sportsCategoryId: category.id })) {
         readableCategories.push(category);
       }
     }
-    const canReadAllCategories =
-      readableCategories.length === categories.length;
-    const readableCategoryIds = readableCategories.map(
-      (category) => category.id,
-    );
-    const canReadOfficials = await this.hasScopedPermission(
-      user,
-      Permission.SportsOfficial.Read,
-      { sportsTournamentId: tournamentId },
-    );
+    const canReadAllCategories = readableCategories.length === categories.length;
+    const readableCategoryIds = readableCategories.map((category) => category.id);
+    const canReadOfficials = await this.hasScopedPermission(user, Permission.SportsOfficial.Read, {
+      sportsTournamentId: tournamentId,
+    });
     const [teams, scoreEntries, venues, officials] = await Promise.all([
       this.prisma.sportsTeam.findMany({
         where: {
@@ -100,9 +86,7 @@ export class SportsReadAdminService {
           registrations: {
             where: {
               deletedAt: null,
-              ...(canReadAllCategories
-                ? {}
-                : { categoryId: { in: readableCategoryIds } }),
+              ...(canReadAllCategories ? {} : { categoryId: { in: readableCategoryIds } }),
             },
             select: {
               id: true,
@@ -124,9 +108,7 @@ export class SportsReadAdminService {
         where: {
           tournamentId,
           deletedAt: null,
-          ...(canReadAllCategories
-            ? {}
-            : { categoryId: { in: readableCategoryIds } }),
+          ...(canReadAllCategories ? {} : { categoryId: { in: readableCategoryIds } }),
         },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
@@ -149,9 +131,7 @@ export class SportsReadAdminService {
     ]);
     return {
       tournament: this.mapper.mapAdminTournament(tournament),
-      categories: readableCategories.map((category) =>
-        this.mapper.mapAdminCategory(category),
-      ),
+      categories: readableCategories.map((category) => this.mapper.mapAdminCategory(category)),
       teams: teams.map((team) => this.mapper.mapAdminTeam(team)),
       scoreEntries: scoreEntries.map((entry) => this.mapper.mapAdminScoreEntry(entry)),
       venues,
@@ -173,11 +153,9 @@ export class SportsReadAdminService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.SportsCategory.Read], {
       sportsCategoryId: categoryId,
     });
-    const canReadOfficials = await this.hasScopedPermission(
-      user,
-      Permission.SportsOfficial.Read,
-      { sportsCategoryId: categoryId },
-    );
+    const canReadOfficials = await this.hasScopedPermission(user, Permission.SportsOfficial.Read, {
+      sportsCategoryId: categoryId,
+    });
     const [category, registrations, stages, matches, standings, placements, officials] = await Promise.all([
       this.prisma.sportsCategory.findFirst({
         where: { id: categoryId, deletedAt: null },
@@ -272,11 +250,8 @@ export class SportsReadAdminService {
         readableRegistrations.push(registration);
       }
     }
-    const readableCategoryIds = readableRegistrations.map(
-      (registration) => registration.categoryId,
-    );
-    const canReadAllMembers =
-      readableRegistrations.length === registrations.length;
+    const readableCategoryIds = readableRegistrations.map((registration) => registration.categoryId);
+    const canReadAllMembers = readableRegistrations.length === registrations.length;
     const members = await this.prisma.sportsTeamMember.findMany({
       where: {
         teamId,
@@ -306,11 +281,7 @@ export class SportsReadAdminService {
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
-    const canReview = await this.hasScopedPermission(
-      user,
-      Permission.SportsTeam.Review,
-      { sportsTeamId: teamId },
-    );
+    const canReview = await this.hasScopedPermission(user, Permission.SportsTeam.Review, { sportsTeamId: teamId });
     const changeRequests = canReview
       ? await this.prisma.sportsTeamChangeRequest.findMany({
           where: { teamId },
@@ -324,9 +295,7 @@ export class SportsReadAdminService {
       team: this.mapper.mapAdminTeam(team),
       members: members.map((member) => this.mapper.mapAdminTeamMember(member)),
       representatives: representatives.map((representative) => this.mapper.mapAdminRepresentative(representative)),
-      registrations: readableRegistrations.map((registration) =>
-        this.mapper.mapAdminRegistration(registration),
-      ),
+      registrations: readableRegistrations.map((registration) => this.mapper.mapAdminRegistration(registration)),
       changeRequests: changeRequests.map((request) => this.mapper.mapAdminChangeRequest(request)),
     };
   }
@@ -379,10 +348,7 @@ export class SportsReadAdminService {
     };
   }
 
-  async adminMatchReview(
-    user: AuthenticatedUser | undefined,
-    matchId: string,
-  ): Promise<AdminSportsMatchReviewRead> {
+  async adminMatchReview(user: AuthenticatedUser | undefined, matchId: string): Promise<AdminSportsMatchReviewRead> {
     await this.authorizationPolicy.assertPermissions(
       user,
       [Permission.SportsMatch.Read, Permission.SportsMatch.Review],

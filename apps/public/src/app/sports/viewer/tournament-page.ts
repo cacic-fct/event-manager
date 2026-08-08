@@ -76,17 +76,13 @@ export class SportsTournamentPage {
     if (!tournament) {
       return [];
     }
-    return tournament.matchesArePersonalized
-      ? tournament.matches
-      : [...tournament.matches].sort(compareSportsMatches);
+    return tournament.matchesArePersonalized ? tournament.matches : [...tournament.matches].sort(compareSportsMatches);
   });
   readonly liveMatches = computed(() =>
     this.orderedMatches().filter((match) => match.state === 'LIVE' || match.state === 'PAUSED'),
   );
   readonly upcomingMatches = computed(() =>
-    this.orderedMatches().filter(
-      (match) => match.state === 'SCHEDULED' || match.state === 'CHECK_IN',
-    ),
+    this.orderedMatches().filter((match) => match.state === 'SCHEDULED' || match.state === 'CHECK_IN'),
   );
   readonly recentMatches = computed(() =>
     this.orderedMatches()
@@ -106,10 +102,7 @@ export class SportsTournamentPage {
             catchError((error: unknown) => {
               this.pageState.set({
                 status: 'error',
-                message:
-                  error instanceof Error
-                    ? error.message
-                    : 'Não foi possível carregar este torneio.',
+                message: error instanceof Error ? error.message : 'Não foi possível carregar este torneio.',
               });
               return of(null);
             }),
@@ -119,9 +112,7 @@ export class SportsTournamentPage {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((tournament) => {
-        const categoryStillExists = tournament.categories.some(
-          (category) => category.id === this.selectedCategoryId(),
-        );
+        const categoryStillExists = tournament.categories.some((category) => category.id === this.selectedCategoryId());
         if (!categoryStillExists) {
           this.selectedCategoryId.set(tournament.categories[0]?.id ?? null);
         }
@@ -151,10 +142,7 @@ export class SportsTournamentPage {
   }
 
   categoryTitle(category: PublicSportsCategory): string {
-    const details = [
-      sportsPresetLabel(category.sport, category.customSportName),
-      category.division,
-    ].filter(Boolean);
+    const details = [sportsPresetLabel(category.sport, category.customSportName), category.division].filter(Boolean);
     return details.join(' · ');
   }
 
@@ -175,7 +163,8 @@ export class SportsTournamentPage {
   }
 
   overallClock(match: PublicSportsMatch): string {
-    const startedAt = match.timerStartedAtUnixMs ?? (match.timerStartedAt ? new Date(match.timerStartedAt).getTime() : null);
+    const startedAt =
+      match.timerStartedAtUnixMs ?? (match.timerStartedAt ? new Date(match.timerStartedAt).getTime() : null);
     const elapsed = match.elapsedBeforePauseMs + (startedAt == null ? 0 : Math.max(0, this.now() - startedAt));
     const totalSeconds = Math.floor(elapsed / 1000);
     const hours = Math.floor(totalSeconds / 3600);
@@ -185,10 +174,7 @@ export class SportsTournamentPage {
   }
 
   currentMatchId(category: PublicSportsCategory): string | null {
-    return (
-      category.matches.find((match) => match.state === 'LIVE' || match.state === 'PAUSED')?.id ??
-      null
-    );
+    return category.matches.find((match) => match.state === 'LIVE' || match.state === 'PAUSED')?.id ?? null;
   }
 
   openMatch(matchId: string): void {

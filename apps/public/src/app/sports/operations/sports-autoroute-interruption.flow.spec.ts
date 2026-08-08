@@ -32,9 +32,7 @@ describe('SportsAutorouteInterruptionFlow', () => {
       mode: 'OPERATE',
     });
 
-    const interruption = await firstValueFrom(
-      flow.resolve({ currentUrl: '/sports/operate/match-1?mode=OPERATE' }),
-    );
+    const interruption = await firstValueFrom(flow.resolve({ currentUrl: '/sports/operate/match-1?mode=OPERATE' }));
 
     expect(interruption).toBeNull();
   });

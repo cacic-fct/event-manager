@@ -178,8 +178,7 @@ function isSafeJson(value: unknown, depth: number): boolean {
   return (
     entries.length <= 100 &&
     entries.every(
-      ([key, item]) =>
-        !['__proto__', 'constructor', 'prototype'].includes(key) && isSafeJson(item, depth + 1),
+      ([key, item]) => !['__proto__', 'constructor', 'prototype'].includes(key) && isSafeJson(item, depth + 1),
     )
   );
 }

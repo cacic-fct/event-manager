@@ -237,7 +237,6 @@ export const EVENT_SELECT = {
   updatedById: true,
 } satisfies Prisma.EventSelect;
 
-
 export type UserRecord = Prisma.UserGetPayload<{ select: typeof USER_SELECT }>;
 export type PersonRecord = Prisma.PeopleGetPayload<{
   select: typeof PERSON_SELECT;

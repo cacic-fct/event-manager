@@ -25,9 +25,7 @@ describe('getPrivateFeedEvents', () => {
 
   it('includes matches only through approved player rosters', async () => {
     const event = { id: 'event-1' };
-    const sportsMatchFindMany = jest
-      .fn()
-      .mockResolvedValue([{ event }]);
+    const sportsMatchFindMany = jest.fn().mockResolvedValue([{ event }]);
     const prisma = {
       eventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
       majorEventSubscriptionEventSelection: {
@@ -39,9 +37,7 @@ describe('getPrivateFeedEvents', () => {
       certificate: { findMany: jest.fn().mockResolvedValue([]) },
     };
 
-    await expect(
-      getPrivateFeedEvents(prisma as never, ['person-1']),
-    ).resolves.toEqual([event]);
+    await expect(getPrivateFeedEvents(prisma as never, ['person-1'])).resolves.toEqual([event]);
 
     expect(sportsMatchFindMany).toHaveBeenCalledWith(
       expect.objectContaining({

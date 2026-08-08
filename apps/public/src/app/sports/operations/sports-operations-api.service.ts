@@ -188,9 +188,7 @@ export class SportsOperationsApiService {
     form.set('file', file);
     form.set('expectedRevision', String(expectedRevision));
     const query =
-      expectedRequestRevision == null
-        ? ''
-        : `?expectedRequestRevision=${encodeURIComponent(expectedRequestRevision)}`;
+      expectedRequestRevision == null ? '' : `?expectedRequestRevision=${encodeURIComponent(expectedRequestRevision)}`;
     return this.http.post<QueuedSportsTeamLogo>(
       `/api/sports/teams/${encodeURIComponent(teamId)}/logo-change${query}`,
       form,

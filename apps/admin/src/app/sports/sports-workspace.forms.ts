@@ -1,9 +1,5 @@
 import { FormBuilder, Validators } from '@angular/forms';
-import {
-  jsonObjectValidator,
-  livestreamValidator,
-  scoreRulesValidator,
-} from './sports-workspace-form.utils';
+import { jsonObjectValidator, livestreamValidator, scoreRulesValidator } from './sports-workspace-form.utils';
 
 export function createSportsWorkspaceForms(fb: FormBuilder) {
   return {
@@ -40,10 +36,7 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
       timerPeriodEnabled: [true],
       timerPeriodDurationMinutes: [45, [Validators.min(0), Validators.max(1440)]],
       timerAllowOvertime: [true],
-      timerPeriodStartOffsetsMinutes: [
-        '0, 45',
-        Validators.pattern(/^\s*\d+(?:\.\d+)?(?:\s*,\s*\d+(?:\.\d+)?)*\s*$/),
-      ],
+      timerPeriodStartOffsetsMinutes: ['0, 45', Validators.pattern(/^\s*\d+(?:\.\d+)?(?:\s*,\s*\d+(?:\.\d+)?)*\s*$/)],
       rulesText: [''],
       scoreRulesJson: ['{}', scoreRulesValidator],
       rosterRulesJson: ['{}', jsonObjectValidator],

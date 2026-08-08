@@ -1,8 +1,4 @@
-import {
-  generateSportsSwissRound,
-  rankSportsSwissStandings,
-  SportsSwissStanding,
-} from './sports-swiss';
+import { generateSportsSwissRound, rankSportsSwissStandings, SportsSwissStanding } from './sports-swiss';
 
 describe('Swiss pairing', () => {
   it('uses points, tiebreakers, seed, and registration id as deterministic ranking keys', () => {
@@ -38,12 +34,7 @@ describe('Swiss pairing', () => {
     expect(plan.containsUnavoidableRematch).toBe(false);
     expect(plan.pairings.every((pairing) => pairing.rematch === false)).toBe(true);
     expect(
-      new Set(
-        plan.pairings.flatMap((pairing) => [
-          pairing.homeRegistrationId,
-          pairing.awayRegistrationId,
-        ]),
-      ).size,
+      new Set(plan.pairings.flatMap((pairing) => [pairing.homeRegistrationId, pairing.awayRegistrationId])).size,
     ).toBe(6);
   });
 
@@ -62,10 +53,7 @@ describe('Swiss pairing', () => {
 
     expect(plan.byeRegistrationId).toBe('d');
     expect(
-      plan.pairings.some(
-        (pairing) =>
-          pairing.homeRegistrationId === 'd' || pairing.awayRegistrationId === 'd',
-      ),
+      plan.pairings.some((pairing) => pairing.homeRegistrationId === 'd' || pairing.awayRegistrationId === 'd'),
     ).toBe(false);
   });
 

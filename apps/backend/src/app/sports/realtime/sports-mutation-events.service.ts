@@ -28,11 +28,7 @@ export class SportsMutationEventsService {
     private readonly dashboardInsights: DashboardInsightsService,
   ) {}
 
-  async publishForEntity(
-    entity: SportsMutationEntity,
-    entityId: string,
-    includePublic: boolean,
-  ): Promise<void> {
+  async publishForEntity(entity: SportsMutationEntity, entityId: string, includePublic: boolean): Promise<void> {
     const tournamentId = await this.resolveTournamentId(entity, entityId);
     const payload = {
       type: 'INVALIDATE',
@@ -41,38 +37,22 @@ export class SportsMutationEventsService {
       tournamentId,
       occurredAt: new Date().toISOString(),
     };
-    const matchIds = includePublic
-      ? await this.resolveAffectedMatchIds(entity, entityId, tournamentId)
-      : [];
+    const matchIds = includePublic ? await this.resolveAffectedMatchIds(entity, entityId, tournamentId) : [];
     const autoroutePeople = await this.resolveAutoroutePeople(entity, entityId);
     await Promise.all([
       this.dashboardInsights.invalidateCachedInsights(),
-      this.realtime.publish(
-        this.realtime.scope('admin-tournament', tournamentId),
-        payload,
-      ),
+      this.realtime.publish(this.realtime.scope('admin-tournament', tournamentId), payload),
       ...(includePublic
         ? [
-            this.realtime.publish(
-              this.realtime.scope('tournament', tournamentId),
-              payload,
-            ),
-            ...matchIds.map((matchId) =>
-              this.realtime.publish(
-                this.realtime.scope('match', matchId),
-                payload,
-              ),
-            ),
+            this.realtime.publish(this.realtime.scope('tournament', tournamentId), payload),
+            ...matchIds.map((matchId) => this.realtime.publish(this.realtime.scope('match', matchId), payload)),
           ]
         : []),
       this.realtime.publishAutorouteInvalidations(autoroutePeople),
     ]);
   }
 
-  private async resolveAutoroutePeople(
-    entity: SportsMutationEntity,
-    entityId: string,
-  ): Promise<string[]> {
+  private async resolveAutoroutePeople(entity: SportsMutationEntity, entityId: string): Promise<string[]> {
     if (entity === 'MATCH') {
       return this.autorouting.affectedPeopleForMatch(entityId);
     }
@@ -81,33 +61,26 @@ export class SportsMutationEventsService {
         where: { id: entityId },
         select: { matchId: true },
       });
-      return roster
-        ? this.autorouting.affectedPeopleForMatch(roster.matchId)
-        : [];
+      return roster ? this.autorouting.affectedPeopleForMatch(roster.matchId) : [];
     }
     if (entity === 'OFFICIAL') {
-      const assignment =
-        await this.prisma.sportsOfficialAssignment.findUnique({
-          where: { id: entityId },
-          select: { personId: true },
-        });
+      const assignment = await this.prisma.sportsOfficialAssignment.findUnique({
+        where: { id: entityId },
+        select: { personId: true },
+      });
       return assignment ? [assignment.personId] : [];
     }
     if (entity === 'REPRESENTATIVE') {
-      const representative =
-        await this.prisma.sportsTeamRepresentative.findUnique({
-          where: { id: entityId },
-          select: { personId: true },
-        });
+      const representative = await this.prisma.sportsTeamRepresentative.findUnique({
+        where: { id: entityId },
+        select: { personId: true },
+      });
       return representative ? [representative.personId] : [];
     }
     return [];
   }
 
-  private async resolveTournamentId(
-    entity: SportsMutationEntity,
-    id: string,
-  ): Promise<string> {
+  private async resolveTournamentId(entity: SportsMutationEntity, id: string): Promise<string> {
     if (entity === 'TOURNAMENT') {
       return id;
     }
@@ -256,9 +229,7 @@ export class SportsMutationEventsService {
     entityId: string,
   ): string {
     if (!value) {
-      throw new NotFoundException(
-        `Sports ${entity.toLowerCase()} ${entityId} was not found.`,
-      );
+      throw new NotFoundException(`Sports ${entity.toLowerCase()} ${entityId} was not found.`);
     }
     if ('tournamentId' in value) {
       return value.tournamentId;
@@ -288,19 +259,16 @@ export class SportsMutationEventsService {
       return roster ? [roster.matchId] : [];
     }
     if (entity === 'OFFICIAL') {
-      const assignment =
-        await this.prisma.sportsOfficialAssignment.findUnique({
-          where: { id: entityId },
-          select: { matchId: true, categoryId: true },
-        });
+      const assignment = await this.prisma.sportsOfficialAssignment.findUnique({
+        where: { id: entityId },
+        select: { matchId: true, categoryId: true },
+      });
       if (assignment?.matchId) {
         return [assignment.matchId];
       }
       return this.findMatchIds(
         tournamentId,
-        assignment?.categoryId
-          ? { categoryId: assignment.categoryId }
-          : undefined,
+        assignment?.categoryId ? { categoryId: assignment.categoryId } : undefined,
       );
     }
     if (entity === 'CATEGORY') {
@@ -344,10 +312,7 @@ export class SportsMutationEventsService {
     return [];
   }
 
-  private async findMatchIds(
-    tournamentId: string,
-    where?: Prisma.SportsMatchWhereInput,
-  ): Promise<string[]> {
+  private async findMatchIds(tournamentId: string, where?: Prisma.SportsMatchWhereInput): Promise<string[]> {
     const matches = await this.prisma.sportsMatch.findMany({
       where: {
         category: { tournamentId },

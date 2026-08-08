@@ -133,9 +133,7 @@ export const routes: Route[] = [
         import('../attendances/attendances-page.component').then((m) => m.AttendancesPageComponent),
       ),
       ...guardedFeatureRoute(`${attendancesData.path}/event/:eventId/oral`, attendancesData, () =>
-        import('../attendances/oral/oral-attendance-page.component').then(
-          (m) => m.AdminOralAttendancePageComponent,
-        ),
+        import('../attendances/oral/oral-attendance-page.component').then((m) => m.AdminOralAttendancePageComponent),
       ),
       ...guardedFeatureRoute(`${attendancesData.path}/event/:eventId`, attendancesData, () =>
         import('../attendances/attendances-page.component').then((m) => m.AttendancesPageComponent),

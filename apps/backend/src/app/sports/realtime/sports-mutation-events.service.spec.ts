@@ -44,14 +44,8 @@ describe('SportsMutationEventsService', () => {
         tournamentId: 'tournament-1',
       }),
     );
-    expect(realtime.publish).toHaveBeenCalledWith(
-      'tournament:tournament-1',
-      expect.any(Object),
-    );
-    expect(realtime.publish).toHaveBeenCalledWith(
-      'match:match-1',
-      expect.any(Object),
-    );
+    expect(realtime.publish).toHaveBeenCalledWith('tournament:tournament-1', expect.any(Object));
+    expect(realtime.publish).toHaveBeenCalledWith('match:match-1', expect.any(Object));
   });
 
   it('keeps queued representative changes out of public streams', async () => {
@@ -86,9 +80,7 @@ describe('SportsMutationEventsService', () => {
         }),
       },
       sportsMatch: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([{ id: 'match-1' }, { id: 'match-2' }]),
+        findMany: jest.fn().mockResolvedValue([{ id: 'match-1' }, { id: 'match-2' }]),
       },
     };
     const service = new SportsMutationEventsService(
@@ -107,13 +99,7 @@ describe('SportsMutationEventsService', () => {
         }),
       }),
     );
-    expect(realtime.publish).toHaveBeenCalledWith(
-      'match:match-1',
-      expect.any(Object),
-    );
-    expect(realtime.publish).toHaveBeenCalledWith(
-      'match:match-2',
-      expect.any(Object),
-    );
+    expect(realtime.publish).toHaveBeenCalledWith('match:match-1', expect.any(Object));
+    expect(realtime.publish).toHaveBeenCalledWith('match:match-2', expect.any(Object));
   });
 });

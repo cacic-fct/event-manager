@@ -1,8 +1,4 @@
-import {
-  SportsBracketSide,
-  SportsMatchState,
-  SportsReviewStatus,
-} from '@prisma/client';
+import { SportsBracketSide, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 
 jest.mock('../rosters/sports-match-roster.service', () => ({
   SportsMatchRosterService: class SportsMatchRosterService {},
@@ -43,16 +39,9 @@ describe('SportsBracketAdvancementService', () => {
   });
 
   it('cancels the unused reset match when the winners-bracket entrant wins', async () => {
-    const tx = transaction(
-      [grandFinal('home'), resetMatch({}, 'grand-final-reset')],
-      [{ count: 1 }],
-    );
+    const tx = transaction([grandFinal('home'), resetMatch({}, 'grand-final-reset')], [{ count: 1 }]);
 
-    await service.advanceApprovedOutcome(
-      tx as never,
-      'original-grand-final',
-      'admin-1',
-    );
+    await service.advanceApprovedOutcome(tx as never, 'original-grand-final', 'admin-1');
 
     expect(tx.sportsMatch.updateMany).toHaveBeenCalledWith({
       where: expect.objectContaining({
@@ -120,11 +109,7 @@ describe('SportsBracketAdvancementService', () => {
       [{ count: 1 }],
     );
 
-    await service.advanceApprovedOutcome(
-      tx as never,
-      'original-grand-final',
-      'admin-1',
-    );
+    await service.advanceApprovedOutcome(tx as never, 'original-grand-final', 'admin-1');
 
     expect(tx.sportsMatch.updateMany).toHaveBeenCalledWith({
       where: expect.objectContaining({
@@ -163,11 +148,7 @@ describe('SportsBracketAdvancementService', () => {
       [{ count: 1 }],
     );
 
-    await service.advanceApprovedOutcome(
-      tx as never,
-      'original-grand-final',
-      'admin-1',
-    );
+    await service.advanceApprovedOutcome(tx as never, 'original-grand-final', 'admin-1');
 
     expect(tx.sportsMatch.updateMany).toHaveBeenCalledWith({
       where: expect.objectContaining({
@@ -209,13 +190,7 @@ describe('SportsBracketAdvancementService', () => {
       },
     ]);
 
-    await expect(
-      service.advanceApprovedOutcome(
-        tx as never,
-        'original-grand-final',
-        'admin-1',
-      ),
-    ).rejects.toThrow(
+    await expect(service.advanceApprovedOutcome(tx as never, 'original-grand-final', 'admin-1')).rejects.toThrow(
       'A partida de desempate já possui check-in, placar ou resultado. Redefina-a explicitamente antes de corrigir a grande final.',
     );
     expect(tx.sportsMatch.updateMany).not.toHaveBeenCalled();
@@ -271,18 +246,11 @@ describe('SportsBracketAdvancementService', () => {
     );
   });
 
-  function transaction(
-    matches: unknown[],
-    updates: Array<{ count: number }> = [],
-  ) {
+  function transaction(matches: unknown[], updates: Array<{ count: number }> = []) {
     return {
       sportsMatch: {
-        findUniqueOrThrow: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(matches.shift())),
-        updateMany: jest
-          .fn()
-          .mockImplementation(() => Promise.resolve(updates.shift() ?? { count: 0 })),
+        findUniqueOrThrow: jest.fn().mockImplementation(() => Promise.resolve(matches.shift())),
+        updateMany: jest.fn().mockImplementation(() => Promise.resolve(updates.shift() ?? { count: 0 })),
       },
       sportsMatchRoster: {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -311,10 +279,7 @@ describe('SportsBracketAdvancementService', () => {
     };
   }
 
-  function grandFinal(
-    winnerRegistrationId: 'home' | 'away',
-    replayOfMatchId: string | null = null,
-  ) {
+  function grandFinal(winnerRegistrationId: 'home' | 'away', replayOfMatchId: string | null = null) {
     return {
       ...sourceMatch(),
       id: replayOfMatchId ? 'grand-final-replay' : 'original-grand-final',

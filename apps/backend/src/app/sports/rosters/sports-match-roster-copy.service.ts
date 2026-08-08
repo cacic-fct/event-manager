@@ -1,8 +1,4 @@
-import {
-  Prisma,
-  SportsRosterEntryStatus,
-  SportsRosterStatus,
-} from '@prisma/client';
+import { Prisma, SportsRosterEntryStatus, SportsRosterStatus } from '@prisma/client';
 import { SportsMatchRosterSupportService } from './sports-match-roster-support.service';
 
 export abstract class SportsMatchRosterCopyService extends SportsMatchRosterSupportService {
@@ -77,10 +73,7 @@ export abstract class SportsMatchRosterCopyService extends SportsMatchRosterSupp
           status: SportsRosterEntryStatus.APPROVED,
           role: entry.role,
           shirtNumber: entry.shirtNumber,
-          roleMetadata:
-            entry.roleMetadata === null
-              ? Prisma.DbNull
-              : (entry.roleMetadata as Prisma.InputJsonValue),
+          roleMetadata: entry.roleMetadata === null ? Prisma.DbNull : (entry.roleMetadata as Prisma.InputJsonValue),
           createdById: actorId,
           updatedById: actorId,
         })),
@@ -88,4 +81,3 @@ export abstract class SportsMatchRosterCopyService extends SportsMatchRosterSupp
     }
   }
 }
-

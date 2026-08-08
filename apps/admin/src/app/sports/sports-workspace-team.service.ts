@@ -134,10 +134,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     });
   }
 
-  async searchPeople(
-    query: string,
-    target: 'representative' | 'official' | 'member',
-  ): Promise<void> {
+  async searchPeople(query: string, target: 'representative' | 'official' | 'member'): Promise<void> {
     const normalized = query.trim();
     if (normalized.length < 2) {
       this.people.set([]);
@@ -145,9 +142,13 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       return;
     }
     this.peopleTarget.set(target);
-    await this.run('Não foi possível buscar pessoas.', async () => {
-      this.people.set(await firstValueFrom(this.peopleApi.listPeopleSummaries({ query: normalized, take: 10 })));
-    }, false);
+    await this.run(
+      'Não foi possível buscar pessoas.',
+      async () => {
+        this.people.set(await firstValueFrom(this.peopleApi.listPeopleSummaries({ query: normalized, take: 10 })));
+      },
+      false,
+    );
   }
 
   pickPerson(person: Person, target: 'representative' | 'official' | 'member'): void {

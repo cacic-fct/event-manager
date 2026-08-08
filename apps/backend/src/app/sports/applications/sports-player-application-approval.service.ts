@@ -1,6 +1,4 @@
-import {
-  ConflictException,
-} from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import {
   Prisma,
   SportsApplicationStatus,
@@ -26,10 +24,7 @@ export interface SubmitSportsPlayerApplicationInput {
   paymentTier?: string | null;
 }
 
-export type SportsPlayerApplicationReviewDecision =
-  | 'APPROVE'
-  | 'REQUEST_CHANGES'
-  | 'REJECT';
+export type SportsPlayerApplicationReviewDecision = 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT';
 import { SportsPlayerApplicationSupportService } from './sports-player-application-support.service';
 
 export abstract class SportsPlayerApplicationApprovalService extends SportsPlayerApplicationSupportService {
@@ -78,10 +73,7 @@ export abstract class SportsPlayerApplicationApprovalService extends SportsPlaye
         )
       : [];
 
-    if (
-      application.requestedTeamId &&
-      !application.tournament.allowPlayerMultipleTeams
-    ) {
+    if (application.requestedTeamId && !application.tournament.allowPlayerMultipleTeams) {
       const otherMembership = await tx.sportsTeamMember.findFirst({
         where: {
           deletedAt: null,
@@ -113,12 +105,12 @@ export abstract class SportsPlayerApplicationApprovalService extends SportsPlaye
     });
     let teamMember = application.requestedTeamId
       ? await tx.sportsTeamMember.findFirst({
-      where: {
-        teamId: application.requestedTeamId,
-        participantId: participant.id,
-        deletedAt: null,
-      },
-      })
+          where: {
+            teamId: application.requestedTeamId,
+            participantId: participant.id,
+            deletedAt: null,
+          },
+        })
       : null;
     if (teamMember) {
       teamMember = await tx.sportsTeamMember.update({
@@ -153,9 +145,7 @@ export abstract class SportsPlayerApplicationApprovalService extends SportsPlaye
         : SportsEligibilityStatus.PENDING;
     for (const registration of registrations) {
       if (!teamMember) {
-        throw new ConflictException(
-          'Não foi possível criar o vínculo com a equipe.',
-        );
+        throw new ConflictException('Não foi possível criar o vínculo com a equipe.');
       }
       const existingAssignment = await tx.sportsRegistrationMember.findFirst({
         where: {
@@ -180,12 +170,9 @@ export abstract class SportsPlayerApplicationApprovalService extends SportsPlaye
           },
         });
       } else if (
-        (
-          [
-            SportsEligibilityStatus.PENDING,
-            SportsEligibilityStatus.ELIGIBLE,
-          ] as SportsEligibilityStatus[]
-        ).includes(existingAssignment.eligibility) &&
+        ([SportsEligibilityStatus.PENDING, SportsEligibilityStatus.ELIGIBLE] as SportsEligibilityStatus[]).includes(
+          existingAssignment.eligibility,
+        ) &&
         existingAssignment.eligibility !== eligibility
       ) {
         await tx.sportsRegistrationMember.update({
@@ -208,10 +195,7 @@ export abstract class SportsPlayerApplicationApprovalService extends SportsPlaye
       where: {
         id: application.id,
         status: {
-          in: [
-            ...REVIEWABLE_APPLICATION_STATUSES,
-            SportsApplicationStatus.APPROVED,
-          ],
+          in: [...REVIEWABLE_APPLICATION_STATUSES, SportsApplicationStatus.APPROVED],
         },
       },
       data: {

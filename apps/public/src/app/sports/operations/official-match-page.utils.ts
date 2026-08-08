@@ -25,7 +25,9 @@ export function formatSportsElapsed(value: number): string {
 }
 
 export function isSportsTimerAction(type: SportsMatchActionType): boolean {
-  return type === 'START' || type === 'PAUSE' || type === 'RESUME' || type === 'PERIOD_ROLL' || type === 'TIMER_RECONCILE';
+  return (
+    type === 'START' || type === 'PAUSE' || type === 'RESUME' || type === 'PERIOD_ROLL' || type === 'TIMER_RECONCILE'
+  );
 }
 
 export function parseMatchOccurrences(value: string | null | undefined): MatchOccurrence[] {
@@ -60,23 +62,25 @@ export function sortCheckInEntries(
   state: SportsOperationalMatch['state'] | undefined,
 ): CheckInEntry[] {
   const sortByShirt = state !== 'SCHEDULED' && state !== 'CHECK_IN';
-  return entries.filter((entry) => entry.team === team).sort((left, right) => {
-    if (sortByShirt) {
-      const leftHasShirt = Boolean(left.shirtNumber?.trim());
-      const rightHasShirt = Boolean(right.shirtNumber?.trim());
-      if (leftHasShirt !== rightHasShirt) {
-        return leftHasShirt ? -1 : 1;
-      }
-      if (leftHasShirt && rightHasShirt) {
-        const shirtOrder = (left.shirtNumber ?? '').localeCompare(right.shirtNumber ?? '', 'pt-BR', {
-          numeric: true,
-          sensitivity: 'base',
-        });
-        if (shirtOrder !== 0) {
-          return shirtOrder;
+  return entries
+    .filter((entry) => entry.team === team)
+    .sort((left, right) => {
+      if (sortByShirt) {
+        const leftHasShirt = Boolean(left.shirtNumber?.trim());
+        const rightHasShirt = Boolean(right.shirtNumber?.trim());
+        if (leftHasShirt !== rightHasShirt) {
+          return leftHasShirt ? -1 : 1;
+        }
+        if (leftHasShirt && rightHasShirt) {
+          const shirtOrder = (left.shirtNumber ?? '').localeCompare(right.shirtNumber ?? '', 'pt-BR', {
+            numeric: true,
+            sensitivity: 'base',
+          });
+          if (shirtOrder !== 0) {
+            return shirtOrder;
+          }
         }
       }
-    }
-    return left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' });
-  });
+      return left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' });
+    });
 }

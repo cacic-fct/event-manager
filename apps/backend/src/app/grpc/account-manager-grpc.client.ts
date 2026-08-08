@@ -8,12 +8,7 @@ import type {
 } from '@cacic-fct/account-manager-m2m-contracts';
 import { PRIVACY_SETTING_TYPE_VALUES } from '@cacic-fct/account-manager-m2m-contracts';
 import { KeycloakM2mTokenService } from '../auth/keycloak-m2m-token.service';
-import {
-  GrpcUnaryClient,
-  grpcUnavailable,
-  loadGrpcServiceDefinition,
-  resolveGrpcProtoPath,
-} from './grpc-runtime';
+import { GrpcUnaryClient, grpcUnavailable, loadGrpcServiceDefinition, resolveGrpcProtoPath } from './grpc-runtime';
 
 type PrivacySettingsGrpcResponse = {
   settings?: unknown;

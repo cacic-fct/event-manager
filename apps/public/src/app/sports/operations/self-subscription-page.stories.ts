@@ -64,12 +64,14 @@ const meta: Meta<SelfSubscriptionStoryArgs> = {
               if (activeArgs.loadMode === 'error') {
                 return throwError(() => new Error('As inscrições ainda não estão abertas.'));
               }
-              return of(createCurrentUserTournamentOperations({
-                paymentRequired: activeArgs.paymentRequired,
-                empty: activeArgs.emptyOptions,
-                allowNoTeam: activeArgs.allowNoTeam,
-                allowNoCategory: activeArgs.allowNoCategory,
-              }));
+              return of(
+                createCurrentUserTournamentOperations({
+                  paymentRequired: activeArgs.paymentRequired,
+                  empty: activeArgs.emptyOptions,
+                  allowNoTeam: activeArgs.allowNoTeam,
+                  allowNoCategory: activeArgs.allowNoCategory,
+                }),
+              );
             },
             submitApplication: () => of('application-story'),
           },

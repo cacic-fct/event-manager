@@ -1,6 +1,5 @@
-import {  ConflictException } from '@nestjs/common';
+import { ConflictException } from '@nestjs/common';
 import {
-  
   SportsIdentityClaimStatus,
   SportsIdentityType,
   SportsParticipantStatus,
@@ -14,13 +13,11 @@ import { SportsTeamChangeService } from './sports-team-change.service';
 
 describe('SportsTeamChangeService member lifecycle', () => {
   const identities = {
-    protect: jest.fn(
-      (type: SportsIdentityType, value: string) => ({
-        encryptedValue: `encrypted:${type}:${value}`,
-        lookupHash: `hash:${type}:${value}`,
-        displayHint: type === SportsIdentityType.EMAIL ? 'ma***@example.com' : '••••1234',
-      }),
-    ),
+    protect: jest.fn((type: SportsIdentityType, value: string) => ({
+      encryptedValue: `encrypted:${type}:${value}`,
+      lookupHash: `hash:${type}:${value}`,
+      displayHint: type === SportsIdentityType.EMAIL ? 'ma***@example.com' : '••••1234',
+    })),
     reveal: jest.fn(),
   };
   const payments = {
@@ -41,18 +38,10 @@ describe('SportsTeamChangeService member lifecycle', () => {
     jest.clearAllMocks();
     tx = createTransaction();
     prisma = {
-      $transaction: jest.fn(
-        (callback: (transaction: typeof tx) => Promise<unknown>) =>
-          callback(tx),
-      ),
+      $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
       sportsTeamChangeRequest: tx.sportsTeamChangeRequest,
     };
-    service = new SportsTeamChangeService(
-      prisma as never,
-      identities as never,
-      payments as never,
-      auditLog as never,
-    );
+    service = new SportsTeamChangeService(prisma as never, identities as never, payments as never, auditLog as never);
   });
   it('updates a member with child revision CAS and makes suspended assignments ineligible', async () => {
     tx.sportsTeamChangeRequest.findUnique.mockResolvedValue(
@@ -69,9 +58,7 @@ describe('SportsTeamChangeService member lifecycle', () => {
         },
       }),
     );
-    tx.sportsTeamMember.findFirst.mockResolvedValueOnce(
-      lifecycleMember({ revision: 3 }),
-    );
+    tx.sportsTeamMember.findFirst.mockResolvedValueOnce(lifecycleMember({ revision: 3 }));
 
     await service.review('request-1', 'APPROVE', adminActor(), {
       expectedRequestRevision: 1,
@@ -117,9 +104,7 @@ describe('SportsTeamChangeService member lifecycle', () => {
         },
       }),
     );
-    tx.sportsTeamMember.findFirst.mockResolvedValueOnce(
-      lifecycleMember({ revision: 3 }),
-    );
+    tx.sportsTeamMember.findFirst.mockResolvedValueOnce(lifecycleMember({ revision: 3 }));
 
     await service.review('request-1', 'APPROVE', adminActor());
 
@@ -168,14 +153,10 @@ describe('SportsTeamChangeService member lifecycle', () => {
         },
       }),
     );
-    tx.sportsTeamMember.findFirst.mockResolvedValueOnce(
-      lifecycleMember({ revision: 3 }),
-    );
+    tx.sportsTeamMember.findFirst.mockResolvedValueOnce(lifecycleMember({ revision: 3 }));
     tx.sportsTeamMember.updateMany.mockResolvedValueOnce({ count: 0 });
 
-    await expect(
-      service.review('request-1', 'APPROVE', adminActor()),
-    ).rejects.toThrow(ConflictException);
+    await expect(service.review('request-1', 'APPROVE', adminActor())).rejects.toThrow(ConflictException);
 
     expect(tx.sportsRegistrationMember.updateMany).not.toHaveBeenCalled();
   });
@@ -241,12 +222,10 @@ function createTransaction() {
         delta: { categoryIds: ['category-1'] },
       }),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-      update: jest.fn().mockImplementation(
-        ({ data }: { data: Record<string, unknown> }) => ({
-          id: 'request-1',
-          ...data,
-        }),
-      ),
+      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
+        id: 'request-1',
+        ...data,
+      })),
     },
     sportsIdentityClaim: {
       upsert: jest.fn().mockResolvedValue({ id: 'claim-1' }),
@@ -308,7 +287,6 @@ function reviewRequest(overrides: Record<string, unknown> = {}) {
   };
 }
 
-
 function lifecycleMember(overrides: Record<string, unknown> = {}) {
   return {
     id: 'member-1',
@@ -325,7 +303,6 @@ function lifecycleMember(overrides: Record<string, unknown> = {}) {
   };
 }
 
-
 function adminActor() {
   return {
     sub: 'admin-1',
@@ -333,8 +310,3 @@ function adminActor() {
     permissionSet: new Set<string>(),
   } as never;
 }
-
-
-
-
-

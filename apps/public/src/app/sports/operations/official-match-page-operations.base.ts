@@ -118,9 +118,9 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
           timerPausedAt: null,
           timerPausedAtUnixMs: null,
           periodTimers: existingTimer
-            ? match.periodTimers.map((timer) => timer.periodNumber === periodNumber
-              ? { ...timer, startedAtUnixMs, pausedAtUnixMs: null }
-              : timer)
+            ? match.periodTimers.map((timer) =>
+                timer.periodNumber === periodNumber ? { ...timer, startedAtUnixMs, pausedAtUnixMs: null } : timer,
+              )
             : [
                 ...match.periodTimers,
                 {
@@ -152,8 +152,7 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
             }
             return {
               ...timer,
-              elapsedBeforePauseMs:
-                timer.elapsedBeforePauseMs + Math.max(0, pausedAtUnixMs - timer.startedAtUnixMs),
+              elapsedBeforePauseMs: timer.elapsedBeforePauseMs + Math.max(0, pausedAtUnixMs - timer.startedAtUnixMs),
               startedAtUnixMs: null,
               pausedAtUnixMs,
             };
@@ -181,8 +180,7 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
             (previous.startedAtUnixMs == null ? 0 : Math.max(0, startedAtUnixMs - previous.startedAtUnixMs))
           : 0;
         const scheduledStartOffsetMs =
-          match.timerPeriodStartOffsetsMs[number - 1] ??
-          (match.timerPeriodDurationMs ?? 0) * (number - 1);
+          match.timerPeriodStartOffsetsMs[number - 1] ?? (match.timerPeriodDurationMs ?? 0) * (number - 1);
         return {
           ...match,
           elapsedBeforePauseMs: scheduledStartOffsetMs,
@@ -191,14 +189,16 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
           timerPausedAt: null,
           timerPausedAtUnixMs: null,
           periodTimers: [
-            ...match.periodTimers.map((timer) => timer.periodNumber === match.scoreboard.activePeriod
-              ? {
-                  ...timer,
-                  elapsedBeforePauseMs: previousElapsed,
-                  startedAtUnixMs: null,
-                  pausedAtUnixMs: startedAtUnixMs,
-                }
-              : timer),
+            ...match.periodTimers.map((timer) =>
+              timer.periodNumber === match.scoreboard.activePeriod
+                ? {
+                    ...timer,
+                    elapsedBeforePauseMs: previousElapsed,
+                    startedAtUnixMs: null,
+                    pausedAtUnixMs: startedAtUnixMs,
+                  }
+                : timer,
+            ),
             {
               periodNumber: number,
               startedAtUnixMs,
@@ -244,11 +244,7 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
         const occurrenceId = payload['occurrenceId'];
         const kind = payload['kind'];
         const note = payload['note'];
-        if (
-          typeof occurrenceId !== 'string' ||
-          !isMatchOccurrenceKind(kind) ||
-          typeof note !== 'string'
-        ) {
+        if (typeof occurrenceId !== 'string' || !isMatchOccurrenceKind(kind) || typeof note !== 'string') {
           return match;
         }
         return {
@@ -279,15 +275,18 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
     try {
       const server = await firstValueFrom(this.api.match(conflict.matchId));
       const choice = await firstValueFrom(
-        this.dialog.open<SportsTimerConflictDialog, { server: SportsTimerSnapshot; device: SportsTimerSnapshot }, 'SERVER' | 'DEVICE'>(
-          SportsTimerConflictDialog,
-          {
+        this.dialog
+          .open<
+            SportsTimerConflictDialog,
+            { server: SportsTimerSnapshot; device: SportsTimerSnapshot },
+            'SERVER' | 'DEVICE'
+          >(SportsTimerConflictDialog, {
             disableClose: true,
             width: 'min(620px, 96vw)',
             maxWidth: '96vw',
             data: { server: this.timerSnapshot(server), device: conflict.device },
-          },
-        ).afterClosed(),
+          })
+          .afterClosed(),
       );
       if (choice === 'DEVICE') {
         const action: SportsMatchAction = {
@@ -328,10 +327,10 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
   private timerSnapshot(source: SportsOperationalMatch | null = this.match()): SportsTimerSnapshot {
     return {
       overall: {
-        startedAtUnixMs: source?.timerStartedAtUnixMs ??
-          (source?.timerStartedAt ? new Date(source.timerStartedAt).getTime() : null),
-        pausedAtUnixMs: source?.timerPausedAtUnixMs ??
-          (source?.timerPausedAt ? new Date(source.timerPausedAt).getTime() : null),
+        startedAtUnixMs:
+          source?.timerStartedAtUnixMs ?? (source?.timerStartedAt ? new Date(source.timerStartedAt).getTime() : null),
+        pausedAtUnixMs:
+          source?.timerPausedAtUnixMs ?? (source?.timerPausedAt ? new Date(source.timerPausedAt).getTime() : null),
         elapsedBeforePauseMs: source?.elapsedBeforePauseMs ?? 0,
       },
       periods: source?.periodTimers.map((timer) => ({ ...timer })) ?? [],
@@ -348,7 +347,8 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
     if (!match) {
       return 0;
     }
-    const startedAt = match.timerStartedAtUnixMs ?? (match.timerStartedAt ? new Date(match.timerStartedAt).getTime() : null);
+    const startedAt =
+      match.timerStartedAtUnixMs ?? (match.timerStartedAt ? new Date(match.timerStartedAt).getTime() : null);
     const live = startedAt == null ? 0 : Math.max(0, this.now() - startedAt);
     return match.elapsedBeforePauseMs + live;
   }

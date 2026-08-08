@@ -1,14 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  AuditLogEntityType,
-  AuditLogOperation,
-  SportsTeamStatus
-} from '@prisma/client';
+import { ConflictException, NotFoundException } from '@nestjs/common';
+import { AuditLogEntityType, AuditLogOperation, SportsTeamStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 
@@ -93,17 +85,10 @@ export class SportsTeamAdminService extends SportsTeamAdminLifecycleService {
     if (!existing) {
       throw new NotFoundException(`Sports team ${teamId} was not found.`);
     }
-    await this.frozen.assertMajorEventMutable(
-      existing.tournament.majorEventId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(existing.tournament.majorEventId, actor, 'edit');
     const nextRevision = existing.revision + 1;
     const fields = this.readRevisionMap(existing.fieldRevisions);
-    const name =
-      input.name === undefined
-        ? undefined
-        : this.requireText(input.name, 'nome da equipe', 2, 120);
+    const name = input.name === undefined ? undefined : this.requireText(input.name, 'nome da equipe', 2, 120);
     if (name !== undefined) {
       fields['name'] = nextRevision;
     }
@@ -124,17 +109,13 @@ export class SportsTeamAdminService extends SportsTeamAdminLifecycleService {
         select: { id: true },
       });
       if (duplicate) {
-        throw new ConflictException(
-          'Já existe uma equipe com este nome no torneio.',
-        );
+        throw new ConflictException('Já existe uma equipe com este nome no torneio.');
       }
       const updated = await tx.sportsTeam.updateMany({
         where: { id: teamId, revision: input.expectedRevision, deletedAt: null },
         data: {
           ...(name !== undefined ? { name } : {}),
-          ...(input.institution !== undefined
-            ? { institution: input.institution?.trim() || null }
-            : {}),
+          ...(input.institution !== undefined ? { institution: input.institution?.trim() || null } : {}),
           ...(input.status !== undefined ? { status: input.status } : {}),
           fieldRevisions: fields,
           revision: { increment: 1 },
@@ -167,13 +148,4 @@ export class SportsTeamAdminService extends SportsTeamAdminLifecycleService {
       return result;
     });
   }
-
 }
-
-
-
-
-
-
-
-

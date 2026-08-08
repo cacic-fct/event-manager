@@ -1,9 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import {
-  Prisma,
-  SportsMatchState,
-  SportsReviewStatus
-} from '@prisma/client';
+import { Prisma, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import {
   mergeSportsStructuralInvalidations,
   SportsStructuralInvalidation,
@@ -51,23 +47,11 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
         stage.matches.some(
           (match) =>
             match.reviewStatus !== SportsReviewStatus.APPROVED ||
-            !(
-              [
-                SportsMatchState.FINISHED,
-                SportsMatchState.DRAW,
-              ] as SportsMatchState[]
-            ).includes(match.canonicalState),
+            !([SportsMatchState.FINISHED, SportsMatchState.DRAW] as SportsMatchState[]).includes(match.canonicalState),
         ),
       )
     ) {
-      return elimination
-        ? this.clearGroupQualifierAssignments(
-            tx,
-            elimination,
-            groupStages,
-            actorId,
-          )
-        : [];
+      return elimination ? this.clearGroupQualifierAssignments(tx, elimination, groupStages, actorId) : [];
     }
     if (!elimination) {
       return [];
@@ -80,28 +64,17 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
       }
       for (const standing of stage.standings) {
         if (standing.rank) {
-          standingByGroupPosition.set(
-            `${groupKey}:${standing.rank}`,
-            standing.registrationId,
-          );
+          standingByGroupPosition.set(`${groupKey}:${standing.rank}`, standing.registrationId);
         }
       }
     }
-    const slots = this.readRecord(
-      this.readRecord(elimination.settings)['qualifierSlotsByMatch'],
-    );
+    const slots = this.readRecord(this.readRecord(elimination.settings)['qualifierSlotsByMatch']);
     for (const [matchId, rawSides] of Object.entries(slots)) {
       const sides = this.readRecord(rawSides);
       const home = this.readRecord(sides['home']);
       const away = this.readRecord(sides['away']);
-      const homeRegistrationId = this.registrationForGroupSlot(
-        home,
-        standingByGroupPosition,
-      );
-      const awayRegistrationId = this.registrationForGroupSlot(
-        away,
-        standingByGroupPosition,
-      );
+      const homeRegistrationId = this.registrationForGroupSlot(home, standingByGroupPosition);
+      const awayRegistrationId = this.registrationForGroupSlot(away, standingByGroupPosition);
       const match = await tx.sportsMatch.findFirst({
         where: { id: matchId, deletedAt: null },
         include: {
@@ -122,12 +95,8 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
         continue;
       }
       const slotChanges = {
-        ...(homeRegistrationId && !match.homeRegistrationId
-          ? { homeRegistrationId }
-          : {}),
-        ...(awayRegistrationId && !match.awayRegistrationId
-          ? { awayRegistrationId }
-          : {}),
+        ...(homeRegistrationId && !match.homeRegistrationId ? { homeRegistrationId } : {}),
+        ...(awayRegistrationId && !match.awayRegistrationId ? { awayRegistrationId } : {}),
       };
       if (Object.keys(slotChanges).length === 0) {
         continue;
@@ -150,15 +119,9 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
         continue;
       }
       await syncSportsMatchEventName(tx, match.id, actorId);
-      invalidations.push([
-        this.toInvalidation(match, 'GROUP_QUALIFIERS_ASSIGNED'),
-      ]);
+      invalidations.push([this.toInvalidation(match, 'GROUP_QUALIFIERS_ASSIGNED')]);
       const automaticWinner =
-        home['type'] === 'BYE'
-          ? awayRegistrationId
-          : away['type'] === 'BYE'
-            ? homeRegistrationId
-            : null;
+        home['type'] === 'BYE' ? awayRegistrationId : away['type'] === 'BYE' ? homeRegistrationId : null;
       if (automaticWinner) {
         const settled = await tx.sportsMatch.updateMany({
           where: {
@@ -177,9 +140,7 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
           },
         });
         if (settled.count === 1) {
-          invalidations.push(
-            await this.advancement.advanceBye(tx, match.id, actorId),
-          );
+          invalidations.push(await this.advancement.advanceBye(tx, match.id, actorId));
         }
       }
     }
@@ -193,9 +154,7 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
     return slot['type'] === 'GROUP_POSITION' &&
       typeof slot['groupKey'] === 'string' &&
       typeof slot['groupPosition'] === 'number'
-      ? standingByGroupPosition.get(
-          `${slot['groupKey']}:${slot['groupPosition']}`,
-        ) ?? null
+      ? (standingByGroupPosition.get(`${slot['groupKey']}:${slot['groupPosition']}`) ?? null)
       : null;
   }
 
@@ -216,35 +175,23 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
     actorId: string,
   ): Promise<SportsStructuralInvalidation[]> {
     const qualifierMatchIds = new Set(
-      Object.keys(
-        this.readRecord(
-          this.readRecord(elimination.settings)['qualifierSlotsByMatch'],
-        ),
-      ),
+      Object.keys(this.readRecord(this.readRecord(elimination.settings)['qualifierSlotsByMatch'])),
     );
     const groupRegistrationIds = new Set(
-      groupStages.flatMap((stage) =>
-        stage.standings.map((standing) => standing.registrationId),
-      ),
+      groupStages.flatMap((stage) => stage.standings.map((standing) => standing.registrationId)),
     );
     const invalidations: SportsStructuralInvalidation[] = [];
     for (const match of elimination.matches) {
       if (!qualifierMatchIds.has(match.id)) {
         continue;
       }
-      const clearHome =
-        match.homeRegistrationId !== null &&
-        groupRegistrationIds.has(match.homeRegistrationId);
-      const clearAway =
-        match.awayRegistrationId !== null &&
-        groupRegistrationIds.has(match.awayRegistrationId);
+      const clearHome = match.homeRegistrationId !== null && groupRegistrationIds.has(match.homeRegistrationId);
+      const clearAway = match.awayRegistrationId !== null && groupRegistrationIds.has(match.awayRegistrationId);
       if (!clearHome && !clearAway) {
         continue;
       }
       if (match.canonicalState !== SportsMatchState.SCHEDULED) {
-        throw new ConflictException(
-          'Redefina a eliminatória iniciada antes de corrigir a fase de grupos.',
-        );
+        throw new ConflictException('Redefina a eliminatória iniciada antes de corrigir a fase de grupos.');
       }
       const changed = await tx.sportsMatch.updateMany({
         where: {
@@ -261,9 +208,7 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
         },
       });
       if (changed.count !== 1) {
-        throw new ConflictException(
-          'A chave eliminatória mudou durante a reconciliação.',
-        );
+        throw new ConflictException('A chave eliminatória mudou durante a reconciliação.');
       }
       await syncSportsMatchEventName(tx, match.id, actorId);
       const current = await tx.sportsMatch.findUniqueOrThrow({
@@ -279,15 +224,8 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
           },
         },
       });
-      invalidations.push(
-        this.toInvalidation(current, 'GROUP_QUALIFIERS_ASSIGNED'),
-      );
+      invalidations.push(this.toInvalidation(current, 'GROUP_QUALIFIERS_ASSIGNED'));
     }
     return invalidations;
   }
-
 }
-
-
-
-

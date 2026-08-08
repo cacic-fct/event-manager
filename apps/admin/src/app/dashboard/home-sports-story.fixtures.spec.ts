@@ -1,10 +1,6 @@
-import {
-  buildSportsMatches,
-  buildSportsTournaments,
-} from './home-sports-story.fixtures';
+import { buildSportsMatches, buildSportsTournaments } from './home-sports-story.fixtures';
 
-const dateFromNow = (days: number, hour: number) =>
-  new Date(Date.UTC(2026, 6, 24 + days, hour));
+const dateFromNow = (days: number, hour: number) => new Date(Date.UTC(2026, 6, 24 + days, hour));
 
 describe('home sports story fixtures', () => {
   it('builds live tournament and match states together', () => {

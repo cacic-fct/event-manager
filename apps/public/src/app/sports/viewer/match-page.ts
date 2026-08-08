@@ -25,14 +25,7 @@ import {
 
 @Component({
   selector: 'app-sports-match-page',
-  imports: [
-    DatePipe,
-    MatButtonModule,
-    MatChipsModule,
-    MatIconModule,
-    MatProgressBarModule,
-    MatToolbarModule,
-  ],
+  imports: [DatePipe, MatButtonModule, MatChipsModule, MatIconModule, MatProgressBarModule, MatToolbarModule],
   templateUrl: './match-page.html',
   styleUrl: './match-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -61,10 +54,7 @@ export class SportsMatchPage {
             catchError((error: unknown) => {
               this.pageState.set({
                 status: 'error',
-                message:
-                  error instanceof Error
-                    ? error.message
-                    : 'Não foi possível carregar esta partida.',
+                message: error instanceof Error ? error.message : 'Não foi possível carregar esta partida.',
               });
               return of(null);
             }),
@@ -73,9 +63,7 @@ export class SportsMatchPage {
         filter((match): match is PublicSportsMatch => match !== null),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((match) =>
-        this.pageState.set({ status: 'ready', data: match, liveConnectionLost: false }),
-      );
+      .subscribe((match) => this.pageState.set({ status: 'ready', data: match, liveConnectionLost: false }));
 
     this.route.paramMap
       .pipe(
@@ -144,7 +132,8 @@ export class SportsMatchPage {
   }
 
   overallClock(match: PublicSportsMatch): string {
-    const startedAt = match.timerStartedAtUnixMs ?? (match.timerStartedAt ? new Date(match.timerStartedAt).getTime() : null);
+    const startedAt =
+      match.timerStartedAtUnixMs ?? (match.timerStartedAt ? new Date(match.timerStartedAt).getTime() : null);
     const running = startedAt == null ? 0 : Math.max(0, this.now() - startedAt);
     return this.formatElapsed(match.elapsedBeforePauseMs + running);
   }

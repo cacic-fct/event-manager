@@ -17,9 +17,7 @@ import type {
   SportsTournamentListItem,
   SportsTournamentRead,
 } from './sports.models';
-import {
-  sportsTimerPreset,
-} from './sports-workspace-form.utils';
+import { sportsTimerPreset } from './sports-workspace-form.utils';
 import { createSportsWorkspaceForms } from './sports-workspace.forms';
 
 @Directive()
@@ -50,9 +48,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly selectedVenueId = signal('');
   readonly registrationReads = signal<Record<string, SportsRegistrationRead>>({});
   readonly lineupSelections = signal<Record<string, string[]>>({});
-  readonly lineupDetails = signal<
-    Record<string, Record<string, { role: string; shirtNumber: string }>>
-  >({});
+  readonly lineupDetails = signal<Record<string, Record<string, { role: string; shirtNumber: string }>>>({});
   readonly selectedMajorEventId = signal('');
   readonly activeArea = signal<'overview' | 'categories' | 'teams' | 'matches' | 'reviews'>('overview');
   readonly selectedCategoryId = signal('');
@@ -169,10 +165,8 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
           id: read.tournament.id,
           expectedRevision: read.tournament.revision,
           ...settings,
-          selfSubscriptionAllowNoTeam:
-            settings.selfSubscriptionEnabled && settings.selfSubscriptionAllowNoTeam,
-          selfSubscriptionAllowNoCategory:
-            settings.selfSubscriptionEnabled && settings.selfSubscriptionAllowNoCategory,
+          selfSubscriptionAllowNoTeam: settings.selfSubscriptionEnabled && settings.selfSubscriptionAllowNoTeam,
+          selfSubscriptionAllowNoCategory: settings.selfSubscriptionEnabled && settings.selfSubscriptionAllowNoCategory,
           finishedAt: settings.status === 'FINISHED' ? new Date().toISOString() : null,
         }),
       );
@@ -194,9 +188,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       return;
     }
     await this.run('Não foi possível excluir o torneio.', async () => {
-      await firstValueFrom(
-        this.api.deleteVersioned('deleteSportsTournament', tournament.id, tournament.revision),
-      );
+      await firstValueFrom(this.api.deleteVersioned('deleteSportsTournament', tournament.id, tournament.revision));
       this.tournamentRead.set(null);
       this.tournaments.set(await firstValueFrom(this.api.tournaments({ take: 100 })));
       this.notify('Torneio esportivo excluído. O grande evento foi preservado.');

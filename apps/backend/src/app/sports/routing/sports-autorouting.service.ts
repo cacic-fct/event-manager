@@ -3,13 +3,7 @@ import { SportsMatchState } from '@prisma/client';
 import { addHours, subHours } from 'date-fns';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export type SportsAutorouteMode =
-  | 'CHECK_IN'
-  | 'OPERATE'
-  | 'FINALIZE'
-  | 'MATCH_DETAIL'
-  | 'WALLET'
-  | 'TEAM';
+export type SportsAutorouteMode = 'CHECK_IN' | 'OPERATE' | 'FINALIZE' | 'MATCH_DETAIL' | 'WALLET' | 'TEAM';
 
 export interface SportsAutoroute {
   matchId?: string;
@@ -21,10 +15,7 @@ export interface SportsAutoroute {
 export class SportsAutoroutingService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async resolveCurrentUserRoute(
-    personId: string,
-    now = new Date(),
-  ): Promise<SportsAutoroute | null> {
+  async resolveCurrentUserRoute(personId: string, now = new Date()): Promise<SportsAutoroute | null> {
     return (
       (await this.resolveOfficialRoute(personId, now)) ??
       (await this.resolvePlayerRoute(personId, now)) ??
@@ -32,10 +23,7 @@ export class SportsAutoroutingService {
     );
   }
 
-  async resolveOfficialRoute(
-    personId: string,
-    now = new Date(),
-  ): Promise<SportsAutoroute | null> {
+  async resolveOfficialRoute(personId: string, now = new Date()): Promise<SportsAutoroute | null> {
     const matches = await this.prisma.sportsMatch.findMany({
       where: {
         deletedAt: null,
@@ -165,36 +153,21 @@ export class SportsAutoroutingService {
     return [
       ...new Set([
         ...match.rosters.flatMap((roster) =>
-          roster.entries.map(
-            (entry) =>
-              entry.registrationMember.teamMember.participant.personId,
-          ),
+          roster.entries.map((entry) => entry.registrationMember.teamMember.participant.personId),
         ),
         ...match.officialAssignments.map((assignment) => assignment.personId),
-        ...match.category.officialAssignments.map(
-          (assignment) => assignment.personId,
-        ),
-        ...match.category.tournament.officials.map(
-          (assignment) => assignment.personId,
-        ),
+        ...match.category.officialAssignments.map((assignment) => assignment.personId),
+        ...match.category.tournament.officials.map((assignment) => assignment.personId),
       ]),
     ];
   }
 
-  private async resolvePlayerRoute(
-    personId: string,
-    now: Date,
-  ): Promise<SportsAutoroute | null> {
+  private async resolvePlayerRoute(personId: string, now: Date): Promise<SportsAutoroute | null> {
     const match = await this.prisma.sportsMatch.findFirst({
       where: {
         deletedAt: null,
         state: {
-          in: [
-            SportsMatchState.SCHEDULED,
-            SportsMatchState.CHECK_IN,
-            SportsMatchState.LIVE,
-            SportsMatchState.PAUSED,
-          ],
+          in: [SportsMatchState.SCHEDULED, SportsMatchState.CHECK_IN, SportsMatchState.LIVE, SportsMatchState.PAUSED],
         },
         event: {
           deletedAt: null,
@@ -237,9 +210,7 @@ export class SportsAutoroutingService {
     return match ? { matchId: match.id, mode: 'WALLET' } : null;
   }
 
-  private async resolveRepresentativeRoute(
-    personId: string,
-  ): Promise<SportsAutoroute | null> {
+  private async resolveRepresentativeRoute(personId: string): Promise<SportsAutoroute | null> {
     const representative = await this.prisma.sportsTeamRepresentative.findFirst({
       where: {
         personId,
@@ -259,9 +230,7 @@ export class SportsAutoroutingService {
       select: { teamId: true },
       orderBy: { assignedAt: 'desc' },
     });
-    return representative
-      ? { teamId: representative.teamId, mode: 'TEAM' }
-      : null;
+    return representative ? { teamId: representative.teamId, mode: 'TEAM' } : null;
   }
 
   private modeForState(state: SportsMatchState): SportsAutorouteMode {

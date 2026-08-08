@@ -190,11 +190,7 @@ export const PUBLIC_MATCH_SELECT = {
   actions: {
     where: {
       reviewStatus: {
-        in: [
-          SportsReviewStatus.NOT_REQUIRED,
-          SportsReviewStatus.PENDING,
-          SportsReviewStatus.APPROVED,
-        ],
+        in: [SportsReviewStatus.NOT_REQUIRED, SportsReviewStatus.PENDING, SportsReviewStatus.APPROVED],
       },
     },
     select: {

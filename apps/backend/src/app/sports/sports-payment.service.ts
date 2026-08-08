@@ -73,10 +73,7 @@ export class SportsPaymentService {
         deletedAt: null,
       },
     });
-    const paymentSelection = this.resolvePaymentSelection(
-      tournament.majorEvent,
-      input,
-    );
+    const paymentSelection = this.resolvePaymentSelection(tournament.majorEvent, input);
     const subscription = await this.ensureMajorEventSubscription(tx, {
       majorEventId: tournament.majorEventId,
       personId: input.personId,
@@ -102,10 +99,8 @@ export class SportsPaymentService {
           status: participantStatus,
           paymentStatus,
           majorEventSubscriptionId: subscription.id,
-          approvedAt: approved ? existingParticipant.approvedAt ?? new Date() : null,
-          approvedById: approved
-            ? existingParticipant.approvedById ?? input.actorId ?? null
-            : null,
+          approvedAt: approved ? (existingParticipant.approvedAt ?? new Date()) : null,
+          approvedById: approved ? (existingParticipant.approvedById ?? input.actorId ?? null) : null,
           updatedById: input.actorId,
         },
       });
@@ -120,7 +115,7 @@ export class SportsPaymentService {
         paymentStatus,
         majorEventSubscriptionId: subscription.id,
         approvedAt: approved ? new Date() : null,
-        approvedById: approved ? input.actorId ?? null : null,
+        approvedById: approved ? (input.actorId ?? null) : null,
         createdById: input.actorId,
         updatedById: input.actorId,
       },
@@ -138,10 +133,7 @@ export class SportsPaymentService {
     `;
   }
 
-  async refreshParticipantForSubscription(
-    tx: Prisma.TransactionClient,
-    subscriptionId: string,
-  ): Promise<void> {
+  async refreshParticipantForSubscription(tx: Prisma.TransactionClient, subscriptionId: string): Promise<void> {
     await refreshSportsParticipantForSubscription(tx, subscriptionId);
   }
 
@@ -193,15 +185,10 @@ export class SportsPaymentService {
       );
       const wasReopened = reopenedStatus !== existingSubscription.subscriptionStatus;
       const shouldUpdatePayment =
-        existingSubscription.subscriptionStatus !==
-          SubscriptionStatus.CONFIRMED &&
+        existingSubscription.subscriptionStatus !== SubscriptionStatus.CONFIRMED &&
         (existingSubscription.amountPaid !== input.paymentSelection.amountPaid ||
-          existingSubscription.paymentTier !==
-            input.paymentSelection.paymentTier);
-      if (
-        reopenedStatus === existingSubscription.subscriptionStatus &&
-        !shouldUpdatePayment
-      ) {
+          existingSubscription.paymentTier !== input.paymentSelection.paymentTier);
+      if (reopenedStatus === existingSubscription.subscriptionStatus && !shouldUpdatePayment) {
         return existingSubscription;
       }
       return tx.majorEventSubscription.update({
@@ -264,19 +251,13 @@ export class SportsPaymentService {
     },
     input: ParticipantApprovalInput,
   ): MajorEventPaymentSelection {
-    const tierCount = majorEvent.majorEventPrices.reduce(
-      (count, price) => count + price.tiers.length,
-      0,
-    );
+    const tierCount = majorEvent.majorEventPrices.reduce((count, price) => count + price.tiers.length, 0);
     if (
       input.source === SportsParticipantSource.SELF_SUBSCRIPTION ||
       input.paymentTier !== undefined ||
       tierCount <= 1
     ) {
-      return resolveMajorEventSelfServicePayment(
-        majorEvent,
-        input.paymentTier,
-      );
+      return resolveMajorEventSelfServicePayment(majorEvent, input.paymentTier);
     }
     return {
       amountPaid: null,
@@ -329,53 +310,50 @@ export async function refreshSportsParticipantForSubscription(
       },
     });
 
-  await tx.sportsRegistrationMember.updateMany({
-    where: {
-      teamMember: {
-        participantId: participant.id,
+    await tx.sportsRegistrationMember.updateMany({
+      where: {
+        teamMember: {
+          participantId: participant.id,
+          deletedAt: null,
+        },
         deletedAt: null,
+        eligibility:
+          participantStatus === SportsParticipantStatus.ACTIVE
+            ? SportsEligibilityStatus.PENDING
+            : SportsEligibilityStatus.ELIGIBLE,
       },
-      deletedAt: null,
-      eligibility:
-        participantStatus === SportsParticipantStatus.ACTIVE
-          ? SportsEligibilityStatus.PENDING
-          : SportsEligibilityStatus.ELIGIBLE,
-    },
-    data: {
-      eligibility:
-        participantStatus === SportsParticipantStatus.ACTIVE
-          ? SportsEligibilityStatus.ELIGIBLE
-          : SportsEligibilityStatus.PENDING,
-    },
-  });
+      data: {
+        eligibility:
+          participantStatus === SportsParticipantStatus.ACTIVE
+            ? SportsEligibilityStatus.ELIGIBLE
+            : SportsEligibilityStatus.PENDING,
+      },
+    });
 
     await tx.sportsPlayerApplication.updateMany({
-    where: {
-      tournamentId: participant.tournamentId,
-      applicantPersonId: participant.personId,
-      deletedAt: null,
-      status: {
-        in: [
-          SportsApplicationStatus.APPROVED,
-          SportsApplicationStatus.WAITING_PAYMENT,
-          SportsApplicationStatus.ACTIVE,
-        ],
+      where: {
+        tournamentId: participant.tournamentId,
+        applicantPersonId: participant.personId,
+        deletedAt: null,
+        status: {
+          in: [
+            SportsApplicationStatus.APPROVED,
+            SportsApplicationStatus.WAITING_PAYMENT,
+            SportsApplicationStatus.ACTIVE,
+          ],
+        },
       },
-    },
-    data: {
-      status:
-        participantStatus === SportsParticipantStatus.ACTIVE
-          ? SportsApplicationStatus.ACTIVE
-          : SportsApplicationStatus.WAITING_PAYMENT,
-    },
+      data: {
+        status:
+          participantStatus === SportsParticipantStatus.ACTIVE
+            ? SportsApplicationStatus.ACTIVE
+            : SportsApplicationStatus.WAITING_PAYMENT,
+      },
     });
   }
 }
 
-function resolveReusableSubscriptionStatus(
-  status: SubscriptionStatus,
-  paymentRequired: boolean,
-): SubscriptionStatus {
+function resolveReusableSubscriptionStatus(status: SubscriptionStatus, paymentRequired: boolean): SubscriptionStatus {
   if (!paymentRequired) {
     return SubscriptionStatus.CONFIRMED;
   }
@@ -385,10 +363,7 @@ function resolveReusableSubscriptionStatus(
   return status;
 }
 
-function resolveParticipantStatus(
-  subscriptionStatus: SubscriptionStatus,
-  approved: boolean,
-): SportsParticipantStatus {
+function resolveParticipantStatus(subscriptionStatus: SubscriptionStatus, approved: boolean): SportsParticipantStatus {
   if (!approved) {
     return SportsParticipantStatus.PENDING;
   }

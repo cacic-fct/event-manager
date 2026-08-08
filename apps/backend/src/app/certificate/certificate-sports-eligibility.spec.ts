@@ -127,10 +127,7 @@ describe('CertificateSportsEligibility', () => {
         eligibility: SportsEligibilityStatus.ELIGIBLE,
         registration: {
           status: {
-            in: [
-              SportsRegistrationStatus.APPROVED,
-              SportsRegistrationStatus.ACTIVE,
-            ],
+            in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
           },
           deletedAt: null,
           team: {

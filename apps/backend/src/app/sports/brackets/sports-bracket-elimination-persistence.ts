@@ -1,21 +1,7 @@
-import {
-  BadRequestException,
-  ConflictException
-} from '@nestjs/common';
-import {
-  Prisma,
-  PublicationState,
-  SportsBracketSide,
-  SportsFormat,
-  SportsStageType
-} from '@prisma/client';
-import {
-  generateSportsDoubleEliminationBracket,
-} from '../domain/sports-double-elimination';
-import {
-  planSportsGroupElimination,
-  planSportsGroupStage,
-} from '../domain/sports-groups';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { Prisma, PublicationState, SportsBracketSide, SportsFormat, SportsStageType } from '@prisma/client';
+import { generateSportsDoubleEliminationBracket } from '../domain/sports-double-elimination';
+import { planSportsGroupElimination, planSportsGroupStage } from '../domain/sports-groups';
 
 export interface SportsBracketParticipant {
   registrationId: string;
@@ -99,45 +85,26 @@ export abstract class SportsBracketEliminationPersistence extends SportsBracketS
         updatedById: actorId,
       },
     });
-    const allPlans = [
-      ...plan.winnersRounds.flat(),
-      ...plan.losersRounds.flat(),
-      plan.grandFinal,
-    ];
+    const allPlans = [...plan.winnersRounds.flat(), ...plan.losersRounds.flat(), plan.grandFinal];
     const matchIdByKey = new Map<string, string>();
     for (const matchPlan of allPlans) {
-      const homeRegistrationId =
-        matchPlan.home.type === 'REGISTRATION'
-          ? matchPlan.home.registrationId
-          : null;
-      const awayRegistrationId =
-        matchPlan.away.type === 'REGISTRATION'
-          ? matchPlan.away.registrationId
-          : null;
+      const homeRegistrationId = matchPlan.home.type === 'REGISTRATION' ? matchPlan.home.registrationId : null;
+      const awayRegistrationId = matchPlan.away.type === 'REGISTRATION' ? matchPlan.away.registrationId : null;
       const stageId =
-        matchPlan.stage === 'WINNERS'
-          ? winnersStage.id
-          : matchPlan.stage === 'LOSERS'
-            ? losersStage.id
-            : finalStage.id;
+        matchPlan.stage === 'WINNERS' ? winnersStage.id : matchPlan.stage === 'LOSERS' ? losersStage.id : finalStage.id;
       const match = await this.createBackedMatch(tx, {
         category,
         stageId,
         name: this.matchName(
           category.name,
-          homeRegistrationId
-            ? teamNameByRegistration.get(homeRegistrationId)
-            : undefined,
-          awayRegistrationId
-            ? teamNameByRegistration.get(awayRegistrationId)
-            : undefined,
+          homeRegistrationId ? teamNameByRegistration.get(homeRegistrationId) : undefined,
+          awayRegistrationId ? teamNameByRegistration.get(awayRegistrationId) : undefined,
         ),
         homeRegistrationId,
         awayRegistrationId,
         roundNumber: matchPlan.roundNumber,
         bracketPosition: matchPlan.position,
-        automaticWinnerRegistrationId:
-          matchPlan.automaticWinnerRegistrationId,
+        automaticWinnerRegistrationId: matchPlan.automaticWinnerRegistrationId,
         actorId,
       });
       matchIdByKey.set(matchPlan.key, match.id);
@@ -162,27 +129,15 @@ export abstract class SportsBracketEliminationPersistence extends SportsBracketS
       if (!sourceId) {
         continue;
       }
-      const winnerRoute = matchPlan.advancements.find(
-        (route) => route.outcome === 'WINNER',
-      );
-      const loserRoute = matchPlan.advancements.find(
-        (route) => route.outcome === 'LOSER',
-      );
+      const winnerRoute = matchPlan.advancements.find((route) => route.outcome === 'WINNER');
+      const loserRoute = matchPlan.advancements.find((route) => route.outcome === 'LOSER');
       await tx.sportsMatch.update({
         where: { id: sourceId },
         data: {
-          winnerAdvancesToId: winnerRoute
-            ? matchIdByKey.get(winnerRoute.targetMatchKey) ?? null
-            : null,
-          winnerAdvancesToSide: winnerRoute
-            ? this.toBracketSide(winnerRoute.targetSide)
-            : null,
-          loserAdvancesToId: loserRoute
-            ? matchIdByKey.get(loserRoute.targetMatchKey) ?? null
-            : null,
-          loserAdvancesToSide: loserRoute
-            ? this.toBracketSide(loserRoute.targetSide)
-            : null,
+          winnerAdvancesToId: winnerRoute ? (matchIdByKey.get(winnerRoute.targetMatchKey) ?? null) : null,
+          winnerAdvancesToSide: winnerRoute ? this.toBracketSide(winnerRoute.targetSide) : null,
+          loserAdvancesToId: loserRoute ? (matchIdByKey.get(loserRoute.targetMatchKey) ?? null) : null,
+          loserAdvancesToSide: loserRoute ? this.toBracketSide(loserRoute.targetSide) : null,
         },
       });
     }
@@ -203,10 +158,7 @@ export abstract class SportsBracketEliminationPersistence extends SportsBracketS
       }
       if (matchPlan.home.type === 'BYE' && matchPlan.away.type !== 'BYE') {
         structuralByeSides[matchId] = SportsBracketSide.HOME;
-      } else if (
-        matchPlan.away.type === 'BYE' &&
-        matchPlan.home.type !== 'BYE'
-      ) {
+      } else if (matchPlan.away.type === 'BYE' && matchPlan.home.type !== 'BYE') {
         structuralByeSides[matchId] = SportsBracketSide.AWAY;
       }
     }
@@ -264,23 +216,16 @@ export abstract class SportsBracketEliminationPersistence extends SportsBracketS
       rules['groupCount'],
       Math.max(2, Math.floor(Math.sqrt(participants.length))),
     );
-    const qualifiersPerGroup = this.readPositiveInteger(
-      rules['qualifiersPerGroup'],
-      2,
-    );
+    const qualifiersPerGroup = this.readPositiveInteger(rules['qualifiersPerGroup'], 2);
     const doubleRoundRobin = rules['doubleRoundRobin'] === true;
     const groupPlan = planSportsGroupStage({
       entrants: participants,
       groupCount,
       doubleRoundRobin,
     });
-    const smallestGroupSize = Math.min(
-      ...groupPlan.groups.map((group) => group.entrants.length),
-    );
+    const smallestGroupSize = Math.min(...groupPlan.groups.map((group) => group.entrants.length));
     if (qualifiersPerGroup > smallestGroupSize) {
-      throw new BadRequestException(
-        'A quantidade de classificados por grupo não pode superar o menor grupo.',
-      );
+      throw new BadRequestException('A quantidade de classificados por grupo não pode superar o menor grupo.');
     }
     const stageIds: string[] = [];
     for (const group of groupPlan.groups) {
@@ -349,10 +294,7 @@ export abstract class SportsBracketEliminationPersistence extends SportsBracketS
     });
     stageIds.push(eliminationStage.id);
     const matchIdByKey = new Map<string, string>();
-    const qualifierSlotsByMatch = new Map<
-      string,
-      { home: unknown; away: unknown }
-    >();
+    const qualifierSlotsByMatch = new Map<string, { home: unknown; away: unknown }>();
     for (const round of elimination.rounds) {
       for (const matchPlan of round) {
         const match = await this.createBackedMatch(tx, {
@@ -367,10 +309,7 @@ export abstract class SportsBracketEliminationPersistence extends SportsBracketS
           actorId,
         });
         matchIdByKey.set(matchPlan.key, match.id);
-        if (
-          matchPlan.home.type === 'GROUP_POSITION' ||
-          matchPlan.away.type === 'GROUP_POSITION'
-        ) {
+        if (matchPlan.home.type === 'GROUP_POSITION' || matchPlan.away.type === 'GROUP_POSITION') {
           qualifierSlotsByMatch.set(match.id, {
             home: matchPlan.home,
             away: matchPlan.away,
@@ -385,18 +324,13 @@ export abstract class SportsBracketEliminationPersistence extends SportsBracketS
         }
         const sourceMatchId = matchIdByKey.get(matchPlan.key);
         if (!sourceMatchId) {
-          throw new ConflictException(
-            'Uma partida eliminatória não pôde ser persistida.',
-          );
+          throw new ConflictException('Uma partida eliminatória não pôde ser persistida.');
         }
         await tx.sportsMatch.update({
           where: { id: sourceMatchId },
           data: {
-            winnerAdvancesToId:
-              matchIdByKey.get(matchPlan.winnerAdvancesToKey) ?? null,
-            winnerAdvancesToSide: this.toBracketSide(
-              matchPlan.winnerAdvancesToSide,
-            ),
+            winnerAdvancesToId: matchIdByKey.get(matchPlan.winnerAdvancesToKey) ?? null,
+            winnerAdvancesToSide: this.toBracketSide(matchPlan.winnerAdvancesToSide),
           },
         });
       }
@@ -414,9 +348,4 @@ export abstract class SportsBracketEliminationPersistence extends SportsBracketS
     });
     return stageIds;
   }
-
 }
-
-
-
-

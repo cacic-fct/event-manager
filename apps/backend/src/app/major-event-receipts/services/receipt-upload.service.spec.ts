@@ -1,9 +1,5 @@
 import { BadRequestException, ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
-import {
-  SportsParticipantStatus,
-  SportsPaymentStatus,
-  SubscriptionStatus,
-} from '@prisma/client';
+import { SportsParticipantStatus, SportsPaymentStatus, SubscriptionStatus } from '@prisma/client';
 import sharp from 'sharp';
 import { Readable } from 'stream';
 import { RECEIPT_ADMIN_PERMISSION, RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';

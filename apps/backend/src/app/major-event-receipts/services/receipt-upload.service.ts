@@ -188,10 +188,7 @@ export class ReceiptUploadService {
 
       return createdReceipt;
     });
-    await this.sportsApplicationRealtime.publishPaymentChanged(
-      subscription.id,
-      'RECEIPT_UPLOADED',
-    );
+    await this.sportsApplicationRealtime.publishPaymentChanged(subscription.id, 'RECEIPT_UPLOADED');
 
     await this.receiptQueue.add(
       'process',

@@ -296,36 +296,38 @@ export class OfflinePublicDataDatabase extends Dexie {
       ].join(', '),
     });
 
-    this.version(9).stores({
-      calendarEvents: 'id, startDate, cachedAt',
-      syncMetadata: 'key',
-      userSnapshots: 'userId, updatedAt',
-      restaurantCards: 'userId, updatedAt',
-      attendanceFeeds: 'key, userId, updatedAt',
-      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
-      featureFlagCache: 'key, updatedAt',
-      calendarPreferences: 'key, updatedAt',
-      totpSeeds: 'userId, primaryEmail, sessionExpiresAt, updatedAt',
-      attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
-      attendanceQueue: [
-        'clientId',
-        'queuedByUserId',
-        'eventId',
-        'status',
-        'queuedAt',
-        'updatedAt',
-        '[queuedByUserId+eventId]',
-        '[queuedByUserId+status]',
-        '[eventId+status]',
-      ].join(', '),
-      oralAttendanceRosters: 'key, userId, eventId, cachedAt, [userId+eventId]',
-      oralAttendanceDecisions:
-        'clientId, queuedByUserId, eventId, personId, queuedAt, [queuedByUserId+eventId], [queuedByUserId+eventId+personId]',
-    }).upgrade(async (transaction) => {
-      await transaction
-        .table<OfflineAttendanceQueueItem, string>('attendanceQueue')
-        .toCollection()
-        .modify(normalizeOfflineAttendanceQueueOwnership);
-    });
+    this.version(9)
+      .stores({
+        calendarEvents: 'id, startDate, cachedAt',
+        syncMetadata: 'key',
+        userSnapshots: 'userId, updatedAt',
+        restaurantCards: 'userId, updatedAt',
+        attendanceFeeds: 'key, userId, updatedAt',
+        attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+        featureFlagCache: 'key, updatedAt',
+        calendarPreferences: 'key, updatedAt',
+        totpSeeds: 'userId, primaryEmail, sessionExpiresAt, updatedAt',
+        attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+        attendanceQueue: [
+          'clientId',
+          'queuedByUserId',
+          'eventId',
+          'status',
+          'queuedAt',
+          'updatedAt',
+          '[queuedByUserId+eventId]',
+          '[queuedByUserId+status]',
+          '[eventId+status]',
+        ].join(', '),
+        oralAttendanceRosters: 'key, userId, eventId, cachedAt, [userId+eventId]',
+        oralAttendanceDecisions:
+          'clientId, queuedByUserId, eventId, personId, queuedAt, [queuedByUserId+eventId], [queuedByUserId+eventId+personId]',
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<OfflineAttendanceQueueItem, string>('attendanceQueue')
+          .toCollection()
+          .modify(normalizeOfflineAttendanceQueueOwnership);
+      });
   }
 }

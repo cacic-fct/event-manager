@@ -14,9 +14,7 @@ startDate.setDate(startDate.getDate() + 2);
 startDate.setHours(18, 30, 0, 0);
 const endDate = new Date(startDate.getTime() + 90 * 60_000);
 
-export function createSportsViewerMatch(
-  overrides: Partial<PublicSportsMatch> = {},
-): PublicSportsMatch {
+export function createSportsViewerMatch(overrides: Partial<PublicSportsMatch> = {}): PublicSportsMatch {
   return {
     id: faker.string.uuid(),
     eventId: faker.string.uuid(),
@@ -130,9 +128,7 @@ export function createSportsViewerRoster(): PublicSportsRoster[] {
   ];
 }
 
-export function createSportsViewerMatchForState(
-  state: SportsMatchState,
-): PublicSportsMatch {
+export function createSportsViewerMatchForState(state: SportsMatchState): PublicSportsMatch {
   const final = state === 'FINISHED' || state === 'DRAW';
   return createSportsViewerMatch({
     state,
@@ -140,30 +136,25 @@ export function createSportsViewerMatchForState(
       homeScore: final || ['LIVE', 'PAUSED', 'AWAITING_REVIEW'].includes(state) ? 3 : 0,
       awayScore: final || ['LIVE', 'PAUSED', 'AWAITING_REVIEW'].includes(state) ? 1 : 0,
       activePeriod: state === 'LIVE' || state === 'PAUSED' ? 2 : null,
-      periods: final || ['LIVE', 'PAUSED', 'AWAITING_REVIEW'].includes(state)
-        ? [
-          { number: 1, label: '1º tempo', homeScore: 2, awayScore: 1, completed: true },
-          {
-            number: 2,
-            label: '2º tempo',
-            homeScore: 1,
-            awayScore: 0,
-            completed: final || state === 'AWAITING_REVIEW',
-          },
-        ]
-        : [],
+      periods:
+        final || ['LIVE', 'PAUSED', 'AWAITING_REVIEW'].includes(state)
+          ? [
+              { number: 1, label: '1º tempo', homeScore: 2, awayScore: 1, completed: true },
+              {
+                number: 2,
+                label: '2º tempo',
+                homeScore: 1,
+                awayScore: 0,
+                completed: final || state === 'AWAITING_REVIEW',
+              },
+            ]
+          : [],
     },
-    winner: state === 'FINISHED'
-      ? { id: 'equipe-atletica', name: 'Atlética FCT' }
-      : null,
-    loser: state === 'FINISHED'
-      ? { id: 'equipe-ciencia', name: 'Ciência da Computação' }
-      : null,
+    winner: state === 'FINISHED' ? { id: 'equipe-atletica', name: 'Atlética FCT' } : null,
+    loser: state === 'FINISHED' ? { id: 'equipe-ciencia', name: 'Ciência da Computação' } : null,
     lossReason: state === 'FINISHED' ? 'SCORE' : null,
     drawWillReschedule: state === 'DRAW' ? true : null,
-    timerStartedAt: state === 'LIVE'
-      ? new Date(Date.now() - 32 * 60_000).toISOString()
-      : null,
+    timerStartedAt: state === 'LIVE' ? new Date(Date.now() - 32 * 60_000).toISOString() : null,
     timerPausedAt: state === 'PAUSED' ? new Date().toISOString() : null,
     elapsedBeforePauseMs: state === 'PAUSED' ? 32 * 60_000 : 0,
     rosters: final ? createSportsViewerRoster() : [],
@@ -200,9 +191,7 @@ export function createSportsViewerTournament(
     endDate: new Date(startDate.getTime() + 5 * 24 * 60 * 60_000).toISOString(),
     selfSubscriptionEnabled: true,
     isPaymentRequired: true,
-    paymentTiers: [
-      { id: 'tier-student', name: 'Estudante', value: 2500 },
-    ],
+    paymentTiers: [{ id: 'tier-student', name: 'Estudante', value: 2500 }],
     teams,
     matches: [liveMatch, scheduledMatch],
     overallScores: [
@@ -281,12 +270,11 @@ export function createMultiSportViewerTournament(): PublicSportsTournamentDetail
       customSportName: null,
       division,
       format,
-      rulesText: index === 0
-        ? 'Fase de grupos seguida por semifinal e final.'
-        : 'Regulamento publicado pela organização.',
+      rulesText:
+        index === 0 ? 'Fase de grupos seguida por semifinal e final.' : 'Regulamento publicado pela organização.',
       standings: tournament.categories[0]?.standings ?? [],
       placements: [],
-      brackets: index === 0 ? tournament.categories[0]?.brackets ?? [] : [],
+      brackets: index === 0 ? (tournament.categories[0]?.brackets ?? []) : [],
       matches: index === 0 ? tournament.matches : [],
     })),
   };

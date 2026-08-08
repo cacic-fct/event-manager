@@ -7,10 +7,7 @@ import {
   SubscriptionCreationMethod,
   SubscriptionStatus,
 } from '@prisma/client';
-import {
-  refreshSportsParticipantForSubscription,
-  SportsPaymentService,
-} from './sports-payment.service';
+import { refreshSportsParticipantForSubscription, SportsPaymentService } from './sports-payment.service';
 
 describe('SportsPaymentService', () => {
   let service: SportsPaymentService;
@@ -32,13 +29,9 @@ describe('SportsPaymentService', () => {
 
     expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
     expect(tx.$queryRaw.mock.calls[0]?.[0]).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('pg_advisory_xact_lock'),
-      ]),
+      expect.arrayContaining([expect.stringContaining('pg_advisory_xact_lock')]),
     );
-    expect(tx.$queryRaw.mock.calls[0]?.[1]).toBe(
-      'sports-participant:tournament-1:person-1',
-    );
+    expect(tx.$queryRaw.mock.calls[0]?.[1]).toBe('sports-participant:tournament-1:person-1');
   });
 
   it('enables receipt upload for an approved team-assigned participant in a paid tournament', async () => {

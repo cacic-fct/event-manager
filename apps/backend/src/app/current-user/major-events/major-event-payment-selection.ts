@@ -15,9 +15,7 @@ export interface MajorEventPaymentSelection {
   paymentTier: string | null;
 }
 
-export function normalizeMajorEventPaymentTier(
-  paymentTier?: string | null,
-): string | null | undefined {
+export function normalizeMajorEventPaymentTier(paymentTier?: string | null): string | null | undefined {
   if (paymentTier === undefined) {
     return undefined;
   }
@@ -60,9 +58,7 @@ export function resolveMajorEventSelfServicePayment(
   }
 
   const selectedTier = tiers.find(
-    (tier) =>
-      tier.name.trim().toLocaleLowerCase('pt-BR') ===
-      normalizedPaymentTier.toLocaleLowerCase('pt-BR'),
+    (tier) => tier.name.trim().toLocaleLowerCase('pt-BR') === normalizedPaymentTier.toLocaleLowerCase('pt-BR'),
   );
   if (!selectedTier) {
     throw new BadRequestException('A faixa de pagamento não é válida para este grande evento.');

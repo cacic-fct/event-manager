@@ -20,10 +20,7 @@ import {
   OralAttendanceDecision,
   OralAttendancePerson,
 } from '@cacic-fct/shared-angular';
-import {
-  EventAttendanceScannerFeedItem,
-  EventAttendanceStatus,
-} from '@cacic-fct/event-manager-admin-contracts';
+import { EventAttendanceScannerFeedItem, EventAttendanceStatus } from '@cacic-fct/event-manager-admin-contracts';
 import { firstValueFrom, fromEvent } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
@@ -133,9 +130,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
     void firstValueFrom(this.api.createEventAttendanceFromManualInput({ eventId: this.eventId, value }))
       .then(() => this.attendancesService.invalidateExplicitAbsences(this.eventId))
       .then(() => this.snackbar.open('Presença manual registrada.', 'Fechar', { duration: 2500 }))
-      .catch(() =>
-        this.snackbar.open('Não foi possível registrar a presença manual.', 'Fechar', { duration: 5000 }),
-      );
+      .catch(() => this.snackbar.open('Não foi possível registrar a presença manual.', 'Fechar', { duration: 5000 }));
   }
 
   private scheduleSync(delayMs = this.syncRetryAttempt ? this.syncRetryDelay() : INITIAL_SYNC_DELAY_MS): void {
@@ -223,10 +218,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
   }
 
   private syncRetryDelay(): number {
-    return Math.min(
-      SYNC_RETRY_MAX_DELAY_MS,
-      SYNC_RETRY_BASE_DELAY_MS * 2 ** Math.min(this.syncRetryAttempt - 1, 5),
-    );
+    return Math.min(SYNC_RETRY_MAX_DELAY_MS, SYNC_RETRY_BASE_DELAY_MS * 2 ** Math.min(this.syncRetryAttempt - 1, 5));
   }
 
   private async syncItem(item: PendingAdminDecision): Promise<SyncOutcome> {

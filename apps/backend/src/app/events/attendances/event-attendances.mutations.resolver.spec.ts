@@ -19,10 +19,11 @@ describe('EventAttendancesMutationsResolver', () => {
     tx.eventAttendance.findMany.mockResolvedValue([]);
     tx.eventAttendance.upsert.mockImplementation(async ({ create }) => create);
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
-    const { resolver: resolverWithDependencies, frozenResources, auditLog } = createResolverWithDependencies(
-      prisma,
-      attendanceCategories,
-    );
+    const {
+      resolver: resolverWithDependencies,
+      frozenResources,
+      auditLog,
+    } = createResolverWithDependencies(prisma, attendanceCategories);
 
     await expect(
       resolverWithDependencies.setEventOralAttendances(
@@ -49,11 +50,7 @@ describe('EventAttendancesMutationsResolver', () => {
       expect.objectContaining({ personId: 'person-2', status: 'ABSENT' }),
     ]);
 
-    expect(frozenResources.assertEventMutable).toHaveBeenCalledWith(
-      'event-1',
-      { sub: 'collector-1' },
-      'edit',
-    );
+    expect(frozenResources.assertEventMutable).toHaveBeenCalledWith('event-1', { sub: 'collector-1' }, 'edit');
     expect(tx.eventAttendance.upsert).toHaveBeenCalledTimes(2);
     expect(tx.eventAttendance.upsert).toHaveBeenNthCalledWith(
       1,

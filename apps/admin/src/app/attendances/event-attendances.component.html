@@ -113,9 +113,7 @@
             <mat-icon>qr_code_scanner</mat-icon>
             Escanear presenças
           </button>
-          <a
-            mat-flat-button
-            [routerLink]="['/attendances/event', workspace.selectedAttendanceEvent()?.id, 'oral']">
+          <a mat-flat-button [routerLink]="['/attendances/event', workspace.selectedAttendanceEvent()?.id, 'oral']">
             <mat-icon>record_voice_over</mat-icon>
             Chamada oral
           </a>

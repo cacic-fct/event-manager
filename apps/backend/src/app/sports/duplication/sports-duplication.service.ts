@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -32,12 +27,7 @@ export class SportsDuplicationService {
     private readonly auditLog: AuditLogService,
     private readonly frozen: FrozenResourceService,
   ) {
-    this.teamDuplicator = new SportsTeamDuplicationService(
-      prisma,
-      payments,
-      auditLog,
-      frozen,
-    );
+    this.teamDuplicator = new SportsTeamDuplicationService(prisma, payments, auditLog, frozen);
   }
 
   async cloneTournament(
@@ -56,11 +46,7 @@ export class SportsDuplicationService {
     actor: AuthenticatedUser,
   ) {
     const actorId = this.requireActorId(actor);
-    await this.frozen.assertMajorEventMutable(
-      input.destinationMajorEventId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(input.destinationMajorEventId, actor, 'edit');
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const [source, destinationMajorEvent] = await Promise.all([
         tx.sportsTournament.findFirst({
@@ -88,10 +74,7 @@ export class SportsDuplicationService {
       if (!source || !destinationMajorEvent) {
         throw new NotFoundException('Torneio de origem ou grande evento de destino não encontrado.');
       }
-      if (
-        destinationMajorEvent.sportsTournament &&
-        !destinationMajorEvent.sportsTournament.deletedAt
-      ) {
+      if (destinationMajorEvent.sportsTournament && !destinationMajorEvent.sportsTournament.deletedAt) {
         throw new ConflictException('O grande evento de destino já possui um torneio.');
       }
       const parts = input.parts ?? {
@@ -103,9 +86,7 @@ export class SportsDuplicationService {
         rules: true,
       };
       if (parts.registrations && (!parts.categories || !parts.teams)) {
-        throw new BadRequestException(
-          'Copiar inscrições exige copiar modalidades e equipes.',
-        );
+        throw new BadRequestException('Copiar inscrições exige copiar modalidades e equipes.');
       }
       const tournament = await tx.sportsTournament.create({
         data: {
@@ -149,18 +130,10 @@ export class SportsDuplicationService {
               periodsEnabled: category.periodsEnabled,
               maximumPeriods: category.maximumPeriods,
               periodLabel: category.periodLabel,
-              scoreRules: parts.rules
-                ? this.toJson(category.scoreRules)
-                : {},
-              rosterRules: parts.rules
-                ? this.toJson(category.rosterRules)
-                : {},
-              bracketRules: parts.rules
-                ? this.toJson(category.bracketRules)
-                : {},
-              standingsRules: parts.rules
-                ? this.toJson(category.standingsRules)
-                : {},
+              scoreRules: parts.rules ? this.toJson(category.scoreRules) : {},
+              rosterRules: parts.rules ? this.toJson(category.rosterRules) : {},
+              bracketRules: parts.rules ? this.toJson(category.bracketRules) : {},
+              standingsRules: parts.rules ? this.toJson(category.standingsRules) : {},
               rulesText: parts.rules ? category.rulesText : null,
               registrationFormId: null,
               createdById: actorId,
@@ -205,9 +178,7 @@ export class SportsDuplicationService {
                 categoryId,
                 status: SportsRegistrationStatus.DRAFT,
                 seed: registration.seed,
-                formAnswers: registration.formAnswers
-                  ? this.toJson(registration.formAnswers)
-                  : undefined,
+                formAnswers: registration.formAnswers ? this.toJson(registration.formAnswers) : undefined,
                 formSchemaSnapshot: registration.formSchemaSnapshot
                   ? this.toJson(registration.formSchemaSnapshot)
                   : undefined,
@@ -244,9 +215,7 @@ export class SportsDuplicationService {
           });
         }
         for (const venue of pendingParents) {
-          const parentVenueId = venue.sourceParentId
-            ? venueIdMap.get(venue.sourceParentId)
-            : null;
+          const parentVenueId = venue.sourceParentId ? venueIdMap.get(venue.sourceParentId) : null;
           if (parentVenueId) {
             await tx.sportsVenue.update({
               where: { id: venue.id },
@@ -260,9 +229,7 @@ export class SportsDuplicationService {
           await tx.sportsOfficialAssignment.create({
             data: {
               tournamentId: tournament.id,
-              categoryId: official.categoryId
-                ? categoryIdMap.get(official.categoryId) ?? null
-                : null,
+              categoryId: official.categoryId ? (categoryIdMap.get(official.categoryId) ?? null) : null,
               personId: official.personId,
               role: official.role,
               assignedById: actorId,
@@ -308,15 +275,9 @@ export class SportsDuplicationService {
       select: { majorEventId: true },
     });
     if (!destinationScope) {
-      throw new NotFoundException(
-        'Torneio esportivo de destino não encontrado.',
-      );
+      throw new NotFoundException('Torneio esportivo de destino não encontrado.');
     }
-    await this.frozen.assertMajorEventMutable(
-      destinationScope.majorEventId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(destinationScope.majorEventId, actor, 'edit');
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const [source, destination] = await Promise.all([
         tx.sportsCategory.findFirst({
@@ -392,8 +353,7 @@ export class SportsDuplicationService {
         for (const registration of source.registrations) {
           const team = destinationTeams.find(
             (candidate) =>
-              candidate.name.toLocaleLowerCase('pt-BR') ===
-                registration.team.name.toLocaleLowerCase('pt-BR') &&
+              candidate.name.toLocaleLowerCase('pt-BR') === registration.team.name.toLocaleLowerCase('pt-BR') &&
               candidate.institution === registration.team.institution,
           );
           if (team) {
@@ -476,9 +436,7 @@ export class SportsDuplicationService {
     return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
   }
 
-  private sanitizeStageSettings(
-    value: Prisma.JsonValue,
-  ): Prisma.InputJsonValue {
+  private sanitizeStageSettings(value: Prisma.JsonValue): Prisma.InputJsonValue {
     const settings = this.toJson(value);
     if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
       return {};
@@ -490,5 +448,4 @@ export class SportsDuplicationService {
     delete result['generationFingerprint'];
     return result;
   }
-
 }

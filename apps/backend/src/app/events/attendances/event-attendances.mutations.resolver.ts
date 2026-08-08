@@ -199,9 +199,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           },
           select: EVENT_ATTENDANCE_AUDIT_SELECT,
         });
-        const beforeByPersonId = new Map(
-          previousAttendances.map((attendance) => [attendance.personId, attendance]),
-        );
+        const beforeByPersonId = new Map(previousAttendances.map((attendance) => [attendance.personId, attendance]));
         const results: EventAttendanceAuditRecord[] = [];
         for (const input of chunk) {
           const before = beforeByPersonId.get(input.personId) ?? null;

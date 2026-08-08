@@ -109,8 +109,7 @@ export class SportsRosterCheckInInput {
 
   @Field(() => Boolean, {
     nullable: true,
-    description:
-      'Whether the player is present. False safely reverses an accidental check-in.',
+    description: 'Whether the player is present. False safely reverses an accidental check-in.',
   })
   present?: boolean;
 }

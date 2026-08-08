@@ -34,12 +34,10 @@ export class SportsPlayerApplicationAdminReadResolver {
     limit: number | undefined,
     @Context() context: GraphqlContext,
   ): Promise<AdminSportsPlayerApplicationRead[]> {
-    return this.applications.adminQueue(
-      this.currentUser.getAuthenticatedUser(context),
-      tournamentId,
-      statuses,
-      { cursor, limit },
-    );
+    return this.applications.adminQueue(this.currentUser.getAuthenticatedUser(context), tournamentId, statuses, {
+      cursor,
+      limit,
+    });
   }
 
   @Query(() => AdminSportsPlayerApplicationRead, {
@@ -50,10 +48,7 @@ export class SportsPlayerApplicationAdminReadResolver {
     @Args('applicationId', { type: () => String }) applicationId: string,
     @Context() context: GraphqlContext,
   ): Promise<AdminSportsPlayerApplicationRead> {
-    return this.applications.adminDetail(
-      this.currentUser.getAuthenticatedUser(context),
-      applicationId,
-    );
+    return this.applications.adminDetail(this.currentUser.getAuthenticatedUser(context), applicationId);
   }
 }
 
@@ -72,9 +67,6 @@ export class SportsPlayerApplicationCurrentUserReadResolver {
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserSportsPlayerApplicationRead[]> {
     const person = await this.currentUser.requireCurrentPerson(context);
-    return this.applications.currentUserApplications(
-      tournamentId,
-      person.id,
-    );
+    return this.applications.currentUserApplications(tournamentId, person.id);
   }
 }

@@ -85,38 +85,39 @@ describe('OfficialSportsMatchPage', () => {
 
     await component.changeScore(component.displaySide('left'), 1);
 
-    expect(JSON.parse(actions[0]?.payloadJson ?? '{}')).toEqual(
-      expect.objectContaining({ side: 'AWAY', amount: 1 }),
-    );
+    expect(JSON.parse(actions[0]?.payloadJson ?? '{}')).toEqual(expect.objectContaining({ side: 'AWAY', amount: 1 }));
     expect(component.scoreFor('away')).toBe(2);
   });
 
   it('undoes only a newly created empty period through an audited score correction', async () => {
-    component.match.update((match) => match ? {
-      ...match,
-      timerPeriodDurationMs: 45 * 60_000,
-      timerPeriodStartOffsetsMs: [0, 45 * 60_000, 95 * 60_000],
-      timerAllowOvertime: false,
-    } : match);
+    component.match.update((match) =>
+      match
+        ? {
+            ...match,
+            timerPeriodDurationMs: 45 * 60_000,
+            timerPeriodStartOffsetsMs: [0, 45 * 60_000, 95 * 60_000],
+            timerAllowOvertime: false,
+          }
+        : match,
+    );
     await component.rollPeriod();
 
     expect(component.match()?.scoreboard.periods).toHaveLength(3);
-    expect(component.match()?.periodTimers.at(-1)).toEqual(expect.objectContaining({
-      periodNumber: 3,
-      scheduledStartOffsetMs: 95 * 60_000,
-      capMs: 45 * 60_000,
-      allowOvertime: false,
-    }));
+    expect(component.match()?.periodTimers.at(-1)).toEqual(
+      expect.objectContaining({
+        periodNumber: 3,
+        scheduledStartOffsetMs: 95 * 60_000,
+        capMs: 45 * 60_000,
+        allowOvertime: false,
+      }),
+    );
     expect(component.canUndoPeriod()).toBe(true);
 
     await component.undoPeriod();
 
     expect(component.match()?.scoreboard.periods).toHaveLength(2);
     expect(component.match()?.scoreboard.activePeriod).toBe(2);
-    expect(actions.map((action) => action.type)).toEqual([
-      'PERIOD_ROLL',
-      'SCORE_CORRECTION',
-    ]);
+    expect(actions.map((action) => action.type)).toEqual(['PERIOD_ROLL', 'SCORE_CORRECTION']);
     expect(JSON.parse(actions[1]?.payloadJson ?? '{}')).toEqual({
       scoreboard: {
         home: 2,
@@ -174,11 +175,11 @@ describe('OfficialSportsMatchPage', () => {
       { id: '1', name: 'Álvaro', team: 'home', checkedIn: false, role: 'PLAYER', shirtNumber: '10' },
       { id: '2', name: 'Beatriz', team: 'home', checkedIn: false, role: 'PLAYER', shirtNumber: null },
     ]);
-    component.match.update((match) => match ? { ...match, state: 'CHECK_IN' } : match);
+    component.match.update((match) => (match ? { ...match, state: 'CHECK_IN' } : match));
 
     expect(component.homeCheckInEntries().map((entry) => entry.name)).toEqual(['Álvaro', 'Beatriz', 'Zélia']);
 
-    component.match.update((match) => match ? { ...match, state: 'LIVE' } : match);
+    component.match.update((match) => (match ? { ...match, state: 'LIVE' } : match));
 
     expect(component.homeCheckInEntries().map((entry) => entry.name)).toEqual(['Zélia', 'Álvaro', 'Beatriz']);
   });

@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import {
   PublicationState,
   SportsCategoryStatus,
@@ -52,15 +49,8 @@ describe('SportsAdminService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     tx = createTransaction();
-    prisma.$transaction.mockImplementation(
-      (callback: (transaction: typeof tx) => Promise<unknown>) =>
-        callback(tx),
-    );
-    service = new SportsAdminService(
-      prisma as never,
-      frozen as never,
-      auditLog as never,
-    );
+    prisma.$transaction.mockImplementation((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx));
+    service = new SportsAdminService(prisma as never, frozen as never, auditLog as never);
   });
 
   it('attaches a compatible existing Event and enables shared attendance', async () => {
@@ -94,16 +84,8 @@ describe('SportsAdminService', () => {
       actor,
     );
 
-    expect(frozen.assertEventGroupMutable).toHaveBeenCalledWith(
-      'group-1',
-      actor,
-      'edit',
-    );
-    expect(frozen.assertEventMutable).toHaveBeenCalledWith(
-      'event-1',
-      actor,
-      'edit',
-    );
+    expect(frozen.assertEventGroupMutable).toHaveBeenCalledWith('group-1', actor, 'edit');
+    expect(frozen.assertEventMutable).toHaveBeenCalledWith('event-1', actor, 'edit');
     expect(tx.event.update).toHaveBeenCalledWith({
       where: { id: 'event-1' },
       data: expect.objectContaining({
@@ -154,9 +136,7 @@ describe('SportsAdminService', () => {
     });
     tx.sportsMatch.updateMany.mockResolvedValue({ count: 0 });
 
-    await expect(
-      service.deleteMatch('match-1', 2, actor),
-    ).rejects.toThrow(ConflictException);
+    await expect(service.deleteMatch('match-1', 2, actor)).rejects.toThrow(ConflictException);
 
     expect(tx.event.updateMany).not.toHaveBeenCalled();
     expect(auditLog.record).not.toHaveBeenCalled();
@@ -189,21 +169,17 @@ describe('SportsAdminService', () => {
       },
     });
     tx.sportsRegistration.findFirst.mockResolvedValue(null);
-    tx.sportsRegistration.create.mockImplementation(
-      ({ data }: { data: Record<string, unknown> }) => ({
-        id: 'registration-1',
-        ...data,
-        status: SportsRegistrationStatus.APPROVED,
-      }),
-    );
+    tx.sportsRegistration.create.mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
+      id: 'registration-1',
+      ...data,
+      status: SportsRegistrationStatus.APPROVED,
+    }));
 
     await service.createRegistration(
       {
         teamId: 'team-1',
         categoryId: 'category-1',
-        formAnswers: [
-          { elementId: 'student-id', value: '  12345  ' },
-        ] as never,
+        formAnswers: [{ elementId: 'student-id', value: '  12345  ' }] as never,
       },
       actor,
     );

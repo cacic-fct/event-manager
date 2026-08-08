@@ -1,8 +1,5 @@
 import type { PublicSportsMatch } from '../read/sports-read.models';
-import {
-  DEFAULT_SPORTS_MATCH_OVERLAY_CONFIG,
-  SportsMatchOverlayService,
-} from './sports-match-overlay.service';
+import { DEFAULT_SPORTS_MATCH_OVERLAY_CONFIG, SportsMatchOverlayService } from './sports-match-overlay.service';
 
 describe('SportsMatchOverlayService', () => {
   const sportsRead = {

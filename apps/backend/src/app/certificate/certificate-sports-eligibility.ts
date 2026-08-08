@@ -16,16 +16,9 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { EVENT_SELECT, PERSON_SELECT } from './certificate.constants';
-import type {
-  CertificateConfigRecord,
-  EventRecord,
-  PersonRecord,
-} from './certificate.constants';
+import type { CertificateConfigRecord, EventRecord, PersonRecord } from './certificate.constants';
 import type { EligibleCertificateRecipient } from './certificate-eligibility.service';
-import {
-  sportsOfficialRoleForCertificate,
-  sportsRosterRoleForCertificate,
-} from './certificate-sports-roles';
+import { sportsOfficialRoleForCertificate, sportsRosterRoleForCertificate } from './certificate-sports-roles';
 
 type SportsCertificateTarget = {
   tournamentId: string;
@@ -45,10 +38,7 @@ const ACCEPTED_MATCH_REVIEW_STATUSES = [SportsReviewStatus.NOT_REQUIRED, SportsR
 export class CertificateSportsEligibility {
   constructor(private readonly prisma: PrismaService) {}
 
-  async resolve(
-    config: CertificateConfigRecord,
-    personId?: string,
-  ): Promise<EligibleCertificateRecipient[]> {
+  async resolve(config: CertificateConfigRecord, personId?: string): Promise<EligibleCertificateRecipient[]> {
     const target = await this.resolveTarget(config);
     const rosterRole = sportsRosterRoleForCertificate(config.issuedTo as CertificateIssuedTo);
     if (rosterRole) {
@@ -185,10 +175,7 @@ export class CertificateSportsEligibility {
             }),
         registration: {
           status: {
-            in: [
-              SportsRegistrationStatus.APPROVED,
-              SportsRegistrationStatus.ACTIVE,
-            ],
+            in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
           },
           deletedAt: null,
           team: {
@@ -464,8 +451,7 @@ export class CertificateSportsEligibility {
       for (const match of coveredMatches.filter(
         (match) =>
           assignment.assignedAt <= match.event.endDate &&
-          (!assignment.revokedAt ||
-            assignment.revokedAt >= match.event.startDate),
+          (!assignment.revokedAt || assignment.revokedAt >= match.event.startDate),
       )) {
         recipient.eventsById.set(match.event.id, match.event);
       }

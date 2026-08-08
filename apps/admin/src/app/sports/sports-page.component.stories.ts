@@ -22,13 +22,7 @@ interface SportsStoryArgs {
   pendingCount: number;
   selfSubscriptionAllowNoTeam: boolean;
   selfSubscriptionAllowNoCategory: boolean;
-  status:
-    | 'DRAFT'
-    | 'REGISTRATION_OPEN'
-    | 'REGISTRATION_CLOSED'
-    | 'LIVE'
-    | 'FINISHED'
-    | 'CANCELED';
+  status: 'DRAFT' | 'REGISTRATION_OPEN' | 'REGISTRATION_CLOSED' | 'LIVE' | 'FINISHED' | 'CANCELED';
   loadMode: LoadMode;
 }
 
@@ -129,9 +123,7 @@ const sportsGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
     const category = tournamentRead().categories[index] ?? tournamentRead().categories[0];
     return HttpResponse.json({
       data: {
-        adminSportsCategoryRead: category
-          ? createAdminSportsCategoryRead(category)
-          : null,
+        adminSportsCategoryRead: category ? createAdminSportsCategoryRead(category) : null,
       },
     });
   }
@@ -149,9 +141,7 @@ const sportsGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
   }
   if (query.includes('AdminSportsRegistration(')) {
     const registrationId =
-      variables['registrationId'] === 'registration-away'
-        ? 'registration-away'
-        : 'registration-home';
+      variables['registrationId'] === 'registration-away' ? 'registration-away' : 'registration-home';
     return HttpResponse.json({
       data: {
         adminSportsRegistrationRead: createAdminSportsRegistrationRead(registrationId),
@@ -265,11 +255,7 @@ export const CategoriesAndBracketFormats: Story = {
   },
 };
 
-async function openFormat(
-  canvasElement: HTMLElement,
-  categoryName: string,
-  formatLabel: string,
-) {
+async function openFormat(canvasElement: HTMLElement, categoryName: string, formatLabel: string) {
   const canvas = await openTournament(canvasElement);
   await userEvent.click(canvas.getByRole('button', { name: /modalidades/i }));
   await userEvent.click(await canvas.findByText(categoryName));
@@ -278,32 +264,27 @@ async function openFormat(
 
 export const SingleEliminationExample: Story = {
   name: 'Exemplo: eliminação simples',
-  play: ({ canvasElement }) =>
-    openFormat(canvasElement, 'Tênis individual', 'Eliminação simples'),
+  play: ({ canvasElement }) => openFormat(canvasElement, 'Tênis individual', 'Eliminação simples'),
 };
 
 export const RoundRobinExample: Story = {
   name: 'Exemplo: todos contra todos',
-  play: ({ canvasElement }) =>
-    openFormat(canvasElement, 'Basquete masculino', 'Todos contra todos'),
+  play: ({ canvasElement }) => openFormat(canvasElement, 'Basquete masculino', 'Todos contra todos'),
 };
 
 export const DoubleEliminationExample: Story = {
   name: 'Exemplo: eliminação dupla',
-  play: ({ canvasElement }) =>
-    openFormat(canvasElement, 'League of Legends', 'Eliminação dupla'),
+  play: ({ canvasElement }) => openFormat(canvasElement, 'League of Legends', 'Eliminação dupla'),
 };
 
 export const SwissExample: Story = {
   name: 'Exemplo: sistema suíço',
-  play: ({ canvasElement }) =>
-    openFormat(canvasElement, 'Xadrez rápido', 'Sistema suíço'),
+  play: ({ canvasElement }) => openFormat(canvasElement, 'Xadrez rápido', 'Sistema suíço'),
 };
 
 export const CustomFormatExample: Story = {
   name: 'Exemplo: formato personalizado',
-  play: ({ canvasElement }) =>
-    openFormat(canvasElement, 'Natação 50 m livre', 'Personalizado'),
+  play: ({ canvasElement }) => openFormat(canvasElement, 'Natação 50 m livre', 'Personalizado'),
 };
 
 export const TeamManagement: Story = {

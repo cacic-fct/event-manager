@@ -128,10 +128,7 @@ export function sportsAutorouteUrl(route: CurrentUserSportsAutoroute): string | 
   if (route.mode === 'MATCH_DETAIL' && route.matchId) {
     return `/sports/match/${encodeURIComponent(route.matchId)}`;
   }
-  if (
-    route.matchId &&
-    (route.mode === 'CHECK_IN' || route.mode === 'OPERATE' || route.mode === 'FINALIZE')
-  ) {
+  if (route.matchId && (route.mode === 'CHECK_IN' || route.mode === 'OPERATE' || route.mode === 'FINALIZE')) {
     return `/sports/operate/${encodeURIComponent(route.matchId)}?mode=${route.mode}`;
   }
   return null;

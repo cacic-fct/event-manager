@@ -23,11 +23,7 @@ export interface SportsConfirmationDialogData {
       <button mat-button type="button" (click)="close(false)">
         {{ data.cancelLabel || 'Não' }}
       </button>
-      <button
-        mat-flat-button
-        type="button"
-        [class.destructive-action]="data.destructive"
-        (click)="close(true)">
+      <button mat-flat-button type="button" [class.destructive-action]="data.destructive" (click)="close(true)">
         @if (data.destructive) {
           <mat-icon>warning</mat-icon>
         }

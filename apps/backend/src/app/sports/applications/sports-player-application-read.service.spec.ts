@@ -23,16 +23,11 @@ describe('SportsPlayerApplicationReadService', () => {
     policy.assertPermissions.mockResolvedValue(undefined);
     prisma.sportsPlayerApplication.findMany.mockResolvedValue([]);
     prisma.sportsTournamentParticipant.findMany.mockResolvedValue([]);
-    service = new SportsPlayerApplicationReadService(
-      prisma as never,
-      policy as never,
-    );
+    service = new SportsPlayerApplicationReadService(prisma as never, policy as never);
   });
 
   it('returns a bounded admin review queue with only the required applicant identity', async () => {
-    prisma.sportsPlayerApplication.findMany.mockResolvedValue([
-      applicationRecord(),
-    ]);
+    prisma.sportsPlayerApplication.findMany.mockResolvedValue([applicationRecord()]);
     prisma.sportsTournamentParticipant.findMany.mockResolvedValue([
       {
         personId: 'person-1',
@@ -43,11 +38,9 @@ describe('SportsPlayerApplicationReadService', () => {
 
     const result = await service.adminQueue(actor, 'tournament-1');
 
-    expect(policy.assertPermissions).toHaveBeenCalledWith(
-      actor,
-      [Permission.SportsRegistration.Read],
-      { sportsTournamentId: 'tournament-1' },
-    );
+    expect(policy.assertPermissions).toHaveBeenCalledWith(actor, [Permission.SportsRegistration.Read], {
+      sportsTournamentId: 'tournament-1',
+    });
     expect(prisma.sportsPlayerApplication.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -94,9 +87,7 @@ describe('SportsPlayerApplicationReadService', () => {
   it('does not disclose whether a deleted or inaccessible application exists', async () => {
     prisma.sportsPlayerApplication.findFirst.mockResolvedValue(null);
 
-    await expect(
-      service.adminDetail(actor, 'application-1'),
-    ).rejects.toThrow(NotFoundException);
+    await expect(service.adminDetail(actor, 'application-1')).rejects.toThrow(NotFoundException);
   });
 });
 

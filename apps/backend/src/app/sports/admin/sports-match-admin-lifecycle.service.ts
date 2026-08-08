@@ -1,9 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -15,7 +11,6 @@ import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.inte
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { syncSportsMatchEventName } from '../sports-match-event-sync';
 import { SportsAdminBaseService } from './sports-admin-base.service';
-
 
 export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseService {
   async updateMatch(
@@ -77,37 +72,18 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
         input.awayRegistrationId === undefined
           ? null
           : this.findRegistration(tx, input.awayRegistrationId, match.categoryId),
-        input.venueId === undefined
-          ? null
-          : this.findVenue(tx, input.venueId, match.category.tournamentId),
-        input.stageId === undefined
-          ? null
-          : this.findStage(tx, input.stageId, match.categoryId),
+        input.venueId === undefined ? null : this.findVenue(tx, input.venueId, match.category.tournamentId),
+        input.stageId === undefined ? null : this.findStage(tx, input.stageId, match.categoryId),
       ]);
-      const homeId =
-        input.homeRegistrationId === undefined
-          ? match.homeRegistrationId
-          : home?.id ?? null;
-      const awayId =
-        input.awayRegistrationId === undefined
-          ? match.awayRegistrationId
-          : away?.id ?? null;
+      const homeId = input.homeRegistrationId === undefined ? match.homeRegistrationId : (home?.id ?? null);
+      const awayId = input.awayRegistrationId === undefined ? match.awayRegistrationId : (away?.id ?? null);
       if (homeId && homeId === awayId) {
         throw new BadRequestException('Uma equipe não pode jogar contra si mesma.');
       }
-      await this.assertAdvancementTargets(
-        tx,
-        match.categoryId,
-        match.id,
-        [
-          input.winnerAdvancesToId === undefined
-            ? match.winnerAdvancesToId
-            : input.winnerAdvancesToId,
-          input.loserAdvancesToId === undefined
-            ? match.loserAdvancesToId
-            : input.loserAdvancesToId,
-        ],
-      );
+      await this.assertAdvancementTargets(tx, match.categoryId, match.id, [
+        input.winnerAdvancesToId === undefined ? match.winnerAdvancesToId : input.winnerAdvancesToId,
+        input.loserAdvancesToId === undefined ? match.loserAdvancesToId : input.loserAdvancesToId,
+      ]);
       const updated = await tx.sportsMatch.updateMany({
         where: {
           id: match.id,
@@ -117,33 +93,17 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
         data: {
           ...(input.stageId !== undefined ? { stageId: stage?.id ?? null } : {}),
           ...(input.venueId !== undefined ? { venueId: venue?.id ?? null } : {}),
-          ...(input.homeRegistrationId !== undefined
-            ? { homeRegistrationId: homeId }
-            : {}),
-          ...(input.awayRegistrationId !== undefined
-            ? { awayRegistrationId: awayId }
-            : {}),
-          ...(input.roundNumber !== undefined
-            ? { roundNumber: input.roundNumber }
-            : {}),
-          ...(input.bracketPosition !== undefined
-            ? { bracketPosition: input.bracketPosition }
-            : {}),
-          ...(input.groupKey !== undefined
-            ? { groupKey: input.groupKey?.trim() || null }
-            : {}),
+          ...(input.homeRegistrationId !== undefined ? { homeRegistrationId: homeId } : {}),
+          ...(input.awayRegistrationId !== undefined ? { awayRegistrationId: awayId } : {}),
+          ...(input.roundNumber !== undefined ? { roundNumber: input.roundNumber } : {}),
+          ...(input.bracketPosition !== undefined ? { bracketPosition: input.bracketPosition } : {}),
+          ...(input.groupKey !== undefined ? { groupKey: input.groupKey?.trim() || null } : {}),
           ...(input.notes !== undefined
             ? {
-                notes: this.optionalText(
-                  input.notes,
-                  'observações da partida',
-                  4000,
-                ),
+                notes: this.optionalText(input.notes, 'observações da partida', 4000),
               }
             : {}),
-          ...(input.livestreamProvider !== undefined
-            ? { livestreamProvider: input.livestreamProvider }
-            : {}),
+          ...(input.livestreamProvider !== undefined ? { livestreamProvider: input.livestreamProvider } : {}),
           ...(input.livestreamUrl !== undefined
             ? {
                 livestreamUrl: this.normalizeLivestreamUrl(
@@ -152,18 +112,10 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
                 ),
               }
             : {}),
-          ...(input.winnerAdvancesToId !== undefined
-            ? { winnerAdvancesToId: input.winnerAdvancesToId }
-            : {}),
-          ...(input.winnerAdvancesToSide !== undefined
-            ? { winnerAdvancesToSide: input.winnerAdvancesToSide }
-            : {}),
-          ...(input.loserAdvancesToId !== undefined
-            ? { loserAdvancesToId: input.loserAdvancesToId }
-            : {}),
-          ...(input.loserAdvancesToSide !== undefined
-            ? { loserAdvancesToSide: input.loserAdvancesToSide }
-            : {}),
+          ...(input.winnerAdvancesToId !== undefined ? { winnerAdvancesToId: input.winnerAdvancesToId } : {}),
+          ...(input.winnerAdvancesToSide !== undefined ? { winnerAdvancesToSide: input.winnerAdvancesToSide } : {}),
+          ...(input.loserAdvancesToId !== undefined ? { loserAdvancesToId: input.loserAdvancesToId } : {}),
+          ...(input.loserAdvancesToSide !== undefined ? { loserAdvancesToSide: input.loserAdvancesToSide } : {}),
           revision: { increment: 1 },
           updatedById: actorId,
         },
@@ -180,11 +132,7 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
             ? {
                 latitude: venue.placePreset.latitude,
                 longitude: venue.placePreset.longitude,
-                locationDescription: [
-                  venue.placePreset.locationDescription,
-                  venue.name,
-                  venue.courtLabel,
-                ]
+                locationDescription: [venue.placePreset.locationDescription, venue.name, venue.courtLabel]
                   .filter(Boolean)
                   .join(' · '),
               }
@@ -196,23 +144,17 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
                 }
               : {}),
           updatedById: actorId,
-          ...(input.livestreamProvider !== undefined ||
-          input.livestreamUrl !== undefined
+          ...(input.livestreamProvider !== undefined || input.livestreamUrl !== undefined
             ? {
                 youtubeCode: this.youtubeCodeForLivestream(
                   input.livestreamProvider ?? match.livestreamProvider,
-                  input.livestreamUrl === undefined
-                    ? match.livestreamUrl
-                    : input.livestreamUrl,
+                  input.livestreamUrl === undefined ? match.livestreamUrl : input.livestreamUrl,
                 ),
               }
             : {}),
         },
       });
-      if (
-        input.homeRegistrationId !== undefined ||
-        input.awayRegistrationId !== undefined
-      ) {
+      if (input.homeRegistrationId !== undefined || input.awayRegistrationId !== undefined) {
         await syncSportsMatchEventName(tx, match.id, actorId);
       }
       const result = await tx.sportsMatch.findUniqueOrThrow({
@@ -241,7 +183,6 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
     });
   }
 
-
   async getMatchEventId(matchId: string): Promise<string> {
     const match = await this.prisma.sportsMatch.findFirst({
       where: { id: matchId, deletedAt: null },
@@ -253,12 +194,7 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
     return match.eventId;
   }
 
-
-  async deleteMatch(
-    matchId: string,
-    expectedRevision: number,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  async deleteMatch(matchId: string, expectedRevision: number, actor: AuthenticatedUser): Promise<void> {
     const actorId = this.requireActorId(actor);
     const match = await this.prisma.sportsMatch.findFirst({
       where: { id: matchId, deletedAt: null },
@@ -357,8 +293,4 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
       );
     });
   }
-
 }
-
-
-

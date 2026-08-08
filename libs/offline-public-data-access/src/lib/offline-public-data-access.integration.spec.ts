@@ -6,10 +6,7 @@ import Dexie from 'dexie';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceOfflineQueueService } from './attendance-offline-queue.service';
 import type { OfflineAttendanceQueueItem, OfflineTotpSeedRecord } from './offline-public-data-schema';
-import {
-  normalizeOfflineAttendanceQueueOwnership,
-  OfflinePublicDataDatabase,
-} from './offline-public-data-schema';
+import { normalizeOfflineAttendanceQueueOwnership, OfflinePublicDataDatabase } from './offline-public-data-schema';
 import { OfflinePublicDatabaseProvider } from './offline-public-database-provider';
 import { OralAttendanceOfflineService } from './oral-attendance-offline.service';
 import { CalendarOfflineDataService } from './calendar-offline-data.service';
@@ -61,10 +58,7 @@ describe('offline public data access integration', () => {
       event: event('expired-event', fixtureDate(-3650)),
     });
 
-    await service.upsertEvents([
-      event('later-event', fixtureDate(31, 14)),
-      event('early-event', fixtureDate(30)),
-    ]);
+    await service.upsertEvents([event('later-event', fixtureDate(31, 14)), event('early-event', fixtureDate(30))]);
 
     await expect(service.getLastRefresh('calendarEvents')).resolves.toEqual(expect.any(Number));
     await expect(service.getEvents(fixtureDate(1, 0))).resolves.toEqual([

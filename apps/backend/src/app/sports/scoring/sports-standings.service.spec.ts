@@ -1,10 +1,4 @@
-import {
-  SportsFormat,
-  SportsMatchState,
-  SportsReviewStatus,
-  SportsScoringMode,
-  SportsStageType,
-} from '@prisma/client';
+import { SportsFormat, SportsMatchState, SportsReviewStatus, SportsScoringMode, SportsStageType } from '@prisma/client';
 
 jest.mock('../brackets/sports-bracket-advancement.service', () => ({
   SportsBracketAdvancementService: class SportsBracketAdvancementService {},
@@ -38,9 +32,7 @@ describe('SportsStandingsService', () => {
 
     expect(tx.event.upsert).toHaveBeenCalledTimes(2);
     expect(tx.sportsMatch.upsert).toHaveBeenCalledTimes(2);
-    expect(tx.event.upsert.mock.calls[0][0].where).toEqual(
-      tx.event.upsert.mock.calls[1][0].where,
-    );
+    expect(tx.event.upsert.mock.calls[0][0].where).toEqual(tx.event.upsert.mock.calls[1][0].where);
     expect(tx.sportsMatch.upsert.mock.calls[0][0]).toMatchObject({
       where: { replayOfMatchId: source.id },
       create: {

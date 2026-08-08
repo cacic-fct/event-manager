@@ -1,289 +1,279 @@
-        <div class="master-detail">
-          <aside class="panel">
-            <div class="panel-heading">
-              <div>
-                <h3>Equipes</h3>
-                <p>Vínculos exclusivos deste torneio.</p>
-              </div>
-              <button mat-stroked-button type="button" (click)="workspace.newTeam()">
-                <mat-icon>add</mat-icon>Nova
-              </button>
-            </div>
-            <mat-list class="result-list">
-              @for (team of workspace.tournamentRead()?.teams ?? []; track team.id) {
-                <mat-list-item
-                  [class.selected-list-item]="workspace.selectedTeamId() === team.id"
-                  (click)="workspace.selectTeam(team)">
-                  @if (team.logoUrl) {
-                    <img matListItemAvatar [src]="team.logoUrl" [alt]="'Escudo de ' + team.name" />
-                  } @else {
-                    <mat-icon matListItemIcon>shield</mat-icon>
-                  }
-                  <span matListItemTitle>{{ team.name }}</span>
-                  <span matListItemLine>{{ workspace.statusLabel(team.status) }}</span>
-                  <span matListItemLine>
-                    @if (workspace.teamModalities(team.id); as modalities) {
-                      @for (modality of modalities; track modality.id) {
-                        <span>
-                          <app-twemoji [emoji]="modality.categoryEmoji" />
-                          {{ modality.categoryName }}
-                        </span>
-                      } @empty {
-                        <span>Sem modalidade</span>
-                      }
-                    } @else {
-                      <span>Modalidades ainda não carregadas</span>
-                    }
-                  </span>
-                </mat-list-item>
+<div class="master-detail">
+  <aside class="panel">
+    <div class="panel-heading">
+      <div>
+        <h3>Equipes</h3>
+        <p>Vínculos exclusivos deste torneio.</p>
+      </div>
+      <button mat-stroked-button type="button" (click)="workspace.newTeam()"><mat-icon>add</mat-icon>Nova</button>
+    </div>
+    <mat-list class="result-list">
+      @for (team of workspace.tournamentRead()?.teams ?? []; track team.id) {
+        <mat-list-item
+          [class.selected-list-item]="workspace.selectedTeamId() === team.id"
+          (click)="workspace.selectTeam(team)">
+          @if (team.logoUrl) {
+            <img matListItemAvatar [src]="team.logoUrl" [alt]="'Escudo de ' + team.name" />
+          } @else {
+            <mat-icon matListItemIcon>shield</mat-icon>
+          }
+          <span matListItemTitle>{{ team.name }}</span>
+          <span matListItemLine>{{ workspace.statusLabel(team.status) }}</span>
+          <span matListItemLine>
+            @if (workspace.teamModalities(team.id); as modalities) {
+              @for (modality of modalities; track modality.id) {
+                <span>
+                  <app-twemoji [emoji]="modality.categoryEmoji" />
+                  {{ modality.categoryName }}
+                </span>
               } @empty {
-                <mat-list-item
-                  ><span matListItemTitle>Nenhuma equipe</span
-                  ><span matListItemLine>Cadastre a primeira equipe do torneio.</span></mat-list-item
-                >
+                <span>Sem modalidade</span>
               }
-            </mat-list>
-          </aside>
-
-          <section class="panel panel-stack">
-            <div class="panel-heading">
-              <div>
-                <h3>{{ workspace.teamRead() ? 'Equipe' : 'Nova equipe' }}</h3>
-                <p>Identidade, representantes e inscrições por modalidade.</p>
-              </div>
-              <div class="panel-actions">
-                @if (workspace.teamRead()) {
-                  <button
-                    mat-icon-button
-                    type="button"
-                    matTooltip="Duplicar equipe"
-                    (click)="workspace.cloneSelectedTeam()">
-                    <mat-icon>content_copy</mat-icon>
-                  </button>
-                  <button
-                    mat-icon-button
-                    type="button"
-                    matTooltip="Excluir equipe"
-                    (click)="workspace.deleteSelectedTeam()">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                }
-                <button
-                  mat-flat-button
-                  type="button"
-                  (click)="workspace.saveTeam()"
-                  [disabled]="workspace.teamForm.invalid">
-                  <mat-icon>save</mat-icon>Salvar
-                </button>
-              </div>
-            </div>
-            <form [formGroup]="workspace.teamForm" class="form-grid">
-              <mat-form-field><mat-label>Nome</mat-label><input matInput formControlName="name" /></mat-form-field>
-              <mat-form-field
-                ><mat-label>Turma, curso ou instituição</mat-label><input matInput formControlName="institution"
-              /></mat-form-field>
-              <mat-form-field
-                ><mat-label>Estado</mat-label
-                ><mat-select formControlName="status">
-                  @for (status of teamStatuses; track status[0]) {
-                    <mat-option [value]="status[0]">{{ status[1] }}</mat-option>
-                  }
-                </mat-select></mat-form-field
-              >
-            </form>
-
-            @if (workspace.teamRead(); as read) {
-              <div class="logo-control">
-                @if (read.team.logoUrl) {
-                  <img [src]="read.team.logoUrl" [alt]="'Escudo de ' + read.team.name" />
-                } @else {
-                  <mat-icon>shield</mat-icon>
-                }
-                <div>
-                  <strong>Escudo da equipe</strong>
-                  <span>AVIF, SVG, PNG, JPEG ou WebP, até 15 MB. O arquivo será convertido para AVIF.</span>
-                </div>
-                <label class="material-upload">
-                  <input
-                    type="file"
-                    accept="image/avif,image/svg+xml,image/png,image/jpeg,image/webp"
-                    (change)="uploadTeamLogo($event)" />
-                  <mat-icon>upload</mat-icon>
-                  Enviar escudo
-                </label>
-              </div>
-              <mat-divider />
-              <div class="subsection-title">
-                <h4>Representantes</h4>
-                <p>Administram somente esta equipe; toda alteração feita por eles entra na fila de revisão.</p>
-              </div>
-              <div class="person-list">
-                @for (representative of read.representatives; track representative.id) {
-                  <div>
-                    <mat-icon>admin_panel_settings</mat-icon>
-                    <span
-                      ><strong>{{ representative.person.name }}</strong
-                      ><small>Desde {{ representative.assignedAt | date: 'shortDate' }}</small></span
-                    >
-                    <button
-                      mat-icon-button
-                      type="button"
-                      matTooltip="Revogar acesso"
-                      (click)="workspace.revokeRepresentative(representative.id)">
-                      <mat-icon>person_remove</mat-icon>
-                    </button>
-                  </div>
-                } @empty {
-                  <p class="empty-copy">Nenhum representante ativo.</p>
-                }
-              </div>
-              <form
-                [formGroup]="workspace.representativeForm"
-                class="person-search"
-                (ngSubmit)="workspace.assignRepresentative()">
-                <mat-form-field>
-                  <mat-label>Buscar pessoa autorizada</mat-label>
-                  <input
-                    matInput
-                    formControlName="personQuery"
-                    (input)="
-                      workspace.searchPeople(workspace.representativeForm.controls.personQuery.value, 'representative')
-                    " />
-                  <mat-icon matSuffix>search</mat-icon>
-                </mat-form-field>
-                <button mat-stroked-button type="submit" [disabled]="workspace.representativeForm.invalid">
-                  <mat-icon>person_add</mat-icon>Atribuir
-                </button>
-              </form>
-              @if (workspace.people().length && workspace.peopleTarget() === 'representative') {
-                <div class="search-results">
-                  @for (person of workspace.people(); track person.id) {
-                    <button type="button" (click)="workspace.pickPerson(person, 'representative')">
-                      {{ person.name }}
-                    </button>
-                  }
-                </div>
-              }
-
-              <mat-divider />
-              <div class="subsection-title">
-                <h4>Elenco conhecido</h4>
-                <p>Pessoas resolvidas e aprovadas pelos administradores.</p>
-              </div>
-              <form [formGroup]="workspace.memberForm" class="person-search" (ngSubmit)="workspace.addTeamMember()">
-                <mat-form-field>
-                  <mat-label>Buscar pessoa para o elenco</mat-label>
-                  <input
-                    matInput
-                    formControlName="personQuery"
-                    (input)="workspace.searchPeople(workspace.memberForm.controls.personQuery.value, 'member')" />
-                  <mat-icon matSuffix>search</mat-icon>
-                </mat-form-field>
-                <button mat-stroked-button type="submit" [disabled]="workspace.memberForm.invalid">
-                  <mat-icon>person_add</mat-icon>Adicionar
-                </button>
-              </form>
-              @if (workspace.people().length && workspace.peopleTarget() === 'member') {
-                <div class="search-results">
-                  @for (person of workspace.people(); track person.id) {
-                    <button type="button" (click)="workspace.pickPerson(person, 'member')">{{ person.name }}</button>
-                  }
-                </div>
-              }
-              <div class="member-grid">
-                @for (member of read.members; track member.id) {
-                  <div>
-                    <mat-icon>person</mat-icon>
-                    <span
-                      ><strong>{{ member.person.name }}</strong
-                      ><small>{{ workspace.statusLabel(member.status) }}</small></span
-                    >
-                    <mat-form-field subscriptSizing="dynamic">
-                      <mat-label>Status</mat-label>
-                      <mat-select
-                        [value]="member.status"
-                        (selectionChange)="workspace.updateTeamMember(member, $event.value)">
-                        <mat-option value="PENDING">Pendente</mat-option>
-                        <mat-option value="APPROVED">Aprovado</mat-option>
-                        <mat-option value="CHANGES_REQUESTED">Ajustes solicitados</mat-option>
-                        <mat-option value="REJECTED">Rejeitado</mat-option>
-                        <mat-option value="SUSPENDED">Suspenso</mat-option>
-                        <mat-option value="WITHDRAWN">Removido</mat-option>
-                      </mat-select>
-                    </mat-form-field>
-                  </div>
-                } @empty {
-                  <p class="empty-copy">Nenhum integrante aprovado.</p>
-                }
-              </div>
-
-              <div class="subsection-title">
-                <h4>Função por modalidade</h4>
-                <p>Capitães e técnicos recebem acesso à escalação apenas na modalidade atribuída.</p>
-              </div>
-              <form [formGroup]="workspace.categoryRoleForm" class="compact-form" (ngSubmit)="workspace.assignCategoryRole()">
-                <mat-form-field><mat-label>Inscrição</mat-label><mat-select formControlName="registrationId">
-                  @for (registration of read.registrations; track registration.id) {
-                    <mat-option [value]="registration.id">{{ categoryName(registration.categoryId) }}</mat-option>
-                  }
-                </mat-select></mat-form-field>
-                <mat-form-field><mat-label>Integrante</mat-label><mat-select formControlName="teamMemberId">
-                  @for (member of read.members; track member.id) {
-                    <mat-option [value]="member.id">{{ member.person.name }}</mat-option>
-                  }
-                </mat-select></mat-form-field>
-                <mat-form-field><mat-label>Função</mat-label><mat-select formControlName="role">
-                  <mat-option value="PLAYER">Atleta</mat-option>
-                  <mat-option value="CAPTAIN">Capitão</mat-option>
-                  <mat-option value="COACH">Técnico</mat-option>
-                </mat-select></mat-form-field>
-                <button mat-stroked-button type="submit" [disabled]="workspace.categoryRoleForm.invalid">
-                  <mat-icon>badge</mat-icon>Salvar função
-                </button>
-              </form>
-
-              <mat-divider />
-              <div class="subsection-title">
-                <h4>Inscrever em modalidade</h4>
-                <p>A inscrição cria o vínculo da equipe com uma divisão específica.</p>
-              </div>
-              <form
-                [formGroup]="workspace.registrationForm"
-                class="compact-form"
-                (ngSubmit)="workspace.createRegistration()">
-                <mat-form-field
-                  ><mat-label>Modalidade</mat-label
-                  ><mat-select formControlName="categoryId">
-                    @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
-                      <mat-option [value]="category.id"
-                        >{{ category.name }}{{ category.division ? ' · ' + category.division : '' }}</mat-option
-                      >
-                    }
-                  </mat-select></mat-form-field
-                >
-                <mat-form-field
-                  ><mat-label>Seed inicial</mat-label><input matInput type="number" min="0" formControlName="seed"
-                /></mat-form-field>
-                <mat-expansion-panel class="span-2 rule-editor">
-                  <mat-expansion-panel-header>
-                    <mat-panel-title>Respostas avançadas do formulário</mat-panel-title>
-                    <mat-panel-description>Use somente em importações administrativas</mat-panel-description>
-                  </mat-expansion-panel-header>
-                  <p class="advanced-warning">
-                    Prefira o formulário vinculado à modalidade. Este campo aceita apenas um objeto JSON seguro.
-                  </p>
-                  <mat-form-field>
-                    <mat-label>Respostas do formulário</mat-label>
-                    <textarea matInput rows="3" formControlName="formAnswersJson"></textarea>
-                    @if (workspace.registrationForm.controls.formAnswersJson.invalid) {
-                      <mat-error>Informe um objeto JSON válido.</mat-error>
-                    }
-                  </mat-form-field>
-                </mat-expansion-panel>
-                <button mat-stroked-button type="submit" [disabled]="workspace.registrationForm.invalid">
-                  <mat-icon>how_to_reg</mat-icon>Inscrever equipe
-                </button>
-              </form>
+            } @else {
+              <span>Modalidades ainda não carregadas</span>
             }
-          </section>
+          </span>
+        </mat-list-item>
+      } @empty {
+        <mat-list-item
+          ><span matListItemTitle>Nenhuma equipe</span
+          ><span matListItemLine>Cadastre a primeira equipe do torneio.</span></mat-list-item
+        >
+      }
+    </mat-list>
+  </aside>
+
+  <section class="panel panel-stack">
+    <div class="panel-heading">
+      <div>
+        <h3>{{ workspace.teamRead() ? 'Equipe' : 'Nova equipe' }}</h3>
+        <p>Identidade, representantes e inscrições por modalidade.</p>
+      </div>
+      <div class="panel-actions">
+        @if (workspace.teamRead()) {
+          <button mat-icon-button type="button" matTooltip="Duplicar equipe" (click)="workspace.cloneSelectedTeam()">
+            <mat-icon>content_copy</mat-icon>
+          </button>
+          <button mat-icon-button type="button" matTooltip="Excluir equipe" (click)="workspace.deleteSelectedTeam()">
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
+        <button mat-flat-button type="button" (click)="workspace.saveTeam()" [disabled]="workspace.teamForm.invalid">
+          <mat-icon>save</mat-icon>Salvar
+        </button>
+      </div>
+    </div>
+    <form [formGroup]="workspace.teamForm" class="form-grid">
+      <mat-form-field><mat-label>Nome</mat-label><input matInput formControlName="name" /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Turma, curso ou instituição</mat-label><input matInput formControlName="institution"
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Estado</mat-label
+        ><mat-select formControlName="status">
+          @for (status of teamStatuses; track status[0]) {
+            <mat-option [value]="status[0]">{{ status[1] }}</mat-option>
+          }
+        </mat-select></mat-form-field
+      >
+    </form>
+
+    @if (workspace.teamRead(); as read) {
+      <div class="logo-control">
+        @if (read.team.logoUrl) {
+          <img [src]="read.team.logoUrl" [alt]="'Escudo de ' + read.team.name" />
+        } @else {
+          <mat-icon>shield</mat-icon>
+        }
+        <div>
+          <strong>Escudo da equipe</strong>
+          <span>AVIF, SVG, PNG, JPEG ou WebP, até 15 MB. O arquivo será convertido para AVIF.</span>
         </div>
+        <label class="material-upload">
+          <input
+            type="file"
+            accept="image/avif,image/svg+xml,image/png,image/jpeg,image/webp"
+            (change)="uploadTeamLogo($event)" />
+          <mat-icon>upload</mat-icon>
+          Enviar escudo
+        </label>
+      </div>
+      <mat-divider />
+      <div class="subsection-title">
+        <h4>Representantes</h4>
+        <p>Administram somente esta equipe; toda alteração feita por eles entra na fila de revisão.</p>
+      </div>
+      <div class="person-list">
+        @for (representative of read.representatives; track representative.id) {
+          <div>
+            <mat-icon>admin_panel_settings</mat-icon>
+            <span
+              ><strong>{{ representative.person.name }}</strong
+              ><small>Desde {{ representative.assignedAt | date: 'shortDate' }}</small></span
+            >
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Revogar acesso"
+              (click)="workspace.revokeRepresentative(representative.id)">
+              <mat-icon>person_remove</mat-icon>
+            </button>
+          </div>
+        } @empty {
+          <p class="empty-copy">Nenhum representante ativo.</p>
+        }
+      </div>
+      <form
+        [formGroup]="workspace.representativeForm"
+        class="person-search"
+        (ngSubmit)="workspace.assignRepresentative()">
+        <mat-form-field>
+          <mat-label>Buscar pessoa autorizada</mat-label>
+          <input
+            matInput
+            formControlName="personQuery"
+            (input)="
+              workspace.searchPeople(workspace.representativeForm.controls.personQuery.value, 'representative')
+            " />
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+        <button mat-stroked-button type="submit" [disabled]="workspace.representativeForm.invalid">
+          <mat-icon>person_add</mat-icon>Atribuir
+        </button>
+      </form>
+      @if (workspace.people().length && workspace.peopleTarget() === 'representative') {
+        <div class="search-results">
+          @for (person of workspace.people(); track person.id) {
+            <button type="button" (click)="workspace.pickPerson(person, 'representative')">
+              {{ person.name }}
+            </button>
+          }
+        </div>
+      }
+
+      <mat-divider />
+      <div class="subsection-title">
+        <h4>Elenco conhecido</h4>
+        <p>Pessoas resolvidas e aprovadas pelos administradores.</p>
+      </div>
+      <form [formGroup]="workspace.memberForm" class="person-search" (ngSubmit)="workspace.addTeamMember()">
+        <mat-form-field>
+          <mat-label>Buscar pessoa para o elenco</mat-label>
+          <input
+            matInput
+            formControlName="personQuery"
+            (input)="workspace.searchPeople(workspace.memberForm.controls.personQuery.value, 'member')" />
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+        <button mat-stroked-button type="submit" [disabled]="workspace.memberForm.invalid">
+          <mat-icon>person_add</mat-icon>Adicionar
+        </button>
+      </form>
+      @if (workspace.people().length && workspace.peopleTarget() === 'member') {
+        <div class="search-results">
+          @for (person of workspace.people(); track person.id) {
+            <button type="button" (click)="workspace.pickPerson(person, 'member')">{{ person.name }}</button>
+          }
+        </div>
+      }
+      <div class="member-grid">
+        @for (member of read.members; track member.id) {
+          <div>
+            <mat-icon>person</mat-icon>
+            <span
+              ><strong>{{ member.person.name }}</strong
+              ><small>{{ workspace.statusLabel(member.status) }}</small></span
+            >
+            <mat-form-field subscriptSizing="dynamic">
+              <mat-label>Status</mat-label>
+              <mat-select [value]="member.status" (selectionChange)="workspace.updateTeamMember(member, $event.value)">
+                <mat-option value="PENDING">Pendente</mat-option>
+                <mat-option value="APPROVED">Aprovado</mat-option>
+                <mat-option value="CHANGES_REQUESTED">Ajustes solicitados</mat-option>
+                <mat-option value="REJECTED">Rejeitado</mat-option>
+                <mat-option value="SUSPENDED">Suspenso</mat-option>
+                <mat-option value="WITHDRAWN">Removido</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        } @empty {
+          <p class="empty-copy">Nenhum integrante aprovado.</p>
+        }
+      </div>
+
+      <div class="subsection-title">
+        <h4>Função por modalidade</h4>
+        <p>Capitães e técnicos recebem acesso à escalação apenas na modalidade atribuída.</p>
+      </div>
+      <form [formGroup]="workspace.categoryRoleForm" class="compact-form" (ngSubmit)="workspace.assignCategoryRole()">
+        <mat-form-field
+          ><mat-label>Inscrição</mat-label
+          ><mat-select formControlName="registrationId">
+            @for (registration of read.registrations; track registration.id) {
+              <mat-option [value]="registration.id">{{ categoryName(registration.categoryId) }}</mat-option>
+            }
+          </mat-select></mat-form-field
+        >
+        <mat-form-field
+          ><mat-label>Integrante</mat-label
+          ><mat-select formControlName="teamMemberId">
+            @for (member of read.members; track member.id) {
+              <mat-option [value]="member.id">{{ member.person.name }}</mat-option>
+            }
+          </mat-select></mat-form-field
+        >
+        <mat-form-field
+          ><mat-label>Função</mat-label
+          ><mat-select formControlName="role">
+            <mat-option value="PLAYER">Atleta</mat-option>
+            <mat-option value="CAPTAIN">Capitão</mat-option>
+            <mat-option value="COACH">Técnico</mat-option>
+          </mat-select></mat-form-field
+        >
+        <button mat-stroked-button type="submit" [disabled]="workspace.categoryRoleForm.invalid">
+          <mat-icon>badge</mat-icon>Salvar função
+        </button>
+      </form>
+
+      <mat-divider />
+      <div class="subsection-title">
+        <h4>Inscrever em modalidade</h4>
+        <p>A inscrição cria o vínculo da equipe com uma divisão específica.</p>
+      </div>
+      <form [formGroup]="workspace.registrationForm" class="compact-form" (ngSubmit)="workspace.createRegistration()">
+        <mat-form-field
+          ><mat-label>Modalidade</mat-label
+          ><mat-select formControlName="categoryId">
+            @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+              <mat-option [value]="category.id"
+                >{{ category.name }}{{ category.division ? ' · ' + category.division : '' }}</mat-option
+              >
+            }
+          </mat-select></mat-form-field
+        >
+        <mat-form-field
+          ><mat-label>Seed inicial</mat-label><input matInput type="number" min="0" formControlName="seed"
+        /></mat-form-field>
+        <mat-expansion-panel class="span-2 rule-editor">
+          <mat-expansion-panel-header>
+            <mat-panel-title>Respostas avançadas do formulário</mat-panel-title>
+            <mat-panel-description>Use somente em importações administrativas</mat-panel-description>
+          </mat-expansion-panel-header>
+          <p class="advanced-warning">
+            Prefira o formulário vinculado à modalidade. Este campo aceita apenas um objeto JSON seguro.
+          </p>
+          <mat-form-field>
+            <mat-label>Respostas do formulário</mat-label>
+            <textarea matInput rows="3" formControlName="formAnswersJson"></textarea>
+            @if (workspace.registrationForm.controls.formAnswersJson.invalid) {
+              <mat-error>Informe um objeto JSON válido.</mat-error>
+            }
+          </mat-form-field>
+        </mat-expansion-panel>
+        <button mat-stroked-button type="submit" [disabled]="workspace.registrationForm.invalid">
+          <mat-icon>how_to_reg</mat-icon>Inscrever equipe
+        </button>
+      </form>
+    }
+  </section>
+</div>

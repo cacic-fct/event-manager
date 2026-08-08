@@ -21,18 +21,10 @@ export class SportsReadService {
   readonly currentUserMatchOperations: SportsReadCurrentUserService['currentUserMatchOperations'];
   readonly currentUserLineup: SportsReadCurrentUserService['currentUserLineup'];
 
-  constructor(
-    prisma: PrismaService,
-    authorizationPolicy: AuthorizationPolicyService,
-    @Optional() redis?: Redis,
-  ) {
+  constructor(prisma: PrismaService, authorizationPolicy: AuthorizationPolicyService, @Optional() redis?: Redis) {
     const adminReader = new SportsReadAdminService(prisma, authorizationPolicy);
     const publicReader = new SportsReadPublicService(prisma, redis);
-    const currentUserReader = new SportsReadCurrentUserService(
-      prisma,
-      authorizationPolicy,
-      publicReader,
-    );
+    const currentUserReader = new SportsReadCurrentUserService(prisma, authorizationPolicy, publicReader);
 
     this.adminTournamentList = adminReader.adminTournamentList.bind(adminReader);
     this.adminTournament = adminReader.adminTournament.bind(adminReader);
@@ -43,10 +35,8 @@ export class SportsReadService {
     this.publicTournament = publicReader.publicTournament.bind(publicReader);
     this.publicMatch = publicReader.publicMatch.bind(publicReader);
     this.currentUserTournament = currentUserReader.currentUserTournament.bind(currentUserReader);
-    this.representativeTeamWorkspace =
-      currentUserReader.representativeTeamWorkspace.bind(currentUserReader);
-    this.currentUserMatchOperations =
-      currentUserReader.currentUserMatchOperations.bind(currentUserReader);
+    this.representativeTeamWorkspace = currentUserReader.representativeTeamWorkspace.bind(currentUserReader);
+    this.currentUserMatchOperations = currentUserReader.currentUserMatchOperations.bind(currentUserReader);
     this.currentUserLineup = currentUserReader.currentUserLineup.bind(currentUserReader);
   }
 }

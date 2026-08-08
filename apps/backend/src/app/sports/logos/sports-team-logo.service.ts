@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -99,37 +94,25 @@ export class SportsTeamLogoService {
     if (!team) {
       throw new NotFoundException(`Sports team ${sportsTeamId} was not found.`);
     }
-    const previousRequest =
-      await this.prisma.sportsTeamChangeRequest.findFirst({
-        where: {
-          teamId: sportsTeamId,
-          submittedByPersonId: representativePersonId,
-          type: SportsTeamChangeRequestType.LOGO,
-          status: {
-            in: [
-              SportsTeamChangeRequestStatus.PENDING,
-              SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
-              SportsTeamChangeRequestStatus.CONFLICT,
-            ],
-          },
+    const previousRequest = await this.prisma.sportsTeamChangeRequest.findFirst({
+      where: {
+        teamId: sportsTeamId,
+        submittedByPersonId: representativePersonId,
+        type: SportsTeamChangeRequestType.LOGO,
+        status: {
+          in: [
+            SportsTeamChangeRequestStatus.PENDING,
+            SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
+            SportsTeamChangeRequestStatus.CONFLICT,
+          ],
         },
-        select: { delta: true },
-        orderBy: { updatedAt: 'desc' },
-      });
-    const previousQueuedObjectKey = this.readQueuedObjectKey(
-      previousRequest?.delta,
-    );
-    const permanentObjectKey = this.buildObjectKey(
-      team.tournamentId,
-      team.id,
-      sha256,
-      image.extension,
-    );
-    const queuedObjectKey = this.buildQueuedObjectKey(
-      team.id,
-      sha256,
-      image.extension,
-    );
+      },
+      select: { delta: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    const previousQueuedObjectKey = this.readQueuedObjectKey(previousRequest?.delta);
+    const permanentObjectKey = this.buildObjectKey(team.tournamentId, team.id, sha256, image.extension);
+    const queuedObjectKey = this.buildQueuedObjectKey(team.id, sha256, image.extension);
     await this.s3.uploadFile(queuedObjectKey, image.buffer, image.mimeType, {
       sha256,
       private: 'true',
@@ -161,10 +144,7 @@ export class SportsTeamLogoService {
       await this.s3.deleteFile(queuedObjectKey).catch(() => undefined);
       throw error;
     }
-    if (
-      previousQueuedObjectKey &&
-      previousQueuedObjectKey !== queuedObjectKey
-    ) {
+    if (previousQueuedObjectKey && previousQueuedObjectKey !== queuedObjectKey) {
       await this.s3.deleteFile(previousQueuedObjectKey);
     }
     return {
@@ -229,12 +209,7 @@ export class SportsTeamLogoService {
       throw new ConflictException('A equipe mudou. Recarregue os dados antes de enviar o logo.');
     }
 
-    const objectKey = this.buildObjectKey(
-      team.tournamentId,
-      team.id,
-      sha256,
-      image.extension,
-    );
+    const objectKey = this.buildObjectKey(team.tournamentId, team.id, sha256, image.extension);
     if (!(await this.s3.fileExists(objectKey))) {
       await this.s3.uploadFile(objectKey, image.buffer, image.mimeType, {
         sha256,
@@ -312,10 +287,7 @@ export class SportsTeamLogoService {
     return this.downloadMatchingTeam(sportsTeamId, sha256, {});
   }
 
-  async downloadPublic(
-    sportsTeamId: string,
-    sha256: string,
-  ): Promise<SportsTeamLogoDownload> {
+  async downloadPublic(sportsTeamId: string, sha256: string): Promise<SportsTeamLogoDownload> {
     return this.downloadMatchingTeam(sportsTeamId, sha256, {
       status: SportsTeamStatus.ACTIVE,
       tournament: {
@@ -349,12 +321,7 @@ export class SportsTeamLogoService {
         logoSizeBytes: true,
       },
     });
-    if (
-      !team?.logoObjectKey ||
-      !team.logoSha256 ||
-      !team.logoMimeType ||
-      team.logoSizeBytes == null
-    ) {
+    if (!team?.logoObjectKey || !team.logoSha256 || !team.logoMimeType || team.logoSizeBytes == null) {
       throw new NotFoundException(`Sports team logo ${sha256} was not found.`);
     }
 
@@ -367,21 +334,11 @@ export class SportsTeamLogoService {
     };
   }
 
-
-  private buildObjectKey(
-    tournamentId: string,
-    teamId: string,
-    sha256: string,
-    extension: string,
-  ): string {
+  private buildObjectKey(tournamentId: string, teamId: string, sha256: string, extension: string): string {
     return `sports/tournaments/${tournamentId}/teams/${teamId}/logos/sha256/${sha256}.${extension}`;
   }
 
-  private buildQueuedObjectKey(
-    teamId: string,
-    sha256: string,
-    extension: string,
-  ): string {
+  private buildQueuedObjectKey(teamId: string, sha256: string, extension: string): string {
     return `sports/private/team-logo-review/${teamId}/${randomUUID()}/${sha256}.${extension}`;
   }
 
@@ -394,22 +351,14 @@ export class SportsTeamLogoService {
       return null;
     }
     const key = logo['queuedObjectKey'];
-    return typeof key === 'string' &&
-      /^sports\/private\/team-logo-review\//.test(key)
-      ? key
-      : null;
+    return typeof key === 'string' && /^sports\/private\/team-logo-review\//.test(key) ? key : null;
   }
 
-  private bumpLogoFieldRevision(
-    value: Prisma.JsonValue,
-    revision: number,
-  ): Prisma.InputJsonValue {
+  private bumpLogoFieldRevision(value: Prisma.JsonValue, revision: number): Prisma.InputJsonValue {
     const current =
       value && typeof value === 'object' && !Array.isArray(value)
         ? Object.fromEntries(
-            Object.entries(value).filter((entry): entry is [string, number] =>
-              typeof entry[1] === 'number',
-            ),
+            Object.entries(value).filter((entry): entry is [string, number] => typeof entry[1] === 'number'),
           )
         : {};
     return {

@@ -26,9 +26,7 @@ export class SportsReadPublicCache {
 
   constructor(private readonly redis?: Redis) {}
 
-  async getCachedPublicTournament(
-    tournamentId: string,
-  ): Promise<PublicSportsTournamentDetail | null> {
+  async getCachedPublicTournament(tournamentId: string): Promise<PublicSportsTournamentDetail | null> {
     if (!this.redis) {
       return null;
     }
@@ -42,10 +40,7 @@ export class SportsReadPublicCache {
         return null;
       }
       const cached = JSON.parse(serialized) as Partial<CachedPublicSportsTournament>;
-      if (
-        typeof cached.version !== 'string' ||
-        cached.version !== (currentVersion ?? '0')
-      ) {
+      if (typeof cached.version !== 'string' || cached.version !== (currentVersion ?? '0')) {
         return null;
       }
       return this.rehydratePublicTournament(cached.tournament, tournamentId);
@@ -58,18 +53,12 @@ export class SportsReadPublicCache {
     }
   }
 
-  async readPublicTournamentCacheVersion(
-    tournamentId: string,
-  ): Promise<string | null> {
+  async readPublicTournamentCacheVersion(tournamentId: string): Promise<string | null> {
     if (!this.redis) {
       return null;
     }
     try {
-      return (
-        (await this.redis.get(
-          sportsPublicTournamentCacheVersionKey(tournamentId),
-        )) ?? '0'
-      );
+      return (await this.redis.get(sportsPublicTournamentCacheVersionKey(tournamentId))) ?? '0';
     } catch (error) {
       this.logger.warn(
         `Sports public tournament cache version read failed for tournament ${tournamentId}; skipping cache storage.`,
@@ -102,17 +91,11 @@ export class SportsReadPublicCache {
         SPORTS_PUBLIC_TOURNAMENT_CACHE_TTL_SECONDS.toString(),
       );
     } catch (error) {
-      this.logger.warn(
-        `Sports public tournament cache write failed for tournament ${tournamentId}.`,
-        error,
-      );
+      this.logger.warn(`Sports public tournament cache write failed for tournament ${tournamentId}.`, error);
     }
   }
 
-  rehydratePublicTournament(
-    value: unknown,
-    expectedTournamentId: string,
-  ): PublicSportsTournamentDetail | null {
+  rehydratePublicTournament(value: unknown, expectedTournamentId: string): PublicSportsTournamentDetail | null {
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
       return null;
     }
@@ -145,11 +128,7 @@ export class SportsReadPublicCache {
         return null;
       }
       for (const bracket of category.brackets) {
-        if (
-          !bracket ||
-          !Array.isArray(bracket.matches) ||
-          !this.rehydratePublicMatches(bracket.matches)
-        ) {
+        if (!bracket || !Array.isArray(bracket.matches) || !this.rehydratePublicMatches(bracket.matches)) {
           return null;
         }
       }
@@ -197,5 +176,4 @@ export class SportsReadPublicCache {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
   }
-
 }

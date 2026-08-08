@@ -215,7 +215,9 @@ tbody th {
   font: inherit;
   padding: 8px;
   text-align: left;
-  transition: background-color 160ms ease-out, box-shadow 160ms ease-out;
+  transition:
+    background-color 160ms ease-out,
+    box-shadow 160ms ease-out;
   width: 100%;
 }
 
@@ -229,7 +231,9 @@ tbody th {
 }
 
 .match-card.current {
-  box-shadow: 0 0 0 2px var(--mat-sys-primary), 0 6px 18px color-mix(in srgb, var(--mat-sys-shadow) 16%, transparent);
+  box-shadow:
+    0 0 0 2px var(--mat-sys-primary),
+    0 6px 18px color-mix(in srgb, var(--mat-sys-shadow) 16%, transparent);
 }
 
 .match-card.editing {

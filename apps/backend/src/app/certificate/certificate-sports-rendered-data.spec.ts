@@ -15,11 +15,7 @@ describe('sports certificate rendered data', () => {
     [CertificateIssuedTo.SPORTS_CAPTAIN, 'Capitão/Capitã', 'como capitão/capitã'],
     [CertificateIssuedTo.SPORTS_COACH, 'Técnico/Técnica', 'como técnico/técnica'],
     [CertificateIssuedTo.SPORTS_REFEREE, 'Árbitro/Árbitra', 'como árbitro/árbitra'],
-    [
-      CertificateIssuedTo.SPORTS_INTERMEDIATOR,
-      'Intermediador/Intermediadora',
-      'como intermediador/intermediadora',
-    ],
+    [CertificateIssuedTo.SPORTS_INTERMEDIATOR, 'Intermediador/Intermediadora', 'como intermediador/intermediadora'],
     [CertificateIssuedTo.SPORTS_SCOREKEEPER, 'Responsável pela pontuação', 'como responsável pela pontuação'],
     [CertificateIssuedTo.SPORTS_ORGANIZER, 'Organização', 'na organização'],
   ])('renders distinct template naming for %s', (issuedTo, expectedLabel, expectedParticipationText) => {
@@ -52,8 +48,6 @@ describe('sports certificate rendered data', () => {
 
     expect(rendered.certificateTypeLabel).toBe(expectedLabel);
     expect((rendered.templateData as Record<string, unknown>).certificate_type).toBe(expectedLabel);
-    expect((rendered.templateData as Record<string, unknown>).participation_type).toContain(
-      expectedParticipationText,
-    );
+    expect((rendered.templateData as Record<string, unknown>).participation_type).toContain(expectedParticipationText);
   });
 });

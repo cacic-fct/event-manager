@@ -1,10 +1,5 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import {
-  Prisma,
-  SportsBracketSide,
-  SportsMatchState,
-  SportsReviewStatus
-} from '@prisma/client';
+import { Prisma, SportsBracketSide, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import { planSportsWinnerAdvancement } from '../domain/sports-brackets';
 import { planSportsGrandFinalOutcome } from '../domain/sports-double-elimination';
 import {
@@ -36,10 +31,9 @@ export class SportsBracketAdvancementService extends SportsBracketAdvancementAss
     ) {
       return this.advanceApprovedOutcome(tx, sourceMatchId, actorId);
     }
-    const sourceRegistrationIds = [
-      source.homeRegistrationId,
-      source.awayRegistrationId,
-    ].filter((id): id is string => Boolean(id));
+    const sourceRegistrationIds = [source.homeRegistrationId, source.awayRegistrationId].filter((id): id is string =>
+      Boolean(id),
+    );
     const invalidations: SportsStructuralInvalidation[][] = [];
     if (source.winnerAdvancesToId && source.winnerAdvancesToSide) {
       invalidations.push(
@@ -90,25 +84,14 @@ export class SportsBracketAdvancementService extends SportsBracketAdvancementAss
     }
 
     const resetRule = this.readResetRule(source.stage?.settings);
-    const replayRootId = resetRule
-      ? await this.resolveReplayRootId(tx, source)
-      : source.id;
+    const replayRootId = resetRule ? await this.resolveReplayRootId(tx, source) : source.id;
     if (resetRule?.sourceMatchId === replayRootId) {
       const resetPlan = planSportsGrandFinalOutcome(source);
       if (resetPlan.status === 'BLOCKED') {
-        throw new ConflictException(
-          'A grande final não pôde ser concluída porque seus participantes mudaram.',
-        );
+        throw new ConflictException('A grande final não pôde ser concluída porque seus participantes mudaram.');
       }
       if (resetPlan.status === 'CHAMPIONSHIP_DECIDED') {
-        return this.reconcileGrandFinalResetMatch(
-          tx,
-          source,
-          resetRule.resetMatchId,
-          null,
-          null,
-          actorId,
-        );
+        return this.reconcileGrandFinalResetMatch(tx, source, resetRule.resetMatchId, null, null, actorId);
       }
       return this.reconcileGrandFinalResetMatch(
         tx,
@@ -143,9 +126,7 @@ export class SportsBracketAdvancementService extends SportsBracketAdvancementAss
       });
       if (
         plan.status === 'CONFLICT' &&
-        [source.homeRegistrationId, source.awayRegistrationId].includes(
-          plan.occupyingRegistrationId,
-        )
+        [source.homeRegistrationId, source.awayRegistrationId].includes(plan.occupyingRegistrationId)
       ) {
         invalidations.push(
           await this.clearSourceAssignment(
@@ -153,10 +134,7 @@ export class SportsBracketAdvancementService extends SportsBracketAdvancementAss
             source.id,
             plan.targetMatchId,
             plan.side as SportsBracketSide,
-            [
-              source.homeRegistrationId,
-              source.awayRegistrationId,
-            ].filter((id): id is string => Boolean(id)),
+            [source.homeRegistrationId, source.awayRegistrationId].filter((id): id is string => Boolean(id)),
             actorId,
           ),
         );
@@ -170,17 +148,9 @@ export class SportsBracketAdvancementService extends SportsBracketAdvancementAss
             advancementKind,
           ),
         );
-        await this.rosters.copyApprovedRosterForWinner(
-          tx,
-          source.id,
-          plan.targetMatchId,
-          plan.registrationId,
-          actorId,
-        );
+        await this.rosters.copyApprovedRosterForWinner(tx, source.id, plan.targetMatchId, plan.registrationId, actorId);
       } else if (plan.status === 'CONFLICT' || plan.status === 'BLOCKED') {
-        throw new ConflictException(
-          'O vencedor não pôde avançar automaticamente porque a próxima chave mudou.',
-        );
+        throw new ConflictException('O vencedor não pôde avançar automaticamente porque a próxima chave mudou.');
       } else if (plan.status === 'ASSIGN') {
         invalidations.push(
           await this.assignRegistration(
@@ -192,51 +162,27 @@ export class SportsBracketAdvancementService extends SportsBracketAdvancementAss
             advancementKind,
           ),
         );
-        await this.rosters.copyApprovedRosterForWinner(
-          tx,
-          source.id,
-          plan.targetMatchId,
-          plan.registrationId,
-          actorId,
-        );
+        await this.rosters.copyApprovedRosterForWinner(tx, source.id, plan.targetMatchId, plan.registrationId, actorId);
       } else if (plan.status !== 'NOOP') {
-        throw new ConflictException(
-          'O vencedor não pôde avançar automaticamente porque a próxima chave mudou.',
-        );
+        throw new ConflictException('O vencedor não pôde avançar automaticamente porque a próxima chave mudou.');
       } else {
-        invalidations.push(
-          await this.invalidationForMatch(
-            tx,
-            plan.targetMatchId,
-            advancementKind,
-          ),
-        );
+        invalidations.push(await this.invalidationForMatch(tx, plan.targetMatchId, advancementKind));
       }
     }
 
-    if (
-      source.loserRegistrationId &&
-      source.loserAdvancesToId &&
-      source.loserAdvancesToSide
-    ) {
+    if (source.loserRegistrationId && source.loserAdvancesToId && source.loserAdvancesToSide) {
       const currentLoserTargetRegistrationId =
         source.loserAdvancesToSide === SportsBracketSide.HOME
           ? source.loserAdvancesTo?.homeRegistrationId
           : source.loserAdvancesTo?.awayRegistrationId;
-      if (
-        currentLoserTargetRegistrationId &&
-        currentLoserTargetRegistrationId !== source.loserRegistrationId
-      ) {
+      if (currentLoserTargetRegistrationId && currentLoserTargetRegistrationId !== source.loserRegistrationId) {
         invalidations.push(
           await this.clearSourceAssignment(
             tx,
             source.id,
             source.loserAdvancesToId,
             source.loserAdvancesToSide,
-            [
-              source.homeRegistrationId,
-              source.awayRegistrationId,
-            ].filter((id): id is string => Boolean(id)),
+            [source.homeRegistrationId, source.awayRegistrationId].filter((id): id is string => Boolean(id)),
             actorId,
           ),
         );
@@ -296,15 +242,8 @@ export class SportsBracketAdvancementService extends SportsBracketAdvancementAss
       );
     }
     if (plan.status !== 'NOOP') {
-      throw new ConflictException(
-        'A vaga automática não pôde avançar porque a próxima chave mudou.',
-      );
+      throw new ConflictException('A vaga automática não pôde avançar porque a próxima chave mudou.');
     }
-    return this.invalidationForMatch(
-      tx,
-      plan.targetMatchId,
-      'STRUCTURAL_BYE_ADVANCED',
-    );
+    return this.invalidationForMatch(tx, plan.targetMatchId, 'STRUCTURAL_BYE_ADVANCED');
   }
-
 }

@@ -69,10 +69,7 @@ describe('SportsReadService admin tournament list', () => {
           teams: 12,
           playerApplications: 5,
         },
-        categories: [
-          { _count: { matches: 2, registrations: 3 } },
-          { _count: { matches: 1, registrations: 0 } },
-        ],
+        categories: [{ _count: { matches: 2, registrations: 3 } }, { _count: { matches: 1, registrations: 0 } }],
         teams: [{ _count: { changeRequests: 4 } }],
       },
     ]);
@@ -89,9 +86,7 @@ describe('SportsReadService admin tournament list', () => {
         skip: 5,
         take: 10,
         where: expect.objectContaining({
-          OR: expect.arrayContaining([
-            { majorEventId: { in: ['major-1'] } },
-          ]),
+          OR: expect.arrayContaining([{ majorEventId: { in: ['major-1'] } }]),
           majorEvent: {
             deletedAt: null,
             name: { contains: 'universitários', mode: 'insensitive' },
@@ -148,10 +143,7 @@ describe('SportsReadService admin tournament list', () => {
         },
       ],
     });
-    const service = new SportsReadService(
-      prisma as never,
-      authorizationPolicy as never,
-    );
+    const service = new SportsReadService(prisma as never, authorizationPolicy as never);
 
     const result = await service.currentUserMatchOperations('match-1');
 
@@ -219,24 +211,15 @@ describe('SportsReadService admin tournament list', () => {
         },
       ],
     });
-    const service = new SportsReadService(
-      prisma as never,
-      authorizationPolicy as never,
-    );
+    const service = new SportsReadService(prisma as never, authorizationPolicy as never);
 
-    const result = await service.currentUserLineup(
-      'match-1',
-      'registration-home',
-    );
+    const result = await service.currentUserLineup('match-1', 'registration-home');
 
     expect(prisma.sportsMatch.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           id: 'match-1',
-          OR: [
-            { homeRegistrationId: 'registration-home' },
-            { awayRegistrationId: 'registration-home' },
-          ],
+          OR: [{ homeRegistrationId: 'registration-home' }, { awayRegistrationId: 'registration-home' }],
         }),
       }),
     );

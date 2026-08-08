@@ -46,9 +46,9 @@ export class SportsSelfSubscriptionPage implements OnInit {
     const tournament = this.data()?.tournament;
     return Boolean(
       tournament &&
-      !this.busy() &&
-      this.form.valid &&
-      (tournament.selfSubscriptionAllowNoCategory || this.selectedCategories().size > 0),
+        !this.busy() &&
+        this.form.valid &&
+        (tournament.selfSubscriptionAllowNoCategory || this.selectedCategories().size > 0),
     );
   });
 
@@ -121,21 +121,21 @@ export class SportsSelfSubscriptionPage implements OnInit {
     this.busy.set(true);
     try {
       const value = this.form.getRawValue();
-      await firstValueFrom(this.api.submitApplication({
-        tournamentId: data.tournament.id,
-        requestedTeamId: value.requestedTeamId.trim() || null,
-        categoryIds: [...this.selectedCategories()],
-        noticeAccepted: value.noticeAccepted,
-        paymentTier: value.paymentTier.trim() || null,
-        pendingKey: this.uuid(),
-      }));
+      await firstValueFrom(
+        this.api.submitApplication({
+          tournamentId: data.tournament.id,
+          requestedTeamId: value.requestedTeamId.trim() || null,
+          categoryIds: [...this.selectedCategories()],
+          noticeAccepted: value.noticeAccepted,
+          paymentTier: value.paymentTier.trim() || null,
+          pendingKey: this.uuid(),
+        }),
+      );
       this.submitted.set(true);
     } catch (error: unknown) {
-      this.snackbar.open(
-        error instanceof Error ? error.message : 'Não foi possível enviar a inscrição.',
-        'Fechar',
-        { duration: 6000 },
-      );
+      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível enviar a inscrição.', 'Fechar', {
+        duration: 6000,
+      });
     } finally {
       this.busy.set(false);
     }

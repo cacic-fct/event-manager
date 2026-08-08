@@ -170,10 +170,23 @@ h5 {
   gap: 6px;
   padding: 14px;
   text-decoration: none;
-  transition: background-color 160ms ease-out, box-shadow 160ms ease-out;
+  transition:
+    background-color 160ms ease-out,
+    box-shadow 160ms ease-out;
 }
-.card-clock { display: inline-flex; align-items: center; justify-content: center; gap: 4px; color: var(--mat-sys-on-surface-variant); font-variant-numeric: tabular-nums; }
-.card-clock mat-icon { width: 16px; height: 16px; font-size: 16px; }
+.card-clock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--mat-sys-on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+.card-clock mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
 
 .featured-match:hover {
   background: var(--mat-sys-surface-container-highest);
@@ -392,7 +405,7 @@ tbody th {
     opacity: 1;
   }
   50% {
-    opacity: .28;
+    opacity: 0.28;
   }
 }
 

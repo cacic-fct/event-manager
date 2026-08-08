@@ -57,11 +57,7 @@ export class SportsAccessService {
       throw new ForbiddenException('Você não representa esta equipe.');
     }
     this.assertTournamentOpenForPublicEdits(team.tournament);
-    await this.frozen.assertMajorEventMutable(
-      team.tournament.majorEventId,
-      undefined,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(team.tournament.majorEventId, undefined, 'edit');
     return { actor, team };
   }
 
@@ -72,10 +68,7 @@ export class SportsAccessService {
         id: registrationId,
         deletedAt: null,
         status: {
-          in: [
-            SportsRegistrationStatus.APPROVED,
-            SportsRegistrationStatus.ACTIVE,
-          ],
+          in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
         },
       },
       select: {
@@ -122,11 +115,7 @@ export class SportsAccessService {
       throw new ForbiddenException('Você não é capitão ou técnico desta equipe nesta modalidade.');
     }
     this.assertCategoryOpenForPublicEdits(registration.category);
-    await this.frozen.assertMajorEventMutable(
-      registration.category.tournament.majorEventId,
-      undefined,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(registration.category.tournament.majorEventId, undefined, 'edit');
     return { actor, registration, assignment: registration.members[0] };
   }
 
@@ -137,10 +126,7 @@ export class SportsAccessService {
         id: registrationId,
         deletedAt: null,
         status: {
-          in: [
-            SportsRegistrationStatus.APPROVED,
-            SportsRegistrationStatus.ACTIVE,
-          ],
+          in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
         },
       },
       select: {
@@ -196,21 +182,11 @@ export class SportsAccessService {
         },
       },
     });
-    if (
-      !registration ||
-      (registration.members.length === 0 &&
-        registration.team.representatives.length === 0)
-    ) {
-      throw new ForbiddenException(
-        'Você não pode editar a escalação desta equipe nesta modalidade.',
-      );
+    if (!registration || (registration.members.length === 0 && registration.team.representatives.length === 0)) {
+      throw new ForbiddenException('Você não pode editar a escalação desta equipe nesta modalidade.');
     }
     this.assertCategoryOpenForPublicEdits(registration.category);
-    await this.frozen.assertMajorEventMutable(
-      registration.category.tournament.majorEventId,
-      undefined,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(registration.category.tournament.majorEventId, undefined, 'edit');
     return {
       actor,
       registration,
@@ -226,10 +202,7 @@ export class SportsAccessService {
         id: registrationId,
         deletedAt: null,
         status: {
-          in: [
-            SportsRegistrationStatus.APPROVED,
-            SportsRegistrationStatus.ACTIVE,
-          ],
+          in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
         },
       },
       select: {
@@ -268,14 +241,8 @@ export class SportsAccessService {
         },
       },
     });
-    if (
-      !registration ||
-      (registration.members.length === 0 &&
-        registration.team.representatives.length === 0)
-    ) {
-      throw new ForbiddenException(
-        'Você não participa desta equipe nesta modalidade.',
-      );
+    if (!registration || (registration.members.length === 0 && registration.team.representatives.length === 0)) {
+      throw new ForbiddenException('Você não participa desta equipe nesta modalidade.');
     }
     return {
       actor,
@@ -322,26 +289,15 @@ export class SportsAccessService {
         active: true,
         revokedAt: null,
         tournamentId: match.category.tournamentId,
-        OR: [
-          { matchId },
-          { matchId: null, categoryId: match.categoryId },
-          { matchId: null, categoryId: null },
-        ],
+        OR: [{ matchId }, { matchId: null, categoryId: match.categoryId }, { matchId: null, categoryId: null }],
       },
-      orderBy: [
-        { matchId: { sort: 'desc', nulls: 'last' } },
-        { categoryId: { sort: 'desc', nulls: 'last' } },
-      ],
+      orderBy: [{ matchId: { sort: 'desc', nulls: 'last' } }, { categoryId: { sort: 'desc', nulls: 'last' } }],
     });
     if (!assignment) {
       throw new ForbiddenException('Você não está designado para operar esta partida.');
     }
     this.assertCategoryOpenForPublicEdits(match.category);
-    await this.frozen.assertMajorEventMutable(
-      match.category.tournament.majorEventId,
-      undefined,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(match.category.tournament.majorEventId, undefined, 'edit');
     return { actor, match, assignment };
   }
 

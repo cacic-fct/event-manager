@@ -30,35 +30,22 @@ export function normalizeSportsScoreRules(value: unknown): SportsScoreRules {
       strategy === 'CUSTOM'
         ? strategy
         : DEFAULT_RULES.strategy,
-    allowDraw:
-      typeof value['allowDraw'] === 'boolean'
-        ? value['allowDraw']
-        : DEFAULT_RULES.allowDraw,
-    higherWins:
-      typeof value['higherWins'] === 'boolean'
-        ? value['higherWins']
-        : DEFAULT_RULES.higherWins,
+    allowDraw: typeof value['allowDraw'] === 'boolean' ? value['allowDraw'] : DEFAULT_RULES.allowDraw,
+    higherWins: typeof value['higherWins'] === 'boolean' ? value['higherWins'] : DEFAULT_RULES.higherWins,
     pointStep:
-      typeof pointStep === 'number' &&
-      Number.isFinite(pointStep) &&
-      pointStep > 0
+      typeof pointStep === 'number' && Number.isFinite(pointStep) && pointStep > 0
         ? pointStep
         : DEFAULT_RULES.pointStep,
   };
 }
 
-export function assertSportsScoreDeltaMatchesRules(
-  amount: number,
-  rules: SportsScoreRules,
-): void {
+export function assertSportsScoreDeltaMatchesRules(amount: number, rules: SportsScoreRules): void {
   if (!Number.isFinite(amount)) {
     throw new RangeError('A alteração de placar deve ser um número finito.');
   }
   const units = Math.abs(amount) / rules.pointStep;
   if (Math.abs(units - Math.round(units)) > 1e-9) {
-    throw new RangeError(
-      `A alteração de placar deve respeitar o passo de ${rules.pointStep}.`,
-    );
+    throw new RangeError(`A alteração de placar deve respeitar o passo de ${rules.pointStep}.`);
   }
 }
 
@@ -93,9 +80,7 @@ export function assertSportsOutcomeMatchesRules(input: {
       ? 'HOME'
       : 'AWAY';
   if (input.winnerSide !== expectedWinnerSide) {
-    throw new RangeError(
-      'O vencedor informado não corresponde ao placar e às regras da modalidade.',
-    );
+    throw new RangeError('O vencedor informado não corresponde ao placar e às regras da modalidade.');
   }
 }
 

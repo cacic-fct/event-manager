@@ -52,10 +52,7 @@ export function normalizeSportsScoreboard(input: unknown): SportsScoreboard {
   };
 }
 
-export function applySportsScoreDelta(
-  scoreboard: SportsScoreboard,
-  delta: SportsScoreDelta,
-): SportsScoreboard {
+export function applySportsScoreDelta(scoreboard: SportsScoreboard, delta: SportsScoreDelta): SportsScoreboard {
   const normalized = normalizeSportsScoreboard(scoreboard);
   assertFiniteNumber(delta.amount, 'Score delta');
   if (delta.amount === 0) {
@@ -115,8 +112,7 @@ export function rollSportsScorePeriod(
   const normalized = normalizeSportsScoreboard(scoreboard);
   validateMaximumPeriods(options.maximumPeriods);
 
-  const nextPeriodNumber =
-    normalized.periods.reduce((maximum, period) => Math.max(maximum, period.number), 0) + 1;
+  const nextPeriodNumber = normalized.periods.reduce((maximum, period) => Math.max(maximum, period.number), 0) + 1;
   if (options.maximumPeriods !== null && options.maximumPeriods !== undefined) {
     if (nextPeriodNumber > options.maximumPeriods) {
       throw new Error(`O máximo configurado de ${options.maximumPeriods} períodos foi atingido.`);

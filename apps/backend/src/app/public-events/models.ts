@@ -154,10 +154,7 @@ export type PublicEventRecord = Prisma.EventGetPayload<{
   select: typeof PUBLIC_EVENT_SELECT;
 }>;
 
-type PublicMajorEventMappable = Omit<
-  PublicMajorEventRecord,
-  'sportsTournament'
-> & {
+type PublicMajorEventMappable = Omit<PublicMajorEventRecord, 'sportsTournament'> & {
   sportsTournament?: PublicMajorEventRecord['sportsTournament'];
 };
 
@@ -174,9 +171,7 @@ export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
   };
 }>;
 
-export function mapPublicMajorEvent(
-  majorEvent: PublicMajorEventMappable,
-): PublicMajorEvent {
+export function mapPublicMajorEvent(majorEvent: PublicMajorEventMappable): PublicMajorEvent {
   const paymentInfo =
     'paymentInfo' in majorEvent && majorEvent.paymentInfo
       ? mapPublicPaymentInfo(majorEvent.paymentInfo as PublicPaymentInfoRecord)

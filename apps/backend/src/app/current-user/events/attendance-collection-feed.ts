@@ -100,18 +100,14 @@ export async function getAttendanceScannerFeed(
     personId: attendance.personId,
     eventId: attendance.eventId,
     fullName: attendance.person?.name ?? undefined,
-    unespRole: attendance.person?.user?.unespRole?.length
-      ? attendance.person.user.unespRole.join(', ')
-      : undefined,
+    unespRole: attendance.person?.user?.unespRole?.length ? attendance.person.user.unespRole.join(', ') : undefined,
     subscriptionStatus:
       majorEventSubscriptionStatusByPersonId.get(attendance.personId) ??
       (standaloneEventSubscriptionKeys.has(`${attendance.personId}:${attendance.eventId}`) ? 'CONFIRMED' : undefined),
     attendedAt: attendance.attendedAt,
     status: attendance.status,
     createdByMethod: attendance.createdByMethod,
-    collectedByFirstName: attendance.createdById
-      ? collectorFirstNameById.get(attendance.createdById)
-      : undefined,
+    collectedByFirstName: attendance.createdById ? collectorFirstNameById.get(attendance.createdById) : undefined,
     committedByFirstName:
       attendance.committedById && attendance.committedById !== attendance.createdById
         ? collectorFirstNameById.get(attendance.committedById)
@@ -176,9 +172,7 @@ export async function getAttendanceOralRoster(
       attendedAt: attendance?.attendedAt,
       status: attendance?.status,
       createdByMethod: attendance?.createdByMethod,
-      collectedByFirstName: attendance?.createdById
-        ? collectorFirstNameById.get(attendance.createdById)
-        : undefined,
+      collectedByFirstName: attendance?.createdById ? collectorFirstNameById.get(attendance.createdById) : undefined,
       committedByFirstName:
         attendance?.committedById && attendance.committedById !== attendance.createdById
           ? collectorFirstNameById.get(attendance.committedById)

@@ -1,9 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import {
-  Prisma,
-  SportsRegistrationStatus,
-  SportsRosterRole,
-} from '@prisma/client';
+import { Prisma, SportsRegistrationStatus, SportsRosterRole } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -49,11 +45,7 @@ export abstract class SportsAdminLookupService extends SportsAdminSupport {
     return registration;
   }
 
-  protected async findVenue(
-    tx: Prisma.TransactionClient,
-    venueId: string | null | undefined,
-    tournamentId: string,
-  ) {
+  protected async findVenue(tx: Prisma.TransactionClient, venueId: string | null | undefined, tournamentId: string) {
     if (!venueId) {
       return null;
     }
@@ -71,11 +63,7 @@ export abstract class SportsAdminLookupService extends SportsAdminSupport {
     return venue;
   }
 
-  protected async findStage(
-    tx: Prisma.TransactionClient,
-    stageId: string | null | undefined,
-    categoryId: string,
-  ) {
+  protected async findStage(tx: Prisma.TransactionClient, stageId: string | null | undefined, categoryId: string) {
     if (!stageId) {
       return null;
     }
@@ -155,6 +143,4 @@ export abstract class SportsAdminLookupService extends SportsAdminSupport {
       (participant) => new Set(participant.teamMemberships.map((membership) => membership.teamId)).size > 1,
     );
   }
-
 }
-

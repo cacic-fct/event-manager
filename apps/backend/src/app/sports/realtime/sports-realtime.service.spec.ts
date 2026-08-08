@@ -17,9 +17,7 @@ describe('SportsRealtimeService', () => {
     const scope = service.scope('match', 'match-1');
     const received = firstValueFrom(service.watch(scope).pipe(take(1)));
 
-    await expect(
-      service.publish(scope, { matchId: 'match-1', revision: 2 }),
-    ).resolves.toEqual(stored);
+    await expect(service.publish(scope, { matchId: 'match-1', revision: 2 })).resolves.toEqual(stored);
     await expect(received).resolves.toEqual(stored);
     expect(replay.record).toHaveBeenCalledWith(scope, {
       data: { matchId: 'match-1', revision: 2 },
@@ -33,38 +31,21 @@ describe('SportsRealtimeService', () => {
     };
     const service = new SportsRealtimeService({} as never, replay as never);
 
-    expect(service.scope('match', 'match-secret')).toBe(
-      'sports-match:opaque',
-    );
-    expect(service.scope('tournament', 'tournament-secret')).toBe(
-      'sports-tournament:opaque',
-    );
-    expect(service.scope('review', 'match-secret')).toBe(
-      'sports-review:opaque',
-    );
-    expect(replay.scope).toHaveBeenNthCalledWith(
-      1,
-      'sports-match',
-      'match-secret',
-    );
+    expect(service.scope('match', 'match-secret')).toBe('sports-match:opaque');
+    expect(service.scope('tournament', 'tournament-secret')).toBe('sports-tournament:opaque');
+    expect(service.scope('review', 'match-secret')).toBe('sports-review:opaque');
+    expect(replay.scope).toHaveBeenNthCalledWith(1, 'sports-match', 'match-secret');
   });
 
   it('fans out Redis pub/sub envelopes across instances and ignores malformed messages', async () => {
-    let messageHandler:
-      | ((channel: string, payload: string) => void)
-      | undefined;
+    let messageHandler: ((channel: string, payload: string) => void) | undefined;
     const subscriber = {
       subscribe: jest.fn().mockResolvedValue(1),
-      on: jest.fn(
-        (
-          event: string,
-          handler: (channel: string, payload: string) => void,
-        ) => {
-          if (event === 'message') {
-            messageHandler = handler;
-          }
-        },
-      ),
+      on: jest.fn((event: string, handler: (channel: string, payload: string) => void) => {
+        if (event === 'message') {
+          messageHandler = handler;
+        }
+      }),
       unsubscribe: jest.fn().mockResolvedValue(1),
       disconnect: jest.fn(),
     };
@@ -81,15 +62,10 @@ describe('SportsRealtimeService', () => {
       scope: jest.fn((channel: string, id: string) => `${channel}:${id}`),
       record: jest.fn().mockResolvedValue(stored),
     };
-    const service = new SportsRealtimeService(
-      redis as never,
-      replay as never,
-    );
+    const service = new SportsRealtimeService(redis as never, replay as never);
     await service.onModuleInit();
     const received: MessageEvent[] = [];
-    const subscription = service
-      .watch('sports-match:match-1')
-      .subscribe((event) => received.push(event));
+    const subscription = service.watch('sports-match:match-1').subscribe((event) => received.push(event));
 
     await service.publish('sports-match:match-1', { state: 'LIVE' });
     expect(received).toEqual([]);
@@ -120,10 +96,9 @@ describe('SportsRealtimeService', () => {
   it('publishes deduplicated structural invalidations to tournament and public match scopes', async () => {
     const replay = {
       scope: jest.fn((channel: string, id: string) => `${channel}:${id}`),
-      record: jest.fn().mockImplementation(
-        (scope: string, event: MessageEvent) =>
-          Promise.resolve({ id: scope, ...event }),
-      ),
+      record: jest
+        .fn()
+        .mockImplementation((scope: string, event: MessageEvent) => Promise.resolve({ id: scope, ...event })),
     };
     const redis = {
       eval: jest.fn().mockResolvedValue(1),
@@ -161,10 +136,7 @@ describe('SportsRealtimeService', () => {
         }),
       }),
     );
-    expect(replay.record).toHaveBeenCalledWith(
-      'sports-match:match-2',
-      expect.any(Object),
-    );
+    expect(replay.record).toHaveBeenCalledWith('sports-match:match-2', expect.any(Object));
     expect(redis.eval).toHaveBeenCalledTimes(1);
     expect(redis.eval).toHaveBeenCalledWith(
       expect.stringContaining("redis.call('INCR'"),
@@ -183,9 +155,7 @@ describe('SportsRealtimeService', () => {
     const scope = service.scope('match', 'match-1');
     const received = firstValueFrom(service.watch(scope).pipe(take(1)));
 
-    await expect(
-      service.publish(scope, { type: 'MATCH_UPDATED' }),
-    ).resolves.toEqual({
+    await expect(service.publish(scope, { type: 'MATCH_UPDATED' })).resolves.toEqual({
       data: { type: 'MATCH_UPDATED' },
       retry: 3_000,
     });
@@ -215,17 +185,12 @@ describe('SportsRealtimeService', () => {
       scope: jest.fn((channel: string, id: string) => `${channel}:${id}`),
       record: jest.fn().mockResolvedValue(stored),
     };
-    const service = new SportsRealtimeService(
-      redis as never,
-      replay as never,
-    );
+    const service = new SportsRealtimeService(redis as never, replay as never);
     await service.onModuleInit();
     const scope = service.scope('match', 'match-1');
     const received = firstValueFrom(service.watch(scope).pipe(take(1)));
 
-    await expect(
-      service.publish(scope, { type: 'MATCH_UPDATED' }),
-    ).resolves.toEqual(stored);
+    await expect(service.publish(scope, { type: 'MATCH_UPDATED' })).resolves.toEqual(stored);
     await expect(received).resolves.toEqual(stored);
 
     await service.onModuleDestroy();

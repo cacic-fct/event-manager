@@ -172,10 +172,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
     if (
       !match ||
       !category ||
-      !(await this.confirmAction(
-        'Excluir partida?',
-        'A partida e o evento de calendário associado serão removidos.',
-      ))
+      !(await this.confirmAction('Excluir partida?', 'A partida e o evento de calendário associado serão removidos.'))
     ) {
       return;
     }
@@ -241,14 +238,10 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
     }
     await this.run('Não foi possível registrar a pontuação.', async () => {
       await firstValueFrom(
-        this.api.mutate<string>(
-          'createSportsTournamentScoreEntry',
-          'SportsTournamentScoreEntryInput',
-          {
-            tournamentId: this.tournamentId(),
-            ...this.scoreEntryForm.getRawValue(),
-          },
-        ),
+        this.api.mutate<string>('createSportsTournamentScoreEntry', 'SportsTournamentScoreEntryInput', {
+          tournamentId: this.tournamentId(),
+          ...this.scoreEntryForm.getRawValue(),
+        }),
       );
       await this.loadTournament();
       this.scoreEntryForm.reset({ teamId: '', source: 'MANUAL', points: 0, reason: '' });
@@ -327,17 +320,12 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
     if (
       !tournament ||
       !venue ||
-      !(await this.confirmAction(
-        `Excluir ${venue.name}?`,
-        'Partidas futuras precisarão receber outro local.',
-      ))
+      !(await this.confirmAction(`Excluir ${venue.name}?`, 'Partidas futuras precisarão receber outro local.'))
     ) {
       return;
     }
     await this.run('Não foi possível excluir o local esportivo.', async () => {
-      await firstValueFrom(
-        this.api.deleteVersioned('deleteSportsVenue', venue.id, venue.revision, tournament.id),
-      );
+      await firstValueFrom(this.api.deleteVersioned('deleteSportsVenue', venue.id, venue.revision, tournament.id));
       this.newVenue();
       await this.loadTournament();
     });

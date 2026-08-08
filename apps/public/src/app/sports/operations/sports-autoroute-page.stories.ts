@@ -60,9 +60,7 @@ export const NoNearbyMatch: Story = {
   name: 'Nenhuma partida próxima',
   args: { state: 'empty' },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText('Nenhuma partida para operar agora'),
-    ).toBeVisible();
+    await expect(await within(canvasElement).findByText('Nenhuma partida para operar agora')).toBeVisible();
   },
 };
 

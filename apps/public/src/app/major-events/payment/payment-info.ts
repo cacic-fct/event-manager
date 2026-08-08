@@ -329,11 +329,7 @@ export class PaymentInfo {
     };
   }
 
-  private generatePixBrCode(input: {
-    pixKey: string;
-    merchantName: string;
-    amount?: string;
-  }): string | null {
+  private generatePixBrCode(input: { pixKey: string; merchantName: string; amount?: string }): string | null {
     const merchantName = this.normalizeBrCodeText(input.merchantName, 25);
     const pixKey = this.normalizePixKey(input.pixKey);
     const amount = input.amount;

@@ -1,9 +1,5 @@
 import { NotFoundException } from '@nestjs/common';
-import {
-  Prisma,
-  SportsApplicationStatus,
-  SportsTeamChangeRequestStatus,
-} from '@prisma/client';
+import { Prisma, SportsApplicationStatus, SportsTeamChangeRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SportsReadAdminMapper } from './sports-read-admin.mapper';
 import type { RepresentativeSportsTeamWorkspace } from './sports-read.models';
@@ -117,10 +113,7 @@ export class SportsReadRepresentativeService {
       this.prisma.sportsMatch.findMany({
         where: {
           deletedAt: null,
-          OR: [
-            { homeRegistration: { teamId, deletedAt: null } },
-            { awayRegistration: { teamId, deletedAt: null } },
-          ],
+          OR: [{ homeRegistration: { teamId, deletedAt: null } }, { awayRegistration: { teamId, deletedAt: null } }],
         },
         select: {
           id: true,
@@ -168,9 +161,7 @@ export class SportsReadRepresentativeService {
         id: team.id,
         name: team.name,
         institution: team.institution,
-        logoUrl: team.logoSha256
-          ? `/api/sports/teams/${team.id}/logo/${team.logoSha256}`
-          : null,
+        logoUrl: team.logoSha256 ? `/api/sports/teams/${team.id}/logo/${team.logoSha256}` : null,
       },
       teamRevision: team.revision,
       queuedChanges: team.changeRequests.map((request) => ({
@@ -215,22 +206,14 @@ export class SportsReadRepresentativeService {
         categoryId: match.categoryId,
         categoryName: match.category.name,
         categoryEmoji: match.category.eventGroup.emoji || '🏅',
-        homeTeam: match.homeRegistration
-          ? this.publicReader.mapPublicTeam(match.homeRegistration.team)
-          : null,
-        awayTeam: match.awayRegistration
-          ? this.publicReader.mapPublicTeam(match.awayRegistration.team)
-          : null,
+        homeTeam: match.homeRegistration ? this.publicReader.mapPublicTeam(match.homeRegistration.team) : null,
+        awayTeam: match.awayRegistration ? this.publicReader.mapPublicTeam(match.awayRegistration.team) : null,
       })),
       joinQueue: joinQueue.map((application) => ({
         id: application.id,
         applicantName: application.applicantPerson.name,
-        identityDocumentHint: this.mapper.censorIdentityDocument(
-          application.applicantPerson.identityDocument,
-        ),
-        categoryNames: application.categoryChoices.map(
-          (choice) => choice.category.name,
-        ),
+        identityDocumentHint: this.mapper.censorIdentityDocument(application.applicantPerson.identityDocument),
+        categoryNames: application.categoryChoices.map((choice) => choice.category.name),
         status: application.status,
       })),
     };
@@ -242,22 +225,14 @@ export class SportsReadRepresentativeService {
     }
     const record = value as Record<string, unknown>;
     const logo =
-      record['logo'] &&
-      typeof record['logo'] === 'object' &&
-      !Array.isArray(record['logo'])
+      record['logo'] && typeof record['logo'] === 'object' && !Array.isArray(record['logo'])
         ? (record['logo'] as Record<string, unknown>)
         : undefined;
     return JSON.stringify({
       ...(record['set'] !== undefined ? { set: record['set'] } : {}),
-      ...(record['categoryIds'] !== undefined
-        ? { categoryIds: record['categoryIds'] }
-        : {}),
-      ...(record['memberChanges'] !== undefined
-        ? { memberChanges: record['memberChanges'] }
-        : {}),
-      ...(record['categoryRoleChanges'] !== undefined
-        ? { categoryRoleChanges: record['categoryRoleChanges'] }
-        : {}),
+      ...(record['categoryIds'] !== undefined ? { categoryIds: record['categoryIds'] } : {}),
+      ...(record['memberChanges'] !== undefined ? { memberChanges: record['memberChanges'] } : {}),
+      ...(record['categoryRoleChanges'] !== undefined ? { categoryRoleChanges: record['categoryRoleChanges'] } : {}),
       ...(logo
         ? {
             logo: {

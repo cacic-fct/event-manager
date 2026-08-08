@@ -19,86 +19,81 @@ export async function getPrivateFeedEvents(prisma: PrismaService, personIds: str
 
   const eventWhere = privateFeedEventWhere();
 
-  const [
-    eventSubscriptions,
-    majorEventSelections,
-    sportsMatches,
-    lecturerEvents,
-    eventAttendances,
-    certificates,
-  ] = await Promise.all([
-    prisma.eventSubscription.findMany({
-      where: {
-        personId: {
-          in: personIds,
-        },
-        deletedAt: null,
-        event: eventWhere,
-      },
-      select: {
-        event: {
-          select: CALENDAR_EVENT_SELECT,
-        },
-      },
-      orderBy: {
-        event: {
-          startDate: 'desc',
-        },
-      },
-      take: PRIVATE_FEED_EVENT_TAKE,
-    }),
-    prisma.majorEventSubscriptionEventSelection.findMany({
-      where: {
-        deletedAt: null,
-        subscription: {
+  const [eventSubscriptions, majorEventSelections, sportsMatches, lecturerEvents, eventAttendances, certificates] =
+    await Promise.all([
+      prisma.eventSubscription.findMany({
+        where: {
           personId: {
             in: personIds,
           },
           deletedAt: null,
-          subscriptionStatus: {
-            in: [
-              SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
-              SubscriptionStatus.RECEIPT_UNDER_REVIEW,
-              SubscriptionStatus.CONFIRMED,
-            ],
+          event: eventWhere,
+        },
+        select: {
+          event: {
+            select: CALENDAR_EVENT_SELECT,
           },
         },
-        event: eventWhere,
-      },
-      select: {
-        event: {
-          select: CALENDAR_EVENT_SELECT,
+        orderBy: {
+          event: {
+            startDate: 'desc',
+          },
         },
-      },
-      orderBy: {
-        event: {
-          startDate: 'desc',
-        },
-      },
-      take: PRIVATE_FEED_EVENT_TAKE,
-    }),
-    prisma.sportsMatch.findMany({
-      where: {
-        deletedAt: null,
-        event: eventWhere,
-        rosters: {
-          some: {
+        take: PRIVATE_FEED_EVENT_TAKE,
+      }),
+      prisma.majorEventSubscriptionEventSelection.findMany({
+        where: {
+          deletedAt: null,
+          subscription: {
+            personId: {
+              in: personIds,
+            },
             deletedAt: null,
-            status: SportsRosterStatus.APPROVED,
-            entries: {
-              some: {
-                deletedAt: null,
-                status: SportsRosterEntryStatus.APPROVED,
-                registrationMember: {
+            subscriptionStatus: {
+              in: [
+                SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+                SubscriptionStatus.RECEIPT_UNDER_REVIEW,
+                SubscriptionStatus.CONFIRMED,
+              ],
+            },
+          },
+          event: eventWhere,
+        },
+        select: {
+          event: {
+            select: CALENDAR_EVENT_SELECT,
+          },
+        },
+        orderBy: {
+          event: {
+            startDate: 'desc',
+          },
+        },
+        take: PRIVATE_FEED_EVENT_TAKE,
+      }),
+      prisma.sportsMatch.findMany({
+        where: {
+          deletedAt: null,
+          event: eventWhere,
+          rosters: {
+            some: {
+              deletedAt: null,
+              status: SportsRosterStatus.APPROVED,
+              entries: {
+                some: {
                   deletedAt: null,
-                  eligibility: SportsEligibilityStatus.ELIGIBLE,
-                  teamMember: {
+                  status: SportsRosterEntryStatus.APPROVED,
+                  registrationMember: {
                     deletedAt: null,
-                    status: SportsTeamMemberStatus.APPROVED,
-                    participant: {
+                    eligibility: SportsEligibilityStatus.ELIGIBLE,
+                    teamMember: {
                       deletedAt: null,
-                      status: SportsParticipantStatus.ACTIVE,
-                      personId: { in: personIds },
+                      status: SportsTeamMemberStatus.APPROVED,
+                      participant: {
+                        deletedAt: null,
+                        status: SportsParticipantStatus.ACTIVE,
+                        personId: { in: personIds },
+                      },
                     },
                   },
                 },
@@ -106,89 +101,88 @@ export async function getPrivateFeedEvents(prisma: PrismaService, personIds: str
             },
           },
         },
-      },
-      select: {
-        event: {
-          select: CALENDAR_EVENT_SELECT,
-        },
-      },
-      orderBy: {
-        event: {
-          startDate: 'desc',
-        },
-      },
-      take: PRIVATE_FEED_EVENT_TAKE,
-    }),
-    prisma.eventLecturer.findMany({
-      where: {
-        personId: {
-          in: personIds,
-        },
-        status: 'PRESENT',
-        event: eventWhere,
-      },
-      select: {
-        event: {
-          select: CALENDAR_EVENT_SELECT,
-        },
-      },
-      orderBy: {
-        event: {
-          startDate: 'desc',
-        },
-      },
-      take: PRIVATE_FEED_EVENT_TAKE,
-    }),
-    prisma.eventAttendance.findMany({
-      where: {
-        personId: {
-          in: personIds,
-        },
-        status: 'PRESENT',
-        event: eventWhere,
-      },
-      select: {
-        event: {
-          select: CALENDAR_EVENT_SELECT,
-        },
-      },
-      orderBy: {
-        event: {
-          startDate: 'desc',
-        },
-      },
-      take: PRIVATE_FEED_EVENT_TAKE,
-    }),
-    prisma.certificate.findMany({
-      where: {
-        personId: {
-          in: personIds,
-        },
-        deletedAt: null,
-        config: {
-          deletedAt: null,
-          event: eventWhere,
-        },
-      },
-      select: {
-        config: {
-          select: {
-            event: {
-              select: CALENDAR_EVENT_SELECT,
-            },
+        select: {
+          event: {
+            select: CALENDAR_EVENT_SELECT,
           },
         },
-      },
-      orderBy: {
-        config: {
+        orderBy: {
           event: {
             startDate: 'desc',
           },
         },
-      },
-      take: PRIVATE_FEED_EVENT_TAKE,
-    }),
-  ]);
+        take: PRIVATE_FEED_EVENT_TAKE,
+      }),
+      prisma.eventLecturer.findMany({
+        where: {
+          personId: {
+            in: personIds,
+          },
+          status: 'PRESENT',
+          event: eventWhere,
+        },
+        select: {
+          event: {
+            select: CALENDAR_EVENT_SELECT,
+          },
+        },
+        orderBy: {
+          event: {
+            startDate: 'desc',
+          },
+        },
+        take: PRIVATE_FEED_EVENT_TAKE,
+      }),
+      prisma.eventAttendance.findMany({
+        where: {
+          personId: {
+            in: personIds,
+          },
+          status: 'PRESENT',
+          event: eventWhere,
+        },
+        select: {
+          event: {
+            select: CALENDAR_EVENT_SELECT,
+          },
+        },
+        orderBy: {
+          event: {
+            startDate: 'desc',
+          },
+        },
+        take: PRIVATE_FEED_EVENT_TAKE,
+      }),
+      prisma.certificate.findMany({
+        where: {
+          personId: {
+            in: personIds,
+          },
+          deletedAt: null,
+          config: {
+            deletedAt: null,
+            event: eventWhere,
+          },
+        },
+        select: {
+          config: {
+            select: {
+              event: {
+                select: CALENDAR_EVENT_SELECT,
+              },
+            },
+          },
+        },
+        orderBy: {
+          config: {
+            event: {
+              startDate: 'desc',
+            },
+          },
+        },
+        take: PRIVATE_FEED_EVENT_TAKE,
+      }),
+    ]);
 
   const eventsById = new Map<string, CalendarEventRecord>();
   for (const event of [

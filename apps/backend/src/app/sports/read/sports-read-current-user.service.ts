@@ -1,10 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import {
-  SportsRegistrationStatus,
-  SportsRosterEntryStatus,
-  SportsRosterStatus,
-} from '@prisma/client';
+import { SportsRegistrationStatus, SportsRosterEntryStatus, SportsRosterStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -29,10 +25,7 @@ export class SportsReadCurrentUserService {
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly publicReader: SportsReadPublicService,
   ) {
-    this.representativeReader = new SportsReadRepresentativeService(
-      prisma,
-      publicReader,
-    );
+    this.representativeReader = new SportsReadRepresentativeService(prisma, publicReader);
   }
 
   async currentUserTournament(
@@ -116,9 +109,7 @@ export class SportsReadCurrentUserService {
     return this.representativeReader.representativeTeamWorkspace(...args);
   }
 
-  async currentUserMatchOperations(
-    matchId: string,
-  ): Promise<CurrentUserSportsMatchOperationsRead> {
+  async currentUserMatchOperations(matchId: string): Promise<CurrentUserSportsMatchOperationsRead> {
     const match = await this.prisma.sportsMatch.findFirst({
       where: { id: matchId, deletedAt: null },
       select: {
@@ -200,34 +191,23 @@ export class SportsReadCurrentUserService {
         team: this.publicReader.mapPublicTeam(roster.registration.team),
         entries: roster.entries.map((entry) => ({
           id: entry.id,
-          name: toSportsPublicPlayerName(
-            entry.registrationMember.teamMember.participant.person.name,
-          ),
+          name: toSportsPublicPlayerName(entry.registrationMember.teamMember.participant.person.name),
           role: entry.role,
           status: entry.status,
           checkedInAt: entry.checkedInAt,
           shirtNumber: entry.shirtNumber,
-          roleMetadataJson:
-            entry.roleMetadata === null
-              ? null
-              : this.mapper.serializeJson(entry.roleMetadata),
+          roleMetadataJson: entry.roleMetadata === null ? null : this.mapper.serializeJson(entry.roleMetadata),
         })),
       })),
     };
   }
 
-  async currentUserLineup(
-    matchId: string,
-    registrationId: string,
-  ): Promise<CurrentUserSportsLineupRead> {
+  async currentUserLineup(matchId: string, registrationId: string): Promise<CurrentUserSportsLineupRead> {
     const match = await this.prisma.sportsMatch.findFirst({
       where: {
         id: matchId,
         deletedAt: null,
-        OR: [
-          { homeRegistrationId: registrationId },
-          { awayRegistrationId: registrationId },
-        ],
+        OR: [{ homeRegistrationId: registrationId }, { awayRegistrationId: registrationId }],
       },
       select: {
         id: true,
@@ -238,9 +218,7 @@ export class SportsReadCurrentUserService {
       },
     });
     if (!match) {
-      throw new NotFoundException(
-        'A inscrição não participa desta partida.',
-      );
+      throw new NotFoundException('A inscrição não participa desta partida.');
     }
     const [eligibleMembers, roster] = await Promise.all([
       this.prisma.sportsRegistrationMember.findMany({
@@ -252,10 +230,7 @@ export class SportsReadCurrentUserService {
           registration: {
             deletedAt: null,
             status: {
-              in: [
-                SportsRegistrationStatus.APPROVED,
-                SportsRegistrationStatus.ACTIVE,
-              ],
+              in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
             },
           },
           teamMember: {
@@ -318,9 +293,7 @@ export class SportsReadCurrentUserService {
       awayRegistrationId: match.awayRegistrationId,
       eligibleMembers: eligibleMembers.map((member) => ({
         registrationMemberId: member.id,
-        name: toSportsPublicPlayerName(
-          member.teamMember.participant.person.name,
-        ),
+        name: toSportsPublicPlayerName(member.teamMember.participant.person.name),
         role: member.role,
       })),
       roster: roster
@@ -333,16 +306,12 @@ export class SportsReadCurrentUserService {
               status: entry.status,
               checkedInAt: entry.checkedInAt,
               shirtNumber: entry.shirtNumber,
-              roleMetadataJson:
-                entry.roleMetadata === null
-                  ? null
-                  : this.mapper.serializeJson(entry.roleMetadata),
+              roleMetadataJson: entry.roleMetadata === null ? null : this.mapper.serializeJson(entry.roleMetadata),
             })),
           }
         : null,
     };
   }
-
 
   private currentUserMatchPriority(
     match: PublicSportsMatch,
@@ -352,10 +321,7 @@ export class SportsReadCurrentUserService {
     if (playerMatchIds.has(match.id)) {
       return 0;
     }
-    if (
-      (match.homeTeam && teamIds.has(match.homeTeam.id)) ||
-      (match.awayTeam && teamIds.has(match.awayTeam.id))
-    ) {
+    if ((match.homeTeam && teamIds.has(match.homeTeam.id)) || (match.awayTeam && teamIds.has(match.awayTeam.id))) {
       return 1;
     }
     return 2;
@@ -367,11 +333,7 @@ export class SportsReadCurrentUserService {
     context: Parameters<AuthorizationPolicyService['assertPermissions']>[2],
   ): Promise<boolean> {
     try {
-      await this.authorizationPolicy.assertPermissions(
-        user,
-        [permission],
-        context,
-      );
+      await this.authorizationPolicy.assertPermissions(user, [permission], context);
       return true;
     } catch (error) {
       if (error instanceof ForbiddenException) {
@@ -380,5 +342,4 @@ export class SportsReadCurrentUserService {
       throw error;
     }
   }
-
 }

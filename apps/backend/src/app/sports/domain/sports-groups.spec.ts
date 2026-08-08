@@ -1,8 +1,4 @@
-import {
-  allocateSportsGroups,
-  planSportsGroupElimination,
-  planSportsGroupStage,
-} from './sports-groups';
+import { allocateSportsGroups, planSportsGroupElimination, planSportsGroupStage } from './sports-groups';
 
 describe('sports group-stage planning', () => {
   const entrants = (count: number) =>
@@ -34,15 +30,10 @@ describe('sports group-stage planning', () => {
       expect(group.rounds.flatMap((round) => round.matches)).toHaveLength(6);
       const scheduledIds = new Set(
         group.rounds.flatMap((round) =>
-          round.matches.flatMap((match) => [
-            match.homeRegistrationId,
-            match.awayRegistrationId,
-          ]),
+          round.matches.flatMap((match) => [match.homeRegistrationId, match.awayRegistrationId]),
         ),
       );
-      expect(scheduledIds).toEqual(
-        new Set(group.entrants.map((entrant) => entrant.registrationId)),
-      );
+      expect(scheduledIds).toEqual(new Set(group.entrants.map((entrant) => entrant.registrationId)));
     }
   });
 
@@ -91,9 +82,7 @@ describe('sports group-stage planning', () => {
       seed: 1,
     });
 
-    expect(() =>
-      allocateSportsGroups({ entrants: entrants(3), groupCount: 2 }),
-    ).toThrow('at least two registrations');
+    expect(() => allocateSportsGroups({ entrants: entrants(3), groupCount: 2 })).toThrow('at least two registrations');
     expect(() =>
       planSportsGroupElimination({
         groups: [{ key: 'A' }, { key: 'A' }],

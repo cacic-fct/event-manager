@@ -11,7 +11,6 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 
-
 import { PublicSportsTeam } from './sports-read-public-match.models';
 
 @ObjectType()

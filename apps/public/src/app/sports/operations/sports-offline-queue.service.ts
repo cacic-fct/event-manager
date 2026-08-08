@@ -125,8 +125,11 @@ export class SportsOfflineQueueService implements OnDestroy {
   }
 
   attachTimerSnapshot(clientId: string, snapshot: SportsTimerSnapshot): void {
-    this.persist(this.pendingState().map((item) =>
-      item.kind === 'ACTION' && item.id === clientId ? { ...item, timerSnapshot: snapshot } : item));
+    this.persist(
+      this.pendingState().map((item) =>
+        item.kind === 'ACTION' && item.id === clientId ? { ...item, timerSnapshot: snapshot } : item,
+      ),
+    );
   }
 
   enqueueCheckIn(checkIn: SportsRosterCheckIn): void {
@@ -209,12 +212,14 @@ export class SportsOfflineQueueService implements OnDestroy {
           if (item.kind === 'ACTION' && item.timerSnapshot && this.isTimerConflict(lastError)) {
             const matchId = item.action.matchId;
             conflictedMatches.add(matchId);
-            const timerItems = pendingAtStart.filter((candidate) =>
-              candidate.kind === 'ACTION' &&
-              candidate.userScope === userScope &&
-              candidate.action.matchId === matchId &&
-              candidate.timerSnapshot &&
-              this.isTimerAction(candidate.action.type));
+            const timerItems = pendingAtStart.filter(
+              (candidate) =>
+                candidate.kind === 'ACTION' &&
+                candidate.userScope === userScope &&
+                candidate.action.matchId === matchId &&
+                candidate.timerSnapshot &&
+                this.isTimerAction(candidate.action.type),
+            );
             const latest = timerItems.at(-1);
             if (latest?.kind === 'ACTION' && latest.timerSnapshot) {
               this.timerConflictState.set({
@@ -252,11 +257,7 @@ export class SportsOfflineQueueService implements OnDestroy {
     const ids = new Set(queuedActionIds);
     let nextRevision = baseRevision;
     const rebased = this.pendingState().flatMap((item): QueuedSportsOperation[] => {
-      if (
-        item.userScope !== userScope ||
-        item.kind !== 'ACTION' ||
-        item.action.matchId !== matchId
-      ) {
+      if (item.userScope !== userScope || item.kind !== 'ACTION' || item.action.matchId !== matchId) {
         return [item];
       }
       if (ids.has(item.id)) {
@@ -316,6 +317,8 @@ export class SportsOfflineQueueService implements OnDestroy {
   }
 
   private isTimerAction(type: SportsMatchAction['type']): boolean {
-    return type === 'START' || type === 'PAUSE' || type === 'RESUME' || type === 'PERIOD_ROLL' || type === 'TIMER_RECONCILE';
+    return (
+      type === 'START' || type === 'PAUSE' || type === 'RESUME' || type === 'PERIOD_ROLL' || type === 'TIMER_RECONCILE'
+    );
   }
 }

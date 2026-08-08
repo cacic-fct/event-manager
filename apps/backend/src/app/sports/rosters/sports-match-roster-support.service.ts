@@ -1,12 +1,5 @@
-import {
-  BadRequestException,
-} from '@nestjs/common';
-import {
-  
-  Prisma,
-  PublicationState,
-  SportsRosterRole,
-} from '@prisma/client';
+import { BadRequestException } from '@nestjs/common';
+import { Prisma, PublicationState, SportsRosterRole } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -55,33 +48,21 @@ export abstract class SportsMatchRosterSupportService {
       result.some(
         (entry) =>
           entry.shirtNumber !== null &&
-          (entry.shirtNumber.length > 12 ||
-            !/^[\p{L}\p{N}._-]+$/u.test(entry.shirtNumber)),
+          (entry.shirtNumber.length > 12 || !/^[\p{L}\p{N}._-]+$/u.test(entry.shirtNumber)),
       )
     ) {
-      throw new BadRequestException(
-        'O número de camisa deve ter até 12 letras ou números.',
-      );
+      throw new BadRequestException('O número de camisa deve ter até 12 letras ou números.');
     }
     const playerShirtNumbers = result
-      .filter(
-        (entry) =>
-          entry.role === SportsRosterRole.PLAYER && entry.shirtNumber !== null,
-      )
+      .filter((entry) => entry.role === SportsRosterRole.PLAYER && entry.shirtNumber !== null)
       .map((entry) => entry.shirtNumber?.toLocaleLowerCase('pt-BR'));
     if (new Set(playerShirtNumbers).size !== playerShirtNumbers.length) {
-      throw new BadRequestException(
-        'O número de camisa não pode se repetir na mesma escalação.',
-      );
+      throw new BadRequestException('O número de camisa não pode se repetir na mesma escalação.');
     }
     return result;
   }
 
-  protected async afterRosterMutation(
-    matchId: string,
-    type: string,
-    entityId: string,
-  ): Promise<void> {
+  protected async afterRosterMutation(matchId: string, type: string, entityId: string): Promise<void> {
     const match = await this.prisma.sportsMatch.findFirst({
       where: {
         id: matchId,
@@ -119,23 +100,11 @@ export abstract class SportsMatchRosterSupportService {
       match.event.publicationState === PublicationState.PUBLISHED;
     const people = await this.autorouting.affectedPeopleForMatch(match.id);
     await Promise.all([
-      this.realtime.publish(
-        this.realtime.scope('review', match.id),
-        payload,
-      ),
+      this.realtime.publish(this.realtime.scope('review', match.id), payload),
       ...(isPublic
         ? [
-            this.realtime.publish(
-              this.realtime.scope('match', match.id),
-              payload,
-            ),
-            this.realtime.publish(
-              this.realtime.scope(
-                'tournament',
-                match.category.tournamentId,
-              ),
-              payload,
-            ),
+            this.realtime.publish(this.realtime.scope('match', match.id), payload),
+            this.realtime.publish(this.realtime.scope('tournament', match.category.tournamentId), payload),
           ]
         : []),
       this.defaultRedirect.invalidatePeople(people),
@@ -143,4 +112,3 @@ export abstract class SportsMatchRosterSupportService {
     ]);
   }
 }
-

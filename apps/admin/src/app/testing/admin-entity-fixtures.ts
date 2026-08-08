@@ -176,9 +176,7 @@ export function createAdminDashboardSportsTournament(
   };
 }
 
-export function createAdminDashboardSportsMatch(
-  overrides: Partial<DashboardSportsMatch> = {},
-): DashboardSportsMatch {
+export function createAdminDashboardSportsMatch(overrides: Partial<DashboardSportsMatch> = {}): DashboardSportsMatch {
   return {
     matchId: 'sports-match-1',
     tournamentId: 'sports-tournament-1',

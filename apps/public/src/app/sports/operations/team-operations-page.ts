@@ -76,8 +76,8 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   readonly logoPreviewUrl = signal<string | null>(null);
   readonly logoError = signal<string | null>(null);
   readonly selectedMatchId = signal('');
-  readonly selectedMatch = computed(() =>
-    this.workspace()?.matches.find((match) => match.id === this.selectedMatchId()) ?? null,
+  readonly selectedMatch = computed(
+    () => this.workspace()?.matches.find((match) => match.id === this.selectedMatchId()) ?? null,
   );
   readonly lineupReadOnly = computed(() => {
     const state = this.selectedMatch()?.state;
@@ -167,16 +167,19 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     }
     this.selectedMatchId.set(matchId);
     const registrationIds = new Set(workspace.registrations.map((registration) => registration.id));
-    const registrationId = [match.homeRegistrationId, match.awayRegistrationId]
-      .find((candidate): candidate is string => Boolean(candidate && registrationIds.has(candidate))) ?? '';
+    const registrationId =
+      [match.homeRegistrationId, match.awayRegistrationId].find((candidate): candidate is string =>
+        Boolean(candidate && registrationIds.has(candidate)),
+      ) ?? '';
     this.lineupForm.patchValue({ matchId, registrationId, expectedRevision: null });
     this.lineupMembers.set([]);
     this.loadLineup();
   }
 
   matchLabel(match: RepresentativeTeamWorkspace['matches'][number]): string {
-    const registration = this.workspace()?.registrations.find((candidate) =>
-      candidate.id === match.homeRegistrationId || candidate.id === match.awayRegistrationId);
+    const registration = this.workspace()?.registrations.find(
+      (candidate) => candidate.id === match.homeRegistrationId || candidate.id === match.awayRegistrationId,
+    );
     return registration?.categoryName ?? 'Modalidade';
   }
 
@@ -185,8 +188,11 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   matchEmoji(match: RepresentativeTeamWorkspace['matches'][number]): string {
-    return this.workspace()?.registrations.find((candidate) =>
-      candidate.id === match.homeRegistrationId || candidate.id === match.awayRegistrationId)?.categoryEmoji ?? '';
+    return (
+      this.workspace()?.registrations.find(
+        (candidate) => candidate.id === match.homeRegistrationId || candidate.id === match.awayRegistrationId,
+      )?.categoryEmoji ?? ''
+    );
   }
 
   matchStateLabel(state: RepresentativeTeamWorkspace['matches'][number]['state']): string {
@@ -202,27 +208,31 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
       return;
     }
     const confirmed = await firstValueFrom(
-      this.dialog.open<SportsConfirmationDialog, SportsConfirmationDialogData, boolean>(SportsConfirmationDialog, {
-        data: {
-          title: approved ? `Aprovar entrada de ${applicantName}?` : `Recusar entrada de ${applicantName}?`,
-          message: approved
-            ? 'A pessoa entrará diretamente na equipe, pois a inscrição já passou pela análise administrativa.'
-            : 'A solicitação será encerrada e não aparecerá mais nesta fila.',
-          confirmLabel: approved ? 'Sim, aprovar' : 'Sim, recusar',
-          destructive: !approved,
-        },
-      }).afterClosed(),
+      this.dialog
+        .open<SportsConfirmationDialog, SportsConfirmationDialogData, boolean>(SportsConfirmationDialog, {
+          data: {
+            title: approved ? `Aprovar entrada de ${applicantName}?` : `Recusar entrada de ${applicantName}?`,
+            message: approved
+              ? 'A pessoa entrará diretamente na equipe, pois a inscrição já passou pela análise administrativa.'
+              : 'A solicitação será encerrada e não aparecerá mais nesta fila.',
+            confirmLabel: approved ? 'Sim, aprovar' : 'Sim, recusar',
+            destructive: !approved,
+          },
+        })
+        .afterClosed(),
     );
     if (!confirmed) {
       return;
     }
     this.busy.set(true);
     try {
-      await firstValueFrom(this.api.reviewTeamApplication({
-        applicationId,
-        teamId: this.teamId,
-        approved,
-      }));
+      await firstValueFrom(
+        this.api.reviewTeamApplication({
+          applicationId,
+          teamId: this.teamId,
+          approved,
+        }),
+      );
       this.snackbar.open(approved ? 'Pessoa adicionada à equipe.' : 'Solicitação recusada.', 'Fechar', {
         duration: 4000,
       });
@@ -281,13 +291,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     if (!file) {
       return;
     }
-    const allowedTypes = new Set([
-      'image/avif',
-      'image/svg+xml',
-      'image/png',
-      'image/jpeg',
-      'image/webp',
-    ]);
+    const allowedTypes = new Set(['image/avif', 'image/svg+xml', 'image/png', 'image/jpeg', 'image/webp']);
     if (!allowedTypes.has(file.type)) {
       this.logoError.set('Use AVIF, SVG, PNG, JPEG ou WebP.');
       input.value = '';
@@ -312,17 +316,11 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     }
     const queuedLogo = [...workspace.queuedChanges]
       .reverse()
-      .find((change) => change.type === 'LOGO'
-        && ['PENDING', 'CHANGES_REQUESTED', 'CONFLICT'].includes(change.status));
+      .find((change) => change.type === 'LOGO' && ['PENDING', 'CHANGES_REQUESTED', 'CONFLICT'].includes(change.status));
     this.busy.set(true);
     try {
       await firstValueFrom(
-        this.api.uploadTeamLogo(
-          workspace.team.id,
-          workspace.teamRevision,
-          file,
-          queuedLogo?.requestRevision,
-        ),
+        this.api.uploadTeamLogo(workspace.team.id, workspace.teamRevision, file, queuedLogo?.requestRevision),
       );
       this.snackbar.open('Escudo enviado para aprovação.', 'Fechar', { duration: 4000 });
       this.logoFile.set(null);

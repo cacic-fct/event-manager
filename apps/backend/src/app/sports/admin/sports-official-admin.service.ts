@@ -1,14 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  AuditLogEntityType,
-  AuditLogOperation,
-  SportsOfficialRole,
-} from '@prisma/client';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { AuditLogEntityType, AuditLogOperation, SportsOfficialRole } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';
@@ -160,9 +152,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
       },
     });
     if (!assignment) {
-      throw new NotFoundException(
-        `Sports official assignment ${assignmentId} was not found.`,
-      );
+      throw new NotFoundException(`Sports official assignment ${assignmentId} was not found.`);
     }
     await this.assertOfficialScopeMutable(
       {
@@ -190,9 +180,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
         },
       });
       if (changed.count !== 1) {
-        throw new ConflictException(
-          'A atribuição do responsável mudou. Recarregue e tente novamente.',
-        );
+        throw new ConflictException('A atribuição do responsável mudou. Recarregue e tente novamente.');
       }
       const result = await tx.sportsOfficialAssignment.findUniqueOrThrow({
         where: { id: assignment.id },
@@ -206,9 +194,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
           actor,
           before: this.officialAuditSnapshot(assignment),
           after: this.officialAuditSnapshot(result),
-          summary: active
-            ? 'Atribuição de responsável atualizada.'
-            : 'Responsável removido da partida.',
+          summary: active ? 'Atribuição de responsável atualizada.' : 'Responsável removido da partida.',
           scope: { majorEventId: assignment.tournament.majorEventId },
         },
         tx,
@@ -217,12 +203,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
     });
   }
 
-
-  async deleteOfficial(
-    assignmentId: string,
-    expectedRevision: number,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  async deleteOfficial(assignmentId: string, expectedRevision: number, actor: AuthenticatedUser): Promise<void> {
     const actorId = this.requireActorId(actor);
     const assignment = await this.prisma.sportsOfficialAssignment.findUnique({
       where: { id: assignmentId },
@@ -233,9 +214,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
       },
     });
     if (!assignment) {
-      throw new NotFoundException(
-        `Sports official assignment ${assignmentId} was not found.`,
-      );
+      throw new NotFoundException(`Sports official assignment ${assignmentId} was not found.`);
     }
     await this.assertOfficialScopeMutable(
       {
@@ -262,9 +241,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
         },
       });
       if (changed.count !== 1) {
-        throw new ConflictException(
-          'A atribuição do responsável mudou. Recarregue e tente novamente.',
-        );
+        throw new ConflictException('A atribuição do responsável mudou. Recarregue e tente novamente.');
       }
       await this.auditLog.record(
         {
@@ -290,28 +267,4 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
       );
     });
   }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

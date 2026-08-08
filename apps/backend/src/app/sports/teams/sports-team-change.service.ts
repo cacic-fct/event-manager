@@ -1,9 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogActorType,
@@ -92,11 +87,7 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
     input: SubmitSportsTeamChangeInput,
     allowTrustedLogo = false,
   ) {
-    const delta = this.normalizeDelta(
-      input.delta,
-      allowTrustedLogo,
-      input.type,
-    );
+    const delta = this.normalizeDelta(input.delta, allowTrustedLogo, input.type);
     const protectedIdentities = (input.identities ?? []).map((identity) => ({
       clientKey: this.normalizeClientKey(identity.clientKey),
       type: identity.type,
@@ -128,12 +119,9 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
         throw new NotFoundException(`Sports team ${teamId} was not found.`);
       }
       if (
-        (
-          [
-            SportsTournamentStatus.FINISHED,
-            SportsTournamentStatus.CANCELED,
-          ] as SportsTournamentStatus[]
-        ).includes(team.tournament.status) ||
+        ([SportsTournamentStatus.FINISHED, SportsTournamentStatus.CANCELED] as SportsTournamentStatus[]).includes(
+          team.tournament.status,
+        ) ||
         team.tournament.finishedAt
       ) {
         throw new ConflictException(
@@ -150,10 +138,7 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
       });
       let request;
       if (existing) {
-        if (
-          input.expectedRequestRevision === undefined ||
-          existing.requestRevision !== input.expectedRequestRevision
-        ) {
+        if (input.expectedRequestRevision === undefined || existing.requestRevision !== input.expectedRequestRevision) {
           throw new ConflictException('A solicitação em análise mudou. Recarregue-a antes de editar.');
         }
         const updated = await tx.sportsTeamChangeRequest.updateMany({
@@ -289,9 +274,9 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
         !request ||
         !(
           [
-          SportsTeamChangeRequestStatus.PENDING,
-          SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
-          SportsTeamChangeRequestStatus.CONFLICT,
+            SportsTeamChangeRequestStatus.PENDING,
+            SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
+            SportsTeamChangeRequestStatus.CONFLICT,
           ] as SportsTeamChangeRequestStatus[]
         ).includes(request.status)
       ) {
@@ -301,23 +286,16 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
         options.expectedRequestRevision !== undefined &&
         request.requestRevision !== options.expectedRequestRevision
       ) {
-        throw new ConflictException(
-          'A solicitação mudou. Recarregue os dados antes de analisá-la.',
-        );
+        throw new ConflictException('A solicitação mudou. Recarregue os dados antes de analisá-la.');
       }
 
       if (
         decision === 'APPROVE' &&
-        (
-          request.team.tournament.deletedAt ||
+        (request.team.tournament.deletedAt ||
           request.team.tournament.finishedAt ||
-          (
-            [
-              SportsTournamentStatus.FINISHED,
-              SportsTournamentStatus.CANCELED,
-            ] as SportsTournamentStatus[]
-          ).includes(request.team.tournament.status)
-        )
+          ([SportsTournamentStatus.FINISHED, SportsTournamentStatus.CANCELED] as SportsTournamentStatus[]).includes(
+            request.team.tournament.status,
+          ))
       ) {
         throw new ConflictException(
           'Solicitações de equipes não podem ser aprovadas em um torneio finalizado ou cancelado.',
@@ -361,12 +339,7 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
             reviewMessage: `Conflito nos campos: ${conflictingFields.join(', ')}.`,
           },
         });
-        await this.recordReviewAudit(
-          tx,
-          request,
-          actor,
-          SportsTeamChangeRequestStatus.CONFLICT,
-        );
+        await this.recordReviewAudit(tx, request, actor, SportsTeamChangeRequestStatus.CONFLICT);
         return {
           kind: 'CONFLICT' as const,
           conflictingFields,
@@ -385,9 +358,7 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
         data: {
           ...teamFields,
           revision: { increment: 1 },
-          fieldRevisions: this.toJson(
-            this.bumpFieldRevisions(request.team.fieldRevisions, delta, resultingRevision),
-          ),
+          fieldRevisions: this.toJson(this.bumpFieldRevisions(request.team.fieldRevisions, delta, resultingRevision)),
           updatedById: actorId,
         },
       });
@@ -401,20 +372,9 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
         request.type === SportsTeamChangeRequestType.MEMBER_UPDATE ||
         request.type === SportsTeamChangeRequestType.MEMBER_REMOVE
       ) {
-        await this.applyMemberChanges(
-          tx,
-          request.teamId,
-          request.type,
-          delta.memberChanges ?? [],
-          actorId,
-        );
+        await this.applyMemberChanges(tx, request.teamId, request.type, delta.memberChanges ?? [], actorId);
       } else if (request.type === SportsTeamChangeRequestType.CATEGORY_ROLE) {
-        await this.applyCategoryRoleChanges(
-          tx,
-          request,
-          delta.categoryRoleChanges ?? [],
-          actorId,
-        );
+        await this.applyCategoryRoleChanges(tx, request, delta.categoryRoleChanges ?? [], actorId);
       }
 
       const approved = await tx.sportsTeamChangeRequest.update({
@@ -439,10 +399,7 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
         request: outcome.request,
       });
     }
-    if (
-      queuedLogo &&
-      (decision === 'APPROVE' || decision === 'REJECT')
-    ) {
+    if (queuedLogo && (decision === 'APPROVE' || decision === 'REJECT')) {
       await this.s3.deleteFile(queuedLogo.queuedObjectKey);
     }
     return outcome.value;

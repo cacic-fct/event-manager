@@ -19,11 +19,17 @@ export interface SportsTimerConflictDialogData {
       <div class="choices">
         <section>
           <mat-icon aria-hidden="true">cloud</mat-icon>
-          <div><strong>Servidor</strong><span>Geral: {{ overall(data.server) }}</span><span>{{ period(data.server) }}</span></div>
+          <div>
+            <strong>Servidor</strong><span>Geral: {{ overall(data.server) }}</span
+            ><span>{{ period(data.server) }}</span>
+          </div>
         </section>
         <section>
           <mat-icon aria-hidden="true">smartphone</mat-icon>
-          <div><strong>Este dispositivo</strong><span>Geral: {{ overall(data.device) }}</span><span>{{ period(data.device) }}</span></div>
+          <div>
+            <strong>Este dispositivo</strong><span>Geral: {{ overall(data.device) }}</span
+            ><span>{{ period(data.device) }}</span>
+          </div>
         </section>
       </div>
     </mat-dialog-content>
@@ -33,12 +39,38 @@ export interface SportsTimerConflictDialogData {
     </mat-dialog-actions>
   `,
   styles: `
-    mat-dialog-content > p { color: var(--mat-sys-on-surface-variant); }
-    .choices { display: grid; gap: .75rem; margin-block: 1rem; }
-    section { display: flex; align-items: start; gap: .75rem; padding: 1rem; border: 1px solid var(--mat-sys-outline-variant); border-radius: 12px; }
-    section div { display: grid; gap: .2rem; }
-    section span { color: var(--mat-sys-on-surface-variant); font-variant-numeric: tabular-nums; }
-    @media (max-width: 480px) { mat-dialog-actions { display: grid; } mat-dialog-actions button { width: 100%; } }
+    mat-dialog-content > p {
+      color: var(--mat-sys-on-surface-variant);
+    }
+    .choices {
+      display: grid;
+      gap: 0.75rem;
+      margin-block: 1rem;
+    }
+    section {
+      display: flex;
+      align-items: start;
+      gap: 0.75rem;
+      padding: 1rem;
+      border: 1px solid var(--mat-sys-outline-variant);
+      border-radius: 12px;
+    }
+    section div {
+      display: grid;
+      gap: 0.2rem;
+    }
+    section span {
+      color: var(--mat-sys-on-surface-variant);
+      font-variant-numeric: tabular-nums;
+    }
+    @media (max-width: 480px) {
+      mat-dialog-actions {
+        display: grid;
+      }
+      mat-dialog-actions button {
+        width: 100%;
+      }
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

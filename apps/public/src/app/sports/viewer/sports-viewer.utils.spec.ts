@@ -1,10 +1,5 @@
 import type { PublicSportsMatch } from './sports-viewer.types';
-import {
-  isRosterPublic,
-  matchLocation,
-  publicOfficialName,
-  publicPlayerName,
-} from './sports-viewer.utils';
+import { isRosterPublic, matchLocation, publicOfficialName, publicPlayerName } from './sports-viewer.utils';
 
 describe('sports viewer privacy and display utilities', () => {
   it('limits public player names to the first and last names', () => {

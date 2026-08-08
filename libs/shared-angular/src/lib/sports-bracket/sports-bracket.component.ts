@@ -81,9 +81,7 @@ export class SportsBracketComponent {
     ),
   );
   readonly isEmpty = computed(
-    () =>
-      this.stageLayouts().every((stage) => stage.rounds.length === 0) &&
-      this.orderedStandings().length === 0,
+    () => this.stageLayouts().every((stage) => stage.rounds.length === 0) && this.orderedStandings().length === 0,
   );
 
   stageLabel(type: SportsStageType): string {
@@ -110,12 +108,7 @@ export class SportsBracketComponent {
     return ['ELIMINATION', 'WINNERS_BRACKET', 'LOSERS_BRACKET', 'FINAL'].includes(type);
   }
 
-  private roundLabel(
-    stageType: SportsStageType,
-    number: number,
-    index: number,
-    roundCount: number,
-  ): string {
+  private roundLabel(stageType: SportsStageType, number: number, index: number, roundCount: number): string {
     if (!this.isEliminationStage(stageType)) {
       return `Rodada ${number}`;
     }

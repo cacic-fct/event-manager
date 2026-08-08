@@ -1,4 +1,12 @@
-import { CommitSportsMatchActionsInput, SportsMatchRosterUpsertInput, SportsPlayerApplicationCreateInput, SportsRepresentativeApplicationReviewInput, SportsRosterCheckInInput, SportsRosterScannerCheckInInput, SportsTeamChangeRequestInput } from '@cacic-fct/shared-data-types';
+import {
+  CommitSportsMatchActionsInput,
+  SportsMatchRosterUpsertInput,
+  SportsPlayerApplicationCreateInput,
+  SportsRepresentativeApplicationReviewInput,
+  SportsRosterCheckInInput,
+  SportsRosterScannerCheckInInput,
+  SportsTeamChangeRequestInput,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
@@ -10,31 +18,27 @@ import { SportsMutationsResolverSupport } from './sports-mutations-resolver.supp
 
 @Resolver()
 export class SportsParticipantMutationsResolver extends SportsMutationsResolverSupport {
-
   @Mutation(() => String, { name: 'submitSportsTeamChange' })
   async submitTeamChange(
     @Args('input', { type: () => SportsTeamChangeRequestInput })
     input: SportsTeamChangeRequestInput,
     @Context() context: GraphqlContext,
   ): Promise<string> {
-    const { actor } = await this.access.requireTeamRepresentative(
-      context,
-      input.teamId,
-    );
+    const { actor } = await this.access.requireTeamRepresentative(context, input.teamId);
     const delta = this.parseObject(input.deltaJson, 'alterações da equipe');
     return (
       await this.publishMutation(
         'TEAM_CHANGE',
         this.teamChanges.submit(input.teamId, actor.id, {
-        type: input.type,
-        baseRevision: input.baseRevision,
-        expectedRequestRevision: input.expectedRequestRevision,
-        delta,
-        identities: input.identityClaims?.map((identity) => ({
-          clientKey: identity.clientKey,
-          type: identity.type,
-          value: identity.value,
-        })),
+          type: input.type,
+          baseRevision: input.baseRevision,
+          expectedRequestRevision: input.expectedRequestRevision,
+          delta,
+          identities: input.identityClaims?.map((identity) => ({
+            clientKey: identity.clientKey,
+            type: identity.type,
+            value: identity.value,
+          })),
         }),
         false,
       )
@@ -50,11 +54,7 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
     const person = await this.currentUser.requireCurrentPerson(context);
     const actor = this.authenticated(context);
     return (
-      await this.publishMutation(
-        'APPLICATION',
-        this.applications.submitSelfApplication(input, person.id, actor),
-        false,
-      )
+      await this.publishMutation('APPLICATION', this.applications.submitSelfApplication(input, person.id, actor), false)
     ).id;
   }
 
@@ -86,10 +86,7 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
     input: SportsMatchRosterUpsertInput,
     @Context() context: GraphqlContext,
   ): Promise<string> {
-    const { actor } = await this.access.requireRosterManager(
-      context,
-      input.registrationId,
-    );
+    const { actor } = await this.access.requireRosterManager(context, input.registrationId);
     return (
       await this.rosters.upsert(
         {
@@ -105,10 +102,7 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
                 ? Prisma.DbNull
                 : entry.roleMetadataJson === undefined
                   ? undefined
-                  : this.parseJson(
-                      entry.roleMetadataJson,
-                      'metadados da função na escalação',
-                    ),
+                  : this.parseJson(entry.roleMetadataJson, 'metadados da função na escalação'),
           })),
         },
         actor.id,
@@ -125,10 +119,7 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
     input: SportsRosterCheckInInput,
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
-    const { actor, assignment } = await this.access.requireMatchOfficial(
-      context,
-      matchId,
-    );
+    const { actor, assignment } = await this.access.requireMatchOfficial(context, matchId);
     await this.rosters.checkIn(
       matchId,
       input.rosterEntryId,
@@ -173,10 +164,7 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
     @Context() context: GraphqlContext,
   ): Promise<string[]> {
     const matchId = this.singleMatchId(input);
-    const { actor, assignment } = await this.access.requireMatchOfficial(
-      context,
-      matchId,
-    );
+    const { actor, assignment } = await this.access.requireMatchOfficial(context, matchId);
     return (
       await this.operations.commit(
         input.actions.map((action) => ({
@@ -229,10 +217,7 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
     input: CommitSportsMatchActionsInput,
     @Context() context: GraphqlContext,
   ): Promise<string> {
-    if (
-      input.actions.length !== 1 ||
-      input.actions[0].type !== SportsMatchActionType.FORFEIT
-    ) {
+    if (input.actions.length !== 1 || input.actions[0].type !== SportsMatchActionType.FORFEIT) {
       throw new BadRequestException('Envie uma única ação de desistência.');
     }
     const action = input.actions[0];
@@ -241,23 +226,15 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
     if (!registrationId) {
       throw new BadRequestException('Informe a equipe que está desistindo.');
     }
-    const { actor, assignment } = await this.access.requireLineupManager(
-      context,
-      registrationId,
-    );
+    const { actor, assignment } = await this.access.requireLineupManager(context, registrationId);
     return (
-      await this.operations.commit(
-        [{ ...action, payload }],
-        {
-          personId: actor.id,
-          userId: this.authenticated(context).sub,
-          role: assignment.role,
-          kind: 'LINEUP_MANAGER',
-          auditActor: createSportsAuditActor(actor),
-        },
-      )
+      await this.operations.commit([{ ...action, payload }], {
+        personId: actor.id,
+        userId: this.authenticated(context).sub,
+        role: assignment.role,
+        kind: 'LINEUP_MANAGER',
+        auditActor: createSportsAuditActor(actor),
+      })
     )[0].id;
   }
-
 }
-

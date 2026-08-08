@@ -43,12 +43,14 @@ export interface SportsCloneTournamentDialogResult {
     <h2 mat-dialog-title>Duplicar torneio</h2>
     <div mat-dialog-content class="content">
       <p>
-        Crie uma estrutura revisável em outro grande evento. Resultados ao vivo e histórico operacional
-        nunca são copiados.
+        Crie uma estrutura revisável em outro grande evento. Resultados ao vivo e histórico operacional nunca são
+        copiados.
       </p>
       <section class="source">
         <mat-icon>emoji_events</mat-icon>
-        <span><small>Origem</small><strong>{{ data.sourceName }}</strong></span>
+        <span
+          ><small>Origem</small><strong>{{ data.sourceName }}</strong></span
+        >
       </section>
       <form [formGroup]="form">
         <mat-form-field>
@@ -135,9 +137,7 @@ export interface SportsCloneTournamentDialogResult {
 })
 export class SportsCloneTournamentDialogComponent {
   readonly data = inject<SportsCloneTournamentDialogData>(MAT_DIALOG_DATA);
-  readonly dialogRef = inject(
-    MatDialogRef<SportsCloneTournamentDialogComponent, SportsCloneTournamentDialogResult>,
-  );
+  readonly dialogRef = inject(MatDialogRef<SportsCloneTournamentDialogComponent, SportsCloneTournamentDialogResult>);
   private readonly fb = inject(FormBuilder);
 
   readonly form = this.fb.nonNullable.group({

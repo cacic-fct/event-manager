@@ -1,18 +1,8 @@
-import {
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  AuditLogEntityType,
-  AuditLogOperation,
-  PublicationState,
-} from '@prisma/client';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { AuditLogEntityType, AuditLogOperation, PublicationState } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
-import {
-  
-  CreateSportsMatchInput,
-} from '../sports-admin.types';
+import { CreateSportsMatchInput } from '../sports-admin.types';
 
 import { SportsMatchAdminLifecycleService } from './sports-match-admin-lifecycle.service';
 
@@ -26,9 +16,7 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
       this.assertDateRange(input.startDate, input.endDate, 'partida');
     }
     if (!input.eventId && (!input.startDate || !input.endDate)) {
-      throw new BadRequestException(
-        'Informe início e fim ao criar um novo evento para a partida.',
-      );
+      throw new BadRequestException('Informe início e fim ao criar um novo evento para a partida.');
     }
 
     const categoryScope = await this.prisma.sportsCategory.findFirst({
@@ -67,22 +55,11 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
       if (home && away && home.id === away.id) {
         throw new BadRequestException('Uma equipe não pode jogar contra si mesma.');
       }
-      await this.assertAdvancementTargets(
-        tx,
-        category.id,
-        null,
-        [input.winnerAdvancesToId, input.loserAdvancesToId],
-      );
+      await this.assertAdvancementTargets(tx, category.id, null, [input.winnerAdvancesToId, input.loserAdvancesToId]);
 
-      const generatedName = this.buildMatchName(
-        category.name,
-        home?.team.name,
-        away?.team.name,
-      );
+      const generatedName = this.buildMatchName(category.name, home?.team.name, away?.team.name);
       const requestedName =
-        input.name === undefined
-          ? undefined
-          : this.requireText(input.name, 'nome da partida', 2, 160);
+        input.name === undefined ? undefined : this.requireText(input.name, 'nome da partida', 2, 160);
       const event = input.eventId
         ? await this.attachCompatibleEvent(
             tx,
@@ -109,27 +86,19 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
               latitude: venue?.placePreset.latitude ?? null,
               longitude: venue?.placePreset.longitude ?? null,
               locationDescription: venue
-                ? [
-                    venue.placePreset.locationDescription,
-                    venue.name,
-                    venue.courtLabel,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')
+                ? [venue.placePreset.locationDescription, venue.name, venue.courtLabel].filter(Boolean).join(' · ')
                 : null,
               allowSubscription: false,
               shouldCollectAttendance: true,
               publiclyVisible: Boolean(home && away),
               publicationState:
                 input.publishImmediately === true &&
-                category.tournament.majorEvent.publicationState ===
-                  PublicationState.PUBLISHED
+                category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED
                   ? PublicationState.PUBLISHED
                   : PublicationState.DRAFT,
               publishedAt:
                 input.publishImmediately === true &&
-                category.tournament.majorEvent.publicationState ===
-                  PublicationState.PUBLISHED
+                category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED
                   ? new Date()
                   : null,
               createdById: actorId,
@@ -149,10 +118,7 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
           groupKey: input.groupKey?.trim() || null,
           notes: this.optionalText(input.notes, 'observações da partida', 4000),
           livestreamProvider: input.livestreamProvider ?? null,
-          livestreamUrl: this.normalizeLivestreamUrl(
-            input.livestreamProvider,
-            input.livestreamUrl,
-          ),
+          livestreamUrl: this.normalizeLivestreamUrl(input.livestreamProvider, input.livestreamUrl),
           winnerAdvancesToId: input.winnerAdvancesToId ?? null,
           winnerAdvancesToSide: input.winnerAdvancesToSide ?? null,
           loserAdvancesToId: input.loserAdvancesToId ?? null,
@@ -162,10 +128,7 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
         },
         include: { event: true },
       });
-      const youtubeCode = this.youtubeCodeForLivestream(
-        input.livestreamProvider,
-        input.livestreamUrl,
-      );
+      const youtubeCode = this.youtubeCodeForLivestream(input.livestreamProvider, input.livestreamUrl);
       if (youtubeCode) {
         await tx.event.update({
           where: { id: event.id },
@@ -193,13 +156,4 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
       return match;
     });
   }
-
 }
-
-
-
-
-
-
-
-

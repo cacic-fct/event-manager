@@ -410,10 +410,7 @@ describe('DashboardInsightsService generation', () => {
           endDate: new Date('2026-05-24T22:00:00.000Z'),
         },
         _count: { categories: 2, teams: 6, playerApplications: 3 },
-        categories: [
-          { _count: { matches: 2, registrations: 1 } },
-          { _count: { matches: 0, registrations: 2 } },
-        ],
+        categories: [{ _count: { matches: 2, registrations: 1 } }, { _count: { matches: 0, registrations: 2 } }],
         teams: [{ _count: { changeRequests: 1 } }],
       },
     ]);

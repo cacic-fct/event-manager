@@ -1,6 +1,4 @@
-import {
-  BadRequestException,
-} from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -92,21 +90,14 @@ export abstract class SportsTeamChangeSupportService {
       memberChanges:
         incoming.memberChanges === undefined
           ? parsed.memberChanges
-          : this.mergeByKey(
-              parsed.memberChanges ?? [],
-              incoming.memberChanges,
-              (change) => change.teamMemberId,
-            ),
+          : this.mergeByKey(parsed.memberChanges ?? [], incoming.memberChanges, (change) => change.teamMemberId),
       categoryRoleChanges:
         incoming.categoryRoleChanges === undefined
           ? parsed.categoryRoleChanges
-          : this.mergeByKey(
-              parsed.categoryRoleChanges ?? [],
-              incoming.categoryRoleChanges,
-              (change) =>
-                change.registrationMemberId
-                  ? `existing:${change.registrationMemberId}`
-                  : `new:${change.registrationId}:${change.teamMemberId}`,
+          : this.mergeByKey(parsed.categoryRoleChanges ?? [], incoming.categoryRoleChanges, (change) =>
+              change.registrationMemberId
+                ? `existing:${change.registrationMemberId}`
+                : `new:${change.registrationId}:${change.teamMemberId}`,
             ),
     };
   }
@@ -124,17 +115,13 @@ export abstract class SportsTeamChangeSupportService {
       ? objectValue['categoryIds'].filter((id): id is string => typeof id === 'string')
       : undefined;
     const logo =
-      objectValue['logo'] &&
-      typeof objectValue['logo'] === 'object' &&
-      !Array.isArray(objectValue['logo'])
+      objectValue['logo'] && typeof objectValue['logo'] === 'object' && !Array.isArray(objectValue['logo'])
         ? (objectValue['logo'] as SportsTeamDeltaInput['logo'])
         : undefined;
     const memberChanges = Array.isArray(objectValue['memberChanges'])
       ? (objectValue['memberChanges'] as SportsTeamMemberDeltaInput[])
       : undefined;
-    const categoryRoleChanges = Array.isArray(
-      objectValue['categoryRoleChanges'],
-    )
+    const categoryRoleChanges = Array.isArray(objectValue['categoryRoleChanges'])
       ? (objectValue['categoryRoleChanges'] as SportsCategoryRoleDeltaInput[])
       : undefined;
     return {
@@ -155,9 +142,7 @@ export abstract class SportsTeamChangeSupportService {
     const current = this.readFieldRevisions(currentValue);
     return TEAM_EDITABLE_FIELDS.filter(
       (field) =>
-        (field === 'logo'
-          ? delta.logo !== undefined
-          : delta.set?.[field] !== undefined) &&
+        (field === 'logo' ? delta.logo !== undefined : delta.set?.[field] !== undefined) &&
         (current[field] ?? 0) > (base[field] ?? 0),
     );
   }
@@ -169,10 +154,7 @@ export abstract class SportsTeamChangeSupportService {
   ): Record<string, number> {
     const current = this.readFieldRevisions(currentValue);
     for (const field of TEAM_EDITABLE_FIELDS) {
-      if (
-        (field === 'logo' && delta.logo !== undefined) ||
-        (field !== 'logo' && delta.set?.[field] !== undefined)
-      ) {
+      if ((field === 'logo' && delta.logo !== undefined) || (field !== 'logo' && delta.set?.[field] !== undefined)) {
         current[field] = revision;
       }
     }
@@ -205,10 +187,7 @@ export abstract class SportsTeamChangeSupportService {
     };
   }
 
-  protected assertDeltaMatchesType(
-    requestType: SportsTeamChangeRequestType,
-    delta: SportsTeamDeltaInput,
-  ): void {
+  protected assertDeltaMatchesType(requestType: SportsTeamChangeRequestType, delta: SportsTeamDeltaInput): void {
     const hasSet = Boolean(delta.set && Object.keys(delta.set).length > 0);
     const hasCategories = delta.categoryIds !== undefined;
     const hasLogo = delta.logo !== undefined;
@@ -224,16 +203,12 @@ export abstract class SportsTeamChangeSupportService {
     switch (requestType) {
       case SportsTeamChangeRequestType.TEAM_DETAILS:
         if (!hasSet || !only('set')) {
-          throw new BadRequestException(
-            'A solicitação de dados da equipe deve conter apenas nome ou instituição.',
-          );
+          throw new BadRequestException('A solicitação de dados da equipe deve conter apenas nome ou instituição.');
         }
         return;
       case SportsTeamChangeRequestType.MEMBER_ADD:
         if (!only('categoryIds')) {
-          throw new BadRequestException(
-            'A solicitação de novo integrante contém alterações incompatíveis.',
-          );
+          throw new BadRequestException('A solicitação de novo integrante contém alterações incompatíveis.');
         }
         return;
       case SportsTeamChangeRequestType.MEMBER_UPDATE:
@@ -253,9 +228,7 @@ export abstract class SportsTeamChangeSupportService {
               ).includes(change.status),
           )
         ) {
-          throw new BadRequestException(
-            'Informe os integrantes, revisões e status que serão alterados.',
-          );
+          throw new BadRequestException('Informe os integrantes, revisões e status que serão alterados.');
         }
         return;
       case SportsTeamChangeRequestType.MEMBER_REMOVE:
@@ -265,41 +238,25 @@ export abstract class SportsTeamChangeSupportService {
           !only('memberChanges') ||
           delta.memberChanges?.some((change) => change.status !== undefined)
         ) {
-          throw new BadRequestException(
-            'Informe os integrantes e revisões que serão removidos.',
-          );
+          throw new BadRequestException('Informe os integrantes e revisões que serão removidos.');
         }
         return;
       case SportsTeamChangeRequestType.CATEGORY_ROLE:
-        if (
-          !hasCategoryRoleChanges ||
-          delta.categoryRoleChanges?.length === 0 ||
-          !only('categoryRoleChanges')
-        ) {
-          throw new BadRequestException(
-            'Informe as funções esportivas que serão alteradas.',
-          );
+        if (!hasCategoryRoleChanges || delta.categoryRoleChanges?.length === 0 || !only('categoryRoleChanges')) {
+          throw new BadRequestException('Informe as funções esportivas que serão alteradas.');
         }
         return;
       case SportsTeamChangeRequestType.LOGO:
         if (!hasLogo || !only('logo')) {
-          throw new BadRequestException(
-            'A solicitação de logo deve conter apenas o arquivo já validado.',
-          );
+          throw new BadRequestException('A solicitação de logo deve conter apenas o arquivo já validado.');
         }
         return;
       default:
-        throw new BadRequestException(
-          'Este tipo de alteração não pode ser enviado por representantes.',
-        );
+        throw new BadRequestException('Este tipo de alteração não pode ser enviado por representantes.');
     }
   }
 
-  protected mergeByKey<T>(
-    current: T[],
-    incoming: T[],
-    key: (value: T) => string,
-  ): T[] {
+  protected mergeByKey<T>(current: T[], incoming: T[], key: (value: T) => string): T[] {
     const merged = new Map(current.map((value) => [key(value), value]));
     for (const value of incoming) {
       merged.set(key(value), value);
@@ -394,4 +351,3 @@ export abstract class SportsTeamChangeSupportService {
     );
   }
 }
-

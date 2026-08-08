@@ -1,22 +1,12 @@
 import { Controller, Get, Header, Param, Query, Res, UseGuards } from '@nestjs/common';
-import {
-  ApiOkResponse,
-  ApiOperation,
-  ApiParam,
-  ApiProduces,
-  ApiQuery,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiOkResponse, ApiOperation, ApiParam, ApiProduces, ApiQuery, ApiTags } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { SPORTS_OVERLAY_PERIOD_WORDS } from '@cacic-fct/shared-data-types';
 import { Public as PublicRoute } from '../../auth/decorators/public.decorator';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
-import {
-  SportsMatchOverlayService,
-  type SportsMatchOverlayData,
-} from './sports-match-overlay.service';
+import { SportsMatchOverlayService, type SportsMatchOverlayData } from './sports-match-overlay.service';
 
 @ApiTags('sports-overlays')
 @Controller('sports')

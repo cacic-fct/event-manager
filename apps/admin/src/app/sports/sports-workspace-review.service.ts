@@ -181,9 +181,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     if (!registrations.length) {
       return 'Sem modalidade';
     }
-    return registrations
-      .map((registration) => registration.categoryName)
-      .join(' · ');
+    return registrations.map((registration) => registration.categoryName).join(' · ');
   }
 
   teamModalities(teamId: string) {
@@ -198,11 +196,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     return sportsMatchStatusLabel(status);
   }
 
-  protected async run(
-    fallback: string,
-    operation: () => Promise<void>,
-    showGlobalLoading = true,
-  ): Promise<void> {
+  protected async run(fallback: string, operation: () => Promise<void>, showGlobalLoading = true): Promise<void> {
     if (showGlobalLoading) {
       this.loading.set(true);
     }
@@ -225,17 +219,14 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     this.liveSubscription = this.api.watchTournamentReview(tournamentId).subscribe({
       next: () => void this.refreshLiveSnapshot(),
       error: () => {
-        this.notify(
-          'As atualizações ao vivo foram interrompidas. Reabra o torneio para reconectar.',
-          true,
-        );
+        this.notify('As atualizações ao vivo foram interrompidas. Reabra o torneio para reconectar.', true);
       },
     });
   }
 
   protected async loadMatchRegistrations(review: SportsMatchReview): Promise<void> {
-    const ids = [review.match.homeRegistrationId, review.match.awayRegistrationId].filter(
-      (id): id is string => Boolean(id),
+    const ids = [review.match.homeRegistrationId, review.match.awayRegistrationId].filter((id): id is string =>
+      Boolean(id),
     );
     const reads = await Promise.all(ids.map((id) => firstValueFrom(this.api.registration(id))));
     this.registrationReads.set(Object.fromEntries(reads.map((read) => [read.registration.id, read])));
@@ -407,5 +398,4 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       registrationFormId: raw.registrationFormId || null,
     };
   }
-
 }

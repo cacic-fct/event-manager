@@ -26,12 +26,8 @@ export class SportsIdentityProtectionService {
     }
 
     const secret = configuredSecret || LOCAL_DEVELOPMENT_SECRET;
-    this.encryptionKey = Buffer.from(
-      hkdfSync('sha256', secret, '', 'sports-identity-encryption', 32),
-    );
-    this.lookupKey = Buffer.from(
-      hkdfSync('sha256', secret, '', 'sports-identity-lookup', 32),
-    );
+    this.encryptionKey = Buffer.from(hkdfSync('sha256', secret, '', 'sports-identity-encryption', 32));
+    this.lookupKey = Buffer.from(hkdfSync('sha256', secret, '', 'sports-identity-lookup', 32));
   }
 
   protect(type: SportsIdentityType, rawValue: string): ProtectedSportsIdentity {
@@ -66,10 +62,7 @@ export class SportsIdentityProtectionService {
         Buffer.from(initializationVector, 'base64url'),
       );
       decipher.setAuthTag(Buffer.from(authenticationTag, 'base64url'));
-      return Buffer.concat([
-        decipher.update(Buffer.from(encrypted, 'base64url')),
-        decipher.final(),
-      ]).toString('utf8');
+      return Buffer.concat([decipher.update(Buffer.from(encrypted, 'base64url')), decipher.final()]).toString('utf8');
     } catch {
       throw new BadRequestException('Identidade esportiva criptografada inválida.');
     }

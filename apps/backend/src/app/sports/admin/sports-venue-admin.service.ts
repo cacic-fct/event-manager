@@ -1,14 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  AuditLogEntityType,
-  AuditLogOperation,
-  SportsMatchState
-} from '@prisma/client';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { AuditLogEntityType, AuditLogOperation, SportsMatchState } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';
@@ -130,11 +122,7 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
     if (existing.tournamentId !== input.tournamentId) {
       throw new BadRequestException('O local não pertence ao torneio informado.');
     }
-    await this.frozen.assertMajorEventMutable(
-      existing.tournament.majorEventId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertMajorEventMutable(existing.tournament.majorEventId, actor, 'edit');
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       if (input.placePresetId !== undefined) {
@@ -164,12 +152,7 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
         if (!parent) {
           throw new BadRequestException('O local pai não pertence ao torneio.');
         }
-        await this.assertVenueParentChain(
-          tx,
-          venueId,
-          parent.id,
-          existing.tournamentId,
-        );
+        await this.assertVenueParentChain(tx, venueId, parent.id, existing.tournamentId);
       }
       if (
         input.capacity !== undefined &&
@@ -178,10 +161,7 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
       ) {
         throw new BadRequestException('A capacidade deve ser um número inteiro não negativo.');
       }
-      const name =
-        input.name === undefined
-          ? undefined
-          : this.requireText(input.name, 'nome do local', 2, 120);
+      const name = input.name === undefined ? undefined : this.requireText(input.name, 'nome do local', 2, 120);
       const updated = await tx.sportsVenue.updateMany({
         where: {
           id: venueId,
@@ -189,20 +169,12 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
           deletedAt: null,
         },
         data: {
-          ...(input.placePresetId !== undefined
-            ? { placePresetId: input.placePresetId }
-            : {}),
+          ...(input.placePresetId !== undefined ? { placePresetId: input.placePresetId } : {}),
           ...(name !== undefined ? { name } : {}),
-          ...(input.courtLabel !== undefined
-            ? { courtLabel: input.courtLabel?.trim() || null }
-            : {}),
+          ...(input.courtLabel !== undefined ? { courtLabel: input.courtLabel?.trim() || null } : {}),
           ...(input.capacity !== undefined ? { capacity: input.capacity } : {}),
-          ...(input.notes !== undefined
-            ? { notes: input.notes?.trim() || null }
-            : {}),
-          ...(input.parentVenueId !== undefined
-            ? { parentVenueId: input.parentVenueId }
-            : {}),
+          ...(input.notes !== undefined ? { notes: input.notes?.trim() || null } : {}),
+          ...(input.parentVenueId !== undefined ? { parentVenueId: input.parentVenueId } : {}),
           revision: { increment: 1 },
           updatedById: actorId,
         },
@@ -215,11 +187,7 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
         include: { placePreset: true },
       });
 
-      if (
-        input.placePresetId !== undefined ||
-        input.name !== undefined ||
-        input.courtLabel !== undefined
-      ) {
+      if (input.placePresetId !== undefined || input.name !== undefined || input.courtLabel !== undefined) {
         await tx.event.updateMany({
           where: {
             deletedAt: null,
@@ -233,11 +201,7 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
           data: {
             latitude: result.placePreset.latitude,
             longitude: result.placePreset.longitude,
-            locationDescription: [
-              result.placePreset.locationDescription,
-              result.name,
-              result.courtLabel,
-            ]
+            locationDescription: [result.placePreset.locationDescription, result.name, result.courtLabel]
               .filter(Boolean)
               .join(' · '),
             updatedById: actorId,
@@ -265,7 +229,6 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
     });
   }
 
-
   async deleteVenue(
     venueId: string,
     expectedRevision: number,
@@ -292,11 +255,7 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
             venueId,
             deletedAt: null,
             state: {
-              notIn: [
-                SportsMatchState.FINISHED,
-                SportsMatchState.DRAW,
-                SportsMatchState.CANCELED,
-              ],
+              notIn: [SportsMatchState.FINISHED, SportsMatchState.DRAW, SportsMatchState.CANCELED],
             },
           },
           select: { id: true },
@@ -307,14 +266,10 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
         }),
       ]);
       if (activeMatch) {
-        throw new ConflictException(
-          'O local possui uma partida em aberto. Altere a partida primeiro.',
-        );
+        throw new ConflictException('O local possui uma partida em aberto. Altere a partida primeiro.');
       }
       if (childVenue) {
-        throw new ConflictException(
-          'O local possui subdivisões ativas. Remova ou mova-as primeiro.',
-        );
+        throw new ConflictException('O local possui subdivisões ativas. Remova ou mova-as primeiro.');
       }
       const deletedAt = new Date();
       const changed = await tx.sportsVenue.updateMany({
@@ -344,5 +299,4 @@ export class SportsVenueAdminService extends SportsAdminBaseService {
       );
     });
   }
-
 }

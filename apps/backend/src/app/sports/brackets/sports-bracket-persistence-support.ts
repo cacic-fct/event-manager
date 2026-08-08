@@ -1,14 +1,11 @@
-import {
-  BadRequestException,
-  ConflictException
-} from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import {
   Prisma,
   PublicationState,
   SportsBracketSide,
   SportsFormat,
   SportsMatchState,
-  SportsReviewStatus
+  SportsReviewStatus,
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { AuditLogService } from '../../audit-log/audit-log.service';
@@ -93,12 +90,8 @@ export abstract class SportsBracketPersistenceSupport {
         roundNumber: input.roundNumber,
         bracketPosition: input.bracketPosition,
         state: automatic ? SportsMatchState.FINISHED : SportsMatchState.SCHEDULED,
-        canonicalState: automatic
-          ? SportsMatchState.FINISHED
-          : SportsMatchState.SCHEDULED,
-        reviewStatus: automatic
-          ? SportsReviewStatus.APPROVED
-          : SportsReviewStatus.NOT_REQUIRED,
+        canonicalState: automatic ? SportsMatchState.FINISHED : SportsMatchState.SCHEDULED,
+        reviewStatus: automatic ? SportsReviewStatus.APPROVED : SportsReviewStatus.NOT_REQUIRED,
         winnerRegistrationId: input.automaticWinnerRegistrationId,
         createdById: input.actorId,
         updatedById: input.actorId,
@@ -126,15 +119,9 @@ export abstract class SportsBracketPersistenceSupport {
     }
     const matches = stages.flatMap((stage) => stage.matches);
     if (
-      matches.some(
-        (match) =>
-          match.operationSequence > 0 ||
-          match.event.publicationState !== PublicationState.DRAFT,
-      )
+      matches.some((match) => match.operationSequence > 0 || match.event.publicationState !== PublicationState.DRAFT)
     ) {
-      throw new ConflictException(
-        'Uma chave com partidas iniciadas não pode ser substituída automaticamente.',
-      );
+      throw new ConflictException('Uma chave com partidas iniciadas não pode ser substituída automaticamente.');
     }
     const now = new Date();
     await tx.sportsMatch.updateMany({
@@ -151,10 +138,7 @@ export abstract class SportsBracketPersistenceSupport {
     });
   }
 
-  protected loadGeneratedStages(
-    tx: Prisma.TransactionClient,
-    stageIds: string[],
-  ) {
+  protected loadGeneratedStages(tx: Prisma.TransactionClient, stageIds: string[]) {
     return tx.sportsStage.findMany({
       where: { id: { in: stageIds } },
       include: {
@@ -220,8 +204,7 @@ export abstract class SportsBracketPersistenceSupport {
     },
   ): string {
     const effectiveRandomSeed = input.randomizeUnseeded
-      ? input.randomSeed?.trim() ||
-        `${category.id}:${category.format.toLowerCase().replace(/_/g, '-')}`
+      ? input.randomSeed?.trim() || `${category.id}:${category.format.toLowerCase().replace(/_/g, '-')}`
       : null;
     return createHash('sha256')
       .update(
@@ -248,10 +231,7 @@ export abstract class SportsBracketPersistenceSupport {
       const record = value as Record<string, unknown>;
       return `{${Object.keys(record)
         .sort()
-        .map(
-          (key) =>
-            `${JSON.stringify(key)}:${this.stableJson(record[key])}`,
-        )
+        .map((key) => `${JSON.stringify(key)}:${this.stableJson(record[key])}`)
         .join(',')}}`;
     }
     return JSON.stringify(value);
@@ -260,25 +240,17 @@ export abstract class SportsBracketPersistenceSupport {
   protected seededRandom(seed: string): () => number {
     let counter = 0;
     return () => {
-      const digest = createHash('sha256')
-        .update(`${seed}:${counter++}`)
-        .digest();
+      const digest = createHash('sha256').update(`${seed}:${counter++}`).digest();
       return digest.readUInt32BE(0) / 0x1_0000_0000;
     };
   }
 
-  protected matchName(
-    categoryName: string,
-    homeName?: string,
-    awayName?: string,
-  ): string {
+  protected matchName(categoryName: string, homeName?: string, awayName?: string): string {
     return `${homeName ?? 'A definir'} × ${awayName ?? 'A definir'} — ${categoryName}`;
   }
 
   protected readRecord(value: unknown): Record<string, unknown> {
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : {};
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
   }
 
   protected toBracketSide(side: 'HOME' | 'AWAY'): SportsBracketSide {
@@ -289,23 +261,13 @@ export abstract class SportsBracketPersistenceSupport {
     return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
   }
 
-  protected readPositiveInteger(
-    value: unknown,
-    fallback: number,
-    allowZero = false,
-  ): number {
+  protected readPositiveInteger(value: unknown, fallback: number, allowZero = false): number {
     const minimum = allowZero ? 0 : 1;
-    return typeof value === 'number' &&
-      Number.isInteger(value) &&
-      value >= minimum
-      ? value
-      : fallback;
+    return typeof value === 'number' && Number.isInteger(value) && value >= minimum ? value : fallback;
   }
 
   protected readOptionalPositiveInteger(value: unknown): number | null {
-    return typeof value === 'number' && Number.isInteger(value) && value >= 1
-      ? value
-      : null;
+    return typeof value === 'number' && Number.isInteger(value) && value >= 1 ? value : null;
   }
 
   protected toJson(value: unknown): Prisma.InputJsonValue {
@@ -319,6 +281,3 @@ export abstract class SportsBracketPersistenceSupport {
     return actor.sub;
   }
 }
-
-
-

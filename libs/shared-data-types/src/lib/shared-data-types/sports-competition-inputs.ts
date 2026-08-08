@@ -1,11 +1,6 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 
-import {
-  SportsBracketSide,
-  SportsLivestreamProvider,
-  SportsMatchState,
-  SportsStageType,
-} from './sports-enums';
+import { SportsBracketSide, SportsLivestreamProvider, SportsMatchState, SportsStageType } from './sports-enums';
 
 export * from './sports-match-operation-inputs';
 

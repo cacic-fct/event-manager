@@ -40,16 +40,12 @@ interface RankedSwissStanding extends SportsSwissStanding {
   readonly normalizedByeCount: number;
 }
 
-export function generateSportsSwissRound(
-  input: GenerateSportsSwissRoundInput,
-): SportsSwissRoundPlan {
+export function generateSportsSwissRound(input: GenerateSportsSwissRoundInput): SportsSwissRoundPlan {
   validateSwissInput(input);
   const ranked = rankSwissStandings(input.standings);
   const history = createHistorySet(input.matchHistory);
   const bye = selectSwissBye(ranked);
-  const pairingPool = bye
-    ? ranked.filter((standing) => standing.registrationId !== bye.registrationId)
-    : ranked;
+  const pairingPool = bye ? ranked.filter((standing) => standing.registrationId !== bye.registrationId) : ranked;
 
   const rematchFree = findRematchFreePairings(pairingPool, history, new Map());
   const pairs = rematchFree ?? createDeterministicFallbackPairings(pairingPool, history);
@@ -69,24 +65,18 @@ export function generateSportsSwissRound(
   };
 }
 
-export function rankSportsSwissStandings(
-  standings: readonly SportsSwissStanding[],
-): readonly SportsSwissStanding[] {
+export function rankSportsSwissStandings(standings: readonly SportsSwissStanding[]): readonly SportsSwissStanding[] {
   validateStandings(standings);
-  return rankSwissStandings(standings).map(
-    ({ registrationId, points, tiebreakers, seed, byeCount }) => ({
-      registrationId,
-      points,
-      tiebreakers,
-      seed,
-      byeCount,
-    }),
-  );
+  return rankSwissStandings(standings).map(({ registrationId, points, tiebreakers, seed, byeCount }) => ({
+    registrationId,
+    points,
+    tiebreakers,
+    seed,
+    byeCount,
+  }));
 }
 
-function rankSwissStandings(
-  standings: readonly SportsSwissStanding[],
-): RankedSwissStanding[] {
+function rankSwissStandings(standings: readonly SportsSwissStanding[]): RankedSwissStanding[] {
   const maximumTiebreakers = standings.reduce(
     (maximum, standing) => Math.max(maximum, standing.tiebreakers?.length ?? 0),
     0,
@@ -106,16 +96,12 @@ function rankSwissStandings(
     .map((standing, index) => ({ ...standing, rank: index + 1 }));
 }
 
-function compareRankedStandings(
-  left: RankedSwissStanding,
-  right: RankedSwissStanding,
-): number {
+function compareRankedStandings(left: RankedSwissStanding, right: RankedSwissStanding): number {
   if (left.points !== right.points) {
     return right.points - left.points;
   }
   for (let index = 0; index < left.normalizedTiebreakers.length; index += 1) {
-    const difference =
-      right.normalizedTiebreakers[index] - left.normalizedTiebreakers[index];
+    const difference = right.normalizedTiebreakers[index] - left.normalizedTiebreakers[index];
     if (difference !== 0) {
       return difference;
     }
@@ -126,9 +112,7 @@ function compareRankedStandings(
   return left.registrationId.localeCompare(right.registrationId, 'en');
 }
 
-function selectSwissBye(
-  standings: readonly RankedSwissStanding[],
-): RankedSwissStanding | null {
+function selectSwissBye(standings: readonly RankedSwissStanding[]): RankedSwissStanding | null {
   if (standings.length % 2 === 0) {
     return null;
   }
@@ -148,7 +132,10 @@ function findRematchFreePairings(
   if (standings.length === 0) {
     return [];
   }
-  const memoKey = standings.map((standing) => standing.registrationId).sort().join('\u0000');
+  const memoKey = standings
+    .map((standing) => standing.registrationId)
+    .sort()
+    .join('\u0000');
   const memoized = memo.get(memoKey);
   if (memoized !== undefined) {
     return memoized;
@@ -157,17 +144,12 @@ function findRematchFreePairings(
   const home = standings[0];
   const opponents = standings
     .slice(1)
-    .filter(
-      (standing) =>
-        !history.has(pairKey(home.registrationId, standing.registrationId)),
-    )
+    .filter((standing) => !history.has(pairKey(home.registrationId, standing.registrationId)))
     .sort((left, right) => comparePairingCandidates(home, left, right));
 
   for (const away of opponents) {
     const remaining = standings.filter(
-      (standing) =>
-        standing.registrationId !== home.registrationId &&
-        standing.registrationId !== away.registrationId,
+      (standing) => standing.registrationId !== home.registrationId && standing.registrationId !== away.registrationId,
     );
     const remainingPairs = findRematchFreePairings(remaining, history, memo);
     if (remainingPairs) {
@@ -196,12 +178,8 @@ function createDeterministicFallbackPairings(
     const opponentIndex = remaining
       .map((standing, index) => ({ standing, index }))
       .sort((left, right) => {
-        const leftRematch = history.has(
-          pairKey(home.registrationId, left.standing.registrationId),
-        );
-        const rightRematch = history.has(
-          pairKey(home.registrationId, right.standing.registrationId),
-        );
+        const leftRematch = history.has(pairKey(home.registrationId, left.standing.registrationId));
+        const rightRematch = history.has(pairKey(home.registrationId, right.standing.registrationId));
         if (leftRematch !== rightRematch) {
           return leftRematch ? 1 : -1;
         }
@@ -235,14 +213,8 @@ function comparePairingCandidates(
   return left.registrationId.localeCompare(right.registrationId, 'en');
 }
 
-function createHistorySet(
-  history: readonly SportsSwissMatchHistory[],
-): ReadonlySet<string> {
-  return new Set(
-    history.map((match) =>
-      pairKey(match.homeRegistrationId, match.awayRegistrationId),
-    ),
-  );
+function createHistorySet(history: readonly SportsSwissMatchHistory[]): ReadonlySet<string> {
+  return new Set(history.map((match) => pairKey(match.homeRegistrationId, match.awayRegistrationId)));
 }
 
 function pairKey(left: string, right: string): string {
@@ -254,14 +226,9 @@ function validateSwissInput(input: GenerateSportsSwissRoundInput): void {
     throw new Error('Swiss round number must be a positive integer.');
   }
   validateStandings(input.standings);
-  const registrationIds = new Set(
-    input.standings.map((standing) => standing.registrationId),
-  );
+  const registrationIds = new Set(input.standings.map((standing) => standing.registrationId));
   for (const match of input.matchHistory) {
-    if (
-      !registrationIds.has(match.homeRegistrationId) ||
-      !registrationIds.has(match.awayRegistrationId)
-    ) {
+    if (!registrationIds.has(match.homeRegistrationId) || !registrationIds.has(match.awayRegistrationId)) {
       throw new Error('Swiss match history references an unknown registration.');
     }
     if (match.homeRegistrationId === match.awayRegistrationId) {
@@ -280,17 +247,13 @@ function validateStandings(standings: readonly SportsSwissStanding[]): void {
       throw new Error('Swiss registration ids cannot be empty.');
     }
     if (registrationIds.has(standing.registrationId)) {
-      throw new Error(
-        `Registration ${standing.registrationId} appears more than once in Swiss standings.`,
-      );
+      throw new Error(`Registration ${standing.registrationId} appears more than once in Swiss standings.`);
     }
     registrationIds.add(standing.registrationId);
     if (!Number.isFinite(standing.points)) {
       throw new Error('Swiss points must be finite numbers.');
     }
-    if (
-      standing.tiebreakers?.some((tiebreaker) => !Number.isFinite(tiebreaker))
-    ) {
+    if (standing.tiebreakers?.some((tiebreaker) => !Number.isFinite(tiebreaker))) {
       throw new Error('Swiss tiebreakers must be finite numbers.');
     }
     if (
@@ -300,10 +263,7 @@ function validateStandings(standings: readonly SportsSwissStanding[]): void {
     ) {
       throw new Error('Swiss seeds must be positive integers.');
     }
-    if (
-      standing.byeCount !== undefined &&
-      (!Number.isInteger(standing.byeCount) || standing.byeCount < 0)
-    ) {
+    if (standing.byeCount !== undefined && (!Number.isInteger(standing.byeCount) || standing.byeCount < 0)) {
       throw new Error('Swiss bye counts must be non-negative integers.');
     }
   }

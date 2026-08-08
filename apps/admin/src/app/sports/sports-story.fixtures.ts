@@ -44,16 +44,17 @@ export function createAdminSportsCategory(index = 0): SportsCategorySummary {
     eventGroupId: `group-${index + 1}`,
     eventGroup: {
       id: `group-${index + 1}`,
-      emoji: {
-        SOCCER: '⚽',
-        FUTSAL: '⚽',
-        TENNIS: '🎾',
-        BASKETBALL: '🏀',
-        ESPORTS: '🎮',
-        CHESS: '♟️',
-        VOLLEYBALL: '🏐',
-        SWIMMING: '🏊',
-      }[sport] ?? '🏅',
+      emoji:
+        {
+          SOCCER: '⚽',
+          FUTSAL: '⚽',
+          TENNIS: '🎾',
+          BASKETBALL: '🏀',
+          ESPORTS: '🎮',
+          CHESS: '♟️',
+          VOLLEYBALL: '🏐',
+          SWIMMING: '🏊',
+        }[sport] ?? '🏅',
     },
     name,
     sport,
@@ -102,18 +103,18 @@ export function createAdminSportsTeam(index = 0): SportsTeamSummary {
   };
 }
 
-export function createAdminSportsTournamentRead(options: {
-  categoryCount?: number;
-  teamCount?: number;
-  status?: SportsTournamentRead['tournament']['status'];
-  selfSubscriptionAllowNoTeam?: boolean;
-  selfSubscriptionAllowNoCategory?: boolean;
-} = {}): SportsTournamentRead {
+export function createAdminSportsTournamentRead(
+  options: {
+    categoryCount?: number;
+    teamCount?: number;
+    status?: SportsTournamentRead['tournament']['status'];
+    selfSubscriptionAllowNoTeam?: boolean;
+    selfSubscriptionAllowNoCategory?: boolean;
+  } = {},
+): SportsTournamentRead {
   const categoryCount = options.categoryCount ?? categoryPresets.length;
   const teamCount = options.teamCount ?? 8;
-  const categories = Array.from({ length: categoryCount }, (_, index) =>
-    createAdminSportsCategory(index),
-  );
+  const categories = Array.from({ length: categoryCount }, (_, index) => createAdminSportsCategory(index));
   const teams = Array.from({ length: teamCount }, (_, index) => createAdminSportsTeam(index));
   return {
     tournament: {
@@ -181,9 +182,7 @@ export function createAdminSportsTournamentRead(options: {
   };
 }
 
-export function createAdminSportsCategoryRead(
-  category = createAdminSportsCategory(),
-): SportsCategoryRead {
+export function createAdminSportsCategoryRead(category = createAdminSportsCategory()): SportsCategoryRead {
   return {
     category,
     registrations: [
@@ -260,9 +259,7 @@ export function createAdminSportsCategoryRead(
   };
 }
 
-export function createAdminSportsTeamRead(
-  team = createAdminSportsTeam(),
-): SportsTeamRead {
+export function createAdminSportsTeamRead(team = createAdminSportsTeam()): SportsTeamRead {
   return {
     team,
     members: [

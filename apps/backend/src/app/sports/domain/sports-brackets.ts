@@ -92,9 +92,7 @@ export function generateSingleEliminationBracket(
     const position = index / 2 + 1;
     const home = entrantBySeed.get(seeds[index]) ?? BYE_SLOT;
     const away = entrantBySeed.get(seeds[index + 1]) ?? BYE_SLOT;
-    firstRoundMatches.push(
-      createBracketMatchPlan(1, position, home, away, numberOfRounds),
-    );
+    firstRoundMatches.push(createBracketMatchPlan(1, position, home, away, numberOfRounds));
   }
   rounds.push({ roundNumber: 1, matches: firstRoundMatches });
 
@@ -123,11 +121,7 @@ export function generateSingleEliminationBracket(
   }
 
   const automaticAdvancements = firstRoundMatches.flatMap((match) => {
-    if (
-      !match.automaticWinnerRegistrationId ||
-      !match.winnerAdvancesToKey ||
-      !match.winnerAdvancesToSide
-    ) {
+    if (!match.automaticWinnerRegistrationId || !match.winnerAdvancesToKey || !match.winnerAdvancesToSide) {
       return [];
     }
     return [
@@ -203,9 +197,7 @@ export interface PlanWinnerAdvancementInput {
   } | null;
 }
 
-export function planSportsWinnerAdvancement(
-  input: PlanWinnerAdvancementInput,
-): WinnerAdvancementPlan {
+export function planSportsWinnerAdvancement(input: PlanWinnerAdvancementInput): WinnerAdvancementPlan {
   const source = input.source;
   if (source.outcome === 'FINALIZED' && source.state !== 'FINISHED') {
     return { status: 'BLOCKED', reason: 'SOURCE_NOT_FINAL' };
@@ -227,9 +219,7 @@ export function planSportsWinnerAdvancement(
   }
 
   const existingRegistrationId =
-    source.winnerAdvancesToSide === 'HOME'
-      ? input.target.homeRegistrationId
-      : input.target.awayRegistrationId;
+    source.winnerAdvancesToSide === 'HOME' ? input.target.homeRegistrationId : input.target.awayRegistrationId;
   if (existingRegistrationId === source.winnerRegistrationId) {
     return {
       status: 'NOOP',
@@ -285,10 +275,8 @@ function createBracketMatchPlan(
     position,
     home,
     away,
-    winnerAdvancesToKey:
-      roundNumber < numberOfRounds ? matchKey(roundNumber + 1, Math.ceil(position / 2)) : null,
-    winnerAdvancesToSide:
-      roundNumber < numberOfRounds ? (position % 2 === 1 ? 'HOME' : 'AWAY') : null,
+    winnerAdvancesToKey: roundNumber < numberOfRounds ? matchKey(roundNumber + 1, Math.ceil(position / 2)) : null,
+    winnerAdvancesToSide: roundNumber < numberOfRounds ? (position % 2 === 1 ? 'HOME' : 'AWAY') : null,
     automaticWinnerRegistrationId,
   };
 }
@@ -317,10 +305,7 @@ function orderManualSeeds(entrants: readonly SportsBracketEntrant[]): SportsBrac
   return positioned.map((entrant) => entrant ?? unseeded[unseededIndex++]);
 }
 
-function shuffleEntrants(
-  entrants: readonly SportsBracketEntrant[],
-  random: () => number,
-): SportsBracketEntrant[] {
+function shuffleEntrants(entrants: readonly SportsBracketEntrant[], random: () => number): SportsBracketEntrant[] {
   const shuffled = entrants.map((entrant) => ({ ...entrant, seed: null }));
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const randomValue = random();

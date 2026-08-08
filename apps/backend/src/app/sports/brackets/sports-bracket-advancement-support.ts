@@ -1,17 +1,11 @@
 import { ConflictException } from '@nestjs/common';
-import {
-  Prisma,
-  PublicationState,
-  SportsMatchState,
-  SportsReviewStatus
-} from '@prisma/client';
+import { Prisma, PublicationState, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import {
   SportsStructuralInvalidation,
-  SportsStructuralInvalidationKind
+  SportsStructuralInvalidationKind,
 } from '../realtime/sports-structural-invalidation';
 import { SportsMatchRosterService } from '../rosters/sports-match-roster.service';
 import { syncSportsMatchEventName } from '../sports-match-event-sync';
-
 
 export abstract class SportsBracketAdvancementSupport {
   constructor(protected readonly rosters: SportsMatchRosterService) {}
@@ -42,14 +36,11 @@ export abstract class SportsBracketAdvancementSupport {
       },
     });
     const sourceRegistrationIds = new Set(
-      [source.homeRegistrationId, source.awayRegistrationId].filter(
-        (id): id is string => Boolean(id),
-      ),
+      [source.homeRegistrationId, source.awayRegistrationId].filter((id): id is string => Boolean(id)),
     );
-    const hasForeignParticipant = [
-      resetMatch.homeRegistrationId,
-      resetMatch.awayRegistrationId,
-    ].some((id) => id !== null && !sourceRegistrationIds.has(id));
+    const hasForeignParticipant = [resetMatch.homeRegistrationId, resetMatch.awayRegistrationId].some(
+      (id) => id !== null && !sourceRegistrationIds.has(id),
+    );
     if (hasForeignParticipant) {
       throw new ConflictException(
         'Os participantes da partida de desempate foram alterados. Redefina-a explicitamente antes de corrigir a grande final.',
@@ -69,22 +60,16 @@ export abstract class SportsBracketAdvancementSupport {
     }
 
     const desiredState =
-      desiredHomeRegistrationId && desiredAwayRegistrationId
-        ? SportsMatchState.SCHEDULED
-        : SportsMatchState.CANCELED;
+      desiredHomeRegistrationId && desiredAwayRegistrationId ? SportsMatchState.SCHEDULED : SportsMatchState.CANCELED;
     const desiredReviewStatus =
-      desiredState === SportsMatchState.SCHEDULED
-        ? SportsReviewStatus.NOT_REQUIRED
-        : SportsReviewStatus.APPROVED;
+      desiredState === SportsMatchState.SCHEDULED ? SportsReviewStatus.NOT_REQUIRED : SportsReviewStatus.APPROVED;
     const alreadyReconciled =
       resetMatch.state === desiredState &&
       resetMatch.canonicalState === desiredState &&
       resetMatch.homeRegistrationId === desiredHomeRegistrationId &&
       resetMatch.awayRegistrationId === desiredAwayRegistrationId;
     const kind: SportsStructuralInvalidationKind =
-      desiredState === SportsMatchState.SCHEDULED
-        ? 'GRAND_FINAL_RESET_ACTIVATED'
-        : 'GRAND_FINAL_RESET_CANCELED';
+      desiredState === SportsMatchState.SCHEDULED ? 'GRAND_FINAL_RESET_ACTIVATED' : 'GRAND_FINAL_RESET_CANCELED';
     if (alreadyReconciled) {
       return [this.toInvalidation(resetMatch, kind)];
     }
@@ -117,10 +102,7 @@ export abstract class SportsBracketAdvancementSupport {
       );
     }
 
-    if (
-      resetMatch.homeRegistrationId !== null ||
-      resetMatch.awayRegistrationId !== null
-    ) {
+    if (resetMatch.homeRegistrationId !== null || resetMatch.awayRegistrationId !== null) {
       await tx.sportsMatchRoster.updateMany({
         where: {
           matchId: resetMatch.id,
@@ -137,22 +119,10 @@ export abstract class SportsBracketAdvancementSupport {
     }
     await syncSportsMatchEventName(tx, resetMatch.id, actorId);
     if (desiredHomeRegistrationId) {
-      await this.rosters.copyApprovedRosterForWinner(
-        tx,
-        source.id,
-        resetMatch.id,
-        desiredHomeRegistrationId,
-        actorId,
-      );
+      await this.rosters.copyApprovedRosterForWinner(tx, source.id, resetMatch.id, desiredHomeRegistrationId, actorId);
     }
     if (desiredAwayRegistrationId) {
-      await this.rosters.copyApprovedRosterForWinner(
-        tx,
-        source.id,
-        resetMatch.id,
-        desiredAwayRegistrationId,
-        actorId,
-      );
+      await this.rosters.copyApprovedRosterForWinner(tx, source.id, resetMatch.id, desiredAwayRegistrationId, actorId);
     }
     return [this.toInvalidation(resetMatch, kind)];
   }
@@ -206,12 +176,9 @@ export abstract class SportsBracketAdvancementSupport {
     };
   }
 
-  protected readResetRule(
-    value: unknown,
-  ): { sourceMatchId: string; resetMatchId: string } | null {
+  protected readResetRule(value: unknown): { sourceMatchId: string; resetMatchId: string } | null {
     const rule = this.readRecord(this.readRecord(value)['resetRule']);
-    return typeof rule['sourceMatchId'] === 'string' &&
-      typeof rule['resetMatchId'] === 'string'
+    return typeof rule['sourceMatchId'] === 'string' && typeof rule['resetMatchId'] === 'string'
       ? {
           sourceMatchId: rule['sourceMatchId'],
           resetMatchId: rule['resetMatchId'],
@@ -227,9 +194,7 @@ export abstract class SportsBracketAdvancementSupport {
     const visited = new Set<string>();
     while (current.replayOfMatchId) {
       if (visited.has(current.id)) {
-        throw new ConflictException(
-          'A cadeia de partidas remarcadas contém um ciclo inválido.',
-        );
+        throw new ConflictException('A cadeia de partidas remarcadas contém um ciclo inválido.');
       }
       visited.add(current.id);
       current = await tx.sportsMatch.findUniqueOrThrow({
@@ -241,12 +206,6 @@ export abstract class SportsBracketAdvancementSupport {
   }
 
   protected readRecord(value: unknown): Record<string, unknown> {
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : {};
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
   }
 }
-
-
-
-

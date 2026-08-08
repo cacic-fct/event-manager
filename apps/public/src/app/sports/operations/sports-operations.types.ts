@@ -207,13 +207,7 @@ export interface RepresentativeTeamChange {
     | 'REPRESENTATIVE'
     | 'CATEGORY_ROLE'
     | 'LINEUP';
-  status:
-    | 'PENDING'
-    | 'CONFLICT'
-    | 'CHANGES_REQUESTED'
-    | 'APPROVED'
-    | 'REJECTED'
-    | 'SUPERSEDED';
+  status: 'PENDING' | 'CONFLICT' | 'CHANGES_REQUESTED' | 'APPROVED' | 'REJECTED' | 'SUPERSEDED';
   requestRevision: number;
   baseRevision: number;
   deltaJson: string;

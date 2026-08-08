@@ -17,7 +17,11 @@ export type SportsOverlayPeriodWord = (typeof SPORTS_OVERLAY_PERIOD_WORDS)[numbe
 export const DEFAULT_SPORTS_OVERLAY_PERIOD_WORD: SportsOverlayPeriodWord = 'Rodada';
 
 function comparablePeriodWord(value: string): string {
-  return value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+  return value
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('pt-BR');
 }
 
 export function normalizeSportsOverlayPeriodWord(value: unknown): SportsOverlayPeriodWord {

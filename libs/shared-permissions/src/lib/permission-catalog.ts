@@ -1,8 +1,4 @@
-import {
-  EventManagerPermissionGrantScope,
-  Permission,
-  type PermissionRequirement,
-} from './permission-types';
+import { EventManagerPermissionGrantScope, Permission, type PermissionRequirement } from './permission-types';
 
 export const EVENT_MANAGER_PERMISSION_CATALOG = [
   Permission.Certificate.Read,

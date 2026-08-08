@@ -15,26 +15,21 @@ import {
   SportsTournament,
   SportsTournamentScoreEntry,
 } from '@cacic-fct/shared-data-types';
-import {
-  Prisma,
-} from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
-import {  toSportsPublicPlayerName } from '../domain/sports-public-name';
+import { toSportsPublicPlayerName } from '../domain/sports-public-name';
 import {
-  
   AdminSportsRegistrationMemberSummary,
   AdminSportsTeamMemberSummary,
   AdminSportsTeamRepresentativeSummary,
 } from './sports-read.models';
 
 import {
-  
   AdminCategoryRecord,
   AdminRegistrationRecord,
   AdminTeamRecord,
   AdminTournamentRecord,
 } from './sports-read.records';
-
 
 export class SportsReadAdminMapper {
   mapAdminTournament(record: AdminTournamentRecord): SportsTournament {
@@ -56,9 +51,7 @@ export class SportsReadAdminMapper {
   mapAdminTeam(record: AdminTeamRecord): SportsTeam {
     return {
       ...record,
-      logoUrl: record.logoSha256
-        ? `/api/sports/admin/teams/${record.id}/logo/${record.logoSha256}`
-        : null,
+      logoUrl: record.logoSha256 ? `/api/sports/admin/teams/${record.id}/logo/${record.logoSha256}` : null,
       fieldRevisionsJson: this.serializeJson(record.fieldRevisions),
     };
   }
@@ -67,8 +60,7 @@ export class SportsReadAdminMapper {
     return {
       ...record,
       formAnswersJson: record.formAnswers === null ? null : this.serializeJson(record.formAnswers),
-      formSchemaSnapshotJson:
-        record.formSchemaSnapshot === null ? null : this.serializeJson(record.formSchemaSnapshot),
+      formSchemaSnapshotJson: record.formSchemaSnapshot === null ? null : this.serializeJson(record.formSchemaSnapshot),
     };
   }
 
@@ -79,9 +71,7 @@ export class SportsReadAdminMapper {
     };
   }
 
-  mapAdminMatch(
-    record: Prisma.SportsMatchGetPayload<{ include: { event: true } }>,
-  ): SportsMatch {
+  mapAdminMatch(record: Prisma.SportsMatchGetPayload<{ include: { event: true } }>): SportsMatch {
     return {
       ...record,
       scoreboard: this.mapAdminScoreboard(record.scoreboard),
@@ -129,9 +119,7 @@ export class SportsReadAdminMapper {
     };
   }
 
-  mapAdminPlacement(
-    record: Prisma.SportsCategoryPlacementGetPayload<object>,
-  ): SportsCategoryPlacement {
+  mapAdminPlacement(record: Prisma.SportsCategoryPlacementGetPayload<object>): SportsCategoryPlacement {
     return record;
   }
 
@@ -217,25 +205,18 @@ export class SportsReadAdminMapper {
       eligibility: record.eligibility,
       person: {
         id: record.teamMember.participant.person.id,
-        name: toSportsPublicPlayerName(
-          record.teamMember.participant.person.name,
-        ),
+        name: toSportsPublicPlayerName(record.teamMember.participant.person.name),
       },
     };
   }
 
-  mapAdminRoster(
-    record: Prisma.SportsMatchRosterGetPayload<{ include: { entries: true } }>,
-  ): SportsMatchRoster {
+  mapAdminRoster(record: Prisma.SportsMatchRosterGetPayload<{ include: { entries: true } }>): SportsMatchRoster {
     return {
       ...record,
       entries: record.entries.map(
         (entry): SportsMatchRosterEntry => ({
           ...entry,
-          roleMetadataJson:
-            entry.roleMetadata === null
-              ? null
-              : this.serializeJson(entry.roleMetadata),
+          roleMetadataJson: entry.roleMetadata === null ? null : this.serializeJson(entry.roleMetadata),
         }),
       ),
     };
@@ -254,9 +235,7 @@ export class SportsReadAdminMapper {
     return record;
   }
 
-  mapAdminScoreEntry(
-    record: Prisma.SportsTournamentScoreEntryGetPayload<object>,
-  ): SportsTournamentScoreEntry {
+  mapAdminScoreEntry(record: Prisma.SportsTournamentScoreEntryGetPayload<object>): SportsTournamentScoreEntry {
     return record;
   }
 
@@ -272,5 +251,3 @@ export class SportsReadAdminMapper {
     return `•••••••${digits.slice(-4)}`;
   }
 }
-
-

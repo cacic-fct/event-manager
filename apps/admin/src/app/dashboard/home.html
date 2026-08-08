@@ -178,8 +178,7 @@
           </mat-list>
         </mat-card-content>
       </mat-card>
-      }
-      @if (sportsTournamentsNeedingReview().length > 0) {
+      } @if (sportsTournamentsNeedingReview().length > 0) {
       <mat-card appearance="outlined">
         <mat-card-header>
           <mat-icon mat-card-avatar>sports_score</mat-icon>
@@ -250,8 +249,7 @@
           </mat-list>
         </mat-card-content>
       </mat-card>
-      }
-      @if (dashboard.sportsTournaments.length > 0) {
+      } @if (dashboard.sportsTournaments.length > 0) {
       <mat-card appearance="outlined">
         <mat-card-header>
           <mat-icon mat-card-avatar>sports</mat-icon>
@@ -267,8 +265,8 @@
                 <span>{{ item.name }}</span>
               </span>
               <span matListItemLine>
-                {{ sportsTournamentStatus(item.status) }} · {{ sportsTournamentSummary(item) }} ·
-                {{ sportsReviewSummary(item) }}
+                {{ sportsTournamentStatus(item.status) }} · {{ sportsTournamentSummary(item) }} · {{
+                sportsReviewSummary(item) }}
               </span>
               <a
                 matIconButton

@@ -58,10 +58,8 @@ export class SportsAdminService {
   readonly deleteCategory = (...args: Parameters<SportsCategoryAdminService['deleteCategory']>) =>
     this.categories.deleteCategory(...args);
 
-  readonly createTeam = (...args: Parameters<SportsTeamAdminService['createTeam']>) =>
-    this.teams.createTeam(...args);
-  readonly updateTeam = (...args: Parameters<SportsTeamAdminService['updateTeam']>) =>
-    this.teams.updateTeam(...args);
+  readonly createTeam = (...args: Parameters<SportsTeamAdminService['createTeam']>) => this.teams.createTeam(...args);
+  readonly updateTeam = (...args: Parameters<SportsTeamAdminService['updateTeam']>) => this.teams.updateTeam(...args);
   readonly createTeamMember = (...args: Parameters<SportsTeamAdminService['createTeamMember']>) =>
     this.teams.createTeamMember(...args);
   readonly updateTeamMember = (...args: Parameters<SportsTeamAdminService['updateTeamMember']>) =>
@@ -70,8 +68,7 @@ export class SportsAdminService {
     this.teams.assignRepresentative(...args);
   readonly revokeRepresentative = (...args: Parameters<SportsTeamAdminService['revokeRepresentative']>) =>
     this.teams.revokeRepresentative(...args);
-  readonly deleteTeam = (...args: Parameters<SportsTeamAdminService['deleteTeam']>) =>
-    this.teams.deleteTeam(...args);
+  readonly deleteTeam = (...args: Parameters<SportsTeamAdminService['deleteTeam']>) => this.teams.deleteTeam(...args);
 
   readonly createRegistration = (...args: Parameters<SportsRegistrationAdminService['createRegistration']>) =>
     this.registrations.createRegistration(...args);
@@ -105,10 +102,13 @@ export class SportsAdminService {
   readonly deleteOfficial = (...args: Parameters<SportsOfficialAdminService['deleteOfficial']>) =>
     this.officials.deleteOfficial(...args);
 
-  readonly createTournamentScoreEntry = (...args: Parameters<SportsScoreEntryAdminService['createTournamentScoreEntry']>) =>
-    this.scoreEntries.createTournamentScoreEntry(...args);
-  readonly updateTournamentScoreEntry = (...args: Parameters<SportsScoreEntryAdminService['updateTournamentScoreEntry']>) =>
-    this.scoreEntries.updateTournamentScoreEntry(...args);
-  readonly deleteTournamentScoreEntry = (...args: Parameters<SportsScoreEntryAdminService['deleteTournamentScoreEntry']>) =>
-    this.scoreEntries.deleteTournamentScoreEntry(...args);
+  readonly createTournamentScoreEntry = (
+    ...args: Parameters<SportsScoreEntryAdminService['createTournamentScoreEntry']>
+  ) => this.scoreEntries.createTournamentScoreEntry(...args);
+  readonly updateTournamentScoreEntry = (
+    ...args: Parameters<SportsScoreEntryAdminService['updateTournamentScoreEntry']>
+  ) => this.scoreEntries.updateTournamentScoreEntry(...args);
+  readonly deleteTournamentScoreEntry = (
+    ...args: Parameters<SportsScoreEntryAdminService['deleteTournamentScoreEntry']>
+  ) => this.scoreEntries.deleteTournamentScoreEntry(...args);
 }

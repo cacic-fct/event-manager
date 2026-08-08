@@ -122,19 +122,14 @@ export function isRosterPublic(match: PublicSportsMatch): boolean {
   return match.state === 'FINISHED' || match.state === 'DRAW';
 }
 
-export function matchParticipantName(
-  match: PublicSportsMatch,
-  side: 'home' | 'away',
-): string {
+export function matchParticipantName(match: PublicSportsMatch, side: 'home' | 'away'): string {
   return (side === 'home' ? match.homeTeam : match.awayTeam)?.name ?? 'A definir';
 }
 
 export function matchLocation(match: PublicSportsMatch): string {
-  const parts = [
-    match.schedule.venueName,
-    match.schedule.courtLabel,
-    match.schedule.locationDescription,
-  ].filter((value): value is string => Boolean(value?.trim()));
+  const parts = [match.schedule.venueName, match.schedule.courtLabel, match.schedule.locationDescription].filter(
+    (value): value is string => Boolean(value?.trim()),
+  );
   return [...new Set(parts)].join(' · ') || 'Local a definir';
 }
 

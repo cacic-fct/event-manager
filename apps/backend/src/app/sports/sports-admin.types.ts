@@ -1,4 +1,13 @@
-import { Prisma, SportsCategoryStatus, SportsBracketSide, SportsFormat, SportsLivestreamProvider, SportsPreset, SportsScoringMode, SportsTournamentStatus } from '@prisma/client';
+import {
+  Prisma,
+  SportsCategoryStatus,
+  SportsBracketSide,
+  SportsFormat,
+  SportsLivestreamProvider,
+  SportsPreset,
+  SportsScoringMode,
+  SportsTournamentStatus,
+} from '@prisma/client';
 
 export interface CreateSportsTournamentInput {
   name: string;
@@ -77,4 +86,3 @@ export interface CreateSportsMatchInput {
   loserAdvancesToId?: string | null;
   loserAdvancesToSide?: SportsBracketSide | null;
 }
-

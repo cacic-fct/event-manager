@@ -3,10 +3,7 @@ import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular'
 import { NEVER, of, throwError } from 'rxjs';
 import { expect, userEvent, within } from 'storybook/test';
 import { SportsOperationsApiService } from './sports-operations-api.service';
-import {
-  createRepresentativeTeamWorkspace,
-  createSportsLineupRead,
-} from './sports-operations.fixtures';
+import { createRepresentativeTeamWorkspace, createSportsLineupRead } from './sports-operations.fixtures';
 import type { RepresentativeTeamChange } from './sports-operations.types';
 import { SportsTeamOperationsPage } from './team-operations-page';
 
@@ -79,15 +76,16 @@ const meta: Meta<TeamOperationsStoryArgs> = {
               return of(createSportsLineupRead({ empty: activeArgs.lineupMode === 'empty' }));
             },
             submitTeamChange: () => of('change-story'),
-            uploadTeamLogo: () => of({
-              requestId: 'logo-change-story',
-              requestRevision: 1,
-              sha256: 'a'.repeat(64),
-              mimeType: 'image/avif',
-              sizeBytes: 128,
-              width: 64,
-              height: 64,
-            }),
+            uploadTeamLogo: () =>
+              of({
+                requestId: 'logo-change-story',
+                requestRevision: 1,
+                sha256: 'a'.repeat(64),
+                mimeType: 'image/avif',
+                sizeBytes: 128,
+                width: 64,
+                height: 64,
+              }),
             submitRoster: () => of('roster-story'),
             forfeit: () => of('forfeit-story'),
             reviewTeamApplication: () => of('application-story'),
@@ -256,8 +254,6 @@ export const PermissionError: Story = {
   name: 'Acesso negado',
   args: { loadMode: 'error' },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText('Você não tem acesso à gestão desta equipe.'),
-    ).toBeVisible();
+    await expect(await within(canvasElement).findByText('Você não tem acesso à gestão desta equipe.')).toBeVisible();
   },
 };

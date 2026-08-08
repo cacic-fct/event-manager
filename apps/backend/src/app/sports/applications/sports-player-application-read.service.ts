@@ -1,11 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import {
-  Prisma,
-  SportsApplicationStatus,
-  SportsParticipantStatus,
-  SportsPaymentStatus,
-} from '@prisma/client';
+import { Prisma, SportsApplicationStatus, SportsParticipantStatus, SportsPaymentStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -70,10 +65,7 @@ type ParticipantState = {
   paymentStatus: SportsPaymentStatus;
 };
 
-const DEFAULT_QUEUE_STATUSES = [
-  SportsApplicationStatus.PENDING,
-  SportsApplicationStatus.CHANGES_REQUESTED,
-] as const;
+const DEFAULT_QUEUE_STATUSES = [SportsApplicationStatus.PENDING, SportsApplicationStatus.CHANGES_REQUESTED] as const;
 
 @Injectable()
 export class SportsPlayerApplicationReadService {
@@ -91,15 +83,10 @@ export class SportsPlayerApplicationReadService {
       limit?: number;
     } = {},
   ): Promise<AdminSportsPlayerApplicationRead[]> {
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsRegistration.Read],
-      { sportsTournamentId: tournamentId },
-    );
-    const normalizedStatuses =
-      statuses && statuses.length > 0
-        ? [...new Set(statuses)]
-        : [...DEFAULT_QUEUE_STATUSES];
+    await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Read], {
+      sportsTournamentId: tournamentId,
+    });
+    const normalizedStatuses = statuses && statuses.length > 0 ? [...new Set(statuses)] : [...DEFAULT_QUEUE_STATUSES];
     const limit = pagination.limit ?? 200;
     if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
       throw new BadRequestException('O limite deve ser um inteiro entre 1 e 200.');
@@ -110,10 +97,7 @@ export class SportsPlayerApplicationReadService {
         status: { in: normalizedStatuses },
         deletedAt: null,
         tournament: { deletedAt: null },
-        OR: [
-          { requestedTeamId: null },
-          { requestedTeam: { deletedAt: null } },
-        ],
+        OR: [{ requestedTeamId: null }, { requestedTeam: { deletedAt: null } }],
         applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
@@ -139,37 +123,24 @@ export class SportsPlayerApplicationReadService {
     actor: AuthenticatedUser | undefined,
     applicationId: string,
   ): Promise<AdminSportsPlayerApplicationRead> {
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsRegistration.Read],
-      { sportsPlayerApplicationId: applicationId },
-    );
+    await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Read], {
+      sportsPlayerApplicationId: applicationId,
+    });
     const application = await this.prisma.sportsPlayerApplication.findFirst({
       where: {
         id: applicationId,
         deletedAt: null,
         tournament: { deletedAt: null },
-        OR: [
-          { requestedTeamId: null },
-          { requestedTeam: { deletedAt: null } },
-        ],
+        OR: [{ requestedTeamId: null }, { requestedTeam: { deletedAt: null } }],
         applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
     });
     if (!application) {
-      throw new NotFoundException(
-        `Sports player application ${applicationId} was not found.`,
-      );
+      throw new NotFoundException(`Sports player application ${applicationId} was not found.`);
     }
-    const participants = await this.loadParticipantStates(
-      application.tournamentId,
-      [application.applicantPersonId],
-    );
-    return this.mapAdmin(
-      application,
-      participants.get(application.applicantPersonId),
-    );
+    const participants = await this.loadParticipantStates(application.tournamentId, [application.applicantPersonId]);
+    return this.mapAdmin(application, participants.get(application.applicantPersonId));
   }
 
   async currentUserApplications(
@@ -182,22 +153,14 @@ export class SportsPlayerApplicationReadService {
         applicantPersonId: personId,
         deletedAt: null,
         tournament: { deletedAt: null },
-        OR: [
-          { requestedTeamId: null },
-          { requestedTeam: { deletedAt: null } },
-        ],
+        OR: [{ requestedTeamId: null }, { requestedTeam: { deletedAt: null } }],
         applicantPerson: { deletedAt: null },
       },
       select: APPLICATION_SELECT,
       orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
     });
-    const participants = await this.loadParticipantStates(
-      tournamentId,
-      [personId],
-    );
-    return applications.map((application) =>
-      this.mapCurrentUser(application, participants.get(personId)),
-    );
+    const participants = await this.loadParticipantStates(tournamentId, [personId]);
+    return applications.map((application) => this.mapCurrentUser(application, participants.get(personId)));
   }
 
   private async loadParticipantStates(
@@ -208,19 +171,18 @@ export class SportsPlayerApplicationReadService {
     if (uniquePersonIds.length === 0) {
       return new Map();
     }
-    const participants =
-      await this.prisma.sportsTournamentParticipant.findMany({
-        where: {
-          tournamentId,
-          personId: { in: uniquePersonIds },
-          deletedAt: null,
-        },
-        select: {
-          personId: true,
-          status: true,
-          paymentStatus: true,
-        },
-      });
+    const participants = await this.prisma.sportsTournamentParticipant.findMany({
+      where: {
+        tournamentId,
+        personId: { in: uniquePersonIds },
+        deletedAt: null,
+      },
+      select: {
+        personId: true,
+        status: true,
+        paymentStatus: true,
+      },
+    });
     return new Map(
       participants.map((participant) => [
         participant.personId,
@@ -232,10 +194,7 @@ export class SportsPlayerApplicationReadService {
     );
   }
 
-  private mapAdmin(
-    application: ApplicationRecord,
-    participant?: ParticipantState,
-  ): AdminSportsPlayerApplicationRead {
+  private mapAdmin(application: ApplicationRecord, participant?: ParticipantState): AdminSportsPlayerApplicationRead {
     return {
       ...this.mapCurrentUser(application, participant),
       applicant: {
@@ -252,12 +211,8 @@ export class SportsPlayerApplicationReadService {
     return {
       id: application.id,
       tournamentId: application.tournamentId,
-      requestedTeam: application.requestedTeam
-        ? this.mapTeam(application.requestedTeam)
-        : null,
-      categories: application.categoryChoices.map(({ category }) =>
-        this.mapCategory(category),
-      ),
+      requestedTeam: application.requestedTeam ? this.mapTeam(application.requestedTeam) : null,
+      categories: application.categoryChoices.map(({ category }) => this.mapCategory(category)),
       status: application.status,
       participantStatus: participant?.status ?? null,
       paymentStatus: participant?.paymentStatus ?? null,
@@ -280,9 +235,7 @@ export class SportsPlayerApplicationReadService {
       id: team.id,
       name: team.name,
       institution: team.institution,
-      logoUrl: team.logoSha256
-        ? `/api/sports/teams/${team.id}/logo/${team.logoSha256}`
-        : null,
+      logoUrl: team.logoSha256 ? `/api/sports/teams/${team.id}/logo/${team.logoSha256}` : null,
     };
   }
 

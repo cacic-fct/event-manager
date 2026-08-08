@@ -7,10 +7,7 @@ import { expect, within } from 'storybook/test';
 import type { SportsMatchState } from '@cacic-fct/shared-data-types';
 import { SportsMatchPage } from './match-page';
 import { SportsViewerRealtimeService } from './sports-viewer-realtime.service';
-import {
-  createSportsViewerMatchForState,
-  createSportsViewerRoster,
-} from './sports-viewer.fixtures';
+import { createSportsViewerMatchForState, createSportsViewerRoster } from './sports-viewer.fixtures';
 
 type LoadMode = 'ready' | 'loading' | 'error';
 
@@ -100,11 +97,10 @@ const meta: Meta<MatchStoryArgs> = {
         {
           provide: SportsViewerRealtimeService,
           useValue: {
-            watchMatch: (): Observable<never> => activeArgs.liveConnectionLost
-              ? timer(80).pipe(
-                mergeMap(() => throwError(() => new Error('SSE disconnected'))),
-              )
-              : NEVER,
+            watchMatch: (): Observable<never> =>
+              activeArgs.liveConnectionLost
+                ? timer(80).pipe(mergeMap(() => throwError(() => new Error('SSE disconnected'))))
+                : NEVER,
           },
         },
       ],
@@ -162,9 +158,10 @@ export const TwitchLivestream: Story = {
   name: 'Transmissão na Twitch',
   args: { state: 'LIVE', livestream: 'TWITCH' },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByRole('link', { name: 'Assistir na Twitch' }),
-    ).toHaveAttribute('href', 'https://www.twitch.tv/cacic');
+    await expect(await within(canvasElement).findByRole('link', { name: 'Assistir na Twitch' })).toHaveAttribute(
+      'href',
+      'https://www.twitch.tv/cacic',
+    );
   },
 };
 
@@ -213,9 +210,7 @@ export const ReconnectingLiveData: Story = {
   name: 'Atualização ao vivo interrompida',
   args: { liveConnectionLost: true },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText(/Atualizações ao vivo indisponíveis/),
-    ).toBeVisible();
+    await expect(await within(canvasElement).findByText(/Atualizações ao vivo indisponíveis/)).toBeVisible();
   },
 };
 

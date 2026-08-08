@@ -37,9 +37,9 @@ import { RestaurantCardService } from '../../services/restaurant-card.service';
           <mat-card-title>{{ existingCardNumber() ? 'Editar cartão do R.U.' : 'Cartão do R.U.' }}</mat-card-title>
           <mat-card-subtitle>
             @if (existingCardNumber()) {
-            Atualize o número do Cartão de Cliente obtido no SISRU.
+              Atualize o número do Cartão de Cliente obtido no SISRU.
             } @else {
-            Obtenha o número do Cartão de Cliente a partir do SISRU.
+              Obtenha o número do Cartão de Cliente a partir do SISRU.
             }
           </mat-card-subtitle>
         </mat-card-header>

@@ -202,7 +202,10 @@ app.use((error: unknown, req: Request, res: ExpressResponse, next: NextFunction)
     return;
   }
 
-  res.status(sitemapRequest ? 502 : 500).type('text/plain').send(sitemapRequest ? 'Sitemap temporarily unavailable.' : 'Internal Server Error');
+  res
+    .status(sitemapRequest ? 502 : 500)
+    .type('text/plain')
+    .send(sitemapRequest ? 'Sitemap temporarily unavailable.' : 'Internal Server Error');
 });
 
 /**

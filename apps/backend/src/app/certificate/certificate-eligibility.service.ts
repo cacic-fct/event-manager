@@ -13,10 +13,7 @@ import {
   PersonRecord,
 } from './certificate.constants';
 import { CertificateSportsEligibility } from './certificate-sports-eligibility';
-import {
-  isAutomaticSportsCertificateIssuedTo,
-  isManualCertificateIssuedTo,
-} from './certificate-sports-roles';
+import { isAutomaticSportsCertificateIssuedTo, isManualCertificateIssuedTo } from './certificate-sports-roles';
 
 const MAJOR_EVENT_SUBSCRIPTION_SELECT = {
   majorEventId: true,

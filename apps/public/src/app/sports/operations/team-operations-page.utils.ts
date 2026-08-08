@@ -30,15 +30,11 @@ export function representativeChangeStatusLabel(status: RepresentativeTeamChange
   }[status];
 }
 
-export function representativeMatchupLabel(
-  match: RepresentativeTeamWorkspace['matches'][number],
-): string {
+export function representativeMatchupLabel(match: RepresentativeTeamWorkspace['matches'][number]): string {
   return `${match.homeTeam?.name ?? 'Equipe a definir'} x ${match.awayTeam?.name ?? 'Equipe a definir'}`;
 }
 
-export function representativeMatchStateLabel(
-  state: RepresentativeTeamWorkspace['matches'][number]['state'],
-): string {
+export function representativeMatchStateLabel(state: RepresentativeTeamWorkspace['matches'][number]['state']): string {
   return {
     SCHEDULED: 'Agendada',
     CHECK_IN: 'Check-in',
@@ -77,9 +73,7 @@ export function parseRepresentativeChangeDelta(value?: string): Record<string, u
 }
 
 export function readRepresentativeRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 export function lineupMembersFromRead(lineup: SportsLineupRead): LineupMember[] {

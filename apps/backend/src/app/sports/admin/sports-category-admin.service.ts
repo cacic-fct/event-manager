@@ -1,9 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -13,20 +9,14 @@ import {
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
-import {
-  CreateSportsCategoryInput,
-} from '../sports-admin.types';
+import { CreateSportsCategoryInput } from '../sports-admin.types';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
 export class SportsCategoryAdminService extends SportsAdminBaseService {
   async createCategory(input: CreateSportsCategoryInput, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     this.validateRosterLimits(input);
-    this.assertOptionalDateRange(
-      input.registrationStartDate,
-      input.registrationEndDate,
-      'inscrições da modalidade',
-    );
+    this.assertOptionalDateRange(input.registrationStartDate, input.registrationEndDate, 'inscrições da modalidade');
     const name = this.requireText(input.name, 'nome da modalidade', 2, 160);
 
     const tournament = await this.prisma.sportsTournament.findFirst({
@@ -42,11 +32,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
     }
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
-      await this.assertRegistrationFormForMajorEvent(
-        tx,
-        input.registrationFormId,
-        tournament.majorEventId,
-      );
+      await this.assertRegistrationFormForMajorEvent(tx, input.registrationFormId, tournament.majorEventId);
       const duplicate = await tx.sportsCategory.findFirst({
         where: {
           tournamentId: input.tournamentId,
@@ -77,9 +63,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
             },
           });
       if (!eventGroup) {
-        throw new ConflictException(
-          'O grupo de eventos não existe ou já pertence a outra modalidade.',
-        );
+        throw new ConflictException('O grupo de eventos não existe ou já pertence a outra modalidade.');
       }
       if (input.eventGroupId) {
         await tx.eventGroup.update({
@@ -178,26 +162,15 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         ...input,
         scoreRules: input.scoreRules ?? (existing.scoreRules as Prisma.InputJsonValue),
         timerRules:
-          input.timerRules ??
-          (existing.timerRules === null
-            ? {}
-            : (existing.timerRules as Prisma.InputJsonValue)),
+          input.timerRules ?? (existing.timerRules === null ? {} : (existing.timerRules as Prisma.InputJsonValue)),
         rosterRules: input.rosterRules ?? (existing.rosterRules as Prisma.InputJsonValue),
         bracketRules: input.bracketRules ?? (existing.bracketRules as Prisma.InputJsonValue),
-        standingsRules:
-          input.standingsRules ?? (existing.standingsRules as Prisma.InputJsonValue),
+        standingsRules: input.standingsRules ?? (existing.standingsRules as Prisma.InputJsonValue),
       });
     }
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
-      await this.assertRegistrationFormForMajorEvent(
-        tx,
-        input.registrationFormId,
-        existing.tournament.majorEventId,
-      );
-      const name =
-        input.name !== undefined
-          ? this.requireText(input.name, 'nome da modalidade', 2, 160)
-          : undefined;
+      await this.assertRegistrationFormForMajorEvent(tx, input.registrationFormId, existing.tournament.majorEventId);
+      const name = input.name !== undefined ? this.requireText(input.name, 'nome da modalidade', 2, 160) : undefined;
       const duplicate = await tx.sportsCategory.findFirst({
         where: {
           id: { not: categoryId },
@@ -206,18 +179,13 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
             equals: name ?? existing.name,
             mode: 'insensitive',
           },
-          division:
-            input.division === undefined
-              ? existing.division
-              : input.division?.trim() || null,
+          division: input.division === undefined ? existing.division : input.division?.trim() || null,
           deletedAt: null,
         },
         select: { id: true },
       });
       if (duplicate) {
-        throw new ConflictException(
-          'Já existe uma modalidade com este nome e divisão no torneio.',
-        );
+        throw new ConflictException('Já existe uma modalidade com este nome e divisão no torneio.');
       }
       const updated = await tx.sportsCategory.updateMany({
         where: {
@@ -228,63 +196,29 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         data: {
           ...(name !== undefined ? { name } : {}),
           ...(input.sport !== undefined ? { sport: input.sport } : {}),
-          ...(input.customSportName !== undefined
-            ? { customSportName: input.customSportName?.trim() || null }
-            : {}),
-          ...(input.division !== undefined
-            ? { division: input.division?.trim() || null }
-            : {}),
+          ...(input.customSportName !== undefined ? { customSportName: input.customSportName?.trim() || null } : {}),
+          ...(input.division !== undefined ? { division: input.division?.trim() || null } : {}),
           ...(input.format !== undefined ? { format: input.format } : {}),
           ...(input.status !== undefined ? { status: input.status } : {}),
-          ...(input.registrationStartDate !== undefined
-            ? { registrationStartDate: input.registrationStartDate }
-            : {}),
-          ...(input.registrationEndDate !== undefined
-            ? { registrationEndDate: input.registrationEndDate }
-            : {}),
-          ...(input.minimumRosterSize !== undefined
-            ? { minimumRosterSize: input.minimumRosterSize }
-            : {}),
-          ...(input.maximumRosterSize !== undefined
-            ? { maximumRosterSize: input.maximumRosterSize }
-            : {}),
-          ...(input.maximumCaptains !== undefined
-            ? { maximumCaptains: input.maximumCaptains }
-            : {}),
-          ...(input.maximumCoaches !== undefined
-            ? { maximumCoaches: input.maximumCoaches }
-            : {}),
+          ...(input.registrationStartDate !== undefined ? { registrationStartDate: input.registrationStartDate } : {}),
+          ...(input.registrationEndDate !== undefined ? { registrationEndDate: input.registrationEndDate } : {}),
+          ...(input.minimumRosterSize !== undefined ? { minimumRosterSize: input.minimumRosterSize } : {}),
+          ...(input.maximumRosterSize !== undefined ? { maximumRosterSize: input.maximumRosterSize } : {}),
+          ...(input.maximumCaptains !== undefined ? { maximumCaptains: input.maximumCaptains } : {}),
+          ...(input.maximumCoaches !== undefined ? { maximumCoaches: input.maximumCoaches } : {}),
           ...(input.allowPlayerMultipleTeams !== undefined
             ? { allowPlayerMultipleTeams: input.allowPlayerMultipleTeams }
             : {}),
-          ...(input.periodsEnabled !== undefined
-            ? { periodsEnabled: input.periodsEnabled }
-            : {}),
-          ...(input.maximumPeriods !== undefined
-            ? { maximumPeriods: input.maximumPeriods }
-            : {}),
-          ...(input.periodLabel !== undefined
-            ? { periodLabel: input.periodLabel?.trim() || null }
-            : {}),
-          ...(input.timerRules !== undefined
-            ? { timerRules: input.timerRules }
-            : {}),
+          ...(input.periodsEnabled !== undefined ? { periodsEnabled: input.periodsEnabled } : {}),
+          ...(input.maximumPeriods !== undefined ? { maximumPeriods: input.maximumPeriods } : {}),
+          ...(input.periodLabel !== undefined ? { periodLabel: input.periodLabel?.trim() || null } : {}),
+          ...(input.timerRules !== undefined ? { timerRules: input.timerRules } : {}),
           ...(input.scoreRules !== undefined ? { scoreRules: input.scoreRules } : {}),
-          ...(input.rosterRules !== undefined
-            ? { rosterRules: input.rosterRules }
-            : {}),
-          ...(input.bracketRules !== undefined
-            ? { bracketRules: input.bracketRules }
-            : {}),
-          ...(input.standingsRules !== undefined
-            ? { standingsRules: input.standingsRules }
-            : {}),
-          ...(input.rulesText !== undefined
-            ? { rulesText: input.rulesText?.trim() || null }
-            : {}),
-          ...(input.registrationFormId !== undefined
-            ? { registrationFormId: input.registrationFormId }
-            : {}),
+          ...(input.rosterRules !== undefined ? { rosterRules: input.rosterRules } : {}),
+          ...(input.bracketRules !== undefined ? { bracketRules: input.bracketRules } : {}),
+          ...(input.standingsRules !== undefined ? { standingsRules: input.standingsRules } : {}),
+          ...(input.rulesText !== undefined ? { rulesText: input.rulesText?.trim() || null } : {}),
+          ...(input.registrationFormId !== undefined ? { registrationFormId: input.registrationFormId } : {}),
           ...(input.finishedAt !== undefined
             ? { finishedAt: input.finishedAt }
             : input.status === SportsCategoryStatus.FINISHED
@@ -306,9 +240,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
             ...(name !== undefined ? { name } : {}),
             ...(input.emoji !== undefined
               ? {
-                  emoji:
-                    input.emoji.trim() ||
-                    this.defaultSportEmoji(input.sport ?? existing.sport),
+                  emoji: input.emoji.trim() || this.defaultSportEmoji(input.sport ?? existing.sport),
                 }
               : {}),
             updatedById: actorId,
@@ -339,12 +271,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
     });
   }
 
-
-  async deleteCategory(
-    categoryId: string,
-    expectedRevision: number,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  async deleteCategory(categoryId: string, expectedRevision: number, actor: AuthenticatedUser): Promise<void> {
     const actorId = this.requireActorId(actor);
     const category = await this.prisma.sportsCategory.findFirst({
       where: { id: categoryId, deletedAt: null },
@@ -404,10 +331,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         tx.sportsOfficialAssignment.updateMany({
           where: {
             active: true,
-            OR: [
-              { categoryId },
-              { matchId: { in: matches.map((match) => match.id) } },
-            ],
+            OR: [{ categoryId }, { matchId: { in: matches.map((match) => match.id) } }],
           },
           data: {
             active: false,
@@ -455,26 +379,4 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
       );
     });
   }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

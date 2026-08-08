@@ -1,24 +1,9 @@
-import {
-  
-  SportsRosterEntryStatus,
-  SportsRosterStatus,
-} from '@prisma/client';
+import { SportsRosterEntryStatus, SportsRosterStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { toSportsPublicOfficialName, toSportsPublicPlayerName } from '../domain/sports-public-name';
-import {
-  
-  
-  PublicSportsOfficial,
-  PublicSportsRoster,
-} from './sports-read.models';
+import { PublicSportsOfficial, PublicSportsRoster } from './sports-read.models';
 
-import {
-  
-  
-  PUBLIC_TEAM_SELECT,
-  PublicOfficialRecord,
-  PublicRosterRecord,
-} from './sports-read.records';
+import { PUBLIC_TEAM_SELECT, PublicOfficialRecord, PublicRosterRecord } from './sports-read.records';
 
 import { SportsReadPublicMapper } from './sports-read-public.mapper';
 
@@ -79,29 +64,22 @@ export class SportsReadPublicLoader {
     })) as PublicRosterRecord[];
 
     return this.groupBy(
-      rosters.map(
-        (roster): [string, PublicSportsRoster] => [
-          roster.matchId,
-          {
-            team: this.mapper.mapPublicTeam(roster.registration.team),
-            entries: roster.entries.map((entry) => ({
-              name: toSportsPublicPlayerName(
-                entry.registrationMember.teamMember.participant.person.name,
-              ),
-              role: entry.role,
-            })),
-          },
-        ],
-      ),
+      rosters.map((roster): [string, PublicSportsRoster] => [
+        roster.matchId,
+        {
+          team: this.mapper.mapPublicTeam(roster.registration.team),
+          entries: roster.entries.map((entry) => ({
+            name: toSportsPublicPlayerName(entry.registrationMember.teamMember.participant.person.name),
+            role: entry.role,
+          })),
+        },
+      ]),
       ([matchId]) => matchId,
       ([, roster]) => roster,
     );
   }
 
-  async loadPublicOfficials(
-    categoryId: string,
-    matchIds: string[],
-  ): Promise<Map<string, PublicSportsOfficial[]>> {
+  async loadPublicOfficials(categoryId: string, matchIds: string[]): Promise<Map<string, PublicSportsOfficial[]>> {
     const category = await this.prisma.sportsCategory.findUnique({
       where: { id: categoryId },
       select: { tournamentId: true },
@@ -187,5 +165,3 @@ export class SportsReadPublicLoader {
     return result;
   }
 }
-
-

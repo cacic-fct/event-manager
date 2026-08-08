@@ -1,4 +1,9 @@
-import { SportsBracketGenerateInput, SportsMatchActionReviewInput, SportsPlayerApplicationReviewInput, SportsTeamChangeReviewInput } from '@cacic-fct/shared-data-types';
+import {
+  SportsBracketGenerateInput,
+  SportsMatchActionReviewInput,
+  SportsPlayerApplicationReviewInput,
+  SportsTeamChangeReviewInput,
+} from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException } from '@nestjs/common';
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
@@ -20,9 +25,7 @@ export class SportsReviewMutationsResolver extends SportsMutationsResolverSuppor
     await this.policy.assertPermissions(actor, [Permission.SportsMatch.Create], {
       sportsCategoryId: input.categoryId,
     });
-    return (
-      await this.brackets.generate(input, actor)
-    ).map((stage) => stage.id);
+    return (await this.brackets.generate(input, actor)).map((stage) => stage.id);
   }
 
   @Mutation(() => [String], { name: 'generateNextSportsSwissRound' })
@@ -35,9 +38,7 @@ export class SportsReviewMutationsResolver extends SportsMutationsResolverSuppor
     await this.policy.assertPermissions(actor, [Permission.SportsMatch.Create], {
       sportsCategoryId: categoryId,
     });
-    return (
-      await this.brackets.generateNextSwissRound(categoryId, actor)
-    ).map((match) => match.id);
+    return (await this.brackets.generateNextSwissRound(categoryId, actor)).map((match) => match.id);
   }
 
   @Mutation(() => String, { name: 'reviewSportsTeamChange' })
@@ -62,12 +63,12 @@ export class SportsReviewMutationsResolver extends SportsMutationsResolverSuppor
       await this.publishMutation(
         'TEAM_CHANGE',
         this.teamChanges.review(input.requestId, decision, actor, {
-        expectedRequestRevision: input.expectedRequestRevision,
-        message: input.reviewMessage ?? undefined,
-        resolvedDelta: input.resolvedDeltaJson
-          ? this.parseObject(input.resolvedDeltaJson, 'alterações resolvidas')
-          : undefined,
-        forceConflicts: input.forceConflicts ?? false,
+          expectedRequestRevision: input.expectedRequestRevision,
+          message: input.reviewMessage ?? undefined,
+          resolvedDelta: input.resolvedDeltaJson
+            ? this.parseObject(input.resolvedDeltaJson, 'alterações resolvidas')
+            : undefined,
+          forceConflicts: input.forceConflicts ?? false,
         }),
         decision === 'APPROVE',
       )
@@ -82,27 +83,16 @@ export class SportsReviewMutationsResolver extends SportsMutationsResolverSuppor
     @Context() context: GraphqlContext,
   ): Promise<string> {
     const actor = this.authenticated(context);
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsRegistration.Approve],
-      { sportsPlayerApplicationId: input.applicationId },
-    );
+    await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Approve], {
+      sportsPlayerApplicationId: input.applicationId,
+    });
     await this.assertPlayerApplicationReviewMutable(input.applicationId, actor);
     const decision =
-      input.decision === 'APPROVED'
-        ? 'APPROVE'
-        : input.decision === 'REJECTED'
-          ? 'REJECT'
-          : 'REQUEST_CHANGES';
+      input.decision === 'APPROVED' ? 'APPROVE' : input.decision === 'REJECTED' ? 'REJECT' : 'REQUEST_CHANGES';
     return (
       await this.publishMutation(
         'APPLICATION',
-        this.applications.review(
-        input.applicationId,
-        decision,
-        actor,
-        input.reviewMessage ?? undefined,
-        ),
+        this.applications.review(input.applicationId, decision, actor, input.reviewMessage ?? undefined),
         decision === 'APPROVE',
       )
     ).id;
@@ -132,20 +122,12 @@ export class SportsReviewMutationsResolver extends SportsMutationsResolverSuppor
       throw new BadRequestException('Decisão de revisão inválida.');
     }
     return (
-      await this.operations.review(
-        input.actionId,
-        decision,
-        actor,
-        {
-          reviewMessage: input.reviewMessage,
-          correctedPayload: input.correctedPayloadJson
-            ? this.parseJson(
-                input.correctedPayloadJson,
-                'correção da ação',
-              )
-            : undefined,
-        },
-      )
+      await this.operations.review(input.actionId, decision, actor, {
+        reviewMessage: input.reviewMessage,
+        correctedPayload: input.correctedPayloadJson
+          ? this.parseJson(input.correctedPayloadJson, 'correção da ação')
+          : undefined,
+      })
     ).id;
   }
 
@@ -164,15 +146,6 @@ export class SportsReviewMutationsResolver extends SportsMutationsResolverSuppor
       sportsMatchRosterId: rosterId,
     });
     await this.assertRosterReviewMutable(rosterId, actor);
-    return (
-      await this.rosters.review(
-        rosterId,
-        approve ? 'APPROVE' : 'REJECT',
-        actor.sub,
-        actor,
-      )
-    ).id;
+    return (await this.rosters.review(rosterId, approve ? 'APPROVE' : 'REJECT', actor.sub, actor)).id;
   }
-
 }
-

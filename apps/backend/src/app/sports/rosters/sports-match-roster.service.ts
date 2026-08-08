@@ -1,10 +1,5 @@
-import {
-  Injectable,
-} from '@nestjs/common';
-import {
-  Prisma,
-  SportsRosterRole,
-} from '@prisma/client';
+import { Injectable } from '@nestjs/common';
+import { Prisma, SportsRosterRole } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { PrismaService } from '../../prisma/prisma.service';

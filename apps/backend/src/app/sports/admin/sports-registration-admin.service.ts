@@ -1,9 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -80,10 +76,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
       if (existing) {
         return existing;
       }
-      const formData = this.buildRegistrationFormData(
-        category,
-        input.formAnswers,
-      );
+      const formData = this.buildRegistrationFormData(category, input.formAnswers);
       const registration = await tx.sportsRegistration.create({
         data: {
           teamId: input.teamId,
@@ -146,25 +139,15 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
       },
     });
     if (!registration) {
-      throw new NotFoundException(
-        `Sports registration ${registrationId} was not found.`,
-      );
+      throw new NotFoundException(`Sports registration ${registrationId} was not found.`);
     }
-    await this.frozen.assertEventGroupMutable(
-      registration.category.eventGroupId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertEventGroupMutable(registration.category.eventGroupId, actor, 'edit');
     const normalizedFormAnswers =
       input.formAnswers === undefined
         ? undefined
-        : this.normalizeRegistrationUpdateAnswers(
-            registration.formSchemaSnapshot,
-            input.formAnswers,
-          );
+        : this.normalizeRegistrationUpdateAnswers(registration.formSchemaSnapshot, input.formAnswers);
     const approved =
-      input.status === SportsRegistrationStatus.APPROVED ||
-      input.status === SportsRegistrationStatus.ACTIVE;
+      input.status === SportsRegistrationStatus.APPROVED || input.status === SportsRegistrationStatus.ACTIVE;
     const rejected = input.status === SportsRegistrationStatus.REJECTED;
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const updated = await tx.sportsRegistration.updateMany({
@@ -176,9 +159,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
         data: {
           ...(input.status !== undefined ? { status: input.status } : {}),
           ...(input.seed !== undefined ? { seed: input.seed } : {}),
-          ...(normalizedFormAnswers !== undefined
-            ? { formAnswers: normalizedFormAnswers }
-            : {}),
+          ...(normalizedFormAnswers !== undefined ? { formAnswers: normalizedFormAnswers } : {}),
           ...(approved
             ? {
                 approvedAt: new Date(),
@@ -241,15 +222,9 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
       },
     });
     if (!registrationScope) {
-      throw new NotFoundException(
-        `Sports registration ${input.registrationId} was not found.`,
-      );
+      throw new NotFoundException(`Sports registration ${input.registrationId} was not found.`);
     }
-    await this.frozen.assertEventGroupMutable(
-      registrationScope.category.eventGroupId,
-      actor,
-      'edit',
-    );
+    await this.frozen.assertEventGroupMutable(registrationScope.category.eventGroupId, actor, 'edit');
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const registration = await tx.sportsRegistration.findFirst({
@@ -295,9 +270,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
           teamMemberId: member.id,
           role: input.role,
           eligibility:
-            member.participant.status === 'ACTIVE'
-              ? SportsEligibilityStatus.ELIGIBLE
-              : SportsEligibilityStatus.PENDING,
+            member.participant.status === 'ACTIVE' ? SportsEligibilityStatus.ELIGIBLE : SportsEligibilityStatus.PENDING,
           approvedAt: new Date(),
           approvedById: actorId,
           createdById: actorId,
@@ -325,12 +298,7 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
     });
   }
 
-
-  async deleteRegistration(
-    registrationId: string,
-    expectedRevision: number,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  async deleteRegistration(registrationId: string, expectedRevision: number, actor: AuthenticatedUser): Promise<void> {
     const actorId = this.requireActorId(actor);
     const registration = await this.prisma.sportsRegistration.findFirst({
       where: { id: registrationId, deletedAt: null },
@@ -346,31 +314,18 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
       },
     });
     if (!registration) {
-      throw new NotFoundException(
-        `Sports registration ${registrationId} was not found.`,
-      );
+      throw new NotFoundException(`Sports registration ${registrationId} was not found.`);
     }
-    await this.frozen.assertEventGroupMutable(
-      registration.category.eventGroupId,
-      actor,
-      'delete',
-    );
+    await this.frozen.assertEventGroupMutable(registration.category.eventGroupId, actor, 'delete');
 
     await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const activeMatch = await tx.sportsMatch.findFirst({
         where: {
           deletedAt: null,
           state: {
-            notIn: [
-              SportsMatchState.FINISHED,
-              SportsMatchState.DRAW,
-              SportsMatchState.CANCELED,
-            ],
+            notIn: [SportsMatchState.FINISHED, SportsMatchState.DRAW, SportsMatchState.CANCELED],
           },
-          OR: [
-            { homeRegistrationId: registrationId },
-            { awayRegistrationId: registrationId },
-          ],
+          OR: [{ homeRegistrationId: registrationId }, { awayRegistrationId: registrationId }],
         },
         select: { id: true },
       });
@@ -425,22 +380,4 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
       );
     });
   }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -42,10 +42,7 @@ describe('SportsAccessService', () => {
         where: expect.objectContaining({
           id: 'registration-1',
           status: {
-            in: [
-              SportsRegistrationStatus.APPROVED,
-              SportsRegistrationStatus.ACTIVE,
-            ],
+            in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
           },
         }),
         select: expect.objectContaining({
@@ -86,10 +83,7 @@ describe('SportsAccessService', () => {
       frozen as never,
     );
 
-    const result = await service.requireRosterManager(
-      {} as never,
-      'registration-1',
-    );
+    const result = await service.requireRosterManager({} as never, 'registration-1');
 
     expect(result.actor).toBe(actor);
     expect(result.assignment).toBeNull();
@@ -123,10 +117,7 @@ describe('SportsAccessService', () => {
 
     expect(officialFindFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        orderBy: [
-          { matchId: { sort: 'desc', nulls: 'last' } },
-          { categoryId: { sort: 'desc', nulls: 'last' } },
-        ],
+        orderBy: [{ matchId: { sort: 'desc', nulls: 'last' } }, { categoryId: { sort: 'desc', nulls: 'last' } }],
       }),
     );
   });

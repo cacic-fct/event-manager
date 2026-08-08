@@ -1,17 +1,9 @@
 import { ConflictException } from '@nestjs/common';
-import {
-  Prisma,
-  SportsBracketSide,
-  SportsMatchState,
-  SportsReviewStatus,
-  SportsStageType
-} from '@prisma/client';
+import { Prisma, SportsBracketSide, SportsMatchState, SportsReviewStatus, SportsStageType } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';
 import { planSportsGrandFinalOutcome } from '../domain/sports-double-elimination';
-import {
-  SportsStructuralInvalidation
-} from '../realtime/sports-structural-invalidation';
+import { SportsStructuralInvalidation } from '../realtime/sports-structural-invalidation';
 
 interface StandingAccumulator {
   registrationId: string;
@@ -26,11 +18,8 @@ interface StandingAccumulator {
   opponentRegistrationIds: string[];
 }
 
-
 export abstract class SportsStandingsSupport {
-  constructor(
-    protected readonly advancement: SportsBracketAdvancementService,
-  ) {}
+  constructor(protected readonly advancement: SportsBracketAdvancementService) {}
 
   protected ensureAccumulator(
     accumulators: Map<string, StandingAccumulator>,
@@ -91,25 +80,18 @@ export abstract class SportsStandingsSupport {
     if (!match.stage) {
       return false;
     }
-    if (
-      match.stage.type === SportsStageType.ELIMINATION &&
-      !match.winnerAdvancesToId
-    ) {
+    if (match.stage.type === SportsStageType.ELIMINATION && !match.winnerAdvancesToId) {
       return true;
     }
     if (match.stage.type !== SportsStageType.FINAL) {
       return false;
     }
-    const resetRule = this.readRecord(
-      this.readRecord(match.stage.settings)['resetRule'],
-    );
+    const resetRule = this.readRecord(this.readRecord(match.stage.settings)['resetRule']);
     const replayRootId = await this.resolveReplayRootId(tx, match);
     if (resetRule['sourceMatchId'] !== replayRootId) {
       return !match.winnerAdvancesToId;
     }
-    return (
-      planSportsGrandFinalOutcome(match).status === 'CHAMPIONSHIP_DECIDED'
-    );
+    return planSportsGrandFinalOutcome(match).status === 'CHAMPIONSHIP_DECIDED';
   }
 
   protected async ensureReplayMatch(
@@ -144,10 +126,7 @@ export abstract class SportsStandingsSupport {
   ): Promise<SportsStructuralInvalidation[]> {
     const eventId = this.durableReplayId(source.id, 'event');
     const replayId = this.durableReplayId(source.id, 'match');
-    const durationMs = Math.max(
-      60_000,
-      source.event.endDate.getTime() - source.event.startDate.getTime(),
-    );
+    const durationMs = Math.max(60_000, source.event.endDate.getTime() - source.event.startDate.getTime());
     const replayStartDate = source.event.endDate;
     const replayEndDate = new Date(replayStartDate.getTime() + durationMs);
     await tx.event.upsert({
@@ -220,9 +199,7 @@ export abstract class SportsStandingsSupport {
     const visited = new Set<string>();
     while (current.replayOfMatchId) {
       if (visited.has(current.id)) {
-        throw new ConflictException(
-          'A cadeia de partidas remarcadas contém um ciclo inválido.',
-        );
+        throw new ConflictException('A cadeia de partidas remarcadas contém um ciclo inválido.');
       }
       visited.add(current.id);
       current = await tx.sportsMatch.findUniqueOrThrow({
@@ -234,9 +211,7 @@ export abstract class SportsStandingsSupport {
   }
 
   protected durableReplayId(sourceMatchId: string, kind: 'event' | 'match'): string {
-    const digest = createHash('sha256')
-      .update(`sports-replay:${kind}:${sourceMatchId}`)
-      .digest('hex');
+    const digest = createHash('sha256').update(`sports-replay:${kind}:${sourceMatchId}`).digest('hex');
     return `${digest.slice(0, 8)}-${digest.slice(8, 12)}-5${digest.slice(13, 16)}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
   }
 
@@ -255,9 +230,7 @@ export abstract class SportsStandingsSupport {
     kind: SportsStructuralInvalidation['kind'],
   ): SportsStructuralInvalidation {
     const isPublic =
-      match.event.deletedAt === null &&
-      match.event.publiclyVisible &&
-      match.event.publicationState === 'PUBLISHED';
+      match.event.deletedAt === null && match.event.publiclyVisible && match.event.publicationState === 'PUBLISHED';
     return {
       kind,
       tournamentId: match.category.tournamentId,
@@ -269,9 +242,7 @@ export abstract class SportsStandingsSupport {
   }
 
   protected readRecord(value: unknown): Record<string, unknown> {
-    return value && typeof value === 'object' && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : {};
+    return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
   }
 
   protected readNumber(value: unknown, fallback: number): number {
@@ -283,12 +254,6 @@ export abstract class SportsStandingsSupport {
   }
 
   protected readPositiveInteger(value: unknown, fallback: number): number {
-    return typeof value === 'number' && Number.isInteger(value) && value > 0
-      ? value
-      : fallback;
+    return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : fallback;
   }
 }
-
-
-
-

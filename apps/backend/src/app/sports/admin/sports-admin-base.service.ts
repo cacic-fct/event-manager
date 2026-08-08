@@ -1,13 +1,6 @@
 import { type FormElement } from '@cacic-fct/form-contracts';
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  Prisma,
-  SportsScoreEntrySource,
-} from '@prisma/client';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma, SportsScoreEntrySource } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { normalizeAnswers } from '../../event-forms/event-form-answer-normalization';
 import { SportsAdminLookupService } from './sports-admin-lookup.service';
@@ -41,29 +34,19 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
     if (!event) {
       throw new NotFoundException(`Event ${eventId} was not found.`);
     }
-    if (
-      event.majorEventId !== scope.majorEventId ||
-      event.eventGroupId !== scope.eventGroupId
-    ) {
-      throw new BadRequestException(
-        'O evento precisa pertencer ao mesmo grande evento e grupo da modalidade.',
-      );
+    if (event.majorEventId !== scope.majorEventId || event.eventGroupId !== scope.eventGroupId) {
+      throw new BadRequestException('O evento precisa pertencer ao mesmo grande evento e grupo da modalidade.');
     }
     if (event.sportsMatch) {
       throw new ConflictException('O evento selecionado já está vinculado a uma partida.');
     }
     if (event.allowSubscription) {
-      throw new ConflictException(
-        'Um evento com inscrições próprias não pode ser convertido em partida.',
-      );
+      throw new ConflictException('Um evento com inscrições próprias não pode ser convertido em partida.');
     }
     const startDate = scope.startDate ?? event.startDate;
     const endDate = scope.endDate ?? event.endDate;
     this.assertDateRange(startDate, endDate, 'partida');
-    const name =
-      scope.name === undefined
-        ? event.name
-        : this.requireText(scope.name, 'nome da partida', 2, 160);
+    const name = scope.name === undefined ? event.name : this.requireText(scope.name, 'nome da partida', 2, 160);
 
     return tx.event.update({
       where: { id: event.id },
@@ -104,11 +87,10 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
         throw new BadRequestException('A hierarquia de locais não pode conter ciclos.');
       }
       visited.add(currentId);
-      const current: { parentVenueId: string | null } | null =
-        await tx.sportsVenue.findFirst({
-          where: { id: currentId, tournamentId, deletedAt: null },
-          select: { parentVenueId: true },
-        });
+      const current: { parentVenueId: string | null } | null = await tx.sportsVenue.findFirst({
+        where: { id: currentId, tournamentId, deletedAt: null },
+        select: { parentVenueId: true },
+      });
       if (!current) {
         throw new BadRequestException('A hierarquia de locais contém um local inválido.');
       }
@@ -133,9 +115,7 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
       select: { id: true },
     });
     if (!form) {
-      throw new BadRequestException(
-        'O formulário de inscrição precisa pertencer ao grande evento do torneio.',
-      );
+      throw new BadRequestException('O formulário de inscrição precisa pertencer ao grande evento do torneio.');
     }
   }
 
@@ -144,18 +124,11 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
     points: number;
     sourceMatchId?: string | null;
   }): void {
-    if (
-      input.source !== SportsScoreEntrySource.MANUAL &&
-      input.source !== SportsScoreEntrySource.PENALTY
-    ) {
-      throw new BadRequestException(
-        'Ajustes administrativos devem ser manuais ou penalidades.',
-      );
+    if (input.source !== SportsScoreEntrySource.MANUAL && input.source !== SportsScoreEntrySource.PENALTY) {
+      throw new BadRequestException('Ajustes administrativos devem ser manuais ou penalidades.');
     }
     if (input.sourceMatchId) {
-      throw new BadRequestException(
-        'Ajustes administrativos não podem se passar por pontuação de partida.',
-      );
+      throw new BadRequestException('Ajustes administrativos não podem se passar por pontuação de partida.');
     }
     if (!Number.isInteger(input.points)) {
       throw new BadRequestException('A pontuação deve ser um número inteiro.');
@@ -176,18 +149,10 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
       return;
     }
     if (scope.eventGroupId) {
-      await this.frozen.assertEventGroupMutable(
-        scope.eventGroupId,
-        actor,
-        operation,
-      );
+      await this.frozen.assertEventGroupMutable(scope.eventGroupId, actor, operation);
       return;
     }
-    await this.frozen.assertMajorEventMutable(
-      scope.majorEventId,
-      actor,
-      operation,
-    );
+    await this.frozen.assertMajorEventMutable(scope.majorEventId, actor, operation);
   }
 
   protected buildRegistrationFormData(
@@ -208,27 +173,16 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
   } {
     if (!category.registrationFormId) {
       if (submittedAnswers !== undefined && submittedAnswers !== null) {
-        throw new BadRequestException(
-          'A modalidade não possui formulário de inscrição configurado.',
-        );
+        throw new BadRequestException('A modalidade não possui formulário de inscrição configurado.');
       }
       return {};
     }
     const form = category.registrationForm;
     if (!form || form.deletedAt) {
-      throw new BadRequestException(
-        'O formulário de inscrição configurado não está disponível.',
-      );
+      throw new BadRequestException('O formulário de inscrição configurado não está disponível.');
     }
-    const elements = this.readFormElements(
-      form.elements,
-      'O formulário de inscrição possui uma estrutura inválida.',
-    );
-    const answers = normalizeAnswers(
-      JSON.stringify(submittedAnswers ?? []),
-      elements,
-      true,
-    );
+    const elements = this.readFormElements(form.elements, 'O formulário de inscrição possui uma estrutura inválida.');
+    const answers = normalizeAnswers(JSON.stringify(submittedAnswers ?? []), elements, true);
     return {
       formAnswers: answers as unknown as Prisma.InputJsonValue,
       formSchemaSnapshot: {
@@ -258,17 +212,10 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
       (snapshot as Record<string, Prisma.JsonValue>)['elements'],
       'O retrato do formulário da inscrição está inválido.',
     );
-    return normalizeAnswers(
-      JSON.stringify(submittedAnswers ?? []),
-      elements,
-      true,
-    ) as unknown as Prisma.InputJsonValue;
+    return normalizeAnswers(JSON.stringify(submittedAnswers ?? []), elements, true) as unknown as Prisma.InputJsonValue;
   }
 
-  protected readFormElements(
-    value: Prisma.JsonValue | undefined,
-    errorMessage: string,
-  ): FormElement[] {
+  protected readFormElements(value: Prisma.JsonValue | undefined, errorMessage: string): FormElement[] {
     if (!Array.isArray(value)) {
       throw new ConflictException(errorMessage);
     }
@@ -309,9 +256,7 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
   ): Promise<void> {
     const ids = [...new Set(targetIds.filter((id): id is string => Boolean(id)))];
     if (sourceMatchId && ids.includes(sourceMatchId)) {
-      throw new BadRequestException(
-        'Uma partida não pode encaminhar resultado para ela mesma.',
-      );
+      throw new BadRequestException('Uma partida não pode encaminhar resultado para ela mesma.');
     }
     if (ids.length === 0) {
       return;
@@ -325,9 +270,7 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
       select: { id: true },
     });
     if (targets.length !== ids.length) {
-      throw new BadRequestException(
-        'As partidas de destino precisam pertencer à mesma modalidade.',
-      );
+      throw new BadRequestException('As partidas de destino precisam pertencer à mesma modalidade.');
     }
     if (!sourceMatchId) {
       return;
@@ -341,9 +284,7 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
           continue;
         }
         if (currentId === sourceMatchId) {
-          throw new BadRequestException(
-            'O encaminhamento criaria um ciclo inválido na chave.',
-          );
+          throw new BadRequestException('O encaminhamento criaria um ciclo inválido na chave.');
         }
         visited.add(currentId);
         const current = await tx.sportsMatch.findFirst({
@@ -367,11 +308,3 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
     }
   }
 }
-
-
-
-
-
-
-
-

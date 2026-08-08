@@ -1,14 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import {
-  Directive,
-  OnDestroy,
-  OnInit,
-  PLATFORM_ID,
-  computed,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
+import { Directive, OnDestroy, OnInit, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -30,10 +21,7 @@ import {
   SportsScoreboard,
   SportsTimerConflict,
 } from './sports-operations.types';
-import {
-  CheckInEntry,
-  MatchOccurrence,
-} from './official-match-page.utils';
+import { CheckInEntry, MatchOccurrence } from './official-match-page.utils';
 
 type SportsOverlayTeam = 'both' | 'home' | 'away';
 
@@ -224,10 +212,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
     });
   }
 
-  protected abstract dispatch(
-    type: SportsMatchActionType,
-    payload: Record<string, unknown>,
-  ): Promise<void>;
+  protected abstract dispatch(type: SportsMatchActionType, payload: Record<string, unknown>): Promise<void>;
   protected abstract registerScannedAttendance(code: string): Promise<void>;
   protected abstract sortedCheckInEntries(team: CheckInEntry['team']): CheckInEntry[];
   protected abstract formatElapsed(value: number): string;

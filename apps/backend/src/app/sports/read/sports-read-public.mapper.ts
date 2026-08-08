@@ -2,8 +2,6 @@ import { SportsMatchState } from '@prisma/client';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
 import { projectSportsMatch } from '../operations/sports-match-projector';
 import {
-  
-  
   PublicSportsMatch,
   PublicSportsOfficial,
   PublicSportsRoster,
@@ -11,12 +9,7 @@ import {
   PublicSportsTeam,
 } from './sports-read.models';
 
-import {
-  
-  
-  PublicMatchRecord,
-  PublicTeamRecord,
-} from './sports-read.records';
+import { PublicMatchRecord, PublicTeamRecord } from './sports-read.records';
 
 export class SportsReadPublicMapper {
   projectPublicMatch(match: PublicMatchRecord) {
@@ -58,9 +51,7 @@ export class SportsReadPublicMapper {
       winner: projection.winnerRegistrationId
         ? (teamByRegistrationId.get(projection.winnerRegistrationId) ?? null)
         : null,
-      loser: projection.loserRegistrationId
-        ? (teamByRegistrationId.get(projection.loserRegistrationId) ?? null)
-        : null,
+      loser: projection.loserRegistrationId ? (teamByRegistrationId.get(projection.loserRegistrationId) ?? null) : null,
       lossReason: projection.lossReason,
       lossReasonDetail: projection.lossReasonDetail,
       drawWillReschedule: projection.drawWillReschedule,
@@ -94,9 +85,7 @@ export class SportsReadPublicMapper {
     };
   }
 
-  mapPublicScoreboard(
-    scoreboard: ReturnType<typeof normalizeSportsScoreboard>,
-  ): PublicSportsScoreboard {
+  mapPublicScoreboard(scoreboard: ReturnType<typeof normalizeSportsScoreboard>): PublicSportsScoreboard {
     return {
       homeScore: scoreboard.home,
       awayScore: scoreboard.away,
@@ -116,14 +105,11 @@ export class SportsReadPublicMapper {
       id: team.id,
       name: team.name,
       institution: team.institution,
-      logoUrl: team.logoSha256
-        ? `/api/sports/public/teams/${team.id}/logo/${team.logoSha256}`
-        : null,
+      logoUrl: team.logoSha256 ? `/api/sports/public/teams/${team.id}/logo/${team.logoSha256}` : null,
     };
   }
 
   canRevealRoster(state: SportsMatchState | undefined): boolean {
     return state === SportsMatchState.FINISHED || state === SportsMatchState.DRAW;
   }
-
 }

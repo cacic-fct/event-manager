@@ -94,11 +94,13 @@ describe('SportsOperationsApiService', () => {
       },
     });
 
-    await expect(result).resolves.toEqual(expect.objectContaining({
-      id: 'match-1',
-      revision: 7,
-      homeRegistrationId: 'home-registration',
-    }));
+    await expect(result).resolves.toEqual(
+      expect.objectContaining({
+        id: 'match-1',
+        revision: 7,
+        homeRegistrationId: 'home-registration',
+      }),
+    );
     http.verify();
   });
 

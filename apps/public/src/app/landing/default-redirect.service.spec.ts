@@ -65,9 +65,7 @@ describe('DefaultRedirectService', () => {
 
   it('routes an assigned official directly to the nearby match operation', async () => {
     api.getCurrentUserDefaultRedirect.mockReturnValue(of('WALLET'));
-    api.getCurrentUserSportsAutoroute.mockReturnValue(
-      of({ matchId: 'match with spaces', mode: 'CHECK_IN' }),
-    );
+    api.getCurrentUserSportsAutoroute.mockReturnValue(of({ matchId: 'match with spaces', mode: 'CHECK_IN' }));
 
     await expect(TestBed.inject(DefaultRedirectService).resolve()).resolves.toBe(
       '/sports/operate/match%20with%20spaces?mode=CHECK_IN',

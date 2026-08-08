@@ -64,16 +64,10 @@ describe('SportsMutationsResolver security boundaries', () => {
       { req: { user: actor } } as never,
     );
 
-    expect(policy.assertPermissions).toHaveBeenCalledWith(
-      actor,
-      [Permission.SportsMatch.Operate],
-      { sportsMatchId: 'match-1' },
-    );
-    expect(frozen.assertEventMutable).toHaveBeenCalledWith(
-      'event-1',
-      actor,
-      'edit',
-    );
+    expect(policy.assertPermissions).toHaveBeenCalledWith(actor, [Permission.SportsMatch.Operate], {
+      sportsMatchId: 'match-1',
+    });
+    expect(frozen.assertEventMutable).toHaveBeenCalledWith('event-1', actor, 'edit');
     expect(operations.commit).toHaveBeenCalled();
   });
 });

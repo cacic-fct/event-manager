@@ -191,16 +191,11 @@ export class SportsApiService {
       .pipe(map((data) => data.adminSportsPlayerApplicationQueue));
   }
 
-  mutate<TResult extends string | boolean | string[]>(
-    name: string,
-    inputType: string,
-    input: Record<string, unknown>,
-  ) {
+  mutate<TResult extends string | boolean | string[]>(name: string, inputType: string, input: Record<string, unknown>) {
     return this.graphql
-      .request<Record<string, TResult>>(
-        `mutation SportsWorkspaceMutation($input: ${inputType}!) { ${name}(input: $input) }`,
-        { input },
-      )
+      .request<
+        Record<string, TResult>
+      >(`mutation SportsWorkspaceMutation($input: ${inputType}!) { ${name}(input: $input) }`, { input })
       .pipe(map((data) => data[name]));
   }
 
@@ -248,15 +243,12 @@ export class SportsApiService {
   }
 
   watchTournamentReview(tournamentId: string) {
-    return watchReplayableEventSource(
-      `/api/sports/tournaments/${encodeURIComponent(tournamentId)}/review-events`,
-      {
-        decode: (event) => {
-          const value: unknown = JSON.parse(event.data);
-          return value && typeof value === 'object' ? value : null;
-        },
-        errorMessage: 'Não foi possível manter a gestão esportiva atualizada em tempo real.',
+    return watchReplayableEventSource(`/api/sports/tournaments/${encodeURIComponent(tournamentId)}/review-events`, {
+      decode: (event) => {
+        const value: unknown = JSON.parse(event.data);
+        return value && typeof value === 'object' ? value : null;
       },
-    );
+      errorMessage: 'Não foi possível manter a gestão esportiva atualizada em tempo real.',
+    });
   }
 }

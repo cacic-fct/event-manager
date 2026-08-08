@@ -6,7 +6,9 @@ describe('DocumentSeoService', () => {
   let service: DocumentSeoService;
 
   beforeEach(() => {
-    document.head.querySelectorAll('link[rel="canonical"], #test-structured-data').forEach((element) => element.remove());
+    document.head
+      .querySelectorAll('link[rel="canonical"], #test-structured-data')
+      .forEach((element) => element.remove());
     TestBed.configureTestingModule({
       providers: [DocumentSeoService],
     });
@@ -30,7 +32,11 @@ describe('DocumentSeoService', () => {
   it('adds, updates, and removes canonical and JSON-LD elements', () => {
     service.setCanonicalUrl('https://eventos.cacic.com.br/app/event/event-1');
     service.setCanonicalUrl('https://eventos.cacic.com.br/app/event/event-2');
-    service.setJsonLd('test-structured-data', { '@context': 'https://schema.org', '@type': 'Event', name: 'Evento teste' });
+    service.setJsonLd('test-structured-data', {
+      '@context': 'https://schema.org',
+      '@type': 'Event',
+      name: 'Evento teste',
+    });
 
     expect(document.head.querySelectorAll('link[rel="canonical"]')).toHaveLength(1);
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(

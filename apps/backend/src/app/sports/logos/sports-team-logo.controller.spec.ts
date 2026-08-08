@@ -1,20 +1,11 @@
 import 'reflect-metadata';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { HEADERS_METADATA } from '@nestjs/common/constants';
-import {
-  IS_PUBLIC_KEY,
-  REQUIRED_PERMISSIONS_KEY,
-} from '../../auth/auth.constants';
-import {
-  RATE_LIMIT_METADATA_KEY,
-  RateLimitMetadata,
-} from '../../rate-limit/rate-limit.decorator';
+import { IS_PUBLIC_KEY, REQUIRED_PERMISSIONS_KEY } from '../../auth/auth.constants';
+import { RATE_LIMIT_METADATA_KEY, RateLimitMetadata } from '../../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import { Readable } from 'node:stream';
-import {
-  PublicSportsTeamLogoController,
-  SportsTeamLogoController,
-} from './sports-team-logo.controller';
+import { PublicSportsTeamLogoController, SportsTeamLogoController } from './sports-team-logo.controller';
 
 describe('SportsTeamLogoController', () => {
   const actor = {
@@ -46,14 +37,9 @@ describe('SportsTeamLogoController', () => {
     });
 
     await expect(
-      controller.upload(
-        'team-1',
-        2,
-        file,
-        {
-          user: actor,
-        } as never,
-      ),
+      controller.upload('team-1', 2, file, {
+        user: actor,
+      } as never),
     ).resolves.toEqual({
       teamId: 'team-1',
       revision: 3,
@@ -87,18 +73,9 @@ describe('SportsTeamLogoController', () => {
     const uploadHandler = SportsTeamLogoController.prototype.upload;
     const downloadHandler = SportsTeamLogoController.prototype.download;
 
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, uploadHandler)).toEqual([
-      Permission.SportsTeam.Update,
-    ]);
-    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, downloadHandler)).toEqual([
-      Permission.SportsTeam.Read,
-    ]);
-    expect(
-      Reflect.getMetadata(
-        RATE_LIMIT_METADATA_KEY,
-        uploadHandler,
-      ) as RateLimitMetadata,
-    ).toEqual({
+    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, uploadHandler)).toEqual([Permission.SportsTeam.Update]);
+    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, downloadHandler)).toEqual([Permission.SportsTeam.Read]);
+    expect(Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, uploadHandler) as RateLimitMetadata).toEqual({
       policy: RATE_LIMIT_POLICIES.receiptUpload,
       resources: [{ source: 'params', path: 'sportsTeamId' }],
     });
@@ -122,8 +99,6 @@ describe('SportsTeamLogoController', () => {
   });
 
   it('marks the published logo controller as public', () => {
-    expect(
-      Reflect.getMetadata(IS_PUBLIC_KEY, PublicSportsTeamLogoController),
-    ).toBe(true);
+    expect(Reflect.getMetadata(IS_PUBLIC_KEY, PublicSportsTeamLogoController)).toBe(true);
   });
 });

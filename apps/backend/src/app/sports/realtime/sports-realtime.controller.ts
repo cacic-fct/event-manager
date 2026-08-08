@@ -1,24 +1,6 @@
-import {
-  Controller,
-  Headers,
-  MessageEvent,
-  NotFoundException,
-  Param,
-  Req,
-  Sse,
-  UseGuards,
-} from '@nestjs/common';
-import {
-  ApiBearerAuth,
-  ApiOperation,
-  ApiParam,
-  ApiProduces,
-  ApiTags,
-} from '@nestjs/swagger';
-import {
-  PublicationState,
-  SportsTournamentStatus,
-} from '@prisma/client';
+import { Controller, Headers, MessageEvent, NotFoundException, Param, Req, Sse, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
+import { PublicationState, SportsTournamentStatus } from '@prisma/client';
 import type { Request } from 'express';
 import { defer, Observable, switchMap } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -59,16 +41,10 @@ export class SportsRealtimeController {
     @Headers('last-event-id') lastEventId: string | undefined,
     @Req() request: RequestWithUser,
   ): Observable<MessageEvent> {
-    return defer(() =>
-      this.currentUser.requireCurrentPerson({ req: request }),
-    ).pipe(
+    return defer(() => this.currentUser.requireCurrentPerson({ req: request })).pipe(
       switchMap((person) => {
         const scope = this.realtime.scope('autoroute', person.id);
-        return this.replay.replay(
-          scope,
-          lastEventId,
-          this.realtime.watch(scope),
-        );
+        return this.replay.replay(scope, lastEventId, this.realtime.watch(scope));
       }),
     );
   }
@@ -90,9 +66,7 @@ export class SportsRealtimeController {
   ): Observable<MessageEvent> {
     const scope = this.realtime.scope('match', matchId);
     return defer(() => this.assertPublicMatch(matchId)).pipe(
-      switchMap(() =>
-        this.replay.replay(scope, lastEventId, this.realtime.watch(scope)),
-      ),
+      switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))),
     );
   }
 
@@ -102,8 +76,7 @@ export class SportsRealtimeController {
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'tournamentId' }])
   @ApiOperation({
     summary: 'Stream live public tournament projections',
-    description:
-      'Replayable, mutation-driven SSE stream for brackets, standings, and match changes.',
+    description: 'Replayable, mutation-driven SSE stream for brackets, standings, and match changes.',
   })
   @ApiParam({
     name: 'tournamentId',
@@ -116,9 +89,7 @@ export class SportsRealtimeController {
   ): Observable<MessageEvent> {
     const scope = this.realtime.scope('tournament', tournamentId);
     return defer(() => this.assertPublicTournament(tournamentId)).pipe(
-      switchMap(() =>
-        this.replay.replay(scope, lastEventId, this.realtime.watch(scope)),
-      ),
+      switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))),
     );
   }
 
@@ -126,8 +97,7 @@ export class SportsRealtimeController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Stream pending match review changes',
-    description:
-      'Scoped administrator stream. Authorization is evaluated before any replayed event is disclosed.',
+    description: 'Scoped administrator stream. Authorization is evaluated before any replayed event is disclosed.',
   })
   @ApiParam({ name: 'matchId', description: 'Sports match review scope.' })
   @ApiProduces('text/event-stream')
@@ -138,24 +108,15 @@ export class SportsRealtimeController {
   ): Observable<MessageEvent> {
     const scope = this.realtime.scope('review', matchId);
     return defer(() =>
-      this.policy.assertPermissions(
-        request.user,
-        [Permission.SportsMatch.Review],
-        { sportsMatchId: matchId },
-      ),
-    ).pipe(
-      switchMap(() =>
-        this.replay.replay(scope, lastEventId, this.realtime.watch(scope)),
-      ),
-    );
+      this.policy.assertPermissions(request.user, [Permission.SportsMatch.Review], { sportsMatchId: matchId }),
+    ).pipe(switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))));
   }
 
   @Sse('tournaments/:tournamentId/review-events')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Stream administrator sports-workspace invalidations',
-    description:
-      'Replayable scoped invalidations for teams, registrations, brackets, officials, and review queues.',
+    description: 'Replayable scoped invalidations for teams, registrations, brackets, officials, and review queues.',
   })
   @ApiParam({ name: 'tournamentId', description: 'Sports tournament review scope.' })
   @ApiProduces('text/event-stream')
@@ -166,16 +127,10 @@ export class SportsRealtimeController {
   ): Observable<MessageEvent> {
     const scope = this.realtime.scope('admin-tournament', tournamentId);
     return defer(() =>
-      this.policy.assertPermissions(
-        request.user,
-        [Permission.SportsTournament.Read],
-        { sportsTournamentId: tournamentId },
-      ),
-    ).pipe(
-      switchMap(() =>
-        this.replay.replay(scope, lastEventId, this.realtime.watch(scope)),
-      ),
-    );
+      this.policy.assertPermissions(request.user, [Permission.SportsTournament.Read], {
+        sportsTournamentId: tournamentId,
+      }),
+    ).pipe(switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))));
   }
 
   private async assertPublicMatch(matchId: string): Promise<void> {

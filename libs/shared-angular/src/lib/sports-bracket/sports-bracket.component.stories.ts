@@ -35,9 +35,7 @@ const meta: Meta<SportsBracketComponent> = {
         http.get('/api/storybook/sports/team-logo/:teamId', ({ params, request }) => {
           const teamId = String(params['teamId'] ?? 'team');
           const requestedColor = new URL(request.url).searchParams.get('color') ?? '';
-          const color = /^#[0-9a-f]{6}$/i.test(requestedColor)
-            ? requestedColor
-            : '#315da8';
+          const color = /^#[0-9a-f]{6}$/i.test(requestedColor) ? requestedColor : '#315da8';
           const initials = teamId.replace('team-', 'T');
           return HttpResponse.text(
             `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="${color}"/><text x="32" y="39" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" font-weight="700" fill="white">${initials}</text></svg>`,

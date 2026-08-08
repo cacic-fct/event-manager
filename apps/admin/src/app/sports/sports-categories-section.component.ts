@@ -17,7 +17,21 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
 @Component({
   selector: 'app-sports-categories-section',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule, MatButtonModule, MatCheckboxModule, MatExpansionModule, MatFormFieldModule, MatIconModule, MatInputModule, MatListModule, MatSelectModule, MatSlideToggleModule, MatTooltipModule, TwemojiComponent, SportsFormatGuideComponent],
+  imports: [
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatExpansionModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatListModule,
+    MatSelectModule,
+    MatSlideToggleModule,
+    MatTooltipModule,
+    TwemojiComponent,
+    SportsFormatGuideComponent,
+  ],
   templateUrl: './sports-categories-section.component.html',
 })
 export class SportsCategoriesSectionComponent extends SportsWorkspaceSection {}

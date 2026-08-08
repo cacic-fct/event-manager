@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import {
   SportsEligibilityStatus,
@@ -96,15 +93,11 @@ export abstract class SportsTeamChangeDeltaService extends SportsTeamChangeSuppo
     }
     if (input.logo !== undefined) {
       if (!allowTrustedLogo) {
-        throw new BadRequestException(
-          'Use o envio de arquivo próprio para solicitar a troca do logo.',
-        );
+        throw new BadRequestException('Use o envio de arquivo próprio para solicitar a troca do logo.');
       }
       const logo = input.logo;
       const objectKeyMatch =
-        /^sports\/tournaments\/[^/]+\/teams\/[^/]+\/logos\/sha256\/([a-f0-9]{64})\.([a-z0-9]+)$/.exec(
-          logo.objectKey,
-        );
+        /^sports\/tournaments\/[^/]+\/teams\/[^/]+\/logos\/sha256\/([a-f0-9]{64})\.([a-z0-9]+)$/.exec(logo.objectKey);
       const queuedObjectKeyMatch =
         /^sports\/private\/team-logo-review\/[^/]+\/[^/]+\/([a-f0-9]{64})\.([a-z0-9]+)$/.exec(
           logo.queuedObjectKey ?? '',
@@ -131,22 +124,11 @@ export abstract class SportsTeamChangeDeltaService extends SportsTeamChangeSuppo
     }
     if (input.memberChanges !== undefined) {
       normalized.memberChanges = input.memberChanges.map((change) => {
-        const teamMemberId = this.normalizeChildId(
-          change.teamMemberId,
-          'integrante',
-        );
-        if (
-          !Number.isInteger(change.expectedRevision) ||
-          change.expectedRevision < 1
-        ) {
-          throw new BadRequestException(
-            'A revisão do integrante deve ser um inteiro positivo.',
-          );
+        const teamMemberId = this.normalizeChildId(change.teamMemberId, 'integrante');
+        if (!Number.isInteger(change.expectedRevision) || change.expectedRevision < 1) {
+          throw new BadRequestException('A revisão do integrante deve ser um inteiro positivo.');
         }
-        if (
-          change.status !== undefined &&
-          !Object.values(SportsTeamMemberStatus).includes(change.status)
-        ) {
+        if (change.status !== undefined && !Object.values(SportsTeamMemberStatus).includes(change.status)) {
           throw new BadRequestException('O status solicitado é inválido.');
         }
         return {
@@ -156,88 +138,54 @@ export abstract class SportsTeamChangeDeltaService extends SportsTeamChangeSuppo
         };
       });
       if (
-        new Set(
-          normalized.memberChanges.map((change) => change.teamMemberId),
-        ).size !== normalized.memberChanges.length
+        new Set(normalized.memberChanges.map((change) => change.teamMemberId)).size !== normalized.memberChanges.length
       ) {
-        throw new BadRequestException(
-          'Um integrante não pode aparecer duas vezes na mesma solicitação.',
-        );
+        throw new BadRequestException('Um integrante não pode aparecer duas vezes na mesma solicitação.');
       }
     }
     if (input.categoryRoleChanges !== undefined) {
-      normalized.categoryRoleChanges = input.categoryRoleChanges.map(
-        (change) => {
-          const registrationMemberId =
-            change.registrationMemberId === undefined ||
-            change.registrationMemberId === null
-              ? null
-              : this.normalizeChildId(
-                  change.registrationMemberId,
-                  'função atual',
-                );
-          const registrationId = this.normalizeChildId(
-            change.registrationId,
-            'inscrição',
-          );
-          const teamMemberId = this.normalizeChildId(
-            change.teamMemberId,
-            'integrante',
-          );
-          if (
-            !Number.isInteger(change.expectedRegistrationRevision) ||
-            change.expectedRegistrationRevision < 1
-          ) {
-            throw new BadRequestException(
-              'A revisão da inscrição deve ser um inteiro positivo.',
-            );
-          }
-          if (!Object.values(SportsRosterRole).includes(change.role)) {
-            throw new BadRequestException('A função esportiva é inválida.');
-          }
-          if (
-            registrationMemberId &&
-            (!change.expectedRole ||
-              !Object.values(SportsRosterRole).includes(change.expectedRole) ||
-              !change.expectedEligibility ||
-              !Object.values(SportsEligibilityStatus).includes(
-                change.expectedEligibility,
-              ))
-          ) {
-            throw new BadRequestException(
-              'Informe a função e a elegibilidade atuais para alterar uma atribuição.',
-            );
-          }
-          if (
-            !registrationMemberId &&
-            (change.expectedRole != null ||
-              change.expectedEligibility != null)
-          ) {
-            throw new BadRequestException(
-              'Uma nova função não pode informar um estado anterior.',
-            );
-          }
-          return {
-            registrationMemberId,
-            registrationId,
-            teamMemberId,
-            expectedRegistrationRevision:
-              change.expectedRegistrationRevision,
-            expectedRole: change.expectedRole ?? null,
-            expectedEligibility: change.expectedEligibility ?? null,
-            role: change.role,
-          };
-        },
-      );
+      normalized.categoryRoleChanges = input.categoryRoleChanges.map((change) => {
+        const registrationMemberId =
+          change.registrationMemberId === undefined || change.registrationMemberId === null
+            ? null
+            : this.normalizeChildId(change.registrationMemberId, 'função atual');
+        const registrationId = this.normalizeChildId(change.registrationId, 'inscrição');
+        const teamMemberId = this.normalizeChildId(change.teamMemberId, 'integrante');
+        if (!Number.isInteger(change.expectedRegistrationRevision) || change.expectedRegistrationRevision < 1) {
+          throw new BadRequestException('A revisão da inscrição deve ser um inteiro positivo.');
+        }
+        if (!Object.values(SportsRosterRole).includes(change.role)) {
+          throw new BadRequestException('A função esportiva é inválida.');
+        }
+        if (
+          registrationMemberId &&
+          (!change.expectedRole ||
+            !Object.values(SportsRosterRole).includes(change.expectedRole) ||
+            !change.expectedEligibility ||
+            !Object.values(SportsEligibilityStatus).includes(change.expectedEligibility))
+        ) {
+          throw new BadRequestException('Informe a função e a elegibilidade atuais para alterar uma atribuição.');
+        }
+        if (!registrationMemberId && (change.expectedRole != null || change.expectedEligibility != null)) {
+          throw new BadRequestException('Uma nova função não pode informar um estado anterior.');
+        }
+        return {
+          registrationMemberId,
+          registrationId,
+          teamMemberId,
+          expectedRegistrationRevision: change.expectedRegistrationRevision,
+          expectedRole: change.expectedRole ?? null,
+          expectedEligibility: change.expectedEligibility ?? null,
+          role: change.role,
+        };
+      });
       const keys = normalized.categoryRoleChanges.map((change) =>
         change.registrationMemberId
           ? `existing:${change.registrationMemberId}`
           : `new:${change.registrationId}:${change.teamMemberId}`,
       );
       if (new Set(keys).size !== keys.length) {
-        throw new BadRequestException(
-          'Uma função não pode aparecer duas vezes na mesma solicitação.',
-        );
+        throw new BadRequestException('Uma função não pode aparecer duas vezes na mesma solicitação.');
       }
     }
     if (requestType) {
@@ -276,9 +224,7 @@ export abstract class SportsTeamChangeDeltaService extends SportsTeamChangeSuppo
     }
     const logo = this.readDelta(request.delta).logo;
     if (!logo?.queuedObjectKey) {
-      throw new ConflictException(
-        'A solicitação de logo não possui um objeto privado para análise.',
-      );
+      throw new ConflictException('A solicitação de logo não possui um objeto privado para análise.');
     }
     return {
       objectKey: logo.objectKey,
@@ -306,22 +252,14 @@ export abstract class SportsTeamChangeDeltaService extends SportsTeamChangeSuppo
       const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
       sizeBytes += buffer.length;
       if (sizeBytes > MAX_QUEUED_LOGO_BYTES) {
-        throw new BadRequestException(
-          'O logo em análise excede o limite permitido.',
-        );
+        throw new BadRequestException('O logo em análise excede o limite permitido.');
       }
       chunks.push(buffer);
     }
     const content = Buffer.concat(chunks);
     const sha256 = createHash('sha256').update(content).digest('hex');
-    if (
-      sha256 !== logo.sha256 ||
-      content.length !== logo.sizeBytes ||
-      object.contentType !== logo.mimeType
-    ) {
-      throw new ConflictException(
-        'O arquivo de logo em análise não corresponde aos metadados aprovados.',
-      );
+    if (sha256 !== logo.sha256 || content.length !== logo.sizeBytes || object.contentType !== logo.mimeType) {
+      throw new ConflictException('O arquivo de logo em análise não corresponde aos metadados aprovados.');
     }
     await this.s3.uploadFile(logo.objectKey, content, logo.mimeType, {
       sha256,

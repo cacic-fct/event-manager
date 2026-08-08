@@ -1,8 +1,4 @@
-import {
-  PublicationState,
-  SportsFormat,
-  SportsMatchState,
-} from '@prisma/client';
+import { PublicationState, SportsFormat, SportsMatchState } from '@prisma/client';
 
 jest.mock('../../audit-log/audit-log.service', () => ({
   AuditLogService: class AuditLogService {},
@@ -33,17 +29,12 @@ describe('SportsBracketService generation lifecycle', () => {
     const tx = {
       sportsCategory: { findFirst: jest.fn() },
       sportsStage: {
-        findMany: jest
-          .fn()
-          .mockResolvedValue([{ id: 'stage-existing', matches: [] }]),
+        findMany: jest.fn().mockResolvedValue([{ id: 'stage-existing', matches: [] }]),
         create: jest.fn(),
       },
     };
     const prisma = {
-      $transaction: jest.fn(
-        (callback: (transaction: typeof tx) => Promise<unknown>) =>
-          callback(tx),
-      ),
+      $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
     };
     const service = new SportsBracketService(
       prisma as never,
@@ -67,9 +58,9 @@ describe('SportsBracketService generation lifecycle', () => {
       ],
     });
 
-    await expect(
-      service.generate(input, { sub: 'admin-1' } as never),
-    ).resolves.toEqual([{ id: 'stage-existing', matches: [] }]);
+    await expect(service.generate(input, { sub: 'admin-1' } as never)).resolves.toEqual([
+      { id: 'stage-existing', matches: [] },
+    ]);
 
     expect(tx.sportsStage.create).not.toHaveBeenCalled();
     expect(auditLog.record).not.toHaveBeenCalled();
@@ -84,31 +75,19 @@ describe('SportsBracketService generation lifecycle', () => {
   });
 
   it('keeps generation keys stable across JSON key order but sensitive to entrant order', () => {
-    const service = new SportsBracketService(
-      {} as never,
-      advancement as never,
-      auditLog as never,
-      realtime as never,
-    );
+    const service = new SportsBracketService({} as never, advancement as never, auditLog as never, realtime as never);
     const firstCategory = categoryRecord({
       bracketRules: { groupCount: 2, qualifiersPerGroup: 1 },
     });
     const reorderedCategory = categoryRecord({
       bracketRules: { qualifiersPerGroup: 1, groupCount: 2 },
     });
-    const participants = [
-      { registrationId: 'registration-1' },
-      { registrationId: 'registration-2' },
-    ];
+    const participants = [{ registrationId: 'registration-1' }, { registrationId: 'registration-2' }];
 
-    expect(
-      internals(service).generationKey(firstCategory, { participants }),
-    ).toBe(
+    expect(internals(service).generationKey(firstCategory, { participants })).toBe(
       internals(service).generationKey(reorderedCategory, { participants }),
     );
-    expect(
-      internals(service).generationKey(firstCategory, { participants }),
-    ).not.toBe(
+    expect(internals(service).generationKey(firstCategory, { participants })).not.toBe(
       internals(service).generationKey(firstCategory, {
         participants: [...participants].reverse(),
       }),
@@ -116,12 +95,7 @@ describe('SportsBracketService generation lifecycle', () => {
   });
 
   it('allows explicit replacement of untouched draft brackets containing automatic byes', async () => {
-    const service = new SportsBracketService(
-      {} as never,
-      advancement as never,
-      auditLog as never,
-      realtime as never,
-    );
+    const service = new SportsBracketService({} as never, advancement as never, auditLog as never, realtime as never);
     const tx = deletionTransaction();
 
     await internals(service).replaceDraftIfRequested(
@@ -150,12 +124,7 @@ describe('SportsBracketService generation lifecycle', () => {
   });
 
   it('refuses to replace a bracket once a match was operated or published', async () => {
-    const service = new SportsBracketService(
-      {} as never,
-      advancement as never,
-      auditLog as never,
-      realtime as never,
-    );
+    const service = new SportsBracketService({} as never, advancement as never, auditLog as never, realtime as never);
     const base = {
       id: 'match-1',
       eventId: 'event-1',

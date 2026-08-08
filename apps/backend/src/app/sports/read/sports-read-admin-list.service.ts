@@ -117,9 +117,7 @@ export class SportsReadAdminListService {
             ...(accessibleTargets.eventGroupIds.size > 0
               ? [{ category: { eventGroupId: { in: [...accessibleTargets.eventGroupIds] } } }]
               : []),
-            ...(accessibleTargets.eventIds.size > 0
-              ? [{ eventId: { in: [...accessibleTargets.eventIds] } }]
-              : []),
+            ...(accessibleTargets.eventIds.size > 0 ? [{ eventId: { in: [...accessibleTargets.eventIds] } }] : []),
           ],
         }
       : {};
@@ -220,13 +218,7 @@ export class SportsReadAdminListService {
     });
 
     return tournaments.map((record) => {
-      const {
-        majorEvent,
-        _count,
-        categories,
-        teams,
-        ...tournament
-      } = record;
+      const { majorEvent, _count, categories, teams, ...tournament } = record;
       return {
         tournament,
         majorEvent,
@@ -234,15 +226,8 @@ export class SportsReadAdminListService {
         teamCount: _count.teams,
         pendingApplicationCount: _count.playerApplications,
         pendingReviewCount:
-          categories.reduce(
-            (total, category) =>
-              total + category._count.matches + category._count.registrations,
-            0,
-          ) +
-          teams.reduce(
-            (total, team) => total + team._count.changeRequests,
-            0,
-          ),
+          categories.reduce((total, category) => total + category._count.matches + category._count.registrations, 0) +
+          teams.reduce((total, team) => total + team._count.changeRequests, 0),
       };
     });
   }

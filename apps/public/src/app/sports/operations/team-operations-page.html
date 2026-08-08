@@ -40,11 +40,11 @@
       <section class="logo-panel" aria-labelledby="team-logo-title">
         <div class="logo-preview">
           @if (logoPreviewUrl(); as previewUrl) {
-            <img [src]="previewUrl" alt="Prévia do novo escudo" width="72" height="72" />
+          <img [src]="previewUrl" alt="Prévia do novo escudo" width="72" height="72" />
           } @else if (currentWorkspace.team.logoUrl) {
-            <img [src]="currentWorkspace.team.logoUrl" alt="" width="72" height="72" />
+          <img [src]="currentWorkspace.team.logoUrl" alt="" width="72" height="72" />
           } @else {
-            <mat-icon aria-hidden="true">shield</mat-icon>
+          <mat-icon aria-hidden="true">shield</mat-icon>
           }
         </div>
         <div>
@@ -54,10 +54,9 @@
             aprovação administrativa.
           </p>
           @if (logoFile(); as file) {
-            <small>{{ file.name }}</small>
-          }
-          @if (logoError()) {
-            <small class="field-error">{{ logoError() }}</small>
+          <small>{{ file.name }}</small>
+          } @if (logoError()) {
+          <small class="field-error">{{ logoError() }}</small>
           }
         </div>
         <div class="logo-actions">
@@ -92,14 +91,15 @@
                 @if (member.categoryRoles.length) {
                 <small>
                   @for (assignment of member.categoryRoles; track assignment.registrationId + assignment.categoryId) {
-                    {{ assignment.categoryName }} - {{ roleLabel(assignment.role) }}{{ !$last ? ', ' : '' }}
-                  }
+                  {{ assignment.categoryName }} - {{ roleLabel(assignment.role) }}{{ !$last ? ', ' : '' }} }
                 </small>
                 }
               </div>
             </article>
             } @empty {
-            <div class="empty-list"><mat-icon>group_off</mat-icon><span>Nenhum integrante ativo nesta equipe.</span></div>
+            <div class="empty-list">
+              <mat-icon>group_off</mat-icon><span>Nenhum integrante ativo nesta equipe.</span>
+            </div>
             }
           </div>
         </section>
@@ -119,13 +119,24 @@
             <div>
               <strong>{{ request.applicantName }}</strong>
               <span>CPF: {{ request.identityDocumentHint || 'não informado' }}</span>
-              <small>{{ request.categoryNames.length ? request.categoryNames.join(', ') : 'Sem modalidade escolhida' }}</small>
+              <small
+                >{{ request.categoryNames.length ? request.categoryNames.join(', ') : 'Sem modalidade escolhida'
+                }}</small
+              >
             </div>
             <div class="join-actions">
-              <button mat-button type="button" [disabled]="busy()" (click)="reviewJoinRequest(request.id, request.applicantName, false)">
+              <button
+                mat-button
+                type="button"
+                [disabled]="busy()"
+                (click)="reviewJoinRequest(request.id, request.applicantName, false)">
                 Recusar
               </button>
-              <button mat-flat-button type="button" [disabled]="busy()" (click)="reviewJoinRequest(request.id, request.applicantName, true)">
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="busy()"
+                (click)="reviewJoinRequest(request.id, request.applicantName, true)">
                 Aprovar
               </button>
             </div>
@@ -169,7 +180,8 @@
             <mat-select [value]="lineupForm.controls.matchId.value" (valueChange)="selectMatch($event)">
               @for (match of currentWorkspace.matches; track match.id) {
               <mat-option [value]="match.id">
-                {{ matchupLabel(match) }} - {{ match.startDate | date: 'dd/MM, HH:mm' }} - {{ matchStateLabel(match.state) }}
+                {{ matchupLabel(match) }} - {{ match.startDate | date: 'dd/MM, HH:mm' }} - {{
+                matchStateLabel(match.state) }}
               </mat-option>
               }
             </mat-select>
@@ -185,21 +197,18 @@
             <div class="matchup-identity">
               <span class="matchup-logos" aria-hidden="true">
                 @if (match.homeTeam?.logoUrl; as homeLogo) { <img [src]="homeLogo" alt="" width="28" height="28" /> }
-                @else { <mat-icon>shield</mat-icon> }
-                @if (match.awayTeam?.logoUrl; as awayLogo) { <img [src]="awayLogo" alt="" width="28" height="28" /> }
-                @else { <mat-icon>shield</mat-icon> }
+                @else { <mat-icon>shield</mat-icon> } @if (match.awayTeam?.logoUrl; as awayLogo) {
+                <img [src]="awayLogo" alt="" width="28" height="28" /> } @else { <mat-icon>shield</mat-icon> }
               </span>
               <strong>{{ matchupLabel(match) }}</strong>
             </div>
           </div>
-          }
-          @if (lineupReadOnly()) {
+          } @if (lineupReadOnly()) {
           <div class="read-only-note" role="status">
             <mat-icon>lock</mat-icon>
             <span>Esta partida não aceita mais alterações de escalação.</span>
           </div>
-          }
-          @if (!lineupForm.controls.matchId.value || !lineupForm.controls.registrationId.value) {
+          } @if (!lineupForm.controls.matchId.value || !lineupForm.controls.registrationId.value) {
           <div class="empty-list">
             <mat-icon>event</mat-icon>
             <span>Nenhuma partida desta equipe está disponível.</span>
@@ -241,12 +250,12 @@
                 <mat-form-field subscriptSizing="dynamic">
                   <mat-label>Camisa</mat-label>
                   <input
-                  #shirtNumberInput
-                  matInput
-                  type="text"
-                  maxlength="12"
-                  inputmode="text"
-                  pattern="[\p{L}\p{N}._-]{1,12}"
+                    #shirtNumberInput
+                    matInput
+                    type="text"
+                    maxlength="12"
+                    inputmode="text"
+                    pattern="[\p{L}\p{N}._-]{1,12}"
                     [disabled]="!member.selected || lineupReadOnly()"
                     [value]="member.shirtNumber ?? ''"
                     (change)="setShirtNumber(member, shirtNumberInput.value)" />

@@ -16,9 +16,7 @@ export interface GenerateSportsRoundRobinInput {
   readonly doubleRoundRobin?: boolean;
 }
 
-export function generateSportsRoundRobin(
-  input: GenerateSportsRoundRobinInput,
-): readonly SportsRoundRobinRoundPlan[] {
+export function generateSportsRoundRobin(input: GenerateSportsRoundRobinInput): readonly SportsRoundRobinRoundPlan[] {
   validateRegistrationIds(input.registrationIds);
   if (input.registrationIds.length < 2) {
     throw new Error('A round-robin stage requires at least two registrations.');

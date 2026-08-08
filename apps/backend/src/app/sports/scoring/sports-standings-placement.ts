@@ -4,7 +4,7 @@ import {
   SportsMatchState,
   SportsReviewStatus,
   SportsScoreEntrySource,
-  SportsScoringMode
+  SportsScoringMode,
 } from '@prisma/client';
 
 import { SportsStandingsSupport } from './sports-standings-support';
@@ -37,10 +37,7 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
     const placementPoints = this.readRecord(bracketRules['placementPoints']);
     const firstPoints = this.readOptionalInteger(placementPoints['1']);
     const secondPoints = this.readOptionalInteger(placementPoints['2']);
-    const effectiveRanking =
-      rankedRegistrationIds.length > 0
-        ? rankedRegistrationIds
-        : [winnerId, loserId];
+    const effectiveRanking = rankedRegistrationIds.length > 0 ? rankedRegistrationIds : [winnerId, loserId];
     const placements = effectiveRanking.map((registrationId, index) => {
       const placement = index + 1;
       return {
@@ -102,9 +99,7 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
         },
       });
     }
-    if (
-      match.category.tournament.scoringMode === SportsScoringMode.PER_SPORT
-    ) {
+    if (match.category.tournament.scoringMode === SportsScoringMode.PER_SPORT) {
       return;
     }
     const registrations = await tx.sportsRegistration.findMany({
@@ -115,9 +110,7 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
       },
       select: { id: true, teamId: true },
     });
-    const teamByRegistration = new Map(
-      registrations.map((registration) => [registration.id, registration.teamId]),
-    );
+    const teamByRegistration = new Map(registrations.map((registration) => [registration.id, registration.teamId]));
     await tx.sportsTournamentScoreEntry.updateMany({
       where: {
         tournamentId: match.category.tournamentId,
@@ -200,25 +193,14 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
       stage.matches.every(
         (match) =>
           match.reviewStatus === SportsReviewStatus.APPROVED &&
-          (
-            [
-              SportsMatchState.FINISHED,
-              SportsMatchState.DRAW,
-            ] as SportsMatchState[]
-          ).includes(match.canonicalState),
+          ([SportsMatchState.FINISHED, SportsMatchState.DRAW] as SportsMatchState[]).includes(match.canonicalState),
       );
     if (!complete || stage.standings.length < 2) {
       return;
     }
     if (source.category.format === SportsFormat.SWISS) {
-      const maximumRounds = this.readPositiveInteger(
-        this.readRecord(stage.settings)['maximumRounds'],
-        1,
-      );
-      const completedRounds = stage.matches.reduce(
-        (highest, match) => Math.max(highest, match.roundNumber ?? 0),
-        0,
-      );
+      const maximumRounds = this.readPositiveInteger(this.readRecord(stage.settings)['maximumRounds'], 1);
+      const completedRounds = stage.matches.reduce((highest, match) => Math.max(highest, match.roundNumber ?? 0), 0);
       if (completedRounds < maximumRounds) {
         return;
       }
@@ -242,9 +224,4 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
       stage.standings.map((standing) => standing.registrationId),
     );
   }
-
 }
-
-
-
-

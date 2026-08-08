@@ -6,17 +6,10 @@ describe('SportsDuplicationService', () => {
 
   it('checks the destination MajorEvent freeze before cloning a tournament', async () => {
     const frozen = {
-      assertMajorEventMutable: jest
-        .fn()
-        .mockRejectedValue(new ForbiddenException()),
+      assertMajorEventMutable: jest.fn().mockRejectedValue(new ForbiddenException()),
     };
     const prisma = { $transaction: jest.fn() };
-    const service = new SportsDuplicationService(
-      prisma as never,
-      {} as never,
-      {} as never,
-      frozen as never,
-    );
+    const service = new SportsDuplicationService(prisma as never, {} as never, {} as never, frozen as never);
 
     await expect(
       service.cloneTournament(
@@ -28,11 +21,7 @@ describe('SportsDuplicationService', () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(frozen.assertMajorEventMutable).toHaveBeenCalledWith(
-      'major-2',
-      actor,
-      'edit',
-    );
+    expect(frozen.assertMajorEventMutable).toHaveBeenCalledWith('major-2', actor, 'edit');
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
@@ -40,24 +29,15 @@ describe('SportsDuplicationService', () => {
     'resolves and checks the destination tournament before cloning a %s',
     async (kind) => {
       const frozen = {
-        assertMajorEventMutable: jest
-          .fn()
-          .mockRejectedValue(new ForbiddenException()),
+        assertMajorEventMutable: jest.fn().mockRejectedValue(new ForbiddenException()),
       };
       const prisma = {
         sportsTournament: {
-          findFirst: jest
-            .fn()
-            .mockResolvedValue({ majorEventId: 'major-2' }),
+          findFirst: jest.fn().mockResolvedValue({ majorEventId: 'major-2' }),
         },
         $transaction: jest.fn(),
       };
-      const service = new SportsDuplicationService(
-        prisma as never,
-        {} as never,
-        {} as never,
-        frozen as never,
-      );
+      const service = new SportsDuplicationService(prisma as never, {} as never, {} as never, frozen as never);
 
       const operation =
         kind === 'category'
@@ -77,11 +57,7 @@ describe('SportsDuplicationService', () => {
             );
 
       await expect(operation).rejects.toBeInstanceOf(ForbiddenException);
-      expect(frozen.assertMajorEventMutable).toHaveBeenCalledWith(
-        'major-2',
-        actor,
-        'edit',
-      );
+      expect(frozen.assertMajorEventMutable).toHaveBeenCalledWith('major-2', actor, 'edit');
       expect(prisma.$transaction).not.toHaveBeenCalled();
     },
   );

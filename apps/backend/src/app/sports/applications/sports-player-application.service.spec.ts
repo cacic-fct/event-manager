@@ -36,18 +36,12 @@ describe('SportsPlayerApplicationService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     tx = createTx();
-    prisma.$transaction.mockImplementation(
-      (callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx),
-    );
+    prisma.$transaction.mockImplementation((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx));
     payments.ensureParticipant.mockResolvedValue({
       id: 'participant-1',
       status: SportsParticipantStatus.WAITING_PAYMENT,
     });
-    service = new SportsPlayerApplicationService(
-      prisma as never,
-      payments as never,
-      auditLog as never,
-    );
+    service = new SportsPlayerApplicationService(prisma as never, payments as never, auditLog as never);
   });
 
   it('requires the lineup notice before storing a self-application', async () => {
@@ -129,12 +123,7 @@ describe('SportsPlayerApplicationService', () => {
       ...application,
       status: SportsApplicationStatus.APPROVED,
     });
-    await service.reviewByRepresentative(
-      'application-1',
-      'team-1',
-      true,
-      actor,
-    );
+    await service.reviewByRepresentative('application-1', 'team-1', true, actor);
 
     expect(payments.ensureParticipant).toHaveBeenCalledWith(tx, {
       tournamentId: 'tournament-1',
@@ -174,9 +163,7 @@ describe('SportsPlayerApplicationService', () => {
   it('makes unpaid or already-paid participation effective immediately after approval', async () => {
     const application = createReviewApplication(['category-1']);
     tx.sportsPlayerApplication.findUnique.mockResolvedValue(application);
-    tx.sportsRegistration.findMany.mockResolvedValue([
-      { id: 'registration-1', categoryId: 'category-1' },
-    ]);
+    tx.sportsRegistration.findMany.mockResolvedValue([{ id: 'registration-1', categoryId: 'category-1' }]);
     payments.ensureParticipant.mockResolvedValue({
       id: 'participant-1',
       status: SportsParticipantStatus.ACTIVE,
@@ -187,12 +174,7 @@ describe('SportsPlayerApplicationService', () => {
       ...application,
       status: SportsApplicationStatus.APPROVED,
     });
-    await service.reviewByRepresentative(
-      'application-1',
-      'team-1',
-      true,
-      actor,
-    );
+    await service.reviewByRepresentative('application-1', 'team-1', true, actor);
 
     expect(tx.sportsRegistrationMember.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -213,9 +195,7 @@ describe('SportsPlayerApplicationService', () => {
   it('blocks approval into a second team when the tournament disallows it', async () => {
     const application = createReviewApplication(['category-1']);
     tx.sportsPlayerApplication.findUnique.mockResolvedValue(application);
-    tx.sportsRegistration.findMany.mockResolvedValue([
-      { id: 'registration-1', categoryId: 'category-1' },
-    ]);
+    tx.sportsRegistration.findMany.mockResolvedValue([{ id: 'registration-1', categoryId: 'category-1' }]);
     tx.sportsTeamMember.findFirst.mockResolvedValueOnce({ id: 'other-membership' });
 
     await service.review('application-1', 'APPROVE', actor);
@@ -224,14 +204,9 @@ describe('SportsPlayerApplicationService', () => {
       status: SportsApplicationStatus.APPROVED,
     });
 
-    await expect(
-      service.reviewByRepresentative(
-        'application-1',
-        'team-1',
-        true,
-        actor,
-      ),
-    ).rejects.toThrow(ConflictException);
+    await expect(service.reviewByRepresentative('application-1', 'team-1', true, actor)).rejects.toThrow(
+      ConflictException,
+    );
 
     expect(payments.ensureParticipant).not.toHaveBeenCalled();
     expect(tx.sportsRegistrationMember.create).not.toHaveBeenCalled();

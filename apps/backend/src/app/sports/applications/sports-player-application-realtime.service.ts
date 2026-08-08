@@ -15,9 +15,7 @@ export type SportsApplicationRealtimeReason =
 
 @Injectable()
 export class SportsPlayerApplicationRealtimeService {
-  private readonly logger = new Logger(
-    SportsPlayerApplicationRealtimeService.name,
-  );
+  private readonly logger = new Logger(SportsPlayerApplicationRealtimeService.name);
 
   constructor(
     private readonly prisma: PrismaService,
@@ -30,10 +28,7 @@ export class SportsPlayerApplicationRealtimeService {
     return this.replay.scope('sports-applications-person', personId);
   }
 
-  async publishApplicationChanged(
-    applicationId: string,
-    reason: SportsApplicationRealtimeReason,
-  ): Promise<void> {
+  async publishApplicationChanged(applicationId: string, reason: SportsApplicationRealtimeReason): Promise<void> {
     try {
       await this.publishApplicationChangedUnsafe(applicationId, reason);
     } catch (error: unknown) {
@@ -48,18 +43,17 @@ export class SportsPlayerApplicationRealtimeService {
     applicationId: string,
     reason: SportsApplicationRealtimeReason,
   ): Promise<void> {
-    const application =
-      await this.prisma.sportsPlayerApplication.findUnique({
-        where: { id: applicationId },
-        select: {
-          id: true,
-          tournamentId: true,
-          applicantPersonId: true,
-          status: true,
-          paymentTier: true,
-          updatedAt: true,
-        },
-      });
+    const application = await this.prisma.sportsPlayerApplication.findUnique({
+      where: { id: applicationId },
+      select: {
+        id: true,
+        tournamentId: true,
+        applicantPersonId: true,
+        status: true,
+        paymentTier: true,
+        updatedAt: true,
+      },
+    });
     if (!application) {
       return;
     }
@@ -74,10 +68,7 @@ export class SportsPlayerApplicationRealtimeService {
     });
   }
 
-  async publishPaymentChanged(
-    subscriptionId: string,
-    reason: SportsApplicationRealtimeReason,
-  ): Promise<void> {
+  async publishPaymentChanged(subscriptionId: string, reason: SportsApplicationRealtimeReason): Promise<void> {
     try {
       await this.publishPaymentChangedUnsafe(subscriptionId, reason);
     } catch (error: unknown) {
@@ -92,59 +83,54 @@ export class SportsPlayerApplicationRealtimeService {
     subscriptionId: string,
     reason: SportsApplicationRealtimeReason,
   ): Promise<void> {
-    const subscription =
-      await this.prisma.majorEventSubscription.findUnique({
-        where: { id: subscriptionId },
-        select: {
-          subscriptionStatus: true,
-          sportsTournamentParticipants: {
-            select: {
-              tournamentId: true,
-              personId: true,
-              status: true,
-              paymentStatus: true,
-            },
+    const subscription = await this.prisma.majorEventSubscription.findUnique({
+      where: { id: subscriptionId },
+      select: {
+        subscriptionStatus: true,
+        sportsTournamentParticipants: {
+          select: {
+            tournamentId: true,
+            personId: true,
+            status: true,
+            paymentStatus: true,
           },
         },
-      });
+      },
+    });
     const participants = subscription?.sportsTournamentParticipants ?? [];
     if (!subscription || participants.length === 0) {
       return;
     }
-    await Promise.all(participants.map(async (participant) => {
-      const applications = await this.prisma.sportsPlayerApplication.findMany({
-        where: {
-          tournamentId: participant.tournamentId,
-          applicantPersonId: participant.personId,
-          deletedAt: null,
-        },
-        select: {
-          id: true,
-          status: true,
-        },
+    await Promise.all(
+      participants.map(async (participant) => {
+        const applications = await this.prisma.sportsPlayerApplication.findMany({
+          where: {
+            tournamentId: participant.tournamentId,
+            applicantPersonId: participant.personId,
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            status: true,
+          },
         });
-      const payload: SportsParticipantPaymentChangedPayload = {
-        type: 'SPORTS_PARTICIPANT_PAYMENT_CHANGED',
-        reason,
-        tournamentId: participant.tournamentId,
-        subscriptionId,
-        subscriptionStatus: subscription.subscriptionStatus,
-        participantStatus: participant.status,
-        paymentStatus: participant.paymentStatus,
-        applications,
-        occurredAt: new Date().toISOString(),
-      };
-      await Promise.all([
-        this.realtime.publish(this.scope(participant.personId), payload),
-        this.realtime.publish(
-          this.realtime.scope(
-            'admin-tournament',
-            participant.tournamentId,
-          ),
-          payload,
-        ),
-        this.defaultRedirect.invalidatePeople([participant.personId]),
-      ]);
-    }));
+        const payload: SportsParticipantPaymentChangedPayload = {
+          type: 'SPORTS_PARTICIPANT_PAYMENT_CHANGED',
+          reason,
+          tournamentId: participant.tournamentId,
+          subscriptionId,
+          subscriptionStatus: subscription.subscriptionStatus,
+          participantStatus: participant.status,
+          paymentStatus: participant.paymentStatus,
+          applications,
+          occurredAt: new Date().toISOString(),
+        };
+        await Promise.all([
+          this.realtime.publish(this.scope(participant.personId), payload),
+          this.realtime.publish(this.realtime.scope('admin-tournament', participant.tournamentId), payload),
+          this.defaultRedirect.invalidatePeople([participant.personId]),
+        ]);
+      }),
+    );
   }
 }

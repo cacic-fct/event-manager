@@ -410,7 +410,7 @@
           <mat-label>Palavra para rodada/turno</mat-label>
           <mat-select formControlName="periodWord">
             @for (periodWord of overlayPeriodWords; track periodWord) {
-              <mat-option [value]="periodWord">{{ periodWord }}</mat-option>
+            <mat-option [value]="periodWord">{{ periodWord }}</mat-option>
             }
           </mat-select>
           <mat-hint>Escolha uma palavra permitida para o período</mat-hint>

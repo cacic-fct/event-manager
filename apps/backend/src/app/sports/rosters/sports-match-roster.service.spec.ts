@@ -61,9 +61,7 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     persistedAction = null;
     persistedCheckedInAt = null;
     matchState = 'SCHEDULED';
-    prisma.$transaction.mockImplementation(
-      async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx),
-    );
+    prisma.$transaction.mockImplementation(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx));
     prisma.sportsMatch.findFirst.mockResolvedValue(null);
     tx.sportsMatchAction.findUnique.mockImplementation(async () => persistedAction);
     tx.sportsMatchAction.create.mockImplementation(async ({ data }) => {
@@ -189,9 +187,7 @@ describe('SportsMatchRosterService check-in idempotency', () => {
   it('undoes an accidental presence once and safely replays the removal', async () => {
     const service = createService();
     persistedCheckedInAt = checkedInAt;
-    tx.eventAttendance.findUnique
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(null);
+    tx.eventAttendance.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
     const args = [
       'match-1',
       'roster-entry-1',

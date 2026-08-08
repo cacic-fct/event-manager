@@ -109,9 +109,7 @@ export class SportsPublicReadResolver {
   @Query(() => PublicSportsMatch, { name: 'publicSportsMatchDetail' })
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents)
-  publicSportsMatchDetail(
-    @Args('matchId', { type: () => String }) matchId: string,
-  ): Promise<PublicSportsMatch> {
+  publicSportsMatchDetail(@Args('matchId', { type: () => String }) matchId: string): Promise<PublicSportsMatch> {
     return this.sportsRead.publicMatch(matchId);
   }
 }
@@ -143,10 +141,7 @@ export class SportsCurrentUserReadResolver {
     @Context() context: GraphqlContext,
     @Args('teamId', { type: () => String }) teamId: string,
   ): Promise<RepresentativeSportsTeamWorkspace> {
-    const { actor } = await this.access.requireTeamRepresentative(
-      context,
-      teamId,
-    );
+    const { actor } = await this.access.requireTeamRepresentative(context, teamId);
     return this.sportsRead.representativeTeamWorkspace(teamId, actor.id);
   }
 
@@ -165,8 +160,7 @@ export class SportsCurrentUserReadResolver {
 
   @Query(() => CurrentUserSportsLineupRead, {
     name: 'currentUserSportsLineup',
-    description:
-      'Participant-scoped eligible members and current per-match lineup snapshot.',
+    description: 'Participant-scoped eligible members and current per-match lineup snapshot.',
   })
   async currentUserSportsLineup(
     @Context() context: GraphqlContext,

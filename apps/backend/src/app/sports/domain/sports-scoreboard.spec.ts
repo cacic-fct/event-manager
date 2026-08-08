@@ -55,9 +55,7 @@ describe('sports scoreboard', () => {
     const scoreboard = normalizeSportsScoreboard({ home: 3, away: 1 });
 
     expect(applySportsScoreDelta(scoreboard, { side: 'HOME', amount: -1 }).home).toBe(2);
-    expect(() => applySportsScoreDelta(scoreboard, { side: 'AWAY', amount: -2 })).toThrow(
-      'cannot be negative',
-    );
+    expect(() => applySportsScoreDelta(scoreboard, { side: 'AWAY', amount: -2 })).toThrow('cannot be negative');
   });
 
   it('rolls and closes periods while enforcing the configured maximum', () => {
@@ -75,9 +73,9 @@ describe('sports scoreboard', () => {
       { number: 2, label: 'Tempo 2', home: 0, away: 0, closed: false },
     ]);
     expect(closeActiveSportsScorePeriod(second).activePeriodNumber).toBeNull();
-    expect(() =>
-      rollSportsScorePeriod(second, { label: 'Tempo', maximumPeriods: 2 }),
-    ).toThrow('O máximo configurado de 2 períodos foi atingido.');
+    expect(() => rollSportsScorePeriod(second, { label: 'Tempo', maximumPeriods: 2 })).toThrow(
+      'O máximo configurado de 2 períodos foi atingido.',
+    );
   });
 
   it('rejects drifted scoreboards with ambiguous open periods', () => {
@@ -102,8 +100,8 @@ describe('sports scoreboard', () => {
       periods: [{ number: 1, label: 'Set 1', home: 1, away: 0, closed: true }],
     });
 
-    expect(() =>
-      applySportsScoreDelta(scoreboard, { side: 'HOME', amount: 1, periodNumber: 1 }),
-    ).toThrow('Períodos encerrados não podem receber alterações de placar.');
+    expect(() => applySportsScoreDelta(scoreboard, { side: 'HOME', amount: 1, periodNumber: 1 })).toThrow(
+      'Períodos encerrados não podem receber alterações de placar.',
+    );
   });
 });

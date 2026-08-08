@@ -1,14 +1,5 @@
-import {
-  BadRequestException,
-  ConflictException
-} from '@nestjs/common';
-import {
-  Prisma,
-  SportsLossReason,
-  SportsMatchActionType,
-  SportsMatchState,
-  SportsReviewStatus
-} from '@prisma/client';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { Prisma, SportsLossReason, SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import {
@@ -17,10 +8,7 @@ import {
   normalizeSportsScoreRules,
 } from '../domain/sports-score-rules';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
-import {
-  projectSportsMatch,
-  SportsProjectedOutcome,
-} from './sports-match-projector';
+import { projectSportsMatch, SportsProjectedOutcome } from './sports-match-projector';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
 
@@ -71,49 +59,31 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
     type: SportsMatchActionType,
     payloadValue: Prisma.InputJsonValue | Prisma.JsonValue,
     current: SportsProjectedOutcome,
-    match: Pick<
-      MatchProjectionContext,
-      'homeRegistrationId' | 'awayRegistrationId' | 'category'
-    >,
+    match: Pick<MatchProjectionContext, 'homeRegistrationId' | 'awayRegistrationId' | 'category'>,
     actorKind: SportsMatchActorKind,
   ): void {
     const payload = this.requireRecord(payloadValue);
-    const activeStates: SportsMatchState[] = [
-      SportsMatchState.LIVE,
-      SportsMatchState.PAUSED,
-    ];
+    const activeStates: SportsMatchState[] = [SportsMatchState.LIVE, SportsMatchState.PAUSED];
     if (
-      (
-        [
-          SportsMatchActionType.SCORE_DELTA,
-          SportsMatchActionType.PERIOD_ROLL,
-        ] as SportsMatchActionType[]
-      ).includes(type) &&
+      ([SportsMatchActionType.SCORE_DELTA, SportsMatchActionType.PERIOD_ROLL] as SportsMatchActionType[]).includes(
+        type,
+      ) &&
       !activeStates.includes(current.state)
     ) {
       throw new ConflictException('A partida precisa estar ao vivo para registrar placar.');
     }
     if (type === SportsMatchActionType.OCCURRENCE) {
-      const kind =
-        typeof payload['kind'] === 'string' ? payload['kind'].trim() : '';
-      const occurrenceId =
-        typeof payload['occurrenceId'] === 'string'
-          ? payload['occurrenceId'].trim()
-          : '';
-      const note =
-        typeof payload['note'] === 'string' ? payload['note'].trim() : '';
+      const kind = typeof payload['kind'] === 'string' ? payload['kind'].trim() : '';
+      const occurrenceId = typeof payload['occurrenceId'] === 'string' ? payload['occurrenceId'].trim() : '';
+      const note = typeof payload['note'] === 'string' ? payload['note'].trim() : '';
       if (!occurrenceId || occurrenceId.length > 100) {
-        throw new BadRequestException(
-          'Informe um identificador válido para a ocorrência.',
-        );
+        throw new BadRequestException('Informe um identificador válido para a ocorrência.');
       }
       if (!kind || kind.length > 80) {
         throw new BadRequestException('Informe o tipo da ocorrência.');
       }
       if (note.length > 1000) {
-        throw new BadRequestException(
-          'A observação da ocorrência deve ter no máximo 1000 caracteres.',
-        );
+        throw new BadRequestException('A observação da ocorrência deve ter no máximo 1000 caracteres.');
       }
     }
     if (type === SportsMatchActionType.TIMER_RECONCILE) {
@@ -126,12 +96,14 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
       // Reuse the projector's strict safe-integer and shape validation without
       // changing the persisted match during command validation.
       projectSportsMatch(
-        [{
-          type,
-          payload,
-          authoredAt: new Date(),
-          reviewStatus: SportsReviewStatus.PENDING,
-        }],
+        [
+          {
+            type,
+            payload,
+            authoredAt: new Date(),
+            reviewStatus: SportsReviewStatus.PENDING,
+          },
+        ],
         {
           approvedOnly: false,
           hasCheckedInPlayers: false,
@@ -142,10 +114,7 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
         },
       );
     }
-    if (
-      type === SportsMatchActionType.PERIOD_ROLL &&
-      !match.category.periodsEnabled
-    ) {
+    if (type === SportsMatchActionType.PERIOD_ROLL && !match.category.periodsEnabled) {
       throw new ConflictException('Esta modalidade não utiliza períodos ou sets.');
     }
     if (
@@ -153,28 +122,16 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
       actorKind !== 'ADMIN' &&
       !activeStates.includes(current.state)
     ) {
-      throw new ConflictException(
-        'A partida precisa estar ao vivo para corrigir o placar.',
-      );
+      throw new ConflictException('A partida precisa estar ao vivo para corrigir o placar.');
     }
     if (
       type === SportsMatchActionType.START &&
-      !(
-        [
-          SportsMatchState.SCHEDULED,
-          SportsMatchState.CHECK_IN,
-        ] as SportsMatchState[]
-      ).includes(current.state)
+      !([SportsMatchState.SCHEDULED, SportsMatchState.CHECK_IN] as SportsMatchState[]).includes(current.state)
     ) {
       throw new ConflictException('A partida não pode ser iniciada neste estado.');
     }
-    if (
-      type === SportsMatchActionType.START &&
-      (!match.homeRegistrationId || !match.awayRegistrationId)
-    ) {
-      throw new ConflictException(
-        'Defina as duas equipes antes de iniciar a partida.',
-      );
+    if (type === SportsMatchActionType.START && (!match.homeRegistrationId || !match.awayRegistrationId)) {
+      throw new ConflictException('Defina as duas equipes antes de iniciar a partida.');
     }
     if (type === SportsMatchActionType.PAUSE && current.state !== SportsMatchState.LIVE) {
       throw new ConflictException('Somente uma partida ao vivo pode ser pausada.');
@@ -182,14 +139,7 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
     if (type === SportsMatchActionType.RESUME && current.state !== SportsMatchState.PAUSED) {
       throw new ConflictException('Somente uma partida pausada pode ser retomada.');
     }
-    if (
-      (
-        [
-          SportsMatchActionType.FINALIZE,
-          SportsMatchActionType.FORFEIT,
-        ] as SportsMatchActionType[]
-      ).includes(type)
-    ) {
+    if (([SportsMatchActionType.FINALIZE, SportsMatchActionType.FORFEIT] as SportsMatchActionType[]).includes(type)) {
       if (
         !(
           [
@@ -200,9 +150,7 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
           ] as SportsMatchState[]
         ).includes(current.state)
       ) {
-        throw new ConflictException(
-          'A partida não pode ser finalizada neste estado.',
-        );
+        throw new ConflictException('A partida não pode ser finalizada neste estado.');
       }
       this.validateOutcome(payload, current, match);
     }
@@ -222,56 +170,33 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
     if (
       actorKind === 'LINEUP_MANAGER' &&
       type === SportsMatchActionType.FORFEIT &&
-      !(
-        [
-          SportsMatchState.SCHEDULED,
-          SportsMatchState.CHECK_IN,
-        ] as SportsMatchState[]
-      ).includes(current.state)
+      !([SportsMatchState.SCHEDULED, SportsMatchState.CHECK_IN] as SportsMatchState[]).includes(current.state)
     ) {
-      throw new ConflictException(
-        'Capitães e técnicos só podem desistir antes do início da partida.',
-      );
+      throw new ConflictException('Capitães e técnicos só podem desistir antes do início da partida.');
     }
     if (type === SportsMatchActionType.SCORE_DELTA) {
       if (payload['side'] !== 'HOME' && payload['side'] !== 'AWAY') {
         throw new BadRequestException('Selecione o lado do placar.');
       }
-      if (
-        typeof payload['amount'] !== 'number' ||
-        !Number.isFinite(payload['amount']) ||
-        payload['amount'] === 0
-      ) {
+      if (typeof payload['amount'] !== 'number' || !Number.isFinite(payload['amount']) || payload['amount'] === 0) {
         throw new BadRequestException('A alteração de placar deve ser um número diferente de zero.');
       }
       try {
-        assertSportsScoreDeltaMatchesRules(
-          payload['amount'],
-          normalizeSportsScoreRules(match.category.scoreRules),
-        );
+        assertSportsScoreDeltaMatchesRules(payload['amount'], normalizeSportsScoreRules(match.category.scoreRules));
       } catch (error) {
-        throw new BadRequestException(
-          error instanceof Error ? error.message : 'Alteração de placar inválida.',
-        );
+        throw new BadRequestException(error instanceof Error ? error.message : 'Alteração de placar inválida.');
       }
     }
     if (type === SportsMatchActionType.SCORE_CORRECTION) {
       try {
         normalizeSportsScoreboard(payload['scoreboard']);
       } catch (error) {
-        throw new BadRequestException(
-          error instanceof Error ? error.message : 'Correção de placar inválida.',
-        );
+        throw new BadRequestException(error instanceof Error ? error.message : 'Correção de placar inválida.');
       }
     }
     if (
       actorKind !== 'ADMIN' &&
-      (
-        [
-          SportsMatchActionType.RESET,
-          SportsMatchActionType.RESCHEDULE,
-        ] as SportsMatchActionType[]
-      ).includes(type)
+      ([SportsMatchActionType.RESET, SportsMatchActionType.RESCHEDULE] as SportsMatchActionType[]).includes(type)
     ) {
       throw new BadRequestException('Somente administradores podem redefinir ou reagendar a partida.');
     }
@@ -283,15 +208,10 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
   protected validateOutcome(
     payload: Record<string, unknown>,
     current: SportsProjectedOutcome,
-    match: Pick<
-      MatchProjectionContext,
-      'homeRegistrationId' | 'awayRegistrationId' | 'category'
-    >,
+    match: Pick<MatchProjectionContext, 'homeRegistrationId' | 'awayRegistrationId' | 'category'>,
   ): void {
     const scoreboard =
-      payload['scoreboard'] === undefined
-        ? current.scoreboard
-        : normalizeSportsScoreboard(payload['scoreboard']);
+      payload['scoreboard'] === undefined ? current.scoreboard : normalizeSportsScoreboard(payload['scoreboard']);
     if (payload['draw'] === true) {
       if (payload['winnerRegistrationId'] || payload['loserRegistrationId']) {
         throw new BadRequestException('Um empate não pode possuir vencedor ou perdedor.');
@@ -306,33 +226,21 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
           rules: normalizeSportsScoreRules(match.category.scoreRules),
         });
       } catch (error) {
-        throw new BadRequestException(
-          error instanceof Error ? error.message : 'Resultado inválido.',
-        );
+        throw new BadRequestException(error instanceof Error ? error.message : 'Resultado inválido.');
       }
       return;
     }
     const winner = this.readString(payload['winnerRegistrationId']);
     const loser = this.readString(payload['loserRegistrationId']);
     const participants = new Set(
-      [match.homeRegistrationId, match.awayRegistrationId].filter(
-        (id): id is string => Boolean(id),
-      ),
+      [match.homeRegistrationId, match.awayRegistrationId].filter((id): id is string => Boolean(id)),
     );
-    if (
-      !winner ||
-      !loser ||
-      winner === loser ||
-      !participants.has(winner) ||
-      !participants.has(loser)
-    ) {
+    if (!winner || !loser || winner === loser || !participants.has(winner) || !participants.has(loser)) {
       throw new BadRequestException('Revise as equipes vencedora e perdedora.');
     }
     if (
       typeof payload['lossReason'] !== 'string' ||
-      !Object.values(SportsLossReason).includes(
-        payload['lossReason'] as SportsLossReason,
-      )
+      !Object.values(SportsLossReason).includes(payload['lossReason'] as SportsLossReason)
     ) {
       throw new BadRequestException('Informe o motivo da derrota.');
     }
@@ -341,20 +249,12 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
         draw: false,
         drawWillReschedule: false,
         scoreboard,
-        winnerSide:
-          winner === match.homeRegistrationId ? 'HOME' : 'AWAY',
+        winnerSide: winner === match.homeRegistrationId ? 'HOME' : 'AWAY',
         lossReason: payload['lossReason'] as SportsLossReason,
         rules: normalizeSportsScoreRules(match.category.scoreRules),
       });
     } catch (error) {
-      throw new BadRequestException(
-        error instanceof Error ? error.message : 'Resultado inválido.',
-      );
+      throw new BadRequestException(error instanceof Error ? error.message : 'Resultado inválido.');
     }
   }
-
 }
-
-
-
-

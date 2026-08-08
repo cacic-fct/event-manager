@@ -1,10 +1,5 @@
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
-import {
-  
   Prisma,
   SportsCategoryStatus,
   SportsEligibilityStatus,
@@ -80,10 +75,7 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
     changes: SportsCategoryRoleDeltaInput[],
     actorId: string,
   ): Promise<void> {
-    const changesByRegistration = new Map<
-      string,
-      SportsCategoryRoleDeltaInput[]
-    >();
+    const changesByRegistration = new Map<string, SportsCategoryRoleDeltaInput[]>();
     for (const change of changes) {
       const group = changesByRegistration.get(change.registrationId) ?? [];
       group.push(change);
@@ -92,14 +84,8 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
 
     for (const [registrationId, registrationChanges] of changesByRegistration) {
       const expectedRevision = registrationChanges[0].expectedRegistrationRevision;
-      if (
-        registrationChanges.some(
-          (change) => change.expectedRegistrationRevision !== expectedRevision,
-        )
-      ) {
-        throw new BadRequestException(
-          'As alterações de uma mesma modalidade devem usar a mesma revisão da inscrição.',
-        );
+      if (registrationChanges.some((change) => change.expectedRegistrationRevision !== expectedRevision)) {
+        throw new BadRequestException('As alterações de uma mesma modalidade devem usar a mesma revisão da inscrição.');
       }
       const registration = await tx.sportsRegistration.findFirst({
         where: {
@@ -120,43 +106,26 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
           },
         },
       });
-      if (
-        !registration ||
-        registration.category.tournamentId !== request.team.tournamentId
-      ) {
-        throw new NotFoundException(
-          `Sports registration ${registrationId} was not found for this team.`,
-        );
+      if (!registration || registration.category.tournamentId !== request.team.tournamentId) {
+        throw new NotFoundException(`Sports registration ${registrationId} was not found for this team.`);
       }
       if (
-        !(
-          [
-            SportsRegistrationStatus.APPROVED,
-            SportsRegistrationStatus.ACTIVE,
-          ] as SportsRegistrationStatus[]
-        ).includes(registration.status)
+        !([SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE] as SportsRegistrationStatus[]).includes(
+          registration.status,
+        )
       ) {
-        throw new ConflictException(
-          'A inscrição da equipe não está ativa nesta modalidade.',
-        );
+        throw new ConflictException('A inscrição da equipe não está ativa nesta modalidade.');
       }
       if (
-        (
-          [
-            SportsCategoryStatus.FINISHED,
-            SportsCategoryStatus.CANCELED,
-          ] as SportsCategoryStatus[]
-        ).includes(registration.category.status) ||
+        ([SportsCategoryStatus.FINISHED, SportsCategoryStatus.CANCELED] as SportsCategoryStatus[]).includes(
+          registration.category.status,
+        ) ||
         registration.category.finishedAt
       ) {
-        throw new ConflictException(
-          'Uma modalidade finalizada não pode ser alterada por representantes.',
-        );
+        throw new ConflictException('Uma modalidade finalizada não pode ser alterada por representantes.');
       }
 
-      const memberIds = [
-        ...new Set(registrationChanges.map((change) => change.teamMemberId)),
-      ];
+      const memberIds = [...new Set(registrationChanges.map((change) => change.teamMemberId))];
       const members = await tx.sportsTeamMember.findMany({
         where: {
           id: { in: memberIds },
@@ -175,9 +144,7 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
         },
       });
       if (members.length !== memberIds.length) {
-        throw new NotFoundException(
-          'Um ou mais integrantes não pertencem à equipe ou não estão aprovados.',
-        );
+        throw new NotFoundException('Um ou mais integrantes não pertencem à equipe ou não estão aprovados.');
       }
       const memberById = new Map(members.map((member) => [member.id, member]));
       const assignments = await tx.sportsRegistrationMember.findMany({
@@ -198,11 +165,7 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
           },
         },
       });
-      this.assertCategoryRoleChanges(
-        registrationChanges,
-        assignments,
-        registration.category,
-      );
+      this.assertCategoryRoleChanges(registrationChanges, assignments, registration.category);
 
       const registrationUpdated = await tx.sportsRegistration.updateMany({
         where: {
@@ -217,22 +180,15 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
         },
       });
       if (registrationUpdated.count !== 1) {
-        throw new ConflictException(
-          'A inscrição mudou. Recarregue os dados antes de aprovar as funções.',
-        );
+        throw new ConflictException('A inscrição mudou. Recarregue os dados antes de aprovar as funções.');
       }
 
       for (const change of registrationChanges) {
         const member = memberById.get(change.teamMemberId);
         if (!member) {
-          throw new NotFoundException(
-            `Sports team member ${change.teamMemberId} was not found.`,
-          );
+          throw new NotFoundException(`Sports team member ${change.teamMemberId} was not found.`);
         }
-        const eligibility = this.resolveCategoryRoleEligibility(
-          member.participant,
-          change.expectedEligibility ?? null,
-        );
+        const eligibility = this.resolveCategoryRoleEligibility(member.participant, change.expectedEligibility ?? null);
         if (change.registrationMemberId) {
           const changed = await tx.sportsRegistrationMember.updateMany({
             where: {
@@ -254,9 +210,7 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
             },
           });
           if (changed.count !== 1) {
-            throw new ConflictException(
-              'A função do integrante mudou. Recarregue os dados antes de aprovar.',
-            );
+            throw new ConflictException('A função do integrante mudou. Recarregue os dados antes de aprovar.');
           }
         } else {
           await tx.sportsRegistrationMember.create({
@@ -305,22 +259,16 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
             candidate.eligibility === change.expectedEligibility,
         );
         if (!assignment) {
-          throw new ConflictException(
-            'A função do integrante mudou. Recarregue os dados antes de aprovar.',
-          );
+          throw new ConflictException('A função do integrante mudou. Recarregue os dados antes de aprovar.');
         }
         assignment.role = change.role;
       } else {
         if (
           projected.some(
-            (assignment) =>
-              assignment.teamMemberId === change.teamMemberId &&
-              assignment.role === change.role,
+            (assignment) => assignment.teamMemberId === change.teamMemberId && assignment.role === change.role,
           )
         ) {
-          throw new ConflictException(
-            'Esta função já foi atribuída ao integrante.',
-          );
+          throw new ConflictException('Esta função já foi atribuída ao integrante.');
         }
         projected.push({
           id: `pending:${change.teamMemberId}:${change.role}`,
@@ -336,8 +284,7 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
     }
     const active = projected.filter(
       (assignment) =>
-        assignment.teamMember.status === SportsTeamMemberStatus.APPROVED &&
-        !assignment.teamMember.deletedAt,
+        assignment.teamMember.status === SportsTeamMemberStatus.APPROVED && !assignment.teamMember.deletedAt,
     );
     this.assertRoleCount(
       active,
@@ -359,11 +306,7 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
     limit: number | null,
     message: string,
   ): void {
-    if (
-      limit !== null &&
-      assignments.filter((assignment) => assignment.role === role).length >
-        limit
-    ) {
+    if (limit !== null && assignments.filter((assignment) => assignment.role === role).length > limit) {
       throw new ConflictException(message);
     }
   }
@@ -390,18 +333,13 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
   }): boolean {
     return (
       participant.status === SportsParticipantStatus.ACTIVE &&
-      (
-        [
-          SportsPaymentStatus.PAID,
-          SportsPaymentStatus.NOT_REQUIRED,
-        ] as SportsPaymentStatus[]
-      ).includes(participant.paymentStatus)
+      ([SportsPaymentStatus.PAID, SportsPaymentStatus.NOT_REQUIRED] as SportsPaymentStatus[]).includes(
+        participant.paymentStatus,
+      )
     );
   }
 
-  protected participantIneligibility(
-    status: SportsParticipantStatus,
-  ): SportsEligibilityStatus {
+  protected participantIneligibility(status: SportsParticipantStatus): SportsEligibilityStatus {
     return (
       [
         SportsParticipantStatus.REJECTED,
@@ -459,4 +397,3 @@ export abstract class SportsTeamChangeRoleService extends SportsTeamChangeDeltaS
     });
   }
 }
-

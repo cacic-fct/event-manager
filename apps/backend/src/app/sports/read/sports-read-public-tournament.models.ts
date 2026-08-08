@@ -1,7 +1,4 @@
-import {
-  SportsFormat,
-  SportsPreset,
-} from '@cacic-fct/shared-data-types';
+import { SportsFormat, SportsPreset } from '@cacic-fct/shared-data-types';
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import {
   PublicSportsBracket,

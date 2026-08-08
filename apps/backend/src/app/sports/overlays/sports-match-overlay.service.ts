@@ -6,11 +6,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import type { PublicSportsMatch, PublicSportsTeam } from '../read/sports-read.models';
 import { SportsReadService } from '../read/sports-read.service';
-import {
-  OVERLAY_ASSET_BASE,
-  OVERLAY_RUNTIME_SCRIPT,
-  OVERLAY_STYLESHEET,
-} from './sports-match-overlay.assets';
+import { OVERLAY_ASSET_BASE, OVERLAY_RUNTIME_SCRIPT, OVERLAY_STYLESHEET } from './sports-match-overlay.assets';
 
 export type SportsMatchOverlayTeam = 'both' | 'home' | 'away';
 
@@ -52,7 +48,6 @@ export const DEFAULT_SPORTS_MATCH_OVERLAY_CONFIG: SportsMatchOverlayConfig = {
   showState: true,
   periodWord: DEFAULT_SPORTS_OVERLAY_PERIOD_WORD,
 };
-
 
 @Injectable()
 export class SportsMatchOverlayService {
@@ -183,9 +178,8 @@ export class SportsMatchOverlayService {
   }
 
   private currentElapsed(data: SportsMatchOverlayData, now = Date.now()): number {
-    const running = data.state === 'LIVE' && data.timerStartedAtUnixMs !== null
-      ? Math.max(0, now - data.timerStartedAtUnixMs)
-      : 0;
+    const running =
+      data.state === 'LIVE' && data.timerStartedAtUnixMs !== null ? Math.max(0, now - data.timerStartedAtUnixMs) : 0;
     return data.elapsedBeforePauseMs + running;
   }
 
@@ -232,16 +226,25 @@ export class SportsMatchOverlayService {
 
   private teamInitials(name: string): string {
     const parts = name.trim().split(/\s+/).filter(Boolean);
-    return (parts.slice(0, 2).map((part) => part[0]).join('') || '?').toLocaleUpperCase('pt-BR');
+    return (
+      parts
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join('') || '?'
+    ).toLocaleUpperCase('pt-BR');
   }
 
   private escapeHtml(value: string): string {
-    return value.replace(/[&<>"']/g, (character) => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;',
-    })[character] ?? character);
+    return value.replace(
+      /[&<>"']/g,
+      (character) =>
+        ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;',
+        })[character] ?? character,
+    );
   }
 }

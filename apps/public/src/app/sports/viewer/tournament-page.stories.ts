@@ -8,10 +8,7 @@ import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular'
 import { expect, within } from 'storybook/test';
 import { SportsTournamentPage } from './tournament-page';
 import { SportsViewerRealtimeService } from './sports-viewer-realtime.service';
-import {
-  createMultiSportViewerTournament,
-  createSportsViewerTournament,
-} from './sports-viewer.fixtures';
+import { createMultiSportViewerTournament, createSportsViewerTournament } from './sports-viewer.fixtures';
 
 type LoadMode = 'ready' | 'loading' | 'error';
 
@@ -47,9 +44,7 @@ const route = {
 };
 
 function controlledTournament() {
-  const tournament = activeArgs.multiSport
-    ? createMultiSportViewerTournament()
-    : createSportsViewerTournament();
+  const tournament = activeArgs.multiSport ? createMultiSportViewerTournament() : createSportsViewerTournament();
   const [liveMatch] = tournament.matches;
   if (liveMatch) {
     liveMatch.scoreboard.homeScore = activeArgs.liveScoreHome;
@@ -96,11 +91,10 @@ const meta: Meta<TournamentStoryArgs> = {
         {
           provide: SportsViewerRealtimeService,
           useValue: {
-            watchTournament: (): Observable<never> => activeArgs.liveConnectionLost
-              ? timer(80).pipe(
-                mergeMap(() => throwError(() => new Error('SSE disconnected'))),
-              )
-              : NEVER,
+            watchTournament: (): Observable<never> =>
+              activeArgs.liveConnectionLost
+                ? timer(80).pipe(mergeMap(() => throwError(() => new Error('SSE disconnected'))))
+                : NEVER,
           },
         },
       ],
@@ -184,9 +178,7 @@ export const WithoutPublishedMatches: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText('Nenhuma próxima partida foi publicada.'),
-    ).toBeVisible();
+    await expect(await within(canvasElement).findByText('Nenhuma próxima partida foi publicada.')).toBeVisible();
   },
 };
 
@@ -206,9 +198,7 @@ export const ReconnectingLiveData: Story = {
   name: 'Atualização ao vivo interrompida',
   args: { liveConnectionLost: true },
   play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText(/Atualizações ao vivo indisponíveis/),
-    ).toBeVisible();
+    await expect(await within(canvasElement).findByText(/Atualizações ao vivo indisponíveis/)).toBeVisible();
   },
 };
 

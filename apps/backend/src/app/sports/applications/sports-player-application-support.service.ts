@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -38,10 +34,7 @@ export interface SubmitSportsPlayerApplicationInput {
   paymentTier?: string | null;
 }
 
-export type SportsPlayerApplicationReviewDecision =
-  | 'APPROVE'
-  | 'REQUEST_CHANGES'
-  | 'REJECT';
+export type SportsPlayerApplicationReviewDecision = 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT';
 
 export abstract class SportsPlayerApplicationSupportService {
   protected constructor(
@@ -103,10 +96,7 @@ export abstract class SportsPlayerApplicationSupportService {
             id: { in: categoryIds },
             deletedAt: null,
             status: {
-              in: [
-                SportsCategoryStatus.REGISTRATION_OPEN,
-                SportsCategoryStatus.ACTIVE,
-              ],
+              in: [SportsCategoryStatus.REGISTRATION_OPEN, SportsCategoryStatus.ACTIVE],
             },
             ...(requestedTeamId
               ? {
@@ -130,30 +120,20 @@ export abstract class SportsPlayerApplicationSupportService {
         },
       },
     });
-    if (
-      !tournament ||
-      tournament.majorEvent.deletedAt
-    ) {
-      throw new BadRequestException(
-        'O torneio selecionado não está disponível.',
-      );
+    if (!tournament || tournament.majorEvent.deletedAt) {
+      throw new BadRequestException('O torneio selecionado não está disponível.');
     }
     if (
       (!requestedTeamId && !tournament.selfSubscriptionAllowNoTeam) ||
       (requestedTeamId && tournament.teams.length !== 1)
     ) {
-      throw new BadRequestException(
-        'Selecione uma equipe disponível para este torneio.',
-      );
+      throw new BadRequestException('Selecione uma equipe disponível para este torneio.');
     }
     if (
-      (categoryIds.length === 0 &&
-        !tournament.selfSubscriptionAllowNoCategory) ||
+      (categoryIds.length === 0 && !tournament.selfSubscriptionAllowNoCategory) ||
       tournament.categories.length !== categoryIds.length
     ) {
-      throw new BadRequestException(
-        'Selecione ao menos uma modalidade disponível para este torneio.',
-      );
+      throw new BadRequestException('Selecione ao menos uma modalidade disponível para este torneio.');
     }
     return tournament;
   }
@@ -187,8 +167,7 @@ export abstract class SportsPlayerApplicationSupportService {
     }
     const now = new Date();
     if (
-      (target.majorEvent.subscriptionStartDate &&
-        now < target.majorEvent.subscriptionStartDate) ||
+      (target.majorEvent.subscriptionStartDate && now < target.majorEvent.subscriptionStartDate) ||
       (target.majorEvent.subscriptionEndDate && now > target.majorEvent.subscriptionEndDate) ||
       target.categories.some(
         (category) =>
@@ -231,21 +210,13 @@ export abstract class SportsPlayerApplicationSupportService {
   }
 
   protected assertReviewable(status: SportsApplicationStatus): void {
-    if (
-      !(
-        REVIEWABLE_APPLICATION_STATUSES as readonly SportsApplicationStatus[]
-      ).includes(status)
-    ) {
+    if (!(REVIEWABLE_APPLICATION_STATUSES as readonly SportsApplicationStatus[]).includes(status)) {
       throw new ConflictException('Esta solicitação já foi analisada.');
     }
   }
 
   protected normalizeCategoryIds(categoryIds: string[]): string[] {
-    return [
-      ...new Set(
-        categoryIds.map((categoryId) => categoryId.trim()).filter(Boolean),
-      ),
-    ];
+    return [...new Set(categoryIds.map((categoryId) => categoryId.trim()).filter(Boolean))];
   }
 
   protected applicationPendingKey(
@@ -338,4 +309,3 @@ export abstract class SportsPlayerApplicationSupportService {
     );
   }
 }
-

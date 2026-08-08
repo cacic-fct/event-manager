@@ -1,11 +1,5 @@
 import { ConflictException } from '@nestjs/common';
-import {
-  Prisma,
-  PublicationState,
-  SportsBracketSide,
-  SportsMatchState,
-  SportsReviewStatus,
-} from '@prisma/client';
+import { Prisma, PublicationState, SportsBracketSide, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import {
   mergeSportsStructuralInvalidations,
   SportsStructuralInvalidation,
@@ -31,13 +25,9 @@ export abstract class SportsBracketAdvancementAssignments extends SportsBracketA
     kind: SportsStructuralInvalidationKind,
   ): Promise<SportsStructuralInvalidation[]> {
     const slot =
-      side === SportsBracketSide.HOME
-        ? { homeRegistrationId: registrationId }
-        : { awayRegistrationId: registrationId };
+      side === SportsBracketSide.HOME ? { homeRegistrationId: registrationId } : { awayRegistrationId: registrationId };
     const emptySlotWhere =
-      side === SportsBracketSide.HOME
-        ? { homeRegistrationId: null }
-        : { awayRegistrationId: null };
+      side === SportsBracketSide.HOME ? { homeRegistrationId: null } : { awayRegistrationId: null };
     const updated = await tx.sportsMatch.updateMany({
       where: {
         id: matchId,
@@ -66,13 +56,9 @@ export abstract class SportsBracketAdvancementAssignments extends SportsBracketA
     });
     if (updated.count !== 1) {
       const currentRegistrationId =
-        side === SportsBracketSide.HOME
-          ? current.homeRegistrationId
-          : current.awayRegistrationId;
+        side === SportsBracketSide.HOME ? current.homeRegistrationId : current.awayRegistrationId;
       if (currentRegistrationId !== registrationId) {
-        throw new ConflictException(
-          'A vaga da chave foi alterada e exige revisão de um administrador.',
-        );
+        throw new ConflictException('A vaga da chave foi alterada e exige revisão de um administrador.');
       }
     }
     await syncSportsMatchEventName(tx, matchId, actorId);
@@ -104,19 +90,12 @@ export abstract class SportsBracketAdvancementAssignments extends SportsBracketA
       },
     });
     const currentRegistrationId =
-      side === SportsBracketSide.HOME
-        ? target.homeRegistrationId
-        : target.awayRegistrationId;
-    if (
-      !currentRegistrationId ||
-      !sourceRegistrationIds.includes(currentRegistrationId)
-    ) {
+      side === SportsBracketSide.HOME ? target.homeRegistrationId : target.awayRegistrationId;
+    if (!currentRegistrationId || !sourceRegistrationIds.includes(currentRegistrationId)) {
       return [];
     }
     if (target.canonicalState !== SportsMatchState.SCHEDULED) {
-      throw new ConflictException(
-        'A correção exige redefinir primeiro a partida seguinte já iniciada.',
-      );
+      throw new ConflictException('A correção exige redefinir primeiro a partida seguinte já iniciada.');
     }
     const cleared = await tx.sportsMatch.updateMany({
       where: {
@@ -127,17 +106,13 @@ export abstract class SportsBracketAdvancementAssignments extends SportsBracketA
           : { awayRegistrationId: currentRegistrationId }),
       },
       data: {
-        ...(side === SportsBracketSide.HOME
-          ? { homeRegistrationId: null }
-          : { awayRegistrationId: null }),
+        ...(side === SportsBracketSide.HOME ? { homeRegistrationId: null } : { awayRegistrationId: null }),
         revision: { increment: 1 },
         updatedById: actorId,
       },
     });
     if (cleared.count !== 1) {
-      throw new ConflictException(
-        'A partida seguinte mudou durante a reconciliação da chave.',
-      );
+      throw new ConflictException('A partida seguinte mudou durante a reconciliação da chave.');
     }
     await tx.sportsMatchRoster.updateMany({
       where: {
@@ -185,13 +160,9 @@ export abstract class SportsBracketAdvancementAssignments extends SportsBracketA
       return [];
     }
     const winnerRegistrationId =
-      byeSide === SportsBracketSide.HOME
-        ? match.awayRegistrationId
-        : match.homeRegistrationId;
+      byeSide === SportsBracketSide.HOME ? match.awayRegistrationId : match.homeRegistrationId;
     const byeSlotIsEmpty =
-      byeSide === SportsBracketSide.HOME
-        ? match.homeRegistrationId === null
-        : match.awayRegistrationId === null;
+      byeSide === SportsBracketSide.HOME ? match.homeRegistrationId === null : match.awayRegistrationId === null;
     if (!winnerRegistrationId || !byeSlotIsEmpty) {
       return [];
     }
@@ -220,8 +191,4 @@ export abstract class SportsBracketAdvancementAssignments extends SportsBracketA
     }
     return [];
   }
-
 }
-
-
-

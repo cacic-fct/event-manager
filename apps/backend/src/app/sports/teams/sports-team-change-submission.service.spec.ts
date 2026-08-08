@@ -1,6 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import {
-  
   SportsIdentityClaimStatus,
   SportsIdentityType,
   SportsTeamChangeRequestStatus,
@@ -11,13 +10,11 @@ import { SportsTeamChangeService } from './sports-team-change.service';
 
 describe('SportsTeamChangeService submission queue', () => {
   const identities = {
-    protect: jest.fn(
-      (type: SportsIdentityType, value: string) => ({
-        encryptedValue: `encrypted:${type}:${value}`,
-        lookupHash: `hash:${type}:${value}`,
-        displayHint: type === SportsIdentityType.EMAIL ? 'ma***@example.com' : '••••1234',
-      }),
-    ),
+    protect: jest.fn((type: SportsIdentityType, value: string) => ({
+      encryptedValue: `encrypted:${type}:${value}`,
+      lookupHash: `hash:${type}:${value}`,
+      displayHint: type === SportsIdentityType.EMAIL ? 'ma***@example.com' : '••••1234',
+    })),
     reveal: jest.fn(),
   };
   const payments = {
@@ -38,18 +35,10 @@ describe('SportsTeamChangeService submission queue', () => {
     jest.clearAllMocks();
     tx = createTransaction();
     prisma = {
-      $transaction: jest.fn(
-        (callback: (transaction: typeof tx) => Promise<unknown>) =>
-          callback(tx),
-      ),
+      $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
       sportsTeamChangeRequest: tx.sportsTeamChangeRequest,
     };
-    service = new SportsTeamChangeService(
-      prisma as never,
-      identities as never,
-      payments as never,
-      auditLog as never,
-    );
+    service = new SportsTeamChangeService(prisma as never, identities as never, payments as never, auditLog as never);
   });
   it('rejects approval when the tournament was finalized after submission', async () => {
     tx.sportsTeamChangeRequest.findUnique.mockResolvedValue(
@@ -66,9 +55,7 @@ describe('SportsTeamChangeService submission queue', () => {
       }),
     );
 
-    await expect(
-      service.review('request-1', 'APPROVE', adminActor()),
-    ).rejects.toThrow(
+    await expect(service.review('request-1', 'APPROVE', adminActor())).rejects.toThrow(
       'Solicitações de equipes não podem ser aprovadas em um torneio finalizado ou cancelado.',
     );
     expect(tx.sportsTeam.updateMany).not.toHaveBeenCalled();
@@ -224,10 +211,7 @@ describe('SportsTeamChangeService submission queue', () => {
       ],
     });
 
-    expect(identities.protect).toHaveBeenCalledWith(
-      SportsIdentityType.EMAIL,
-      'maria@example.com',
-    );
+    expect(identities.protect).toHaveBeenCalledWith(SportsIdentityType.EMAIL, 'maria@example.com');
     expect(tx.sportsIdentityClaim.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
@@ -327,12 +311,10 @@ function createTransaction() {
         delta: { categoryIds: ['category-1'] },
       }),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-      update: jest.fn().mockImplementation(
-        ({ data }: { data: Record<string, unknown> }) => ({
-          id: 'request-1',
-          ...data,
-        }),
-      ),
+      update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
+        id: 'request-1',
+        ...data,
+      })),
     },
     sportsIdentityClaim: {
       upsert: jest.fn().mockResolvedValue({ id: 'claim-1' }),
@@ -394,7 +376,6 @@ function reviewRequest(overrides: Record<string, unknown> = {}) {
   };
 }
 
-
 function adminActor() {
   return {
     sub: 'admin-1',
@@ -402,10 +383,3 @@ function adminActor() {
     permissionSet: new Set<string>(),
   } as never;
 }
-
-
-
-
-
-
-

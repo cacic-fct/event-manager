@@ -1,9 +1,7 @@
 import { MatStepper } from '@angular/material/stepper';
 import { AztecScannerDialogComponent } from '@cacic-fct/shared-angular';
 import { SportsConfirmationDialog, SportsConfirmationDialogData } from './sports-confirmation-dialog';
-import type {
-  SportsOperationalMatch,
-} from './sports-operations.types';
+import type { SportsOperationalMatch } from './sports-operations.types';
 import type { CheckInEntry, MatchOccurrence } from './official-match-page.utils';
 import { sortCheckInEntries } from './official-match-page.utils';
 import { OfficialMatchPageState } from './official-match-page-state.base';
@@ -122,8 +120,7 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
         present,
       });
       this.checkInEntries.update((entries) =>
-        entries.map((candidate) =>
-          candidate.id === entry.id ? { ...candidate, checkedIn: present } : candidate),
+        entries.map((candidate) => (candidate.id === entry.id ? { ...candidate, checkedIn: present } : candidate)),
       );
       this.revision.update((revision) => revision + 1);
       this.snackbar.open(
@@ -170,19 +167,22 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     if (!this.canEditCheckIn() || this.busy()) {
       return;
     }
-    this.dialog.open<AztecScannerDialogComponent, unknown, string>(AztecScannerDialogComponent, {
-      width: 'min(560px, 96vw)',
-      maxWidth: '96vw',
-      data: {
-        acceptedPrefixes: ['user:'],
-        title: 'Escanear atleta da partida',
-        mode: ['Aztec'],
-      },
-    }).afterClosed().subscribe((code) => {
-      if (code) {
-        void this.registerScannedAttendance(code);
-      }
-    });
+    this.dialog
+      .open<AztecScannerDialogComponent, unknown, string>(AztecScannerDialogComponent, {
+        width: 'min(560px, 96vw)',
+        maxWidth: '96vw',
+        data: {
+          acceptedPrefixes: ['user:'],
+          title: 'Escanear atleta da partida',
+          mode: ['Aztec'],
+        },
+      })
+      .afterClosed()
+      .subscribe((code) => {
+        if (code) {
+          void this.registerScannedAttendance(code);
+        }
+      });
   }
 
   openFinalize(): void {

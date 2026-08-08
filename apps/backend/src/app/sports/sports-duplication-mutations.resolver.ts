@@ -19,16 +19,12 @@ export class SportsDuplicationMutationsResolver extends SportsMutationsResolverS
     @Context() context: GraphqlContext,
   ): Promise<string> {
     const actor = this.authenticated(context);
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsTournament.Duplicate],
-      { sportsTournamentId: input.sourceTournamentId },
-    );
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsTournament.Create],
-      { majorEventId: input.destinationMajorEventId },
-    );
+    await this.policy.assertPermissions(actor, [Permission.SportsTournament.Duplicate], {
+      sportsTournamentId: input.sourceTournamentId,
+    });
+    await this.policy.assertPermissions(actor, [Permission.SportsTournament.Create], {
+      majorEventId: input.destinationMajorEventId,
+    });
     const parts = input.parts ?? {
       categories: true,
       teams: true,
@@ -60,13 +56,7 @@ export class SportsDuplicationMutationsResolver extends SportsMutationsResolverS
         sportsTournamentId: input.sourceTournamentId,
       });
     }
-    return (
-      await this.publishMutation(
-        'TOURNAMENT',
-        this.duplication.cloneTournament(input, actor),
-        true,
-      )
-    ).id;
+    return (await this.publishMutation('TOURNAMENT', this.duplication.cloneTournament(input, actor), true)).id;
   }
 
   @Mutation(() => String, { name: 'cloneSportsCategory' })
@@ -77,20 +67,14 @@ export class SportsDuplicationMutationsResolver extends SportsMutationsResolverS
     @Context() context: GraphqlContext,
   ): Promise<string> {
     const actor = this.authenticated(context);
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsCategory.Duplicate],
-      { sportsCategoryId: input.sourceCategoryId },
-    );
-    await this.policy.assertPermissions(
-      actor,
-      [Permission.SportsCategory.Create],
-      { sportsTournamentId: input.destinationTournamentId },
-    );
+    await this.policy.assertPermissions(actor, [Permission.SportsCategory.Duplicate], {
+      sportsCategoryId: input.sourceCategoryId,
+    });
+    await this.policy.assertPermissions(actor, [Permission.SportsCategory.Create], {
+      sportsTournamentId: input.destinationTournamentId,
+    });
     const nestedPermissions = [
-      ...(input.includeRegistrations
-        ? [Permission.SportsRegistration.Create]
-        : []),
+      ...(input.includeRegistrations ? [Permission.SportsRegistration.Create] : []),
       ...(input.includeOfficials ? [Permission.SportsOfficial.Create] : []),
     ];
     if (nestedPermissions.length > 0) {
@@ -99,9 +83,7 @@ export class SportsDuplicationMutationsResolver extends SportsMutationsResolverS
       });
     }
     const sourceNestedPermissions = [
-      ...(input.includeRegistrations
-        ? [Permission.SportsRegistration.Read]
-        : []),
+      ...(input.includeRegistrations ? [Permission.SportsRegistration.Read] : []),
       ...(input.includeOfficials ? [Permission.SportsOfficial.Read] : []),
     ];
     if (sourceNestedPermissions.length > 0) {
@@ -109,13 +91,7 @@ export class SportsDuplicationMutationsResolver extends SportsMutationsResolverS
         sportsCategoryId: input.sourceCategoryId,
       });
     }
-    return (
-      await this.publishMutation(
-        'CATEGORY',
-        this.duplication.cloneCategory(input, actor),
-        true,
-      )
-    ).id;
+    return (await this.publishMutation('CATEGORY', this.duplication.cloneCategory(input, actor), true)).id;
   }
 
   @Mutation(() => String, { name: 'cloneSportsTeam' })
@@ -133,35 +109,19 @@ export class SportsDuplicationMutationsResolver extends SportsMutationsResolverS
       sportsTournamentId: input.destinationTournamentId,
     });
     if (input.includeRepresentatives) {
-      await this.policy.assertPermissions(
-        actor,
-        [Permission.SportsTeam.AssignRepresentative],
-        { sportsTournamentId: input.destinationTournamentId },
-      );
+      await this.policy.assertPermissions(actor, [Permission.SportsTeam.AssignRepresentative], {
+        sportsTournamentId: input.destinationTournamentId,
+      });
     }
     if (input.includeMembers) {
-      await this.policy.assertPermissions(
-        actor,
-        [Permission.Person.Read],
-        {},
-      );
-      await this.policy.assertPermissions(
-        actor,
-        [Permission.SportsRegistration.Read],
-        { sportsTeamId: input.sourceTeamId },
-      );
-      await this.policy.assertPermissions(
-        actor,
-        [Permission.SportsRegistration.Update],
-        { sportsTournamentId: input.destinationTournamentId },
-      );
+      await this.policy.assertPermissions(actor, [Permission.Person.Read], {});
+      await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Read], {
+        sportsTeamId: input.sourceTeamId,
+      });
+      await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Update], {
+        sportsTournamentId: input.destinationTournamentId,
+      });
     }
-    return (
-      await this.publishMutation(
-        'TEAM',
-        this.duplication.cloneTeam(input, actor),
-        true,
-      )
-    ).id;
+    return (await this.publishMutation('TEAM', this.duplication.cloneTeam(input, actor), true)).id;
   }
 }

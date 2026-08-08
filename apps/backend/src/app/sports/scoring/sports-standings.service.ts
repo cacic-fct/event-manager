@@ -1,11 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  Prisma,
-  SportsFormat,
-  SportsMatchState,
-  SportsReviewStatus,
-  SportsScoreEntrySource
-} from '@prisma/client';
+import { Prisma, SportsFormat, SportsMatchState, SportsReviewStatus, SportsScoreEntrySource } from '@prisma/client';
 import {
   mergeSportsStructuralInvalidations,
   SportsStructuralInvalidation,
@@ -32,12 +26,7 @@ export class SportsStandingsService extends SportsStandingsQualifiers {
     });
     if (
       source.reviewStatus === SportsReviewStatus.APPROVED &&
-      (
-        [
-          SportsMatchState.FINISHED,
-          SportsMatchState.DRAW,
-        ] as SportsMatchState[]
-      ).includes(source.canonicalState)
+      ([SportsMatchState.FINISHED, SportsMatchState.DRAW] as SportsMatchState[]).includes(source.canonicalState)
     ) {
       return this.refreshAfterApprovedOutcome(tx, matchId, actorId);
     }
@@ -95,41 +84,22 @@ export class SportsStandingsService extends SportsStandingsQualifiers {
     });
     if (
       source.reviewStatus !== SportsReviewStatus.APPROVED ||
-      !(
-        [
-          SportsMatchState.FINISHED,
-          SportsMatchState.DRAW,
-        ] as SportsMatchState[]
-      ).includes(
-        source.canonicalState,
-      )
+      !([SportsMatchState.FINISHED, SportsMatchState.DRAW] as SportsMatchState[]).includes(source.canonicalState)
     ) {
       return [];
     }
     const invalidations: SportsStructuralInvalidation[][] = [];
-    if (
-      source.canonicalState === SportsMatchState.DRAW &&
-      source.drawWillReschedule === true
-    ) {
+    if (source.canonicalState === SportsMatchState.DRAW && source.drawWillReschedule === true) {
       invalidations.push(await this.ensureReplayMatch(tx, source, actorId));
     }
     if (source.stageId) {
       await this.recomputeStage(tx, source.stageId);
-      if (
-        source.category.format === SportsFormat.ROUND_ROBIN ||
-        source.category.format === SportsFormat.SWISS
-      ) {
-        await this.confirmStandingsPlacementsIfComplete(
-          tx,
-          source,
-          actorId,
-        );
+      if (source.category.format === SportsFormat.ROUND_ROBIN || source.category.format === SportsFormat.SWISS) {
+        await this.confirmStandingsPlacementsIfComplete(tx, source, actorId);
       }
     }
     if (source.category.format === SportsFormat.GROUP_STAGE_ELIMINATION) {
-      invalidations.push(
-        await this.refreshGroupQualifiers(tx, source.categoryId, actorId),
-      );
+      invalidations.push(await this.refreshGroupQualifiers(tx, source.categoryId, actorId));
     }
     if (
       source.canonicalState === SportsMatchState.FINISHED &&
@@ -141,5 +111,4 @@ export class SportsStandingsService extends SportsStandingsQualifiers {
     }
     return mergeSportsStructuralInvalidations(...invalidations);
   }
-
 }

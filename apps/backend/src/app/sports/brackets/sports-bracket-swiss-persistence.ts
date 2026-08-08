@@ -1,14 +1,11 @@
-import {
-  ConflictException,
-  NotFoundException
-} from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import {
   Prisma,
   PublicationState,
   SportsFormat,
   SportsMatchState,
   SportsReviewStatus,
-  SportsStageType
+  SportsStageType,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { generateSportsSwissRound } from '../domain/sports-swiss';
@@ -85,21 +82,11 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
       })),
       matchHistory: [],
     });
-    await this.persistSwissRound(
-      tx,
-      category,
-      stage.id,
-      round,
-      teamNameByRegistration,
-      actorId,
-    );
+    await this.persistSwissRound(tx, category, stage.id, round, teamNameByRegistration, actorId);
     return stage.id;
   }
 
-  async generateNextSwissRound(
-    categoryId: string,
-    actor: AuthenticatedUser,
-  ) {
+  async generateNextSwissRound(categoryId: string, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     const result = await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const category = await tx.sportsCategory.findFirst({
@@ -128,32 +115,18 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
       if (!category || !stage) {
         throw new NotFoundException('Etapa suíça não encontrada.');
       }
-      await this.frozen.assertEventGroupMutable(
-        category.eventGroupId,
-        actor,
-        'edit',
-      );
-      const currentRound = stage.matches.reduce(
-        (maximum, match) => Math.max(maximum, match.roundNumber ?? 0),
-        0,
-      );
+      await this.frozen.assertEventGroupMutable(category.eventGroupId, actor, 'edit');
+      const currentRound = stage.matches.reduce((maximum, match) => Math.max(maximum, match.roundNumber ?? 0), 0);
       const unfinished = stage.matches.some(
         (match) =>
           match.roundNumber === currentRound &&
           !(
             match.reviewStatus === SportsReviewStatus.APPROVED &&
-            (
-              [
-                SportsMatchState.FINISHED,
-                SportsMatchState.DRAW,
-              ] as SportsMatchState[]
-            ).includes(match.canonicalState)
+            ([SportsMatchState.FINISHED, SportsMatchState.DRAW] as SportsMatchState[]).includes(match.canonicalState)
           ),
       );
       if (unfinished) {
-        throw new ConflictException(
-          'A rodada atual precisa ser concluída e aprovada antes da próxima.',
-        );
+        throw new ConflictException('A rodada atual precisa ser concluída e aprovada antes da próxima.');
       }
       const settings = this.readRecord(stage.settings);
       const maximumRounds = this.readPositiveInteger(
@@ -170,10 +143,7 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
           return {
             registrationId: standing.registrationId,
             points: standing.points,
-            tiebreakers: [
-              this.readNumber(tie['buchholz'], 0),
-              standing.scoreFor - standing.scoreAgainst,
-            ],
+            tiebreakers: [this.readNumber(tie['buchholz'], 0), standing.scoreFor - standing.scoreAgainst],
             seed: this.readOptionalPositiveInteger(tie['seed']),
             byeCount: this.readPositiveInteger(tie['byeCount'], 0, true),
           };
@@ -181,10 +151,7 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
         matchHistory: stage.matches.flatMap((match) =>
           match.homeRegistrationId &&
           match.awayRegistrationId &&
-          !(
-            match.canonicalState === SportsMatchState.DRAW &&
-            match.drawWillReschedule === true
-          )
+          !(match.canonicalState === SportsMatchState.DRAW && match.drawWillReschedule === true)
             ? [
                 {
                   homeRegistrationId: match.homeRegistrationId,
@@ -199,12 +166,7 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
         category,
         stage.id,
         round,
-        new Map(
-          stage.standings.map((standing) => [
-            standing.registrationId,
-            standing.registration.team.name,
-          ]),
-        ),
+        new Map(stage.standings.map((standing) => [standing.registrationId, standing.registration.team.name])),
         actorId,
       );
       await tx.sportsStage.update({
@@ -226,12 +188,9 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
       return {
         matches,
         invalidations: [
-          this.generationInvalidation(
-            'SWISS_ROUND_GENERATED',
-            category.tournament.id,
-            category.id,
-            [{ id: stage.id, matches }],
-          ),
+          this.generationInvalidation('SWISS_ROUND_GENERATED', category.tournament.id, category.id, [
+            { id: stage.id, matches },
+          ]),
         ],
       };
     });
@@ -265,10 +224,7 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
       });
     }
     if (round.byeRegistrationId) {
-      const byePoints = this.readNumber(
-        this.readRecord(category.standingsRules)['byePoints'],
-        1,
-      );
+      const byePoints = this.readNumber(this.readRecord(category.standingsRules)['byePoints'], 1);
       const standing = await tx.sportsStanding.findUniqueOrThrow({
         where: {
           stageId_registrationId: {
@@ -293,9 +249,4 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
       });
     }
   }
-
 }
-
-
-
-

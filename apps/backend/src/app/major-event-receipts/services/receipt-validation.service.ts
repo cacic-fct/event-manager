@@ -155,10 +155,7 @@ export class ReceiptValidationService {
 
       return action;
     });
-    await this.sportsApplicationRealtime.publishPaymentChanged(
-      subscriptionId,
-      'PAYMENT_APPROVED',
-    );
+    await this.sportsApplicationRealtime.publishPaymentChanged(subscriptionId, 'PAYMENT_APPROVED');
 
     const item = await this.queue.getSubscriptionQueueItem(subscriptionId);
     if (!item) {
@@ -237,10 +234,7 @@ export class ReceiptValidationService {
       );
       return createdAction;
     });
-    await this.sportsApplicationRealtime.publishPaymentChanged(
-      subscriptionId,
-      'PAYMENT_REJECTED',
-    );
+    await this.sportsApplicationRealtime.publishPaymentChanged(subscriptionId, 'PAYMENT_REJECTED');
 
     const item = await this.queue.getSubscriptionQueueItem(subscriptionId);
     if (!item) {
@@ -362,10 +356,7 @@ export class ReceiptValidationService {
 
       return existingAction;
     });
-    await this.sportsApplicationRealtime.publishPaymentChanged(
-      action.subscriptionId,
-      'PAYMENT_REVIEW_UNDONE',
-    );
+    await this.sportsApplicationRealtime.publishPaymentChanged(action.subscriptionId, 'PAYMENT_REVIEW_UNDONE');
 
     const item = await this.queue.getSubscriptionQueueItem(action.subscriptionId);
     if (!item) {
