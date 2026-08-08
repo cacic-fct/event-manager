@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { SportsAutoroutingService } from '../routing/sports-autorouting.service';
 import { SportsRealtimeService } from './sports-realtime.service';
 
@@ -24,6 +25,7 @@ export class SportsMutationEventsService {
     private readonly prisma: PrismaService,
     private readonly realtime: SportsRealtimeService,
     private readonly autorouting: SportsAutoroutingService,
+    private readonly dashboardInsights: DashboardInsightsService,
   ) {}
 
   async publishForEntity(
@@ -44,6 +46,7 @@ export class SportsMutationEventsService {
       : [];
     const autoroutePeople = await this.resolveAutoroutePeople(entity, entityId);
     await Promise.all([
+      this.dashboardInsights.invalidateCachedInsights(),
       this.realtime.publish(
         this.realtime.scope('admin-tournament', tournamentId),
         payload,

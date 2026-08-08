@@ -9,7 +9,10 @@ import { DefaultRedirectApiService } from './default-redirect-api.service';
 import { DefaultRedirectService } from './default-redirect.service';
 
 describe('DefaultRedirectService', () => {
-  let api: { getCurrentUserDefaultRedirect: ReturnType<typeof vi.fn> };
+  let api: {
+    getCurrentUserDefaultRedirect: ReturnType<typeof vi.fn>;
+    getCurrentUserSportsAutoroute: ReturnType<typeof vi.fn>;
+  };
   let notifications: {
     hasUnreadNotifications: ReturnType<typeof vi.fn>;
     unreadCount: ReturnType<typeof vi.fn>;
@@ -22,7 +25,10 @@ describe('DefaultRedirectService', () => {
   };
 
   beforeEach(() => {
-    api = { getCurrentUserDefaultRedirect: vi.fn(() => of('CALENDAR')) };
+    api = {
+      getCurrentUserDefaultRedirect: vi.fn(() => of('CALENDAR')),
+      getCurrentUserSportsAutoroute: vi.fn(() => of(null)),
+    };
     notifications = {
       hasUnreadNotifications: vi.fn(() => Promise.resolve(false)),
       unreadCount: vi.fn(() => 0),
@@ -57,6 +63,17 @@ describe('DefaultRedirectService', () => {
     await expect(TestBed.inject(DefaultRedirectService).resolve()).resolves.toBe('/profile/wallet');
   });
 
+  it('routes an assigned official directly to the nearby match operation', async () => {
+    api.getCurrentUserDefaultRedirect.mockReturnValue(of('WALLET'));
+    api.getCurrentUserSportsAutoroute.mockReturnValue(
+      of({ matchId: 'match with spaces', mode: 'CHECK_IN' }),
+    );
+
+    await expect(TestBed.inject(DefaultRedirectService).resolve()).resolves.toBe(
+      '/sports/operate/match%20with%20spaces?mode=CHECK_IN',
+    );
+  });
+
   it('prioritizes unread notifications above the backend major-event route', async () => {
     api.getCurrentUserDefaultRedirect.mockReturnValue(of('MAJOR_EVENT'));
     notifications.hasUnreadNotifications.mockResolvedValue(true);
@@ -70,6 +87,7 @@ describe('DefaultRedirectService', () => {
 
     await expect(TestBed.inject(DefaultRedirectService).resolve()).resolves.toBe('/calendar');
     expect(api.getCurrentUserDefaultRedirect).not.toHaveBeenCalled();
+    expect(api.getCurrentUserSportsAutoroute).not.toHaveBeenCalled();
     expect(notifications.hasUnreadNotifications).not.toHaveBeenCalled();
   });
 

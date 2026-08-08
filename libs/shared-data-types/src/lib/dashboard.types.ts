@@ -10,7 +10,8 @@ export type DashboardInsightAction =
   | 'OPEN_ATTENDANCE'
   | 'OPEN_CERTIFICATES'
   | 'OPEN_MERGE_CANDIDATES'
-  | 'OPEN_PUBLICATION';
+  | 'OPEN_PUBLICATION'
+  | 'OPEN_SPORTS';
 
 export type DashboardCertificateTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT' | 'MAJOR_EVENT_LECTURERS';
 
@@ -104,6 +105,34 @@ export interface DashboardPendingOfflineAttendanceEvent {
   pendingCount: number;
 }
 
+export interface DashboardSportsTournament {
+  tournamentId: string;
+  majorEventId: string;
+  name: string;
+  emoji: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  categoryCount: number;
+  teamCount: number;
+  pendingApplicationCount: number;
+  pendingReviewCount: number;
+  activeMatchCount: number;
+}
+
+export interface DashboardSportsMatch {
+  matchId: string;
+  tournamentId: string;
+  categoryName: string;
+  eventName: string;
+  startDate: string;
+  state: string;
+  homeTeamName?: string | null;
+  awayTeamName?: string | null;
+  homeScore: number;
+  awayScore: number;
+}
+
 export interface DashboardInconsistency {
   type: DashboardInconsistencyType;
   action?: DashboardInsightAction | null;
@@ -138,6 +167,8 @@ export interface WorkspaceDashboardInsights {
   pendingReceiptMajorEvents: DashboardPendingReceiptMajorEvent[];
   pendingOfflineAttendancesCount: number;
   pendingOfflineAttendanceEvents: DashboardPendingOfflineAttendanceEvent[];
+  sportsTournaments: DashboardSportsTournament[];
+  sportsMatches: DashboardSportsMatch[];
   inconsistencies: DashboardInconsistency[];
   duplicatePeopleCount: number;
   permissions: DashboardPermissionGroup[];

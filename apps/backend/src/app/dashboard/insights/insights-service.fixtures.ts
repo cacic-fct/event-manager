@@ -74,6 +74,12 @@ export function createPrismaMock() {
     offlineEventAttendanceSubmission: {
       count: jest.fn(),
     },
+    sportsTournament: {
+      findMany: jest.fn(),
+    },
+    sportsMatch: {
+      findMany: jest.fn(),
+    },
   };
 }
 
