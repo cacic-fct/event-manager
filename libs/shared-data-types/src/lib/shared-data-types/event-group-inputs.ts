@@ -9,6 +9,9 @@ export class EventGroupCreateInput {
   emoji?: string;
 
   @Field(() => Boolean, { nullable: true })
+  requiresImageLicenseAgreement?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
   shouldIssueCertificate?: boolean;
 
   @Field(() => Boolean, { nullable: true })
@@ -34,6 +37,9 @@ export class EventGroupUpdateInput {
 
   @Field(() => String, { nullable: true })
   emoji?: string;
+
+  @Field(() => Boolean, { nullable: true })
+  requiresImageLicenseAgreement?: boolean;
 
   @Field(() => Boolean, { nullable: true })
   shouldIssueCertificate?: boolean;

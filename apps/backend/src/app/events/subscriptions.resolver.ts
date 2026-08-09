@@ -79,6 +79,7 @@ const MAJOR_EVENT_SELECT = {
   description: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
+  requiresImageLicenseAgreement: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
   maxUncategorizedPerAttendee: true,
@@ -118,6 +119,7 @@ const EVENT_SELECT = {
   majorEventId: true,
   eventGroupId: true,
   allowSubscription: true,
+  requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
   slots: true,
@@ -417,6 +419,7 @@ export class EventSubscriptionsResolver {
           amountPaid: input.amountPaid ?? undefined,
           paymentDate: input.paymentDate ?? undefined,
           paymentTier: this.normalizeNullableText(input.paymentTier),
+          imageLicenseAgreementAccepted: input.imageLicenseAgreementAccepted ?? false,
           createdById,
           createdByMethod: 'ADMIN_DASHBOARD',
         },
@@ -540,6 +543,9 @@ export class EventSubscriptionsResolver {
       if (input.paymentTier !== undefined) {
         updateData.paymentTier = this.normalizeNullableText(input.paymentTier);
       }
+      if (input.imageLicenseAgreementAccepted !== undefined) {
+        updateData.imageLicenseAgreementAccepted = input.imageLicenseAgreementAccepted;
+      }
 
       const updated = await tx.majorEventSubscription.update({
         where: {
@@ -659,6 +665,7 @@ export class EventSubscriptionsResolver {
       amountPaid: true,
       paymentDate: true,
       paymentTier: true,
+      imageLicenseAgreementAccepted: true,
       createdAt: true,
       createdById: true,
       createdByMethod: true,

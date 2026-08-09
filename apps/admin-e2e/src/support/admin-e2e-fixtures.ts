@@ -350,6 +350,7 @@ export function createAdminE2EMajorEvent(overrides: Record<string, unknown> = {}
     description: 'Grande evento de tecnologia.',
     subscriptionStartDate: null,
     subscriptionEndDate: null,
+    requiresImageLicenseAgreement: true,
     maxCoursesPerAttendee: null,
     maxLecturesPerAttendee: null,
     maxUncategorizedPerAttendee: null,
@@ -388,6 +389,7 @@ export function createAdminE2EEventGroup(overrides: Record<string, unknown> = {}
     id: 'event-group-1',
     name: 'Trilha de Minicursos',
     emoji: 'school',
+    requiresImageLicenseAgreement: false,
     shouldIssueCertificate: true,
     shouldIssueCertificateForNonPayingAttendees: false,
     shouldIssueCertificateForNonSubscribedAttendees: false,
@@ -424,6 +426,7 @@ export function createAdminE2EEvent(overrides: Record<string, unknown> = {}): Ad
     eventGroupId: eventGroup.id,
     eventGroup,
     allowSubscription: true,
+    requiresImageLicenseAgreement: false,
     subscriptionStartDate: null,
     subscriptionEndDate: null,
     slots: 30,
@@ -549,6 +552,7 @@ export function createAdminE2EMajorEventSubscription(overrides: Record<string, u
     createdAt: '2026-05-20T12:00:00.000Z',
     createdById: 'admin-1',
     createdByMethod: 'ADMIN_DASHBOARD',
+    imageLicenseAgreementAccepted: false,
     events: [
       {
         eventId: event.id,

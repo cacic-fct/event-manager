@@ -111,6 +111,7 @@ export class SubscriptionsService {
     amountPaid: this.formBuilder.control<number | null>(null),
     paymentDate: this.formBuilder.control<string | null>(null),
     paymentTier: this.formBuilder.control<string | null>(null),
+    imageLicenseAgreementAccepted: this.formBuilder.nonNullable.control(false),
   });
   readonly majorEventSubscriptions = signal<WorkspaceMajorEventSubscription[]>([]);
   readonly majorEventSubscriptionsPagination = createWorkspaceListPagination();
@@ -350,6 +351,7 @@ export class SubscriptionsService {
       amountPaid: subscription.amountPaid ?? null,
       paymentDate: subscription.paymentDate?.slice(0, 10) ?? null,
       paymentTier: subscription.paymentTier ?? null,
+      imageLicenseAgreementAccepted: Boolean(subscription.imageLicenseAgreementAccepted),
     });
     this.selectedEventIds.set(
       new Set(subscription.events.filter((eventItem) => eventItem.subscribed).map((eventItem) => eventItem.eventId)),
@@ -373,6 +375,7 @@ export class SubscriptionsService {
       amountPaid: null,
       paymentDate: null,
       paymentTier: null,
+      imageLicenseAgreementAccepted: false,
     });
     this.selectedEventIds.set(new Set());
   }
@@ -436,6 +439,7 @@ export class SubscriptionsService {
       amountPaid: formValue.amountPaid,
       paymentDate: formValue.paymentDate,
       paymentTier: formValue.paymentTier,
+      imageLicenseAgreementAccepted: formValue.imageLicenseAgreementAccepted,
       selectedEventIds,
     };
 
@@ -458,6 +462,7 @@ export class SubscriptionsService {
     amountPaid: number | null;
     paymentDate: string | null;
     paymentTier: string | null;
+    imageLicenseAgreementAccepted: boolean;
     selectedEventIds: string[];
   }): Promise<WorkspaceMajorEventSubscription> {
     const majorEventId = this.majorEventForm.controls.majorEventId.value;

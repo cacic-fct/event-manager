@@ -24,6 +24,7 @@ export const PUBLIC_MAJOR_EVENT_SUMMARY_FIELDS = `
   name
   subscriptionStartDate
   subscriptionEndDate
+  requiresImageLicenseAgreement
 `;
 
 export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
@@ -36,6 +37,7 @@ export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
   subscriptionStartDate
   subscriptionEndDate
   rankedSubscriptionEnabled
+  requiresImageLicenseAgreement
   buttonText
   buttonLink
   isPaymentRequired
@@ -54,6 +56,7 @@ export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
   maxLecturesPerAttendee
   maxUncategorizedPerAttendee
   rankedSubscriptionEnabled
+  requiresImageLicenseAgreement
   isPaymentRequired
   additionalPaymentInfo
   paymentInfo {
@@ -82,6 +85,7 @@ export const PUBLIC_MAJOR_EVENT_PROFILE_FIELDS = `
   isPaymentRequired
   additionalPaymentInfo
   shouldIssueCertificate
+  requiresImageLicenseAgreement
 `;
 
 export const PUBLIC_NAMED_ENTITY_FIELDS = `
@@ -93,6 +97,7 @@ export const PUBLIC_EVENT_GROUP_DETAIL_FIELDS = `
   id
   name
   emoji
+  requiresImageLicenseAgreement
   shouldIssueCertificateForEachEvent
   shouldIssuePartialCertificate
   shouldIssueCertificate
@@ -141,6 +146,7 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   majorEventId
   eventGroupId
   allowSubscription
+  requiresImageLicenseAgreement
   subscriptionStartDate
   subscriptionEndDate
   slots
@@ -159,6 +165,7 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   }
   eventGroup {
     ${PUBLIC_NAMED_ENTITY_FIELDS}
+    requiresImageLicenseAgreement
   }
   lecturers {
     ${PUBLIC_LECTURER_PROFILE_FIELDS}
@@ -178,6 +185,7 @@ export const PUBLIC_SUBSCRIPTION_EVENT_FIELDS = `
   autoSubscribe
   eventGroup {
     ${PUBLIC_NAMED_ENTITY_FIELDS}
+    requiresImageLicenseAgreement
   }
 `;
 

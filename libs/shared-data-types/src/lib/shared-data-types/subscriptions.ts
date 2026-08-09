@@ -88,6 +88,9 @@ export class WorkspaceMajorEventSubscription {
   @Field(() => String, { nullable: true })
   paymentTier?: string | null;
 
+  @Field(() => Boolean)
+  imageLicenseAgreementAccepted!: boolean;
+
   @Field(() => Date)
   createdAt!: Date;
 

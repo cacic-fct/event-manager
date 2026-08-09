@@ -31,6 +31,9 @@ export class WorkspaceMajorEventSubscriptionCreateInput {
   @Field(() => String, { nullable: true })
   paymentTier?: string;
 
+  @Field(() => Boolean, { nullable: true })
+  imageLicenseAgreementAccepted?: boolean;
+
   @Field(() => [String])
   selectedEventIds!: string[];
 }
@@ -48,6 +51,9 @@ export class WorkspaceMajorEventSubscriptionUpdateInput {
 
   @Field(() => String, { nullable: true })
   paymentTier?: string;
+
+  @Field(() => Boolean, { nullable: true })
+  imageLicenseAgreementAccepted?: boolean;
 
   @Field(() => [String], { nullable: true })
   selectedEventIds?: string[];

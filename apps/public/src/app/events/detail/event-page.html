@@ -81,7 +81,16 @@
       <mat-icon>login</mat-icon>
       Entrar para inscrever-se
     </button>
-    } @else if (hasStandaloneSubscription(event) && data.currentUserSubscription) {
+    } @else if (hasStandaloneSubscription(event) && data.currentUserSubscription) { @if (needsImageLicenseAgreement()) {
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="!canAcceptImageLicenseAgreement(data) || isSubscribing() || standaloneSubscriptionCooldownSeconds() > 0"
+      (click)="subscribe(data)">
+      <mat-icon>verified_user</mat-icon>
+      Aceitar contrato
+    </button>
+    } @else {
     <button
       mat-stroked-button
       type="button"
@@ -90,6 +99,7 @@
       <mat-icon>event_busy</mat-icon>
       Cancelar inscrição
     </button>
+    }
     } @else if (hasStandaloneSubscription(event)) { @if (standaloneSubscriptionCooldownSeconds() > 0) {
     <p class="rate-limit-message">
       Aguarde {{ standaloneSubscriptionCooldownSeconds() }}s para alterar sua inscrição novamente.

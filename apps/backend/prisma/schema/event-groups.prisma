@@ -3,6 +3,7 @@ model EventGroup {
   name String
 
   emoji String @default("❔")
+  requiresImageLicenseAgreement Boolean @default(false)
 
   events        Event[]
   subscriptions EventGroupSubscription[]

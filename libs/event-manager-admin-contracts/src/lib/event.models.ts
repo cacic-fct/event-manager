@@ -23,6 +23,7 @@ export interface MajorEvent {
   description?: string | null;
   subscriptionStartDate?: string | null;
   subscriptionEndDate?: string | null;
+  requiresImageLicenseAgreement?: boolean;
   maxCoursesPerAttendee?: number | null;
   maxLecturesPerAttendee?: number | null;
   maxUncategorizedPerAttendee?: number | null;
@@ -75,6 +76,7 @@ export interface EventGroup {
   id: string;
   name: string;
   emoji: string;
+  requiresImageLicenseAgreement?: boolean;
   shouldIssueCertificate: boolean;
   shouldIssueCertificateForNonPayingAttendees: boolean;
   shouldIssueCertificateForNonSubscribedAttendees: boolean;
@@ -105,6 +107,7 @@ export interface Event {
   eventGroupId?: string | null;
   eventGroup?: EventGroup | null;
   allowSubscription: boolean;
+  requiresImageLicenseAgreement?: boolean;
   subscriptionStartDate?: string | null;
   subscriptionEndDate?: string | null;
   slots?: number | null;
@@ -174,6 +177,7 @@ export interface MajorEventInput {
   description?: string | null;
   subscriptionStartDate?: string | null;
   subscriptionEndDate?: string | null;
+  requiresImageLicenseAgreement?: boolean;
   maxCoursesPerAttendee?: number | null;
   maxLecturesPerAttendee?: number | null;
   maxUncategorizedPerAttendee?: number | null;
@@ -225,6 +229,7 @@ export interface EventGroupInput {
   id?: string;
   name?: string;
   emoji?: string;
+  requiresImageLicenseAgreement?: boolean;
   shouldIssueCertificate?: boolean;
   shouldIssueCertificateForNonPayingAttendees?: boolean;
   shouldIssueCertificateForNonSubscribedAttendees?: boolean;
@@ -258,6 +263,7 @@ export interface EventInput {
   majorEventId?: string | null;
   eventGroupId?: string | null;
   allowSubscription?: boolean;
+  requiresImageLicenseAgreement?: boolean;
   subscriptionStartDate?: string | null;
   subscriptionEndDate?: string | null;
   slots?: number | null;

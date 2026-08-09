@@ -250,6 +250,16 @@
             </mat-form-field>
 
             <mat-checkbox formControlName="rankedSubscriptionEnabled"> Inscrição por voto preferencial </mat-checkbox>
+            <mat-checkbox formControlName="requiresImageLicenseAgreement">
+              Exigir concordância com o
+              <a
+                href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
+                target="_blank"
+                rel="noopener noreferrer"
+                (click)="$event.stopPropagation()">
+                contrato de licença de uso de imagem do CACiC
+              </a>
+            </mat-checkbox>
           </div>
         </section>
 

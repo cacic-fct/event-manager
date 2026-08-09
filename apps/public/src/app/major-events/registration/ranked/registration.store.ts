@@ -3,7 +3,7 @@ import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } f
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import type {
   EventFormTargetType,
   EventType,
@@ -20,7 +20,7 @@ import {
   getSubscriptionStatusLabel,
 } from '@cacic-fct/shared-utils';
 import { isBefore, parseISO } from 'date-fns';
-import { EMPTY, catchError, finalize, forkJoin, map, of, switchMap } from 'rxjs';
+import { EMPTY, catchError, filter, finalize, forkJoin, map, of, switchMap } from 'rxjs';
 import { AnalyticsService } from '../../../analytics/analytics.service';
 import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
 import { RateLimitError, createRateLimitCooldown } from '../../../shared/rate-limit-error';
@@ -76,9 +76,30 @@ export class RankedSubscriptionStore {
   readonly desiredCourses = signal(0);
   readonly desiredLectures = signal(0);
   readonly desiredUncategorized = signal(0);
+  readonly needsImageLicenseAgreement = computed(() => {
+    const data = this.data();
+    const subscription = this.currentUserSubscription();
+    return Boolean(
+      data?.majorEvent.requiresImageLicenseAgreement &&
+        subscription &&
+        subscription.imageLicenseAgreementAccepted !== true,
+    );
+  });
 
   private readonly initializedMajorEventId = signal<string | null>(null);
   private readonly pendingRealtimeDelta = signal<MajorEventSubscriptionRealtimeDelta | null>(null);
+  private readonly navigationTick = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(() => this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
+  private readonly imageLicenseAgreementQueryRequested = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('requireImageLicenseAgreement') === 'true')),
+    { initialValue: false },
+  );
+  private readonly imageLicenseAgreementDialogOpened = signal(false);
 
   readonly majorEventId = toSignal(
     this.route.paramMap.pipe(map((params) => params.get('majorEventId') ?? params.get('eventID') ?? '')),
@@ -136,6 +157,7 @@ export class RankedSubscriptionStore {
         this.pageState.set({ status: 'loading' });
         this.initializedMajorEventId.set(null);
         this.pendingRealtimeDelta.set(null);
+        this.imageLicenseAgreementDialogOpened.set(false);
         this.selectedPriceTierName.set(null);
         this.subscriptionCooldown.clear();
       });
@@ -185,6 +207,26 @@ export class RankedSubscriptionStore {
       }
 
       untracked(() => this.initializeFromPageData(data, currentUserSubscription));
+    });
+
+    effect(() => {
+      this.navigationTick();
+      if (
+        !this.imageLicenseAgreementQueryRequested() ||
+        this.imageLicenseAgreementDialogOpened() ||
+        Boolean(this.route.firstChild) ||
+        !this.data() ||
+        !this.isAuthenticated() ||
+        this.currentUserSubscription() === undefined ||
+        !this.needsImageLicenseAgreement() ||
+        this.initializedMajorEventId() !== this.data()?.majorEvent.id ||
+        this.selectedEvents().length === 0
+      ) {
+        return;
+      }
+
+      this.imageLicenseAgreementDialogOpened.set(true);
+      this.submit();
     });
   }
 
@@ -300,6 +342,10 @@ export class RankedSubscriptionStore {
               .map((eventId) => this.eventsById().get(eventId))
               .filter((event): event is PublicEvent => Boolean(event)),
             forms,
+            imageLicenseAgreement: {
+              required: Boolean(data.majorEvent.requiresImageLicenseAgreement),
+              accepted: this.currentUserSubscription()?.imageLicenseAgreementAccepted === true,
+            },
           },
           width: 'min(760px, 96vw)',
         });
@@ -309,7 +355,13 @@ export class RankedSubscriptionStore {
           .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe((result) => {
             if (result?.confirmed) {
-              this.confirmSubscription(data, rankedEventIds, selectedPaymentTier ?? null, result.answers);
+              this.confirmSubscription(
+                data,
+                rankedEventIds,
+                selectedPaymentTier ?? null,
+                result.answers,
+                result.imageLicenseAgreementAccepted,
+              );
             }
           });
       });
@@ -357,6 +409,7 @@ export class RankedSubscriptionStore {
     eventIds: string[],
     paymentTier: string | null,
     formAnswers: SubscriptionFormAnswer[],
+    imageLicenseAgreementAccepted: boolean,
   ): void {
     this.isSubmitting.set(true);
     this.api
@@ -370,6 +423,7 @@ export class RankedSubscriptionStore {
         },
         paymentTier,
         this.toSubmitFormResponses(formAnswers),
+        imageLicenseAgreementAccepted,
       )
       .pipe(
         finalize(() => this.isSubmitting.set(false)),
@@ -389,6 +443,14 @@ export class RankedSubscriptionStore {
             ranked: true,
           });
           this.snackBar.open('Inscrição realizada.', 'OK', { duration: 3000 });
+          if (this.imageLicenseAgreementQueryRequested()) {
+            void this.router.navigate([], {
+              relativeTo: this.route,
+              queryParams: { requireImageLicenseAgreement: null },
+              queryParamsHandling: 'merge',
+              replaceUrl: true,
+            });
+          }
           if (data.majorEvent.isPaymentRequired) {
             void this.router.navigate(['/major-event', data.majorEvent.id, 'payment']);
           }

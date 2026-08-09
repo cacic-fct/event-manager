@@ -32,6 +32,7 @@ export interface PublicMajorEvent {
   description?: string | null;
   subscriptionStartDate?: string | null;
   subscriptionEndDate?: string | null;
+  requiresImageLicenseAgreement?: boolean | null;
   maxCoursesPerAttendee?: number | null;
   maxLecturesPerAttendee?: number | null;
   maxUncategorizedPerAttendee?: number | null;
@@ -53,6 +54,7 @@ export interface PublicEventGroup {
   id: string;
   name: string;
   emoji?: string | null;
+  requiresImageLicenseAgreement?: boolean | null;
   shouldIssueCertificateForEachEvent?: boolean | null;
   shouldIssuePartialCertificate?: boolean | null;
   shouldIssueCertificate?: boolean | null;
@@ -88,6 +90,7 @@ export interface PublicEvent {
   eventGroupId?: string | null;
   eventGroup?: PublicEventGroup | null;
   allowSubscription?: boolean | null;
+  requiresImageLicenseAgreement?: boolean | null;
   slots?: number | null;
   shouldIssueCertificate?: boolean | null;
   shouldIssueCertificateForNonPayingAttendees?: boolean | null;

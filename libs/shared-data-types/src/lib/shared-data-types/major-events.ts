@@ -79,6 +79,9 @@ export class MajorEvent {
   @Field(() => Date, { nullable: true })
   subscriptionEndDate?: Date | null;
 
+  @Field(() => Boolean)
+  requiresImageLicenseAgreement!: boolean;
+
   @Field(() => Int, { nullable: true })
   maxCoursesPerAttendee?: number | null;
 

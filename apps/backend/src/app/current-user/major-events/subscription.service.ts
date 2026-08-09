@@ -690,6 +690,7 @@ export class CurrentUserMajorEventSubscriptionService {
       amountPaid: true,
       paymentDate: true,
       paymentTier: true,
+      imageLicenseAgreementAccepted: true,
       majorEvent: {
         select: {
           ...MAJOR_EVENT_BASE_SELECT,

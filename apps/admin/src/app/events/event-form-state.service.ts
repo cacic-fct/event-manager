@@ -37,6 +37,7 @@ export class EventFormStateService {
         majorEventId: [''],
         eventGroupId: [''],
         allowSubscription: [false],
+        requiresImageLicenseAgreement: [false],
         subscriptionStartDate: [''],
         subscriptionEndDate: [''],
         slots: [''],

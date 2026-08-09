@@ -9,6 +9,7 @@ import {
   type PublicEvent,
   type PublicEventSubscriptionSummary,
   type PublicEventWeather,
+  type RequiredImageLicenseAgreementInterruption,
   type SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
 import type { CurrentUserEventAttendance, CurrentUserEventSubscription } from '@cacic-fct/shared-utils';
@@ -59,6 +60,7 @@ export class EventApiService {
             eventId
             eventGroupSubscriptionId
             createdAt
+            imageLicenseAgreementAccepted
             event {
               id
             }
@@ -144,19 +146,50 @@ export class EventApiService {
     ).pipe(map((data) => data.publicEvents));
   }
 
-  subscribeToEvent(eventId: string, formResponses?: SubmitPublicEventFormResponseInput[]): Observable<PublicEvent> {
+  listRequiredImageLicenseAgreementInterruptions(): Observable<RequiredImageLicenseAgreementInterruption[]> {
+    return this.query<{
+      currentUserRequiredImageLicenseAgreementInterruptions: RequiredImageLicenseAgreementInterruption[];
+    }>(
+      `
+        query CurrentUserRequiredImageLicenseAgreementInterruptions {
+          currentUserRequiredImageLicenseAgreementInterruptions {
+            targetType
+            eventId
+            majorEventId
+            rankedSubscriptionEnabled
+            displayOrder
+          }
+        }
+      `,
+    ).pipe(map((data) => data.currentUserRequiredImageLicenseAgreementInterruptions));
+  }
+
+  subscribeToEvent(
+    eventId: string,
+    formResponses?: SubmitPublicEventFormResponseInput[],
+    imageLicenseAgreementAccepted?: boolean,
+  ): Observable<PublicEvent> {
     return this.query<{ subscribeCurrentUserStandaloneEvent: PublicEvent }>(
       `
         mutation SubscribeCurrentUserStandaloneEvent(
           $eventId: String!
           $formResponses: [SubmitEventFormResponseInput!]
+          $imageLicenseAgreementAccepted: Boolean
         ) {
-          subscribeCurrentUserStandaloneEvent(eventId: $eventId, formResponses: $formResponses) {
+          subscribeCurrentUserStandaloneEvent(
+            eventId: $eventId,
+            formResponses: $formResponses,
+            imageLicenseAgreementAccepted: $imageLicenseAgreementAccepted
+          ) {
             id
           }
         }
       `,
-      { eventId, formResponses },
+      {
+        eventId,
+        formResponses,
+        ...(imageLicenseAgreementAccepted === undefined ? {} : { imageLicenseAgreementAccepted }),
+      },
     ).pipe(map((data) => data.subscribeCurrentUserStandaloneEvent));
   }
 

@@ -1,6 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType, AuditLogOperation, Prisma } from '@prisma/client';
-import { SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  EventFormTargetType,
+  Prisma,
+  PublicationState,
+  SubscriptionStatus,
+} from '@prisma/client';
+import { RequiredImageLicenseAgreementInterruption, SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareAsc } from 'date-fns';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -96,11 +103,149 @@ export class CurrentUserEventSubscriptionService {
     }
   }
 
+  ensureImageLicenseAgreementAccepted(required: boolean, accepted: boolean | null | undefined, targetLabel: string): void {
+    if (required && accepted !== true) {
+      throw new BadRequestException(`Subscription to ${targetLabel} requires acceptance of the CACiC image-license agreement.`);
+    }
+  }
+
+  async listRequiredImageLicenseAgreementInterruptions(
+    personId: string,
+  ): Promise<RequiredImageLicenseAgreementInterruption[]> {
+    const now = new Date();
+    const [majorEventSubscriptions, eventSubscriptions, eventGroupSubscriptions] = await Promise.all([
+      this.prisma.majorEventSubscription.findMany({
+        where: {
+          personId,
+          deletedAt: null,
+          imageLicenseAgreementAccepted: false,
+          subscriptionStatus: { not: SubscriptionStatus.CANCELED },
+          majorEvent: {
+            deletedAt: null,
+            publicationState: PublicationState.PUBLISHED,
+            endDate: { gt: now },
+            requiresImageLicenseAgreement: true,
+          },
+        },
+        select: {
+          majorEventId: true,
+          majorEvent: {
+            select: {
+              startDate: true,
+              rankedSubscriptionEnabled: true,
+            },
+          },
+        },
+      }),
+      this.prisma.eventSubscription.findMany({
+        where: {
+          personId,
+          deletedAt: null,
+          imageLicenseAgreementAccepted: false,
+          eventGroupSubscriptionId: null,
+          event: {
+            AND: [
+              PUBLIC_EVENT_WHERE,
+              {
+                majorEventId: null,
+                eventGroupId: null,
+                requiresImageLicenseAgreement: true,
+                endDate: { gt: now },
+              },
+            ],
+          },
+        },
+        select: {
+          eventId: true,
+          event: {
+            select: {
+              startDate: true,
+            },
+          },
+        },
+      }),
+      this.prisma.eventGroupSubscription.findMany({
+        where: {
+          personId,
+          deletedAt: null,
+          imageLicenseAgreementAccepted: false,
+          eventGroup: {
+            deletedAt: null,
+            requiresImageLicenseAgreement: true,
+            events: {
+              some: {
+                AND: [PUBLIC_EVENT_WHERE, { majorEventId: null, endDate: { gt: now } }],
+              },
+            },
+          },
+        },
+        select: {
+          eventGroupId: true,
+          eventGroup: {
+            select: {
+              events: {
+                where: {
+                  AND: [PUBLIC_EVENT_WHERE, { majorEventId: null, endDate: { gt: now } }],
+                },
+                select: {
+                  id: true,
+                  startDate: true,
+                },
+                orderBy: { startDate: 'asc' },
+                take: 1,
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const candidates = [
+      ...majorEventSubscriptions.map((subscription) => ({
+        targetType: EventFormTargetType.MAJOR_EVENT,
+        majorEventId: subscription.majorEventId,
+        eventId: null,
+        rankedSubscriptionEnabled: subscription.majorEvent.rankedSubscriptionEnabled,
+        startDate: subscription.majorEvent.startDate,
+      })),
+      ...eventSubscriptions.map((subscription) => ({
+        targetType: EventFormTargetType.EVENT,
+        majorEventId: null,
+        eventId: subscription.eventId,
+        rankedSubscriptionEnabled: null,
+        startDate: subscription.event.startDate,
+      })),
+      ...eventGroupSubscriptions.flatMap((subscription) => {
+        const event = subscription.eventGroup.events[0];
+        return event
+          ? [
+              {
+                targetType: EventFormTargetType.EVENT,
+                majorEventId: null,
+                eventId: event.id,
+                rankedSubscriptionEnabled: null,
+                startDate: event.startDate,
+              },
+            ]
+          : [];
+      }),
+    ].sort((left, right) => left.startDate.getTime() - right.startDate.getTime());
+
+    return candidates.map((candidate, displayOrder) => ({
+      targetType: candidate.targetType,
+      majorEventId: candidate.majorEventId,
+      eventId: candidate.eventId,
+      rankedSubscriptionEnabled: candidate.rankedSubscriptionEnabled,
+      displayOrder,
+    }));
+  }
+
   async subscribeCurrentUserEvent(
     personId: string,
     eventId: string,
     actor?: AuthenticatedUser,
     formResponses?: readonly SubmitEventFormResponseInput[] | null,
+    imageLicenseAgreementAccepted?: boolean | null,
   ): Promise<PublicEvent> {
     const result = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const submittedFormIds: string[] = [];
@@ -122,7 +267,34 @@ export class CurrentUserEventSubscriptionService {
       }
 
       const now = new Date();
-      this.ensureEventSubscriptionWindowOpen(targetEvent, now);
+      let existingSubscription: { id: string; imageLicenseAgreementAccepted: boolean } | null = null;
+      if (!targetEvent.eventGroupId) {
+        existingSubscription = await tx.eventSubscription.findFirst({
+          where: {
+            eventId: targetEvent.id,
+            personId,
+            deletedAt: null,
+          },
+          select: {
+            id: true,
+            imageLicenseAgreementAccepted: true,
+          },
+        });
+        const isAgreementUpdate =
+          existingSubscription != null &&
+          imageLicenseAgreementAccepted === true &&
+          Boolean(
+            targetEvent.requiresImageLicenseAgreement || targetEvent.eventGroup?.requiresImageLicenseAgreement,
+          );
+        if (!isAgreementUpdate) {
+          this.ensureEventSubscriptionWindowOpen(targetEvent, now);
+        }
+      }
+      this.ensureImageLicenseAgreementAccepted(
+        Boolean(targetEvent.eventGroupId ? targetEvent.eventGroup?.requiresImageLicenseAgreement : targetEvent.requiresImageLicenseAgreement),
+        imageLicenseAgreementAccepted,
+        `event ${eventId}`,
+      );
 
       if (targetEvent.eventGroupId) {
         const groupSubscription = await this.subscribeCurrentUserEventGroupTx(
@@ -130,6 +302,7 @@ export class CurrentUserEventSubscriptionService {
           personId,
           targetEvent.eventGroupId,
           now,
+          imageLicenseAgreementAccepted,
         );
         await this.recordEventGroupSubscriptionChange(groupSubscription, personId, actor, tx);
         submittedFormIds.push(
@@ -152,23 +325,13 @@ export class CurrentUserEventSubscriptionService {
         };
       }
 
-      const existingSubscription = await tx.eventSubscription.findFirst({
-        where: {
-          eventId: targetEvent.id,
-          personId,
-          deletedAt: null,
-        },
-        select: {
-          id: true,
-        },
-      });
-
       if (!existingSubscription) {
         await this.ensureAvailableSlots(tx, targetEvent);
         const createdSubscription = await tx.eventSubscription.create({
           data: {
             eventId: targetEvent.id,
             personId,
+            imageLicenseAgreementAccepted: imageLicenseAgreementAccepted === true,
             createdByMethod: 'SELF_SUBSCRIPTION',
           },
           select: {
@@ -208,6 +371,13 @@ export class CurrentUserEventSubscriptionService {
           )),
         );
         return { event: targetEvent, createdSubscription, createdGroupSubscription: null, submittedFormIds };
+      }
+
+      if (imageLicenseAgreementAccepted === true && !existingSubscription.imageLicenseAgreementAccepted) {
+        await tx.eventSubscription.update({
+          where: { id: existingSubscription.id },
+          data: { imageLicenseAgreementAccepted: true },
+        });
       }
 
       submittedFormIds.push(
@@ -348,9 +518,16 @@ export class CurrentUserEventSubscriptionService {
     personId: string,
     eventGroupId: string,
     actor?: AuthenticatedUser,
+    imageLicenseAgreementAccepted?: boolean | null,
   ): Promise<CurrentUserEventGroupSubscription> {
     const subscription = await this.runSerializableSubscriptionTransaction(async (tx) => {
-      const result = await this.subscribeCurrentUserEventGroupTx(tx, personId, eventGroupId);
+      const result = await this.subscribeCurrentUserEventGroupTx(
+        tx,
+        personId,
+        eventGroupId,
+        new Date(),
+        imageLicenseAgreementAccepted,
+      );
       await this.recordEventGroupSubscriptionChange(result, personId, actor, tx);
       return result;
     });
@@ -460,6 +637,7 @@ export class CurrentUserEventSubscriptionService {
     personId: string,
     eventGroupId: string,
     now = new Date(),
+    imageLicenseAgreementAccepted?: boolean | null,
   ): Promise<{
     subscription: EventGroupSubscriptionRecord;
     events: PublicEvent[];
@@ -525,6 +703,12 @@ export class CurrentUserEventSubscriptionService {
       );
     }
 
+    this.ensureImageLicenseAgreementAccepted(
+      Boolean(groupEvents[0]?.eventGroup?.requiresImageLicenseAgreement),
+      imageLicenseAgreementAccepted,
+      `event group ${eventGroupId}`,
+    );
+
     const eligibleEvents = groupEvents.filter((event) => this.getEventSubscriptionError(event, now) === null);
     const hasExistingSubscriptionState = existingSubscription != null || activeChildSubscriptions.length > 0;
 
@@ -540,16 +724,25 @@ export class CurrentUserEventSubscriptionService {
           .filter((childSubscription) => childSubscription.eventGroupSubscriptionId === existingSubscription.id)
           .map((childSubscription) => childSubscription.eventId)
       : [];
-    const subscription =
+    let subscription =
       existingSubscription ??
       (await tx.eventGroupSubscription.create({
         data: {
           eventGroupId,
           personId,
+          imageLicenseAgreementAccepted: imageLicenseAgreementAccepted === true,
           createdByMethod: 'SELF_SUBSCRIPTION',
         },
         select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
       }));
+
+    if (imageLicenseAgreementAccepted === true && !subscription.imageLicenseAgreementAccepted) {
+      subscription = await tx.eventGroupSubscription.update({
+        where: { id: subscription.id },
+        data: { imageLicenseAgreementAccepted: true },
+        select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
+      });
+    }
 
     const childEventIds = activeChildSubscriptions.map((childSubscription) => childSubscription.eventId);
     if (childEventIds.length > 0) {

@@ -284,6 +284,7 @@ export class EventsService {
       majorEventId: '',
       eventGroupId: '',
       allowSubscription: false,
+      requiresImageLicenseAgreement: false,
       subscriptionStartDate: '',
       subscriptionEndDate: '',
       slots: '',
@@ -954,6 +955,7 @@ export class EventsService {
       majorEventId: raw.majorEventId || null,
       eventGroupId: raw.eventGroupId || null,
       allowSubscription: raw.allowSubscription,
+      requiresImageLicenseAgreement: raw.requiresImageLicenseAgreement,
       subscriptionStartDate: toOptionalIsoDateTime(raw.subscriptionStartDate),
       subscriptionEndDate: toOptionalIsoDateTime(raw.subscriptionEndDate),
       slots: toOptionalNumber(raw.slots),
@@ -1065,6 +1067,7 @@ export class EventsService {
       majorEventId: eventItem.majorEventId ?? '',
       eventGroupId: eventItem.eventGroupId ?? '',
       allowSubscription: eventItem.allowSubscription,
+      requiresImageLicenseAgreement: eventItem.requiresImageLicenseAgreement ?? false,
       subscriptionStartDate:
         eventItem.subscriptionStartDate != null ? fromIsoToLocalInput(eventItem.subscriptionStartDate) : '',
       subscriptionEndDate:

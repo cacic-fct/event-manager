@@ -30,6 +30,7 @@ export interface CurrentUserMajorEventSubscription {
   paymentDate?: string | null;
   paymentTier?: string | null;
   selectedEvents: Event[];
+  imageLicenseAgreementAccepted?: boolean;
 }
 
 export interface CurrentUserMajorEventSubscriptionRecord {
@@ -41,6 +42,7 @@ export interface CurrentUserMajorEventSubscriptionRecord {
   paymentTier?: string | null;
   majorEvent: PublicMajorEvent;
   selectedEvents: PublicEvent[];
+  imageLicenseAgreementAccepted?: boolean;
 }
 
 export interface CurrentUserEventSubscription {
@@ -48,6 +50,7 @@ export interface CurrentUserEventSubscription {
   event: PublicEvent;
   eventGroupSubscriptionId?: string | null;
   createdAt: string;
+  imageLicenseAgreementAccepted?: boolean;
 }
 
 export interface CurrentUserEventGroupSubscriptionRecord {
@@ -56,6 +59,7 @@ export interface CurrentUserEventGroupSubscriptionRecord {
   eventGroup: PublicEventGroup;
   events: PublicEvent[];
   createdAt: string;
+  imageLicenseAgreementAccepted?: boolean;
 }
 
 export interface CurrentUserSubscriptionFeedSingleEvent {

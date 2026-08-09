@@ -56,6 +56,27 @@
     }
   </section>
   }
+
+  @if (data.imageLicenseAgreement?.required) {
+  <section class="agreement-section" aria-labelledby="image-license-agreement-title">
+    <h3 id="image-license-agreement-title">Licença de uso de imagem</h3>
+    <mat-checkbox
+      [checked]="imageLicenseAgreementAccepted()"
+      (change)="imageLicenseAgreementAccepted.set($event.checked)">
+      Concordo com o
+      <a
+        href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
+        target="_blank"
+        rel="noopener noreferrer"
+        (click)="$event.stopPropagation()">
+        contrato de licença de uso de imagem do CACiC
+      </a>
+    </mat-checkbox>
+    @if (!imageLicenseAgreementAccepted()) {
+    <p class="validation">É necessário concordar com o contrato para continuar.</p>
+    }
+  </section>
+  }
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">

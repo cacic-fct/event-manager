@@ -97,7 +97,7 @@
     [disabled]="
       isSubmitting() ||
       selectedEvents().length === 0 ||
-      currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' ||
+      (currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' && !needsImageLicenseAgreement()) ||
       subscriptionCooldownSeconds() > 0
     "
     (click)="submit()">

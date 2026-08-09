@@ -87,6 +87,7 @@ export class CurrentUserPublicEventService {
       amountPaid: true,
       paymentDate: true,
       paymentTier: true,
+      imageLicenseAgreementAccepted: true,
       majorEvent: {
         select: this.getMajorEventSelect(paymentInfoTableExists),
       },

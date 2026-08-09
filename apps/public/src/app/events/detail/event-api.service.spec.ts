@@ -150,6 +150,30 @@ describe('EventApiService', () => {
 
     await expect(responsePromise).resolves.toEqual({ id: 'event-1' });
   });
+
+  it('submits image-license acceptance with the standalone subscription mutation', async () => {
+    const responsePromise = firstValueFrom(service.subscribeToEvent('event-1', [], true));
+    const request = httpTesting.expectOne('/api/graphql');
+    const query = String(request.request.body.query);
+
+    expect(query).toContain('$imageLicenseAgreementAccepted: Boolean');
+    expect(query).toContain('imageLicenseAgreementAccepted: $imageLicenseAgreementAccepted');
+    expect(request.request.body.variables).toEqual({
+      eventId: 'event-1',
+      formResponses: [],
+      imageLicenseAgreementAccepted: true,
+    });
+
+    request.flush({
+      data: {
+        subscribeCurrentUserStandaloneEvent: {
+          id: 'event-1',
+        },
+      },
+    });
+
+    await expect(responsePromise).resolves.toEqual({ id: 'event-1' });
+  });
 });
 
 function eventFixture(): PublicEvent {
@@ -169,6 +193,7 @@ function eventFixture(): PublicEvent {
     majorEventId: null,
     eventGroupId: null,
     allowSubscription: true,
+    requiresImageLicenseAgreement: false,
     subscriptionStartDate: null,
     subscriptionEndDate: null,
     slots: 40,

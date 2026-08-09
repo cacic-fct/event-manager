@@ -54,6 +54,23 @@
   margin-top: 20px;
 }
 
+.agreement-section {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  padding-top: 16px;
+}
+
+.agreement-section h3 {
+  font: var(--mat-sys-title-small);
+  margin: 0;
+}
+
+.agreement-section a {
+  color: var(--mat-sys-primary);
+}
+
 .forms-section h3,
 .form-card h4,
 .form-card p {

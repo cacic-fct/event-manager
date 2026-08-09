@@ -87,6 +87,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       amountPaid: subscription.amountPaid ?? undefined,
       paymentDate: subscription.paymentDate ?? undefined,
       paymentTier: subscription.paymentTier ?? undefined,
+      imageLicenseAgreementAccepted: subscription.imageLicenseAgreementAccepted,
       selectedEvents: selectedEventsByMajorEventId.get(subscription.majorEventId) ?? [],
       notSubscribedEvents: [],
     }));
@@ -151,6 +152,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       amountPaid: subscription.amountPaid ?? undefined,
       paymentDate: subscription.paymentDate ?? undefined,
       paymentTier: subscription.paymentTier ?? undefined,
+      imageLicenseAgreementAccepted: subscription.imageLicenseAgreementAccepted,
       selectedEvents,
       notSubscribedEvents,
     };
@@ -187,7 +189,32 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       throw new NotFoundException(`Major event ${input.majorEventId} was not found.`);
     }
 
-    this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(majorEvent);
+    if (majorEvent.requiresImageLicenseAgreement && input.imageLicenseAgreementAccepted !== true) {
+      throw new BadRequestException(
+        `Subscription for major event ${input.majorEventId} requires acceptance of the CACiC image-license agreement.`,
+      );
+    }
+
+    const existingSubscriptionBeforeWindow = await this.prisma.majorEventSubscription.findFirst({
+      where: {
+        majorEventId: input.majorEventId,
+        personId: person.id,
+        deletedAt: null,
+        subscriptionStatus: { not: SubscriptionStatus.CANCELED },
+      },
+      select: {
+        imageLicenseAgreementAccepted: true,
+      },
+    });
+    const isImageLicenseAgreementUpdate =
+      majorEvent.requiresImageLicenseAgreement &&
+      input.imageLicenseAgreementAccepted === true &&
+      existingSubscriptionBeforeWindow != null &&
+      !existingSubscriptionBeforeWindow.imageLicenseAgreementAccepted &&
+      majorEvent.endDate > new Date();
+    if (!isImageLicenseAgreementUpdate) {
+      this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(majorEvent);
+    }
 
     const isRankedSubscription = majorEvent.rankedSubscriptionEnabled;
     const allSubscriptionEvents = await this.prisma.event.findMany({
@@ -272,10 +299,23 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         select: {
           id: true,
           subscriptionStatus: true,
+          imageLicenseAgreementAccepted: true,
         },
       });
 
       if (existingSubscription?.subscriptionStatus === SubscriptionStatus.CONFIRMED) {
+        if (majorEvent.requiresImageLicenseAgreement && input.imageLicenseAgreementAccepted === true) {
+          const acceptedSubscription = await tx.majorEventSubscription.update({
+            where: { id: existingSubscription.id },
+            data: { imageLicenseAgreementAccepted: true },
+            select: this.publicEvents.getMajorEventSubscriptionSelect(paymentInfoTableExists),
+          });
+          return {
+            subscription: acceptedSubscription,
+            createdSubscription: false,
+            submittedFormIds,
+          };
+        }
         throw new BadRequestException(
           `Subscription for major event ${input.majorEventId} is already confirmed and cannot be changed.`,
         );
@@ -325,6 +365,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
         if (nextStatus) {
           updateData.subscriptionStatus = nextStatus;
         }
+        if (majorEvent.requiresImageLicenseAgreement && input.imageLicenseAgreementAccepted === true) {
+          updateData.imageLicenseAgreementAccepted = true;
+        }
 
         if (Object.keys(updateData).length > 0) {
           await tx.majorEventSubscription.update({
@@ -351,6 +394,8 @@ export class CurrentUserMajorEventSubscriptionsResolver {
             subscriptionStatus:
               nextStatus ??
               (majorEvent.isPaymentRequired ? SubscriptionStatus.WAITING_RECEIPT_UPLOAD : SubscriptionStatus.CONFIRMED),
+            imageLicenseAgreementAccepted:
+              majorEvent.requiresImageLicenseAgreement && input.imageLicenseAgreementAccepted === true,
           },
         });
       }
@@ -607,6 +652,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       amountPaid: subscription.amountPaid ?? undefined,
       paymentDate: subscription.paymentDate ?? undefined,
       paymentTier: subscription.paymentTier ?? undefined,
+      imageLicenseAgreementAccepted: subscription.imageLicenseAgreementAccepted,
       selectedEvents: orderedEvents,
       notSubscribedEvents: [],
     };
@@ -681,6 +727,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       amountPaid: updatedSubscription.amountPaid ?? undefined,
       paymentDate: updatedSubscription.paymentDate ?? undefined,
       paymentTier: updatedSubscription.paymentTier ?? undefined,
+      imageLicenseAgreementAccepted: updatedSubscription.imageLicenseAgreementAccepted,
       selectedEvents,
       notSubscribedEvents: [],
     };

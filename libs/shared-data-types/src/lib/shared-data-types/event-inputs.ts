@@ -49,6 +49,9 @@ export class EventCreateInput {
   @Field(() => Boolean, { nullable: true })
   allowSubscription?: boolean;
 
+  @Field(() => Boolean, { nullable: true })
+  requiresImageLicenseAgreement?: boolean;
+
   @Field(() => Date, { nullable: true })
   subscriptionStartDate?: Date;
 
@@ -162,6 +165,9 @@ export class EventUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   allowSubscription?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  requiresImageLicenseAgreement?: boolean;
 
   @Field(() => Date, { nullable: true })
   subscriptionStartDate?: Date;

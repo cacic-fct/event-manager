@@ -51,6 +51,7 @@ model Event {
   eventManagerPermissionGrants EventManagerPermissionGrant[]
 
   allowSubscription     Boolean             @default(false)
+  requiresImageLicenseAgreement Boolean     @default(false)
   subscriptionStartDate DateTime?
   subscriptionEndDate   DateTime?
   subscriptions         EventSubscription[]
