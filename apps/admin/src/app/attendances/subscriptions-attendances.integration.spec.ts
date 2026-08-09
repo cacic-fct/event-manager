@@ -152,6 +152,7 @@ describe('workspace subscription and attendance management integration', () => {
     subscriptionsService.majorEventEditForm.patchValue({
       subscriptionStatus: 'CONFIRMED',
       amountPaid: 4000,
+      imageLicenseAgreementAccepted: false,
       paymentDate: '2026-05-20',
       paymentTier: 'Aluno',
     });
@@ -162,6 +163,7 @@ describe('workspace subscription and attendance management integration', () => {
     expect(subscriptionApi.updateMajorEventSubscription).toHaveBeenCalledWith('major-event-subscription-1', {
       subscriptionStatus: 'CONFIRMED',
       amountPaid: 4000,
+      imageLicenseAgreementAccepted: false,
       paymentDate: '2026-05-20',
       paymentTier: 'Aluno',
       selectedEventIds: ['event-1', 'event-2'],
