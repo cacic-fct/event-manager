@@ -30,6 +30,7 @@ import { AuthReconnectLoginService } from './auth/auth-reconnect-login.service';
 import { OnlineAttendanceCoordinatorService } from './attendance/self-registration/coordinator.service';
 import { AttendanceOfflineSyncService } from './attendance/collection/offline/sync.service';
 import { RequiredSubscriptionFormInterruptionFlow } from './forms/required-subscription-form-interruption.flow';
+import { ImageLicenseAgreementInterruptionFlow } from './events/image-license-agreement-interruption.flow';
 import { InterruptionCoordinatorService } from './interruption/interruption-coordinator.service';
 import { provideInterruptionFlow } from './interruption/interruption-flow';
 import { OfflineUserDataService } from './shared/offline-user-data.service';
@@ -130,6 +131,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([authInterceptor])),
     provideInterruptionFlow(OnlineAttendanceCoordinatorService),
     provideInterruptionFlow(SportsAutorouteInterruptionFlow),
+    provideInterruptionFlow(ImageLicenseAgreementInterruptionFlow),
     provideInterruptionFlow(RequiredSubscriptionFormInterruptionFlow),
     provideCloudflareTurnstile({
       siteKey: turnstileSiteKey,

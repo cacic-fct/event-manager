@@ -105,6 +105,24 @@ export class RequiredSubscriptionFormInterruption {
 }
 
 @ObjectType()
+export class RequiredImageLicenseAgreementInterruption {
+  @Field(() => EventFormTargetType)
+  targetType!: EventFormTargetType;
+
+  @Field(() => String, { nullable: true })
+  eventId?: string | null;
+
+  @Field(() => String, { nullable: true })
+  majorEventId?: string | null;
+
+  @Field(() => Boolean, { nullable: true })
+  rankedSubscriptionEnabled?: boolean | null;
+
+  @Field(() => Int)
+  displayOrder!: number;
+}
+
+@ObjectType()
 export class EventForm {
   @Field(() => String)
   id!: string;

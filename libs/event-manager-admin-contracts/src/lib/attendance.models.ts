@@ -167,6 +167,7 @@ export interface WorkspaceMajorEventSubscription {
   createdAt: string;
   createdById?: string | null;
   createdByMethod: SubscriptionCreationMethod;
+  imageLicenseAgreementAccepted: boolean;
   events: WorkspaceMajorEventSubscriptionEvent[];
 }
 

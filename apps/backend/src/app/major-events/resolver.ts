@@ -66,6 +66,7 @@ const MAJOR_EVENT_SELECT = {
   description: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
+  requiresImageLicenseAgreement: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
   maxUncategorizedPerAttendee: true,
@@ -440,6 +441,7 @@ export class MajorEventsResolver {
             maxLecturesPerAttendee: source.maxLecturesPerAttendee ?? undefined,
             maxUncategorizedPerAttendee: source.maxUncategorizedPerAttendee ?? undefined,
             rankedSubscriptionEnabled: source.rankedSubscriptionEnabled,
+            requiresImageLicenseAgreement: source.requiresImageLicenseAgreement,
           }
         : {}),
       ...(shouldCopyCertificateConfig
@@ -569,6 +571,9 @@ export class MajorEventsResolver {
     if (input.subscriptionEndDate !== undefined) {
       data.subscriptionEndDate = input.subscriptionEndDate;
     }
+    if (input.requiresImageLicenseAgreement !== undefined) {
+      data.requiresImageLicenseAgreement = input.requiresImageLicenseAgreement;
+    }
     if (input.maxCoursesPerAttendee !== undefined) {
       data.maxCoursesPerAttendee = input.maxCoursesPerAttendee;
     }
@@ -652,6 +657,9 @@ export class MajorEventsResolver {
     }
     if (input.subscriptionEndDate !== undefined) {
       data.subscriptionEndDate = input.subscriptionEndDate;
+    }
+    if (input.requiresImageLicenseAgreement !== undefined) {
+      data.requiresImageLicenseAgreement = input.requiresImageLicenseAgreement;
     }
     if (input.maxCoursesPerAttendee !== undefined) {
       data.maxCoursesPerAttendee = input.maxCoursesPerAttendee;

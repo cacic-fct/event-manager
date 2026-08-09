@@ -1,5 +1,6 @@
 import { DatePipe, formatDate } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -45,6 +46,7 @@ export interface SubscriptionFormAnswer {
 export interface ConfirmSubscriptionDialogResult {
   confirmed: boolean;
   answers: SubscriptionFormAnswer[];
+  imageLicenseAgreementAccepted: boolean;
 }
 
 export interface ConfirmSubscriptionDialogData {
@@ -52,6 +54,10 @@ export interface ConfirmSubscriptionDialogData {
   event?: PublicEvent;
   events: PublicEvent[];
   forms: SubscriptionFormContext[];
+  imageLicenseAgreement?: {
+    required: boolean;
+    accepted: boolean;
+  };
 }
 
 interface ConfirmSubscriptionListMonth {
@@ -68,7 +74,15 @@ interface ConfirmSubscriptionListDay {
 
 @Component({
   selector: 'app-confirm-subscription-dialog',
-  imports: [DatePipe, MatButtonModule, MatDialogModule, MatIconModule, MatListModule, EventFormRendererComponent],
+  imports: [
+    DatePipe,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatDialogModule,
+    MatIconModule,
+    MatListModule,
+    EventFormRendererComponent,
+  ],
   templateUrl: './confirm-dialog.html',
   styleUrl: './confirm-dialog.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -80,9 +94,14 @@ export class ConfirmSubscriptionDialog {
   readonly answersByKey = signal<Record<string, FormResponseAnswer[]>>(
     Object.fromEntries(this.data.forms.map((form) => [this.formKey(form), form.initialAnswers])),
   );
+  readonly imageLicenseAgreementAccepted = signal(this.data.imageLicenseAgreement?.accepted ?? false);
 
   readonly groupedEvents = computed(() => this.groupByMonthAndDay(this.data.events));
-  readonly canConfirm = computed(() => this.data.forms.every((form) => !this.hasMissingRequired(form)));
+  readonly canConfirm = computed(
+    () =>
+      this.data.forms.every((form) => !this.hasMissingRequired(form)) &&
+      (!this.data.imageLicenseAgreement?.required || this.imageLicenseAgreementAccepted()),
+  );
   readonly subscriptionTarget = computed(() => this.data.majorEvent ?? this.data.event ?? this.data.events[0]);
 
   confirm(): void {
@@ -104,11 +123,16 @@ export class ConfirmSubscriptionDialog {
     this.dialogRef.close({
       confirmed: true,
       answers,
+      imageLicenseAgreementAccepted: this.imageLicenseAgreementAccepted(),
     } satisfies ConfirmSubscriptionDialogResult);
   }
 
   close(): void {
-    this.dialogRef.close({ confirmed: false, answers: [] } satisfies ConfirmSubscriptionDialogResult);
+    this.dialogRef.close({
+      confirmed: false,
+      answers: [],
+      imageLicenseAgreementAccepted: false,
+    } satisfies ConfirmSubscriptionDialogResult);
   }
 
   formElements(form: PublicEventForm): FormElement[] {

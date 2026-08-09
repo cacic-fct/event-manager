@@ -70,6 +70,9 @@ export class MajorEventCreateInput {
   @Field(() => Date, { nullable: true })
   subscriptionEndDate?: Date;
 
+  @Field(() => Boolean, { nullable: true })
+  requiresImageLicenseAgreement?: boolean;
+
   @Field(() => Int, { nullable: true })
   maxCoursesPerAttendee?: number;
 
@@ -141,6 +144,9 @@ export class MajorEventUpdateInput {
 
   @Field(() => Date, { nullable: true })
   subscriptionEndDate?: Date;
+
+  @Field(() => Boolean, { nullable: true })
+  requiresImageLicenseAgreement?: boolean;
 
   @Field(() => Int, { nullable: true })
   maxCoursesPerAttendee?: number;

@@ -124,6 +124,9 @@ export class CurrentUserEventSubscription {
 
   @Field(() => Date)
   createdAt!: Date;
+
+  @Field(() => Boolean)
+  imageLicenseAgreementAccepted!: boolean;
 }
 
 @ObjectType()
@@ -142,6 +145,9 @@ export class CurrentUserEventGroupSubscription {
 
   @Field(() => Date)
   createdAt!: Date;
+
+  @Field(() => Boolean)
+  imageLicenseAgreementAccepted!: boolean;
 }
 
 @ObjectType()
@@ -318,6 +324,9 @@ export class CurrentUserMajorEventSubscription {
 
   @Field(() => [PublicEvent])
   notSubscribedEvents!: PublicEvent[];
+
+  @Field(() => Boolean)
+  imageLicenseAgreementAccepted!: boolean;
 }
 
 @ObjectType()
@@ -378,6 +387,9 @@ export class UpsertCurrentUserMajorEventSubscriptionInput {
 
   @Field(() => [SubmitEventFormResponseInput], { nullable: true })
   formResponses?: SubmitEventFormResponseInput[] | null;
+
+  @Field(() => Boolean, { nullable: true })
+  imageLicenseAgreementAccepted?: boolean | null;
 }
 
 @InputType()

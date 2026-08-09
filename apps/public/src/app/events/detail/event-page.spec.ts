@@ -29,7 +29,7 @@ async function createEventComponentFixture(
   const eventPageData = options.eventPageData ?? defaultEventPageData();
   const dialog = {
     open: vi.fn(() => ({
-      afterClosed: () => of({ confirmed: false, answers: [] }),
+      afterClosed: () => of({ confirmed: false, answers: [], imageLicenseAgreementAccepted: false }),
     })),
     ...options.dialog,
   };
@@ -100,6 +100,7 @@ function defaultEventPageData(overrides: Partial<EventPageData> = {}): EventPage
     longitude: null,
     locationDescription: null,
     allowSubscription: false,
+    requiresImageLicenseAgreement: false,
     subscriptionStartDate: null,
     subscriptionEndDate: null,
     slots: null,
@@ -341,6 +342,7 @@ describe('Event', () => {
       afterClosed: () =>
         of({
           confirmed: true,
+          imageLicenseAgreementAccepted: false,
           answers: [
             {
               formId: 'form-1',
@@ -392,7 +394,7 @@ describe('Event', () => {
         eventId: 'event-1',
         answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
       },
-    ]);
+    ], false);
   });
 
   it('keeps multiple-response subscription forms editable after an existing response', async () => {
@@ -418,7 +420,7 @@ describe('Event', () => {
       updatedAt: '2026-07-06T12:00:00.000Z',
     };
     const open = vi.fn(() => ({
-      afterClosed: () => of({ confirmed: false, answers: [] }),
+      afterClosed: () => of({ confirmed: false, answers: [], imageLicenseAgreementAccepted: false }),
     }));
     const eventPageData = defaultEventPageData({
       event: {
@@ -641,6 +643,7 @@ describe('Event', () => {
       afterClosed: () =>
         of({
           confirmed: true,
+          imageLicenseAgreementAccepted: false,
           answers: [
             {
               formId: 'form-2',
@@ -697,6 +700,6 @@ describe('Event', () => {
         eventId: 'event-2',
         answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
       },
-    ]);
+    ], false);
   });
 });

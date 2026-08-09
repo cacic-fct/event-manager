@@ -150,12 +150,14 @@
     [disabled]="
       store.isSubmitting() ||
       store.effectiveSelectedEventIds().size === 0 ||
-      store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' ||
+      (store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' && !store.needsImageLicenseAgreement()) ||
       store.subscriptionCooldownSeconds() > 0
     "
     (click)="submit()">
-    <mat-icon>{{ store.currentUserSubscription() ? 'edit' : 'event_available' }}</mat-icon>
-    {{ store.currentUserSubscription() ? 'Atualizar inscrição' : 'Inscrever-se' }}
+    <mat-icon>
+      {{ store.needsImageLicenseAgreement() ? 'verified_user' : store.currentUserSubscription() ? 'edit' : 'event_available' }}
+    </mat-icon>
+    {{ store.needsImageLicenseAgreement() ? 'Aceitar contrato' : store.currentUserSubscription() ? 'Atualizar inscrição' : 'Inscrever-se' }}
   </button>
 </section>
 }

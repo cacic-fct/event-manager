@@ -46,6 +46,7 @@ export class CurrentUserEventMapperService {
       emoji: majorEvent.emoji,
       startDate: majorEvent.startDate,
       endDate: majorEvent.endDate,
+      requiresImageLicenseAgreement: majorEvent.requiresImageLicenseAgreement,
       description: majorEvent.description ?? undefined,
       subscriptionStartDate: majorEvent.subscriptionStartDate ?? undefined,
       subscriptionEndDate: majorEvent.subscriptionEndDate ?? undefined,
@@ -84,6 +85,7 @@ export class CurrentUserEventMapperService {
       id: eventGroup.id,
       name: eventGroup.name,
       emoji: eventGroup.emoji,
+      requiresImageLicenseAgreement: eventGroup.requiresImageLicenseAgreement,
       shouldIssueCertificateForEachEvent: eventGroup.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: eventGroup.shouldIssuePartialCertificate,
       shouldIssueCertificate: eventGroup.shouldIssueCertificate,
@@ -110,6 +112,7 @@ export class CurrentUserEventMapperService {
       eventGroup: event.eventGroup ? this.mapPublicEventGroup(event.eventGroup) : undefined,
       sportsMatch: 'sportsMatch' in event ? (event.sportsMatch ?? undefined) : undefined,
       allowSubscription: event.allowSubscription,
+      requiresImageLicenseAgreement: event.requiresImageLicenseAgreement,
       subscriptionStartDate: event.subscriptionStartDate ?? undefined,
       subscriptionEndDate: event.subscriptionEndDate ?? undefined,
       slots: event.slots ?? undefined,
@@ -196,6 +199,10 @@ export class CurrentUserEventMapperService {
       event: this.mapPublicEvent(subscription.event),
       eventGroupSubscriptionId: subscription.eventGroupSubscriptionId ?? undefined,
       createdAt: subscription.createdAt,
+      imageLicenseAgreementAccepted: Boolean(
+        subscription.eventGroupSubscription?.imageLicenseAgreementAccepted ||
+          subscription.imageLicenseAgreementAccepted,
+      ),
     };
   }
 
@@ -209,6 +216,7 @@ export class CurrentUserEventMapperService {
       eventGroup: this.mapPublicEventGroup(subscription.eventGroup),
       events,
       createdAt: subscription.createdAt,
+      imageLicenseAgreementAccepted: subscription.imageLicenseAgreementAccepted,
     };
   }
 

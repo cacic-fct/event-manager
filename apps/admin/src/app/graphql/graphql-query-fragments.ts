@@ -37,6 +37,7 @@ export const EVENT_DETAIL_FIELDS = `
   majorEventId
   eventGroupId
   allowSubscription
+  requiresImageLicenseAgreement
   subscriptionStartDate
   subscriptionEndDate
   slots
@@ -75,6 +76,7 @@ export const EVENT_DETAIL_FIELDS = `
     id
     name
     emoji
+    requiresImageLicenseAgreement
     shouldIssueCertificate
     shouldIssueCertificateForNonPayingAttendees
     shouldIssueCertificateForNonSubscribedAttendees
@@ -146,6 +148,7 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
   description
   subscriptionStartDate
   subscriptionEndDate
+  requiresImageLicenseAgreement
   maxCoursesPerAttendee
   maxLecturesPerAttendee
   maxUncategorizedPerAttendee
@@ -201,6 +204,7 @@ export const EVENT_GROUP_FIELDS = `
   id
   name
   emoji
+  requiresImageLicenseAgreement
   shouldIssueCertificate
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees

@@ -87,6 +87,14 @@ export interface RequiredSubscriptionFormInterruption {
   displayOrder: number;
 }
 
+export interface RequiredImageLicenseAgreementInterruption {
+  targetType: EventFormTargetType;
+  eventId?: string | null;
+  majorEventId?: string | null;
+  rankedSubscriptionEnabled?: boolean | null;
+  displayOrder: number;
+}
+
 type SubmitPublicEventFormResponseBaseInput = GraphqlVariables & {
   formId: string;
   linkId?: string | null;

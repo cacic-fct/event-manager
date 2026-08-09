@@ -1,9 +1,81 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType } from '@prisma/client';
 import { CurrentUserEventSubscriptionService } from './subscription.service';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 
 describe('CurrentUserEventSubscriptionService', () => {
+  it('requires explicit image-license acceptance when a target enables it', () => {
+    const service = new CurrentUserEventSubscriptionService({} as never, {} as never, {} as never, {} as never);
+
+    expect(() => service.ensureImageLicenseAgreementAccepted(true, false, 'event event-1')).toThrow(
+      BadRequestException,
+    );
+    expect(() => service.ensureImageLicenseAgreementAccepted(true, null, 'event event-1')).toThrow(
+      BadRequestException,
+    );
+    expect(() => service.ensureImageLicenseAgreementAccepted(true, true, 'event event-1')).not.toThrow();
+    expect(() => service.ensureImageLicenseAgreementAccepted(false, false, 'event event-1')).not.toThrow();
+  });
+
+  it('orders pending image-license interruptions across major events, events, and groups', async () => {
+    const prisma = {
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            majorEventId: 'major-1',
+            majorEvent: {
+              startDate: new Date('2026-07-02T10:00:00.000Z'),
+              rankedSubscriptionEnabled: true,
+            },
+          },
+        ]),
+      },
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            eventId: 'event-1',
+            event: { startDate: new Date('2026-07-01T10:00:00.000Z') },
+          },
+        ]),
+      },
+      eventGroupSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            eventGroupId: 'group-1',
+            eventGroup: {
+              events: [{ id: 'event-2', startDate: new Date('2026-07-03T10:00:00.000Z') }],
+            },
+          },
+        ]),
+      },
+    };
+    const service = new CurrentUserEventSubscriptionService(prisma as never, {} as never, {} as never, {} as never);
+
+    await expect(service.listRequiredImageLicenseAgreementInterruptions('person-1')).resolves.toEqual([
+      {
+        targetType: 'EVENT',
+        eventId: 'event-1',
+        majorEventId: null,
+        rankedSubscriptionEnabled: null,
+        displayOrder: 0,
+      },
+      {
+        targetType: 'MAJOR_EVENT',
+        eventId: null,
+        majorEventId: 'major-1',
+        rankedSubscriptionEnabled: true,
+        displayOrder: 1,
+      },
+      {
+        targetType: 'EVENT',
+        eventId: 'event-2',
+        majorEventId: null,
+        rankedSubscriptionEnabled: null,
+        displayOrder: 2,
+      },
+    ]);
+  });
+
   it('records group subscriptions with their own audit entity type', async () => {
     const subscription = {
       id: 'group-subscription-1',

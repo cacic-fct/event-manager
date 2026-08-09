@@ -21,6 +21,7 @@ const meta: Meta<ConfirmSubscriptionDialog> = {
               emoji: '🎓',
               startDate: publicStoryDate(1, 9),
               endDate: publicStoryDate(5, 18),
+              requiresImageLicenseAgreement: true,
             },
             events: [
               {
@@ -73,6 +74,10 @@ const meta: Meta<ConfirmSubscriptionDialog> = {
                 editable: true,
               },
             ],
+            imageLicenseAgreement: {
+              required: true,
+              accepted: false,
+            },
           },
         },
         {

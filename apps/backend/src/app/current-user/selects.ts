@@ -60,6 +60,7 @@ export const MAJOR_EVENT_BASE_SELECT = {
   description: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
+  requiresImageLicenseAgreement: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
   maxUncategorizedPerAttendee: true,
@@ -132,7 +133,13 @@ export const CURRENT_USER_EVENT_ATTENDANCE_SELECT = {
 export const CURRENT_USER_EVENT_SUBSCRIPTION_SELECT = {
   eventId: true,
   eventGroupSubscriptionId: true,
+  imageLicenseAgreementAccepted: true,
   createdAt: true,
+  eventGroupSubscription: {
+    select: {
+      imageLicenseAgreementAccepted: true,
+    },
+  },
   event: {
     select: PUBLIC_EVENT_SELECT,
   },
@@ -141,6 +148,7 @@ export const CURRENT_USER_EVENT_SUBSCRIPTION_SELECT = {
 export const CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT = {
   id: true,
   eventGroupId: true,
+  imageLicenseAgreementAccepted: true,
   createdAt: true,
   eventGroup: {
     select: PUBLIC_EVENT_GROUP_SELECT,
@@ -160,6 +168,7 @@ export const EVENT_GROUP_SELECT = {
   id: true,
   name: true,
   emoji: true,
+  requiresImageLicenseAgreement: true,
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
@@ -194,6 +203,7 @@ export const EVENT_SELECT = {
     select: EVENT_GROUP_SELECT,
   },
   allowSubscription: true,
+  requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
   slots: true,

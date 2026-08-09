@@ -15,6 +15,7 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
   contactType: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
+  requiresImageLicenseAgreement: true,
   maxCoursesPerAttendee: true,
   maxLecturesPerAttendee: true,
   maxUncategorizedPerAttendee: true,
@@ -65,6 +66,7 @@ export const PUBLIC_EVENT_GROUP_SELECT = {
   id: true,
   name: true,
   emoji: true,
+  requiresImageLicenseAgreement: true,
   shouldIssueCertificate: true,
   shouldIssueCertificateForEachEvent: true,
   shouldIssuePartialCertificate: true,
@@ -92,6 +94,7 @@ export const PUBLIC_EVENT_SELECT = {
     select: PUBLIC_EVENT_GROUP_SELECT,
   },
   allowSubscription: true,
+  requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
   subscriptionEndDate: true,
   slots: true,
@@ -183,6 +186,7 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventMappable): Publi
     emoji: majorEvent.emoji,
     startDate: majorEvent.startDate,
     endDate: majorEvent.endDate,
+    requiresImageLicenseAgreement: majorEvent.requiresImageLicenseAgreement,
     description: majorEvent.description ?? undefined,
     subscriptionStartDate: majorEvent.subscriptionStartDate ?? undefined,
     subscriptionEndDate: majorEvent.subscriptionEndDate ?? undefined,
@@ -351,6 +355,12 @@ export class PublicMajorEvent {
   })
   endDate!: Date;
 
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether the public major-event subscription requires acceptance of the CACiC image-license agreement.',
+  })
+  requiresImageLicenseAgreement?: boolean | null;
+
   @Field(() => String, {
     nullable: true,
     description: 'Public long-form description used on the major event page.',
@@ -480,6 +490,12 @@ export class PublicEventGroup {
 
   @Field(() => Boolean, {
     nullable: true,
+    description: 'Whether subscriptions through this event group require acceptance of the CACiC image-license agreement.',
+  })
+  requiresImageLicenseAgreement?: boolean | null;
+
+  @Field(() => Boolean, {
+    nullable: true,
     description: 'When true, certificates may be emitted per event instead of only as one grouped certificate.',
   })
   shouldIssueCertificateForEachEvent?: boolean | null;
@@ -572,6 +588,12 @@ export class PublicEvent {
     description: 'Event end date used for schedule rendering and conflict checks.',
   })
   endDate!: Date;
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether direct subscription to this standalone event requires acceptance of the CACiC image-license agreement.',
+  })
+  requiresImageLicenseAgreement?: boolean | null;
 
   @Field(() => String, {
     description: 'Visual marker used by the Angular UI when rendering event cards and lists.',

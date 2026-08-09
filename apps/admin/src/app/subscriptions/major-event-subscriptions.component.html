@@ -355,6 +355,17 @@
                 }
               </mat-select>
             </mat-form-field>
+
+            <mat-checkbox formControlName="imageLicenseAgreementAccepted" [disabled]="!workspace.editMode()">
+              Concordou com o
+              <a
+                href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
+                target="_blank"
+                rel="noopener noreferrer"
+                (click)="$event.stopPropagation()">
+                contrato de licença de uso de imagem do CACiC
+              </a>
+            </mat-checkbox>
           </fieldset>
         </form>
 

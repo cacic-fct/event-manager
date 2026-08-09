@@ -173,9 +173,7 @@ describe('AuthController callback redirect validation', () => {
     expect(response.clearCookie).not.toHaveBeenCalled();
     expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('/app/auth/error?'));
     expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('reason=login-expired'));
-    expect(response.redirect).toHaveBeenCalledWith(
-      expect.stringContaining('message=O+tempo+de+login+expirou.+Tente+novamente'),
-    );
+    expect(response.redirect).not.toHaveBeenCalledWith(expect.stringContaining('message='));
     expect(keycloakAuthService.exchangeCodeForTokens).not.toHaveBeenCalled();
     expect(keycloakAuthService.createSession).not.toHaveBeenCalled();
   });
@@ -200,7 +198,7 @@ describe('AuthController callback redirect validation', () => {
     expect(keycloakAuthService.createSession).not.toHaveBeenCalled();
   });
 
-  it('redirects unexpected callback failures to the frontend with generic recovery copy', async () => {
+  it('redirects unexpected callback failures to the frontend with a server-error reason', async () => {
     const response = responseFixture();
     keycloakAuthService.createSession.mockRejectedValue(new Error('Redis connection failed'));
 
@@ -217,10 +215,10 @@ describe('AuthController callback redirect validation', () => {
 
     expect(response.redirect).toHaveBeenCalledWith(expect.stringContaining('/app/auth/error?'));
     expect(readRedirectParam(response, 'reason')).toBe('server-error');
-    expect(readRedirectParam(response, 'title')).toBe('Ocorreu um erro.');
-    expect(readRedirectParam(response, 'description')).toBe('Tente novamente mais tarde');
-    expect(readRedirectParam(response, 'message')).toBe('Ocorreu um erro. Tente novamente mais tarde');
     expect(response.redirect).not.toHaveBeenCalledWith(expect.stringContaining('raw='));
+    expect(response.redirect).not.toHaveBeenCalledWith(expect.stringContaining('title='));
+    expect(response.redirect).not.toHaveBeenCalledWith(expect.stringContaining('description='));
+    expect(response.redirect).not.toHaveBeenCalledWith(expect.stringContaining('message='));
     expect(response.redirect).not.toHaveBeenCalledWith(expect.stringContaining('Redis connection failed'));
     expect(response.cookie).not.toHaveBeenCalledWith(AUTH_SESSION_COOKIE_NAME, expect.anything(), expect.anything());
   });

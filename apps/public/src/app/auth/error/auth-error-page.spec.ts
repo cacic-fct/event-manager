@@ -54,7 +54,7 @@ describe('AuthErrorPage', () => {
       .compileComponents();
   });
 
-  it('renders the login-expired recovery copy and tucks raw details in a disclosure', async () => {
+  it('renders the login-expired recovery copy and tucks fixed details in a disclosure', async () => {
     const fixture = createFixture();
 
     expect(text(fixture)).toContain('O tempo de login expirou.');
@@ -90,9 +90,10 @@ describe('AuthErrorPage', () => {
     expect(auth.login).toHaveBeenCalledWith({ returnTo: '/calendar' });
   });
 
-  it('renders query-param copy as inert text instead of HTML', async () => {
+  it('ignores text query params and uses the fixed login-expired copy', async () => {
     queryParamMap.next(
       convertToParamMap({
+        reason: 'login-expired',
         title: '<img src=x onerror=alert(1)>',
         description: '<script>alert(1)</script>',
         actionLabel: '<svg onload=alert(1)>Entrar</svg>',
@@ -105,13 +106,23 @@ describe('AuthErrorPage', () => {
     const description = fixture.nativeElement.querySelector('.auth-error-copy p') as HTMLElement;
     const technicalDetails = fixture.nativeElement.querySelector('pre code') as HTMLElement;
 
-    expect(title.textContent).toContain('<img src=x onerror=alert(1)>');
-    expect(title.innerHTML).toContain('&lt;img');
+    expect(title.textContent).toBe('O tempo de login expirou.');
+    expect(title.innerHTML).not.toContain('&lt;img');
     expect(title.querySelector('img')).toBeNull();
-    expect(description.textContent).toContain('<script>alert(1)</script>');
+    expect(description.textContent).toBe('Entre novamente para continuar.');
     expect(description.querySelector('script')).toBeNull();
-    expect(technicalDetails.textContent).toContain('</code><img src=x onerror=alert(1)>');
+    expect(technicalDetails.textContent).toContain('Invalid authorization state.');
+    expect(technicalDetails.textContent).not.toContain('onerror=alert(1)');
     expect(technicalDetails.querySelector('img')).toBeNull();
+  });
+
+  it('uses fixed server-error copy for the server-error reason', async () => {
+    queryParamMap.next(convertToParamMap({ reason: 'server-error' }));
+    const fixture = createFixture();
+
+    expect(fixture.nativeElement.querySelector('h1')?.textContent).toBe('Ocorreu um erro.');
+    expect(text(fixture)).toContain('Tente novamente mais tarde');
+    expect(text(fixture)).not.toContain('O tempo de login expirou.');
   });
 
   it('copies raw technical details when the clipboard is available', async () => {

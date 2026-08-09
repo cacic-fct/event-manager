@@ -148,6 +148,11 @@ export class Event {
   private readonly reloadCounter = signal(0);
   private readonly realtimeAvailability = signal<{ eventId: string; hasAvailableSlots: boolean } | null>(null);
   private readonly cooldownEventId = signal<string | null>(null);
+  private readonly imageLicenseAgreementQueryRequested = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('requireImageLicenseAgreement') === 'true')),
+    { initialValue: false },
+  );
+  private readonly imageLicenseAgreementDialogOpened = signal(false);
 
   private readonly returnUrl = toSignal(
     this.route.queryParamMap.pipe(map((params) => params.get('back') || params.get('returnUrl') || '/menu')),
@@ -177,6 +182,16 @@ export class Event {
   });
 
   readonly backUrl = computed(() => this.returnUrl());
+  readonly needsImageLicenseAgreement = computed(() => {
+    const currentState = this.eventState();
+    const subscription = currentState.status === 'ready' ? currentState.data.currentUserSubscription : null;
+    return Boolean(
+      currentState.status === 'ready' &&
+        this.requiresImageLicenseAgreement(currentState.data) &&
+        subscription &&
+        subscription.imageLicenseAgreementAccepted !== true,
+    );
+  });
 
   private readonly sportsMatchRedirect = effect(() => {
     const currentState = this.eventState();
@@ -232,7 +247,25 @@ export class Event {
     if (this.cooldownEventId() !== eventId) {
       this.cooldownEventId.set(eventId);
       this.standaloneSubscriptionCooldown.clear();
+      this.imageLicenseAgreementDialogOpened.set(false);
     }
+  });
+
+  private readonly imageLicenseAgreementWatcher = effect(() => {
+    const currentState = this.eventState();
+    if (
+      !this.imageLicenseAgreementQueryRequested() ||
+      this.imageLicenseAgreementDialogOpened() ||
+      !this.isBrowser ||
+      !this.isAuthenticated() ||
+      currentState.status !== 'ready' ||
+      !this.needsImageLicenseAgreement()
+    ) {
+      return;
+    }
+
+    this.imageLicenseAgreementDialogOpened.set(true);
+    this.subscribe(currentState.data);
   });
 
   goBack(): void {
@@ -262,7 +295,11 @@ export class Event {
       return;
     }
 
-    if (!this.canSubscribe(data) || this.isSubscribing() || this.standaloneSubscriptionCooldownSeconds() > 0) {
+    if (
+      (!this.canSubscribe(data) && !this.canAcceptImageLicenseAgreement(data)) ||
+      this.isSubscribing() ||
+      this.standaloneSubscriptionCooldownSeconds() > 0
+    ) {
       return;
     }
 
@@ -271,7 +308,7 @@ export class Event {
     this.loadSubscriptionForms(data)
       .pipe(
         switchMap((forms) => {
-          if (forms.contexts.length === 0) {
+          if (forms.contexts.length === 0 && !this.requiresImageLicenseAgreement(data)) {
             return this.api.subscribeToEvent(data.event.id);
           }
 
@@ -283,6 +320,10 @@ export class Event {
                   event: data.event,
                   events: forms.events,
                   forms: forms.contexts,
+                  imageLicenseAgreement: {
+                    required: this.requiresImageLicenseAgreement(data),
+                    accepted: data.currentUserSubscription?.imageLicenseAgreementAccepted === true,
+                  },
                 },
                 width: 'min(720px, 96vw)',
                 maxHeight: '90vh',
@@ -292,7 +333,11 @@ export class Event {
             .pipe(
               switchMap((result) =>
                 result?.confirmed
-                  ? this.api.subscribeToEvent(data.event.id, this.toSubmitFormResponses(result.answers))
+                  ? this.api.subscribeToEvent(
+                      data.event.id,
+                      this.toSubmitFormResponses(result.answers),
+                      result.imageLicenseAgreementAccepted,
+                    )
                   : EMPTY,
               ),
             );
@@ -303,6 +348,14 @@ export class Event {
       .subscribe({
         next: () => {
           this.snackBar.open('Inscrição realizada.', 'OK', { duration: 3000 });
+          if (this.imageLicenseAgreementQueryRequested()) {
+            void this.router.navigate([], {
+              relativeTo: this.route,
+              queryParams: { requireImageLicenseAgreement: null },
+              queryParamsHandling: 'merge',
+              replaceUrl: true,
+            });
+          }
           this.reload();
         },
         error: (error: unknown) => this.showError(error),
@@ -412,6 +465,25 @@ export class Event {
     );
   }
 
+  canAcceptImageLicenseAgreement(data: EventPageData): boolean {
+    return (
+      !data.preview &&
+      this.hasStandaloneSubscription(data.event) &&
+      Boolean(data.currentUserSubscription) &&
+      this.requiresImageLicenseAgreement(data) &&
+      this.isOnline() &&
+      isAfter(parseISO(data.event.startDate), new Date())
+    );
+  }
+
+  requiresImageLicenseAgreement(data: EventPageData): boolean {
+    return Boolean(
+      data.event.eventGroupId
+        ? data.event.eventGroup?.requiresImageLicenseAgreement
+        : data.event.requiresImageLicenseAgreement,
+    );
+  }
+
   canUnsubscribe(data: EventPageData): boolean {
     return (
       !data.preview &&
@@ -469,6 +541,10 @@ export class Event {
     }
 
     if (data.currentUserSubscription) {
+      if (this.canAcceptImageLicenseAgreement(data)) {
+        return 'É necessário aceitar o contrato de licença de uso de imagem para continuar.';
+      }
+
       return this.canUnsubscribe(data)
         ? 'Você pode cancelar sua inscrição até o início do evento.'
         : 'Inscrição confirmada.';

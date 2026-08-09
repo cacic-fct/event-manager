@@ -65,6 +65,9 @@ export class Event {
   @Field(() => Boolean)
   allowSubscription!: boolean;
 
+  @Field(() => Boolean)
+  requiresImageLicenseAgreement!: boolean;
+
   @Field(() => Date, { nullable: true })
   subscriptionStartDate?: Date | null;
 

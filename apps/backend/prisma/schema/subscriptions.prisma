@@ -39,6 +39,7 @@ model EventSubscription {
   eventGroupSubscription   EventGroupSubscription? @relation(fields: [eventGroupSubscriptionId], references: [id])
 
   createdAt       DateTime                   @default(now())
+  imageLicenseAgreementAccepted Boolean @default(false)
   createdById     String?
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
@@ -65,6 +66,7 @@ model EventGroupSubscription {
   eventSubscriptions EventSubscription[]
 
   createdAt       DateTime                   @default(now())
+  imageLicenseAgreementAccepted Boolean @default(false)
   createdById     String?
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
 
@@ -106,6 +108,7 @@ model MajorEventSubscription {
   sportsTournamentParticipants SportsTournamentParticipant[]
 
   createdAt       DateTime                   @default(now())
+  imageLicenseAgreementAccepted Boolean @default(false)
   createdById     String?
   createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
   updatedAt       DateTime                   @updatedAt

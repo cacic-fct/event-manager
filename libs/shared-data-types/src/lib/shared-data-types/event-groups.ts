@@ -12,6 +12,9 @@ export class EventGroup {
   emoji!: string;
 
   @Field(() => Boolean)
+  requiresImageLicenseAgreement!: boolean;
+
+  @Field(() => Boolean)
   shouldIssueCertificate!: boolean;
 
   @Field(() => Boolean)

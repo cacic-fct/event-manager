@@ -126,6 +126,7 @@ export class MajorEventSubscriptionApiService {
             amountPaid
             paymentDate
             paymentTier
+            imageLicenseAgreementAccepted
             majorEvent {
               id
               isPaymentRequired
@@ -155,6 +156,7 @@ export class MajorEventSubscriptionApiService {
             amountPaid
             paymentDate
             paymentTier
+            imageLicenseAgreementAccepted
             majorEvent {
               ${PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS}
             }
@@ -173,6 +175,7 @@ export class MajorEventSubscriptionApiService {
     selectedEventIds: string[],
     paymentTier?: string | null,
     formResponses?: SubmitPublicEventFormResponseInput[],
+    imageLicenseAgreementAccepted?: boolean,
   ): Observable<CurrentUserMajorEventSubscription> {
     return this.query<{
       upsertCurrentUserMajorEventSubscription: CurrentUserMajorEventSubscription;
@@ -183,6 +186,7 @@ export class MajorEventSubscriptionApiService {
           $selectedEventIds: [String!]!
           $paymentTier: String
           $formResponses: [SubmitEventFormResponseInput!]
+          $imageLicenseAgreementAccepted: Boolean
         ) {
           upsertCurrentUserMajorEventSubscription(
             input: {
@@ -190,6 +194,7 @@ export class MajorEventSubscriptionApiService {
               selectedEventIds: $selectedEventIds
               paymentTier: $paymentTier
               formResponses: $formResponses
+              imageLicenseAgreementAccepted: $imageLicenseAgreementAccepted
             }
           ) {
             id
@@ -198,6 +203,7 @@ export class MajorEventSubscriptionApiService {
             amountPaid
             paymentDate
             paymentTier
+            imageLicenseAgreementAccepted
             majorEvent {
               ${PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS}
             }
@@ -207,7 +213,13 @@ export class MajorEventSubscriptionApiService {
           }
         }
       `,
-      { majorEventId, selectedEventIds, paymentTier, formResponses },
+      {
+        majorEventId,
+        selectedEventIds,
+        paymentTier,
+        formResponses,
+        ...(imageLicenseAgreementAccepted === undefined ? {} : { imageLicenseAgreementAccepted }),
+      },
     ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
   }
 
@@ -221,6 +233,7 @@ export class MajorEventSubscriptionApiService {
     },
     paymentTier?: string | null,
     formResponses?: SubmitPublicEventFormResponseInput[],
+    imageLicenseAgreementAccepted?: boolean,
   ): Observable<CurrentUserMajorEventSubscription> {
     return this.query<{
       upsertCurrentUserMajorEventSubscription: CurrentUserMajorEventSubscription;
@@ -234,6 +247,7 @@ export class MajorEventSubscriptionApiService {
           $desiredUncategorized: Int
           $paymentTier: String
           $formResponses: [SubmitEventFormResponseInput!]
+          $imageLicenseAgreementAccepted: Boolean
         ) {
           upsertCurrentUserMajorEventSubscription(
             input: {
@@ -244,6 +258,7 @@ export class MajorEventSubscriptionApiService {
               desiredUncategorized: $desiredUncategorized
               paymentTier: $paymentTier
               formResponses: $formResponses
+              imageLicenseAgreementAccepted: $imageLicenseAgreementAccepted
             }
           ) {
             id
@@ -252,6 +267,7 @@ export class MajorEventSubscriptionApiService {
             amountPaid
             paymentDate
             paymentTier
+            imageLicenseAgreementAccepted
             majorEvent {
               ${PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS}
             }
@@ -261,7 +277,14 @@ export class MajorEventSubscriptionApiService {
           }
         }
       `,
-      { majorEventId, selectedEventIds, ...desiredCounts, paymentTier, formResponses },
+      {
+        majorEventId,
+        selectedEventIds,
+        ...desiredCounts,
+        paymentTier,
+        formResponses,
+        ...(imageLicenseAgreementAccepted === undefined ? {} : { imageLicenseAgreementAccepted }),
+      },
     ).pipe(map((data) => data.upsertCurrentUserMajorEventSubscription));
   }
 

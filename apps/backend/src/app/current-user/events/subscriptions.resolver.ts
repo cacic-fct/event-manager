@@ -1,6 +1,6 @@
 import { NotFoundException, UseGuards } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver, createUnionType } from '@nestjs/graphql';
-import { SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
+import { RequiredImageLicenseAgreementInterruption, SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import {
   CurrentUserEventGroupSubscription,
   CurrentUserEventSubscription,
@@ -148,6 +148,21 @@ export class CurrentUserEventSubscriptionsResolver {
     return subscriptions.map((subscription) => this.mapper.mapCurrentUserEventSubscription(subscription));
   }
 
+  @Query(() => [RequiredImageLicenseAgreementInterruption], {
+    name: 'currentUserRequiredImageLicenseAgreementInterruptions',
+  })
+  async currentUserRequiredImageLicenseAgreementInterruptions(
+    @Context() context: GraphqlContext,
+  ): Promise<RequiredImageLicenseAgreementInterruption[]> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    if (!person) {
+      return [];
+    }
+
+    return this.eventSubscriptions.listRequiredImageLicenseAgreementInterruptions(person.id);
+  }
+
   @Mutation(() => PublicEvent, { name: 'subscribeCurrentUserStandaloneEvent' })
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.standaloneEventSubscription, [{ source: 'args', path: 'eventId' }])
@@ -156,11 +171,26 @@ export class CurrentUserEventSubscriptionsResolver {
     @Args('formResponses', { type: () => [SubmitEventFormResponseInput], nullable: true })
     formResponses: SubmitEventFormResponseInput[] | null | undefined,
     @Context() context: GraphqlContext,
+    @Args('imageLicenseAgreementAccepted', { type: () => Boolean, nullable: true })
+    imageLicenseAgreementAccepted?: boolean | null,
   ): Promise<PublicEvent> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    return this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId, authenticatedUser, formResponses);
+    return imageLicenseAgreementAccepted === undefined
+      ? this.eventSubscriptions.subscribeCurrentUserEvent(
+          person.id,
+          eventId,
+          authenticatedUser,
+          formResponses,
+        )
+      : this.eventSubscriptions.subscribeCurrentUserEvent(
+          person.id,
+          eventId,
+          authenticatedUser,
+          formResponses,
+          imageLicenseAgreementAccepted,
+        );
   }
 
   @Mutation(() => PublicEvent, { name: 'unsubscribeCurrentUserStandaloneEvent' })
@@ -288,11 +318,20 @@ export class CurrentUserEventSubscriptionsResolver {
   async subscribeCurrentUserEventGroup(
     @Args('eventGroupId', { type: () => String }) eventGroupId: string,
     @Context() context: GraphqlContext,
+    @Args('imageLicenseAgreementAccepted', { type: () => Boolean, nullable: true })
+    imageLicenseAgreementAccepted?: boolean | null,
   ): Promise<CurrentUserEventGroupSubscription> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     await this.frozenResources.assertEventGroupMutable(eventGroupId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
-    return this.eventSubscriptions.subscribeCurrentUserEventGroup(person.id, eventGroupId, authenticatedUser);
+    return imageLicenseAgreementAccepted === undefined
+      ? this.eventSubscriptions.subscribeCurrentUserEventGroup(person.id, eventGroupId, authenticatedUser)
+      : this.eventSubscriptions.subscribeCurrentUserEventGroup(
+          person.id,
+          eventGroupId,
+          authenticatedUser,
+          imageLicenseAgreementAccepted,
+        );
   }
 
   @Query(() => [PublicEvent], { name: 'eventsByMajorEventId' })

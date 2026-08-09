@@ -319,6 +319,7 @@ export interface WorkspaceMajorEventSubscription {
   amountPaid?: number | null;
   paymentDate?: string | null;
   paymentTier?: string | null;
+  imageLicenseAgreementAccepted?: boolean;
   createdAt: string;
   createdById?: string | null;
   createdByMethod: SubscriptionCreationMethod;

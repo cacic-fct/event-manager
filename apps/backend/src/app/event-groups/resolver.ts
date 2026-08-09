@@ -30,6 +30,7 @@ const EVENT_GROUP_CLONE_SOURCE_SELECT = {
   id: true,
   name: true,
   emoji: true,
+  requiresImageLicenseAgreement: true,
   shouldIssueCertificate: true,
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
@@ -291,6 +292,7 @@ export class EventGroupsResolver {
     const normalizedInput = this.normalizeEventGroupCertificateInput({
       name: this.buildCloneName(input?.name, source.name),
       emoji: source.emoji,
+      requiresImageLicenseAgreement: source.requiresImageLicenseAgreement,
       ...(shouldCopyCertificateConfig
         ? {
             shouldIssueCertificate: source.shouldIssueCertificate,

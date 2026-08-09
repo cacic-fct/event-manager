@@ -355,6 +355,7 @@ function buildMajorEventSubscription(
     createdAt: '2026-05-18T12:00:00.000Z',
     createdById: 'storybook-user',
     createdByMethod: 'ADMIN_DASHBOARD',
+    imageLicenseAgreementAccepted: false,
     events: [
       {
         eventId: 'major-event-item-1',

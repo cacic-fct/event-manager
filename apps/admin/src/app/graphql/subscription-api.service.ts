@@ -38,6 +38,7 @@ const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
   amountPaid
   paymentDate
   paymentTier
+  imageLicenseAgreementAccepted
   createdAt
   createdById
   createdByMethod
@@ -129,6 +130,7 @@ export class SubscriptionApiService {
     amountPaid?: number | null;
     paymentDate?: string | null;
     paymentTier?: string | null;
+    imageLicenseAgreementAccepted?: boolean;
     selectedEventIds: string[];
   }) {
     return this.graphqlHttp
@@ -154,6 +156,7 @@ export class SubscriptionApiService {
       amountPaid?: number | null;
       paymentDate?: string | null;
       paymentTier?: string | null;
+      imageLicenseAgreementAccepted?: boolean;
       selectedEventIds?: string[];
     },
   ) {

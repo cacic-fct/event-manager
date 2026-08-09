@@ -82,9 +82,23 @@ export class MajorEventSubscription {
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
   readonly selectedEventIds = signal<Set<string>>(new Set());
   readonly selectedPriceTierName = signal<string | null>(null);
+  readonly needsImageLicenseAgreement = computed(() => {
+    const data = this.data();
+    const subscription = this.currentUserSubscription();
+    return Boolean(
+      data?.majorEvent.requiresImageLicenseAgreement &&
+        subscription &&
+        subscription.imageLicenseAgreementAccepted !== true,
+    );
+  });
 
   private readonly initializedMajorEventId = signal<string | null>(null);
   private readonly pendingRealtimeDelta = signal<MajorEventSubscriptionRealtimeDelta | null>(null);
+  private readonly imageLicenseAgreementQueryRequested = toSignal(
+    this.route.queryParamMap.pipe(map((params) => params.get('requireImageLicenseAgreement') === 'true')),
+    { initialValue: false },
+  );
+  private readonly imageLicenseAgreementDialogOpened = signal(false);
   private readonly navigationTick = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -184,6 +198,7 @@ export class MajorEventSubscription {
       this.pageState.set({ status: 'loading' });
       this.initializedMajorEventId.set(null);
       this.pendingRealtimeDelta.set(null);
+      this.imageLicenseAgreementDialogOpened.set(false);
       this.selectedPriceTierName.set(null);
       this.subscriptionCooldown.clear();
 
@@ -287,6 +302,24 @@ export class MajorEventSubscription {
         this.selectedEventIds.set(nextSelected);
       }
     });
+
+    effect(() => {
+      if (
+        !this.imageLicenseAgreementQueryRequested() ||
+        this.imageLicenseAgreementDialogOpened() ||
+        this.childRouteActive() ||
+        !this.data() ||
+        !this.isAuthenticated() ||
+        this.currentUserSubscription() === undefined ||
+        !this.needsImageLicenseAgreement() ||
+        this.selectedEvents().length === 0
+      ) {
+        return;
+      }
+
+      this.imageLicenseAgreementDialogOpened.set(true);
+      this.submit();
+    });
   }
 
   dateLine(): string {
@@ -295,6 +328,10 @@ export class MajorEventSubscription {
   }
 
   submitButtonIcon(): string {
+    if (this.needsImageLicenseAgreement()) {
+      return 'verified_user';
+    }
+
     const subscription = this.currentUserSubscription();
     if (subscription?.subscriptionStatus === 'CONFIRMED') {
       return 'check';
@@ -303,6 +340,10 @@ export class MajorEventSubscription {
   }
 
   submitButtonLabel(): string {
+    if (this.needsImageLicenseAgreement()) {
+      return 'Aceitar contrato';
+    }
+
     const subscription = this.currentUserSubscription();
     if (subscription?.subscriptionStatus === 'CONFIRMED') {
       return 'Inscrito';
@@ -386,6 +427,10 @@ export class MajorEventSubscription {
             majorEvent: data.majorEvent,
             events: selectedEvents,
             forms,
+            imageLicenseAgreement: {
+              required: Boolean(data.majorEvent.requiresImageLicenseAgreement),
+              accepted: this.currentUserSubscription()?.imageLicenseAgreementAccepted === true,
+            },
           },
           width: 'min(760px, 96vw)',
         });
@@ -401,6 +446,7 @@ export class MajorEventSubscription {
                 selectedEvents,
                 selectedPaymentTier ?? null,
                 result.answers,
+                result.imageLicenseAgreementAccepted,
               );
             }
           });
@@ -417,6 +463,7 @@ export class MajorEventSubscription {
     selectedEvents: PublicEvent[],
     paymentTier: string | null,
     formAnswers: SubscriptionFormAnswer[],
+    imageLicenseAgreementAccepted: boolean,
   ): void {
     if (this.subscriptionCooldownSeconds() > 0) {
       this.snackBar.open(`Aguarde ${this.subscriptionCooldownSeconds()}s para alterar a inscrição.`, 'OK', {
@@ -427,7 +474,13 @@ export class MajorEventSubscription {
 
     this.isSubmitting.set(true);
     this.api
-      .upsertSubscription(data.majorEvent.id, selectedEventIds, paymentTier, this.toSubmitFormResponses(formAnswers))
+      .upsertSubscription(
+        data.majorEvent.id,
+        selectedEventIds,
+        paymentTier,
+        this.toSubmitFormResponses(formAnswers),
+        imageLicenseAgreementAccepted,
+      )
       .pipe(
         finalize(() => this.isSubmitting.set(false)),
         takeUntilDestroyed(this.destroyRef),
@@ -445,6 +498,14 @@ export class MajorEventSubscription {
             priceInCents: this.selectedPriceTier()?.value ?? null,
           });
           this.snackBar.open('Inscrição realizada.', 'OK', { duration: 3000 });
+          if (this.imageLicenseAgreementQueryRequested()) {
+            void this.router.navigate([], {
+              relativeTo: this.route,
+              queryParams: { requireImageLicenseAgreement: null },
+              queryParamsHandling: 'merge',
+              replaceUrl: true,
+            });
+          }
           if (data.majorEvent.isPaymentRequired) {
             void this.router.navigate(['/major-event', data.majorEvent.id, 'payment']);
           }
