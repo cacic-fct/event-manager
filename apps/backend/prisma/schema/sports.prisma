@@ -317,6 +317,7 @@ model SportsCategory {
   periodLabel    String?
   timerRules     Json @default("{}")
   scoreRules     Json
+  overallScoringRules Json @default("{}")
   rosterRules    Json
   bracketRules   Json
   standingsRules Json

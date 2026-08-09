@@ -18,6 +18,7 @@ import { SportsTeamsSectionComponent } from './sports-teams-section.component';
 import { SportsWorkspaceService } from './sports-workspace.service';
 import {
   SportsWorkspaceLayoutStylesComponent,
+  SportsWorkspaceMatchEditorStylesComponent,
   SportsWorkspaceMatchStylesComponent,
   SportsWorkspaceTeamStylesComponent,
 } from './sports-workspace-styles.component';
@@ -41,6 +42,7 @@ import {
     SportsReviewsSectionComponent,
     SportsTeamsSectionComponent,
     SportsWorkspaceLayoutStylesComponent,
+    SportsWorkspaceMatchEditorStylesComponent,
     SportsWorkspaceMatchStylesComponent,
     SportsWorkspaceTeamStylesComponent,
   ],

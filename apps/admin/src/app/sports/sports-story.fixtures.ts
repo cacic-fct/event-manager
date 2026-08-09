@@ -81,6 +81,7 @@ export function createAdminSportsCategory(index = 0): SportsCategorySummary {
     }),
     rulesText: 'Regras públicas revisadas pela organização.',
     scoreRulesJson: '{"minimumDelta":1}',
+    overallScoringRulesJson: '{"mode":"NONE","match":{"win":3,"draw":1,"loss":0},"placement":{}}',
     rosterRulesJson: '{"requireApprovedEligibility":true}',
     bracketRulesJson: '{"allowByes":true}',
     standingsRulesJson: '{"winPoints":3,"drawPoints":1}',

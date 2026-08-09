@@ -257,3 +257,83 @@
   margin: 0;
   max-width: 75ch;
 }
+
+.advanced-warning {
+  align-items: start;
+  background: var(--mat-sys-tertiary-container);
+  border-radius: 10px;
+  color: var(--mat-sys-on-tertiary-container) !important;
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+  padding: 0.7rem;
+}
+
+.review-item {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.9rem;
+}
+
+.review-heading > div {
+  display: grid;
+}
+
+.review-heading span:not(.state-label),
+.review-item p,
+.review-item small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.review-item p {
+  margin: 0;
+}
+
+.review-item pre {
+  background: var(--mat-sys-surface-container-highest);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  margin: 0;
+  max-height: 9rem;
+  overflow: auto;
+  padding: 0.65rem;
+  white-space: pre-wrap;
+}
+
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.action-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.empty-state {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: grid;
+  justify-items: center;
+  min-height: 10rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.empty-state mat-icon {
+  font-size: 2.4rem;
+  height: 2.4rem;
+  margin-block-end: 0.5rem;
+  width: 2.4rem;
+}
+
+.empty-copy {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.9rem;
+}

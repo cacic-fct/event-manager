@@ -10,11 +10,14 @@ describe('SportsStandingsService', () => {
   const advancement = {
     advanceBye: jest.fn(),
   };
+  const auditLog = {
+    record: jest.fn().mockResolvedValue(undefined),
+  };
   let service: SportsStandingsService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new SportsStandingsService(advancement as never);
+    service = new SportsStandingsService(advancement as never, auditLog as never);
   });
 
   it('creates exactly one durable Event-backed replay for an approved rescheduled draw', async () => {
@@ -217,6 +220,133 @@ describe('SportsStandingsService', () => {
     expect(tx.sportsTournamentScoreEntry.createMany).not.toHaveBeenCalled();
   });
 
+  it('registers approved match-result points once and audits the automatic entries', async () => {
+    const scoringCategory = {
+      ...category(),
+      overallScoringRules: {
+        mode: 'MATCH_RESULT',
+        match: { win: 3, draw: 1, loss: 0 },
+        placement: {},
+      },
+      tournament: {
+        scoringMode: SportsScoringMode.OVERALL,
+        majorEventId: 'major-1',
+      },
+    };
+    const source = match({ category: scoringCategory });
+    const tx = transaction(source);
+    tx.sportsRegistration.findMany.mockResolvedValue([
+      { id: 'home', teamId: 'team-home' },
+      { id: 'away', teamId: 'team-away' },
+    ]);
+    tx.sportsTournamentScoreEntry.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'score-home',
+          tournamentId: 'tournament-1',
+          categoryId: 'category-1',
+          teamId: 'team-home',
+          sourceMatchId: source.id,
+          source: 'MATCH',
+          points: 3,
+          reason: 'Vitória na partida',
+          revision: 1,
+        },
+      ]);
+    tx.sportsTournamentScoreEntry.create.mockImplementation(async ({ data }) => ({
+      ...data,
+      id: `score-${data.teamId}`,
+      revision: 1,
+      categoryId: 'category-1',
+    }));
+
+    await service.refreshAfterApprovedOutcome(tx as never, source.id, 'admin-1');
+    await service.refreshAfterApprovedOutcome(tx as never, source.id, 'admin-1');
+
+    expect(tx.sportsTournamentScoreEntry.create).toHaveBeenCalledTimes(1);
+    expect(tx.sportsTournamentScoreEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ teamId: 'team-home', points: 3, source: 'MATCH' }),
+      }),
+    );
+    expect(auditLog.record).toHaveBeenCalledTimes(1);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'CREATE',
+        entityType: 'SPORTS_TOURNAMENT_SCORE',
+        metadata: { triggeredById: 'admin-1', trigger: 'MATCH_RESULT_APPROVAL' },
+      }),
+      tx,
+    );
+  });
+
+  it('registers configured final-placement points in the overall scoreboard', async () => {
+    const scoringCategory = {
+      ...category(SportsFormat.SINGLE_ELIMINATION),
+      overallScoringRules: {
+        mode: 'FINAL_PLACEMENT',
+        match: { win: 3, draw: 1, loss: 0 },
+        placement: { '1': 10, '2': 6 },
+      },
+      tournament: {
+        scoringMode: SportsScoringMode.OVERALL,
+        majorEventId: 'major-1',
+      },
+    };
+    const source = match({
+      category: scoringCategory,
+      stage: { type: SportsStageType.ELIMINATION, settings: {} },
+      winnerAdvancesToId: null,
+    });
+    const tx = transaction(source);
+    tx.sportsRegistration.findMany.mockResolvedValue([
+      { id: 'home', teamId: 'team-home' },
+      { id: 'away', teamId: 'team-away' },
+    ]);
+    tx.sportsTournamentScoreEntry.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: 'score-first',
+          tournamentId: 'tournament-1',
+          categoryId: 'category-1',
+          teamId: 'team-home',
+          sourceMatchId: source.id,
+          source: 'PLACEMENT',
+          points: 10,
+          reason: '1º lugar',
+          revision: 1,
+        },
+        {
+          id: 'score-second',
+          tournamentId: 'tournament-1',
+          categoryId: 'category-1',
+          teamId: 'team-away',
+          sourceMatchId: source.id,
+          source: 'PLACEMENT',
+          points: 6,
+          reason: '2º lugar',
+          revision: 1,
+        },
+      ]);
+
+    await service.refreshAfterApprovedOutcome(tx as never, source.id, 'admin-1');
+
+    expect(tx.sportsTournamentScoreEntry.createMany).toHaveBeenCalledWith({
+      data: expect.arrayContaining([
+        expect.objectContaining({ teamId: 'team-home', points: 10, source: 'PLACEMENT' }),
+        expect.objectContaining({ teamId: 'team-away', points: 6, source: 'PLACEMENT' }),
+      ]),
+    });
+    expect(auditLog.record).toHaveBeenCalledTimes(2);
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({ operation: 'CREATE', entityType: 'SPORTS_TOURNAMENT_SCORE' }),
+      tx,
+    );
+  });
+
   it('preserves Swiss bye and seed metadata while recomputing canonical standings', async () => {
     const source = match({
       stageId: 'swiss-stage',
@@ -302,6 +432,8 @@ describe('SportsStandingsService', () => {
         findMany: jest.fn().mockResolvedValue([]),
       },
       sportsTournamentScoreEntry: {
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn().mockResolvedValue({}),
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
         createMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
@@ -312,9 +444,11 @@ describe('SportsStandingsService', () => {
     return {
       format,
       bracketRules: {},
+      overallScoringRules: {},
       tournamentId: 'tournament-1',
       tournament: {
         scoringMode: SportsScoringMode.PER_SPORT,
+        majorEventId: 'major-1',
       },
     };
   }

@@ -117,6 +117,56 @@
         (formatSelected)="workspace.categoryForm.controls.format.setValue($event)" />
 
       <div class="subsection-title span-2">
+        <h4>Pontuação no placar geral</h4>
+        <p>Escolha quando esta modalidade soma pontos ao placar geral e defina os valores.</p>
+      </div>
+      <mat-form-field class="span-2">
+        <mat-label>Como pontuar automaticamente?</mat-label>
+        <mat-select formControlName="overallScoringMode">
+          <mat-option value="NONE">Não pontuar automaticamente</mat-option>
+          <mat-option value="MATCH_RESULT">Resultado de cada partida</mat-option>
+          <mat-option value="FINAL_PLACEMENT">Colocação final</mat-option>
+          <mat-option value="MATCH_RESULT_AND_FINAL_PLACEMENT">Resultado e colocação final</mat-option>
+        </mat-select>
+        <mat-hint>
+          Os lançamentos são feitos quando o resultado é aprovado; o torneio precisa usar placar geral ou ambos.
+        </mat-hint>
+      </mat-form-field>
+      @if (
+        workspace.categoryForm.controls.overallScoringMode.value === 'MATCH_RESULT' ||
+        workspace.categoryForm.controls.overallScoringMode.value === 'MATCH_RESULT_AND_FINAL_PLACEMENT'
+      ) {
+        <mat-form-field>
+          <mat-label>Vitória</mat-label>
+          <input matInput type="number" min="0" max="1000000" formControlName="overallMatchWinPoints" />
+          <mat-hint>pontos</mat-hint>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Empate</mat-label>
+          <input matInput type="number" min="0" max="1000000" formControlName="overallMatchDrawPoints" />
+          <mat-hint>pontos</mat-hint>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Derrota</mat-label>
+          <input matInput type="number" min="0" max="1000000" formControlName="overallMatchLossPoints" />
+          <mat-hint>pontos</mat-hint>
+        </mat-form-field>
+      }
+      @if (
+        workspace.categoryForm.controls.overallScoringMode.value === 'FINAL_PLACEMENT' ||
+        workspace.categoryForm.controls.overallScoringMode.value === 'MATCH_RESULT_AND_FINAL_PLACEMENT'
+      ) {
+        <mat-form-field class="span-2">
+          <mat-label>Pontos por colocação final</mat-label>
+          <textarea matInput rows="3" formControlName="overallPlacementPointsJson"></textarea>
+          <mat-hint>Objeto JSON, por exemplo: 1:10, 2:6, 3:3. Posições sem valor não pontuam.</mat-hint>
+          @if (workspace.categoryForm.controls.overallPlacementPointsJson.invalid) {
+            <mat-error>Informe posições de 1 a 100 e pontos inteiros de 0 a 1.000.000.</mat-error>
+          }
+        </mat-form-field>
+      }
+
+      <div class="subsection-title span-2">
         <h4>Elenco por modalidade</h4>
         <p>Zero significa sem limite definido.</p>
       </div>

@@ -1,6 +1,18 @@
 import { ConflictException } from '@nestjs/common';
-import { Prisma, SportsBracketSide, SportsMatchState, SportsReviewStatus, SportsStageType } from '@prisma/client';
+import { Permission } from '@cacic-fct/shared-permissions';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  AuditLogActorType,
+  Prisma,
+  SportsBracketSide,
+  SportsMatchState,
+  SportsReviewStatus,
+  SportsScoreEntrySource,
+  SportsStageType,
+} from '@prisma/client';
 import { createHash } from 'node:crypto';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';
 import { planSportsGrandFinalOutcome } from '../domain/sports-double-elimination';
 import { SportsStructuralInvalidation } from '../realtime/sports-structural-invalidation';
@@ -19,7 +31,89 @@ interface StandingAccumulator {
 }
 
 export abstract class SportsStandingsSupport {
-  constructor(protected readonly advancement: SportsBracketAdvancementService) {}
+  protected readonly auditLog: AuditLogService;
+
+  constructor(protected readonly advancement: SportsBracketAdvancementService, auditLog?: AuditLogService) {
+    this.auditLog =
+      auditLog ??
+      ({
+        record: async () => undefined,
+      } as unknown as AuditLogService);
+  }
+
+  protected async recordAutomaticScoreEntryAudit(
+    tx: Prisma.TransactionClient,
+    entry: {
+      id: string;
+      tournamentId: string;
+      categoryId: string | null;
+      teamId: string;
+      sourceMatchId: string | null;
+      source: SportsScoreEntrySource;
+      points: number;
+      reason: string;
+      revision: number;
+      deletedAt?: Date | null;
+    },
+    operation: AuditLogOperation,
+    summary: string,
+    actorId: string,
+    majorEventId: string,
+    before?: unknown,
+    after?: unknown,
+  ): Promise<void> {
+    await this.auditLog.record(
+      {
+        entityType: AuditLogEntityType.SPORTS_TOURNAMENT_SCORE,
+        entityId: entry.id,
+        entityLabel: entry.reason,
+        operation,
+        actor: {
+          name: 'Sistema de pontuação esportiva',
+          type: AuditLogActorType.SERVICE,
+        },
+        before,
+        after: after ?? this.automaticScoreEntryAuditSnapshot(entry),
+        summary,
+        scope: {
+          permission: Permission.SportsTournament.Update,
+          majorEventId,
+        },
+        metadata: {
+          triggeredById: actorId,
+          trigger: 'MATCH_RESULT_APPROVAL',
+        },
+        force: true,
+      },
+      tx,
+    );
+  }
+
+  protected automaticScoreEntryAuditSnapshot(entry: {
+    id: string;
+    tournamentId: string;
+    categoryId: string | null;
+    teamId: string;
+    sourceMatchId: string | null;
+    source: SportsScoreEntrySource;
+    points: number;
+    reason: string;
+    revision: number;
+    deletedAt?: Date | null;
+  }) {
+    return {
+      id: entry.id,
+      tournamentId: entry.tournamentId,
+      categoryId: entry.categoryId,
+      teamId: entry.teamId,
+      sourceMatchId: entry.sourceMatchId,
+      source: entry.source,
+      points: entry.points,
+      reason: entry.reason,
+      revision: entry.revision,
+      deletedAt: entry.deletedAt ?? null,
+    };
+  }
 
   protected ensureAccumulator(
     accumulators: Map<string, StandingAccumulator>,

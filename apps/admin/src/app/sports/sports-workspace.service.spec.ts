@@ -95,6 +95,7 @@ describe('SportsWorkspaceService', () => {
         periodsEnabled: true,
         timerRulesJson: '{}',
         scoreRulesJson: '{}',
+        overallScoringRulesJson: '{}',
         rosterRulesJson: '{}',
         bracketRulesJson: '{}',
         standingsRulesJson: '{}',

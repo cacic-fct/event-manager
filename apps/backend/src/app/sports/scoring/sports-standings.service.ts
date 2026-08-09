@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, SportsFormat, SportsMatchState, SportsReviewStatus, SportsScoreEntrySource } from '@prisma/client';
+import { Prisma, SportsFormat, SportsMatchState, SportsReviewStatus } from '@prisma/client';
+import { AuditLogService } from '../../audit-log/audit-log.service';
+import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';
 import {
   mergeSportsStructuralInvalidations,
   SportsStructuralInvalidation,
@@ -9,6 +11,10 @@ import { SportsStandingsQualifiers } from './sports-standings-qualifiers';
 
 @Injectable()
 export class SportsStandingsService extends SportsStandingsQualifiers {
+  constructor(advancement: SportsBracketAdvancementService, auditLog?: AuditLogService) {
+    super(advancement, auditLog);
+  }
+
   async reconcileAfterProjectionChange(
     tx: Prisma.TransactionClient,
     matchId: string,
@@ -17,8 +23,21 @@ export class SportsStandingsService extends SportsStandingsQualifiers {
     const source = await tx.sportsMatch.findUniqueOrThrow({
       where: { id: matchId },
       select: {
+        id: true,
+        homeRegistrationId: true,
+        awayRegistrationId: true,
+        winnerRegistrationId: true,
+        loserRegistrationId: true,
+        drawWillReschedule: true,
         categoryId: true,
-        category: { select: { format: true } },
+        category: {
+          select: {
+            format: true,
+            overallScoringRules: true,
+            tournamentId: true,
+            tournament: { select: { scoringMode: true, majorEventId: true } },
+          },
+        },
         stageId: true,
         canonicalState: true,
         reviewStatus: true,
@@ -33,6 +52,7 @@ export class SportsStandingsService extends SportsStandingsQualifiers {
     if (source.stageId) {
       await this.recomputeStage(tx, source.stageId);
     }
+    await this.syncAutomaticMatchScoreEntries(tx, source, actorId);
     const invalidations =
       source.category.format === SportsFormat.GROUP_STAGE_ELIMINATION
         ? await this.refreshGroupQualifiers(tx, source.categoryId, actorId)
@@ -49,19 +69,7 @@ export class SportsStandingsService extends SportsStandingsQualifiers {
         where: { id: { in: placements.map((placement) => placement.id) } },
       });
     }
-    await tx.sportsTournamentScoreEntry.updateMany({
-      where: {
-        sourceMatchId: matchId,
-        source: SportsScoreEntrySource.PLACEMENT,
-        deletedAt: null,
-      },
-      data: {
-        deletedAt: new Date(),
-        deletedById: actorId,
-        updatedById: actorId,
-        revision: { increment: 1 },
-      },
-    });
+    await this.clearAutomaticPlacementScoreEntries(tx, matchId, source.category.tournament.majorEventId, actorId);
     return invalidations;
   }
 
@@ -88,6 +96,7 @@ export class SportsStandingsService extends SportsStandingsQualifiers {
     ) {
       return [];
     }
+    await this.syncAutomaticMatchScoreEntries(tx, source, actorId);
     const invalidations: SportsStructuralInvalidation[][] = [];
     if (source.canonicalState === SportsMatchState.DRAW && source.drawWillReschedule === true) {
       invalidations.push(await this.ensureReplayMatch(tx, source, actorId));

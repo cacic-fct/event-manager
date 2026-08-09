@@ -1,5 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -11,11 +11,13 @@ import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.inte
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { CreateSportsCategoryInput } from '../sports-admin.types';
 import { SportsAdminBaseService } from './sports-admin-base.service';
+import { assertSportsOverallScoringRules } from '../domain/sports-overall-scoring';
 
 export class SportsCategoryAdminService extends SportsAdminBaseService {
   async createCategory(input: CreateSportsCategoryInput, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     this.validateRosterLimits(input);
+    this.assertOverallScoringRules(input.overallScoringRules);
     this.assertOptionalDateRange(input.registrationStartDate, input.registrationEndDate, 'inscrições da modalidade');
     const name = this.requireText(input.name, 'nome da modalidade', 2, 160);
 
@@ -97,6 +99,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           periodLabel: input.periodLabel?.trim() || null,
           timerRules: input.timerRules ?? {},
           scoreRules: input.scoreRules,
+          overallScoringRules: input.overallScoringRules ?? {},
           rosterRules: input.rosterRules,
           bracketRules: input.bracketRules,
           standingsRules: input.standingsRules,
@@ -166,7 +169,12 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         rosterRules: input.rosterRules ?? (existing.rosterRules as Prisma.InputJsonValue),
         bracketRules: input.bracketRules ?? (existing.bracketRules as Prisma.InputJsonValue),
         standingsRules: input.standingsRules ?? (existing.standingsRules as Prisma.InputJsonValue),
+        overallScoringRules:
+          input.overallScoringRules ?? (existing.overallScoringRules as Prisma.InputJsonValue),
       });
+    }
+    if (input.overallScoringRules !== undefined) {
+      this.assertOverallScoringRules(input.overallScoringRules);
     }
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       await this.assertRegistrationFormForMajorEvent(tx, input.registrationFormId, existing.tournament.majorEventId);
@@ -214,6 +222,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           ...(input.periodLabel !== undefined ? { periodLabel: input.periodLabel?.trim() || null } : {}),
           ...(input.timerRules !== undefined ? { timerRules: input.timerRules } : {}),
           ...(input.scoreRules !== undefined ? { scoreRules: input.scoreRules } : {}),
+          ...(input.overallScoringRules !== undefined ? { overallScoringRules: input.overallScoringRules } : {}),
           ...(input.rosterRules !== undefined ? { rosterRules: input.rosterRules } : {}),
           ...(input.bracketRules !== undefined ? { bracketRules: input.bracketRules } : {}),
           ...(input.standingsRules !== undefined ? { standingsRules: input.standingsRules } : {}),
@@ -378,5 +387,16 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         tx,
       );
     });
+  }
+
+  private assertOverallScoringRules(value: Prisma.InputJsonValue | undefined): void {
+    if (value === undefined) {
+      return;
+    }
+    try {
+      assertSportsOverallScoringRules(value);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : 'Regras de pontuação geral inválidas.');
+    }
   }
 }

@@ -9,6 +9,8 @@ import type { SportsApplication, SportsCategorySummary, SportsMatchReview, Sport
 import { SportsTextDialogComponent } from './sports-text-dialog.component';
 import {
   defaultSportEmoji,
+  overallScoringRulesFromForm,
+  overallScoringRulesToForm,
   timerRulesFromForm,
   timerRulesToForm,
   toIsoDateOrNull,
@@ -366,6 +368,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       maximumPeriods: category.maximumPeriods ?? 0,
       periodLabel: category.periodLabel ?? 'Tempo',
       ...timerRulesToForm(category.timerRulesJson),
+      ...overallScoringRulesToForm(category.overallScoringRulesJson, category.bracketRulesJson),
       rulesText: category.rulesText ?? '',
       registrationFormId: category.registrationFormId ?? '',
     };
@@ -391,6 +394,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       periodLabel: raw.periodsEnabled ? raw.periodLabel || null : null,
       timerRulesJson: timerRulesFromForm(raw),
       scoreRulesJson: raw.scoreRulesJson,
+      overallScoringRulesJson: overallScoringRulesFromForm(raw),
       rosterRulesJson: raw.rosterRulesJson,
       bracketRulesJson: raw.bracketRulesJson,
       standingsRulesJson: raw.standingsRulesJson,

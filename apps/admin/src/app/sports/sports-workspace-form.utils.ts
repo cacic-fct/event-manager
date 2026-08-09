@@ -8,6 +8,14 @@ export interface SportsTimerFormValue {
   timerPeriodStartOffsetsMinutes?: string;
 }
 
+export interface SportsOverallScoringFormValue {
+  overallScoringMode?: string;
+  overallMatchWinPoints?: number;
+  overallMatchDrawPoints?: number;
+  overallMatchLossPoints?: number;
+  overallPlacementPointsJson?: string;
+}
+
 export function sportsTimerPreset(preset: string): (Required<SportsTimerFormValue> & { timerPreset: string }) | null {
   const values = {
     SOCCER: { duration: 45, overtime: true, offsets: '0, 45' },
@@ -81,6 +89,90 @@ export function scoreRulesValidator(control: AbstractControl<string>): Validatio
     return { scorePointStep: true };
   }
   return null;
+}
+
+export function overallPlacementPointsValidator(control: AbstractControl<string>): ValidationErrors | null {
+  const base = jsonObjectValidator(control);
+  if (base) {
+    return base;
+  }
+  const parsed = JSON.parse(control.value || '{}') as Record<string, unknown>;
+  for (const [placement, points] of Object.entries(parsed)) {
+    if (!/^\d+$/.test(placement) || Number(placement) < 1 || Number(placement) > 100) {
+      return { overallPlacementKey: true };
+    }
+    if (typeof points !== 'number' || !Number.isSafeInteger(points) || points < 0 || points > 1_000_000) {
+      return { overallPlacementPoints: true };
+    }
+  }
+  return null;
+}
+
+export function overallScoringRulesToForm(value: string, legacyBracketRulesJson = '{}'): SportsOverallScoringFormValue {
+  const fallback = {
+    overallScoringMode: 'NONE',
+    overallMatchWinPoints: 3,
+    overallMatchDrawPoints: 1,
+    overallMatchLossPoints: 0,
+    overallPlacementPointsJson: '{}',
+  };
+  try {
+    const rules = JSON.parse(value || '{}') as Record<string, unknown>;
+    const match = (rules['match'] ?? {}) as Record<string, unknown>;
+    let legacyPlacement: unknown = undefined;
+    if (rules['placement'] === undefined) {
+      try {
+        const legacyBracketRules = JSON.parse(legacyBracketRulesJson || '{}') as Record<string, unknown>;
+        legacyPlacement = legacyBracketRules['placementPoints'];
+      } catch {
+        legacyPlacement = undefined;
+      }
+    }
+    const placement = rules['placement'] ?? legacyPlacement;
+    const placementEnabled = placement && typeof placement === 'object' && !Array.isArray(placement);
+    const hasLegacyPlacement = placementEnabled && Object.keys(placement as Record<string, unknown>).length > 0;
+    const mode = String(rules['mode'] ?? (hasLegacyPlacement ? 'FINAL_PLACEMENT' : 'NONE'));
+    return {
+      overallScoringMode: [
+        'NONE',
+        'MATCH_RESULT',
+        'FINAL_PLACEMENT',
+        'MATCH_RESULT_AND_FINAL_PLACEMENT',
+      ].includes(mode)
+        ? mode
+        : fallback.overallScoringMode,
+      overallMatchWinPoints: typeof match['win'] === 'number' ? match['win'] : fallback.overallMatchWinPoints,
+      overallMatchDrawPoints: typeof match['draw'] === 'number' ? match['draw'] : fallback.overallMatchDrawPoints,
+      overallMatchLossPoints: typeof match['loss'] === 'number' ? match['loss'] : fallback.overallMatchLossPoints,
+      overallPlacementPointsJson:
+        placementEnabled
+          ? JSON.stringify(placement)
+          : fallback.overallPlacementPointsJson,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+export function overallScoringRulesFromForm(raw: SportsOverallScoringFormValue): string {
+  let placement: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(raw.overallPlacementPointsJson || '{}') as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      placement = parsed as Record<string, unknown>;
+    }
+  } catch {
+    placement = {};
+  }
+  return JSON.stringify({
+    mode: raw.overallScoringMode || 'NONE',
+    match: {
+      win: Number(raw.overallMatchWinPoints ?? 0),
+      draw: Number(raw.overallMatchDrawPoints ?? 0),
+      loss: Number(raw.overallMatchLossPoints ?? 0),
+    },
+    placement,
+  });
 }
 
 export function timerRulesToForm(value: string): Required<SportsTimerFormValue> & { timerPreset: string } {

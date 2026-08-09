@@ -92,6 +92,7 @@ export class SportsTournamentMutationsResolver extends SportsMutationsResolverSu
           {
             ...input,
             scoreRules: this.parseJson(input.scoreRulesJson, 'regras de placar'),
+            overallScoringRules: this.parseOverallScoringRules(input.overallScoringRulesJson),
             timerRules: this.parseTimerRules(input.timerRulesJson),
             rosterRules: this.parseJson(input.rosterRulesJson, 'regras de elenco'),
             bracketRules: this.parseJson(input.bracketRulesJson, 'regras da chave'),
@@ -122,6 +123,10 @@ export class SportsTournamentMutationsResolver extends SportsMutationsResolverSu
             ...input,
             scoreRules:
               input.scoreRulesJson === undefined ? undefined : this.parseJson(input.scoreRulesJson, 'regras de placar'),
+            overallScoringRules:
+              input.overallScoringRulesJson === undefined
+                ? undefined
+                : this.parseOverallScoringRules(input.overallScoringRulesJson),
             timerRules: input.timerRulesJson === undefined ? undefined : this.parseTimerRules(input.timerRulesJson),
             rosterRules:
               input.rosterRulesJson === undefined

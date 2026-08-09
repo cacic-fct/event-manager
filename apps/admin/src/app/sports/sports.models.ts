@@ -51,6 +51,7 @@ export interface SportsCategorySummary {
   periodLabel?: string | null;
   timerRulesJson: string;
   scoreRulesJson: string;
+  overallScoringRulesJson: string;
   rosterRulesJson: string;
   bracketRulesJson: string;
   standingsRulesJson: string;

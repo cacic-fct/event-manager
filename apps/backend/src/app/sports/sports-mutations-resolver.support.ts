@@ -17,6 +17,7 @@ import { SportsMatchRosterService } from './rosters/sports-match-roster.service'
 import { SportsAccessService } from './security/sports-access.service';
 import { SportsAdminService } from './sports-admin.service';
 import { SportsTeamChangeService } from './teams/sports-team-change.service';
+import { assertSportsOverallScoringRules } from './domain/sports-overall-scoring';
 
 export abstract class SportsMutationsResolverSupport {
   protected readonly logger = new Logger(SportsMutationsResolverSupport.name);
@@ -196,6 +197,19 @@ export abstract class SportsMutationsResolverSupport {
       throw new BadRequestException(`${label} deve ser um objeto JSON.`);
     }
     return parsed as Record<string, unknown>;
+  }
+
+  protected parseOverallScoringRules(value: string | undefined): Prisma.InputJsonValue {
+    if (value === undefined || !value.trim()) {
+      return {};
+    }
+    const rules = this.parseObject(value, 'regras de pontuação geral');
+    try {
+      assertSportsOverallScoringRules(rules);
+    } catch (error) {
+      throw new BadRequestException(error instanceof Error ? error.message : 'Regras de pontuação geral inválidas.');
+    }
+    return rules as Prisma.InputJsonValue;
   }
 
   protected readString(value: unknown): string | null {

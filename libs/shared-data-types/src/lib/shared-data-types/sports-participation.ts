@@ -143,6 +143,9 @@ export class SportsCategory {
   scoreRulesJson!: string;
 
   @Field(() => String)
+  overallScoringRulesJson!: string;
+
+  @Field(() => String)
   rosterRulesJson!: string;
 
   @Field(() => String)

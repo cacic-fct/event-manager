@@ -162,6 +162,9 @@ export class SportsCategoryCreateInput {
   @Field(() => String)
   scoreRulesJson!: string;
 
+  @Field(() => String, { nullable: true })
+  overallScoringRulesJson?: string;
+
   @Field(() => String)
   rosterRulesJson!: string;
 
@@ -242,6 +245,9 @@ export class SportsCategoryUpdateInput {
 
   @Field(() => String, { nullable: true })
   scoreRulesJson?: string;
+
+  @Field(() => String, { nullable: true })
+  overallScoringRulesJson?: string;
 
   @Field(() => String, { nullable: true })
   rosterRulesJson?: string;

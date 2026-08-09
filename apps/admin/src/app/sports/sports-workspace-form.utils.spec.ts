@@ -2,6 +2,9 @@ import { FormControl, FormGroup } from '@angular/forms';
 import {
   jsonObjectValidator,
   livestreamValidator,
+  overallPlacementPointsValidator,
+  overallScoringRulesFromForm,
+  overallScoringRulesToForm,
   scoreRulesValidator,
   sportsTimerPreset,
   timerRulesFromForm,
@@ -27,6 +30,25 @@ describe('sports workspace form utilities', () => {
     expect(livestreamValidator(form)).toEqual({ incompleteLivestream: true });
     form.controls.livestreamUrl.setValue('https://example.com/live');
     expect(livestreamValidator(form)).toBeNull();
+  });
+
+  it('converts flexible overall scoring rules and validates placement points', () => {
+    const formValue = overallScoringRulesToForm(
+      '{"mode":"MATCH_RESULT_AND_FINAL_PLACEMENT","match":{"win":3,"draw":1,"loss":0},"placement":{"1":10,"2":6}}',
+    );
+    expect(formValue).toMatchObject({
+      overallScoringMode: 'MATCH_RESULT_AND_FINAL_PLACEMENT',
+      overallMatchWinPoints: 3,
+      overallPlacementPointsJson: '{"1":10,"2":6}',
+    });
+    expect(JSON.parse(overallScoringRulesFromForm(formValue))).toEqual({
+      mode: 'MATCH_RESULT_AND_FINAL_PLACEMENT',
+      match: { win: 3, draw: 1, loss: 0 },
+      placement: { '1': 10, '2': 6 },
+    });
+    expect(overallPlacementPointsValidator(new FormControl('{"101":1}', { nonNullable: true }))).toEqual({
+      overallPlacementKey: true,
+    });
   });
 
   it('converts timer rules between persisted milliseconds and form minutes', () => {

@@ -42,6 +42,7 @@ export const ADMIN_CATEGORY_SELECT = {
   periodLabel: true,
   timerRules: true,
   scoreRules: true,
+  overallScoringRules: true,
   rosterRules: true,
   bracketRules: true,
   standingsRules: true,

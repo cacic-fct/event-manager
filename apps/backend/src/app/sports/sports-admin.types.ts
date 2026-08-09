@@ -57,6 +57,7 @@ export interface CreateSportsCategoryInput {
   periodLabel?: string | null;
   timerRules?: Prisma.InputJsonValue;
   scoreRules: Prisma.InputJsonValue;
+  overallScoringRules?: Prisma.InputJsonValue;
   rosterRules: Prisma.InputJsonValue;
   bracketRules: Prisma.InputJsonValue;
   standingsRules: Prisma.InputJsonValue;

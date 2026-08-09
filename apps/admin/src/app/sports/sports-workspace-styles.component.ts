@@ -26,3 +26,12 @@ export class SportsWorkspaceTeamStylesComponent {}
   styleUrl: './sports-workspace-matches.scss',
 })
 export class SportsWorkspaceMatchStylesComponent {}
+
+@Component({
+  selector: 'app-sports-workspace-match-editor-styles',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  encapsulation: ViewEncapsulation.None,
+  template: '',
+  styleUrl: './sports-workspace-match-editor.scss',
+})
+export class SportsWorkspaceMatchEditorStylesComponent {}

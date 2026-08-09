@@ -324,6 +324,8 @@ export const MatchBracketAndLineup: Story = {
       }),
     );
     await expect(await canvas.findByText('Escalação desta partida')).toBeVisible();
+    await userEvent.click(canvas.getByRole('button', { name: /Editar escalação/i }));
+    await userEvent.click(canvas.getByRole('button', { name: /Transmissão e notas/i }));
     await expect(canvas.getByText('Ana Souza')).toBeVisible();
     await expect(canvas.getByText('Fernanda Luz')).toBeVisible();
     await expect(canvas.getByLabelText('Transmissão')).toBeVisible();

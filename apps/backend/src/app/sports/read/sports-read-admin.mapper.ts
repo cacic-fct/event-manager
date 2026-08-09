@@ -41,6 +41,7 @@ export class SportsReadAdminMapper {
       ...record,
       emoji: record.eventGroup.emoji || '🏅',
       scoreRulesJson: this.serializeJson(record.scoreRules),
+      overallScoringRulesJson: this.serializeJson(record.overallScoringRules),
       timerRulesJson: this.serializeJson(record.timerRules),
       rosterRulesJson: this.serializeJson(record.rosterRules),
       bracketRulesJson: this.serializeJson(record.bracketRules),
