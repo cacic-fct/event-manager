@@ -161,6 +161,9 @@ export class CurrentUserSportsTournamentDetail {
   @Field(() => PublicSportsTournamentDetail)
   tournament!: PublicSportsTournamentDetail;
 
+  @Field(() => Boolean)
+  imageLicenseAgreementAccepted!: boolean;
+
   @Field(() => [PublicSportsMatch])
   orderedMatches!: PublicSportsMatch[];
 }

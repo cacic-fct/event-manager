@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import {
   SportsApplicationStatus,
   SportsEligibilityStatus,
@@ -66,6 +67,45 @@ describe('SportsPaymentService', () => {
           status: SportsParticipantStatus.WAITING_PAYMENT,
           paymentStatus: SportsPaymentStatus.WAITING_PAYMENT,
           majorEventSubscriptionId: 'subscription-1',
+        }),
+      }),
+    );
+  });
+
+  it('requires and carries image-license acceptance for self-subscription participants', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValue({
+      id: 'tournament-1',
+      majorEventId: 'major-1',
+      majorEvent: {
+        isPaymentRequired: false,
+        requiresImageLicenseAgreement: true,
+        deletedAt: null,
+        majorEventPrices: [],
+      },
+    });
+
+    await expect(
+      service.ensureParticipant(tx as never, {
+        tournamentId: 'tournament-1',
+        personId: 'person-1',
+        source: SportsParticipantSource.SELF_SUBSCRIPTION,
+        approved: true,
+        imageLicenseAgreementAccepted: false,
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    await service.ensureParticipant(tx as never, {
+      tournamentId: 'tournament-1',
+      personId: 'person-1',
+      source: SportsParticipantSource.SELF_SUBSCRIPTION,
+      approved: true,
+      imageLicenseAgreementAccepted: true,
+    });
+
+    expect(tx.majorEventSubscription.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          imageLicenseAgreementAccepted: true,
         }),
       }),
     );

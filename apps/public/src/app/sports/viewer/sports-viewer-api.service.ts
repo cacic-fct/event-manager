@@ -93,6 +93,7 @@ const PUBLIC_TOURNAMENT_FIELDS = `
   startDate
   endDate
   selfSubscriptionEnabled
+  requiresImageLicenseAgreement
   isPaymentRequired
   paymentTiers { id name value }
   teams { ${PUBLIC_TEAM_FIELDS} }

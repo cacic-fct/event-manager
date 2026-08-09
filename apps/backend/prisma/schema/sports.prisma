@@ -1024,6 +1024,7 @@ model SportsPlayerApplication {
 
   status           SportsApplicationStatus @default(PENDING)
   noticeAcceptedAt DateTime
+  imageLicenseAgreementAccepted Boolean @default(false)
   pendingKey       String?                 @unique
   paymentTier      String?
 

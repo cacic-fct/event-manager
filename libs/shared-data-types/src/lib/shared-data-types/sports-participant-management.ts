@@ -382,6 +382,9 @@ export class SportsPlayerApplication {
   @Field(() => Date)
   noticeAcceptedAt!: Date;
 
+  @Field(() => Boolean)
+  imageLicenseAgreementAccepted!: boolean;
+
   @Field(() => String, { nullable: true })
   pendingKey?: string | null;
 

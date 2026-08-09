@@ -55,6 +55,7 @@ export class SportsSelfSubscriptionPage implements OnInit {
   readonly form = new FormGroup({
     requestedTeamId: new FormControl('', { nonNullable: true }),
     noticeAccepted: new FormControl(false, { nonNullable: true, validators: Validators.requiredTrue }),
+    imageLicenseAgreementAccepted: new FormControl(false, { nonNullable: true }),
     paymentTier: new FormControl('', { nonNullable: true }),
   });
 
@@ -88,6 +89,12 @@ export class SportsSelfSubscriptionPage implements OnInit {
           paymentTier.setValue('');
         }
         paymentTier.updateValueAndValidity();
+        const imageLicenseAgreement = this.form.controls.imageLicenseAgreementAccepted;
+        imageLicenseAgreement.setValue(data.imageLicenseAgreementAccepted);
+        imageLicenseAgreement.setValidators(
+          data.tournament.requiresImageLicenseAgreement ? Validators.requiredTrue : [],
+        );
+        imageLicenseAgreement.updateValueAndValidity();
         this.loading.set(false);
         this.error.set(null);
       },
@@ -127,6 +134,7 @@ export class SportsSelfSubscriptionPage implements OnInit {
           requestedTeamId: value.requestedTeamId.trim() || null,
           categoryIds: [...this.selectedCategories()],
           noticeAccepted: value.noticeAccepted,
+          imageLicenseAgreementAccepted: value.imageLicenseAgreementAccepted,
           paymentTier: value.paymentTier.trim() || null,
           pendingKey: this.uuid(),
         }),

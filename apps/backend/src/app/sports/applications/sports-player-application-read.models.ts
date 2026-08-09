@@ -66,6 +66,9 @@ export class CurrentUserSportsPlayerApplicationRead {
   @Field(() => Date)
   noticeAcceptedAt!: Date;
 
+  @Field(() => Boolean)
+  imageLicenseAgreementAccepted!: boolean;
+
   @Field(() => Date, { nullable: true })
   reviewedAt?: Date | null;
 

@@ -329,6 +329,7 @@ export function createAdminSportsApplications(count = 3): SportsApplication[] {
     participantStatus: 'PENDING',
     paymentStatus: index === 0 ? 'NOT_REQUIRED_YET' : null,
     paymentTier: index === 0 ? 'Estudante' : null,
+    imageLicenseAgreementAccepted: index === 0,
     reviewMessage: index === 1 ? 'Confirme a modalidade solicitada.' : null,
     createdAt: new Date(Date.UTC(2026, 7, 18 - index, 14, 0)).toISOString(),
   }));

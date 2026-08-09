@@ -242,17 +242,21 @@ export function createSportsLineupRead(
 export function createCurrentUserTournamentOperations(
   options: {
     paymentRequired?: boolean;
+    requiresImageLicenseAgreement?: boolean;
+    imageLicenseAgreementAccepted?: boolean;
     empty?: boolean;
     allowNoTeam?: boolean;
     allowNoCategory?: boolean;
   } = {},
 ): CurrentUserTournamentOperations {
   return {
+    imageLicenseAgreementAccepted: options.imageLicenseAgreementAccepted ?? false,
     tournament: {
       id: 'interfct-2026',
       name: 'InterFCT 2026',
       emoji: '🏆',
       isPaymentRequired: options.paymentRequired ?? true,
+      requiresImageLicenseAgreement: options.requiresImageLicenseAgreement ?? true,
       selfSubscriptionAllowNoTeam: options.allowNoTeam ?? false,
       selfSubscriptionAllowNoCategory: options.allowNoCategory ?? false,
       paymentTiers:

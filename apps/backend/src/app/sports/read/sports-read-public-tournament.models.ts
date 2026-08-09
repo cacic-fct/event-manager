@@ -101,6 +101,9 @@ export class PublicSportsTournamentDetail {
   selfSubscriptionAllowNoCategory!: boolean;
 
   @Field(() => Boolean)
+  requiresImageLicenseAgreement!: boolean;
+
+  @Field(() => Boolean)
   isPaymentRequired!: boolean;
 
   @Field(() => [PublicSportsPaymentTier])

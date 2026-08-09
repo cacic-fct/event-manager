@@ -126,6 +126,7 @@ export const SuccessfulRequest: Story = {
     await userEvent.click(await body.findByRole('option', { name: /Engenharia Atlética/ }));
     await userEvent.click(canvas.getByText('Futsal'));
     await userEvent.click(canvas.getByText(/Li e entendi/));
+    await userEvent.click(canvas.getByLabelText(/contrato de licença de uso de imagem/));
     await userEvent.click(canvas.getByRole('button', { name: 'Enviar solicitação' }));
     await expect(await canvas.findByRole('heading', { name: 'Solicitação enviada' })).toBeVisible();
   },

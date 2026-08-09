@@ -247,6 +247,9 @@ export class SportsPlayerApplicationCreateInput {
   @Field(() => Boolean)
   noticeAccepted!: boolean;
 
+  @Field(() => Boolean, { nullable: true })
+  imageLicenseAgreementAccepted?: boolean | null;
+
   @Field(() => String, {
     nullable: true,
     description:

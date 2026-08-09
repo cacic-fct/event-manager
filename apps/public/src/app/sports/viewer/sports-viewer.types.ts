@@ -153,6 +153,7 @@ export interface PublicSportsTournamentDetail {
   startDate: string;
   endDate: string;
   selfSubscriptionEnabled: boolean;
+  requiresImageLicenseAgreement: boolean;
   isPaymentRequired: boolean;
   paymentTiers: Array<{ id: string; name: string; value: number }>;
   teams: PublicSportsTeam[];

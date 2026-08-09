@@ -70,6 +70,7 @@ export class SportsReadPublicService {
             description: true,
             startDate: true,
             endDate: true,
+            requiresImageLicenseAgreement: true,
             isPaymentRequired: true,
             majorEventPrices: {
               select: {
@@ -139,6 +140,7 @@ export class SportsReadPublicService {
         selfSubscriptionEnabled: tournament.selfSubscriptionEnabled,
         selfSubscriptionAllowNoTeam: tournament.selfSubscriptionAllowNoTeam,
         selfSubscriptionAllowNoCategory: tournament.selfSubscriptionAllowNoCategory,
+        requiresImageLicenseAgreement: tournament.majorEvent.requiresImageLicenseAgreement,
         isPaymentRequired: tournament.majorEvent.isPaymentRequired,
         paymentTiers: tournament.majorEvent.majorEventPrices.flatMap((price) => price.tiers),
       };
@@ -413,6 +415,7 @@ export class SportsReadPublicService {
       selfSubscriptionEnabled: tournament.selfSubscriptionEnabled,
       selfSubscriptionAllowNoTeam: tournament.selfSubscriptionAllowNoTeam,
       selfSubscriptionAllowNoCategory: tournament.selfSubscriptionAllowNoCategory,
+      requiresImageLicenseAgreement: tournament.majorEvent.requiresImageLicenseAgreement,
       isPaymentRequired: tournament.majorEvent.isPaymentRequired,
       paymentTiers: tournament.majorEvent.majorEventPrices.flatMap((price) => price.tiers),
       teams: teams.map((team) => this.mapper.mapPublicTeam(team)),

@@ -31,6 +31,7 @@ export interface SubmitSportsPlayerApplicationInput {
   requestedTeamId?: string | null;
   categoryIds: string[];
   noticeAccepted: boolean;
+  imageLicenseAgreementAccepted?: boolean | null;
   paymentTier?: string | null;
 }
 
@@ -68,6 +69,7 @@ export abstract class SportsPlayerApplicationSupportService {
           select: {
             deletedAt: true,
             isPaymentRequired: true,
+            requiresImageLicenseAgreement: true,
             subscriptionStartDate: true,
             subscriptionEndDate: true,
             majorEventPrices: {
@@ -149,6 +151,7 @@ export abstract class SportsPlayerApplicationSupportService {
       subscriptionStartDate: Date | null;
       subscriptionEndDate: Date | null;
       isPaymentRequired: boolean;
+      requiresImageLicenseAgreement: boolean;
       majorEventPrices: Array<{
         tiers: Array<{ name: string; value: number }>;
       }>;
@@ -176,6 +179,18 @@ export abstract class SportsPlayerApplicationSupportService {
       )
     ) {
       throw new BadRequestException('As solicitações individuais estão fora do período de inscrição.');
+    }
+  }
+
+  protected ensureImageLicenseAgreementAccepted(
+    required: boolean,
+    accepted: boolean | null | undefined,
+    targetLabel: string,
+  ): void {
+    if (required && accepted !== true) {
+      throw new BadRequestException(
+        `A inscrição em ${targetLabel} exige a concordância com o contrato de licença de uso de imagem do CACiC.`,
+      );
     }
   }
 

@@ -35,6 +35,24 @@
 fieldset p {
   color: var(--mat-sys-on-surface-variant);
 }
+.agreement-section {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  display: grid;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+.agreement-section h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+.agreement-section a {
+  color: var(--mat-sys-primary);
+}
+.validation {
+  color: var(--mat-sys-error);
+  font-size: 0.875rem;
+  margin: 0;
+}
 .important-notice {
   display: flex;
   gap: 0.85rem;

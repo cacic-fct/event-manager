@@ -314,6 +314,7 @@ export interface SportsApplication {
   participantStatus?: string | null;
   paymentStatus?: string | null;
   paymentTier?: string | null;
+  imageLicenseAgreementAccepted: boolean;
   reviewMessage?: string | null;
   createdAt: string;
 }

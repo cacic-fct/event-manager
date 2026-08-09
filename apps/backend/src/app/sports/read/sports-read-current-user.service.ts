@@ -33,7 +33,7 @@ export class SportsReadCurrentUserService {
     personId: string,
   ): Promise<CurrentUserSportsTournamentDetail> {
     const tournament = await this.publicReader.publicTournament(input);
-    const [teamMemberships, rosterEntries] = await Promise.all([
+    const [teamMemberships, rosterEntries, majorEventSubscription] = await Promise.all([
       this.prisma.sportsTeamMember.findMany({
         where: {
           status: 'APPROVED',
@@ -84,6 +84,17 @@ export class SportsReadCurrentUserService {
           },
         },
       }),
+      this.prisma.majorEventSubscription.findFirst({
+        where: {
+          majorEventId: tournament.majorEventId,
+          personId,
+          deletedAt: null,
+          subscriptionStatus: { not: 'CANCELED' },
+        },
+        select: {
+          imageLicenseAgreementAccepted: true,
+        },
+      }),
     ]);
     const playerMatchIds = new Set(rosterEntries.map((entry) => entry.roster.matchId));
     const teamIds = new Set(teamMemberships.map((membership) => membership.teamId));
@@ -99,6 +110,7 @@ export class SportsReadCurrentUserService {
     });
     return {
       tournament,
+      imageLicenseAgreementAccepted: majorEventSubscription?.imageLicenseAgreementAccepted ?? false,
       orderedMatches,
     };
   }

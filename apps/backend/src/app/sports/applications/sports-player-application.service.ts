@@ -24,6 +24,7 @@ export interface SubmitSportsPlayerApplicationInput {
   requestedTeamId?: string | null;
   categoryIds: string[];
   noticeAccepted: boolean;
+  imageLicenseAgreementAccepted?: boolean | null;
   paymentTier?: string | null;
 }
 export type SportsPlayerApplicationReviewDecision = 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT';
@@ -58,6 +59,11 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
     const application = await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const target = await this.loadApplicationTarget(tx, input.tournamentId, requestedTeamId, categoryIds);
       this.assertSelfApplicationOpen(target);
+      this.ensureImageLicenseAgreementAccepted(
+        target.majorEvent.requiresImageLicenseAgreement,
+        input.imageLicenseAgreementAccepted,
+        `o torneio ${input.tournamentId}`,
+      );
       const paymentSelection = resolveMajorEventSelfServicePayment(target.majorEvent, input.paymentTier);
       if (!target.allowPlayerMultipleTeams) {
         const pendingOtherTeam = await tx.sportsPlayerApplication.findFirst({
@@ -87,6 +93,7 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
           requestedTeamId,
           status: SportsApplicationStatus.PENDING,
           noticeAcceptedAt: new Date(),
+          imageLicenseAgreementAccepted: input.imageLicenseAgreementAccepted === true,
           pendingKey,
           paymentTier: paymentSelection.paymentTier,
         },
@@ -99,11 +106,15 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
       });
       const existingCategoryIds = application.categoryChoices.map((choice) => choice.categoryId).sort();
       const normalizedCategoryIds = [...categoryIds].sort();
+      const imageLicenseAgreementAccepted = input.imageLicenseAgreementAccepted === true;
+      const isImageLicenseAgreementUpdate =
+        imageLicenseAgreementAccepted && !application.imageLicenseAgreementAccepted;
       const isIdenticalPendingSubmission =
         application.requestedTeamId === requestedTeamId &&
         application.paymentTier === paymentSelection.paymentTier &&
         existingCategoryIds.length === normalizedCategoryIds.length &&
-        existingCategoryIds.every((categoryId, index) => categoryId === normalizedCategoryIds[index]);
+        existingCategoryIds.every((categoryId, index) => categoryId === normalizedCategoryIds[index]) &&
+        !isImageLicenseAgreementUpdate;
 
       if (!(REVIEWABLE_APPLICATION_STATUSES as readonly SportsApplicationStatus[]).includes(application.status)) {
         if (
@@ -128,6 +139,8 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
           reviewedById: null,
           reviewMessage: null,
           paymentTier: paymentSelection.paymentTier,
+          imageLicenseAgreementAccepted:
+            application.imageLicenseAgreementAccepted || imageLicenseAgreementAccepted,
         },
       });
       await tx.sportsPlayerApplicationCategory.deleteMany({
@@ -151,12 +164,15 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
             status: application.status,
             requestedTeamId: application.requestedTeamId,
             categoryIds: existingCategoryIds,
+            imageLicenseAgreementAccepted: application.imageLicenseAgreementAccepted,
           },
           after: {
             status: SportsApplicationStatus.PENDING,
             requestedTeamId,
             categoryIds,
             noticeAccepted: true,
+            imageLicenseAgreementAccepted:
+              application.imageLicenseAgreementAccepted || imageLicenseAgreementAccepted,
             paymentTier: paymentSelection.paymentTier,
           },
           summary: 'Solicitação individual enviada para análise.',

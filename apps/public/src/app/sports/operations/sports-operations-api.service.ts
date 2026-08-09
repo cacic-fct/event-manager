@@ -217,8 +217,9 @@ export class SportsOperationsApiService {
     return this.query<{ currentUserSportsTournamentDetail: CurrentUserTournamentOperations }>(
       `query CurrentUserSportsTournamentOperations($tournamentId: String!) {
         currentUserSportsTournamentDetail(tournamentId: $tournamentId) {
+          imageLicenseAgreementAccepted
           tournament {
-            id name emoji isPaymentRequired selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory
+            id name emoji isPaymentRequired requiresImageLicenseAgreement selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory
             paymentTiers { id name value }
             teams { id name institution logoUrl }
             categories { id name emoji division }
@@ -234,6 +235,7 @@ export class SportsOperationsApiService {
     requestedTeamId?: string | null;
     categoryIds: string[];
     noticeAccepted: boolean;
+    imageLicenseAgreementAccepted?: boolean | null;
     paymentTier?: string | null;
     pendingKey: string;
   }): Observable<string> {

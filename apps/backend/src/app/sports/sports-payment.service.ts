@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   Prisma,
   SportsApplicationStatus,
@@ -20,6 +20,7 @@ type ParticipantApprovalInput = {
   source: SportsParticipantSource;
   actorId?: string;
   approved: boolean;
+  imageLicenseAgreementAccepted?: boolean | null;
   paymentTier?: string | null;
 };
 
@@ -47,6 +48,7 @@ export class SportsPaymentService {
         majorEvent: {
           select: {
             isPaymentRequired: true,
+            requiresImageLicenseAgreement: true,
             deletedAt: true,
             majorEventPrices: {
               select: {
@@ -65,6 +67,15 @@ export class SportsPaymentService {
     if (!tournament || tournament.majorEvent.deletedAt) {
       throw new NotFoundException(`Sports tournament ${input.tournamentId} was not found.`);
     }
+    if (
+      input.source === SportsParticipantSource.SELF_SUBSCRIPTION &&
+      tournament.majorEvent.requiresImageLicenseAgreement &&
+      input.imageLicenseAgreementAccepted !== true
+    ) {
+      throw new BadRequestException(
+        'A autoinscrição esportiva exige a concordância com o contrato de licença de uso de imagem do CACiC.',
+      );
+    }
 
     const existingParticipant = await tx.sportsTournamentParticipant.findFirst({
       where: {
@@ -82,6 +93,7 @@ export class SportsPaymentService {
       actorId: input.actorId,
       preferredSubscriptionId: existingParticipant?.majorEventSubscriptionId ?? null,
       paymentSelection,
+      imageLicenseAgreementAccepted: input.imageLicenseAgreementAccepted,
     });
     const approved = input.approved || existingParticipant?.approvedAt != null;
     const participantStatus = resolveParticipantStatus(subscription.subscriptionStatus, approved);
@@ -147,6 +159,7 @@ export class SportsPaymentService {
       actorId?: string;
       preferredSubscriptionId: string | null;
       paymentSelection: MajorEventPaymentSelection;
+      imageLicenseAgreementAccepted?: boolean | null;
     },
   ): Promise<{ id: string; subscriptionStatus: SubscriptionStatus }> {
     let existingSubscription = input.preferredSubscriptionId
@@ -160,6 +173,7 @@ export class SportsPaymentService {
           select: {
             id: true,
             subscriptionStatus: true,
+            imageLicenseAgreementAccepted: true,
             amountPaid: true,
             paymentTier: true,
           },
@@ -174,6 +188,7 @@ export class SportsPaymentService {
       select: {
         id: true,
         subscriptionStatus: true,
+        imageLicenseAgreementAccepted: true,
         amountPaid: true,
         paymentTier: true,
       },
@@ -188,7 +203,13 @@ export class SportsPaymentService {
         existingSubscription.subscriptionStatus !== SubscriptionStatus.CONFIRMED &&
         (existingSubscription.amountPaid !== input.paymentSelection.amountPaid ||
           existingSubscription.paymentTier !== input.paymentSelection.paymentTier);
-      if (reopenedStatus === existingSubscription.subscriptionStatus && !shouldUpdatePayment) {
+      const shouldUpdateImageLicenseAgreement =
+        input.imageLicenseAgreementAccepted === true && !existingSubscription.imageLicenseAgreementAccepted;
+      if (
+        reopenedStatus === existingSubscription.subscriptionStatus &&
+        !shouldUpdatePayment &&
+        !shouldUpdateImageLicenseAgreement
+      ) {
         return existingSubscription;
       }
       return tx.majorEventSubscription.update({
@@ -208,6 +229,7 @@ export class SportsPaymentService {
                 paymentTier: input.paymentSelection.paymentTier,
               }
             : {}),
+          ...(shouldUpdateImageLicenseAgreement ? { imageLicenseAgreementAccepted: true } : {}),
         },
         select: {
           id: true,
@@ -228,6 +250,7 @@ export class SportsPaymentService {
         createdById: input.actorId,
         amountPaid: input.paymentSelection.amountPaid,
         paymentTier: input.paymentSelection.paymentTier,
+        ...(input.imageLicenseAgreementAccepted === true ? { imageLicenseAgreementAccepted: true } : {}),
         createdByMethod:
           input.source === SportsParticipantSource.SELF_SUBSCRIPTION
             ? SubscriptionCreationMethod.SELF_SUBSCRIPTION

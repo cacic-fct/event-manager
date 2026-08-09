@@ -68,6 +68,7 @@ describe('SportsPlayerApplicationService', () => {
         requestedTeamId: 'team-1',
         categoryIds: ['category-1', 'category-1', 'category-2'],
         noticeAccepted: true,
+        imageLicenseAgreementAccepted: true,
       },
       'person-1',
       applicantActor,
@@ -83,6 +84,7 @@ describe('SportsPlayerApplicationService', () => {
           requestedTeamId: 'team-1',
           status: SportsApplicationStatus.PENDING,
           noticeAcceptedAt: expect.any(Date),
+          imageLicenseAgreementAccepted: true,
         }),
       }),
     );
@@ -110,8 +112,50 @@ describe('SportsPlayerApplicationService', () => {
     expect((tx as Record<string, unknown>)['people']).toBeUndefined();
   });
 
+  it('requires image-license acceptance when the sports major event enables it', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValueOnce({
+      id: 'tournament-1',
+      majorEventId: 'major-1',
+      status: SportsTournamentStatus.REGISTRATION_OPEN,
+      selfSubscriptionEnabled: true,
+      selfSubscriptionAllowNoTeam: false,
+      selfSubscriptionAllowNoCategory: false,
+      allowPlayerMultipleTeams: false,
+      finishedAt: null,
+      majorEvent: {
+        isPaymentRequired: false,
+        requiresImageLicenseAgreement: true,
+        deletedAt: null,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        majorEventPrices: [],
+      },
+      teams: [{ id: 'team-1' }],
+      categories: [{ id: 'category-1', registrationStartDate: null, registrationEndDate: null }],
+    });
+
+    await expect(
+      service.submitSelfApplication(
+        {
+          tournamentId: 'tournament-1',
+          requestedTeamId: 'team-1',
+          categoryIds: ['category-1'],
+          noticeAccepted: true,
+          imageLicenseAgreementAccepted: false,
+        },
+        'person-1',
+        applicantActor,
+      ),
+    ).rejects.toThrow(BadRequestException);
+
+    expect(tx.sportsPlayerApplication.upsert).not.toHaveBeenCalled();
+  });
+
   it('approves links but keeps paid participation and category eligibility pending', async () => {
-    const application = createReviewApplication();
+    const application = {
+      ...createReviewApplication(),
+      imageLicenseAgreementAccepted: true,
+    };
     tx.sportsPlayerApplication.findUnique.mockResolvedValue(application);
     tx.sportsRegistration.findMany.mockResolvedValue([
       { id: 'registration-1', categoryId: 'category-1' },
@@ -131,6 +175,7 @@ describe('SportsPlayerApplicationService', () => {
       source: SportsParticipantSource.SELF_SUBSCRIPTION,
       actorId: 'admin-1',
       approved: true,
+      imageLicenseAgreementAccepted: true,
     });
     expect(tx.sportsTeamMember.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -257,6 +302,7 @@ function createTx() {
         finishedAt: null,
         majorEvent: {
           isPaymentRequired: false,
+          requiresImageLicenseAgreement: false,
           deletedAt: null,
           subscriptionStartDate: null,
           subscriptionEndDate: null,
@@ -286,6 +332,7 @@ function createTx() {
         requestedTeamId: 'team-1',
         status: SportsApplicationStatus.PENDING,
         noticeAcceptedAt: new Date(),
+        imageLicenseAgreementAccepted: false,
         pendingKey: 'self:tournament-1:person-1:team-1',
         categoryChoices: [],
       }),

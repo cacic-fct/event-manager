@@ -106,6 +106,24 @@
     <mat-checkbox formControlName="noticeAccepted">
       Li e entendi que a inscrição não garante minha escalação.
     </mat-checkbox>
+    @if (currentData.tournament.requiresImageLicenseAgreement) {
+    <section class="agreement-section" aria-labelledby="image-license-agreement-title">
+      <h2 id="image-license-agreement-title">Licença de uso de imagem</h2>
+      <mat-checkbox formControlName="imageLicenseAgreementAccepted">
+        Concordo com o
+        <a
+          href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
+          target="_blank"
+          rel="noopener noreferrer"
+          (click)="$event.stopPropagation()">
+          contrato de licença de uso de imagem do CACiC
+        </a>
+      </mat-checkbox>
+      @if (!form.controls.imageLicenseAgreementAccepted.value) {
+      <p class="validation">É necessário concordar com o contrato para continuar.</p>
+      }
+    </section>
+    }
     <button mat-flat-button type="submit" [disabled]="!canSubmit()">
       {{ busy() ? 'Enviando…' : 'Enviar solicitação' }}
     </button>

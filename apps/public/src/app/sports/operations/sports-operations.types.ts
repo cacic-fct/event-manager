@@ -271,11 +271,13 @@ export interface SportsApplicationOption {
 }
 
 export interface CurrentUserTournamentOperations {
+  imageLicenseAgreementAccepted: boolean;
   tournament: {
     id: string;
     name: string;
     emoji: string;
     isPaymentRequired: boolean;
+    requiresImageLicenseAgreement: boolean;
     selfSubscriptionAllowNoTeam: boolean;
     selfSubscriptionAllowNoCategory: boolean;
     paymentTiers: Array<{ id: string; name: string; value: number }>;

@@ -36,6 +36,7 @@ export abstract class SportsPlayerApplicationApprovalService extends SportsPlaye
       requestedTeamId: string | null;
       status: SportsApplicationStatus;
       categoryChoices: Array<{ categoryId: string }>;
+      imageLicenseAgreementAccepted?: boolean;
       tournament: {
         id: string;
         majorEventId: string;
@@ -102,6 +103,7 @@ export abstract class SportsPlayerApplicationApprovalService extends SportsPlaye
       actorId,
       approved: true,
       paymentTier: application.paymentTier,
+      ...(application.imageLicenseAgreementAccepted ? { imageLicenseAgreementAccepted: true } : {}),
     });
     let teamMember = application.requestedTeamId
       ? await tx.sportsTeamMember.findFirst({

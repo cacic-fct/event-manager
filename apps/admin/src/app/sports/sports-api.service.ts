@@ -183,7 +183,7 @@ export class SportsApiService {
             id tournamentId applicant { personId name }
             requestedTeam { id name institution logoUrl }
             categories { id name division }
-            status participantStatus paymentStatus paymentTier reviewMessage createdAt
+            status participantStatus paymentStatus paymentTier imageLicenseAgreementAccepted reviewMessage createdAt
           }
         }`,
         { tournamentId, statuses },

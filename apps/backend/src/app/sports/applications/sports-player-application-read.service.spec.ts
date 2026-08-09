@@ -108,6 +108,7 @@ function applicationRecord() {
     status: 'PENDING',
     paymentTier: 'Estudante',
     noticeAcceptedAt: new Date('2026-07-01T12:00:00.000Z'),
+    imageLicenseAgreementAccepted: true,
     reviewedAt: null,
     reviewMessage: null,
     createdAt: new Date('2026-07-01T12:00:00.000Z'),

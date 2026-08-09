@@ -190,6 +190,7 @@ export function createSportsViewerTournament(
     startDate: startDate.toISOString(),
     endDate: new Date(startDate.getTime() + 5 * 24 * 60 * 60_000).toISOString(),
     selfSubscriptionEnabled: true,
+    requiresImageLicenseAgreement: true,
     isPaymentRequired: true,
     paymentTiers: [{ id: 'tier-student', name: 'Estudante', value: 2500 }],
     teams,
