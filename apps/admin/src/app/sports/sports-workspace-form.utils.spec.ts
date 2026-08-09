@@ -1,5 +1,7 @@
 import { FormControl, FormGroup } from '@angular/forms';
 import {
+  competitionRulesFromForm,
+  competitionRulesToForm,
   jsonObjectValidator,
   livestreamValidator,
   overallPlacementPointsValidator,
@@ -12,6 +14,32 @@ import {
 } from './sports-workspace-form.utils';
 
 describe('sports workspace form utilities', () => {
+  it('maps competition rules to controls without discarding compatibility keys', () => {
+    const formValue = competitionRulesToForm(
+      '{"strategy":"SETS","allowDraw":false,"higherWins":true,"pointStep":0.5}',
+      '{"winPoints":2,"drawPoints":1,"lossPoints":-1,"byePoints":2}',
+      '{"groupCount":4,"qualifiersPerGroup":2,"maximumRounds":7,"legacyFlag":true}',
+      'GROUP_STAGE_SINGLE_ELIMINATION',
+    );
+
+    expect(formValue).toMatchObject({
+      scoreAllowDraw: false,
+      scorePointStep: 0.5,
+      standingsWinPoints: 2,
+      standingsLossPoints: -1,
+      groupCount: 4,
+      swissMaximumRounds: 7,
+    });
+
+    const persisted = competitionRulesFromForm({ ...formValue, groupCount: 8 }, {
+      scoreRulesJson: '{"strategy":"SETS"}',
+      standingsRulesJson: '{}',
+      bracketRulesJson: '{"legacyFlag":true}',
+    });
+    expect(JSON.parse(persisted.scoreRulesJson)).toMatchObject({ strategy: 'SETS', allowDraw: false });
+    expect(JSON.parse(persisted.bracketRulesJson)).toMatchObject({ legacyFlag: true, groupCount: 8 });
+  });
+
   it('rejects unsafe and unsupported JSON configuration', () => {
     expect(jsonObjectValidator(new FormControl('[]', { nonNullable: true }))).toEqual({ jsonObject: true });
     expect(jsonObjectValidator(new FormControl('{"constructor":{}}', { nonNullable: true }))).toEqual({
@@ -34,17 +62,22 @@ describe('sports workspace form utilities', () => {
 
   it('converts flexible overall scoring rules and validates placement points', () => {
     const formValue = overallScoringRulesToForm(
-      '{"mode":"MATCH_RESULT_AND_FINAL_PLACEMENT","match":{"win":3,"draw":1,"loss":0},"placement":{"1":10,"2":6}}',
+      '{"mode":"MATCH_RESULT_AND_FINAL_PLACEMENT","match":{"win":3,"draw":1,"loss":0},"placement":{"1":10,"2":6,"12":1}}',
     );
     expect(formValue).toMatchObject({
       overallScoringMode: 'MATCH_RESULT_AND_FINAL_PLACEMENT',
       overallMatchWinPoints: 3,
-      overallPlacementPointsJson: '{"1":10,"2":6}',
+      overallPlacementPointsJson: '{"1":10,"2":6,"12":1}',
+      overallPlacementPoints: [
+        { position: 1, points: 10 },
+        { position: 2, points: 6 },
+        { position: 12, points: 1 },
+      ],
     });
     expect(JSON.parse(overallScoringRulesFromForm(formValue))).toEqual({
       mode: 'MATCH_RESULT_AND_FINAL_PLACEMENT',
       match: { win: 3, draw: 1, loss: 0 },
-      placement: { '1': 10, '2': 6 },
+      placement: { '1': 10, '2': 6, '12': 1 },
     });
     expect(overallPlacementPointsValidator(new FormControl('{"101":1}', { nonNullable: true }))).toEqual({
       overallPlacementKey: true,

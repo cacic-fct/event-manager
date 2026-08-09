@@ -14,6 +14,84 @@ export interface SportsOverallScoringFormValue {
   overallMatchDrawPoints?: number;
   overallMatchLossPoints?: number;
   overallPlacementPointsJson?: string;
+  overallPlacementPoints?: Array<{ position?: number; points?: number }>;
+}
+
+export interface SportsCompetitionRulesFormValue {
+  format?: string;
+  scoreAllowDraw?: boolean;
+  scoreHigherWins?: boolean;
+  scorePointStep?: number;
+  standingsWinPoints?: number;
+  standingsDrawPoints?: number;
+  standingsLossPoints?: number;
+  standingsByePoints?: number;
+  doubleRoundRobin?: boolean;
+  groupCount?: number;
+  qualifiersPerGroup?: number;
+  swissMaximumRounds?: number;
+}
+
+export function competitionRulesToForm(
+  scoreRulesJson: string,
+  standingsRulesJson: string,
+  bracketRulesJson: string,
+  format: string,
+): Required<SportsCompetitionRulesFormValue> {
+  const score = safeObject(scoreRulesJson);
+  const standings = safeObject(standingsRulesJson);
+  const bracket = safeObject(bracketRulesJson);
+  return {
+    scoreAllowDraw: typeof score['allowDraw'] === 'boolean' ? score['allowDraw'] : true,
+    scoreHigherWins: typeof score['higherWins'] === 'boolean' ? score['higherWins'] : true,
+    scorePointStep: positiveNumber(score['pointStep'], 1),
+    standingsWinPoints: finiteNumber(standings['winPoints'], 3),
+    standingsDrawPoints: finiteNumber(standings['drawPoints'], 1),
+    standingsLossPoints: finiteNumber(standings['lossPoints'], 0),
+    standingsByePoints: finiteNumber(standings['byePoints'], 3),
+    format,
+    doubleRoundRobin:
+      format === 'ROUND_ROBIN'
+        ? standings['doubleRoundRobin'] === true
+        : bracket['doubleRoundRobin'] === true,
+    groupCount: positiveInteger(bracket['groupCount'], 2),
+    qualifiersPerGroup: positiveInteger(bracket['qualifiersPerGroup'], 2),
+    swissMaximumRounds: positiveInteger(bracket['maximumRounds'], 5),
+  };
+}
+
+export function competitionRulesFromForm(
+  raw: SportsCompetitionRulesFormValue,
+  current: { scoreRulesJson?: string; standingsRulesJson?: string; bracketRulesJson?: string },
+) {
+  const format = raw.format ?? '';
+  const standingsPatch: Record<string, unknown> = {
+    winPoints: finiteNumber(raw.standingsWinPoints, 3),
+    drawPoints: finiteNumber(raw.standingsDrawPoints, 1),
+    lossPoints: finiteNumber(raw.standingsLossPoints, 0),
+    byePoints: finiteNumber(raw.standingsByePoints, 3),
+  };
+  const bracketPatch: Record<string, unknown> = {};
+  if (format === 'ROUND_ROBIN') {
+    standingsPatch['doubleRoundRobin'] = raw.doubleRoundRobin === true;
+  }
+  if (format === 'GROUP_STAGE_SINGLE_ELIMINATION' || format === 'GROUP_STAGE_DOUBLE_ELIMINATION') {
+    bracketPatch['groupCount'] = positiveInteger(raw.groupCount, 2);
+    bracketPatch['qualifiersPerGroup'] = positiveInteger(raw.qualifiersPerGroup, 2);
+    bracketPatch['doubleRoundRobin'] = raw.doubleRoundRobin === true;
+  }
+  if (format === 'SWISS') {
+    bracketPatch['maximumRounds'] = positiveInteger(raw.swissMaximumRounds, 5);
+  }
+  return {
+    scoreRulesJson: mergeJsonObject(current.scoreRulesJson, {
+      allowDraw: raw.scoreAllowDraw !== false,
+      higherWins: raw.scoreHigherWins !== false,
+      pointStep: positiveNumber(raw.scorePointStep, 1),
+    }),
+    standingsRulesJson: mergeJsonObject(current.standingsRulesJson, standingsPatch),
+    bracketRulesJson: mergeJsonObject(current.bracketRulesJson, bracketPatch),
+  };
 }
 
 export function sportsTimerPreset(preset: string): (Required<SportsTimerFormValue> & { timerPreset: string }) | null {
@@ -108,6 +186,14 @@ export function overallPlacementPointsValidator(control: AbstractControl<string>
   return null;
 }
 
+export function placementPointsValidator(control: AbstractControl): ValidationErrors | null {
+  const entries = control.value as Array<{ position?: unknown }>;
+  const positions = entries
+    .map((entry) => entry.position)
+    .filter((position): position is number => typeof position === 'number' && Number.isSafeInteger(position));
+  return new Set(positions).size === positions.length ? null : { duplicatePlacement: true };
+}
+
 export function overallScoringRulesToForm(value: string, legacyBracketRulesJson = '{}'): SportsOverallScoringFormValue {
   const fallback = {
     overallScoringMode: 'NONE',
@@ -115,6 +201,7 @@ export function overallScoringRulesToForm(value: string, legacyBracketRulesJson 
     overallMatchDrawPoints: 1,
     overallMatchLossPoints: 0,
     overallPlacementPointsJson: '{}',
+    overallPlacementPoints: [],
   };
   try {
     const rules = JSON.parse(value || '{}') as Record<string, unknown>;
@@ -148,6 +235,7 @@ export function overallScoringRulesToForm(value: string, legacyBracketRulesJson 
         placementEnabled
           ? JSON.stringify(placement)
           : fallback.overallPlacementPointsJson,
+      overallPlacementPoints: placementEntries(placementEnabled ? (placement as Record<string, unknown>) : {}),
     };
   } catch {
     return fallback;
@@ -164,6 +252,19 @@ export function overallScoringRulesFromForm(raw: SportsOverallScoringFormValue):
   } catch {
     placement = {};
   }
+  placement = Object.fromEntries(
+    (raw.overallPlacementPoints ?? [])
+      .flatMap(({ position, points }) =>
+        typeof position === 'number' &&
+        Number.isSafeInteger(position) &&
+        position >= 1 &&
+        position <= 100 &&
+        typeof points === 'number' &&
+        points > 0
+          ? [[String(position), points] as const]
+          : [],
+      ),
+  );
   return JSON.stringify({
     mode: raw.overallScoringMode || 'NONE',
     match: {
@@ -173,6 +274,13 @@ export function overallScoringRulesFromForm(raw: SportsOverallScoringFormValue):
     },
     placement,
   });
+}
+
+function placementEntries(placement: Record<string, unknown>) {
+  return Object.entries(placement)
+    .map(([position, points]) => ({ position: Number(position), points: finiteNumber(points, 0) }))
+    .filter(({ position, points }) => Number.isSafeInteger(position) && position >= 1 && position <= 100 && points >= 0)
+    .sort((left, right) => left.position - right.position);
 }
 
 export function timerRulesToForm(value: string): Required<SportsTimerFormValue> & { timerPreset: string } {
@@ -254,6 +362,33 @@ export function toLocalDate(value?: string | null): string {
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function safeObject(value: string | null | undefined): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(value || '{}') as unknown;
+    return isPlainObject(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function mergeJsonObject(value: string | null | undefined, patch: Record<string, unknown>): string {
+  return JSON.stringify({ ...safeObject(value), ...patch });
+}
+
+function finiteNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function positiveNumber(value: unknown, fallback: number): number {
+  const number = finiteNumber(value, fallback);
+  return number > 0 ? number : fallback;
+}
+
+function positiveInteger(value: unknown, fallback: number): number {
+  const number = positiveNumber(value, fallback);
+  return Number.isSafeInteger(number) ? number : fallback;
 }
 
 function isSafeJson(value: unknown, depth: number): boolean {

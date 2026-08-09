@@ -14,6 +14,8 @@ import type {
 } from './sports.models';
 import { SportsTextDialogComponent } from './sports-text-dialog.component';
 import {
+  competitionRulesFromForm,
+  competitionRulesToForm,
   defaultSportEmoji,
   overallScoringRulesFromForm,
   overallScoringRulesToForm,
@@ -380,6 +382,10 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
   }
 
   protected categoryToForm(category: SportsCategorySummary) {
+    const scoring = overallScoringRulesToForm(category.overallScoringRulesJson, category.bracketRulesJson);
+    this.setPlacementPoints(scoring.overallPlacementPoints ?? []);
+    const scoringControls = { ...scoring };
+    delete scoringControls.overallPlacementPoints;
     return {
       ...category,
       emoji: category.eventGroup?.emoji ?? defaultSportEmoji(category.sport),
@@ -395,13 +401,20 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       maximumPeriods: category.maximumPeriods ?? 0,
       periodLabel: category.periodLabel ?? 'Tempo',
       ...timerRulesToForm(category.timerRulesJson),
-      ...overallScoringRulesToForm(category.overallScoringRulesJson, category.bracketRulesJson),
+      ...scoringControls,
+      ...competitionRulesToForm(
+        category.scoreRulesJson,
+        category.standingsRulesJson,
+        category.bracketRulesJson,
+        category.format,
+      ),
       rulesText: category.rulesText ?? '',
       registrationFormId: category.registrationFormId ?? '',
     };
   }
 
   protected nullableCategoryValues(raw: typeof this.categoryForm.value) {
+    const competitionRules = competitionRulesFromForm(raw, raw);
     return {
       name: raw.name,
       sport: raw.sport,
@@ -420,11 +433,11 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       maximumPeriods: raw.periodsEnabled ? raw.maximumPeriods || null : null,
       periodLabel: raw.periodsEnabled ? raw.periodLabel || null : null,
       timerRulesJson: timerRulesFromForm(raw),
-      scoreRulesJson: raw.scoreRulesJson,
+      scoreRulesJson: competitionRules.scoreRulesJson,
       overallScoringRulesJson: overallScoringRulesFromForm(raw),
       rosterRulesJson: raw.rosterRulesJson,
-      bracketRulesJson: raw.bracketRulesJson,
-      standingsRulesJson: raw.standingsRulesJson,
+      bracketRulesJson: competitionRules.bracketRulesJson,
+      standingsRulesJson: competitionRules.standingsRulesJson,
       rulesText: raw.rulesText || null,
       registrationFormId: raw.registrationFormId || null,
     };

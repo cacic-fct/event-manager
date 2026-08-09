@@ -242,7 +242,7 @@
         <h4>Inscrição manual</h4>
         <p>Escolha uma modalidade específica ou informe respostas administrativas do formulário.</p>
       </div>
-      <form [formGroup]="workspace.registrationForm" class="compact-form" (ngSubmit)="workspace.createRegistration()">
+      <div [formGroup]="workspace.registrationForm" class="compact-form">
         <mat-form-field
           ><mat-label>Modalidade</mat-label
           ><mat-select formControlName="categoryId">
@@ -258,26 +258,30 @@
           <input matInput type="number" min="0" formControlName="seed" />
           <mat-hint>Ordem usada na montagem da chave. Deixe 0 para definir depois.</mat-hint>
         </mat-form-field>
-        <mat-expansion-panel class="span-2 rule-editor">
-          <mat-expansion-panel-header>
-            <mat-panel-title>Respostas avançadas do formulário</mat-panel-title>
-            <mat-panel-description>Use somente em importações administrativas</mat-panel-description>
-          </mat-expansion-panel-header>
-          <p class="advanced-warning">
-            Prefira o formulário vinculado à modalidade. Este campo aceita apenas um objeto JSON seguro.
-          </p>
-          <mat-form-field>
-            <mat-label>Respostas do formulário</mat-label>
-            <textarea matInput rows="3" formControlName="formAnswersJson"></textarea>
-            @if (workspace.registrationForm.controls.formAnswersJson.invalid) {
-              <mat-error>Informe um objeto JSON válido.</mat-error>
-            }
-          </mat-form-field>
-        </mat-expansion-panel>
-        <button mat-stroked-button type="submit" [disabled]="workspace.registrationForm.invalid">
-          <mat-icon>how_to_reg</mat-icon>Inscrever equipe
-        </button>
-      </form>
+        @if (workspace.registrationEventForm(); as registrationEventForm) {
+          <section class="span-2 registration-questionnaire">
+            <div class="subsection-title">
+              <h4>{{ registrationEventForm.name }}</h4>
+              <p>
+                Responda às informações exigidas para esta modalidade. As mesmas perguntas são usadas nas inscrições
+                do grande evento.
+              </p>
+            </div>
+            <lib-event-form-renderer
+              [elements]="workspace.registrationFormElements()"
+              submitLabel="Inscrever equipe"
+              (formSubmitted)="workspace.createRegistration($event)" />
+          </section>
+        } @else {
+          <button
+            mat-stroked-button
+            type="button"
+            (click)="workspace.createRegistration()"
+            [disabled]="workspace.registrationForm.invalid">
+            <mat-icon>how_to_reg</mat-icon>Inscrever equipe
+          </button>
+        }
+      </div>
     }
   </section>
 </div>

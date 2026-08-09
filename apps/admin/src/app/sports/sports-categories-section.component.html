@@ -112,6 +112,16 @@
         <mat-label>Fim das inscrições</mat-label>
         <input matInput type="datetime-local" formControlName="registrationEndDate" />
       </mat-form-field>
+      <mat-form-field class="span-2">
+        <mat-label>Formulário complementar da inscrição</mat-label>
+        <mat-select formControlName="registrationFormId">
+          <mat-option value="">Sem formulário complementar</mat-option>
+          @for (eventForm of workspace.eventForms(); track eventForm.id) {
+            <mat-option [value]="eventForm.id">{{ eventForm.name }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>Reutiliza um formulário do grande evento na inscrição desta modalidade.</mat-hint>
+      </mat-form-field>
 
       <app-sports-format-guide
         class="span-2"
@@ -158,13 +168,127 @@
         workspace.categoryForm.controls.overallScoringMode.value === 'FINAL_PLACEMENT' ||
         workspace.categoryForm.controls.overallScoringMode.value === 'MATCH_RESULT_AND_FINAL_PLACEMENT'
       ) {
+        <div class="span-2 placement-editor">
+          <div class="placement-heading">
+            <div>
+              <p class="field-label">Pontos por colocação final</p>
+              <small>Adicione somente as colocações que pontuam.</small>
+            </div>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="workspace.categoryForm.controls.overallPlacementPoints.length >= 100"
+              (click)="workspace.addPlacementPoint()">
+              <mat-icon>add</mat-icon>
+              Colocação
+            </button>
+          </div>
+          <div class="placement-list" formArrayName="overallPlacementPoints">
+            @for (
+              placement of workspace.categoryForm.controls.overallPlacementPoints.controls;
+              track placement;
+              let index = $index
+            ) {
+              <div class="placement-row" [formGroupName]="index">
+                <mat-form-field>
+                  <mat-label>Colocação</mat-label>
+                  <input matInput type="number" min="1" max="100" step="1" formControlName="position" />
+                  @if (placement.controls.position.invalid) {
+                    <mat-error>Use uma posição entre 1 e 100.</mat-error>
+                  }
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Pontos</mat-label>
+                  <input matInput type="number" min="0" max="1000000" step="1" formControlName="points" />
+                  @if (placement.controls.points.invalid) {
+                    <mat-error>Use um valor entre 0 e 1.000.000.</mat-error>
+                  }
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Remover colocação"
+                  [attr.aria-label]="'Remover ' + placement.controls.position.value + 'ª colocação'"
+                  (click)="workspace.removePlacementPoint(index)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            } @empty {
+              <p class="empty-copy">Nenhuma colocação pontua automaticamente.</p>
+            }
+            @if (workspace.categoryForm.controls.overallPlacementPoints.hasError('duplicatePlacement')) {
+              <p class="validation-copy">Cada colocação pode aparecer somente uma vez.</p>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="subsection-title span-2">
+        <h4>Resultado da partida</h4>
+        <p>Defina como o placar determina o vencedor e quais valores são aceitos.</p>
+      </div>
+      <mat-form-field>
+        <mat-label>Vence a equipe com</mat-label>
+        <mat-select formControlName="scoreHigherWins">
+          <mat-option [value]="true">Maior pontuação</mat-option>
+          <mat-option [value]="false">Menor pontuação</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Incremento do placar</mat-label>
+        <input matInput type="number" min="0.000001" step="any" formControlName="scorePointStep" />
+        <mat-hint>Ex.: 1 para gols, 0,5 para notas fracionadas.</mat-hint>
+      </mat-form-field>
+      <mat-slide-toggle formControlName="scoreAllowDraw">Permitir resultado empatado</mat-slide-toggle>
+
+      <div class="subsection-title span-2">
+        <h4>Classificação</h4>
+        <p>Pontos usados na tabela da modalidade.</p>
+      </div>
+      <mat-form-field>
+        <mat-label>Vitória</mat-label>
+        <input matInput type="number" formControlName="standingsWinPoints" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Empate</mat-label>
+        <input matInput type="number" formControlName="standingsDrawPoints" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Derrota</mat-label>
+        <input matInput type="number" formControlName="standingsLossPoints" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Pontos por folga (sem partida)</mat-label>
+        <input matInput type="number" formControlName="standingsByePoints" />
+        <mat-hint>Pontos atribuídos à equipe que não joga na rodada.</mat-hint>
+      </mat-form-field>
+      @if (
+        workspace.categoryForm.controls.format.value === 'ROUND_ROBIN' ||
+        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_SINGLE_ELIMINATION' ||
+        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_DOUBLE_ELIMINATION'
+      ) {
+        <mat-slide-toggle class="span-2" formControlName="doubleRoundRobin">
+          Turno e returno — cada equipe enfrenta as demais duas vezes
+        </mat-slide-toggle>
+      }
+      @if (
+        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_SINGLE_ELIMINATION' ||
+        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_DOUBLE_ELIMINATION'
+      ) {
+        <mat-form-field>
+          <mat-label>Quantidade de grupos</mat-label>
+          <input matInput type="number" min="2" max="128" step="1" formControlName="groupCount" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Classificados por grupo</mat-label>
+          <input matInput type="number" min="1" max="128" formControlName="qualifiersPerGroup" />
+        </mat-form-field>
+      }
+      @if (workspace.categoryForm.controls.format.value === 'SWISS') {
         <mat-form-field class="span-2">
-          <mat-label>Pontos por colocação final</mat-label>
-          <textarea matInput rows="3" formControlName="overallPlacementPointsJson"></textarea>
-          <mat-hint>Objeto JSON, por exemplo: 1:10, 2:6, 3:3. Posições sem valor não pontuam.</mat-hint>
-          @if (workspace.categoryForm.controls.overallPlacementPointsJson.invalid) {
-            <mat-error>Informe posições de 1 a 100 e pontos inteiros de 0 a 1.000.000.</mat-error>
-          }
+          <mat-label>Máximo de rodadas suíças</mat-label>
+          <input matInput type="number" min="1" max="128" formControlName="swissMaximumRounds" />
+          <mat-hint>A geração encerra ao atingir este limite.</mat-hint>
         </mat-form-field>
       }
 
@@ -240,60 +364,6 @@
         <textarea matInput rows="4" formControlName="rulesText"></textarea>
       </mat-form-field>
 
-      <mat-expansion-panel class="span-2 rule-editor">
-        <mat-expansion-panel-header>
-          <mat-panel-title>Regras avançadas</mat-panel-title>
-          <mat-panel-description>JSON validado para placar, elenco, chave e classificação</mat-panel-description>
-        </mat-expansion-panel-header>
-        <p class="advanced-warning">
-          <mat-icon>warning</mat-icon>
-          Use somente para regras não cobertas pelos controles acima. O valor deve ser um objeto JSON com no máximo seis
-          níveis. Em placar, use apenas strategy, allowDraw, higherWins e pointStep.
-        </p>
-        <div class="advanced-docs">
-          <mat-icon aria-hidden="true">menu_book</mat-icon>
-          <div>
-            <strong>Quando usar estes campos?</strong>
-            <p>
-              Eles existem para extensões raras ainda sem um controle visual, importações e compatibilidade com torneios
-              antigos. Prefira sempre os controles normais. O servidor rejeita chaves desconhecidas nas regras tipadas,
-              objetos perigosos, valores infinitos e estruturas excessivamente profundas.
-            </p>
-            <p>
-              Placar aceita <code>strategy</code>, <code>allowDraw</code>, <code>higherWins</code> e
-              <code>pointStep</code>. Elenco, chave e classificação devem seguir a documentação da versão da API;
-              mudanças são protegidas pela validação no envio e pela revisão do esquema compartilhado.
-            </p>
-          </div>
-        </div>
-        <div class="form-grid">
-          <mat-form-field
-            ><mat-label>Placar</mat-label><textarea matInput rows="5" formControlName="scoreRulesJson"></textarea>
-            @if (workspace.categoryForm.controls.scoreRulesJson.invalid) {
-              <mat-error>Revise a sintaxe e o esquema das regras de placar.</mat-error>
-            }
-          </mat-form-field>
-          <mat-form-field
-            ><mat-label>Elenco</mat-label><textarea matInput rows="5" formControlName="rosterRulesJson"></textarea>
-            @if (workspace.categoryForm.controls.rosterRulesJson.invalid) {
-              <mat-error>Informe um objeto JSON seguro e válido.</mat-error>
-            }
-          </mat-form-field>
-          <mat-form-field
-            ><mat-label>Chave</mat-label><textarea matInput rows="5" formControlName="bracketRulesJson"></textarea>
-            @if (workspace.categoryForm.controls.bracketRulesJson.invalid) {
-              <mat-error>Informe um objeto JSON seguro e válido.</mat-error>
-            }
-          </mat-form-field>
-          <mat-form-field
-            ><mat-label>Classificação</mat-label
-            ><textarea matInput rows="5" formControlName="standingsRulesJson"></textarea>
-            @if (workspace.categoryForm.controls.standingsRulesJson.invalid) {
-              <mat-error>Informe um objeto JSON seguro e válido.</mat-error>
-            }
-          </mat-form-field>
-        </div>
-      </mat-expansion-panel>
     </form>
 
     @if (workspace.categoryRead(); as read) {

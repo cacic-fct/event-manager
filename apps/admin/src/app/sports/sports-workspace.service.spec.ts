@@ -4,6 +4,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { EMPTY, of } from 'rxjs';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
+import { EventFormApiService } from '../graphql/event-form-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PlacePresetApiService } from '../graphql/place-preset-api.service';
 import { SportsApiService } from './sports-api.service';
@@ -24,6 +25,7 @@ describe('SportsWorkspaceService', () => {
         SportsWorkspaceService,
         { provide: SportsApiService, useValue: {} },
         { provide: MajorEventApiService, useValue: {} },
+        { provide: EventFormApiService, useValue: {} },
         { provide: PeopleApiService, useValue: {} },
         { provide: PlacePresetApiService, useValue: {} },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
@@ -133,16 +135,12 @@ describe('SportsWorkspaceService', () => {
     expect(workspace.matchStatusLabel('CANCELED')).toBe('Cancelada, aguardando reagendamento');
   });
 
-  it('rejects unsafe or unsupported score-rule JSON before submission', () => {
-    const control = workspace.categoryForm.controls.scoreRulesJson;
+  it('validates score rules through the structured controls', () => {
+    const control = workspace.categoryForm.controls.scorePointStep;
 
-    control.setValue('{"allowDraw":"yes"}');
-    expect(control.errors).toEqual({ scoreAllowDraw: true });
-
-    control.setValue('{"constructor":{"prototype":{}}}');
-    expect(control.errors).toEqual({ jsonUnsafe: true });
-
-    control.setValue('{"strategy":"SETS","allowDraw":false,"higherWins":true,"pointStep":1}');
+    control.setValue(0);
+    expect(control.invalid).toBe(true);
+    control.setValue(0.5);
     expect(control.valid).toBe(true);
   });
 

@@ -1,4 +1,7 @@
 import { computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import type { FormResponseAnswer } from '@cacic-fct/form-contracts';
+import { parseFormElementsJson, serializeFormAnswers } from '@cacic-fct/shared-angular';
 import type { SportsTeamMemberStatus } from '@cacic-fct/shared-data-types';
 import type { Person } from '@cacic-fct/event-manager-admin-contracts';
 import { firstValueFrom } from 'rxjs';
@@ -6,6 +9,19 @@ import type { SportsCategoryRead, SportsTeamRead, SportsTeamSummary } from './sp
 import { SportsWorkspaceCategoryService } from './sports-workspace-category.service';
 
 export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategoryService {
+  private readonly registrationCategoryId = toSignal(this.registrationForm.controls.categoryId.valueChanges, {
+    initialValue: this.registrationForm.controls.categoryId.value,
+  });
+  readonly registrationCategory = computed(() =>
+    this.tournamentRead()?.categories.find(
+      (category) => category.id === this.registrationCategoryId(),
+    ),
+  );
+  readonly registrationEventForm = computed(() => {
+    const formId = this.registrationCategory()?.registrationFormId;
+    return formId ? this.eventForms().find((form) => form.id === formId) ?? null : null;
+  });
+  readonly registrationFormElements = computed(() => parseFormElementsJson(this.registrationEventForm()?.elementsJson));
   readonly approvedTeamMemberCount = computed(
     () => this.teamRead()?.members.filter((member) => member.status === 'APPROVED').length ?? 0,
   );
@@ -258,11 +274,12 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     });
   }
 
-  async createRegistration(): Promise<void> {
+  async createRegistration(answers?: readonly FormResponseAnswer[]): Promise<void> {
     if (this.registrationForm.invalid) {
       return;
     }
     const raw = this.registrationForm.getRawValue();
+    const formAnswersJson = answers ? serializeFormAnswers(answers) : raw.formAnswersJson;
     const teamRead = this.teamRead();
     await this.run('Não foi possível inscrever a equipe.', async () => {
       const registrationId = await firstValueFrom(
@@ -270,7 +287,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
           teamId: raw.teamId,
           categoryId: raw.categoryId,
           seed: raw.seed || null,
-          formAnswersJson: raw.formAnswersJson || null,
+          formAnswersJson: formAnswersJson === '[]' ? null : formAnswersJson || null,
         }),
       );
       if (teamRead) {
@@ -280,6 +297,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       this.notify('Inscrição criada. Atletas aprovados adicionados ao elenco da modalidade.');
     });
   }
+
 
   async autoRegisterTeamInEligibleCategories(): Promise<void> {
     const teamRead = this.teamRead();

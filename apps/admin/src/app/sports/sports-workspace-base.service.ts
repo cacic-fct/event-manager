@@ -2,9 +2,10 @@ import { Directive, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import type { MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
+import type { EventForm, MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
+import { EventFormApiService } from '../graphql/event-form-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PlacePresetApiService } from '../graphql/place-preset-api.service';
 import { SportsApiService } from './sports-api.service';
@@ -20,11 +21,13 @@ import type {
 } from './sports.models';
 import { sportsTimerPreset } from './sports-workspace-form.utils';
 import { createSportsWorkspaceForms } from './sports-workspace.forms';
+import { createPlacementPointForm } from './sports-workspace.forms';
 
 @Directive()
 export abstract class SportsWorkspaceBaseService implements OnDestroy {
   protected readonly api = inject(SportsApiService);
   private readonly majorEventsApi = inject(MajorEventApiService);
+  private readonly eventFormsApi = inject(EventFormApiService);
   protected readonly peopleApi = inject(PeopleApiService);
   private readonly placesApi = inject(PlacePresetApiService);
   protected readonly snackbar = inject(MatSnackBar);
@@ -38,6 +41,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly error = signal<string | null>(null);
   readonly majorEvents = signal<MajorEvent[]>([]);
   readonly tournaments = signal<SportsTournamentListItem[]>([]);
+  readonly eventForms = signal<EventForm[]>([]);
   readonly tournamentRead = signal<SportsTournamentRead | null>(null);
   readonly categoryRead = signal<SportsCategoryRead | null>(null);
   readonly teamRead = signal<SportsTeamRead | null>(null);
@@ -97,6 +101,31 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     });
   }
 
+  addPlacementPoint(): void {
+    const positions = this.categoryForm.controls.overallPlacementPoints.controls.map(
+      (control) => control.controls.position.value,
+    );
+    const nextPosition = Math.min(Math.max(0, ...positions) + 1, 100);
+    if (positions.includes(nextPosition)) {
+      return;
+    }
+    this.categoryForm.controls.overallPlacementPoints.push(createPlacementPointForm(this.fb, nextPosition));
+  }
+
+  removePlacementPoint(index: number): void {
+    this.categoryForm.controls.overallPlacementPoints.removeAt(index);
+  }
+
+  protected setPlacementPoints(entries: Array<{ position?: number; points?: number }>): void {
+    const placements = this.categoryForm.controls.overallPlacementPoints;
+    placements.clear();
+    for (const entry of entries) {
+      if (typeof entry.position === 'number' && typeof entry.points === 'number') {
+        placements.push(createPlacementPointForm(this.fb, entry.position, entry.points));
+      }
+    }
+  }
+
   async initialize(): Promise<void> {
     await this.run('Não foi possível carregar os grandes eventos.', async () => {
       const [majorEvents, tournaments, places] = await Promise.all([
@@ -133,6 +162,9 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     const read = await firstValueFrom(this.api.tournament(id));
     this.tournamentRead.set(read);
     this.selectedMajorEventId.set(read.tournament.majorEventId);
+    this.eventForms.set(
+      await firstValueFrom(this.eventFormsApi.listForms({ majorEventId: read.tournament.majorEventId })),
+    );
     this.tournamentForm.patchValue(read.tournament);
     this.categoryRead.set(null);
     this.teamRead.set(null);
@@ -231,6 +263,9 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       timerPeriodStartOffsetsMinutes: '0, 45',
       rulesText: '',
       scoreRulesJson: '{}',
+      scoreAllowDraw: true,
+      scoreHigherWins: true,
+      scorePointStep: 1,
       overallScoringMode: 'NONE',
       overallMatchWinPoints: 3,
       overallMatchDrawPoints: 1,
@@ -239,8 +274,17 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       rosterRulesJson: '{}',
       bracketRulesJson: '{}',
       standingsRulesJson: '{}',
+      standingsWinPoints: 3,
+      standingsDrawPoints: 1,
+      standingsLossPoints: 0,
+      standingsByePoints: 3,
+      doubleRoundRobin: false,
+      groupCount: 2,
+      qualifiersPerGroup: 2,
+      swissMaximumRounds: 5,
       registrationFormId: '',
     });
+    this.setPlacementPoints([]);
   }
 
   protected abstract run(

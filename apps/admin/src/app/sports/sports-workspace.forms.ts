@@ -1,12 +1,9 @@
 import { FormBuilder, Validators } from '@angular/forms';
-import {
-  jsonObjectValidator,
-  livestreamValidator,
-  overallPlacementPointsValidator,
-  scoreRulesValidator,
-} from './sports-workspace-form.utils';
+import { livestreamValidator, placementPointsValidator } from './sports-workspace-form.utils';
 
 export function createSportsWorkspaceForms(fb: FormBuilder) {
+  const overallPlacementPoints = fb.array([createPlacementPointForm(fb, 1)], placementPointsValidator);
+  overallPlacementPoints.clear();
   return {
     tournament: fb.nonNullable.group({
       status: ['DRAFT'],
@@ -42,15 +39,27 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
       timerAllowOvertime: [true],
       timerPeriodStartOffsetsMinutes: ['0, 45', Validators.pattern(/^\s*\d+(?:\.\d+)?(?:\s*,\s*\d+(?:\.\d+)?)*\s*$/)],
       rulesText: [''],
-      scoreRulesJson: ['{}', scoreRulesValidator],
+      scoreRulesJson: ['{}'],
+      scoreAllowDraw: [true],
+      scoreHigherWins: [true],
+      scorePointStep: [1, [Validators.required, Validators.min(0.000001)]],
       overallScoringMode: ['NONE'],
       overallMatchWinPoints: [3, [Validators.min(0), Validators.max(1_000_000)]],
       overallMatchDrawPoints: [1, [Validators.min(0), Validators.max(1_000_000)]],
       overallMatchLossPoints: [0, [Validators.min(0), Validators.max(1_000_000)]],
-      overallPlacementPointsJson: ['{}', overallPlacementPointsValidator],
-      rosterRulesJson: ['{}', jsonObjectValidator],
-      bracketRulesJson: ['{}', jsonObjectValidator],
-      standingsRulesJson: ['{}', jsonObjectValidator],
+      overallPlacementPointsJson: ['{}'],
+      overallPlacementPoints,
+      rosterRulesJson: ['{}'],
+      bracketRulesJson: ['{}'],
+      standingsRulesJson: ['{}'],
+      standingsWinPoints: [3, Validators.required],
+      standingsDrawPoints: [1, Validators.required],
+      standingsLossPoints: [0, Validators.required],
+      standingsByePoints: [3, Validators.required],
+      doubleRoundRobin: [false],
+      groupCount: [2, [Validators.required, Validators.min(2), Validators.max(128)]],
+      qualifiersPerGroup: [2, [Validators.required, Validators.min(1), Validators.max(128)]],
+      swissMaximumRounds: [5, [Validators.required, Validators.min(1), Validators.max(128)]],
       registrationFormId: [''],
     }),
     team: fb.nonNullable.group({
@@ -63,7 +72,7 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
       teamId: ['', Validators.required],
       categoryId: ['', Validators.required],
       seed: [0],
-      formAnswersJson: ['{}', jsonObjectValidator],
+      formAnswersJson: ['[]'],
     }),
     match: fb.nonNullable.group(
       {
@@ -121,4 +130,11 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
       replaceExistingDraft: [false],
     }),
   };
+}
+
+export function createPlacementPointForm(fb: FormBuilder, position: number, points = 0) {
+  return fb.group({
+    position: fb.nonNullable.control(position, [Validators.required, Validators.min(1), Validators.max(100)]),
+    points: fb.nonNullable.control(points, [Validators.required, Validators.min(0), Validators.max(1_000_000)]),
+  });
 }
