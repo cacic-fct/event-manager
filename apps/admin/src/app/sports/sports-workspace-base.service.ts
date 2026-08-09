@@ -12,6 +12,7 @@ import type {
   SportsApplication,
   SportsCategoryRead,
   SportsMatchReview,
+  SportsPendingMatchAction,
   SportsRegistrationRead,
   SportsTeamRead,
   SportsTournamentListItem,
@@ -41,6 +42,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly categoryRead = signal<SportsCategoryRead | null>(null);
   readonly teamRead = signal<SportsTeamRead | null>(null);
   readonly matchReview = signal<SportsMatchReview | null>(null);
+  readonly pendingMatchActions = signal<SportsPendingMatchAction[]>([]);
   readonly applications = signal<SportsApplication[]>([]);
   readonly people = signal<Person[]>([]);
   readonly peopleTarget = signal<'representative' | 'official' | 'member' | null>(null);
@@ -61,7 +63,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       (this.teamRead()?.changeRequests.filter((request) =>
         ['PENDING', 'CONFLICT', 'CHANGES_REQUESTED'].includes(request.status),
       ).length ?? 0) +
-      (this.matchReview()?.actions.filter((action) => action.reviewStatus === 'PENDING').length ?? 0),
+      this.pendingMatchActions().length,
   );
   readonly registrationNames = computed<Readonly<Record<string, string>>>(() =>
     Object.fromEntries(
@@ -73,7 +75,6 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   );
 
   private readonly forms = createSportsWorkspaceForms(this.fb);
-  readonly tournamentLookupForm = this.forms.tournamentLookup;
   readonly tournamentForm = this.forms.tournament;
   readonly categoryForm = this.forms.category;
   readonly teamForm = this.forms.team;
@@ -81,7 +82,6 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly matchForm = this.forms.match;
   readonly representativeForm = this.forms.representative;
   readonly memberForm = this.forms.member;
-  readonly categoryRoleForm = this.forms.categoryRole;
   readonly officialForm = this.forms.official;
   readonly scoreEntryForm = this.forms.scoreEntry;
   readonly venueForm = this.forms.venue;
@@ -126,13 +126,6 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     });
   }
 
-  async openTournamentFromLookup(): Promise<void> {
-    const id = this.tournamentLookupForm.controls.tournamentId.value.trim();
-    if (id) {
-      await this.run('Torneio não encontrado ou sem permissão de acesso.', () => this.loadTournament(id));
-    }
-  }
-
   async loadTournament(id = this.tournamentId()): Promise<void> {
     if (!id) {
       return;
@@ -140,13 +133,25 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     const read = await firstValueFrom(this.api.tournament(id));
     this.tournamentRead.set(read);
     this.selectedMajorEventId.set(read.tournament.majorEventId);
-    this.tournamentLookupForm.controls.tournamentId.setValue(read.tournament.id);
     this.tournamentForm.patchValue(read.tournament);
     this.categoryRead.set(null);
     this.teamRead.set(null);
     this.matchReview.set(null);
-    await this.loadApplications();
+    const [applications, pendingActions] = await Promise.all([
+      firstValueFrom(this.api.applicationQueue(id)),
+      firstValueFrom(this.api.matchActionReviewQueue(id)),
+    ]);
+    this.applications.set(applications);
+    this.pendingMatchActions.set(pendingActions);
     this.watchTournament(id);
+  }
+
+  async loadPendingMatchActions(): Promise<void> {
+    const id = this.tournamentId();
+    if (!id) {
+      return;
+    }
+    this.pendingMatchActions.set(await firstValueFrom(this.api.matchActionReviewQueue(id)));
   }
 
   ngOnDestroy(): void {
@@ -190,6 +195,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     await this.run('Não foi possível excluir o torneio.', async () => {
       await firstValueFrom(this.api.deleteVersioned('deleteSportsTournament', tournament.id, tournament.revision));
       this.tournamentRead.set(null);
+      this.pendingMatchActions.set([]);
       this.tournaments.set(await firstValueFrom(this.api.tournaments({ take: 100 })));
       this.notify('Torneio esportivo excluído. O grande evento foi preservado.');
     });

@@ -4,6 +4,7 @@ import type {
   SportsCategoryRead,
   SportsCategorySummary,
   SportsMatchReview,
+  SportsPendingMatchAction,
   SportsRegistrationRead,
   SportsTeamRead,
   SportsTeamSummary,
@@ -271,6 +272,20 @@ export function createAdminSportsTeamRead(team = createAdminSportsTeam()): Sport
         status: 'APPROVED',
         revision: 2,
         person: { id: 'person-1', name: 'Ana Beatriz de Souza' },
+        categoryAssignments: [
+          {
+            registrationId: 'registration-home',
+            categoryId: 'category-1',
+            categoryName: 'Futebol feminino',
+            categoryEmoji: '⚽',
+          },
+          {
+            registrationId: 'registration-volleyball',
+            categoryId: 'category-2',
+            categoryName: 'Vôlei misto',
+            categoryEmoji: '🏐',
+          },
+        ],
       },
       {
         id: 'member-2',
@@ -279,6 +294,7 @@ export function createAdminSportsTeamRead(team = createAdminSportsTeam()): Sport
         status: 'SUSPENDED',
         revision: 3,
         person: { id: 'person-2', name: 'Bruno Henrique Oliveira' },
+        categoryAssignments: [],
       },
     ],
     representatives: [
@@ -356,6 +372,27 @@ export function createAdminSportsMatchReview(): SportsMatchReview {
     rosters: [],
     officials: [],
   };
+}
+
+export function createAdminSportsPendingMatchActions(count = 1): SportsPendingMatchAction[] {
+  const review = createAdminSportsMatchReview();
+  return Array.from({ length: count }, (_, index) => {
+    const action = review.actions[0];
+    if (!action) {
+      throw new Error('The sports story action fixture is missing.');
+    }
+    return {
+      action: {
+        ...action,
+        id: `action-${index + 1}`,
+        matchId: review.match.id,
+      },
+      match: review.match,
+      categoryName: 'Futebol feminino',
+      homeTeamName: 'Atlética FCT',
+      awayTeamName: 'Faculdade B',
+    };
+  });
 }
 
 export function createAdminSportsRegistrationRead(

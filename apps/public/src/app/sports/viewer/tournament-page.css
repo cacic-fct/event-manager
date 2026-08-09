@@ -239,7 +239,7 @@ h5 {
   gap: 8px;
 }
 
-.category-title app-twemoji {
+.category-title lib-twemoji {
   --twemoji-size: 1.75rem;
 }
 

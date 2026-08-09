@@ -119,7 +119,11 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
     input: SportsRosterCheckInInput,
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
-    const { actor, assignment } = await this.access.requireMatchOfficial(context, matchId);
+    const operator = await this.access.requireMatchOperator(context, matchId);
+    const authenticated = this.authenticated(context);
+    if (operator.kind === 'ADMIN') {
+      await this.assertMatchMutable(matchId, authenticated);
+    }
     await this.rosters.checkIn(
       matchId,
       input.rosterEntryId,
@@ -127,10 +131,10 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
       input.clientId,
       input.offline ?? false,
       input.present ?? true,
-      actor.id,
-      this.authenticated(context).sub ?? null,
-      assignment.role,
-      createSportsAuditActor(actor),
+      operator.actor.id,
+      authenticated.sub ?? null,
+      operator.kind === 'ADMIN' ? 'ADMIN' : operator.assignment.role,
+      operator.kind === 'ADMIN' ? authenticated : createSportsAuditActor(operator.actor),
     );
     return true;
   }
@@ -142,17 +146,21 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
     input: SportsRosterScannerCheckInInput,
     @Context() context: GraphqlContext,
   ): Promise<boolean> {
-    const { actor, assignment } = await this.access.requireMatchOfficial(context, matchId);
+    const operator = await this.access.requireMatchOperator(context, matchId);
+    const authenticated = this.authenticated(context);
+    if (operator.kind === 'ADMIN') {
+      await this.assertMatchMutable(matchId, authenticated);
+    }
     await this.rosters.checkInFromScanner(
       matchId,
       input.code,
       input.checkedInAt,
       input.clientId,
       input.offline ?? false,
-      actor.id,
-      this.authenticated(context).sub ?? null,
-      assignment.role,
-      createSportsAuditActor(actor),
+      operator.actor.id,
+      authenticated.sub ?? null,
+      operator.kind === 'ADMIN' ? 'ADMIN' : operator.assignment.role,
+      operator.kind === 'ADMIN' ? authenticated : createSportsAuditActor(operator.actor),
     );
     return true;
   }
@@ -164,7 +172,8 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
     @Context() context: GraphqlContext,
   ): Promise<string[]> {
     const matchId = this.singleMatchId(input);
-    const { actor, assignment } = await this.access.requireMatchOfficial(context, matchId);
+    const operator = await this.access.requireMatchOperator(context, matchId);
+    const authenticated = this.authenticated(context);
     return (
       await this.operations.commit(
         input.actions.map((action) => ({
@@ -172,11 +181,11 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
           payload: this.parseJson(action.payloadJson, 'ação da partida'),
         })),
         {
-          personId: actor.id,
-          userId: this.authenticated(context).sub,
-          role: assignment.role,
-          kind: 'OFFICIAL',
-          auditActor: createSportsAuditActor(actor),
+          personId: operator.kind === 'ADMIN' ? undefined : operator.actor.id,
+          userId: authenticated.sub,
+          role: operator.kind === 'ADMIN' ? 'ADMIN' : operator.assignment.role,
+          kind: operator.kind,
+          auditActor: operator.kind === 'ADMIN' ? authenticated : createSportsAuditActor(operator.actor),
         },
       )
     ).map((action) => action.id);

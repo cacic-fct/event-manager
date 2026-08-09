@@ -75,9 +75,78 @@ export async function findCurrentUserAttendanceCollectionEvents(
     eventId: collector.eventId,
     event: collector.event,
   }));
+  const officialEvents = await findOfficialCollectionEvents(deps.prisma, person.id, visibleFrom, endOfToday);
   const managerEvents = await findManagerCollectionEvents(deps, context, visibleFrom, endOfToday);
 
-  return mergeCollectionEvents([...collectorEvents, ...managerEvents]);
+  return mergeCollectionEvents([...collectorEvents, ...officialEvents, ...managerEvents]);
+}
+
+async function findOfficialCollectionEvents(
+  prisma: PrismaService,
+  personId: string,
+  visibleFrom: Date,
+  endOfToday: Date,
+): Promise<CurrentUserAttendanceCollectionEvent[]> {
+  const events = await prisma.event.findMany({
+    where: {
+      ...PUBLIC_EVENT_WHERE,
+      shouldCollectAttendance: true,
+      startDate: {
+        gte: visibleFrom,
+        lte: endOfToday,
+      },
+      sportsMatch: {
+        deletedAt: null,
+        OR: [
+          {
+            officialAssignments: {
+              some: {
+                personId,
+                active: true,
+                revokedAt: null,
+              },
+            },
+          },
+          {
+            category: {
+              officialAssignments: {
+                some: {
+                  personId,
+                  active: true,
+                  revokedAt: null,
+                  matchId: null,
+                },
+              },
+            },
+          },
+          {
+            category: {
+              tournament: {
+                officials: {
+                  some: {
+                    personId,
+                    active: true,
+                    revokedAt: null,
+                    categoryId: null,
+                    matchId: null,
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
+    select: PUBLIC_EVENT_SELECT,
+    orderBy: {
+      startDate: 'asc',
+    },
+  });
+
+  return events.map((event) => ({
+    eventId: event.id,
+    event,
+  }));
 }
 
 async function findManagerCollectionEvents(

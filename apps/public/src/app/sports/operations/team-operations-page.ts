@@ -31,7 +31,6 @@ import {
   representativeChangeStatusLabel,
   representativeLineupRoleLabel,
   representativeMatchStateLabel,
-  representativeMatchupLabel,
   representativeMemberStatusLabel,
   type LineupMember,
 } from './team-operations-page.utils';
@@ -178,22 +177,11 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   matchLabel(match: RepresentativeTeamWorkspace['matches'][number]): string {
-    const registration = this.workspace()?.registrations.find(
-      (candidate) => candidate.id === match.homeRegistrationId || candidate.id === match.awayRegistrationId,
-    );
-    return registration?.categoryName ?? 'Modalidade';
-  }
-
-  matchupLabel(match: RepresentativeTeamWorkspace['matches'][number]): string {
-    return representativeMatchupLabel(match);
+    return match.categoryName || 'Modalidade';
   }
 
   matchEmoji(match: RepresentativeTeamWorkspace['matches'][number]): string {
-    return (
-      this.workspace()?.registrations.find(
-        (candidate) => candidate.id === match.homeRegistrationId || candidate.id === match.awayRegistrationId,
-      )?.categoryEmoji ?? ''
-    );
+    return match.categoryEmoji;
   }
 
   matchStateLabel(state: RepresentativeTeamWorkspace['matches'][number]['state']): string {
@@ -202,47 +190,6 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
 
   memberStatusLabel(status: RepresentativeTeamWorkspace['members'][number]['status']): string {
     return representativeMemberStatusLabel(status);
-  }
-
-  async reviewJoinRequest(applicationId: string, applicantName: string, approved: boolean): Promise<void> {
-    if (this.busy()) {
-      return;
-    }
-    const confirmed = await firstValueFrom(
-      this.dialog
-        .open<SportsConfirmationDialog, SportsConfirmationDialogData, boolean>(SportsConfirmationDialog, {
-          data: {
-            title: approved ? `Aprovar entrada de ${applicantName}?` : `Recusar entrada de ${applicantName}?`,
-            message: approved
-              ? 'A pessoa entrará diretamente na equipe, pois a inscrição já passou pela análise administrativa.'
-              : 'A solicitação será encerrada e não aparecerá mais nesta fila.',
-            confirmLabel: approved ? 'Sim, aprovar' : 'Sim, recusar',
-            destructive: !approved,
-          },
-        })
-        .afterClosed(),
-    );
-    if (!confirmed) {
-      return;
-    }
-    this.busy.set(true);
-    try {
-      await firstValueFrom(
-        this.api.reviewTeamApplication({
-          applicationId,
-          teamId: this.teamId,
-          approved,
-        }),
-      );
-      this.snackbar.open(approved ? 'Pessoa adicionada à equipe.' : 'Solicitação recusada.', 'Fechar', {
-        duration: 4000,
-      });
-      this.load();
-    } catch (error: unknown) {
-      this.showError(error);
-    } finally {
-      this.busy.set(false);
-    }
   }
 
   async saveProfile(): Promise<void> {

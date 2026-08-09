@@ -34,7 +34,7 @@
             (click)="workspace.pickEventGroup(group)"
             [class.selected-list-item]="workspace.selectedEventGroup()?.id === group.id">
             <span matListItemTitle class="list-title">
-              <app-twemoji [emoji]="group.emoji" />
+              <lib-twemoji [emoji]="group.emoji" />
               <span>{{ group.name }}</span>
             </span>
             <span matListItemLine>
@@ -215,7 +215,7 @@
 
           <mat-form-field>
             <mat-label>Emoji</mat-label>
-            <app-twemoji matPrefix [emoji]="workspace.eventGroupForm.controls.emoji.value" />
+            <lib-twemoji matPrefix [emoji]="workspace.eventGroupForm.controls.emoji.value" />
             <input matInput formControlName="emoji" maxlength="16" />
           </mat-form-field>
         </div>
@@ -250,7 +250,7 @@
             @for (eventItem of workspace.eventGroupEvents(); track eventItem.id) {
               <mat-list-item>
                 <span matListItemTitle class="list-title">
-                  <app-twemoji [emoji]="eventItem.emoji" />
+                  <lib-twemoji [emoji]="eventItem.emoji" />
                   <span>{{ eventItem.name }}</span>
                 </span>
                 <span matListItemLine>
@@ -294,7 +294,7 @@
             @for (eventItem of workspace.eventGroupEventSearchResults(); track eventItem.id) {
               @if (canEditSelectedGroupEvents()) {
                 <button mat-stroked-button type="button" (click)="workspace.addEventToSelectedGroup(eventItem)">
-                  <app-twemoji [emoji]="eventItem.emoji" />
+                  <lib-twemoji [emoji]="eventItem.emoji" />
                   {{ eventItem.name }}
                   {{ eventItem.startDate | date: 'shortDate' }}
                 </button>

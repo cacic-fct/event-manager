@@ -8,7 +8,6 @@ import {
 
 export function createSportsWorkspaceForms(fb: FormBuilder) {
   return {
-    tournamentLookup: fb.nonNullable.group({ tournamentId: [''] }),
     tournament: fb.nonNullable.group({
       status: ['DRAFT'],
       scoringMode: ['PER_SPORT'],
@@ -94,11 +93,6 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
     member: fb.nonNullable.group({
       personQuery: ['', Validators.required],
       personId: ['', Validators.required],
-    }),
-    categoryRole: fb.nonNullable.group({
-      registrationId: ['', Validators.required],
-      teamMemberId: ['', Validators.required],
-      role: ['PLAYER'],
     }),
     official: fb.nonNullable.group({
       personQuery: ['', Validators.required],

@@ -1,10 +1,15 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
+import {
+  AuthorizationPolicyService,
+  type AccessibleEventGrantTargets,
+} from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   AdminSportsCategoryRead,
+  AdminSportsMatchActionReview,
   AdminSportsMatchReviewRead,
   AdminSportsRegistrationRead,
   AdminSportsTeamRead,
@@ -283,6 +288,24 @@ export class SportsReadAdminService {
             person: { select: { id: true, name: true } },
           },
         },
+        categoryAssignments: {
+          where: {
+            deletedAt: null,
+            ...(readableCategoryIds.length ? { categoryId: { in: readableCategoryIds } } : {}),
+          },
+          select: {
+            id: true,
+            registrationId: true,
+            categoryId: true,
+            category: {
+              select: {
+                name: true,
+                eventGroup: { select: { emoji: true } },
+              },
+            },
+          },
+          orderBy: [{ category: { name: 'asc' } }, { id: 'asc' }],
+        },
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
@@ -395,6 +418,56 @@ export class SportsReadAdminService {
     };
   }
 
+  async adminMatchActionReviewQueue(
+    user: AuthenticatedUser | undefined,
+    tournamentId: string,
+  ): Promise<AdminSportsMatchActionReview[]> {
+    await this.authorizationPolicy.assertPermissions(user, [Permission.SportsTournament.Read], {
+      sportsTournamentId: tournamentId,
+    });
+    const [readTargets, reviewTargets] = await Promise.all([
+      this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsMatch.Read),
+      this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsMatch.Review),
+    ]);
+    if (this.hasNoAccessibleTargets(readTargets) || this.hasNoAccessibleTargets(reviewTargets)) {
+      return [];
+    }
+
+    const actions = await this.prisma.sportsMatchAction.findMany({
+      where: {
+        reviewStatus: 'PENDING',
+        match: {
+          deletedAt: null,
+          category: {
+            deletedAt: null,
+            tournamentId,
+          },
+          event: { deletedAt: null },
+          AND: [this.matchVisibility(readTargets), this.matchVisibility(reviewTargets)],
+        },
+      },
+      include: {
+        match: {
+          include: {
+            event: true,
+            category: { select: { id: true, name: true } },
+            homeRegistration: { select: { team: { select: { name: true } } } },
+            awayRegistration: { select: { team: { select: { name: true } } } },
+          },
+        },
+      },
+      orderBy: [{ authoredAt: 'asc' }, { id: 'asc' }],
+    });
+
+    return actions.map((record) => ({
+      action: this.mapper.mapAdminAction(record),
+      match: this.mapper.mapAdminMatch(record.match),
+      categoryName: record.match.category.name,
+      homeTeamName: record.match.homeRegistration?.team.name ?? null,
+      awayTeamName: record.match.awayRegistration?.team.name ?? null,
+    }));
+  }
+
   private async hasScopedPermission(
     user: AuthenticatedUser | undefined,
     permission: Permission,
@@ -409,5 +482,31 @@ export class SportsReadAdminService {
       }
       throw error;
     }
+  }
+
+  private hasNoAccessibleTargets(targets: AccessibleEventGrantTargets | null): boolean {
+    return Boolean(
+      targets &&
+        targets.eventIds.size === 0 &&
+        targets.eventGroupIds.size === 0 &&
+        targets.majorEventIds.size === 0,
+    );
+  }
+
+  private matchVisibility(targets: AccessibleEventGrantTargets | null): Prisma.SportsMatchWhereInput {
+    if (targets === null) {
+      return {};
+    }
+    const scopes: Prisma.SportsMatchWhereInput[] = [];
+    if (targets.majorEventIds.size > 0) {
+      scopes.push({ category: { tournament: { majorEventId: { in: [...targets.majorEventIds] } } } });
+    }
+    if (targets.eventGroupIds.size > 0) {
+      scopes.push({ category: { eventGroupId: { in: [...targets.eventGroupIds] } } });
+    }
+    if (targets.eventIds.size > 0) {
+      scopes.push({ eventId: { in: [...targets.eventIds] } });
+    }
+    return scopes.length ? { OR: scopes } : { id: '__no_sports_match_access__' };
   }
 }

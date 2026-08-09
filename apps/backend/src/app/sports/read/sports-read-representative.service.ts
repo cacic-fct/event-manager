@@ -1,14 +1,11 @@
 import { NotFoundException } from '@nestjs/common';
 import { Prisma, SportsApplicationStatus, SportsTeamChangeRequestStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { SportsReadAdminMapper } from './sports-read-admin.mapper';
 import type { RepresentativeSportsTeamWorkspace } from './sports-read.models';
 import { PUBLIC_TEAM_SELECT } from './sports-read.records';
 import { SportsReadPublicService } from './sports-read-public.service';
 
 export class SportsReadRepresentativeService {
-  private readonly mapper = new SportsReadAdminMapper();
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly publicReader: SportsReadPublicService,
@@ -69,7 +66,7 @@ export class SportsReadRepresentativeService {
     if (!team) {
       throw new NotFoundException(`Sports team ${teamId} was not found.`);
     }
-    const [members, registrations, matches, joinQueue] = await Promise.all([
+    const [members, registrations, matches, joinQueueCount] = await Promise.all([
       this.prisma.sportsTeamMember.findMany({
         where: { teamId, deletedAt: null },
         select: {
@@ -131,29 +128,17 @@ export class SportsReadRepresentativeService {
         },
         orderBy: [{ event: { startDate: 'asc' } }, { id: 'asc' }],
       }),
-      this.prisma.sportsPlayerApplication.findMany({
+      this.prisma.sportsPlayerApplication.count({
         where: {
           requestedTeamId: teamId,
-          status: SportsApplicationStatus.APPROVED,
+          status: {
+            in: [SportsApplicationStatus.PENDING, SportsApplicationStatus.CHANGES_REQUESTED],
+          },
           deletedAt: null,
+          tournament: { deletedAt: null },
+          requestedTeam: { deletedAt: null },
+          applicantPerson: { deletedAt: null },
         },
-        select: {
-          id: true,
-          status: true,
-          applicantPerson: {
-            select: {
-              name: true,
-              identityDocument: true,
-            },
-          },
-          categoryChoices: {
-            select: {
-              category: { select: { name: true } },
-            },
-            orderBy: { createdAt: 'asc' },
-          },
-        },
-        orderBy: [{ reviewedAt: 'asc' }, { id: 'asc' }],
       }),
     ]);
     return {
@@ -209,13 +194,7 @@ export class SportsReadRepresentativeService {
         homeTeam: match.homeRegistration ? this.publicReader.mapPublicTeam(match.homeRegistration.team) : null,
         awayTeam: match.awayRegistration ? this.publicReader.mapPublicTeam(match.awayRegistration.team) : null,
       })),
-      joinQueue: joinQueue.map((application) => ({
-        id: application.id,
-        applicantName: application.applicantPerson.name,
-        identityDocumentHint: this.mapper.censorIdentityDocument(application.applicantPerson.identityDocument),
-        categoryNames: application.categoryChoices.map((choice) => choice.category.name),
-        status: application.status,
-      })),
+      joinQueueCount,
     };
   }
 

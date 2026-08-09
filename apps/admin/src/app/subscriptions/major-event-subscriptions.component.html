@@ -23,7 +23,7 @@
           (click)="workspace.selectMajorEventById(majorEvent.id)"
           [class.selected-list-item]="workspace.majorEventForm.controls.majorEventId.value === majorEvent.id">
           <span matListItemTitle class="list-title">
-            <app-twemoji [emoji]="majorEvent.emoji" />
+            <lib-twemoji [emoji]="majorEvent.emoji" />
             <span>{{ majorEvent.name }}</span>
           </span>
           <span matListItemLine>

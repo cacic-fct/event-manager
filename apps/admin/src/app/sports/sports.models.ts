@@ -223,6 +223,12 @@ export interface SportsTeamRead {
     status: SportsTeamMemberStatus;
     revision: number;
     person: { id: string; name: string };
+    categoryAssignments: {
+      registrationId: string;
+      categoryId: string;
+      categoryName: string;
+      categoryEmoji: string;
+    }[];
   }[];
   representatives: {
     id: string;
@@ -275,6 +281,22 @@ export interface SportsMatchReview {
     active: boolean;
     revision: number;
   }[];
+}
+
+export interface SportsPendingMatchAction {
+  action: {
+    id: string;
+    matchId: string;
+    type: string;
+    payloadJson: string;
+    reviewStatus: SportsReviewStatus;
+    offline: boolean;
+    authoredAt: string;
+  };
+  match: SportsMatchSummary;
+  categoryName: string;
+  homeTeamName?: string | null;
+  awayTeamName?: string | null;
 }
 
 export interface SportsRegistrationRead {

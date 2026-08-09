@@ -24,7 +24,7 @@ interface StoryWorkspaceOptions {
 
 function createStoryPagination(total: number) {
   return {
-    label: () => `1–${total} de ${total}`,
+    label: () => `1-${total} de ${total}`,
     hasPreviousPage: () => false,
     hasNextPage: () => false,
   };

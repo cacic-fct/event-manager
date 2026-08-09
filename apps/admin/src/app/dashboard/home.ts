@@ -24,7 +24,7 @@ import type {
 } from '@cacic-fct/shared-frontend-types';
 import { Subscription, interval, startWith, switchMap } from 'rxjs';
 import { DashboardApiService } from '../graphql/dashboard-api.service';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { navigationLinkItems } from '../app-shell/navigation';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;

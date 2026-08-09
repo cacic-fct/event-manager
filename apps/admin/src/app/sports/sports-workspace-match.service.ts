@@ -47,7 +47,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
     });
   }
 
-  lineupRole(registrationId: string, registrationMemberId: string, fallback: string): string {
+  lineupRole(registrationId: string, registrationMemberId: string, fallback = 'PLAYER'): string {
     return this.lineupDetails()[registrationId]?.[registrationMemberId]?.role ?? fallback;
   }
 
@@ -60,7 +60,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
     registrationMemberId: string,
     field: 'role' | 'shirtNumber',
     value: string,
-    fallbackRole: string,
+    fallbackRole = 'PLAYER',
   ): void {
     this.lineupDetails.update((current) => ({
       ...current,
@@ -94,7 +94,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
             .filter((member) => selected.has(member.id))
             .map((member) => ({
               registrationMemberId: member.id,
-              role: this.lineupRole(registrationId, member.id, member.role),
+              role: this.lineupRole(registrationId, member.id),
               shirtNumber: this.lineupShirtNumber(registrationId, member.id).trim() || null,
               status: 'APPROVED',
             })),

@@ -14,6 +14,10 @@ describe('SportsAccessService', () => {
   const frozen = {
     assertMajorEventMutable: jest.fn().mockResolvedValue(undefined),
   };
+  const authorizationPolicy = {
+    hasEventManagerAccess: jest.fn(),
+    assertPermissions: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -33,6 +37,7 @@ describe('SportsAccessService', () => {
       } as never,
       currentUser as never,
       frozen as never,
+      authorizationPolicy as never,
     );
 
     await service.requireLineupManager({} as never, 'registration-1');
@@ -81,6 +86,7 @@ describe('SportsAccessService', () => {
       } as never,
       currentUser as never,
       frozen as never,
+      authorizationPolicy as never,
     );
 
     const result = await service.requireRosterManager({} as never, 'registration-1');
@@ -111,6 +117,7 @@ describe('SportsAccessService', () => {
       } as never,
       currentUser as never,
       frozen as never,
+      authorizationPolicy as never,
     );
 
     await expect(service.requireTeamRepresentativeReader({} as never, 'team-1')).resolves.toEqual(
@@ -140,6 +147,7 @@ describe('SportsAccessService', () => {
       } as never,
       currentUser as never,
       frozen as never,
+      authorizationPolicy as never,
     );
 
     await service.requireMatchOfficial({} as never, 'match-1');
@@ -148,6 +156,29 @@ describe('SportsAccessService', () => {
       expect.objectContaining({
         orderBy: [{ matchId: { sort: 'desc', nulls: 'last' } }, { categoryId: { sort: 'desc', nulls: 'last' } }],
       }),
+    );
+  });
+
+  it('allows an authorized sports admin to operate a match without an official assignment', async () => {
+    const user = { sub: 'admin-1' };
+    currentUser.getAuthenticatedUser = jest.fn().mockReturnValue(user);
+    authorizationPolicy.hasEventManagerAccess.mockReturnValue(true);
+    const service = new SportsAccessService(
+      {},
+      currentUser as never,
+      frozen as never,
+      authorizationPolicy as never,
+    );
+
+    await expect(service.requireMatchOperator({} as never, 'match-1')).resolves.toMatchObject({
+      actor,
+      assignment: null,
+      kind: 'ADMIN',
+    });
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      user,
+      ['sports-match#operate'],
+      { sportsMatchId: 'match-1' },
     );
   });
 });

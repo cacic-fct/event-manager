@@ -77,6 +77,73 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     jest.useRealTimers();
   });
 
+  it('lists a sports match event for an assigned official on the regular scanner route', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
+    const officialEvent = {
+      id: 'sports-event-1',
+      name: 'Final de futsal',
+      startDate: new Date('2026-05-23T16:00:00.000Z'),
+    };
+    const prisma = createPrisma({
+      attendances: [],
+      eventSubscriptions: [],
+      majorEventSubscriptions: [],
+      people: [],
+      collectorUsers: [],
+      collectors: [],
+    });
+    prisma.event.findMany.mockImplementation((args) =>
+      Object.prototype.hasOwnProperty.call(args.where, 'sportsMatch')
+        ? Promise.resolve([officialEvent])
+        : Promise.resolve([]),
+    );
+    const currentUserContext = {
+      requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'official-person' }),
+    };
+    const authorizationPolicy = {
+      accessibleEventTargets: jest.fn().mockResolvedValue({
+        eventIds: new Set(),
+        majorEventIds: new Set(),
+        eventGroupIds: new Set(),
+      }),
+    };
+    const resolver = new CurrentUserAttendanceCollectionResolver(
+      prisma as never,
+      currentUserContext as never,
+      {} as never,
+      undefined,
+      authorizationPolicy as never,
+    );
+
+    await expect(resolver.currentUserAttendanceCollectionEvents(context as never)).resolves.toEqual([
+      { eventId: officialEvent.id, event: officialEvent },
+    ]);
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          sportsMatch: expect.objectContaining({
+            OR: expect.arrayContaining([
+              expect.objectContaining({
+                officialAssignments: expect.objectContaining({
+                  some: expect.objectContaining({ personId: 'official-person', active: true, revokedAt: null }),
+                }),
+              }),
+              expect.objectContaining({
+                category: expect.objectContaining({
+                  officialAssignments: expect.objectContaining({
+                    some: expect.objectContaining({ personId: 'official-person', matchId: null }),
+                  }),
+                }),
+              }),
+            ]),
+          }),
+        }),
+      }),
+    );
+    jest.useRealTimers();
+  });
+
   it('includes collection events available through attendance management grants', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
     const prisma = createPrisma({

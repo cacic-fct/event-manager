@@ -25,7 +25,7 @@
               workspace.selectedEvent()?.id === eventItem.id && !workspace.selectedEventDraft()
             ">
             <span matListItemTitle class="list-title">
-              <app-twemoji [emoji]="eventItem.emoji" />
+                <lib-twemoji [emoji]="eventItem.emoji" />
               <span>{{ eventItem.name }}</span>
             </span>
             <span matListItemLine>
@@ -69,7 +69,7 @@
               (click)="workspace.selectEventDraft(eventItem, draft)"
               [class.selected-list-item]="workspace.selectedEventDraft()?.id === draft.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="eventItem.emoji" />
+              <lib-twemoji [emoji]="eventItem.emoji" />
                 <span>{{ draft.name }}</span>
               </span>
               <span matListItemLine>
@@ -246,7 +246,7 @@
 
             <mat-form-field>
               <mat-label>Emoji</mat-label>
-              <app-twemoji matPrefix [emoji]="workspace.eventForm.controls.emoji.value" />
+              <lib-twemoji matPrefix [emoji]="workspace.eventForm.controls.emoji.value" />
               <input matInput formControlName="emoji" maxlength="16" />
             </mat-form-field>
 
@@ -309,7 +309,7 @@
                 (click)="workspace.assignMajorEventToEvent(majorEvent)">
                 <span class="entity-choice-chip__content">
                   <mat-icon>add_link</mat-icon>
-                  <app-twemoji [emoji]="majorEvent.emoji" />
+                  <lib-twemoji [emoji]="majorEvent.emoji" />
                   <span class="entity-choice-chip__name">{{ majorEvent.name }}</span>
                   <span class="entity-choice-chip__meta">{{ majorEvent.startDate | date: 'dd/MM/yyyy' }}</span>
                 </span>
@@ -329,7 +329,7 @@
             <h4>Grande evento selecionado</h4>
             <span class="selected-entity">
               @if (majorEventEmojiById(workspace.eventForm.controls.majorEventId.value); as majorEventEmoji) {
-                <app-twemoji [emoji]="majorEventEmoji" />
+                <lib-twemoji [emoji]="majorEventEmoji" />
               }
               {{ workspace.majorEventNameById(workspace.eventForm.controls.majorEventId.value) }}
             </span>
@@ -368,7 +368,7 @@
                   (click)="workspace.assignEventGroupToEvent(eventGroup)">
                   <span class="entity-choice-chip__content">
                     <mat-icon>add_link</mat-icon>
-                    <app-twemoji [emoji]="eventGroup.emoji" />
+                    <lib-twemoji [emoji]="eventGroup.emoji" />
                     <span class="entity-choice-chip__name">{{ eventGroup.name }}</span>
                     <span class="entity-choice-chip__meta">
                       {{ eventGroup.createdAt | date: 'dd/MM/yyyy HH:mm' }}
@@ -385,7 +385,7 @@
             <h4>Grupo selecionado</h4>
             <span class="selected-entity">
               @if (eventGroupEmojiById(workspace.eventForm.controls.eventGroupId.value); as eventGroupEmoji) {
-                <app-twemoji [emoji]="eventGroupEmoji" />
+                <lib-twemoji [emoji]="eventGroupEmoji" />
               }
               {{ workspace.eventGroupNameById(workspace.eventForm.controls.eventGroupId.value) }}
             </span>

@@ -1,12 +1,10 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute } from '@angular/router';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { SportsApiService } from './sports-api.service';
@@ -27,14 +25,12 @@ import {
   selector: 'app-workspace-sports-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    ReactiveFormsModule,
     DatePipe,
     MatButtonModule,
     MatDividerModule,
     MatIconModule,
     MatListModule,
     MatProgressBarModule,
-    MatSelectModule,
     TwemojiComponent,
     SportsCategoriesSectionComponent,
     SportsMatchesSectionComponent,

@@ -23,7 +23,7 @@ export abstract class SportsWorkspaceSection {
     ['DRAFT', 'Rascunho'],
     ['REGISTRATION_OPEN', 'Inscrições abertas'],
     ['REGISTRATION_CLOSED', 'Inscrições encerradas'],
-    ['ACTIVE', 'Em andamento'],
+    ['ACTIVE', 'Ativa'],
     ['FINISHED', 'Finalizada'],
     ['CANCELED', 'Cancelada para reagendamento'],
   ] as const;

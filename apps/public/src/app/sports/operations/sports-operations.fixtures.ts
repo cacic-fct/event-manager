@@ -125,15 +125,7 @@ export function createRepresentativeTeamWorkspace(
         awayTeam: { id: 'team-third', name: 'Medicina Prudente', institution: 'UNOESTE', logoUrl: null },
       },
     ],
-    joinQueue: [
-      {
-        id: 'application-1',
-        applicantName: 'Mariana Luiza Ferreira',
-        identityDocumentHint: '***.456.789-**',
-        categoryNames: ['Futsal'],
-        status: 'TEAM_REVIEW',
-      },
-    ],
+    joinQueueCount: 1,
     queuedChanges: [
       {
         id: 'team-change-profile',

@@ -171,7 +171,7 @@ export class SportsOperationsApiService {
             homeTeam { id name institution logoUrl }
             awayTeam { id name institution logoUrl }
           }
-          joinQueue { id applicantName identityDocumentHint categoryNames status }
+          joinQueueCount
         }
       }`,
       { teamId },

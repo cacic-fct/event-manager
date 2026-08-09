@@ -19,7 +19,7 @@
             (click)="workspace.pickMajorEvent(majorEvent)"
             [class.selected-list-item]="workspace.selectedMajorEvent()?.id === majorEvent.id">
             <span matListItemTitle class="list-title">
-              <app-twemoji [emoji]="majorEvent.emoji" />
+              <lib-twemoji [emoji]="majorEvent.emoji" />
               <span>{{ majorEvent.name }}</span>
             </span>
             <span matListItemLine>
@@ -187,7 +187,7 @@
 
             <mat-form-field>
               <mat-label>Emoji</mat-label>
-              <app-twemoji matPrefix [emoji]="workspace.majorEventForm.controls.emoji.value" />
+              <lib-twemoji matPrefix [emoji]="workspace.majorEventForm.controls.emoji.value" />
               <input matInput formControlName="emoji" maxlength="16" />
             </mat-form-field>
 
@@ -391,7 +391,7 @@
             @for (eventItem of workspace.majorEventEvents(); track eventItem.id) {
               <mat-list-item>
                 <span matListItemTitle class="list-title">
-                  <app-twemoji [emoji]="eventItem.emoji" />
+                  <lib-twemoji [emoji]="eventItem.emoji" />
                   <span>{{ eventItem.name }}</span>
                 </span>
                 <span matListItemLine>
@@ -435,7 +435,7 @@
             @for (eventItem of workspace.majorEventEventSearchResults(); track eventItem.id) {
               @if (canEditSelectedMajorEventEvents()) {
                 <button mat-stroked-button type="button" (click)="workspace.addEventToSelectedMajorEvent(eventItem)">
-                  <app-twemoji [emoji]="eventItem.emoji" />
+                  <lib-twemoji [emoji]="eventItem.emoji" />
                   {{ eventItem.name }}
                   {{ eventItem.startDate | date: 'shortDate' }}
                 </button>

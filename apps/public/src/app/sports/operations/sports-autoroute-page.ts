@@ -1,19 +1,17 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router, RouterLink } from '@angular/router';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 
 @Component({
   selector: 'app-sports-autoroute-page',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, RouterLink],
+  imports: [MatButtonModule, MatIconModule, RouterLink],
   template: `
     <main class="route-state">
       @if (loading()) {
-        <mat-spinner diameter="40" />
+        <mat-icon aria-hidden="true">sports_score</mat-icon>
         <h1>Encontrando sua próxima partida</h1>
-        <p>Estamos considerando o horário e a etapa atual da partida.</p>
       } @else {
         <mat-icon aria-hidden="true">sports</mat-icon>
         <h1>{{ error() ? 'Não foi possível abrir a partida' : 'Nenhuma partida para operar agora' }}</h1>

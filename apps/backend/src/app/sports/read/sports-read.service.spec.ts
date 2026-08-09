@@ -5,6 +5,7 @@ import { SportsReadService } from './sports-read.service';
 describe('SportsReadService admin tournament list', () => {
   const authorizationPolicy = {
     accessibleEventTargets: jest.fn(),
+    assertPermissions: jest.fn(),
   };
   const prisma = {
     sportsTournament: {
@@ -12,6 +13,9 @@ describe('SportsReadService admin tournament list', () => {
     },
     sportsMatch: {
       findFirst: jest.fn(),
+    },
+    sportsMatchAction: {
+      findMany: jest.fn(),
     },
     sportsRegistrationMember: {
       findMany: jest.fn(),
@@ -104,6 +108,129 @@ describe('SportsReadService admin tournament list', () => {
       majorEvent: { id: 'major-1', name: 'Jogos Universitários' },
       tournament: { id: 'tournament-1', revision: 3 },
     });
+  });
+
+  it('lists pending actions across the tournament within read and review scopes', async () => {
+    authorizationPolicy.assertPermissions.mockResolvedValue(undefined);
+    authorizationPolicy.accessibleEventTargets
+      .mockResolvedValueOnce({
+        eventIds: new Set(['event-1']),
+        eventGroupIds: new Set(),
+        majorEventIds: new Set(),
+      })
+      .mockResolvedValueOnce({
+        eventIds: new Set(),
+        eventGroupIds: new Set(['group-1']),
+        majorEventIds: new Set(),
+      });
+    prisma.sportsMatchAction.findMany.mockResolvedValue([
+      {
+        id: 'action-1',
+        matchId: 'match-1',
+        clientId: 'client-1',
+        payloadHash: 'hash-1',
+        baseRevision: 4,
+        sequence: 5,
+        type: 'SCORE_DELTA',
+        payload: { side: 'HOME', amount: 1 },
+        reviewStatus: 'PENDING',
+        scorerRosterEntryId: null,
+        actorPersonId: null,
+        actorUserId: null,
+        actorRole: 'OFFICIAL',
+        authoredAt: new Date('2026-08-09T12:00:00.000Z'),
+        submittedAt: new Date('2026-08-09T12:01:00.000Z'),
+        offline: true,
+        reviewedAt: null,
+        reviewedById: null,
+        reviewMessage: null,
+        createdAt: new Date('2026-08-09T12:01:00.000Z'),
+        updatedAt: new Date('2026-08-09T12:01:00.000Z'),
+        match: {
+          id: 'match-1',
+          eventId: 'event-1',
+          categoryId: 'category-1',
+          stageId: null,
+          venueId: null,
+          homeRegistrationId: 'registration-home',
+          awayRegistrationId: 'registration-away',
+          state: 'LIVE',
+          canonicalState: 'LIVE',
+          reviewStatus: 'PENDING',
+          scoreboard: { home: 1, away: 0, periods: [], activePeriodNumber: null },
+          canonicalScoreboard: { home: 1, away: 0, periods: [], activePeriodNumber: null },
+          winnerRegistrationId: null,
+          loserRegistrationId: null,
+          lossReason: null,
+          lossReasonDetail: null,
+          drawWillReschedule: null,
+          notes: null,
+          occurrences: [],
+          livestreamProvider: null,
+          livestreamUrl: null,
+          timerStartedAt: null,
+          timerPausedAt: null,
+          elapsedBeforePauseMs: 0,
+          roundNumber: 1,
+          bracketPosition: 1,
+          groupKey: null,
+          winnerAdvancesToId: null,
+          winnerAdvancesToSide: null,
+          loserAdvancesToId: null,
+          loserAdvancesToSide: null,
+          replayOfMatchId: null,
+          revision: 6,
+          operationSequence: 5,
+          createdAt: new Date('2026-08-09T10:00:00.000Z'),
+          createdById: 'admin-1',
+          updatedAt: new Date('2026-08-09T12:01:00.000Z'),
+          updatedById: 'admin-1',
+          deletedAt: null,
+          event: {
+            id: 'event-1',
+            name: 'Atlética A × Atlética B',
+            startDate: new Date('2026-08-09T11:00:00.000Z'),
+            endDate: new Date('2026-08-09T12:30:00.000Z'),
+          },
+          category: { id: 'category-1', name: 'Futsal masculino' },
+          homeRegistration: { team: { name: 'Atlética A' } },
+          awayRegistration: { team: { name: 'Atlética B' } },
+        },
+      },
+    ]);
+    const service = new SportsReadService(prisma as never, authorizationPolicy as never);
+
+    const result = await service.adminMatchActionReviewQueue({} as never, 'tournament-1');
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
+      {},
+      ['sports-tournament#read'],
+      { sportsTournamentId: 'tournament-1' },
+    );
+    expect(prisma.sportsMatchAction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          reviewStatus: 'PENDING',
+          match: expect.objectContaining({
+            category: { deletedAt: null, tournamentId: 'tournament-1' },
+            AND: [
+              { OR: [{ eventId: { in: ['event-1'] } }] },
+              { OR: [{ category: { eventGroupId: { in: ['group-1'] } } }] },
+            ],
+          }),
+        }),
+        orderBy: [{ authoredAt: 'asc' }, { id: 'asc' }],
+      }),
+    );
+    expect(result).toMatchObject([
+      {
+        action: { id: 'action-1', matchId: 'match-1', reviewStatus: 'PENDING' },
+        match: { id: 'match-1', eventId: 'event-1' },
+        categoryName: 'Futsal masculino',
+        homeTeamName: 'Atlética A',
+        awayTeamName: 'Atlética B',
+      },
+    ]);
   });
 
   it('returns only approved operational roster entries with redacted player names', async () => {

@@ -37,7 +37,6 @@
             </mat-option>
           }
         </mat-select>
-        <mat-hint>O bracket e os confrontos abaixo pertencem a esta modalidade.</mat-hint>
       </mat-form-field>
       <button mat-flat-button type="button" (click)="workspace.newMatch()" [disabled]="!selectedCategory()">
         <mat-icon>add</mat-icon>
@@ -74,21 +73,33 @@
             <h4 id="bracket-panel-title">Chave da modalidade</h4>
             <p>Selecione um confronto para abrir os detalhes da partida ao lado.</p>
           </div>
-          <span class="panel-count">{{ read.matches.length }} confrontos</span>
         </div>
 
-        <form [formGroup]="workspace.bracketForm" class="bracket-generation-form" (ngSubmit)="workspace.generateBracket()">
+        <form
+          [formGroup]="workspace.bracketForm"
+          class="bracket-generation-form"
+          (ngSubmit)="workspace.generateBracket()">
           <div class="bracket-generation-main">
             <div class="generation-copy">
               <mat-icon aria-hidden="true">auto_awesome_motion</mat-icon>
               <div>
-                <strong>Gerar ou atualizar a chave</strong>
-                <span>Use as inscrições aprovadas e revise horários antes de publicar.</span>
+                <strong>{{ hasGeneratedBracket() ? 'Chave já gerada' : 'Gerar chave' }}</strong>
+                <span>
+                  {{
+                    hasGeneratedBracket()
+                      ? 'Abra as opções para liberar a substituição de um rascunho.'
+                      : 'Use as inscrições aprovadas e revise horários antes de publicar.'
+                  }}
+                </span>
               </div>
             </div>
-            <button mat-flat-button type="submit">
-              <mat-icon>account_tree</mat-icon>
-              Gerar chave
+            <button
+              mat-flat-button
+              type="submit"
+              [disabled]="!canGenerateBracket()"
+              [attr.aria-describedby]="hasGeneratedBracket() ? 'bracket-generation-note' : null">
+              <mat-icon>{{ hasGeneratedBracket() ? 'sync' : 'account_tree' }}</mat-icon>
+              {{ hasGeneratedBracket() ? 'Substituir rascunho' : 'Gerar chave' }}
             </button>
           </div>
 
@@ -113,12 +124,27 @@
           <mat-icon aria-hidden="true">info</mat-icon>
           <span>Byes avançam automaticamente. A geração nunca substitui resultados finalizados.</span>
         </p>
+        @if (hasGeneratedBracket()) {
+          <p id="bracket-generation-note" class="generation-lock-note" role="status">
+            <mat-icon aria-hidden="true">lock</mat-icon>
+            <span>Esta chave já existe. Marque “Substituir chave em rascunho” nas opções para liberar a ação.</span>
+          </p>
+        }
 
         <div class="bracket-surface">
+          @if (bracketPreviewActive()) {
+            <div class="bracket-preview-note" role="status">
+              <mat-icon aria-hidden="true">visibility</mat-icon>
+              <span>
+                <strong>Pré-visualização</strong>
+                {{ bracketPreviewSummary() }}
+              </span>
+            </div>
+          }
           <lib-sports-bracket
             [format]="read.category.format"
             [emoji]="read.category.eventGroup?.emoji || sportEmoji(read.category.sport)"
-            [stages]="bracketStages()"
+            [stages]="bracketStagesForDisplay()"
             [standings]="bracketStandings()"
             [editingMatchId]="workspace.selectedMatchId() || null"
             (matchSelected)="selectBracketMatch(read, $event)" />
@@ -128,9 +154,7 @@
           <div class="section-heading-inline">
             <div>
               <h4 id="match-list-title">Partidas da modalidade</h4>
-              <p>Use a lista quando quiser localizar um confronto sem percorrer a chave.</p>
             </div>
-            <span class="panel-count">{{ read.matches.length }}</span>
           </div>
 
           <div class="match-list">
@@ -143,10 +167,10 @@
                 [attr.aria-pressed]="workspace.selectedMatchId() === match.id"
                 [attr.aria-label]="
                   workspace.teamNameForRegistration(match.homeRegistrationId) +
-                    ' contra ' +
-                    workspace.teamNameForRegistration(match.awayRegistrationId) +
-                    '. ' +
-                    workspace.matchStatusLabel(match.state)
+                  ' contra ' +
+                  workspace.teamNameForRegistration(match.awayRegistrationId) +
+                  '. ' +
+                  workspace.matchStatusLabel(match.state)
                 "
                 (click)="workspace.selectMatch(match)">
                 <span class="match-list-time">
@@ -170,7 +194,7 @@
                   </span>
                 </span>
                 <span class="match-list-result">
-                  <strong>{{ match.scoreboard.homeScore }}–{{ match.scoreboard.awayScore }}</strong>
+                  <strong>{{ match.scoreboard.homeScore }}-{{ match.scoreboard.awayScore }}</strong>
                   <span class="match-list-status">{{ workspace.matchStatusLabel(match.state) }}</span>
                 </span>
                 <mat-icon aria-hidden="true">chevron_right</mat-icon>
@@ -247,8 +271,10 @@
                   <mat-option value="">A definir / bye automático</mat-option>
                   @for (registration of read.registrations; track registration.id) {
                     <mat-option [value]="registration.id">
-                      <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(registration.id)" [size]="20" />
-                      {{ workspace.teamNameForRegistration(registration.id) }}
+                      <span class="team-option">
+                        <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(registration.id)" [size]="24" />
+                        <span class="team-option-name">{{ workspace.teamNameForRegistration(registration.id) }}</span>
+                      </span>
                     </mat-option>
                   }
                 </mat-select>
@@ -259,8 +285,10 @@
                   <mat-option value="">A definir / bye automático</mat-option>
                   @for (registration of read.registrations; track registration.id) {
                     <mat-option [value]="registration.id">
-                      <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(registration.id)" [size]="20" />
-                      {{ workspace.teamNameForRegistration(registration.id) }}
+                      <span class="team-option">
+                        <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(registration.id)" [size]="24" />
+                        <span class="team-option-name">{{ workspace.teamNameForRegistration(registration.id) }}</span>
+                      </span>
                     </mat-option>
                   }
                 </mat-select>
@@ -390,13 +418,13 @@
             <mat-icon aria-hidden="true">groups</mat-icon>
             <div>
               <h5>Escalação desta partida</h5>
-              <p>Marque somente quem poderá jogar. A lista permanece privada até o encerramento.</p>
+              <p>Marque quem poderá jogar e defina função e número para esta partida. Isso não altera o cadastro da modalidade.</p>
             </div>
           </div>
           <mat-expansion-panel class="editor-expansion">
             <mat-expansion-panel-header>
               <mat-panel-title>Editar escalação</mat-panel-title>
-              <mat-panel-description>Atletas, funções e números</mat-panel-description>
+              <mat-panel-description>Atletas, funções e números desta partida</mat-panel-description>
             </mat-expansion-panel-header>
             <div class="lineup-grid">
               @for (
@@ -419,9 +447,9 @@
                         <mat-form-field subscriptSizing="dynamic">
                           <mat-label>Função</mat-label>
                           <mat-select
-                            [value]="workspace.lineupRole(registrationId, member.id, member.role)"
+                            [value]="workspace.lineupRole(registrationId, member.id)"
                             (selectionChange)="
-                              workspace.updateLineupDetail(registrationId, member.id, 'role', $event.value, member.role)
+                              workspace.updateLineupDetail(registrationId, member.id, 'role', $event.value)
                             ">
                             <mat-option value="PLAYER">Atleta</mat-option>
                             <mat-option value="CAPTAIN">Capitão</mat-option>
@@ -440,8 +468,7 @@
                                 registrationId,
                                 member.id,
                                 'shirtNumber',
-                                $any($event.target).value,
-                                member.role
+                                $any($event.target).value
                               )
                             " />
                         </mat-form-field>

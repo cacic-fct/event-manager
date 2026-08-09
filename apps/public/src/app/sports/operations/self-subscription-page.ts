@@ -118,6 +118,11 @@ export class SportsSelfSubscriptionPage implements OnInit {
     });
   }
 
+  selectedTeam(): CurrentUserTournamentOperations['tournament']['teams'][number] | undefined {
+    const selectedTeamId = this.form.controls.requestedTeamId.value;
+    return this.data()?.tournament.teams.find((team) => team.id === selectedTeamId);
+  }
+
   async submit(): Promise<void> {
     const data = this.data();
     if (!data || !this.canSubmit()) {

@@ -77,7 +77,7 @@
               (click)="workspace.selectTarget(folder)"
               [class.selected-list-item]="workspace.selectedTarget()?.id === folder.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="folder.emoji" />
+                <lib-twemoji [emoji]="folder.emoji" />
                 <span>{{ folder.name }}</span>
               </span>
               <span matListItemLine>Certificados avulsos</span>
@@ -94,7 +94,7 @@
               (click)="workspace.selectTarget(eventItem)"
               [class.selected-list-item]="workspace.selectedTarget()?.id === eventItem.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="eventItem.emoji" />
+                <lib-twemoji [emoji]="eventItem.emoji" />
                 <span>{{ eventItem.name }}</span>
               </span>
               <span matListItemLine>
@@ -113,7 +113,7 @@
               (click)="workspace.selectTarget(group)"
               [class.selected-list-item]="workspace.selectedTarget()?.id === group.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="group.emoji" />
+                <lib-twemoji [emoji]="group.emoji" />
                 <span>{{ group.name }}</span>
               </span>
               <span matListItemLine>
@@ -136,7 +136,7 @@
               (click)="workspace.selectTarget(majorEvent)"
               [class.selected-list-item]="workspace.selectedTarget()?.id === majorEvent.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="majorEvent.emoji" />
+                <lib-twemoji [emoji]="majorEvent.emoji" />
                 <span>{{ majorEvent.name }}</span>
               </span>
               <span matListItemLine>

@@ -5,6 +5,7 @@ import {
   Controller,
   Get,
   Header,
+  Logger,
   Param,
   ParseIntPipe,
   Post,
@@ -45,6 +46,7 @@ import {
   SportsTeamLogoService,
   SportsTeamLogoUploadFile,
 } from './sports-team-logo.service';
+import { SportsMutationEventsService } from '../realtime/sports-mutation-events.service';
 import { SportsAccessService } from '../security/sports-access.service';
 
 type RequestWithUser = Request & {
@@ -100,7 +102,12 @@ class SportsTeamLogoResponseDto {
 @ApiBearerAuth()
 @Controller('sports/admin/teams')
 export class SportsTeamLogoController {
-  constructor(private readonly logos: SportsTeamLogoService) {}
+  private readonly logger = new Logger(SportsTeamLogoController.name);
+
+  constructor(
+    private readonly logos: SportsTeamLogoService,
+    private readonly mutationEvents: SportsMutationEventsService,
+  ) {}
 
   @Post(':sportsTeamId/logo')
   @RequirePermissions(Permission.SportsTeam.Update)
@@ -128,7 +135,7 @@ export class SportsTeamLogoController {
   @ApiForbiddenResponse({ description: `Missing scoped permission ${Permission.SportsTeam.Update}.` })
   @ApiNotFoundResponse({ description: 'The sports team does not exist.' })
   @ApiResponse({ status: 413, description: 'The multipart file exceeds 2 MiB.' })
-  upload(
+  async upload(
     @Param('sportsTeamId') sportsTeamId: string,
     @Body('expectedRevision', ParseIntPipe) expectedRevision: number,
     @UploadedFile() file: SportsTeamLogoUploadFile | undefined,
@@ -137,7 +144,17 @@ export class SportsTeamLogoController {
     if (!request.user) {
       throw new BadRequestException('O usuário autenticado não está disponível.');
     }
-    return this.logos.upload(sportsTeamId, expectedRevision, file, request.user);
+    const result = await this.logos.upload(sportsTeamId, expectedRevision, file, request.user);
+    try {
+      await this.mutationEvents.publishForEntity('TEAM', sportsTeamId, true);
+    } catch (error) {
+      this.logger.warn(
+        `Could not publish sports team logo mutation for ${sportsTeamId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+    return result;
   }
 
   @Get(':sportsTeamId/logo/:sha256')

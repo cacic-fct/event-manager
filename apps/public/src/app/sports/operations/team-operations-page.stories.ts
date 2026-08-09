@@ -116,20 +116,21 @@ export const AthleteIdentityRequest: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes' }));
-    await expect(canvas.getByText(/nunca dados da pessoa encontrada/)).toBeVisible();
+    await expect(canvas.getByText(/Informe apenas um identificador por vez/)).toBeVisible();
   },
 };
 
 export const OverallMembersAndJoinQueue: Story = {
-  name: 'Integrantes e fila de autoinscrição',
+  name: 'Integrantes e contagem da fila sem dados pessoais',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes' }));
     await expect(canvas.getByRole('heading', { name: 'Pessoas da equipe' })).toBeVisible();
-    await expect(canvas.getByText('Mariana Luiza Ferreira')).toBeVisible();
-    await expect(canvas.getByText('CPF: ***.456.789-**')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Aprovar' })).toBeVisible();
-    await expect(canvas.getByRole('button', { name: 'Recusar' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Solicitações para entrar' })).toBeVisible();
+    await expect(canvas.getByRole('status', { name: '1 pessoa aguardando análise' })).toBeVisible();
+    await expect(canvas.queryByText('Mariana Luiza Ferreira')).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Aprovar' })).not.toBeInTheDocument();
+    await expect(canvas.queryByRole('button', { name: 'Recusar' })).not.toBeInTheDocument();
   },
 };
 
@@ -158,6 +159,12 @@ export const MatchLineup: Story = {
     await expect(canvas.getAllByRole('textbox', { name: 'Camisa' })[0]).toHaveValue('10');
     await expect(canvas.getByRole('button', { name: 'Enviar escalação' })).toBeEnabled();
     await expect(canvas.getByRole('button', { name: 'Desistir desta partida' })).toBeEnabled();
+    await userEvent.click(canvas.getByRole('combobox', { name: 'Partida' }));
+    const overlay = within(document.body);
+    const matchOption = await overlay.findByRole('option', { name: /Engenharia Atlética.*Direito XI/ });
+    await expect(matchOption.querySelector('lib-twemoji')).toBeInTheDocument();
+    await expect(matchOption.querySelectorAll('lib-sports-team-logo')).toHaveLength(2);
+    await userEvent.keyboard('{Escape}');
   },
 };
 

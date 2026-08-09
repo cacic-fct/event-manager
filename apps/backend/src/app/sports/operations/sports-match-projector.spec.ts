@@ -77,6 +77,63 @@ describe('sports match occurrence projection', () => {
     ]);
   });
 
+  it('keeps the overall and new period timers paused when rolling from a paused match', () => {
+    const start = new Date('2026-08-01T14:00:00.000Z');
+    const pause = new Date(start.getTime() + 10 * 60_000);
+    const roll = new Date(start.getTime() + 15 * 60_000);
+    const projection = projectSportsMatch(
+      [
+        {
+          type: SportsMatchActionType.START,
+          payload: {},
+          authoredAt: start,
+          reviewStatus: SportsReviewStatus.APPROVED,
+        },
+        {
+          type: SportsMatchActionType.PAUSE,
+          payload: {},
+          authoredAt: pause,
+          reviewStatus: SportsReviewStatus.APPROVED,
+        },
+        {
+          type: SportsMatchActionType.PERIOD_ROLL,
+          payload: {},
+          authoredAt: roll,
+          reviewStatus: SportsReviewStatus.PENDING,
+        },
+      ],
+      {
+        approvedOnly: false,
+        hasCheckedInPlayers: true,
+        maximumPeriods: 2,
+        periodLabel: 'Tempo',
+        timerRules: {
+          periodDurationMs: 45 * 60_000,
+          periodStartOffsetsMs: [0, 45 * 60_000],
+        },
+      },
+    );
+
+    expect(projection.state).toBe(SportsMatchState.PAUSED);
+    expect(projection.timerStartedAt).toBeNull();
+    expect(projection.timerPausedAt?.getTime()).toBe(pause.getTime());
+    expect(projection.elapsedBeforePauseMs).toBe(45 * 60_000);
+    expect(projection.periodTimers).toEqual([
+      expect.objectContaining({
+        periodNumber: 1,
+        startedAtUnixMs: null,
+        pausedAtUnixMs: pause.getTime(),
+        elapsedBeforePauseMs: 10 * 60_000,
+      }),
+      expect.objectContaining({
+        periodNumber: 2,
+        startedAtUnixMs: null,
+        pausedAtUnixMs: roll.getTime(),
+        elapsedBeforePauseMs: 0,
+      }),
+    ]);
+  });
+
   it('restores the stopwatch when a score correction undoes a newly created period', () => {
     const start = new Date('2026-08-01T14:00:00.000Z');
     const secondPeriod = new Date('2026-08-01T14:47:00.000Z');

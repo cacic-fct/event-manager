@@ -70,4 +70,57 @@ describe('SportsMutationsResolver security boundaries', () => {
     expect(frozen.assertEventMutable).toHaveBeenCalledWith('event-1', actor, 'edit');
     expect(operations.commit).toHaveBeenCalled();
   });
+
+  it('uses the admin actor when the public operation mutation is opened by an authorized admin', async () => {
+    const access = {
+      requireMatchOperator: jest.fn().mockResolvedValue({
+        actor: { id: 'admin-person' },
+        assignment: null,
+        kind: 'ADMIN',
+      }),
+    };
+    const resolver = new SportsMutationsResolver(
+      policy as never,
+      frozen as never,
+      prisma as never,
+      currentUser as never,
+      {} as never,
+      access as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      operations as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+
+    await resolver.commitMatchActions(
+      {
+        actions: [
+          {
+            clientId: 'client-1',
+            matchId: 'match-1',
+            baseRevision: 1,
+            type: SportsMatchActionType.START,
+            payloadJson: '{}',
+            authoredAt: new Date(),
+          },
+        ],
+      },
+      { req: { user: actor } } as never,
+    );
+
+    expect(access.requireMatchOperator).toHaveBeenCalledWith(expect.anything(), 'match-1');
+    expect(operations.commit).toHaveBeenCalledWith(
+      [expect.objectContaining({ matchId: 'match-1', payload: {} })],
+      expect.objectContaining({
+        personId: undefined,
+        userId: 'admin-1',
+        role: 'ADMIN',
+        kind: 'ADMIN',
+        auditActor: actor,
+      }),
+    );
+  });
 });

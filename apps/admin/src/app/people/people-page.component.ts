@@ -14,7 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PeopleService } from './people.service';
 import { PermissionsService } from '../permissions/permissions.service';

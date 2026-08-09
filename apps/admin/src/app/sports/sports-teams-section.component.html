@@ -18,9 +18,11 @@
           <span matListItemLine>
             @if (workspace.teamModalities(team.id); as modalities) {
               @for (modality of modalities; track modality.id) {
-                <span>
-                  <lib-twemoji [emoji]="modality.categoryEmoji" />
-                  {{ modality.categoryName }}
+                <span
+                  class="team-modality-icon"
+                  [matTooltip]="modality.categoryName"
+                  [attr.aria-label]="modality.categoryName">
+                  <lib-twemoji [emoji]="modality.categoryEmoji" aria-hidden="true" />
                 </span>
               } @empty {
                 <span>Sem modalidade</span>
@@ -172,10 +174,22 @@
         @for (member of read.members; track member.id) {
           <div>
             <mat-icon>person</mat-icon>
-            <span
+            <span class="member-copy"
               ><strong>{{ member.person.name }}</strong
-              ><small>{{ workspace.statusLabel(member.status) }}</small></span
-            >
+              ><small>{{ workspace.statusLabel(member.status) }}</small>
+              @if (member.categoryAssignments.length) {
+                <span class="member-modalities" aria-label="Modalidades da pessoa">
+                  @for (modality of member.categoryAssignments; track modality.registrationId) {
+                    <span class="member-modality">
+                      <lib-twemoji [emoji]="modality.categoryEmoji" aria-hidden="true" />
+                      <span>{{ modality.categoryName }}</span>
+                    </span>
+                  }
+                </span>
+              } @else {
+                <small class="member-no-modality">Sem modalidade atribuída</small>
+              }
+            </span>
             <mat-form-field subscriptSizing="dynamic">
               <mat-label>Status</mat-label>
               <mat-select [value]="member.status" (selectionChange)="workspace.updateTeamMember(member, $event.value)">
@@ -193,44 +207,40 @@
         }
       </div>
 
-      <div class="subsection-title">
-        <h4>Função por modalidade</h4>
-        <p>Capitães e técnicos recebem acesso à escalação apenas na modalidade atribuída.</p>
-      </div>
-      <form [formGroup]="workspace.categoryRoleForm" class="compact-form" (ngSubmit)="workspace.assignCategoryRole()">
-        <mat-form-field
-          ><mat-label>Inscrição</mat-label
-          ><mat-select formControlName="registrationId">
-            @for (registration of read.registrations; track registration.id) {
-              <mat-option [value]="registration.id">{{ categoryName(registration.categoryId) }}</mat-option>
-            }
-          </mat-select></mat-form-field
-        >
-        <mat-form-field
-          ><mat-label>Integrante</mat-label
-          ><mat-select formControlName="teamMemberId">
-            @for (member of read.members; track member.id) {
-              <mat-option [value]="member.id">{{ member.person.name }}</mat-option>
-            }
-          </mat-select></mat-form-field
-        >
-        <mat-form-field
-          ><mat-label>Função</mat-label
-          ><mat-select formControlName="role">
-            <mat-option value="PLAYER">Atleta</mat-option>
-            <mat-option value="CAPTAIN">Capitão</mat-option>
-            <mat-option value="COACH">Técnico</mat-option>
-          </mat-select></mat-form-field
-        >
-        <button mat-stroked-button type="submit" [disabled]="workspace.categoryRoleForm.invalid">
-          <mat-icon>badge</mat-icon>Salvar função
-        </button>
-      </form>
-
       <mat-divider />
       <div class="subsection-title">
-        <h4>Inscrever em modalidade</h4>
-        <p>A inscrição cria o vínculo da equipe com uma divisão específica.</p>
+        <h4>Inscrição em modalidades</h4>
+        <p>Inscreva automaticamente com base no elenco aprovado ou escolha uma modalidade manualmente.</p>
+      </div>
+      <div class="automatic-registration">
+        <div class="automatic-registration-copy">
+          <mat-icon aria-hidden="true">playlist_add_check</mat-icon>
+          <div>
+            <strong>Inscrição automática</strong>
+            <span>
+              {{ workspace.approvedTeamMemberCount() }} atleta{{
+                workspace.approvedTeamMemberCount() === 1 ? '' : 's'
+              }}
+              aprovado{{ workspace.approvedTeamMemberCount() === 1 ? '' : 's' }} ·
+              {{ workspace.automaticTeamCategories().length }} modalidade{{
+                workspace.automaticTeamCategories().length === 1 ? '' : 's'
+              }}
+              {{ workspace.automaticTeamCategories().length === 1 ? 'elegível' : 'elegíveis' }}
+            </span>
+          </div>
+        </div>
+        <button
+          mat-flat-button
+          type="button"
+          (click)="workspace.autoRegisterTeamInEligibleCategories()"
+          [disabled]="workspace.loading() || !workspace.automaticTeamCategories().length">
+          <mat-icon>auto_awesome</mat-icon>
+          Inscrição automática em modalidades com atletas suficientes
+        </button>
+      </div>
+      <div class="subsection-title manual-registration-title">
+        <h4>Inscrição manual</h4>
+        <p>Escolha uma modalidade específica ou informe respostas administrativas do formulário.</p>
       </div>
       <form [formGroup]="workspace.registrationForm" class="compact-form" (ngSubmit)="workspace.createRegistration()">
         <mat-form-field
@@ -243,9 +253,11 @@
             }
           </mat-select></mat-form-field
         >
-        <mat-form-field
-          ><mat-label>Seed inicial</mat-label><input matInput type="number" min="0" formControlName="seed"
-        /></mat-form-field>
+        <mat-form-field>
+          <mat-label>Posição inicial na chave</mat-label>
+          <input matInput type="number" min="0" formControlName="seed" />
+          <mat-hint>Ordem usada na montagem da chave. Deixe 0 para definir depois.</mat-hint>
+        </mat-form-field>
         <mat-expansion-panel class="span-2 rule-editor">
           <mat-expansion-panel-header>
             <mat-panel-title>Respostas avançadas do formulário</mat-panel-title>

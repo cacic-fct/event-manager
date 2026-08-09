@@ -41,6 +41,7 @@ describe('sports GraphQL schema', () => {
 
     expect(printed).toContain('publicSportsTournamentDetail');
     expect(printed).toContain('currentUserSportsTeamWorkspace');
+    expect(printed).toContain('adminSportsMatchActionReviewQueue');
     expect(printed).toContain('commitSportsMatchActions');
     expect(printed).toContain('reviewSportsTeamChange');
     expect(printed).toContain('generateSportsBracket');

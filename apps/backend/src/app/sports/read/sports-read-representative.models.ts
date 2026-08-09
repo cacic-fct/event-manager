@@ -1,5 +1,4 @@
 import {
-  SportsApplicationStatus,
   SportsIdentityType,
   SportsMatchState,
   SportsRegistrationStatus,
@@ -149,24 +148,6 @@ export class RepresentativeSportsMatchRead {
 }
 
 @ObjectType()
-export class RepresentativeSportsJoinQueueRead {
-  @Field(() => String)
-  id!: string;
-
-  @Field(() => String)
-  applicantName!: string;
-
-  @Field(() => String, { nullable: true })
-  identityDocumentHint?: string | null;
-
-  @Field(() => [String])
-  categoryNames!: string[];
-
-  @Field(() => SportsApplicationStatus)
-  status!: SportsApplicationStatus;
-}
-
-@ObjectType()
 export class RepresentativeSportsTeamWorkspace {
   @Field(() => PublicSportsTeam)
   team!: PublicSportsTeam;
@@ -186,6 +167,6 @@ export class RepresentativeSportsTeamWorkspace {
   @Field(() => [RepresentativeSportsMatchRead])
   matches!: RepresentativeSportsMatchRead[];
 
-  @Field(() => [RepresentativeSportsJoinQueueRead])
-  joinQueue!: RepresentativeSportsJoinQueueRead[];
+  @Field(() => Int)
+  joinQueueCount!: number;
 }

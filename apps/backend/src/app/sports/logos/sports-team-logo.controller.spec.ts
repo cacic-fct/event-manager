@@ -17,11 +17,15 @@ describe('SportsTeamLogoController', () => {
     upload: jest.fn(),
     download: jest.fn(),
   };
+  const mutationEvents = {
+    publishForEntity: jest.fn(),
+  };
   let controller: SportsTeamLogoController;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    controller = new SportsTeamLogoController(logos as never);
+    mutationEvents.publishForEntity.mockResolvedValue(undefined);
+    controller = new SportsTeamLogoController(logos as never, mutationEvents as never);
   });
 
   it('delegates upload with the scoped authenticated actor and revision', async () => {
@@ -45,6 +49,18 @@ describe('SportsTeamLogoController', () => {
       revision: 3,
     });
     expect(logos.upload).toHaveBeenCalledWith('team-1', 2, file, actor);
+    expect(mutationEvents.publishForEntity).toHaveBeenCalledWith('TEAM', 'team-1', true);
+  });
+
+  it('keeps the committed upload response when mutation publication fails', async () => {
+    logos.upload.mockResolvedValue({ teamId: 'team-1', revision: 3 });
+    mutationEvents.publishForEntity.mockRejectedValue(new Error('Redis unavailable'));
+
+    await expect(
+      controller.upload('team-1', 2, undefined, {
+        user: actor,
+      } as never),
+    ).resolves.toEqual({ teamId: 'team-1', revision: 3 });
   });
 
   it('streams only persisted public image headers with a content-derived ETag', async () => {

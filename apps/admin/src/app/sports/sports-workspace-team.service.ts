@@ -1,3 +1,4 @@
+import { computed } from '@angular/core';
 import type { SportsTeamMemberStatus } from '@cacic-fct/shared-data-types';
 import type { Person } from '@cacic-fct/event-manager-admin-contracts';
 import { firstValueFrom } from 'rxjs';
@@ -5,6 +6,28 @@ import type { SportsCategoryRead, SportsTeamRead, SportsTeamSummary } from './sp
 import { SportsWorkspaceCategoryService } from './sports-workspace-category.service';
 
 export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategoryService {
+  readonly approvedTeamMemberCount = computed(
+    () => this.teamRead()?.members.filter((member) => member.status === 'APPROVED').length ?? 0,
+  );
+
+  readonly automaticTeamCategories = computed(() => {
+    const read = this.teamRead();
+    const categories = this.tournamentRead()?.categories ?? [];
+    if (!read) {
+      return [];
+    }
+    const registeredCategoryIds = new Set(read.registrations.map((registration) => registration.categoryId));
+    const approvedMemberCount = this.approvedTeamMemberCount();
+    return categories.filter((category) => {
+      const requiredMembers = Math.max(category.minimumRosterSize ?? 0, 1);
+      return (
+        !registeredCategoryIds.has(category.id) &&
+        !['FINISHED', 'CANCELED'].includes(category.status) &&
+        approvedMemberCount >= requiredMembers
+      );
+    });
+  });
+
   async selectTeam(team: SportsTeamSummary): Promise<void> {
     await this.run('Não foi possível carregar a equipe.', async () => {
       const read = await firstValueFrom(this.api.team(team.id));
@@ -235,29 +258,14 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     });
   }
 
-  async assignCategoryRole(): Promise<void> {
-    if (this.categoryRoleForm.invalid) {
-      return;
-    }
-    await this.run('Não foi possível atribuir a função na modalidade.', async () => {
-      await firstValueFrom(
-        this.api.mutate<string>(
-          'assignSportsCategoryRole',
-          'SportsRegistrationMemberUpsertInput',
-          this.categoryRoleForm.getRawValue(),
-        ),
-      );
-      this.notify('Função na modalidade atualizada.');
-    });
-  }
-
   async createRegistration(): Promise<void> {
     if (this.registrationForm.invalid) {
       return;
     }
     const raw = this.registrationForm.getRawValue();
+    const teamRead = this.teamRead();
     await this.run('Não foi possível inscrever a equipe.', async () => {
-      await firstValueFrom(
+      const registrationId = await firstValueFrom(
         this.api.mutate<string>('createSportsRegistration', 'SportsRegistrationCreateInput', {
           teamId: raw.teamId,
           categoryId: raw.categoryId,
@@ -265,11 +273,37 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
           formAnswersJson: raw.formAnswersJson || null,
         }),
       );
-      const category = this.tournamentRead()?.categories.find((item) => item.id === raw.categoryId);
-      if (category) {
-        await this.selectCategory(category);
+      if (teamRead) {
+        await this.assignApprovedMembersToRegistration(registrationId, teamRead);
       }
-      this.notify('Inscrição criada.');
+      await this.refreshSelectedTeamAfterRegistration(teamRead?.team.id ?? raw.teamId);
+      this.notify('Inscrição criada. Atletas aprovados adicionados ao elenco da modalidade.');
+    });
+  }
+
+  async autoRegisterTeamInEligibleCategories(): Promise<void> {
+    const teamRead = this.teamRead();
+    const categories = this.automaticTeamCategories();
+    if (!teamRead || !categories.length) {
+      this.notify('Nenhuma modalidade nova atende ao mínimo de atletas aprovados.', true);
+      return;
+    }
+    await this.run('Não foi possível concluir as inscrições automáticas.', async () => {
+      for (const category of categories) {
+        const registrationId = await firstValueFrom(
+          this.api.mutate<string>('createSportsRegistration', 'SportsRegistrationCreateInput', {
+            teamId: teamRead.team.id,
+            categoryId: category.id,
+            seed: null,
+            formAnswersJson: null,
+          }),
+        );
+        await this.assignApprovedMembersToRegistration(registrationId, teamRead);
+      }
+      await this.refreshSelectedTeamAfterRegistration(teamRead.team.id);
+      this.notify(
+        `${categories.length} modalidade${categories.length === 1 ? '' : 's'} inscrita${categories.length === 1 ? '' : 's'}.`,
+      );
     });
   }
 
@@ -311,6 +345,29 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       );
       await this.selectCategory(category);
     });
+  }
+
+  private async assignApprovedMembersToRegistration(registrationId: string, teamRead: SportsTeamRead): Promise<void> {
+    const approvedMembers = teamRead.members.filter((member) => member.status === 'APPROVED');
+    await Promise.all(
+      approvedMembers.map((member) =>
+        firstValueFrom(
+          this.api.mutate<string>('assignSportsCategoryRole', 'SportsRegistrationMemberUpsertInput', {
+            registrationId,
+            teamMemberId: member.id,
+            role: 'PLAYER',
+          }),
+        ),
+      ),
+    );
+  }
+
+  private async refreshSelectedTeamAfterRegistration(teamId: string): Promise<void> {
+    await this.loadTournament();
+    const team = this.tournamentRead()?.teams.find((item) => item.id === teamId);
+    if (team) {
+      await this.selectTeam(team);
+    }
   }
 
   newMatch(): void {

@@ -98,7 +98,7 @@
             @for (item of dashboard.pendingOfflineAttendanceEvents; track item.eventId) {
             <mat-list-item>
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="item.emoji" />
+                <lib-twemoji [emoji]="item.emoji" />
                 <span>{{ item.name }}</span>
               </span>
               <span matListItemLine>
@@ -131,7 +131,7 @@
             @for (item of dashboard.pendingReceiptMajorEvents; track item.majorEventId) {
             <mat-list-item>
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="item.emoji" />
+                <lib-twemoji [emoji]="item.emoji" />
                 <span>{{ item.name }}</span>
               </span>
               <span matListItemLine>
@@ -190,7 +190,7 @@
             @for (item of sportsTournamentsNeedingReview(); track item.tournamentId) {
             <mat-list-item>
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="item.emoji" />
+                <lib-twemoji [emoji]="item.emoji" />
                 <span>{{ item.name }}</span>
               </span>
               <span matListItemLine>{{ sportsReviewSummary(item) }}</span>
@@ -261,7 +261,7 @@
             @for (item of dashboard.sportsTournaments; track item.tournamentId) {
             <mat-list-item>
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="item.emoji" />
+                <lib-twemoji [emoji]="item.emoji" />
                 <span>{{ item.name }}</span>
               </span>
               <span matListItemLine>
@@ -397,7 +397,7 @@
     <div class="event-item-content">
       <div class="event-item-main">
         <span matListItemTitle class="list-title">
-          <app-twemoji [emoji]="event.emoji" />
+          <lib-twemoji [emoji]="event.emoji" />
           <span>{{ event.name }}</span>
         </span>
         <span matListItemLine>

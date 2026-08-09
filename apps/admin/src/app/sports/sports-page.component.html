@@ -12,12 +12,6 @@
       <h2>Gestão esportiva</h2>
       <p>Organize modalidades, equipes, chaves e revisões sem perder o vínculo com o grande evento.</p>
     </div>
-    @if (workspace.tournamentRead(); as read) {
-      <div class="header-status">
-        <span class="status-dot" aria-hidden="true"></span>
-        <strong>{{ workspace.statusLabel(read.tournament.status) }}</strong>
-      </div>
-    }
   </header>
 
   @if (workspace.error(); as error) {
@@ -28,84 +22,61 @@
   }
 
   @if (!workspace.tournamentRead()) {
-    <div class="onboarding-grid">
-      <section class="panel panel-stack">
-        <div class="panel-heading">
-          <div>
-            <h3>Torneios esportivos</h3>
-            <p>Abra um torneio existente ou vincule o modo esportivo a outro grande evento.</p>
-          </div>
-        </div>
-
-        <mat-list class="result-list">
-          @for (item of workspace.tournaments(); track item.tournament.id) {
-            <mat-list-item (click)="workspace.loadTournament(item.tournament.id)">
-              <span matListItemTitle class="list-title">
-                <lib-twemoji [emoji]="item.majorEvent.emoji" />
-                {{ item.majorEvent.name }}
-              </span>
-              <span matListItemLine>
-                {{ item.categoryCount }} modalidades · {{ item.teamCount }} equipes ·
-                {{ workspace.statusLabel(item.tournament.status) }}
-              </span>
-              @if (item.pendingApplicationCount + item.pendingReviewCount) {
-                <span matListItemMeta class="state-label">
-                  {{ item.pendingApplicationCount + item.pendingReviewCount }} pendências
-                </span>
-              }
-              <button matIconButton type="button" aria-label="Abrir gestão esportiva">
-                <mat-icon>arrow_forward</mat-icon>
-              </button>
-            </mat-list-item>
-          } @empty {
-            <mat-list-item>
-              <span matListItemTitle>Nenhum torneio configurado</span>
-              <span matListItemLine>Escolha um grande evento abaixo para ativar o modo esportivo.</span>
-            </mat-list-item>
-          }
-        </mat-list>
-
-        <mat-divider />
+    <section class="panel panel-stack">
+      <div class="panel-heading">
         <div>
-          <h4>Ativar em outro grande evento</h4>
-          <p>O torneio reaproveita publicação, pagamentos, datas e certificados.</p>
+          <h3>Torneios esportivos</h3>
+          <p>Abra um torneio existente ou vincule o modo esportivo a outro grande evento.</p>
         </div>
-        <mat-list class="result-list compact-major-events">
-          @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
-            @if (!workspace.tournaments().find(item => item.majorEvent.id === majorEvent.id)) {
-              <mat-list-item (click)="workspace.openMajorEvent(majorEvent.id)">
-                <span matListItemTitle><lib-twemoji [emoji]="majorEvent.emoji" /> {{ majorEvent.name }}</span>
-                <span matListItemLine
-                  >{{ majorEvent.startDate | date: 'shortDate' }} a {{ majorEvent.endDate | date: 'shortDate' }}</span
-                >
-                <button matIconButton type="button" aria-label="Ativar modo esportivo"><mat-icon>add</mat-icon></button>
-              </mat-list-item>
+      </div>
+
+      <mat-list class="result-list">
+        @for (item of workspace.tournaments(); track item.tournament.id) {
+          <mat-list-item (click)="workspace.loadTournament(item.tournament.id)">
+            <span matListItemTitle class="list-title">
+              <lib-twemoji [emoji]="item.majorEvent.emoji" />
+              {{ item.majorEvent.name }}
+            </span>
+            <span matListItemLine>
+              {{ item.categoryCount }} modalidades · {{ item.teamCount }} equipes ·
+              {{ workspace.statusLabel(item.tournament.status) }}
+            </span>
+            @if (item.pendingApplicationCount + item.pendingReviewCount) {
+              <span matListItemMeta class="state-label">
+                {{ item.pendingApplicationCount + item.pendingReviewCount }} pendências
+              </span>
             }
-          }
-        </mat-list>
-      </section>
+            <button matIconButton type="button" aria-label="Abrir gestão esportiva">
+              <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            <span matListItemTitle>Nenhum torneio configurado</span>
+            <span matListItemLine>Escolha um grande evento abaixo para ativar o modo esportivo.</span>
+          </mat-list-item>
+        }
+      </mat-list>
 
-      <aside class="panel panel-stack lookup-panel">
-        <div>
-          <h3>Abrir pelo identificador</h3>
-          <p>Use em vínculos existentes enquanto a listagem esportiva é sincronizada.</p>
-        </div>
-        <form [formGroup]="workspace.tournamentLookupForm" (ngSubmit)="workspace.openTournamentFromLookup()">
-          <mat-form-field>
-            <mat-label>ID do torneio</mat-label>
-            <input matInput formControlName="tournamentId" autocomplete="off" />
-            <mat-hint>O acesso continua limitado pelas suas permissões.</mat-hint>
-          </mat-form-field>
-          <button
-            mat-flat-button
-            type="submit"
-            [disabled]="!workspace.tournamentLookupForm.controls.tournamentId.value">
-            <mat-icon>login</mat-icon>
-            Abrir torneio
-          </button>
-        </form>
-      </aside>
-    </div>
+      <mat-divider />
+      <div>
+        <h4>Ativar em outro grande evento</h4>
+        <p>O torneio reaproveita publicação, pagamentos, datas e certificados.</p>
+      </div>
+      <mat-list class="result-list compact-major-events">
+        @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
+          @if (!workspace.tournaments().find(item => item.majorEvent.id === majorEvent.id)) {
+            <mat-list-item (click)="workspace.openMajorEvent(majorEvent.id)">
+              <span matListItemTitle><lib-twemoji [emoji]="majorEvent.emoji" /> {{ majorEvent.name }}</span>
+              <span matListItemLine
+                >{{ majorEvent.startDate | date: 'shortDate' }} a {{ majorEvent.endDate | date: 'shortDate' }}</span
+              >
+              <button matIconButton type="button" aria-label="Ativar modo esportivo"><mat-icon>add</mat-icon></button>
+            </mat-list-item>
+          }
+        }
+      </mat-list>
+    </section>
   } @else {
     <nav class="area-nav" aria-label="Áreas da gestão esportiva">
       <button type="button" [class.active]="workspace.activeArea() === 'overview'" (click)="setArea('overview')">

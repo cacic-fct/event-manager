@@ -121,6 +121,7 @@ export class SportsReadPublicService {
       description: string | null;
       startDate: Date;
       endDate: Date;
+      requiresImageLicenseAgreement: boolean;
       isPaymentRequired: boolean;
       majorEventPrices: Array<{
         tiers: Array<{ id: string; name: string; value: number }>;
@@ -172,6 +173,7 @@ export class SportsReadPublicService {
       description: string | null;
       startDate: Date;
       endDate: Date;
+      requiresImageLicenseAgreement: boolean;
       isPaymentRequired: boolean;
       majorEventPrices: Array<{
         tiers: Array<{ id: string; name: string; value: number }>;

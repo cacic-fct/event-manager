@@ -36,29 +36,6 @@
   margin: 0;
 }
 
-.header-status {
-  align-items: center;
-  background: var(--mat-sys-surface-container);
-  border-radius: 999px;
-  display: flex;
-  flex: 0 0 auto;
-  gap: 0.5rem;
-  padding: 0.55rem 0.8rem;
-}
-
-.header-status span:last-child {
-  color: var(--mat-sys-on-surface-variant);
-  font-size: 0.78rem;
-}
-
-.status-dot {
-  background: var(--sports-ok);
-  border-radius: 50%;
-  height: 0.55rem;
-  width: 0.55rem;
-}
-
-.onboarding-grid,
 .content-grid,
 .review-columns {
   display: grid;
@@ -66,7 +43,6 @@
   grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.65fr);
 }
 
-.lookup-panel form,
 .compact-form,
 .clone-form,
 .official-form,
@@ -74,10 +50,6 @@
   align-items: start;
   display: grid;
   gap: 0.75rem;
-}
-
-.lookup-panel form {
-  margin-block-start: 1rem;
 }
 
 .area-nav {
@@ -165,12 +137,17 @@
 }
 
 .state-label {
+  align-items: center;
   background: var(--mat-sys-secondary-container);
   border-radius: 999px;
   color: var(--mat-sys-on-secondary-container);
+  display: inline-flex;
   font-size: 0.72rem;
   font-weight: 700;
-  padding: 0.25rem 0.5rem;
+  justify-content: center;
+  line-height: 1.15;
+  padding: 0.16rem 0.45rem;
+  text-align: center;
   white-space: nowrap;
 }
 

@@ -168,6 +168,21 @@ describe('OfficialSportsMatchPage', () => {
     );
   });
 
+  it('keeps a paused stopwatch paused when rolling into a new period', async () => {
+    const pausedMatch = createSportsOperationalMatch('PAUSED');
+    component.match.set(pausedMatch);
+    component.revision.set(pausedMatch.revision);
+
+    await component.rollPeriod();
+
+    expect(component.match()?.state).toBe('PAUSED');
+    expect(component.match()?.timerStartedAtUnixMs).toBeNull();
+    expect(component.match()?.timerPausedAtUnixMs).not.toBeNull();
+    expect(component.match()?.periodTimers.at(-1)).toEqual(
+      expect.objectContaining({ startedAtUnixMs: null, pausedAtUnixMs: expect.any(Number) }),
+    );
+  });
+
   it('does not offer undo when the active period already contains a score', () => {
     expect(component.canUndoPeriod()).toBe(false);
   });

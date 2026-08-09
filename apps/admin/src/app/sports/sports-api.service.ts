@@ -7,6 +7,7 @@ import type {
   SportsApplication,
   SportsCategoryRead,
   SportsMatchReview,
+  SportsPendingMatchAction,
   SportsRegistrationRead,
   SportsTeamRead,
   SportsTournamentListItem,
@@ -61,7 +62,10 @@ const CATEGORY_FIELDS = `
 
 const TEAM_FIELDS = `
   team { id tournamentId name institution status logoUrl revision fieldRevisionsJson }
-  members { id teamId participantId status revision person { id name } }
+  members {
+    id teamId participantId status revision person { id name }
+    categoryAssignments { registrationId categoryId categoryName categoryEmoji }
+  }
   representatives { id personId person { id name } active assignedAt }
   registrations { id teamId categoryId status seed formAnswersJson revision }
   changeRequests {
@@ -173,6 +177,26 @@ export class SportsApiService {
         { matchId },
       )
       .pipe(map((data) => data.adminSportsMatchReviewRead));
+  }
+
+  matchActionReviewQueue(tournamentId: string) {
+    return this.graphql
+      .request<{ adminSportsMatchActionReviewQueue: SportsPendingMatchAction[] }>(
+        `query AdminSportsMatchActionReviewQueue($tournamentId: String!) {
+          adminSportsMatchActionReviewQueue(tournamentId: $tournamentId) {
+            action { id matchId type payloadJson reviewStatus offline authoredAt }
+            match {
+              id eventId event { id name startDate endDate locationDescription }
+              categoryId stageId venueId homeRegistrationId awayRegistrationId
+              state canonicalState reviewStatus scoreboard { homeScore awayScore }
+              revision roundNumber bracketPosition groupKey notes livestreamProvider livestreamUrl
+            }
+            categoryName homeTeamName awayTeamName
+          }
+        }`,
+        { tournamentId },
+      )
+      .pipe(map((data) => data.adminSportsMatchActionReviewQueue));
   }
 
   applicationQueue(tournamentId: string, statuses = ['PENDING', 'CHANGES_REQUESTED']) {

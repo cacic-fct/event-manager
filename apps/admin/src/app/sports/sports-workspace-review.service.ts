@@ -5,7 +5,13 @@ import {
   SportsCloneTournamentDialogComponent,
   type SportsCloneTournamentDialogResult,
 } from './sports-clone-tournament-dialog.component';
-import type { SportsApplication, SportsCategorySummary, SportsMatchReview, SportsTeamRead } from './sports.models';
+import type {
+  SportsApplication,
+  SportsCategorySummary,
+  SportsMatchReview,
+  SportsPendingMatchAction,
+  SportsTeamRead,
+} from './sports.models';
 import { SportsTextDialogComponent } from './sports-text-dialog.component';
 import {
   defaultSportEmoji,
@@ -93,8 +99,10 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
   }
 
   async reviewAction(actionId: string, decision: ReviewDecision): Promise<void> {
-    const match = this.matchReview()?.match;
-    if (!match) {
+    const queueItem = this.pendingMatchActions().find((item) => item.action.id === actionId);
+    const selectedMatch = this.matchReview()?.match;
+    const matchId = queueItem?.match.id ?? selectedMatch?.id;
+    if (!matchId) {
       return;
     }
     const message =
@@ -118,9 +126,26 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
           reviewMessage: message,
         }),
       );
-      await this.selectMatch(match);
+      await this.loadPendingMatchActions();
+      if (selectedMatch?.id === matchId) {
+        await this.selectMatch(selectedMatch);
+      }
       this.notify('Ação da partida revisada.');
     });
+  }
+
+  async openMatchFromReview(item: SportsPendingMatchAction): Promise<void> {
+    this.activeArea.set('matches');
+    const category = this.tournamentRead()?.categories.find((candidate) => candidate.id === item.match.categoryId);
+    if (!category) {
+      return;
+    }
+    await this.selectCategory(category);
+    if (this.categoryRead()?.category.id !== category.id) {
+      return;
+    }
+    const match = this.categoryRead()?.matches.find((candidate) => candidate.id === item.match.id) ?? item.match;
+    await this.selectMatch(match);
   }
 
   async cloneTournament(): Promise<void> {
@@ -255,7 +280,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
                 return [
                   member.id,
                   {
-                    role: entry?.role ?? member.role,
+                    role: entry?.role ?? 'PLAYER',
                     shirtNumber: entry?.shirtNumber ?? '',
                   },
                 ];
@@ -283,15 +308,17 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
         const categoryId = this.selectedCategoryId();
         const teamId = this.selectedTeamId();
         const matchId = this.selectedMatchId();
-        const [tournament, applications, category, team, match] = await Promise.all([
+        const [tournament, applications, pendingActions, category, team, match] = await Promise.all([
           firstValueFrom(this.api.tournament(tournamentId)),
           firstValueFrom(this.api.applicationQueue(tournamentId)),
+          firstValueFrom(this.api.matchActionReviewQueue(tournamentId)),
           categoryId ? firstValueFrom(this.api.category(categoryId)) : Promise.resolve(null),
           teamId ? firstValueFrom(this.api.team(teamId)) : Promise.resolve(null),
           matchId ? firstValueFrom(this.api.matchReview(matchId)) : Promise.resolve(null),
         ]);
         this.tournamentRead.set(tournament);
         this.applications.set(applications);
+        this.pendingMatchActions.set(pendingActions);
         if (category) {
           this.categoryRead.set(category);
         }

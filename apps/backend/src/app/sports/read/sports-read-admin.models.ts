@@ -147,6 +147,21 @@ export class SportsLimitedPerson {
 }
 
 @ObjectType()
+export class AdminSportsTeamCategoryAssignmentSummary {
+  @Field(() => String)
+  registrationId!: string;
+
+  @Field(() => String)
+  categoryId!: string;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => String)
+  categoryEmoji!: string;
+}
+
+@ObjectType()
 export class AdminSportsTeamMemberSummary {
   @Field(() => String)
   id!: string;
@@ -165,6 +180,9 @@ export class AdminSportsTeamMemberSummary {
 
   @Field(() => SportsLimitedPerson)
   person!: SportsLimitedPerson;
+
+  @Field(() => [AdminSportsTeamCategoryAssignmentSummary])
+  categoryAssignments!: AdminSportsTeamCategoryAssignmentSummary[];
 }
 
 @ObjectType()
@@ -258,4 +276,22 @@ export class AdminSportsMatchReviewRead {
 
   @Field(() => [SportsOfficialAssignment])
   officials!: SportsOfficialAssignment[];
+}
+
+@ObjectType()
+export class AdminSportsMatchActionReview {
+  @Field(() => SportsMatchAction)
+  action!: SportsMatchAction;
+
+  @Field(() => SportsMatch)
+  match!: SportsMatch;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => String, { nullable: true })
+  homeTeamName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  awayTeamName?: string | null;
 }

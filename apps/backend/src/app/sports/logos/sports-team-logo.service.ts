@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -63,6 +63,8 @@ export interface SportsTeamLogoChangeRecord {
 
 @Injectable()
 export class SportsTeamLogoService {
+  private readonly logger = new Logger(SportsTeamLogoService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
@@ -145,7 +147,15 @@ export class SportsTeamLogoService {
       throw error;
     }
     if (previousQueuedObjectKey && previousQueuedObjectKey !== queuedObjectKey) {
-      await this.s3.deleteFile(previousQueuedObjectKey);
+      try {
+        await this.s3.deleteFile(previousQueuedObjectKey);
+      } catch (error) {
+        this.logger.warn(
+          `Could not delete superseded queued sports team logo ${previousQueuedObjectKey}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
     }
     return {
       requestId: request.id,

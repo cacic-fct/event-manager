@@ -31,7 +31,7 @@
         Permitir autoinscrição de participantes
       </mat-slide-toggle>
       <mat-slide-toggle formControlName="allowPlayerMultipleTeams">
-        Permitir uma pessoa em mais de uma equipe
+        Permitir uma mesma pessoa em mais de uma equipe
       </mat-slide-toggle>
       @if (workspace.tournamentForm.controls.selfSubscriptionEnabled.value) {
         <div class="subsection-title span-2">
@@ -96,7 +96,7 @@
         <input matInput type="number" formControlName="points" />
       </mat-form-field>
       <mat-form-field class="span-2">
-        <mat-label>Motivo auditável</mat-label>
+        <mat-label>Motivo do ajuste</mat-label>
         <input matInput formControlName="reason" />
       </mat-form-field>
       <button mat-stroked-button type="submit" [disabled]="workspace.scoreEntryForm.invalid">Registrar ajuste</button>
@@ -107,7 +107,6 @@
     <div class="panel-heading">
       <div>
         <h3>Locais esportivos</h3>
-        <p>Derivados de locais conhecidos; quadras e raias podem pertencer ao mesmo complexo.</p>
       </div>
       <button mat-stroked-button type="button" (click)="workspace.newVenue()">
         <mat-icon>add_location</mat-icon>Novo local

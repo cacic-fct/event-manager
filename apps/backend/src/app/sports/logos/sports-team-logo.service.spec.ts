@@ -119,6 +119,41 @@ describe('SportsTeamLogoService representative queue', () => {
     expect(teamChanges.submit).not.toHaveBeenCalled();
   });
 
+  it('does not fail a committed queue when superseded-object cleanup is unavailable', async () => {
+    const previousQueuedObjectKey = 'sports/private/team-logo-review/team-1/old/logo.avif';
+    prisma.sportsTeamChangeRequest.findFirst.mockResolvedValue({
+      delta: { logo: { queuedObjectKey: previousQueuedObjectKey } },
+    });
+    s3.deleteFile.mockRejectedValue(new Error('temporary storage failure'));
+
+    const png = await sharp({
+      create: {
+        width: 32,
+        height: 32,
+        channels: 4,
+        background: '#1565c0',
+      },
+    })
+      .png()
+      .toBuffer();
+
+    await expect(
+      createService().submitRepresentativeUpload(
+        'team-1',
+        4,
+        1,
+        {
+          buffer: png,
+          mimetype: 'image/png',
+          originalname: 'team.png',
+          size: png.length,
+        },
+        'representative-1',
+      ),
+    ).resolves.toMatchObject({ requestId: 'request-1' });
+    expect(s3.deleteFile).toHaveBeenCalledWith(previousQueuedObjectKey);
+  });
+
   it('sanitizes and rasterizes an accepted SVG before private queue storage', async () => {
     const svg = Buffer.from(
       '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#1565c0"/></svg>',

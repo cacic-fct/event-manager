@@ -149,9 +149,10 @@ function applyAction(
     }
     case SportsMatchActionType.PERIOD_ROLL: {
       assertState(current.state, [SportsMatchState.LIVE, SportsMatchState.PAUSED]);
+      const wasPaused = current.state === SportsMatchState.PAUSED;
       const nextPeriod = (current.scoreboard.activePeriodNumber ?? current.scoreboard.periods.length) + 1;
       const closedTimers = pauseActivePeriod(current.periodTimers, action.authoredAt);
-      const nextTimer = startPeriodTimer(nextPeriod, action.authoredAt, options.timerRules);
+      const nextTimer = startPeriodTimer(nextPeriod, action.authoredAt, options.timerRules, wasPaused);
       return {
         ...current,
         scoreboard: rollSportsScorePeriod(current.scoreboard, {
@@ -161,8 +162,8 @@ function applyAction(
         // Competition clocks use their scheduled period baseline (for example
         // soccer's second half starts at 45:00 even when the first lasted 47:00).
         elapsedBeforePauseMs: nextTimer.scheduledStartOffsetMs,
-        timerStartedAt: action.authoredAt,
-        timerPausedAt: null,
+        timerStartedAt: wasPaused ? null : action.authoredAt,
+        timerPausedAt: wasPaused ? (current.timerPausedAt ?? action.authoredAt) : null,
         periodTimers: current.periodTimerEnabled ? [...closedTimers, nextTimer] : [],
       };
     }
@@ -262,12 +263,17 @@ function timerRules(value: unknown): {
   };
 }
 
-function startPeriodTimer(periodNumber: number, at: Date, rawRules: unknown): SportsProjectedPeriodTimer {
+function startPeriodTimer(
+  periodNumber: number,
+  at: Date,
+  rawRules: unknown,
+  paused = false,
+): SportsProjectedPeriodTimer {
   const rules = timerRules(rawRules);
   return {
     periodNumber,
-    startedAtUnixMs: at.getTime(),
-    pausedAtUnixMs: null,
+    startedAtUnixMs: paused ? null : at.getTime(),
+    pausedAtUnixMs: paused ? at.getTime() : null,
     elapsedBeforePauseMs: 0,
     scheduledStartOffsetMs:
       rules.periodStartOffsetsMs[periodNumber - 1] ?? (rules.periodDurationMs ?? 0) * (periodNumber - 1),

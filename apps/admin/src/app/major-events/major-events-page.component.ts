@@ -13,7 +13,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';

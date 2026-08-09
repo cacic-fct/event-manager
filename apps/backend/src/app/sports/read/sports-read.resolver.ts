@@ -9,6 +9,7 @@ import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
 import {
   AdminSportsCategoryRead,
+  AdminSportsMatchActionReview,
   AdminSportsMatchReviewRead,
   AdminSportsRegistrationRead,
   AdminSportsTeamRead,
@@ -86,6 +87,14 @@ export class SportsAdminReadResolver {
     return this.sportsRead.adminMatchReview(this.getUser(context), matchId);
   }
 
+  @Query(() => [AdminSportsMatchActionReview], { name: 'adminSportsMatchActionReviewQueue' })
+  adminSportsMatchActionReviewQueue(
+    @Args('tournamentId', { type: () => String }) tournamentId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<AdminSportsMatchActionReview[]> {
+    return this.sportsRead.adminMatchActionReviewQueue(this.getUser(context), tournamentId);
+  }
+
   private getUser(context: GraphqlContext): AuthenticatedUser | undefined {
     return context.req?.user ?? context.request?.user;
   }
@@ -148,13 +157,13 @@ export class SportsCurrentUserReadResolver {
   @Query(() => CurrentUserSportsMatchOperationsRead, {
     name: 'currentUserSportsMatchOperations',
     description:
-      'Official-scoped operational match snapshot with approved roster entry identifiers and privacy-limited names.',
+      'Operational match snapshot for an assigned official or an administrator with sports-match operation permission, with approved roster entry identifiers and privacy-limited names.',
   })
   async currentUserSportsMatchOperations(
     @Context() context: GraphqlContext,
     @Args('matchId', { type: () => String }) matchId: string,
   ): Promise<CurrentUserSportsMatchOperationsRead> {
-    await this.access.requireMatchOfficial(context, matchId);
+    await this.access.requireMatchOperator(context, matchId);
     return this.sportsRead.currentUserMatchOperations(matchId);
   }
 

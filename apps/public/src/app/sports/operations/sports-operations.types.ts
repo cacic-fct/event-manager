@@ -258,13 +258,7 @@ export interface RepresentativeTeamWorkspace {
     homeTeam?: SportsTeamSummary | null;
     awayTeam?: SportsTeamSummary | null;
   }>;
-  joinQueue: Array<{
-    id: string;
-    applicantName: string;
-    identityDocumentHint?: string | null;
-    categoryNames: string[];
-    status: string;
-  }>;
+  joinQueueCount: number;
 }
 
 export interface SportsApplicationOption {

@@ -66,7 +66,7 @@
         <section class="form-panel member-overview" aria-labelledby="current-members-title">
           <div>
             <h1 id="current-members-title">Pessoas da equipe</h1>
-            <p>Esta lista vale para a equipe inteira. A escalação de cada partida fica em uma área separada.</p>
+            <p>Todos os integrantes, independente de modalidade</p>
           </div>
           <div class="overall-member-list">
             @for (member of currentWorkspace.members; track member.id) {
@@ -91,50 +91,29 @@
           </div>
         </section>
 
-        @if (currentWorkspace.joinQueue.length) {
         <section class="form-panel join-queue" aria-labelledby="join-queue-title">
           <div>
             <h1 id="join-queue-title">Solicitações para entrar</h1>
             <p>
-              Estas pessoas já foram conferidas pela organização. Sua decisão não precisa de uma segunda aprovação
-              administrativa.
+              A organização do torneio está analisando as solicitações feitas para esta equipe. Nenhum dado pessoal é
+              exibido aqui.
             </p>
           </div>
-          @for (request of currentWorkspace.joinQueue; track request.id) {
-          <article>
-            <mat-icon aria-hidden="true">person_add</mat-icon>
-            <div>
-              <strong>{{ request.applicantName }}</strong>
-              <span>CPF: {{ request.identityDocumentHint || 'não informado' }}</span>
-              <small
-                >{{ request.categoryNames.length ? request.categoryNames.join(', ') : 'Sem modalidade escolhida'
-                }}</small
-              >
-            </div>
-            <div class="join-actions">
-              <button
-                mat-button
-                type="button"
-                [disabled]="busy()"
-                (click)="reviewJoinRequest(request.id, request.applicantName, false)">
-                Recusar
-              </button>
-              <button
-                mat-flat-button
-                type="button"
-                [disabled]="busy()"
-                (click)="reviewJoinRequest(request.id, request.applicantName, true)">
-                Aprovar
-              </button>
-            </div>
-          </article>
-          }
+          <output
+            class="join-queue-count"
+            role="status"
+            [attr.aria-label]="currentWorkspace.joinQueueCount + ' ' + (currentWorkspace.joinQueueCount === 1 ? 'pessoa' : 'pessoas') + ' aguardando análise'">
+            <strong>{{ currentWorkspace.joinQueueCount }}</strong>
+            <span>{{ currentWorkspace.joinQueueCount === 1 ? 'pessoa aguardando análise' : 'pessoas aguardando análise' }}</span>
+          </output>
         </section>
-        }
 
         <form [formGroup]="identityForm" class="form-panel member-request" (ngSubmit)="addMember()">
           <h1>Adicionar integrante</h1>
-          <p>Informe apenas um identificador. Você verá a solicitação, nunca os dados da pessoa encontrada.</p>
+          <p>
+            Informe apenas um identificador por vez. Os dados do integrante só aparecerão depois de aprovação da
+            organização .
+          </p>
           <div class="identity-fields">
             <mat-form-field>
               <mat-label>Tipo de identificação</mat-label>
@@ -158,17 +137,50 @@
       <section class="people-panel match-lineup-area">
         <form [formGroup]="lineupForm" class="form-panel lineup-panel" (ngSubmit)="saveLineup()">
           <h1>Escalação da partida</h1>
-          <p>
-            Escolha uma partida, marque quem jogará e defina função e camisa. Depois que a partida começa, durante a
-            revisão e após a finalização, a escalação fica somente leitura.
-          </p>
           <mat-form-field>
             <mat-label>Partida</mat-label>
             <mat-select [value]="lineupForm.controls.matchId.value" (valueChange)="selectMatch($event)">
+              <mat-select-trigger>
+                @if (selectedMatch(); as match) {
+                <span class="match-select-value">
+                  @if (match.categoryEmoji) {
+                  <lib-twemoji aria-hidden="true" [emoji]="match.categoryEmoji" />
+                  }
+                  <span class="matchup-teams">
+                    <span class="matchup-team">
+                      <lib-sports-team-logo [logoUrl]="match.homeTeam?.logoUrl" [size]="24" />
+                      <span>{{ match.homeTeam?.name ?? 'Equipe a definir' }}</span>
+                    </span>
+                    <span class="matchup-separator" aria-hidden="true">×</span>
+                    <span class="matchup-team">
+                      <lib-sports-team-logo [logoUrl]="match.awayTeam?.logoUrl" [size]="24" />
+                      <span>{{ match.awayTeam?.name ?? 'Equipe a definir' }}</span>
+                    </span>
+                  </span>
+                </span>
+                }
+              </mat-select-trigger>
               @for (match of currentWorkspace.matches; track match.id) {
               <mat-option [value]="match.id">
-                {{ matchupLabel(match) }} - {{ match.startDate | date: 'dd/MM, HH:mm' }} - {{
-                matchStateLabel(match.state) }}
+                <span class="match-option">
+                  @if (match.categoryEmoji) {
+                  <lib-twemoji aria-hidden="true" [emoji]="match.categoryEmoji" />
+                  }
+                  <span class="matchup-teams">
+                    <span class="matchup-team">
+                      <lib-sports-team-logo [logoUrl]="match.homeTeam?.logoUrl" [size]="24" />
+                      <span>{{ match.homeTeam?.name ?? 'Equipe a definir' }}</span>
+                    </span>
+                    <span class="matchup-separator" aria-hidden="true">×</span>
+                    <span class="matchup-team">
+                      <lib-sports-team-logo [logoUrl]="match.awayTeam?.logoUrl" [size]="24" />
+                      <span>{{ match.awayTeam?.name ?? 'Equipe a definir' }}</span>
+                    </span>
+                  </span>
+                  <span class="match-option-meta"
+                    >{{ match.startDate | date: 'dd/MM, HH:mm' }} · {{ matchStateLabel(match.state) }}</span
+                  >
+                </span>
               </mat-option>
               }
             </mat-select>
@@ -180,13 +192,19 @@
             } @else {
             <mat-icon aria-hidden="true">event</mat-icon>
             }
-            <span><strong>{{ matchLabel(match) }}</strong><small>{{ matchStateLabel(match.state) }}</small></span>
+            <span class="match-category"><strong>{{ matchLabel(match) }}</strong><small>{{ matchStateLabel(match.state) }}</small></span>
             <div class="matchup-identity">
-              <span class="matchup-logos" aria-hidden="true">
-                <lib-sports-team-logo [logoUrl]="match.homeTeam?.logoUrl" [size]="28" />
-                <lib-sports-team-logo [logoUrl]="match.awayTeam?.logoUrl" [size]="28" />
+              <span class="matchup-teams">
+                <span class="matchup-team">
+                  <lib-sports-team-logo [logoUrl]="match.homeTeam?.logoUrl" [size]="28" />
+                  <span>{{ match.homeTeam?.name ?? 'Equipe a definir' }}</span>
+                </span>
+                <span class="matchup-separator" aria-hidden="true">×</span>
+                <span class="matchup-team">
+                  <lib-sports-team-logo [logoUrl]="match.awayTeam?.logoUrl" [size]="28" />
+                  <span>{{ match.awayTeam?.name ?? 'Equipe a definir' }}</span>
+                </span>
               </span>
-              <strong>{{ matchupLabel(match) }}</strong>
             </div>
           </div>
           } @if (lineupReadOnly()) {

@@ -14,8 +14,8 @@
   gap: 0.375rem;
 }
 
-.entity-choice-chip__content app-twemoji,
-.selected-entity app-twemoji {
+.entity-choice-chip__content lib-twemoji,
+.selected-entity lib-twemoji {
   --twemoji-size: 1.125rem;
 
   margin-inline: 0;

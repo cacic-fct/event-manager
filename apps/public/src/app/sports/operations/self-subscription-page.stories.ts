@@ -123,7 +123,11 @@ export const SuccessfulRequest: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByLabelText('Equipe desejada'));
     const body = within(document.body);
-    await userEvent.click(await body.findByRole('option', { name: /Engenharia Atlética/ }));
+    const teamOption = await body.findByRole('option', { name: /Engenharia Atlética/ });
+    await expect(teamOption.querySelector('lib-sports-team-logo')).toBeInTheDocument();
+    await userEvent.click(teamOption);
+    await expect(canvas.getByRole('combobox', { name: 'Equipe desejada' }).querySelector('lib-sports-team-logo'))
+      .toBeInTheDocument();
     await userEvent.click(canvas.getByText('Futsal'));
     await userEvent.click(canvas.getByText(/Li e entendi/));
     await userEvent.click(canvas.getByLabelText(/contrato de licença de uso de imagem/));

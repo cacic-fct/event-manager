@@ -14,7 +14,7 @@
           @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
             <mat-option [value]="majorEvent.id">
               <span class="item-title">
-                <app-twemoji [emoji]="majorEvent.emoji" />
+                <lib-twemoji [emoji]="majorEvent.emoji" />
                 <span>{{ majorEvent.name }}</span>
               </span>
             </mat-option>

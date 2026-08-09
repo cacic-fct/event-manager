@@ -27,7 +27,7 @@
   letter-spacing: -0.03em;
   text-wrap: balance;
 }
-.heading h1 app-twemoji {
+.heading h1 lib-twemoji {
   --twemoji-size: 2.4rem;
 }
 .heading p,
@@ -54,12 +54,21 @@ fieldset p {
   margin: 0;
 }
 .important-notice {
+  align-items: flex-start;
   display: flex;
   gap: 0.85rem;
   padding: 1rem;
   border-radius: 14px;
   background: var(--mat-sys-primary-container);
   color: var(--mat-sys-on-primary-container);
+}
+.important-notice > mat-icon {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  line-height: 24px;
+  overflow: visible;
 }
 .important-notice p {
   margin: 0.35rem 0 0;
@@ -97,6 +106,28 @@ legend {
 }
 .category-list small {
   color: var(--mat-sys-on-surface-variant);
+}
+.team-select-value,
+.team-select-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  width: 100%;
+  line-height: 1.35;
+  white-space: normal;
+}
+.team-select-value {
+  overflow: visible;
+}
+.team-select-option lib-sports-team-logo,
+.team-select-value lib-sports-team-logo {
+  flex: 0 0 auto;
+}
+.team-option-name,
+.team-select-value > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .empty-options {
   display: flex;

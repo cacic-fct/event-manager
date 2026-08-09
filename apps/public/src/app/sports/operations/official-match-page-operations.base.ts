@@ -177,6 +177,7 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
       }
       if (type === 'PERIOD_ROLL') {
         const number = (match.scoreboard.periods.at(-1)?.number ?? 0) + 1;
+        const isLive = match.state === 'LIVE';
         const startedAtUnixMs = new Date(authoredAt).getTime();
         const previous = match.periodTimers.find((timer) => timer.periodNumber === match.scoreboard.activePeriod);
         const previousElapsed = previous
@@ -188,13 +189,14 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
         return {
           ...match,
           elapsedBeforePauseMs: scheduledStartOffsetMs,
-          timerStartedAt: authoredAt,
-          timerStartedAtUnixMs: startedAtUnixMs,
-          timerPausedAt: null,
-          timerPausedAtUnixMs: null,
+          state: isLive ? 'LIVE' : 'PAUSED',
+          timerStartedAt: isLive ? authoredAt : null,
+          timerStartedAtUnixMs: isLive ? startedAtUnixMs : null,
+          timerPausedAt: isLive ? null : (match.timerPausedAt ?? authoredAt),
+          timerPausedAtUnixMs: isLive ? null : (match.timerPausedAtUnixMs ?? startedAtUnixMs),
           periodTimers: [
             ...match.periodTimers.map((timer) =>
-              timer.periodNumber === match.scoreboard.activePeriod
+              timer.periodNumber === match.scoreboard.activePeriod && timer.startedAtUnixMs != null
                 ? {
                     ...timer,
                     elapsedBeforePauseMs: previousElapsed,
@@ -205,8 +207,8 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
             ),
             {
               periodNumber: number,
-              startedAtUnixMs,
-              pausedAtUnixMs: null,
+              startedAtUnixMs: isLive ? startedAtUnixMs : null,
+              pausedAtUnixMs: isLive ? null : startedAtUnixMs,
               elapsedBeforePauseMs: 0,
               scheduledStartOffsetMs,
               capMs: match.timerPeriodDurationMs ?? null,

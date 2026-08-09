@@ -16,7 +16,7 @@ import {
   CertificateConfigClonePartsInput,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { CertificateApiService } from '../../graphql/certificate-api.service';
-import { TwemojiComponent } from '../../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 
 type CertificateCloneTargetOption = {
   id: string;
@@ -92,7 +92,7 @@ export type CertificateConfigCloneDialogResult = {
               [class.selected-target]="selectedTargetId() === target.id"
               (click)="selectTarget(target.id)">
               <span matListItemIcon>
-                <app-twemoji [emoji]="target.emoji" />
+                <lib-twemoji [emoji]="target.emoji" />
               </span>
               <span matListItemTitle>{{ target.name }}</span>
               <span matListItemLine>{{ target.dateLabel }}</span>

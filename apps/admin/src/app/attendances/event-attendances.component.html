@@ -20,7 +20,7 @@
           (click)="workspace.selectAttendanceEvent(eventItem)"
           [class.selected-list-item]="workspace.selectedAttendanceEvent()?.id === eventItem.id">
           <span matListItemTitle class="list-title">
-            <app-twemoji [emoji]="eventItem.emoji" />
+            <lib-twemoji [emoji]="eventItem.emoji" />
             <span>{{ eventItem.name }}</span>
           </span>
           <span matListItemLine>
@@ -66,7 +66,7 @@
       <div>
         <h3>
           @if (workspace.selectedAttendanceEvent(); as selectedAttendanceEvent) {
-            <app-twemoji [emoji]="selectedAttendanceEvent.emoji" />
+            <lib-twemoji [emoji]="selectedAttendanceEvent.emoji" />
             {{ selectedAttendanceEvent.name }}
           } @else {
             Selecione um evento

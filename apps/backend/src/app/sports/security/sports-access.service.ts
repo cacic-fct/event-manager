@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Permission } from '@cacic-fct/shared-permissions';
 import {
   SportsCategoryStatus,
   SportsEligibilityStatus,
@@ -12,6 +13,7 @@ import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.inte
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { CurrentUserContextService } from '../../current-user/context.service';
 import { GraphqlContext } from '../../current-user/selects';
+import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -20,6 +22,7 @@ export class SportsAccessService {
     private readonly prisma: PrismaService,
     private readonly currentUser: CurrentUserContextService,
     private readonly frozen: FrozenResourceService,
+    private readonly authorizationPolicy: AuthorizationPolicyService,
   ) {}
 
   async requireTeamRepresentative(context: GraphqlContext, teamId: string) {
@@ -304,6 +307,27 @@ export class SportsAccessService {
     this.assertCategoryOpenForPublicEdits(match.category);
     await this.frozen.assertMajorEventMutable(match.category.tournament.majorEventId, undefined, 'edit');
     return { actor, match, assignment };
+  }
+
+  async requireMatchOperator(context: GraphqlContext, matchId: string) {
+    const actor = await this.currentUser.requireCurrentPerson(context);
+    const user = this.currentUser.getAuthenticatedUser(context);
+
+    if (this.authorizationPolicy.hasEventManagerAccess(user)) {
+      try {
+        await this.authorizationPolicy.assertPermissions(user, [Permission.SportsMatch.Operate], {
+          sportsMatchId: matchId,
+        });
+        return { actor, assignment: null, kind: 'ADMIN' as const };
+      } catch (error: unknown) {
+        if (!(error instanceof ForbiddenException)) {
+          throw error;
+        }
+      }
+    }
+
+    const official = await this.requireMatchOfficial(context, matchId);
+    return { ...official, kind: 'OFFICIAL' as const };
   }
 
   getAuthenticatedUser(context: GraphqlContext): AuthenticatedUser {

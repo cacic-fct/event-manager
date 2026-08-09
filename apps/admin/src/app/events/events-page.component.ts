@@ -13,7 +13,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { Event, EventType, MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { EventsService } from './events.service';
 import { PermissionsService } from '../permissions/permissions.service';

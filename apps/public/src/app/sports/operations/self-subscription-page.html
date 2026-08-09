@@ -31,11 +31,10 @@
       <lib-twemoji [emoji]="currentData.tournament.emoji" />
       {{ currentData.tournament.name }}
     </h1>
-    <p>Informe como você pretende participar deste torneio.</p>
   </div>
 
   <section class="important-notice">
-    <mat-icon>info</mat-icon>
+    <mat-icon aria-hidden="true">info</mat-icon>
     <div>
       <strong>Inscrever-se não garante sua escalação</strong>
       <p>
@@ -49,12 +48,26 @@
     <mat-form-field>
       <mat-label>Equipe desejada</mat-label>
       <mat-select formControlName="requestedTeamId">
+        <mat-select-trigger>
+          @if (selectedTeam(); as team) {
+          <span class="team-select-value">
+            <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="24" />
+            <span>{{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}</span>
+          </span>
+          } @else if (currentData.tournament.selfSubscriptionAllowNoTeam) {
+          <span class="team-select-value">Sem equipe específica</span>
+          } @else {
+          <span class="team-select-value">Selecione uma equipe</span>
+          }
+        </mat-select-trigger>
         @if (currentData.tournament.selfSubscriptionAllowNoTeam) {
-        <mat-option value="">Sem equipe específica</mat-option>
+        <mat-option value=""><span class="team-select-option">Sem equipe específica</span></mat-option>
         } @for (team of currentData.tournament.teams; track team.id) {
         <mat-option [value]="team.id">
-          <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="20" />
-          {{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}
+          <span class="team-select-option">
+            <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="24" />
+            <span class="team-option-name">{{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}</span>
+          </span>
         </mat-option>
         }
       </mat-select>

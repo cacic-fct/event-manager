@@ -7,6 +7,7 @@ import {
   createAdminSportsApplications,
   createAdminSportsCategoryRead,
   createAdminSportsMatchReview,
+  createAdminSportsPendingMatchActions,
   createAdminSportsRegistrationRead,
   createAdminSportsTeam,
   createAdminSportsTeamRead,
@@ -139,6 +140,11 @@ const sportsGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
       data: { adminSportsMatchReviewRead: createAdminSportsMatchReview() },
     });
   }
+  if (query.includes('AdminSportsMatchActionReviewQueue')) {
+    return HttpResponse.json({
+      data: { adminSportsMatchActionReviewQueue: createAdminSportsPendingMatchActions(1) },
+    });
+  }
   if (query.includes('AdminSportsRegistration(')) {
     const registrationId =
       variables['registrationId'] === 'registration-away' ? 'registration-away' : 'registration-home';
@@ -252,6 +258,10 @@ export const CategoriesAndBracketFormats: Story = {
     await expect(canvas.getByLabelText('Exemplo ilustrativo: Grupos + eliminatórias')).toBeVisible();
     await expect(canvas.getByText('Xadrez rápido')).toBeVisible();
     await expect(canvas.getByText('Natação 50 m livre')).toBeVisible();
+    expect(canvas.getAllByText('Ativa').length).toBeGreaterThan(0);
+    expect(canvas.queryByText('Em andamento')).toBeNull();
+    await expect(canvas.getByRole('button', { name: 'Liberar para competir' })).toBeVisible();
+    await expect(canvas.getByText('Pronta para competir')).toBeVisible();
   },
 };
 
@@ -296,6 +306,12 @@ export const TeamManagement: Story = {
     await expect(await canvas.findByText('Escudo da equipe')).toBeVisible();
     await expect(canvas.getByText('Ana Beatriz de Souza')).toBeVisible();
     await expect(canvas.getByText('Mariana Clara Santos')).toBeVisible();
+    await expect(canvas.getByText('Vôlei misto')).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: 'Inscrição automática em modalidades com atletas suficientes' }),
+    ).toBeVisible();
+    await expect(canvas.getByLabelText('Posição inicial na chave')).toBeVisible();
+    expect(canvas.queryByText('Função por modalidade')).toBeNull();
   },
 };
 
@@ -324,6 +340,7 @@ export const MatchBracketAndLineup: Story = {
       }),
     );
     await expect(await canvas.findByText('Escalação desta partida')).toBeVisible();
+    await expect(canvas.getByText('Marque quem poderá jogar e defina função e número para esta partida. Isso não altera o cadastro da modalidade.')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: /Editar escalação/i }));
     await userEvent.click(canvas.getByRole('button', { name: /Transmissão e notas/i }));
     await expect(canvas.getByText('Ana Souza')).toBeVisible();

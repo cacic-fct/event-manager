@@ -20,6 +20,7 @@ import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
 import { toSportsPublicPlayerName } from '../domain/sports-public-name';
 import {
   AdminSportsRegistrationMemberSummary,
+  AdminSportsTeamCategoryAssignmentSummary,
   AdminSportsTeamMemberSummary,
   AdminSportsTeamRepresentativeSummary,
 } from './sports-read.models';
@@ -135,6 +136,19 @@ export class SportsReadAdminMapper {
         participant: {
           select: { person: { select: { id: true; name: true } } };
         };
+        categoryAssignments: {
+          select: {
+            id: true;
+            registrationId: true;
+            categoryId: true;
+            category: {
+              select: {
+                name: true;
+                eventGroup: { select: { emoji: true } };
+              };
+            };
+          };
+        };
       };
     }>,
   ): AdminSportsTeamMemberSummary {
@@ -148,7 +162,30 @@ export class SportsReadAdminMapper {
         id: record.participant.person.id,
         name: toSportsPublicPlayerName(record.participant.person.name),
       },
+      categoryAssignments: this.mapAdminTeamCategoryAssignments(record.categoryAssignments),
     };
+  }
+
+  private mapAdminTeamCategoryAssignments(
+    assignments: Array<{
+      id: string;
+      registrationId: string;
+      categoryId: string;
+      category: { name: string; eventGroup: { emoji: string } };
+    }>,
+  ): AdminSportsTeamCategoryAssignmentSummary[] {
+    const uniqueAssignments = new Map<string, (typeof assignments)[number]>();
+    for (const assignment of assignments) {
+      if (!uniqueAssignments.has(assignment.categoryId)) {
+        uniqueAssignments.set(assignment.categoryId, assignment);
+      }
+    }
+    return [...uniqueAssignments.values()].map((assignment) => ({
+      registrationId: assignment.registrationId,
+      categoryId: assignment.categoryId,
+      categoryName: assignment.category.name,
+      categoryEmoji: assignment.category.eventGroup.emoji || '🏅',
+    }));
   }
 
   mapAdminRepresentative(

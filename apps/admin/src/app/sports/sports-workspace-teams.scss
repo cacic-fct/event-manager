@@ -5,6 +5,13 @@
   gap: 0.5rem;
 }
 
+.team-modality-icon {
+  display: inline-grid;
+  margin-inline-end: 0.2rem;
+  place-items: center;
+  vertical-align: middle;
+}
+
 .logo-control {
   align-items: center;
   background: var(--mat-sys-surface-container-low);
@@ -74,12 +81,63 @@
   padding: 0.65rem 0.8rem;
 }
 
+.automatic-registration {
+  align-items: center;
+  background: var(--mat-sys-primary-container);
+  border-radius: 12px;
+  color: var(--mat-sys-on-primary-container);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.8rem;
+}
+
+.automatic-registration-copy,
+.member-modality {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.automatic-registration-copy > mat-icon {
+  flex: 0 0 auto;
+}
+
+.automatic-registration-copy > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.automatic-registration-copy span {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.manual-registration-title {
+  margin-block-start: 0.5rem;
+}
+
 .registration-list > div > span {
   display: grid;
 }
 
 .registration-list small {
   color: var(--mat-sys-on-surface-variant);
+}
+
+.registration-ready {
+  align-items: center;
+  color: var(--sports-ok);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.35rem;
+}
+
+.registration-ready mat-icon {
+  font-size: 1.1rem;
+  height: 1.1rem;
+  width: 1.1rem;
 }
 
 .person-list > div > span,
@@ -91,6 +149,27 @@
 .person-list small,
 .member-grid small {
   color: var(--mat-sys-on-surface-variant);
+}
+
+.member-copy {
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.member-modalities {
+  display: grid;
+  gap: 0.15rem;
+  margin-block-start: 0.25rem;
+}
+
+.member-modality {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.member-no-modality {
+  font-style: italic;
 }
 
 .person-search,
@@ -145,4 +224,15 @@
 .search-results button:hover,
 .search-results button:focus-visible {
   background: var(--mat-sys-surface);
+}
+
+@media (max-width: 760px) {
+  .automatic-registration {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .automatic-registration > button {
+    white-space: normal;
+  }
 }

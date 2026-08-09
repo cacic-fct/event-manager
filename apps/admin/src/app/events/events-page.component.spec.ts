@@ -40,8 +40,8 @@ describe('EventsPageComponent', () => {
     await configureComponent('populated');
     const { element } = createComponent();
 
-    expect(button(element, 'Semana da Computação')?.querySelector('app-twemoji')).not.toBeNull();
-    expect(button(element, 'Grupo')?.querySelector('app-twemoji')).not.toBeNull();
+    expect(button(element, 'Semana da Computação')?.querySelector('lib-twemoji')).not.toBeNull();
+    expect(button(element, 'Grupo')?.querySelector('lib-twemoji')).not.toBeNull();
   });
 
   async function configureComponent(mode: PageStoryMode): Promise<void> {

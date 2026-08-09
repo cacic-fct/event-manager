@@ -17,7 +17,9 @@
             {{ category.name }}
           </span>
           <span matListItemLine>{{ category.division || 'Sem divisão' }} · {{ formatLabel(category.format) }}</span>
-          <span matListItemMeta class="state-label">{{ categoryStatusLabel(category.status) }}</span>
+          <span matListItemMeta class="state-label category-state-label">{{
+            categoryStatusLabel(category.status)
+          }}</span>
         </mat-list-item>
       } @empty {
         <mat-list-item>
@@ -192,7 +194,7 @@
           ><input matInput type="number" min="1" formControlName="maximumPeriods"
         /></mat-form-field>
         <mat-form-field
-          ><mat-label>Nome do período</mat-label><input matInput formControlName="periodLabel"
+          ><mat-label>Nome do período/tempo/round</mat-label><input matInput formControlName="periodLabel"
         /></mat-form-field>
       }
       <div class="subsection-title span-2">
@@ -298,7 +300,9 @@
       <mat-divider />
       <div class="subsection-title">
         <h4>Equipes inscritas</h4>
-        <p>A aprovação pode preceder o pagamento; “ativa” significa que todas as condições foram concluídas.</p>
+        <p>
+          Aprove a inscrição primeiro. Quando todas as condições estiverem concluídas, libere a equipe para competir.
+        </p>
       </div>
       <div class="registration-list">
         @for (registration of read.registrations; track registration.id) {
@@ -324,15 +328,24 @@
                 (click)="workspace.setRegistrationStatus(registration, 'CHANGES_REQUESTED')">
                 Pedir ajuste
               </button>
-              <button
-                mat-stroked-button
-                type="button"
-                (click)="workspace.setRegistrationStatus(registration, 'APPROVED')">
-                Aprovar
-              </button>
-              <button mat-flat-button type="button" (click)="workspace.setRegistrationStatus(registration, 'ACTIVE')">
-                Ativar
-              </button>
+              @if (registration.status !== 'APPROVED' && registration.status !== 'ACTIVE') {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="workspace.setRegistrationStatus(registration, 'APPROVED')">
+                  Aprovar inscrição
+                </button>
+              }
+              @if (registration.status === 'APPROVED') {
+                <button mat-flat-button type="button" (click)="workspace.setRegistrationStatus(registration, 'ACTIVE')">
+                  Liberar para competir
+                </button>
+              }
+              @if (registration.status === 'ACTIVE') {
+                <span class="registration-ready"
+                  ><mat-icon aria-hidden="true">check_circle</mat-icon>Pronta para competir</span
+                >
+              }
             </div>
           </div>
         } @empty {
