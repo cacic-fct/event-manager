@@ -125,7 +125,7 @@ export class SportsBracketComponent implements AfterViewInit, OnDestroy {
   });
 
   ngAfterViewInit(): void {
-    if (!this.isBrowser()) {
+    if (!this.isBrowser() || typeof ResizeObserver === 'undefined') {
       return;
     }
 
