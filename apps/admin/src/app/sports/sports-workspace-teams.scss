@@ -15,16 +15,11 @@
   padding: 0.8rem;
 }
 
-.logo-control > img,
-.logo-control > mat-icon {
+.logo-control > lib-sports-team-logo {
   border-radius: 10px;
   height: 3.5rem;
   object-fit: contain;
   width: 3.5rem;
-}
-
-.logo-control > mat-icon {
-  font-size: 3.5rem;
 }
 
 .logo-control > div {
@@ -109,8 +104,7 @@
   gap: 0.5rem;
 }
 
-.team-heading img,
-.team-heading mat-icon {
+.team-heading lib-sports-team-logo {
   border-radius: 6px;
   height: 2rem;
   object-fit: contain;

@@ -171,6 +171,10 @@ export interface SportsTimerSnapshot {
   activePeriod: number | null;
 }
 
+export interface SportsTimerRestoration extends SportsTimerSnapshot {
+  state: 'LIVE' | 'PAUSED';
+}
+
 export interface SportsTimerConflict {
   matchId: string;
   queuedActionIds: string[];

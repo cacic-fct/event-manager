@@ -77,6 +77,83 @@ describe('sports match occurrence projection', () => {
     ]);
   });
 
+  it('restores the stopwatch when a score correction undoes a newly created period', () => {
+    const start = new Date('2026-08-01T14:00:00.000Z');
+    const secondPeriod = new Date('2026-08-01T14:47:00.000Z');
+    const undo = new Date('2026-08-01T14:48:00.000Z');
+    const projection = projectSportsMatch(
+      [
+        {
+          type: SportsMatchActionType.START,
+          payload: {},
+          authoredAt: start,
+          reviewStatus: SportsReviewStatus.APPROVED,
+        },
+        {
+          type: SportsMatchActionType.PERIOD_ROLL,
+          payload: {},
+          authoredAt: secondPeriod,
+          reviewStatus: SportsReviewStatus.PENDING,
+        },
+        {
+          type: SportsMatchActionType.SCORE_CORRECTION,
+          payload: {
+            scoreboard: {
+              home: 0,
+              away: 0,
+              activePeriodNumber: 1,
+              periods: [{ number: 1, label: 'Tempo', home: 0, away: 0, closed: false }],
+            },
+            stopwatch: {
+              state: 'LIVE',
+              overall: {
+                startedAtUnixMs: start.getTime(),
+                pausedAtUnixMs: null,
+                elapsedBeforePauseMs: 0,
+              },
+              periods: [
+                {
+                  periodNumber: 1,
+                  startedAtUnixMs: start.getTime(),
+                  pausedAtUnixMs: null,
+                  elapsedBeforePauseMs: 0,
+                  scheduledStartOffsetMs: 0,
+                  capMs: 45 * 60_000,
+                  allowOvertime: true,
+                },
+              ],
+              activePeriod: 1,
+            },
+          },
+          authoredAt: undo,
+          reviewStatus: SportsReviewStatus.PENDING,
+        },
+      ],
+      {
+        approvedOnly: false,
+        hasCheckedInPlayers: true,
+        maximumPeriods: 2,
+        periodLabel: 'Tempo',
+        periodsEnabled: true,
+        timerRules: {
+          periodDurationMs: 45 * 60_000,
+          periodStartOffsetsMs: [0, 45 * 60_000],
+          allowOvertime: true,
+        },
+      },
+    );
+
+    expect(projection.state).toBe(SportsMatchState.LIVE);
+    expect(projection.scoreboard.activePeriodNumber).toBe(1);
+    expect(projection.scoreboard.periods).toHaveLength(1);
+    expect(projection.timerStartedAt?.getTime()).toBe(start.getTime());
+    expect(projection.timerPausedAt).toBeNull();
+    expect(projection.elapsedBeforePauseMs).toBe(0);
+    expect(projection.periodTimers).toEqual([
+      expect.objectContaining({ periodNumber: 1, startedAtUnixMs: start.getTime(), elapsedBeforePauseMs: 0 }),
+    ]);
+  });
+
   it('replays an explicit device timer reconciliation using safe Unix milliseconds', () => {
     const projection = projectSportsMatch(
       [

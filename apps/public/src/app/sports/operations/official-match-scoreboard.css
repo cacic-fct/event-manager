@@ -47,18 +47,6 @@
   gap: 0.75rem;
   text-align: center;
 }
-.team-logo,
-.team-logo-placeholder {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  object-fit: contain;
-}
-.team-logo-placeholder {
-  display: grid;
-  place-items: center;
-  background: var(--mat-sys-surface-container-highest);
-}
 .team h1 {
   margin: 0;
   max-width: 18ch;
@@ -103,15 +91,6 @@
 .state.live {
   color: #b3261e;
   background: var(--mat-sys-surface-container);
-}
-.live-dot {
-  display: inline-block;
-  flex: 0 0 8px;
-  width: 8px;
-  height: 8px;
-  animation: live-breathe 5s ease-in-out infinite;
-  border-radius: 50%;
-  background: #d32f2f;
 }
 .swap-sides {
   margin-block-start: 0.25rem;

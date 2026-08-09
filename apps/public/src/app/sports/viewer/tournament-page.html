@@ -56,14 +56,24 @@
     @if (liveMatches().length) {
     <div class="section-heading">
       <h2>Agora</h2>
-      <span class="live-label"><span aria-hidden="true"></span>Ao vivo</span>
+      <span class="live-label"><lib-sports-live-dot />Ao vivo</span>
     </div>
     <div class="match-strip">
       @for (match of liveMatches(); track match.id) {
       <a class="featured-match" [routerLink]="['/sports/match', match.id]">
-        <span>{{ participantName(match, 'home') }}</span>
+        <span class="featured-team">
+          @if (match.homeTeam) {
+          <lib-sports-team-logo [logoUrl]="match.homeTeam.logoUrl" [size]="24" />
+          }
+          <span>{{ participantName(match, 'home') }}</span>
+        </span>
         <strong>{{ match.scoreboard.homeScore }} × {{ match.scoreboard.awayScore }}</strong>
-        <span>{{ participantName(match, 'away') }}</span>
+        <span class="featured-team">
+          @if (match.awayTeam) {
+          <lib-sports-team-logo [logoUrl]="match.awayTeam.logoUrl" [size]="24" />
+          }
+          <span>{{ participantName(match, 'away') }}</span>
+        </span>
         @if (match.overallTimerEnabled) {
         <small class="card-clock"><mat-icon aria-hidden="true">timer</mat-icon>{{ overallClock(match) }}</small>
         }
@@ -78,7 +88,20 @@
       @for (match of upcomingMatches().slice(0, 4); track match.id) {
       <a class="featured-match" [routerLink]="['/sports/match', match.id]">
         <span>{{ match.schedule.startDate | date: 'dd/MM · HH:mm' }}</span>
-        <strong>{{ participantName(match, 'home') }} × {{ participantName(match, 'away') }}</strong>
+        <strong class="featured-team-pair">
+          <span class="featured-team">
+            @if (match.homeTeam) {
+            <lib-sports-team-logo [logoUrl]="match.homeTeam.logoUrl" [size]="24" />
+            }
+            <span>{{ participantName(match, 'home') }}</span>
+          </span>
+          <span class="featured-team">
+            @if (match.awayTeam) {
+            <lib-sports-team-logo [logoUrl]="match.awayTeam.logoUrl" [size]="24" />
+            }
+            <span>{{ participantName(match, 'away') }}</span>
+          </span>
+        </strong>
         <small>{{ locationLabel(match) }}</small>
       </a>
       }
@@ -141,7 +164,12 @@
                 @for (standing of category.standings; track standing.team.id) {
                 <tr>
                   <td>{{ standing.rank ?? '-' }}</td>
-                  <th scope="row">{{ standing.team.name }}</th>
+                  <th scope="row">
+                    <span class="team-identity">
+                      <lib-sports-team-logo [logoUrl]="standing.team.logoUrl" [size]="28" />
+                      <span>{{ standing.team.name }}</span>
+                    </span>
+                  </th>
                   <td>{{ standing.played }}</td>
                   <td>{{ standing.wins }}</td>
                   <td>{{ standing.draws }}</td>
@@ -163,7 +191,6 @@
             [emoji]="category.emoji"
             [stages]="category.brackets"
             [standings]="category.standings"
-            [currentMatchId]="currentMatchId(category)"
             (matchSelected)="openMatch($event)" />
         </section>
         }
@@ -179,7 +206,20 @@
                 <strong>{{ match.schedule.startDate | date: 'HH:mm' }}</strong>
               </time>
               <span class="schedule-teams">
-                <strong>{{ participantName(match, 'home') }} × {{ participantName(match, 'away') }}</strong>
+                <span class="schedule-team-pair">
+                  <span class="team-identity team-identity--compact">
+                    @if (match.homeTeam) {
+                    <lib-sports-team-logo [logoUrl]="match.homeTeam.logoUrl" [size]="24" />
+                    }
+                    <strong>{{ participantName(match, 'home') }}</strong>
+                  </span>
+                  <span class="team-identity team-identity--compact">
+                    @if (match.awayTeam) {
+                    <lib-sports-team-logo [logoUrl]="match.awayTeam.logoUrl" [size]="24" />
+                    }
+                    <strong>{{ participantName(match, 'away') }}</strong>
+                  </span>
+                </span>
                 <small>{{ locationLabel(match) }}</small>
               </span>
               <span class="schedule-score">
@@ -207,7 +247,10 @@
       @for (entry of tournament.overallScores; track entry.team.id; let position = $index) {
       <li>
         <span class="position">{{ position + 1 }}</span>
-        <span>{{ entry.team.name }}</span>
+        <span class="team-identity">
+          <lib-sports-team-logo [logoUrl]="entry.team.logoUrl" [size]="28" />
+          <span>{{ entry.team.name }}</span>
+        </span>
         <strong>{{ entry.points }} pts.</strong>
       </li>
       }
@@ -221,11 +264,7 @@
     <div class="team-list">
       @for (team of tournament.teams; track team.id) {
       <article>
-        @if (team.logoUrl) {
-        <img [src]="team.logoUrl" alt="" width="44" height="44" />
-        } @else {
-        <span class="team-placeholder" aria-hidden="true">{{ team.name.charAt(0) }}</span>
-        }
+        <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="44" />
         <span>
           <strong>{{ team.name }}</strong>
           @if (team.institution) {

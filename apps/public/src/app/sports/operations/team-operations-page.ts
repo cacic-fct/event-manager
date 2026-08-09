@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
-import { TwemojiComponent } from '@cacic-fct/shared-angular';
+import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
@@ -52,6 +52,7 @@ import { createTeamOperationsForms } from './team-operations-page.forms';
     DatePipe,
     ReactiveFormsModule,
     RouterLink,
+    SportsTeamLogoComponent,
     TwemojiComponent,
   ],
   templateUrl: './team-operations-page.html',
@@ -298,7 +299,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
       return;
     }
     if (file.size > 15 * 1024 * 1024) {
-      this.logoError.set('O arquivo deve ter no máximo 15 MiB.');
+      this.logoError.set('O arquivo deve ter no máximo 15 MB.');
       input.value = '';
       return;
     }

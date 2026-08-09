@@ -100,10 +100,6 @@ export abstract class SportsWorkspaceSection {
     }));
   });
 
-  protected readonly currentLiveMatchId = computed(
-    () => this.workspace.categoryRead()?.matches.find((match) => match.state === 'LIVE')?.id ?? null,
-  );
-
   protected formatLabel(value: string): string {
     return this.formats.find((format) => format.value === value)?.label ?? value;
   }

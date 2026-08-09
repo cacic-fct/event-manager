@@ -1,12 +1,18 @@
 import { MatStepper } from '@angular/material/stepper';
 import { AztecScannerDialogComponent } from '@cacic-fct/shared-angular';
 import { SportsConfirmationDialog, SportsConfirmationDialogData } from './sports-confirmation-dialog';
-import type { SportsOperationalMatch } from './sports-operations.types';
+import type { SportsOperationalMatch, SportsTimerRestoration } from './sports-operations.types';
 import type { CheckInEntry, MatchOccurrence } from './official-match-page.utils';
 import { sortCheckInEntries } from './official-match-page.utils';
 import { OfficialMatchPageState } from './official-match-page-state.base';
 
 export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
+  private periodRollUndo: {
+    matchId: string;
+    newPeriodNumber: number;
+    restoration: SportsTimerRestoration;
+  } | null = null;
+
   startHold(): void {
     const state = this.match()?.state;
     if (this.busy() || (state !== 'SCHEDULED' && state !== 'CHECK_IN')) {
@@ -62,7 +68,18 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
   }
 
   async rollPeriod(): Promise<void> {
-    await this.dispatch('PERIOD_ROLL', {});
+    const match = this.match();
+    if (!match || (match.state !== 'LIVE' && match.state !== 'PAUSED')) {
+      return;
+    }
+    const newPeriodNumber = (match.scoreboard.periods.at(-1)?.number ?? 0) + 1;
+    const restoration: SportsTimerRestoration = {
+      ...this.timerSnapshot(),
+      state: match.state,
+    };
+    if (await this.dispatch('PERIOD_ROLL', {})) {
+      this.periodRollUndo = { matchId: match.id, newPeriodNumber, restoration };
+    }
   }
 
   async saveOccurrence(): Promise<void> {
@@ -85,7 +102,8 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     }
     const periods = match.scoreboard.periods.slice(0, -1);
     const activePeriod = periods.at(-1)?.number ?? null;
-    await this.dispatch('SCORE_CORRECTION', {
+    const restoration = this.timerRestorationForUndo(match, activePeriod);
+    const payload: Record<string, unknown> = {
       scoreboard: {
         home: match.scoreboard.homeScore,
         away: match.scoreboard.awayScore,
@@ -98,7 +116,53 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
           closed: period.number !== activePeriod,
         })),
       },
-    });
+    };
+    if (restoration) {
+      payload['stopwatch'] = restoration;
+    }
+    if (await this.dispatch('SCORE_CORRECTION', payload)) {
+      this.periodRollUndo = null;
+    }
+  }
+
+  private timerRestorationForUndo(match: SportsOperationalMatch, activePeriod: number | null): SportsTimerRestoration | null {
+    const saved = this.periodRollUndo;
+    if (saved?.matchId === match.id && saved.newPeriodNumber === match.scoreboard.activePeriod) {
+      return saved.restoration;
+    }
+    if (activePeriod === null || (match.state !== 'LIVE' && match.state !== 'PAUSED')) {
+      return null;
+    }
+    const currentPeriod = match.scoreboard.periods.at(-1);
+    const previousPeriod = match.scoreboard.periods.at(-2);
+    const currentTimer = currentPeriod
+      ? match.periodTimers.find((timer) => timer.periodNumber === currentPeriod.number)
+      : undefined;
+    const previousTimer = previousPeriod
+      ? match.periodTimers.find((timer) => timer.periodNumber === previousPeriod.number)
+      : undefined;
+    const rollAt = currentTimer?.startedAtUnixMs ?? currentTimer?.pausedAtUnixMs;
+    if (!currentPeriod || !previousPeriod || !currentTimer || !previousTimer || rollAt == null) {
+      return null;
+    }
+    const isLive = match.state === 'LIVE';
+    const restoredPreviousTimer = {
+      ...previousTimer,
+      startedAtUnixMs: isLive ? rollAt : null,
+      pausedAtUnixMs: isLive ? null : (previousTimer.pausedAtUnixMs ?? rollAt),
+    };
+    return {
+      state: match.state,
+      overall: {
+        startedAtUnixMs: isLive ? rollAt : null,
+        pausedAtUnixMs: isLive ? null : (previousTimer.pausedAtUnixMs ?? rollAt),
+        elapsedBeforePauseMs: previousTimer.scheduledStartOffsetMs + previousTimer.elapsedBeforePauseMs,
+      },
+      periods: match.periodTimers
+        .filter((timer) => timer.periodNumber !== currentPeriod.number)
+        .map((timer) => (timer.periodNumber === previousPeriod.number ? restoredPreviousTimer : timer)),
+      activePeriod,
+    };
   }
 
   swapSides(): void {

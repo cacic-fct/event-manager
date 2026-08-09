@@ -146,16 +146,6 @@ h5 {
   gap: 7px;
 }
 
-.live-label span {
-  display: inline-block;
-  flex: 0 0 8px;
-  animation: live-breathe 5s ease-in-out infinite;
-  background: #d32f2f;
-  border-radius: 50%;
-  height: 8px;
-  width: 8px;
-}
-
 .match-strip {
   display: grid;
   gap: 8px;
@@ -202,6 +192,25 @@ h5 {
 
 .featured-match strong {
   font: var(--mat-sys-title-medium);
+}
+
+.featured-team,
+.team-identity {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.featured-team > span,
+.team-identity > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.featured-team-pair {
+  display: grid;
+  gap: 5px;
 }
 
 .featured-match small {
@@ -317,6 +326,15 @@ tbody th {
   gap: 2px;
 }
 
+.schedule-team-pair {
+  display: grid;
+  gap: 3px;
+}
+
+.team-identity--compact {
+  gap: 6px;
+}
+
 .schedule-match time,
 .schedule-teams small,
 .schedule-score {
@@ -374,46 +392,12 @@ tbody th {
   padding: 12px;
 }
 
-.team-list img,
-.team-placeholder {
-  border-radius: 50%;
-  height: 44px;
-  object-fit: contain;
-  width: 44px;
-}
-
-.team-placeholder {
-  align-items: center;
-  background: var(--mat-sys-primary-container);
-  color: var(--mat-sys-on-primary-container);
-  display: flex;
-  font: var(--mat-sys-title-medium);
-  justify-content: center;
-}
-
 .team-list article > span:last-child {
   display: grid;
 }
 
 .team-list small {
   color: var(--mat-sys-on-surface-variant);
-}
-
-@keyframes live-breathe {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.28;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .live-label span {
-    animation: none;
-    opacity: 1;
-  }
 }
 
 @media (max-width: 680px) {

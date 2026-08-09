@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TwemojiComponent } from '@cacic-fct/shared-angular';
+import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { SportsWorkspaceSection } from './sports-workspace-section.base';
 
 @Component({
@@ -28,6 +28,7 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
     MatListModule,
     MatSelectModule,
     MatTooltipModule,
+    SportsTeamLogoComponent,
     TwemojiComponent,
   ],
   templateUrl: './sports-teams-section.component.html',

@@ -7,7 +7,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { SportsBracketComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
+import {
+  SportsBracketComponent,
+  SportsLiveDotComponent,
+  SportsTeamLogoComponent,
+  TwemojiComponent,
+} from '@cacic-fct/shared-angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, catchError, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
 import { SportsViewerApiService } from './sports-viewer-api.service';
@@ -39,6 +44,8 @@ import {
     MatToolbarModule,
     RouterLink,
     SportsBracketComponent,
+    SportsLiveDotComponent,
+    SportsTeamLogoComponent,
     TwemojiComponent,
   ],
   templateUrl: './tournament-page.html',
@@ -171,10 +178,6 @@ export class SportsTournamentPage {
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
     return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
-  }
-
-  currentMatchId(category: PublicSportsCategory): string | null {
-    return category.matches.find((match) => match.state === 'LIVE' || match.state === 'PAUSED')?.id ?? null;
   }
 
   openMatch(matchId: string): void {

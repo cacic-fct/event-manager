@@ -14,6 +14,7 @@ import {
   SportsOperationalMatch,
   SportsScoreboard,
   SportsTimerConflict,
+  SportsTimerSnapshot,
 } from './sports-operations.types';
 import { CheckInEntry, MatchOccurrence } from './official-match-page.utils';
 
@@ -164,7 +165,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
     });
   }
 
-  protected abstract dispatch(type: SportsMatchActionType, payload: Record<string, unknown>): Promise<void>;
+  protected abstract dispatch(type: SportsMatchActionType, payload: Record<string, unknown>): Promise<boolean>;
   protected abstract registerScannedAttendance(code: string): Promise<void>;
   protected abstract sortedCheckInEntries(team: CheckInEntry['team']): CheckInEntry[];
   protected abstract formatElapsed(value: number): string;
@@ -188,4 +189,18 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
       closed: boolean;
     }>;
   };
+
+  protected timerSnapshot(source: SportsOperationalMatch | null = this.match()): SportsTimerSnapshot {
+    return {
+      overall: {
+        startedAtUnixMs:
+          source?.timerStartedAtUnixMs ?? (source?.timerStartedAt ? new Date(source.timerStartedAt).getTime() : null),
+        pausedAtUnixMs:
+          source?.timerPausedAtUnixMs ?? (source?.timerPausedAt ? new Date(source.timerPausedAt).getTime() : null),
+        elapsedBeforePauseMs: source?.elapsedBeforePauseMs ?? 0,
+      },
+      periods: source?.periodTimers.map((timer) => ({ ...timer })) ?? [],
+      activePeriod: source?.scoreboard.activePeriod ?? null,
+    };
+  }
 }

@@ -8,7 +8,7 @@ import {
   normalizeSportsScoreRules,
 } from '../domain/sports-score-rules';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
-import { projectSportsMatch, SportsProjectedOutcome } from './sports-match-projector';
+import { projectSportsMatch, restoreSportsStopwatch, SportsProjectedOutcome } from './sports-match-projector';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
 
@@ -189,7 +189,13 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
     }
     if (type === SportsMatchActionType.SCORE_CORRECTION) {
       try {
-        normalizeSportsScoreboard(payload['scoreboard']);
+        const scoreboard = normalizeSportsScoreboard(payload['scoreboard']);
+        if (payload['stopwatch'] !== undefined) {
+          restoreSportsStopwatch(current, scoreboard, payload['stopwatch'], {
+            maximumPeriods: match.category.maximumPeriods,
+            periodLabel: match.category.periodLabel,
+          });
+        }
       } catch (error) {
         throw new BadRequestException(error instanceof Error ? error.message : 'Correção de placar inválida.');
       }

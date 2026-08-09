@@ -5,6 +5,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { NetworkStatusService } from '../../shared/network-status.service';
 import { SportsOperationsApiService } from './sports-operations-api.service';
+import { isSportsTimerAction } from './official-match-page.utils';
 import {
   QueuedSportsOperation,
   SportsMatchAction,
@@ -218,7 +219,7 @@ export class SportsOfflineQueueService implements OnDestroy {
                 candidate.userScope === userScope &&
                 candidate.action.matchId === matchId &&
                 candidate.timerSnapshot &&
-                this.isTimerAction(candidate.action.type),
+                this.isTimerAction(candidate.action),
             );
             const latest = timerItems.at(-1);
             if (latest?.kind === 'ACTION' && latest.timerSnapshot) {
@@ -316,9 +317,15 @@ export class SportsOfflineQueueService implements OnDestroy {
     return error instanceof Error && /partida mudou|expectedrevision|revis[aã]o|revision/i.test(error.message);
   }
 
-  private isTimerAction(type: SportsMatchAction['type']): boolean {
-    return (
-      type === 'START' || type === 'PAUSE' || type === 'RESUME' || type === 'PERIOD_ROLL' || type === 'TIMER_RECONCILE'
-    );
+  private isTimerAction(action: SportsMatchAction): boolean {
+    if (action.type !== 'SCORE_CORRECTION') {
+      return isSportsTimerAction(action.type);
+    }
+    try {
+      const payload: unknown = JSON.parse(action.payloadJson) as unknown;
+      return isSportsTimerAction(action.type, payload);
+    } catch {
+      return false;
+    }
   }
 }

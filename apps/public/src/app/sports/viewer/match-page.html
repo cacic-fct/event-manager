@@ -28,7 +28,7 @@
     <header>
       <mat-chip [class.live-chip]="isLive(match)">
         @if (isLive(match)) {
-        <span class="live-dot" aria-hidden="true"></span>
+        <lib-sports-live-dot />
         } {{ stateLabel(match) }}
       </mat-chip>
       <time [attr.datetime]="match.schedule.startDate">
@@ -45,11 +45,7 @@
 
     <div class="scoreboard" aria-label="Placar da partida">
       <article class="team home-team">
-        @if (match.homeTeam?.logoUrl) {
-        <img [src]="match.homeTeam.logoUrl" alt="" width="72" height="72" />
-        } @else {
-        <span class="team-placeholder" aria-hidden="true">{{ teamName(match, 'home').charAt(0) }}</span>
-        }
+        <lib-sports-team-logo [logoUrl]="match.homeTeam?.logoUrl" [size]="72" />
         <h1>{{ teamName(match, 'home') }}</h1>
         @if (match.homeTeam?.institution) {
         <p>{{ match.homeTeam.institution }}</p>
@@ -63,11 +59,7 @@
       </div>
 
       <article class="team away-team">
-        @if (match.awayTeam?.logoUrl) {
-        <img [src]="match.awayTeam.logoUrl" alt="" width="72" height="72" />
-        } @else {
-        <span class="team-placeholder" aria-hidden="true">{{ teamName(match, 'away').charAt(0) }}</span>
-        }
+        <lib-sports-team-logo [logoUrl]="match.awayTeam?.logoUrl" [size]="72" />
         <h1>{{ teamName(match, 'away') }}</h1>
         @if (match.awayTeam?.institution) {
         <p>{{ match.awayTeam.institution }}</p>
@@ -141,7 +133,9 @@
     <h2>Resultado</h2>
     <p>
       @if (match.winner) {
-      <strong>{{ match.winner.name }}</strong> venceu. } Motivo: {{ lossReasonLabel(match.lossReason) }}. @if
+      <span class="result-team"
+        ><lib-sports-team-logo [logoUrl]="match.winner.logoUrl" [size]="24" /><strong>{{ match.winner.name }}</strong></span
+      > venceu. } Motivo: {{ lossReasonLabel(match.lossReason) }}. @if
       (match.lossReasonDetail) { {{ match.lossReasonDetail }} }
     </p>
   </section>
@@ -165,10 +159,13 @@
   <section class="roster-section">
     <h2>Escalações</h2>
     @if (rosterIsPublic(match)) { @if (match.rosters.length) {
-    <div class="roster-grid">
+      <div class="roster-grid">
       @for (roster of match.rosters; track roster.team.id) {
       <article>
-        <h3>{{ roster.team.name }}</h3>
+        <h3 class="roster-team-heading">
+          <lib-sports-team-logo [logoUrl]="roster.team.logoUrl" [size]="32" />
+          <span>{{ roster.team.name }}</span>
+        </h3>
         <ul>
           @for (entry of roster.entries; track entry.name + entry.role) {
           <li>

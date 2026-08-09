@@ -56,7 +56,14 @@
     <div class="score-list">
       @for (entry of workspace.tournamentRead()?.scoreEntries ?? []; track entry.id) {
         <div>
-          <strong>{{ workspace.tournamentRead()?.teams?.find(team => team.id === entry.teamId)?.name }}</strong>
+          @if (workspace.tournamentRead()?.teams?.find(team => team.id === entry.teamId); as team) {
+            <span class="score-team">
+              <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="24" />
+              <strong>{{ team.name }}</strong>
+            </span>
+          } @else {
+            <strong>Equipe removida</strong>
+          }
           <span>{{ scoreSourceLabel(entry.source) }}: {{ entry.reason }}</span>
           <b [class.negative]="entry.points < 0">{{ entry.points > 0 ? '+' : '' }}{{ entry.points }}</b>
         </div>
@@ -69,7 +76,10 @@
         <mat-label>Equipe</mat-label>
         <mat-select formControlName="teamId">
           @for (team of workspace.tournamentRead()?.teams ?? []; track team.id) {
-            <mat-option [value]="team.id">{{ team.name }}</mat-option>
+            <mat-option [value]="team.id">
+              <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="20" />
+              {{ team.name }}
+            </mat-option>
           }
         </mat-select>
       </mat-form-field>

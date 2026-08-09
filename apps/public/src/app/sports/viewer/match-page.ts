@@ -6,6 +6,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { SportsLiveDotComponent, SportsTeamLogoComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute } from '@angular/router';
 import { Subject, Subscription, catchError, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
 import { SportsViewerApiService } from './sports-viewer-api.service';
@@ -25,7 +26,16 @@ import {
 
 @Component({
   selector: 'app-sports-match-page',
-  imports: [DatePipe, MatButtonModule, MatChipsModule, MatIconModule, MatProgressBarModule, MatToolbarModule],
+  imports: [
+    DatePipe,
+    MatButtonModule,
+    MatChipsModule,
+    MatIconModule,
+    MatProgressBarModule,
+    MatToolbarModule,
+    SportsLiveDotComponent,
+    SportsTeamLogoComponent,
+  ],
   templateUrl: './match-page.html',
   styleUrl: './match-page.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

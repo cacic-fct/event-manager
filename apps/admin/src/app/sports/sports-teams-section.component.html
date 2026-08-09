@@ -12,11 +12,7 @@
         <mat-list-item
           [class.selected-list-item]="workspace.selectedTeamId() === team.id"
           (click)="workspace.selectTeam(team)">
-          @if (team.logoUrl) {
-            <img matListItemAvatar [src]="team.logoUrl" [alt]="'Escudo de ' + team.name" />
-          } @else {
-            <mat-icon matListItemIcon>shield</mat-icon>
-          }
+          <lib-sports-team-logo matListItemAvatar [logoUrl]="team.logoUrl" [size]="40" />
           <span matListItemTitle>{{ team.name }}</span>
           <span matListItemLine>{{ workspace.statusLabel(team.status) }}</span>
           <span matListItemLine>
@@ -80,11 +76,7 @@
 
     @if (workspace.teamRead(); as read) {
       <div class="logo-control">
-        @if (read.team.logoUrl) {
-          <img [src]="read.team.logoUrl" [alt]="'Escudo de ' + read.team.name" />
-        } @else {
-          <mat-icon>shield</mat-icon>
-        }
+        <lib-sports-team-logo [logoUrl]="read.team.logoUrl" [size]="56" />
         <div>
           <strong>Escudo da equipe</strong>
           <span>AVIF, SVG, PNG, JPEG ou WebP, até 15 MB. O arquivo será convertido para AVIF.</span>

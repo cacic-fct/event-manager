@@ -9,9 +9,6 @@
         <p>Toque em uma partida para ver horário, local e detalhes.</p>
       </div>
     </div>
-    @if (currentMatchId()) {
-      <span class="current-key"><span aria-hidden="true"></span>Partida atual</span>
-    }
   </header>
 
   @if (orderedStandings().length > 0) {
@@ -34,12 +31,8 @@
               <td>{{ standing.rank ?? index + 1 }}</td>
               <th scope="row">
                 <span class="standing-team">
-                  @if (standing.team.logoUrl) {
-                    <img [src]="standing.team.logoUrl" alt="" width="28" height="28" />
-                  } @else {
-                    <mat-icon class="team-mark" aria-hidden="true">shield</mat-icon>
-                  }
-                  {{ standing.team.name }}
+                  <lib-sports-team-logo [logoUrl]="standing.team.logoUrl" [size]="28" />
+                  <span class="team-name">{{ standing.team.name }}</span>
                 </span>
               </th>
               <td>{{ standing.played }}</td>
@@ -69,41 +62,35 @@
           role="region"
           tabindex="0"
           [attr.aria-label]="stage.name + '. Role horizontalmente para acompanhar as rodadas.'">
-          <div class="round-track" [class.connected]="stage.elimination">
-            @for (round of stage.rounds; track round.number; let lastRound = $last) {
-              <section class="round-column" [class.last-round]="lastRound">
+          <div class="round-track" [attr.data-stage-id]="stage.id" [attr.data-stage-type]="stage.type">
+            @for (round of stage.rounds; track round.number) {
+              <section
+                class="round-column"
+                [attr.data-round-number]="round.number">
                 <h6>{{ round.label }}</h6>
                 <div class="round-matches">
-                  @for (match of round.matches; track match.id) {
-                    <div class="match-slot">
+                  @for (match of round.matches; track match.id; let matchIndex = $index) {
+                    <div
+                      class="match-slot"
+                      [attr.data-bracket-position]="match.bracketPosition ?? matchIndex + 1">
                       <button
                         type="button"
                         class="match-card"
-                        [class.current]="match.id === currentMatchId()"
                         [class.editing]="match.id === editingMatchId()"
                         [class.live]="match.state === 'LIVE'"
-                        [attr.aria-current]="match.id === currentMatchId() ? 'true' : null"
                         [attr.aria-label]="
                           teamName(match.homeTeam) + ' contra ' + teamName(match.awayTeam) + '. ' + stateLabel(match)
                         "
                         (click)="selectMatch(match.id)">
                         <span class="team-row">
-                          @if (match.homeTeam?.logoUrl) {
-                            <img [src]="match.homeTeam.logoUrl" alt="" width="28" height="28" />
-                          } @else {
-                            <mat-icon class="team-mark" aria-hidden="true">shield</mat-icon>
-                          }
+                          <lib-sports-team-logo [logoUrl]="match.homeTeam?.logoUrl" [size]="28" />
                           <span class="team-name">{{ teamName(match.homeTeam) }}</span>
                           @if (showScore(match)) {
                             <strong>{{ match.scoreboard.homeScore }}</strong>
                           }
                         </span>
                         <span class="team-row">
-                          @if (match.awayTeam?.logoUrl) {
-                            <img [src]="match.awayTeam.logoUrl" alt="" width="28" height="28" />
-                          } @else {
-                            <mat-icon class="team-mark" aria-hidden="true">shield</mat-icon>
-                          }
+                          <lib-sports-team-logo [logoUrl]="match.awayTeam?.logoUrl" [size]="28" />
                           <span class="team-name">{{ teamName(match.awayTeam) }}</span>
                           @if (showScore(match)) {
                             <strong>{{ match.scoreboard.awayScore }}</strong>
@@ -111,11 +98,11 @@
                         </span>
                         <span class="match-state">
                           @if (match.state === 'LIVE') {
-                            <span class="live-dot" aria-hidden="true"></span>
+                            <lib-sports-live-dot />
                           }
                           {{ stateLabel(match) }}
                           @if (match.groupKey) {
-                            <span>Grupo {{ match.groupKey }}</span>
+                            <span class="match-group">Grupo {{ match.groupKey }}</span>
                           }
                         </span>
                       </button>
@@ -123,6 +110,19 @@
                   }
                 </div>
               </section>
+            }
+            @if (stage.elimination && connectorLayout(stage.id).paths.length > 0) {
+              <svg
+                class="bracket-connectors"
+                aria-hidden="true"
+                preserveAspectRatio="none"
+                [attr.viewBox]="
+                  '0 0 ' + connectorLayout(stage.id).width + ' ' + connectorLayout(stage.id).height
+                ">
+                @for (connector of connectorLayout(stage.id).paths; track connector.id) {
+                  <path [attr.d]="connector.d" />
+                }
+              </svg>
             }
           </div>
         </div>

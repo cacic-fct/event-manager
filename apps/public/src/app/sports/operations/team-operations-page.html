@@ -1,5 +1,8 @@
 <header class="team-toolbar">
   <a mat-icon-button routerLink="/calendar" aria-label="Voltar"><mat-icon>arrow_back</mat-icon></a>
+  @if (workspace()?.team; as team) {
+  <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="36" />
+  }
   <div><strong>{{ workspace()?.team?.name || 'Equipe' }}</strong><span>Área de representantes e escalação</span></div>
 </header>
 
@@ -14,14 +17,6 @@
 </main>
 } @else if (workspace(); as currentWorkspace) {
 <main class="team-shell">
-  <section class="privacy-note">
-    <mat-icon>verified_user</mat-icon>
-    <div>
-      <strong>Proteção de dados</strong>
-      <p>As pessoas só serão vinculadas após aprovação administrativa da escalação.</p>
-    </div>
-  </section>
-
   <mat-tab-group animationDuration="180ms">
     <mat-tab label="Dados da equipe">
       <form [formGroup]="profileForm" class="form-panel" (ngSubmit)="saveProfile()">
@@ -38,19 +33,11 @@
         </button>
       </form>
       <section class="logo-panel" aria-labelledby="team-logo-title">
-        <div class="logo-preview">
-          @if (logoPreviewUrl(); as previewUrl) {
-          <img [src]="previewUrl" alt="Prévia do novo escudo" width="72" height="72" />
-          } @else if (currentWorkspace.team.logoUrl) {
-          <img [src]="currentWorkspace.team.logoUrl" alt="" width="72" height="72" />
-          } @else {
-          <mat-icon aria-hidden="true">shield</mat-icon>
-          }
-        </div>
+        <lib-sports-team-logo [logoUrl]="logoPreviewUrl() ?? currentWorkspace.team.logoUrl" [size]="72" />
         <div>
           <h2 id="team-logo-title">Escudo da equipe</h2>
           <p>
-            AVIF, SVG, PNG, JPEG ou WebP de até 15 MiB. A imagem será convertida para AVIF e ficará privada até a
+            AVIF, SVG, PNG, JPEG ou WebP de até 15 MB. A imagem será convertida para AVIF e ficará privada até a
             aprovação administrativa.
           </p>
           @if (logoFile(); as file) {
@@ -196,9 +183,8 @@
             <span><strong>{{ matchLabel(match) }}</strong><small>{{ matchStateLabel(match.state) }}</small></span>
             <div class="matchup-identity">
               <span class="matchup-logos" aria-hidden="true">
-                @if (match.homeTeam?.logoUrl; as homeLogo) { <img [src]="homeLogo" alt="" width="28" height="28" /> }
-                @else { <mat-icon>shield</mat-icon> } @if (match.awayTeam?.logoUrl; as awayLogo) {
-                <img [src]="awayLogo" alt="" width="28" height="28" /> } @else { <mat-icon>shield</mat-icon> }
+                <lib-sports-team-logo [logoUrl]="match.homeTeam?.logoUrl" [size]="28" />
+                <lib-sports-team-logo [logoUrl]="match.awayTeam?.logoUrl" [size]="28" />
               </span>
               <strong>{{ matchupLabel(match) }}</strong>
             </div>

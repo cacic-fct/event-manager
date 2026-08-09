@@ -136,11 +136,17 @@ function applyAction(
           periodNumber: readOptionalInteger(payload['periodNumber']),
         }),
       };
-    case SportsMatchActionType.SCORE_CORRECTION:
-      return {
-        ...current,
-        scoreboard: normalizeSportsScoreboard(payload['scoreboard']),
-      };
+    case SportsMatchActionType.SCORE_CORRECTION: {
+      const scoreboard = normalizeSportsScoreboard(payload['scoreboard']);
+      const stopwatch = payload['stopwatch'];
+      if (stopwatch === undefined) {
+        return {
+          ...current,
+          scoreboard,
+        };
+      }
+      return restoreSportsStopwatch(current, scoreboard, stopwatch, options);
+    }
     case SportsMatchActionType.PERIOD_ROLL: {
       assertState(current.state, [SportsMatchState.LIVE, SportsMatchState.PAUSED]);
       const nextPeriod = (current.scoreboard.activePeriodNumber ?? current.scoreboard.periods.length) + 1;
@@ -340,6 +346,41 @@ function applyTimerReconciliation(
         allowOvertime: timer['allowOvertime'] !== false,
       };
     }),
+  };
+}
+
+export function restoreSportsStopwatch(
+  current: SportsProjectedOutcome,
+  scoreboard: SportsScoreboard,
+  value: unknown,
+  options: { maximumPeriods: number | null; periodLabel: string | null },
+): SportsProjectedOutcome {
+  const stopwatch = requireRecord(value);
+  const state = stopwatch['state'];
+  if (state !== SportsMatchState.LIVE && state !== SportsMatchState.PAUSED) {
+    throw new TypeError('Stopwatch restoration state must be LIVE or PAUSED.');
+  }
+  const activePeriod = stopwatch['activePeriod'];
+  if (
+    activePeriod !== scoreboard.activePeriodNumber &&
+    !(activePeriod === null && scoreboard.activePeriodNumber === null)
+  ) {
+    throw new TypeError('Stopwatch restoration active period must match the corrected scoreboard.');
+  }
+  const restored = applyTimerReconciliation(
+    current,
+    {
+      resolution: 'DEVICE',
+      overall: stopwatch['overall'],
+      periods: stopwatch['periods'],
+      activePeriodNumber: scoreboard.activePeriodNumber,
+    },
+    options,
+  );
+  return {
+    ...restored,
+    state,
+    scoreboard,
   };
 }
 

@@ -52,7 +52,10 @@
         @if (currentData.tournament.selfSubscriptionAllowNoTeam) {
         <mat-option value="">Sem equipe específica</mat-option>
         } @for (team of currentData.tournament.teams; track team.id) {
-        <mat-option [value]="team.id">{{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}</mat-option>
+        <mat-option [value]="team.id">
+          <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="20" />
+          {{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}
+        </mat-option>
         }
       </mat-select>
     </mat-form-field>

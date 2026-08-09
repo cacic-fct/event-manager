@@ -138,7 +138,7 @@ export const QueuedTeamLogo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const file = new File(
-      ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28"/></svg>'],
+      ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path d="M32 5 52 12v18c0 13-8 24-20 29C20 54 12 43 12 30V12z"/></svg>'],
       'escudo.svg',
       { type: 'image/svg+xml' },
     );

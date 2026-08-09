@@ -121,9 +121,12 @@ describe('OfficialSportsMatchPage', () => {
 
     expect(component.match()?.scoreboard.periods).toHaveLength(2);
     expect(component.match()?.scoreboard.activePeriod).toBe(2);
+    expect(component.match()?.state).toBe('LIVE');
+    expect(component.match()?.periodTimers).toHaveLength(2);
+    expect(component.match()?.periodTimers.at(-1)?.periodNumber).toBe(2);
     expect(actions.map((action) => action.type)).toEqual(['PERIOD_ROLL', 'SCORE_CORRECTION']);
     expect(JSON.parse(actions[1]?.payloadJson ?? '{}')).toEqual({
-      scoreboard: {
+      scoreboard: expect.objectContaining({
         home: 2,
         away: 1,
         activePeriodNumber: 2,
@@ -143,8 +146,26 @@ describe('OfficialSportsMatchPage', () => {
             closed: false,
           },
         ],
-      },
+      }),
+      stopwatch: expect.objectContaining({ state: 'LIVE', activePeriod: 2 }),
     });
+  });
+
+  it('restores a paused stopwatch when undoing a newly created period', async () => {
+    const pausedMatch = createSportsOperationalMatch('PAUSED');
+    component.match.set(pausedMatch);
+    component.revision.set(pausedMatch.revision);
+
+    await component.rollPeriod();
+    await component.undoPeriod();
+
+    expect(component.match()?.state).toBe('PAUSED');
+    expect(component.match()?.timerStartedAtUnixMs).toBeNull();
+    expect(component.match()?.elapsedBeforePauseMs).toBe(pausedMatch.elapsedBeforePauseMs);
+    expect(component.match()?.periodTimers).toEqual(pausedMatch.periodTimers);
+    expect(JSON.parse(actions[1]?.payloadJson ?? '{}').stopwatch).toEqual(
+      expect.objectContaining({ state: 'PAUSED', activePeriod: 2 }),
+    );
   });
 
   it('does not offer undo when the active period already contains a score', () => {

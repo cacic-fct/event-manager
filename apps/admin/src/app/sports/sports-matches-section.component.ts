@@ -10,7 +10,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { SportsBracketComponent, SportsMatchOverlayBuilderComponent } from '@cacic-fct/shared-angular';
+import {
+  SportsBracketComponent,
+  SportsMatchOverlayBuilderComponent,
+  SportsTeamLogoComponent,
+} from '@cacic-fct/shared-angular';
 import { SportsWorkspaceSection } from './sports-workspace-section.base';
 
 @Component({
@@ -30,6 +34,7 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
     MatTooltipModule,
     SportsBracketComponent,
     SportsMatchOverlayBuilderComponent,
+    SportsTeamLogoComponent,
   ],
   templateUrl: './sports-matches-section.component.html',
 })

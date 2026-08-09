@@ -94,7 +94,6 @@ export interface SportsBracketFixture {
   emoji: string;
   stages: readonly SportsBracketStageView[];
   standings: readonly SportsBracketStandingView[];
-  currentMatchId?: string | null;
   editingMatchId?: string | null;
 }
 
@@ -112,7 +111,6 @@ export const SPORTS_BRACKET_FIXTURES: Readonly<Record<SportsBracketFormat, Sport
       },
     ],
     standings: [],
-    currentMatchId: 'single-r2-1',
     editingMatchId: 'single-r2-2',
   },
   ROUND_ROBIN: {
@@ -144,7 +142,6 @@ export const SPORTS_BRACKET_FIXTURES: Readonly<Record<SportsBracketFormat, Sport
       },
     ],
     standings: SPORTS_BRACKET_STANDINGS,
-    currentMatchId: 'league-9',
     editingMatchId: 'league-10',
   },
   GROUP_STAGE_ELIMINATION: {
@@ -180,7 +177,6 @@ export const SPORTS_BRACKET_FIXTURES: Readonly<Record<SportsBracketFormat, Sport
       },
     ],
     standings: SPORTS_BRACKET_STANDINGS,
-    currentMatchId: 'group-3',
   },
   DOUBLE_ELIMINATION: {
     format: 'DOUBLE_ELIMINATION',
@@ -213,7 +209,6 @@ export const SPORTS_BRACKET_FIXTURES: Readonly<Record<SportsBracketFormat, Sport
       },
     ],
     standings: [],
-    currentMatchId: 'winner-r2-1',
     editingMatchId: 'loser-3',
   },
   SWISS: {
@@ -240,7 +235,6 @@ export const SPORTS_BRACKET_FIXTURES: Readonly<Record<SportsBracketFormat, Sport
       },
     ],
     standings: SPORTS_BRACKET_STANDINGS,
-    currentMatchId: 'swiss-11',
     editingMatchId: 'swiss-12',
   },
   CUSTOM: {

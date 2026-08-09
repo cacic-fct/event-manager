@@ -49,22 +49,6 @@ p {
   margin-top: 3px;
 }
 
-.current-key {
-  align-items: center;
-  color: var(--mat-sys-primary);
-  display: inline-flex;
-  flex: 0 0 auto;
-  font: var(--mat-sys-label-medium);
-  gap: 7px;
-}
-
-.current-key > span {
-  background: var(--mat-sys-primary);
-  border-radius: 50%;
-  height: 8px;
-  width: 8px;
-}
-
 .standings-region {
   margin-top: 18px;
   overflow-x: auto;
@@ -105,25 +89,6 @@ tbody th {
   max-width: 280px;
 }
 
-.standing-team img,
-.team-row img {
-  border-radius: 50%;
-  flex: 0 0 auto;
-  height: 28px;
-  object-fit: contain;
-  width: 28px;
-}
-
-.team-mark {
-  color: var(--mat-sys-outline);
-  flex: 0 0 auto;
-  font-size: 22px;
-  height: 28px;
-  line-height: 28px;
-  text-align: center;
-  width: 28px;
-}
-
 .stage {
   margin-top: 28px;
 }
@@ -160,13 +125,16 @@ tbody th {
   grid-auto-columns: minmax(230px, 260px);
   grid-auto-flow: column;
   min-width: max-content;
+  position: relative;
 }
 
 .round-column {
   display: grid;
   grid-template-rows: auto 1fr;
   min-width: 0;
+  position: relative;
   scroll-snap-align: start;
+  z-index: 1;
 }
 
 .round-column h6 {
@@ -185,24 +153,24 @@ tbody th {
   position: relative;
 }
 
-.connected .round-column:not(.last-round) .match-slot::after {
-  background: var(--mat-sys-outline-variant);
-  content: '';
-  height: 1px;
-  left: 100%;
+.bracket-connectors {
+  height: 100%;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
   position: absolute;
-  top: 50%;
-  width: 34px;
+  width: 100%;
+  z-index: 0;
 }
 
-.connected .round-column:not(:first-child) .match-slot::before {
-  background: var(--mat-sys-outline-variant);
-  content: '';
-  height: 1px;
-  position: absolute;
-  right: 100%;
-  top: 50%;
-  width: 34px;
+.bracket-connectors path {
+  fill: none;
+  stroke: var(--mat-sys-outline);
+  stroke-linecap: square;
+  stroke-linejoin: round;
+  stroke-opacity: 0.62;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
 }
 
 .match-card {
@@ -230,12 +198,6 @@ tbody th {
   outline-offset: 2px;
 }
 
-.match-card.current {
-  box-shadow:
-    0 0 0 2px var(--mat-sys-primary),
-    0 6px 18px color-mix(in srgb, var(--mat-sys-shadow) 16%, transparent);
-}
-
 .match-card.editing {
   background: var(--mat-sys-tertiary-container);
   color: var(--mat-sys-on-tertiary-container);
@@ -256,9 +218,9 @@ tbody th {
 
 .team-name {
   font: var(--mat-sys-body-medium);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .team-row strong {
@@ -276,21 +238,12 @@ tbody th {
   padding: 5px 4px 1px;
 }
 
-.match-state > span:last-child {
+.match-group {
   margin-left: auto;
 }
 
 .live .match-state {
   color: var(--mat-sys-error);
-}
-
-.live-dot {
-  animation: bracket-live-breathe 1.8s ease-in-out infinite;
-  background: #d32f2f;
-  border-radius: 50%;
-  height: 7px;
-  transform-origin: center;
-  width: 7px;
 }
 
 .stage-empty {
@@ -324,19 +277,6 @@ tbody th {
   max-width: 52ch;
 }
 
-@keyframes bracket-live-breathe {
-  0%,
-  100% {
-    opacity: 0.58;
-    transform: scale(0.86);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.18);
-  }
-}
-
 @media (max-width: 620px) {
   .competition-heading {
     align-items: start;
@@ -348,11 +288,6 @@ tbody th {
     grid-auto-columns: minmax(214px, 84vw);
   }
 
-  .connected .round-column:not(.last-round) .match-slot::after,
-  .connected .round-column:not(:first-child) .match-slot::before {
-    width: 26px;
-  }
-
   .stage-heading {
     align-items: start;
     display: grid;
@@ -361,10 +296,6 @@ tbody th {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .live-dot {
-    animation: none;
-  }
-
   .match-card {
     transition: none;
   }

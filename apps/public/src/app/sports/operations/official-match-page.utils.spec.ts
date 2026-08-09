@@ -1,9 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { formatSportsElapsed, parseMatchOccurrences, sortCheckInEntries } from './official-match-page.utils';
+import {
+  formatSportsElapsed,
+  isSportsTimerAction,
+  parseMatchOccurrences,
+  sortCheckInEntries,
+} from './official-match-page.utils';
 
 describe('official match page utilities', () => {
   it('formats elapsed durations for the operations clock', () => {
     expect(formatSportsElapsed(3_723_000)).toBe('01:02:03');
+  });
+
+  it('recognizes stopwatch-restoring score corrections as timer actions', () => {
+    expect(isSportsTimerAction('SCORE_CORRECTION', { stopwatch: {} })).toBe(true);
+    expect(isSportsTimerAction('SCORE_CORRECTION', { scoreboard: {} })).toBe(false);
   });
 
   it('keeps only valid match occurrences', () => {

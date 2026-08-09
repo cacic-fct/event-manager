@@ -2,9 +2,9 @@ import { firstValueFrom } from 'rxjs';
 import type {
   SportsMatchAction,
   SportsMatchActionType,
-  SportsOperationalMatch,
   SportsScoreboard,
   SportsTimerConflict,
+  SportsTimerRestoration,
   SportsTimerSnapshot,
 } from './sports-operations.types';
 import { SportsTimerConflictDialog } from './sports-timer-conflict-dialog';
@@ -18,10 +18,10 @@ import {
 import { OfficialMatchPageControls } from './official-match-page-controls.base';
 
 export abstract class OfficialMatchPageOperations extends OfficialMatchPageControls {
-  protected async dispatch(type: SportsMatchActionType, payload: Record<string, unknown>): Promise<void> {
+  protected async dispatch(type: SportsMatchActionType, payload: Record<string, unknown>): Promise<boolean> {
     const match = this.match();
     if (!match || this.busy()) {
-      return;
+      return false;
     }
     this.busy.set(true);
     const action: SportsMatchAction = {
@@ -37,7 +37,7 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
       const result = await this.offline.dispatch(action);
       this.revision.update((revision) => revision + 1);
       this.applyOptimistic(type, payload, action.authoredAt);
-      if (result === 'queued' && isSportsTimerAction(type)) {
+      if (result === 'queued' && isSportsTimerAction(type, payload)) {
         this.offline.attachTimerSnapshot(action.clientId, this.timerSnapshot());
       }
       const message =
@@ -47,8 +47,10 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
       if (message) {
         this.snackbar.open(message, 'Fechar', { duration: 3500 });
       }
+      return true;
     } catch (error: unknown) {
       this.showError(error);
+      return false;
     } finally {
       this.busy.set(false);
     }
@@ -226,8 +228,26 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
         if (!this.isScoreboardPayload(scoreboard)) {
           return match;
         }
+        const stopwatch = this.isTimerRestoration(payload['stopwatch']) ? payload['stopwatch'] : null;
         return {
           ...match,
+          ...(stopwatch
+            ? {
+                state: stopwatch.state,
+                timerStartedAt:
+                  stopwatch.overall.startedAtUnixMs == null
+                    ? null
+                    : new Date(stopwatch.overall.startedAtUnixMs).toISOString(),
+                timerStartedAtUnixMs: stopwatch.overall.startedAtUnixMs,
+                timerPausedAt:
+                  stopwatch.overall.pausedAtUnixMs == null
+                    ? null
+                    : new Date(stopwatch.overall.pausedAtUnixMs).toISOString(),
+                timerPausedAtUnixMs: stopwatch.overall.pausedAtUnixMs,
+                elapsedBeforePauseMs: stopwatch.overall.elapsedBeforePauseMs,
+                periodTimers: stopwatch.periods.map((timer) => ({ ...timer })),
+              }
+            : {}),
           scoreboard: {
             homeScore: scoreboard.home,
             awayScore: scoreboard.away,
@@ -326,20 +346,6 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
     }
   }
 
-  private timerSnapshot(source: SportsOperationalMatch | null = this.match()): SportsTimerSnapshot {
-    return {
-      overall: {
-        startedAtUnixMs:
-          source?.timerStartedAtUnixMs ?? (source?.timerStartedAt ? new Date(source.timerStartedAt).getTime() : null),
-        pausedAtUnixMs:
-          source?.timerPausedAtUnixMs ?? (source?.timerPausedAt ? new Date(source.timerPausedAt).getTime() : null),
-        elapsedBeforePauseMs: source?.elapsedBeforePauseMs ?? 0,
-      },
-      periods: source?.periodTimers.map((timer) => ({ ...timer })) ?? [],
-      activePeriod: source?.scoreboard.activePeriod ?? null,
-    };
-  }
-
   protected parseOccurrences(value: string | null | undefined): MatchOccurrence[] {
     return parseMatchOccurrences(value);
   }
@@ -405,6 +411,22 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
       typeof scoreboard['home'] === 'number' &&
       typeof scoreboard['away'] === 'number' &&
       Array.isArray(scoreboard['periods'])
+    );
+  }
+
+  private isTimerRestoration(value: unknown): value is SportsTimerRestoration {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return false;
+    }
+    const restoration = value as Record<string, unknown>;
+    const overall = restoration['overall'];
+    return (
+      (restoration['state'] === 'LIVE' || restoration['state'] === 'PAUSED') &&
+      overall !== null &&
+      typeof overall === 'object' &&
+      !Array.isArray(overall) &&
+      Array.isArray(restoration['periods']) &&
+      (restoration['activePeriod'] === null || Number.isSafeInteger(restoration['activePeriod']))
     );
   }
 

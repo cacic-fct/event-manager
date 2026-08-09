@@ -24,10 +24,19 @@ export function formatSportsElapsed(value: number): string {
   return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':');
 }
 
-export function isSportsTimerAction(type: SportsMatchActionType): boolean {
+export function isSportsTimerAction(type: SportsMatchActionType, payload?: unknown): boolean {
   return (
-    type === 'START' || type === 'PAUSE' || type === 'RESUME' || type === 'PERIOD_ROLL' || type === 'TIMER_RECONCILE'
+    type === 'START' ||
+    type === 'PAUSE' ||
+    type === 'RESUME' ||
+    type === 'PERIOD_ROLL' ||
+    type === 'TIMER_RECONCILE' ||
+    (type === 'SCORE_CORRECTION' && hasStopwatchRestoration(payload))
   );
+}
+
+function hasStopwatchRestoration(value: unknown): boolean {
+  return value !== null && typeof value === 'object' && !Array.isArray(value) && 'stopwatch' in value;
 }
 
 export function parseMatchOccurrences(value: string | null | undefined): MatchOccurrence[] {

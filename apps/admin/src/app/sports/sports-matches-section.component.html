@@ -28,7 +28,6 @@
         [format]="read.category.format"
         [stages]="bracketStages()"
         [standings]="bracketStandings()"
-        [currentMatchId]="currentLiveMatchId()"
         [editingMatchId]="workspace.selectedMatchId() || null"
         (matchSelected)="selectBracketMatch(read, $event)" />
       <mat-list class="result-list">
@@ -36,18 +35,21 @@
           <mat-list-item
             [class.selected-list-item]="workspace.selectedMatchId() === match.id"
             (click)="workspace.selectMatch(match)">
-            @if (teamLogoForRegistration(match.homeRegistrationId); as logoUrl) {
-              <img
-                matListItemAvatar
-                [src]="logoUrl"
-                [alt]="'Escudo de ' + workspace.teamNameForRegistration(match.homeRegistrationId)" />
-            } @else {
-              <mat-icon matListItemIcon>sports</mat-icon>
-            }
-            <span matListItemTitle
-              >{{ workspace.teamNameForRegistration(match.homeRegistrationId) }} ×
-              {{ workspace.teamNameForRegistration(match.awayRegistrationId) }}</span
-            >
+            <lib-sports-team-logo
+              matListItemAvatar
+              [logoUrl]="teamLogoForRegistration(match.homeRegistrationId)"
+              [size]="32" />
+            <span matListItemTitle class="matchup-list-title">
+              <span>
+                <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(match.homeRegistrationId)" [size]="20" />
+                {{ workspace.teamNameForRegistration(match.homeRegistrationId) }}
+              </span>
+              <span aria-hidden="true">×</span>
+              <span>
+                <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(match.awayRegistrationId)" [size]="20" />
+                {{ workspace.teamNameForRegistration(match.awayRegistrationId) }}
+              </span>
+            </span>
             <span matListItemLine
               >Rodada {{ match.roundNumber || 'não definida' }} · {{ workspace.matchStatusLabel(match.state) }}</span
             >
@@ -106,7 +108,10 @@
         ><mat-select formControlName="homeRegistrationId">
           <mat-option value="">Bye / a definir</mat-option>
           @for (registration of workspace.categoryRead()?.registrations ?? []; track registration.id) {
-            <mat-option [value]="registration.id">{{ workspace.teamNameForRegistration(registration.id) }}</mat-option>
+            <mat-option [value]="registration.id">
+              <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(registration.id)" [size]="20" />
+              {{ workspace.teamNameForRegistration(registration.id) }}
+            </mat-option>
           }
         </mat-select></mat-form-field
       >
@@ -115,7 +120,10 @@
         ><mat-select formControlName="awayRegistrationId">
           <mat-option value="">Bye / a definir</mat-option>
           @for (registration of workspace.categoryRead()?.registrations ?? []; track registration.id) {
-            <mat-option [value]="registration.id">{{ workspace.teamNameForRegistration(registration.id) }}</mat-option>
+            <mat-option [value]="registration.id">
+              <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(registration.id)" [size]="20" />
+              {{ workspace.teamNameForRegistration(registration.id) }}
+            </mat-option>
           }
         </mat-select></mat-form-field
       >
@@ -202,11 +210,7 @@
           @if (registrationId && workspace.registrationReads()[registrationId]; as registration) {
             <section>
               <h5 class="team-heading">
-                @if (teamLogoForRegistration(registrationId); as logoUrl) {
-                  <img [src]="logoUrl" [alt]="'Escudo de ' + workspace.teamNameForRegistration(registrationId)" />
-                } @else {
-                  <mat-icon aria-hidden="true">shield</mat-icon>
-                }
+                <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(registrationId)" [size]="32" />
                 {{ workspace.teamNameForRegistration(registrationId) }}
               </h5>
               @for (member of registration.members; track member.id) {

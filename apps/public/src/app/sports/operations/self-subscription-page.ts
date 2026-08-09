@@ -7,7 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { TwemojiComponent } from '@cacic-fct/shared-angular';
+import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
@@ -25,6 +25,7 @@ import { CurrentUserTournamentOperations } from './sports-operations.types';
     ReactiveFormsModule,
     RouterLink,
     CurrencyPipe,
+    SportsTeamLogoComponent,
     TwemojiComponent,
   ],
   templateUrl: './self-subscription-page.html',

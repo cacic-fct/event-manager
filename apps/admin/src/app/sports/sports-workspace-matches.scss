@@ -3,6 +3,20 @@
   gap: 0.75rem;
 }
 
+.matchup-list-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.matchup-list-title > span {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
 .safety-note {
   align-items: start;
   background: var(--mat-sys-tertiary-container);

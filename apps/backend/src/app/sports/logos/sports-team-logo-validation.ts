@@ -27,7 +27,7 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
     throw new BadRequestException('O arquivo de logo da equipe é obrigatório.');
   }
   if (file.size !== file.buffer.length || file.buffer.length > MAX_SIZE_BYTES) {
-    throw new BadRequestException('O logo da equipe deve ter no máximo 15 MiB.');
+    throw new BadRequestException('O logo da equipe deve ter no máximo 15 MB.');
   }
 
   let metadata;

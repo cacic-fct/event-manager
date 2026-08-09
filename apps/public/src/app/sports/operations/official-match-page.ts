@@ -15,7 +15,11 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatStepperModule } from '@angular/material/stepper';
 import { RouterLink } from '@angular/router';
-import { SportsMatchOverlayBuilderComponent } from '@cacic-fct/shared-angular';
+import {
+  SportsLiveDotComponent,
+  SportsMatchOverlayBuilderComponent,
+  SportsTeamLogoComponent,
+} from '@cacic-fct/shared-angular';
 import { OfficialMatchPageOperations } from './official-match-page-operations.base';
 
 @Component({
@@ -37,7 +41,9 @@ import { OfficialMatchPageOperations } from './official-match-page-operations.ba
     MatStepperModule,
     ReactiveFormsModule,
     RouterLink,
+    SportsLiveDotComponent,
     SportsMatchOverlayBuilderComponent,
+    SportsTeamLogoComponent,
   ],
   templateUrl: './official-match-page.html',
   styleUrls: ['./official-match-scoreboard.css', './official-match-workflows.css'],

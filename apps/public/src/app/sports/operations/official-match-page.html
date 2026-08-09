@@ -26,11 +26,7 @@
 <main class="operation-shell">
   <section class="scoreboard" aria-label="Placar da partida">
     <div class="team">
-      @if (teamLogo(displaySide('left')); as logoUrl) {
-      <img class="team-logo" [src]="logoUrl" alt="" width="52" height="52" />
-      } @else {
-      <span class="team-logo-placeholder" aria-hidden="true"><mat-icon>shield</mat-icon></span>
-      }
+      <lib-sports-team-logo [logoUrl]="teamLogo(displaySide('left'))" [size]="52" />
       <h1>{{ teamName(displaySide('left')) }}</h1>
       <div class="score-controls">
         <button
@@ -56,7 +52,7 @@
     <div class="match-clock">
       <span class="state" [class.live]="currentMatch.state === 'LIVE'">
         @if (currentMatch.state === 'LIVE') {
-        <span class="live-dot" aria-hidden="true"></span>
+        <lib-sports-live-dot />
         } {{ stateLabel(currentMatch.state) }}
       </span>
       @if (currentMatch.overallTimerEnabled) {
@@ -79,11 +75,7 @@
     </div>
 
     <div class="team">
-      @if (teamLogo(displaySide('right')); as logoUrl) {
-      <img class="team-logo" [src]="logoUrl" alt="" width="52" height="52" />
-      } @else {
-      <span class="team-logo-placeholder" aria-hidden="true"><mat-icon>shield</mat-icon></span>
-      }
+      <lib-sports-team-logo [logoUrl]="teamLogo(displaySide('right'))" [size]="52" />
       <h1>{{ teamName(displaySide('right')) }}</h1>
       <div class="score-controls">
         <button
@@ -245,11 +237,7 @@
     <div class="check-in-grid">
       <section class="check-in-team" [attr.aria-label]="'Atletas de ' + teamName('home')">
         <h3>
-          @if (teamLogo('home'); as logoUrl) {
-          <img [src]="logoUrl" alt="" width="32" height="32" />
-          } @else {
-          <mat-icon aria-hidden="true">shield</mat-icon>
-          }
+          <lib-sports-team-logo [logoUrl]="teamLogo('home')" [size]="32" />
           <span>{{ teamName('home') }}</span>
         </h3>
         @for (entry of homeCheckInEntries(); track entry.id) {
@@ -269,11 +257,7 @@
       </section>
       <section class="check-in-team" [attr.aria-label]="'Atletas de ' + teamName('away')">
         <h3>
-          @if (teamLogo('away'); as logoUrl) {
-          <img [src]="logoUrl" alt="" width="32" height="32" />
-          } @else {
-          <mat-icon aria-hidden="true">shield</mat-icon>
-          }
+          <lib-sports-team-logo [logoUrl]="teamLogo('away')" [size]="32" />
           <span>{{ teamName('away') }}</span>
         </h3>
         @for (entry of awayCheckInEntries(); track entry.id) {
