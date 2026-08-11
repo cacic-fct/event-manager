@@ -329,13 +329,9 @@
       <mat-form-field>
         <mat-label>Preset de tempo</mat-label>
         <mat-select formControlName="timerPreset" (selectionChange)="workspace.applyTimerPreset($event.value)">
-          <mat-option value="SOCCER">Futebol - 2 tempos de 45 min</mat-option>
-          <mat-option value="FUTSAL">Futsal - 2 tempos de 20 min</mat-option>
-          <mat-option value="BASKETBALL">Basquete - 4 períodos de 10 min</mat-option>
-          <mat-option value="VOLLEYBALL">Vôlei - sets sem duração fixa</mat-option>
-          <mat-option value="TENNIS">Tênis - sets sem duração fixa</mat-option>
-          <mat-option value="CHESS">Xadrez - somente tempo geral</mat-option>
-          <mat-option value="ESPORTS">E-sports - rodadas sem duração fixa</mat-option>
+          @for (preset of timerPresets; track preset.key) {
+            <mat-option [value]="preset.key">{{ preset.label }}</mat-option>
+          }
           <mat-option value="CUSTOM">Configuração manual</mat-option>
         </mat-select>
       </mat-form-field>

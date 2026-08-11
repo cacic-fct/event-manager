@@ -9,6 +9,7 @@ export * from './lib/aztec-scanner/aztec-scanner-dialog.component';
 export * from './lib/aztec-scanner/scanner-feedback.service';
 export * from './lib/aztec-scanner/scanner-sounds.service';
 export * from './lib/calendar-feed-reenable-dialog.component';
+export * from './lib/confirmation-dialog.component';
 export * from './lib/duplicate-person-warning-dialog.component';
 export * from './lib/event-forms/event-form-builder.component';
 export * from './lib/event-forms/event-form-renderer.component';

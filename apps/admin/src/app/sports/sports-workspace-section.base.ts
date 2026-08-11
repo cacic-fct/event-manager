@@ -4,6 +4,15 @@ import type {
   SportsBracketStandingView,
   SportsBracketTeamView,
 } from '@cacic-fct/shared-angular';
+import {
+  getDefaultSportsEmoji,
+  SPORTS_MATCH_STATE_LABELS,
+  SPORTS_PRESET_KEYS,
+  SPORTS_PRESETS,
+  SPORTS_ROSTER_ROLE_LABELS,
+  SPORTS_TIMER_PRESET_KEYS,
+  SPORTS_TIMER_PRESETS,
+} from '@cacic-fct/shared-data-types/sports-metadata';
 import { SPORTS_FORMAT_OPTIONS } from './sports-format-guide.component';
 import type { SportsCategoryRead } from './sports.models';
 import { SportsWorkspaceService } from './sports-workspace.service';
@@ -36,30 +45,10 @@ export abstract class SportsWorkspaceSection {
     ['SUSPENDED', 'Suspensa'],
     ['WITHDRAWN', 'Desistiu'],
   ] as const;
-  protected readonly sports = [
-    ['SOCCER', 'Futebol'],
-    ['FUTSAL', 'Futsal'],
-    ['TENNIS', 'Tênis'],
-    ['BASKETBALL', 'Basquete'],
-    ['ESPORTS', 'E-sports'],
-    ['CHESS', 'Xadrez'],
-    ['VOLLEYBALL', 'Vôlei'],
-    ['SWIMMING', 'Natação'],
-    ['TABLE_TENNIS', 'Tênis de mesa'],
-    ['HANDBALL', 'Handebol'],
-    ['OTHER', 'Outro'],
-  ] as const;
+  protected readonly sports = SPORTS_PRESET_KEYS.map((key) => [key, SPORTS_PRESETS[key].label] as const);
   protected readonly formats = SPORTS_FORMAT_OPTIONS;
-  protected readonly matchStates = [
-    ['SCHEDULED', 'Agendada'],
-    ['CHECK_IN', 'Credenciamento'],
-    ['LIVE', 'Ao vivo'],
-    ['PAUSED', 'Pausada'],
-    ['AWAITING_REVIEW', 'Em revisão'],
-    ['CANCELED', 'Cancelada'],
-    ['DRAW', 'Empate'],
-    ['FINISHED', 'Finalizada'],
-  ] as const;
+  protected readonly timerPresets = SPORTS_TIMER_PRESET_KEYS.map((key) => SPORTS_TIMER_PRESETS[key]);
+  protected readonly matchStates = Object.entries(SPORTS_MATCH_STATE_LABELS);
 
   protected readonly bracketStages = computed<SportsBracketStageView[]>(() => {
     const read = this.workspace.categoryRead();
@@ -105,21 +94,7 @@ export abstract class SportsWorkspaceSection {
   }
 
   protected sportEmoji(value: string): string {
-    return (
-      {
-        SOCCER: '⚽',
-        FUTSAL: '⚽',
-        TENNIS: '🎾',
-        BASKETBALL: '🏀',
-        ESPORTS: '🎮',
-        CHESS: '♟️',
-        VOLLEYBALL: '🏐',
-        SWIMMING: '🏊',
-        TABLE_TENNIS: '🏓',
-        HANDBALL: '🤾',
-        OTHER: '🏅',
-      }[value] ?? '🏅'
-    );
+    return getDefaultSportsEmoji(value);
   }
 
   protected updateNewCategoryEmoji(sport: string): void {
@@ -141,7 +116,8 @@ export abstract class SportsWorkspaceSection {
   }
 
   protected lineupRoleLabel(role: string): string {
-    return { PLAYER: 'Atleta', CAPTAIN: 'Capitão', COACH: 'Técnico', STAFF: 'Apoio' }[role] ?? 'Integrante';
+    return SPORTS_ROSTER_ROLE_LABELS[role as keyof typeof SPORTS_ROSTER_ROLE_LABELS] ??
+      (role === 'STAFF' ? 'Apoio' : 'Integrante');
   }
 
   protected selectCategoryById(categoryId: string): void {
@@ -155,7 +131,13 @@ export abstract class SportsWorkspaceSection {
   }
 
   protected officialRoleLabel(role: string): string {
-    return { REFEREE: 'Árbitro', INTERMEDIATOR: 'Intermediador', SCOREKEEPER: 'Mesário' }[role] ?? 'Função esportiva';
+    return (
+      {
+        REFEREE: 'Árbitro',
+        INTERMEDIATOR: 'Intermediador',
+        SCOREKEEPER: 'Mesário',
+      }[role] ?? 'Função esportiva'
+    );
   }
 
   protected changeTypeLabel(type: string): string {

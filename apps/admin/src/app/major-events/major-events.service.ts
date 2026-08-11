@@ -685,6 +685,14 @@ export class MajorEventsService {
             description: 'Copia cobrança, dados bancários, Pix, informações adicionais e preços.',
             defaultSelected: true,
           },
+          {
+            key: 'sportsTournament',
+            label: 'Torneio esportivo',
+            description: '',
+            disabled: true,
+            disabledReason:
+              'Não é copiado por este fluxo. Depois, use "Duplicar torneio" na gestão esportiva e escolha o novo grande evento como destino.',
+          },
         ],
       },
     });

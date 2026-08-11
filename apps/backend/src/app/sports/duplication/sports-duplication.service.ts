@@ -12,23 +12,18 @@ import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { SportsPaymentService } from '../sports-payment.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { sportsDuplicationEmoji } from './sports-duplication.utils';
 import { SportsTeamDuplicationService } from './sports-team-duplication.service';
 
 @Injectable()
 export class SportsDuplicationService {
-  private readonly teamDuplicator: SportsTeamDuplicationService;
-
   constructor(
     private readonly prisma: PrismaService,
-    private readonly payments: SportsPaymentService,
     private readonly auditLog: AuditLogService,
     private readonly frozen: FrozenResourceService,
-  ) {
-    this.teamDuplicator = new SportsTeamDuplicationService(prisma, payments, auditLog, frozen);
-  }
+    private readonly teamDuplicator: SportsTeamDuplicationService,
+  ) {}
 
   async cloneTournament(
     input: {

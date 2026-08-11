@@ -1,6 +1,15 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
+const workspaceRoot = fileURLToPath(new URL('../..', import.meta.url));
+
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@cacic-fct/shared-data-types/sports-metadata':
+        `${workspaceRoot}/libs/shared-data-types/src/lib/sports-metadata.ts`,
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

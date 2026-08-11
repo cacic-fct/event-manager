@@ -113,6 +113,8 @@ describe('SportsOperationsApiService', () => {
       rosterEntryId: 'entry-1',
       checkedInAt: '2026-08-01T12:03:00.000Z',
       offline: true,
+      collectorPersonId: 'person-collector',
+      collectorCredential: 'signed-proof',
     };
 
     const result = firstValueFrom(api.checkIn(input));
@@ -124,9 +126,70 @@ describe('SportsOperationsApiService', () => {
         rosterEntryId: 'entry-1',
         checkedInAt: '2026-08-01T12:03:00.000Z',
         offline: true,
+        collectorPersonId: 'person-collector',
+        collectorCredential: 'signed-proof',
       },
     });
     request.flush({ data: { checkInSportsRosterEntry: true } });
+
+    await expect(result).resolves.toBe(true);
+    http.verify();
+  });
+
+  it('obtains the durable collector proof for a match before offline collection', async () => {
+    const api = TestBed.inject(SportsOperationsApiService);
+    const http = TestBed.inject(HttpTestingController);
+
+    const result = firstValueFrom(api.createOfflineCollectorCredential('match-1'));
+    const request = http.expectOne('/api/graphql');
+    expect(request.request.body.query).toContain('createSportsOfflineCollectorCredential');
+    expect(request.request.body.variables).toEqual({ matchId: 'match-1' });
+    request.flush({
+      data: {
+        createSportsOfflineCollectorCredential: {
+          credential: 'signed-proof',
+          collectorPersonId: 'person-collector',
+          issuedAt: '2026-08-01T11:00:00.000Z',
+        },
+      },
+    });
+
+    await expect(result).resolves.toEqual({
+      credential: 'signed-proof',
+      collectorPersonId: 'person-collector',
+      issuedAt: '2026-08-01T11:00:00.000Z',
+    });
+    http.verify();
+  });
+
+  it('sends collector proof with an offline scanner replay', async () => {
+    const api = TestBed.inject(SportsOperationsApiService);
+    const http = TestBed.inject(HttpTestingController);
+
+    const result = firstValueFrom(
+      api.checkInFromScanner({
+        clientId: 'scanner-1',
+        matchId: 'match-1',
+        code: 'opaque-scanner-code',
+        checkedInAt: '2026-08-01T12:04:00.000Z',
+        offline: true,
+        collectorPersonId: 'person-collector',
+        collectorCredential: 'signed-proof',
+      }),
+    );
+    const request = http.expectOne('/api/graphql');
+    expect(request.request.body.variables).toEqual({
+      matchId: 'match-1',
+      input: {
+        clientId: 'scanner-1',
+        code: 'opaque-scanner-code',
+        checkedInAt: '2026-08-01T12:04:00.000Z',
+        offline: true,
+        collectorPersonId: 'person-collector',
+        collectorCredential: 'signed-proof',
+      },
+    });
+    request.flush({ data: { checkInSportsMatchFromScannerCode: true } });
 
     await expect(result).resolves.toBe(true);
     http.verify();

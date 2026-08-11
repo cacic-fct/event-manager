@@ -1,4 +1,6 @@
 import {
+  getDefaultSportsEmoji,
+  getSportsTimerPreset,
   SPORTS_PRESET_KEYS,
   SPORTS_PRESETS,
   SportsPresetDefinition,
@@ -24,6 +26,17 @@ describe('sports presets', () => {
       score: { strategy: 'CUSTOM' },
       roster: { maximumPlayers: null },
     });
+  });
+
+  it('shares default emoji and timer metadata without accepting arbitrary object keys', () => {
+    expect(getDefaultSportsEmoji('TABLE_TENNIS')).toBe('🏓');
+    expect(getDefaultSportsEmoji('UNKNOWN')).toBe('🏅');
+    expect(getSportsTimerPreset('BASKETBALL')).toMatchObject({
+      periodDurationMinutes: 10,
+      periodStartOffsetsMinutes: [0, 10, 20, 30],
+    });
+    expect(getSportsTimerPreset('SWIMMING')).toBeNull();
+    expect(getSportsTimerPreset('__proto__')).toBeNull();
   });
 
   it('rejects malformed roster and period limits', () => {

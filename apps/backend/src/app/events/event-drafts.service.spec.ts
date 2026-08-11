@@ -297,7 +297,7 @@ describe('EventDraftsService', () => {
     await expect(service.applyEventDraft('draft-1', user as never)).resolves.toEqual(updatedEvent);
 
     expect(loggerWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Typesense event sync failed after applying event draft draft-1'),
+      expect.stringContaining('event post-commit sync failed after applying event draft draft-1'),
     );
   });
 

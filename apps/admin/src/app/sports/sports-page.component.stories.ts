@@ -339,6 +339,8 @@ export const MatchBracketAndLineup: Story = {
         name: /Atlética FCT contra .*Ao vivo/i,
       }),
     );
+    await expect(canvas.getByRole('region', { name: 'Chave da modalidade' })).toBeVisible();
+    await expect(canvas.getByRole('complementary', { name: 'Editar partida' })).toBeVisible();
     await expect(await canvas.findByText('Escalação desta partida')).toBeVisible();
     await expect(canvas.getByText('Marque quem poderá jogar e defina função e número para esta partida. Isso não altera o cadastro da modalidade.')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: /Editar escalação/i }));

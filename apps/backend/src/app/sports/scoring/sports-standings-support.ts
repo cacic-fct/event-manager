@@ -31,15 +31,10 @@ interface StandingAccumulator {
 }
 
 export abstract class SportsStandingsSupport {
-  protected readonly auditLog: AuditLogService;
-
-  constructor(protected readonly advancement: SportsBracketAdvancementService, auditLog?: AuditLogService) {
-    this.auditLog =
-      auditLog ??
-      ({
-        record: async () => undefined,
-      } as unknown as AuditLogService);
-  }
+  constructor(
+    protected readonly advancement: SportsBracketAdvancementService,
+    protected readonly auditLog: AuditLogService,
+  ) {}
 
   protected async recordAutomaticScoreEntryAudit(
     tx: Prisma.TransactionClient,

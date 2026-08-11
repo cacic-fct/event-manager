@@ -1,5 +1,6 @@
 import type {
   SportsFormat,
+  SportsLivestreamProvider,
   SportsLossReason,
   SportsMatchState,
   SportsOfficialRole,
@@ -7,37 +8,23 @@ import type {
   SportsRosterRole,
   SportsStageType,
 } from '@cacic-fct/shared-data-types';
+import type {
+  SportsMatchPeriodTimerView,
+  SportsMatchScheduleView,
+  SportsScoreboardView,
+  SportsTeamView,
+  SportsVenueLocationView,
+} from '@cacic-fct/shared-frontend-types';
 
-export interface PublicSportsTeam {
-  id: string;
-  name: string;
-  institution?: string | null;
-  logoUrl?: string | null;
-}
+export type PublicSportsTeam = SportsTeamView;
 
-export interface PublicSportsScorePeriod {
-  number: number;
-  label: string;
-  homeScore: number;
-  awayScore: number;
-  completed: boolean;
-}
+export type PublicSportsScorePeriod = SportsScoreboardView['periods'][number];
 
-export interface PublicSportsScoreboard {
-  homeScore: number;
-  awayScore: number;
-  periods: PublicSportsScorePeriod[];
-  activePeriod?: number | null;
-}
+export type PublicSportsScoreboard = SportsScoreboardView;
 
-export interface PublicSportsMatchSchedule {
-  startDate: string;
-  endDate: string;
-  locationDescription?: string | null;
+export interface PublicSportsMatchSchedule extends SportsMatchScheduleView, SportsVenueLocationView {
   latitude?: number | null;
   longitude?: number | null;
-  venueName?: string | null;
-  courtLabel?: string | null;
 }
 
 export interface PublicSportsRosterEntry {
@@ -74,15 +61,7 @@ export interface PublicSportsMatch {
   timerPausedAt?: string | null;
   timerPausedAtUnixMs?: number | null;
   elapsedBeforePauseMs: number;
-  periodTimers: Array<{
-    periodNumber: number;
-    startedAtUnixMs?: number | null;
-    pausedAtUnixMs?: number | null;
-    elapsedBeforePauseMs: number;
-    scheduledStartOffsetMs: number;
-    capMs?: number | null;
-    allowOvertime: boolean;
-  }>;
+  periodTimers: SportsMatchPeriodTimerView[];
   overallTimerEnabled: boolean;
   periodTimerEnabled: boolean;
   timerPeriodDurationMs?: number | null;
@@ -94,7 +73,7 @@ export interface PublicSportsMatch {
   schedule: PublicSportsMatchSchedule;
   rosters: PublicSportsRoster[];
   officials: PublicSportsOfficial[];
-  livestreamProvider?: 'YOUTUBE' | 'TWITCH' | 'GENERAL' | null;
+  livestreamProvider?: SportsLivestreamProvider | null;
   livestreamUrl?: string | null;
 }
 

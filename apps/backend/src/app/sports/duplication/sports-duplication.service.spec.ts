@@ -1,5 +1,6 @@
 import { ForbiddenException } from '@nestjs/common';
 import { SportsDuplicationService } from './sports-duplication.service';
+import { SportsTeamDuplicationService } from './sports-team-duplication.service';
 
 describe('SportsDuplicationService', () => {
   const actor = { sub: 'admin-1' };
@@ -9,7 +10,7 @@ describe('SportsDuplicationService', () => {
       assertMajorEventMutable: jest.fn().mockRejectedValue(new ForbiddenException()),
     };
     const prisma = { $transaction: jest.fn() };
-    const service = new SportsDuplicationService(prisma as never, {} as never, {} as never, frozen as never);
+    const service = createService(prisma, {}, frozen);
 
     await expect(
       service.cloneTournament(
@@ -37,7 +38,7 @@ describe('SportsDuplicationService', () => {
         },
         $transaction: jest.fn(),
       };
-      const service = new SportsDuplicationService(prisma as never, {} as never, {} as never, frozen as never);
+      const service = createService(prisma, {}, frozen);
 
       const operation =
         kind === 'category'
@@ -93,7 +94,7 @@ describe('SportsDuplicationService', () => {
     };
     const auditLog = { record: jest.fn() };
     const frozen = { assertMajorEventMutable: jest.fn() };
-    const service = new SportsDuplicationService(prisma as never, {} as never, auditLog as never, frozen as never);
+    const service = createService(prisma, auditLog, frozen);
 
     await expect(
       service.cloneTeam(
@@ -115,4 +116,14 @@ describe('SportsDuplicationService', () => {
       }),
     });
   });
+
+  function createService(prisma: object, auditLog: object, frozen: object): SportsDuplicationService {
+    const teamDuplicator = new SportsTeamDuplicationService(
+      prisma as never,
+      {} as never,
+      auditLog as never,
+      frozen as never,
+    );
+    return new SportsDuplicationService(prisma as never, auditLog as never, frozen as never, teamDuplicator);
+  }
 });

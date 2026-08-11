@@ -4,24 +4,19 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   Prisma,
-  PublicationState,
   SportsMatchAction,
   SportsMatchActionType,
   SportsMatchState,
-  SportsReviewStatus,
 } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
-import { CurrentUserDefaultRedirectService } from '../../current-user/default-redirect/current-user-default-redirect.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';
-import { SportsRealtimeService } from '../realtime/sports-realtime.service';
-import { SportsAutoroutingService } from '../routing/sports-autorouting.service';
+import { SportsMutationEventsService } from '../realtime/sports-mutation-events.service';
 import { SportsStandingsService } from '../scoring/sports-standings.service';
-import { isSportsMatchPublic } from '../security/sports-public-visibility';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
 
@@ -70,13 +65,9 @@ export abstract class SportsMatchOperationSupport {
     protected readonly prisma: PrismaService,
     protected readonly advancement: SportsBracketAdvancementService,
     protected readonly standings: SportsStandingsService,
-    protected readonly realtime: SportsRealtimeService,
-    protected readonly autorouting: SportsAutoroutingService,
-    protected readonly defaultRedirect: CurrentUserDefaultRedirectService,
+    protected readonly mutationEvents: SportsMutationEventsService,
     protected readonly auditLog: AuditLogService,
-    protected readonly frozen: FrozenResourceService = {
-      assertEventMutable: async () => undefined,
-    } as unknown as FrozenResourceService,
+    protected readonly frozen: FrozenResourceService,
   ) {}
 
   protected authenticatedActor(actor: AuthenticatedUser | AuditActor): AuthenticatedUser | undefined {
@@ -135,64 +126,6 @@ export abstract class SportsMatchOperationSupport {
       default:
         return AuditLogOperation.UPDATE;
     }
-  }
-
-  protected async publishProjection(match: {
-    id: string;
-    categoryId: string;
-    state: SportsMatchState;
-    canonicalState: SportsMatchState;
-    reviewStatus: SportsReviewStatus;
-    scoreboard: Prisma.JsonValue;
-    revision: number;
-    category: {
-      deletedAt: Date | null;
-      status: import('@prisma/client').SportsCategoryStatus;
-      tournament: {
-        id: string;
-        deletedAt: Date | null;
-        status: import('@prisma/client').SportsTournamentStatus;
-        majorEvent: {
-          deletedAt: Date | null;
-          publicationState: PublicationState;
-        };
-      };
-    };
-    event: {
-      deletedAt: Date | null;
-      publiclyVisible: boolean;
-      publicationState: PublicationState;
-    };
-  }): Promise<void> {
-    const payload = {
-      matchId: match.id,
-      categoryId: match.categoryId,
-      state: match.state,
-      canonicalState: match.canonicalState,
-      reviewStatus: match.reviewStatus,
-      scoreboard: match.scoreboard,
-      revision: match.revision,
-    };
-    const isPublic = isSportsMatchPublic(match);
-    await Promise.all([
-      ...(isPublic
-        ? [
-            this.realtime.publish(this.realtime.scope('match', match.id), payload),
-            this.realtime.publish(this.realtime.scope('tournament', match.category.tournament.id), payload),
-          ]
-        : []),
-      ...(match.reviewStatus === SportsReviewStatus.PENDING
-        ? [this.realtime.publish(this.realtime.scope('review', match.id), payload)]
-        : []),
-    ]);
-  }
-
-  protected async invalidateRoutes(matchId: string): Promise<void> {
-    const people = await this.autorouting.affectedPeopleForMatch(matchId);
-    await Promise.all([
-      this.defaultRedirect.invalidatePeople(people),
-      this.realtime.publishAutorouteInvalidations(people),
-    ]);
   }
 
   protected normalizeClientId(value: string): string {

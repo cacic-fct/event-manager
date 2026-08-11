@@ -18,6 +18,8 @@ import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
+import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -64,6 +66,14 @@ export class EventGroupsResolver {
     private readonly auditLog: AuditLogService = {
       record: async () => undefined,
     } as unknown as AuditLogService,
+    private readonly postCommitEffects: EventPostCommitEffectsService = {
+      upsertEventGroup: (eventGroup) => typesenseSearch.upsertEventGroup(eventGroup),
+      deleteEventGroup: (eventGroupId) => typesenseSearch.deleteEventGroup(eventGroupId),
+    } as EventPostCommitEffectsService,
+    private readonly sportsBackingLifecycle: SportsBackingResourceLifecycleService = {
+      synchronizeEventGroupUpdate: async () => undefined,
+      assertEventGroupDeleteAllowed: async () => undefined,
+    } as unknown as SportsBackingResourceLifecycleService,
   ) {}
 
   @Query(() => [EventGroup], { name: 'eventGroups' })
@@ -187,7 +197,7 @@ export class EventGroupsResolver {
       );
       return created;
     });
-    await this.typesenseSearch.upsertEventGroup({
+    await this.postCommitEffects.upsertEventGroup({
       id: eventGroup.id,
       name: eventGroup.name,
     });
@@ -207,6 +217,12 @@ export class EventGroupsResolver {
     const eventGroup = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
       if (!previous) throw new NotFoundException(`Event group ${id} was not found.`);
+      await this.sportsBackingLifecycle.synchronizeEventGroupUpdate(
+        tx,
+        id,
+        normalizedInput,
+        this.getUser(context)?.sub,
+      );
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
 
       if (normalizedInput.shouldIssueCertificate === false) {
@@ -253,7 +269,7 @@ export class EventGroupsResolver {
       return updated;
     });
     if (eventGroup) {
-      await this.typesenseSearch.upsertEventGroup({
+      await this.postCommitEffects.upsertEventGroup({
         id: eventGroup.id,
         name: eventGroup.name,
       });
@@ -324,7 +340,7 @@ export class EventGroupsResolver {
       );
       return created;
     });
-    await this.typesenseSearch.upsertEventGroup({
+    await this.postCommitEffects.upsertEventGroup({
       id: eventGroup.id,
       name: eventGroup.name,
     });
@@ -339,6 +355,7 @@ export class EventGroupsResolver {
     await this.prisma.$transaction(async (tx) => {
       const eventGroup = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
       if (!eventGroup) throw new NotFoundException(`Event group ${id} was not found.`);
+      await this.sportsBackingLifecycle.assertEventGroupDeleteAllowed(tx, id);
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {
@@ -356,7 +373,7 @@ export class EventGroupsResolver {
         tx,
       );
     });
-    await this.typesenseSearch.deleteEventGroup(id);
+    await this.postCommitEffects.deleteEventGroup(id);
     return {
       deleted: true,
       id,

@@ -426,6 +426,37 @@ describe('SportsStandingsService', () => {
     );
   });
 
+  it('uses the shared standings default for a Swiss bye when rules omit bye points', async () => {
+    const source = match({
+      stageId: 'swiss-stage',
+      stage: { type: SportsStageType.SWISS, settings: {} },
+      category: category(SportsFormat.SWISS),
+      winnerAdvancesToId: null,
+    });
+    const tx = transaction(source);
+    tx.sportsStage.findUniqueOrThrow.mockResolvedValue({
+      category: { standingsRules: {} },
+      standings: [
+        {
+          registrationId: 'home',
+          tiebreakData: { byeCount: 1, seed: 4 },
+        },
+      ],
+      matches: [],
+    });
+
+    await service.refreshAfterApprovedOutcome(tx as never, source.id, 'admin-1');
+
+    expect(tx.sportsStanding.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          points: 3,
+          tiebreakData: expect.objectContaining({ byeCount: 1, seed: 4 }),
+        }),
+      }),
+    );
+  });
+
   function transaction(source: ReturnType<typeof match>) {
     return {
       event: {

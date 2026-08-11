@@ -1,4 +1,11 @@
-import type { SportsFormat, SportsMatchState, SportsStageType } from '@cacic-fct/shared-data-types';
+import {
+  sportsFormatLabel,
+  sportsMatchStateLabel,
+  sportsStageLabel,
+  type SportsFormat,
+  type SportsMatchState,
+  type SportsStageType,
+} from '@cacic-fct/shared-data-types/sports-metadata';
 
 export interface SportsBracketTeamView {
   id: string;
@@ -43,36 +50,13 @@ export interface SportsBracketStandingView {
 export type SportsBracketFormat = SportsFormat;
 
 export function sportsBracketFormatLabel(format: SportsBracketFormat): string {
-  return {
-    SINGLE_ELIMINATION: 'Eliminação simples',
-    ROUND_ROBIN: 'Todos contra todos',
-    GROUP_STAGE_ELIMINATION: 'Grupos e eliminatórias',
-    DOUBLE_ELIMINATION: 'Dupla eliminação',
-    SWISS: 'Sistema suíço',
-    CUSTOM: 'Formato personalizado',
-  }[format];
+  return sportsFormatLabel(format);
 }
 
 export function sportsBracketStageLabel(type: SportsStageType): string {
-  return {
-    GROUP: 'Fase de grupos',
-    ELIMINATION: 'Eliminatórias',
-    WINNERS_BRACKET: 'Chave dos vencedores',
-    LOSERS_BRACKET: 'Chave de repescagem',
-    SWISS: 'Rodadas suíças',
-    FINAL: 'Finais',
-  }[type];
+  return sportsStageLabel(type);
 }
 
 export function sportsBracketMatchStateLabel(state: SportsMatchState): string {
-  return {
-    SCHEDULED: 'Agendada',
-    CHECK_IN: 'Check-in',
-    LIVE: 'Ao vivo',
-    PAUSED: 'Pausada',
-    AWAITING_REVIEW: 'Em revisão',
-    CANCELED: 'Cancelada',
-    DRAW: 'Empate',
-    FINISHED: 'Finalizada',
-  }[state];
+  return sportsMatchStateLabel(state);
 }

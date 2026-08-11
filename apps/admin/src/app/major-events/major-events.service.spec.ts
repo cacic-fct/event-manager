@@ -20,6 +20,9 @@ describe('MajorEventsService', () => {
   let router: {
     navigate: ReturnType<typeof vi.fn>;
   };
+  let dialog: {
+    open: ReturnType<typeof vi.fn>;
+  };
   let api: {
     createMajorEvent: ReturnType<typeof vi.fn>;
     getMajorEvent: ReturnType<typeof vi.fn>;
@@ -55,6 +58,9 @@ describe('MajorEventsService', () => {
     router = {
       navigate: vi.fn(),
     };
+    dialog = {
+      open: vi.fn(() => ({ afterClosed: () => of(undefined) })),
+    };
 
     await TestBed.configureTestingModule({
       providers: [
@@ -62,7 +68,7 @@ describe('MajorEventsService', () => {
         { provide: MajorEventApiService, useValue: api },
         { provide: EventApiService, useValue: eventApi },
         { provide: PublicationApiService, useValue: publicationApi },
-        { provide: MatDialog, useValue: { open: vi.fn() } },
+        { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: router },
         { provide: PermissionsService, useValue: { hasAll: vi.fn(() => true) } },
@@ -176,6 +182,26 @@ describe('MajorEventsService', () => {
 
     expect(api.createMajorEvent).toHaveBeenCalled();
     expect(service.majorEventForm.controls.id.value).toBe('major-event-1');
+  });
+
+  it('explains that sports tournaments use their dedicated clone workflow', async () => {
+    await service.cloneMajorEvent(createAdminMajorEventFromInput({ id: 'major-event-1', name: 'Jogos CACiC' }));
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          parts: expect.arrayContaining([
+            expect.objectContaining({
+              key: 'sportsTournament',
+              label: 'Torneio esportivo',
+              disabled: true,
+              disabledReason: expect.stringContaining('"Duplicar torneio" na gestão esportiva'),
+            }),
+          ]),
+        }),
+      }),
+    );
   });
 
   it('loads the stored single price into the edit form', async () => {

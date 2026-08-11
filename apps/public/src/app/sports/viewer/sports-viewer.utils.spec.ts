@@ -1,5 +1,17 @@
 import type { PublicSportsMatch } from './sports-viewer.types';
-import { isRosterPublic, matchLocation, publicOfficialName, publicPlayerName } from './sports-viewer.utils';
+import {
+  isRosterPublic,
+  matchLocation,
+  publicOfficialName,
+  publicPlayerName,
+  sportsFormatLabel,
+  sportsLossReasonLabel,
+  sportsMatchStateLabel,
+  sportsOfficialRoleLabel,
+  sportsPresetLabel,
+  sportsRosterRoleLabel,
+  sportsStageLabel,
+} from './sports-viewer.utils';
 
 describe('sports viewer privacy and display utilities', () => {
   it('limits public player names to the first and last names', () => {
@@ -11,6 +23,17 @@ describe('sports viewer privacy and display utilities', () => {
   it('limits official names to first name and final surname initial', () => {
     expect(publicOfficialName('Maria Clara dos Santos')).toBe('Maria S.');
     expect(publicOfficialName('Ravi')).toBe('Ravi');
+  });
+
+  it('uses canonical shared sports labels while preserving custom sport names', () => {
+    expect(sportsMatchStateLabel('CHECK_IN')).toBe('Credenciamento');
+    expect(sportsPresetLabel('VOLLEYBALL')).toBe('Vôlei');
+    expect(sportsPresetLabel('OTHER', '  Queimada  ')).toBe('Queimada');
+    expect(sportsFormatLabel('DOUBLE_ELIMINATION')).toBe('Eliminação dupla');
+    expect(sportsStageLabel('LOSERS_BRACKET')).toBe('Chave de repescagem');
+    expect(sportsOfficialRoleLabel('REFEREE')).toBe('Arbitragem');
+    expect(sportsRosterRoleLabel('CAPTAIN')).toBe('Capitão');
+    expect(sportsLossReasonLabel('DISQUALIFICATION')).toBe('Desclassificação');
   });
 
   it.each([

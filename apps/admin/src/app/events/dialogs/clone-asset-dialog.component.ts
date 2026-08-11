@@ -15,7 +15,8 @@ export type CloneAssetPartKey =
   | 'attendances'
   | 'place'
   | 'visibility'
-  | 'paymentSettings';
+  | 'paymentSettings'
+  | 'sportsTournament';
 
 export type CloneAssetPartOption = {
   key: CloneAssetPartKey;

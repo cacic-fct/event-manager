@@ -41,11 +41,8 @@ import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.inte
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
-import {
-  MAX_SPORTS_TEAM_LOGO_SIZE_BYTES,
-  SportsTeamLogoService,
-  SportsTeamLogoUploadFile,
-} from './sports-team-logo.service';
+import { SPORTS_TEAM_LOGO_POLICY } from './sports-team-logo.policy';
+import { SportsTeamLogoService, SportsTeamLogoUploadFile } from './sports-team-logo.service';
 import { SportsMutationEventsService } from '../realtime/sports-mutation-events.service';
 import { SportsAccessService } from '../security/sports-access.service';
 
@@ -55,7 +52,7 @@ type RequestWithUser = Request & {
 
 class SportsTeamLogoUploadBodyDto {
   @ApiProperty({
-    description: 'PNG, JPEG, or WebP logo. The decoded image must satisfy the documented dimension limits.',
+    description: `${SPORTS_TEAM_LOGO_POLICY.acceptedInputDescription}. O arquivo é normalizado para AVIF após a validação.`,
     type: 'string',
     format: 'binary',
   })
@@ -79,10 +76,10 @@ class SportsTeamLogoResponseDto {
   @ApiProperty({ example: '8d969eef6ecad3c29a3a629280e686cff8ca...' })
   sha256!: string;
 
-  @ApiProperty({ enum: ['image/png', 'image/jpeg', 'image/webp'] })
+  @ApiProperty({ enum: [SPORTS_TEAM_LOGO_POLICY.outputMimeType] })
   mimeType!: string;
 
-  @ApiProperty({ maximum: MAX_SPORTS_TEAM_LOGO_SIZE_BYTES })
+  @ApiProperty({ maximum: SPORTS_TEAM_LOGO_POLICY.maximumUploadBytes })
   sizeBytes!: number;
 
   @ApiProperty({ example: 512 })
@@ -116,7 +113,7 @@ export class SportsTeamLogoController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: MAX_SPORTS_TEAM_LOGO_SIZE_BYTES,
+        fileSize: SPORTS_TEAM_LOGO_POLICY.maximumUploadBytes,
         files: 1,
       },
     }),
@@ -134,7 +131,7 @@ export class SportsTeamLogoController {
   @ApiConflictResponse({ description: 'The team revision changed before the logo could be persisted.' })
   @ApiForbiddenResponse({ description: `Missing scoped permission ${Permission.SportsTeam.Update}.` })
   @ApiNotFoundResponse({ description: 'The sports team does not exist.' })
-  @ApiResponse({ status: 413, description: 'The multipart file exceeds 2 MiB.' })
+  @ApiResponse({ status: 413, description: 'The multipart file exceeds 15 MiB.' })
   async upload(
     @Param('sportsTeamId') sportsTeamId: string,
     @Body('expectedRevision', ParseIntPipe) expectedRevision: number,
@@ -167,7 +164,7 @@ export class SportsTeamLogoController {
   })
   @ApiParam({ name: 'sportsTeamId', description: 'Sports team identifier.' })
   @ApiParam({ name: 'sha256', description: 'Exact SHA-256 hash returned by the upload endpoint.' })
-  @ApiProduces('image/png', 'image/jpeg', 'image/webp')
+  @ApiProduces(SPORTS_TEAM_LOGO_POLICY.outputMimeType)
   @ApiOkResponse({ description: 'Raw raster logo stream without storage metadata.' })
   @ApiForbiddenResponse({ description: `Missing scoped permission ${Permission.SportsTeam.Read}.` })
   @ApiNotFoundResponse({ description: 'The logo hash is invalid, stale, or unavailable.' })
@@ -201,7 +198,7 @@ export class PublicSportsTeamLogoController {
   })
   @ApiParam({ name: 'sportsTeamId', description: 'Sports team identifier.' })
   @ApiParam({ name: 'sha256', description: 'Exact current SHA-256 logo hash.' })
-  @ApiProduces('image/png', 'image/jpeg', 'image/webp')
+  @ApiProduces(SPORTS_TEAM_LOGO_POLICY.outputMimeType)
   @ApiOkResponse({ description: 'Raw raster logo stream without storage metadata.' })
   @ApiNotFoundResponse({ description: 'The team is not public or the logo is unavailable.' })
   async download(
@@ -258,7 +255,7 @@ export class SportsTeamRepresentativeLogoController {
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
-        fileSize: MAX_SPORTS_TEAM_LOGO_SIZE_BYTES,
+        fileSize: SPORTS_TEAM_LOGO_POLICY.maximumUploadBytes,
         files: 1,
       },
     }),

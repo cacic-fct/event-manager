@@ -30,6 +30,7 @@ import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
+import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 
 const PAYMENT_INFO_SELECT = {
   id: true,
@@ -142,6 +143,10 @@ export class MajorEventsResolver {
     private readonly sitemap: EventSitemapService = {
       refresh: async () => [],
     } as unknown as EventSitemapService,
+    private readonly sportsBackingLifecycle: SportsBackingResourceLifecycleService = {
+      assertMajorEventUpdateAllowed: async () => undefined,
+      assertMajorEventDeleteAllowed: async () => undefined,
+    } as unknown as SportsBackingResourceLifecycleService,
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
@@ -340,6 +345,7 @@ export class MajorEventsResolver {
     };
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
+      await this.sportsBackingLifecycle.assertMajorEventUpdateAllowed(tx, id, input);
       const persisted = await tx.majorEvent.update({
         where: {
           id,
@@ -525,6 +531,7 @@ export class MajorEventsResolver {
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
       if (!majorEvent) throw new NotFoundException(`Major event ${id} was not found.`);
+      await this.sportsBackingLifecycle.assertMajorEventDeleteAllowed(tx, id);
       await tx.majorEvent.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {

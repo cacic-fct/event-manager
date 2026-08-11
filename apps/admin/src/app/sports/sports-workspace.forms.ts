@@ -1,4 +1,12 @@
 import { FormBuilder, Validators } from '@angular/forms';
+import {
+  DEFAULT_SPORTS_BRACKET_EDITOR_RULES,
+  DEFAULT_SPORTS_OVERALL_SCORING_RULES,
+  DEFAULT_SPORTS_SCORE_RULES,
+  DEFAULT_SPORTS_STANDINGS_RULES,
+  getDefaultSportsEmoji,
+  SPORTS_TIMER_PRESETS,
+} from '@cacic-fct/shared-data-types/sports-metadata';
 import { livestreamValidator, placementPointsValidator } from './sports-workspace-form.utils';
 
 export function createSportsWorkspaceForms(fb: FormBuilder) {
@@ -16,7 +24,7 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
     category: fb.nonNullable.group({
       id: [''],
       name: ['', Validators.required],
-      emoji: ['⚽', Validators.required],
+      emoji: [getDefaultSportsEmoji('SOCCER'), Validators.required],
       sport: ['SOCCER'],
       customSportName: [''],
       division: [''],
@@ -33,33 +41,57 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
       maximumPeriods: [0],
       periodLabel: ['Tempo'],
       timerPreset: ['SOCCER'],
-      timerOverallEnabled: [true],
-      timerPeriodEnabled: [true],
-      timerPeriodDurationMinutes: [45, [Validators.min(0), Validators.max(1440)]],
-      timerAllowOvertime: [true],
-      timerPeriodStartOffsetsMinutes: ['0, 45', Validators.pattern(/^\s*\d+(?:\.\d+)?(?:\s*,\s*\d+(?:\.\d+)?)*\s*$/)],
+      timerOverallEnabled: [SPORTS_TIMER_PRESETS.SOCCER.overallEnabled],
+      timerPeriodEnabled: [SPORTS_TIMER_PRESETS.SOCCER.periodEnabled],
+      timerPeriodDurationMinutes: [
+        SPORTS_TIMER_PRESETS.SOCCER.periodDurationMinutes,
+        [Validators.min(0), Validators.max(1440)],
+      ],
+      timerAllowOvertime: [SPORTS_TIMER_PRESETS.SOCCER.allowOvertime],
+      timerPeriodStartOffsetsMinutes: [
+        SPORTS_TIMER_PRESETS.SOCCER.periodStartOffsetsMinutes.join(', '),
+        Validators.pattern(/^\s*\d+(?:\.\d+)?(?:\s*,\s*\d+(?:\.\d+)?)*\s*$/),
+      ],
       rulesText: [''],
       scoreRulesJson: ['{}'],
-      scoreAllowDraw: [true],
-      scoreHigherWins: [true],
-      scorePointStep: [1, [Validators.required, Validators.min(0.000001)]],
-      overallScoringMode: ['NONE'],
-      overallMatchWinPoints: [3, [Validators.min(0), Validators.max(1_000_000)]],
-      overallMatchDrawPoints: [1, [Validators.min(0), Validators.max(1_000_000)]],
-      overallMatchLossPoints: [0, [Validators.min(0), Validators.max(1_000_000)]],
+      scoreAllowDraw: [DEFAULT_SPORTS_SCORE_RULES.allowDraw],
+      scoreHigherWins: [DEFAULT_SPORTS_SCORE_RULES.higherWins],
+      scorePointStep: [DEFAULT_SPORTS_SCORE_RULES.pointStep, [Validators.required, Validators.min(0.000001)]],
+      overallScoringMode: [DEFAULT_SPORTS_OVERALL_SCORING_RULES.mode],
+      overallMatchWinPoints: [
+        DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.win,
+        [Validators.min(0), Validators.max(1_000_000)],
+      ],
+      overallMatchDrawPoints: [
+        DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.draw,
+        [Validators.min(0), Validators.max(1_000_000)],
+      ],
+      overallMatchLossPoints: [
+        DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.loss,
+        [Validators.min(0), Validators.max(1_000_000)],
+      ],
       overallPlacementPointsJson: ['{}'],
       overallPlacementPoints,
       rosterRulesJson: ['{}'],
       bracketRulesJson: ['{}'],
       standingsRulesJson: ['{}'],
-      standingsWinPoints: [3, Validators.required],
-      standingsDrawPoints: [1, Validators.required],
-      standingsLossPoints: [0, Validators.required],
-      standingsByePoints: [3, Validators.required],
+      standingsWinPoints: [DEFAULT_SPORTS_STANDINGS_RULES.winPoints, Validators.required],
+      standingsDrawPoints: [DEFAULT_SPORTS_STANDINGS_RULES.drawPoints, Validators.required],
+      standingsLossPoints: [DEFAULT_SPORTS_STANDINGS_RULES.lossPoints, Validators.required],
+      standingsByePoints: [DEFAULT_SPORTS_STANDINGS_RULES.byePoints, Validators.required],
       doubleRoundRobin: [false],
-      groupCount: [2, [Validators.required, Validators.min(2), Validators.max(128)]],
-      qualifiersPerGroup: [2, [Validators.required, Validators.min(1), Validators.max(128)]],
-      swissMaximumRounds: [5, [Validators.required, Validators.min(1), Validators.max(128)]],
+      groupCount: [
+        DEFAULT_SPORTS_BRACKET_EDITOR_RULES.groupCount,
+        [Validators.required, Validators.min(2), Validators.max(128)],
+      ],
+      qualifiersPerGroup: [
+        DEFAULT_SPORTS_BRACKET_EDITOR_RULES.qualifiersPerGroup,
+        [Validators.required, Validators.min(1), Validators.max(128)],
+      ],
+      swissMaximumRounds: [
+        DEFAULT_SPORTS_BRACKET_EDITOR_RULES.swissMaximumRounds,
+        [Validators.required, Validators.min(1), Validators.max(128)],
+      ],
       registrationFormId: [''],
     }),
     team: fb.nonNullable.group({

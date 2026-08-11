@@ -14,7 +14,7 @@ import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-ang
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
-import { SportsConfirmationDialog, SportsConfirmationDialogData } from './sports-confirmation-dialog';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '@cacic-fct/shared-angular';
 import {
   RepresentativeTeamChange,
   RepresentativeTeamWorkspace,
@@ -349,12 +349,13 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     }
     const confirmed = await firstValueFrom(
       this.dialog
-        .open<SportsConfirmationDialog, SportsConfirmationDialogData, boolean>(SportsConfirmationDialog, {
+        .open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(ConfirmationDialogComponent, {
           data: {
             title: 'Desistir desta partida?',
             message: 'A partida será encerrada e a desistência seguirá para revisão administrativa.',
             confirmLabel: 'Sim, desistir',
-            destructive: true,
+            cancelLabel: 'Não',
+            tone: 'danger',
           },
         })
         .afterClosed(),

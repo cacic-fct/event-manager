@@ -4,7 +4,6 @@ import {
   AttendanceCreationMethod,
   AuditLogEntityType,
   AuditLogOperation,
-  EventAttendanceStatus,
   Prisma,
   SportsEligibilityStatus,
   SportsMatchActionType,
@@ -19,8 +18,15 @@ import {
 } from '@prisma/client';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { upsertPresentEventAttendance } from '../../events/attendances/shared/event-attendance-writer';
 import { parseUserAztecCode } from '../../events/attendances/user-scanner-code';
 import { runSerializableSportsTransaction } from '../sports-transaction';
+import {
+  requireSportsCheckInUploaderUserId,
+  resolveSportsCheckInCollector,
+  sportsCheckInProvenanceMetadata,
+  type SportsOfflineCollectorInput,
+} from './sports-check-in-provenance';
 
 export interface SportsRosterEntryWrite {
   registrationMemberId: string;
@@ -37,6 +43,7 @@ export interface SportsRosterWrite {
 }
 
 type SportsAuditActor = AuthenticatedUser | AuditActor;
+
 import { SportsMatchRosterCopyService } from './sports-match-roster-copy.service';
 
 export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterCopyService {
@@ -51,24 +58,35 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
     officialUserId: string | null,
     officialRole: string,
     actor: SportsAuditActor,
+    collectorInput: SportsOfflineCollectorInput = {},
+    attendanceCreationMethod: AttendanceCreationMethod = AttendanceCreationMethod.MANUAL_INPUT,
   ) {
     const clientId = clientIdValue.trim();
     if (!clientId || clientId.length > 200) {
       throw new BadRequestException('Informe um identificador offline válido para o check-in.');
     }
+    requireSportsCheckInUploaderUserId(officialUserId);
     const requestedCheckedInAt = checkedInAt?.toISOString() ?? null;
-    const payloadHash = createHash('sha256')
-      .update(
-        JSON.stringify({
-          matchId,
-          rosterEntryId,
-          checkedInAt: requestedCheckedInAt,
-          present,
-          officialPersonId,
-        }),
-      )
-      .digest('hex');
     const result = await runSerializableSportsTransaction(this.prisma, async (tx) => {
+      const collector = await resolveSportsCheckInCollector({
+        prisma: tx,
+        matchId,
+        checkedInAt,
+        offline,
+        uploader: { personId: officialPersonId, userId: officialUserId, role: officialRole },
+        input: collectorInput,
+      });
+      const payloadHash = createHash('sha256')
+        .update(
+          JSON.stringify({
+            matchId,
+            rosterEntryId,
+            checkedInAt: requestedCheckedInAt,
+            present,
+            collectorPersonId: collector.personId,
+          }),
+        )
+        .digest('hex');
       const existingAction = await tx.sportsMatchAction.findUnique({
         where: { clientId },
       });
@@ -77,7 +95,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         (existingAction.matchId !== matchId ||
           existingAction.type !== SportsMatchActionType.CHECK_IN ||
           existingAction.payloadHash !== payloadHash ||
-          existingAction.actorPersonId !== officialPersonId)
+          existingAction.actorUserId !== collector.userId)
       ) {
         throw new ConflictException('O identificador offline já foi usado por um check-in diferente.');
       }
@@ -191,9 +209,9 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             present,
           },
           reviewStatus: SportsReviewStatus.APPROVED,
-          actorPersonId: officialPersonId,
-          actorUserId: officialUserId,
-          actorRole: officialRole,
+          actorPersonId: collector.actorPersonId,
+          actorUserId: collector.userId,
+          actorRole: collector.role,
           authoredAt: effectiveCheckedInAt,
           offline,
           reviewedAt: new Date(),
@@ -201,32 +219,29 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         },
       });
       const attendance = present
-        ? await tx.eventAttendance.upsert({
-            where: { personId_eventId: { personId, eventId } },
-            create: {
+        ? await upsertPresentEventAttendance({
+            tx,
+            attendanceCategories: this.attendanceCategories,
+            input: {
               personId,
               eventId,
               attendedAt: effectiveCheckedInAt,
-              status: EventAttendanceStatus.PRESENT,
-              createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
-              createdById: officialPersonId,
-              committedById: officialPersonId,
-            },
-            update: {
-              attendedAt: effectiveCheckedInAt,
-              status: EventAttendanceStatus.PRESENT,
-              committedById: officialPersonId,
+              createdByMethod: attendanceCreationMethod,
+              createdById: collector.userId,
+              committedById: officialUserId,
             },
           })
         : await tx.eventAttendance.findUnique({
             where: { personId_eventId: { personId, eventId } },
           });
-      await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
+      if (!present) {
+        await this.attendanceCategories.refreshForAttendance(personId, eventId, tx);
+      }
       await tx.sportsMatchRosterEntry.update({
         where: { id: entry.id },
         data: {
           checkedInAt: present ? effectiveCheckedInAt : null,
-          checkedInById: present ? officialPersonId : null,
+          checkedInById: present ? collector.personId : null,
           updatedById: officialPersonId,
         },
       });
@@ -270,6 +285,12 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             eventGroupId: entry.roster.match.category.eventGroupId,
             eventId,
           },
+          metadata: sportsCheckInProvenanceMetadata({
+            collector,
+            uploader: { personId: officialPersonId, userId: officialUserId, role: officialRole },
+            offline,
+            clientId,
+          }),
           force: true,
         },
         tx,
@@ -292,11 +313,13 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
     officialUserId: string | null,
     officialRole: string,
     actor: SportsAuditActor,
+    collectorInput: SportsOfflineCollectorInput = {},
   ) {
     const normalizedClientId = clientId.trim();
     if (!normalizedClientId || normalizedClientId.length > 200) {
       throw new BadRequestException('Informe um identificador offline válido para o check-in.');
     }
+    requireSportsCheckInUploaderUserId(officialUserId);
     const userId = parseUserAztecCode(code);
     if (!userId) {
       throw new BadRequestException('Código Aztec incompatível.');
@@ -353,17 +376,27 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         officialUserId,
         officialRole,
         actor,
+        collectorInput,
+        AttendanceCreationMethod.SCANNER,
       );
     }
 
     const at = checkedInAt ?? new Date();
+    const collector = await resolveSportsCheckInCollector({
+      prisma: this.prisma,
+      matchId,
+      checkedInAt,
+      offline,
+      uploader: { personId: officialPersonId, userId: officialUserId, role: officialRole },
+      input: collectorInput,
+    });
     const payloadHash = createHash('sha256')
       .update(
         JSON.stringify({
           matchId,
           personId: person.id,
           checkedInAt: at.toISOString(),
-          officialPersonId,
+          collectorPersonId: collector.personId,
         }),
       )
       .digest('hex');
@@ -376,7 +409,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         (existingAction.matchId !== matchId ||
           existingAction.type !== SportsMatchActionType.CHECK_IN ||
           existingAction.payloadHash !== payloadHash ||
-          existingAction.actorPersonId !== officialPersonId)
+          existingAction.actorUserId !== collector.userId)
       ) {
         throw new ConflictException('O identificador offline já foi usado por um check-in diferente.');
       }
@@ -423,27 +456,26 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             checkedInAt: at.toISOString(),
           },
           reviewStatus: SportsReviewStatus.APPROVED,
-          actorPersonId: officialPersonId,
-          actorUserId: officialUserId,
-          actorRole: officialRole,
+          actorPersonId: collector.actorPersonId,
+          actorUserId: collector.userId,
+          actorRole: collector.role,
           authoredAt: at,
           offline,
           reviewedAt: new Date(),
           reviewedById: officialUserId,
         },
       });
-      const stored = await tx.eventAttendance.upsert({
-        where: { personId_eventId: { personId: person.id, eventId: context.eventId } },
-        create: {
+      const stored = await upsertPresentEventAttendance({
+        tx,
+        attendanceCategories: this.attendanceCategories,
+        input: {
           personId: person.id,
           eventId: context.eventId,
           attendedAt: at,
-          status: EventAttendanceStatus.PRESENT,
           createdByMethod: AttendanceCreationMethod.SCANNER,
-          createdById: officialPersonId,
-          committedById: officialPersonId,
+          createdById: collector.userId,
+          committedById: officialUserId,
         },
-        update: { attendedAt: at, status: EventAttendanceStatus.PRESENT, committedById: officialPersonId },
       });
       const updatedMatch = await tx.sportsMatch.updateMany({
         where: {
@@ -462,7 +494,6 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
       if (updatedMatch.count !== 1) {
         throw new ConflictException('A partida mudou durante o check-in. Tente enviar novamente.');
       }
-      await this.attendanceCategories.refreshForAttendance(person.id, context.eventId, tx);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.SPORTS_MATCH_ROSTER,
@@ -483,6 +514,12 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             eventGroupId: context.category.eventGroupId,
             eventId: context.eventId,
           },
+          metadata: sportsCheckInProvenanceMetadata({
+            collector,
+            uploader: { personId: officialPersonId, userId: officialUserId, role: officialRole },
+            offline,
+            clientId: normalizedClientId,
+          }),
           force: true,
         },
         tx,
@@ -498,4 +535,5 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
     );
     return attendance;
   }
+
 }

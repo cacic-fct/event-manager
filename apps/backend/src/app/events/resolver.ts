@@ -32,6 +32,8 @@ import { AttendanceCategoryService } from './attendance-category.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
+import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
+import { EventPostCommitEffectsService } from './event-post-commit-effects.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -241,6 +243,17 @@ export class EventsResolver {
     private readonly sitemap: EventSitemapService = {
       refresh: async () => [],
     } as unknown as EventSitemapService,
+    private readonly postCommitEffects: EventPostCommitEffectsService = new EventPostCommitEffectsService(
+      prisma,
+      typesenseSearch,
+      sitemap,
+      onlineAttendanceNotifications,
+    ),
+    private readonly sportsBackingLifecycle: SportsBackingResourceLifecycleService = {
+      assertEventCreateAllowed: async () => undefined,
+      assertEventUpdateAllowed: async () => undefined,
+      assertEventDeleteAllowed: async () => undefined,
+    } as unknown as SportsBackingResourceLifecycleService,
   ) {}
 
   @Query(() => [Event], { name: 'events' })
@@ -387,6 +400,7 @@ export class EventsResolver {
     const uniqueLecturerPersonIds = [...new Set(lecturerPersonIds ?? [])];
     const uniqueAttendanceCollectorPersonIds = [...new Set(attendanceCollectorPersonIds ?? [])];
     const event = await this.prisma.$transaction(async (tx) => {
+      await this.sportsBackingLifecycle.assertEventCreateAllowed(tx, eventInput.eventGroupId);
       const createdEvent = await tx.event.create({
         data: {
           ...eventInput,
@@ -440,24 +454,7 @@ export class EventsResolver {
       );
       return createdEvent;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertEvent({
-      id: event.id,
-      name: event.name,
-      emoji: event.emoji,
-      type: event.type,
-      description: event.description,
-      shortDescription: event.shortDescription,
-      locationDescription: event.locationDescription,
-      majorEventId: event.majorEventId,
-      eventGroupId: event.eventGroupId,
-      shouldIssueCertificate: event.shouldIssueCertificate,
-      publiclyVisible: event.publiclyVisible,
-      publicationState: event.publicationState,
-      startDate: event.startDate,
-      endDate: event.endDate,
-    });
-    await this.onlineAttendanceNotifications.scheduleEvent(event);
+    await this.postCommitEffects.upsertEvent(event);
     return event;
   }
 
@@ -479,6 +476,7 @@ export class EventsResolver {
         select: EVENT_AUDIT_SELECT,
       });
       if (!previousEvent) throw new NotFoundException(`Event ${id} was not found.`);
+      await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, id, normalizedInput);
       const updatedCount = await tx.event.updateMany({
         where: { id, deletedAt: null },
         data: {
@@ -517,27 +515,10 @@ export class EventsResolver {
       return updated;
     });
     if (event) {
-      await this.sitemap.refresh();
-      await this.typesenseSearch.upsertEvent({
-        id: event.id,
-        name: event.name,
-        emoji: event.emoji,
-        type: event.type,
-        description: event.description,
-        shortDescription: event.shortDescription,
-        locationDescription: event.locationDescription,
-        majorEventId: event.majorEventId,
-        eventGroupId: event.eventGroupId,
-        shouldIssueCertificate: event.shouldIssueCertificate,
-        publiclyVisible: event.publiclyVisible,
-        publicationState: event.publicationState,
-        startDate: event.startDate,
-        endDate: event.endDate,
-      });
+      await this.postCommitEffects.upsertEvent(event);
       if (this.didChangeOnlineAttendanceWindow(input)) {
         await this.attendanceRealtime.notifyAllConnectedPeople();
       }
-      await this.onlineAttendanceNotifications.scheduleEvent(event);
     }
     return event;
   }
@@ -683,6 +664,7 @@ export class EventsResolver {
     const actorId = context.req?.user?.sub ?? context.request?.user?.sub;
     const uniqueLecturerPersonIds = [...new Set(lecturerPersonIds ?? [])];
     const event = await this.prisma.$transaction(async (tx) => {
+      await this.sportsBackingLifecycle.assertEventCreateAllowed(tx, source.eventGroupId);
       const createdEvent = await tx.event.create({
         data: {
           ...eventInput,
@@ -745,23 +727,7 @@ export class EventsResolver {
       );
       return createdEvent;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertEvent({
-      id: event.id,
-      name: event.name,
-      emoji: event.emoji,
-      type: event.type,
-      description: event.description,
-      shortDescription: event.shortDescription,
-      locationDescription: event.locationDescription,
-      majorEventId: event.majorEventId,
-      eventGroupId: event.eventGroupId,
-      shouldIssueCertificate: event.shouldIssueCertificate,
-      publiclyVisible: event.publiclyVisible,
-      publicationState: event.publicationState,
-      startDate: event.startDate,
-      endDate: event.endDate,
-    });
+    await this.postCommitEffects.upsertEvent(event);
     return event;
   }
 
@@ -773,6 +739,7 @@ export class EventsResolver {
     await this.prisma.$transaction(async (tx) => {
       const event = await tx.event.findFirst({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
       if (!event) throw new NotFoundException(`Event ${id} was not found.`);
+      await this.sportsBackingLifecycle.assertEventDeleteAllowed(tx, id);
       const deleted = await tx.event.updateMany({ where: { id, deletedAt: null }, data: { deletedAt } });
       if (deleted.count !== 1) {
         throw new NotFoundException(`Event ${id} was not found.`);
@@ -798,8 +765,7 @@ export class EventsResolver {
         tx,
       );
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.deleteEvent(id);
+    await this.postCommitEffects.deleteEvent(id);
     return {
       deleted: true,
       id,

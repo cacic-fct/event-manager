@@ -11,7 +11,7 @@ import { SportsStandingsQualifiers } from './sports-standings-qualifiers';
 
 @Injectable()
 export class SportsStandingsService extends SportsStandingsQualifiers {
-  constructor(advancement: SportsBracketAdvancementService, auditLog?: AuditLogService) {
+  constructor(advancement: SportsBracketAdvancementService, auditLog: AuditLogService) {
     super(advancement, auditLog);
   }
 

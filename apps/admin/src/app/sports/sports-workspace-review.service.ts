@@ -1,4 +1,5 @@
 import { firstValueFrom } from 'rxjs';
+import { getDefaultSportsEmoji } from '@cacic-fct/shared-data-types/sports-metadata';
 import { getErrorMessage } from '../feedback/error-message';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
 import {
@@ -16,7 +17,6 @@ import { SportsTextDialogComponent } from './sports-text-dialog.component';
 import {
   competitionRulesFromForm,
   competitionRulesToForm,
-  defaultSportEmoji,
   overallScoringRulesFromForm,
   overallScoringRulesToForm,
   timerRulesFromForm,
@@ -388,7 +388,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     delete scoringControls.overallPlacementPoints;
     return {
       ...category,
-      emoji: category.eventGroup?.emoji ?? defaultSportEmoji(category.sport),
+      emoji: category.eventGroup?.emoji ?? getDefaultSportsEmoji(category.sport),
       customSportName: category.customSportName ?? '',
       division: category.division ?? '',
       registrationStartDate: toLocalDate(category.registrationStartDate),

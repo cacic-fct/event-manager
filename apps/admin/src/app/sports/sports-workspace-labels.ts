@@ -1,3 +1,5 @@
+import { SPORTS_MATCH_STATE_LABELS } from '@cacic-fct/shared-data-types/sports-metadata';
+
 const STATUS_LABELS: Readonly<Record<string, string>> = {
   DRAFT: 'Rascunho',
   PUBLISHED: 'Publicado',
@@ -34,5 +36,8 @@ export function sportsStatusLabel(status: string): string {
 }
 
 export function sportsMatchStatusLabel(status: string): string {
-  return status === 'CANCELED' ? 'Cancelada, aguardando reagendamento' : sportsStatusLabel(status);
+  if (status === 'CANCELED') {
+    return 'Cancelada, aguardando reagendamento';
+  }
+  return SPORTS_MATCH_STATE_LABELS[status as keyof typeof SPORTS_MATCH_STATE_LABELS] ?? sportsStatusLabel(status);
 }

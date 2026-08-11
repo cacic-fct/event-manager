@@ -6,12 +6,20 @@ import {
   SportsMatchActionType,
   SportsReviewStatus,
 } from '@prisma/client';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuditActor } from '../../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { EventPostCommitEffectsService } from '../../events/event-post-commit-effects.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { SportsBracketAdvancementService } from '../brackets/sports-bracket-advancement.service';
+import { SportsRealtimeService } from '../realtime/sports-realtime.service';
+import { SportsMutationEventsService } from '../realtime/sports-mutation-events.service';
 import {
   mergeSportsStructuralInvalidations,
   SportsStructuralInvalidation,
 } from '../realtime/sports-structural-invalidation';
+import { SportsStandingsService } from '../scoring/sports-standings.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
@@ -39,6 +47,19 @@ export { createSportsAuditActor } from './sports-match-operation-support';
 
 @Injectable()
 export class SportsMatchOperationService extends SportsMatchOperationMutation {
+  constructor(
+    prisma: PrismaService,
+    advancement: SportsBracketAdvancementService,
+    standings: SportsStandingsService,
+    private readonly realtime: SportsRealtimeService,
+    mutationEvents: SportsMutationEventsService,
+    auditLog: AuditLogService,
+    frozen: FrozenResourceService,
+    private readonly eventEffects: EventPostCommitEffectsService,
+  ) {
+    super(prisma, advancement, standings, mutationEvents, auditLog, frozen);
+  }
+
   async commit(inputs: SportsMatchCommandInput[], actor: SportsMatchCommandActor): Promise<SportsMatchAction[]> {
     if (inputs.length === 0 || inputs.length > 100) {
       throw new BadRequestException('Envie de uma a cem ações de partida por lote.');
@@ -71,9 +92,13 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
       };
     });
 
-    await this.publishProjection(result.match);
+    await Promise.all([
+      this.mutationEvents.publishMatchProjection(result.match),
+      ...(inputs.some((input) => input.type === SportsMatchActionType.RESCHEDULE)
+        ? [this.eventEffects.syncEvent(result.match.eventId)]
+        : []),
+    ]);
     await this.realtime.publishStructuralInvalidations(result.structuralInvalidations);
-    await this.invalidateRoutes(result.match.id);
     return result.committed;
   }
 
@@ -177,9 +202,13 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
         structuralInvalidations: mergeSportsStructuralInvalidations(...structuralInvalidations),
       };
     });
-    await this.publishProjection(result.match);
+    await Promise.all([
+      this.mutationEvents.publishMatchProjection(result.match),
+      ...(result.action.type === SportsMatchActionType.RESCHEDULE
+        ? [this.eventEffects.syncEvent(result.match.eventId)]
+        : []),
+    ]);
     await this.realtime.publishStructuralInvalidations(result.structuralInvalidations);
-    await this.invalidateRoutes(result.match.id);
     return result.action;
   }
 }

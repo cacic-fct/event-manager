@@ -11,12 +11,17 @@ import { createHash } from 'node:crypto';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { EventPostCommitEffectsService } from '../../events/event-post-commit-effects.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SportsRealtimeService } from '../realtime/sports-realtime.service';
 import {
   SportsStructuralInvalidation,
   SportsStructuralInvalidationKind,
 } from '../realtime/sports-structural-invalidation';
+import {
+  createSportsMatchBackingEvent,
+  softDeleteSportsMatchBackingEvents,
+} from '../sports-match-event-sync';
 import { SportsBracketAdvancementService } from './sports-bracket-advancement.service';
 
 export interface SportsBracketParticipant {
@@ -30,9 +35,8 @@ export abstract class SportsBracketPersistenceSupport {
     protected readonly advancement: SportsBracketAdvancementService,
     protected readonly auditLog: AuditLogService,
     protected readonly realtime: SportsRealtimeService,
-    protected readonly frozen: FrozenResourceService = {
-      assertEventGroupMutable: async () => undefined,
-    } as unknown as FrozenResourceService,
+    protected readonly frozen: FrozenResourceService,
+    protected readonly eventEffects: EventPostCommitEffectsService,
   ) {}
 
   protected async createBackedMatch(
@@ -62,22 +66,16 @@ export abstract class SportsBracketPersistenceSupport {
     },
   ) {
     const major = input.category.tournament.majorEvent;
-    const event = await tx.event.create({
-      data: {
-        name: input.name,
-        emoji: input.category.eventGroup.emoji,
-        startDate: major.startDate,
-        endDate: major.endDate,
-        type: 'OTHER',
-        majorEventId: input.category.tournament.majorEventId,
-        eventGroupId: input.category.eventGroupId,
-        allowSubscription: false,
-        shouldCollectAttendance: true,
-        publiclyVisible: false,
-        publicationState: PublicationState.DRAFT,
-        createdById: input.actorId,
-        updatedById: input.actorId,
-      },
+    const event = await createSportsMatchBackingEvent(tx, {
+      name: input.name,
+      emoji: input.category.eventGroup.emoji,
+      startDate: major.startDate,
+      endDate: major.endDate,
+      majorEventId: input.category.tournament.majorEventId,
+      eventGroupId: input.category.eventGroupId,
+      publiclyVisible: false,
+      publicationState: PublicationState.DRAFT,
+      actorId: input.actorId,
     });
     const automatic = Boolean(input.automaticWinnerRegistrationId);
     return tx.sportsMatch.create({
@@ -128,10 +126,12 @@ export abstract class SportsBracketPersistenceSupport {
       where: { id: { in: matches.map((match) => match.id) } },
       data: { deletedAt: now, updatedById: actorId },
     });
-    await tx.event.updateMany({
-      where: { id: { in: matches.map((match) => match.eventId) } },
-      data: { deletedAt: now, updatedById: actorId },
-    });
+    await softDeleteSportsMatchBackingEvents(
+      tx,
+      matches.map((match) => match.eventId),
+      now,
+      actorId,
+    );
     await tx.sportsStage.updateMany({
       where: { id: { in: stages.map((stage) => stage.id) } },
       data: { deletedAt: now, updatedById: actorId },

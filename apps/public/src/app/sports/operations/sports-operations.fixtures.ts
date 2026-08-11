@@ -42,7 +42,7 @@ function roster(team: SportsTeamSummary, registrationId: string, side: 'home' | 
         index === 0 ? (side === 'home' ? 'Ana Beatriz de Souza' : 'Bruno Henrique Oliveira') : faker.person.fullName(),
       role: index === 0 ? ('CAPTAIN' as const) : ('PLAYER' as const),
       shirtNumber: String(index + (side === 'home' ? 7 : 10)),
-      status: index < 2 ? ('CHECKED_IN' as const) : ('EXPECTED' as const),
+      status: 'APPROVED',
       checkedInAt: index < 2 ? new Date(fixtureStart.getTime() - (8 - index) * 60_000).toISOString() : null,
     })),
   };

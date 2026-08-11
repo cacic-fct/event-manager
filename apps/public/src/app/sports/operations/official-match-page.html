@@ -5,8 +5,22 @@
   </div>
   @if (pendingCount() > 0) {
   <button mat-button type="button" (click)="offline.sync()">
-    <mat-icon>cloud_upload</mat-icon>{{ pendingCount() }} pendente(s)
+    <mat-icon>cloud_upload</mat-icon>{{ pendingCount() }} para enviar
   </button>
+  }
+  @if (retainedActionCount() > 0) {
+  <span class="retained-offline-items" aria-live="polite">
+    <mat-icon aria-hidden="true">inventory_2</mat-icon>
+    <strong>{{ retainedActionCount() }}</strong>
+    <span class="retained-offline-label">&nbsp;ações de outra pessoa mantidas neste dispositivo</span>
+  </span>
+  }
+  @if (unverifiedAttendanceCount() > 0) {
+  <span class="retained-offline-items" aria-live="polite">
+    <mat-icon aria-hidden="true">no_accounts</mat-icon>
+    <strong>{{ unverifiedAttendanceCount() }}</strong>
+    <span class="retained-offline-label">&nbsp;presenças antigas sem credencial mantidas</span>
+  </span>
   }
 </header>
 
@@ -208,6 +222,10 @@
         <h2>Check-in dos atletas</h2>
         @if (canEditCheckIn()) {
         <p>Confirme cada atleta presente. A marcação é registrada imediatamente.</p>
+        } @else if (attendanceCollectionUnavailable()) {
+        <p role="status">
+          Conecte este dispositivo antes da partida para preparar a coleta off-line de presenças.
+        </p>
         } @else {
         <p>Check-in protegido após o início da partida para evitar alterações acidentais.</p>
         }

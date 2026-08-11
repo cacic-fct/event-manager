@@ -16,6 +16,7 @@ import { CurrentUserMajorEventSubscriptionService } from './subscription.service
 import { CurrentUserPublicEventService } from '../public-event.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { runSerializablePrismaTransaction } from '../../common/serializable-prisma-transaction';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import {
   CurrentUserMajorEventFeedItem,
@@ -795,21 +796,6 @@ export class CurrentUserMajorEventSubscriptionsResolver {
   private async runSerializableSubscriptionTransaction<T>(
     operation: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        return await this.prisma.$transaction(operation, {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        });
-      } catch (error) {
-        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
-          continue;
-        }
-
-        throw error;
-      }
-    }
-
-    throw new BadRequestException('Could not complete subscription.');
+    return runSerializablePrismaTransaction(this.prisma, operation);
   }
 }

@@ -6,8 +6,14 @@ import {
   SportsRegistrationStatus,
   SportsStageType,
 } from '@prisma/client';
+import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { FrozenResourceService } from '../../common/frozen-resource.service';
+import { EventPostCommitEffectsService } from '../../events/event-post-commit-effects.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { SportsRealtimeService } from '../realtime/sports-realtime.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
+import { SportsBracketAdvancementService } from './sports-bracket-advancement.service';
 import { SportsBracketBasicPersistence } from './sports-bracket-basic-persistence';
 
 export interface SportsBracketParticipant {
@@ -17,6 +23,17 @@ export interface SportsBracketParticipant {
 
 @Injectable()
 export class SportsBracketService extends SportsBracketBasicPersistence {
+  constructor(
+    prisma: PrismaService,
+    advancement: SportsBracketAdvancementService,
+    auditLog: AuditLogService,
+    realtime: SportsRealtimeService,
+    frozen: FrozenResourceService,
+    eventEffects: EventPostCommitEffectsService,
+  ) {
+    super(prisma, advancement, auditLog, realtime, frozen, eventEffects);
+  }
+
   async generate(
     input: {
       categoryId: string;
@@ -87,8 +104,12 @@ export class SportsBracketService extends SportsBracketBasicPersistence {
           invalidations: [
             this.generationInvalidation('BRACKET_GENERATED', category.tournament.id, category.id, stages),
           ],
+          affectedEventIds: [] as string[],
         };
       }
+      const replacedEventIds = input.replaceExistingDraft
+        ? category.stages.flatMap((stage) => stage.matches.map((match) => match.eventId))
+        : [];
       await this.replaceDraftIfRequested(tx, category.stages, Boolean(input.replaceExistingDraft), actorId);
       if (!input.replaceExistingDraft && category.stages.length > 0) {
         throw new ConflictException('A modalidade já possui uma chave. Confirme a substituição do rascunho.');
@@ -180,9 +201,16 @@ export class SportsBracketService extends SportsBracketBasicPersistence {
       return {
         stages,
         invalidations: [this.generationInvalidation('BRACKET_GENERATED', category.tournament.id, category.id, stages)],
+        affectedEventIds: [
+          ...replacedEventIds,
+          ...stages.flatMap((stage) => stage.matches.map((match) => match.event.id)),
+        ],
       };
     });
-    await this.realtime.publishStructuralInvalidations(result.invalidations);
+    await Promise.all([
+      this.eventEffects.syncEvents(result.affectedEventIds),
+      this.realtime.publishStructuralInvalidations(result.invalidations),
+    ]);
     return result.stages;
   }
 }

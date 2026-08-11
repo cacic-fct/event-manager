@@ -3,7 +3,6 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   EventFormTargetType,
-  Prisma,
   PublicationState,
   SubscriptionStatus,
 } from '@prisma/client';
@@ -12,6 +11,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { compareAsc } from 'date-fns';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../../audit-log/audit-log.service';
+import { runSerializablePrismaTransaction } from '../../common/serializable-prisma-transaction';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import {
@@ -940,21 +940,6 @@ export class CurrentUserEventSubscriptionService {
   private async runSerializableSubscriptionTransaction<T>(
     operation: (tx: TransactionClient) => Promise<T>,
   ): Promise<T> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        return await this.prisma.$transaction(operation, {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        });
-      } catch (error) {
-        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
-          continue;
-        }
-
-        throw error;
-      }
-    }
-
-    throw new BadRequestException('Could not complete subscription.');
+    return runSerializablePrismaTransaction(this.prisma, operation);
   }
 }

@@ -1,8 +1,14 @@
 import { MessageEvent } from '@nestjs/common';
+import { clearInterval as nodeClearInterval, setInterval as nodeSetInterval } from 'node:timers';
 import { firstValueFrom, take } from 'rxjs';
 import { SportsRealtimeService } from './sports-realtime.service';
 
 describe('SportsRealtimeService', () => {
+  beforeEach(() => {
+    globalThis.setInterval = nodeSetInterval as typeof globalThis.setInterval;
+    globalThis.clearInterval = nodeClearInterval as typeof globalThis.clearInterval;
+  });
+
   it('records before delivering local mutation-driven events', async () => {
     const stored: MessageEvent = {
       id: 'opaque-cursor-1',
@@ -81,6 +87,13 @@ describe('SportsRealtimeService', () => {
     messageHandler?.(
       'sports:realtime:v1',
       JSON.stringify({
+        scope: 'sports-match:without-local-watchers',
+        event: stored,
+      }),
+    );
+    messageHandler?.(
+      'sports:realtime:v1',
+      JSON.stringify({
         scope: 'sports-match:match-1',
         event: stored,
       }),
@@ -88,9 +101,36 @@ describe('SportsRealtimeService', () => {
     expect(received).toEqual([stored]);
 
     subscription.unsubscribe();
+    expect((service as unknown as { channels: Map<string, unknown> }).channels.size).toBe(0);
     await service.onModuleDestroy();
     expect(subscriber.unsubscribe).toHaveBeenCalledWith('sports:realtime:v1');
     expect(subscriber.disconnect).toHaveBeenCalled();
+  });
+
+  it('keeps connections alive without polling and releases the channel after unsubscribe', async () => {
+    jest.useFakeTimers();
+    const replay = {
+      scope: jest.fn((channel: string, id: string) => `${channel}:${id}`),
+    };
+    const service = new SportsRealtimeService({} as never, replay as never);
+    const received: MessageEvent[] = [];
+    const subscription = service.watch('sports-match:match-1').subscribe((event) => received.push(event));
+
+    jest.advanceTimersByTime(25_000);
+
+    expect(received).toEqual([
+      {
+        data: {
+          type: 'heartbeat',
+          timestamp: expect.any(Number),
+        },
+      },
+    ]);
+    expect((service as unknown as { channels: Map<string, unknown> }).channels.size).toBe(1);
+
+    subscription.unsubscribe();
+    expect((service as unknown as { channels: Map<string, unknown> }).channels.size).toBe(0);
+    jest.useRealTimers();
   });
 
   it('publishes deduplicated structural invalidations to tournament and public match scopes', async () => {

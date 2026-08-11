@@ -1,4 +1,12 @@
 import { AbstractControl, ValidationErrors } from '@angular/forms';
+import {
+  DEFAULT_SPORTS_BRACKET_EDITOR_RULES,
+  DEFAULT_SPORTS_OVERALL_SCORING_RULES,
+  DEFAULT_SPORTS_SCORE_RULES,
+  DEFAULT_SPORTS_STANDINGS_RULES,
+  getSportsTimerPreset,
+  type SportsOverallScoringMode,
+} from '@cacic-fct/shared-data-types/sports-metadata';
 
 export interface SportsTimerFormValue {
   timerOverallEnabled?: boolean;
@@ -9,7 +17,7 @@ export interface SportsTimerFormValue {
 }
 
 export interface SportsOverallScoringFormValue {
-  overallScoringMode?: string;
+  overallScoringMode?: SportsOverallScoringMode;
   overallMatchWinPoints?: number;
   overallMatchDrawPoints?: number;
   overallMatchLossPoints?: number;
@@ -42,21 +50,29 @@ export function competitionRulesToForm(
   const standings = safeObject(standingsRulesJson);
   const bracket = safeObject(bracketRulesJson);
   return {
-    scoreAllowDraw: typeof score['allowDraw'] === 'boolean' ? score['allowDraw'] : true,
-    scoreHigherWins: typeof score['higherWins'] === 'boolean' ? score['higherWins'] : true,
-    scorePointStep: positiveNumber(score['pointStep'], 1),
-    standingsWinPoints: finiteNumber(standings['winPoints'], 3),
-    standingsDrawPoints: finiteNumber(standings['drawPoints'], 1),
-    standingsLossPoints: finiteNumber(standings['lossPoints'], 0),
-    standingsByePoints: finiteNumber(standings['byePoints'], 3),
+    scoreAllowDraw:
+      typeof score['allowDraw'] === 'boolean' ? score['allowDraw'] : DEFAULT_SPORTS_SCORE_RULES.allowDraw,
+    scoreHigherWins:
+      typeof score['higherWins'] === 'boolean' ? score['higherWins'] : DEFAULT_SPORTS_SCORE_RULES.higherWins,
+    scorePointStep: positiveNumber(score['pointStep'], DEFAULT_SPORTS_SCORE_RULES.pointStep),
+    standingsWinPoints: finiteNumber(standings['winPoints'], DEFAULT_SPORTS_STANDINGS_RULES.winPoints),
+    standingsDrawPoints: finiteNumber(standings['drawPoints'], DEFAULT_SPORTS_STANDINGS_RULES.drawPoints),
+    standingsLossPoints: finiteNumber(standings['lossPoints'], DEFAULT_SPORTS_STANDINGS_RULES.lossPoints),
+    standingsByePoints: finiteNumber(standings['byePoints'], DEFAULT_SPORTS_STANDINGS_RULES.byePoints),
     format,
     doubleRoundRobin:
       format === 'ROUND_ROBIN'
         ? standings['doubleRoundRobin'] === true
         : bracket['doubleRoundRobin'] === true,
-    groupCount: positiveInteger(bracket['groupCount'], 2),
-    qualifiersPerGroup: positiveInteger(bracket['qualifiersPerGroup'], 2),
-    swissMaximumRounds: positiveInteger(bracket['maximumRounds'], 5),
+    groupCount: positiveInteger(bracket['groupCount'], DEFAULT_SPORTS_BRACKET_EDITOR_RULES.groupCount),
+    qualifiersPerGroup: positiveInteger(
+      bracket['qualifiersPerGroup'],
+      DEFAULT_SPORTS_BRACKET_EDITOR_RULES.qualifiersPerGroup,
+    ),
+    swissMaximumRounds: positiveInteger(
+      bracket['maximumRounds'],
+      DEFAULT_SPORTS_BRACKET_EDITOR_RULES.swissMaximumRounds,
+    ),
   };
 }
 
@@ -66,28 +82,37 @@ export function competitionRulesFromForm(
 ) {
   const format = raw.format ?? '';
   const standingsPatch: Record<string, unknown> = {
-    winPoints: finiteNumber(raw.standingsWinPoints, 3),
-    drawPoints: finiteNumber(raw.standingsDrawPoints, 1),
-    lossPoints: finiteNumber(raw.standingsLossPoints, 0),
-    byePoints: finiteNumber(raw.standingsByePoints, 3),
+    winPoints: finiteNumber(raw.standingsWinPoints, DEFAULT_SPORTS_STANDINGS_RULES.winPoints),
+    drawPoints: finiteNumber(raw.standingsDrawPoints, DEFAULT_SPORTS_STANDINGS_RULES.drawPoints),
+    lossPoints: finiteNumber(raw.standingsLossPoints, DEFAULT_SPORTS_STANDINGS_RULES.lossPoints),
+    byePoints: finiteNumber(raw.standingsByePoints, DEFAULT_SPORTS_STANDINGS_RULES.byePoints),
   };
   const bracketPatch: Record<string, unknown> = {};
   if (format === 'ROUND_ROBIN') {
     standingsPatch['doubleRoundRobin'] = raw.doubleRoundRobin === true;
   }
   if (format === 'GROUP_STAGE_ELIMINATION') {
-    bracketPatch['groupCount'] = positiveInteger(raw.groupCount, 2);
-    bracketPatch['qualifiersPerGroup'] = positiveInteger(raw.qualifiersPerGroup, 2);
+    bracketPatch['groupCount'] = positiveInteger(
+      raw.groupCount,
+      DEFAULT_SPORTS_BRACKET_EDITOR_RULES.groupCount,
+    );
+    bracketPatch['qualifiersPerGroup'] = positiveInteger(
+      raw.qualifiersPerGroup,
+      DEFAULT_SPORTS_BRACKET_EDITOR_RULES.qualifiersPerGroup,
+    );
     bracketPatch['doubleRoundRobin'] = raw.doubleRoundRobin === true;
   }
   if (format === 'SWISS') {
-    bracketPatch['maximumRounds'] = positiveInteger(raw.swissMaximumRounds, 5);
+    bracketPatch['maximumRounds'] = positiveInteger(
+      raw.swissMaximumRounds,
+      DEFAULT_SPORTS_BRACKET_EDITOR_RULES.swissMaximumRounds,
+    );
   }
   return {
     scoreRulesJson: mergeJsonObject(current.scoreRulesJson, {
       allowDraw: raw.scoreAllowDraw !== false,
       higherWins: raw.scoreHigherWins !== false,
-      pointStep: positiveNumber(raw.scorePointStep, 1),
+      pointStep: positiveNumber(raw.scorePointStep, DEFAULT_SPORTS_SCORE_RULES.pointStep),
     }),
     standingsRulesJson: mergeJsonObject(current.standingsRulesJson, standingsPatch),
     bracketRulesJson: mergeJsonObject(current.bracketRulesJson, bracketPatch),
@@ -95,25 +120,17 @@ export function competitionRulesFromForm(
 }
 
 export function sportsTimerPreset(preset: string): (Required<SportsTimerFormValue> & { timerPreset: string }) | null {
-  const values = {
-    SOCCER: { duration: 45, overtime: true, offsets: '0, 45' },
-    FUTSAL: { duration: 20, overtime: true, offsets: '0, 20' },
-    BASKETBALL: { duration: 10, overtime: true, offsets: '0, 10, 20, 30' },
-    VOLLEYBALL: { duration: 0, overtime: true, offsets: '0' },
-    TENNIS: { duration: 0, overtime: true, offsets: '0' },
-    CHESS: { duration: 0, overtime: false, offsets: '0' },
-    ESPORTS: { duration: 0, overtime: true, offsets: '0' },
-  }[preset];
+  const values = getSportsTimerPreset(preset);
   if (!values) {
     return null;
   }
   return {
-    timerPreset: preset,
-    timerOverallEnabled: true,
-    timerPeriodEnabled: preset !== 'CHESS',
-    timerPeriodDurationMinutes: values.duration,
-    timerAllowOvertime: values.overtime,
-    timerPeriodStartOffsetsMinutes: values.offsets,
+    timerPreset: values.key,
+    timerOverallEnabled: values.overallEnabled,
+    timerPeriodEnabled: values.periodEnabled,
+    timerPeriodDurationMinutes: values.periodDurationMinutes,
+    timerAllowOvertime: values.allowOvertime,
+    timerPeriodStartOffsetsMinutes: values.periodStartOffsetsMinutes.join(', '),
   };
 }
 
@@ -196,10 +213,10 @@ export function placementPointsValidator(control: AbstractControl): ValidationEr
 
 export function overallScoringRulesToForm(value: string, legacyBracketRulesJson = '{}'): SportsOverallScoringFormValue {
   const fallback = {
-    overallScoringMode: 'NONE',
-    overallMatchWinPoints: 3,
-    overallMatchDrawPoints: 1,
-    overallMatchLossPoints: 0,
+    overallScoringMode: DEFAULT_SPORTS_OVERALL_SCORING_RULES.mode,
+    overallMatchWinPoints: DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.win,
+    overallMatchDrawPoints: DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.draw,
+    overallMatchLossPoints: DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.loss,
     overallPlacementPointsJson: '{}',
     overallPlacementPoints: [],
   };
@@ -219,15 +236,16 @@ export function overallScoringRulesToForm(value: string, legacyBracketRulesJson 
     const placementEnabled = placement && typeof placement === 'object' && !Array.isArray(placement);
     const hasLegacyPlacement = placementEnabled && Object.keys(placement as Record<string, unknown>).length > 0;
     const mode = String(rules['mode'] ?? (hasLegacyPlacement ? 'FINAL_PLACEMENT' : 'NONE'));
+    const normalizedMode: SportsOverallScoringMode = [
+      'NONE',
+      'MATCH_RESULT',
+      'FINAL_PLACEMENT',
+      'MATCH_RESULT_AND_FINAL_PLACEMENT',
+    ].includes(mode)
+      ? (mode as SportsOverallScoringMode)
+      : fallback.overallScoringMode;
     return {
-      overallScoringMode: [
-        'NONE',
-        'MATCH_RESULT',
-        'FINAL_PLACEMENT',
-        'MATCH_RESULT_AND_FINAL_PLACEMENT',
-      ].includes(mode)
-        ? mode
-        : fallback.overallScoringMode,
+      overallScoringMode: normalizedMode,
       overallMatchWinPoints: typeof match['win'] === 'number' ? match['win'] : fallback.overallMatchWinPoints,
       overallMatchDrawPoints: typeof match['draw'] === 'number' ? match['draw'] : fallback.overallMatchDrawPoints,
       overallMatchLossPoints: typeof match['loss'] === 'number' ? match['loss'] : fallback.overallMatchLossPoints,
@@ -315,23 +333,6 @@ export function timerRulesFromForm(raw: SportsTimerFormValue): string {
     allowOvertime: raw.timerAllowOvertime,
     periodStartOffsetsMs: offsets.length ? offsets : [0],
   });
-}
-
-export function defaultSportEmoji(sport: string): string {
-  return (
-    {
-      SOCCER: '⚽',
-      FUTSAL: '⚽',
-      TENNIS: '🎾',
-      BASKETBALL: '🏀',
-      ESPORTS: '🎮',
-      CHESS: '♟️',
-      VOLLEYBALL: '🏐',
-      SWIMMING: '🏊',
-      TABLE_TENNIS: '🏓',
-      HANDBALL: '🤾',
-    }[sport] ?? '🏅'
-  );
 }
 
 export function toIsoDateOrNull(value?: string | null): string | null {

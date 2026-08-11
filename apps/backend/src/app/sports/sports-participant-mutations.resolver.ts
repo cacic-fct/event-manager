@@ -1,6 +1,7 @@
 import {
   CommitSportsMatchActionsInput,
   SportsMatchRosterUpsertInput,
+  SportsOfflineCollectorCredential,
   SportsPlayerApplicationCreateInput,
   SportsRepresentativeApplicationReviewInput,
   SportsRosterCheckInInput,
@@ -14,10 +15,31 @@ import { Prisma, SportsMatchActionType } from '@prisma/client';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { GraphqlContext } from '../current-user/selects';
 import { createSportsAuditActor } from './operations/sports-match-operation.service';
+import { issueSportsOfflineCollectorCredential } from './security/sports-offline-collector-credential';
 import { SportsMutationsResolverSupport } from './sports-mutations-resolver.support';
 
 @Resolver()
 export class SportsParticipantMutationsResolver extends SportsMutationsResolverSupport {
+  @Mutation(() => SportsOfflineCollectorCredential, { name: 'createSportsOfflineCollectorCredential' })
+  async createOfflineCollectorCredential(
+    @Args('matchId', { type: () => String }) matchId: string,
+    @Context() context: GraphqlContext,
+  ): Promise<SportsOfflineCollectorCredential> {
+    const operator = await this.access.requireMatchOperator(context, matchId);
+    const authenticated = this.authenticated(context);
+    const collectorUserId = operator.actor.userId ?? authenticated.sub;
+    if (!collectorUserId) {
+      throw new BadRequestException('A pessoa coletora não possui uma conta vinculada.');
+    }
+    return issueSportsOfflineCollectorCredential({
+      matchId,
+      collectorPersonId: operator.actor.id,
+      collectorUserId,
+      collectorRole: operator.kind === 'ADMIN' ? 'ADMIN' : operator.assignment.role,
+      collectorKind: operator.kind,
+    });
+  }
+
   @Mutation(() => String, { name: 'submitSportsTeamChange' })
   async submitTeamChange(
     @Args('input', { type: () => SportsTeamChangeRequestInput })
@@ -121,6 +143,7 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
   ): Promise<boolean> {
     const operator = await this.access.requireMatchOperator(context, matchId);
     const authenticated = this.authenticated(context);
+    const uploaderUserId = operator.actor.userId ?? authenticated.sub ?? null;
     if (operator.kind === 'ADMIN') {
       await this.assertMatchMutable(matchId, authenticated);
     }
@@ -132,9 +155,13 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
       input.offline ?? false,
       input.present ?? true,
       operator.actor.id,
-      authenticated.sub ?? null,
+      uploaderUserId,
       operator.kind === 'ADMIN' ? 'ADMIN' : operator.assignment.role,
       operator.kind === 'ADMIN' ? authenticated : createSportsAuditActor(operator.actor),
+      {
+        collectorPersonId: input.collectorPersonId,
+        collectorCredential: input.collectorCredential,
+      },
     );
     return true;
   }
@@ -148,6 +175,7 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
   ): Promise<boolean> {
     const operator = await this.access.requireMatchOperator(context, matchId);
     const authenticated = this.authenticated(context);
+    const uploaderUserId = operator.actor.userId ?? authenticated.sub ?? null;
     if (operator.kind === 'ADMIN') {
       await this.assertMatchMutable(matchId, authenticated);
     }
@@ -158,9 +186,13 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
       input.clientId,
       input.offline ?? false,
       operator.actor.id,
-      authenticated.sub ?? null,
+      uploaderUserId,
       operator.kind === 'ADMIN' ? 'ADMIN' : operator.assignment.role,
       operator.kind === 'ADMIN' ? authenticated : createSportsAuditActor(operator.actor),
+      {
+        collectorPersonId: input.collectorPersonId,
+        collectorCredential: input.collectorCredential,
+      },
     );
     return true;
   }

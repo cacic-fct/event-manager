@@ -1,106 +1,13 @@
-import type {
-  SportsFormat,
-  SportsLossReason,
-  SportsMatchState,
-  SportsOfficialRole,
-  SportsPreset,
-  SportsRosterRole,
-  SportsStageType,
-} from '@cacic-fct/shared-data-types';
+export {
+  sportsFormatLabel,
+  sportsLossReasonLabel,
+  sportsMatchStateLabel,
+  sportsOfficialRoleLabel,
+  sportsPresetLabel,
+  sportsRosterRoleLabel,
+  sportsStageLabel,
+} from '@cacic-fct/shared-data-types/sports-metadata';
 import type { PublicSportsMatch } from './sports-viewer.types';
-
-const MATCH_STATE_LABELS: Record<SportsMatchState, string> = {
-  SCHEDULED: 'Agendada',
-  CHECK_IN: 'Credenciamento',
-  LIVE: 'Ao vivo',
-  PAUSED: 'Pausada',
-  AWAITING_REVIEW: 'Em revisão',
-  CANCELED: 'Cancelada',
-  DRAW: 'Empate',
-  FINISHED: 'Encerrada',
-};
-
-const SPORT_LABELS: Record<SportsPreset, string> = {
-  SOCCER: 'Futebol',
-  FUTSAL: 'Futsal',
-  TENNIS: 'Tênis',
-  BASKETBALL: 'Basquete',
-  ESPORTS: 'E-sports',
-  CHESS: 'Xadrez',
-  VOLLEYBALL: 'Vôlei',
-  SWIMMING: 'Natação',
-  TABLE_TENNIS: 'Tênis de mesa',
-  HANDBALL: 'Handebol',
-  OTHER: 'Outro esporte',
-};
-
-const FORMAT_LABELS: Record<SportsFormat, string> = {
-  SINGLE_ELIMINATION: 'Eliminação simples',
-  ROUND_ROBIN: 'Todos contra todos',
-  GROUP_STAGE_ELIMINATION: 'Grupos e eliminatórias',
-  DOUBLE_ELIMINATION: 'Eliminação dupla',
-  SWISS: 'Sistema suíço',
-  CUSTOM: 'Formato personalizado',
-};
-
-const STAGE_LABELS: Record<SportsStageType, string> = {
-  GROUP: 'Fase de grupos',
-  ELIMINATION: 'Eliminatória',
-  WINNERS_BRACKET: 'Chave dos vencedores',
-  LOSERS_BRACKET: 'Chave de repescagem',
-  SWISS: 'Rodadas suíças',
-  FINAL: 'Final',
-};
-
-const OFFICIAL_ROLE_LABELS: Record<SportsOfficialRole, string> = {
-  REFEREE: 'Arbitragem',
-  INTERMEDIATOR: 'Intermediação',
-  SCOREKEEPER: 'Mesário',
-};
-
-const ROSTER_ROLE_LABELS: Record<SportsRosterRole, string> = {
-  PLAYER: 'Atleta',
-  CAPTAIN: 'Capitão',
-  COACH: 'Técnico',
-};
-
-const LOSS_REASON_LABELS: Record<SportsLossReason, string> = {
-  SCORE: 'Placar',
-  WALKOVER: 'W.O.',
-  FORFEIT: 'Desistência',
-  DISQUALIFICATION: 'Desclassificação',
-  INJURY: 'Lesão',
-  NO_SHOW: 'Ausência',
-  OTHER: 'Outro motivo',
-};
-
-export function sportsMatchStateLabel(state: SportsMatchState): string {
-  return MATCH_STATE_LABELS[state];
-}
-
-export function sportsPresetLabel(sport: SportsPreset, customName?: string | null): string {
-  return sport === 'OTHER' && customName?.trim() ? customName.trim() : SPORT_LABELS[sport];
-}
-
-export function sportsFormatLabel(format: SportsFormat): string {
-  return FORMAT_LABELS[format];
-}
-
-export function sportsStageLabel(stage: SportsStageType): string {
-  return STAGE_LABELS[stage];
-}
-
-export function sportsOfficialRoleLabel(role: SportsOfficialRole): string {
-  return OFFICIAL_ROLE_LABELS[role];
-}
-
-export function sportsRosterRoleLabel(role: SportsRosterRole): string {
-  return ROSTER_ROLE_LABELS[role];
-}
-
-export function sportsLossReasonLabel(reason: SportsLossReason): string {
-  return LOSS_REASON_LABELS[reason];
-}
 
 export function publicPlayerName(name: string): string {
   const parts = normalizedNameParts(name);

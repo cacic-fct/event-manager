@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, NotFoundException } from '@nest
 import { AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
 import { getBrazilianPhoneCandidates } from '../../common/brazilian-phone';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
+import { createOrRestoreEventAttendance } from '../../events/attendances/shared/event-attendance-writer';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const MAX_LOCATION_ACCURACY_METERS = 200;
@@ -30,63 +31,16 @@ export async function createAttendance(params: {
   input: CreateAttendanceInput;
   afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
 }) {
-  const locationData = getRequiredAttendanceLocationData(params.input.location);
+  getRequiredAttendanceLocationData(params.input.location);
   try {
-    return await params.prisma.$transaction(async (tx) => {
-      const existing = await tx.eventAttendance.findUnique({
-        where: {
-          personId_eventId: {
-            eventId: params.input.eventId,
-            personId: params.input.personId,
-          },
-        },
-        select: { status: true },
-      });
-      if (existing?.status === EventAttendanceStatus.ABSENT) {
-        const attendance = await tx.eventAttendance.update({
-          where: {
-            personId_eventId: {
-              eventId: params.input.eventId,
-              personId: params.input.personId,
-            },
-          },
-          data: {
-            status: params.input.status ?? EventAttendanceStatus.PRESENT,
-            attendedAt: params.input.attendedAt ?? new Date(),
-            createdById: params.input.createdById,
-            committedById: params.input.committedById,
-            createdByMethod: params.input.createdByMethod,
-            ...locationData,
-          },
-        });
-        await params.attendanceCategories.refreshForAttendance(params.input.personId, params.input.eventId, tx);
-        await params.afterCreate?.(attendance, tx);
-        return attendance;
-      }
-      await tx.eventAttendance.create({
-        data: {
-          eventId: params.input.eventId,
-          personId: params.input.personId,
-          attendedAt: params.input.attendedAt,
-          createdById: params.input.createdById,
-          committedById: params.input.committedById,
-          createdByMethod: params.input.createdByMethod,
-          status: params.input.status,
-          ...locationData,
-        },
-      });
-      await params.attendanceCategories.refreshForAttendance(params.input.personId, params.input.eventId, tx);
-      const attendance = await tx.eventAttendance.findUniqueOrThrow({
-        where: {
-          personId_eventId: {
-            eventId: params.input.eventId,
-            personId: params.input.personId,
-          },
-        },
-      });
-      await params.afterCreate?.(attendance, tx);
-      return attendance;
-    });
+    return await params.prisma.$transaction((tx) =>
+      createOrRestoreEventAttendance({
+        tx,
+        attendanceCategories: params.attendanceCategories,
+        input: params.input,
+        afterWrite: params.afterCreate,
+      }),
+    );
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       throw new ConflictException('Presença já registrada para este evento.');

@@ -4,12 +4,14 @@ import {
   parseRepresentativeChangeDelta,
   representativeChangeLabel,
   representativeChangeStatusLabel,
+  representativeMemberStatusLabel,
 } from './team-operations-page.utils';
 
 describe('team operations page utilities', () => {
   it('labels representative changes in Brazilian Portuguese', () => {
     expect(representativeChangeLabel('MEMBER_ADD')).toBe('Inclusão de atleta');
     expect(representativeChangeStatusLabel('CHANGES_REQUESTED')).toBe('Ajustes solicitados');
+    expect(representativeMemberStatusLabel('CHANGES_REQUESTED')).toBe('Ajustes solicitados');
   });
 
   it('accepts object deltas and rejects invalid JSON shapes', () => {

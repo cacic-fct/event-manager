@@ -3,6 +3,7 @@ import { AuditLogEntityType, AuditLogOperation, PublicationState } from '@prisma
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { CreateSportsMatchInput } from '../sports-admin.types';
+import { createSportsMatchBackingEvent } from '../sports-match-event-sync';
 
 import { SportsMatchAdminLifecycleService } from './sports-match-admin-lifecycle.service';
 
@@ -74,36 +75,26 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
             },
             actorId,
           )
-        : await tx.event.create({
-            data: {
-              name: requestedName || generatedName,
-              emoji: category.eventGroup.emoji,
-              startDate: this.requireDate(input.startDate, 'início da partida'),
-              endDate: this.requireDate(input.endDate, 'fim da partida'),
-              type: 'OTHER',
-              majorEventId: category.tournament.majorEventId,
-              eventGroupId: category.eventGroupId,
-              latitude: venue?.placePreset.latitude ?? null,
-              longitude: venue?.placePreset.longitude ?? null,
-              locationDescription: venue
-                ? [venue.placePreset.locationDescription, venue.name, venue.courtLabel].filter(Boolean).join(' · ')
+        : await createSportsMatchBackingEvent(tx, {
+            name: requestedName || generatedName,
+            emoji: category.eventGroup.emoji,
+            startDate: this.requireDate(input.startDate, 'início da partida'),
+            endDate: this.requireDate(input.endDate, 'fim da partida'),
+            majorEventId: category.tournament.majorEventId,
+            eventGroupId: category.eventGroupId,
+            venue,
+            publiclyVisible: Boolean(home && away),
+            publicationState:
+              input.publishImmediately === true &&
+              category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED
+                ? PublicationState.PUBLISHED
+                : PublicationState.DRAFT,
+            publishedAt:
+              input.publishImmediately === true &&
+              category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED
+                ? new Date()
                 : null,
-              allowSubscription: false,
-              shouldCollectAttendance: true,
-              publiclyVisible: Boolean(home && away),
-              publicationState:
-                input.publishImmediately === true &&
-                category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED
-                  ? PublicationState.PUBLISHED
-                  : PublicationState.DRAFT,
-              publishedAt:
-                input.publishImmediately === true &&
-                category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED
-                  ? new Date()
-                  : null,
-              createdById: actorId,
-              updatedById: actorId,
-            },
+            actorId,
           });
       const match = await tx.sportsMatch.create({
         data: {

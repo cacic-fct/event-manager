@@ -1,58 +1,42 @@
-export type SportsMatchState =
-  | 'SCHEDULED'
-  | 'CHECK_IN'
-  | 'LIVE'
-  | 'PAUSED'
-  | 'AWAITING_REVIEW'
-  | 'CANCELED'
-  | 'DRAW'
-  | 'FINISHED';
+import type {
+  SportsEligibilityStatus,
+  SportsIdentityType,
+  SportsMatchState,
+  SportsRegistrationStatus,
+  SportsRosterEntryStatus,
+  SportsRosterRole,
+  SportsRosterStatus,
+  SportsTeamChangeRequestStatus,
+  SportsTeamChangeRequestType,
+  SportsTeamMemberStatus,
+} from '@cacic-fct/shared-data-types';
+import type {
+  SportsMatchPeriodTimerView,
+  SportsMatchScheduleView,
+  SportsScorePeriodView,
+  SportsScoreboardView,
+  SportsTeamView,
+  SportsVenueLocationView,
+} from '@cacic-fct/shared-frontend-types';
+import type {
+  OfflineSportsMatchAction,
+  OfflineSportsMatchActionType,
+  OfflineSportsOperationQueueItem,
+  OfflineSportsRosterCheckIn,
+  OfflineSportsScannerCheckIn,
+  OfflineSportsTimerSnapshot,
+} from '@cacic-fct/offline-public-data-access';
 
-export type SportsMatchActionType =
-  | 'CHECK_IN'
-  | 'START'
-  | 'PAUSE'
-  | 'RESUME'
-  | 'SCORE_DELTA'
-  | 'SCORE_CORRECTION'
-  | 'PERIOD_ROLL'
-  | 'TIMER_RECONCILE'
-  | 'OCCURRENCE'
-  | 'FINALIZE'
-  | 'CANCEL'
-  | 'FORFEIT';
+export type { SportsMatchState } from '@cacic-fct/shared-data-types';
 
-export interface SportsTeamSummary {
-  id: string;
-  name: string;
-  institution?: string | null;
-  logoUrl?: string | null;
-}
+/** Actions available from the public official operations workspace. */
+export type SportsMatchActionType = OfflineSportsMatchActionType;
 
-export interface SportsScorePeriod {
-  number: number;
-  label: string;
-  homeScore: number;
-  awayScore: number;
-  completed: boolean;
-}
-
-export interface SportsMatchPeriodTimer {
-  periodNumber: number;
-  startedAtUnixMs?: number | null;
-  pausedAtUnixMs?: number | null;
-  elapsedBeforePauseMs: number;
-  scheduledStartOffsetMs: number;
-  capMs?: number | null;
-  allowOvertime: boolean;
-}
-
-export interface SportsScoreboard {
-  homeScore: number;
-  awayScore: number;
-  periods: SportsScorePeriod[];
-  activePeriod?: number | null;
-}
+export type SportsTeamSummary = SportsTeamView;
+export type SportsScorePeriod = SportsScorePeriodView;
+export type SportsMatchPeriodTimer = SportsMatchPeriodTimerView;
+export type SportsScoreboard = SportsScoreboardView;
+export type SportsOperationalMatchSchedule = SportsMatchScheduleView & SportsVenueLocationView;
 
 export interface SportsOperationalMatch {
   id: string;
@@ -76,13 +60,7 @@ export interface SportsOperationalMatch {
   timerPeriodDurationMs?: number | null;
   timerPeriodStartOffsetsMs: number[];
   timerAllowOvertime: boolean;
-  schedule: {
-    startDate: string;
-    endDate: string;
-    venueName?: string | null;
-    courtLabel?: string | null;
-    locationDescription?: string | null;
-  };
+  schedule: SportsOperationalMatchSchedule;
   rosters: SportsOperationsRoster[];
   notes?: string | null;
   occurrencesJson?: string | null;
@@ -91,8 +69,8 @@ export interface SportsOperationalMatch {
 export interface SportsOperationsRosterEntry {
   id: string;
   name: string;
-  role: 'PLAYER' | 'CAPTAIN' | 'COACH';
-  status: 'EXPECTED' | 'CHECKED_IN' | 'ABSENT' | 'EXCUSED';
+  role: SportsRosterRole;
+  status: SportsRosterEntryStatus;
   checkedInAt?: string | null;
   shirtNumber?: string | null;
 }
@@ -101,7 +79,7 @@ export interface SportsOperationsRoster {
   id: string;
   registrationId: string;
   revision: number;
-  status: string;
+  status: SportsRosterStatus;
   team: SportsTeamSummary;
   entries: SportsOperationsRosterEntry[];
 }
@@ -115,64 +93,31 @@ export interface SportsLineupRead {
   eligibleMembers: Array<{
     registrationMemberId: string;
     name: string;
-    role: 'PLAYER' | 'CAPTAIN' | 'COACH';
+    role: SportsRosterRole;
     shirtNumber?: string | null;
   }>;
   roster?: {
     id: string;
     revision: number;
-    status: string;
+    status: SportsRosterStatus;
     entries: Array<{
       id: string;
       registrationMemberId: string;
-      role: 'PLAYER' | 'CAPTAIN' | 'COACH';
-      status: string;
+      role: SportsRosterRole;
+      status: SportsRosterEntryStatus;
       checkedInAt?: string | null;
       shirtNumber?: string | null;
     }>;
   } | null;
 }
 
-export interface SportsMatchAction {
-  clientId: string;
-  matchId: string;
-  baseRevision: number;
-  type: SportsMatchActionType;
-  payloadJson: string;
-  scorerRosterEntryId?: string | null;
-  authoredAt: string;
-  offline: boolean;
-}
-
-export interface SportsRosterCheckIn {
-  clientId: string;
-  matchId: string;
-  rosterEntryId: string;
-  checkedInAt: string;
-  offline: boolean;
-  present?: boolean;
-}
-
-export interface SportsScannerCheckIn {
-  clientId: string;
-  matchId: string;
-  code: string;
-  checkedInAt: string;
-  offline: boolean;
-}
-
-export interface SportsTimerSnapshot {
-  overall: {
-    startedAtUnixMs: number | null;
-    pausedAtUnixMs: number | null;
-    elapsedBeforePauseMs: number;
-  };
-  periods: SportsMatchPeriodTimer[];
-  activePeriod: number | null;
-}
+export type SportsMatchAction = OfflineSportsMatchAction;
+export type SportsRosterCheckIn = OfflineSportsRosterCheckIn;
+export type SportsScannerCheckIn = OfflineSportsScannerCheckIn;
+export type SportsTimerSnapshot = OfflineSportsTimerSnapshot;
 
 export interface SportsTimerRestoration extends SportsTimerSnapshot {
-  state: 'LIVE' | 'PAUSED';
+  state: Extract<SportsMatchState, 'LIVE' | 'PAUSED'>;
 }
 
 export interface SportsTimerConflict {
@@ -181,37 +126,24 @@ export interface SportsTimerConflict {
   device: SportsTimerSnapshot;
 }
 
-interface QueuedSportsOperationBase {
-  id: string;
-  userScope: string;
-  attempts: number;
-  queuedAt: string;
-  lastError?: string;
+export interface SportsOfflineCollectorCredential {
+  credential: string;
+  collectorPersonId: string;
+  issuedAt: string;
 }
 
-export type QueuedSportsOperation =
-  | (QueuedSportsOperationBase & { kind: 'ACTION'; action: SportsMatchAction; timerSnapshot?: SportsTimerSnapshot })
-  | (QueuedSportsOperationBase & { kind: 'CHECK_IN'; checkIn: SportsRosterCheckIn })
-  | (QueuedSportsOperationBase & { kind: 'SCANNER'; scannerCheckIn: SportsScannerCheckIn });
+export type QueuedSportsOperation = OfflineSportsOperationQueueItem;
 
 export interface RepresentativeIdentityHint {
   clientKey: string;
-  type: 'IDENTITY_DOCUMENT' | 'PHONE' | 'EMAIL';
+  type: SportsIdentityType;
   displayHint: string;
 }
 
 export interface RepresentativeTeamChange {
   id: string;
-  type:
-    | 'TEAM_DETAILS'
-    | 'MEMBER_ADD'
-    | 'MEMBER_REMOVE'
-    | 'MEMBER_UPDATE'
-    | 'LOGO'
-    | 'REPRESENTATIVE'
-    | 'CATEGORY_ROLE'
-    | 'LINEUP';
-  status: 'PENDING' | 'CONFLICT' | 'CHANGES_REQUESTED' | 'APPROVED' | 'REJECTED' | 'SUPERSEDED';
+  type: SportsTeamChangeRequestType;
+  status: SportsTeamChangeRequestStatus;
   requestRevision: number;
   baseRevision: number;
   deltaJson: string;
@@ -227,14 +159,14 @@ export interface RepresentativeTeamWorkspace {
   members: Array<{
     id: string;
     name: string;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'WITHDRAWN';
+    status: SportsTeamMemberStatus;
     revision: number;
     categoryRoles: Array<{
       registrationId: string;
       categoryId: string;
       categoryName: string;
-      role: 'PLAYER' | 'CAPTAIN' | 'COACH';
-      eligibility: string;
+      role: SportsRosterRole;
+      eligibility: SportsEligibilityStatus;
     }>;
   }>;
   registrations: Array<{
@@ -242,7 +174,7 @@ export interface RepresentativeTeamWorkspace {
     categoryId: string;
     categoryName: string;
     categoryEmoji: string;
-    status: string;
+    status: SportsRegistrationStatus;
   }>;
   matches: Array<{
     id: string;

@@ -1,4 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { DEFAULT_SPORTS_STANDINGS_RULES } from '@cacic-fct/shared-data-types';
 import {
   Prisma,
   PublicationState,
@@ -194,7 +195,10 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
         ],
       };
     });
-    await this.realtime.publishStructuralInvalidations(result.invalidations);
+    await Promise.all([
+      this.eventEffects.syncEvents(result.matches.map((match) => match.eventId)),
+      this.realtime.publishStructuralInvalidations(result.invalidations),
+    ]);
     return result.matches;
   }
 
@@ -224,7 +228,10 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
       });
     }
     if (round.byeRegistrationId) {
-      const byePoints = this.readNumber(this.readRecord(category.standingsRules)['byePoints'], 1);
+      const byePoints = this.readNumber(
+        this.readRecord(category.standingsRules)['byePoints'],
+        DEFAULT_SPORTS_STANDINGS_RULES.byePoints,
+      );
       const standing = await tx.sportsStanding.findUniqueOrThrow({
         where: {
           stageId_registrationId: {

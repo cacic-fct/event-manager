@@ -1,4 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
+import { getDefaultSportsEmoji } from '@cacic-fct/shared-data-types';
 import {
   Prisma,
   SportsCategoryStatus,
@@ -47,20 +48,7 @@ export abstract class SportsAdminSupport {
   }
 
   protected defaultSportEmoji(sport: SportsPreset): string {
-    const emojis: Record<SportsPreset, string> = {
-      SOCCER: '⚽',
-      FUTSAL: '⚽',
-      TENNIS: '🎾',
-      BASKETBALL: '🏀',
-      ESPORTS: '🎮',
-      CHESS: '♟️',
-      VOLLEYBALL: '🏐',
-      SWIMMING: '🏊',
-      TABLE_TENNIS: '🏓',
-      HANDBALL: '🤾',
-      OTHER: '🏅',
-    };
-    return emojis[sport];
+    return getDefaultSportsEmoji(sport);
   }
 
   protected assertDateRange(startDate: Date, endDate: Date, label: string): void {

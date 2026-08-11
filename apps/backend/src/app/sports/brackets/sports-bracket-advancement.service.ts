@@ -7,11 +7,16 @@ import {
   SportsStructuralInvalidation,
   SportsStructuralInvalidationKind,
 } from '../realtime/sports-structural-invalidation';
+import { SportsMatchRosterService } from '../rosters/sports-match-roster.service';
 
 import { SportsBracketAdvancementAssignments } from './sports-bracket-advancement-assignments';
 
 @Injectable()
 export class SportsBracketAdvancementService extends SportsBracketAdvancementAssignments {
+  constructor(rosters: SportsMatchRosterService) {
+    super(rosters);
+  }
+
   async reconcileAfterProjectionChange(
     tx: Prisma.TransactionClient,
     sourceMatchId: string,

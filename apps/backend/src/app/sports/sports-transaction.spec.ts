@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import type { PrismaService } from '../prisma/prisma.service';
+import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { runSerializableSportsTransaction } from './sports-transaction';
 
 function retryableError(): Prisma.PrismaClientKnownRequestError {
@@ -13,6 +14,10 @@ describe('runSerializableSportsTransaction', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+
+  it('keeps the sports export as a compatibility alias for the shared helper', () => {
+    expect(runSerializableSportsTransaction).toBe(runSerializablePrismaTransaction);
   });
 
   it('runs the callback in a serializable transaction and returns its value', async () => {

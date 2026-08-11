@@ -116,6 +116,9 @@
   .match-toolbar span {
     display: none;
   }
+  .match-toolbar .retained-offline-items {
+    display: inline-flex;
+  }
   .operation-shell {
     padding: 0.75rem;
   }

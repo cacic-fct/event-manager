@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CreateSportsTournamentInput, UpdateSportsTournamentInput } from '../sports-admin.types';
+import { softDeleteSportsMatchBackingEvents } from '../sports-match-event-sync';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
@@ -273,10 +274,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
       }
 
       await Promise.all([
-        tx.event.updateMany({
-          where: { id: { in: eventIds }, deletedAt: null },
-          data: { deletedAt, updatedById: actorId },
-        }),
+        softDeleteSportsMatchBackingEvents(tx, eventIds, deletedAt, actorId),
         tx.sportsMatch.updateMany({
           where: { id: { in: matchIds }, deletedAt: null },
           data: { deletedAt, revision: { increment: 1 }, updatedById: actorId },

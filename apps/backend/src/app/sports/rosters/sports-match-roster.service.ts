@@ -3,9 +3,7 @@ import { Prisma, SportsRosterRole } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CurrentUserDefaultRedirectService } from '../../current-user/default-redirect/current-user-default-redirect.service';
-import { SportsRealtimeService } from '../realtime/sports-realtime.service';
-import { SportsAutoroutingService } from '../routing/sports-autorouting.service';
+import { SportsMutationEventsService } from '../realtime/sports-mutation-events.service';
 
 export interface SportsRosterEntryWrite {
   registrationMemberId: string;
@@ -28,10 +26,8 @@ export class SportsMatchRosterService extends SportsMatchRosterWriteService {
     prisma: PrismaService,
     attendanceCategories: AttendanceCategoryService,
     auditLog: AuditLogService,
-    realtime: SportsRealtimeService,
-    autorouting: SportsAutoroutingService,
-    defaultRedirect: CurrentUserDefaultRedirectService,
+    mutationEvents: SportsMutationEventsService,
   ) {
-    super(prisma, attendanceCategories, auditLog, realtime, autorouting, defaultRedirect);
+    super(prisma, attendanceCategories, auditLog, mutationEvents);
   }
 }

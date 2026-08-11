@@ -1,3 +1,4 @@
+import { sportsMatchStateLabel, sportsRosterRoleLabel } from '@cacic-fct/shared-data-types/sports-metadata';
 import type { RepresentativeTeamChange, SportsLineupRead } from './sports-operations.types';
 import type { RepresentativeTeamWorkspace } from './sports-operations.types';
 
@@ -35,16 +36,13 @@ export function representativeMatchupLabel(match: RepresentativeTeamWorkspace['m
 }
 
 export function representativeMatchStateLabel(state: RepresentativeTeamWorkspace['matches'][number]['state']): string {
-  return {
-    SCHEDULED: 'Agendada',
-    CHECK_IN: 'Check-in',
-    LIVE: 'Ao vivo',
-    PAUSED: 'Pausada',
-    AWAITING_REVIEW: 'Em revisão - somente leitura',
-    CANCELED: 'Cancelada para remarcação',
-    DRAW: 'Empate - somente leitura',
-    FINISHED: 'Finalizada - somente leitura',
-  }[state];
+  const canonical = sportsMatchStateLabel(state);
+  if (state === 'CANCELED') {
+    return 'Cancelada para remarcação';
+  }
+  return state === 'AWAITING_REVIEW' || state === 'DRAW' || state === 'FINISHED'
+    ? `${canonical} - somente leitura`
+    : canonical;
 }
 
 export function representativeMemberStatusLabel(
@@ -53,6 +51,7 @@ export function representativeMemberStatusLabel(
   return {
     PENDING: 'Aguardando aprovação',
     APPROVED: 'Ativo',
+    CHANGES_REQUESTED: 'Ajustes solicitados',
     REJECTED: 'Não aprovado',
     SUSPENDED: 'Suspenso',
     WITHDRAWN: 'Saiu da equipe',
@@ -60,7 +59,7 @@ export function representativeMemberStatusLabel(
 }
 
 export function representativeLineupRoleLabel(role: LineupMember['role']): string {
-  return { PLAYER: 'Atleta', CAPTAIN: 'Capitão', COACH: 'Técnico' }[role];
+  return sportsRosterRoleLabel(role);
 }
 
 export function parseRepresentativeChangeDelta(value?: string): Record<string, unknown> {
@@ -78,9 +77,7 @@ export function readRepresentativeRecord(value: unknown): Record<string, unknown
 
 export function lineupMembersFromRead(lineup: SportsLineupRead): LineupMember[] {
   const selectedEntries = new Map(
-    lineup.roster?.entries
-      .filter((entry) => entry.status !== 'REMOVED')
-      .map((entry) => [entry.registrationMemberId, entry]) ?? [],
+    lineup.roster?.entries.map((entry) => [entry.registrationMemberId, entry]) ?? [],
   );
   return lineup.eligibleMembers.map((member) => {
     const rosterEntry = selectedEntries.get(member.registrationMemberId);

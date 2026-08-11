@@ -1,6 +1,7 @@
 import { MatStepper } from '@angular/material/stepper';
 import { AztecScannerDialogComponent } from '@cacic-fct/shared-angular';
-import { SportsConfirmationDialog, SportsConfirmationDialogData } from './sports-confirmation-dialog';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from '@cacic-fct/shared-angular';
+import { sportsMatchStateLabel, sportsRosterRoleLabel } from '@cacic-fct/shared-data-types/sports-metadata';
 import type { SportsOperationalMatch, SportsTimerRestoration } from './sports-operations.types';
 import type { CheckInEntry, MatchOccurrence } from './official-match-page.utils';
 import { sortCheckInEntries } from './official-match-page.utils';
@@ -209,11 +210,12 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
       return;
     }
     this.dialog
-      .open<SportsConfirmationDialog, SportsConfirmationDialogData, boolean>(SportsConfirmationDialog, {
+      .open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(ConfirmationDialogComponent, {
         data: {
           title: 'Editar check-in após o início?',
           message: 'A partida já saiu da etapa de check-in. Desbloqueie somente para corrigir uma presença.',
           confirmLabel: 'Sim, editar',
+          cancelLabel: 'Não',
         },
       })
       .afterClosed()
@@ -252,11 +254,12 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
 
   openFinalize(): void {
     this.dialog
-      .open<SportsConfirmationDialog, SportsConfirmationDialogData, boolean>(SportsConfirmationDialog, {
+      .open<ConfirmationDialogComponent, ConfirmationDialogData, boolean>(ConfirmationDialogComponent, {
         data: {
           title: 'Finalizar esta partida?',
           message: 'Sim abre a revisão final do resultado. Nenhum resultado será enviado antes da última confirmação.',
           confirmLabel: 'Sim, revisar resultado',
+          cancelLabel: 'Não',
         },
       })
       .afterClosed()
@@ -382,11 +385,7 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
   }
 
   checkInDetail(entry: CheckInEntry): string {
-    const role = {
-      PLAYER: 'Atleta',
-      CAPTAIN: 'Capitão',
-      COACH: 'Técnico',
-    }[entry.role];
+    const role = sportsRosterRoleLabel(entry.role);
     return entry.shirtNumber == null ? role : `${role} - camisa ${entry.shirtNumber}`;
   }
 
@@ -417,17 +416,7 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
   }
 
   stateLabel(state: SportsOperationalMatch['state']): string {
-    const labels: Record<SportsOperationalMatch['state'], string> = {
-      SCHEDULED: 'Agendada',
-      CHECK_IN: 'Check-in',
-      LIVE: 'Ao vivo',
-      PAUSED: 'Pausada',
-      AWAITING_REVIEW: 'Em revisão',
-      CANCELED: 'Cancelada',
-      DRAW: 'Empate',
-      FINISHED: 'Finalizada',
-    };
-    return labels[state];
+    return sportsMatchStateLabel(state);
   }
 
   reasonLabel(reason: 'SCORE' | 'WALKOVER' | 'FORFEIT' | 'OTHER'): string {

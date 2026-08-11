@@ -1,19 +1,30 @@
 import type {
   SportsApplicationStatus,
   SportsCategoryStatus,
+  SportsEligibilityStatus,
   SportsFormat,
+  SportsLivestreamProvider,
+  SportsMatchActionType,
   SportsMatchState,
   SportsOfficialRole,
+  SportsParticipantStatus,
+  SportsPaymentStatus,
   SportsPreset,
   SportsRegistrationStatus,
   SportsReviewStatus,
+  SportsRosterEntryStatus,
+  SportsRosterRole,
+  SportsRosterStatus,
   SportsScoringMode,
+  SportsScoreEntrySource,
   SportsStageType,
   SportsTeamChangeRequestStatus,
+  SportsTeamChangeRequestType,
   SportsTeamMemberStatus,
   SportsTeamStatus,
   SportsTournamentStatus,
 } from '@cacic-fct/shared-data-types';
+import type { SportsMatchScheduleView, SportsScoreboardView, SportsTeamView } from '@cacic-fct/shared-frontend-types';
 
 export interface SportsTournamentSummary {
   id: string;
@@ -60,13 +71,9 @@ export interface SportsCategorySummary {
   revision: number;
 }
 
-export interface SportsTeamSummary {
-  id: string;
+export interface SportsTeamSummary extends SportsTeamView {
   tournamentId: string;
-  name: string;
-  institution?: string | null;
   status: SportsTeamStatus;
-  logoUrl?: string | null;
   revision: number;
   fieldRevisionsJson: string;
 }
@@ -90,21 +97,15 @@ export interface SportsStageSummary {
   generationRevision: number;
 }
 
-export interface SportsScoreboard {
-  homeScore: number;
-  awayScore: number;
-}
+export type SportsScoreboard = Pick<SportsScoreboardView, 'homeScore' | 'awayScore'>;
 
 export interface SportsMatchSummary {
   id: string;
   eventId: string;
-  event?: {
+  event?: (SportsMatchScheduleView & {
     id: string;
     name: string;
-    startDate: string;
-    endDate: string;
-    locationDescription?: string | null;
-  } | null;
+  }) | null;
   categoryId: string;
   stageId?: string | null;
   venueId?: string | null;
@@ -119,7 +120,7 @@ export interface SportsMatchSummary {
   bracketPosition?: number | null;
   groupKey?: string | null;
   notes?: string | null;
-  livestreamProvider?: 'YOUTUBE' | 'TWITCH' | 'GENERAL' | null;
+  livestreamProvider?: SportsLivestreamProvider | null;
   livestreamUrl?: string | null;
 }
 
@@ -139,7 +140,7 @@ export interface SportsScoreEntrySummary {
   id: string;
   tournamentId: string;
   teamId: string;
-  source: string;
+  source: SportsScoreEntrySource;
   points: number;
   reason: string;
   revision: number;
@@ -240,7 +241,7 @@ export interface SportsTeamRead {
   registrations: SportsRegistrationSummary[];
   changeRequests: {
     id: string;
-    type: string;
+    type: SportsTeamChangeRequestType;
     status: SportsTeamChangeRequestStatus;
     requestRevision: number;
     baseRevision: number;
@@ -254,7 +255,7 @@ export interface SportsMatchReview {
   match: SportsMatchSummary;
   actions: {
     id: string;
-    type: string;
+    type: SportsMatchActionType;
     payloadJson: string;
     reviewStatus: SportsReviewStatus;
     offline: boolean;
@@ -263,13 +264,13 @@ export interface SportsMatchReview {
   rosters: {
     id: string;
     registrationId: string;
-    status: string;
+    status: SportsRosterStatus;
     revision: number;
     entries: {
       id: string;
       registrationMemberId: string;
-      status: string;
-      role: string;
+      status: SportsRosterEntryStatus;
+      role: SportsRosterRole;
       shirtNumber?: string | null;
       roleMetadataJson?: string | null;
     }[];
@@ -287,7 +288,7 @@ export interface SportsPendingMatchAction {
   action: {
     id: string;
     matchId: string;
-    type: string;
+    type: SportsMatchActionType;
     payloadJson: string;
     reviewStatus: SportsReviewStatus;
     offline: boolean;
@@ -306,21 +307,21 @@ export interface SportsRegistrationRead {
     registrationId: string;
     categoryId: string;
     teamMemberId: string;
-    role: string;
-    eligibility: string;
+    role: SportsRosterRole;
+    eligibility: SportsEligibilityStatus;
     person: { id: string; name: string };
   }[];
   rosters: {
     id: string;
     matchId: string;
     registrationId: string;
-    status: string;
+    status: SportsRosterStatus;
     revision: number;
     entries: {
       id: string;
       registrationMemberId: string;
-      status: string;
-      role: string;
+      status: SportsRosterEntryStatus;
+      role: SportsRosterRole;
       shirtNumber?: string | null;
       roleMetadataJson?: string | null;
     }[];
@@ -331,11 +332,11 @@ export interface SportsApplication {
   id: string;
   tournamentId: string;
   applicant: { personId: string; name: string };
-  requestedTeam: { id: string; name: string; institution?: string | null; logoUrl?: string | null };
+  requestedTeam?: SportsTeamView | null;
   categories: { id: string; name: string; division?: string | null }[];
   status: SportsApplicationStatus;
-  participantStatus?: string | null;
-  paymentStatus?: string | null;
+  participantStatus?: SportsParticipantStatus | null;
+  paymentStatus?: SportsPaymentStatus | null;
   paymentTier?: string | null;
   imageLicenseAgreementAccepted: boolean;
   reviewMessage?: string | null;

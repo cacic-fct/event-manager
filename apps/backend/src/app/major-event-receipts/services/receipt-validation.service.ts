@@ -18,6 +18,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { CurrentUserMajorEventSubscriptionService } from '../../current-user/major-events/subscription.service';
+import { runSerializablePrismaTransaction } from '../../common/serializable-prisma-transaction';
 import { DashboardInsightsService } from '../../dashboard/insights.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -436,22 +437,7 @@ export class ReceiptValidationService {
   private async runSerializableSubscriptionTransaction<T>(
     operation: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        return await this.prisma.$transaction(operation, {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        });
-      } catch (error) {
-        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
-          continue;
-        }
-
-        throw error;
-      }
-    }
-
-    throw new BadRequestException('Could not complete receipt validation.');
+    return runSerializablePrismaTransaction(this.prisma, operation);
   }
 
   private async buildRankedEventsWithAvailability(

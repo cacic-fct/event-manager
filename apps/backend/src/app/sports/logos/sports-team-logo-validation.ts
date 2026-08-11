@@ -1,20 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
 import sharp from 'sharp';
 import type { SportsTeamLogoUploadFile } from './sports-team-logo.service';
-
-const MAX_SIZE_BYTES = 15 * 1024 * 1024;
-const MIN_DIMENSION = 16;
-const OUTPUT_DIMENSION = 1600;
-const MAX_PIXELS = 64 * 1024 * 1024;
-const METADATA_TIMEOUT_SECONDS = 3;
-const LOGO_FORMATS = {
-  jpeg: { mimeType: 'image/jpeg', extension: 'jpg' },
-  png: { mimeType: 'image/png', extension: 'png' },
-  webp: { mimeType: 'image/webp', extension: 'webp' },
-  avif: { mimeType: 'image/avif', extension: 'avif' },
-  svg: { mimeType: 'image/svg+xml', extension: 'svg' },
-} as const;
-type SportsTeamLogoFormat = keyof typeof LOGO_FORMATS;
+import {
+  SPORTS_TEAM_LOGO_FORMATS,
+  SPORTS_TEAM_LOGO_POLICY,
+  SportsTeamLogoFormat,
+} from './sports-team-logo.policy';
 
 export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile | undefined): Promise<{
   buffer: Buffer;
@@ -26,7 +17,7 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
   if (!file?.buffer?.length) {
     throw new BadRequestException('O arquivo de logo da equipe é obrigatório.');
   }
-  if (file.size !== file.buffer.length || file.buffer.length > MAX_SIZE_BYTES) {
+  if (file.size !== file.buffer.length || file.buffer.length > SPORTS_TEAM_LOGO_POLICY.maximumUploadBytes) {
     throw new BadRequestException('O logo da equipe deve ter no máximo 15 MB.');
   }
 
@@ -35,12 +26,12 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
     metadata = await sharp(file.buffer, {
       animated: false,
       failOn: 'warning',
-      limitInputPixels: MAX_PIXELS,
+      limitInputPixels: SPORTS_TEAM_LOGO_POLICY.maximumPixels,
       pages: 1,
       sequentialRead: true,
       unlimited: false,
     })
-      .timeout({ seconds: METADATA_TIMEOUT_SECONDS })
+      .timeout({ seconds: SPORTS_TEAM_LOGO_POLICY.metadataTimeoutSeconds })
       .metadata();
   } catch {
     throw new BadRequestException('O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG válida.');
@@ -48,11 +39,11 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
 
   const detectedFormat =
     metadata.format === 'heif' && file.mimetype.toLowerCase() === 'image/avif' ? 'avif' : metadata.format;
-  if (!detectedFormat || !(detectedFormat in LOGO_FORMATS)) {
+  if (!detectedFormat || !(detectedFormat in SPORTS_TEAM_LOGO_FORMATS)) {
     throw new BadRequestException('O logo deve ser uma imagem PNG, JPEG, WebP, AVIF ou SVG.');
   }
   const format = detectedFormat as SportsTeamLogoFormat;
-  const formatDetails = LOGO_FORMATS[format];
+  const formatDetails = SPORTS_TEAM_LOGO_FORMATS[format];
   if (file.mimetype.toLowerCase() !== formatDetails.mimeType) {
     throw new BadRequestException('O tipo declarado do arquivo não corresponde ao conteúdo da imagem.');
   }
@@ -60,11 +51,13 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
     throw new BadRequestException('Não foi possível determinar as dimensões do logo.');
   }
   if (
-    metadata.width < MIN_DIMENSION ||
-    metadata.height < MIN_DIMENSION ||
-    metadata.width * metadata.height > MAX_PIXELS
+    metadata.width < SPORTS_TEAM_LOGO_POLICY.minimumDimension ||
+    metadata.height < SPORTS_TEAM_LOGO_POLICY.minimumDimension ||
+    metadata.width * metadata.height > SPORTS_TEAM_LOGO_POLICY.maximumPixels
   ) {
-    throw new BadRequestException(`O logo deve ter ao menos ${MIN_DIMENSION}px por lado e no máximo 64 megapixels.`);
+    throw new BadRequestException(
+      `O logo deve ter ao menos ${SPORTS_TEAM_LOGO_POLICY.minimumDimension}px por lado e no máximo 64 megapixels.`,
+    );
   }
   if (metadata.pages && metadata.pages > 1) {
     throw new BadRequestException('O logo não pode ser animado ou ter várias páginas.');
@@ -83,15 +76,15 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
   const normalizedBuffer = await sharp(file.buffer, {
     animated: false,
     failOn: 'warning',
-    limitInputPixels: MAX_PIXELS,
+    limitInputPixels: SPORTS_TEAM_LOGO_POLICY.maximumPixels,
     pages: 1,
     sequentialRead: true,
     unlimited: false,
   })
     .rotate()
     .resize({
-      width: OUTPUT_DIMENSION,
-      height: OUTPUT_DIMENSION,
+      width: SPORTS_TEAM_LOGO_POLICY.outputDimension,
+      height: SPORTS_TEAM_LOGO_POLICY.outputDimension,
       fit: 'inside',
       withoutEnlargement: true,
     })
@@ -100,8 +93,8 @@ export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile
   const normalizedMetadata = await sharp(normalizedBuffer).metadata();
   const normalized = {
     buffer: normalizedBuffer,
-    mimeType: 'image/avif',
-    extension: 'avif',
+    mimeType: SPORTS_TEAM_LOGO_POLICY.outputMimeType,
+    extension: SPORTS_TEAM_LOGO_POLICY.outputExtension,
   };
   return {
     ...normalized,

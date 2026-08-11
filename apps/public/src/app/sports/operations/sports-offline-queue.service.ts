@@ -1,11 +1,16 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Injectable, OnDestroy, PLATFORM_ID, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, PLATFORM_ID, effect, inject, signal } from '@angular/core';
+import {
+  hasOfflineSportsAttendanceCollectorProof,
+  OfflineSportsCollectorCredential,
+  SportsOperationOfflineQueueService,
+} from '@cacic-fct/offline-public-data-access';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { NetworkStatusService } from '../../shared/network-status.service';
-import { SportsOperationsApiService } from './sports-operations-api.service';
 import { isSportsTimerAction } from './official-match-page.utils';
+import { SportsOperationsApiService } from './sports-operations-api.service';
 import {
   QueuedSportsOperation,
   SportsMatchAction,
@@ -15,7 +20,6 @@ import {
   SportsTimerSnapshot,
 } from './sports-operations.types';
 
-const STORAGE_KEY = 'fct:sports:operations:v2';
 const MAX_ATTEMPTS_PER_SYNC = 3;
 
 @Injectable({ providedIn: 'root' })
@@ -23,23 +27,50 @@ export class SportsOfflineQueueService implements OnDestroy {
   private readonly api = inject(SportsOperationsApiService);
   private readonly auth = inject(AuthService);
   private readonly network = inject(NetworkStatusService);
+  private readonly storage = inject(SportsOperationOfflineQueueService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly subscriptions = new Subscription();
   private syncing = false;
+  private started = false;
+  private pendingLoadRevision = 0;
+  private readonly requestedCollectorMatches = new Set<string>();
+  private readonly collectorPreparations = new Map<string, Promise<boolean>>();
 
-  private readonly pendingState = signal<QueuedSportsOperation[]>(this.read());
+  private readonly pendingState = signal<QueuedSportsOperation[]>([]);
   readonly pending = this.pendingState.asReadonly();
+  private readonly preparedCollectorKeys = signal<ReadonlySet<string>>(new Set());
   private readonly timerConflictState = signal<SportsTimerConflict | null>(null);
   readonly timerConflict = this.timerConflictState.asReadonly();
+  private readonly userScopeEffect = effect(() => {
+    const userScope = this.auth.user()?.sub;
+    if (!userScope) {
+      this.pendingState.set([]);
+      return;
+    }
+    if (this.started && this.isBrowser) {
+      void this.refreshPending(userScope);
+      this.requestedCollectorMatches.forEach((matchId) => void this.prepareCollector(matchId));
+    }
+  });
 
   start(): void {
     if (!this.isBrowser) {
       return;
     }
+    void this.refreshPending();
+    if (this.started) {
+      if (this.network.isOnline()) {
+        void this.sync();
+      }
+      return;
+    }
+
+    this.started = true;
     this.network.start();
     this.subscriptions.add(
       this.network.watchStatusChanges().subscribe((status) => {
         if (status === 'online') {
+          this.requestedCollectorMatches.forEach((matchId) => void this.prepareCollector(matchId));
           void this.sync();
         }
       }),
@@ -60,11 +91,12 @@ export class SportsOfflineQueueService implements OnDestroy {
         }
       }
     }
-    this.enqueueAction(action);
+    await this.enqueueAction(action);
     return 'queued';
   }
 
   async dispatchCheckIn(checkIn: SportsRosterCheckIn): Promise<'sent' | 'queued'> {
+    await this.prepareCollector(checkIn.matchId);
     if (this.network.isOnline()) {
       try {
         await firstValueFrom(this.api.checkIn(checkIn));
@@ -75,11 +107,12 @@ export class SportsOfflineQueueService implements OnDestroy {
         }
       }
     }
-    this.enqueueCheckIn(checkIn);
+    await this.enqueueCheckIn(checkIn);
     return 'queued';
   }
 
   async dispatchScannerCheckIn(scannerCheckIn: SportsScannerCheckIn): Promise<'sent' | 'queued'> {
+    await this.prepareCollector(scannerCheckIn.matchId);
     if (this.network.isOnline()) {
       try {
         await firstValueFrom(this.api.checkInFromScanner(scannerCheckIn));
@@ -90,65 +123,64 @@ export class SportsOfflineQueueService implements OnDestroy {
         }
       }
     }
-    const userScope = this.auth.user()?.sub ?? 'anonymous';
-    if (!this.pendingState().some((item) => item.id === scannerCheckIn.clientId)) {
-      this.persist([
-        ...this.pendingState(),
-        {
-          kind: 'SCANNER',
-          id: scannerCheckIn.clientId,
-          userScope,
-          scannerCheckIn: { ...scannerCheckIn, offline: true },
-          attempts: 0,
-          queuedAt: new Date().toISOString(),
-        },
-      ]);
-    }
+    const userScope = this.requireUserScope();
+    const collector = await this.requireCollectorCredential(userScope, scannerCheckIn.matchId);
+    await this.storage.enqueue({
+      kind: 'SCANNER',
+      id: scannerCheckIn.clientId,
+      userScope,
+      scannerCheckIn: {
+        ...scannerCheckIn,
+        offline: true,
+        collectorPersonId: collector.collectorPersonId,
+        collectorCredential: collector.credential,
+      },
+      attempts: 0,
+      queuedAt: new Date().toISOString(),
+    });
+    await this.refreshPending(userScope);
     return 'queued';
   }
 
-  enqueueAction(action: SportsMatchAction): void {
-    const userScope = this.auth.user()?.sub ?? 'anonymous';
-    if (this.pendingState().some((item) => item.id === action.clientId)) {
-      return;
-    }
-    this.persist([
-      ...this.pendingState(),
-      {
-        kind: 'ACTION',
-        id: action.clientId,
-        userScope,
-        action: { ...action, offline: true },
-        attempts: 0,
-        queuedAt: new Date().toISOString(),
-      },
-    ]);
+  async enqueueAction(action: SportsMatchAction): Promise<void> {
+    const userScope = this.requireUserScope();
+    await this.storage.enqueue({
+      kind: 'ACTION',
+      id: action.clientId,
+      userScope,
+      action: { ...action, offline: true },
+      attempts: 0,
+      queuedAt: new Date().toISOString(),
+    });
+    await this.refreshPending(userScope);
   }
 
-  attachTimerSnapshot(clientId: string, snapshot: SportsTimerSnapshot): void {
-    this.persist(
-      this.pendingState().map((item) =>
-        item.kind === 'ACTION' && item.id === clientId ? { ...item, timerSnapshot: snapshot } : item,
-      ),
-    );
-  }
-
-  enqueueCheckIn(checkIn: SportsRosterCheckIn): void {
-    const userScope = this.auth.user()?.sub ?? 'anonymous';
-    if (this.pendingState().some((item) => item.id === checkIn.clientId)) {
+  async attachTimerSnapshot(clientId: string, snapshot: SportsTimerSnapshot): Promise<void> {
+    const userScope = this.auth.user()?.sub;
+    if (!userScope) {
       return;
     }
-    this.persist([
-      ...this.pendingState(),
-      {
-        kind: 'CHECK_IN',
-        id: checkIn.clientId,
-        userScope,
-        checkIn: { ...checkIn, offline: true },
-        attempts: 0,
-        queuedAt: new Date().toISOString(),
+    await this.storage.attachTimerSnapshot(userScope, clientId, snapshot);
+    await this.refreshPending(userScope);
+  }
+
+  async enqueueCheckIn(checkIn: SportsRosterCheckIn): Promise<void> {
+    const userScope = this.requireUserScope();
+    const collector = await this.requireCollectorCredential(userScope, checkIn.matchId);
+    await this.storage.enqueue({
+      kind: 'CHECK_IN',
+      id: checkIn.clientId,
+      userScope,
+      checkIn: {
+        ...checkIn,
+        offline: true,
+        collectorPersonId: collector.collectorPersonId,
+        collectorCredential: collector.credential,
       },
-    ]);
+      attempts: 0,
+      queuedAt: new Date().toISOString(),
+    });
+    await this.refreshPending(userScope);
   }
 
   pendingForMatch(matchId: string): number {
@@ -158,13 +190,58 @@ export class SportsOfflineQueueService implements OnDestroy {
     }
     return this.pendingState().filter(
       (item) =>
-        item.userScope === userScope &&
+        this.isUploadableBy(item, userScope) &&
         (item.kind === 'ACTION'
           ? item.action.matchId === matchId
           : item.kind === 'CHECK_IN'
             ? item.checkIn.matchId === matchId
             : item.scannerCheckIn.matchId === matchId),
     ).length;
+  }
+
+  retainedActionCountForMatch(matchId: string): number {
+    const userScope = this.auth.user()?.sub;
+    if (!userScope) {
+      return 0;
+    }
+    return this.pendingState().filter(
+      (item) => item.kind === 'ACTION' && item.userScope !== userScope && item.action.matchId === matchId,
+    ).length;
+  }
+
+  unverifiedAttendanceCountForMatch(matchId: string): number {
+    return this.pendingState().filter(
+      (item) =>
+        item.kind !== 'ACTION' &&
+        !hasOfflineSportsAttendanceCollectorProof(item) &&
+        (item.kind === 'CHECK_IN' ? item.checkIn.matchId === matchId : item.scannerCheckIn.matchId === matchId),
+    ).length;
+  }
+
+  canCollectAttendance(matchId: string): boolean {
+    const userScope = this.auth.user()?.sub;
+    return Boolean(
+      userScope &&
+        (this.network.isOnline() || this.preparedCollectorKeys().has(this.collectorKey(userScope, matchId))),
+    );
+  }
+
+  async prepareCollector(matchId: string): Promise<boolean> {
+    const userScope = this.auth.user()?.sub;
+    if (!userScope || !matchId) {
+      return false;
+    }
+    this.requestedCollectorMatches.add(matchId);
+    const key = this.collectorKey(userScope, matchId);
+    const running = this.collectorPreparations.get(key);
+    if (running) {
+      return running;
+    }
+    const preparation = this.loadOrCreateCollectorCredential(userScope, matchId).finally(() => {
+      this.collectorPreparations.delete(key);
+    });
+    this.collectorPreparations.set(key, preparation);
+    return preparation;
   }
 
   async sync(): Promise<void> {
@@ -175,20 +252,16 @@ export class SportsOfflineQueueService implements OnDestroy {
     if (!userScope) {
       return;
     }
+
     this.syncing = true;
     try {
-      const pendingAtStart = this.pendingState();
-      const remaining: QueuedSportsOperation[] = [];
+      const pendingAtStart = await this.storage.listUploadable(userScope);
       const conflictedMatches = new Set<string>();
       for (const item of pendingAtStart) {
-        if (item.userScope !== userScope) {
-          remaining.push(item);
-          continue;
-        }
         if (item.kind === 'ACTION' && conflictedMatches.has(item.action.matchId)) {
-          remaining.push(item);
           continue;
         }
+
         let accepted = false;
         let lastError: unknown;
         for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_SYNC; attempt++) {
@@ -209,66 +282,64 @@ export class SportsOfflineQueueService implements OnDestroy {
             }
           }
         }
-        if (!accepted) {
-          if (item.kind === 'ACTION' && item.timerSnapshot && this.isTimerConflict(lastError)) {
-            const matchId = item.action.matchId;
-            conflictedMatches.add(matchId);
-            const timerItems = pendingAtStart.filter(
-              (candidate) =>
-                candidate.kind === 'ACTION' &&
-                candidate.userScope === userScope &&
-                candidate.action.matchId === matchId &&
-                candidate.timerSnapshot &&
-                this.isTimerAction(candidate.action),
-            );
-            const latest = timerItems.at(-1);
-            if (latest?.kind === 'ACTION' && latest.timerSnapshot) {
-              this.timerConflictState.set({
-                matchId,
-                queuedActionIds: timerItems.map((candidate) => candidate.id),
-                device: latest.timerSnapshot,
-              });
-            }
-          }
-          remaining.push({
-            ...item,
-            attempts: item.attempts + 1,
-            lastError: lastError instanceof Error ? lastError.message : 'Não foi possível sincronizar.',
-          });
+
+        if (accepted) {
+          await this.storage.remove(item.userScope, item.id);
+          continue;
         }
+
+        if (item.kind === 'ACTION' && item.timerSnapshot && this.isTimerConflict(lastError)) {
+          const matchId = item.action.matchId;
+          conflictedMatches.add(matchId);
+          const timerItems = pendingAtStart.filter(
+            (candidate) =>
+              candidate.kind === 'ACTION' &&
+              candidate.action.matchId === matchId &&
+              candidate.timerSnapshot &&
+              this.isTimerAction(candidate.action),
+          );
+          const latest = timerItems.at(-1);
+          if (latest?.kind === 'ACTION' && latest.timerSnapshot) {
+            this.timerConflictState.set({
+              matchId,
+              queuedActionIds: timerItems.map((candidate) => candidate.id),
+              device: latest.timerSnapshot,
+            });
+          }
+        }
+
+        await this.storage.recordFailure(
+          item.userScope,
+          item.id,
+          lastError instanceof Error ? lastError.message : 'Não foi possível sincronizar.',
+        );
       }
-      const queuedDuringSync = this.pendingState().filter(
-        (item) => !pendingAtStart.some((initial) => initial.id === item.id),
-      );
-      this.persist([...remaining, ...queuedDuringSync]);
     } finally {
       this.syncing = false;
+      await this.refreshPending();
     }
   }
 
-  discard(clientId: string): void {
-    this.persist(this.pendingState().filter((item) => item.id !== clientId));
-  }
-
-  resolveTimerConflict(matchId: string, queuedActionIds: readonly string[], baseRevision: number): void {
+  async discard(clientId: string): Promise<void> {
     const userScope = this.auth.user()?.sub;
     if (!userScope) {
       return;
     }
-    const ids = new Set(queuedActionIds);
-    let nextRevision = baseRevision;
-    const rebased = this.pendingState().flatMap((item): QueuedSportsOperation[] => {
-      if (item.userScope !== userScope || item.kind !== 'ACTION' || item.action.matchId !== matchId) {
-        return [item];
-      }
-      if (ids.has(item.id)) {
-        return [];
-      }
-      const result = { ...item, action: { ...item.action, baseRevision: nextRevision } };
-      nextRevision += 1;
-      return [result];
-    });
-    this.persist(rebased);
+    await this.storage.remove(userScope, clientId);
+    await this.refreshPending(userScope);
+  }
+
+  async resolveTimerConflict(
+    matchId: string,
+    queuedActionIds: readonly string[],
+    baseRevision: number,
+  ): Promise<void> {
+    const userScope = this.auth.user()?.sub;
+    if (!userScope) {
+      return;
+    }
+    await this.storage.resolveTimerConflict(userScope, matchId, queuedActionIds, baseRevision);
+    await this.refreshPending(userScope);
     if (this.timerConflictState()?.matchId === matchId) {
       this.timerConflictState.set(null);
     }
@@ -284,23 +355,69 @@ export class SportsOfflineQueueService implements OnDestroy {
     this.subscriptions.unsubscribe();
   }
 
-  private read(): QueuedSportsOperation[] {
-    if (!this.isBrowser) {
-      return [];
+  private async refreshPending(userScope = this.auth.user()?.sub): Promise<void> {
+    const loadRevision = ++this.pendingLoadRevision;
+    if (!userScope) {
+      this.pendingState.set([]);
+      return;
     }
-    try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as unknown;
-      return Array.isArray(parsed) ? (parsed as QueuedSportsOperation[]) : [];
-    } catch {
-      return [];
+
+    const items = await this.storage.listAll();
+    if (loadRevision === this.pendingLoadRevision && this.auth.user()?.sub === userScope) {
+      this.pendingState.set(items);
     }
   }
 
-  private persist(items: QueuedSportsOperation[]): void {
-    this.pendingState.set(items);
-    if (this.isBrowser) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  private requireUserScope(): string {
+    const userScope = this.auth.user()?.sub;
+    if (!userScope) {
+      throw new Error('Não foi possível identificar a pessoa responsável pela operação off-line.');
     }
+    return userScope;
+  }
+
+  private async loadOrCreateCollectorCredential(userScope: string, matchId: string): Promise<boolean> {
+    try {
+      const cached = await this.storage.getCollectorCredential(userScope, matchId);
+      if (cached) {
+        this.markCollectorPrepared(userScope, matchId);
+        return true;
+      }
+      if (!this.network.isOnline()) {
+        return false;
+      }
+      const issued = await firstValueFrom(this.api.createOfflineCollectorCredential(matchId));
+      await this.storage.saveCollectorCredential({
+        ...issued,
+        userScope,
+        matchId,
+      });
+      this.markCollectorPrepared(userScope, matchId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private async requireCollectorCredential(
+    userScope: string,
+    matchId: string,
+  ): Promise<OfflineSportsCollectorCredential> {
+    const credential = await this.storage.getCollectorCredential(userScope, matchId);
+    if (!credential) {
+      throw new Error(
+        'A coleta off-line ainda não foi preparada para esta partida. Conecte este dispositivo antes de coletar presenças.',
+      );
+    }
+    return credential;
+  }
+
+  private markCollectorPrepared(userScope: string, matchId: string): void {
+    this.preparedCollectorKeys.update((keys) => new Set([...keys, this.collectorKey(userScope, matchId)]));
+  }
+
+  private collectorKey(userScope: string, matchId: string): string {
+    return `${userScope}\u0000${matchId}`;
   }
 
   private isConnectionFailure(error: unknown): boolean {
@@ -311,6 +428,12 @@ export class SportsOfflineQueueService implements OnDestroy {
       return true;
     }
     return /network|offline|fetch|connection|status 0/i.test(error.message);
+  }
+
+  private isUploadableBy(item: QueuedSportsOperation, userScope: string): boolean {
+    return item.kind === 'ACTION'
+      ? item.userScope === userScope
+      : hasOfflineSportsAttendanceCollectorProof(item);
   }
 
   private isTimerConflict(error: unknown): boolean {

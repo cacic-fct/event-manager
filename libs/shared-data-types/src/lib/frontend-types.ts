@@ -1,6 +1,7 @@
 export * from './dashboard.types';
 export * from './frontend-current-user.types';
 export * from './frontend-public-event.types';
+export * from './frontend-sports.types';
 export * from './shared-data-types/sports-overlay';
 
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';

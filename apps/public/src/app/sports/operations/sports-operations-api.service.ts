@@ -6,6 +6,7 @@ import {
   RepresentativeTeamWorkspace,
   SportsLineupRead,
   SportsMatchAction,
+  SportsOfflineCollectorCredential,
   SportsOperationalMatch,
   SportsRosterCheckIn,
   SportsScannerCheckIn,
@@ -99,6 +100,17 @@ export class SportsOperationsApiService {
     ).pipe(map((value) => value.commitSportsMatchActions));
   }
 
+  createOfflineCollectorCredential(matchId: string): Observable<SportsOfflineCollectorCredential> {
+    return this.query<{ createSportsOfflineCollectorCredential: SportsOfflineCollectorCredential }>(
+      `mutation CreateSportsOfflineCollectorCredential($matchId: String!) {
+        createSportsOfflineCollectorCredential(matchId: $matchId) {
+          credential collectorPersonId issuedAt
+        }
+      }`,
+      { matchId },
+    ).pipe(map((value) => value.createSportsOfflineCollectorCredential));
+  }
+
   checkIn(input: SportsRosterCheckIn): Observable<boolean> {
     return this.query<{ checkInSportsRosterEntry: boolean }>(
       `mutation CheckInSportsRosterEntry($matchId: String!, $input: SportsRosterCheckInInput!) {
@@ -111,6 +123,8 @@ export class SportsOperationsApiService {
           rosterEntryId: input.rosterEntryId,
           checkedInAt: input.checkedInAt,
           offline: input.offline,
+          ...(input.collectorPersonId === undefined ? {} : { collectorPersonId: input.collectorPersonId }),
+          ...(input.collectorCredential === undefined ? {} : { collectorCredential: input.collectorCredential }),
           ...(input.present === undefined ? {} : { present: input.present }),
         },
       },
@@ -129,6 +143,8 @@ export class SportsOperationsApiService {
           code: input.code,
           checkedInAt: input.checkedInAt,
           offline: input.offline,
+          ...(input.collectorPersonId === undefined ? {} : { collectorPersonId: input.collectorPersonId }),
+          ...(input.collectorCredential === undefined ? {} : { collectorCredential: input.collectorCredential }),
         },
       },
     ).pipe(map((value) => value.checkInSportsMatchFromScannerCode));

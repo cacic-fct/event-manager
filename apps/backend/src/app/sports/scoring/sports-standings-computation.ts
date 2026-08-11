@@ -1,4 +1,5 @@
 import { Prisma, SportsFormat, SportsMatchState, SportsReviewStatus } from '@prisma/client';
+import { DEFAULT_SPORTS_STANDINGS_RULES } from '@cacic-fct/shared-data-types';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
 
 interface StandingAccumulator {
@@ -39,10 +40,10 @@ export abstract class SportsStandingsComputation extends SportsStandingsPlacemen
       },
     });
     const rules = this.readRecord(stage.category.standingsRules);
-    const winPoints = this.readNumber(rules['winPoints'], 3);
-    const drawPoints = this.readNumber(rules['drawPoints'], 1);
-    const lossPoints = this.readNumber(rules['lossPoints'], 0);
-    const byePoints = this.readNumber(rules['byePoints'], 1);
+    const winPoints = this.readNumber(rules['winPoints'], DEFAULT_SPORTS_STANDINGS_RULES.winPoints);
+    const drawPoints = this.readNumber(rules['drawPoints'], DEFAULT_SPORTS_STANDINGS_RULES.drawPoints);
+    const lossPoints = this.readNumber(rules['lossPoints'], DEFAULT_SPORTS_STANDINGS_RULES.lossPoints);
+    const byePoints = this.readNumber(rules['byePoints'], DEFAULT_SPORTS_STANDINGS_RULES.byePoints);
     const accumulators = new Map<string, StandingAccumulator>(
       stage.standings.map((standing) => {
         const byeCount = this.readNumber(this.readRecord(standing.tiebreakData)['byeCount'], 0);

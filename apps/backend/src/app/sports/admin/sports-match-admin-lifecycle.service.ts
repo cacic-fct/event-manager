@@ -9,7 +9,11 @@ import {
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
-import { syncSportsMatchEventName } from '../sports-match-event-sync';
+import {
+  softDeleteSportsMatchBackingEvents,
+  syncSportsMatchEventName,
+  updateSportsMatchBackingEvent,
+} from '../sports-match-event-sync';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
 export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseService {
@@ -129,37 +133,15 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
       if (updated.count !== 1) {
         throw new ConflictException('A partida mudou. Recarregue e tente novamente.');
       }
-      await tx.event.update({
-        where: { id: match.eventId },
-        data: {
-          ...(input.name !== undefined ? { name: this.requireText(input.name, 'nome da partida', 2, 160) } : {}),
-          startDate,
-          endDate,
-          ...(venue
-            ? {
-                latitude: venue.placePreset.latitude,
-                longitude: venue.placePreset.longitude,
-                locationDescription: [venue.placePreset.locationDescription, venue.name, venue.courtLabel]
-                  .filter(Boolean)
-                  .join(' · '),
-              }
-            : input.venueId === null
-              ? {
-                  latitude: null,
-                  longitude: null,
-                  locationDescription: null,
-                }
-              : {}),
-          updatedById: actorId,
-          ...(input.livestreamProvider !== undefined || input.livestreamUrl !== undefined
-            ? {
-                youtubeCode: this.youtubeCodeForLivestream(
-                  livestreamProvider,
-                  livestreamUrl,
-                ),
-              }
-            : {}),
-        },
+      await updateSportsMatchBackingEvent(tx, match.eventId, {
+        ...(input.name !== undefined ? { name: this.requireText(input.name, 'nome da partida', 2, 160) } : {}),
+        startDate,
+        endDate,
+        venue,
+        venueChanged: input.venueId !== undefined,
+        youtubeCode: this.youtubeCodeForLivestream(livestreamProvider, livestreamUrl),
+        livestreamChanged: input.livestreamProvider !== undefined || input.livestreamUrl !== undefined,
+        actorId,
       });
       if (
         input.name === undefined &&
@@ -237,10 +219,7 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
         throw new ConflictException('A partida mudou. Recarregue e tente novamente.');
       }
       await Promise.all([
-        tx.event.updateMany({
-          where: { id: match.eventId, deletedAt: null },
-          data: { deletedAt, updatedById: actorId },
-        }),
+        softDeleteSportsMatchBackingEvents(tx, match.eventId, deletedAt, actorId),
         tx.sportsMatch.updateMany({
           where: { winnerAdvancesToId: matchId, deletedAt: null },
           data: {

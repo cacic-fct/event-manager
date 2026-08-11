@@ -10,6 +10,7 @@ import type {
   SportsTeamSummary,
   SportsTournamentRead,
 } from './sports.models';
+import { getDefaultSportsEmoji } from '@cacic-fct/shared-data-types/sports-metadata';
 
 faker.seed(20260820);
 
@@ -45,17 +46,7 @@ export function createAdminSportsCategory(index = 0): SportsCategorySummary {
     eventGroupId: `group-${index + 1}`,
     eventGroup: {
       id: `group-${index + 1}`,
-      emoji:
-        {
-          SOCCER: '⚽',
-          FUTSAL: '⚽',
-          TENNIS: '🎾',
-          BASKETBALL: '🏀',
-          ESPORTS: '🎮',
-          CHESS: '♟️',
-          VOLLEYBALL: '🏐',
-          SWIMMING: '🏊',
-        }[sport] ?? '🏅',
+      emoji: getDefaultSportsEmoji(sport),
     },
     name,
     sport,
@@ -340,11 +331,11 @@ export function createAdminSportsApplications(count = 3): SportsApplication[] {
       personId: `applicant-${index + 1}`,
       name: index === 0 ? 'Camila Rodrigues Pereira' : faker.person.fullName(),
     },
-    requestedTeam: createAdminSportsTeam(index),
+    requestedTeam: index === 2 ? null : createAdminSportsTeam(index),
     categories: [createAdminSportsCategory(index)],
     status: index === 1 ? 'CHANGES_REQUESTED' : 'PENDING',
     participantStatus: 'PENDING',
-    paymentStatus: index === 0 ? 'NOT_REQUIRED_YET' : null,
+    paymentStatus: index === 0 ? 'NOT_REQUIRED' : null,
     paymentTier: index === 0 ? 'Estudante' : null,
     imageLicenseAgreementAccepted: index === 0,
     reviewMessage: index === 1 ? 'Confirme a modalidade solicitada.' : null,

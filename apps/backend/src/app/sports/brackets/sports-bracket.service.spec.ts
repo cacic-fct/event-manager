@@ -10,10 +10,13 @@ describe('SportsBracketService generation lifecycle', () => {
   const advancement = { advanceBye: jest.fn() };
   const auditLog = { record: jest.fn() };
   const realtime = { publishStructuralInvalidations: jest.fn() };
+  const frozen = { assertEventGroupMutable: jest.fn() };
+  const eventEffects = { syncEvents: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
     realtime.publishStructuralInvalidations.mockResolvedValue(undefined);
+    eventEffects.syncEvents.mockResolvedValue(undefined);
   });
 
   it('returns the existing bracket for an identical durable generation key', async () => {
@@ -41,6 +44,8 @@ describe('SportsBracketService generation lifecycle', () => {
       advancement as never,
       auditLog as never,
       realtime as never,
+      frozen as never,
+      eventEffects as never,
     );
     const generationKey = internals(service).generationKey(category, input);
     tx.sportsCategory.findFirst.mockResolvedValue({
@@ -64,6 +69,7 @@ describe('SportsBracketService generation lifecycle', () => {
 
     expect(tx.sportsStage.create).not.toHaveBeenCalled();
     expect(auditLog.record).not.toHaveBeenCalled();
+    expect(frozen.assertEventGroupMutable).toHaveBeenCalledWith('event-group-1', { sub: 'admin-1' }, 'edit');
     expect(realtime.publishStructuralInvalidations).toHaveBeenCalledWith([
       expect.objectContaining({
         kind: 'BRACKET_GENERATED',
@@ -72,10 +78,104 @@ describe('SportsBracketService generation lifecycle', () => {
         stageIds: ['stage-existing'],
       }),
     ]);
+    expect(eventEffects.syncEvents).toHaveBeenCalledWith([]);
+  });
+
+  it('reconciles both soft-deleted and newly created backing Events after bracket replacement commits', async () => {
+    const category = {
+      ...categoryRecord(),
+      registrations: [
+        { id: 'registration-1', team: { name: 'Equipe 1' } },
+        { id: 'registration-2', team: { name: 'Equipe 2' } },
+      ],
+      stages: [
+        {
+          id: 'stage-old',
+          settings: { generationKey: 'old-generation' },
+          matches: [
+            {
+              id: 'match-old',
+              eventId: 'event-old',
+              state: SportsMatchState.SCHEDULED,
+              operationSequence: 0,
+              event: { publicationState: PublicationState.DRAFT },
+            },
+          ],
+        },
+      ],
+    };
+    const generatedStages = [
+      {
+        id: 'stage-new',
+        matches: [
+          {
+            id: 'match-new',
+            eventId: 'event-new',
+            event: {
+              id: 'event-new',
+              deletedAt: null,
+              publiclyVisible: false,
+              publicationState: PublicationState.DRAFT,
+            },
+          },
+        ],
+      },
+    ];
+    const tx = {
+      sportsCategory: { findFirst: jest.fn().mockResolvedValue(category) },
+      sportsMatch: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      event: { updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
+      sportsStage: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findMany: jest.fn().mockResolvedValue([{ id: 'stage-new', settings: {} }]),
+        update: jest.fn(),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
+    };
+    const service = new SportsBracketService(
+      prisma as never,
+      advancement as never,
+      auditLog as never,
+      realtime as never,
+      frozen as never,
+      eventEffects as never,
+    );
+    const persistence = service as unknown as {
+      persistSingleElimination: jest.Mock;
+      loadGeneratedStages: jest.Mock;
+    };
+    persistence.persistSingleElimination = jest.fn().mockResolvedValue('stage-new');
+    persistence.loadGeneratedStages = jest.fn().mockResolvedValue(generatedStages);
+
+    await service.generate(
+      {
+        categoryId: category.id,
+        participants: [
+          { registrationId: 'registration-1', seed: 1 },
+          { registrationId: 'registration-2', seed: 2 },
+        ],
+        replaceExistingDraft: true,
+      },
+      { sub: 'admin-1' } as never,
+    );
+
+    expect(tx.event.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { in: ['event-old'] }, deletedAt: null } }),
+    );
+    expect(eventEffects.syncEvents).toHaveBeenCalledWith(['event-old', 'event-new']);
   });
 
   it('keeps generation keys stable across JSON key order but sensitive to entrant order', () => {
-    const service = new SportsBracketService({} as never, advancement as never, auditLog as never, realtime as never);
+    const service = new SportsBracketService(
+      {} as never,
+      advancement as never,
+      auditLog as never,
+      realtime as never,
+      frozen as never,
+      eventEffects as never,
+    );
     const firstCategory = categoryRecord({
       bracketRules: { groupCount: 2, qualifiersPerGroup: 1 },
     });
@@ -95,7 +195,14 @@ describe('SportsBracketService generation lifecycle', () => {
   });
 
   it('allows explicit replacement of untouched draft brackets containing automatic byes', async () => {
-    const service = new SportsBracketService({} as never, advancement as never, auditLog as never, realtime as never);
+    const service = new SportsBracketService(
+      {} as never,
+      advancement as never,
+      auditLog as never,
+      realtime as never,
+      frozen as never,
+      eventEffects as never,
+    );
     const tx = deletionTransaction();
 
     await internals(service).replaceDraftIfRequested(
@@ -124,7 +231,14 @@ describe('SportsBracketService generation lifecycle', () => {
   });
 
   it('refuses to replace a bracket once a match was operated or published', async () => {
-    const service = new SportsBracketService({} as never, advancement as never, auditLog as never, realtime as never);
+    const service = new SportsBracketService(
+      {} as never,
+      advancement as never,
+      auditLog as never,
+      realtime as never,
+      frozen as never,
+      eventEffects as never,
+    );
     const base = {
       id: 'match-1',
       eventId: 'event-1',

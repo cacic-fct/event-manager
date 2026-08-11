@@ -1,6 +1,94 @@
-import type { Prisma } from '@prisma/client';
+import { Prisma, PublicationState } from '@prisma/client';
 import { sportsMatchRecord } from './testing/sports-backend.fixtures';
-import { syncSportsMatchEventName } from './sports-match-event-sync';
+import {
+  createSportsMatchBackingEvent,
+  softDeleteSportsMatchBackingEvents,
+  syncSportsMatchEventName,
+  updateSportsMatchBackingEvent,
+} from './sports-match-event-sync';
+
+describe('sports match backing events', () => {
+  it('creates an event with the shared sports invariants and venue projection', async () => {
+    const create = jest.fn().mockResolvedValue({ id: 'event-1' });
+    const tx = { event: { create } } as unknown as Prisma.TransactionClient;
+    const startDate = new Date('2026-08-11T12:00:00.000Z');
+    const endDate = new Date('2026-08-11T13:00:00.000Z');
+
+    await createSportsMatchBackingEvent(tx, {
+      name: 'Futsal — A x B',
+      emoji: '⚽',
+      startDate,
+      endDate,
+      majorEventId: 'major-1',
+      eventGroupId: 'group-1',
+      venue: {
+        name: 'Ginásio',
+        courtLabel: 'Quadra 1',
+        placePreset: {
+          latitude: -22,
+          longitude: -43,
+          locationDescription: 'Bloco A',
+        },
+      },
+      publiclyVisible: true,
+      publicationState: PublicationState.PUBLISHED,
+      publishedAt: startDate,
+      actorId: 'actor-1',
+    });
+
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        name: 'Futsal — A x B',
+        type: 'OTHER',
+        majorEventId: 'major-1',
+        eventGroupId: 'group-1',
+        latitude: -22,
+        longitude: -43,
+        locationDescription: 'Bloco A · Ginásio · Quadra 1',
+        allowSubscription: false,
+        shouldCollectAttendance: true,
+        publiclyVisible: true,
+        publicationState: PublicationState.PUBLISHED,
+      }),
+    });
+  });
+
+  it('updates and deletes backing events through the common boundary', async () => {
+    const update = jest.fn().mockResolvedValue(undefined);
+    const updateMany = jest.fn().mockResolvedValue({ count: 2 });
+    const tx = { event: { update, updateMany } } as unknown as Prisma.TransactionClient;
+    const startDate = new Date('2026-08-11T12:00:00.000Z');
+    const endDate = new Date('2026-08-11T13:00:00.000Z');
+
+    await updateSportsMatchBackingEvent(tx, 'event-1', {
+      startDate,
+      endDate,
+      venue: null,
+      venueChanged: true,
+      livestreamChanged: true,
+      youtubeCode: null,
+      actorId: 'actor-1',
+    });
+    await softDeleteSportsMatchBackingEvents(tx, ['event-1', 'event-2'], endDate, 'actor-1');
+
+    expect(update).toHaveBeenCalledWith({
+      where: { id: 'event-1' },
+      data: expect.objectContaining({
+        startDate,
+        endDate,
+        latitude: null,
+        longitude: null,
+        locationDescription: null,
+        youtubeCode: null,
+        updatedById: 'actor-1',
+      }),
+    });
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['event-1', 'event-2'] }, deletedAt: null },
+      data: { deletedAt: endDate, updatedById: 'actor-1' },
+    });
+  });
+});
 
 describe('syncSportsMatchEventName', () => {
   it('updates the linked event with both assigned team names', async () => {

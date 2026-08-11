@@ -7,3 +7,4 @@ export * from './lib/attendance-offline-queue.service';
 export * from './lib/offline-public-database-provider';
 export * from './lib/oral-attendance-offline.service';
 export * from './lib/totp-seed-cache.service';
+export * from './lib/sports-operation-offline-queue.service';

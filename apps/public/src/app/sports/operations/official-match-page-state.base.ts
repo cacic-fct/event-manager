@@ -44,9 +44,15 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   readonly currentMatchId = signal('');
   readonly revision = signal(1);
   readonly pendingCount = computed(() => this.offline.pendingForMatch(this.matchId));
+  readonly retainedActionCount = computed(() => this.offline.retainedActionCountForMatch(this.matchId));
+  readonly unverifiedAttendanceCount = computed(() => this.offline.unverifiedAttendanceCountForMatch(this.matchId));
   readonly homeCheckInEntries = computed(() => this.sortedCheckInEntries('home'));
   readonly awayCheckInEntries = computed(() => this.sortedCheckInEntries('away'));
-  readonly canEditCheckIn = computed(() => {
+  readonly canRequestCheckInCorrection = computed(() => {
+    const state = this.match()?.state;
+    return state === 'LIVE' || state === 'PAUSED';
+  });
+  readonly checkInStateAllowsEdit = computed(() => {
     const state = this.match()?.state;
     return (
       state === 'SCHEDULED' ||
@@ -54,10 +60,12 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
       (this.canRequestCheckInCorrection() && this.checkInOverrideEnabled())
     );
   });
-  readonly canRequestCheckInCorrection = computed(() => {
-    const state = this.match()?.state;
-    return state === 'LIVE' || state === 'PAUSED';
-  });
+  readonly canEditCheckIn = computed(
+    () => this.checkInStateAllowsEdit() && this.offline.canCollectAttendance(this.currentMatchId()),
+  );
+  readonly attendanceCollectionUnavailable = computed(
+    () => this.checkInStateAllowsEdit() && !this.offline.canCollectAttendance(this.currentMatchId()),
+  );
   readonly elapsedLabel = computed(() => this.formatElapsed(this.elapsedMs()));
   readonly canEditScore = computed(() => {
     const state = this.match()?.state;
@@ -137,6 +145,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
     }
     this.api.match(this.matchId).subscribe({
       next: (match) => {
+        void this.offline.prepareCollector(match.id);
         this.match.set(match);
         this.revision.set(match.revision);
         this.checkInEntries.set(
@@ -145,7 +154,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
               id: entry.id,
               name: entry.name,
               team: roster.registrationId === match.homeRegistrationId ? 'home' : 'away',
-              checkedIn: entry.status === 'CHECKED_IN',
+              checkedIn: Boolean(entry.checkedInAt),
               role: entry.role,
               shirtNumber: entry.shirtNumber,
             })),

@@ -20,5 +20,6 @@ describe('sports bracket shared contract', () => {
     expect(sportsBracketFormatLabel('GROUP_STAGE_ELIMINATION')).toBe('Grupos e eliminatórias');
     expect(sportsBracketMatchStateLabel('CANCELED')).toBe('Cancelada');
     expect(sportsBracketMatchStateLabel('AWAITING_REVIEW')).toBe('Em revisão');
+    expect(sportsBracketMatchStateLabel('CHECK_IN')).toBe('Credenciamento');
   });
 });

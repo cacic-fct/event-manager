@@ -38,7 +38,7 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
       this.revision.update((revision) => revision + 1);
       this.applyOptimistic(type, payload, action.authoredAt);
       if (result === 'queued' && isSportsTimerAction(type, payload)) {
-        this.offline.attachTimerSnapshot(action.clientId, this.timerSnapshot());
+        await this.offline.attachTimerSnapshot(action.clientId, this.timerSnapshot());
       }
       const message =
         result === 'queued'
@@ -329,7 +329,7 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
         };
         await firstValueFrom(this.api.commit([action]));
       }
-      this.offline.resolveTimerConflict(
+      await this.offline.resolveTimerConflict(
         conflict.matchId,
         conflict.queuedActionIds,
         server.revision + (choice === 'DEVICE' ? 1 : 0),

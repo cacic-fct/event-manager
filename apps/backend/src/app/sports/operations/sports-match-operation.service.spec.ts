@@ -23,14 +23,17 @@ describe('SportsMatchOperationService offline command log', () => {
     publishStructuralInvalidations: jest.fn().mockResolvedValue(undefined),
     publishAutorouteInvalidations: jest.fn().mockResolvedValue(undefined),
   };
-  const autorouting = {
-    affectedPeopleForMatch: jest.fn().mockResolvedValue(['person-1']),
-  };
-  const defaultRedirect = {
-    invalidatePeople: jest.fn().mockResolvedValue(undefined),
+  const mutationEvents = {
+    publishMatchProjection: jest.fn().mockResolvedValue(undefined),
   };
   const auditLog = {
     record: jest.fn().mockResolvedValue(undefined),
+  };
+  const frozen = {
+    assertEventMutable: jest.fn().mockResolvedValue(undefined),
+  };
+  const eventEffects = {
+    syncEvent: jest.fn().mockResolvedValue(undefined),
   };
 
   let tx: ReturnType<typeof createTransaction>;
@@ -51,9 +54,10 @@ describe('SportsMatchOperationService offline command log', () => {
       advancement as never,
       standings as never,
       realtime as never,
-      autorouting as never,
-      defaultRedirect as never,
+      mutationEvents as never,
       auditLog as never,
+      frozen as never,
+      eventEffects as never,
     );
   });
 
@@ -76,6 +80,7 @@ describe('SportsMatchOperationService offline command log', () => {
     expect(tx.sportsMatchAction.create).toHaveBeenCalledTimes(1);
     expect(tx.sportsMatch.updateMany).toHaveBeenCalledTimes(1);
     expect(auditLog.record).toHaveBeenCalledTimes(1);
+    expect(frozen.assertEventMutable).toHaveBeenCalledWith('event-1', undefined, 'edit');
   });
 
   it('rejects reuse of an offline client identifier for different command content', async () => {
@@ -183,7 +188,7 @@ describe('SportsMatchOperationService offline command log', () => {
 
     expect(tx.sportsMatchAction.create).toHaveBeenCalledTimes(1);
     expect(realtime.publish).not.toHaveBeenCalled();
-    expect(defaultRedirect.invalidatePeople).not.toHaveBeenCalled();
+    expect(mutationEvents.publishMatchProjection).not.toHaveBeenCalled();
   });
 
   it('rejects mixed-match offline batches before opening a transaction', async () => {
@@ -203,23 +208,44 @@ describe('SportsMatchOperationService offline command log', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('publishes provisional updates to match, tournament, and review replay scopes', async () => {
+  it('delegates provisional post-commit effects to the shared mutation coordinator', async () => {
     await service.commit([sportsMatchCommand()], sportsOfficialActor());
 
-    expect(realtime.publish).toHaveBeenCalledTimes(3);
-    expect(realtime.publish).toHaveBeenCalledWith(
-      'match:match-1',
+    expect(mutationEvents.publishMatchProjection).toHaveBeenCalledWith(
       expect.objectContaining({
-        matchId: 'match-1',
+        id: 'match-1',
         state: SportsMatchState.LIVE,
         canonicalState: SportsMatchState.SCHEDULED,
         reviewStatus: SportsReviewStatus.PENDING,
         revision: 2,
       }),
     );
-    expect(realtime.publish).toHaveBeenCalledWith('tournament:tournament-1', expect.any(Object));
-    expect(realtime.publish).toHaveBeenCalledWith('review:match-1', expect.any(Object));
-    expect(defaultRedirect.invalidatePeople).toHaveBeenCalledWith(['person-1']);
+    expect(eventEffects.syncEvent).not.toHaveBeenCalled();
+  });
+
+  it('reconciles the backing Event after an administrator commits a reschedule', async () => {
+    await service.commit(
+      [
+        sportsMatchCommand({
+          type: SportsMatchActionType.RESCHEDULE,
+          payload: {
+            startDate: '2026-07-30T14:00:00.000Z',
+            endDate: '2026-07-30T15:00:00.000Z',
+          },
+        }),
+      ],
+      sportsOfficialActor({ kind: 'ADMIN', role: 'ADMIN', userId: 'admin-1' }),
+    );
+
+    expect(tx.event.update).toHaveBeenCalledWith({
+      where: { id: 'event-1' },
+      data: {
+        startDate: new Date('2026-07-30T14:00:00.000Z'),
+        endDate: new Date('2026-07-30T15:00:00.000Z'),
+        updatedById: 'admin-1',
+      },
+    });
+    expect(eventEffects.syncEvent).toHaveBeenCalledWith('event-1');
   });
 
   it('approves a pending start against the canonical projection without self-invalidating', async () => {
@@ -381,6 +407,9 @@ function createTransaction() {
     sportsMatch,
     sportsMatchRosterEntry: {
       findFirst: jest.fn(),
+    },
+    event: {
+      update: jest.fn(),
     },
   };
 }

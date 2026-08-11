@@ -22,6 +22,16 @@
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8rem;
 }
+.match-toolbar .retained-offline-items {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.retained-offline-items mat-icon {
+  width: 1rem;
+  height: 1rem;
+  font-size: 1rem;
+}
 .operation-shell {
   box-sizing: border-box;
   width: min(1180px, 100%);

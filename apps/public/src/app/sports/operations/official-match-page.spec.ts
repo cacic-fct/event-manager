@@ -1,7 +1,7 @@
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { NEVER, of } from 'rxjs';
 import { OfficialSportsMatchPage } from './official-match-page';
@@ -18,11 +18,19 @@ describe('OfficialSportsMatchPage', () => {
   let actions: SportsMatchAction[];
   let checkIns: Array<{ rosterEntryId: string; present?: boolean }>;
   let scannerResult: 'sent' | 'queued';
+  let pendingOffline: WritableSignal<number>;
+  let retainedActions: WritableSignal<number>;
+  let unverifiedAttendances: WritableSignal<number>;
+  let attendanceAvailable: WritableSignal<boolean>;
 
   beforeEach(async () => {
     actions = [];
     checkIns = [];
     scannerResult = 'sent';
+    pendingOffline = signal(0);
+    retainedActions = signal(0);
+    unverifiedAttendances = signal(0);
+    attendanceAvailable = signal(true);
     TestBed.configureTestingModule({
       imports: [OfficialSportsMatchPage],
       providers: [
@@ -44,7 +52,11 @@ describe('OfficialSportsMatchPage', () => {
         {
           provide: SportsOfflineQueueService,
           useValue: {
-            pendingForMatch: () => 0,
+            pendingForMatch: () => pendingOffline(),
+            retainedActionCountForMatch: () => retainedActions(),
+            unverifiedAttendanceCountForMatch: () => unverifiedAttendances(),
+            canCollectAttendance: () => attendanceAvailable(),
+            prepareCollector: () => Promise.resolve(true),
             timerConflict: signal(null),
             start: () => undefined,
             sync: () => Promise.resolve(),
@@ -91,6 +103,30 @@ describe('OfficialSportsMatchPage', () => {
 
     expect(JSON.parse(actions[0]?.payloadJson ?? '{}')).toEqual(expect.objectContaining({ side: 'AWAY', amount: 1 }));
     expect(component.scoreFor('away')).toBe(2);
+  });
+
+  it('distinguishes uploadable entries from retained prior-user operations', () => {
+    pendingOffline.set(2);
+    retainedActions.set(3);
+    unverifiedAttendances.set(4);
+    fixture.detectChanges();
+
+    const toolbar = fixture.debugElement.query(By.css('.match-toolbar')).nativeElement as HTMLElement;
+    const toolbarText = toolbar.textContent?.replace(/\s+/g, ' ').trim();
+    expect(toolbarText).toContain('2 para enviar');
+    expect(toolbarText).toContain('3 ações de outra pessoa mantidas neste dispositivo');
+    expect(toolbarText).toContain('4 presenças antigas sem credencial mantidas');
+  });
+
+  it('blocks offline attendance collection when this device has no collector credential', () => {
+    component.match.update((match) => (match ? { ...match, state: 'CHECK_IN' } : match));
+    attendanceAvailable.set(false);
+    fixture.detectChanges();
+
+    const status = fixture.debugElement.query(By.css('.check-in [role="status"]')).nativeElement as HTMLElement;
+    expect(status.textContent).toContain('Conecte este dispositivo antes da partida');
+    expect(component.canEditCheckIn()).toBe(false);
+    expect(fixture.debugElement.query(By.css('.check-in-actions button'))).toBeNull();
   });
 
   it('undoes only a newly created empty period through an audited score correction', async () => {

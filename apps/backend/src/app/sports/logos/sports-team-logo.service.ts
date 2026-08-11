@@ -21,11 +21,6 @@ import { SportsTeamChangeService } from '../teams/sports-team-change.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { validateSportsTeamLogoImage } from './sports-team-logo-validation';
 
-export const MAX_SPORTS_TEAM_LOGO_SIZE_BYTES = 15 * 1024 * 1024;
-export const MIN_SPORTS_TEAM_LOGO_DIMENSION = 16;
-export const SPORTS_TEAM_LOGO_OUTPUT_DIMENSION = 1600;
-export const MAX_SPORTS_TEAM_LOGO_PIXELS = 64 * 1024 * 1024;
-
 export interface SportsTeamLogoUploadFile {
   buffer: Buffer;
   mimetype: string;

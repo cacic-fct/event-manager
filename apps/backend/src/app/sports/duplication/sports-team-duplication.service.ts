@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogOperation,
@@ -13,6 +13,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SportsPaymentService } from '../sports-payment.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 
+@Injectable()
 export class SportsTeamDuplicationService {
   constructor(
     private readonly prisma: PrismaService,

@@ -8,10 +8,11 @@ import {
   SportsRegistrationStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
+import { assertSportsOverallScoringRules } from '../domain/sports-overall-scoring';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { CreateSportsCategoryInput } from '../sports-admin.types';
+import { softDeleteSportsMatchBackingEvents } from '../sports-match-event-sync';
 import { SportsAdminBaseService } from './sports-admin-base.service';
-import { assertSportsOverallScoringRules } from '../domain/sports-overall-scoring';
 
 export class SportsCategoryAdminService extends SportsAdminBaseService {
   async createCategory(input: CreateSportsCategoryInput, actor: AuthenticatedUser) {
@@ -313,13 +314,12 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         throw new ConflictException('A modalidade mudou. Recarregue e tente novamente.');
       }
       await Promise.all([
-        tx.event.updateMany({
-          where: {
-            id: { in: matches.map((match) => match.eventId) },
-            deletedAt: null,
-          },
-          data: { deletedAt, updatedById: actorId },
-        }),
+        softDeleteSportsMatchBackingEvents(
+          tx,
+          matches.map((match) => match.eventId),
+          deletedAt,
+          actorId,
+        ),
         tx.sportsMatch.updateMany({
           where: { categoryId, deletedAt: null },
           data: { deletedAt, revision: { increment: 1 }, updatedById: actorId },

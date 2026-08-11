@@ -1,11 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
-import { Prisma, PublicationState, SportsRosterRole } from '@prisma/client';
+import { Prisma, SportsRosterRole } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CurrentUserDefaultRedirectService } from '../../current-user/default-redirect/current-user-default-redirect.service';
-import { SportsRealtimeService } from '../realtime/sports-realtime.service';
-import { SportsAutoroutingService } from '../routing/sports-autorouting.service';
+import { SportsMutationEventsService } from '../realtime/sports-mutation-events.service';
 
 export interface SportsRosterEntryWrite {
   registrationMemberId: string;
@@ -26,9 +24,7 @@ export abstract class SportsMatchRosterSupportService {
     protected readonly prisma: PrismaService,
     protected readonly attendanceCategories: AttendanceCategoryService,
     protected readonly auditLog: AuditLogService,
-    protected readonly realtime: SportsRealtimeService,
-    protected readonly autorouting: SportsAutoroutingService,
-    protected readonly defaultRedirect: CurrentUserDefaultRedirectService,
+    protected readonly mutationEvents: SportsMutationEventsService,
   ) {}
 
   protected normalizeEntries(entries: SportsRosterEntryWrite[]): SportsRosterEntryWrite[] {
@@ -63,52 +59,6 @@ export abstract class SportsMatchRosterSupportService {
   }
 
   protected async afterRosterMutation(matchId: string, type: string, entityId: string): Promise<void> {
-    const match = await this.prisma.sportsMatch.findFirst({
-      where: {
-        id: matchId,
-        deletedAt: null,
-      },
-      select: {
-        id: true,
-        revision: true,
-        category: {
-          select: {
-            tournamentId: true,
-          },
-        },
-        event: {
-          select: {
-            deletedAt: true,
-            publiclyVisible: true,
-            publicationState: true,
-          },
-        },
-      },
-    });
-    if (!match) {
-      return;
-    }
-    const payload = {
-      type,
-      matchId,
-      entityId,
-      revision: match.revision,
-    };
-    const isPublic =
-      !match.event.deletedAt &&
-      match.event.publiclyVisible &&
-      match.event.publicationState === PublicationState.PUBLISHED;
-    const people = await this.autorouting.affectedPeopleForMatch(match.id);
-    await Promise.all([
-      this.realtime.publish(this.realtime.scope('review', match.id), payload),
-      ...(isPublic
-        ? [
-            this.realtime.publish(this.realtime.scope('match', match.id), payload),
-            this.realtime.publish(this.realtime.scope('tournament', match.category.tournamentId), payload),
-          ]
-        : []),
-      this.defaultRedirect.invalidatePeople(people),
-      this.realtime.publishAutorouteInvalidations(people),
-    ]);
+    await this.mutationEvents.publishRosterMutation(matchId, type, entityId);
   }
 }

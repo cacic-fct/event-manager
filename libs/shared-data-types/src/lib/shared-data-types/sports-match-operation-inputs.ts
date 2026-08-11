@@ -1,4 +1,4 @@
-import { Field, InputType, Int } from '@nestjs/graphql';
+import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
 
 import {
   SportsLossReason,
@@ -107,6 +107,18 @@ export class SportsRosterCheckInInput {
   @Field(() => Boolean, { nullable: true })
   offline?: boolean;
 
+  @Field(() => String, {
+    nullable: true,
+    description: 'Pessoa que coletou originalmente um check-in off-line. Exige credencial assinada correspondente.',
+  })
+  collectorPersonId?: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Credencial durável, assinada pelo servidor e vinculada à pessoa coletora e à partida.',
+  })
+  collectorCredential?: string | null;
+
   @Field(() => Boolean, {
     nullable: true,
     description: 'Whether the player is present. False safely reverses an accidental check-in.',
@@ -127,6 +139,30 @@ export class SportsRosterScannerCheckInInput {
 
   @Field(() => Boolean, { nullable: true })
   offline?: boolean;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Pessoa que operou o scanner off-line. Exige credencial assinada correspondente.',
+  })
+  collectorPersonId?: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Credencial durável, assinada pelo servidor e vinculada à pessoa coletora e à partida.',
+  })
+  collectorCredential?: string | null;
+}
+
+@ObjectType()
+export class SportsOfflineCollectorCredential {
+  @Field(() => String)
+  credential!: string;
+
+  @Field(() => String)
+  collectorPersonId!: string;
+
+  @Field(() => Date)
+  issuedAt!: Date;
 }
 
 @InputType()

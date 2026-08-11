@@ -9,7 +9,7 @@
         <div class="review-heading">
           <div>
             <strong>{{ application.applicant.name }}</strong
-            ><span>{{ application.requestedTeam.name }}</span>
+            ><span>{{ application.requestedTeam?.name ?? 'Sem equipe' }}</span>
           </div>
           <span class="state-label">{{ workspace.statusLabel(application.status) }}</span>
         </div>

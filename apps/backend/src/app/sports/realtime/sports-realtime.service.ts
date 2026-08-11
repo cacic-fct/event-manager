@@ -1,7 +1,7 @@
 import { Injectable, Logger, MessageEvent, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import Redis from 'ioredis';
-import { Observable, Subject } from 'rxjs';
+import { interval, map, merge, Observable, Subject } from 'rxjs';
 import { SseReplayService } from '../../realtime/sse-replay.service';
 import { mergeSportsStructuralInvalidations, SportsStructuralInvalidation } from './sports-structural-invalidation';
 
@@ -27,17 +27,15 @@ interface SportsRealtimeEnvelope {
   event: MessageEvent;
 }
 
+interface SportsRealtimeChannel {
+  subject: Subject<MessageEvent>;
+  subscribers: number;
+}
+
 @Injectable()
 export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(SportsRealtimeService.name);
-  private readonly subjects = new Map<string, Subject<MessageEvent>>();
-  private readonly scopeTargets = new Map<
-    string,
-    {
-      channel: 'match' | 'tournament' | 'review' | 'admin-tournament' | 'autoroute';
-      id: string;
-    }
-  >();
+  private readonly channels = new Map<string, SportsRealtimeChannel>();
   private subscriber?: Redis;
 
   constructor(
@@ -59,16 +57,16 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
     subscriber.on('message', (_channel, payload) => {
       const envelope = this.parseEnvelope(payload);
       if (envelope) {
-        this.subject(envelope.scope).next(envelope.event);
+        this.channels.get(envelope.scope)?.subject.next(envelope.event);
       }
     });
   }
 
   async onModuleDestroy(): Promise<void> {
-    for (const subject of this.subjects.values()) {
-      subject.complete();
+    for (const channel of this.channels.values()) {
+      channel.subject.complete();
     }
-    this.subjects.clear();
+    this.channels.clear();
     if (this.subscriber) {
       await this.subscriber.unsubscribe(SPORTS_REDIS_CHANNEL).catch(() => undefined);
       this.subscriber.disconnect();
@@ -76,17 +74,33 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
   }
 
   scope(channel: 'match' | 'tournament' | 'review' | 'admin-tournament' | 'autoroute', id: string): string {
-    const scope = this.replay.scope(`sports-${channel}`, id);
-    this.scopeTargets.set(scope, { channel, id });
-    return scope;
+    return this.replay.scope(`sports-${channel}`, id);
   }
 
   watch(scope: string): Observable<MessageEvent> {
-    return this.subject(scope).asObservable();
+    return new Observable<MessageEvent>((subscriber) => {
+      const channel = this.acquireChannel(scope);
+      const subscription = merge(
+        channel.subject,
+        interval(25_000).pipe(
+          map(() => ({
+            data: {
+              type: 'heartbeat',
+              timestamp: Date.now(),
+            },
+          })),
+        ),
+      ).subscribe(subscriber);
+
+      return () => {
+        subscription.unsubscribe();
+        this.releaseChannel(scope, channel);
+      };
+    });
   }
 
   async publish(scope: string, data: object): Promise<MessageEvent> {
-    await this.invalidatePublicTournamentCacheForScope(scope);
+    await this.invalidatePublicTournamentCacheForScope(scope, data);
 
     let event: MessageEvent;
     try {
@@ -103,7 +117,7 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
         data,
         retry: 3_000,
       };
-      this.subject(scope).next(event);
+      this.channels.get(scope)?.subject.next(event);
       return event;
     }
     const envelope: SportsRealtimeEnvelope = { scope, event };
@@ -115,17 +129,17 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
       try {
         const subscriberCount = await redisWithPublish.publish(SPORTS_REDIS_CHANNEL, JSON.stringify(envelope));
         if (subscriberCount === 0) {
-          this.subject(scope).next(event);
+          this.channels.get(scope)?.subject.next(event);
         }
       } catch (error) {
         this.logger.warn(
           `Sports SSE pub/sub delivery failed for scope ${scope}; delivering the recorded event locally.`,
           error,
         );
-        this.subject(scope).next(event);
+        this.channels.get(scope)?.subject.next(event);
       }
     } else {
-      this.subject(scope).next(event);
+      this.channels.get(scope)?.subject.next(event);
     }
     return event;
   }
@@ -161,19 +175,33 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  private subject(scope: string): Subject<MessageEvent> {
-    const existing = this.subjects.get(scope);
+  private acquireChannel(scope: string): SportsRealtimeChannel {
+    const existing = this.channels.get(scope);
     if (existing) {
+      existing.subscribers += 1;
       return existing;
     }
-    const subject = new Subject<MessageEvent>();
-    this.subjects.set(scope, subject);
-    return subject;
+    const channel = {
+      subject: new Subject<MessageEvent>(),
+      subscribers: 1,
+    };
+    this.channels.set(scope, channel);
+    return channel;
   }
 
-  private async invalidatePublicTournamentCacheForScope(scope: string): Promise<void> {
-    const target = this.scopeTargets.get(scope);
-    if (target?.channel !== 'tournament') {
+  private releaseChannel(scope: string, channel: SportsRealtimeChannel): void {
+    channel.subscribers -= 1;
+    if (channel.subscribers > 0 || this.channels.get(scope) !== channel) {
+      return;
+    }
+    this.channels.delete(scope);
+    channel.subject.complete();
+  }
+
+  private async invalidatePublicTournamentCacheForScope(scope: string, data: object): Promise<void> {
+    const tournamentId =
+      'tournamentId' in data && typeof data.tournamentId === 'string' ? data.tournamentId : undefined;
+    if (!tournamentId || scope !== this.scope('tournament', tournamentId)) {
       return;
     }
 
@@ -181,11 +209,11 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
       await this.redis.eval(
         INVALIDATE_PUBLIC_TOURNAMENT_CACHE_SCRIPT,
         2,
-        sportsPublicTournamentCacheKey(target.id),
-        sportsPublicTournamentCacheVersionKey(target.id),
+        sportsPublicTournamentCacheKey(tournamentId),
+        sportsPublicTournamentCacheVersionKey(tournamentId),
       );
     } catch (error) {
-      this.logger.warn(`Sports public tournament cache invalidation failed for tournament ${target.id}.`, error);
+      this.logger.warn(`Sports public tournament cache invalidation failed for tournament ${tournamentId}.`, error);
     }
   }
 

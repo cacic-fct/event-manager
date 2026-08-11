@@ -90,6 +90,10 @@ const meta: Meta<OfficialMatchStoryArgs> = {
           useValue: {
             pending: signal([]),
             pendingForMatch: () => activeArgs.pendingOfflineActions,
+            retainedActionCountForMatch: () => 0,
+            unverifiedAttendanceCountForMatch: () => 0,
+            canCollectAttendance: () => true,
+            prepareCollector: () => Promise.resolve(true),
             timerConflict: signal(null),
             start: () => undefined,
             sync: () => Promise.resolve(),

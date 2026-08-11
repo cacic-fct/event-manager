@@ -63,6 +63,7 @@ import { SubscriptionBadgeExportController } from './events/subscription-badge-e
 import { SubscriptionBadgeExportService } from './events/subscription-badge-export.service';
 import { EventDraftsResolver } from './events/event-drafts.resolver';
 import { EventDraftsService } from './events/event-drafts.service';
+import { EventPostCommitEffectsService } from './events/event-post-commit-effects.service';
 import { EventFormsController } from './event-forms/event-forms.controller';
 import { EventFormEditorService } from './event-forms/event-form-editor.service';
 import { EventFormListingsService } from './event-forms/event-form-listings.service';
@@ -183,6 +184,7 @@ import { SportsPlayerApplicationRealtimeService } from './sports/applications/sp
 import { SportsBracketAdvancementService } from './sports/brackets/sports-bracket-advancement.service';
 import { SportsBracketService } from './sports/brackets/sports-bracket.service';
 import { SportsDuplicationService } from './sports/duplication/sports-duplication.service';
+import { SportsTeamDuplicationService } from './sports/duplication/sports-team-duplication.service';
 import {
   PublicSportsTeamLogoController,
   SportsTeamRepresentativeLogoController,
@@ -201,6 +203,7 @@ import { SportsReadService } from './sports/read/sports-read.service';
 import { SportsRealtimeController } from './sports/realtime/sports-realtime.controller';
 import { SportsRealtimeService } from './sports/realtime/sports-realtime.service';
 import { SportsMutationEventsService } from './sports/realtime/sports-mutation-events.service';
+import { SportsBackingResourceLifecycleService } from './sports/sports-backing-resource-lifecycle.service';
 import { SportsMatchRosterService } from './sports/rosters/sports-match-roster.service';
 import { SportsAutoroutingResolver } from './sports/routing/sports-autorouting.resolver';
 import { SportsAutoroutingService } from './sports/routing/sports-autorouting.service';
@@ -366,6 +369,7 @@ const schedulerProviders = useInMemoryTestInfra
     EventsResolver,
     EventDraftsResolver,
     EventDraftsService,
+    EventPostCommitEffectsService,
     PublicEventsResolver,
     EventSitemapResolver,
     EventSitemapService,
@@ -433,8 +437,10 @@ const schedulerProviders = useInMemoryTestInfra
     SportsMatchOperationService,
     SportsRealtimeService,
     SportsMutationEventsService,
+    SportsBackingResourceLifecycleService,
     SportsAutoroutingService,
     SportsDuplicationService,
+    SportsTeamDuplicationService,
     SportsReadService,
     SportsTeamLogoService,
     SportsMatchOverlayService,
