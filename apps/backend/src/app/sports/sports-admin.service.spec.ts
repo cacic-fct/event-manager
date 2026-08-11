@@ -187,6 +187,43 @@ describe('SportsAdminService', () => {
     );
   });
 
+  it('updates the backing Event name when a match name is edited', async () => {
+    tx.sportsMatch.findFirst.mockResolvedValue({
+      id: 'match-1',
+      eventId: 'event-1',
+      categoryId: 'category-1',
+      stageId: null,
+      venueId: null,
+      homeRegistrationId: null,
+      awayRegistrationId: null,
+      winnerAdvancesToId: null,
+      loserAdvancesToId: null,
+      revision: 3,
+      livestreamProvider: null,
+      livestreamUrl: null,
+      event: createEvent(),
+      category: {
+        id: 'category-1',
+        eventGroupId: 'group-1',
+        tournamentId: 'tournament-1',
+        tournament: { majorEventId: 'major-1' },
+      },
+    });
+    tx.sportsMatch.updateMany.mockResolvedValue({ count: 1 });
+    tx.sportsMatch.findUniqueOrThrow.mockResolvedValue({
+      id: 'match-1',
+      eventId: 'event-1',
+      revision: 4,
+      event: { ...createEvent(), name: 'Final feminina' },
+    });
+
+    await service.updateMatch('match-1', { expectedRevision: 3, name: 'Final feminina' }, actor);
+
+    expect(tx.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: 'Final feminina' }) }),
+    );
+  });
+
   it('normalizes registration answers and stores a server-derived form snapshot', async () => {
     prisma.sportsCategory.findFirst.mockResolvedValue({
       eventGroupId: 'group-1',

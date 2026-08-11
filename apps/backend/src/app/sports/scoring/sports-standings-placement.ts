@@ -42,10 +42,13 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
       return;
     }
     const bracketRules = this.readRecord(match.category.bracketRules);
-    const overallRules = normalizeSportsOverallScoringRules(
-      match.category.overallScoringRules,
-      this.readRecord(bracketRules['placementPoints']),
-    );
+    const overallRules =
+      match.category.tournament.scoringMode === SportsScoringMode.PER_SPORT
+        ? normalizeSportsOverallScoringRules({ mode: 'NONE' })
+        : normalizeSportsOverallScoringRules(
+            match.category.overallScoringRules,
+            this.readRecord(bracketRules['placementPoints']),
+          );
     const placementScoringEnabled = sportsOverallScoringUsesFinalPlacement(overallRules.mode);
     const effectiveRanking = rankedRegistrationIds.length > 0 ? rankedRegistrationIds : [winnerId, loserId];
     const placements = effectiveRanking.map((registrationId, index) => {

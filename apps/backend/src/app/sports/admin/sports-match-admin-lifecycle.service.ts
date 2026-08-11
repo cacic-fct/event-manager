@@ -17,6 +17,7 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
     matchId: string,
     input: {
       expectedRevision: number;
+      name?: string;
       startDate?: Date;
       endDate?: Date;
       stageId?: string | null;
@@ -131,6 +132,7 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
       await tx.event.update({
         where: { id: match.eventId },
         data: {
+          ...(input.name !== undefined ? { name: this.requireText(input.name, 'nome da partida', 2, 160) } : {}),
           startDate,
           endDate,
           ...(venue
@@ -159,7 +161,10 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
             : {}),
         },
       });
-      if (input.homeRegistrationId !== undefined || input.awayRegistrationId !== undefined) {
+      if (
+        input.name === undefined &&
+        (input.homeRegistrationId !== undefined || input.awayRegistrationId !== undefined)
+      ) {
         await syncSportsMatchEventName(tx, match.id, actorId);
       }
       const result = await tx.sportsMatch.findUniqueOrThrow({

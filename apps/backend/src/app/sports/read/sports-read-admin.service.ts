@@ -42,16 +42,14 @@ export class SportsReadAdminService {
   }
 
   async adminTournament(user: AuthenticatedUser | undefined, tournamentId: string): Promise<AdminSportsTournamentRead> {
-    await this.authorizationPolicy.assertPermissions(user, [Permission.SportsTournament.Read], {
-      sportsTournamentId: tournamentId,
-    });
+    const tournamentTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsTournament.Read);
     const [tournament, categories] = await Promise.all([
       this.prisma.sportsTournament.findFirst({
-        where: { id: tournamentId, deletedAt: null },
+        where: { id: tournamentId, deletedAt: null, ...this.tournamentVisibility(tournamentTargets) },
         select: ADMIN_TOURNAMENT_SELECT,
       }),
       this.prisma.sportsCategory.findMany({
-        where: { tournamentId, deletedAt: null },
+        where: { tournamentId, deletedAt: null, ...this.categoryVisibility(tournamentTargets) },
         select: ADMIN_CATEGORY_SELECT,
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
       }),
@@ -59,39 +57,39 @@ export class SportsReadAdminService {
     if (!tournament) {
       throw new NotFoundException(`Sports tournament ${tournamentId} was not found.`);
     }
-    const readableCategories = [];
-    for (const category of categories) {
-      if (await this.hasScopedPermission(user, Permission.SportsTournament.Read, { sportsCategoryId: category.id })) {
-        readableCategories.push(category);
-      }
-    }
-    const canReadAllCategories = readableCategories.length === categories.length;
-    const readableCategoryIds = readableCategories.map((category) => category.id);
+    const readableCategoryIds = categories.map((category) => category.id);
     const canReadOfficials = await this.hasScopedPermission(user, Permission.SportsOfficial.Read, {
       sportsTournamentId: tournamentId,
     });
+    const [canReadTeams, canReadRegistrations, canReadScores] = await Promise.all([
+      this.hasScopedPermission(user, Permission.SportsTeam.Read, { sportsTournamentId: tournamentId }),
+      this.hasScopedPermission(user, Permission.SportsRegistration.Read, { sportsTournamentId: tournamentId }),
+      this.hasScopedPermission(user, Permission.SportsScore.Read, { sportsTournamentId: tournamentId }),
+    ]);
     const [teams, scoreEntries, venues, officials] = await Promise.all([
-      this.prisma.sportsTeam.findMany({
+      canReadTeams
+        ? this.prisma.sportsTeam.findMany({
         where: {
           tournamentId,
           deletedAt: null,
-          ...(canReadAllCategories
-            ? {}
-            : {
+          ...(readableCategoryIds.length
+            ? {
                 registrations: {
                   some: {
                     categoryId: { in: readableCategoryIds },
                     deletedAt: null,
                   },
                 },
-              }),
+              }
+            : { id: '__no_sports_team_access__' }),
         },
         select: {
           ...ADMIN_TEAM_SELECT,
           registrations: {
             where: {
               deletedAt: null,
-              ...(canReadAllCategories ? {} : { categoryId: { in: readableCategoryIds } }),
+              ...(readableCategoryIds.length ? { categoryId: { in: readableCategoryIds } } : { id: '__no_sports_registration_access__' }),
+              ...(canReadRegistrations ? {} : { id: '__no_sports_registration_access__' }),
             },
             select: {
               id: true,
@@ -108,15 +106,18 @@ export class SportsReadAdminService {
           },
         },
         orderBy: [{ name: 'asc' }, { id: 'asc' }],
-      }),
-      this.prisma.sportsTournamentScoreEntry.findMany({
+          })
+        : Promise.resolve([]),
+      canReadScores
+        ? this.prisma.sportsTournamentScoreEntry.findMany({
         where: {
           tournamentId,
           deletedAt: null,
-          ...(canReadAllCategories ? {} : { categoryId: { in: readableCategoryIds } }),
+          ...(readableCategoryIds.length ? { categoryId: { in: readableCategoryIds } } : { id: '__no_sports_score_access__' }),
         },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      }),
+          })
+        : Promise.resolve([]),
       this.prisma.sportsVenue.findMany({
         where: { tournamentId, deletedAt: null },
         orderBy: [{ name: 'asc' }, { courtLabel: 'asc' }, { id: 'asc' }],
@@ -136,7 +137,7 @@ export class SportsReadAdminService {
     ]);
     return {
       tournament: this.mapper.mapAdminTournament(tournament),
-      categories: readableCategories.map((category) => this.mapper.mapAdminCategory(category)),
+      categories: categories.map((category) => this.mapper.mapAdminCategory(category)),
       teams: teams.map((team) => this.mapper.mapAdminTeam(team)),
       scoreEntries: scoreEntries.map((entry) => this.mapper.mapAdminScoreEntry(entry)),
       venues,
@@ -155,39 +156,48 @@ export class SportsReadAdminService {
   }
 
   async adminCategory(user: AuthenticatedUser | undefined, categoryId: string): Promise<AdminSportsCategoryRead> {
-    await this.authorizationPolicy.assertPermissions(user, [Permission.SportsCategory.Read], {
-      sportsCategoryId: categoryId,
-    });
-    const canReadOfficials = await this.hasScopedPermission(user, Permission.SportsOfficial.Read, {
-      sportsCategoryId: categoryId,
-    });
+    const categoryTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsCategory.Read);
+    const [canReadOfficials, canReadRegistrations, canReadMatches, canReadScores] = await Promise.all([
+      this.hasScopedPermission(user, Permission.SportsOfficial.Read, { sportsCategoryId: categoryId }),
+      this.hasScopedPermission(user, Permission.SportsRegistration.Read, { sportsCategoryId: categoryId }),
+      this.hasScopedPermission(user, Permission.SportsMatch.Read, { sportsCategoryId: categoryId }),
+      this.hasScopedPermission(user, Permission.SportsScore.Read, { sportsCategoryId: categoryId }),
+    ]);
     const [category, registrations, stages, matches, standings, placements, officials] = await Promise.all([
       this.prisma.sportsCategory.findFirst({
-        where: { id: categoryId, deletedAt: null },
+        where: { id: categoryId, deletedAt: null, ...this.categoryVisibility(categoryTargets) },
         select: ADMIN_CATEGORY_SELECT,
       }),
-      this.prisma.sportsRegistration.findMany({
+      canReadRegistrations
+        ? this.prisma.sportsRegistration.findMany({
         where: { categoryId, deletedAt: null },
         select: ADMIN_REGISTRATION_SELECT,
         orderBy: [{ seed: 'asc' }, { id: 'asc' }],
-      }),
+          })
+        : Promise.resolve([]),
       this.prisma.sportsStage.findMany({
         where: { categoryId, deletedAt: null },
         orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }],
       }),
-      this.prisma.sportsMatch.findMany({
+      canReadMatches
+        ? this.prisma.sportsMatch.findMany({
         where: { categoryId, deletedAt: null },
         include: { event: true },
         orderBy: [{ roundNumber: 'asc' }, { bracketPosition: 'asc' }, { id: 'asc' }],
-      }),
-      this.prisma.sportsStanding.findMany({
+          })
+        : Promise.resolve([]),
+      canReadScores
+        ? this.prisma.sportsStanding.findMany({
         where: { stage: { categoryId, deletedAt: null } },
         orderBy: [{ rank: 'asc' }, { id: 'asc' }],
-      }),
-      this.prisma.sportsCategoryPlacement.findMany({
+          })
+        : Promise.resolve([]),
+      canReadScores
+        ? this.prisma.sportsCategoryPlacement.findMany({
         where: { categoryId },
         orderBy: [{ placement: 'asc' }, { id: 'asc' }],
-      }),
+          })
+        : Promise.resolve([]),
       canReadOfficials
         ? this.prisma.sportsOfficialAssignment.findMany({
             where: {
@@ -215,19 +225,35 @@ export class SportsReadAdminService {
   }
 
   async adminTeam(user: AuthenticatedUser | undefined, teamId: string): Promise<AdminSportsTeamRead> {
-    await this.authorizationPolicy.assertPermissions(user, [Permission.SportsTeam.Read], {
+    const teamTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsTeam.Read);
+    const canReadRegistrations = await this.hasScopedPermission(user, Permission.SportsRegistration.Read, {
       sportsTeamId: teamId,
     });
     const [team, registrations] = await Promise.all([
       this.prisma.sportsTeam.findFirst({
-        where: { id: teamId, deletedAt: null },
+        where: {
+          id: teamId,
+          deletedAt: null,
+          ...(teamTargets === null
+            ? {}
+            : {
+                registrations: {
+                  some: {
+                    deletedAt: null,
+                    category: this.categoryVisibility(teamTargets),
+                  },
+                },
+              }),
+        },
         select: ADMIN_TEAM_SELECT,
       }),
-      this.prisma.sportsRegistration.findMany({
+      canReadRegistrations
+        ? this.prisma.sportsRegistration.findMany({
         where: { teamId, deletedAt: null },
         select: ADMIN_REGISTRATION_SELECT,
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      }),
+          })
+        : Promise.resolve([]),
     ]);
     if (!team) {
       throw new NotFoundException(`Sports team ${teamId} was not found.`);
@@ -508,5 +534,36 @@ export class SportsReadAdminService {
       scopes.push({ eventId: { in: [...targets.eventIds] } });
     }
     return scopes.length ? { OR: scopes } : { id: '__no_sports_match_access__' };
+  }
+
+  private categoryVisibility(targets: AccessibleEventGrantTargets | null): Prisma.SportsCategoryWhereInput {
+    if (targets === null) {
+      return {};
+    }
+    const scopes: Prisma.SportsCategoryWhereInput[] = [];
+    if (targets.majorEventIds.size > 0) {
+      scopes.push({ tournament: { majorEventId: { in: [...targets.majorEventIds] } } });
+    }
+    if (targets.eventGroupIds.size > 0) {
+      scopes.push({ eventGroupId: { in: [...targets.eventGroupIds] } });
+    }
+    if (targets.eventIds.size > 0) {
+      scopes.push({ matches: { some: { deletedAt: null, eventId: { in: [...targets.eventIds] } } } });
+    }
+    return scopes.length ? { OR: scopes } : { id: '__no_sports_category_access__' };
+  }
+
+  private tournamentVisibility(targets: AccessibleEventGrantTargets | null): Prisma.SportsTournamentWhereInput {
+    if (targets === null) {
+      return {};
+    }
+    const scopes: Prisma.SportsTournamentWhereInput[] = [];
+    if (targets.majorEventIds.size > 0) {
+      scopes.push({ majorEventId: { in: [...targets.majorEventIds] } });
+    }
+    if (targets.eventGroupIds.size > 0 || targets.eventIds.size > 0) {
+      scopes.push({ categories: { some: { deletedAt: null, ...this.categoryVisibility(targets) } } });
+    }
+    return scopes.length ? { OR: scopes } : { id: '__no_sports_tournament_access__' };
   }
 }

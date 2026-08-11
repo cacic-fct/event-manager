@@ -347,6 +347,35 @@ describe('SportsStandingsService', () => {
     );
   });
 
+  it('does not create overall placement score entries in per-sport scoring mode', async () => {
+    const source = match({
+      category: {
+        ...category(SportsFormat.SINGLE_ELIMINATION),
+        overallScoringRules: {
+          mode: 'FINAL_PLACEMENT',
+          match: { win: 3, draw: 1, loss: 0 },
+          placement: { '1': 10, '2': 6 },
+        },
+        tournament: {
+          scoringMode: SportsScoringMode.PER_SPORT,
+          majorEventId: 'major-1',
+        },
+      },
+      stage: { type: SportsStageType.ELIMINATION, settings: {} },
+      winnerAdvancesToId: null,
+    });
+    const tx = transaction(source);
+    tx.sportsRegistration.findMany.mockResolvedValue([
+      { id: 'home', teamId: 'team-home' },
+      { id: 'away', teamId: 'team-away' },
+    ]);
+    tx.sportsTournamentScoreEntry.findMany.mockResolvedValue([]);
+
+    await service.refreshAfterApprovedOutcome(tx as never, source.id, 'admin-1');
+
+    expect(tx.sportsTournamentScoreEntry.createMany).not.toHaveBeenCalled();
+  });
+
   it('preserves Swiss bye and seed metadata while recomputing canonical standings', async () => {
     const source = match({
       stageId: 'swiss-stage',

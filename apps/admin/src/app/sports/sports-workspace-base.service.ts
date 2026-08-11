@@ -3,11 +3,13 @@ import { FormBuilder } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import type { EventForm, MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { Subscription, firstValueFrom } from 'rxjs';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PlacePresetApiService } from '../graphql/place-preset-api.service';
+import { PermissionsService } from '../permissions/permissions.service';
 import { SportsApiService } from './sports-api.service';
 import type {
   SportsApplication,
@@ -30,6 +32,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   private readonly eventFormsApi = inject(EventFormApiService);
   protected readonly peopleApi = inject(PeopleApiService);
   private readonly placesApi = inject(PlacePresetApiService);
+  private readonly permissions = inject(PermissionsService);
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
@@ -128,13 +131,17 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
 
   async initialize(): Promise<void> {
     await this.run('Não foi possível carregar os grandes eventos.', async () => {
-      const [majorEvents, tournaments, places] = await Promise.all([
-        firstValueFrom(this.majorEventsApi.listMajorEvents({ take: 100 })),
+      const [tournaments, majorEvents, places] = await Promise.all([
         firstValueFrom(this.api.tournaments({ take: 100 })),
-        firstValueFrom(this.placesApi.listPlacePresets({ take: 100 })),
+        this.permissions.has(Permission.MajorEvent.Read)
+          ? firstValueFrom(this.majorEventsApi.listMajorEvents({ take: 100 }))
+          : Promise.resolve([]),
+        this.permissions.has(Permission.PlacePreset.Read)
+          ? firstValueFrom(this.placesApi.listPlacePresets({ take: 100 }))
+          : Promise.resolve([]),
       ]);
-      this.majorEvents.set(majorEvents);
       this.tournaments.set(tournaments);
+      this.majorEvents.set(majorEvents);
       this.places.set(places);
     });
   }
@@ -163,15 +170,21 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     this.tournamentRead.set(read);
     this.selectedMajorEventId.set(read.tournament.majorEventId);
     this.eventForms.set(
-      await firstValueFrom(this.eventFormsApi.listForms({ majorEventId: read.tournament.majorEventId })),
+      this.permissions.has(Permission.EventForm.Read)
+        ? await firstValueFrom(this.eventFormsApi.listForms({ majorEventId: read.tournament.majorEventId }))
+        : [],
     );
     this.tournamentForm.patchValue(read.tournament);
     this.categoryRead.set(null);
     this.teamRead.set(null);
     this.matchReview.set(null);
     const [applications, pendingActions] = await Promise.all([
-      firstValueFrom(this.api.applicationQueue(id)),
-      firstValueFrom(this.api.matchActionReviewQueue(id)),
+      this.permissions.has(Permission.SportsRegistration.Read)
+        ? firstValueFrom(this.api.applicationQueue(id))
+        : Promise.resolve([]),
+      this.permissions.hasAll([Permission.SportsMatch.Read, Permission.SportsMatch.Review])
+        ? firstValueFrom(this.api.matchActionReviewQueue(id))
+        : Promise.resolve([]),
     ]);
     this.applications.set(applications);
     this.pendingMatchActions.set(pendingActions);

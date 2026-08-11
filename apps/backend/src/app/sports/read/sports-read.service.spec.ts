@@ -383,6 +383,7 @@ describe('SportsReadService admin tournament list', () => {
 describe('SportsReadAdminService team privacy', () => {
   it('does not return team representatives to a category-scoped reader', async () => {
     const authorizationPolicy = {
+      accessibleEventTargets: jest.fn().mockResolvedValue(null),
       assertPermissions: jest.fn().mockImplementation(
         async (
           _user: unknown,

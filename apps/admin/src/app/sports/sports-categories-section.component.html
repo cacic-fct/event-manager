@@ -264,16 +264,14 @@
       </mat-form-field>
       @if (
         workspace.categoryForm.controls.format.value === 'ROUND_ROBIN' ||
-        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_SINGLE_ELIMINATION' ||
-        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_DOUBLE_ELIMINATION'
+        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_ELIMINATION'
       ) {
         <mat-slide-toggle class="span-2" formControlName="doubleRoundRobin">
           Turno e returno — cada equipe enfrenta as demais duas vezes
         </mat-slide-toggle>
       }
       @if (
-        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_SINGLE_ELIMINATION' ||
-        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_DOUBLE_ELIMINATION'
+        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_ELIMINATION'
       ) {
         <mat-form-field>
           <mat-label>Quantidade de grupos</mat-label>

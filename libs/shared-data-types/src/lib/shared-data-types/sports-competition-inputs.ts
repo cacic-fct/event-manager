@@ -192,6 +192,9 @@ export class SportsMatchUpdateInput {
   @Field(() => Int)
   expectedRevision!: number;
 
+  @Field(() => String, { nullable: true })
+  name?: string;
+
   @Field(() => Date, { nullable: true })
   startDate?: Date;
 

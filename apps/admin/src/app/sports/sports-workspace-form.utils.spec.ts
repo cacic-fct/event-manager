@@ -19,7 +19,7 @@ describe('sports workspace form utilities', () => {
       '{"strategy":"SETS","allowDraw":false,"higherWins":true,"pointStep":0.5}',
       '{"winPoints":2,"drawPoints":1,"lossPoints":-1,"byePoints":2}',
       '{"groupCount":4,"qualifiersPerGroup":2,"maximumRounds":7,"legacyFlag":true}',
-      'GROUP_STAGE_SINGLE_ELIMINATION',
+      'GROUP_STAGE_ELIMINATION',
     );
 
     expect(formValue).toMatchObject({

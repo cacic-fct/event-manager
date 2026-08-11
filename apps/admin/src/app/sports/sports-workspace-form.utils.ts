@@ -75,7 +75,7 @@ export function competitionRulesFromForm(
   if (format === 'ROUND_ROBIN') {
     standingsPatch['doubleRoundRobin'] = raw.doubleRoundRobin === true;
   }
-  if (format === 'GROUP_STAGE_SINGLE_ELIMINATION' || format === 'GROUP_STAGE_DOUBLE_ELIMINATION') {
+  if (format === 'GROUP_STAGE_ELIMINATION') {
     bracketPatch['groupCount'] = positiveInteger(raw.groupCount, 2);
     bracketPatch['qualifiersPerGroup'] = positiveInteger(raw.qualifiersPerGroup, 2);
     bracketPatch['doubleRoundRobin'] = raw.doubleRoundRobin === true;
@@ -243,16 +243,7 @@ export function overallScoringRulesToForm(value: string, legacyBracketRulesJson 
 }
 
 export function overallScoringRulesFromForm(raw: SportsOverallScoringFormValue): string {
-  let placement: Record<string, unknown> = {};
-  try {
-    const parsed = JSON.parse(raw.overallPlacementPointsJson || '{}') as unknown;
-    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-      placement = parsed as Record<string, unknown>;
-    }
-  } catch {
-    placement = {};
-  }
-  placement = Object.fromEntries(
+  const placement = Object.fromEntries(
     (raw.overallPlacementPoints ?? [])
       .flatMap(({ position, points }) =>
         typeof position === 'number' &&

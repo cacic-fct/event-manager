@@ -117,6 +117,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
         ? {
             id: existing.id,
             expectedRevision: existing.revision,
+            name: raw.name,
             startDate: toIsoDateOrUndefined(raw.startDate),
             endDate: toIsoDateOrUndefined(raw.endDate),
             stageId: raw.stageId || null,
@@ -126,7 +127,6 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
             roundNumber: raw.roundNumber || null,
             bracketPosition: raw.bracketPosition || null,
             groupKey: raw.groupKey || null,
-            state: raw.state,
             notes: raw.notes || null,
             livestreamProvider: raw.livestreamProvider || null,
             livestreamUrl: raw.livestreamUrl || null,
