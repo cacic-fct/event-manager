@@ -10,6 +10,9 @@ test.use({
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
+    // Playwright Chromium can be classified as private by detectincognitojs.
+    // This flow tests oral attendance, not the separate privacy warning dialog.
+    window.sessionStorage.setItem('cacic-eventos:attendance-incognito-warning-shown', 'true');
     window.localStorage.setItem('cacic.cookieBanner.enabled', 'false');
   });
 });
