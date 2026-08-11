@@ -165,6 +165,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
     );
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const active = input.active ?? assignment.active;
+      const statusChanged = active !== assignment.active;
       const changed = await tx.sportsOfficialAssignment.updateMany({
         where: {
           id: assignment.id,
@@ -173,9 +174,11 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
         data: {
           ...(input.role !== undefined ? { role: input.role } : {}),
           active,
-          ...(active
+          ...(statusChanged && active
             ? { revokedAt: null, revokedById: null, assignedAt: new Date() }
-            : { revokedAt: new Date(), revokedById: actorId }),
+            : statusChanged
+              ? { revokedAt: new Date(), revokedById: actorId }
+              : {}),
           revision: { increment: 1 },
         },
       });

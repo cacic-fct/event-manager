@@ -24,6 +24,9 @@ describe('SportsTeamChangeService review concurrency', () => {
   const auditLog = {
     record: jest.fn().mockResolvedValue(undefined),
   };
+  const s3 = {
+    deleteFile: jest.fn(),
+  };
 
   let tx: ReturnType<typeof createTransaction>;
   let prisma: {
@@ -39,7 +42,13 @@ describe('SportsTeamChangeService review concurrency', () => {
       $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
       sportsTeamChangeRequest: tx.sportsTeamChangeRequest,
     };
-    service = new SportsTeamChangeService(prisma as never, identities as never, payments as never, auditLog as never);
+    service = new SportsTeamChangeService(
+      prisma as never,
+      identities as never,
+      payments as never,
+      auditLog as never,
+      s3 as never,
+    );
   });
   it('detects targeted field drift during approval without treating unrelated fields as conflicts', async () => {
     let transactionCommitted = false;
@@ -227,6 +236,36 @@ describe('SportsTeamChangeService review concurrency', () => {
     ).rejects.toThrow(ConflictException);
 
     expect(tx.sportsTeamChangeRequest.create).not.toHaveBeenCalled();
+  });
+
+  it('does not fail a reviewed logo decision when queued-object cleanup is unavailable', async () => {
+    const sha256 = 'a'.repeat(64);
+    const logo = {
+      objectKey: `sports/tournaments/tournament-1/teams/team-1/logos/sha256/${sha256}.avif`,
+      queuedObjectKey: `sports/private/team-logo-review/team-1/request-1/${sha256}.avif`,
+      sha256,
+      mimeType: 'image/avif',
+      sizeBytes: 100,
+    };
+    const request = reviewRequest({
+      type: SportsTeamChangeRequestType.LOGO,
+      delta: { logo },
+    });
+    prisma.sportsTeamChangeRequest.findUnique.mockResolvedValue({
+      type: SportsTeamChangeRequestType.LOGO,
+      status: SportsTeamChangeRequestStatus.PENDING,
+      delta: { logo },
+    });
+    tx.sportsTeamChangeRequest.findUnique.mockResolvedValue(request);
+    tx.sportsTeamChangeRequest.update.mockImplementation(({ data }: { data: Record<string, unknown> }) => ({
+      id: 'request-1',
+      ...data,
+    }));
+    s3.deleteFile.mockRejectedValue(new Error('temporary storage failure'));
+
+    await expect(service.review('request-1', 'REJECT', adminActor())).resolves.toBeDefined();
+
+    expect(s3.deleteFile).toHaveBeenCalledWith(logo.queuedObjectKey);
   });
 });
 

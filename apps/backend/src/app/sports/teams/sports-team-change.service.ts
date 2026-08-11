@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   AuditLogEntityType,
   AuditLogActorType,
@@ -71,6 +71,8 @@ import { SportsTeamChangeMemberService } from './sports-team-change-member.servi
 
 @Injectable()
 export class SportsTeamChangeService extends SportsTeamChangeMemberService {
+  private readonly logger = new Logger(SportsTeamChangeService.name);
+
   constructor(
     prisma: PrismaService,
     identities: SportsIdentityProtectionService,
@@ -400,7 +402,15 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
       });
     }
     if (queuedLogo && (decision === 'APPROVE' || decision === 'REJECT')) {
-      await this.s3.deleteFile(queuedLogo.queuedObjectKey);
+      try {
+        await this.s3.deleteFile(queuedLogo.queuedObjectKey);
+      } catch (error) {
+        this.logger.warn(
+          `Could not delete reviewed sports team logo ${queuedLogo.queuedObjectKey}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
     }
     return outcome.value;
   }

@@ -362,8 +362,6 @@ export class CertificateSportsEligibility {
       where: {
         tournamentId: target.tournamentId,
         role,
-        active: true,
-        revokedAt: null,
         ...(personId ? { personId } : {}),
         person: {
           deletedAt: null,

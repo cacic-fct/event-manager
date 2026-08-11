@@ -94,6 +94,28 @@ describe('SportsBracketAdvancementService', () => {
     );
   });
 
+  it('copies the losing roster into the losers-bracket match', async () => {
+    const source = {
+      ...sourceMatch(),
+      winnerAdvancesToId: null,
+      winnerAdvancesToSide: null,
+      loserAdvancesToId: 'losers-target',
+      loserAdvancesToSide: SportsBracketSide.HOME,
+      loserAdvancesTo: resetMatch({}, 'losers-target'),
+    };
+    const tx = transaction([source, resetMatch({}, 'losers-target')], [{ count: 1 }]);
+
+    await service.advanceApprovedOutcome(tx as never, 'source-bye', 'admin-1');
+
+    expect(rosters.copyApprovedRosterForWinner).toHaveBeenCalledWith(
+      tx,
+      'source-bye',
+      'losers-target',
+      'away',
+      'admin-1',
+    );
+  });
+
   it('clears a populated untouched reset match when a corrected grand final decides the championship', async () => {
     const tx = transaction(
       [

@@ -202,6 +202,13 @@ export class SportsBracketAdvancementService extends SportsBracketAdvancementAss
           advancementKind,
         ),
       );
+      await this.rosters.copyApprovedRosterForWinner(
+        tx,
+        source.id,
+        source.loserAdvancesToId,
+        source.loserRegistrationId,
+        actorId,
+      );
     }
     return mergeSportsStructuralInvalidations(...invalidations);
   }

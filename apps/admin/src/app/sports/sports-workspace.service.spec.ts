@@ -2,7 +2,7 @@ import { FormBuilder } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
-import { EMPTY, of } from 'rxjs';
+import { EMPTY, of, throwError } from 'rxjs';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
@@ -184,9 +184,25 @@ describe('SportsWorkspaceService', () => {
     };
     const tournament = createAdminSportsTournamentRead();
     const teamRead = createAdminSportsTeamRead();
-    api.mutate = vi.fn().mockReturnValue(of('registration-auto'));
+    let assignmentAttempts = 0;
+    api.mutate = vi.fn((name: string) => {
+      if (name === 'assignSportsCategoryRole' && assignmentAttempts++ === 0) {
+        return throwError(() => new Error('transient assignment failure'));
+      }
+      return of('registration-auto');
+    });
     api.tournament = vi.fn().mockReturnValue(of(tournament));
-    api.team = vi.fn().mockReturnValue(of(teamRead));
+    const recoveredTeamRead = createAdminSportsTeamRead();
+    recoveredTeamRead.registrations.push({
+      id: 'registration-auto',
+      teamId: recoveredTeamRead.team.id,
+      categoryId: 'category-2',
+      status: 'APPROVED',
+      seed: null,
+      formAnswersJson: null,
+      revision: 1,
+    });
+    api.team = vi.fn().mockReturnValue(of(recoveredTeamRead));
     api.applicationQueue = vi.fn().mockReturnValue(of([]));
     api.matchActionReviewQueue = vi.fn().mockReturnValue(of([]));
     api.watchTournamentReview = vi.fn().mockReturnValue(EMPTY);
@@ -198,11 +214,13 @@ describe('SportsWorkspaceService', () => {
     const registrationCalls = api.mutate.mock.calls.filter(([name]) => name === 'createSportsRegistration');
     const rosterCalls = api.mutate.mock.calls.filter(([name]) => name === 'assignSportsCategoryRole');
     expect(registrationCalls).toHaveLength(2);
-    expect(rosterCalls).toHaveLength(2);
+    expect(rosterCalls).toHaveLength(3);
     expect(rosterCalls.map(([, , input]) => input)).toEqual([
       { registrationId: 'registration-auto', teamMemberId: 'member-1', role: 'PLAYER' },
       { registrationId: 'registration-auto', teamMemberId: 'member-1', role: 'PLAYER' },
+      { registrationId: 'registration-auto', teamMemberId: 'member-1', role: 'PLAYER' },
     ]);
+    expect(api.team).toHaveBeenCalledWith('team-1');
   });
 
   it('reviews a pending action without a selected match', async () => {

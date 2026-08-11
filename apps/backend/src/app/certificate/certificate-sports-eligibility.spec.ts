@@ -276,7 +276,7 @@ describe('CertificateSportsEligibility', () => {
     expect(rosterEntryFindMany).not.toHaveBeenCalled();
   });
 
-  it('resolves active category officials and includes their finalized covered matches', async () => {
+  it('resolves historical category officials and includes their finalized covered matches', async () => {
     const officialAssignmentFindMany = jest.fn().mockResolvedValue([
       {
         personId: person.id,
@@ -284,7 +284,7 @@ describe('CertificateSportsEligibility', () => {
         categoryId: 'category-1',
         matchId: null,
         assignedAt: new Date('2026-01-01T00:00:00.000Z'),
-        revokedAt: null,
+        revokedAt: new Date('2026-01-03T00:00:00.000Z'),
       },
     ]);
     const service = new CertificateSportsEligibility({
@@ -326,6 +326,11 @@ describe('CertificateSportsEligibility', () => {
       }),
       select: expect.any(Object),
     });
+    const query = officialAssignmentFindMany.mock.calls[0]?.[0] as
+      | { where?: Record<string, unknown> }
+      | undefined;
+    expect(query?.where).not.toHaveProperty('active');
+    expect(query?.where).not.toHaveProperty('revokedAt');
   });
 
   it('requires a canonical finalized and reviewed match before resolving match certificates', async () => {

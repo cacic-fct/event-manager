@@ -282,17 +282,15 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     const formAnswersJson = answers ? serializeFormAnswers(answers) : raw.formAnswersJson;
     const teamRead = this.teamRead();
     await this.run('Não foi possível inscrever a equipe.', async () => {
-      const registrationId = await firstValueFrom(
-        this.api.mutate<string>('createSportsRegistration', 'SportsRegistrationCreateInput', {
+      await this.createRegistrationAndAssignApprovedMembers(
+        {
           teamId: raw.teamId,
           categoryId: raw.categoryId,
           seed: raw.seed || null,
           formAnswersJson: formAnswersJson === '[]' ? null : formAnswersJson || null,
-        }),
+        },
+        teamRead,
       );
-      if (teamRead) {
-        await this.assignApprovedMembersToRegistration(registrationId, teamRead);
-      }
       await this.refreshSelectedTeamAfterRegistration(teamRead?.team.id ?? raw.teamId);
       this.notify('Inscrição criada. Atletas aprovados adicionados ao elenco da modalidade.');
     });
@@ -308,21 +306,87 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     }
     await this.run('Não foi possível concluir as inscrições automáticas.', async () => {
       for (const category of categories) {
-        const registrationId = await firstValueFrom(
-          this.api.mutate<string>('createSportsRegistration', 'SportsRegistrationCreateInput', {
+        await this.createRegistrationAndAssignApprovedMembers(
+          {
             teamId: teamRead.team.id,
             categoryId: category.id,
             seed: null,
             formAnswersJson: null,
-          }),
+          },
+          this.teamRead() ?? teamRead,
         );
-        await this.assignApprovedMembersToRegistration(registrationId, teamRead);
       }
       await this.refreshSelectedTeamAfterRegistration(teamRead.team.id);
       this.notify(
         `${categories.length} modalidade${categories.length === 1 ? '' : 's'} inscrita${categories.length === 1 ? '' : 's'}.`,
       );
     });
+  }
+
+  private async createRegistrationAndAssignApprovedMembers(
+    input: {
+      teamId: string;
+      categoryId: string;
+      seed: number | null;
+      formAnswersJson: string | null;
+    },
+    teamRead: SportsTeamRead | null,
+  ): Promise<void> {
+    let registrationId: string;
+    try {
+      registrationId = await firstValueFrom(
+        this.api.mutate<string>('createSportsRegistration', 'SportsRegistrationCreateInput', input),
+      );
+    } catch (error) {
+      const recovered = await this.recoverRegistrationAfterFailure(input.teamId, input.categoryId).catch(() => null);
+      if (!recovered) {
+        throw error;
+      }
+      await this.assignApprovedMembersToRegistration(recovered.registration.id, recovered.teamRead);
+      return;
+    }
+
+    if (teamRead) {
+      await this.assignApprovedMembersWithRecovery(
+        registrationId,
+        input.teamId,
+        input.categoryId,
+        teamRead,
+      );
+    }
+  }
+
+  private async assignApprovedMembersWithRecovery(
+    registrationId: string,
+    teamId: string,
+    categoryId: string,
+    teamRead: SportsTeamRead,
+  ): Promise<void> {
+    try {
+      await this.assignApprovedMembersToRegistration(registrationId, teamRead);
+    } catch (error) {
+      const recovered = await this.recoverRegistrationAfterFailure(teamId, categoryId).catch(() => null);
+      if (!recovered) {
+        throw error;
+      }
+      await this.assignApprovedMembersToRegistration(recovered.registration.id, recovered.teamRead);
+    }
+  }
+
+  private async recoverRegistrationAfterFailure(
+    teamId: string,
+    categoryId: string,
+  ): Promise<{
+    registration: SportsTeamRead['registrations'][number];
+    teamRead: SportsTeamRead;
+  } | null> {
+    const refreshed = await firstValueFrom(this.api.team(teamId));
+    if (!refreshed) {
+      return null;
+    }
+    this.teamRead.set(refreshed);
+    const registration = refreshed.registrations.find((item) => item.categoryId === categoryId);
+    return registration ? { registration, teamRead: refreshed } : null;
   }
 
   async setRegistrationStatus(
@@ -367,7 +431,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
 
   private async assignApprovedMembersToRegistration(registrationId: string, teamRead: SportsTeamRead): Promise<void> {
     const approvedMembers = teamRead.members.filter((member) => member.status === 'APPROVED');
-    await Promise.all(
+    const results = await Promise.allSettled(
       approvedMembers.map((member) =>
         firstValueFrom(
           this.api.mutate<string>('assignSportsCategoryRole', 'SportsRegistrationMemberUpsertInput', {
@@ -378,6 +442,10 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
         ),
       ),
     );
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') {
+      throw failure.reason;
+    }
   }
 
   private async refreshSelectedTeamAfterRegistration(teamId: string): Promise<void> {
