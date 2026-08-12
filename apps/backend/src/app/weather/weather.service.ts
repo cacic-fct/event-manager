@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE } from '../public-events/models';
 import { PublicEventWeather } from './models';
 import { addDays, differenceInCalendarDays, isFuture } from 'date-fns';
+import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 type WeatherEvent = Prisma.EventGetPayload<{
   select: typeof PUBLIC_EVENT_SELECT;
@@ -92,7 +93,7 @@ export class WeatherService {
       'schedule-upcoming-event-weather',
       {},
       {
-        jobId: 'weather:schedule-upcoming-events',
+        jobId: buildBullMqJobId('weather', 'schedule-upcoming-events'),
         repeat: {
           pattern: '5 0 * * *',
           tz: TIME_ZONE,
@@ -114,7 +115,7 @@ export class WeatherService {
     }
 
     const endDate = event.startDate;
-    const repeatJobId = `weather:${event.id}:${category}`;
+    const repeatJobId = buildBullMqJobId('weather', event.id, category);
     const repeatPattern = this.getRepeatPattern(category);
 
     await this.weatherQueue.add(
@@ -139,7 +140,7 @@ export class WeatherService {
           'refresh-event-weather',
           { eventId: event.id },
           {
-            jobId: `weather:${event.id}:event-time`,
+            jobId: buildBullMqJobId('weather', event.id, 'event-time'),
             delay,
             removeOnComplete: true,
             removeOnFail: 50,

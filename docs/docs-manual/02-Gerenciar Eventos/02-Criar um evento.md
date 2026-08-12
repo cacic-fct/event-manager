@@ -137,6 +137,6 @@ Oriente os ministrantes a não fazerem isso.
 
 ### Coletores de presença com permissões limitadas
 
-As pessoas cadastradas nessa seção poderão coletar presença usando a interface pública, a partir de 3 horas antes do início do evento e até 6 horas depois, mas não terão acesso à interface administrativa do sistema.
+As pessoas cadastradas nessa seção poderão coletar presença com a interface pública, a partir de 3 horas antes do início do evento e até 6 horas depois, mas não terão acesso à interface administrativa do sistema.
 
-Administradores também precisam ser adicionados como coletores de presença para usar a interface pública, caso contrário, só poderão coletar presença usando a interface administrativa.
+Administradores com permissões de coleta de presenças não precisam ser cadastrados nessa seção.

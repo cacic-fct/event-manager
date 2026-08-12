@@ -11,6 +11,8 @@ export function createEventManagerDefaultPrivacySettings(): PrivacySettings {
   return {
     ...createDefaultPrivacySettings(),
     analytics_tracking: true,
+    error_debugging: true,
+    performance_monitoring: true,
   };
 }
 

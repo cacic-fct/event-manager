@@ -29,7 +29,7 @@ describe('CertificateNotificationJobsService', () => {
       {
         attempts: 3,
         backoff: { type: 'exponential', delay: 1_000 },
-        jobId: 'certificate-available:certificate-1:2026-05-23T15:30:00.000Z',
+        jobId: 'certificate-available-certificate-1-1779550200000',
         removeOnComplete: true,
         removeOnFail: 50,
       },

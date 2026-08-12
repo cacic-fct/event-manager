@@ -3,6 +3,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
 import { CertificateRecord } from './certificate.constants';
+import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 export const CERTIFICATE_NOTIFICATION_QUEUE = 'certificate-notifications';
 export const CERTIFICATE_AVAILABLE_NOTIFICATION_JOB = 'notify-certificate-available';
@@ -33,7 +34,7 @@ export class CertificateNotificationJobsService {
     await this.queue.add(CERTIFICATE_AVAILABLE_NOTIFICATION_JOB, input, {
       attempts: 3,
       backoff: { type: 'exponential', delay: 1_000 },
-      jobId: `certificate-available:${certificate.id}:${certificate.issuedAt.toISOString()}`,
+      jobId: buildBullMqJobId('certificate-available', certificate.id, certificate.issuedAt.getTime()),
       removeOnComplete: true,
       removeOnFail: 50,
     });

@@ -121,7 +121,7 @@ describe('DashboardInsightsService cache and jobs', () => {
       'refresh-realtime-dashboard-insights',
       { scope: 'realtime' },
       expect.objectContaining({
-        jobId: 'dashboard-insights:realtime',
+        jobId: 'dashboard-insights-realtime',
         repeat: { pattern: '*/5 * * * *' },
       }),
     );
@@ -129,7 +129,7 @@ describe('DashboardInsightsService cache and jobs', () => {
       'refresh-operational-dashboard-insights',
       { scope: 'operational' },
       expect.objectContaining({
-        jobId: 'dashboard-insights:operational',
+        jobId: 'dashboard-insights-operational',
         repeat: { pattern: '*/30 * * * *' },
       }),
     );

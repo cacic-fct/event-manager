@@ -261,6 +261,7 @@ describe('EventsResolver', () => {
           name: 'Evento novo',
           majorEventId: 'major-new',
           eventGroupId: null,
+          shouldAllowOralAttendance: false,
           publishAfterUpdate: true,
         } as never,
         { req: { user: { sub: 'user-1' } } } as never,
@@ -271,6 +272,7 @@ describe('EventsResolver', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           name: 'Evento novo',
+          shouldAllowOralAttendance: false,
           publicationState: 'PUBLISHED',
           scheduledPublishAt: null,
           publishedAt: expect.any(Date),

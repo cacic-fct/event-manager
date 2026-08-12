@@ -37,7 +37,7 @@ describe('PublicationJobsService', () => {
       PUBLISH_SCHEDULED_CONTENT_JOB,
       { targetType: 'EVENT', targetId: 'event-1' },
       expect.objectContaining({
-        jobId: `publication:EVENT:event-1:publish:${firstSchedule.getTime()}`,
+        jobId: `publication-EVENT-event-1-publish-${firstSchedule.getTime()}`,
         delay: firstSchedule.getTime() - now.getTime(),
       }),
     );
@@ -46,7 +46,7 @@ describe('PublicationJobsService', () => {
       PUBLISH_SCHEDULED_CONTENT_JOB,
       { targetType: 'EVENT', targetId: 'event-1' },
       expect.objectContaining({
-        jobId: `publication:EVENT:event-1:publish:${secondSchedule.getTime()}`,
+        jobId: `publication-EVENT-event-1-publish-${secondSchedule.getTime()}`,
         delay: secondSchedule.getTime() - now.getTime(),
       }),
     );
@@ -80,7 +80,7 @@ describe('PublicationJobsService', () => {
       RECONCILE_PUBLICATION_STATES_JOB,
       {},
       expect.objectContaining({
-        jobId: `publication:${RECONCILE_PUBLICATION_STATES_JOB}`,
+        jobId: `publication-${RECONCILE_PUBLICATION_STATES_JOB}`,
         repeat: expect.objectContaining({
           pattern: '*/5 * * * *',
           tz: 'America/Sao_Paulo',
@@ -91,7 +91,7 @@ describe('PublicationJobsService', () => {
       CLEANUP_STALE_EVENT_DRAFTS_JOB,
       {},
       expect.objectContaining({
-        jobId: `publication:${CLEANUP_STALE_EVENT_DRAFTS_JOB}`,
+        jobId: `publication-${CLEANUP_STALE_EVENT_DRAFTS_JOB}`,
         repeat: expect.objectContaining({
           pattern: '17 3 * * *',
           tz: 'America/Sao_Paulo',
@@ -102,7 +102,7 @@ describe('PublicationJobsService', () => {
       PUBLISH_SCHEDULED_CONTENT_JOB,
       { targetType: 'EVENT', targetId: 'event-1' },
       expect.objectContaining({
-        jobId: `publication:EVENT:event-1:publish:${eventSchedule.getTime()}`,
+        jobId: `publication-EVENT-event-1-publish-${eventSchedule.getTime()}`,
         delay: eventSchedule.getTime() - now.getTime(),
       }),
     );
@@ -110,7 +110,7 @@ describe('PublicationJobsService', () => {
       PUBLISH_SCHEDULED_CONTENT_JOB,
       { targetType: 'MAJOR_EVENT', targetId: 'major-1' },
       expect.objectContaining({
-        jobId: `publication:MAJOR_EVENT:major-1:publish:${majorEventSchedule.getTime()}`,
+        jobId: `publication-MAJOR_EVENT-major-1-publish-${majorEventSchedule.getTime()}`,
         delay: 0,
       }),
     );

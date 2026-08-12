@@ -24,6 +24,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { S3Service } from '../../s3/s3.service';
 import { refreshSportsParticipantForSubscription } from '../../sports/sports-payment.service';
 import { SportsPlayerApplicationRealtimeService } from '../../sports/applications/sports-player-application-realtime.service';
+import { buildBullMqJobId } from '../../queues/bullmq-job-id';
 import { mapReceipt } from '../mappers/receipt-queue.mapper';
 import {
   CurrentUserReceiptResponse,
@@ -194,7 +195,7 @@ export class ReceiptUploadService {
       'process',
       { receiptId: receipt.id },
       {
-        jobId: receipt.id,
+        jobId: buildBullMqJobId('receipt-processing', receipt.id),
         attempts: RECEIPT_PROCESSING_ATTEMPTS,
         backoff: {
           type: 'exponential',

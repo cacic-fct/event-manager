@@ -28,6 +28,7 @@ export class CacicAnalyticsService {
   private flushTimer: ReturnType<typeof setInterval> | null = null;
   private flushAttempts = 0;
   private identifiedUserId: string | null = null;
+  private identifiedUserDataSignature: string | null = null;
   private readonly started = signal(false);
   private lastTrackedUrl: string | null = null;
 
@@ -85,15 +86,29 @@ export class CacicAnalyticsService {
     const userId = user?.sub;
     if (!userId) {
       this.identifiedUserId = null;
+      this.identifiedUserDataSignature = null;
       return;
     }
 
-    if (!this.canTrackCurrentUser() || this.identifiedUserId === userId) {
+    if (!this.canTrackCurrentUser()) {
+      return;
+    }
+
+    let identifyData: UmamiIdentifyData;
+    try {
+      identifyData = this.buildIdentifyData(user);
+    } catch {
+      return;
+    }
+
+    const identifyDataSignature = JSON.stringify(identifyData);
+    if (this.identifiedUserId === userId && this.identifiedUserDataSignature === identifyDataSignature) {
       return;
     }
 
     this.identifiedUserId = userId;
-    this.enqueue((umami) => umami.identify(userId, this.buildIdentifyData(user)));
+    this.identifiedUserDataSignature = identifyDataSignature;
+    this.enqueue((umami) => umami.identify(userId, identifyData));
   }
 
   private enqueue(action: (umami: UmamiService) => void): boolean {
@@ -181,6 +196,7 @@ export class CacicAnalyticsService {
   private suspendTracking(): void {
     this.pendingActions = [];
     this.identifiedUserId = null;
+    this.identifiedUserDataSignature = null;
     this.lastTrackedUrl = null;
     this.clearFlushTimer();
   }

@@ -86,7 +86,7 @@ describe('PublicPlatformStatsService', () => {
     expect(queue.add).toHaveBeenCalledWith(
       'refresh-public-platform-stats',
       {},
-      expect.objectContaining({ jobId: 'public-platform-stats:nightly', repeat: { pattern: '0 3 * * *' } }),
+      expect.objectContaining({ jobId: 'public-platform-stats-nightly', repeat: { pattern: '0 3 * * *' } }),
     );
     await expect(resolver.publicPlatformStats()).resolves.toEqual(stats);
   });
