@@ -194,6 +194,9 @@ export class EventUpdateInput {
   shouldCollectAttendance?: boolean;
 
   @Field(() => Boolean, { nullable: true })
+  shouldAllowOralAttendance?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
   isOnlineAttendanceAllowed?: boolean;
 
   @Field(() => Boolean, { nullable: true })
