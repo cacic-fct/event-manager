@@ -26,6 +26,7 @@ import {
   provideCacicTrustedTypes,
   trustedExternalScriptUrl,
 } from '../security/trusted-types';
+import { filterCacicSentryLog } from './sentry-log-filter';
 
 export type CacicObservabilityConfig = {
   analytics: {
@@ -242,6 +243,8 @@ async function startCacicSentry(
       beforeSend: (event: SentryErrorEvent) => {
         return !isDevMode() && consent.isGlitchtipEnabled(config, authService.user()) ? event : null;
       },
+      beforeSendLog: (log) =>
+        filterCacicSentryLog(log, consent.isGlitchtipEnabled(config, authService.user()), isDevMode()),
     });
 
     injector.get(sentryAngular.TraceService);

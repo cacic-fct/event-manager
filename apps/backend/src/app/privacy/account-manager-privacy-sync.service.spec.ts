@@ -44,6 +44,19 @@ describe('AccountManagerPrivacySyncService', () => {
     });
   });
 
+  it('enables analytics and monitoring when Account Manager omits settings', async () => {
+    accountManager.getPrivacySettings.mockResolvedValue([]);
+
+    await expect(service.getUserPrivacySettings('user-1')).resolves.toMatchObject({
+      settings: {
+        analytics_tracking: true,
+        error_debugging: true,
+        performance_monitoring: true,
+        cookie_banner_accepted: false,
+      },
+    });
+  });
+
   it('uses the fallback timestamp when Account Manager returns an invalid update timestamp', async () => {
     const before = Date.now();
     accountManager.getPrivacySettings.mockResolvedValue([
