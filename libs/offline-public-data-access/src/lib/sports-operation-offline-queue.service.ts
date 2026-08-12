@@ -61,11 +61,7 @@ export class SportsOperationOfflineQueueService {
   }
 
   async getCollectorCredential(userScope: string, matchId: string): Promise<OfflineSportsCollectorCredential | null> {
-    return (
-      (await this.databaseProvider
-        .getDatabase()
-        ?.sportsCollectorCredentials.get([userScope, matchId])) ?? null
-    );
+    return (await this.databaseProvider.getDatabase()?.sportsCollectorCredentials.get([userScope, matchId])) ?? null;
   }
 
   async get(userScope: string, clientId: string): Promise<OfflineSportsOperationQueueItem | null> {
@@ -142,8 +138,6 @@ export class SportsOperationOfflineQueueService {
   }
 
   private sort(items: OfflineSportsOperationQueueItem[]): OfflineSportsOperationQueueItem[] {
-    return items.sort(
-      (left, right) => left.queuedAt.localeCompare(right.queuedAt) || left.id.localeCompare(right.id),
-    );
+    return items.sort((left, right) => left.queuedAt.localeCompare(right.queuedAt) || left.id.localeCompare(right.id));
   }
 }

@@ -1,6 +1,7 @@
 import { MessageEvent } from '@nestjs/common';
-import { firstValueFrom, of } from 'rxjs';
+import { firstValueFrom, NEVER, of } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { SPORTS_MATCH_OVERLAY_DEMO_ID } from '../overlays/sports-match-overlay.service';
 import { SportsRealtimeController } from './sports-realtime.controller';
 
 describe('SportsRealtimeController', () => {
@@ -77,6 +78,13 @@ describe('SportsRealtimeController', () => {
       'Partida esportiva pública não encontrada.',
     );
 
+    expect(replay.replay).not.toHaveBeenCalled();
+  });
+
+  it('keeps the demo overlay event stream open without reading match data', () => {
+    expect(controller.streamPublicMatch(SPORTS_MATCH_OVERLAY_DEMO_ID, undefined)).toBe(NEVER);
+
+    expect(prisma.sportsMatch.findFirst).not.toHaveBeenCalled();
     expect(replay.replay).not.toHaveBeenCalled();
   });
 

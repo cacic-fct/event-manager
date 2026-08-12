@@ -116,8 +116,10 @@ export abstract class SportsWorkspaceSection {
   }
 
   protected lineupRoleLabel(role: string): string {
-    return SPORTS_ROSTER_ROLE_LABELS[role as keyof typeof SPORTS_ROSTER_ROLE_LABELS] ??
-      (role === 'STAFF' ? 'Apoio' : 'Integrante');
+    return (
+      SPORTS_ROSTER_ROLE_LABELS[role as keyof typeof SPORTS_ROSTER_ROLE_LABELS] ??
+      (role === 'STAFF' ? 'Apoio' : 'Integrante')
+    );
   }
 
   protected selectCategoryById(categoryId: string): void {

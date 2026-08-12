@@ -104,7 +104,10 @@
             role="status"
             [attr.aria-label]="currentWorkspace.joinQueueCount + ' ' + (currentWorkspace.joinQueueCount === 1 ? 'pessoa' : 'pessoas') + ' aguardando análise'">
             <strong>{{ currentWorkspace.joinQueueCount }}</strong>
-            <span>{{ currentWorkspace.joinQueueCount === 1 ? 'pessoa aguardando análise' : 'pessoas aguardando análise' }}</span>
+            <span
+              >{{ currentWorkspace.joinQueueCount === 1 ? 'pessoa aguardando análise' : 'pessoas aguardando análise'
+              }}</span
+            >
           </output>
         </section>
 
@@ -192,7 +195,9 @@
             } @else {
             <mat-icon aria-hidden="true">event</mat-icon>
             }
-            <span class="match-category"><strong>{{ matchLabel(match) }}</strong><small>{{ matchStateLabel(match.state) }}</small></span>
+            <span class="match-category"
+              ><strong>{{ matchLabel(match) }}</strong><small>{{ matchStateLabel(match.state) }}</small></span
+            >
             <div class="matchup-identity">
               <span class="matchup-teams">
                 <span class="matchup-team">

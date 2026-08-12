@@ -15,6 +15,14 @@ GET /api/sports/public/matches/{matchId}/overlay
 
 O caminho identifica a partida. As opções visuais são query params para que vários layouts da mesma partida possam ser usados em fontes diferentes do OBS.
 
+Para testar o overlay sem criar ou publicar uma partida, use o identificador reservado `demo`:
+
+```text
+/api/sports/public/matches/demo/overlay
+```
+
+Esse link exibe dados genéricos fixos.
+
 | Parâmetro | Valores | Padrão | Efeito |
 | --- | --- | --- | --- |
 | `team` | `both`, `home`, `away` | `both` | Exibe as duas equipes ou apenas uma delas. |

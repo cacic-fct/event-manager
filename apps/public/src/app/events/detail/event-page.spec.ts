@@ -386,15 +386,19 @@ describe('Event', () => {
       subscriptionFlowOnly: true,
     });
     expect(open).toHaveBeenCalled();
-    expect(subscribeToEvent).toHaveBeenCalledWith('event-1', [
-      {
-        formId: 'form-1',
-        linkId: 'link-1',
-        targetType: 'EVENT',
-        eventId: 'event-1',
-        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
-      },
-    ], false);
+    expect(subscribeToEvent).toHaveBeenCalledWith(
+      'event-1',
+      [
+        {
+          formId: 'form-1',
+          linkId: 'link-1',
+          targetType: 'EVENT',
+          eventId: 'event-1',
+          answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+        },
+      ],
+      false,
+    );
   });
 
   it('keeps multiple-response subscription forms editable after an existing response', async () => {
@@ -692,14 +696,18 @@ describe('Event', () => {
         }),
       }),
     );
-    expect(subscribeToEvent).toHaveBeenCalledWith('event-1', [
-      {
-        formId: 'form-2',
-        linkId: 'link-2',
-        targetType: 'EVENT',
-        eventId: 'event-2',
-        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
-      },
-    ], false);
+    expect(subscribeToEvent).toHaveBeenCalledWith(
+      'event-1',
+      [
+        {
+          formId: 'form-2',
+          linkId: 'link-2',
+          targetType: 'EVENT',
+          eventId: 'event-2',
+          answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+        },
+      ],
+      false,
+    );
   });
 });

@@ -458,10 +458,7 @@ class InMemorySportsQueueStorage {
   }
 }
 
-function actionItem(
-  id: string,
-  userScope: string,
-): Extract<OfflineSportsOperationQueueItem, { kind: 'ACTION' }> {
+function actionItem(id: string, userScope: string): Extract<OfflineSportsOperationQueueItem, { kind: 'ACTION' }> {
   return {
     kind: 'ACTION',
     id,

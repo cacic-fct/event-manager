@@ -103,9 +103,15 @@ export class CurrentUserEventSubscriptionService {
     }
   }
 
-  ensureImageLicenseAgreementAccepted(required: boolean, accepted: boolean | null | undefined, targetLabel: string): void {
+  ensureImageLicenseAgreementAccepted(
+    required: boolean,
+    accepted: boolean | null | undefined,
+    targetLabel: string,
+  ): void {
     if (required && accepted !== true) {
-      throw new BadRequestException(`Subscription to ${targetLabel} requires acceptance of the CACiC image-license agreement.`);
+      throw new BadRequestException(
+        `Subscription to ${targetLabel} requires acceptance of the CACiC image-license agreement.`,
+      );
     }
   }
 
@@ -283,15 +289,17 @@ export class CurrentUserEventSubscriptionService {
         const isAgreementUpdate =
           existingSubscription != null &&
           imageLicenseAgreementAccepted === true &&
-          Boolean(
-            targetEvent.requiresImageLicenseAgreement || targetEvent.eventGroup?.requiresImageLicenseAgreement,
-          );
+          Boolean(targetEvent.requiresImageLicenseAgreement || targetEvent.eventGroup?.requiresImageLicenseAgreement);
         if (!isAgreementUpdate) {
           this.ensureEventSubscriptionWindowOpen(targetEvent, now);
         }
       }
       this.ensureImageLicenseAgreementAccepted(
-        Boolean(targetEvent.eventGroupId ? targetEvent.eventGroup?.requiresImageLicenseAgreement : targetEvent.requiresImageLicenseAgreement),
+        Boolean(
+          targetEvent.eventGroupId
+            ? targetEvent.eventGroup?.requiresImageLicenseAgreement
+            : targetEvent.requiresImageLicenseAgreement,
+        ),
         imageLicenseAgreementAccepted,
         `event ${eventId}`,
       );

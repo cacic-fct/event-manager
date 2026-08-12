@@ -1,11 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import sharp from 'sharp';
 import type { SportsTeamLogoUploadFile } from './sports-team-logo.service';
-import {
-  SPORTS_TEAM_LOGO_FORMATS,
-  SPORTS_TEAM_LOGO_POLICY,
-  SportsTeamLogoFormat,
-} from './sports-team-logo.policy';
+import { SPORTS_TEAM_LOGO_FORMATS, SPORTS_TEAM_LOGO_POLICY, SportsTeamLogoFormat } from './sports-team-logo.policy';
 
 export async function validateSportsTeamLogoImage(file: SportsTeamLogoUploadFile | undefined): Promise<{
   buffer: Buffer;

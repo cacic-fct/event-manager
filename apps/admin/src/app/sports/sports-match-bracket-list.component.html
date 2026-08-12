@@ -5,10 +5,7 @@
   </div>
 </div>
 
-<form
-  [formGroup]="workspace.bracketForm"
-  class="bracket-generation-form"
-  (ngSubmit)="workspace.generateBracket()">
+<form [formGroup]="workspace.bracketForm" class="bracket-generation-form" (ngSubmit)="workspace.generateBracket()">
   <div class="bracket-generation-main">
     <div class="generation-copy">
       <mat-icon aria-hidden="true">auto_awesome_motion</mat-icon>

@@ -140,9 +140,7 @@ test('queues an authenticated official score operation offline and flushes it ex
 
   await expect(homeScore).toHaveText('3');
   await expect(pendingButton).toBeVisible();
-  await expect(
-    page.getByText('Ação salva neste dispositivo. Ela será enviada quando a conexão voltar.'),
-  ).toBeVisible();
+  await expect(page.getByText('Ação salva neste dispositivo. Ela será enviada quando a conexão voltar.')).toBeVisible();
 
   const queuedRecords = await readSportsOperationQueue(page, 'official-1');
   expect(queuedRecords).toHaveLength(1);
@@ -298,10 +296,7 @@ test('shows the GraphQL error without leaking a stale tournament', async ({ page
   await expect(page.getByRole('heading', { name: 'Jogos Universitários' })).toHaveCount(0);
 });
 
-async function mockSportsApi(
-  page: Page,
-  options: SportsMockOptions = {},
-): Promise<void> {
+async function mockSportsApi(page: Page, options: SportsMockOptions = {}): Promise<void> {
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/auth/me') {
@@ -332,10 +327,7 @@ async function mockSportsApi(
   });
 }
 
-async function fulfillSportsGraphql(
-  route: Route,
-  options: SportsMockOptions,
-): Promise<void> {
+async function fulfillSportsGraphql(route: Route, options: SportsMockOptions): Promise<void> {
   const body = route.request().postDataJSON() as {
     query?: string;
     variables?: {

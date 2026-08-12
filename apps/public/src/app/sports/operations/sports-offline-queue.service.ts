@@ -221,8 +221,7 @@ export class SportsOfflineQueueService implements OnDestroy {
   canCollectAttendance(matchId: string): boolean {
     const userScope = this.auth.user()?.sub;
     return Boolean(
-      userScope &&
-        (this.network.isOnline() || this.preparedCollectorKeys().has(this.collectorKey(userScope, matchId))),
+      userScope && (this.network.isOnline() || this.preparedCollectorKeys().has(this.collectorKey(userScope, matchId))),
     );
   }
 
@@ -329,11 +328,7 @@ export class SportsOfflineQueueService implements OnDestroy {
     await this.refreshPending(userScope);
   }
 
-  async resolveTimerConflict(
-    matchId: string,
-    queuedActionIds: readonly string[],
-    baseRevision: number,
-  ): Promise<void> {
+  async resolveTimerConflict(matchId: string, queuedActionIds: readonly string[], baseRevision: number): Promise<void> {
     const userScope = this.auth.user()?.sub;
     if (!userScope) {
       return;
@@ -431,9 +426,7 @@ export class SportsOfflineQueueService implements OnDestroy {
   }
 
   private isUploadableBy(item: QueuedSportsOperation, userScope: string): boolean {
-    return item.kind === 'ACTION'
-      ? item.userScope === userScope
-      : hasOfflineSportsAttendanceCollectorProof(item);
+    return item.kind === 'ACTION' ? item.userScope === userScope : hasOfflineSportsAttendanceCollectorProof(item);
   }
 
   private isTimerConflict(error: unknown): boolean {

@@ -357,7 +357,8 @@ export class PublicMajorEvent {
 
   @Field(() => Boolean, {
     nullable: true,
-    description: 'Whether the public major-event subscription requires acceptance of the CACiC image-license agreement.',
+    description:
+      'Whether the public major-event subscription requires acceptance of the CACiC image-license agreement.',
   })
   requiresImageLicenseAgreement?: boolean | null;
 
@@ -490,7 +491,8 @@ export class PublicEventGroup {
 
   @Field(() => Boolean, {
     nullable: true,
-    description: 'Whether subscriptions through this event group require acceptance of the CACiC image-license agreement.',
+    description:
+      'Whether subscriptions through this event group require acceptance of the CACiC image-license agreement.',
   })
   requiresImageLicenseAgreement?: boolean | null;
 
@@ -591,7 +593,8 @@ export class PublicEvent {
 
   @Field(() => Boolean, {
     nullable: true,
-    description: 'Whether direct subscription to this standalone event requires acceptance of the CACiC image-license agreement.',
+    description:
+      'Whether direct subscription to this standalone event requires acceptance of the CACiC image-license agreement.',
   })
   requiresImageLicenseAgreement?: boolean | null;
 

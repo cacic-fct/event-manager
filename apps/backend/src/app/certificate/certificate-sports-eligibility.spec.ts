@@ -326,9 +326,7 @@ describe('CertificateSportsEligibility', () => {
       }),
       select: expect.any(Object),
     });
-    const query = officialAssignmentFindMany.mock.calls[0]?.[0] as
-      | { where?: Record<string, unknown> }
-      | undefined;
+    const query = officialAssignmentFindMany.mock.calls[0]?.[0] as { where?: Record<string, unknown> } | undefined;
     expect(query?.where).not.toHaveProperty('active');
     expect(query?.where).not.toHaveProperty('revokedAt');
   });
@@ -349,15 +347,17 @@ describe('CertificateSportsEligibility', () => {
       } as never),
     ).rejects.toThrow('is not backed by a finalized sports match');
 
-    expect(matchFindFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: expect.objectContaining({
-        canonicalState: SportsMatchState.FINISHED,
-        reviewStatus: {
-          in: [SportsReviewStatus.NOT_REQUIRED, SportsReviewStatus.APPROVED],
-        },
+    expect(matchFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          canonicalState: SportsMatchState.FINISHED,
+          reviewStatus: {
+            in: [SportsReviewStatus.NOT_REQUIRED, SportsReviewStatus.APPROVED],
+          },
+        }),
+        select: expect.any(Object),
       }),
-      select: expect.any(Object),
-    }));
+    );
   });
 
   it('keeps sports organizers on the manual recipient path without bulk enumeration', async () => {

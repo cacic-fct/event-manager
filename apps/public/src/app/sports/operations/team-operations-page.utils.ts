@@ -76,9 +76,7 @@ export function readRepresentativeRecord(value: unknown): Record<string, unknown
 }
 
 export function lineupMembersFromRead(lineup: SportsLineupRead): LineupMember[] {
-  const selectedEntries = new Map(
-    lineup.roster?.entries.map((entry) => [entry.registrationMemberId, entry]) ?? [],
-  );
+  const selectedEntries = new Map(lineup.roster?.entries.map((entry) => [entry.registrationMemberId, entry]) ?? []);
   return lineup.eligibleMembers.map((member) => {
     const rosterEntry = selectedEntries.get(member.registrationMemberId);
     return {

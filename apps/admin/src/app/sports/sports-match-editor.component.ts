@@ -9,10 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SportsMatchOverlayBuilderComponent, SportsTeamLogoComponent } from '@cacic-fct/shared-angular';
-import {
-  SPORTS_ROSTER_ROLE_LABELS,
-  type SportsRosterRole,
-} from '@cacic-fct/shared-data-types/sports-metadata';
+import { SPORTS_ROSTER_ROLE_LABELS, type SportsRosterRole } from '@cacic-fct/shared-data-types/sports-metadata';
 import type { SportsCategoryRead } from './sports.models';
 import { SportsWorkspaceSection } from './sports-workspace-section.base';
 

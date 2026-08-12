@@ -43,10 +43,9 @@ describe('ImageLicenseAgreementInterruptionFlow', () => {
         target,
       }),
     );
-    expect(router.createUrlTree).toHaveBeenCalledWith(
-      ['/major-event', 'major-1', 'ranked-subscription'],
-      { queryParams: { requireImageLicenseAgreement: true } },
-    );
+    expect(router.createUrlTree).toHaveBeenCalledWith(['/major-event', 'major-1', 'ranked-subscription'], {
+      queryParams: { requireImageLicenseAgreement: true },
+    });
   });
 
   it('does not interrupt the agreement route itself', async () => {

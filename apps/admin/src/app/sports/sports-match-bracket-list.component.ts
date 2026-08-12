@@ -45,9 +45,12 @@ export class SportsMatchBracketListComponent extends SportsWorkspaceSection {
   private readonly matchFormValue = toSignal(this.workspace.matchForm.valueChanges, {
     initialValue: this.workspace.matchForm.getRawValue(),
   });
-  private readonly replaceExistingDraft = toSignal(this.workspace.bracketForm.controls.replaceExistingDraft.valueChanges, {
-    initialValue: this.workspace.bracketForm.controls.replaceExistingDraft.value,
-  });
+  private readonly replaceExistingDraft = toSignal(
+    this.workspace.bracketForm.controls.replaceExistingDraft.valueChanges,
+    {
+      initialValue: this.workspace.bracketForm.controls.replaceExistingDraft.value,
+    },
+  );
 
   protected readonly hasGeneratedBracket = computed(() => this.categoryRead().stages.length > 0);
   protected readonly canGenerateBracket = computed(() => !this.hasGeneratedBracket() || this.replaceExistingDraft());
@@ -90,9 +93,7 @@ export class SportsMatchBracketListComponent extends SportsWorkspaceSection {
     }
 
     const previewStageId = this.stringValue(value.stageId);
-    const currentMatch = stages
-      .flatMap((stage) => stage.matches)
-      .find((match) => match.id === review.match.id);
+    const currentMatch = stages.flatMap((stage) => stage.matches).find((match) => match.id === review.match.id);
     if (!currentMatch) {
       return stages;
     }

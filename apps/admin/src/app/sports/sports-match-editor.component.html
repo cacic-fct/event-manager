@@ -26,11 +26,7 @@
       <mat-icon>delete</mat-icon>
     </button>
   }
-  <button
-    mat-flat-button
-    type="button"
-    (click)="workspace.saveMatch()"
-    [disabled]="workspace.matchForm.invalid">
+  <button mat-flat-button type="button" (click)="workspace.saveMatch()" [disabled]="workspace.matchForm.invalid">
     <mat-icon>save</mat-icon>
     Salvar partida
   </button>
@@ -205,7 +201,9 @@
     <mat-icon aria-hidden="true">groups</mat-icon>
     <div>
       <h5>Escalação desta partida</h5>
-      <p>Marque quem poderá jogar e defina função e número para esta partida. Isso não altera o cadastro da modalidade.</p>
+      <p>
+        Marque quem poderá jogar e defina função e número para esta partida. Isso não altera o cadastro da modalidade.
+      </p>
     </div>
   </div>
   <mat-expansion-panel class="editor-expansion">
@@ -234,14 +232,12 @@
                 <mat-form-field subscriptSizing="dynamic">
                   <mat-label>Função</mat-label>
                   <mat-select
-                  [value]="workspace.lineupRole(registrationId, member.id)"
-                  (selectionChange)="
-                    workspace.updateLineupDetail(registrationId, member.id, 'role', $event.value)
-                  ">
-                  @for (role of lineupRoles; track role.value) {
-                    <mat-option [value]="role.value">{{ role.label }}</mat-option>
-                  }
-                </mat-select>
+                    [value]="workspace.lineupRole(registrationId, member.id)"
+                    (selectionChange)="workspace.updateLineupDetail(registrationId, member.id, 'role', $event.value)">
+                    @for (role of lineupRoles; track role.value) {
+                      <mat-option [value]="role.value">{{ role.label }}</mat-option>
+                    }
+                  </mat-select>
                 </mat-form-field>
                 <mat-form-field subscriptSizing="dynamic">
                   <mat-label>Número</mat-label>
@@ -250,12 +246,7 @@
                     maxlength="12"
                     [value]="workspace.lineupShirtNumber(registrationId, member.id)"
                     (input)="
-                      workspace.updateLineupDetail(
-                        registrationId,
-                        member.id,
-                        'shirtNumber',
-                        $any($event.target).value
-                      )
+                      workspace.updateLineupDetail(registrationId, member.id, 'shirtNumber', $any($event.target).value)
                     " />
                 </mat-form-field>
               </div>

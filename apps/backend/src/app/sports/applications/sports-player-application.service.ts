@@ -107,8 +107,7 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
       const existingCategoryIds = application.categoryChoices.map((choice) => choice.categoryId).sort();
       const normalizedCategoryIds = [...categoryIds].sort();
       const imageLicenseAgreementAccepted = input.imageLicenseAgreementAccepted === true;
-      const isImageLicenseAgreementUpdate =
-        imageLicenseAgreementAccepted && !application.imageLicenseAgreementAccepted;
+      const isImageLicenseAgreementUpdate = imageLicenseAgreementAccepted && !application.imageLicenseAgreementAccepted;
       const isIdenticalPendingSubmission =
         application.requestedTeamId === requestedTeamId &&
         application.paymentTier === paymentSelection.paymentTier &&
@@ -139,8 +138,7 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
           reviewedById: null,
           reviewMessage: null,
           paymentTier: paymentSelection.paymentTier,
-          imageLicenseAgreementAccepted:
-            application.imageLicenseAgreementAccepted || imageLicenseAgreementAccepted,
+          imageLicenseAgreementAccepted: application.imageLicenseAgreementAccepted || imageLicenseAgreementAccepted,
         },
       });
       await tx.sportsPlayerApplicationCategory.deleteMany({
@@ -171,8 +169,7 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
             requestedTeamId,
             categoryIds,
             noticeAccepted: true,
-            imageLicenseAgreementAccepted:
-              application.imageLicenseAgreementAccepted || imageLicenseAgreementAccepted,
+            imageLicenseAgreementAccepted: application.imageLicenseAgreementAccepted || imageLicenseAgreementAccepted,
             paymentTier: paymentSelection.paymentTier,
           },
           summary: 'Solicitação individual enviada para análise.',

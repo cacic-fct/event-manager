@@ -19,11 +19,7 @@ export class SportsBackingResourceLifecycleService {
     }
   }
 
-  async assertEventUpdateAllowed(
-    tx: TransactionClient,
-    eventId: string,
-    input: EventUpdateInput,
-  ): Promise<void> {
+  async assertEventUpdateAllowed(tx: TransactionClient, eventId: string, input: EventUpdateInput): Promise<void> {
     const match = await tx.sportsMatch.findFirst({
       where: { eventId, deletedAt: null },
       select: {

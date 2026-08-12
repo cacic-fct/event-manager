@@ -25,6 +25,9 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
 })
 export class SportsMatchesSectionComponent extends SportsWorkspaceSection {
   protected readonly selectedCategory = computed<SportsCategorySummary | null>(
-    () => this.workspace.tournamentRead()?.categories.find((category) => category.id === this.workspace.selectedCategoryId()) ?? null,
+    () =>
+      this.workspace
+        .tournamentRead()
+        ?.categories.find((category) => category.id === this.workspace.selectedCategoryId()) ?? null,
   );
 }

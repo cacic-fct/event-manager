@@ -67,17 +67,16 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
         },
       },
     });
-    const placementsUnchanged =
-      placements.every((placement) =>
-        existingPlacements.some(
-          (existing) =>
-            existing.registrationId === placement.registrationId &&
-            existing.sourceMatchId === match.id &&
-            existing.placement === placement.placement &&
-            existing.pointsAwarded === placement.pointsAwarded &&
-            existing.confirmedAt !== null,
-        ),
-      );
+    const placementsUnchanged = placements.every((placement) =>
+      existingPlacements.some(
+        (existing) =>
+          existing.registrationId === placement.registrationId &&
+          existing.sourceMatchId === match.id &&
+          existing.placement === placement.placement &&
+          existing.pointsAwarded === placement.pointsAwarded &&
+          existing.confirmedAt !== null,
+      ),
+    );
     if (!placementsUnchanged) {
       for (const placement of placements) {
         await tx.sportsCategoryPlacement.upsert({
@@ -276,10 +275,7 @@ export abstract class SportsStandingsPlacement extends SportsStandingsSupport {
           desired.push({ registrationId, points: rules.match.draw, reason: 'Empate na partida' });
         }
       }
-    } else if (
-      sportsOverallScoringUsesMatchResult(rules.mode) &&
-      match.canonicalState === SportsMatchState.FINISHED
-    ) {
+    } else if (sportsOverallScoringUsesMatchResult(rules.mode) && match.canonicalState === SportsMatchState.FINISHED) {
       if (match.winnerRegistrationId && rules.match.win > 0) {
         desired.push({
           registrationId: match.winnerRegistrationId,

@@ -10,9 +10,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     expect(() => service.ensureImageLicenseAgreementAccepted(true, false, 'event event-1')).toThrow(
       BadRequestException,
     );
-    expect(() => service.ensureImageLicenseAgreementAccepted(true, null, 'event event-1')).toThrow(
-      BadRequestException,
-    );
+    expect(() => service.ensureImageLicenseAgreementAccepted(true, null, 'event event-1')).toThrow(BadRequestException);
     expect(() => service.ensureImageLicenseAgreementAccepted(true, true, 'event event-1')).not.toThrow();
     expect(() => service.ensureImageLicenseAgreementAccepted(false, false, 'event event-1')).not.toThrow();
   });

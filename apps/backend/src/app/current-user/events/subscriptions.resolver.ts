@@ -178,12 +178,7 @@ export class CurrentUserEventSubscriptionsResolver {
     await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     return imageLicenseAgreementAccepted === undefined
-      ? this.eventSubscriptions.subscribeCurrentUserEvent(
-          person.id,
-          eventId,
-          authenticatedUser,
-          formResponses,
-        )
+      ? this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId, authenticatedUser, formResponses)
       : this.eventSubscriptions.subscribeCurrentUserEvent(
           person.id,
           eventId,

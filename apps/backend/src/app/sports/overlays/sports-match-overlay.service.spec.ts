@@ -1,5 +1,10 @@
 import type { PublicSportsMatch } from '../read/sports-read.models';
-import { DEFAULT_SPORTS_MATCH_OVERLAY_CONFIG, SportsMatchOverlayService } from './sports-match-overlay.service';
+import {
+  DEFAULT_SPORTS_MATCH_OVERLAY_CONFIG,
+  DEMO_SPORTS_MATCH_OVERLAY_DATA,
+  SPORTS_MATCH_OVERLAY_DEMO_ID,
+  SportsMatchOverlayService,
+} from './sports-match-overlay.service';
 
 describe('SportsMatchOverlayService', () => {
   const sportsRead = {
@@ -138,5 +143,26 @@ describe('SportsMatchOverlayService', () => {
     });
     expect(result).not.toHaveProperty('rosters');
     expect(sportsRead.publicMatch).toHaveBeenCalledWith('match-1');
+  });
+
+  it('serves generic hardcoded data for the demo match without reading the database', async () => {
+    const result = await createService().data(SPORTS_MATCH_OVERLAY_DEMO_ID);
+
+    expect(result).toEqual(DEMO_SPORTS_MATCH_OVERLAY_DATA);
+    expect(result).not.toBe(DEMO_SPORTS_MATCH_OVERLAY_DATA);
+    expect(result.homeTeam?.name).toBe('Equipe A');
+    expect(result.awayTeam?.name).toBe('Equipe B com nome longo');
+    expect(sportsRead.publicMatch).not.toHaveBeenCalled();
+  });
+
+  it('renders the demo match through the same overlay URL contract', async () => {
+    const html = await createService().render(SPORTS_MATCH_OVERLAY_DEMO_ID, {});
+
+    expect(html).toContain('data-match-id="demo"');
+    expect(html).toContain('Equipe A');
+    expect(html).toContain('Equipe B com nome longo');
+    expect(html).toContain('/api/sports/public/matches/demo/overlay/data');
+    expect(html).toContain('/api/sports/matches/demo/events');
+    expect(sportsRead.publicMatch).not.toHaveBeenCalled();
   });
 });

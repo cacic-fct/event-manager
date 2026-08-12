@@ -38,6 +38,25 @@ export interface SportsMatchOverlayTeamData {
   logoUrl?: string | null;
 }
 
+export const SPORTS_MATCH_OVERLAY_DEMO_ID = 'demo';
+
+export const DEMO_SPORTS_MATCH_OVERLAY_DATA: SportsMatchOverlayData = {
+  id: SPORTS_MATCH_OVERLAY_DEMO_ID,
+  homeTeam: { name: 'Equipe A', logoUrl: null },
+  awayTeam: { name: 'Equipe B com nome longo', logoUrl: null },
+  state: 'LIVE',
+  scoreboard: {
+    homeScore: 1,
+    awayScore: 99,
+    activePeriod: 1,
+    periods: [{ number: 1, label: '1º período', homeScore: 1, awayScore: 0, completed: false }],
+  },
+  timerStartedAtUnixMs: null,
+  elapsedBeforePauseMs: 90_000,
+  periodTimers: [],
+  overallTimerEnabled: true,
+};
+
 export const DEFAULT_SPORTS_MATCH_OVERLAY_CONFIG: SportsMatchOverlayConfig = {
   team: 'both',
   showTeamName: true,
@@ -67,19 +86,28 @@ export class SportsMatchOverlayService {
   }
 
   async data(matchId: string): Promise<SportsMatchOverlayData> {
+    if (matchId === SPORTS_MATCH_OVERLAY_DEMO_ID) {
+      return this.demoData();
+    }
     return this.toOverlayData(await this.sportsRead.publicMatch(matchId));
   }
 
   async render(matchId: string, query: Readonly<Record<string, unknown>>): Promise<string> {
+    if (matchId === SPORTS_MATCH_OVERLAY_DEMO_ID) {
+      return this.renderOverlayDocument(this.demoData(), this.parseConfig(query));
+    }
     const match = await this.sportsRead.publicMatch(matchId);
-    return this.renderDocument(match, this.parseConfig(query));
+    return this.renderOverlayDocument(this.toOverlayData(match), this.parseConfig(query));
   }
 
   renderDocument(
     match: PublicSportsMatch,
     config: SportsMatchOverlayConfig = DEFAULT_SPORTS_MATCH_OVERLAY_CONFIG,
   ): string {
-    const data = this.toOverlayData(match);
+    return this.renderOverlayDocument(this.toOverlayData(match), config);
+  }
+
+  private renderOverlayDocument(data: SportsMatchOverlayData, config: SportsMatchOverlayConfig): string {
     const initialPeriod = this.activePeriod(data);
     const initialState = this.stateLabel(data.state);
     const initialStopwatch = this.formatElapsed(this.currentElapsed(data));
@@ -142,6 +170,19 @@ export class SportsMatchOverlayService {
       elapsedBeforePauseMs: match.elapsedBeforePauseMs,
       periodTimers: match.periodTimers,
       overallTimerEnabled: match.overallTimerEnabled,
+    };
+  }
+
+  private demoData(): SportsMatchOverlayData {
+    return {
+      ...DEMO_SPORTS_MATCH_OVERLAY_DATA,
+      homeTeam: DEMO_SPORTS_MATCH_OVERLAY_DATA.homeTeam ? { ...DEMO_SPORTS_MATCH_OVERLAY_DATA.homeTeam } : null,
+      awayTeam: DEMO_SPORTS_MATCH_OVERLAY_DATA.awayTeam ? { ...DEMO_SPORTS_MATCH_OVERLAY_DATA.awayTeam } : null,
+      scoreboard: {
+        ...DEMO_SPORTS_MATCH_OVERLAY_DATA.scoreboard,
+        periods: DEMO_SPORTS_MATCH_OVERLAY_DATA.scoreboard.periods.map((period) => ({ ...period })),
+      },
+      periodTimers: DEMO_SPORTS_MATCH_OVERLAY_DATA.periodTimers.map((timer) => ({ ...timer })),
     };
   }
 

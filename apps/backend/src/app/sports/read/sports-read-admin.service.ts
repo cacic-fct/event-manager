@@ -42,7 +42,10 @@ export class SportsReadAdminService {
   }
 
   async adminTournament(user: AuthenticatedUser | undefined, tournamentId: string): Promise<AdminSportsTournamentRead> {
-    const tournamentTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsTournament.Read);
+    const tournamentTargets = await this.authorizationPolicy.accessibleEventTargets(
+      user,
+      Permission.SportsTournament.Read,
+    );
     const [tournament, categories] = await Promise.all([
       this.prisma.sportsTournament.findFirst({
         where: { id: tournamentId, deletedAt: null, ...this.tournamentVisibility(tournamentTargets) },
@@ -69,53 +72,57 @@ export class SportsReadAdminService {
     const [teams, scoreEntries, venues, officials] = await Promise.all([
       canReadTeams
         ? this.prisma.sportsTeam.findMany({
-        where: {
-          tournamentId,
-          deletedAt: null,
-          ...(readableCategoryIds.length
-            ? {
-                registrations: {
-                  some: {
-                    categoryId: { in: readableCategoryIds },
-                    deletedAt: null,
-                  },
-                },
-              }
-            : { id: '__no_sports_team_access__' }),
-        },
-        select: {
-          ...ADMIN_TEAM_SELECT,
-          registrations: {
             where: {
+              tournamentId,
               deletedAt: null,
-              ...(readableCategoryIds.length ? { categoryId: { in: readableCategoryIds } } : { id: '__no_sports_registration_access__' }),
-              ...(canReadRegistrations ? {} : { id: '__no_sports_registration_access__' }),
+              ...(readableCategoryIds.length
+                ? {
+                    registrations: {
+                      some: {
+                        categoryId: { in: readableCategoryIds },
+                        deletedAt: null,
+                      },
+                    },
+                  }
+                : { id: '__no_sports_team_access__' }),
             },
             select: {
-              id: true,
-              categoryId: true,
-              status: true,
-              category: {
-                select: {
-                  name: true,
-                  eventGroup: { select: { emoji: true } },
+              ...ADMIN_TEAM_SELECT,
+              registrations: {
+                where: {
+                  deletedAt: null,
+                  ...(readableCategoryIds.length
+                    ? { categoryId: { in: readableCategoryIds } }
+                    : { id: '__no_sports_registration_access__' }),
+                  ...(canReadRegistrations ? {} : { id: '__no_sports_registration_access__' }),
                 },
+                select: {
+                  id: true,
+                  categoryId: true,
+                  status: true,
+                  category: {
+                    select: {
+                      name: true,
+                      eventGroup: { select: { emoji: true } },
+                    },
+                  },
+                },
+                orderBy: [{ category: { name: 'asc' } }, { id: 'asc' }],
               },
             },
-            orderBy: [{ category: { name: 'asc' } }, { id: 'asc' }],
-          },
-        },
-        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+            orderBy: [{ name: 'asc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
       canReadScores
         ? this.prisma.sportsTournamentScoreEntry.findMany({
-        where: {
-          tournamentId,
-          deletedAt: null,
-          ...(readableCategoryIds.length ? { categoryId: { in: readableCategoryIds } } : { id: '__no_sports_score_access__' }),
-        },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            where: {
+              tournamentId,
+              deletedAt: null,
+              ...(readableCategoryIds.length
+                ? { categoryId: { in: readableCategoryIds } }
+                : { id: '__no_sports_score_access__' }),
+            },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
       this.prisma.sportsVenue.findMany({
@@ -170,9 +177,9 @@ export class SportsReadAdminService {
       }),
       canReadRegistrations
         ? this.prisma.sportsRegistration.findMany({
-        where: { categoryId, deletedAt: null },
-        select: ADMIN_REGISTRATION_SELECT,
-        orderBy: [{ seed: 'asc' }, { id: 'asc' }],
+            where: { categoryId, deletedAt: null },
+            select: ADMIN_REGISTRATION_SELECT,
+            orderBy: [{ seed: 'asc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
       this.prisma.sportsStage.findMany({
@@ -181,21 +188,21 @@ export class SportsReadAdminService {
       }),
       canReadMatches
         ? this.prisma.sportsMatch.findMany({
-        where: { categoryId, deletedAt: null },
-        include: { event: true },
-        orderBy: [{ roundNumber: 'asc' }, { bracketPosition: 'asc' }, { id: 'asc' }],
+            where: { categoryId, deletedAt: null },
+            include: { event: true },
+            orderBy: [{ roundNumber: 'asc' }, { bracketPosition: 'asc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
       canReadScores
         ? this.prisma.sportsStanding.findMany({
-        where: { stage: { categoryId, deletedAt: null } },
-        orderBy: [{ rank: 'asc' }, { id: 'asc' }],
+            where: { stage: { categoryId, deletedAt: null } },
+            orderBy: [{ rank: 'asc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
       canReadScores
         ? this.prisma.sportsCategoryPlacement.findMany({
-        where: { categoryId },
-        orderBy: [{ placement: 'asc' }, { id: 'asc' }],
+            where: { categoryId },
+            orderBy: [{ placement: 'asc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
       canReadOfficials
@@ -249,9 +256,9 @@ export class SportsReadAdminService {
       }),
       canReadRegistrations
         ? this.prisma.sportsRegistration.findMany({
-        where: { teamId, deletedAt: null },
-        select: ADMIN_REGISTRATION_SELECT,
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+            where: { teamId, deletedAt: null },
+            select: ADMIN_REGISTRATION_SELECT,
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
     ]);
@@ -512,10 +519,7 @@ export class SportsReadAdminService {
 
   private hasNoAccessibleTargets(targets: AccessibleEventGrantTargets | null): boolean {
     return Boolean(
-      targets &&
-        targets.eventIds.size === 0 &&
-        targets.eventGroupIds.size === 0 &&
-        targets.majorEventIds.size === 0,
+      targets && targets.eventIds.size === 0 && targets.eventGroupIds.size === 0 && targets.majorEventIds.size === 0,
     );
   }
 

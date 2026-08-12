@@ -180,10 +180,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         const replayedAttendance = await tx.eventAttendance.findUnique({
           where: { personId_eventId: { personId, eventId } },
         });
-        if (
-          (present && (!replayedAttendance || !entry.checkedInAt)) ||
-          (!present && entry.checkedInAt)
-        ) {
+        if ((present && (!replayedAttendance || !entry.checkedInAt)) || (!present && entry.checkedInAt)) {
           throw new ConflictException('O check-in offline foi registrado parcialmente. Recarregue a partida.');
         }
         return {
@@ -535,5 +532,4 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
     );
     return attendance;
   }
-
 }

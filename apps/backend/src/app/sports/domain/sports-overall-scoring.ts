@@ -70,7 +70,8 @@ export function normalizeSportsOverallScoringRules(
 ): SportsOverallScoringRules {
   const rules = isRecord(value) ? value : {};
   const match = readMatchPoints(rules['match']);
-  const hasMatchPoints = isRecord(rules['match']) && Object.keys(rules['match']).some((key) => key in DEFAULT_MATCH_POINTS);
+  const hasMatchPoints =
+    isRecord(rules['match']) && Object.keys(rules['match']).some((key) => key in DEFAULT_MATCH_POINTS);
   const hasExplicitPlacement = Object.prototype.hasOwnProperty.call(rules, 'placement');
   const placement = hasExplicitPlacement
     ? readPlacementPoints(rules['placement'])
@@ -92,7 +93,10 @@ export function assertSportsOverallScoringRules(value: unknown): asserts value i
   if (unknownKeys.length) {
     throw new Error(`Campos desconhecidos nas regras de pontuação geral: ${unknownKeys.join(', ')}.`);
   }
-  if (value['mode'] !== undefined && !SPORTS_OVERALL_SCORING_MODES.includes(value['mode'] as SportsOverallScoringMode)) {
+  if (
+    value['mode'] !== undefined &&
+    !SPORTS_OVERALL_SCORING_MODES.includes(value['mode'] as SportsOverallScoringMode)
+  ) {
     throw new Error('mode deve ser NONE, MATCH_RESULT, FINAL_PLACEMENT ou MATCH_RESULT_AND_FINAL_PLACEMENT.');
   }
   if (value['match'] !== undefined) {

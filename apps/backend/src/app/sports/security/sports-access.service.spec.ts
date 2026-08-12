@@ -163,23 +163,16 @@ describe('SportsAccessService', () => {
     const user = { sub: 'admin-1' };
     currentUser.getAuthenticatedUser = jest.fn().mockReturnValue(user);
     authorizationPolicy.hasEventManagerAccess.mockReturnValue(true);
-    const service = new SportsAccessService(
-      {},
-      currentUser as never,
-      frozen as never,
-      authorizationPolicy as never,
-    );
+    const service = new SportsAccessService({}, currentUser as never, frozen as never, authorizationPolicy as never);
 
     await expect(service.requireMatchOperator({} as never, 'match-1')).resolves.toMatchObject({
       actor,
       assignment: null,
       kind: 'ADMIN',
     });
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      ['sports-match#operate'],
-      { sportsMatchId: 'match-1' },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, ['sports-match#operate'], {
+      sportsMatchId: 'match-1',
+    });
   });
 });
 

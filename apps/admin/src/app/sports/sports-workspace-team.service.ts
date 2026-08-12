@@ -13,13 +13,11 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     initialValue: this.registrationForm.controls.categoryId.value,
   });
   readonly registrationCategory = computed(() =>
-    this.tournamentRead()?.categories.find(
-      (category) => category.id === this.registrationCategoryId(),
-    ),
+    this.tournamentRead()?.categories.find((category) => category.id === this.registrationCategoryId()),
   );
   readonly registrationEventForm = computed(() => {
     const formId = this.registrationCategory()?.registrationFormId;
-    return formId ? this.eventForms().find((form) => form.id === formId) ?? null : null;
+    return formId ? (this.eventForms().find((form) => form.id === formId) ?? null) : null;
   });
   readonly registrationFormElements = computed(() => parseFormElementsJson(this.registrationEventForm()?.elementsJson));
   readonly approvedTeamMemberCount = computed(
@@ -296,7 +294,6 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     });
   }
 
-
   async autoRegisterTeamInEligibleCategories(): Promise<void> {
     const teamRead = this.teamRead();
     const categories = this.automaticTeamCategories();
@@ -347,12 +344,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     }
 
     if (teamRead) {
-      await this.assignApprovedMembersWithRecovery(
-        registrationId,
-        input.teamId,
-        input.categoryId,
-        teamRead,
-      );
+      await this.assignApprovedMembersWithRecovery(registrationId, input.teamId, input.categoryId, teamRead);
     }
   }
 

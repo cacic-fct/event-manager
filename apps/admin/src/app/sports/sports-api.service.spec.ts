@@ -43,26 +43,29 @@ describe('SportsApiService', () => {
       'adminSportsRegistrationRead',
     ],
     ['matchReview', createAdminSportsMatchReview(), 'match-1', 'adminSportsMatchReviewRead'],
-  ] as const)('maps the %s query response and forwards its variables', async (method, result, argument, responseKey) => {
-    request.mockReturnValue(of({ [responseKey]: result }));
-    const service = TestBed.inject(SportsApiService);
-    const invoke = service[method] as (value: never) => Observable<unknown>;
+  ] as const)(
+    'maps the %s query response and forwards its variables',
+    async (method, result, argument, responseKey) => {
+      request.mockReturnValue(of({ [responseKey]: result }));
+      const service = TestBed.inject(SportsApiService);
+      const invoke = service[method] as (value: never) => Observable<unknown>;
 
-    await expect(firstValueFrom(invoke.call(service, argument as never))).resolves.toEqual(result);
-    expect(request).toHaveBeenCalledOnce();
-    expect(request.mock.calls[0]?.[0]).toContain(responseKey);
-    expect(request.mock.calls[0]?.[1]).toEqual(
-      method === 'tournaments' ? argument : { [`${method === 'matchReview' ? 'match' : method}Id`]: argument },
-    );
-  });
+      await expect(firstValueFrom(invoke.call(service, argument as never))).resolves.toEqual(result);
+      expect(request).toHaveBeenCalledOnce();
+      expect(request.mock.calls[0]?.[0]).toContain(responseKey);
+      expect(request.mock.calls[0]?.[1]).toEqual(
+        method === 'tournaments' ? argument : { [`${method === 'matchReview' ? 'match' : method}Id`]: argument },
+      );
+    },
+  );
 
   it('loads pending match actions without a selected match', async () => {
     const result = createAdminSportsPendingMatchActions();
     request.mockReturnValue(of({ adminSportsMatchActionReviewQueue: result }));
 
-    await expect(firstValueFrom(TestBed.inject(SportsApiService).matchActionReviewQueue('tournament-1'))).resolves.toEqual(
-      result,
-    );
+    await expect(
+      firstValueFrom(TestBed.inject(SportsApiService).matchActionReviewQueue('tournament-1')),
+    ).resolves.toEqual(result);
     expect(request.mock.calls[0]?.[0]).toContain('adminSportsMatchActionReviewQueue');
     expect(request.mock.calls[0]?.[1]).toEqual({ tournamentId: 'tournament-1' });
   });

@@ -270,9 +270,7 @@
           Turno e returno — cada equipe enfrenta as demais duas vezes
         </mat-slide-toggle>
       }
-      @if (
-        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_ELIMINATION'
-      ) {
+      @if (workspace.categoryForm.controls.format.value === 'GROUP_STAGE_ELIMINATION') {
         <mat-form-field>
           <mat-label>Quantidade de grupos</mat-label>
           <input matInput type="number" min="2" max="128" step="1" formControlName="groupCount" />
@@ -357,7 +355,6 @@
         <mat-label>Regras públicas</mat-label>
         <textarea matInput rows="4" formControlName="rulesText"></textarea>
       </mat-form-field>
-
     </form>
 
     @if (workspace.categoryRead(); as read) {

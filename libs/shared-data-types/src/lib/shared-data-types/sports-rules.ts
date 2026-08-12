@@ -40,11 +40,7 @@ export const DEFAULT_SPORTS_BRACKET_EDITOR_RULES: SportsBracketEditorRules = {
   swissMaximumRounds: 5,
 };
 
-export type SportsOverallScoringMode =
-  | 'NONE'
-  | 'MATCH_RESULT'
-  | 'FINAL_PLACEMENT'
-  | 'MATCH_RESULT_AND_FINAL_PLACEMENT';
+export type SportsOverallScoringMode = 'NONE' | 'MATCH_RESULT' | 'FINAL_PLACEMENT' | 'MATCH_RESULT_AND_FINAL_PLACEMENT';
 
 export interface SportsOverallScoringRules {
   readonly mode: SportsOverallScoringMode;
@@ -79,10 +75,8 @@ export function normalizeSportsScoreRules(value: unknown): SportsScoreRules {
       strategy === 'CUSTOM'
         ? strategy
         : DEFAULT_SPORTS_SCORE_RULES.strategy,
-    allowDraw:
-      typeof value['allowDraw'] === 'boolean' ? value['allowDraw'] : DEFAULT_SPORTS_SCORE_RULES.allowDraw,
-    higherWins:
-      typeof value['higherWins'] === 'boolean' ? value['higherWins'] : DEFAULT_SPORTS_SCORE_RULES.higherWins,
+    allowDraw: typeof value['allowDraw'] === 'boolean' ? value['allowDraw'] : DEFAULT_SPORTS_SCORE_RULES.allowDraw,
+    higherWins: typeof value['higherWins'] === 'boolean' ? value['higherWins'] : DEFAULT_SPORTS_SCORE_RULES.higherWins,
     pointStep:
       typeof pointStep === 'number' && Number.isFinite(pointStep) && pointStep > 0
         ? pointStep

@@ -50,8 +50,7 @@ export function competitionRulesToForm(
   const standings = safeObject(standingsRulesJson);
   const bracket = safeObject(bracketRulesJson);
   return {
-    scoreAllowDraw:
-      typeof score['allowDraw'] === 'boolean' ? score['allowDraw'] : DEFAULT_SPORTS_SCORE_RULES.allowDraw,
+    scoreAllowDraw: typeof score['allowDraw'] === 'boolean' ? score['allowDraw'] : DEFAULT_SPORTS_SCORE_RULES.allowDraw,
     scoreHigherWins:
       typeof score['higherWins'] === 'boolean' ? score['higherWins'] : DEFAULT_SPORTS_SCORE_RULES.higherWins,
     scorePointStep: positiveNumber(score['pointStep'], DEFAULT_SPORTS_SCORE_RULES.pointStep),
@@ -61,9 +60,7 @@ export function competitionRulesToForm(
     standingsByePoints: finiteNumber(standings['byePoints'], DEFAULT_SPORTS_STANDINGS_RULES.byePoints),
     format,
     doubleRoundRobin:
-      format === 'ROUND_ROBIN'
-        ? standings['doubleRoundRobin'] === true
-        : bracket['doubleRoundRobin'] === true,
+      format === 'ROUND_ROBIN' ? standings['doubleRoundRobin'] === true : bracket['doubleRoundRobin'] === true,
     groupCount: positiveInteger(bracket['groupCount'], DEFAULT_SPORTS_BRACKET_EDITOR_RULES.groupCount),
     qualifiersPerGroup: positiveInteger(
       bracket['qualifiersPerGroup'],
@@ -92,10 +89,7 @@ export function competitionRulesFromForm(
     standingsPatch['doubleRoundRobin'] = raw.doubleRoundRobin === true;
   }
   if (format === 'GROUP_STAGE_ELIMINATION') {
-    bracketPatch['groupCount'] = positiveInteger(
-      raw.groupCount,
-      DEFAULT_SPORTS_BRACKET_EDITOR_RULES.groupCount,
-    );
+    bracketPatch['groupCount'] = positiveInteger(raw.groupCount, DEFAULT_SPORTS_BRACKET_EDITOR_RULES.groupCount);
     bracketPatch['qualifiersPerGroup'] = positiveInteger(
       raw.qualifiersPerGroup,
       DEFAULT_SPORTS_BRACKET_EDITOR_RULES.qualifiersPerGroup,
@@ -249,10 +243,7 @@ export function overallScoringRulesToForm(value: string, legacyBracketRulesJson 
       overallMatchWinPoints: typeof match['win'] === 'number' ? match['win'] : fallback.overallMatchWinPoints,
       overallMatchDrawPoints: typeof match['draw'] === 'number' ? match['draw'] : fallback.overallMatchDrawPoints,
       overallMatchLossPoints: typeof match['loss'] === 'number' ? match['loss'] : fallback.overallMatchLossPoints,
-      overallPlacementPointsJson:
-        placementEnabled
-          ? JSON.stringify(placement)
-          : fallback.overallPlacementPointsJson,
+      overallPlacementPointsJson: placementEnabled ? JSON.stringify(placement) : fallback.overallPlacementPointsJson,
       overallPlacementPoints: placementEntries(placementEnabled ? (placement as Record<string, unknown>) : {}),
     };
   } catch {
@@ -262,17 +253,16 @@ export function overallScoringRulesToForm(value: string, legacyBracketRulesJson 
 
 export function overallScoringRulesFromForm(raw: SportsOverallScoringFormValue): string {
   const placement = Object.fromEntries(
-    (raw.overallPlacementPoints ?? [])
-      .flatMap(({ position, points }) =>
-        typeof position === 'number' &&
-        Number.isSafeInteger(position) &&
-        position >= 1 &&
-        position <= 100 &&
-        typeof points === 'number' &&
-        points > 0
-          ? [[String(position), points] as const]
-          : [],
-      ),
+    (raw.overallPlacementPoints ?? []).flatMap(({ position, points }) =>
+      typeof position === 'number' &&
+      Number.isSafeInteger(position) &&
+      position >= 1 &&
+      position <= 100 &&
+      typeof points === 'number' &&
+      points > 0
+        ? [[String(position), points] as const]
+        : [],
+    ),
   );
   return JSON.stringify({
     mode: raw.overallScoringMode || 'NONE',

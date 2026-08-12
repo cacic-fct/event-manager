@@ -88,9 +88,9 @@ describe('SportsDuplicationService', () => {
       sportsTournament: {
         findFirst: jest.fn().mockResolvedValue({ majorEventId: 'major-2' }),
       },
-      $transaction: jest.fn().mockImplementation(async (callback: (client: typeof tx) => Promise<unknown>) =>
-        callback(tx),
-      ),
+      $transaction: jest
+        .fn()
+        .mockImplementation(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
     };
     const auditLog = { record: jest.fn() };
     const frozen = { assertMajorEventMutable: jest.fn() };

@@ -199,10 +199,7 @@ function createStandings(teams: readonly SportsBracketTeamView[]): SportsBracket
   }));
 }
 
-function createStages(
-  format: SportsBracketFormat,
-  teams: readonly SportsBracketTeamView[],
-): SportsBracketStageView[] {
+function createStages(format: SportsBracketFormat, teams: readonly SportsBracketTeamView[]): SportsBracketStageView[] {
   switch (format) {
     case 'SINGLE_ELIMINATION':
       return [createEliminationStage('single', 'Chave principal', 'ELIMINATION', teams)];
@@ -211,12 +208,23 @@ function createStages(
     case 'GROUP_STAGE_ELIMINATION':
       return [
         createRoundRobinStage('groups', 'Grupos A e B', 'GROUP', teams, 2),
-        createEliminationStage('group-finals', 'Fase final', 'ELIMINATION', teams.slice(0, Math.max(4, Math.ceil(teams.length / 2)))),
+        createEliminationStage(
+          'group-finals',
+          'Fase final',
+          'ELIMINATION',
+          teams.slice(0, Math.max(4, Math.ceil(teams.length / 2))),
+        ),
       ];
     case 'DOUBLE_ELIMINATION':
       return [
         createEliminationStage('winners', 'Chave dos vencedores', 'WINNERS_BRACKET', teams),
-        createRoundRobinStage('losers', 'Chave de repescagem', 'LOSERS_BRACKET', teams.slice(0, Math.max(4, Math.ceil(teams.length / 2))), 2),
+        createRoundRobinStage(
+          'losers',
+          'Chave de repescagem',
+          'LOSERS_BRACKET',
+          teams.slice(0, Math.max(4, Math.ceil(teams.length / 2))),
+          2,
+        ),
         createEliminationStage('double-final', 'Grande final', 'FINAL', teams.slice(0, 4)),
       ];
     case 'SWISS':
@@ -243,7 +251,13 @@ function createEliminationStage(
       const homeIndex = isFinal ? null : (position * 2 ** round) % teams.length;
       const awayIndex = isFinal ? null : (position * 2 ** round + 2 ** (round - 1)) % teams.length;
       const state: SportsBracketMatchView['state'] =
-        round === 1 ? 'FINISHED' : round === 2 && position === 0 ? 'LIVE' : round === 2 && position === 1 ? 'CHECK_IN' : 'SCHEDULED';
+        round === 1
+          ? 'FINISHED'
+          : round === 2 && position === 0
+            ? 'LIVE'
+            : round === 2 && position === 1
+              ? 'CHECK_IN'
+              : 'SCHEDULED';
       matches.push({
         id: `${prefix}-r${round}-${position + 1}`,
         roundNumber: round,

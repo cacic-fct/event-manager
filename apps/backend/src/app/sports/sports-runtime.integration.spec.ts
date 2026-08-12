@@ -105,21 +105,23 @@ describe('sports runtime integration', () => {
   afterEach(async () => moduleRef?.close());
 
   it('builds the complete application-registered GraphQL surface', async () => {
-    const schema = await moduleRef.get(GraphQLSchemaFactory).create([
-      SportsAdminReadResolver,
-      SportsPublicReadResolver,
-      SportsCurrentUserReadResolver,
-      SportsAutoroutingResolver,
-      SportsPlayerApplicationAdminReadResolver,
-      SportsPlayerApplicationCurrentUserReadResolver,
-      SportsTournamentMutationsResolver,
-      SportsTeamMutationsResolver,
-      SportsMatchAdminMutationsResolver,
-      SportsLifecycleMutationsResolver,
-      SportsReviewMutationsResolver,
-      SportsDuplicationMutationsResolver,
-      SportsParticipantMutationsResolver,
-    ]);
+    const schema = await moduleRef
+      .get(GraphQLSchemaFactory)
+      .create([
+        SportsAdminReadResolver,
+        SportsPublicReadResolver,
+        SportsCurrentUserReadResolver,
+        SportsAutoroutingResolver,
+        SportsPlayerApplicationAdminReadResolver,
+        SportsPlayerApplicationCurrentUserReadResolver,
+        SportsTournamentMutationsResolver,
+        SportsTeamMutationsResolver,
+        SportsMatchAdminMutationsResolver,
+        SportsLifecycleMutationsResolver,
+        SportsReviewMutationsResolver,
+        SportsDuplicationMutationsResolver,
+        SportsParticipantMutationsResolver,
+      ]);
     const printed = printSchema(schema);
 
     for (const operation of [

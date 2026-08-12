@@ -31,11 +31,14 @@ describe('sports workspace form utilities', () => {
       swissMaximumRounds: 7,
     });
 
-    const persisted = competitionRulesFromForm({ ...formValue, groupCount: 8 }, {
-      scoreRulesJson: '{"strategy":"SETS"}',
-      standingsRulesJson: '{}',
-      bracketRulesJson: '{"legacyFlag":true}',
-    });
+    const persisted = competitionRulesFromForm(
+      { ...formValue, groupCount: 8 },
+      {
+        scoreRulesJson: '{"strategy":"SETS"}',
+        standingsRulesJson: '{}',
+        bracketRulesJson: '{"legacyFlag":true}',
+      },
+    );
     expect(JSON.parse(persisted.scoreRulesJson)).toMatchObject({ strategy: 'SETS', allowDraw: false });
     expect(JSON.parse(persisted.bracketRulesJson)).toMatchObject({ legacyFlag: true, groupCount: 8 });
   });

@@ -99,8 +99,7 @@
       <mat-icon>event_busy</mat-icon>
       Cancelar inscrição
     </button>
-    }
-    } @else if (hasStandaloneSubscription(event)) { @if (standaloneSubscriptionCooldownSeconds() > 0) {
+    } } @else if (hasStandaloneSubscription(event)) { @if (standaloneSubscriptionCooldownSeconds() > 0) {
     <p class="rate-limit-message">
       Aguarde {{ standaloneSubscriptionCooldownSeconds() }}s para alterar sua inscrição novamente.
     </p>

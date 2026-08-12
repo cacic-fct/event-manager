@@ -28,7 +28,10 @@ export class SportsMatchOverlayController {
     description:
       'Returns a transparent HTML document that follows the public match projection through the same-origin JSON and SSE endpoints.',
   })
-  @ApiParam({ name: 'matchId', description: 'Published sports match identifier.' })
+  @ApiParam({
+    name: 'matchId',
+    description: 'Published sports match identifier. Use "demo" to test the overlay without a live match.',
+  })
   @ApiOverlayQueries()
   @ApiProduces('text/html')
   @ApiOkResponse({ description: 'Transparent HTML sports overlay.' })
@@ -49,7 +52,10 @@ export class SportsMatchOverlayController {
   @ApiOperation({
     summary: 'Read the minimal public data used by a sports match overlay',
   })
-  @ApiParam({ name: 'matchId', description: 'Published sports match identifier.' })
+  @ApiParam({
+    name: 'matchId',
+    description: 'Published sports match identifier. Use "demo" for static generic overlay data.',
+  })
   @ApiProduces('application/json')
   @ApiOkResponse({
     description: 'Minimal score, teams, period, and stopwatch data for the overlay runtime.',

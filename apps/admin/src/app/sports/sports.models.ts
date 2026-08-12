@@ -102,10 +102,12 @@ export type SportsScoreboard = Pick<SportsScoreboardView, 'homeScore' | 'awaySco
 export interface SportsMatchSummary {
   id: string;
   eventId: string;
-  event?: (SportsMatchScheduleView & {
-    id: string;
-    name: string;
-  }) | null;
+  event?:
+    | (SportsMatchScheduleView & {
+        id: string;
+        name: string;
+      })
+    | null;
   categoryId: string;
   stageId?: string | null;
   venueId?: string | null;

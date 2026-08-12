@@ -18,10 +18,7 @@ import {
   SportsStructuralInvalidation,
   SportsStructuralInvalidationKind,
 } from '../realtime/sports-structural-invalidation';
-import {
-  createSportsMatchBackingEvent,
-  softDeleteSportsMatchBackingEvents,
-} from '../sports-match-event-sync';
+import { createSportsMatchBackingEvent, softDeleteSportsMatchBackingEvents } from '../sports-match-event-sync';
 import { SportsBracketAdvancementService } from './sports-bracket-advancement.service';
 
 export interface SportsBracketParticipant {

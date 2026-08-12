@@ -94,11 +94,13 @@ describe('syncSportsMatchEventName', () => {
   it('updates the linked event with both assigned team names', async () => {
     const tx = {
       sportsMatch: {
-        findUniqueOrThrow: jest.fn().mockResolvedValue(sportsMatchRecord({
-          category: { name: 'Futsal' },
-          homeRegistration: { team: { name: 'Equipe A' } },
-          awayRegistration: { team: { name: 'Equipe B' } },
-        })),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(
+          sportsMatchRecord({
+            category: { name: 'Futsal' },
+            homeRegistration: { team: { name: 'Equipe A' } },
+            awayRegistration: { team: { name: 'Equipe B' } },
+          }),
+        ),
       },
       event: { update: jest.fn().mockResolvedValue(undefined) },
     } as unknown as Prisma.TransactionClient;
@@ -123,12 +125,14 @@ describe('syncSportsMatchEventName', () => {
   it('uses the pending-team label for unassigned bracket positions', async () => {
     const tx = {
       sportsMatch: {
-        findUniqueOrThrow: jest.fn().mockResolvedValue(sportsMatchRecord({
-          eventId: 'event-2',
-          category: { name: 'Vôlei' },
-          homeRegistration: null,
-          awayRegistration: null,
-        })),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(
+          sportsMatchRecord({
+            eventId: 'event-2',
+            category: { name: 'Vôlei' },
+            homeRegistration: null,
+            awayRegistration: null,
+          }),
+        ),
       },
       event: { update: jest.fn().mockResolvedValue(undefined) },
     } as unknown as Prisma.TransactionClient;

@@ -25,7 +25,7 @@
               workspace.selectedEvent()?.id === eventItem.id && !workspace.selectedEventDraft()
             ">
             <span matListItemTitle class="list-title">
-                <lib-twemoji [emoji]="eventItem.emoji" />
+              <lib-twemoji [emoji]="eventItem.emoji" />
               <span>{{ eventItem.name }}</span>
             </span>
             <span matListItemLine>
@@ -69,7 +69,7 @@
               (click)="workspace.selectEventDraft(eventItem, draft)"
               [class.selected-list-item]="workspace.selectedEventDraft()?.id === draft.id">
               <span matListItemTitle class="list-title">
-              <lib-twemoji [emoji]="eventItem.emoji" />
+                <lib-twemoji [emoji]="eventItem.emoji" />
                 <span>{{ draft.name }}</span>
               </span>
               <span matListItemLine>

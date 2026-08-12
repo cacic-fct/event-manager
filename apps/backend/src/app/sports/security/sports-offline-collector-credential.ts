@@ -38,9 +38,7 @@ export function issueSportsOfflineCollectorCredential(
   };
 }
 
-export function verifySportsOfflineCollectorCredential(
-  credential: string,
-): SportsOfflineCollectorCredentialPayload {
+export function verifySportsOfflineCollectorCredential(credential: string): SportsOfflineCollectorCredentialPayload {
   const normalized = credential.trim();
   if (!normalized || normalized.length > 2_048) {
     throw invalidCredential();
@@ -109,8 +107,7 @@ function sign(encodedPayload: string): string {
 }
 
 function credentialSecret(): string {
-  const configured =
-    process.env.SPORTS_OFFLINE_COLLECTOR_SECRET?.trim() || process.env.SPORTS_IDENTITY_SECRET?.trim();
+  const configured = process.env.SPORTS_OFFLINE_COLLECTOR_SECRET?.trim() || process.env.SPORTS_IDENTITY_SECRET?.trim();
   if (configured) {
     return configured;
   }

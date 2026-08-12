@@ -134,9 +134,12 @@
     <p>
       @if (match.winner) {
       <span class="result-team"
-        ><lib-sports-team-logo [logoUrl]="match.winner.logoUrl" [size]="24" /><strong>{{ match.winner.name }}</strong></span
-      > venceu. } Motivo: {{ lossReasonLabel(match.lossReason) }}. @if
-      (match.lossReasonDetail) { {{ match.lossReasonDetail }} }
+        ><lib-sports-team-logo [logoUrl]="match.winner.logoUrl" [size]="24" /><strong
+          >{{ match.winner.name }}</strong
+        ></span
+      >
+      venceu. } Motivo: {{ lossReasonLabel(match.lossReason) }}. @if (match.lossReasonDetail) { {{
+      match.lossReasonDetail }} }
     </p>
   </section>
   } @if (match.officials.length) {
@@ -159,7 +162,7 @@
   <section class="roster-section">
     <h2>Escalações</h2>
     @if (rosterIsPublic(match)) { @if (match.rosters.length) {
-      <div class="roster-grid">
+    <div class="roster-grid">
       @for (roster of match.rosters; track roster.team.id) {
       <article>
         <h3 class="roster-team-heading">

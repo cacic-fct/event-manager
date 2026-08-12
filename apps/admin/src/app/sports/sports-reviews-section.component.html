@@ -99,7 +99,9 @@
             {{ item.homeTeamName ?? 'A definir' }} × {{ item.awayTeamName ?? 'A definir' }} ·
             {{ item.match.event?.startDate | date: 'short' }}
           </p>
-          <small>{{ item.action.authoredAt | date: 'short' }}{{ item.action.offline ? ' · enviado off-line' : '' }}</small>
+          <small
+            >{{ item.action.authoredAt | date: 'short' }}{{ item.action.offline ? ' · enviado off-line' : '' }}</small
+          >
           <pre>{{ item.action.payloadJson }}</pre>
           <div class="review-actions">
             <button mat-button type="button" (click)="workspace.openMatchFromReview(item)">Abrir partida</button>

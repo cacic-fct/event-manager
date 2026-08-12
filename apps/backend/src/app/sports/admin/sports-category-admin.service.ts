@@ -170,8 +170,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         rosterRules: input.rosterRules ?? (existing.rosterRules as Prisma.InputJsonValue),
         bracketRules: input.bracketRules ?? (existing.bracketRules as Prisma.InputJsonValue),
         standingsRules: input.standingsRules ?? (existing.standingsRules as Prisma.InputJsonValue),
-        overallScoringRules:
-          input.overallScoringRules ?? (existing.overallScoringRules as Prisma.InputJsonValue),
+        overallScoringRules: input.overallScoringRules ?? (existing.overallScoringRules as Prisma.InputJsonValue),
       });
     }
     if (input.overallScoringRules !== undefined) {

@@ -2,7 +2,7 @@ import { Controller, Headers, MessageEvent, NotFoundException, Param, Req, Sse, 
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiProduces, ApiTags } from '@nestjs/swagger';
 import { PublicationState, SportsTournamentStatus } from '@prisma/client';
 import type { Request } from 'express';
-import { defer, Observable, switchMap } from 'rxjs';
+import { defer, NEVER, Observable, switchMap } from 'rxjs';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Public } from '../../auth/decorators/public.decorator';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
@@ -13,8 +13,9 @@ import { SseReplayService } from '../../realtime/sse-replay.service';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
-import { SportsRealtimeService } from './sports-realtime.service';
+import { SPORTS_MATCH_OVERLAY_DEMO_ID } from '../overlays/sports-match-overlay.service';
 import { PUBLIC_SPORTS_MATCH_RELATIONS_WHERE } from '../security/sports-public-visibility';
+import { SportsRealtimeService } from './sports-realtime.service';
 
 type RequestWithUser = Request & { user?: AuthenticatedUser };
 
@@ -58,12 +59,18 @@ export class SportsRealtimeController {
     description:
       'Replayable, mutation-driven SSE stream. Clients reconnect with Last-Event-ID; the server never polls.',
   })
-  @ApiParam({ name: 'matchId', description: 'Public sports match identifier.' })
+  @ApiParam({
+    name: 'matchId',
+    description: 'Public sports match identifier. Use "demo" for the static OBS overlay demonstration.',
+  })
   @ApiProduces('text/event-stream')
   streamPublicMatch(
     @Param('matchId') matchId: string,
     @Headers('last-event-id') lastEventId: string | undefined,
   ): Observable<MessageEvent> {
+    if (matchId === SPORTS_MATCH_OVERLAY_DEMO_ID) {
+      return NEVER;
+    }
     const scope = this.realtime.scope('match', matchId);
     return defer(() => this.assertPublicMatch(matchId)).pipe(
       switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))),

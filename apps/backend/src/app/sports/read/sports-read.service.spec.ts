@@ -202,11 +202,9 @@ describe('SportsReadService admin tournament list', () => {
 
     const result = await service.adminMatchActionReviewQueue({} as never, 'tournament-1');
 
-    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(
-      {},
-      ['sports-tournament#read'],
-      { sportsTournamentId: 'tournament-1' },
-    );
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith({}, ['sports-tournament#read'], {
+      sportsTournamentId: 'tournament-1',
+    });
     expect(prisma.sportsMatchAction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -384,20 +382,22 @@ describe('SportsReadAdminService team privacy', () => {
   it('does not return team representatives to a category-scoped reader', async () => {
     const authorizationPolicy = {
       accessibleEventTargets: jest.fn().mockResolvedValue(null),
-      assertPermissions: jest.fn().mockImplementation(
-        async (
-          _user: unknown,
-          _permissions: unknown,
-          context: { sportsTournamentId?: string; sportsCategoryId?: string; sportsTeamId?: string },
-        ) => {
-          if (context.sportsTournamentId) {
-            throw new ForbiddenException();
-          }
-          if (!context.sportsTeamId && !context.sportsCategoryId) {
-            throw new ForbiddenException();
-          }
-        },
-      ),
+      assertPermissions: jest
+        .fn()
+        .mockImplementation(
+          async (
+            _user: unknown,
+            _permissions: unknown,
+            context: { sportsTournamentId?: string; sportsCategoryId?: string; sportsTeamId?: string },
+          ) => {
+            if (context.sportsTournamentId) {
+              throw new ForbiddenException();
+            }
+            if (!context.sportsTeamId && !context.sportsCategoryId) {
+              throw new ForbiddenException();
+            }
+          },
+        ),
     };
     const prisma = {
       sportsTeam: {

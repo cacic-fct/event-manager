@@ -239,21 +239,19 @@ describe('SportsStandingsService', () => {
       { id: 'home', teamId: 'team-home' },
       { id: 'away', teamId: 'team-away' },
     ]);
-    tx.sportsTournamentScoreEntry.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          id: 'score-home',
-          tournamentId: 'tournament-1',
-          categoryId: 'category-1',
-          teamId: 'team-home',
-          sourceMatchId: source.id,
-          source: 'MATCH',
-          points: 3,
-          reason: 'Vitória na partida',
-          revision: 1,
-        },
-      ]);
+    tx.sportsTournamentScoreEntry.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        id: 'score-home',
+        tournamentId: 'tournament-1',
+        categoryId: 'category-1',
+        teamId: 'team-home',
+        sourceMatchId: source.id,
+        source: 'MATCH',
+        points: 3,
+        reason: 'Vitória na partida',
+        revision: 1,
+      },
+    ]);
     tx.sportsTournamentScoreEntry.create.mockImplementation(async ({ data }) => ({
       ...data,
       id: `score-${data.teamId}`,

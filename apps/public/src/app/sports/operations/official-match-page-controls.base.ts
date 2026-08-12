@@ -126,7 +126,10 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     }
   }
 
-  private timerRestorationForUndo(match: SportsOperationalMatch, activePeriod: number | null): SportsTimerRestoration | null {
+  private timerRestorationForUndo(
+    match: SportsOperationalMatch,
+    activePeriod: number | null,
+  ): SportsTimerRestoration | null {
     const saved = this.periodRollUndo;
     if (saved?.matchId === match.id && saved.newPeriodNumber === match.scoreboard.activePeriod) {
       return saved.restoration;

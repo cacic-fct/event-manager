@@ -64,15 +64,11 @@
           [attr.aria-label]="stage.name + '. Role horizontalmente para acompanhar as rodadas.'">
           <div class="round-track" [attr.data-stage-id]="stage.id" [attr.data-stage-type]="stage.type">
             @for (round of stage.rounds; track round.number) {
-              <section
-                class="round-column"
-                [attr.data-round-number]="round.number">
+              <section class="round-column" [attr.data-round-number]="round.number">
                 <h6>{{ round.label }}</h6>
                 <div class="round-matches">
                   @for (match of round.matches; track match.id; let matchIndex = $index) {
-                    <div
-                      class="match-slot"
-                      [attr.data-bracket-position]="match.bracketPosition ?? matchIndex + 1">
+                    <div class="match-slot" [attr.data-bracket-position]="match.bracketPosition ?? matchIndex + 1">
                       <button
                         type="button"
                         class="match-card"
@@ -116,9 +112,7 @@
                 class="bracket-connectors"
                 aria-hidden="true"
                 preserveAspectRatio="none"
-                [attr.viewBox]="
-                  '0 0 ' + connectorLayout(stage.id).width + ' ' + connectorLayout(stage.id).height
-                ">
+                [attr.viewBox]="'0 0 ' + connectorLayout(stage.id).width + ' ' + connectorLayout(stage.id).height">
                 @for (connector of connectorLayout(stage.id).paths; track connector.id) {
                   <path [attr.d]="connector.d" />
                 }

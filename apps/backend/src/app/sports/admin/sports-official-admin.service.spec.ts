@@ -38,11 +38,7 @@ describe('SportsOfficialAdminService', () => {
       revision: 4,
     });
 
-    await service.updateOfficial(
-      'assignment-1',
-      { expectedRevision: 3, role: SportsOfficialRole.SCOREKEEPER },
-      actor,
-    );
+    await service.updateOfficial('assignment-1', { expectedRevision: 3, role: SportsOfficialRole.SCOREKEEPER }, actor);
 
     const update = tx.sportsOfficialAssignment.updateMany.mock.calls[0]?.[0] as {
       data: Record<string, unknown>;
