@@ -29,7 +29,7 @@ describe('OnlineAttendanceNotificationJobsService', () => {
       },
       expect.objectContaining({
         delay: 3_600_000,
-        jobId: `online-attendance-available:event-1:${startDate.getTime()}`,
+        jobId: `online-attendance-available-event-1-${startDate.getTime()}`,
         removeOnComplete: false,
       }),
     );

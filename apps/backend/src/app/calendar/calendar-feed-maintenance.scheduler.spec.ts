@@ -14,7 +14,7 @@ describe('CalendarFeedMaintenanceScheduler', () => {
       DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB,
       {},
       {
-        jobId: `calendar:${DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB}`,
+        jobId: `calendar-${DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB}`,
         repeat: {
           pattern: '0 3 * * 0',
           tz: 'America/Sao_Paulo',

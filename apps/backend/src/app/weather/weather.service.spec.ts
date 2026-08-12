@@ -124,7 +124,7 @@ describe('WeatherService', () => {
       'refresh-event-weather',
       { eventId: 'event-1' },
       expect.objectContaining({
-        jobId: 'weather:event-1:tomorrow',
+        jobId: 'weather-event-1-tomorrow',
         repeat: expect.objectContaining({ pattern: '0 6,18 * * *' }),
       }),
     );
@@ -165,13 +165,13 @@ describe('WeatherService', () => {
     expect(queue.add).toHaveBeenCalledWith(
       'refresh-event-weather',
       { eventId: 'event-1' },
-      expect.objectContaining({ jobId: 'weather:event-1:upcoming' }),
+      expect.objectContaining({ jobId: 'weather-event-1-upcoming' }),
     );
     expect(queue.add).toHaveBeenCalledWith(
       'schedule-upcoming-event-weather',
       {},
       expect.objectContaining({
-        jobId: 'weather:schedule-upcoming-events',
+        jobId: 'weather-schedule-upcoming-events',
         repeat: { pattern: '5 0 * * *', tz: 'America/Sao_Paulo' },
       }),
     );

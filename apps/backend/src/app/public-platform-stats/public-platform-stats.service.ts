@@ -4,6 +4,7 @@ import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { PublicPlatformStats } from './models';
+import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 export const PUBLIC_PLATFORM_STATS_QUEUE = 'public-platform-stats';
 const CACHE_KEY = 'public:platform-stats:v2';
@@ -50,7 +51,7 @@ export class PublicPlatformStatsService {
       'refresh-public-platform-stats',
       {},
       {
-        jobId: 'public-platform-stats:nightly',
+        jobId: buildBullMqJobId('public-platform-stats', 'nightly'),
         repeat: { pattern: '0 3 * * *' },
         removeOnComplete: true,
         removeOnFail: 50,

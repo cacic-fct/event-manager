@@ -21,6 +21,7 @@ import { AttendanceCategoryService } from '../../events/attendance-category.serv
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { S3Service } from '../../s3/s3.service';
+import { buildBullMqJobId } from '../../queues/bullmq-job-id';
 import { mapReceipt } from '../mappers/receipt-queue.mapper';
 import {
   CurrentUserReceiptResponse,
@@ -182,7 +183,7 @@ export class ReceiptUploadService {
       'process',
       { receiptId: receipt.id },
       {
-        jobId: receipt.id,
+        jobId: buildBullMqJobId('receipt-processing', receipt.id),
         attempts: RECEIPT_PROCESSING_ATTEMPTS,
         backoff: {
           type: 'exponential',

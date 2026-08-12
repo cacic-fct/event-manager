@@ -14,6 +14,7 @@ import { PublicationTransitionService } from './publishing-transition.service';
 import { PublicationJobData, PublicationQueueData, TargetSync } from './publishing.types';
 import { PrismaService } from '../prisma/prisma.service';
 import { EventDraftsService } from '../events/event-drafts.service';
+import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 @Injectable()
 export class PublicationJobsService {
@@ -34,7 +35,7 @@ export class PublicationJobsService {
         RECONCILE_PUBLICATION_STATES_JOB,
         {},
         {
-          jobId: `publication:${RECONCILE_PUBLICATION_STATES_JOB}`,
+          jobId: buildBullMqJobId('publication', RECONCILE_PUBLICATION_STATES_JOB),
           repeat: {
             pattern: '*/5 * * * *',
             tz: 'America/Sao_Paulo',
@@ -47,7 +48,7 @@ export class PublicationJobsService {
         CLEANUP_STALE_EVENT_DRAFTS_JOB,
         {},
         {
-          jobId: `publication:${CLEANUP_STALE_EVENT_DRAFTS_JOB}`,
+          jobId: buildBullMqJobId('publication', CLEANUP_STALE_EVENT_DRAFTS_JOB),
           repeat: {
             pattern: '17 3 * * *',
             tz: 'America/Sao_Paulo',
@@ -229,6 +230,6 @@ export class PublicationJobsService {
     targetId: string,
     scheduledPublishAt: Date,
   ): string {
-    return `publication:${targetType}:${targetId}:publish:${scheduledPublishAt.getTime()}`;
+    return buildBullMqJobId('publication', targetType, targetId, 'publish', scheduledPublishAt.getTime());
   }
 }

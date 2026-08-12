@@ -21,6 +21,7 @@ import { buildSuggestions } from './insights/suggestions';
 import { buildWeatherAlerts } from './insights/weather-alerts';
 import { buildPublicationConsistencyWarnings } from '../publishing/publishing-consistency';
 import { addDays, startOfDay, subDays } from 'date-fns';
+import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 export const DASHBOARD_INSIGHTS_QUEUE = 'dashboard-insights';
 const DASHBOARD_INCONSISTENCY_LIMIT = 30;
@@ -75,7 +76,7 @@ export class DashboardInsightsService {
       'refresh-realtime-dashboard-insights',
       { scope: 'realtime' },
       {
-        jobId: 'dashboard-insights:realtime',
+        jobId: buildBullMqJobId('dashboard-insights', 'realtime'),
         repeat: { pattern: '*/5 * * * *' },
         removeOnComplete: true,
         removeOnFail: 50,
@@ -85,7 +86,7 @@ export class DashboardInsightsService {
       'refresh-operational-dashboard-insights',
       { scope: 'operational' },
       {
-        jobId: 'dashboard-insights:operational',
+        jobId: buildBullMqJobId('dashboard-insights', 'operational'),
         repeat: { pattern: '*/30 * * * *' },
         removeOnComplete: true,
         removeOnFail: 50,

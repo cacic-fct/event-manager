@@ -5,6 +5,7 @@ import { Queue } from 'bullmq';
 import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
 import { PrismaService } from '../prisma/prisma.service';
 import { NovuNotificationsService } from '../notifications/novu-notifications.service';
+import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 export const ONLINE_ATTENDANCE_NOTIFICATION_QUEUE = 'online-attendance-notifications';
 export const ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB = 'notify-online-attendance-available';
@@ -80,7 +81,7 @@ export class OnlineAttendanceNotificationJobsService {
           attempts: 3,
           backoff: { type: 'exponential', delay: 1_000 },
           delay: Math.max(startDate.getTime() - Date.now(), 0),
-          jobId: `online-attendance-available:${event.id}:${startDate.getTime()}`,
+          jobId: buildBullMqJobId('online-attendance-available', event.id, startDate.getTime()),
           removeOnComplete: false,
           removeOnFail: true,
         },
