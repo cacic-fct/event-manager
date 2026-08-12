@@ -35,7 +35,7 @@ A página pode exibir:
 
 ## Previsão do tempo
 
-Os dados são obtidos da API [Open-Meteo](https://open-meteo.com/) usando as coordenadas geográficas do evento.
+Os dados são obtidos da API [Open-Meteo](https://open-meteo.com/) a partir das coordenadas geográficas do evento.
 
 ## Funcionalidade oculta
 
