@@ -7,7 +7,7 @@
 [![Coverage](https://img.shields.io/codecov/c/github/cacic-fct/event-manager/main?logo=codecov)](https://codecov.io/gh/cacic-fct/event-manager)
 [![License](https://img.shields.io/badge/license-AGPL–3.0–only-red)](https://github.com/cacic-fct/event-manager/blob/main/License.txt)
 
-O gerenciador de eventos do CACiC (também conhecido como "FCT App") é um sistema para controle de inscrições, presenças e emissão de certificados de eventos.
+O gerenciador de eventos do CACiC (também conhecido popularmente como "CACiC Eventos" ou historicamente como "FCT App") é um sistema para controle de inscrições, presenças e emissão de certificados de eventos.
 
 
 ## Contribuindo
