@@ -11,6 +11,7 @@ services:
     volumes:
       - /Volumes/Mobile/cacic-events/db:/var/lib/postgresql
     restart: unless-stopped
+
   events-redis:
     image: redis:8-alpine
     ports:
