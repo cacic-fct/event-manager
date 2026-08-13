@@ -152,6 +152,7 @@ model PlacePreset {
   updatedById String?
 
   @@index([name])
+  @@index([name], map: "place_presets_active_name_idx", where: raw("\"deletedAt\" IS NULL"))
   @@index([deletedAt])
   @@map("place_presets")
 }

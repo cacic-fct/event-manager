@@ -55,6 +55,7 @@ model MajorEvent {
 
   @@index([startDate])
   @@index([endDate])
+  @@index([name], map: "major_events_active_name_idx", where: raw("\"deletedAt\" IS NULL"))
   @@index([subscriptionStartDate, subscriptionEndDate])
   @@index([deletedAt])
   @@index([publicationState])

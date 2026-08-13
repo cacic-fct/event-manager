@@ -26,7 +26,7 @@ model EventGroup {
   updatedById String?
   deletedAt   DateTime?
 
-  @@index([name])
+  @@index([name], map: "event_groups_name_idx", where: raw("\"deletedAt\" IS NULL"))
   @@index([deletedAt])
   @@map("event_groups")
 }

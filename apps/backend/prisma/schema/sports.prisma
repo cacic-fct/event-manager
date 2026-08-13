@@ -402,7 +402,7 @@ model SportsTournamentParticipant {
   id String @id @default(uuid(7))
 
   // One active record per tournament/person is enforced by the partial unique
-  // index sports_tournament_participants_active_person_key in the SQL migration.
+  // index declared below and retained in the forward SQL migration.
   // Team memberships and category assignments remain one-to-many below this row.
   tournamentId String
   tournament   SportsTournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
@@ -432,6 +432,8 @@ model SportsTournamentParticipant {
   deletedAt   DateTime?
 
   @@index([tournamentId, personId])
+  @@index([majorEventSubscriptionId], map: "sports_tournament_participants_majorEventSubscriptionId_idx")
+  @@unique([tournamentId, personId], map: "sports_tournament_participants_active_person_key", where: raw("\"deletedAt\" IS NULL"))
   @@index([tournamentId, status])
   @@index([personId])
   @@index([paymentStatus])

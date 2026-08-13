@@ -142,6 +142,7 @@ model MajorEventSubscriptionEventSelection {
   @@index([eventId])
   @@index([subscriptionId])
   @@index([subscriptionId, eventId])
+  @@unique([subscriptionId, eventId], map: "major_event_subscription_event_selections_active_key", where: raw("\"deletedAt\" IS NULL"))
   @@index([lgpdDeletionRequestId], map: "major_event_subscription_event_selections_lgpdDeletionRequestId")
   @@map("major_event_subscription_event_selections")
 }
