@@ -82,6 +82,7 @@ describe('SportsPaymentService', () => {
         deletedAt: null,
         majorEventPrices: [],
       },
+      playerApplications: [],
     });
 
     await expect(
@@ -100,6 +101,36 @@ describe('SportsPaymentService', () => {
       source: SportsParticipantSource.SELF_SUBSCRIPTION,
       approved: true,
       imageLicenseAgreementAccepted: true,
+    });
+
+    expect(tx.majorEventSubscription.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          imageLicenseAgreementAccepted: true,
+        }),
+      }),
+    );
+  });
+
+  it('carries acceptance from a tournament application into an admin-created subscription', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValue({
+      id: 'tournament-1',
+      majorEventId: 'major-1',
+      majorEvent: {
+        isPaymentRequired: true,
+        requiresImageLicenseAgreement: true,
+        deletedAt: null,
+        majorEventPrices: [],
+      },
+      playerApplications: [{ id: 'application-1' }],
+    });
+
+    await service.ensureParticipant(tx as never, {
+      tournamentId: 'tournament-1',
+      personId: 'person-1',
+      source: SportsParticipantSource.TEAM_ASSIGNMENT,
+      actorId: 'admin-1',
+      approved: true,
     });
 
     expect(tx.majorEventSubscription.create).toHaveBeenCalledWith(
@@ -257,6 +288,7 @@ function createTx() {
           deletedAt: null,
           majorEventPrices: [],
         },
+        playerApplications: [],
       }),
     },
     sportsTournamentParticipant: {

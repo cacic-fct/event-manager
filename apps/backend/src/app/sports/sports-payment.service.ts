@@ -62,6 +62,15 @@ export class SportsPaymentService {
             },
           },
         },
+        playerApplications: {
+          where: {
+            applicantPersonId: input.personId,
+            deletedAt: null,
+            imageLicenseAgreementAccepted: true,
+          },
+          select: { id: true },
+          take: 1,
+        },
       },
     });
     if (!tournament || tournament.majorEvent.deletedAt) {
@@ -76,6 +85,9 @@ export class SportsPaymentService {
         'A autoinscrição esportiva exige a concordância com o contrato de licença de uso de imagem do CACiC.',
       );
     }
+
+    const imageLicenseAgreementAccepted =
+      input.imageLicenseAgreementAccepted === true || tournament.playerApplications.length > 0;
 
     const existingParticipant = await tx.sportsTournamentParticipant.findFirst({
       where: {
@@ -93,7 +105,7 @@ export class SportsPaymentService {
       actorId: input.actorId,
       preferredSubscriptionId: existingParticipant?.majorEventSubscriptionId ?? null,
       paymentSelection,
-      imageLicenseAgreementAccepted: input.imageLicenseAgreementAccepted,
+      imageLicenseAgreementAccepted,
     });
     const approved = input.approved || existingParticipant?.approvedAt != null;
     const participantStatus = resolveParticipantStatus(subscription.subscriptionStatus, approved);

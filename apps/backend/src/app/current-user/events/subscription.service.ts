@@ -125,7 +125,15 @@ export class CurrentUserEventSubscriptionService {
           personId,
           deletedAt: null,
           imageLicenseAgreementAccepted: false,
-          subscriptionStatus: { not: SubscriptionStatus.CANCELED },
+          // Only confirmed regular event subscriptions participate in this blocking
+          // flow. Pending payment states and tournament-only subscriptions remain
+          // navigable so the user can upload a receipt or manage the tournament.
+          subscriptionStatus: SubscriptionStatus.CONFIRMED,
+          selectedEvents: {
+            some: {
+              deletedAt: null,
+            },
+          },
           majorEvent: {
             deletedAt: null,
             publicationState: PublicationState.PUBLISHED,

@@ -1,6 +1,7 @@
+import { By } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, RouterLink, convertToParamMap, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
@@ -62,6 +63,27 @@ describe('SportsSelfSubscriptionPage', () => {
     expect(page.selectedCategories().size).toBe(1);
     page.toggleCategory(category.id, false);
     expect(page.selectedCategories().size).toBe(0);
+  });
+
+  it('replaces the subscription history entry when returning to the tournament', async () => {
+    TestBed.configureTestingModule({
+      imports: [SportsSelfSubscriptionPage],
+      providers: [provideRouter([])],
+    });
+    await TestBed.compileComponents();
+
+    const fixture = TestBed.createComponent(SportsSelfSubscriptionPage);
+    fixture.detectChanges();
+
+    const toolbarLink = fixture.debugElement.query(By.css('a[aria-label="Voltar ao torneio"]'));
+    expect(toolbarLink.injector.get(RouterLink).replaceUrl).toBe(true);
+
+    fixture.componentInstance.submitted.set(true);
+    fixture.detectChanges();
+
+    const successLink = fixture.debugElement.query(By.css('a[mat-flat-button]'));
+    expect(successLink.injector.get(RouterLink).replaceUrl).toBe(true);
+    fixture.destroy();
   });
 
   it('prefills an editable pending application and changes the submit action', () => {

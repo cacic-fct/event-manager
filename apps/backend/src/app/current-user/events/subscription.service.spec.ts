@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType } from '@prisma/client';
+import { AuditLogEntityType, SubscriptionStatus } from '@prisma/client';
 import { CurrentUserEventSubscriptionService } from './subscription.service';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 
@@ -72,6 +72,18 @@ describe('CurrentUserEventSubscriptionService', () => {
         displayOrder: 2,
       },
     ]);
+
+    expect(prisma.majorEventSubscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          subscriptionStatus: SubscriptionStatus.CONFIRMED,
+          selectedEvents: { some: { deletedAt: null } },
+          majorEvent: expect.objectContaining({
+            requiresImageLicenseAgreement: true,
+          }),
+        }),
+      }),
+    );
   });
 
   it('records group subscriptions with their own audit entity type', async () => {

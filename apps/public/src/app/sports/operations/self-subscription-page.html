@@ -1,5 +1,5 @@
 <header class="subscription-toolbar">
-  <a mat-icon-button [routerLink]="['/tournament', tournamentId]" aria-label="Voltar ao torneio">
+  <a mat-icon-button [routerLink]="['/tournament', tournamentId]" [replaceUrl]="true" aria-label="Voltar ao torneio">
     <mat-icon>arrow_back</mat-icon>
   </a>
   <strong>Inscrição individual</strong>
@@ -25,7 +25,7 @@
         : 'A organização ainda precisa aprovar sua participação. Se houver cobrança, o pagamento será liberado depois da aprovação.'
     }}
   </p>
-  <a mat-flat-button [routerLink]="['/tournament', tournamentId]">Voltar ao torneio</a>
+  <a mat-flat-button [routerLink]="['/tournament', tournamentId]" [replaceUrl]="true">Voltar ao torneio</a>
 </main>
 } @else if (data(); as currentData) {
 <main class="subscription-shell">
