@@ -57,6 +57,8 @@ export interface SportsCategorySummary {
   maximumCaptains?: number | null;
   maximumCoaches?: number | null;
   allowPlayerMultipleTeams?: boolean | null;
+  athleteIdentifierMode: 'SHIRT_NUMBER' | 'GAME_ACCOUNT';
+  joiningInstructions?: string | null;
   periodsEnabled: boolean;
   maximumPeriods?: number | null;
   periodLabel?: string | null;

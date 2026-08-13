@@ -197,6 +197,7 @@ export class SportsReadPublicService {
           customSportName: true,
           division: true,
           format: true,
+          athleteIdentifierMode: true,
           rulesText: true,
           eventGroup: {
             select: { emoji: true },
@@ -359,6 +360,7 @@ export class SportsReadPublicService {
         customSportName: category.customSportName,
         division: category.division,
         format: category.format,
+        athleteIdentifierMode: category.athleteIdentifierMode,
         rulesText: category.rulesText,
         standings: (standingsByCategory.get(category.id) ?? []).map(
           (standing): PublicSportsStanding => ({

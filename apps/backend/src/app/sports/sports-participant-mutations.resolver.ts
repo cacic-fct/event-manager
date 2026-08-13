@@ -2,6 +2,7 @@ import {
   CommitSportsMatchActionsInput,
   SportsMatchRosterUpsertInput,
   SportsOfflineCollectorCredential,
+  SportsAthleteProfileUpdateInput,
   SportsPlayerApplicationCreateInput,
   SportsRepresentativeApplicationReviewInput,
   SportsRosterCheckInInput,
@@ -20,6 +21,33 @@ import { SportsMutationsResolverSupport } from './sports-mutations-resolver.supp
 
 @Resolver()
 export class SportsParticipantMutationsResolver extends SportsMutationsResolverSupport {
+  @Mutation(() => String, { name: 'updateCurrentUserSportsAthleteProfile' })
+  async updateCurrentUserAthleteProfile(
+    @Args('input', { type: () => SportsAthleteProfileUpdateInput })
+    input: SportsAthleteProfileUpdateInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    const person = await this.currentUser.requireCurrentPerson(context);
+    const actor = this.authenticated(context);
+    const published = await this.publishMutation(
+      'REGISTRATION',
+      this.admin
+        .updateOwnAthleteProfile(
+          input.registrationMemberId,
+          person.id,
+          {
+            gameNickname: input.gameNickname,
+            gameAccountName: input.gameAccountName,
+            gameAccountUrl: input.gameAccountUrl,
+          },
+          actor,
+        )
+        .then((profile) => ({ id: profile.registrationId, profileId: profile.id })),
+      true,
+    );
+    return published.profileId;
+  }
+
   @Mutation(() => SportsOfflineCollectorCredential, { name: 'createSportsOfflineCollectorCredential' })
   async createOfflineCollectorCredential(
     @Args('matchId', { type: () => String }) matchId: string,

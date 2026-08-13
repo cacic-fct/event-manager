@@ -1,4 +1,5 @@
 import {
+  SportsAthleteIdentifierMode,
   SportsMatchState,
   SportsRosterEntryStatus,
   SportsRosterRole,
@@ -166,4 +167,37 @@ export class CurrentUserSportsTournamentDetail {
 
   @Field(() => [PublicSportsMatch])
   orderedMatches!: PublicSportsMatch[];
+
+  @Field(() => [CurrentUserSportsAthleteProfile])
+  athleteProfiles!: CurrentUserSportsAthleteProfile[];
+}
+
+@ObjectType()
+export class CurrentUserSportsAthleteProfile {
+  @Field(() => String)
+  registrationMemberId!: string;
+
+  @Field(() => String)
+  categoryId!: string;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => String)
+  categoryEmoji!: string;
+
+  @Field(() => SportsAthleteIdentifierMode)
+  athleteIdentifierMode!: SportsAthleteIdentifierMode;
+
+  @Field(() => String, { nullable: true })
+  joiningInstructions?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameNickname?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountUrl?: string | null;
 }

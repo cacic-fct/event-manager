@@ -37,6 +37,8 @@ export const ADMIN_CATEGORY_SELECT = {
   maximumCaptains: true,
   maximumCoaches: true,
   allowPlayerMultipleTeams: true,
+  athleteIdentifierMode: true,
+  joiningInstructions: true,
   periodsEnabled: true,
   maximumPeriods: true,
   periodLabel: true,
@@ -231,10 +233,19 @@ export type PublicRosterRecord = {
     team: PublicTeamRecord;
   };
   entries: {
+    shirtNumber: string | null;
     role: Prisma.SportsMatchRosterEntryGetPayload<{
       select: { role: true };
     }>['role'];
     registrationMember: {
+      gameNickname: string | null;
+      gameAccountName: string | null;
+      gameAccountUrl: string | null;
+      category: {
+        athleteIdentifierMode: Prisma.SportsCategoryGetPayload<{
+          select: { athleteIdentifierMode: true };
+        }>['athleteIdentifierMode'];
+      };
       teamMember: {
         participant: {
           person: {

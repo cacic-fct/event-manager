@@ -45,6 +45,11 @@ enum SportsPreset {
   OTHER
 }
 
+enum SportsAthleteIdentifierMode {
+  SHIRT_NUMBER
+  GAME_ACCOUNT
+}
+
 enum SportsTeamStatus {
   DRAFT
   PENDING_APPROVAL
@@ -311,6 +316,8 @@ model SportsCategory {
   maximumCaptains          Int?
   maximumCoaches           Int?
   allowPlayerMultipleTeams Boolean?
+  athleteIdentifierMode    SportsAthleteIdentifierMode @default(SHIRT_NUMBER)
+  joiningInstructions      String?
 
   periodsEnabled Boolean @default(false)
   maximumPeriods Int?
@@ -549,6 +556,10 @@ model SportsRegistrationMember {
 
   role        SportsRosterRole
   eligibility SportsEligibilityStatus @default(PENDING)
+
+  gameNickname    String?
+  gameAccountName String?
+  gameAccountUrl  String?
 
   approvedAt      DateTime?
   approvedById    String?

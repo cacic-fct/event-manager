@@ -1,4 +1,6 @@
+import '@angular/compiler';
 import { SPORTS_BRACKET_FIXTURES } from './sports-bracket.fixtures';
+import { SportsBracketComponent } from './sports-bracket.component';
 import { sportsBracketFormatLabel, sportsBracketMatchStateLabel } from './sports-bracket.models';
 
 describe('sports bracket shared contract', () => {
@@ -21,5 +23,40 @@ describe('sports bracket shared contract', () => {
     expect(sportsBracketMatchStateLabel('CANCELED')).toBe('Cancelada');
     expect(sportsBracketMatchStateLabel('AWAITING_REVIEW')).toBe('Em revisão');
     expect(sportsBracketMatchStateLabel('CHECK_IN')).toBe('Credenciamento');
+  });
+});
+
+describe('SportsBracketComponent behavior', () => {
+  const component = () => {
+    const instance = Object.create(SportsBracketComponent.prototype) as SportsBracketComponent;
+    Object.assign(instance, {
+      matchSelected: { emit: vi.fn() },
+      connectorLayouts: () => ({}),
+    });
+    return instance;
+  };
+
+  it('exposes translated labels, team fallbacks, and score visibility', () => {
+    const instance = component();
+    const match = SPORTS_BRACKET_FIXTURES.SINGLE_ELIMINATION.stages[0]?.matches[0];
+    if (!match) {
+      throw new Error('The shared single-elimination fixture must include a match.');
+    }
+
+    expect(instance.stageLabel('LOSERS_BRACKET')).toBe('Chave de repescagem');
+    expect(instance.stateLabel(match)).toBe('Finalizada');
+    expect(instance.teamName(match.homeTeam)).toBe(match.homeTeam?.name);
+    expect(instance.teamName(null)).toBe('Livre');
+    expect(instance.showScore(match)).toBe(true);
+    expect(instance.showScore({ ...match, state: 'CHECK_IN' })).toBe(false);
+  });
+
+  it('emits selected matches and returns an empty connector layout by default', () => {
+    const instance = component();
+
+    instance.selectMatch('match-1');
+
+    expect(instance.matchSelected.emit).toHaveBeenCalledWith('match-1');
+    expect(instance.connectorLayout('missing-stage')).toEqual({ width: 0, height: 0, paths: [] });
   });
 });

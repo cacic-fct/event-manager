@@ -263,9 +263,34 @@ describe('OfficialSportsMatchPage', () => {
 
     button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     expect(component.holdingStart()).toBe(true);
+    expect(button.querySelector('.hold-progress')).not.toBeNull();
+    expect(button.querySelector('.hold-progress-content')).not.toBeNull();
 
     button.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
     expect(component.holdingStart()).toBe(false);
+  });
+
+  it('starts only for the primary pointer and prevents the native pointer gesture', () => {
+    component.match.update((match) => (match ? { ...match, state: 'SCHEDULED' } : match));
+
+    const secondaryPointer = new Event('pointerdown', { cancelable: true }) as PointerEvent;
+    Object.defineProperties(secondaryPointer, {
+      button: { value: 0 },
+      isPrimary: { value: false },
+    });
+    component.startHold(secondaryPointer);
+    expect(component.holdingStart()).toBe(false);
+
+    const primaryPointer = new Event('pointerdown', { cancelable: true }) as PointerEvent;
+    Object.defineProperties(primaryPointer, {
+      button: { value: 0 },
+      isPrimary: { value: true },
+    });
+    component.startHold(primaryPointer);
+
+    expect(primaryPointer.defaultPrevented).toBe(true);
+    expect(component.holdingStart()).toBe(true);
+    component.cancelStartHold();
   });
 
   it('sorts athletes alphabetically during check-in and by shirt number after the match starts', () => {

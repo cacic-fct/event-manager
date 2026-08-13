@@ -131,6 +131,9 @@ describe('sports runtime integration', () => {
       'publicSportsTournamentDetail',
       'currentUserSportsTournamentDetail',
       'createSportsTournament',
+      'createSportsOfflineCollectorCredential',
+      'checkInSportsRosterEntry',
+      'checkInSportsMatchFromScannerCode',
       'commitSportsMatchActions',
       'reviewSportsMatchAction',
     ]) {

@@ -1,4 +1,5 @@
 import {
+  SportsAthleteIdentifierMode,
   SportsLossReason,
   SportsMatchPeriodTimer,
   SportsMatchState,
@@ -87,6 +88,21 @@ export class PublicSportsRosterEntry {
 
   @Field(() => SportsRosterRole)
   role!: SportsRosterRole;
+
+  @Field(() => SportsAthleteIdentifierMode)
+  athleteIdentifierMode!: SportsAthleteIdentifierMode;
+
+  @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameNickname?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountUrl?: string | null;
 }
 
 @ObjectType()

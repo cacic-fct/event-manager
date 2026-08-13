@@ -76,6 +76,9 @@ export class SportsAdminService {
     this.registrations.updateRegistration(...args);
   readonly assignCategoryRole = (...args: Parameters<SportsRegistrationAdminService['assignCategoryRole']>) =>
     this.registrations.assignCategoryRole(...args);
+  readonly updateOwnAthleteProfile = (
+    ...args: Parameters<SportsRegistrationAdminService['updateOwnAthleteProfile']>
+  ) => this.registrations.updateOwnAthleteProfile(...args);
   readonly deleteRegistration = (...args: Parameters<SportsRegistrationAdminService['deleteRegistration']>) =>
     this.registrations.deleteRegistration(...args);
 

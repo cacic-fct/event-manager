@@ -14,7 +14,11 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     restoration: SportsTimerRestoration;
   } | null = null;
 
-  startHold(): void {
+  startHold(event?: PointerEvent): void {
+    if (event && (!event.isPrimary || event.button !== 0)) {
+      return;
+    }
+    event?.preventDefault();
     const state = this.match()?.state;
     if (this.busy() || (state !== 'SCHEDULED' && state !== 'CHECK_IN')) {
       return;

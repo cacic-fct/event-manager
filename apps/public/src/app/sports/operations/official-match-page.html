@@ -119,18 +119,28 @@
       type="button"
       [class.holding]="holdingStart()"
       [disabled]="busy()"
-      (pointerdown)="startHold()"
+      (pointerdown)="startHold($event)"
       (pointerup)="cancelStartHold()"
       (pointerleave)="cancelStartHold()"
       (pointercancel)="cancelStartHold()"
+      (contextmenu)="$event.preventDefault()"
       (keydown)="startKeyboardHold($event)"
       (keyup)="cancelKeyboardHold($event)"
       (blur)="cancelStartHold()">
-      <mat-icon>play_arrow</mat-icon>
-      <span class="hold-copy"
-        ><strong>Pressione e segure para iniciar</strong><small>Mantenha pressionado até a barra completar</small></span
-      >
-      <span class="hold-progress" aria-hidden="true"></span>
+      <span class="hold-content">
+        <mat-icon>play_arrow</mat-icon>
+        <span class="hold-copy"
+          ><strong>Pressione e segure para iniciar</strong><small>Mantenha pressionado até a barra completar</small></span
+        >
+      </span>
+      <span class="hold-progress" aria-hidden="true">
+        <span class="hold-content hold-progress-content">
+          <mat-icon>play_arrow</mat-icon>
+          <span class="hold-copy"
+            ><strong>Pressione e segure para iniciar</strong><small>Mantenha pressionado até a barra completar</small></span
+          >
+        </span>
+      </span>
     </button>
     } @else if (currentMatch.state === 'LIVE' || currentMatch.state === 'PAUSED') {
     <button mat-flat-button type="button" [disabled]="busy()" (click)="togglePause()">

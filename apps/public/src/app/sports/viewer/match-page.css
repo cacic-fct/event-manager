@@ -306,6 +306,17 @@ dd {
   color: var(--mat-sys-on-surface-variant);
 }
 
+.player-identity {
+  display: grid;
+  min-width: 0;
+}
+
+.player-identity a,
+.player-identity small {
+  color: var(--mat-sys-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
 .privacy-notice {
   background: var(--mat-sys-surface-container-low);
   border-radius: 12px;

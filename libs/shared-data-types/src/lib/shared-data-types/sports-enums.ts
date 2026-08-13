@@ -57,6 +57,14 @@ export const SportsPreset = {
 export type SportsPreset = (typeof SportsPreset)[keyof typeof SportsPreset];
 registerEnumType(SportsPreset, { name: 'SportsPreset' });
 
+export const SportsAthleteIdentifierMode = {
+  SHIRT_NUMBER: 'SHIRT_NUMBER',
+  GAME_ACCOUNT: 'GAME_ACCOUNT',
+} as const;
+export type SportsAthleteIdentifierMode =
+  (typeof SportsAthleteIdentifierMode)[keyof typeof SportsAthleteIdentifierMode];
+registerEnumType(SportsAthleteIdentifierMode, { name: 'SportsAthleteIdentifierMode' });
+
 export const SportsTeamStatus = {
   DRAFT: 'DRAFT',
   PENDING_APPROVAL: 'PENDING_APPROVAL',

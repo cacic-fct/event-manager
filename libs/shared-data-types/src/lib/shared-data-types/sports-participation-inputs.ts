@@ -1,6 +1,7 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
 
 import {
+  SportsAthleteIdentifierMode,
   SportsCategoryStatus,
   SportsFormat,
   SportsPreset,
@@ -147,6 +148,12 @@ export class SportsCategoryCreateInput {
   @Field(() => Boolean, { nullable: true })
   allowPlayerMultipleTeams?: boolean | null;
 
+  @Field(() => SportsAthleteIdentifierMode, { nullable: true })
+  athleteIdentifierMode?: SportsAthleteIdentifierMode;
+
+  @Field(() => String, { nullable: true })
+  joiningInstructions?: string | null;
+
   @Field(() => Boolean, { nullable: true })
   periodsEnabled?: boolean;
 
@@ -230,6 +237,12 @@ export class SportsCategoryUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   allowPlayerMultipleTeams?: boolean | null;
+
+  @Field(() => SportsAthleteIdentifierMode, { nullable: true })
+  athleteIdentifierMode?: SportsAthleteIdentifierMode;
+
+  @Field(() => String, { nullable: true })
+  joiningInstructions?: string | null;
 
   @Field(() => Boolean, { nullable: true })
   periodsEnabled?: boolean;

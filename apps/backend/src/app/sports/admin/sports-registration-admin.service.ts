@@ -4,6 +4,7 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   Prisma,
+  SportsAthleteIdentifierMode,
   SportsEligibilityStatus,
   SportsMatchState,
   SportsRegistrationStatus,
@@ -12,6 +13,10 @@ import {
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
+import {
+  normalizeSportsAthleteProfilePatch,
+  SportsAthleteProfilePatch,
+} from '../domain/sports-athlete-profile';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
 export class SportsRegistrationAdminService extends SportsAdminBaseService {
@@ -295,6 +300,106 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
         tx,
       );
       return assignment;
+    });
+  }
+
+  async updateOwnAthleteProfile(
+    registrationMemberId: string,
+    personId: string,
+    input: SportsAthleteProfilePatch,
+    actor: AuthenticatedUser,
+  ) {
+    const actorId = this.requireActorId(actor);
+    const profile = normalizeSportsAthleteProfilePatch(input);
+
+    return runSerializableSportsTransaction(this.prisma, async (tx) => {
+      const member = await tx.sportsRegistrationMember.findFirst({
+        where: {
+          id: registrationMemberId,
+          deletedAt: null,
+          eligibility: SportsEligibilityStatus.ELIGIBLE,
+          category: {
+            deletedAt: null,
+            athleteIdentifierMode: SportsAthleteIdentifierMode.GAME_ACCOUNT,
+          },
+          registration: {
+            deletedAt: null,
+            status: {
+              in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
+            },
+          },
+          teamMember: {
+            deletedAt: null,
+            status: SportsTeamMemberStatus.APPROVED,
+            participant: {
+              personId,
+              deletedAt: null,
+              status: 'ACTIVE',
+            },
+          },
+        },
+        include: {
+          registration: {
+            select: { id: true, team: { select: { name: true } } },
+          },
+          category: {
+            select: {
+              name: true,
+              eventGroupId: true,
+              tournament: { select: { majorEventId: true } },
+            },
+          },
+          teamMember: {
+            select: {
+              participant: { select: { person: { select: { name: true } } } },
+            },
+          },
+        },
+      });
+      if (!member) {
+        throw new NotFoundException('Perfil de atleta não encontrado ou indisponível para edição.');
+      }
+
+      const updated = await tx.sportsRegistrationMember.updateMany({
+        where: { id: member.id, deletedAt: null },
+        data: {
+          ...profile,
+          updatedById: actorId,
+        },
+      });
+      if (updated.count !== 1) {
+        throw new ConflictException('O perfil de atleta mudou. Recarregue e tente novamente.');
+      }
+
+      const result = await tx.sportsRegistrationMember.findUniqueOrThrow({
+        where: { id: member.id },
+      });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
+          entityId: member.id,
+          entityLabel: `${member.teamMember.participant.person.name} · ${member.category.name}`,
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          before: {
+            gameNickname: member.gameNickname,
+            gameAccountName: member.gameAccountName,
+            gameAccountUrl: member.gameAccountUrl,
+          },
+          after: {
+            gameNickname: result.gameNickname,
+            gameAccountName: result.gameAccountName,
+            gameAccountUrl: result.gameAccountUrl,
+          },
+          summary: 'Perfil de jogo atualizado pelo atleta.',
+          scope: {
+            majorEventId: member.category.tournament.majorEventId,
+            eventGroupId: member.category.eventGroupId,
+          },
+        },
+        tx,
+      );
+      return result;
     });
   }
 

@@ -33,7 +33,7 @@ export class SportsReadCurrentUserService {
     personId: string,
   ): Promise<CurrentUserSportsTournamentDetail> {
     const tournament = await this.publicReader.publicTournament(input);
-    const [teamMemberships, rosterEntries, majorEventSubscription] = await Promise.all([
+    const [teamMemberships, rosterEntries, majorEventSubscription, athleteProfiles] = await Promise.all([
       this.prisma.sportsTeamMember.findMany({
         where: {
           status: 'APPROVED',
@@ -95,6 +95,47 @@ export class SportsReadCurrentUserService {
           imageLicenseAgreementAccepted: true,
         },
       }),
+      this.prisma.sportsRegistrationMember.findMany({
+        where: {
+          deletedAt: null,
+          eligibility: 'ELIGIBLE',
+          category: {
+            tournamentId: tournament.id,
+            deletedAt: null,
+          },
+          registration: {
+            deletedAt: null,
+            status: {
+              in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
+            },
+          },
+          teamMember: {
+            deletedAt: null,
+            status: 'APPROVED',
+            participant: {
+              personId,
+              deletedAt: null,
+              status: 'ACTIVE',
+            },
+          },
+        },
+        select: {
+          id: true,
+          categoryId: true,
+          gameNickname: true,
+          gameAccountName: true,
+          gameAccountUrl: true,
+          category: {
+            select: {
+              name: true,
+              athleteIdentifierMode: true,
+              joiningInstructions: true,
+              eventGroup: { select: { emoji: true } },
+            },
+          },
+        },
+        orderBy: [{ category: { name: 'asc' } }, { createdAt: 'asc' }, { id: 'asc' }],
+      }),
     ]);
     const playerMatchIds = new Set(rosterEntries.map((entry) => entry.roster.matchId));
     const teamIds = new Set(teamMemberships.map((membership) => membership.teamId));
@@ -112,6 +153,17 @@ export class SportsReadCurrentUserService {
       tournament,
       imageLicenseAgreementAccepted: majorEventSubscription?.imageLicenseAgreementAccepted ?? false,
       orderedMatches,
+      athleteProfiles: athleteProfiles.map((profile) => ({
+        registrationMemberId: profile.id,
+        categoryId: profile.categoryId,
+        categoryName: profile.category.name,
+        categoryEmoji: profile.category.eventGroup.emoji || '🏅',
+        athleteIdentifierMode: profile.category.athleteIdentifierMode,
+        joiningInstructions: profile.category.joiningInstructions,
+        gameNickname: profile.gameNickname,
+        gameAccountName: profile.gameAccountName,
+        gameAccountUrl: profile.gameAccountUrl,
+      })),
     };
   }
 

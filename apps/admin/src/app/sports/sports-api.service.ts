@@ -23,7 +23,7 @@ const TOURNAMENT_FIELDS = `
   categories {
     id tournamentId eventGroupId eventGroup { id emoji } name sport customSportName division format status
     registrationStartDate registrationEndDate minimumRosterSize maximumRosterSize
-    maximumCaptains maximumCoaches allowPlayerMultipleTeams periodsEnabled
+    maximumCaptains maximumCoaches allowPlayerMultipleTeams athleteIdentifierMode joiningInstructions periodsEnabled
     maximumPeriods periodLabel timerRulesJson scoreRulesJson overallScoringRulesJson rosterRulesJson bracketRulesJson
     standingsRulesJson rulesText registrationFormId revision
   }
@@ -43,7 +43,7 @@ const CATEGORY_FIELDS = `
   category {
     id tournamentId eventGroupId eventGroup { id emoji } name sport customSportName division format status
     registrationStartDate registrationEndDate minimumRosterSize maximumRosterSize
-    maximumCaptains maximumCoaches allowPlayerMultipleTeams periodsEnabled
+    maximumCaptains maximumCoaches allowPlayerMultipleTeams athleteIdentifierMode joiningInstructions periodsEnabled
     maximumPeriods periodLabel timerRulesJson scoreRulesJson overallScoringRulesJson rosterRulesJson bracketRulesJson
     standingsRulesJson rulesText registrationFormId revision
   }

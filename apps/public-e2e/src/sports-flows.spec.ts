@@ -36,6 +36,7 @@ interface SportsCollectorCredential {
 interface SportsMockOptions {
   authenticated?: boolean;
   authenticatedUser?: Record<string, unknown>;
+  autoroute?: { matchId?: string; teamId?: string; mode: string } | null;
   collectorCredential?: SportsCollectorCredential;
   committedActionBatches?: RecordedSportsAction[][];
   includeOperationalRoster?: boolean;
@@ -107,6 +108,29 @@ test('uses the authenticated personalized tournament projection and exposes self
     /tournament\/tournament-1\/subscribe/,
   );
   await expect(page.getByText('Equipe Verde').first()).toBeVisible();
+});
+
+test('routes an authenticated official to the next operable match', async ({ page }) => {
+  await mockSportsApi(page, {
+    authenticated: true,
+    authenticatedUser: officialUserFixture(),
+    autoroute: { matchId: 'match-1', mode: 'OFFICIAL' },
+  });
+
+  await page.goto('/app/sports');
+
+  await expect(page).toHaveURL(/\/app\/sports\/operate\/match-1\?mode=OFFICIAL/);
+  await expect(page.getByText('Operação da partida')).toBeVisible();
+});
+
+test('shows a stable empty state when the authenticated user has no sports assignment', async ({ page }) => {
+  await mockSportsApi(page, { authenticated: true, autoroute: null });
+
+  await page.goto('/app/sports');
+
+  await expect(page.getByRole('heading', { name: 'Nenhuma partida para operar agora' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ver calendário' })).toHaveAttribute('href', '/app/calendar');
 });
 
 test('queues an authenticated official score operation offline and flushes it exactly once after reconnect', async ({
@@ -391,6 +415,9 @@ async function fulfillSportsGraphql(route: Route, options: SportsMockOptions): P
       }),
     });
     return;
+  }
+  if (query.includes('query CurrentUserSportsAutoroute')) {
+    return { currentUserSportsAutoroute: options.autoroute ?? null };
   }
   if (query.includes('query PublicSportsTournamentDetail')) {
     if (options.tournamentError) {

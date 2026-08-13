@@ -43,7 +43,9 @@ export class SportsSelfSubscriptionPage implements OnInit {
   readonly busy = signal(false);
   readonly submitted = signal(false);
   readonly error = signal<string | null>(null);
+  private readonly formRevision = signal(0);
   readonly canSubmit = computed(() => {
+    this.formRevision();
     const tournament = this.data()?.tournament;
     return Boolean(
       tournament &&
@@ -61,6 +63,10 @@ export class SportsSelfSubscriptionPage implements OnInit {
   });
 
   protected tournamentId = '';
+
+  constructor() {
+    this.form.valueChanges.subscribe(() => this.formRevision.update((revision) => revision + 1));
+  }
 
   ngOnInit(): void {
     this.tournamentId = this.route.snapshot.paramMap.get('tournamentId') ?? '';

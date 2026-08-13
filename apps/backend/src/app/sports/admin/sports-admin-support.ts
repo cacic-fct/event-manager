@@ -2,6 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { getDefaultSportsEmoji } from '@cacic-fct/shared-data-types';
 import {
   Prisma,
+  SportsAthleteIdentifierMode,
   SportsCategoryStatus,
   SportsFormat,
   SportsLivestreamProvider,
@@ -196,6 +197,8 @@ export abstract class SportsAdminSupport {
     division: string | null;
     format: SportsFormat;
     status: SportsCategoryStatus;
+    athleteIdentifierMode: SportsAthleteIdentifierMode;
+    joiningInstructions: string | null;
     revision: number;
   }) {
     return {
@@ -207,6 +210,8 @@ export abstract class SportsAdminSupport {
       division: category.division,
       format: category.format,
       status: category.status,
+      athleteIdentifierMode: category.athleteIdentifierMode,
+      joiningInstructions: category.joiningInstructions,
       revision: category.revision,
     };
   }

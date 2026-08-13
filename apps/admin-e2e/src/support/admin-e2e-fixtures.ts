@@ -31,6 +31,36 @@ const relativeIsoDate = (daysFromNow: number, hours = 12, minutes = 0): string =
   return date.toISOString();
 };
 
+export function adminSportsTournamentListFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    tournament: {
+      id: 'tournament-1',
+      majorEventId: 'major-event-1',
+      status: 'PUBLISHED',
+      scoringMode: 'BY_CATEGORY',
+      selfSubscriptionEnabled: true,
+      selfSubscriptionAllowNoTeam: false,
+      selfSubscriptionAllowNoCategory: false,
+      allowPlayerMultipleTeams: false,
+      revision: 3,
+      finishedAt: null,
+    },
+    majorEvent: {
+      id: 'major-event-1',
+      name: 'Jogos Universitários',
+      emoji: '🏆',
+      startDate: relativeIsoDate(1),
+      endDate: relativeIsoDate(7, 22),
+      isPaymentRequired: false,
+    },
+    categoryCount: 2,
+    teamCount: 8,
+    pendingApplicationCount: 2,
+    pendingReviewCount: 1,
+    ...overrides,
+  };
+}
+
 export const adminE2EReadPermissions = [
   'event#read',
   'major-event#read',

@@ -39,8 +39,15 @@ export class SportsReadPublicLoader {
           },
           select: {
             role: true,
+            shirtNumber: true,
             registrationMember: {
               select: {
+                gameNickname: true,
+                gameAccountName: true,
+                gameAccountUrl: true,
+                category: {
+                  select: { athleteIdentifierMode: true },
+                },
                 teamMember: {
                   select: {
                     participant: {
@@ -71,6 +78,21 @@ export class SportsReadPublicLoader {
           entries: roster.entries.map((entry) => ({
             name: toSportsPublicPlayerName(entry.registrationMember.teamMember.participant.person.name),
             role: entry.role,
+            athleteIdentifierMode: entry.registrationMember.category.athleteIdentifierMode,
+            shirtNumber:
+              entry.registrationMember.category.athleteIdentifierMode === 'SHIRT_NUMBER' ? entry.shirtNumber : null,
+            gameNickname:
+              entry.registrationMember.category.athleteIdentifierMode === 'GAME_ACCOUNT'
+                ? entry.registrationMember.gameNickname
+                : null,
+            gameAccountName:
+              entry.registrationMember.category.athleteIdentifierMode === 'GAME_ACCOUNT'
+                ? entry.registrationMember.gameAccountName
+                : null,
+            gameAccountUrl:
+              entry.registrationMember.category.athleteIdentifierMode === 'GAME_ACCOUNT'
+                ? entry.registrationMember.gameAccountUrl
+                : null,
           })),
         },
       ]),

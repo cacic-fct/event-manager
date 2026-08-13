@@ -118,11 +118,30 @@
   position: relative;
   overflow: hidden;
   min-width: min(100%, 360px);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+}
+.hold-button * {
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+}
+.hold-content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+.hold-content mat-icon {
+  margin: 0;
 }
 .hold-copy {
   display: grid;
-  position: relative;
-  z-index: 1;
 }
 .hold-button small {
   font-weight: 400;
@@ -130,13 +149,21 @@
 .hold-progress {
   position: absolute;
   inset: 0;
-  transform: scaleX(0);
-  transform-origin: left;
-  background: color-mix(in srgb, #1976d2 46%, transparent);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  background: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+  clip-path: inset(0 100% 0 0);
+  pointer-events: none;
+}
+.hold-progress-content {
+  position: absolute;
+  inset: 0;
 }
 .hold-button.holding .hold-progress {
-  transform: scaleX(1);
-  transition: transform 900ms linear;
+  clip-path: inset(0);
+  transition: clip-path 900ms linear;
 }
 .finish-button {
   margin-inline-start: auto;

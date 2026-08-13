@@ -224,6 +224,9 @@ export class SportsReadAdminMapper {
   mapAdminRegistrationMember(
     record: Prisma.SportsRegistrationMemberGetPayload<{
       include: {
+        category: {
+          select: { athleteIdentifierMode: true };
+        };
         teamMember: {
           select: {
             participant: {
@@ -241,6 +244,10 @@ export class SportsReadAdminMapper {
       teamMemberId: record.teamMemberId,
       role: record.role,
       eligibility: record.eligibility,
+      gameNickname: record.gameNickname,
+      gameAccountName: record.gameAccountName,
+      gameAccountUrl: record.gameAccountUrl,
+      athleteIdentifierMode: record.category.athleteIdentifierMode,
       person: {
         id: record.teamMember.participant.person.id,
         name: toSportsPublicPlayerName(record.teamMember.participant.person.name),

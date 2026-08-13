@@ -1,0 +1,63 @@
+<section class="preparation" aria-labelledby="athlete-preparation-title">
+  <header>
+    <span class="preparation-icon"><mat-icon aria-hidden="true">sports_esports</mat-icon></span>
+    <div>
+      <h2 id="athlete-preparation-title">Prepare-se para jogar</h2>
+      <p>Confira as orientações e mantenha sua identificação no jogo atualizada.</p>
+    </div>
+  </header>
+
+  <mat-accordion multi>
+    @for (profile of profiles(); track profile.registrationMemberId) {
+      <mat-expansion-panel [expanded]="profiles().length === 1">
+        <mat-expansion-panel-header>
+          <mat-panel-title><lib-twemoji [emoji]="profile.categoryEmoji" />{{ profile.categoryName }}</mat-panel-title>
+          <mat-panel-description>
+            {{ profile.athleteIdentifierMode === 'GAME_ACCOUNT' ? 'Identificação no jogo' : 'Orientações' }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        @if (profile.joiningInstructions) {
+          <div class="instructions">
+            <mat-icon aria-hidden="true">login</mat-icon>
+            <div><strong>Como entrar na partida</strong><p>{{ profile.joiningInstructions }}</p></div>
+          </div>
+        }
+
+        @if (profile.athleteIdentifierMode === 'GAME_ACCOUNT') {
+          @let form = formFor(profile);
+          <form [formGroup]="form" (ngSubmit)="save(profile)">
+            <div class="identity-heading">
+              <div><h3>Sua identificação</h3><p>Estes dados serão usados pela organização e na escalação.</p></div>
+              @if (form.pristine && profile.gameNickname) {
+                <span class="saved-state"><mat-icon aria-hidden="true">check_circle</mat-icon>Atualizada</span>
+              }
+            </div>
+            <div class="identity-fields">
+              <mat-form-field>
+                <mat-label>Nickname exibido</mat-label>
+                <input matInput maxlength="80" formControlName="gameNickname" autocomplete="nickname" />
+                <mat-hint>Nome que aparece para outros jogadores.</mat-hint>
+              </mat-form-field>
+              <mat-form-field>
+                <mat-label>Nome da conta</mat-label>
+                <input matInput maxlength="160" formControlName="gameAccountName" autocomplete="off" />
+                <mat-hint>Inclua tag, servidor ou sufixo quando fizer parte da conta.</mat-hint>
+              </mat-form-field>
+              <mat-form-field class="account-url">
+                <mat-label>Link da conta (opcional)</mat-label>
+                <input matInput type="url" maxlength="2048" formControlName="gameAccountUrl" placeholder="https://" />
+                @if (form.controls.gameAccountUrl.hasError('pattern')) {
+                  <mat-error>Use um link completo iniciado por https://.</mat-error>
+                }
+              </mat-form-field>
+            </div>
+            <button mat-flat-button type="submit" [disabled]="form.invalid || form.pristine || savingId() !== null">
+              @if (savingId() === profile.registrationMemberId) { Salvando… } @else { Salvar identificação }
+            </button>
+          </form>
+        }
+      </mat-expansion-panel>
+    }
+  </mat-accordion>
+</section>

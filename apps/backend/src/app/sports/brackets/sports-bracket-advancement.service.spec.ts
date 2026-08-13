@@ -21,6 +21,170 @@ describe('SportsBracketAdvancementService', () => {
     service = new SportsBracketAdvancementService(rosters as never);
   });
 
+  it('delegates an approved finished projection to outcome advancement', async () => {
+    const tx = transaction([sourceMatch()]);
+    const advance = jest.spyOn(service, 'advanceApprovedOutcome').mockResolvedValue([]);
+
+    await service.reconcileAfterProjectionChange(tx as never, 'source-bye', 'admin-1');
+
+    expect(advance).toHaveBeenCalledWith(tx, 'source-bye', 'admin-1');
+  });
+
+  it('clears winner and loser assignments when an approved projection is withdrawn', async () => {
+    const source = {
+      ...sourceMatch(),
+      reviewStatus: SportsReviewStatus.PENDING,
+      winnerAdvancesToId: 'winner-target',
+      winnerAdvancesToSide: SportsBracketSide.HOME,
+      loserAdvancesToId: 'loser-target',
+      loserAdvancesToSide: SportsBracketSide.AWAY,
+    };
+    const tx = transaction(
+      [
+        source,
+        resetMatch({ homeRegistrationId: 'home' }, 'winner-target'),
+        resetMatch({ awayRegistrationId: 'away' }, 'loser-target'),
+      ],
+      [{ count: 1 }, { count: 1 }],
+    );
+
+    const result = await service.reconcileAfterProjectionChange(tx as never, 'source-bye', 'admin-1');
+
+    expect(tx.sportsMatch.updateMany).toHaveBeenCalledTimes(2);
+    expect(tx.sportsMatchRoster.updateMany).toHaveBeenCalledTimes(2);
+    expect(result).toEqual([
+      expect.objectContaining({ matchIds: ['winner-target', 'loser-target'], kind: 'BRACKET_ADVANCEMENT' }),
+    ]);
+  });
+
+  it('assigns and copies an approved winner into an empty next match', async () => {
+    const source = {
+      ...sourceMatch(),
+      winnerAdvancesToId: 'winner-target',
+      winnerAdvancesToSide: SportsBracketSide.HOME,
+      winnerAdvancesTo: resetMatch({}, 'winner-target'),
+    };
+    const tx = transaction([source, resetMatch({ homeRegistrationId: 'home' }, 'winner-target')], [{ count: 1 }]);
+
+    const result = await service.advanceApprovedOutcome(tx as never, 'source-bye', 'admin-1');
+
+    expect(rosters.copyApprovedRosterForWinner).toHaveBeenCalledWith(
+      tx,
+      'source-bye',
+      'winner-target',
+      'home',
+      'admin-1',
+    );
+    expect(result).toHaveLength(1);
+  });
+
+  it('rejects advancement when the next match contains a foreign registration', async () => {
+    const source = {
+      ...sourceMatch(),
+      winnerAdvancesToId: 'winner-target',
+      winnerAdvancesToSide: SportsBracketSide.HOME,
+      winnerAdvancesTo: resetMatch({ homeRegistrationId: 'foreign' }, 'winner-target'),
+    };
+    const tx = transaction([source]);
+
+    await expect(service.advanceApprovedOutcome(tx as never, 'source-bye', 'admin-1')).rejects.toThrow(
+      'a próxima chave mudou',
+    );
+  });
+
+  it('replaces the prior source participant when a corrected winner must occupy the same slot', async () => {
+    const occupiedTarget = resetMatch({ homeRegistrationId: 'away' }, 'winner-target');
+    const source = {
+      ...sourceMatch(),
+      winnerAdvancesToId: 'winner-target',
+      winnerAdvancesToSide: SportsBracketSide.HOME,
+      winnerAdvancesTo: occupiedTarget,
+    };
+    const reassignedTarget = resetMatch({ homeRegistrationId: 'home' }, 'winner-target');
+    const tx = transaction([source, occupiedTarget, reassignedTarget], [{ count: 1 }, { count: 1 }]);
+
+    const result = await service.advanceApprovedOutcome(tx as never, 'source-bye', 'admin-1');
+
+    expect(tx.sportsMatch.updateMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'winner-target', homeRegistrationId: 'away' }),
+        data: expect.objectContaining({ homeRegistrationId: null }),
+      }),
+    );
+    expect(tx.sportsMatch.updateMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({ id: 'winner-target', homeRegistrationId: null }),
+        data: expect.objectContaining({ homeRegistrationId: 'home' }),
+      }),
+    );
+    expect(rosters.copyApprovedRosterForWinner).toHaveBeenCalledWith(
+      tx,
+      'source-bye',
+      'winner-target',
+      'home',
+      'admin-1',
+    );
+    expect(result).toHaveLength(1);
+  });
+
+  it('replaces the wrong source participant before assigning the loser destination', async () => {
+    const occupiedTarget = resetMatch({ homeRegistrationId: 'home' }, 'loser-target');
+    const source = {
+      ...sourceMatch(),
+      winnerAdvancesToId: null,
+      winnerAdvancesToSide: null,
+      loserAdvancesToId: 'loser-target',
+      loserAdvancesToSide: SportsBracketSide.HOME,
+      loserAdvancesTo: occupiedTarget,
+    };
+    const reassignedTarget = resetMatch({ homeRegistrationId: 'away' }, 'loser-target');
+    const tx = transaction([source, occupiedTarget, reassignedTarget], [{ count: 1 }, { count: 1 }]);
+
+    const result = await service.advanceApprovedOutcome(tx as never, 'source-bye', 'admin-1');
+
+    expect(tx.sportsMatch.updateMany).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ data: expect.objectContaining({ homeRegistrationId: null }) }),
+    );
+    expect(tx.sportsMatch.updateMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ data: expect.objectContaining({ homeRegistrationId: 'away' }) }),
+    );
+    expect(rosters.copyApprovedRosterForWinner).toHaveBeenCalledWith(
+      tx,
+      'source-bye',
+      'loser-target',
+      'away',
+      'admin-1',
+    );
+    expect(result).toHaveLength(1);
+  });
+
+  it('returns no bye advancement when its winner or target is unavailable', async () => {
+    const tx = transaction([{ ...sourceMatch(), winnerRegistrationId: null }]);
+
+    await expect(service.advanceBye(tx as never, 'source-bye', 'admin-1')).resolves.toEqual([]);
+    expect(tx.sportsMatch.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('returns the existing target invalidation for an idempotent bye advancement', async () => {
+    const source = {
+      ...sourceMatch(),
+      awayRegistrationId: null,
+      winnerAdvancesToId: 'winner-target',
+      winnerAdvancesToSide: SportsBracketSide.HOME,
+      winnerAdvancesTo: resetMatch({ homeRegistrationId: 'home' }, 'winner-target'),
+    };
+    const tx = transaction([source, resetMatch({ homeRegistrationId: 'home' }, 'winner-target')]);
+
+    const result = await service.advanceBye(tx as never, 'source-bye', 'admin-1');
+
+    expect(tx.sportsMatch.updateMany).not.toHaveBeenCalled();
+    expect(result).toHaveLength(1);
+  });
+
   it('does not advance a draw, even when it will be rescheduled', async () => {
     const tx = transaction([
       {

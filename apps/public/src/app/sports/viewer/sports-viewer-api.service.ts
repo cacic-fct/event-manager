@@ -76,6 +76,10 @@ const PUBLIC_MATCH_FIELDS = `
     entries {
       name
       role
+      athleteIdentifierMode
+      gameNickname
+      gameAccountName
+      gameAccountUrl
     }
   }
   officials {
@@ -165,6 +169,7 @@ export class SportsViewerApiService {
       currentUserSportsTournamentDetail: {
         tournament: PublicSportsTournamentDetail;
         orderedMatches: PublicSportsMatch[];
+        athleteProfiles: NonNullable<PublicSportsTournamentDetail['athleteProfiles']>;
       };
     }>(
       `
@@ -174,6 +179,10 @@ export class SportsViewerApiService {
               ${PUBLIC_TOURNAMENT_FIELDS}
             }
             orderedMatches { ${PUBLIC_MATCH_FIELDS} }
+            athleteProfiles {
+              registrationMemberId categoryId categoryName categoryEmoji athleteIdentifierMode joiningInstructions
+              gameNickname gameAccountName gameAccountUrl
+            }
           }
         }
       `,
@@ -183,8 +192,23 @@ export class SportsViewerApiService {
         ...currentUserSportsTournamentDetail.tournament,
         matches: currentUserSportsTournamentDetail.orderedMatches,
         matchesArePersonalized: true,
+        athleteProfiles: currentUserSportsTournamentDetail.athleteProfiles,
       })),
     );
+  }
+
+  updateAthleteProfile(input: {
+    registrationMemberId: string;
+    gameNickname: string;
+    gameAccountName: string;
+    gameAccountUrl: string | null;
+  }): Observable<string> {
+    return this.query<{ updateCurrentUserSportsAthleteProfile: string }>(
+      `mutation UpdateOwnSportsAthleteProfile($input: SportsAthleteProfileUpdateInput!) {
+        updateCurrentUserSportsAthleteProfile(input: $input)
+      }`,
+      { input },
+    ).pipe(map((data) => data.updateCurrentUserSportsAthleteProfile));
   }
 
   getMatch(matchId: string): Observable<PublicSportsMatch> {

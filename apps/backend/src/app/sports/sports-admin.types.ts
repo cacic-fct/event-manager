@@ -1,5 +1,6 @@
 import {
   Prisma,
+  SportsAthleteIdentifierMode,
   SportsCategoryStatus,
   SportsBracketSide,
   SportsFormat,
@@ -52,6 +53,8 @@ export interface CreateSportsCategoryInput {
   maximumCaptains?: number | null;
   maximumCoaches?: number | null;
   allowPlayerMultipleTeams?: boolean | null;
+  athleteIdentifierMode?: SportsAthleteIdentifierMode;
+  joiningInstructions?: string | null;
   periodsEnabled?: boolean;
   maximumPeriods?: number | null;
   periodLabel?: string | null;

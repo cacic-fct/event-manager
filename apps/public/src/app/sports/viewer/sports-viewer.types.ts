@@ -30,6 +30,22 @@ export interface PublicSportsMatchSchedule extends SportsMatchScheduleView, Spor
 export interface PublicSportsRosterEntry {
   name: string;
   role: SportsRosterRole;
+  athleteIdentifierMode?: 'SHIRT_NUMBER' | 'GAME_ACCOUNT';
+  gameNickname?: string | null;
+  gameAccountName?: string | null;
+  gameAccountUrl?: string | null;
+}
+
+export interface SportsAthleteProfile {
+  registrationMemberId: string;
+  categoryId: string;
+  categoryName: string;
+  categoryEmoji: string;
+  athleteIdentifierMode: 'SHIRT_NUMBER' | 'GAME_ACCOUNT';
+  joiningInstructions?: string | null;
+  gameNickname?: string | null;
+  gameAccountName?: string | null;
+  gameAccountUrl?: string | null;
 }
 
 export interface PublicSportsRoster {
@@ -140,6 +156,7 @@ export interface PublicSportsTournamentDetail {
   matches: PublicSportsMatch[];
   overallScores: PublicSportsOverallScore[];
   matchesArePersonalized?: boolean;
+  athleteProfiles?: SportsAthleteProfile[];
 }
 
 export type SportsViewerPageState<T> =

@@ -4,6 +4,7 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   Prisma,
+  SportsAthleteIdentifierMode,
   SportsCategoryStatus,
   SportsRegistrationStatus,
 } from '@prisma/client';
@@ -21,6 +22,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
     this.assertOverallScoringRules(input.overallScoringRules);
     this.assertOptionalDateRange(input.registrationStartDate, input.registrationEndDate, 'inscrições da modalidade');
     const name = this.requireText(input.name, 'nome da modalidade', 2, 160);
+    const joiningInstructions = this.normalizeJoiningInstructions(input.joiningInstructions);
 
     const tournament = await this.prisma.sportsTournament.findFirst({
       where: { id: input.tournamentId, deletedAt: null },
@@ -95,6 +97,8 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           maximumCaptains: input.maximumCaptains ?? null,
           maximumCoaches: input.maximumCoaches ?? null,
           allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? null,
+          athleteIdentifierMode: input.athleteIdentifierMode ?? SportsAthleteIdentifierMode.SHIRT_NUMBER,
+          joiningInstructions: joiningInstructions ?? null,
           periodsEnabled: input.periodsEnabled ?? false,
           maximumPeriods: input.maximumPeriods ?? null,
           periodLabel: input.periodLabel?.trim() || null,
@@ -176,6 +180,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
     if (input.overallScoringRules !== undefined) {
       this.assertOverallScoringRules(input.overallScoringRules);
     }
+    const joiningInstructions = this.normalizeJoiningInstructions(input.joiningInstructions);
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       await this.assertRegistrationFormForMajorEvent(tx, input.registrationFormId, existing.tournament.majorEventId);
       const name = input.name !== undefined ? this.requireText(input.name, 'nome da modalidade', 2, 160) : undefined;
@@ -217,6 +222,10 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           ...(input.allowPlayerMultipleTeams !== undefined
             ? { allowPlayerMultipleTeams: input.allowPlayerMultipleTeams }
             : {}),
+          ...(input.athleteIdentifierMode !== undefined
+            ? { athleteIdentifierMode: input.athleteIdentifierMode }
+            : {}),
+          ...(joiningInstructions !== undefined ? { joiningInstructions } : {}),
           ...(input.periodsEnabled !== undefined ? { periodsEnabled: input.periodsEnabled } : {}),
           ...(input.maximumPeriods !== undefined ? { maximumPeriods: input.maximumPeriods } : {}),
           ...(input.periodLabel !== undefined ? { periodLabel: input.periodLabel?.trim() || null } : {}),
@@ -397,5 +406,16 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : 'Regras de pontuação geral inválidas.');
     }
+  }
+
+  private normalizeJoiningInstructions(value: string | null | undefined): string | null | undefined {
+    if (value === undefined) {
+      return undefined;
+    }
+    const normalized = value?.trim() || null;
+    if (normalized && normalized.length > 4_000) {
+      throw new BadRequestException('As instruções para atletas devem ter no máximo 4.000 caracteres.');
+    }
+    return normalized;
   }
 }

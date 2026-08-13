@@ -1,6 +1,11 @@
 import type { Route } from '@playwright/test';
 import { expect, test } from './support/e2e-test';
-import { authenticatedAdminUserFixture, mockAdminApi, preventSilentSso } from './support/admin-e2e-fixtures';
+import {
+  adminSportsTournamentListFixture,
+  authenticatedAdminUserFixture,
+  mockAdminApi,
+  preventSilentSso,
+} from './support/admin-e2e-fixtures';
 
 const sportsReadPermissions = [
   'sports-tournament#read',
@@ -28,34 +33,7 @@ test('opens sports management from workspace navigation and lists configured tou
       return;
     }
     await fulfillGraphql(route, {
-      adminSportsTournamentList: [
-        {
-          tournament: {
-            id: 'tournament-1',
-            majorEventId: 'major-event-1',
-            status: 'PUBLISHED',
-            scoringMode: 'BY_CATEGORY',
-            selfSubscriptionEnabled: true,
-            selfSubscriptionAllowNoTeam: false,
-            selfSubscriptionAllowNoCategory: false,
-            allowPlayerMultipleTeams: false,
-            revision: 3,
-            finishedAt: null,
-          },
-          majorEvent: {
-            id: 'major-event-1',
-            name: 'Jogos Universitários',
-            emoji: '🏆',
-            startDate: '2026-08-10T12:00:00.000Z',
-            endDate: '2026-08-14T22:00:00.000Z',
-            isPaymentRequired: false,
-          },
-          categoryCount: 2,
-          teamCount: 8,
-          pendingApplicationCount: 2,
-          pendingReviewCount: 1,
-        },
-      ],
+      adminSportsTournamentList: [adminSportsTournamentListFixture()],
     });
   });
 
@@ -67,6 +45,19 @@ test('opens sports management from workspace navigation and lists configured tou
   await expect(page.getByText('Jogos Universitários')).toBeVisible();
   await expect(page.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();
   await expect(page.getByText('3 pendências')).toBeVisible();
+});
+
+test('shows the sports empty state when no tournament is configured', async ({ page }) => {
+  await mockAdminApi(page, {
+    user: authenticatedAdminUserFixture(),
+    permissions: sportsReadPermissions,
+  });
+
+  await page.goto('/admin/sports');
+
+  await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
+  await expect(page.getByText('Nenhum torneio configurado')).toBeVisible();
+  await expect(page.getByText('Escolha um grande evento abaixo para ativar o modo esportivo.')).toBeVisible();
 });
 
 test('shows the sports permission boundary when every sports read permission is missing', async ({ page }) => {

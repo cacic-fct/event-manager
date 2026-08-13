@@ -376,6 +376,9 @@ export class SportsReadAdminService {
       this.prisma.sportsRegistrationMember.findMany({
         where: { registrationId, deletedAt: null },
         include: {
+          category: {
+            select: { athleteIdentifierMode: true },
+          },
           teamMember: {
             select: {
               participant: {

@@ -37,6 +37,8 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
       maximumCaptains: [0],
       maximumCoaches: [0],
       allowPlayerMultipleTeams: [false],
+      athleteIdentifierMode: ['SHIRT_NUMBER'],
+      joiningInstructions: ['', Validators.maxLength(4_000)],
       periodsEnabled: [false],
       maximumPeriods: [0],
       periodLabel: ['Tempo'],

@@ -4,6 +4,7 @@ import { EventGroup } from './event-groups';
 import { EventForm } from './forms';
 import { MajorEvent } from './major-events';
 import {
+  SportsAthleteIdentifierMode,
   SportsCategoryStatus,
   SportsFormat,
   SportsPreset,
@@ -126,6 +127,12 @@ export class SportsCategory {
 
   @Field(() => Boolean, { nullable: true })
   allowPlayerMultipleTeams?: boolean | null;
+
+  @Field(() => SportsAthleteIdentifierMode)
+  athleteIdentifierMode!: SportsAthleteIdentifierMode;
+
+  @Field(() => String, { nullable: true })
+  joiningInstructions?: string | null;
 
   @Field(() => Boolean)
   periodsEnabled!: boolean;

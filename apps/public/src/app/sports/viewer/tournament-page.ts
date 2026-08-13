@@ -31,6 +31,7 @@ import {
   sportsMatchStateLabel,
   sportsPresetLabel,
 } from './sports-viewer.utils';
+import { SportsAthletePreparationPanel } from './athlete-preparation-panel';
 
 @Component({
   selector: 'app-sports-tournament-page',
@@ -46,6 +47,7 @@ import {
     SportsBracketComponent,
     SportsLiveDotComponent,
     SportsTeamLogoComponent,
+    SportsAthletePreparationPanel,
     TwemojiComponent,
   ],
   templateUrl: './tournament-page.html',

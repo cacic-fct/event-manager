@@ -168,6 +168,21 @@ export class SportsRegistrationMemberUpsertInput {
 }
 
 @InputType()
+export class SportsAthleteProfileUpdateInput {
+  @Field(() => String)
+  registrationMemberId!: string;
+
+  @Field(() => String, { nullable: true })
+  gameNickname?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountUrl?: string | null;
+}
+
+@InputType()
 export class SportsParticipantUpdateInput {
   @Field(() => String)
   id!: string;

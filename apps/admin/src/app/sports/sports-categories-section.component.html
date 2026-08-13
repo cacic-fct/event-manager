@@ -123,6 +123,36 @@
         <mat-hint>Reutiliza um formulário do grande evento na inscrição desta modalidade.</mat-hint>
       </mat-form-field>
 
+      <div class="subsection-title span-2">
+        <h4>Identificação dos atletas</h4>
+        <p>Defina o dado usado para reconhecer cada atleta e o que ele precisa saber antes de jogar.</p>
+      </div>
+      <mat-form-field class="span-2">
+        <mat-label>Como identificar atletas nesta modalidade?</mat-label>
+        <mat-select formControlName="athleteIdentifierMode">
+          <mat-option value="SHIRT_NUMBER">Número da camisa</mat-option>
+          <mat-option value="GAME_ACCOUNT">Nickname e conta do jogo</mat-option>
+        </mat-select>
+        <mat-hint>
+          @if (workspace.categoryForm.controls.athleteIdentifierMode.value === 'GAME_ACCOUNT') {
+            Cada atleta poderá informar o nickname exibido e a conta usada para entrar na partida.
+          } @else {
+            O número continua sendo definido pelo representante ao montar a escalação.
+          }
+        </mat-hint>
+      </mat-form-field>
+      <mat-form-field class="span-2">
+        <mat-label>Instruções para entrar na partida</mat-label>
+        <textarea
+          matInput
+          rows="5"
+          maxlength="4000"
+          formControlName="joiningInstructions"
+          placeholder="Ex.: entre no lobby 15 minutos antes e adicione a conta da organização."></textarea>
+        <mat-hint align="start">Visível aos atletas inscritos nesta modalidade.</mat-hint>
+        <mat-hint align="end">{{ workspace.categoryForm.controls.joiningInstructions.value.length }}/4000</mat-hint>
+      </mat-form-field>
+
       <app-sports-format-guide
         class="span-2"
         [currentFormat]="workspace.categoryForm.controls.format.value"

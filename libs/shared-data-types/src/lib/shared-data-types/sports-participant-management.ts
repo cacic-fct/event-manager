@@ -229,6 +229,15 @@ export class SportsRegistrationMember {
   @Field(() => SportsEligibilityStatus)
   eligibility!: SportsEligibilityStatus;
 
+  @Field(() => String, { nullable: true })
+  gameNickname?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountUrl?: string | null;
+
   @Field(() => Date, { nullable: true })
   approvedAt?: Date | null;
 

@@ -11,6 +11,7 @@ import { SportsApiService } from './sports-api.service';
 import { SportsWorkspaceService } from './sports-workspace.service';
 import {
   createAdminSportsPendingMatchActions,
+  createAdminSportsCategoryRead,
   createAdminSportsTeamRead,
   createAdminSportsTournamentRead,
 } from './sports-story.fixtures';
@@ -100,6 +101,8 @@ describe('SportsWorkspaceService', () => {
         sport: 'FUTSAL',
         format: 'SINGLE_ELIMINATION',
         status: 'ACTIVE',
+        athleteIdentifierMode: 'SHIRT_NUMBER',
+        joiningInstructions: null,
         periodsEnabled: true,
         timerRulesJson: '{}',
         scoreRulesJson: '{}',
@@ -242,5 +245,34 @@ describe('SportsWorkspaceService', () => {
     });
     expect(api.matchActionReviewQueue).toHaveBeenCalledWith('tournament-1');
     expect(workspace.pendingMatchActions()).toEqual([]);
+  });
+
+  it('loads a selected category and synchronizes dependent forms from shared story fixtures', async () => {
+    const api = TestBed.inject(SportsApiService) as unknown as {
+      category: ReturnType<typeof vi.fn>;
+    };
+    const read = createAdminSportsCategoryRead();
+    api.category = vi.fn().mockReturnValue(of(read));
+
+    await workspace.selectCategory(read.category);
+
+    expect(api.category).toHaveBeenCalledWith(read.category.id);
+    expect(workspace.categoryRead()).toEqual(read);
+    expect(workspace.selectedCategoryId()).toBe(read.category.id);
+    expect(workspace.categoryForm.controls.name.value).toBe(read.category.name);
+    expect(workspace.registrationForm.controls.categoryId.value).toBe(read.category.id);
+    expect(workspace.matchForm.controls.categoryId.value).toBe(read.category.id);
+  });
+
+  it('resets team selection and editable fields for a new team', () => {
+    workspace.teamRead.set(createAdminSportsTeamRead());
+    workspace.selectedTeamId.set('team-1');
+    workspace.teamForm.patchValue({ id: 'team-1', name: 'Equipe existente', institution: 'FCT', status: 'ACTIVE' });
+
+    workspace.newTeam();
+
+    expect(workspace.teamRead()).toBeNull();
+    expect(workspace.selectedTeamId()).toBe('');
+    expect(workspace.teamForm.getRawValue()).toEqual({ id: '', name: '', institution: '', status: 'DRAFT' });
   });
 });

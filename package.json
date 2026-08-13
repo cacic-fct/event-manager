@@ -7,7 +7,8 @@
     "e2e:backend:keycloak": "bunx nx run backend-e2e:e2e-keycloak",
     "publish:event-manager-m2m-contracts": "bunx nx run event-manager-m2m-contracts:publish",
     "publish:event-manager-public-contracts": "bunx nx run event-manager-public-contracts:publish",
-    "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts"
+    "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts",
+    "storybook:quality": "node tools/storybook-quality-audit.mjs"
   },
   "nx": {
     "targets": {

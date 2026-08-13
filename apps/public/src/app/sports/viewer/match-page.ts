@@ -11,7 +11,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Subject, Subscription, catchError, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
 import { SportsViewerApiService } from './sports-viewer-api.service';
 import { SportsViewerRealtimeService } from './sports-viewer-realtime.service';
-import type { PublicSportsMatch, SportsViewerPageState } from './sports-viewer.types';
+import type { PublicSportsMatch, PublicSportsRosterEntry, SportsViewerPageState } from './sports-viewer.types';
 import {
   isRosterPublic,
   matchLocation,
@@ -115,6 +115,12 @@ export class SportsMatchPage {
 
   playerName(name: string): string {
     return publicPlayerName(name);
+  }
+
+  rosterPlayerName(entry: PublicSportsRosterEntry): string {
+    return entry.athleteIdentifierMode === 'GAME_ACCOUNT' && entry.gameNickname
+      ? entry.gameNickname
+      : this.playerName(entry.name);
   }
 
   officialName(name: string): string {

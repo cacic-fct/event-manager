@@ -1,4 +1,4 @@
-import { SportsFormat, SportsPreset } from '@cacic-fct/shared-data-types';
+import { SportsAthleteIdentifierMode, SportsFormat, SportsPreset } from '@cacic-fct/shared-data-types';
 import { Field, Int, ObjectType } from '@nestjs/graphql';
 import {
   PublicSportsBracket,
@@ -30,6 +30,9 @@ export class PublicSportsCategory {
 
   @Field(() => SportsFormat)
   format!: SportsFormat;
+
+  @Field(() => SportsAthleteIdentifierMode)
+  athleteIdentifierMode!: SportsAthleteIdentifierMode;
 
   @Field(() => String, { nullable: true })
   rulesText?: string | null;

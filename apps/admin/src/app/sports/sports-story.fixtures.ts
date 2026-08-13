@@ -14,15 +14,23 @@ import { getDefaultSportsEmoji } from '@cacic-fct/shared-data-types/sports-metad
 
 faker.seed(20260820);
 
+/** Keeps stories and tests chronologically valid without tying them to a calendar year. */
+export function adminSportsRelativeDate(daysFromToday: number, hours = 12, minutes = 0): string {
+  const date = new Date();
+  date.setUTCHours(hours, minutes, 0, 0);
+  date.setUTCDate(date.getUTCDate() + daysFromToday);
+  return date.toISOString();
+}
+
 export const sportsStoryMajorEvent = {
   id: 'major-games-2026',
   name: 'Jogos Universitários 2026',
   emoji: '🏆',
-  startDate: '2026-09-12T11:00:00.000Z',
-  endDate: '2026-09-20T22:00:00.000Z',
+  startDate: adminSportsRelativeDate(30, 11),
+  endDate: adminSportsRelativeDate(38, 22),
   isPaymentRequired: true,
   publicationState: 'PUBLISHED',
-  createdAt: '2026-05-01T12:00:00.000Z',
+  createdAt: adminSportsRelativeDate(-90),
   majorEventPrices: [],
 };
 
@@ -54,13 +62,15 @@ export function createAdminSportsCategory(index = 0): SportsCategorySummary {
     division,
     format,
     status: 'ACTIVE',
-    registrationStartDate: '2026-08-01T12:00:00.000Z',
-    registrationEndDate: '2026-09-01T23:59:00.000Z',
+    registrationStartDate: adminSportsRelativeDate(-14),
+    registrationEndDate: adminSportsRelativeDate(20, 23, 59),
     minimumRosterSize: sport === 'TENNIS' || sport === 'CHESS' ? 1 : 5,
     maximumRosterSize: sport === 'TENNIS' || sport === 'CHESS' ? 2 : 18,
     maximumCaptains: 2,
     maximumCoaches: 1,
     allowPlayerMultipleTeams: false,
+    athleteIdentifierMode: 'SHIRT_NUMBER',
+    joiningInstructions: null,
     periodsEnabled,
     maximumPeriods: periodsEnabled ? 5 : null,
     periodLabel: periodsEnabled ? 'Período' : null,
@@ -120,7 +130,7 @@ export function createAdminSportsTournamentRead(
       selfSubscriptionAllowNoCategory: options.selfSubscriptionAllowNoCategory ?? false,
       allowPlayerMultipleTeams: false,
       revision: 7,
-      finishedAt: options.status === 'FINISHED' ? '2026-09-20T22:00:00.000Z' : null,
+      finishedAt: options.status === 'FINISHED' ? adminSportsRelativeDate(-1, 22) : null,
     },
     categories,
     teams,
@@ -155,7 +165,7 @@ export function createAdminSportsTournamentRead(
         personId: 'person-official',
         role: 'REFEREE',
         active: true,
-        assignedAt: '2026-08-10T12:00:00.000Z',
+        assignedAt: adminSportsRelativeDate(-5),
         revision: 1,
       },
     ],
@@ -215,8 +225,8 @@ export function createAdminSportsCategoryRead(category = createAdminSportsCatego
         event: {
           id: 'event-match-1',
           name: 'Atlética FCT × Faculdade B',
-          startDate: '2026-09-13T18:00:00.000Z',
-          endDate: '2026-09-13T19:30:00.000Z',
+          startDate: adminSportsRelativeDate(31, 18),
+          endDate: adminSportsRelativeDate(31, 19, 30),
           locationDescription: 'Ginásio Universitário',
         },
         categoryId: category.id,
@@ -294,7 +304,7 @@ export function createAdminSportsTeamRead(team = createAdminSportsTeam()): Sport
         personId: 'person-representative',
         person: { id: 'person-representative', name: 'Mariana Clara Santos' },
         active: true,
-        assignedAt: '2026-08-10T12:00:00.000Z',
+        assignedAt: adminSportsRelativeDate(-5),
       },
     ],
     registrations: [
@@ -317,7 +327,7 @@ export function createAdminSportsTeamRead(team = createAdminSportsTeam()): Sport
         baseRevision: 2,
         deltaJson: '{"set":{"institution":"FCT-Unesp, Campus Presidente Prudente"}}',
         reviewMessage: 'O nome da instituição também foi alterado por uma pessoa administradora.',
-        updatedAt: '2026-08-19T15:30:00.000Z',
+        updatedAt: adminSportsRelativeDate(-1, 15, 30),
       },
     ],
   };
@@ -339,7 +349,7 @@ export function createAdminSportsApplications(count = 3): SportsApplication[] {
     paymentTier: index === 0 ? 'Estudante' : null,
     imageLicenseAgreementAccepted: index === 0,
     reviewMessage: index === 1 ? 'Confirme a modalidade solicitada.' : null,
-    createdAt: new Date(Date.UTC(2026, 7, 18 - index, 14, 0)).toISOString(),
+    createdAt: adminSportsRelativeDate(-index, 14),
   }));
 }
 
@@ -357,7 +367,7 @@ export function createAdminSportsMatchReview(): SportsMatchReview {
         payloadJson: '{"side":"HOME","amount":1}',
         reviewStatus: 'PENDING',
         offline: true,
-        authoredAt: '2026-09-13T18:35:00.000Z',
+        authoredAt: adminSportsRelativeDate(31, 18, 35),
       },
     ],
     rosters: [],

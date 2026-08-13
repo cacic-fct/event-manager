@@ -70,6 +70,15 @@ function ensureStorybookGlobalStyles(): void {
       word-wrap: normal;
       direction: ltr;
     }
+
+    html[data-storybook-motion='reduced'] *,
+    html[data-storybook-motion='reduced'] *::before,
+    html[data-storybook-motion='reduced'] *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   `;
   document.head.append(style);
 }
@@ -263,6 +272,7 @@ const preview: Preview = {
       const theme = context.globals['theme'] === 'dark' ? 'dark' : 'light';
       const network = context.globals['network'] === 'offline' ? 'offline' : 'online';
       const serviceWorker = context.globals['serviceWorker'] === 'enabled' ? 'enabled' : 'disabled';
+      const motion = context.globals['motion'] === 'reduced' ? 'reduced' : 'full';
       ensureStorybookGlobalStyles();
       ensureStorybookTurnstile();
       applyBrowserGlobals(network, serviceWorker);
@@ -270,6 +280,7 @@ const preview: Preview = {
       document.documentElement.dataset['storybookTheme'] = theme;
       document.documentElement.dataset['storybookNetwork'] = network;
       document.documentElement.dataset['storybookServiceWorker'] = serviceWorker;
+      document.documentElement.dataset['storybookMotion'] = motion;
       return story();
     },
   ],
@@ -290,7 +301,21 @@ const preview: Preview = {
         desktop: { name: 'Desktop', styles: { width: '1280px', height: '900px' } },
       },
     },
-    controls: { expanded: true },
+    controls: {
+      expanded: true,
+      sort: 'requiredFirst',
+      matchers: {
+        color: /(background|color)$/i,
+        date: /Date$/i,
+      },
+    },
+    docs: { toc: true },
+    options: {
+      storySort: {
+        method: 'alphabetical',
+        order: ['CACiC Eventos', ['Workspace', 'Sports', 'Attendance', 'Calendar', 'Events', 'Profile', 'Shared']],
+      },
+    },
     a11y: { test: 'todo' },
   },
   globalTypes: {
@@ -324,6 +349,17 @@ const preview: Preview = {
         items: [
           { value: 'enabled', title: 'Service worker' },
           { value: 'disabled', title: 'No service worker' },
+        ],
+      },
+    },
+    motion: {
+      description: 'Motion preference',
+      defaultValue: 'full',
+      toolbar: {
+        icon: 'accessibility',
+        items: [
+          { value: 'full', title: 'Full motion' },
+          { value: 'reduced', title: 'Reduced motion' },
         ],
       },
     },
