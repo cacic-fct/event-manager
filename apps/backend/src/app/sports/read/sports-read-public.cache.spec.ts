@@ -1,8 +1,5 @@
 import { SportsReadPublicCache } from './sports-read-public.cache';
-import {
-  sportsCachedPublicMatch,
-  sportsCachedPublicTournament,
-} from '../testing/sports-backend.fixtures';
+import { sportsCachedPublicMatch, sportsCachedPublicTournament } from '../testing/sports-backend.fixtures';
 
 describe('SportsReadPublicCache', () => {
   const redis = { mget: jest.fn(), get: jest.fn(), eval: jest.fn() };
@@ -42,7 +39,9 @@ describe('SportsReadPublicCache', () => {
   ])('treats missing, malformed, stale, or mismatched entries as cache misses', async (serialized, version) => {
     redis.mget.mockResolvedValue([serialized, version]);
 
-    await expect(new SportsReadPublicCache(redis as never).getCachedPublicTournament('tournament-1')).resolves.toBeNull();
+    await expect(
+      new SportsReadPublicCache(redis as never).getCachedPublicTournament('tournament-1'),
+    ).resolves.toBeNull();
   });
 
   it('reads the version and treats a missing version as zero', async () => {

@@ -57,7 +57,10 @@ describe('SportsCategoryAdminService', () => {
       }),
     );
     expect(auditLog.record).toHaveBeenCalledWith(
-      expect.objectContaining({ operation: AuditLogOperation.CREATE, after: expect.objectContaining({ id: 'category-1' }) }),
+      expect.objectContaining({
+        operation: AuditLogOperation.CREATE,
+        after: expect.objectContaining({ id: 'category-1' }),
+      }),
       tx,
     );
   });
@@ -79,7 +82,9 @@ describe('SportsCategoryAdminService', () => {
   });
 
   it('rejects missing tournaments and duplicate category divisions', async () => {
-    prisma.sportsTournament.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ majorEventId: 'major-event-1' });
+    prisma.sportsTournament.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ majorEventId: 'major-event-1' });
 
     await expect(service.createCategory(categoryInput(), actor)).rejects.toBeInstanceOf(NotFoundException);
     tx.sportsCategory.findFirst.mockResolvedValue({ id: 'duplicate' });
@@ -100,9 +105,9 @@ describe('SportsCategoryAdminService', () => {
     tx.sportsCategory.findFirst.mockResolvedValue(null);
     tx.eventGroup.findFirst.mockResolvedValue(null);
 
-    await expect(
-      service.createCategory(categoryInput({ eventGroupId: 'event-group-used' }), actor),
-    ).rejects.toThrow('O grupo de eventos não existe ou já pertence a outra modalidade.');
+    await expect(service.createCategory(categoryInput({ eventGroupId: 'event-group-used' }), actor)).rejects.toThrow(
+      'O grupo de eventos não existe ou já pertence a outra modalidade.',
+    );
   });
 
   it('rejects invalid overall scoring rules before persistence', async () => {
@@ -134,7 +139,10 @@ describe('SportsCategoryAdminService', () => {
       data: { name: 'Futsal Universitário', emoji: '🥅', updatedById: 'admin-1' },
     });
     expect(auditLog.record).toHaveBeenCalledWith(
-      expect.objectContaining({ operation: AuditLogOperation.UPDATE, before: expect.objectContaining({ revision: 2 }) }),
+      expect.objectContaining({
+        operation: AuditLogOperation.UPDATE,
+        before: expect.objectContaining({ revision: 2 }),
+      }),
       tx,
     );
   });
@@ -146,20 +154,12 @@ describe('SportsCategoryAdminService', () => {
     tx.sportsCategory.updateMany.mockResolvedValue({ count: 1 });
     tx.sportsCategory.findUniqueOrThrow.mockResolvedValue(existing);
 
-    await service.updateCategory(
-      'category-1',
-      { expectedRevision: 2, status: SportsCategoryStatus.FINISHED },
-      actor,
-    );
+    await service.updateCategory('category-1', { expectedRevision: 2, status: SportsCategoryStatus.FINISHED }, actor);
     expect(tx.sportsCategory.updateMany).toHaveBeenLastCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ finishedAt: expect.any(Date) }) }),
     );
 
-    await service.updateCategory(
-      'category-1',
-      { expectedRevision: 2, status: SportsCategoryStatus.ACTIVE },
-      actor,
-    );
+    await service.updateCategory('category-1', { expectedRevision: 2, status: SportsCategoryStatus.ACTIVE }, actor);
     expect(tx.sportsCategory.updateMany).toHaveBeenLastCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ finishedAt: null }) }),
     );

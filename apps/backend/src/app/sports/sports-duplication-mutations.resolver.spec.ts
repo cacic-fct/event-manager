@@ -182,7 +182,9 @@ describe('SportsMutationsResolverSupport', () => {
   it('parses valid overall scoring rules and rejects invalid ones', () => {
     expect(service.scoring()).toEqual({});
     expect(service.scoring(' ')).toEqual({});
-    expect(service.scoring(JSON.stringify({ mode: 'MATCH_RESULT', match: { win: 3, draw: 1, loss: 0 } }))).toMatchObject({
+    expect(
+      service.scoring(JSON.stringify({ mode: 'MATCH_RESULT', match: { win: 3, draw: 1, loss: 0 } })),
+    ).toMatchObject({
       mode: 'MATCH_RESULT',
     });
     expect(() => service.scoring('{"mode":"INVALID"}')).toThrow(BadRequestException);
@@ -267,7 +269,12 @@ describe('SportsDuplicationMutationsResolver', () => {
   ])('clones a category with registrations=%s officials=%s', async (includeRegistrations, includeOfficials, calls) => {
     await expect(
       resolver.cloneCategory(
-        { sourceCategoryId: 'source', destinationTournamentId: 'destination', includeRegistrations, includeOfficials } as never,
+        {
+          sourceCategoryId: 'source',
+          destinationTournamentId: 'destination',
+          includeRegistrations,
+          includeOfficials,
+        } as never,
         {} as never,
       ),
     ).resolves.toBe('category-clone');
@@ -280,7 +287,12 @@ describe('SportsDuplicationMutationsResolver', () => {
   ])('clones a team with representatives=%s members=%s', async (includeRepresentatives, includeMembers, calls) => {
     await expect(
       resolver.cloneTeam(
-        { sourceTeamId: 'source', destinationTournamentId: 'destination', includeRepresentatives, includeMembers } as never,
+        {
+          sourceTeamId: 'source',
+          destinationTournamentId: 'destination',
+          includeRepresentatives,
+          includeMembers,
+        } as never,
         {} as never,
       ),
     ).resolves.toBe('team-clone');

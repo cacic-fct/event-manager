@@ -40,15 +40,13 @@ describe('SportsReadCurrentUserService', () => {
 
     const result = await service().currentUserTournament({ tournamentId: 'tournament-1' }, 'person-1');
 
-    expect(result.orderedMatches.map((match) => match.id)).toEqual([
-      'player-match',
-      'team-match',
-      'unrelated-earlier',
-    ]);
+    expect(result.orderedMatches.map((match) => match.id)).toEqual(['player-match', 'team-match', 'unrelated-earlier']);
     expect(result.imageLicenseAgreementAccepted).toBe(true);
     expect(publicReader.publicTournament).toHaveBeenCalledWith({ tournamentId: 'tournament-1' });
     expect(prisma.sportsTeamMember.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ participant: { personId: 'person-1', deletedAt: null } }) }),
+      expect.objectContaining({
+        where: expect.objectContaining({ participant: { personId: 'person-1', deletedAt: null } }),
+      }),
     );
   });
 
@@ -63,11 +61,7 @@ describe('SportsReadCurrentUserService', () => {
 
     const result = await service().currentUserTournament({ majorEventId: 'major-event-1' }, 'person-1');
 
-    expect(result.orderedMatches.map((match) => match.id)).toEqual([
-      'player-match',
-      'team-match',
-      'unrelated-earlier',
-    ]);
+    expect(result.orderedMatches.map((match) => match.id)).toEqual(['player-match', 'team-match', 'unrelated-earlier']);
     expect(result.imageLicenseAgreementAccepted).toBe(false);
   });
 

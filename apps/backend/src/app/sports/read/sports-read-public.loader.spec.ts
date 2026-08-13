@@ -93,9 +93,7 @@ describe('SportsReadPublicLoader', () => {
     prisma.sportsCategory.findUnique.mockResolvedValue({ tournamentId: 'tournament-1' });
     prisma.sportsOfficialAssignment.findMany.mockResolvedValue([]);
 
-    await expect(loader.loadPublicOfficials('category-1', ['match-1'])).resolves.toEqual(
-      new Map([['match-1', []]]),
-    );
+    await expect(loader.loadPublicOfficials('category-1', ['match-1'])).resolves.toEqual(new Map([['match-1', []]]));
     expect(prisma.sportsOfficialAssignment.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ tournamentId: 'tournament-1' }) }),
     );
@@ -109,10 +107,22 @@ describe('SportsReadPublicLoader', () => {
   it('combines tournament, category, and match officials without leaking duplicates or unrelated scopes', async () => {
     prisma.sportsOfficialAssignment.findMany.mockResolvedValue([
       sportsPublicOfficialAssignmentRecord(),
-      sportsPublicOfficialAssignmentRecord({ categoryId: 'category-1', role: 'TABLE', person: { name: 'Daniel Souza' } }),
-      sportsPublicOfficialAssignmentRecord({ categoryId: 'category-2', role: 'TABLE', person: { name: 'Outra Pessoa' } }),
+      sportsPublicOfficialAssignmentRecord({
+        categoryId: 'category-1',
+        role: 'TABLE',
+        person: { name: 'Daniel Souza' },
+      }),
+      sportsPublicOfficialAssignmentRecord({
+        categoryId: 'category-2',
+        role: 'TABLE',
+        person: { name: 'Outra Pessoa' },
+      }),
       sportsPublicOfficialAssignmentRecord({ categoryId: 'category-1', matchId: 'match-1' }),
-      sportsPublicOfficialAssignmentRecord({ categoryId: 'category-1', matchId: 'match-2', person: { name: 'Elisa Rocha' } }),
+      sportsPublicOfficialAssignmentRecord({
+        categoryId: 'category-1',
+        matchId: 'match-2',
+        person: { name: 'Elisa Rocha' },
+      }),
     ]);
 
     const result = await loader.loadPublicOfficialsForTournament('tournament-1', [

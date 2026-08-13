@@ -81,10 +81,7 @@ describe('SportsVenueAdminService', () => {
       prisma.sportsTournament.findFirst.mockResolvedValue(null);
 
       await expect(
-        service.createVenue(
-          { tournamentId: 'missing', placePresetId: 'place-1', name: 'Ginásio' },
-          actor,
-        ),
+        service.createVenue({ tournamentId: 'missing', placePresetId: 'place-1', name: 'Ginásio' }, actor),
       ).rejects.toBeInstanceOf(NotFoundException);
 
       expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -117,10 +114,7 @@ describe('SportsVenueAdminService', () => {
       tx.placePreset.findFirst.mockResolvedValue({ id: 'place-1' });
 
       await expect(
-        service.createVenue(
-          { tournamentId: 'tournament-1', placePresetId: 'place-1', name: 'Ginásio' },
-          actor,
-        ),
+        service.createVenue({ tournamentId: 'tournament-1', placePresetId: 'place-1', name: 'Ginásio' }, actor),
       ).rejects.toThrow('Torneio ou local não encontrado.');
     });
   });

@@ -1,9 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { SportsRosterRole } from '@prisma/client';
-import {
-  SportsMatchRosterSupportService,
-  type SportsRosterEntryWrite,
-} from './sports-match-roster-support.service';
+import { SportsMatchRosterSupportService, type SportsRosterEntryWrite } from './sports-match-roster-support.service';
 
 class TestRosterSupport extends SportsMatchRosterSupportService {
   normalize(entries: SportsRosterEntryWrite[]) {

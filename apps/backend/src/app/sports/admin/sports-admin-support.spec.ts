@@ -66,7 +66,9 @@ describe('SportsAdminSupport', () => {
 
   it('accepts coherent roster limits and a named custom sport', () => {
     expect(() => support.roster(rosterInput)).not.toThrow();
-    expect(() => support.roster({ ...rosterInput, sport: SportsPreset.OTHER, customSportName: 'Peteca' })).not.toThrow();
+    expect(() =>
+      support.roster({ ...rosterInput, sport: SportsPreset.OTHER, customSportName: 'Peteca' }),
+    ).not.toThrow();
   });
 
   it.each(['minimumRosterSize', 'maximumRosterSize', 'maximumCaptains', 'maximumCoaches', 'maximumPeriods'])(

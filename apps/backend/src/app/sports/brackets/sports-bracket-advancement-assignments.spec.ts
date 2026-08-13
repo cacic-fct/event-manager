@@ -42,7 +42,14 @@ describe('SportsBracketAdvancementAssignments', () => {
     });
     const tx = transaction(current, [{ count: 1 }]);
 
-    const result = await service.assign(tx as never, 'target-1', side, 'registration-1', 'admin-1', 'BRACKET_ADVANCEMENT');
+    const result = await service.assign(
+      tx as never,
+      'target-1',
+      side,
+      'registration-1',
+      'admin-1',
+      'BRACKET_ADVANCEMENT',
+    );
 
     expect(tx.sportsMatch.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -58,7 +65,14 @@ describe('SportsBracketAdvancementAssignments', () => {
     const tx = transaction(current, [{ count: 0 }]);
 
     await expect(
-      service.assign(tx as never, 'match-1', SportsBracketSide.HOME, 'registration-1', 'admin-1', 'BRACKET_ADVANCEMENT'),
+      service.assign(
+        tx as never,
+        'match-1',
+        SportsBracketSide.HOME,
+        'registration-1',
+        'admin-1',
+        'BRACKET_ADVANCEMENT',
+      ),
     ).resolves.toHaveLength(1);
   });
 
@@ -67,7 +81,14 @@ describe('SportsBracketAdvancementAssignments', () => {
     const tx = transaction(current, [{ count: 0 }]);
 
     await expect(
-      service.assign(tx as never, 'match-1', SportsBracketSide.AWAY, 'registration-1', 'admin-1', 'BRACKET_ADVANCEMENT'),
+      service.assign(
+        tx as never,
+        'match-1',
+        SportsBracketSide.AWAY,
+        'registration-1',
+        'admin-1',
+        'BRACKET_ADVANCEMENT',
+      ),
     ).rejects.toThrow('A vaga da chave foi alterada');
   });
 
@@ -109,7 +130,9 @@ describe('SportsBracketAdvancementAssignments', () => {
       expect.objectContaining({ data: expect.objectContaining({ awayRegistrationId: null }) }),
     );
     expect(tx.sportsMatchRoster.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ copiedFromRoster: { is: { matchId: 'source-1' } } }) }),
+      expect.objectContaining({
+        where: expect.objectContaining({ copiedFromRoster: { is: { matchId: 'source-1' } } }),
+      }),
     );
     expect(result).toHaveLength(1);
   });

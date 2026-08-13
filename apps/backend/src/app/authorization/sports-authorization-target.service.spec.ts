@@ -73,10 +73,7 @@ describe('SportsAuthorizationTargetService', () => {
     });
     prisma.sportsTeam.findUnique.mockResolvedValue({
       tournament: { majorEventId: 'major-2' },
-      registrations: [
-        { category: { eventGroupId: 'group-2' } },
-        { category: { eventGroupId: 'group-3' } },
-      ],
+      registrations: [{ category: { eventGroupId: 'group-2' } }, { category: { eventGroupId: 'group-3' } }],
     });
     prisma.sportsRegistration.findUnique.mockResolvedValue({
       category: { eventGroupId: 'group-4', tournament: { majorEventId: 'major-3' } },
@@ -142,9 +139,7 @@ describe('SportsAuthorizationTargetService', () => {
       registrations: [],
     });
     prisma.sportsTeamChangeRequest.findUnique.mockResolvedValueOnce({ teamId: 'team-1' }).mockResolvedValueOnce(null);
-    prisma.sportsTeamRepresentative.findUnique
-      .mockResolvedValueOnce({ teamId: 'team-1' })
-      .mockResolvedValueOnce(null);
+    prisma.sportsTeamRepresentative.findUnique.mockResolvedValueOnce({ teamId: 'team-1' }).mockResolvedValueOnce(null);
 
     await service.changeRequest(target, 'request-1');
     await service.changeRequest(target, 'missing');
@@ -159,10 +154,7 @@ describe('SportsAuthorizationTargetService', () => {
     prisma.sportsPlayerApplication.findUnique
       .mockResolvedValueOnce({
         tournamentId: 'tournament-1',
-        categoryChoices: [
-          { category: { eventGroupId: 'group-1' } },
-          { category: { eventGroupId: 'group-2' } },
-        ],
+        categoryChoices: [{ category: { eventGroupId: 'group-1' } }, { category: { eventGroupId: 'group-2' } }],
       })
       .mockResolvedValueOnce(null);
     prisma.sportsTournament.findUnique.mockResolvedValue({ majorEventId: 'major-1' });

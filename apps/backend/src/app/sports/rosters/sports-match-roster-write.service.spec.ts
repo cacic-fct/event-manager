@@ -31,9 +31,7 @@ describe('SportsMatchRosterWriteService', () => {
   });
 
   it('creates a submitted roster, replaces its live entries, audits, and publishes the mutation', async () => {
-    tx.sportsMatchRosterEntry.findFirst
-      .mockResolvedValueOnce({ id: 'entry-player' })
-      .mockResolvedValueOnce(null);
+    tx.sportsMatchRosterEntry.findFirst.mockResolvedValueOnce({ id: 'entry-player' }).mockResolvedValueOnce(null);
 
     const result = await service.upsert(sportsRosterWriteInput() as never, 'actor-1', actor as never, false);
 
@@ -70,11 +68,7 @@ describe('SportsMatchRosterWriteService', () => {
       expect.objectContaining({ operation: AuditLogOperation.CREATE, summary: 'Escalação enviada para análise.' }),
       tx,
     );
-    expect(mutationEvents.publishRosterMutation).toHaveBeenCalledWith(
-      'match-1',
-      'ROSTER_SUBMITTED',
-      'roster-1',
-    );
+    expect(mutationEvents.publishRosterMutation).toHaveBeenCalledWith('match-1', 'ROSTER_SUBMITTED', 'roster-1');
   });
 
   it('updates and approves an existing roster for a trusted administrator', async () => {
@@ -149,7 +143,10 @@ describe('SportsMatchRosterWriteService', () => {
     ],
     [
       'ineligible member',
-      () => tx.sportsRegistrationMember.findMany.mockResolvedValue([{ id: 'member-player', role: SportsRosterRole.PLAYER }]),
+      () =>
+        tx.sportsRegistrationMember.findMany.mockResolvedValue([
+          { id: 'member-player', role: SportsRosterRole.PLAYER },
+        ]),
       BadRequestException,
     ],
     [
@@ -163,10 +160,15 @@ describe('SportsMatchRosterWriteService', () => {
     ],
     [
       'roster size exceeded',
-      () => tx.sportsMatch.findFirst.mockResolvedValue(sportsRosterPersistenceMatch({ category: {
-        ...sportsRosterPersistenceMatch().category as object,
-        maximumRosterSize: 0,
-      } })),
+      () =>
+        tx.sportsMatch.findFirst.mockResolvedValue(
+          sportsRosterPersistenceMatch({
+            category: {
+              ...(sportsRosterPersistenceMatch().category as object),
+              maximumRosterSize: 0,
+            },
+          }),
+        ),
       BadRequestException,
     ],
   ])('rejects a %s', async (_name, arrange, error, customInput = sportsRosterWriteInput()) => {
@@ -216,7 +218,9 @@ describe('SportsMatchRosterWriteService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status,
-          entries: { updateMany: { where: { deletedAt: null }, data: { status: entryStatus, updatedById: 'actor-1' } } },
+          entries: {
+            updateMany: { where: { deletedAt: null }, data: { status: entryStatus, updatedById: 'actor-1' } },
+          },
         }),
       }),
     );
@@ -229,9 +233,9 @@ describe('SportsMatchRosterWriteService', () => {
   });
 
   it('rejects review for a missing or non-submitted roster', async () => {
-    tx.sportsMatchRoster.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(
-      sportsRosterPersistenceRecord({ status: SportsRosterStatus.APPROVED }),
-    );
+    tx.sportsMatchRoster.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(sportsRosterPersistenceRecord({ status: SportsRosterStatus.APPROVED }));
 
     await expect(service.review('missing', 'APPROVE', 'actor-1', actor as never)).rejects.toBeInstanceOf(
       NotFoundException,

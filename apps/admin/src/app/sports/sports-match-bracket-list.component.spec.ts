@@ -5,7 +5,10 @@ type BracketListInternals = {
   stringValue(value: unknown): string;
   numberValue(value: unknown, fallback: number): number;
   matchState(value: unknown, fallback: 'SCHEDULED'): string;
-  previewBracketTeam(read: unknown, registrationId: string): { id: string; name: string; logoUrl: string | null } | null;
+  previewBracketTeam(
+    read: unknown,
+    registrationId: string,
+  ): { id: string; name: string; logoUrl: string | null } | null;
 };
 
 describe('SportsMatchBracketListComponent helpers', () => {

@@ -1,10 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import {
-  AuditLogOperation,
-  SportsEligibilityStatus,
-  SportsRegistrationStatus,
-  SportsRosterRole,
-} from '@prisma/client';
+import { AuditLogOperation, SportsEligibilityStatus, SportsRegistrationStatus, SportsRosterRole } from '@prisma/client';
 import {
   sportsAdminRegistrationCategory,
   sportsAdminRegistrationRecord,
@@ -46,7 +41,10 @@ describe('SportsRegistrationAdminService', () => {
         }),
       });
       expect(auditLog.record).toHaveBeenCalledWith(
-        expect.objectContaining({ operation: AuditLogOperation.CREATE, scope: expect.objectContaining({ eventGroupId: 'event-group-1' }) }),
+        expect.objectContaining({
+          operation: AuditLogOperation.CREATE,
+          scope: expect.objectContaining({ eventGroupId: 'event-group-1' }),
+        }),
         tx,
       );
     });
@@ -103,7 +101,9 @@ describe('SportsRegistrationAdminService', () => {
       ).rejects.toBeInstanceOf(NotFoundException);
 
       prisma.sportsCategory.findFirst.mockResolvedValue({ eventGroupId: 'event-group-1' });
-      tx.sportsTeam.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(sportsAdminTeamRecord({ tournamentId: 'other' }));
+      tx.sportsTeam.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(sportsAdminTeamRecord({ tournamentId: 'other' }));
       await expect(
         service.createRegistration({ teamId: 'missing', categoryId: 'category-1' }, actor as never),
       ).rejects.toBeInstanceOf(NotFoundException);
@@ -123,7 +123,9 @@ describe('SportsRegistrationAdminService', () => {
       'marks approval metadata when status becomes %s',
       async (status) => {
         prisma.sportsRegistration.findFirst.mockResolvedValue(sportsAdminRegistrationRecord());
-        tx.sportsRegistration.findUniqueOrThrow.mockResolvedValue(sportsAdminRegistrationRecord({ status, revision: 3 }));
+        tx.sportsRegistration.findUniqueOrThrow.mockResolvedValue(
+          sportsAdminRegistrationRecord({ status, revision: 3 }),
+        );
 
         await service.updateRegistration('registration-1', { expectedRevision: 2, status }, actor as never);
 
@@ -164,7 +166,15 @@ describe('SportsRegistrationAdminService', () => {
         sportsAdminRegistrationRecord({
           formSchemaSnapshot: {
             version: 1,
-            elements: [{ id: 'course', type: 'singleChoice', title: 'Curso', required: true, options: [{ id: 'law', label: 'Direito' }] }],
+            elements: [
+              {
+                id: 'course',
+                type: 'singleChoice',
+                title: 'Curso',
+                required: true,
+                options: [{ id: 'law', label: 'Direito' }],
+              },
+            ],
           },
         }),
       );
@@ -177,7 +187,9 @@ describe('SportsRegistrationAdminService', () => {
       );
 
       expect(tx.sportsRegistration.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ formAnswers: [{ elementId: 'course', value: 'law' }] }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ formAnswers: [{ elementId: 'course', value: 'law' }] }),
+        }),
       );
     });
 
@@ -242,7 +254,9 @@ describe('SportsRegistrationAdminService', () => {
     it('returns an existing role assignment without duplicating it', async () => {
       const existing = { id: 'assignment-1' };
       tx.sportsRegistration.findFirst.mockResolvedValue(sportsAdminRegistrationRecord());
-      tx.sportsTeamMember.findFirst.mockResolvedValue(sportsAdminTeamMemberRecord({ participant: { status: 'ACTIVE' } }));
+      tx.sportsTeamMember.findFirst.mockResolvedValue(
+        sportsAdminTeamMemberRecord({ participant: { status: 'ACTIVE' } }),
+      );
       tx.sportsRegistrationMember.findFirst.mockResolvedValue(existing);
 
       await expect(
@@ -272,7 +286,9 @@ describe('SportsRegistrationAdminService', () => {
           actor as never,
         ),
       ).rejects.toBeInstanceOf(NotFoundException);
-      tx.sportsTeamMember.findFirst.mockResolvedValue(sportsAdminTeamMemberRecord({ participant: { status: 'ACTIVE' } }));
+      tx.sportsTeamMember.findFirst.mockResolvedValue(
+        sportsAdminTeamMemberRecord({ participant: { status: 'ACTIVE' } }),
+      );
       tx.sportsRegistrationMember.count.mockResolvedValue(1);
       await expect(
         service.assignCategoryRole(
@@ -290,7 +306,9 @@ describe('SportsRegistrationAdminService', () => {
       await expect(service.deleteRegistration('registration-1', 2, actor as never)).resolves.toBeUndefined();
 
       expect(tx.sportsRegistration.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: SportsRegistrationStatus.WITHDRAWN, deletedAt: expect.any(Date) }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ status: SportsRegistrationStatus.WITHDRAWN, deletedAt: expect.any(Date) }),
+        }),
       );
       expect(tx.sportsRegistrationMember.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ deletedAt: expect.any(Date) }) }),

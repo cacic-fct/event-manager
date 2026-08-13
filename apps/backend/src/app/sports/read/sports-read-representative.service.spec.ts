@@ -136,7 +136,11 @@ describe('SportsReadRepresentativeService', () => {
     expect(result.team.logoUrl).toBe('/api/sports/teams/team-1/logo/public-sha');
     expect(result.registrations[0]?.categoryEmoji).toBe('🏅');
     expect(result.matches[0]).toEqual(
-      expect.objectContaining({ categoryEmoji: '🏅', homeTeam: expect.objectContaining({ id: 'team-1' }), awayTeam: null }),
+      expect.objectContaining({
+        categoryEmoji: '🏅',
+        homeTeam: expect.objectContaining({ id: 'team-1' }),
+        awayTeam: null,
+      }),
     );
     expect(JSON.parse(result.queuedChanges[0]?.deltaJson ?? '{}')).toEqual({
       set: { name: 'Equipe renovada' },

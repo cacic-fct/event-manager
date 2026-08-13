@@ -8,7 +8,13 @@ import {
 import { SportsMatchOperationCommandValidation } from './sports-match-operation-command-validation';
 
 class TestCommandValidation extends SportsMatchOperationCommandValidation {
-  validate(type: SportsMatchActionType, payload: unknown, state: SportsMatchState, kind: 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER' = 'OFFICIAL', overrides: Record<string, unknown> = {}) {
+  validate(
+    type: SportsMatchActionType,
+    payload: unknown,
+    state: SportsMatchState,
+    kind: 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER' = 'OFFICIAL',
+    overrides: Record<string, unknown> = {},
+  ) {
     const base = sportsMatchProjectionContext();
     const category = { ...(base['category'] as Record<string, unknown>) };
     if ('periodsEnabled' in overrides) {
@@ -25,10 +31,19 @@ class TestCommandValidation extends SportsMatchOperationCommandValidation {
 }
 
 describe('SportsMatchOperationCommandValidation', () => {
-  const service = new TestCommandValidation({} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+  const service = new TestCommandValidation(
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
 
   it('accepts a valid live score delta', () => {
-    expect(() => service.validate(SportsMatchActionType.SCORE_DELTA, { side: 'HOME', amount: 1 }, SportsMatchState.LIVE)).not.toThrow();
+    expect(() =>
+      service.validate(SportsMatchActionType.SCORE_DELTA, { side: 'HOME', amount: 1 }, SportsMatchState.LIVE),
+    ).not.toThrow();
   });
 
   it.each([SportsMatchActionType.SCORE_DELTA, SportsMatchActionType.PERIOD_ROLL])(
@@ -43,18 +58,31 @@ describe('SportsMatchOperationCommandValidation', () => {
     [{ occurrenceId: 'x'.repeat(101), kind: 'CARD' }, 'Informe um identificador válido para a ocorrência.'],
     [{ occurrenceId: 'occurrence-1', kind: '' }, 'Informe o tipo da ocorrência.'],
     [{ occurrenceId: 'occurrence-1', kind: 'x'.repeat(81) }, 'Informe o tipo da ocorrência.'],
-    [{ occurrenceId: 'occurrence-1', kind: 'CARD', note: 'x'.repeat(1001) }, 'A observação da ocorrência deve ter no máximo 1000 caracteres.'],
+    [
+      { occurrenceId: 'occurrence-1', kind: 'CARD', note: 'x'.repeat(1001) },
+      'A observação da ocorrência deve ter no máximo 1000 caracteres.',
+    ],
   ])('validates occurrence identifiers, kinds, and notes', (payload, message) => {
     expect(() => service.validate(SportsMatchActionType.OCCURRENCE, payload, SportsMatchState.LIVE)).toThrow(message);
   });
 
   it('accepts a bounded occurrence', () => {
-    expect(() => service.validate(SportsMatchActionType.OCCURRENCE, { occurrenceId: 'occ-1', kind: 'CARD', note: 'Aviso' }, SportsMatchState.LIVE)).not.toThrow();
+    expect(() =>
+      service.validate(
+        SportsMatchActionType.OCCURRENCE,
+        { occurrenceId: 'occ-1', kind: 'CARD', note: 'Aviso' },
+        SportsMatchState.LIVE,
+      ),
+    ).not.toThrow();
   });
 
   it('restricts stopwatch reconciliation to officials or admins during an active match', () => {
-    expect(() => service.validate(SportsMatchActionType.TIMER_RECONCILE, {}, SportsMatchState.LIVE, 'LINEUP_MANAGER')).toThrow(BadRequestException);
-    expect(() => service.validate(SportsMatchActionType.TIMER_RECONCILE, {}, SportsMatchState.SCHEDULED)).toThrow(ConflictException);
+    expect(() =>
+      service.validate(SportsMatchActionType.TIMER_RECONCILE, {}, SportsMatchState.LIVE, 'LINEUP_MANAGER'),
+    ).toThrow(BadRequestException);
+    expect(() => service.validate(SportsMatchActionType.TIMER_RECONCILE, {}, SportsMatchState.SCHEDULED)).toThrow(
+      ConflictException,
+    );
   });
 
   it('validates a device timer reconciliation through the projector contract', () => {
@@ -73,14 +101,20 @@ describe('SportsMatchOperationCommandValidation', () => {
   });
 
   it('rejects period rolls for categories without periods', () => {
-    expect(() => service.validate(SportsMatchActionType.PERIOD_ROLL, {}, SportsMatchState.LIVE, 'OFFICIAL', { periodsEnabled: false })).toThrow(
-      'Esta modalidade não utiliza períodos ou sets.',
-    );
+    expect(() =>
+      service.validate(SportsMatchActionType.PERIOD_ROLL, {}, SportsMatchState.LIVE, 'OFFICIAL', {
+        periodsEnabled: false,
+      }),
+    ).toThrow('Esta modalidade não utiliza períodos ou sets.');
   });
 
   it('allows only admins to correct a non-active final scoreboard', () => {
-    expect(() => service.validate(SportsMatchActionType.SCORE_CORRECTION, { scoreboard: {} }, SportsMatchState.FINISHED)).toThrow(ConflictException);
-    expect(() => service.validate(SportsMatchActionType.SCORE_CORRECTION, { scoreboard: {} }, SportsMatchState.FINISHED, 'ADMIN')).not.toThrow();
+    expect(() =>
+      service.validate(SportsMatchActionType.SCORE_CORRECTION, { scoreboard: {} }, SportsMatchState.FINISHED),
+    ).toThrow(ConflictException);
+    expect(() =>
+      service.validate(SportsMatchActionType.SCORE_CORRECTION, { scoreboard: {} }, SportsMatchState.FINISHED, 'ADMIN'),
+    ).not.toThrow();
   });
 
   it.each([
@@ -93,15 +127,17 @@ describe('SportsMatchOperationCommandValidation', () => {
   });
 
   it('requires both registrations before starting', () => {
-    expect(() => service.validate(SportsMatchActionType.START, {}, SportsMatchState.SCHEDULED, 'OFFICIAL', { awayRegistrationId: null })).toThrow(
-      'Defina as duas equipes antes de iniciar a partida.',
-    );
+    expect(() =>
+      service.validate(SportsMatchActionType.START, {}, SportsMatchState.SCHEDULED, 'OFFICIAL', {
+        awayRegistrationId: null,
+      }),
+    ).toThrow('Defina as duas equipes antes de iniciar a partida.');
   });
 
   it('limits lineup-manager forfeits to pre-match states', () => {
-    expect(() => service.validate(SportsMatchActionType.FORFEIT, validOutcome(), SportsMatchState.LIVE, 'LINEUP_MANAGER')).toThrow(
-      'Capitães e técnicos só podem desistir antes do início da partida.',
-    );
+    expect(() =>
+      service.validate(SportsMatchActionType.FORFEIT, validOutcome(), SportsMatchState.LIVE, 'LINEUP_MANAGER'),
+    ).toThrow('Capitães e técnicos só podem desistir antes do início da partida.');
   });
 
   it.each([
@@ -113,7 +149,9 @@ describe('SportsMatchOperationCommandValidation', () => {
   });
 
   it('wraps malformed scoreboard corrections as client errors', () => {
-    expect(() => service.validate(SportsMatchActionType.SCORE_CORRECTION, { scoreboard: 'invalid' }, SportsMatchState.LIVE)).toThrow(BadRequestException);
+    expect(() =>
+      service.validate(SportsMatchActionType.SCORE_CORRECTION, { scoreboard: 'invalid' }, SportsMatchState.LIVE),
+    ).toThrow(BadRequestException);
   });
 
   it('validates an explicit stopwatch snapshot during score correction', () => {
@@ -152,16 +190,26 @@ describe('SportsMatchOperationCommandValidation', () => {
         'ADMIN',
       ),
     ).not.toThrow();
-    expect(() => service.validate(SportsMatchActionType.RESCHEDULE, {}, SportsMatchState.SCHEDULED, 'ADMIN')).toThrow(BadRequestException);
+    expect(() => service.validate(SportsMatchActionType.RESCHEDULE, {}, SportsMatchState.SCHEDULED, 'ADMIN')).toThrow(
+      BadRequestException,
+    );
   });
 
   it('rejects inconsistent draw and winner outcomes', () => {
-    expect(() => service.validate(SportsMatchActionType.FINALIZE, { draw: true, winnerRegistrationId: 'home' }, SportsMatchState.LIVE)).toThrow(
-      'Um empate não pode possuir vencedor ou perdedor.',
-    );
-    expect(() => service.validate(SportsMatchActionType.FINALIZE, { winnerRegistrationId: 'home', loserRegistrationId: 'home' }, SportsMatchState.LIVE)).toThrow(
-      'Revise as equipes vencedora e perdedora.',
-    );
+    expect(() =>
+      service.validate(
+        SportsMatchActionType.FINALIZE,
+        { draw: true, winnerRegistrationId: 'home' },
+        SportsMatchState.LIVE,
+      ),
+    ).toThrow('Um empate não pode possuir vencedor ou perdedor.');
+    expect(() =>
+      service.validate(
+        SportsMatchActionType.FINALIZE,
+        { winnerRegistrationId: 'home', loserRegistrationId: 'home' },
+        SportsMatchState.LIVE,
+      ),
+    ).toThrow('Revise as equipes vencedora e perdedora.');
   });
 
   it('rejects finalization from a terminal state and requires a loss reason', () => {

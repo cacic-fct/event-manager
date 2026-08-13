@@ -6,13 +6,19 @@ describe('SportsReadPublicMapper', () => {
   const mapper = new SportsReadPublicMapper();
 
   it('maps public teams with a content-addressed logo URL', () => {
-    expect(mapper.mapPublicTeam(sportsPublicTeamRecord({ id: 'team-1', name: 'Azul', logoSha256: 'abc' }) as never)).toEqual({
+    expect(
+      mapper.mapPublicTeam(sportsPublicTeamRecord({ id: 'team-1', name: 'Azul', logoSha256: 'abc' }) as never),
+    ).toEqual({
       id: 'team-1',
       name: 'Azul',
       institution: 'FCT',
       logoUrl: '/api/sports/public/teams/team-1/logo/abc',
     });
-    expect(mapper.mapPublicTeam(sportsPublicTeamRecord({ id: 'team-2', name: 'Verde', institution: null, logoSha256: null }) as never).logoUrl).toBeNull();
+    expect(
+      mapper.mapPublicTeam(
+        sportsPublicTeamRecord({ id: 'team-2', name: 'Verde', institution: null, logoSha256: null }) as never,
+      ).logoUrl,
+    ).toBeNull();
   });
 
   it('maps normalized period scores to the public scoreboard contract', () => {

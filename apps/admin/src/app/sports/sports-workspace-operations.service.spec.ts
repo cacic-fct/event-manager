@@ -170,7 +170,9 @@ describe('SportsWorkspaceService operations', () => {
       workspace.teamRead.set(createAdminSportsTeamRead());
 
       await workspace.uploadTeamLogo(new File(['text'], 'shield.txt', { type: 'text/plain' }));
-      await workspace.uploadTeamLogo(new File([new Uint8Array(15 * 1024 * 1024 + 1)], 'shield.png', { type: 'image/png' }));
+      await workspace.uploadTeamLogo(
+        new File([new Uint8Array(15 * 1024 * 1024 + 1)], 'shield.png', { type: 'image/png' }),
+      );
 
       expect(api.uploadTeamLogo).not.toHaveBeenCalled();
       expect(snackbar.open).toHaveBeenCalledTimes(2);
@@ -190,7 +192,9 @@ describe('SportsWorkspaceService operations', () => {
     });
 
     it('searches normalized people queries and clears short searches', async () => {
-      const peopleApi = TestBed.inject(PeopleApiService) as unknown as { listPeopleSummaries: ReturnType<typeof vi.fn> };
+      const peopleApi = TestBed.inject(PeopleApiService) as unknown as {
+        listPeopleSummaries: ReturnType<typeof vi.fn>;
+      };
       peopleApi.listPeopleSummaries = vi.fn().mockReturnValue(of([{ id: 'person-1', name: 'Ana Souza' }]));
 
       await workspace.searchPeople('  Ana  ', 'member');
@@ -225,11 +229,10 @@ describe('SportsWorkspaceService operations', () => {
 
       await workspace.assignRepresentative();
 
-      expect(api.mutate).toHaveBeenCalledWith(
-        'assignSportsTeamRepresentative',
-        'SportsRepresentativeAssignInput',
-        { teamId: read.team.id, personId: 'person-1' },
-      );
+      expect(api.mutate).toHaveBeenCalledWith('assignSportsTeamRepresentative', 'SportsRepresentativeAssignInput', {
+        teamId: read.team.id,
+        personId: 'person-1',
+      });
 
       workspace.memberForm.patchValue({ personId: 'person-2', personQuery: 'Bruno Oliveira' });
       await workspace.addTeamMember();
@@ -260,11 +263,11 @@ describe('SportsWorkspaceService operations', () => {
         seed: 4,
         formAnswersJson: null,
       });
-      expect(api.mutate).toHaveBeenCalledWith(
-        'assignSportsCategoryRole',
-        'SportsRegistrationMemberUpsertInput',
-        { registrationId: 'registration-new', teamMemberId: 'member-1', role: 'PLAYER' },
-      );
+      expect(api.mutate).toHaveBeenCalledWith('assignSportsCategoryRole', 'SportsRegistrationMemberUpsertInput', {
+        registrationId: 'registration-new',
+        teamMemberId: 'member-1',
+        role: 'PLAYER',
+      });
     });
 
     it('updates and deletes registrations with their optimistic revisions', async () => {
@@ -328,7 +331,11 @@ describe('SportsWorkspaceService operations', () => {
     it('generates a seeded bracket for all category registrations', async () => {
       const read = createAdminSportsCategoryRead();
       workspace.categoryRead.set(read);
-      workspace.bracketForm.patchValue({ randomizeUnseeded: true, randomSeed: 'fixture-seed', replaceExistingDraft: true });
+      workspace.bracketForm.patchValue({
+        randomizeUnseeded: true,
+        randomSeed: 'fixture-seed',
+        replaceExistingDraft: true,
+      });
       vi.spyOn(workspace, 'selectCategory').mockResolvedValue();
 
       await workspace.generateBracket();

@@ -493,9 +493,19 @@ describe('AuthorizationPolicyService', () => {
     [Permission.SportsTournament.Update, { tournamentId: 'tournament-1' }, 'sportsTournamentId', 'tournament-1'],
     [Permission.SportsCategory.Update, { categoryId: 'category-1' }, 'sportsCategoryId', 'category-1'],
     [Permission.SportsTeam.Update, { teamId: 'team-1' }, 'sportsTeamId', 'team-1'],
-    [Permission.SportsRegistration.Update, { registrationId: 'registration-1' }, 'sportsRegistrationId', 'registration-1'],
+    [
+      Permission.SportsRegistration.Update,
+      { registrationId: 'registration-1' },
+      'sportsRegistrationId',
+      'registration-1',
+    ],
     [Permission.SportsMatch.Update, { matchId: 'match-1' }, 'sportsMatchId', 'match-1'],
-    [Permission.SportsOfficial.Update, { officialAssignmentId: 'official-1' }, 'sportsOfficialAssignmentId', 'official-1'],
+    [
+      Permission.SportsOfficial.Update,
+      { officialAssignmentId: 'official-1' },
+      'sportsOfficialAssignmentId',
+      'official-1',
+    ],
   ] as const)('maps generic sports aliases for %s', (permission, args, key, expected) => {
     const context = service.buildResourceContext(args, [permission]);
     expect(context[key]).toBe(expected);

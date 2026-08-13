@@ -31,7 +31,10 @@ const meta: Meta<HomeStoryArgs> = {
   ],
   args: { authenticated: false },
   argTypes: {
-    authenticated: { control: 'boolean', description: 'Define se a rota inicial deve exibir a landing ou redirecionar.' },
+    authenticated: {
+      control: 'boolean',
+      description: 'Define se a rota inicial deve exibir a landing ou redirecionar.',
+    },
   },
   render: (args) => {
     authenticated.set(args.authenticated);

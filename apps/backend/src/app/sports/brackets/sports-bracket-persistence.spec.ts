@@ -1,9 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { SportsFormat, SportsMatchState, SportsReviewStatus, SportsStageType } from '@prisma/client';
-import {
-  sportsBracketParticipants,
-  sportsBracketPersistenceCategory,
-} from '../testing/sports-backend.fixtures';
+import { sportsBracketParticipants, sportsBracketPersistenceCategory } from '../testing/sports-backend.fixtures';
 import { SportsBracketBasicPersistence } from './sports-bracket-basic-persistence';
 
 class TestSportsBracketPersistence extends SportsBracketBasicPersistence {
@@ -53,12 +50,7 @@ class TestSportsBracketPersistence extends SportsBracketBasicPersistence {
     );
   }
 
-  swiss(
-    tx: unknown,
-    participantCount = 4,
-    bracketRules: Record<string, unknown> = {},
-    omitLastSeed = false,
-  ) {
+  swiss(tx: unknown, participantCount = 4, bracketRules: Record<string, unknown> = {}, omitLastSeed = false) {
     const participants = sportsBracketParticipants(participantCount);
     const persistedParticipants = omitLastSeed
       ? participants.map((participant, index) =>
@@ -151,7 +143,9 @@ describe('sports bracket persistence', () => {
 
     expect(tx.sportsStage.create).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ data: expect.objectContaining({ settings: expect.objectContaining({ randomSeed: null }) }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ settings: expect.objectContaining({ randomSeed: null }) }),
+      }),
     );
   });
 
@@ -183,9 +177,7 @@ describe('sports bracket persistence', () => {
   });
 
   it('rejects more qualifiers than the smallest group can provide', async () => {
-    await expect(
-      service.groupElimination(tx, 5, { groupCount: 2, qualifiersPerGroup: 3 }),
-    ).rejects.toThrow(
+    await expect(service.groupElimination(tx, 5, { groupCount: 2, qualifiersPerGroup: 3 })).rejects.toThrow(
       new BadRequestException('A quantidade de classificados por grupo não pode superar o menor grupo.'),
     );
 
@@ -211,7 +203,9 @@ describe('sports bracket persistence', () => {
     await service.singleElimination(tx, 4, true);
 
     expect(tx.sportsStage.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ settings: expect.objectContaining({ randomSeed: 'seeded' }) }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ settings: expect.objectContaining({ randomSeed: 'seeded' }) }),
+      }),
     );
   });
 
@@ -232,12 +226,18 @@ describe('sports bracket persistence', () => {
 
     expect(tx.sportsStage.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ type: SportsStageType.SWISS, settings: { format: SportsFormat.SWISS, maximumRounds: 4 } }),
+        data: expect.objectContaining({
+          type: SportsStageType.SWISS,
+          settings: { format: SportsFormat.SWISS, maximumRounds: 4 },
+        }),
       }),
     );
     expect(tx.sportsStanding.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ points: { increment: 2 }, tiebreakData: expect.objectContaining({ byeCount: 1 }) }),
+        data: expect.objectContaining({
+          points: { increment: 2 },
+          tiebreakData: expect.objectContaining({ byeCount: 1 }),
+        }),
       }),
     );
   });

@@ -37,11 +37,14 @@ export class SportsAthletePreparationPanel {
     this.profiles().filter((profile) => profile.athleteIdentifierMode === 'GAME_ACCOUNT'),
   );
 
-  private readonly forms = new Map<string, FormGroup<{
-    gameNickname: FormControl<string>;
-    gameAccountName: FormControl<string>;
-    gameAccountUrl: FormControl<string>;
-  }>>();
+  private readonly forms = new Map<
+    string,
+    FormGroup<{
+      gameNickname: FormControl<string>;
+      gameAccountName: FormControl<string>;
+      gameAccountUrl: FormControl<string>;
+    }>
+  >();
 
   formFor(profile: SportsAthleteProfile) {
     const existing = this.forms.get(profile.registrationMemberId);
@@ -86,9 +89,13 @@ export class SportsAthletePreparationPanel {
       form.markAsPristine();
       this.snackbar.open('Identificação atualizada.', 'Fechar', { duration: 3500 });
     } catch (error: unknown) {
-      this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível salvar sua identificação.', 'Fechar', {
-        duration: 6000,
-      });
+      this.snackbar.open(
+        error instanceof Error ? error.message : 'Não foi possível salvar sua identificação.',
+        'Fechar',
+        {
+          duration: 6000,
+        },
+      );
     } finally {
       this.savingId.set(null);
     }

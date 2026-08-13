@@ -13,10 +13,7 @@ import {
 } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
-import {
-  normalizeSportsAthleteProfilePatch,
-  SportsAthleteProfilePatch,
-} from '../domain/sports-athlete-profile';
+import { normalizeSportsAthleteProfilePatch, SportsAthleteProfilePatch } from '../domain/sports-athlete-profile';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
 export class SportsRegistrationAdminService extends SportsAdminBaseService {

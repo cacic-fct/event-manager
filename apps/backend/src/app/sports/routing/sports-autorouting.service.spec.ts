@@ -91,9 +91,21 @@ describe('SportsAutoroutingService', () => {
   it('prioritizes live state and then the closest start time', async () => {
     const prisma = autoroutingPrisma();
     prisma.sportsMatch.findMany.mockResolvedValue([
-      { id: 'scheduled', state: SportsMatchState.SCHEDULED, event: { startDate: sportsTestDate(), endDate: sportsTestDate(3_600_000) } },
-      { id: 'live-later', state: SportsMatchState.LIVE, event: { startDate: sportsTestDate(7_200_000), endDate: sportsTestDate(10_800_000) } },
-      { id: 'live-closest', state: SportsMatchState.LIVE, event: { startDate: sportsTestDate(3_600_000), endDate: sportsTestDate(7_200_000) } },
+      {
+        id: 'scheduled',
+        state: SportsMatchState.SCHEDULED,
+        event: { startDate: sportsTestDate(), endDate: sportsTestDate(3_600_000) },
+      },
+      {
+        id: 'live-later',
+        state: SportsMatchState.LIVE,
+        event: { startDate: sportsTestDate(7_200_000), endDate: sportsTestDate(10_800_000) },
+      },
+      {
+        id: 'live-closest',
+        state: SportsMatchState.LIVE,
+        event: { startDate: sportsTestDate(3_600_000), endDate: sportsTestDate(7_200_000) },
+      },
     ]);
     const service = new SportsAutoroutingService(prisma as never);
 
@@ -156,7 +168,11 @@ describe('SportsAutoroutingService', () => {
 
 function autoroutingPrisma() {
   return {
-    sportsMatch: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null), findUnique: jest.fn() },
+    sportsMatch: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      findUnique: jest.fn(),
+    },
     sportsTeamRepresentative: { findFirst: jest.fn().mockResolvedValue(null) },
   };
 }

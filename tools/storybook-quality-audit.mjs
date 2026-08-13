@@ -35,11 +35,7 @@ for (const file of files) {
       const titleProperty = node.initializer.properties.find(
         (property) => ts.isPropertyAssignment(property) && property.name.getText(sourceFile) === 'title',
       );
-      if (
-        titleProperty &&
-        ts.isPropertyAssignment(titleProperty) &&
-        ts.isStringLiteral(titleProperty.initializer)
-      ) {
+      if (titleProperty && ts.isPropertyAssignment(titleProperty) && ts.isStringLiteral(titleProperty.initializer)) {
         metaTitle = titleProperty.initializer.text;
       }
     }

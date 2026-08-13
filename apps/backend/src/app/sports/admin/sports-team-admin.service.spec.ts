@@ -35,7 +35,10 @@ describe('SportsTeamAdminService', () => {
       tx.sportsTeam.create.mockResolvedValue(team);
 
       await expect(
-        service.createTeam({ tournamentId: 'tournament-1', name: '  Equipe Nova  ', institution: '  Unesp  ' }, actor as never),
+        service.createTeam(
+          { tournamentId: 'tournament-1', name: '  Equipe Nova  ', institution: '  Unesp  ' },
+          actor as never,
+        ),
       ).resolves.toEqual(team);
 
       expect(tx.sportsTeam.create).toHaveBeenCalledWith({
@@ -46,7 +49,10 @@ describe('SportsTeamAdminService', () => {
           fieldRevisions: { name: 1, institution: 1, logo: 1 },
         }),
       });
-      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ operation: AuditLogOperation.CREATE }), tx);
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: AuditLogOperation.CREATE }),
+        tx,
+      );
     });
 
     it('supports explicit initial status and an empty institution', async () => {
@@ -65,7 +71,9 @@ describe('SportsTeamAdminService', () => {
     });
 
     it('rejects a missing tournament or duplicate team name', async () => {
-      prisma.sportsTournament.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ majorEventId: 'major-event-1' });
+      prisma.sportsTournament.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ majorEventId: 'major-event-1' });
       tx.sportsTeam.findFirst.mockResolvedValue({ id: 'duplicate' });
 
       await expect(
@@ -114,7 +122,9 @@ describe('SportsTeamAdminService', () => {
       await service.updateTeam('team-1', { expectedRevision: 2 }, actor as never);
 
       expect(tx.sportsTeam.findFirst).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ name: { equals: 'Equipe Azul', mode: 'insensitive' } }) }),
+        expect.objectContaining({
+          where: expect.objectContaining({ name: { equals: 'Equipe Azul', mode: 'insensitive' } }),
+        }),
       );
       const data = tx.sportsTeam.updateMany.mock.calls[0][0].data;
       expect(data).not.toHaveProperty('name');
@@ -204,14 +214,18 @@ describe('SportsTeamAdminService', () => {
           expect(tx.sportsRegistrationMember.updateMany).not.toHaveBeenCalled();
         } else {
           expect(tx.sportsRegistrationMember.updateMany).toHaveBeenCalledWith(
-            expect.objectContaining({ data: expect.objectContaining({ eligibility: SportsEligibilityStatus.INELIGIBLE }) }),
+            expect.objectContaining({
+              data: expect.objectContaining({ eligibility: SportsEligibilityStatus.INELIGIBLE }),
+            }),
           );
         }
       },
     );
 
     it('rejects missing or concurrently changed member updates', async () => {
-      prisma.sportsTeamMember.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(sportsAdminTeamMemberRecord());
+      prisma.sportsTeamMember.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(sportsAdminTeamMemberRecord());
       await expect(
         service.updateTeamMember('missing', 1, SportsTeamMemberStatus.SUSPENDED, actor as never),
       ).rejects.toBeInstanceOf(NotFoundException);
@@ -264,7 +278,10 @@ describe('SportsTeamAdminService', () => {
       await expect(service.revokeRepresentative('representative-1', actor as never)).resolves.toMatchObject({
         active: false,
       });
-      expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ operation: AuditLogOperation.DELETE }), tx);
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: AuditLogOperation.DELETE }),
+        tx,
+      );
     });
 
     it('rejects missing or concurrently changed representative revocation', async () => {

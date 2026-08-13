@@ -234,10 +234,15 @@ describe('SportsReadPublicService', () => {
         emoji: '🏅',
         standings: [expect.objectContaining({ points: 6, rank: 1 })],
         placements: [expect.objectContaining({ placement: 1, pointsAwarded: 10 })],
-        brackets: [expect.objectContaining({ id: 'stage-1', matches: expect.arrayContaining([
-          expect.objectContaining({ id: 'match-1' }),
-          expect.objectContaining({ id: 'match-2', rosters: [] }),
-        ]) })],
+        brackets: [
+          expect.objectContaining({
+            id: 'stage-1',
+            matches: expect.arrayContaining([
+              expect.objectContaining({ id: 'match-1' }),
+              expect.objectContaining({ id: 'match-2', rosters: [] }),
+            ]),
+          }),
+        ],
         matches: expect.arrayContaining([
           expect.objectContaining({
             id: 'match-1',

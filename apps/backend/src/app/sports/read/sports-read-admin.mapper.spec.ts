@@ -20,9 +20,7 @@ describe('SportsReadAdminMapper', () => {
     expect(mapper.mapAdminRegistration(records.registration as never)).toEqual(
       expect.objectContaining({ formAnswersJson: '{"captain":true}', formSchemaSnapshotJson: null }),
     );
-    expect(mapper.mapAdminStage({ id: 'stage-1', settings: { rounds: 2 } } as never).settingsJson).toBe(
-      '{"rounds":2}',
-    );
+    expect(mapper.mapAdminStage({ id: 'stage-1', settings: { rounds: 2 } } as never).settingsJson).toBe('{"rounds":2}');
     expect(mapper.mapAdminMatch(records.match as never)).toEqual(
       expect.objectContaining({
         scoreboard: expect.objectContaining({ homeScore: 2, awayScore: 1, activePeriod: null }),

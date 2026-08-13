@@ -160,9 +160,7 @@ describe('SportsScoreEntryAdminService', () => {
   it('updates revision only while retaining existing target and score values', async () => {
     const existing = sportsAdminScoreEntryRecord();
     prisma.sportsTournamentScoreEntry.findFirst.mockResolvedValue(existing);
-    tx.sportsTournamentScoreEntry.findUniqueOrThrow.mockResolvedValue(
-      sportsAdminScoreEntryRecord({ revision: 3 }),
-    );
+    tx.sportsTournamentScoreEntry.findUniqueOrThrow.mockResolvedValue(sportsAdminScoreEntryRecord({ revision: 3 }));
 
     await service.updateTournamentScoreEntry(
       'score-entry-1',
@@ -188,10 +186,18 @@ describe('SportsScoreEntryAdminService', () => {
       .mockResolvedValueOnce(sportsAdminScoreEntryRecord());
 
     await expect(
-      service.updateTournamentScoreEntry('missing', { tournamentId: 'tournament-1', expectedRevision: 1 }, actor as never),
+      service.updateTournamentScoreEntry(
+        'missing',
+        { tournamentId: 'tournament-1', expectedRevision: 1 },
+        actor as never,
+      ),
     ).rejects.toBeInstanceOf(NotFoundException);
     await expect(
-      service.updateTournamentScoreEntry('score-entry-1', { tournamentId: 'other', expectedRevision: 2 }, actor as never),
+      service.updateTournamentScoreEntry(
+        'score-entry-1',
+        { tournamentId: 'other', expectedRevision: 2 },
+        actor as never,
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
     tx.sportsTournamentScoreEntry.updateMany.mockResolvedValue({ count: 0 });
     await expect(

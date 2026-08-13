@@ -34,11 +34,7 @@ describe('SportsPlayerApplicationRealtimeController', () => {
     expect(currentUser.requireCurrentPerson).toHaveBeenCalledWith({ req: request });
     expect(applicationRealtime.scope).toHaveBeenCalledWith('person-1');
     expect(realtime.watch).toHaveBeenCalledWith('sports-application-person:person-1');
-    expect(replay.replay).toHaveBeenCalledWith(
-      'sports-application-person:person-1',
-      'cursor-1',
-      expect.any(Object),
-    );
+    expect(replay.replay).toHaveBeenCalledWith('sports-application-person:person-1', 'cursor-1', expect.any(Object));
   });
 
   it('does not create a stream when authentication cannot resolve a person', async () => {

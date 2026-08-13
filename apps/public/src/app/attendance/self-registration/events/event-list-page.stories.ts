@@ -20,7 +20,9 @@ type Story = StoryObj<OnlineAttendanceListComponent>;
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
-  await expect(await canvas.findByRole('link', { name: 'Confirmar presença em Arquitetura Angular com Signals' })).toBeVisible();
+  await expect(
+    await canvas.findByRole('link', { name: 'Confirmar presença em Arquitetura Angular com Signals' }),
+  ).toBeVisible();
 };
 
 export const Playground: Story = {

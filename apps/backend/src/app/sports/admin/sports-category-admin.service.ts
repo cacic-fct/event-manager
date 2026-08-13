@@ -222,9 +222,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           ...(input.allowPlayerMultipleTeams !== undefined
             ? { allowPlayerMultipleTeams: input.allowPlayerMultipleTeams }
             : {}),
-          ...(input.athleteIdentifierMode !== undefined
-            ? { athleteIdentifierMode: input.athleteIdentifierMode }
-            : {}),
+          ...(input.athleteIdentifierMode !== undefined ? { athleteIdentifierMode: input.athleteIdentifierMode } : {}),
           ...(joiningInstructions !== undefined ? { joiningInstructions } : {}),
           ...(input.periodsEnabled !== undefined ? { periodsEnabled: input.periodsEnabled } : {}),
           ...(input.maximumPeriods !== undefined ? { maximumPeriods: input.maximumPeriods } : {}),

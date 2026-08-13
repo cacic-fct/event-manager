@@ -174,13 +174,12 @@
           <li>
             <span class="player-identity">
               <strong>{{ rosterPlayerName(entry) }}</strong>
-              @if (entry.athleteIdentifierMode === 'GAME_ACCOUNT' && entry.gameAccountName) {
-                @if (entry.gameAccountUrl) {
-                  <a [href]="entry.gameAccountUrl" target="_blank" rel="noopener noreferrer">{{ entry.gameAccountName }}</a>
-                } @else {
-                  <small>{{ entry.gameAccountName }}</small>
-                }
-              }
+              @if (entry.athleteIdentifierMode === 'GAME_ACCOUNT' && entry.gameAccountName) { @if (entry.gameAccountUrl)
+              {
+              <a [href]="entry.gameAccountUrl" target="_blank" rel="noopener noreferrer">{{ entry.gameAccountName }}</a>
+              } @else {
+              <small>{{ entry.gameAccountName }}</small>
+              } }
             </span>
             <small>{{ rosterRoleLabel(entry.role) }}</small>
           </li>

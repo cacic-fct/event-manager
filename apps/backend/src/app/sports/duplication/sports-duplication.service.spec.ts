@@ -389,9 +389,9 @@ function tournamentTransactionFixture() {
     sportsTeam: { create: jest.fn().mockResolvedValue({ id: 'team-copy' }) },
     sportsRegistration: { create: jest.fn().mockResolvedValue({}) },
     sportsVenue: {
-      create: jest.fn().mockImplementation(() =>
-        Promise.resolve({ id: venue++ === 0 ? 'venue-parent-copy' : 'venue-child-copy' }),
-      ),
+      create: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve({ id: venue++ === 0 ? 'venue-parent-copy' : 'venue-child-copy' })),
       update: jest.fn().mockResolvedValue({}),
     },
     sportsOfficialAssignment: { create: jest.fn().mockResolvedValue({}) },

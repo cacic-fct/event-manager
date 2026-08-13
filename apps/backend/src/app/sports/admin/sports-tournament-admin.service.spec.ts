@@ -143,7 +143,10 @@ describe('SportsTournamentAdminService', () => {
         'O fim do torneio precisa ser posterior ao início.',
       );
       await expect(
-        service.createTournament(tournamentInput({ registrationStartDate: startDate, registrationEndDate: null }), actor),
+        service.createTournament(
+          tournamentInput({ registrationStartDate: startDate, registrationEndDate: null }),
+          actor,
+        ),
       ).rejects.toThrow('Informe o início e o fim de inscrições do torneio.');
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
@@ -182,13 +185,18 @@ describe('SportsTournamentAdminService', () => {
         }),
       );
       expect(auditLog.record).toHaveBeenCalledWith(
-        expect.objectContaining({ operation: AuditLogOperation.UPDATE, before: expect.objectContaining({ revision: 2 }) }),
+        expect.objectContaining({
+          operation: AuditLogOperation.UPDATE,
+          before: expect.objectContaining({ revision: 2 }),
+        }),
         tx,
       );
     });
 
     it('blocks disabling multiple teams while cross-team participants remain', async () => {
-      prisma.sportsTournament.findFirst.mockResolvedValue(sportsAdminTournamentRecord({ allowPlayerMultipleTeams: true }));
+      prisma.sportsTournament.findFirst.mockResolvedValue(
+        sportsAdminTournamentRecord({ allowPlayerMultipleTeams: true }),
+      );
       tx.sportsTournamentParticipant.findMany.mockResolvedValue([
         { teamMemberships: [{ teamId: 'team-1' }, { teamId: 'team-2' }] },
       ]);
@@ -208,24 +216,22 @@ describe('SportsTournamentAdminService', () => {
       tx.sportsTournament.updateMany.mockResolvedValue({ count: 1 });
       tx.sportsTournament.findUniqueOrThrow.mockResolvedValue({ ...existing, allowPlayerMultipleTeams: false });
 
-      await service.updateTournament(
-        'tournament-1',
-        { expectedRevision: 2, allowPlayerMultipleTeams: false },
-        actor,
-      );
+      await service.updateTournament('tournament-1', { expectedRevision: 2, allowPlayerMultipleTeams: false }, actor);
       expect(tx.sportsTournament.updateMany).toHaveBeenCalled();
     });
 
     it('rejects missing and concurrently changed tournaments without audit', async () => {
-      prisma.sportsTournament.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(sportsAdminTournamentRecord());
-      await expect(
-        service.updateTournament('missing', { expectedRevision: 1 }, actor),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      prisma.sportsTournament.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(sportsAdminTournamentRecord());
+      await expect(service.updateTournament('missing', { expectedRevision: 1 }, actor)).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
 
       tx.sportsTournament.updateMany.mockResolvedValue({ count: 0 });
-      await expect(
-        service.updateTournament('tournament-1', { expectedRevision: 1 }, actor),
-      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(service.updateTournament('tournament-1', { expectedRevision: 1 }, actor)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
       expect(auditLog.record).not.toHaveBeenCalled();
     });
   });
@@ -274,7 +280,9 @@ describe('SportsTournamentAdminService', () => {
     });
 
     it('rejects missing and concurrently changed tournament deletes without cascade audit', async () => {
-      prisma.sportsTournament.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(sportsAdminTournamentRecord());
+      prisma.sportsTournament.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(sportsAdminTournamentRecord());
       await expect(service.deleteTournament('missing', 1, actor)).rejects.toBeInstanceOf(NotFoundException);
 
       tx.sportsCategory.findMany.mockResolvedValue([]);

@@ -209,19 +209,26 @@ function prismaClient() {
   return {
     sportsCategory: {
       findFirst: jest.fn(),
-      findUnique: jest.fn().mockImplementation(async ({ select }) =>
-        'tournamentId' in select ? { tournamentId: 'tournament-1' } : categoryBacking,
-      ),
+      findUnique: jest
+        .fn()
+        .mockImplementation(async ({ select }) =>
+          'tournamentId' in select ? { tournamentId: 'tournament-1' } : categoryBacking,
+        ),
       findMany: jest.fn().mockResolvedValue([categoryBacking]),
     },
     sportsTeam: { findUnique: jest.fn().mockResolvedValue({ tournamentId: 'tournament-1' }) },
     sportsRegistration: { findUnique: jest.fn().mockResolvedValue({ category: { tournamentId: 'tournament-1' } }) },
     sportsMatch: {
-      findUnique: jest.fn().mockImplementation(async ({ select }) =>
-        'eventId' in select ? { eventId: 'event-1' } : { category: { tournamentId: 'tournament-1' } },
-      ),
+      findUnique: jest
+        .fn()
+        .mockImplementation(async ({ select }) =>
+          'eventId' in select ? { eventId: 'event-1' } : { category: { tournamentId: 'tournament-1' } },
+        ),
       findFirst: jest.fn(),
-      findMany: jest.fn().mockResolvedValue([{ id: 'match-1', eventId: 'event-1' }, { id: 'match-2', eventId: 'event-2' }]),
+      findMany: jest.fn().mockResolvedValue([
+        { id: 'match-1', eventId: 'event-1' },
+        { id: 'match-2', eventId: 'event-2' },
+      ]),
     },
     sportsOfficialAssignment: {
       findUnique: jest.fn().mockImplementation(async ({ select }) => {
@@ -231,20 +238,26 @@ function prismaClient() {
       }),
     },
     sportsTeamRepresentative: {
-      findUnique: jest.fn().mockImplementation(async ({ select }) =>
-        'personId' in select ? { personId: 'person-representative' } : { team: { tournamentId: 'tournament-1' } },
-      ),
+      findUnique: jest
+        .fn()
+        .mockImplementation(async ({ select }) =>
+          'personId' in select ? { personId: 'person-representative' } : { team: { tournamentId: 'tournament-1' } },
+        ),
     },
     sportsPlayerApplication: { findUnique: jest.fn().mockResolvedValue({ tournamentId: 'tournament-1' }) },
     sportsTeamChangeRequest: {
-      findUnique: jest.fn().mockImplementation(async ({ select }) =>
-        'teamId' in select ? { teamId: 'team-1' } : { team: { tournamentId: 'tournament-1' } },
-      ),
+      findUnique: jest
+        .fn()
+        .mockImplementation(async ({ select }) =>
+          'teamId' in select ? { teamId: 'team-1' } : { team: { tournamentId: 'tournament-1' } },
+        ),
     },
     sportsMatchRoster: {
-      findUnique: jest.fn().mockImplementation(async ({ select }) =>
-        'matchId' in select ? { matchId: 'match-roster' } : { match: { category: { tournamentId: 'tournament-1' } } },
-      ),
+      findUnique: jest
+        .fn()
+        .mockImplementation(async ({ select }) =>
+          'matchId' in select ? { matchId: 'match-roster' } : { match: { category: { tournamentId: 'tournament-1' } } },
+        ),
     },
     sportsVenue: { findUnique: jest.fn().mockResolvedValue({ tournamentId: 'tournament-1' }) },
     sportsTournamentScoreEntry: { findUnique: jest.fn().mockResolvedValue({ tournamentId: 'tournament-1' }) },

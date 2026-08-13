@@ -50,10 +50,8 @@
       Solicitar inscrição
     </a>
   </section>
-  }
-
-  @if (tournament.athleteProfiles?.length) {
-    <app-sports-athlete-preparation-panel [profiles]="tournament.athleteProfiles" />
+  } @if (tournament.athleteProfiles?.length) {
+  <app-sports-athlete-preparation-panel [profiles]="tournament.athleteProfiles" />
   }
 
   <section class="match-ribbon" aria-label="Partidas em destaque">

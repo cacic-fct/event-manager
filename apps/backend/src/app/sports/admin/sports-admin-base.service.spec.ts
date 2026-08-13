@@ -96,7 +96,11 @@ describe('SportsAdminBaseService', () => {
     it.each([
       [null, NotFoundException, 'Event event-1 was not found.'],
       [sportsAdminBackingEventRecord({ majorEventId: 'major-other' }), BadRequestException, 'mesmo grande evento'],
-      [sportsAdminBackingEventRecord({ sportsMatch: { id: 'match-existing' } }), ConflictException, 'já está vinculado'],
+      [
+        sportsAdminBackingEventRecord({ sportsMatch: { id: 'match-existing' } }),
+        ConflictException,
+        'já está vinculado',
+      ],
       [sportsAdminBackingEventRecord({ allowSubscription: true }), ConflictException, 'inscrições próprias'],
     ])('rejects an incompatible backing event %#', async (event, errorType, message) => {
       tx.event.findFirst.mockResolvedValue(event);
@@ -171,10 +175,9 @@ describe('SportsAdminBaseService', () => {
     });
 
     it('normalizes answers and captures the immutable form schema', () => {
-      const result = service.formData(
-        { registrationFormId: 'form-1', registrationForm: form },
-        [{ elementId: 'student-id', value: ' 12345 ' }],
-      );
+      const result = service.formData({ registrationFormId: 'form-1', registrationForm: form }, [
+        { elementId: 'student-id', value: ' 12345 ' },
+      ]);
       expect(result.formAnswers).toEqual([{ elementId: 'student-id', value: '12345' }]);
       expect(result.formSchemaSnapshot).toEqual(
         expect.objectContaining({
@@ -199,9 +202,9 @@ describe('SportsAdminBaseService', () => {
 
     it('normalizes updates against snapshots and rejects invalid snapshots', () => {
       expect(service.updateAnswers(null, null)).toBe(Prisma.JsonNull);
-      expect(
-        service.updateAnswers({ elements } as never, [{ elementId: 'student-id', value: ' 54321 ' }]),
-      ).toEqual([{ elementId: 'student-id', value: '54321' }]);
+      expect(service.updateAnswers({ elements } as never, [{ elementId: 'student-id', value: ' 54321 ' }])).toEqual([
+        { elementId: 'student-id', value: '54321' },
+      ]);
       expect(() => service.updateAnswers(null, [])).toThrow('não possui um retrato válido');
       expect(() => service.updateAnswers({ elements: {} }, [])).toThrow('retrato do formulário');
       expect(service.formElements(elements)).toEqual(elements);

@@ -118,7 +118,10 @@ describe('SportsReadAdminService', () => {
     prisma.sportsCategory.findMany.mockResolvedValue([]);
 
     await expect(
-      new SportsReadAdminService(prisma as never, authorization as never).adminTournament(user as never, 'tournament-1'),
+      new SportsReadAdminService(prisma as never, authorization as never).adminTournament(
+        user as never,
+        'tournament-1',
+      ),
     ).rejects.toThrow('policy unavailable');
   });
 
@@ -138,7 +141,13 @@ describe('SportsReadAdminService', () => {
     );
 
     expect(result).toEqual(
-      expect.objectContaining({ categories: [], teams: [], scoreEntries: [], officials: [], venues: [{ id: 'venue-1' }] }),
+      expect.objectContaining({
+        categories: [],
+        teams: [],
+        scoreEntries: [],
+        officials: [],
+        venues: [{ id: 'venue-1' }],
+      }),
     );
     expect(prisma.sportsTeam.findMany).not.toHaveBeenCalled();
   });
@@ -223,11 +232,9 @@ describe('SportsReadAdminService', () => {
     const result = await service.adminRegistration(user as never, 'registration-1');
     expect(result.members[0]?.person.name).toBe('Ana Souza');
     expect(result.rosters[0]?.entries[0]?.roleMetadataJson).toBe('{"position":"GOALKEEPER"}');
-    expect(authorization.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [expect.any(String)],
-      { sportsRegistrationId: 'registration-1' },
-    );
+    expect(authorization.assertPermissions).toHaveBeenCalledWith(user, [expect.any(String)], {
+      sportsRegistrationId: 'registration-1',
+    });
 
     await expect(service.adminRegistration(user as never, 'missing')).rejects.toBeInstanceOf(NotFoundException);
   });

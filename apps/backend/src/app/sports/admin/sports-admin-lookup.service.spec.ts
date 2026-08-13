@@ -86,9 +86,7 @@ describe('SportsAdminLookupService', () => {
 
   it('rejects a venue outside the tournament', async () => {
     tx.sportsVenue.findFirst.mockResolvedValue(null);
-    await expect(service.venue(tx, 'venue-other')).rejects.toThrow(
-      'O local selecionado não pertence ao torneio.',
-    );
+    await expect(service.venue(tx, 'venue-other')).rejects.toThrow('O local selecionado não pertence ao torneio.');
   });
 
   it('returns a stage only from the requested category', async () => {
@@ -103,9 +101,7 @@ describe('SportsAdminLookupService', () => {
 
   it('rejects a stage outside the category', async () => {
     tx.sportsStage.findFirst.mockResolvedValue(null);
-    await expect(service.stage(tx, 'stage-other')).rejects.toThrow(
-      'A etapa selecionada não pertence à modalidade.',
-    );
+    await expect(service.stage(tx, 'stage-other')).rejects.toThrow('A etapa selecionada não pertence à modalidade.');
   });
 
   it.each([

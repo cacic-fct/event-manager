@@ -8,14 +8,8 @@ export interface SportsAthleteProfilePatch {
 
 const CONTROL_CHARACTER_PATTERN = /[\p{Cc}\p{Cf}]/u;
 
-export function normalizeSportsAthleteProfilePatch(
-  input: SportsAthleteProfilePatch,
-): SportsAthleteProfilePatch {
-  if (
-    input.gameNickname === undefined &&
-    input.gameAccountName === undefined &&
-    input.gameAccountUrl === undefined
-  ) {
+export function normalizeSportsAthleteProfilePatch(input: SportsAthleteProfilePatch): SportsAthleteProfilePatch {
+  if (input.gameNickname === undefined && input.gameAccountName === undefined && input.gameAccountUrl === undefined) {
     throw new BadRequestException('Informe ao menos um dado da conta de jogo.');
   }
 

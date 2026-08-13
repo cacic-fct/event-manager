@@ -320,9 +320,7 @@ export function sportsPublicRosterRecord(overrides: Record<string, unknown> = {}
   };
 }
 
-export function sportsPublicOfficialAssignmentRecord(
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+export function sportsPublicOfficialAssignmentRecord(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     tournamentId: 'tournament-1',
     categoryId: null,
@@ -739,9 +737,7 @@ export function sportsAdminTournamentRecord(overrides: Record<string, unknown> =
   };
 }
 
-export function sportsAdminOfficialAssignmentRecord(
-  overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+export function sportsAdminOfficialAssignmentRecord(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     ...sportsAdminAuditRecords().official,
     assignedAt: sportsTestDate(-2 * 60 * 60_000),
@@ -755,9 +751,7 @@ export function sportsAdminOfficialAssignmentRecord(
   };
 }
 
-export function sportsTournamentParticipantMembershipRecord(
-  teamIds: readonly string[],
-): Record<string, unknown> {
+export function sportsTournamentParticipantMembershipRecord(teamIds: readonly string[]): Record<string, unknown> {
   return {
     id: 'participant-1',
     teamMemberships: teamIds.map((teamId, index) => ({ id: `membership-${index + 1}`, teamId })),

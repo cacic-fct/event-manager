@@ -126,10 +126,7 @@ describe('SportsOfficialAdminService', () => {
     tx.sportsTournament.findFirst.mockResolvedValue(null);
     tx.people.findFirst.mockResolvedValue(null);
     await expect(
-      service.assignOfficial(
-        { tournamentId: 'missing', personId: 'missing', role: SportsOfficialRole.REFEREE },
-        actor,
-      ),
+      service.assignOfficial({ tournamentId: 'missing', personId: 'missing', role: SportsOfficialRole.REFEREE }, actor),
     ).rejects.toBeInstanceOf(NotFoundException);
 
     tx.sportsTournament.findFirst.mockResolvedValue({ majorEventId: 'major-event-1' });
@@ -253,14 +250,14 @@ describe('SportsOfficialAdminService', () => {
 
   it('rejects missing and concurrently changed assignment updates', async () => {
     prisma.sportsOfficialAssignment.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce(assignmentFixture());
-    await expect(
-      service.updateOfficial('missing', { expectedRevision: 1 }, actor),
-    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.updateOfficial('missing', { expectedRevision: 1 }, actor)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
 
     tx.sportsOfficialAssignment.updateMany.mockResolvedValue({ count: 0 });
-    await expect(
-      service.updateOfficial('official-1', { expectedRevision: 2 }, actor),
-    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.updateOfficial('official-1', { expectedRevision: 2 }, actor)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
     expect(auditLog.record).not.toHaveBeenCalled();
   });
 
