@@ -68,6 +68,26 @@ describe('SportsMutationEventsService extended behavior', () => {
     expect(eventEffects.syncEvents).toHaveBeenCalledWith(['event-1', 'event-2']);
   });
 
+  it('publishes invalidations for sports resources addressed through their backing records', async () => {
+    prisma.sportsMatch.findFirst.mockResolvedValue({ id: 'match-1' });
+    await service.publishForBackingEvent('event-1');
+
+    expect(realtime.publish).toHaveBeenCalledWith('tournament:tournament-1', expect.any(Object));
+
+    prisma.sportsCategory.findFirst.mockResolvedValue({ id: 'category-1' });
+    await service.publishForBackingEventGroup('event-group-1');
+
+    expect(realtime.publish).toHaveBeenCalledWith('tournament:tournament-1', expect.any(Object));
+    expect(prisma.sportsMatch.findFirst).toHaveBeenCalledWith({
+      where: { eventId: 'event-1', deletedAt: null },
+      select: { id: true },
+    });
+    expect(prisma.sportsCategory.findFirst).toHaveBeenCalledWith({
+      where: { eventGroupId: 'event-group-1', deletedAt: null },
+      select: { id: true },
+    });
+  });
+
   it('does not synchronize missing match or category resources', async () => {
     prisma.sportsMatch.findUnique
       .mockResolvedValueOnce({ category: { tournamentId: 'tournament-1' } })
@@ -188,6 +208,7 @@ function prismaClient() {
   };
   return {
     sportsCategory: {
+      findFirst: jest.fn(),
       findUnique: jest.fn().mockImplementation(async ({ select }) =>
         'tournamentId' in select ? { tournamentId: 'tournament-1' } : categoryBacking,
       ),

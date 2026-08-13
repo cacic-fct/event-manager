@@ -33,6 +33,7 @@ import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
+import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
 import { EventPostCommitEffectsService } from './event-post-commit-effects.service';
 
 type GraphqlContext = {
@@ -254,6 +255,9 @@ export class EventsResolver {
       assertEventUpdateAllowed: async () => undefined,
       assertEventDeleteAllowed: async () => undefined,
     } as unknown as SportsBackingResourceLifecycleService,
+    private readonly sportsMutationEvents: SportsMutationEventsService = {
+      publishForBackingEvent: async () => undefined,
+    } as unknown as SportsMutationEventsService,
   ) {}
 
   @Query(() => [Event], { name: 'events' })
@@ -516,6 +520,7 @@ export class EventsResolver {
     });
     if (event) {
       await this.postCommitEffects.upsertEvent(event);
+      await this.sportsMutationEvents.publishForBackingEvent(event.id);
       if (this.didChangeOnlineAttendanceWindow(input)) {
         await this.attendanceRealtime.notifyAllConnectedPeople();
       }

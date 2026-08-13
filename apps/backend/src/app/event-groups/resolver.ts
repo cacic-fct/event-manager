@@ -19,6 +19,7 @@ import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
+import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
 import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 
 type GraphqlContext = {
@@ -74,6 +75,9 @@ export class EventGroupsResolver {
       synchronizeEventGroupUpdate: async () => undefined,
       assertEventGroupDeleteAllowed: async () => undefined,
     } as unknown as SportsBackingResourceLifecycleService,
+    private readonly sportsMutationEvents: SportsMutationEventsService = {
+      publishForBackingEventGroup: async () => undefined,
+    } as unknown as SportsMutationEventsService,
   ) {}
 
   @Query(() => [EventGroup], { name: 'eventGroups' })
@@ -273,6 +277,7 @@ export class EventGroupsResolver {
         id: eventGroup.id,
         name: eventGroup.name,
       });
+      await this.sportsMutationEvents.publishForBackingEventGroup(eventGroup.id);
     }
     return eventGroup;
   }

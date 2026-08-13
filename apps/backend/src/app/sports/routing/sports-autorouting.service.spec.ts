@@ -78,7 +78,7 @@ describe('SportsAutoroutingService', () => {
   ] as const)('routes an official in %s state to %s', async (state, mode) => {
     const prisma = autoroutingPrisma();
     prisma.sportsMatch.findMany.mockResolvedValue([
-      { id: 'match-1', state, event: { startDate: sportsTestDate(1), endDate: sportsTestDate(1, 2) } },
+      { id: 'match-1', state, event: { startDate: sportsTestDate(1), endDate: sportsTestDate(1) } },
     ]);
     const service = new SportsAutoroutingService(prisma as never);
 

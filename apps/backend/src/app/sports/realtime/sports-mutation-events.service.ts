@@ -202,6 +202,26 @@ export class SportsMutationEventsService {
     ]);
   }
 
+  async publishForBackingEvent(eventId: string): Promise<void> {
+    const match = await this.prisma.sportsMatch.findFirst({
+      where: { eventId, deletedAt: null },
+      select: { id: true },
+    });
+    if (match) {
+      await this.publishForEntity('MATCH', match.id, true);
+    }
+  }
+
+  async publishForBackingEventGroup(eventGroupId: string): Promise<void> {
+    const category = await this.prisma.sportsCategory.findFirst({
+      where: { eventGroupId, deletedAt: null },
+      select: { id: true },
+    });
+    if (category) {
+      await this.publishForEntity('CATEGORY', category.id, true);
+    }
+  }
+
   private async resolveAutoroutePeople(entity: SportsMutationEntity, entityId: string): Promise<string[]> {
     if (entity === 'MATCH') {
       return this.autorouting.affectedPeopleForMatch(entityId);

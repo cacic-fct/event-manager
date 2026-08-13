@@ -292,12 +292,18 @@ describe('EventGroupsResolver authorization', () => {
     const auditLog = {
       record: jest.fn(),
     };
+    const sportsMutationEvents = {
+      publishForBackingEventGroup: jest.fn(),
+    };
     const resolver = new EventGroupsResolver(
       prisma as never,
       typesenseSearch as never,
       frozenResources as never,
       {} as never,
       auditLog as never,
+      undefined,
+      undefined,
+      sportsMutationEvents as never,
     );
 
     await expect(
@@ -343,6 +349,7 @@ describe('EventGroupsResolver authorization', () => {
       }),
       tx,
     );
+    expect(sportsMutationEvents.publishForBackingEventGroup).toHaveBeenCalledWith('group-1');
   });
 
   it('records event group deletion inside the transaction before removing the search document', async () => {

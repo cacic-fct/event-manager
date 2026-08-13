@@ -245,6 +245,9 @@ describe('EventsResolver', () => {
     const auditLog = {
       record: jest.fn(),
     };
+    const sportsMutationEvents = {
+      publishForBackingEvent: jest.fn(),
+    };
     const resolver = new EventsResolver(
       prisma as never,
       typesenseSearch as never,
@@ -252,6 +255,12 @@ describe('EventsResolver', () => {
       frozenResources as never,
       authorizationPolicy as never,
       auditLog as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      sportsMutationEvents as never,
     );
 
     await expect(
@@ -298,6 +307,7 @@ describe('EventsResolver', () => {
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publishedAt');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
+    expect(sportsMutationEvents.publishForBackingEvent).toHaveBeenCalledWith('event-1');
   });
 
   it('clones selected reusable event settings without copying the online attendance code', async () => {
