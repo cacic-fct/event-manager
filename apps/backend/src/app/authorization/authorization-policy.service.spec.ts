@@ -295,6 +295,29 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toEqual(new Set(['group-1']));
   });
 
+  it('returns empty, unrestricted, and globally granted event-group scopes', async () => {
+    await expect(service.accessibleEventGroupIds(undefined, Permission.EventGroup.Read)).resolves.toEqual(new Set());
+    await expect(
+      service.accessibleEventGroupIds(user([EventManagerKeycloakRole.SuperAdmin]), Permission.EventGroup.Read),
+    ).resolves.toBeNull();
+
+    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+      grant({ permission: Permission.EventGroup.Read, scope: EventManagerPermissionGrantScope.GLOBAL }),
+    ]);
+    await expect(
+      service.accessibleEventGroupIds(user([EventManagerKeycloakRole.Access]), Permission.EventGroup.Read),
+    ).resolves.toBeNull();
+  });
+
+  it('checks frozen-resource overrides through normal permission evaluation', async () => {
+    await expect(service.canOverrideFrozenResource(undefined, Permission.Event.Update)).resolves.toBe(false);
+    await expect(
+      service.canOverrideFrozenResource(user([EventManagerKeycloakRole.SuperAdmin]), Permission.Event.Update, {
+        eventId: 'event-1',
+      }),
+    ).resolves.toBe(true);
+  });
+
   it('resolves generic subscription ids when subscription permissions are required with related resources', async () => {
     prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
       grant({
@@ -402,6 +425,80 @@ describe('AuthorizationPolicyService', () => {
     );
 
     expect(context.eventId).toBe('event-1');
+  });
+
+  it('collects explicit nested resource identifiers without overwriting earlier targets', () => {
+    const context = service.buildResourceContext(
+      {
+        eventId: 'event-1',
+        nested: {
+          eventId: 'event-ignored',
+          majorEventId: 'major-1',
+          eventGroupId: 'group-1',
+          folderId: 'folder-1',
+          subscriptionId: 'subscription-1',
+          receiptId: 'receipt-1',
+          certificateConfigId: 'config-1',
+          certificateId: 'certificate-1',
+          eventFormId: 'form-1',
+          eventFormLinkId: 'link-1',
+          eventFormResponseId: 'response-1',
+          receiptValidationActionId: 'validation-1',
+          sportsTournamentId: 'tournament-1',
+          sportsCategoryId: 'category-1',
+          sportsTeamId: 'team-1',
+          sportsRegistrationId: 'registration-1',
+          sportsMatchId: 'match-1',
+          sportsOfficialAssignmentId: 'official-1',
+          sportsTeamChangeRequestId: 'change-1',
+          sportsTeamRepresentativeId: 'representative-1',
+          sportsPlayerApplicationId: 'application-1',
+          sportsMatchActionId: 'action-1',
+          sportsMatchRosterId: 'roster-1',
+        },
+      },
+      [Permission.Event.Read],
+    );
+
+    expect(context).toEqual(
+      expect.objectContaining({
+        eventId: 'event-1',
+        majorEventId: 'major-1',
+        eventGroupId: 'group-1',
+        folderId: 'folder-1',
+        subscriptionId: 'subscription-1',
+        receiptId: 'receipt-1',
+        certificateConfigId: 'config-1',
+        certificateId: 'certificate-1',
+        eventFormId: 'form-1',
+        eventFormLinkId: 'link-1',
+        eventFormResponseId: 'response-1',
+        receiptValidationActionId: 'validation-1',
+        sportsTournamentId: 'tournament-1',
+        sportsCategoryId: 'category-1',
+        sportsTeamId: 'team-1',
+        sportsRegistrationId: 'registration-1',
+        sportsMatchId: 'match-1',
+        sportsOfficialAssignmentId: 'official-1',
+        sportsTeamChangeRequestId: 'change-1',
+        sportsTeamRepresentativeId: 'representative-1',
+        sportsPlayerApplicationId: 'application-1',
+        sportsMatchActionId: 'action-1',
+        sportsMatchRosterId: 'roster-1',
+      }),
+    );
+  });
+
+  it.each([
+    [Permission.SportsTournament.Update, { tournamentId: 'tournament-1' }, 'sportsTournamentId', 'tournament-1'],
+    [Permission.SportsCategory.Update, { categoryId: 'category-1' }, 'sportsCategoryId', 'category-1'],
+    [Permission.SportsTeam.Update, { teamId: 'team-1' }, 'sportsTeamId', 'team-1'],
+    [Permission.SportsRegistration.Update, { registrationId: 'registration-1' }, 'sportsRegistrationId', 'registration-1'],
+    [Permission.SportsMatch.Update, { matchId: 'match-1' }, 'sportsMatchId', 'match-1'],
+    [Permission.SportsOfficial.Update, { officialAssignmentId: 'official-1' }, 'sportsOfficialAssignmentId', 'official-1'],
+  ] as const)('maps generic sports aliases for %s', (permission, args, key, expected) => {
+    const context = service.buildResourceContext(args, [permission]);
+    expect(context[key]).toBe(expected);
   });
 
   it('resolves certificate target ids for scoped certificate config grants', async () => {
@@ -656,6 +753,68 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('allows an active sports official to collect attendance for the assigned match', async () => {
+    prisma.event.findUnique.mockResolvedValue({
+      startDate: new Date(Date.now() - 60_000),
+      endDate: new Date(Date.now() + 60_000),
+      deletedAt: null,
+      publiclyVisible: false,
+      shouldCollectAttendance: true,
+      sportsMatch: {
+        id: 'match-1',
+        categoryId: 'category-1',
+        category: { tournamentId: 'tournament-1' },
+      },
+    });
+    prisma.sportsOfficialAssignment.findFirst.mockResolvedValue({ id: 'official-1' });
+
+    await expect(
+      service.assertAttendanceCollectorForEvent('event-1', 'person-1', { enforceCollectionWindow: true }),
+    ).resolves.toBeUndefined();
+    expect(prisma.sportsOfficialAssignment.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          personId: 'person-1',
+          tournamentId: 'tournament-1',
+          OR: [
+            { matchId: 'match-1' },
+            { matchId: null, categoryId: 'category-1' },
+            { matchId: null, categoryId: null },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    [null, 'missing event'],
+    [
+      {
+        startDate: new Date(Date.now() - 60_000),
+        endDate: new Date(Date.now() + 60_000),
+        deletedAt: new Date(),
+        publiclyVisible: true,
+        shouldCollectAttendance: true,
+      },
+      'deleted event',
+    ],
+    [
+      {
+        startDate: new Date(Date.now() - 60_000),
+        endDate: new Date(Date.now() + 60_000),
+        deletedAt: null,
+        publiclyVisible: true,
+        shouldCollectAttendance: false,
+      },
+      'disabled collection',
+    ],
+  ])('rejects attendance collection for a %s', async (event) => {
+    prisma.event.findUnique.mockResolvedValue(event);
+    await expect(service.assertAttendanceCollectorForEvent('event-1', 'person-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
   it('allows super-admins to collect without an explicit collector row or DB grant', async () => {
     prisma.eventAttendanceCollector.findUnique.mockResolvedValue(null);
     prisma.event.findUnique.mockResolvedValue({
@@ -739,6 +898,9 @@ function createPrisma() {
     },
     sportsTournament: {
       findUnique: jest.fn().mockResolvedValue(null),
+    },
+    sportsOfficialAssignment: {
+      findFirst: jest.fn().mockResolvedValue(null),
     },
   };
 }

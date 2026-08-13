@@ -44,7 +44,7 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: 'true'
 
-      - name: Build Storybooks
+      - name: Build standalone Storybooks
         run: bunx nx run-many --target=build-storybook --projects=admin,public --configuration=ci --parallel=2
 
       - name: Prepare GitHub Pages artifact
@@ -58,27 +58,13 @@ jobs:
 
           touch dist/storybook-pages/.nojekyll
 
-          cat > dist/storybook-pages/index.html <<'HTML'
-          <!doctype html>
-          <html lang="pt-BR">
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1">
-              <title>Storybooks</title>
-            </head>
-            <body>
-              <main>
-                <h1>Storybooks</h1>
-                <nav aria-label="Storybooks disponíveis">
-                  <ul>
-                    <li><a href="./admin/">Administração</a></li>
-                    <li><a href="./public/">Público</a></li>
-                  </ul>
-                </nav>
-              </main>
-            </body>
-          </html>
-          HTML
+      - name: Build composed Storybook
+        run: bunx nx build-storybook admin --configuration=ci --skip-nx-cache
+        env:
+          STORYBOOK_PUBLISH_COMPOSITION: 'true'
+
+      - name: Add composed Storybook to Pages root
+        run: cp -R dist/storybook/admin/. dist/storybook-pages/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6

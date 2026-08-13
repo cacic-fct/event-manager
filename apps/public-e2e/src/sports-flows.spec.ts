@@ -114,12 +114,12 @@ test('routes an authenticated official to the next operable match', async ({ pag
   await mockSportsApi(page, {
     authenticated: true,
     authenticatedUser: officialUserFixture(),
-    autoroute: { matchId: 'match-1', mode: 'OFFICIAL' },
+    autoroute: { matchId: 'match-1', mode: 'OPERATE' },
   });
 
   await page.goto('/app/sports');
 
-  await expect(page).toHaveURL(/\/app\/sports\/operate\/match-1\?mode=OFFICIAL/);
+  await expect(page).toHaveURL(/\/app\/sports\/operate\/match-1\?mode=OPERATE/);
   await expect(page.getByText('Operação da partida')).toBeVisible();
 });
 
@@ -417,7 +417,12 @@ async function fulfillSportsGraphql(route: Route, options: SportsMockOptions): P
     return;
   }
   if (query.includes('query CurrentUserSportsAutoroute')) {
-    return { currentUserSportsAutoroute: options.autoroute ?? null };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { currentUserSportsAutoroute: options.autoroute ?? null } }),
+    });
+    return;
   }
   if (query.includes('query PublicSportsTournamentDetail')) {
     if (options.tournamentError) {
