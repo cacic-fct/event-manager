@@ -54,8 +54,8 @@ h2 {
 
 .certificate-download-section {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 32px;
+  justify-content: flex-start;
+  margin: 32px 0;
 }
 
 .certificate-download-section button {

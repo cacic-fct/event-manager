@@ -141,73 +141,66 @@ export class SportsReadAdminListService {
     const fullTournamentVisibility: Prisma.SportsTournamentWhereInput = accessibleTargets
       ? { majorEventId: { in: [...accessibleTargets.majorEventIds] } }
       : {};
-    const tournaments = await this.prisma.sportsTournament.findMany({
-      where,
-      orderBy: [{ majorEvent: { startDate: 'desc' } }, { id: 'asc' }],
-      skip,
-      take,
-      select: {
-        ...ADMIN_TOURNAMENT_SELECT,
-        majorEvent: {
-          select: {
-            id: true,
-            name: true,
-            emoji: true,
-            startDate: true,
-            endDate: true,
-            isPaymentRequired: true,
-          },
+    const select = {
+      ...ADMIN_TOURNAMENT_SELECT,
+      majorEvent: {
+        select: {
+          id: true,
+          name: true,
+          emoji: true,
+          startDate: true,
+          endDate: true,
+          isPaymentRequired: true,
         },
-        _count: {
-          select: {
-            categories: {
-              where: { deletedAt: null, ...categoryVisibility },
-            },
-            teams: { where: { deletedAt: null, ...teamVisibility } },
-            playerApplications: {
-              where: {
-                deletedAt: null,
-                status: 'PENDING',
-                tournament: fullTournamentVisibility,
-              },
+      },
+      _count: {
+        select: {
+          categories: {
+            where: { deletedAt: null, ...categoryVisibility },
+          },
+          teams: { where: { deletedAt: null, ...teamVisibility } },
+          playerApplications: {
+            where: {
+              deletedAt: null,
+              status: 'PENDING',
+              tournament: fullTournamentVisibility,
             },
           },
         },
-        categories: {
-          where: { deletedAt: null, ...categoryVisibility },
-          select: {
-            _count: {
-              select: {
-                matches: {
-                  where: {
-                    deletedAt: null,
-                    reviewStatus: 'PENDING',
-                    ...matchVisibility,
-                  },
+      },
+      categories: {
+        where: { deletedAt: null, ...categoryVisibility },
+        select: {
+          _count: {
+            select: {
+              matches: {
+                where: {
+                  deletedAt: null,
+                  reviewStatus: 'PENDING',
+                  ...matchVisibility,
                 },
-                registrations: {
-                  where: {
-                    deletedAt: null,
-                    status: { in: ['PENDING', 'CHANGES_REQUESTED'] },
-                    category: categoryManagementVisibility,
-                  },
+              },
+              registrations: {
+                where: {
+                  deletedAt: null,
+                  status: { in: ['PENDING', 'CHANGES_REQUESTED'] },
+                  category: categoryManagementVisibility,
                 },
               },
             },
           },
         },
-        teams: {
-          where: { deletedAt: null, ...teamVisibility },
-          select: {
-            _count: {
-              select: {
-                changeRequests: {
-                  where: {
-                    deletedAt: null,
-                    status: { in: ['PENDING', 'CONFLICT', 'CHANGES_REQUESTED'] },
-                    team: {
-                      tournament: fullTournamentVisibility,
-                    },
+      },
+      teams: {
+        where: { deletedAt: null, ...teamVisibility },
+        select: {
+          _count: {
+            select: {
+              changeRequests: {
+                where: {
+                  status: { in: ['PENDING', 'CONFLICT', 'CHANGES_REQUESTED'] },
+                  team: {
+                    tournament: fullTournamentVisibility,
                   },
                 },
               },
@@ -215,6 +208,13 @@ export class SportsReadAdminListService {
           },
         },
       },
+    } satisfies Prisma.SportsTournamentSelect;
+    const tournaments = await this.prisma.sportsTournament.findMany({
+      where,
+      orderBy: [{ majorEvent: { startDate: 'desc' } }, { id: 'asc' }],
+      skip,
+      take,
+      select,
     });
 
     return tournaments.map((record) => {
