@@ -35,6 +35,7 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
     },
     select: {
       id: true,
+      selfSubscriptionEnabled: true,
     },
   },
   certificateConfigs: {
@@ -56,6 +57,19 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
           id: true,
           name: true,
           value: true,
+        },
+      },
+    },
+  },
+} as const satisfies Prisma.MajorEventSelect;
+
+export const PUBLIC_MAJOR_EVENT_CARD_SELECT = {
+  ...PUBLIC_MAJOR_EVENT_SELECT,
+  _count: {
+    select: {
+      events: {
+        where: {
+          deletedAt: null,
         },
       },
     },
@@ -159,6 +173,9 @@ export type PublicEventRecord = Prisma.EventGetPayload<{
 
 type PublicMajorEventMappable = Omit<PublicMajorEventRecord, 'sportsTournament'> & {
   sportsTournament?: PublicMajorEventRecord['sportsTournament'];
+  _count?: {
+    events: number;
+  };
 };
 
 export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
@@ -211,6 +228,7 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventMappable): Publi
         value: tier.value,
       })),
     })),
+    hasEvents: majorEvent._count ? majorEvent._count.events > 0 : undefined,
     sportsTournament: majorEvent.sportsTournament ?? undefined,
   };
 }
@@ -322,6 +340,12 @@ export class PublicMajorEventPrice {
 export class PublicSportsTournamentMarker {
   @Field(() => String)
   id!: string;
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether participants may request an individual subscription to this tournament.',
+  })
+  selfSubscriptionEnabled?: boolean | null;
 }
 
 @ObjectType({
@@ -461,6 +485,12 @@ export class PublicMajorEvent {
     description: 'Configured public price groups and tiers used by the subscription/payment flow.',
   })
   majorEventPrices!: PublicMajorEventPrice[];
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether this major event has child events available to the public event experience.',
+  })
+  hasEvents?: boolean | null;
 
   @Field(() => PublicSportsTournamentMarker, {
     nullable: true,

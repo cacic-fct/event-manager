@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { createPublicMajorEvent } from '@cacic-fct/event-manager-public-testing';
 import { of } from 'rxjs';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { AnalyticsService } from '../../analytics/analytics.service';
@@ -54,5 +55,37 @@ describe('MajorEvent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('routes tournament-only major events to the tournament subscription', () => {
+    const majorEvent = createPublicMajorEvent({
+      hasEvents: false,
+      sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: true },
+    });
+
+    expect(component.subscriptionRouteFor(majorEvent)).toEqual(['/tournament', 'tournament-1', 'subscribe']);
+  });
+
+  it('does not expose a subscription route when a major event has neither events nor a self-subscribable tournament', () => {
+    const majorEvent = createPublicMajorEvent({
+      hasEvents: false,
+      sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: false },
+    });
+
+    expect(component.subscriptionRouteFor(majorEvent)).toBeNull();
+  });
+
+  it('keeps regular major-event subscription routing when child events exist', () => {
+    const majorEvent = createPublicMajorEvent({
+      id: 'major-event-1',
+      hasEvents: true,
+      rankedSubscriptionEnabled: true,
+    });
+
+    expect(component.subscriptionRouteFor(majorEvent)).toEqual([
+      '/major-event',
+      'major-event-1',
+      'ranked-subscription',
+    ]);
   });
 });

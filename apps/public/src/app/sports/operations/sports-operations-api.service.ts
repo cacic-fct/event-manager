@@ -229,10 +229,10 @@ export class SportsOperationsApiService {
     ).pipe(map((value) => value.submitSportsTeamChange));
   }
 
-  tournament(tournamentId: string): Observable<CurrentUserTournamentOperations> {
+  tournament(tournamentId: string, requestedTeamId: string | null = null): Observable<CurrentUserTournamentOperations> {
     return this.query<{ currentUserSportsTournamentDetail: CurrentUserTournamentOperations }>(
-      `query CurrentUserSportsTournamentOperations($tournamentId: String!) {
-        currentUserSportsTournamentDetail(tournamentId: $tournamentId) {
+      `query CurrentUserSportsTournamentOperations($tournamentId: String!, $requestedTeamId: String) {
+        currentUserSportsTournamentDetail(tournamentId: $tournamentId, requestedTeamId: $requestedTeamId) {
           imageLicenseAgreementAccepted
           tournament {
             id name emoji isPaymentRequired requiresImageLicenseAgreement selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory
@@ -242,7 +242,7 @@ export class SportsOperationsApiService {
           }
         }
       }`,
-      { tournamentId },
+      { tournamentId, requestedTeamId },
     ).pipe(map((value) => value.currentUserSportsTournamentDetail));
   }
 

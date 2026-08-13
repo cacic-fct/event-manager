@@ -124,6 +124,27 @@ export class MajorEvent {
     return subscription.subscriptionStatus !== 'CONFIRMED' && subscription.subscriptionStatus !== 'CANCELED';
   }
 
+  subscriptionRouteFor(majorEvent: PublicMajorEvent): string[] | null {
+    if (majorEvent.hasEvents !== false) {
+      return [
+        '/major-event',
+        majorEvent.id,
+        majorEvent.rankedSubscriptionEnabled ? 'ranked-subscription' : 'subscription',
+      ];
+    }
+
+    const tournament = majorEvent.sportsTournament;
+    if (tournament?.selfSubscriptionEnabled) {
+      return ['/tournament', tournament.id, 'subscribe'];
+    }
+
+    return null;
+  }
+
+  isSubscriptionRouteOpen(majorEvent: PublicMajorEvent): boolean {
+    return majorEvent.hasEvents === false || this.isSubscriptionOpen(majorEvent);
+  }
+
   statusLabel(status: string): string {
     return getSubscriptionStatusLabel(status);
   }

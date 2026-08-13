@@ -47,7 +47,7 @@
   <form [formGroup]="form" (ngSubmit)="submit()">
     <mat-form-field>
       <mat-label>Equipe desejada</mat-label>
-      <mat-select formControlName="requestedTeamId">
+      <mat-select formControlName="requestedTeamId" (selectionChange)="teamSelectionChanged($event.value)">
         <mat-select-trigger>
           @if (selectedTeam(); as team) {
           <span class="team-select-value">
@@ -102,7 +102,11 @@
       @if (currentData.tournament.categories.length === 0) {
       <div class="empty-options" role="status">
         <mat-icon>sports</mat-icon>
+        @if (form.controls.requestedTeamId.value) {
+        <span>A equipe escolhida ainda não está inscrita em nenhuma modalidade disponível.</span>
+        } @else {
         <span>Nenhuma modalidade está disponível para autoinscrição.</span>
+        }
       </div>
       }
     </fieldset>

@@ -406,6 +406,7 @@ export class EventSubscriptionsResolver {
     const createdById = this.getActorId(context);
     const selectedEventIds = this.normalizeEventIds(input.selectedEventIds);
     const status = this.normalizeStatus(input.subscriptionStatus);
+    await this.ensureMajorEventSubscriptionHasTarget(null, input.majorEventId, selectedEventIds);
     await this.ensurePersonExists(input.personId);
     await this.ensureMajorEventExists(input.majorEventId);
     await this.ensureSelectedEventsBelongToMajorEvent(input.majorEventId, selectedEventIds);
@@ -569,6 +570,8 @@ export class EventSubscriptionsResolver {
             },
           })
         ).map((selection) => selection.eventId);
+
+      await this.ensureMajorEventSubscriptionHasTarget(id, existing.majorEventId, effectiveSelectedEventIds, tx);
 
       await this.syncMajorEventEventSubscriptions(
         tx,
@@ -888,6 +891,40 @@ export class EventSubscriptionsResolver {
         `Some selected events do not belong to major event ${majorEventId}: ${missingIds.join(', ')}.`,
       );
     }
+  }
+
+  private async ensureMajorEventSubscriptionHasTarget(
+    subscriptionId: string | null,
+    majorEventId: string,
+    selectedEventIds: string[],
+    prisma: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<void> {
+    if (selectedEventIds.length > 0) {
+      return;
+    }
+
+    if (
+      subscriptionId &&
+      (await prisma.sportsTournamentParticipant.findFirst({
+        where: {
+          majorEventSubscriptionId: subscriptionId,
+          deletedAt: null,
+          tournament: {
+            majorEventId,
+            deletedAt: null,
+          },
+        },
+        select: {
+          id: true,
+        },
+      }))
+    ) {
+      return;
+    }
+
+    throw new BadRequestException(
+      `Major-event subscription ${subscriptionId ?? 'new'} must include at least one event or sports participation.`,
+    );
   }
 
   private async ensurePersonIsNotLecturer(personId: string, eventIds: string[]): Promise<void> {

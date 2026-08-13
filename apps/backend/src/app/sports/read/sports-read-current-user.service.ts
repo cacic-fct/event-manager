@@ -1,6 +1,12 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { SportsRegistrationStatus, SportsRosterEntryStatus, SportsRosterStatus } from '@prisma/client';
+import {
+  SportsCategoryStatus,
+  SportsRegistrationStatus,
+  SportsRosterEntryStatus,
+  SportsRosterStatus,
+  SportsTeamStatus,
+} from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -15,6 +21,17 @@ import { PUBLIC_TEAM_SELECT } from './sports-read.records';
 import { SportsReadAdminMapper } from './sports-read-admin.mapper';
 import { SportsReadPublicService } from './sports-read-public.service';
 import { SportsReadRepresentativeService } from './sports-read-representative.service';
+
+const SELF_SUBSCRIPTION_CATEGORY_STATUSES = [
+  SportsCategoryStatus.REGISTRATION_OPEN,
+  SportsCategoryStatus.ACTIVE,
+] as const;
+
+const SELF_SUBSCRIPTION_REGISTRATION_STATUSES = [
+  SportsRegistrationStatus.APPROVED,
+  SportsRegistrationStatus.WAITING_PAYMENT,
+  SportsRegistrationStatus.ACTIVE,
+] as const;
 
 export class SportsReadCurrentUserService {
   private readonly mapper = new SportsReadAdminMapper();
@@ -31,8 +48,13 @@ export class SportsReadCurrentUserService {
   async currentUserTournament(
     input: { tournamentId?: string | null; majorEventId?: string | null },
     personId: string,
+    requestedTeamId?: string | null,
   ): Promise<CurrentUserSportsTournamentDetail> {
     const tournament = await this.publicReader.publicTournament(input);
+    const tournamentForResponse =
+      requestedTeamId === undefined
+        ? tournament
+        : await this.filterSelfSubscriptionCategories(tournament, requestedTeamId);
     const [teamMemberships, rosterEntries, majorEventSubscription, athleteProfiles] = await Promise.all([
       this.prisma.sportsTeamMember.findMany({
         where: {
@@ -150,7 +172,7 @@ export class SportsReadCurrentUserService {
       );
     });
     return {
-      tournament,
+      tournament: tournamentForResponse,
       imageLicenseAgreementAccepted: majorEventSubscription?.imageLicenseAgreementAccepted ?? false,
       orderedMatches,
       athleteProfiles: athleteProfiles.map((profile) => ({
@@ -164,6 +186,41 @@ export class SportsReadCurrentUserService {
         gameAccountName: profile.gameAccountName,
         gameAccountUrl: profile.gameAccountUrl,
       })),
+    };
+  }
+
+  private async filterSelfSubscriptionCategories(
+    tournament: CurrentUserSportsTournamentDetail['tournament'],
+    requestedTeamId: string | null,
+  ) {
+    const categories = await this.prisma.sportsCategory.findMany({
+      where: {
+        tournamentId: tournament.id,
+        deletedAt: null,
+        status: { in: [...SELF_SUBSCRIPTION_CATEGORY_STATUSES] },
+        ...(requestedTeamId
+          ? {
+              registrations: {
+                some: {
+                  teamId: requestedTeamId,
+                  deletedAt: null,
+                  status: { in: [...SELF_SUBSCRIPTION_REGISTRATION_STATUSES] },
+                  team: {
+                    tournamentId: tournament.id,
+                    deletedAt: null,
+                    status: SportsTeamStatus.ACTIVE,
+                  },
+                },
+              },
+            }
+          : {}),
+      },
+      select: { id: true },
+    });
+    const availableCategoryIds = new Set(categories.map((category) => category.id));
+    return {
+      ...tournament,
+      categories: tournament.categories.filter((category) => availableCategoryIds.has(category.id)),
     };
   }
 

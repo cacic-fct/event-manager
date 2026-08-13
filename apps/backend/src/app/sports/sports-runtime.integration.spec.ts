@@ -158,4 +158,23 @@ describe('sports runtime integration', () => {
       'person-1',
     );
   });
+
+  it('passes an explicit null team scope to the current-user tournament read', async () => {
+    const currentUserReads = moduleRef.get(SportsCurrentUserReadResolver);
+
+    await expect(
+      currentUserReads.currentUserSportsTournamentDetail(
+        { req: { user: actor } },
+        'tournament-1',
+        undefined,
+        null,
+      ),
+    ).resolves.toEqual({ id: 'tournament-1' });
+
+    expect(sportsRead.currentUserTournament).toHaveBeenCalledWith(
+      { tournamentId: 'tournament-1', majorEventId: undefined },
+      'person-1',
+      null,
+    );
+  });
 });

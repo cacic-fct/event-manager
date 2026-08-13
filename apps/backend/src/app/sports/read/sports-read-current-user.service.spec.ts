@@ -12,6 +12,7 @@ describe('SportsReadCurrentUserService', () => {
     sportsTeamMember: { findMany: jest.fn() },
     sportsMatchRosterEntry: { findMany: jest.fn() },
     majorEventSubscription: { findFirst: jest.fn() },
+    sportsCategory: { findMany: jest.fn() },
     sportsMatch: { findFirst: jest.fn() },
     sportsRegistrationMember: { findMany: jest.fn() },
     sportsMatchRoster: { findFirst: jest.fn() },
@@ -27,6 +28,7 @@ describe('SportsReadCurrentUserService', () => {
     prisma.sportsTeamMember.findMany.mockResolvedValue([]);
     prisma.sportsMatchRosterEntry.findMany.mockResolvedValue([]);
     prisma.majorEventSubscription.findFirst.mockResolvedValue(null);
+    prisma.sportsCategory.findMany.mockResolvedValue([]);
     prisma.sportsRegistrationMember.findMany.mockResolvedValue([]);
     prisma.sportsMatchRoster.findFirst.mockResolvedValue(null);
   });
@@ -63,6 +65,38 @@ describe('SportsReadCurrentUserService', () => {
 
     expect(result.orderedMatches.map((match) => match.id)).toEqual(['player-match', 'team-match', 'unrelated-earlier']);
     expect(result.imageLicenseAgreementAccepted).toBe(false);
+  });
+
+  it('filters self-subscription categories to active registrations of the selected team', async () => {
+    const tournament = {
+      ...sportsCurrentUserTournamentFixture(),
+      categories: [
+        { id: 'category-available' },
+        { id: 'category-unregistered' },
+        { id: 'category-finished' },
+      ],
+    };
+    publicReader.publicTournament.mockResolvedValue(tournament);
+    prisma.sportsCategory.findMany.mockResolvedValue([{ id: 'category-available' }]);
+
+    const result = await service().currentUserTournament({ tournamentId: 'tournament-1' }, 'person-1', 'team-1');
+
+    expect(result.tournament.categories).toEqual([{ id: 'category-available' }]);
+    expect(prisma.sportsCategory.findMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        tournamentId: 'tournament-1',
+        deletedAt: null,
+        status: { in: ['REGISTRATION_OPEN', 'ACTIVE'] },
+        registrations: {
+          some: expect.objectContaining({
+            teamId: 'team-1',
+            deletedAt: null,
+            status: { in: ['APPROVED', 'WAITING_PAYMENT', 'ACTIVE'] },
+          }),
+        },
+      }),
+      select: { id: true },
+    });
   });
 
   it('maps current-user operations with anonymized names and JSON role metadata', async () => {

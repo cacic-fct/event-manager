@@ -953,6 +953,45 @@ describe('EventSubscriptionsResolver', () => {
 
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+
+  it('rejects empty workspace major-event subscriptions', async () => {
+    const prisma = {
+      $transaction: jest.fn(),
+      people: {
+        findFirst: jest.fn(),
+      },
+      majorEvent: {
+        findFirst: jest.fn(),
+      },
+      event: {
+        findMany: jest.fn(),
+      },
+      eventLecturer: {
+        findMany: jest.fn(),
+      },
+    };
+    const resolver = new EventSubscriptionsResolver(
+      prisma as never,
+      {} as never,
+      {} as never,
+      { assertMajorEventMutable: jest.fn().mockResolvedValue(undefined) } as never,
+      {} as never,
+    );
+
+    await expect(
+      resolver.createWorkspaceMajorEventSubscription(
+        {
+          majorEventId: 'major-1',
+          personId: 'person-1',
+          subscriptionStatus: 'CONFIRMED',
+          selectedEventIds: [],
+        },
+        { req: { user: { sub: 'admin-1' } } } as never,
+      ),
+    ).rejects.toThrow('must include at least one event or sports participation');
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
 });
 
 function majorEventSubscriptionRecord(

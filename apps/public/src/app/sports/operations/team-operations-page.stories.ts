@@ -127,7 +127,7 @@ export const OverallMembersAndJoinQueue: Story = {
     await userEvent.click(await canvas.findByRole('tab', { name: 'Integrantes' }));
     await expect(canvas.getByRole('heading', { name: 'Pessoas da equipe' })).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Solicitações para entrar' })).toBeVisible();
-    await expect(canvas.getByRole('status', { name: '1 pessoa aguardando análise' })).toBeVisible();
+    await expect(canvas.getByRole('status', { name: '1 pessoa aguardando análise da organização' })).toBeVisible();
     await expect(canvas.queryByText('Mariana Luiza Ferreira')).not.toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Aprovar' })).not.toBeInTheDocument();
     await expect(canvas.queryByRole('button', { name: 'Recusar' })).not.toBeInTheDocument();

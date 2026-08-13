@@ -49,6 +49,7 @@ export class SportsSelfSubscriptionPage implements OnInit {
     const tournament = this.data()?.tournament;
     return Boolean(
       tournament &&
+        !this.loading() &&
         !this.busy() &&
         this.form.valid &&
         (tournament.selfSubscriptionAllowNoCategory || this.selectedCategories().size > 0),
@@ -70,12 +71,12 @@ export class SportsSelfSubscriptionPage implements OnInit {
 
   ngOnInit(): void {
     this.tournamentId = this.route.snapshot.paramMap.get('tournamentId') ?? '';
-    this.load();
+    this.load(null);
   }
 
-  load(): void {
+  load(requestedTeamId: string | null = this.form.controls.requestedTeamId.value.trim() || null): void {
     this.loading.set(true);
-    this.api.tournament(this.tournamentId).subscribe({
+    this.api.tournament(this.tournamentId, requestedTeamId).subscribe({
       next: (data) => {
         this.data.set(data);
         const requestedTeam = this.form.controls.requestedTeamId;
@@ -110,6 +111,11 @@ export class SportsSelfSubscriptionPage implements OnInit {
         this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a inscrição.');
       },
     });
+  }
+
+  teamSelectionChanged(requestedTeamId: string): void {
+    this.selectedCategories.set(new Set());
+    this.load(requestedTeamId.trim() || null);
   }
 
   toggleCategory(categoryId: string, selected: boolean): void {

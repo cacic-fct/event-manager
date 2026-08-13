@@ -34,6 +34,32 @@ describe('SportsOperationsApiService', () => {
     http.verify();
   });
 
+  it('requests categories scoped to the selected self-subscription team', async () => {
+    const api = TestBed.inject(SportsOperationsApiService);
+    const http = TestBed.inject(HttpTestingController);
+    const result = firstValueFrom(api.tournament('tournament-1', 'team-1'));
+    const request = http.expectOne('/api/graphql');
+
+    expect(request.request.body.variables).toEqual({
+      tournamentId: 'tournament-1',
+      requestedTeamId: 'team-1',
+    });
+    expect(request.request.body.query).toContain('requestedTeamId: $requestedTeamId');
+    request.flush({
+      data: {
+        currentUserSportsTournamentDetail: {
+          imageLicenseAgreementAccepted: false,
+          tournament: { categories: [], teams: [], paymentTiers: [] },
+        },
+      },
+    });
+
+    await expect(result).resolves.toEqual(
+      expect.objectContaining({ tournament: expect.objectContaining({ categories: [] }) }),
+    );
+    http.verify();
+  });
+
   it('submits identity claims without resolving or querying a person', async () => {
     const api = TestBed.inject(SportsOperationsApiService);
     const http = TestBed.inject(HttpTestingController);

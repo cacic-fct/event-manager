@@ -9,7 +9,10 @@ import { createCurrentUserTournamentOperations } from './sports-operations.fixtu
 describe('SportsSelfSubscriptionPage', () => {
   const open = vi.fn();
   const submitApplication = vi.fn(() => of({ id: 'application-fixture' }));
-  const tournament = vi.fn(() => of(createCurrentUserTournamentOperations()));
+  const tournament = vi.fn((...args: [tournamentId?: string, requestedTeamId?: string | null]) => {
+    void args;
+    return of(createCurrentUserTournamentOperations());
+  });
 
   beforeEach(() => {
     open.mockReset();
@@ -35,7 +38,7 @@ describe('SportsSelfSubscriptionPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
 
-    expect(tournament).toHaveBeenCalledWith('tournament-fixture');
+    expect(tournament).toHaveBeenCalledWith('tournament-fixture', null);
     expect(page.loading()).toBe(false);
     expect(page.form.controls.requestedTeamId.hasError('required')).toBe(true);
     expect(page.form.controls.paymentTier.hasError('required')).toBe(true);
@@ -54,6 +57,38 @@ describe('SportsSelfSubscriptionPage', () => {
     expect(page.selectedCategories().size).toBe(1);
     page.toggleCategory(category.id, false);
     expect(page.selectedCategories().size).toBe(0);
+  });
+
+  it('reloads categories for the selected team before allowing submission', () => {
+    const allCategories = createCurrentUserTournamentOperations({
+      paymentRequired: false,
+      requiresImageLicenseAgreement: false,
+    });
+    tournament.mockImplementation((_tournamentId, requestedTeamId) =>
+      of(
+        requestedTeamId === 'team-home'
+          ? {
+              ...allCategories,
+              tournament: { ...allCategories.tournament, categories: [] },
+            }
+          : allCategories,
+      ),
+    );
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+
+    page.form.controls.requestedTeamId.setValue('team-home');
+    page.form.controls.noticeAccepted.setValue(true);
+    const category = allCategories.tournament.categories[0];
+    if (!category) throw new Error('Expected a category fixture.');
+    page.toggleCategory(category.id, true);
+    expect(page.canSubmit()).toBe(true);
+    page.teamSelectionChanged('team-home');
+
+    expect(tournament).toHaveBeenLastCalledWith('tournament-fixture', 'team-home');
+    expect(page.data()?.tournament.categories).toEqual([]);
+    expect(page.selectedCategories().size).toBe(0);
+    expect(page.canSubmit()).toBe(false);
   });
 
   it('submits normalized optional values only after all agreements are satisfied', async () => {

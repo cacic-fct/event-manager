@@ -5,6 +5,30 @@ import { PUBLIC_MAJOR_EVENT_WHERE } from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 
 describe('PublicMajorEventsResolver', () => {
+  it('exposes child-event and tournament self-subscription capabilities on public cards', async () => {
+    const prisma = {
+      majorEvent: {
+        findMany: jest.fn().mockResolvedValue([
+          createPublicMajorEventRecord({
+            _count: { events: 0 },
+            sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: true },
+          }),
+        ]),
+      },
+    };
+    const resolver = new PublicMajorEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(resolver.publicMajorEvents()).resolves.toEqual([
+      expect.objectContaining({
+        hasEvents: false,
+        sportsTournament: {
+          id: 'tournament-1',
+          selfSubscriptionEnabled: true,
+        },
+      }),
+    ]);
+  });
+
   it('uses a bounded Typesense page for public major-event search pagination', async () => {
     const prisma = {
       majorEvent: {

@@ -112,6 +112,44 @@ describe('SportsPlayerApplicationService', () => {
     expect((tx as Record<string, unknown>)['people']).toBeUndefined();
   });
 
+  it('rejects a selected category when the requested team is not registered in it', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValueOnce({
+      id: 'tournament-1',
+      majorEventId: 'major-1',
+      status: SportsTournamentStatus.REGISTRATION_OPEN,
+      selfSubscriptionEnabled: true,
+      selfSubscriptionAllowNoTeam: false,
+      selfSubscriptionAllowNoCategory: false,
+      allowPlayerMultipleTeams: false,
+      finishedAt: null,
+      majorEvent: {
+        isPaymentRequired: false,
+        requiresImageLicenseAgreement: false,
+        deletedAt: null,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        majorEventPrices: [],
+      },
+      teams: [{ id: 'team-1' }],
+      categories: [],
+    });
+
+    await expect(
+      service.submitSelfApplication(
+        {
+          tournamentId: 'tournament-1',
+          requestedTeamId: 'team-1',
+          categoryIds: ['category-1'],
+          noticeAccepted: true,
+        },
+        'person-1',
+        applicantActor,
+      ),
+    ).rejects.toThrow('Selecione ao menos uma modalidade disponível para este torneio.');
+
+    expect(tx.sportsPlayerApplication.upsert).not.toHaveBeenCalled();
+  });
+
   it('requires image-license acceptance when the sports major event enables it', async () => {
     tx.sportsTournament.findFirst.mockResolvedValueOnce({
       id: 'tournament-1',

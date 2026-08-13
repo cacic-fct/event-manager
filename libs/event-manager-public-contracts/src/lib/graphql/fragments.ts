@@ -33,6 +33,7 @@ export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
   emoji
   startDate
   endDate
+  hasEvents
   description
   subscriptionStartDate
   subscriptionEndDate
@@ -43,6 +44,7 @@ export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
   isPaymentRequired
   sportsTournament {
     id
+    selfSubscriptionEnabled
   }
 `;
 

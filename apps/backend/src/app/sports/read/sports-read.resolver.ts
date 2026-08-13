@@ -138,9 +138,17 @@ export class SportsCurrentUserReadResolver {
     @Context() context: GraphqlContext,
     @Args('tournamentId', { type: () => String, nullable: true }) tournamentId?: string,
     @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
+    @Args('requestedTeamId', { type: () => String, nullable: true }) requestedTeamId?: string | null,
   ): Promise<CurrentUserSportsTournamentDetail> {
     const person = await this.currentUser.requireCurrentPerson(context);
-    return this.sportsRead.currentUserTournament({ tournamentId, majorEventId }, person.id);
+    if (requestedTeamId === undefined) {
+      return this.sportsRead.currentUserTournament({ tournamentId, majorEventId }, person.id);
+    }
+    return this.sportsRead.currentUserTournament(
+      { tournamentId, majorEventId },
+      person.id,
+      requestedTeamId?.trim() || null,
+    );
   }
 
   @Query(() => RepresentativeSportsTeamWorkspace, {
