@@ -65,11 +65,15 @@
       </mat-form-field>
       <mat-form-field>
         <mat-label>Esporte</mat-label>
-        <mat-select formControlName="sport" (selectionChange)="updateNewCategoryEmoji($event.value)">
+        <mat-select
+          formControlName="sport"
+          placeholder="Selecione um esporte"
+          (selectionChange)="workspace.applySportPreset($event.value)">
           @for (sport of sports; track sport[0]) {
             <mat-option [value]="sport[0]"> <lib-twemoji [emoji]="sportEmoji(sport[0])" /> {{ sport[1] }} </mat-option>
           }
         </mat-select>
+        <mat-hint> Trocar o preset pode substituir dados já preenchidos. </mat-hint>
       </mat-form-field>
       <mat-form-field>
         <mat-label>Emoji da modalidade</mat-label>
@@ -335,23 +339,25 @@
         ><mat-label>Técnicos</mat-label><input matInput type="number" min="0" formControlName="maximumCoaches"
       /></mat-form-field>
       <mat-slide-toggle formControlName="allowPlayerMultipleTeams"
-        >Permitir atleta em múltiplas equipes nesta modalidade</mat-slide-toggle
+        >Permitir um mesmo atleta em múltiplas equipes nesta modalidade</mat-slide-toggle
       >
       <mat-slide-toggle formControlName="periodsEnabled">Registrar tempos, sets ou rodadas</mat-slide-toggle>
       @if (workspace.categoryForm.controls.periodsEnabled.value) {
-        <mat-form-field
-          ><mat-label>Quantidade máxima</mat-label
-          ><input matInput type="number" min="1" formControlName="maximumPeriods"
-        /></mat-form-field>
-        <mat-form-field
-          ><mat-label>Nome do período/tempo/round</mat-label><input matInput formControlName="periodLabel"
-        /></mat-form-field>
+        <mat-form-field>
+          <mat-label>Quantidade máxima de tempos, sets ou rodadas</mat-label>
+          <input matInput type="number" min="0" formControlName="maximumPeriods" />
+          <mat-hint>Zero significa sem limite definido.</mat-hint>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Nome do período/tempo/round</mat-label>
+          <input matInput formControlName="periodLabel" />
+        </mat-form-field>
       }
       <div class="subsection-title span-2">
         <h4>Cronômetros</h4>
         <p>
-          Configure o tempo geral e o tempo de cada período. Durante a partida, o servidor usa instantes Unix para
-          manter todos os dispositivos sincronizados.
+          Configure o tempo geral e o tempo de cada período. Durante a partida, o servidor mantém todos os dispositivos
+          sincronizados.
         </p>
       </div>
       <mat-form-field>

@@ -88,6 +88,15 @@ export const routes: Route[] = [
       ...guardedFeatureRoute(`${sportsData.path}/:tournamentId`, sportsData, () =>
         import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
       ),
+      ...guardedFeatureRoute(`${sportsData.path}/:tournamentId/:area/:categoryId/:matchId`, sportsData, () =>
+        import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
+      ),
+      ...guardedFeatureRoute(`${sportsData.path}/:tournamentId/:area/:entityId`, sportsData, () =>
+        import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
+      ),
+      ...guardedFeatureRoute(`${sportsData.path}/:tournamentId/:area`, sportsData, () =>
+        import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
+      ),
 
       ...guardedFeatureRoute(publicationData.path, publicationData, () =>
         import('../publication/publication-page.component').then((m) => m.PublicationPageComponent),

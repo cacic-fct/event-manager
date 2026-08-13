@@ -169,6 +169,13 @@ const sportsGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
             id: 'person-search-1',
             name: 'Mariana Clara Santos',
             email: 'mariana@example.com',
+            identityDocument: '529.982.247-25',
+          },
+          {
+            id: 'person-search-2',
+            name: 'Rafael Oliveira',
+            email: 'rafael@example.com',
+            identityDocument: 'RG-SP-42.765.123',
           },
         ],
       },
@@ -306,6 +313,10 @@ export const TeamManagement: Story = {
     await expect(await canvas.findByText('Escudo da equipe')).toBeVisible();
     await expect(canvas.getByText('Ana Beatriz de Souza')).toBeVisible();
     await expect(canvas.getByText('Mariana Clara Santos')).toBeVisible();
+    await userEvent.type(canvas.getByRole('textbox', { name: 'Buscar pessoa para o elenco' }), 'Mariana');
+    await expect(canvas.getByText('mariana@example.com')).toBeVisible();
+    await expect(canvas.getByText('•••.982.247-••')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Adicionar pessoa Mariana Clara Santos' })).toBeVisible();
     await expect(canvas.getByText('Vôlei misto')).toBeVisible();
     await expect(
       canvas.getByRole('button', { name: 'Inscrição automática em modalidades com atletas suficientes' }),

@@ -1,8 +1,4 @@
 <section class="section workspace-tab-shell sports-workspace">
-  <app-sports-workspace-layout-styles />
-  <app-sports-workspace-team-styles />
-  <app-sports-workspace-match-styles />
-  <app-sports-workspace-match-editor-styles />
   @if (workspace.loading()) {
     <mat-progress-bar mode="indeterminate" aria-label="Carregando gestão esportiva" />
   }
@@ -32,7 +28,7 @@
 
       <mat-list class="result-list">
         @for (item of workspace.tournaments(); track item.tournament.id) {
-          <mat-list-item (click)="workspace.loadTournament(item.tournament.id)">
+          <mat-list-item (click)="openTournament(item.tournament.id)">
             <span matListItemTitle class="list-title">
               <lib-twemoji [emoji]="item.majorEvent.emoji" />
               {{ item.majorEvent.name }}

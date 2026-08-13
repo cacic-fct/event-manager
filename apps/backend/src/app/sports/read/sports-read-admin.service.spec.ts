@@ -80,6 +80,41 @@ describe('SportsReadAdminService', () => {
     );
   });
 
+  it('keeps an unregistered draft team visible in a scoped tournament workspace', async () => {
+    const records = sportsAdminReadRecords();
+    const scopedTargets = {
+      eventIds: new Set<string>(),
+      eventGroupIds: new Set<string>(),
+      majorEventIds: new Set(['major-event-1']),
+    };
+    authorization.accessibleEventTargets.mockResolvedValue(scopedTargets);
+    prisma.sportsTournament.findFirst.mockResolvedValue({ id: 'tournament-1' });
+    prisma.sportsCategory.findMany.mockResolvedValue([records.category]);
+    prisma.sportsTeam.findMany.mockResolvedValue([
+      {
+        ...records.team,
+        status: 'DRAFT',
+        registrations: [],
+      },
+    ]);
+
+    const result = await new SportsReadAdminService(prisma as never, authorization as never).adminTournament(
+      user as never,
+      'tournament-1',
+    );
+
+    expect(result.teams[0]?.status).toBe('DRAFT');
+    expect(prisma.sportsTeam.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          tournamentId: 'tournament-1',
+          deletedAt: null,
+          OR: [{ tournament: { majorEventId: { in: ['major-event-1'] } } }],
+        },
+      }),
+    );
+  });
+
   it('delegates tournament listing to the dedicated filtered list reader', async () => {
     const delegated = jest
       .spyOn(SportsReadAdminListService.prototype, 'adminTournamentList')
@@ -292,7 +327,9 @@ describe('SportsReadAdminService', () => {
     expect(result.changeRequests[0]?.deltaJson).toBe('{}');
     expect(prisma.sportsTeam.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ registrations: expect.objectContaining({ some: expect.any(Object) }) }),
+        where: expect.objectContaining({
+          OR: [expect.objectContaining({ registrations: expect.objectContaining({ some: expect.any(Object) }) })],
+        }),
       }),
     );
   });
@@ -310,6 +347,33 @@ describe('SportsReadAdminService', () => {
       new SportsReadAdminService(prisma as never, authorization as never).adminTeam(user as never, 'hidden-team'),
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.sportsTeamMember.findMany).not.toHaveBeenCalled();
+  });
+
+  it('reads an unregistered team in a major-event team scope', async () => {
+    const records = sportsAdminReadRecords();
+    authorization.accessibleEventTargets.mockResolvedValue({
+      eventIds: new Set<string>(),
+      eventGroupIds: new Set<string>(),
+      majorEventIds: new Set(['major-event-1']),
+    });
+    prisma.sportsTeam.findFirst.mockResolvedValue({ ...records.team, status: 'DRAFT' });
+    prisma.sportsRegistration.findMany.mockResolvedValue([]);
+
+    const result = await new SportsReadAdminService(prisma as never, authorization as never).adminTeam(
+      user as never,
+      'team-1',
+    );
+
+    expect(result.team.status).toBe('DRAFT');
+    expect(prisma.sportsTeam.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          id: 'team-1',
+          deletedAt: null,
+          OR: [{ tournament: { majorEventId: { in: ['major-event-1'] } } }],
+        },
+      }),
+    );
   });
 
   it('filters members at query time when only some team categories are readable', async () => {

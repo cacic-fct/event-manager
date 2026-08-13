@@ -3,7 +3,7 @@ import type { SportsCategorySummary } from './sports.models';
 import { SportsWorkspaceBaseService } from './sports-workspace-base.service';
 
 export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBaseService {
-  async selectCategory(category: SportsCategorySummary): Promise<void> {
+  async selectCategory(category: SportsCategorySummary, options: { navigate?: boolean } = {}): Promise<void> {
     await this.run('Não foi possível carregar a modalidade.', async () => {
       const read = await firstValueFrom(this.api.category(category.id));
       this.categoryRead.set(read);
@@ -12,6 +12,9 @@ export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBase
       this.registrationForm.controls.categoryId.setValue(category.id);
       this.matchForm.controls.categoryId.setValue(category.id);
     });
+    if (options.navigate !== false && this.selectedCategoryId() === category.id) {
+      this.navigateToArea(this.activeArea() === 'matches' ? 'matches' : 'categories', { categoryId: category.id });
+    }
   }
 
   async saveCategory(): Promise<void> {
@@ -93,10 +96,13 @@ export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBase
     });
   }
 
-  newTeam(): void {
+  newTeam(navigate = true): void {
     this.teamRead.set(null);
     this.selectedTeamId.set('');
     this.teamForm.reset({ id: '', name: '', institution: '', status: 'DRAFT' });
+    if (navigate) {
+      this.navigateToArea('teams');
+    }
   }
   protected abstract askText(
     title: string,

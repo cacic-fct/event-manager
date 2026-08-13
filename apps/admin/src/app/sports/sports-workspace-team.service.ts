@@ -42,7 +42,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     });
   });
 
-  async selectTeam(team: SportsTeamSummary): Promise<void> {
+  async selectTeam(team: SportsTeamSummary, options: { navigate?: boolean } = {}): Promise<void> {
     await this.run('Não foi possível carregar a equipe.', async () => {
       const read = await firstValueFrom(this.api.team(team.id));
       if (!read?.team) {
@@ -58,6 +58,9 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       });
       this.registrationForm.controls.teamId.setValue(team.id);
     });
+    if (options.navigate !== false && this.selectedTeamId() === team.id) {
+      this.navigateToArea(this.activeArea() === 'reviews' ? 'reviews' : 'teams', { teamId: team.id });
+    }
   }
 
   async saveTeam(): Promise<void> {
@@ -448,10 +451,13 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     }
   }
 
-  newMatch(): void {
+  newMatch(navigate = true): void {
     const categoryId = this.selectedCategoryId();
     this.matchReview.set(null);
     this.selectedMatchId.set('');
+    this.registrationReads.set({});
+    this.lineupSelections.set({});
+    this.lineupDetails.set({});
     this.matchForm.reset({
       id: '',
       categoryId,
@@ -470,6 +476,9 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       livestreamProvider: '',
       livestreamUrl: '',
     });
+    if (navigate) {
+      this.navigateToArea('matches', { categoryId: categoryId || undefined });
+    }
   }
   protected abstract loadMatchRegistrations(review: import('./sports.models').SportsMatchReview): Promise<void>;
 }

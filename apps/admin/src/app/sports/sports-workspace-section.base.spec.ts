@@ -31,6 +31,10 @@ class SportsWorkspaceSectionHarness extends SportsWorkspaceSection {
     return this.officialRoleLabel(role);
   }
 
+  personDocument(value: string | null | undefined) {
+    return this.personIdentityDocument(value);
+  }
+
   changeType(type: string) {
     return this.changeTypeLabel(type);
   }
@@ -98,6 +102,9 @@ describe('SportsWorkspaceSection', () => {
     expect(section.lineupRole('UNKNOWN')).toBe('Integrante');
     expect(section.officialRole('REFEREE')).toBe('Árbitro');
     expect(section.officialRole('UNKNOWN')).toBe('Função esportiva');
+    expect(section.personDocument('529.982.247-25')).toBe('•••.982.247-••');
+    expect(section.personDocument('RG-SP-42.765.123')).toBe('RG-SP-42.765.123');
+    expect(section.personDocument(null)).toBe('Documento não informado');
     expect(section.changeType('LOGO')).toBe('Escudo da equipe');
     expect(section.changeType('UNKNOWN')).toBe('Alteração da equipe');
     expect(section.actionType('FINALIZE')).toBe('Finalização');

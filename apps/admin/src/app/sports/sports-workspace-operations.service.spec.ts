@@ -649,6 +649,30 @@ describe('SportsWorkspaceService operations', () => {
       expect(workspace.pendingMatchActions()).toEqual(actions);
     });
 
+    it('keeps the workspace lists current when a selected detail cannot refresh', async () => {
+      const events = new Subject<void>();
+      const current = createAdminSportsTournamentRead();
+      const updated = {
+        ...current,
+        teams: [...current.teams, { ...current.teams[0], id: 'team-new', name: 'Equipe nova' }],
+      };
+      workspace.tournamentRead.set(current);
+      workspace.teamRead.set(createAdminSportsTeamRead());
+      workspace.selectedTeamId.set('team-1');
+      api.watchTournamentReview.mockReturnValue(events);
+      api.tournament.mockReturnValue(of(updated));
+      api.applicationQueue.mockReturnValue(of([]));
+      api.matchActionReviewQueue.mockReturnValue(of([]));
+      api.team.mockReturnValue(throwError(() => new Error('Equipe selecionada indisponível')));
+
+      const callable = workspace as unknown as { watchTournament(tournamentId: string): void };
+      callable.watchTournament(current.tournament.id);
+      events.next();
+
+      await vi.waitFor(() => expect(workspace.tournamentRead()).toEqual(updated));
+      expect(workspace.error()).toBe('Equipe selecionada indisponível');
+    });
+
     it('records live refresh failures without replacing the current snapshot', async () => {
       const events = new Subject<void>();
       const current = createAdminSportsTournamentRead();

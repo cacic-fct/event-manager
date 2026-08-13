@@ -193,6 +193,14 @@ describe('shared utility coverage from public app', () => {
       'Palestrante',
       'Certificado emitido',
     ]);
+    expect(
+      getParticipationStatusLabels({
+        isSubscribed: false,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+        isSportsManager: true,
+      }),
+    ).toEqual(['Gestão esportiva']);
     expect(formatStatusLine(['Inscrito', undefined, 'Inscrito'])).toBe('Inscrito');
   });
 

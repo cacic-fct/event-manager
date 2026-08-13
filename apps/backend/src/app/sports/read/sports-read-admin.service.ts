@@ -69,22 +69,16 @@ export class SportsReadAdminService {
       this.hasScopedPermission(user, Permission.SportsRegistration.Read, { sportsTournamentId: tournamentId }),
       this.hasScopedPermission(user, Permission.SportsScore.Read, { sportsTournamentId: tournamentId }),
     ]);
+    const teamTargets = canReadTeams
+      ? await this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsTeam.Read)
+      : null;
     const [teams, scoreEntries, venues, officials] = await Promise.all([
       canReadTeams
         ? this.prisma.sportsTeam.findMany({
             where: {
               tournamentId,
               deletedAt: null,
-              ...(readableCategoryIds.length
-                ? {
-                    registrations: {
-                      some: {
-                        categoryId: { in: readableCategoryIds },
-                        deletedAt: null,
-                      },
-                    },
-                  }
-                : { id: '__no_sports_team_access__' }),
+              ...this.teamVisibility(teamTargets),
             },
             select: {
               ...ADMIN_TEAM_SELECT,
@@ -241,16 +235,7 @@ export class SportsReadAdminService {
         where: {
           id: teamId,
           deletedAt: null,
-          ...(teamTargets === null
-            ? {}
-            : {
-                registrations: {
-                  some: {
-                    deletedAt: null,
-                    category: this.categoryVisibility(teamTargets),
-                  },
-                },
-              }),
+          ...this.teamVisibility(teamTargets),
         },
         select: ADMIN_TEAM_SELECT,
       }),
@@ -558,6 +543,27 @@ export class SportsReadAdminService {
       scopes.push({ matches: { some: { deletedAt: null, eventId: { in: [...targets.eventIds] } } } });
     }
     return scopes.length ? { OR: scopes } : { id: '__no_sports_category_access__' };
+  }
+
+  private teamVisibility(targets: AccessibleEventGrantTargets | null): Prisma.SportsTeamWhereInput {
+    if (targets === null) {
+      return {};
+    }
+    const scopes: Prisma.SportsTeamWhereInput[] = [];
+    if (targets.majorEventIds.size > 0) {
+      scopes.push({ tournament: { majorEventId: { in: [...targets.majorEventIds] } } });
+    }
+    if (targets.eventGroupIds.size > 0 || targets.eventIds.size > 0) {
+      scopes.push({
+        registrations: {
+          some: {
+            deletedAt: null,
+            category: this.categoryVisibility(targets),
+          },
+        },
+      });
+    }
+    return scopes.length ? { OR: scopes } : { id: '__no_sports_team_access__' };
   }
 
   private tournamentVisibility(targets: AccessibleEventGrantTargets | null): Prisma.SportsTournamentWhereInput {

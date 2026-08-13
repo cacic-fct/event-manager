@@ -132,6 +132,7 @@ export function getParticipationStatusLabels(participation: CurrentUserEventPart
   return [
     participation.isSubscribed ? 'Inscrito' : undefined,
     participation.isLecturer ? 'Palestrante' : undefined,
+    participation.isSportsManager ? 'Gestão esportiva' : undefined,
     participation.hasIssuedCertificate ? 'Certificado emitido' : undefined,
   ].filter((label): label is string => !!label);
 }

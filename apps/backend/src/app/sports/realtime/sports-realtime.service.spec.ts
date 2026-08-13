@@ -164,7 +164,18 @@ describe('SportsRealtimeService', () => {
       },
     ]);
 
-    expect(replay.record).toHaveBeenCalledTimes(2);
+    expect(replay.record).toHaveBeenCalledTimes(3);
+    expect(replay.record).toHaveBeenCalledWith(
+      'sports-admin-tournament:tournament-1',
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: 'SPORTS_STRUCTURE_INVALIDATED',
+          kind: 'BRACKET_ADVANCEMENT',
+          stageIds: ['stage-2'],
+          matchIds: ['match-2'],
+        }),
+      }),
+    );
     expect(replay.record).toHaveBeenCalledWith(
       'sports-tournament:tournament-1',
       expect.objectContaining({

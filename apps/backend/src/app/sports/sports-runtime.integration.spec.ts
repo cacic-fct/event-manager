@@ -60,25 +60,7 @@ describe('sports runtime integration', () => {
     moduleRef = await Test.createTestingModule({
       imports: [GraphQLSchemaBuilderModule],
       providers: [
-        {
-          provide: SportsTournamentMutationsResolver,
-          useFactory: () =>
-            new SportsTournamentMutationsResolver(
-              policy as never,
-              {} as never,
-              {} as never,
-              currentUser as never,
-              admin as never,
-              {} as never,
-              {} as never,
-              {} as never,
-              {} as never,
-              {} as never,
-              {} as never,
-              {} as never,
-              mutationEvents as never,
-            ),
-        },
+        SportsTournamentMutationsResolver,
         SportsPublicReadResolver,
         SportsCurrentUserReadResolver,
         { provide: AuthorizationPolicyService, useValue: policy },

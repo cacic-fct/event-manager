@@ -30,6 +30,7 @@ export interface CurrentUserEventParticipation {
   isSubscribed: boolean;
   isLecturer: boolean;
   hasIssuedCertificate: boolean;
+  isSportsManager?: boolean;
 }
 
 export interface CurrentUserMajorEventFeedItem {

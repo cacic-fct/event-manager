@@ -206,6 +206,12 @@ export class CurrentUserEventParticipation {
 
   @Field(() => Boolean)
   hasIssuedCertificate!: boolean;
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether the person has a sports role that grants access to manage the tournament.',
+  })
+  isSportsManager?: boolean;
 }
 
 @ObjectType()

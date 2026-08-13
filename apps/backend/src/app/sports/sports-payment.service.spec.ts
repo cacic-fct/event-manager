@@ -28,11 +28,11 @@ describe('SportsPaymentService', () => {
       approved: true,
     });
 
-    expect(tx.$queryRaw).toHaveBeenCalledTimes(1);
-    expect(tx.$queryRaw.mock.calls[0]?.[0]).toEqual(
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$executeRaw.mock.calls[0]?.[0]).toEqual(
       expect.arrayContaining([expect.stringContaining('pg_advisory_xact_lock')]),
     );
-    expect(tx.$queryRaw.mock.calls[0]?.[1]).toBe('sports-participant:tournament-1:person-1');
+    expect(tx.$executeRaw.mock.calls[0]?.[1]).toBe('sports-participant:tournament-1:person-1');
   });
 
   it('enables receipt upload for an approved team-assigned participant in a paid tournament', async () => {
@@ -247,7 +247,7 @@ describe('SportsPaymentService', () => {
 
 function createTx() {
   return {
-    $queryRaw: jest.fn().mockResolvedValue([{ pg_advisory_xact_lock: null }]),
+    $executeRaw: jest.fn().mockResolvedValue(1),
     sportsTournament: {
       findFirst: jest.fn().mockResolvedValue({
         id: 'tournament-1',

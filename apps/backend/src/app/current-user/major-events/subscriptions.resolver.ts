@@ -97,7 +97,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
   @Query(() => [CurrentUserMajorEventFeedItem], {
     name: 'currentUserMajorEventFeed',
     description:
-      'Get current-user major events where the person is subscribed, a lecturer, or has an issued major-event certificate.',
+      'Get current-user major events where the person is subscribed, a lecturer, has an issued major-event certificate, attended an event, or has a sports management role.',
   })
   async currentUserMajorEventFeed(@Context() context: GraphqlContext): Promise<CurrentUserMajorEventFeedItem[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);

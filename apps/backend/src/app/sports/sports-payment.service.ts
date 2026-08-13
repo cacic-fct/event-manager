@@ -140,7 +140,7 @@ export class SportsPaymentService {
     personId: string,
   ): Promise<void> {
     const lockKey = `sports-participant:${tournamentId}:${personId}`;
-    await tx.$queryRaw`
+    await tx.$executeRaw`
       SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))
     `;
   }

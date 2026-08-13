@@ -1,4 +1,5 @@
 import type { PublicEvent, PublicEventGroup, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import {
   getMajorEventStatusLine,
   getSubscribedItemDateLine,
@@ -157,6 +158,16 @@ describe('feed view model', () => {
         },
       ]),
     ).toBe('Presença registrada, Inscrito');
+    expect(
+      getMajorEventStatusLine(
+        majorEventFeedItem('sports-manager', publicFixtureDateFromNow(-1, 9), undefined, {
+          isSubscribed: false,
+          isLecturer: false,
+          hasIssuedCertificate: false,
+          isSportsManager: true,
+        }),
+      ),
+    ).toBe('Gestão esportiva');
   });
 });
 

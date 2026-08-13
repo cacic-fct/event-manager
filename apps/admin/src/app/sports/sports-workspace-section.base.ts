@@ -13,7 +13,8 @@ import {
   SPORTS_TIMER_PRESET_KEYS,
   SPORTS_TIMER_PRESETS,
 } from '@cacic-fct/shared-data-types/sports-metadata';
-import { SPORTS_FORMAT_OPTIONS } from './sports-format-guide.component';
+import { formatIdentityDocumentForExport } from '@cacic-fct/shared-utils';
+import { SPORTS_FORMAT_OPTIONS } from './sports-format-options';
 import type { SportsCategoryRead } from './sports.models';
 import { SportsWorkspaceService } from './sports-workspace.service';
 
@@ -97,10 +98,6 @@ export abstract class SportsWorkspaceSection {
     return getDefaultSportsEmoji(value);
   }
 
-  protected updateNewCategoryEmoji(sport: string): void {
-    if (!this.workspace.categoryRead()) this.workspace.categoryForm.controls.emoji.setValue(this.sportEmoji(sport));
-  }
-
   protected categoryName(categoryId: string): string {
     return this.workspace.tournamentRead()?.categories.find((item) => item.id === categoryId)?.name ?? 'Modalidade';
   }
@@ -140,6 +137,10 @@ export abstract class SportsWorkspaceSection {
         SCOREKEEPER: 'Mesário',
       }[role] ?? 'Função esportiva'
     );
+  }
+
+  protected personIdentityDocument(value: string | null | undefined): string {
+    return formatIdentityDocumentForExport(value, 'masked') || 'Documento não informado';
   }
 
   protected changeTypeLabel(type: string): string {

@@ -5,6 +5,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { of, throwError } from 'rxjs';
@@ -110,6 +111,25 @@ describe('Attendances', () => {
     expect(text).not.toContain('Grande evento apenas inscrito');
     expect(text).not.toContain('Evento apenas inscrito');
     expect(text).toContain('4 de 6 participações');
+  });
+
+  it('filters sports management tournaments alongside major events', async () => {
+    const { component, fixture } = await createFixture({ onlineFeed: sportsManagerSubscriptionsFeedFixture });
+
+    await settle(fixture);
+
+    component.updateFilters(['sportsManager']);
+    fixture.detectChanges();
+
+    const sportsManagerItem = component.filteredFeed()?.majorEventItems[0];
+    if (!sportsManagerItem) {
+      throw new Error('Expected sports management attendance fixture');
+    }
+
+    expect(fixture.nativeElement.textContent).toContain('Torneio com gestão esportiva');
+    expect(fixture.nativeElement.textContent).not.toContain('Grande evento sem gestão esportiva');
+    expect(fixture.nativeElement.textContent).toContain('1 de 2 participações');
+    expect(component.majorEventRoute(sportsManagerItem)).toEqual(['/tournament', 'tournament-1']);
   });
 
   it('merges standalone event-group children into one event-group item', async () => {
@@ -328,8 +348,8 @@ const subscriptionsFeedFixture: SubscriptionsFeed = {
         id: 'major-1',
         name: 'SECOMPP',
         emoji: '🎓',
-        startDate: '2026-07-01T12:00:00.000Z',
-        endDate: '2026-07-03T20:00:00.000Z',
+        startDate: publicFixtureDateFromNow(-1),
+        endDate: publicFixtureDateFromNow(1, 20),
         description: 'Grande evento.',
       },
       participation: {
@@ -428,8 +448,8 @@ const filterableSubscriptionsFeedFixture = {
         id: 'major-attended',
         name: 'Grande evento com presença',
         emoji: '🎓',
-        startDate: '2026-07-01T12:00:00.000Z',
-        endDate: '2026-07-03T20:00:00.000Z',
+        startDate: publicFixtureDateFromNow(-1),
+        endDate: publicFixtureDateFromNow(1, 20),
         description: 'Grande evento.',
       },
       participation: {
@@ -577,6 +597,50 @@ const filterableSubscriptionsFeedFixture = {
       },
     },
   ],
+} satisfies SubscriptionsFeed;
+
+const sportsManagerSubscriptionsFeedFixture = {
+  majorEventItems: [
+    {
+      id: 'sports-major',
+      majorEventId: 'sports-major',
+      majorEvent: {
+        id: 'sports-major',
+        name: 'Torneio com gestão esportiva',
+        emoji: '🏆',
+        startDate: publicFixtureDateFromNow(-1),
+        endDate: publicFixtureDateFromNow(1, 20),
+        description: 'Torneio público.',
+        sportsTournament: { id: 'tournament-1' },
+      },
+      participation: {
+        isSubscribed: false,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+        isSportsManager: true,
+      },
+    },
+    {
+      id: 'regular-major',
+      majorEventId: 'regular-major',
+      majorEvent: {
+        id: 'regular-major',
+        name: 'Grande evento sem gestão esportiva',
+        emoji: '🎓',
+        startDate: publicFixtureDateFromNow(-1),
+        endDate: publicFixtureDateFromNow(1, 20),
+        description: 'Grande evento.',
+      },
+      participation: {
+        isSubscribed: true,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+      },
+    },
+  ],
+  eventItems: [],
+  standaloneCertificateFolders: [],
+  attendances: [],
 } satisfies SubscriptionsFeed;
 
 const standaloneEventGroupChildrenFeedFixture = {

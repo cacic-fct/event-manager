@@ -190,6 +190,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       );
       await this.loadTournament(id);
       this.tournaments.set(await firstValueFrom(this.api.tournaments({ take: 100 })));
+      this.navigateToArea('overview');
       this.notify('Torneio duplicado e aberto para revisão.');
     });
   }
@@ -310,25 +311,35 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
         const categoryId = this.selectedCategoryId();
         const teamId = this.selectedTeamId();
         const matchId = this.selectedMatchId();
-        const [tournament, applications, pendingActions, category, team, match] = await Promise.all([
-          firstValueFrom(this.api.tournament(tournamentId)),
+        const tournament = await firstValueFrom(this.api.tournament(tournamentId));
+        this.tournamentRead.set(tournament);
+        const [applications, pendingActions, category, team, match] = await Promise.allSettled([
           firstValueFrom(this.api.applicationQueue(tournamentId)),
           firstValueFrom(this.api.matchActionReviewQueue(tournamentId)),
           categoryId ? firstValueFrom(this.api.category(categoryId)) : Promise.resolve(null),
           teamId ? firstValueFrom(this.api.team(teamId)) : Promise.resolve(null),
           matchId ? firstValueFrom(this.api.matchReview(matchId)) : Promise.resolve(null),
         ]);
-        this.tournamentRead.set(tournament);
-        this.applications.set(applications);
-        this.pendingMatchActions.set(pendingActions);
-        if (category) {
-          this.categoryRead.set(category);
+        if (applications.status === 'fulfilled') {
+          this.applications.set(applications.value);
         }
-        if (team) {
-          this.teamRead.set(team);
+        if (pendingActions.status === 'fulfilled') {
+          this.pendingMatchActions.set(pendingActions.value);
         }
-        if (match) {
-          this.matchReview.set(match);
+        if (category.status === 'fulfilled' && category.value) {
+          this.categoryRead.set(category.value);
+        }
+        if (team.status === 'fulfilled' && team.value) {
+          this.teamRead.set(team.value);
+        }
+        if (match.status === 'fulfilled' && match.value) {
+          this.matchReview.set(match.value);
+        }
+        const failedRefresh = [applications, pendingActions, category, team, match].find(
+          (result) => result.status === 'rejected',
+        );
+        if (failedRefresh?.status === 'rejected') {
+          throw failedRefresh.reason;
         }
       } while (this.liveRefreshQueued);
     } catch (error) {

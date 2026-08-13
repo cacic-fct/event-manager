@@ -1,11 +1,10 @@
 import { FormBuilder, Validators } from '@angular/forms';
 import {
   DEFAULT_SPORTS_BRACKET_EDITOR_RULES,
+  DEFAULT_SPORTS_CATEGORY_EMOJI,
   DEFAULT_SPORTS_OVERALL_SCORING_RULES,
   DEFAULT_SPORTS_SCORE_RULES,
   DEFAULT_SPORTS_STANDINGS_RULES,
-  getDefaultSportsEmoji,
-  SPORTS_TIMER_PRESETS,
 } from '@cacic-fct/shared-data-types/sports-metadata';
 import { livestreamValidator, placementPointsValidator } from './sports-workspace-form.utils';
 
@@ -24,11 +23,11 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
     category: fb.nonNullable.group({
       id: [''],
       name: ['', Validators.required],
-      emoji: [getDefaultSportsEmoji('SOCCER'), Validators.required],
-      sport: ['SOCCER'],
+      emoji: [DEFAULT_SPORTS_CATEGORY_EMOJI, Validators.required],
+      sport: ['', Validators.required],
       customSportName: [''],
       division: [''],
-      format: ['SINGLE_ELIMINATION'],
+      format: ['CUSTOM'],
       status: ['DRAFT'],
       registrationStartDate: [''],
       registrationEndDate: [''],
@@ -41,17 +40,14 @@ export function createSportsWorkspaceForms(fb: FormBuilder) {
       joiningInstructions: ['', Validators.maxLength(4_000)],
       periodsEnabled: [false],
       maximumPeriods: [0],
-      periodLabel: ['Tempo'],
-      timerPreset: ['SOCCER'],
-      timerOverallEnabled: [SPORTS_TIMER_PRESETS.SOCCER.overallEnabled],
-      timerPeriodEnabled: [SPORTS_TIMER_PRESETS.SOCCER.periodEnabled],
-      timerPeriodDurationMinutes: [
-        SPORTS_TIMER_PRESETS.SOCCER.periodDurationMinutes,
-        [Validators.min(0), Validators.max(1440)],
-      ],
-      timerAllowOvertime: [SPORTS_TIMER_PRESETS.SOCCER.allowOvertime],
+      periodLabel: ['Período'],
+      timerPreset: ['CUSTOM'],
+      timerOverallEnabled: [true],
+      timerPeriodEnabled: [false],
+      timerPeriodDurationMinutes: [0, [Validators.min(0), Validators.max(1440)]],
+      timerAllowOvertime: [false],
       timerPeriodStartOffsetsMinutes: [
-        SPORTS_TIMER_PRESETS.SOCCER.periodStartOffsetsMinutes.join(', '),
+        '0',
         Validators.pattern(/^\s*\d+(?:\.\d+)?(?:\s*,\s*\d+(?:\.\d+)?)*\s*$/),
       ],
       rulesText: [''],

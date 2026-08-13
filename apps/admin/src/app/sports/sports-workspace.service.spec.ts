@@ -158,6 +158,167 @@ describe('SportsWorkspaceService', () => {
     expect(workspace.categoryForm.controls.timerPeriodStartOffsetsMinutes.invalid).toBe(true);
   });
 
+  it('starts new modalities without selecting a sport preset', () => {
+    workspace.newCategory();
+
+    expect(workspace.categoryForm.getRawValue()).toMatchObject({
+      sport: '',
+      emoji: '🏅',
+      format: 'CUSTOM',
+      minimumRosterSize: 0,
+      maximumRosterSize: 0,
+      maximumCaptains: 0,
+      maximumCoaches: 0,
+      periodsEnabled: false,
+      maximumPeriods: 0,
+      periodLabel: 'Período',
+      timerPreset: 'CUSTOM',
+      timerPeriodDurationMinutes: 0,
+      timerPeriodStartOffsetsMinutes: '0',
+      scoreAllowDraw: true,
+      scoreHigherWins: true,
+      scorePointStep: 1,
+    });
+    expect(workspace.categoryForm.controls.sport.invalid).toBe(true);
+  });
+
+  it('applies format, roster, period, score, and timer defaults when selecting a sport', () => {
+    workspace.newCategory();
+    workspace.applySportPreset('BASKETBALL');
+
+    expect(workspace.categoryForm.getRawValue()).toMatchObject({
+      sport: 'BASKETBALL',
+      emoji: '🏀',
+      format: 'SINGLE_ELIMINATION',
+      minimumRosterSize: 5,
+      maximumRosterSize: 15,
+      maximumCaptains: 1,
+      maximumCoaches: 2,
+      periodsEnabled: true,
+      maximumPeriods: 4,
+      periodLabel: 'Quarto',
+      timerPreset: 'BASKETBALL',
+      timerPeriodDurationMinutes: 10,
+      timerPeriodStartOffsetsMinutes: '0, 10, 20, 30',
+      timerAllowOvertime: true,
+      scoreAllowDraw: false,
+      scoreHigherWins: true,
+      scorePointStep: 1,
+    });
+    expect(JSON.parse(workspace.categoryForm.controls.scoreRulesJson.value)).toEqual({
+      strategy: 'TOTAL',
+      allowDraw: false,
+      higherWins: true,
+      pointStep: 1,
+    });
+  });
+
+  it('uses a neutral custom timer for sports without a named timer preset', () => {
+    workspace.newCategory();
+    workspace.applySportPreset('SWIMMING');
+
+    expect(workspace.categoryForm.getRawValue()).toMatchObject({
+      sport: 'SWIMMING',
+      emoji: '🏊',
+      format: 'CUSTOM',
+      periodsEnabled: false,
+      maximumPeriods: 0,
+      periodLabel: 'Bateria',
+      timerPreset: 'CUSTOM',
+      timerPeriodEnabled: false,
+      timerPeriodDurationMinutes: 0,
+      timerAllowOvertime: false,
+      timerPeriodStartOffsetsMinutes: '0',
+      scoreAllowDraw: true,
+      scoreHigherWins: false,
+      scorePointStep: 0.001,
+    });
+    expect(JSON.parse(workspace.categoryForm.controls.scoreRulesJson.value)).toMatchObject({
+      strategy: 'PLACEMENT',
+    });
+  });
+
+  it('uses the sport-specific bracket format and timer preset for chess', () => {
+    workspace.newCategory();
+    workspace.applySportPreset('CHESS');
+
+    expect(workspace.categoryForm.getRawValue()).toMatchObject({
+      sport: 'CHESS',
+      format: 'SWISS',
+      timerPreset: 'CHESS',
+      periodsEnabled: false,
+      timerPeriodEnabled: false,
+      timerAllowOvertime: false,
+      scoreAllowDraw: true,
+      scoreHigherWins: true,
+      scorePointStep: 0.5,
+    });
+    expect(JSON.parse(workspace.categoryForm.controls.scoreRulesJson.value)).toMatchObject({ strategy: 'TOTAL' });
+  });
+
+  it('applies the Tennis preset to an existing modality, including period name and timer', () => {
+    workspace.categoryRead.set(createAdminSportsCategoryRead());
+    workspace.categoryForm.patchValue({
+      sport: 'SOCCER',
+      emoji: '🎯',
+      format: 'ROUND_ROBIN',
+      minimumRosterSize: 99,
+      timerPreset: 'CUSTOM',
+      periodLabel: 'Tempo',
+      scoreRulesJson: JSON.stringify({ strategy: 'TOTAL', allowDraw: true, higherWins: false, pointStep: 0.5 }),
+      overallScoringMode: 'MATCH_RESULT_AND_FINAL_PLACEMENT',
+      overallPlacementPointsJson: '{"1": 100}',
+      standingsWinPoints: 7,
+      standingsDrawPoints: 4,
+      standingsLossPoints: 2,
+      standingsByePoints: 8,
+      doubleRoundRobin: true,
+      bracketRulesJson: JSON.stringify({ doubleRoundRobin: true }),
+    });
+
+    workspace.applySportPreset('TENNIS');
+
+    expect(workspace.categoryForm.getRawValue()).toMatchObject({
+      sport: 'TENNIS',
+      emoji: '🎾',
+      format: 'SINGLE_ELIMINATION',
+      minimumRosterSize: 1,
+      maximumRosterSize: 6,
+      maximumCaptains: 1,
+      maximumCoaches: 0,
+      periodsEnabled: true,
+      maximumPeriods: 5,
+      periodLabel: 'Set',
+      timerPreset: 'TENNIS',
+      timerPeriodEnabled: true,
+      timerPeriodDurationMinutes: 0,
+      timerAllowOvertime: true,
+      timerPeriodStartOffsetsMinutes: '0',
+      scoreAllowDraw: false,
+      scoreHigherWins: true,
+      scorePointStep: 1,
+      overallScoringMode: 'NONE',
+      overallMatchWinPoints: 3,
+      overallMatchDrawPoints: 1,
+      overallMatchLossPoints: 0,
+      overallPlacementPointsJson: '{}',
+      standingsWinPoints: 3,
+      standingsDrawPoints: 1,
+      standingsLossPoints: 0,
+      standingsByePoints: 3,
+      doubleRoundRobin: false,
+      bracketRulesJson: '{}',
+      standingsRulesJson: JSON.stringify({ winPoints: 3, drawPoints: 1, lossPoints: 0, byePoints: 3 }),
+    });
+    expect(workspace.categoryForm.controls.overallPlacementPoints.length).toBe(0);
+    expect(JSON.parse(workspace.categoryForm.controls.scoreRulesJson.value)).toEqual({
+      strategy: 'SETS',
+      allowDraw: false,
+      higherWins: true,
+      pointStep: 1,
+    });
+  });
+
   it('tracks match-specific lineup roles and shirt numbers independently', () => {
     expect(workspace.lineupRole('registration-1', 'member-1')).toBe('PLAYER');
 

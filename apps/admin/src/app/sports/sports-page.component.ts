@@ -1,11 +1,12 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ViewEncapsulation, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { SportsApiService } from './sports-api.service';
 import { SportsCategoriesSectionComponent } from './sports-categories-section.component';
@@ -15,15 +16,18 @@ import { SportsReviewsSectionComponent } from './sports-reviews-section.componen
 import { SportsTeamsSectionComponent } from './sports-teams-section.component';
 import { SportsWorkspaceService } from './sports-workspace.service';
 import {
-  SportsWorkspaceLayoutStylesComponent,
-  SportsWorkspaceMatchEditorStylesComponent,
-  SportsWorkspaceMatchStylesComponent,
-  SportsWorkspaceTeamStylesComponent,
-} from './sports-workspace-styles.component';
+  isSportsWorkspaceArea,
+  parseSportsWorkspaceRoute,
+  sportsWorkspaceRoute,
+  type SportsWorkspaceArea,
+  type SportsWorkspaceRouteState,
+} from './sports-workspace-routes';
 
 @Component({
   selector: 'app-workspace-sports-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // These styles intentionally cover the standalone section components rendered by this workspace.
+  encapsulation: ViewEncapsulation.None,
   imports: [
     DatePipe,
     MatButtonModule,
@@ -37,10 +41,6 @@ import {
     SportsOverviewSectionComponent,
     SportsReviewsSectionComponent,
     SportsTeamsSectionComponent,
-    SportsWorkspaceLayoutStylesComponent,
-    SportsWorkspaceMatchEditorStylesComponent,
-    SportsWorkspaceMatchStylesComponent,
-    SportsWorkspaceTeamStylesComponent,
   ],
   providers: [SportsApiService, SportsWorkspaceService],
   templateUrl: './sports-page.component.html',
@@ -48,25 +48,166 @@ import {
     '../app-shell/layout/page-layout.shared.scss',
     '../app-shell/layout/lists-layout.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
+    './sports-workspace-layout.scss',
+    './sports-workspace-teams.scss',
+    './sports-workspace-matches.scss',
+    './sports-workspace-match-editor.scss',
   ],
 })
-export class SportsPageComponent implements OnInit {
+export class SportsPageComponent {
   protected readonly workspace = inject(SportsWorkspaceService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private initialization: Promise<void> | null = null;
+  private routeRevision = 0;
 
-  ngOnInit(): void {
-    void this.initialize();
+  constructor() {
+    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      void this.applyRoute(params);
+    });
   }
 
-  protected setArea(area: 'overview' | 'categories' | 'teams' | 'matches' | 'reviews'): void {
-    this.workspace.activeArea.set(area);
+  protected async openTournament(tournamentId: string): Promise<void> {
+    await this.workspace.loadTournament(tournamentId);
+    await this.router.navigate(['/sports', tournamentId]).catch(() => undefined);
   }
 
-  private async initialize(): Promise<void> {
-    await this.workspace.initialize();
-    const tournamentId = this.route.snapshot.paramMap.get('tournamentId');
-    if (tournamentId) {
-      await this.workspace.loadTournament(tournamentId);
+  protected setArea(area: SportsWorkspaceArea): void {
+    const tournamentId = this.workspace.tournamentId();
+    if (!tournamentId) {
+      return;
     }
+
+    this.workspace.activeArea.set(area);
+    void this.router
+      .navigate(
+        sportsWorkspaceRoute(tournamentId, area, {
+          categoryId: this.workspace.selectedCategoryId() || undefined,
+          teamId: this.workspace.selectedTeamId() || undefined,
+          matchId: this.workspace.selectedMatchId() || undefined,
+        }),
+      )
+      .catch(() => undefined);
+  }
+
+  private async applyRoute(params: { get(name: string): string | null }): Promise<void> {
+    const revision = ++this.routeRevision;
+    const areaParam = params.get('area');
+    if (areaParam && !isSportsWorkspaceArea(areaParam)) {
+      const tournamentId = params.get('tournamentId');
+      void this.router.navigate(tournamentId ? ['/sports', tournamentId] : ['/sports']).catch(() => undefined);
+      return;
+    }
+
+    const route = parseSportsWorkspaceRoute(params);
+    await this.initializeWorkspace();
+    if (revision !== this.routeRevision) {
+      return;
+    }
+
+    if (!route.tournamentId) {
+      this.workspace.resetWorkspaceRoute();
+      return;
+    }
+
+    if (this.workspace.tournamentId() !== route.tournamentId) {
+      await this.workspace.loadTournament(route.tournamentId);
+      if (revision !== this.routeRevision) {
+        return;
+      }
+    }
+
+    this.workspace.activeArea.set(route.area);
+    await this.applyRouteSelection(route, revision);
+  }
+
+  private async applyRouteSelection(route: SportsWorkspaceRouteState, revision: number): Promise<void> {
+    switch (route.area) {
+      case 'overview':
+        this.workspace.newCategory(false);
+        this.workspace.newTeam(false);
+        this.workspace.newMatch(false);
+        return;
+      case 'categories': {
+        if (!route.categoryId) {
+          this.workspace.newCategory(false);
+          return;
+        }
+        const category = this.workspace.tournamentRead()?.categories.find((item) => item.id === route.categoryId);
+        if (!category) {
+          this.workspace.newCategory(false);
+          return;
+        }
+        if (this.workspace.selectedCategoryId() !== category.id || !this.workspace.categoryRead()) {
+          await this.workspace.selectCategory(category, { navigate: false });
+        }
+        return;
+      }
+      case 'teams': {
+        if (!route.teamId) {
+          this.workspace.newTeam(false);
+          return;
+        }
+        const team = this.workspace.tournamentRead()?.teams.find((item) => item.id === route.teamId);
+        if (!team) {
+          this.workspace.newTeam(false);
+          return;
+        }
+        if (this.workspace.selectedTeamId() !== team.id || !this.workspace.teamRead()) {
+          await this.workspace.selectTeam(team, { navigate: false });
+        }
+        return;
+      }
+      case 'matches': {
+        if (!route.categoryId) {
+          this.workspace.newCategory(false);
+          this.workspace.newMatch(false);
+          return;
+        }
+        const category = this.workspace.tournamentRead()?.categories.find((item) => item.id === route.categoryId);
+        if (!category) {
+          this.workspace.newCategory(false);
+          this.workspace.newMatch(false);
+          return;
+        }
+        if (this.workspace.selectedCategoryId() !== category.id || !this.workspace.categoryRead()) {
+          await this.workspace.selectCategory(category, { navigate: false });
+        }
+        if (revision !== this.routeRevision) {
+          return;
+        }
+        const match = route.matchId
+          ? this.workspace.categoryRead()?.matches.find((item) => item.id === route.matchId)
+          : undefined;
+        if (match) {
+          if (this.workspace.selectedMatchId() !== match.id || !this.workspace.matchReview()) {
+            await this.workspace.selectMatch(match, { navigate: false });
+          }
+        } else {
+          this.workspace.newMatch(false);
+        }
+        return;
+      }
+      case 'reviews': {
+        if (!route.teamId) {
+          this.workspace.newTeam(false);
+          return;
+        }
+        const team = this.workspace.tournamentRead()?.teams.find((item) => item.id === route.teamId);
+        if (!team) {
+          this.workspace.newTeam(false);
+          return;
+        }
+        if (this.workspace.selectedTeamId() !== team.id || !this.workspace.teamRead()) {
+          await this.workspace.selectTeam(team, { navigate: false });
+        }
+        return;
+      }
+    }
+  }
+
+  private initializeWorkspace(): Promise<void> {
+    this.initialization ??= this.workspace.initialize();
+    return this.initialization;
   }
 }

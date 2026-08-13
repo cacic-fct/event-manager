@@ -1,15 +1,19 @@
 import { Directive, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { FormBuilder } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import type { EventForm, MajorEvent, Person, PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
 import {
   DEFAULT_SPORTS_BRACKET_EDITOR_RULES,
+  DEFAULT_SPORTS_CATEGORY_EMOJI,
   DEFAULT_SPORTS_OVERALL_SCORING_RULES,
   DEFAULT_SPORTS_SCORE_RULES,
   DEFAULT_SPORTS_STANDINGS_RULES,
   getDefaultSportsEmoji,
-  SPORTS_TIMER_PRESETS,
+  getSportsTimerPreset,
+  SPORTS_PRESET_KEYS,
+  getSportsPreset,
 } from '@cacic-fct/shared-data-types/sports-metadata';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Subscription, firstValueFrom } from 'rxjs';
@@ -32,6 +36,7 @@ import type {
 import { sportsTimerPreset } from './sports-workspace-form.utils';
 import { createSportsWorkspaceForms } from './sports-workspace.forms';
 import { createPlacementPointForm } from './sports-workspace.forms';
+import { sportsWorkspaceRoute, type SportsWorkspaceArea } from './sports-workspace-routes';
 
 @Directive()
 export abstract class SportsWorkspaceBaseService implements OnDestroy {
@@ -41,6 +46,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   protected readonly peopleApi = inject(PeopleApiService);
   private readonly placesApi = inject(PlacePresetApiService);
   private readonly permissions = inject(PermissionsService);
+  private readonly router = inject(Router, { optional: true });
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
@@ -102,6 +108,68 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly venueForm = this.forms.venue;
   readonly bracketForm = this.forms.bracket;
 
+  applySportPreset(sport: string): void {
+    const presetKey = SPORTS_PRESET_KEYS.find((key) => key === sport);
+    if (!presetKey) {
+      return;
+    }
+
+    const preset = getSportsPreset(presetKey);
+    const timer = getSportsTimerPreset(presetKey);
+    const format = preset.suggestedFormats[0] ?? 'CUSTOM';
+    const bracketRules =
+      format === 'GROUP_STAGE_ELIMINATION'
+        ? {
+            groupCount: DEFAULT_SPORTS_BRACKET_EDITOR_RULES.groupCount,
+            qualifiersPerGroup: DEFAULT_SPORTS_BRACKET_EDITOR_RULES.qualifiersPerGroup,
+            doubleRoundRobin: false,
+          }
+        : format === 'SWISS'
+          ? { maximumRounds: DEFAULT_SPORTS_BRACKET_EDITOR_RULES.swissMaximumRounds }
+          : {};
+    this.categoryForm.patchValue({
+      sport: preset.key,
+      emoji: getDefaultSportsEmoji(preset.key),
+      customSportName: preset.key === 'OTHER' ? this.categoryForm.controls.customSportName.value : '',
+      format,
+      minimumRosterSize: preset.roster.minimumPlayers,
+      maximumRosterSize: preset.roster.maximumPlayers ?? 0,
+      maximumCaptains: preset.roster.maximumCaptains ?? 0,
+      maximumCoaches: preset.roster.maximumCoaches ?? 0,
+      allowPlayerMultipleTeams: false,
+      periodsEnabled: preset.periods.enabled,
+      maximumPeriods: preset.periods.maximum ?? 0,
+      periodLabel: preset.periods.label,
+      timerPreset: timer?.key ?? 'CUSTOM',
+      timerOverallEnabled: timer?.overallEnabled ?? true,
+      timerPeriodEnabled: timer?.periodEnabled ?? preset.periods.enabled,
+      timerPeriodDurationMinutes: timer?.periodDurationMinutes ?? 0,
+      timerAllowOvertime: timer?.allowOvertime ?? preset.periods.enabled,
+      timerPeriodStartOffsetsMinutes: timer?.periodStartOffsetsMinutes.join(', ') ?? '0',
+      scoreRulesJson: JSON.stringify(preset.score),
+      scoreAllowDraw: preset.score.allowDraw,
+      scoreHigherWins: preset.score.higherWins,
+      scorePointStep: preset.score.pointStep,
+      overallScoringMode: DEFAULT_SPORTS_OVERALL_SCORING_RULES.mode,
+      overallMatchWinPoints: DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.win,
+      overallMatchDrawPoints: DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.draw,
+      overallMatchLossPoints: DEFAULT_SPORTS_OVERALL_SCORING_RULES.match.loss,
+      overallPlacementPointsJson: '{}',
+      rosterRulesJson: '{}',
+      bracketRulesJson: JSON.stringify(bracketRules),
+      standingsRulesJson: JSON.stringify(DEFAULT_SPORTS_STANDINGS_RULES),
+      standingsWinPoints: DEFAULT_SPORTS_STANDINGS_RULES.winPoints,
+      standingsDrawPoints: DEFAULT_SPORTS_STANDINGS_RULES.drawPoints,
+      standingsLossPoints: DEFAULT_SPORTS_STANDINGS_RULES.lossPoints,
+      standingsByePoints: DEFAULT_SPORTS_STANDINGS_RULES.byePoints,
+      doubleRoundRobin: false,
+      groupCount: DEFAULT_SPORTS_BRACKET_EDITOR_RULES.groupCount,
+      qualifiersPerGroup: DEFAULT_SPORTS_BRACKET_EDITOR_RULES.qualifiersPerGroup,
+      swissMaximumRounds: DEFAULT_SPORTS_BRACKET_EDITOR_RULES.swissMaximumRounds,
+    });
+    this.setPlacementPoints([]);
+  }
+
   applyTimerPreset(preset: string): void {
     const values = sportsTimerPreset(preset);
     if (!values) {
@@ -137,6 +205,24 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     }
   }
 
+  navigateToArea(
+    area: SportsWorkspaceArea,
+    selection: { categoryId?: string; teamId?: string; matchId?: string } = {},
+  ): void {
+    const tournamentId = this.tournamentId();
+    if (!tournamentId || !this.router) {
+      return;
+    }
+    void this.router.navigate(sportsWorkspaceRoute(tournamentId, area, selection)).catch(() => undefined);
+  }
+
+  navigateToTournamentList(): void {
+    if (!this.router) {
+      return;
+    }
+    void this.router.navigate(['/sports']).catch(() => undefined);
+  }
+
   async initialize(): Promise<void> {
     await this.run('Não foi possível carregar os grandes eventos.', async () => {
       const [tournaments, majorEvents, places] = await Promise.all([
@@ -167,6 +253,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       );
       await this.loadTournament(id);
       this.tournaments.set(await firstValueFrom(this.api.tournaments({ take: 100 })));
+      this.navigateToArea('overview');
     });
   }
 
@@ -174,6 +261,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     if (!id) {
       return;
     }
+    const sameTournament = this.tournamentId() === id;
     const read = await firstValueFrom(this.api.tournament(id));
     this.tournamentRead.set(read);
     this.selectedMajorEventId.set(read.tournament.majorEventId);
@@ -183,9 +271,17 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
         : [],
     );
     this.tournamentForm.patchValue(read.tournament);
-    this.categoryRead.set(null);
-    this.teamRead.set(null);
-    this.matchReview.set(null);
+    if (!sameTournament) {
+      this.categoryRead.set(null);
+      this.teamRead.set(null);
+      this.matchReview.set(null);
+      this.selectedCategoryId.set('');
+      this.selectedTeamId.set('');
+      this.selectedMatchId.set('');
+      this.registrationReads.set({});
+      this.lineupSelections.set({});
+      this.lineupDetails.set({});
+    }
     const [applications, pendingActions] = await Promise.all([
       this.permissions.has(Permission.SportsRegistration.Read)
         ? firstValueFrom(this.api.applicationQueue(id))
@@ -197,6 +293,25 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     this.applications.set(applications);
     this.pendingMatchActions.set(pendingActions);
     this.watchTournament(id);
+  }
+
+  resetWorkspaceRoute(): void {
+    this.liveSubscription?.unsubscribe();
+    this.liveSubscription = null;
+    this.tournamentRead.set(null);
+    this.categoryRead.set(null);
+    this.teamRead.set(null);
+    this.matchReview.set(null);
+    this.pendingMatchActions.set([]);
+    this.applications.set([]);
+    this.registrationReads.set({});
+    this.lineupSelections.set({});
+    this.lineupDetails.set({});
+    this.selectedMajorEventId.set('');
+    this.activeArea.set('overview');
+    this.selectedCategoryId.set('');
+    this.selectedTeamId.set('');
+    this.selectedMatchId.set('');
   }
 
   async loadPendingMatchActions(): Promise<void> {
@@ -250,21 +365,23 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       this.tournamentRead.set(null);
       this.pendingMatchActions.set([]);
       this.tournaments.set(await firstValueFrom(this.api.tournaments({ take: 100 })));
+      this.resetWorkspaceRoute();
+      this.navigateToTournamentList();
       this.notify('Torneio esportivo excluído. O grande evento foi preservado.');
     });
   }
 
-  newCategory(): void {
+  newCategory(navigate = true): void {
     this.selectedCategoryId.set('');
     this.categoryRead.set(null);
     this.categoryForm.reset({
       id: '',
       name: '',
-      emoji: getDefaultSportsEmoji('SOCCER'),
-      sport: 'SOCCER',
+      emoji: DEFAULT_SPORTS_CATEGORY_EMOJI,
+      sport: '',
       customSportName: '',
       division: '',
-      format: 'SINGLE_ELIMINATION',
+      format: 'CUSTOM',
       status: 'DRAFT',
       registrationStartDate: '',
       registrationEndDate: '',
@@ -277,13 +394,13 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       joiningInstructions: '',
       periodsEnabled: false,
       maximumPeriods: 0,
-      periodLabel: 'Tempo',
-      timerPreset: 'SOCCER',
-      timerOverallEnabled: SPORTS_TIMER_PRESETS.SOCCER.overallEnabled,
-      timerPeriodEnabled: SPORTS_TIMER_PRESETS.SOCCER.periodEnabled,
-      timerPeriodDurationMinutes: SPORTS_TIMER_PRESETS.SOCCER.periodDurationMinutes,
-      timerAllowOvertime: SPORTS_TIMER_PRESETS.SOCCER.allowOvertime,
-      timerPeriodStartOffsetsMinutes: SPORTS_TIMER_PRESETS.SOCCER.periodStartOffsetsMinutes.join(', '),
+      periodLabel: 'Período',
+      timerPreset: 'CUSTOM',
+      timerOverallEnabled: true,
+      timerPeriodEnabled: false,
+      timerPeriodDurationMinutes: 0,
+      timerAllowOvertime: false,
+      timerPeriodStartOffsetsMinutes: '0',
       rulesText: '',
       scoreRulesJson: '{}',
       scoreAllowDraw: DEFAULT_SPORTS_SCORE_RULES.allowDraw,
@@ -308,6 +425,9 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       registrationFormId: '',
     });
     this.setPlacementPoints([]);
+    if (navigate) {
+      this.navigateToArea('categories');
+    }
   }
 
   protected abstract run(

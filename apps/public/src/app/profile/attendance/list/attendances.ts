@@ -33,7 +33,7 @@ import { CertificateFileDownloadService } from '../../../shared/certificate-file
 import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
 import type { StandaloneCertificateFolderItem, SubscribedEventGroupItem } from '@cacic-fct/shared-utils';
 
-type AttendanceFilter = 'subscribed' | 'present' | 'certificate' | 'lecturer';
+type AttendanceFilter = 'subscribed' | 'present' | 'certificate' | 'lecturer' | 'sportsManager';
 type AttendanceFilterSelection = AttendanceFilter | 'none';
 
 type FeedState =
@@ -91,6 +91,7 @@ export class Attendances {
     { value: 'present', label: 'Presente' },
     { value: 'certificate', label: 'Certificado emitido' },
     { value: 'lecturer', label: 'Palestrante' },
+    { value: 'sportsManager', label: 'Gestão esportiva' },
   ];
 
   readonly feedState = toSignal(
@@ -380,6 +381,8 @@ export class Attendances {
           return item.participation.hasIssuedCertificate;
         case 'lecturer':
           return item.participation.isLecturer;
+        case 'sportsManager':
+          return item.participation.isSportsManager === true;
       }
     });
   }
@@ -403,6 +406,8 @@ export class Attendances {
           return item.participation.hasIssuedCertificate;
         case 'lecturer':
           return item.participation.isLecturer;
+        case 'sportsManager':
+          return false;
       }
     });
   }

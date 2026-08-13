@@ -4,7 +4,7 @@ import { toIsoDateOrUndefined, toLocalDate } from './sports-workspace-form.utils
 import { SportsWorkspaceTeamService } from './sports-workspace-team.service';
 
 export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamService {
-  async selectMatch(match: SportsMatchSummary): Promise<void> {
+  async selectMatch(match: SportsMatchSummary, options: { navigate?: boolean } = {}): Promise<void> {
     await this.run('Não foi possível carregar a partida.', async () => {
       const read = await firstValueFrom(this.api.matchReview(match.id));
       this.matchReview.set(read);
@@ -29,6 +29,9 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
       });
       await this.loadMatchRegistrations(read);
     });
+    if (options.navigate !== false && this.selectedMatchId() === match.id) {
+      this.navigateToArea('matches', { categoryId: match.categoryId, matchId: match.id });
+    }
   }
 
   isLineupSelected(registrationId: string, registrationMemberId: string): boolean {

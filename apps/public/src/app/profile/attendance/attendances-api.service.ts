@@ -88,6 +88,7 @@ interface CurrentUserEventParticipation {
   isSubscribed: boolean;
   isLecturer: boolean;
   hasIssuedCertificate: boolean;
+  isSportsManager?: boolean;
 }
 
 export interface OrganizerEventInfo {
@@ -192,6 +193,7 @@ export class AttendancesApiService {
               isSubscribed
               isLecturer
               hasIssuedCertificate
+              isSportsManager
             }
           }
 
@@ -635,6 +637,7 @@ export class AttendancesApiService {
               isSubscribed
               isLecturer
               hasIssuedCertificate
+              isSportsManager
             }
           }
         }

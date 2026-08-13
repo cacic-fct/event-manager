@@ -1,6 +1,6 @@
 import { CommitSportsMatchActionsInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { BadRequestException, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -19,6 +19,7 @@ import { SportsAdminService } from './sports-admin.service';
 import { SportsTeamChangeService } from './teams/sports-team-change.service';
 import { assertSportsOverallScoringRules } from './domain/sports-overall-scoring';
 
+@Injectable()
 export abstract class SportsMutationsResolverSupport {
   protected readonly logger = new Logger(SportsMutationsResolverSupport.name);
 

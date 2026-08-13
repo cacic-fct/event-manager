@@ -97,26 +97,6 @@
         <h4>Representantes</h4>
         <p>Administram somente esta equipe; toda alteração feita por eles entra na fila de revisão.</p>
       </div>
-      <div class="person-list">
-        @for (representative of read.representatives; track representative.id) {
-          <div>
-            <mat-icon>admin_panel_settings</mat-icon>
-            <span
-              ><strong>{{ representative.person.name }}</strong
-              ><small>Desde {{ representative.assignedAt | date: 'shortDate' }}</small></span
-            >
-            <button
-              mat-icon-button
-              type="button"
-              matTooltip="Revogar acesso"
-              (click)="workspace.revokeRepresentative(representative.id)">
-              <mat-icon>person_remove</mat-icon>
-            </button>
-          </div>
-        } @empty {
-          <p class="empty-copy">Nenhum representante ativo.</p>
-        }
-      </div>
       <form
         [formGroup]="workspace.representativeForm"
         class="person-search"
@@ -138,12 +118,41 @@
       @if (workspace.people().length && workspace.peopleTarget() === 'representative') {
         <div class="search-results">
           @for (person of workspace.people(); track person.id) {
-            <button type="button" (click)="workspace.pickPerson(person, 'representative')">
-              {{ person.name }}
+            <button
+              class="person-search-result"
+              type="button"
+              [attr.aria-label]="'Adicionar pessoa ' + person.name"
+              (click)="workspace.pickPerson(person, 'representative')">
+              <span class="person-search-result-copy">
+                <strong>{{ person.name }}</strong>
+                <small>{{ person.email || 'Sem e-mail' }}</small>
+                <small>{{ personIdentityDocument(person.identityDocument) }}</small>
+              </span>
+              <mat-icon aria-hidden="true">person_add</mat-icon>
             </button>
           }
         </div>
       }
+      <div class="person-list">
+        @for (representative of read.representatives; track representative.id) {
+          <div>
+            <mat-icon>admin_panel_settings</mat-icon>
+            <span
+              ><strong>{{ representative.person.name }}</strong
+              ><small>Desde {{ representative.assignedAt | date: 'shortDate' }}</small></span
+            >
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Revogar acesso"
+              (click)="workspace.revokeRepresentative(representative.id)">
+              <mat-icon>person_remove</mat-icon>
+            </button>
+          </div>
+        } @empty {
+          <p class="empty-copy">Nenhum representante ativo.</p>
+        }
+      </div>
 
       <mat-divider />
       <div class="subsection-title">
@@ -166,7 +175,18 @@
       @if (workspace.people().length && workspace.peopleTarget() === 'member') {
         <div class="search-results">
           @for (person of workspace.people(); track person.id) {
-            <button type="button" (click)="workspace.pickPerson(person, 'member')">{{ person.name }}</button>
+            <button
+              class="person-search-result"
+              type="button"
+              [attr.aria-label]="'Adicionar pessoa ' + person.name"
+              (click)="workspace.pickPerson(person, 'member')">
+              <span class="person-search-result-copy">
+                <strong>{{ person.name }}</strong>
+                <small>{{ person.email || 'Sem e-mail' }}</small>
+                <small>{{ personIdentityDocument(person.identityDocument) }}</small>
+              </span>
+              <mat-icon aria-hidden="true">person_add</mat-icon>
+            </button>
           }
         </div>
       }

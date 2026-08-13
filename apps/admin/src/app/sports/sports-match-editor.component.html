@@ -300,7 +300,18 @@
     @if (workspace.people().length && workspace.peopleTarget() === 'official') {
       <div class="search-results">
         @for (person of workspace.people(); track person.id) {
-          <button type="button" (click)="workspace.pickPerson(person, 'official')">{{ person.name }}</button>
+          <button
+            class="person-search-result"
+            type="button"
+            [attr.aria-label]="'Adicionar pessoa ' + person.name"
+            (click)="workspace.pickPerson(person, 'official')">
+            <span class="person-search-result-copy">
+              <strong>{{ person.name }}</strong>
+              <small>{{ person.email || 'Sem e-mail' }}</small>
+              <small>{{ personIdentityDocument(person.identityDocument) }}</small>
+            </span>
+            <mat-icon aria-hidden="true">person_add</mat-icon>
+          </button>
         }
       </div>
     }

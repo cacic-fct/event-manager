@@ -156,6 +156,7 @@ export class SportsRealtimeService implements OnModuleInit, OnModuleDestroy {
           matchIds: invalidation.matchIds,
         };
         return [
+          this.publish(this.scope('admin-tournament', invalidation.tournamentId), payload),
           this.publish(this.scope('tournament', invalidation.tournamentId), payload),
           ...invalidation.publicMatchIds.map((matchId) => this.publish(this.scope('match', matchId), payload)),
         ];
