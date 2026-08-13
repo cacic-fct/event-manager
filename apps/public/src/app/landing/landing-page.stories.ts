@@ -25,7 +25,7 @@ const platformStats: PublicPlatformStats = {
 
 const meta: Meta<LandingComponent> = {
   component: LandingComponent,
-  title: 'Public/Landing/Landing',
+  title: 'CACiC Eventos/Landing/Page',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -124,7 +124,7 @@ export const EstatisticasIndisponiveis: Story = {
 
 export const Dark: Story = {
   args: {},
-  globals: { theme: 'dark' },
+  globals: { theme: 'dark', motion: 'reduced' },
   parameters: {
     msw: {
       handlers: [platformStatsHandler(platformStats)],

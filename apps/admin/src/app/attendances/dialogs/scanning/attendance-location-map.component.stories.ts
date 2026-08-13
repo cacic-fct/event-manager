@@ -53,6 +53,7 @@ export const WithoutAccuracy: Story = {
 };
 
 export const MissingLocation: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     latitude: null,
     longitude: null,

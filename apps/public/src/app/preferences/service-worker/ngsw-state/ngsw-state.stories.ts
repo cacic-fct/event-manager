@@ -4,7 +4,7 @@ import { NgswState } from './ngsw-state';
 
 const meta: Meta<NgswState> = {
   component: NgswState,
-  title: 'Public/Preferences/Service Worker/Ngsw State/Ngsw State',
+  title: 'CACiC Eventos/Preferences/Service Worker/NGSW State',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -33,7 +33,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const ServiceWorkerReady: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -47,6 +47,6 @@ export const OfflineInstalled: Story = {
 
 export const NoServiceWorker: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online', serviceWorker: 'disabled' },
+  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

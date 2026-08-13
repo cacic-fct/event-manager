@@ -97,10 +97,10 @@ export const Loading: Story = {
 };
 
 export const ErrorState: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     state: 'error',
   },
-  globals: { theme: 'light' },
   parameters: storyParameters(errorContext),
   render: (args) => renderStory(args, errorContext),
 };

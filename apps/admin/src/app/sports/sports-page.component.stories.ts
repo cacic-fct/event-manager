@@ -392,6 +392,7 @@ export const Loading: Story = {
 };
 
 export const LoadError: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   name: 'Erro de carregamento',
   args: { loadMode: 'error' },
   play: async ({ canvasElement }) => {

@@ -23,7 +23,7 @@ const defaultArgs: SubscriptionEventListStoryArgs = {
 
 const meta: Meta<SubscriptionEventListStoryArgs> = {
   component: SubscriptionEventList,
-  title: 'Public/Major Event/Subscription/Subscription Event List',
+  title: 'CACiC Eventos/Major Events/Registration/Standard/Event List',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -82,7 +82,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -92,8 +92,22 @@ export const OfflineFallback: Story = {
     selectedFirstEvent: false,
     autoSelectSecondEvent: false,
   },
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const SoldOutAndAutomaticSelection: Story = {
+  args: {
+    selectedFirstEvent: false,
+    autoSelectSecondEvent: true,
+    disableSoldOutEvents: true,
+    slotsAvailable: 0,
+    queueCount: 14,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getAllByText('Sem vagas disponíveis')[0]).toBeVisible();
+  },
 };
 
 function buildSummaries(events: ReturnType<typeof createPublicStoryEvents>) {

@@ -70,7 +70,7 @@ class CalendarPreferencesStoryHostComponent {
 
 const meta: Meta<CalendarPreferencesStoryArgs> = {
   component: CalendarPreferencesStoryHostComponent,
-  title: 'Public/Preferences/Calendar Preferences',
+  title: 'CACiC Eventos/Preferences/Calendar',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -257,6 +257,7 @@ export const RequestError: Story = {
     requestState: 'error',
     responseDelay: 0,
   },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(
       await within(canvasElement).findByText('Não foi possível carregar as preferências de calendário simuladas.'),

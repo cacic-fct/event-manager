@@ -85,6 +85,7 @@ export const EmptySummary: Story = {
 };
 
 export const InvalidSummary: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'invalid-summary',
   },

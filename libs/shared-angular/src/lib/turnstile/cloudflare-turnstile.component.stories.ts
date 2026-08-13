@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
@@ -6,7 +6,7 @@ import { CloudflareTurnstileComponent } from './cloudflare-turnstile.component';
 import { provideCloudflareTurnstile } from './cloudflare-turnstile.config';
 import { CloudflareTurnstileService, TurnstileApi, TurnstileRenderOptions } from './cloudflare-turnstile.service';
 
-type TurnstileStoryStatus = 'ready' | 'error' | 'missing-site-key';
+type TurnstileStoryStatus = 'ready' | 'error';
 
 type CloudflareTurnstileStoryArgs = {
   status: TurnstileStoryStatus;
@@ -47,13 +47,9 @@ class MockCloudflareTurnstileService {
     { provide: CloudflareTurnstileService, useExisting: MockCloudflareTurnstileService },
   ],
   template: `
-    @if (showWidget()) {
-      <lib-cloudflare-turnstile [action]="action()" [theme]="theme()" (tokenChange)="token.set($event)" />
-      @if (token(); as currentToken) {
-        <p>Token emitido: {{ currentToken }}</p>
-      }
-    } @else {
-      <lib-cloudflare-turnstile [action]="action()" [theme]="theme()" />
+    <lib-cloudflare-turnstile [action]="action()" [theme]="theme()" (tokenChange)="token.set($event)" />
+    @if (token(); as currentToken) {
+      <p>Token emitido: {{ currentToken }}</p>
     }
   `,
 })
@@ -64,7 +60,6 @@ class CloudflareTurnstileStoryHostComponent {
   readonly action = input('subscription-submit');
   readonly theme = input<'auto' | 'light' | 'dark'>('auto');
   readonly token = signal<string | null>(null);
-  readonly showWidget = computed(() => this.status() !== 'missing-site-key');
 
   constructor() {
     effect(() => this.service.status.set(this.status()));
@@ -73,7 +68,7 @@ class CloudflareTurnstileStoryHostComponent {
 
 const meta: Meta<CloudflareTurnstileStoryArgs> = {
   component: CloudflareTurnstileStoryHostComponent,
-  title: 'Shared/Turnstile/Cloudflare Turnstile',
+  title: 'CACiC Eventos/Shared/Verification/Cloudflare Turnstile',
   tags: ['autodocs'],
   args: {
     status: 'ready',
@@ -83,9 +78,10 @@ const meta: Meta<CloudflareTurnstileStoryArgs> = {
   argTypes: {
     status: {
       control: 'select',
-      options: ['ready', 'error', 'missing-site-key'],
+      options: ['ready', 'error'],
+      description: 'Resultado simulado do carregamento do provedor anti-spam.',
     },
-    action: { control: 'text' },
+    action: { control: 'text', description: 'Ação enviada ao Turnstile para classificação do desafio.' },
     theme: {
       control: 'select',
       options: ['auto', 'light', 'dark'],
@@ -106,7 +102,7 @@ export default meta;
 
 type Story = StoryObj<CloudflareTurnstileStoryArgs>;
 
-export const Ready: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('button', { name: /verificação anti-spam/i })).toBeVisible();
@@ -119,8 +115,17 @@ export const LoadingError: Story = {
   },
 };
 
-export const DarkTheme: Story = {
+export const AuthenticationAction: Story = {
   args: {
+    action: 'account-link',
+    theme: 'light',
+  },
+};
+
+export const DarkReducedMotion: Story = {
+  args: {
+    action: 'subscription-submit-night',
     theme: 'dark',
   },
+  globals: { theme: 'dark', motion: 'reduced' },
 };

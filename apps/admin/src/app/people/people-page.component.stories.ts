@@ -119,7 +119,7 @@ export default meta;
 
 type Story = StoryObj<PeoplePermissionsStoryArgs>;
 
-export const PermissionManagement: Story = {
+export const Playground: Story = {
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -169,11 +169,11 @@ export const PermissionManagement: Story = {
 };
 
 export const EmptyPermissions: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     grantCount: 0,
     includeExpiredGrant: false,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), 'ana');

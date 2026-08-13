@@ -5,6 +5,7 @@ import { expect, fn, userEvent, within } from 'storybook/test';
 import { OralAttendanceComponent, OralAttendanceDecision, OralAttendancePerson } from './oral-attendance.component';
 
 type StoryArgs = {
+  title: string;
   peopleCount: number;
   decidedCount: number;
   syncLabel: string;
@@ -23,10 +24,12 @@ function buildPeople(count: number): OralAttendancePerson[] {
 }
 
 const meta: Meta<StoryArgs> = {
-  title: 'Shared/Attendance/Chamada oral',
+  title: 'CACiC Eventos/Shared/Attendance/Oral attendance',
   component: OralAttendanceComponent,
+  tags: ['autodocs'],
   decorators: [applicationConfig({ providers: [provideNoopAnimations()] })],
   args: {
+    title: 'Semana da Computação',
     peopleCount: 12,
     decidedCount: 3,
     syncLabel: 'Tudo sincronizado',
@@ -34,9 +37,12 @@ const meta: Meta<StoryArgs> = {
     manualSubmitted: fn(),
   },
   argTypes: {
-    peopleCount: { control: { type: 'range', min: 1, max: 80, step: 1 } },
-    decidedCount: { control: { type: 'range', min: 0, max: 12, step: 1 } },
+    title: { control: 'text', description: 'Nome do evento exibido durante a chamada.' },
+    peopleCount: { control: { type: 'range', min: 0, max: 80, step: 1 } },
+    decidedCount: { control: { type: 'range', min: 0, max: 80, step: 1 } },
     syncLabel: { control: 'text' },
+    decisionChanged: { table: { disable: true } },
+    manualSubmitted: { table: { disable: true } },
   },
   render: (args) => {
     const people = buildPeople(args.peopleCount);
@@ -58,7 +64,7 @@ const meta: Meta<StoryArgs> = {
       props: {
         people,
         decisions,
-        title: 'Semana da Computação',
+        title: args.title,
         syncLabel: args.syncLabel,
         decisionChanged: args.decisionChanged,
         manualSubmitted: args.manualSubmitted,
@@ -73,7 +79,7 @@ const meta: Meta<StoryArgs> = {
 export default meta;
 type Story = StoryObj<StoryArgs>;
 
-export const Cartoes: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: /marcar como presente/i }));
@@ -104,4 +110,23 @@ export const RevisaoFinal: Story = {
     peopleCount: 5,
     decidedCount: 5,
   },
+};
+
+export const SemInscritos: Story = {
+  args: {
+    title: 'Atividade sem inscrições',
+    peopleCount: 0,
+    decidedCount: 0,
+    syncLabel: 'Nenhuma presença para sincronizar',
+  },
+};
+
+export const DarkReducedMotion: Story = {
+  args: {
+    title: 'Plantão noturno de credenciamento',
+    peopleCount: 8,
+    decidedCount: 6,
+    syncLabel: '2 alterações aguardando conexão',
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
 };

@@ -115,7 +115,7 @@ export default meta;
 
 type Story = StoryObj<FormsStoryArgs>;
 
-export const Populated: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseFormsStory(canvasElement),
@@ -137,8 +137,8 @@ export const Empty: Story = {
 };
 
 export const Loading: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: { mode: 'loading' },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseFormsStory(canvasElement),
 };
 

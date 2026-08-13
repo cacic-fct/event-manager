@@ -33,7 +33,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const DefaultDialog: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -43,4 +43,9 @@ export const LongContent: Story = {
   args: {},
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const DarkReducedMotion: Story = {
+  ...LongContent,
+  globals: { theme: 'dark', motion: 'reduced' },
 };

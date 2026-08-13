@@ -42,7 +42,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const DataLoaded: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -65,13 +65,13 @@ export const NoReceiptsToValidate: Story = {
 };
 
 export const DeepLinkedSubscriberDetail: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {},
   decorators: [
     applicationConfig({
       providers: createSubscriptionsTabStoryProviders(3, 'subscription-1'),
     }),
   ],
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Ada Lovelace' })).toBeVisible());

@@ -28,7 +28,7 @@ let activeArgs = defaultArgs;
 
 const meta: Meta<SelfSubscriptionStoryArgs> = {
   component: SportsSelfSubscriptionPage,
-  title: 'CACiC Eventos/Sports/Autoinscrição',
+  title: 'CACiC Eventos/Sports/Operations/Self-registration',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -164,6 +164,7 @@ export const Loading: Story = {
 export const ClosedRegistration: Story = {
   name: 'Inscrições indisponíveis',
   args: { loadMode: 'error' },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Inscrição indisponível')).toBeVisible();

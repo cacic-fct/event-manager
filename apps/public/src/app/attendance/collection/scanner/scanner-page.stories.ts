@@ -77,7 +77,7 @@ Object.defineProperty(globalThis.navigator, 'geolocation', {
 
 const meta: Meta<AttendanceScannerStoryArgs> = {
   component: AttendanceScanner,
-  title: 'Public/Attendance/Attendance Scanner',
+  title: 'CACiC Eventos/Attendance/Collection/Scanner',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -243,6 +243,7 @@ export const LocationDenied: Story = {
     locationState: 'denied',
     queueScenario: 'empty',
   },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(
       await within(canvasElement).findByText('Permita o acesso à localização precisa para continuar.'),

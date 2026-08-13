@@ -58,7 +58,7 @@ const withLecturerProfileProviders: Decorator<LecturerProfileStoryArgs> = (story
 
 const meta: Meta<LecturerProfileStoryArgs> = {
   component: LecturerProfileComponent,
-  title: 'Public/Profile/Attendances/Lecturer Profile',
+  title: 'CACiC Eventos/Profile/Lecturer Profile',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -144,6 +144,7 @@ export const SaveError: Story = {
   args: {
     saveOutcome: 'error',
   },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: /editar perfil/i }));

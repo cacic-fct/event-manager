@@ -22,7 +22,7 @@ const defaultArgs: WalletStoryArgs = {
 
 const meta: Meta<WalletStoryArgs> = {
   component: Wallet,
-  title: 'Public/Profile/Wallet/Wallet',
+  title: 'CACiC Eventos/Profile/Wallet/Page',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -93,7 +93,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const ServiceWorkerReady: Story = {
+export const Playground: Story = {
   globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -104,7 +104,7 @@ export const OfflineInstalled: Story = {
 };
 
 export const NoServiceWorker: Story = {
-  globals: { theme: 'light', network: 'online', serviceWorker: 'disabled' },
+  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

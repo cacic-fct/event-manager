@@ -38,7 +38,7 @@ const selectedMajorEventProviders = (
     ],
   });
 
-export const InitialSelection: Story = {
+export const Playground: Story = {
   args: { pendingReceiptsCount: 3 },
   decorators: [
     applicationConfig({
@@ -123,11 +123,11 @@ export const DataLoaded: Story = {
 };
 
 export const NoReceiptsToValidate: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     pendingReceiptsCount: 0,
   },
   decorators: [selectedMajorEventProviders(null, 0)],
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const link = await canvas.findByRole('link', { name: /validar comprovantes/i });

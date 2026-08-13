@@ -4,7 +4,7 @@ import { UserDebug } from './user-debug';
 
 const meta: Meta<UserDebug> = {
   component: UserDebug,
-  title: 'Public/Development Tools/User Debug/User Debug',
+  title: 'CACiC Eventos/Developer Tools/User Debug',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -36,4 +36,17 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const MobileClaims: Story = {
+  ...Playground,
+  parameters: {
+    ...Playground.parameters,
+    viewport: { defaultViewport: 'mobile' },
+  },
+};
+
+export const OfflineDarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', network: 'offline', motion: 'reduced' },
 };

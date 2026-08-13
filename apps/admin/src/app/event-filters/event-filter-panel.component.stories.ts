@@ -86,12 +86,13 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const FilledFilters: Story = {
+export const Playground: Story = {
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 
 export const EmptyFilters: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     query: '',
     startDateFrom: '',
@@ -101,7 +102,6 @@ export const EmptyFilters: Story = {
     applyLabel: 'Aplicar',
     resetLabel: 'Redefinir',
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

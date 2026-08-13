@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import { faker } from '@faker-js/faker';
+import { fakerPT_BR as faker } from '@faker-js/faker';
 import { http, HttpResponse } from 'msw';
 import type { ChannelPreference, ListNotificationsResponse, Notification, Preference, Subscriber } from '@novu/js';
 import { NovuInboxComponent } from './novu-inbox.component';
@@ -357,7 +357,7 @@ class NovuInboxStoryHostComponent {
 
 const meta: Meta<NovuInboxStoryHostComponent> = {
   component: NovuInboxStoryHostComponent,
-  title: 'Shared/Notifications/Novu Inbox',
+  title: 'CACiC Eventos/Shared/Notifications/Inbox',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -369,10 +369,14 @@ const meta: Meta<NovuInboxStoryHostComponent> = {
     },
   },
   argTypes: {
-    title: { control: 'text' },
-    configured: { control: 'boolean' },
-    permission: { control: 'select', options: ['default', 'granted', 'denied', 'unsupported'] },
-    pushPromptDismissed: { control: 'boolean' },
+    title: { control: 'text', description: 'Título apresentado na barra da central de notificações.' },
+    configured: { control: 'boolean', description: 'Indica se o cliente Novu está disponível.' },
+    permission: {
+      control: 'select',
+      options: ['default', 'granted', 'denied', 'unsupported'],
+      description: 'Permissão de push simulada para o navegador.',
+    },
+    pushPromptDismissed: { control: 'boolean', description: 'Oculta o convite de notificações push.' },
     notificationCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     unreadCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     archivedCount: { control: { type: 'range', min: 0, max: 10, step: 1 } },
@@ -407,10 +411,10 @@ async function exerciseStory(canvasElement: HTMLElement): Promise<void> {
   const tabs = await canvas.findAllByRole('tab');
   await expect(tabs[0]).toBeVisible();
   await userEvent.click(tabs[1]);
-  await expect(await canvas.findByText('Arquivadas')).toBeVisible();
+  await expect(tabs[1]).toHaveAttribute('aria-selected', 'true');
 }
 
-export const Default: Story = {
+export const Playground: Story = {
   args: defaultArgs,
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -429,4 +433,30 @@ export const Empty: Story = {
     empty: true,
     hasMore: false,
   },
+};
+
+export const DenseInbox: Story = {
+  args: {
+    ...defaultArgs,
+    permission: 'granted',
+    pushPromptDismissed: true,
+    notificationCount: 20,
+    unreadCount: 12,
+    archivedCount: 8,
+    hasMore: true,
+  },
+};
+
+export const DarkReducedMotion: Story = {
+  args: {
+    ...defaultArgs,
+    title: 'Atualizações do evento',
+    permission: 'granted',
+    pushPromptDismissed: true,
+    notificationCount: 6,
+    unreadCount: 2,
+    archivedCount: 3,
+    hasMore: false,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
 };

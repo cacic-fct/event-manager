@@ -18,7 +18,7 @@ type CalendarWeekViewStoryArgs = CalendarStoryEventControls & {
 
 const meta: Meta<CalendarWeekViewStoryArgs> = {
   component: CalendarWeekView,
-  title: 'Public/Tabs/Calendar/Calendar Week View',
+  title: 'CACiC Eventos/Calendar/Week View',
   tags: ['autodocs'],
   args: {
     ...calendarStoryEventDefaultControls,
@@ -48,7 +48,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await expect(await canvas.findByText('Arquitetura Angular com Signals')).toBeVisible();
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -64,7 +64,7 @@ export const PreviousWeekLocked: Story = {
 
 export const OfflineFallback: Story = {
   render: (args) => renderCalendarWeekView(args, []),
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Nenhum evento nesta data.')).toBeVisible();

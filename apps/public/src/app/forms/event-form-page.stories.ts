@@ -43,7 +43,7 @@ const route = {
 
 const meta: Meta<EventFormPageStoryArgs> = {
   component: EventFormPage,
-  title: 'Public/Forms/Event Form Page',
+  title: 'CACiC Eventos/Forms/Event Form Page',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -97,7 +97,7 @@ export default meta;
 
 type Story = StoryObj<EventFormPageStoryArgs>;
 
-export const Editable: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: defaultArgs.formName })).toBeVisible();
@@ -139,6 +139,7 @@ export const ReleasedWithoutAnswers: Story = {
 
 export const ApiError: Story = {
   args: { state: 'error' },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Não foi possível carregar o formulário.')).toBeVisible();
   },

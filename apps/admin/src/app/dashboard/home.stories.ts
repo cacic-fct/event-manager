@@ -401,10 +401,10 @@ export const Loading: Story = {
 };
 
 export const ErrorState: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     state: 'error',
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Não foi possível carregar o painel')).toBeVisible();

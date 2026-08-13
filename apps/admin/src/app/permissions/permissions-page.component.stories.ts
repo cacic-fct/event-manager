@@ -33,8 +33,19 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const DataLoaded: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const DarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
+};
+
+export const CompactPermissionCatalog: Story = {
+  ...Playground,
+  name: 'Catálogo de permissões compacto',
+  parameters: { viewport: { defaultViewport: 'tablet' } },
 };

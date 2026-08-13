@@ -33,7 +33,7 @@ const familiarTeamNames = [
 
 const meta: Meta<SportsBracketStoryArgs> = {
   component: SportsBracketComponent,
-  title: 'Shared/Sports/Visualização de chaves',
+  title: 'CACiC Eventos/Shared/Sports/Tournament bracket',
   tags: ['autodocs'],
   args: {
     format: 'SINGLE_ELIMINATION',
@@ -147,6 +147,17 @@ export const Vazio: Story = {
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText('Estrutura ainda não publicada')).toBeVisible();
   },
+};
+
+export const DarkReducedMotion: Story = {
+  args: {
+    format: 'GROUP_STAGE_ELIMINATION',
+    teamCount: 16,
+    includeStandings: true,
+    logoMode: 'mixed',
+    editingMatchId: null,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 function createBracket(args: SportsBracketStoryArgs) {

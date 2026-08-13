@@ -24,7 +24,7 @@ interface SubscriptionStoryData {
 
 const meta: Meta<MajorEventSubscription> = {
   component: MajorEventSubscription,
-  title: 'Public/Major Event/Subscription/Subscription',
+  title: 'CACiC Eventos/Major Events/Registration/Standard/Subscription',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -295,7 +295,7 @@ async function completeSubscriptionFlow(canvasElement: HTMLElement): Promise<voi
   await userEvent.click(await dialog.findByRole('button', { name: /Inscrever-se/i }));
 }
 
-export const FormsInSubscriptionFlow: Story = {
+export const Playground: Story = {
   parameters: {
     msw: { handlers: subscriptionHandlers('forms') },
   },
@@ -312,5 +312,21 @@ export const ExistingSubscriptionWithForms: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Comprovante em análise')).toBeVisible();
     await expect(await canvas.findByText('Oficina de Angular')).toBeVisible();
+  },
+};
+
+export const LoadError: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
+  parameters: {
+    msw: {
+      handlers: [
+        http.post('/api/graphql', () =>
+          HttpResponse.json({ errors: [{ message: 'Não foi possível carregar a inscrição.' }] }),
+        ),
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Não foi possível carregar a inscrição.')).toBeVisible();
   },
 };

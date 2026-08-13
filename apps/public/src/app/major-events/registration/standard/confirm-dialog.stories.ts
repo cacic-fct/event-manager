@@ -7,7 +7,7 @@ import { ConfirmSubscriptionDialog } from './confirm-dialog';
 
 const meta: Meta<ConfirmSubscriptionDialog> = {
   component: ConfirmSubscriptionDialog,
-  title: 'Public/Major Event/Subscription/Confirm Subscription Dialog',
+  title: 'CACiC Eventos/Major Events/Registration/Standard/Confirmation Dialog',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -116,14 +116,31 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await exerciseStory(canvasElement);
+    await expect(canvas.getByRole('button', { name: 'Inscrever-se' })).toBeDisabled();
+  },
 };
 
-export const OfflineFallback: Story = {
-  args: {},
-  globals: { theme: 'light', network: 'offline' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+export const RequiredAnswersCompleted: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('radio', { name: 'M' }));
+    await userEvent.click(canvas.getByRole('checkbox', { name: /contrato de licença de uso de imagem/i }));
+    await expect(canvas.getByRole('button', { name: 'Inscrever-se' })).toBeEnabled();
+  },
+};
+
+export const MobileDarkReducedMotion: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Confirmar inscrição' })).toBeVisible();
+    await expect(canvas.getByText('É necessário concordar com o contrato para continuar.')).toBeVisible();
+  },
 };

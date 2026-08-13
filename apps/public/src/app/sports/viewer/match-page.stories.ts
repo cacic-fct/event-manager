@@ -66,7 +66,7 @@ function controlledMatch() {
 
 const meta: Meta<MatchStoryArgs> = {
   component: SportsMatchPage,
-  title: 'CACiC Eventos/Sports/Visualização da partida',
+  title: 'CACiC Eventos/Sports/Viewer/Match',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -221,6 +221,7 @@ export const Loading: Story = {
 export const LoadError: Story = {
   name: 'Erro recuperável',
   args: { loadMode: 'error' },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Não foi possível carregar a partida')).toBeVisible();

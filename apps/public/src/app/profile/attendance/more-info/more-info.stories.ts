@@ -31,7 +31,7 @@ interface MoreInfoStoryContext {
 
 const meta: Meta<MoreInfoStoryArgs> = {
   component: MoreInfo,
-  title: 'Public/Profile/Attendances/More Info/More Info',
+  title: 'CACiC Eventos/Profile/Attendance/More Info',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -70,7 +70,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   render: (args) => renderStory(args, onlineContext),
   parameters: storyParameters(onlineContext),
   globals: { theme: 'light', network: 'online' },
@@ -97,7 +97,7 @@ export const AttendanceOnly: Story = {
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

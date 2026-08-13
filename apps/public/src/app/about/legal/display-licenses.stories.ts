@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { HttpResponse, delay, http } from 'msw';
 import { expect, userEvent, within } from 'storybook/test';
 import { DisplayLicenses } from './display-licenses';
 
 const meta: Meta<DisplayLicenses> = {
   component: DisplayLicenses,
-  title: 'Public/About/Legal/Display Licenses',
+  title: 'CACiC Eventos/About/Legal/Third-party Licenses',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -37,4 +38,33 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const LoadingDarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get('/app/3rdpartylicenses.txt', async () => {
+          await delay('infinite');
+          return HttpResponse.text('');
+        }),
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Carregando licenças...')).toBeVisible();
+  },
+};
+
+export const LoadError: Story = {
+  parameters: {
+    msw: {
+      handlers: [http.get('/app/3rdpartylicenses.txt', () => new HttpResponse(null, { status: 503 }))],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Não foi possível obter a lista de licenças.')).toBeVisible();
+  },
 };

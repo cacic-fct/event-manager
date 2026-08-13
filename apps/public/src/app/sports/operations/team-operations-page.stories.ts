@@ -26,7 +26,7 @@ let activeArgs = defaultArgs;
 
 const meta: Meta<TeamOperationsStoryArgs> = {
   component: SportsTeamOperationsPage,
-  title: 'CACiC Eventos/Sports/Área da equipe',
+  title: 'CACiC Eventos/Sports/Operations/Team',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -262,6 +262,7 @@ export const Loading: Story = {
 export const PermissionError: Story = {
   name: 'Acesso negado',
   args: { loadMode: 'error' },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Você não tem acesso à gestão desta equipe.')).toBeVisible();
   },

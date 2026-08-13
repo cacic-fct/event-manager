@@ -137,7 +137,7 @@ export default meta;
 
 type Story = StoryObj<EventDraftSelectorStoryArgs>;
 
-export const MultipleDrafts: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Escolher versão para edição' })).toBeVisible();
@@ -151,4 +151,9 @@ export const SingleDraft: Story = {
   args: {
     draftCount: 1,
   },
+};
+
+export const DarkReducedMotion: Story = {
+  ...SingleDraft,
+  globals: { theme: 'dark', motion: 'reduced' },
 };

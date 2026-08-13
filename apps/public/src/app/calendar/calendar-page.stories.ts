@@ -16,7 +16,7 @@ interface CalendarStoryContext {
 
 const meta: Meta<CalendarStoryEventControls> = {
   component: Calendar,
-  title: 'Public/Tabs/Calendar/Calendar',
+  title: 'CACiC Eventos/Calendar/Page',
   tags: ['autodocs'],
   args: calendarStoryEventDefaultControls,
   argTypes: calendarStoryEventControlArgTypes,
@@ -70,7 +70,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await expectCalendarEventVisible(canvasElement);
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   render: (args) => renderStory(args, onlineContext),
   parameters: storyParameters(onlineContext),
   globals: { theme: 'light', network: 'online' },
@@ -78,10 +78,25 @@ export const Online: Story = {
 };
 
 export const OfflineFallback: Story = {
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Calendário')).toBeVisible();
+  },
+};
+
+export const ApiError: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.post('/api/graphql', () =>
+          HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o calendário.' }] }),
+        ),
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Não foi possível carregar o calendário.')).toBeVisible();
   },
 };
 

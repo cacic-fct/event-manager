@@ -13,7 +13,7 @@ type AztecScannerStoryArgs = {
 
 const meta: Meta<AztecScannerStoryArgs> = {
   component: AztecScannerComponent,
-  title: 'Shared/Scanner/Aztec Scanner',
+  title: 'CACiC Eventos/Shared/Scanning/Aztec scanner',
   tags: ['autodocs'],
   args: {
     title: 'Escanear carteira',
@@ -39,7 +39,7 @@ export default meta;
 
 type Story = StoryObj<AztecScannerStoryArgs>;
 
-export const WalletScanner: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Escanear carteira')).toBeVisible();
@@ -53,4 +53,23 @@ export const QrAndAztec: Story = {
     acceptedPrefixes: ['ticket:', 'user:'],
     formats: ['Aztec', 'QRCode'],
   },
+};
+
+export const CompactFrame: Story = {
+  args: {
+    title: 'Escanear credencial em dispositivo móvel',
+    frameSize: 640,
+    pauseAfterScanMs: 900,
+  },
+  parameters: {
+    viewport: { defaultViewport: 'mobile' },
+  },
+};
+
+export const DarkReducedMotion: Story = {
+  args: {
+    title: 'Escanear credencial no modo noturno',
+    frameSize: 720,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
 };

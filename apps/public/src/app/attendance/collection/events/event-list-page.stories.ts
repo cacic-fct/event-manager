@@ -1,74 +1,108 @@
 import { provideRouter } from '@angular/router';
-import type { Meta, StoryObj } from '@storybook/angular';
-import { applicationConfig } from '@storybook/angular';
-import { expect, within } from 'storybook/test';
-import { of } from 'rxjs';
+import { fakerPT_BR as faker } from '@faker-js/faker';
 import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { AttendanceCollectionApiService } from '../attendance-collection-api.service';
+import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { NEVER, of, throwError } from 'rxjs';
+import { expect, within } from 'storybook/test';
+import { createPublicStoryEvent } from '../../../testing/public-event-story-fixtures';
+import { AttendanceCollectionApiService, type AttendanceCollectionEvent } from '../attendance-collection-api.service';
 import { ScannerEventList } from './event-list-page';
 
-const now = new Date();
-const openStart = new Date(now.getTime() + 30 * 60_000);
-const closedStart = new Date(now.getTime() + 8 * 60 * 60_000);
+type LoadMode = 'ready' | 'loading' | 'empty' | 'offline-cache';
 
-const meta: Meta<ScannerEventList> = {
+interface ScannerEventListStoryArgs {
+  loadMode: LoadMode;
+  eventCount: number;
+}
+
+const defaultArgs: ScannerEventListStoryArgs = {
+  loadMode: 'ready',
+  eventCount: 4,
+};
+
+let activeArgs = defaultArgs;
+
+function collectionEvents(): AttendanceCollectionEvent[] {
+  faker.seed(20260813 + activeArgs.eventCount);
+  const now = new Date();
+
+  return Array.from({ length: activeArgs.eventCount }, (_, index) => {
+    const startsAt = new Date(now.getTime() + (index === 0 ? 30 : index * 8 * 60) * 60_000);
+    const endsAt = new Date(startsAt.getTime() + 2 * 60 * 60_000);
+    const baseEvent = createPublicStoryEvent({
+      id: `collection-event-${index + 1}`,
+      index,
+      name:
+        index === 0
+          ? 'Credenciamento'
+          : faker.helpers.arrayElement([
+              'Oficina de acessibilidade',
+              'Arquitetura Angular com Signals',
+              'Observabilidade para APIs GraphQL',
+              'Introdução à segurança ofensiva',
+            ]),
+      emoji: faker.helpers.arrayElement(['✅', '🧪', '🧠', '📡']),
+      locationDescription: index % 3 === 2 ? null : `Sala ${index + 1}`,
+    });
+    const event = {
+      ...baseEvent,
+      locationDescription: index % 3 === 2 ? null : `Sala ${index + 1}`,
+      startDate: startsAt.toISOString(),
+      endDate: endsAt.toISOString(),
+      shouldAllowOralAttendance: index % 2 === 1,
+    };
+    return { eventId: event.id, event };
+  });
+}
+
+const meta: Meta<ScannerEventListStoryArgs> = {
   component: ScannerEventList,
-  title: 'Public/Attendance/Scanner Event List',
+  title: 'CACiC Eventos/Attendance/Collection/Event List',
   tags: ['autodocs'],
+  args: defaultArgs,
+  argTypes: {
+    loadMode: {
+      control: 'inline-radio',
+      options: ['ready', 'loading', 'empty', 'offline-cache'],
+      description: 'Origem e estado da lista autorizada para coleta.',
+    },
+    eventCount: {
+      control: { type: 'range', min: 1, max: 12, step: 1 },
+      description: 'Quantidade de eventos gerados deterministicamente.',
+    },
+  },
+  render: (args) => {
+    activeArgs = args;
+    return { props: {} };
+  },
   decorators: [
     applicationConfig({
       providers: [
         provideRouter([]),
         {
           provide: AuthService,
-          useValue: {
-            user: () => ({ sub: 'collector-1' }),
-          },
+          useValue: { user: () => ({ sub: 'collector-1' }) },
         },
         {
           provide: AttendanceOfflineQueueService,
           useValue: {
             replaceCollectionEvents: () => Promise.resolve(),
-            getCollectionEvents: () => Promise.resolve([]),
+            getCollectionEvents: () => Promise.resolve(collectionEvents()),
           },
         },
         {
           provide: AttendanceCollectionApiService,
           useValue: {
-            listCollectionEvents: () =>
-              of([
-                {
-                  eventId: 'event-open',
-                  event: {
-                    id: 'event-open',
-                    name: 'Credenciamento',
-                    startDate: openStart.toISOString(),
-                    endDate: new Date(openStart.getTime() + 2 * 60 * 60_000).toISOString(),
-                    emoji: '✅',
-                    type: 'OTHER',
-                    locationDescription: 'Auditório',
-                    shouldCollectAttendance: true,
-                    publiclyVisible: true,
-                    queueCount: 0,
-                  },
-                },
-                {
-                  eventId: 'event-later',
-                  event: {
-                    id: 'event-later',
-                    name: 'Oficina da tarde',
-                    startDate: closedStart.toISOString(),
-                    endDate: new Date(closedStart.getTime() + 2 * 60 * 60_000).toISOString(),
-                    emoji: '🧪',
-                    type: 'MINICURSO',
-                    locationDescription: 'Laboratório 3',
-                    shouldCollectAttendance: true,
-                    publiclyVisible: true,
-                    queueCount: 0,
-                  },
-                },
-              ]),
+            listCollectionEvents: () => {
+              if (activeArgs.loadMode === 'loading') {
+                return NEVER;
+              }
+              if (activeArgs.loadMode === 'offline-cache') {
+                return throwError(() => new Error('Sem conexão com o servidor.'));
+              }
+              return of(activeArgs.loadMode === 'empty' ? [] : collectionEvents());
+            },
           },
         },
       ],
@@ -101,13 +135,38 @@ const meta: Meta<ScannerEventList> = {
 };
 
 export default meta;
+type Story = StoryObj<ScannerEventListStoryArgs>;
 
-type Story = StoryObj<ScannerEventList>;
-
-export const Default: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('Credenciamento')).toBeVisible();
-    await expect(canvas.getByText('Oficina da tarde')).toBeVisible();
+    await expect(await canvas.findByText('Credenciamento')).toBeVisible();
+    await expect(canvas.getByLabelText('Coletar presença em Credenciamento')).toHaveAttribute('aria-disabled', 'false');
   },
+};
+
+export const ManyAuthorizedEvents: Story = {
+  name: 'Muitos eventos autorizados',
+  args: { eventCount: 12 },
+};
+
+export const Empty: Story = {
+  name: 'Sem eventos autorizados',
+  args: { loadMode: 'empty' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Nenhum evento disponível')).toBeVisible();
+  },
+};
+
+export const OfflineCache: Story = {
+  name: 'Cache off-line',
+  args: { loadMode: 'offline-cache' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Credenciamento')).toBeVisible();
+  },
+};
+
+export const Loading: Story = {
+  args: { loadMode: 'loading' },
 };

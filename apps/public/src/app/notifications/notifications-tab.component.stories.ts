@@ -177,7 +177,7 @@ const notificationsService = new PublicNotificationsStoryService();
 
 const meta: Meta<NotificationsTabStoryArgs> = {
   component: NotificationsTabComponent,
-  title: 'Public/Tabs/Notifications/Notifications Tab',
+  title: 'CACiC Eventos/Notifications/Tab',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -226,4 +226,15 @@ export const Empty: Story = {
     unreadCount: 0,
     archivedCount: 0,
   },
+};
+
+export const ManyUnreadDarkReducedMotion: Story = {
+  args: {
+    permission: 'denied',
+    unreadCount: 5,
+    archivedCount: 5,
+    empty: false,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

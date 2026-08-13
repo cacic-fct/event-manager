@@ -40,7 +40,7 @@ function currentMatch(): SportsOperationalMatch {
 
 const meta: Meta<OfficialMatchStoryArgs> = {
   component: OfficialSportsMatchPage,
-  title: 'CACiC Eventos/Sports/Operação da partida',
+  title: 'CACiC Eventos/Sports/Operations/Official Match',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -260,6 +260,7 @@ export const Loading: Story = {
 export const LoadError: Story = {
   name: 'Erro recuperável',
   args: { loadMode: 'error' },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Não foi possível abrir a partida')).toBeVisible();

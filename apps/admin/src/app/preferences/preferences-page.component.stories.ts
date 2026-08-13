@@ -273,6 +273,7 @@ export const LinkUnavailable: Story = {
 };
 
 export const RequestError: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     requestState: 'error',
     responseDelay: 0,

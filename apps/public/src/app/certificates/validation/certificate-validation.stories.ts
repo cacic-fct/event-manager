@@ -7,7 +7,7 @@ import { CertificateValidation } from './certificate-validation';
 
 const meta: Meta<CertificateValidation> = {
   component: CertificateValidation,
-  title: 'Public/Certificate Validation/Certificate Validation',
+  title: 'CACiC Eventos/Certificates/Validation',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -36,7 +36,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -77,7 +77,7 @@ export const DisabledCertificate: Story = {
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

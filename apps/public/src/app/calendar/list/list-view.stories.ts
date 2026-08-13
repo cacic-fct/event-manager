@@ -16,7 +16,7 @@ type CalendarListViewStoryArgs = CalendarStoryEventControls & {
 
 const meta: Meta<CalendarListViewStoryArgs> = {
   component: CalendarListView,
-  title: 'Public/Tabs/Calendar/Calendar List View',
+  title: 'CACiC Eventos/Calendar/List View',
   tags: ['autodocs'],
   args: {
     ...calendarStoryEventDefaultControls,
@@ -55,7 +55,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await expect(await canvas.findByText('Acessibilidade em produtos digitais')).toBeVisible();
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -72,7 +72,7 @@ export const LoadingOlder: Story = {
 export const OfflineFallback: Story = {
   args: { canLoadOlder: false },
   render: (args) => renderCalendarListView(args, []),
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Nenhum evento encontrado.')).toBeVisible();

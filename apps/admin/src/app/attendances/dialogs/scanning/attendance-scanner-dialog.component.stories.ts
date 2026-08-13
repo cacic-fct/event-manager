@@ -152,7 +152,7 @@ export default meta;
 
 type Story = StoryObj<AttendanceScannerStoryArgs>;
 
-export const ScannerReady: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Escanear presenças')).toBeVisible();
@@ -164,4 +164,9 @@ export const EmptyFeed: Story = {
   args: {
     feedCount: 0,
   },
+};
+
+export const DarkReducedMotion: Story = {
+  ...EmptyFeed,
+  globals: { theme: 'dark', motion: 'reduced' },
 };

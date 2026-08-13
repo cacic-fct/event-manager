@@ -148,7 +148,7 @@ export default meta;
 
 type Story = StoryObj<OfflineSubmissionStoryArgs>;
 
-export const Approvable: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Revisar presença off-line')).toBeVisible();
@@ -172,6 +172,7 @@ export const ReadOnly: Story = {
 };
 
 export const ResolutionError: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     hasResolutionError: true,
     createdByMethod: 'MANUAL_INPUT',

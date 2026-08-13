@@ -117,3 +117,8 @@ export const EmptyList: Story = {
     includeIncompletePlace: false,
   },
 };
+
+export const DarkReducedMotion: Story = {
+  ...EmptyList,
+  globals: { theme: 'dark', motion: 'reduced' },
+};

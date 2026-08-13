@@ -15,7 +15,7 @@ let activeState: AutorouteState = 'empty';
 
 const meta: Meta<AutorouteStoryArgs> = {
   component: SportsAutoroutePage,
-  title: 'CACiC Eventos/Sports/Encaminhamento automático',
+  title: 'CACiC Eventos/Sports/Operations/Autoroute',
   tags: ['autodocs'],
   args: { state: 'empty' },
   argTypes: {
@@ -56,7 +56,7 @@ export const Loading: Story = {
   args: { state: 'loading' },
 };
 
-export const NoNearbyMatch: Story = {
+export const Playground: Story = {
   name: 'Nenhuma partida próxima',
   args: { state: 'empty' },
   play: async ({ canvasElement }) => {
@@ -67,6 +67,7 @@ export const NoNearbyMatch: Story = {
 export const PermissionLookupError: Story = {
   name: 'Erro de função ou permissão',
   args: { state: 'error' },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Não foi possível abrir a partida')).toBeVisible();

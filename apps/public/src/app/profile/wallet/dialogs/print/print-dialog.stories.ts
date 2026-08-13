@@ -5,7 +5,7 @@ import { PrintDialog } from './print-dialog';
 
 const meta: Meta<PrintDialog> = {
   component: PrintDialog,
-  title: 'Public/Profile/Wallet/Print Dialog',
+  title: 'CACiC Eventos/Profile/Wallet/Print Dialog',
   tags: ['autodocs'],
   decorators: [applicationConfig({ providers: [{ provide: MatDialogRef, useValue: { close: () => undefined } }] })],
   parameters: {
@@ -35,7 +35,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const ServiceWorkerReady: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -49,6 +49,6 @@ export const OfflineInstalled: Story = {
 
 export const NoServiceWorker: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online', serviceWorker: 'disabled' },
+  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

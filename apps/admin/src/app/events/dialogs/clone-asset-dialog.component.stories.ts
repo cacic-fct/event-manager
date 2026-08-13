@@ -107,3 +107,8 @@ export const MissingCertificatePermission: Story = {
     includeDisabledOption: true,
   },
 };
+
+export const DarkReducedMotion: Story = {
+  ...MissingCertificatePermission,
+  globals: { theme: 'dark', motion: 'reduced' },
+};

@@ -4,7 +4,7 @@ import { Attendances } from './attendances';
 
 const meta: Meta<Attendances> = {
   component: Attendances,
-  title: 'Public/Profile/Attendances/Attendances',
+  title: 'CACiC Eventos/Profile/Attendance/List',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -40,7 +40,7 @@ const exerciseStandaloneStory = async (canvasElement: HTMLElement) => {
   await exerciseStory(canvasElement);
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStandaloneStory(canvasElement),
@@ -48,7 +48,7 @@ export const Online: Story = {
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

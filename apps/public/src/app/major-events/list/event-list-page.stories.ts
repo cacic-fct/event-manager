@@ -38,7 +38,7 @@ const previewRoute = {
 
 const meta: Meta<MajorEventStoryArgs> = {
   component: MajorEvent,
-  title: 'Public/Major Event/Major Event',
+  title: 'CACiC Eventos/Major Events/List',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -77,7 +77,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -85,7 +85,7 @@ export const Online: Story = {
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

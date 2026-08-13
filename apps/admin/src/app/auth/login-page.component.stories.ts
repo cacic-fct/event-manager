@@ -33,7 +33,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const SignedOut: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -43,4 +43,9 @@ export const PermissionContext: Story = {
   args: {},
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const DarkReducedMotion: Story = {
+  ...PermissionContext,
+  globals: { theme: 'dark', motion: 'reduced' },
 };

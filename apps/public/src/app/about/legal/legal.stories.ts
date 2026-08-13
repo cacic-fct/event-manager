@@ -1,10 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { HttpResponse, http } from 'msw';
 import { expect, userEvent, within } from 'storybook/test';
 import { Legal } from './legal';
 
 const meta: Meta<Legal> = {
   component: Legal,
-  title: 'Public/About/Legal/Legal',
+  title: 'CACiC Eventos/About/Legal/Page',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -36,4 +37,25 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const LicensesUnavailable: Story = {
+  ...Playground,
+  parameters: {
+    msw: {
+      handlers: [http.get('/app/3rdpartylicenses.txt', () => new HttpResponse(null, { status: 503 }))],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Não foi possível obter a lista de licenças.')).toBeVisible();
+  },
+};
+
+export const MobileDarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
+  parameters: {
+    ...Playground.parameters,
+    viewport: { defaultViewport: 'mobile' },
+  },
 };

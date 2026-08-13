@@ -4,7 +4,7 @@ import { EventLocationMap } from './location-map';
 
 const meta: Meta<EventLocationMap> = {
   component: EventLocationMap,
-  title: 'Public/Event/Event Location Map',
+  title: 'CACiC Eventos/Events/Location Map',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -33,7 +33,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   args: { latitude: -22.1211, longitude: -51.4086, title: 'FCT-Unesp' },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -41,6 +41,15 @@ export const Online: Story = {
 
 export const OfflineFallback: Story = {
   args: { latitude: -22.1211, longitude: -51.4086, title: 'Auditório' },
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const MissingCoordinates: Story = {
+  args: { latitude: null, longitude: null, title: 'Local ainda não definido' },
+  play: async ({ canvasElement }) => {
+    const map = canvasElement.querySelector('.map-target');
+    await expect(map).toBeInTheDocument();
+    await expect(map).toBeEmptyDOMElement();
+  },
 };

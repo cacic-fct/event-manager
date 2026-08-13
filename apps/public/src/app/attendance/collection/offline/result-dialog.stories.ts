@@ -56,7 +56,7 @@ class OfflineResultStoryHost {
 
 const meta: Meta<OfflineResultStoryArgs> = {
   component: OfflineResultStoryHost,
-  title: 'Public/Attendance/Dialogs/Offline Sync Result',
+  title: 'CACiC Eventos/Attendance/Collection/Offline Sync Result Dialog',
   tags: ['autodocs'],
   args: {
     createdCount: 3,
@@ -82,7 +82,7 @@ export default meta;
 
 type Story = StoryObj<OfflineResultStoryArgs>;
 
-export const SuccessfulAndStaged: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('3 presença(s) registrada(s) no servidor.')).toBeVisible();
@@ -99,4 +99,5 @@ export const PartialFailure: Story = {
 
 export const FailuresOnly: Story = {
   args: { createdCount: 0, stagedCount: 0, failedCount: 5 },
+  globals: { theme: 'dark', motion: 'reduced' },
 };

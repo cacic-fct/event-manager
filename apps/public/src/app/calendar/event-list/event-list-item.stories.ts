@@ -17,7 +17,7 @@ type CalendarEventListItemStoryArgs = CalendarStoryEventControls & {
 
 const meta: Meta<CalendarEventListItemStoryArgs> = {
   component: CalendarEventListItem,
-  title: 'Public/Tabs/Calendar/Calendar Event List Item',
+  title: 'CACiC Eventos/Calendar/Event List Item',
   tags: ['autodocs'],
   args: {
     ...calendarStoryEventDefaultControls,
@@ -58,7 +58,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await expect(canvas.getByText('Inscrito')).toBeVisible();
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -70,7 +70,7 @@ export const OfflineFallback: Story = {
     slotsAvailable: 0,
     queueCount: 8,
   },
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

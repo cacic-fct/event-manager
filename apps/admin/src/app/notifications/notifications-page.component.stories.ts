@@ -214,3 +214,8 @@ export const Empty: Story = {
     unreadCount: 0,
   },
 };
+
+export const DarkReducedMotion: Story = {
+  ...Empty,
+  globals: { theme: 'dark', motion: 'reduced' },
+};

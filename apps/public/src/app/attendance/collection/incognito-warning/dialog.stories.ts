@@ -36,7 +36,7 @@ class IncognitoWarningStoryHost {
 
 const meta: Meta<IncognitoWarningStoryArgs> = {
   component: IncognitoWarningStoryHost,
-  title: 'Public/Attendance/Dialogs/Incognito Warning',
+  title: 'CACiC Eventos/Attendance/Collection/Incognito Warning Dialog',
   tags: ['autodocs'],
   args: { step: 1 },
   argTypes: {
@@ -59,7 +59,7 @@ export default meta;
 
 type Story = StoryObj<IncognitoWarningStoryArgs>;
 
-export const InitialWarning: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText('Navegação privativa detectada')).toBeVisible();
   },
@@ -67,7 +67,18 @@ export const InitialWarning: Story = {
 
 export const FinalConfirmation: Story = {
   args: { step: 2 },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByText('Confirme antes de continuar')).toBeVisible();
+  },
+};
+
+export const MobileFirstWarning: Story = {
+  args: { step: 1 },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Navegação privativa detectada')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Entendi' })).toBeVisible();
   },
 };

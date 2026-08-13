@@ -9,7 +9,7 @@ import { MenuComponent } from './menu.component';
 
 const meta: Meta<MenuComponent> = {
   component: MenuComponent,
-  title: 'Public/Tabs/Menu/Menu',
+  title: 'CACiC Eventos/Menu/Page',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -38,7 +38,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const ServiceWorkerReady: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -52,7 +52,7 @@ export const OfflineInstalled: Story = {
 
 export const NoServiceWorker: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online', serviceWorker: 'disabled' },
+  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

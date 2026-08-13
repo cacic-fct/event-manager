@@ -10,7 +10,7 @@ let state: OfflineCodeCardStoryArgs['state'] = 'ready';
 
 const meta: Meta<OfflineCodeCardStoryArgs> = {
   component: WalletOfflineCodeCard,
-  title: 'Public/Profile/Wallet/Offline Code Card',
+  title: 'CACiC Eventos/Profile/Wallet/Offline Code Card',
   tags: ['autodocs'],
   args: { state: 'ready' },
   argTypes: { state: { control: 'select', options: ['ready', 'unavailable', 'loading'] } },
@@ -39,7 +39,7 @@ export default meta;
 
 type Story = StoryObj<OfflineCodeCardStoryArgs>;
 
-export const Ready: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('button', { name: /copiar código/i })).toBeVisible();
@@ -48,6 +48,7 @@ export const Ready: Story = {
 
 export const Unavailable: Story = {
   args: { state: 'unavailable' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText(/Abra esta tela com internet/i)).toBeVisible();

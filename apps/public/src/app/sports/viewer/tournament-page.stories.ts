@@ -64,7 +64,7 @@ function controlledTournament() {
 
 const meta: Meta<TournamentStoryArgs> = {
   component: SportsTournamentPage,
-  title: 'CACiC Eventos/Sports/Visualização do torneio',
+  title: 'CACiC Eventos/Sports/Viewer/Tournament',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -209,6 +209,7 @@ export const Loading: Story = {
 export const LoadError: Story = {
   name: 'Erro recuperável',
   args: { loadMode: 'error' },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Não foi possível carregar o torneio')).toBeVisible();

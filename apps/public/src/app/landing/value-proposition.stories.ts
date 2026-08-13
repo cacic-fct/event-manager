@@ -5,7 +5,7 @@ import { ValuePropositionComponent } from './value-proposition';
 
 const meta: Meta<ValuePropositionComponent> = {
   component: ValuePropositionComponent,
-  title: 'Public/Landing/Components/Value Proposition',
+  title: 'CACiC Eventos/Landing/Value Proposition',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -26,7 +26,7 @@ const platformStats = {
   certificatesCount: faker.number.int({ min: 250_000, max: 400_000 }),
 };
 
-export const Loaded: Story = {
+export const Playground: Story = {
   globals: { theme: 'light' },
   args: {
     statsState: 'ready',
@@ -50,6 +50,6 @@ export const Dark: Story = {
 export const Loading: Story = { globals: { theme: 'light' }, args: { statsState: 'loading', stats: null } };
 
 export const StatisticsUnavailable: Story = {
-  globals: { theme: 'light' },
+  globals: { theme: 'dark', motion: 'reduced' },
   args: { statsState: 'unavailable', stats: null },
 };

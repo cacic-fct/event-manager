@@ -50,7 +50,7 @@ const previewRoute = {
 
 const meta: Meta<EventStoryArgs> = {
   component: Event,
-  title: 'Public/Event/Event',
+  title: 'CACiC Eventos/Events/Detail Page',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -99,7 +99,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   render: (args) => renderStory(args, onlineContext),
   parameters: eventParameters(onlineContext),
   globals: { theme: 'light', network: 'online' },
@@ -153,7 +153,7 @@ export const WithAttendanceForms: Story = {
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
 

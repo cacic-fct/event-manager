@@ -27,7 +27,7 @@ const now = new Date();
 
 const meta: Meta<RankedMajorEventSubscription> = {
   component: RankedMajorEventSubscription,
-  title: 'Public/Major Event/Subscription/Ranked Subscription',
+  title: 'CACiC Eventos/Major Events/Registration/Ranked',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -407,11 +407,11 @@ const goToRankingStep = async (canvasElement: HTMLElement) => {
   await expect(await canvas.findByText('Não quero')).toBeVisible();
 };
 
-export const Selection: Story = {
+export const Playground: Story = {
   parameters: {
     msw: { handlers: rankedHandlers('default') },
   },
-  globals: { theme: 'light', network: 'online' },
+  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
   play: async ({ canvasElement }) => expectSelectionStep(canvasElement),
 };
 

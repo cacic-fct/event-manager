@@ -100,6 +100,7 @@ export const SlowReissue: Story = {
 };
 
 export const WithoutPermission: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     canReissue: false,
   },

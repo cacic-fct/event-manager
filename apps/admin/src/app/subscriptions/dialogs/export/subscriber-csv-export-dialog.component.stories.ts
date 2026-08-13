@@ -84,6 +84,7 @@ export const EmptySelection: Story = {
 };
 
 export const WithBadgeCodes: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByLabelText(/códigos para crachá/i));

@@ -49,6 +49,7 @@ export const CertificateRules: Story = {
 };
 
 export const EmptyReadonly: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'readonly',
     itemCount: 0,

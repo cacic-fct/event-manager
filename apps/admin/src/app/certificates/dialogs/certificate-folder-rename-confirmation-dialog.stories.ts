@@ -71,11 +71,23 @@ export default meta;
 
 type Story = StoryObj<CertificateFolderRenameStoryArgs>;
 
-export const Default: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('heading', { name: 'Renomear pasta e reemitir certificados?' })).toBeVisible();
     await expect(canvas.getByText('Escopo: todas as configurações ativas desta pasta.')).toBeVisible();
     await userEvent.hover(canvas.getByRole('button', { name: 'Renomear e reemitir' }));
   },
+};
+
+export const DarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
+};
+
+export const LongFolderName: Story = {
+  args: {
+    newFolderName: 'Atividades complementares de extensão, pesquisa e formação acadêmica continuada',
+  },
+  play: Playground.play,
 };

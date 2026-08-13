@@ -95,7 +95,7 @@ export default meta;
 
 type Story = StoryObj<AttendanceInfoStoryArgs>;
 
-export const WithLocation: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Detalhes da presença')).toBeVisible();
@@ -109,4 +109,9 @@ export const WithoutLocation: Story = {
     createdByMethod: 'MANUAL_INPUT',
     collectedAccuracyMeters: 0,
   },
+};
+
+export const DarkReducedMotion: Story = {
+  ...WithoutLocation,
+  globals: { theme: 'dark', motion: 'reduced' },
 };

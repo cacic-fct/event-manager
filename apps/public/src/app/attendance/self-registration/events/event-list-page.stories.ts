@@ -1,14 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
+import { onlineAttendanceStoryHandlers } from '../online-attendance-story-fixtures';
 import { OnlineAttendanceListComponent } from './event-list-page';
 
 const meta: Meta<OnlineAttendanceListComponent> = {
   component: OnlineAttendanceListComponent,
-  title: 'Public/Attendance/Online Attendance List',
+  title: 'CACiC Eventos/Attendance/Self-registration/Event List',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
+    msw: { handlers: onlineAttendanceStoryHandlers() },
   },
 };
 
@@ -18,22 +20,10 @@ type Story = StoryObj<OnlineAttendanceListComponent>;
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find(
-    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
-  );
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
+  await expect(await canvas.findByRole('link', { name: 'Confirmar presença em Arquitetura Angular com Signals' })).toBeVisible();
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -41,6 +31,22 @@ export const Online: Story = {
 
 export const OfflineFallback: Story = {
   args: {},
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const Empty: Story = {
+  parameters: { msw: { handlers: onlineAttendanceStoryHandlers('empty') } },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Nenhuma presença pendente.')).toBeVisible();
+  },
+};
+
+export const ApiError: Story = {
+  parameters: { msw: { handlers: onlineAttendanceStoryHandlers('error') } },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText('Não foi possível carregar as presenças pendentes.'),
+    ).toBeVisible();
+  },
 };

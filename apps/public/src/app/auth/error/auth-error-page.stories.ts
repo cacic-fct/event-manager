@@ -6,7 +6,7 @@ import { AuthErrorPage } from './auth-error-page';
 
 const meta: Meta<AuthErrorPage> = {
   component: AuthErrorPage,
-  title: 'Public/Auth/Error Page',
+  title: 'CACiC Eventos/Auth/Error Page',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -32,7 +32,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await userEvent.hover(canvas.getByRole('button', { name: /copiar detalhes técnicos/i }));
 };
 
-export const LoginExpired: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -65,6 +65,6 @@ export const LongTechnicalDetails: Story = {
 
 export const DarkTheme: Story = {
   args: {},
-  globals: { theme: 'dark', network: 'online' },
+  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

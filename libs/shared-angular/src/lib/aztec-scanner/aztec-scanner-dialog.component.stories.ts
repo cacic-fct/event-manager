@@ -56,7 +56,7 @@ class AztecScannerDialogStoryHostComponent {
 
 const meta: Meta<AztecScannerDialogStoryArgs> = {
   component: AztecScannerDialogStoryHostComponent,
-  title: 'Shared/Scanner/Aztec Scanner Dialog',
+  title: 'CACiC Eventos/Shared/Scanning/Aztec scanner dialog',
   tags: ['autodocs'],
   args: {
     title: 'Escanear carteira',
@@ -82,7 +82,7 @@ export default meta;
 
 type Story = StoryObj<AztecScannerDialogStoryArgs>;
 
-export const SingleScan: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getByText('Escanear carteira')).toBeVisible();
@@ -96,4 +96,21 @@ export const ContinuousScan: Story = {
     continuousMode: true,
     acceptedPrefixes: ['user:', 'attendance:'],
   },
+};
+
+export const QrAndAztecCodes: Story = {
+  args: {
+    title: 'Escanear ingresso ou carteira',
+    acceptedPrefixes: ['ticket:', 'user:'],
+    mode: ['Aztec', 'QRCode'],
+  },
+};
+
+export const DarkReducedMotion: Story = {
+  args: {
+    title: 'Coleta noturna',
+    acceptedPrefixes: ['attendance:'],
+    continuousMode: true,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
 };

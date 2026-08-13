@@ -4,7 +4,7 @@ import { DevelopmentTools } from './development-tools';
 
 const meta: Meta<DevelopmentTools> = {
   component: DevelopmentTools,
-  title: 'Public/Development Tools/Development Tools',
+  title: 'CACiC Eventos/Developer Tools/Hub',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -36,4 +36,17 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const MobileNavigation: Story = {
+  ...Playground,
+  parameters: {
+    ...Playground.parameters,
+    viewport: { defaultViewport: 'mobile' },
+  },
+};
+
+export const OfflineDarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', network: 'offline', motion: 'reduced' },
 };

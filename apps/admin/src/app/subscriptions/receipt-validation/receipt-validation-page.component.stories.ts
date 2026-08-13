@@ -44,7 +44,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const DataLoaded: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -65,13 +65,13 @@ export const EmptyQueue: Story = {
 };
 
 export const FrozenQueue: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {},
   decorators: [
     applicationConfig({
       providers: createReceiptValidationStoryProviders(buildQueue(1, true)),
     }),
   ],
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.queryByRole('button', { name: 'Aprovar comprovante' })).toBeNull();

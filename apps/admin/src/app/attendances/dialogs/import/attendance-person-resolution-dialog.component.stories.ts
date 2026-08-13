@@ -72,7 +72,7 @@ export default meta;
 
 type Story = StoryObj<ResolutionDialogStoryArgs>;
 
-export const SingleValue: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Escolher pessoa correta')).toBeVisible();
@@ -92,4 +92,9 @@ export const MultipleValues: Story = {
     await expect(await canvas.findByText('Resolver dados ambíguos encontrados no CSV de presença')).toBeVisible();
     await expect(await canvas.findByText('Carolina Mariana de Albuquerque Vasconcelos')).toBeVisible();
   },
+};
+
+export const DarkReducedMotion: Story = {
+  ...MultipleValues,
+  globals: { theme: 'dark', motion: 'reduced' },
 };
