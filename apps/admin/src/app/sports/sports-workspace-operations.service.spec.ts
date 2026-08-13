@@ -270,6 +270,37 @@ describe('SportsWorkspaceService operations', () => {
       });
     });
 
+    it('keeps one availability and seed draft per modality before saving registrations', async () => {
+      const read = createAdminSportsTeamRead();
+      workspace.teamRead.set(read);
+      const existing = workspace.registrationOptions().find((option) => option.category.id === 'category-1');
+      const newOption = workspace.registrationOptions().find((option) => option.category.id === 'category-2');
+      expect(existing?.selected).toBe(true);
+      expect(existing?.seed).toBe(1);
+      expect(newOption?.selected).toBe(false);
+
+      workspace.toggleRegistration('category-2', true);
+      workspace.setRegistrationSeed('category-2', {
+        target: { value: '6' },
+      } as unknown as Event);
+      expect(workspace.registrationOptions().find((option) => option.category.id === 'category-2')).toEqual(
+        expect.objectContaining({ selected: true, seed: 6 }),
+      );
+
+      api.mutate.mockReturnValue(of('registration-new'));
+      vi.spyOn(workspace, 'loadTournament').mockResolvedValue();
+      vi.spyOn(workspace, 'selectTeam').mockResolvedValue();
+
+      await workspace.saveRegistrationSelections();
+
+      expect(api.mutate).toHaveBeenCalledWith('createSportsRegistration', 'SportsRegistrationCreateInput', {
+        teamId: read.team.id,
+        categoryId: 'category-2',
+        seed: 6,
+        formAnswersJson: null,
+      });
+    });
+
     it('updates and deletes registrations with their optimistic revisions', async () => {
       const read = createAdminSportsCategoryRead();
       const registration = read.registrations[0];

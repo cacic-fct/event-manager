@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import {
+  CurrentUserSportsPlayerApplication,
   CurrentUserTournamentOperations,
   RepresentativeTeamWorkspace,
   SportsLineupRead,
@@ -246,8 +247,22 @@ export class SportsOperationsApiService {
     ).pipe(map((value) => value.currentUserSportsTournamentDetail));
   }
 
+  currentUserApplications(tournamentId: string): Observable<CurrentUserSportsPlayerApplication[]> {
+    return this.query<{ currentUserSportsPlayerApplications: CurrentUserSportsPlayerApplication[] }>(
+      `query CurrentUserSportsPlayerApplications($tournamentId: String!) {
+        currentUserSportsPlayerApplications(tournamentId: $tournamentId) {
+          id tournamentId status paymentTier imageLicenseAgreementAccepted reviewMessage
+          requestedTeam { id name institution logoUrl }
+          categories { id name division }
+        }
+      }`,
+      { tournamentId },
+    ).pipe(map((value) => value.currentUserSportsPlayerApplications));
+  }
+
   submitApplication(input: {
     tournamentId: string;
+    applicationId?: string | null;
     requestedTeamId?: string | null;
     categoryIds: string[];
     noticeAccepted: boolean;

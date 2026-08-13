@@ -21,6 +21,7 @@ const IDEMPOTENT_APPROVAL_STATUSES = [
 
 export interface SubmitSportsPlayerApplicationInput {
   tournamentId: string;
+  applicationId?: string | null;
   requestedTeamId?: string | null;
   categoryIds: string[];
   noticeAccepted: boolean;
@@ -65,11 +66,30 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
         `o torneio ${input.tournamentId}`,
       );
       const paymentSelection = resolveMajorEventSelfServicePayment(target.majorEvent, input.paymentTier);
+      const existingApplication = input.applicationId
+        ? await tx.sportsPlayerApplication.findFirst({
+            where: {
+              id: input.applicationId,
+              tournamentId: input.tournamentId,
+              applicantPersonId,
+              deletedAt: null,
+            },
+            include: {
+              categoryChoices: {
+                select: { categoryId: true },
+              },
+            },
+          })
+        : null;
+      if (input.applicationId && !existingApplication) {
+        throw new NotFoundException('A solicitação individual não foi encontrada.');
+      }
       if (!target.allowPlayerMultipleTeams) {
         const pendingOtherTeam = await tx.sportsPlayerApplication.findFirst({
           where: {
             tournamentId: input.tournamentId,
             applicantPersonId,
+            ...(existingApplication ? { id: { not: existingApplication.id } } : {}),
             ...(requestedTeamId
               ? {
                   OR: [{ requestedTeamId: null }, { requestedTeamId: { not: requestedTeamId } }],
@@ -85,25 +105,41 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
         }
       }
 
-      const application = await tx.sportsPlayerApplication.upsert({
-        where: { pendingKey },
-        create: {
-          tournamentId: input.tournamentId,
-          applicantPersonId,
-          requestedTeamId,
-          status: SportsApplicationStatus.PENDING,
-          noticeAcceptedAt: new Date(),
-          imageLicenseAgreementAccepted: input.imageLicenseAgreementAccepted === true,
-          pendingKey,
-          paymentTier: paymentSelection.paymentTier,
-        },
-        update: {},
-        include: {
-          categoryChoices: {
-            select: { categoryId: true },
+      if (existingApplication && existingApplication.pendingKey !== pendingKey) {
+        const conflictingApplication = await tx.sportsPlayerApplication.findFirst({
+          where: {
+            pendingKey,
+            id: { not: existingApplication.id },
+            deletedAt: null,
           },
-        },
-      });
+          select: { id: true },
+        });
+        if (conflictingApplication) {
+          throw new ConflictException('Já existe uma solicitação pendente para esta equipe neste torneio.');
+        }
+      }
+
+      const application =
+        existingApplication ??
+        (await tx.sportsPlayerApplication.upsert({
+          where: { pendingKey },
+          create: {
+            tournamentId: input.tournamentId,
+            applicantPersonId,
+            requestedTeamId,
+            status: SportsApplicationStatus.PENDING,
+            noticeAcceptedAt: new Date(),
+            imageLicenseAgreementAccepted: input.imageLicenseAgreementAccepted === true,
+            pendingKey,
+            paymentTier: paymentSelection.paymentTier,
+          },
+          update: {},
+          include: {
+            categoryChoices: {
+              select: { categoryId: true },
+            },
+          },
+        }));
       const existingCategoryIds = application.categoryChoices.map((choice) => choice.categoryId).sort();
       const normalizedCategoryIds = [...categoryIds].sort();
       const imageLicenseAgreementAccepted = input.imageLicenseAgreementAccepted === true;
@@ -137,6 +173,7 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
           reviewedAt: null,
           reviewedById: null,
           reviewMessage: null,
+          pendingKey,
           paymentTier: paymentSelection.paymentTier,
           imageLicenseAgreementAccepted: application.imageLicenseAgreementAccepted || imageLicenseAgreementAccepted,
         },
@@ -223,32 +260,15 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
       }
 
       if (decision === 'APPROVE') {
-        if ((IDEMPOTENT_APPROVAL_STATUSES as readonly SportsApplicationStatus[]).includes(application.status)) {
+        if (
+          ([SportsApplicationStatus.WAITING_PAYMENT, SportsApplicationStatus.ACTIVE] as readonly SportsApplicationStatus[]).includes(
+            application.status,
+          )
+        ) {
           return this.getApplication(tx, application.id);
         }
-        this.assertReviewable(application.status);
-        if (application.requestedTeamId) {
-          const staged = await tx.sportsPlayerApplication.updateMany({
-            where: {
-              id: application.id,
-              status: {
-                in: [...REVIEWABLE_APPLICATION_STATUSES],
-              },
-            },
-            data: {
-              status: SportsApplicationStatus.APPROVED,
-              reviewedAt: new Date(),
-              reviewedById: actorId,
-              reviewMessage,
-            },
-          });
-          if (staged.count !== 1) {
-            throw new ConflictException('A solicitação mudou durante a aprovação.');
-          }
-          await this.recordReviewAudit(tx, application, actor, SportsApplicationStatus.APPROVED, {
-            awaitingTeamRepresentative: true,
-          });
-          return this.getApplication(tx, application.id);
+        if (application.status !== SportsApplicationStatus.APPROVED) {
+          this.assertReviewable(application.status);
         }
         return this.approveApplication(tx, application, actor, actorId, reviewMessage);
       }

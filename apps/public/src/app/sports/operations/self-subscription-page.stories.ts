@@ -57,6 +57,7 @@ const meta: Meta<SelfSubscriptionStoryArgs> = {
         {
           provide: SportsOperationsApiService,
           useValue: {
+            currentUserApplications: () => of([]),
             tournament: () => {
               if (activeArgs.loadMode === 'loading') {
                 return NEVER;

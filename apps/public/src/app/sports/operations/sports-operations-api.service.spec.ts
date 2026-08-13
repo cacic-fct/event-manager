@@ -60,6 +60,37 @@ describe('SportsOperationsApiService', () => {
     http.verify();
   });
 
+  it('loads the current user applications used to edit a pending self-subscription', async () => {
+    const api = TestBed.inject(SportsOperationsApiService);
+    const http = TestBed.inject(HttpTestingController);
+    const result = firstValueFrom(api.currentUserApplications('tournament-1'));
+    const request = http.expectOne('/api/graphql');
+
+    expect(request.request.body.variables).toEqual({ tournamentId: 'tournament-1' });
+    expect(request.request.body.query).toContain('currentUserSportsPlayerApplications');
+    request.flush({
+      data: {
+        currentUserSportsPlayerApplications: [
+          {
+            id: 'application-1',
+            tournamentId: 'tournament-1',
+            status: 'PENDING',
+            requestedTeam: { id: 'team-1', name: 'Equipe A', institution: null, logoUrl: null },
+            categories: [{ id: 'category-1', name: 'Futsal', division: 'Aberto' }],
+            paymentTier: 'Estudante',
+            imageLicenseAgreementAccepted: true,
+            reviewMessage: null,
+          },
+        ],
+      },
+    });
+
+    await expect(result).resolves.toEqual([
+      expect.objectContaining({ id: 'application-1', status: 'PENDING', paymentTier: 'Estudante' }),
+    ]);
+    http.verify();
+  });
+
   it('submits identity claims without resolving or querying a person', async () => {
     const api = TestBed.inject(SportsOperationsApiService);
     const http = TestBed.inject(HttpTestingController);

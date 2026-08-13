@@ -1,14 +1,28 @@
-import { computed } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import type { FormResponseAnswer } from '@cacic-fct/form-contracts';
 import { parseFormElementsJson, serializeFormAnswers } from '@cacic-fct/shared-angular';
 import type { SportsTeamMemberStatus } from '@cacic-fct/shared-data-types';
 import type { Person } from '@cacic-fct/event-manager-admin-contracts';
 import { firstValueFrom } from 'rxjs';
-import type { SportsCategoryRead, SportsTeamRead, SportsTeamSummary } from './sports.models';
+import type {
+  SportsCategoryRead,
+  SportsCategorySummary,
+  SportsRegistrationSummary,
+  SportsTeamRead,
+  SportsTeamSummary,
+} from './sports.models';
 import { SportsWorkspaceCategoryService } from './sports-workspace-category.service';
 
+interface RegistrationOption {
+  category: SportsCategorySummary;
+  registration: SportsRegistrationSummary | null;
+  selected: boolean;
+  seed: number | null;
+}
+
 export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategoryService {
+  private readonly registrationDraft = signal<Record<string, { selected: boolean; seed: number | null }>>({});
   private readonly registrationCategoryId = toSignal(this.registrationForm.controls.categoryId.valueChanges, {
     initialValue: this.registrationForm.controls.categoryId.value,
   });
@@ -20,6 +34,20 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     return formId ? (this.eventForms().find((form) => form.id === formId) ?? null) : null;
   });
   readonly registrationFormElements = computed(() => parseFormElementsJson(this.registrationEventForm()?.elementsJson));
+  readonly registrationOptions = computed<RegistrationOption[]>(() => {
+    const read = this.teamRead();
+    const drafts = this.registrationDraft();
+    return (this.tournamentRead()?.categories ?? []).map((category) => {
+      const registration = read?.registrations.find((item) => item.categoryId === category.id) ?? null;
+      const draft = drafts[category.id];
+      return {
+        category,
+        registration,
+        selected: draft?.selected ?? Boolean(registration),
+        seed: draft?.seed ?? registration?.seed ?? null,
+      };
+    });
+  });
   readonly approvedTeamMemberCount = computed(
     () => this.teamRead()?.members.filter((member) => member.status === 'APPROVED').length ?? 0,
   );
@@ -50,6 +78,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       }
       this.teamRead.set(read);
       this.selectedTeamId.set(team.id);
+      this.initializeRegistrationDraft(read);
       this.teamForm.patchValue({
         id: read.team.id,
         name: read.team.name,
@@ -57,10 +86,79 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
         status: read.team.status,
       });
       this.registrationForm.controls.teamId.setValue(team.id);
+      this.focusRegistrationCategory(read.registrations[0]?.categoryId ?? this.tournamentRead()?.categories[0]?.id ?? '');
     });
     if (options.navigate !== false && this.selectedTeamId() === team.id) {
       this.navigateToArea(this.activeArea() === 'reviews' ? 'reviews' : 'teams', { teamId: team.id });
     }
+  }
+
+  override newTeam(navigate = true): void {
+    super.newTeam(navigate);
+    this.registrationDraft.set({});
+  }
+
+  private initializeRegistrationDraft(read: SportsTeamRead): void {
+    const registrations = new Map(read.registrations.map((registration) => [registration.categoryId, registration]));
+    const draft = Object.fromEntries(
+      (this.tournamentRead()?.categories ?? []).map((category) => {
+        const registration = registrations.get(category.id);
+        return [category.id, { selected: Boolean(registration), seed: registration?.seed ?? null }];
+      }),
+    );
+    this.registrationDraft.set(draft);
+  }
+
+  toggleRegistration(categoryId: string, selected: boolean): void {
+    if (!this.registrationOptions().some((option) => option.category.id === categoryId)) {
+      return;
+    }
+    this.registrationDraft.update((current) => ({
+      ...current,
+      [categoryId]: {
+        selected,
+        seed: this.registrationOptions().find((option) => option.category.id === categoryId)?.seed ?? null,
+      },
+    }));
+    if (selected) {
+      this.focusRegistrationCategory(categoryId);
+    }
+  }
+
+  setRegistrationSeed(categoryId: string, event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    if (!target || typeof target.value !== 'string') {
+      return;
+    }
+    const raw = target.value.trim();
+    const seed = raw === '' ? null : Number(raw);
+    if (seed !== null && (!Number.isInteger(seed) || seed < 0)) {
+      return;
+    }
+    this.registrationDraft.update((current) => ({
+      ...current,
+      [categoryId]: {
+        selected: current[categoryId]?.selected ?? true,
+        seed,
+      },
+    }));
+    if (this.registrationCategoryId() === categoryId) {
+      this.registrationForm.controls.seed.setValue(seed ?? 0);
+    }
+  }
+
+  focusRegistrationCategory(categoryId: string): void {
+    const option = this.registrationOptions().find((item) => item.category.id === categoryId);
+    const teamId = this.teamRead()?.team.id;
+    if (!option || !teamId) {
+      return;
+    }
+    this.registrationForm.patchValue({
+      teamId,
+      categoryId,
+      seed: option.seed ?? 0,
+      formAnswersJson: option.registration?.formAnswersJson ?? '[]',
+    });
   }
 
   async saveTeam(): Promise<void> {
@@ -294,6 +392,72 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       );
       await this.refreshSelectedTeamAfterRegistration(teamRead?.team.id ?? raw.teamId);
       this.notify('Inscrição criada. Atletas aprovados adicionados ao elenco da modalidade.');
+    });
+  }
+
+  async saveRegistrationSelections(): Promise<void> {
+    const teamRead = this.teamRead();
+    const options = this.registrationOptions();
+    if (!teamRead || !options.length) {
+      return;
+    }
+    const pendingQuestionnaires = options.filter(
+      (option) => option.selected && !option.registration && option.category.registrationFormId,
+    );
+    const removals = options.filter((option) => !option.selected && option.registration);
+    if (
+      removals.length &&
+      !(await this.confirmAction(
+        'Remover inscrições desmarcadas?',
+        'A equipe deixará as modalidades desmarcadas e suas escalações serão removidas.',
+      ))
+    ) {
+      return;
+    }
+
+    await this.run('Não foi possível salvar as inscrições em modalidades.', async () => {
+      for (const option of options) {
+        if (option.selected && !option.registration && !option.category.registrationFormId) {
+          await this.createRegistrationAndAssignApprovedMembers(
+            {
+              teamId: teamRead.team.id,
+              categoryId: option.category.id,
+              seed: option.seed,
+              formAnswersJson: null,
+            },
+            teamRead,
+          );
+        } else if (option.selected && option.registration && option.seed !== option.registration.seed) {
+          await firstValueFrom(
+            this.api.mutate<string>('updateSportsRegistration', 'SportsRegistrationUpdateInput', {
+              id: option.registration.id,
+              expectedRevision: option.registration.revision,
+              seed: option.seed,
+            }),
+          );
+        } else if (!option.selected && option.registration) {
+          await firstValueFrom(
+            this.api.deleteVersioned('deleteSportsRegistration', option.registration.id, option.registration.revision),
+          );
+        }
+      }
+      await this.refreshSelectedTeamAfterRegistration(teamRead.team.id);
+      if (pendingQuestionnaires.length) {
+        const firstQuestionnaire = pendingQuestionnaires[0];
+        if (firstQuestionnaire) {
+          this.registrationDraft.update((current) => ({
+            ...current,
+            [firstQuestionnaire.category.id]: {
+              selected: true,
+              seed: firstQuestionnaire.seed,
+            },
+          }));
+          this.focusRegistrationCategory(firstQuestionnaire.category.id);
+        }
+        this.notify('Responda o formulário da modalidade para concluir a inscrição.', true);
+      } else {
+        this.notify('Inscrições salvas. Novas modalidades ficam disponíveis imediatamente.');
+      }
     });
   }
 

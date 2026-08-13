@@ -1,4 +1,5 @@
 import type {
+  SportsApplicationStatus,
   SportsEligibilityStatus,
   SportsIdentityType,
   SportsMatchState,
@@ -198,6 +199,17 @@ export interface SportsApplicationOption {
   name: string;
   emoji: string;
   division?: string | null;
+}
+
+export interface CurrentUserSportsPlayerApplication {
+  id: string;
+  tournamentId: string;
+  requestedTeam: SportsTeamSummary | null;
+  categories: Array<{ id: string; name: string; division?: string | null }>;
+  status: SportsApplicationStatus;
+  paymentTier?: string | null;
+  imageLicenseAgreementAccepted: boolean;
+  reviewMessage?: string | null;
 }
 
 export interface CurrentUserTournamentOperations {

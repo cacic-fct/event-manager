@@ -112,6 +112,109 @@ describe('SportsPlayerApplicationService', () => {
     expect((tx as Record<string, unknown>)['people']).toBeUndefined();
   });
 
+  it('updates an existing pending self-application instead of creating a second request', async () => {
+    tx.sportsPlayerApplication.upsert.mockResolvedValueOnce({
+      id: 'application-1',
+      tournamentId: 'tournament-1',
+      applicantPersonId: 'person-1',
+      requestedTeamId: 'team-1',
+      status: SportsApplicationStatus.PENDING,
+      noticeAcceptedAt: new Date(),
+      imageLicenseAgreementAccepted: false,
+      pendingKey: 'self:tournament-1:person-1:team-1',
+      paymentTier: null,
+      categoryChoices: [{ categoryId: 'category-1' }],
+    });
+
+    await service.submitSelfApplication(
+      {
+        tournamentId: 'tournament-1',
+        requestedTeamId: 'team-1',
+        categoryIds: ['category-1', 'category-2'],
+        noticeAccepted: true,
+      },
+      'person-1',
+      applicantActor,
+    );
+
+    expect(tx.sportsPlayerApplication.update).toHaveBeenCalledWith({
+      where: { id: 'application-1' },
+      data: expect.objectContaining({
+        status: SportsApplicationStatus.PENDING,
+        requestedTeamId: 'team-1',
+      }),
+    });
+    expect(tx.sportsPlayerApplicationCategory.deleteMany).toHaveBeenCalledWith({
+      where: { applicationId: 'application-1' },
+    });
+    expect(tx.sportsPlayerApplicationCategory.createMany).toHaveBeenCalledWith({
+      data: [
+        { applicationId: 'application-1', categoryId: 'category-1' },
+        { applicationId: 'application-1', categoryId: 'category-2' },
+      ],
+    });
+  });
+
+  it('keeps editing the same pending application when its requested team changes', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValueOnce({
+      id: 'tournament-1',
+      majorEventId: 'major-1',
+      status: SportsTournamentStatus.REGISTRATION_OPEN,
+      selfSubscriptionEnabled: true,
+      selfSubscriptionAllowNoTeam: true,
+      selfSubscriptionAllowNoCategory: false,
+      allowPlayerMultipleTeams: false,
+      finishedAt: null,
+      majorEvent: {
+        isPaymentRequired: false,
+        requiresImageLicenseAgreement: false,
+        deletedAt: null,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        majorEventPrices: [],
+      },
+      teams: [],
+      categories: [
+        { id: 'category-1', registrationStartDate: null, registrationEndDate: null },
+        { id: 'category-2', registrationStartDate: null, registrationEndDate: null },
+      ],
+    });
+    tx.sportsPlayerApplication.findFirst.mockResolvedValueOnce({
+      id: 'application-1',
+      tournamentId: 'tournament-1',
+      applicantPersonId: 'person-1',
+      requestedTeamId: 'team-1',
+      status: SportsApplicationStatus.PENDING,
+      noticeAcceptedAt: new Date(),
+      imageLicenseAgreementAccepted: false,
+      pendingKey: 'self:tournament-1:person-1:team-1',
+      paymentTier: null,
+      categoryChoices: [{ categoryId: 'category-1' }],
+    });
+
+    await service.submitSelfApplication(
+      {
+        tournamentId: 'tournament-1',
+        applicationId: 'application-1',
+        requestedTeamId: null,
+        categoryIds: ['category-1', 'category-2'],
+        noticeAccepted: true,
+      },
+      'person-1',
+      applicantActor,
+    );
+
+    expect(tx.sportsPlayerApplication.upsert).not.toHaveBeenCalled();
+    expect(tx.sportsPlayerApplication.update).toHaveBeenCalledWith({
+      where: { id: 'application-1' },
+      data: expect.objectContaining({
+        requestedTeamId: null,
+        pendingKey: 'self:tournament-1:person-1:no-team',
+        status: SportsApplicationStatus.PENDING,
+      }),
+    });
+  });
+
   it('rejects a selected category when the requested team is not registered in it', async () => {
     tx.sportsTournament.findFirst.mockResolvedValueOnce({
       id: 'tournament-1',
@@ -189,7 +292,7 @@ describe('SportsPlayerApplicationService', () => {
     expect(tx.sportsPlayerApplication.upsert).not.toHaveBeenCalled();
   });
 
-  it('approves links but keeps paid participation and category eligibility pending', async () => {
+  it('materializes an approved team application and keeps paid participation pending', async () => {
     const application = {
       ...createReviewApplication(),
       imageLicenseAgreementAccepted: true,
@@ -201,11 +304,6 @@ describe('SportsPlayerApplicationService', () => {
     ]);
 
     await service.review('application-1', 'APPROVE', actor);
-    tx.sportsPlayerApplication.findUnique.mockResolvedValue({
-      ...application,
-      status: SportsApplicationStatus.APPROVED,
-    });
-    await service.reviewByRepresentative('application-1', 'team-1', true, actor);
 
     expect(payments.ensureParticipant).toHaveBeenCalledWith(tx, {
       tournamentId: 'tournament-1',
@@ -243,7 +341,7 @@ describe('SportsPlayerApplicationService', () => {
     );
   });
 
-  it('makes unpaid or already-paid participation effective immediately after approval', async () => {
+  it('makes unpaid or already-paid participation effective immediately after admin approval', async () => {
     const application = createReviewApplication(['category-1']);
     tx.sportsPlayerApplication.findUnique.mockResolvedValue(application);
     tx.sportsRegistration.findMany.mockResolvedValue([{ id: 'registration-1', categoryId: 'category-1' }]);
@@ -253,11 +351,6 @@ describe('SportsPlayerApplicationService', () => {
     });
 
     await service.review('application-1', 'APPROVE', actor);
-    tx.sportsPlayerApplication.findUnique.mockResolvedValue({
-      ...application,
-      status: SportsApplicationStatus.APPROVED,
-    });
-    await service.reviewByRepresentative('application-1', 'team-1', true, actor);
 
     expect(tx.sportsRegistrationMember.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -275,21 +368,30 @@ describe('SportsPlayerApplicationService', () => {
     );
   });
 
+  it('keeps representative approval compatible with legacy staged applications', async () => {
+    const application = {
+      ...createReviewApplication(['category-1']),
+      status: SportsApplicationStatus.APPROVED,
+    };
+    tx.sportsPlayerApplication.findUnique.mockResolvedValue(application);
+    tx.sportsRegistration.findMany.mockResolvedValue([{ id: 'registration-1', categoryId: 'category-1' }]);
+
+    await service.reviewByRepresentative('application-1', 'team-1', true, actor);
+
+    expect(tx.sportsTeamMember.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ teamId: 'team-1', status: SportsTeamMemberStatus.APPROVED }),
+      }),
+    );
+  });
+
   it('blocks approval into a second team when the tournament disallows it', async () => {
     const application = createReviewApplication(['category-1']);
     tx.sportsPlayerApplication.findUnique.mockResolvedValue(application);
     tx.sportsRegistration.findMany.mockResolvedValue([{ id: 'registration-1', categoryId: 'category-1' }]);
     tx.sportsTeamMember.findFirst.mockResolvedValueOnce({ id: 'other-membership' });
 
-    await service.review('application-1', 'APPROVE', actor);
-    tx.sportsPlayerApplication.findUnique.mockResolvedValue({
-      ...application,
-      status: SportsApplicationStatus.APPROVED,
-    });
-
-    await expect(service.reviewByRepresentative('application-1', 'team-1', true, actor)).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(service.review('application-1', 'APPROVE', actor)).rejects.toThrow(ConflictException);
 
     expect(payments.ensureParticipant).not.toHaveBeenCalled();
     expect(tx.sportsRegistrationMember.create).not.toHaveBeenCalled();

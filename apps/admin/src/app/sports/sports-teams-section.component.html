@@ -259,47 +259,76 @@
         </button>
       </div>
       <div class="subsection-title manual-registration-title">
-        <h4>Inscrição manual</h4>
-        <p>Escolha uma modalidade específica ou informe respostas administrativas do formulário.</p>
+        <h4>Modalidades disponíveis</h4>
+        <p>
+          Marque as modalidades em que a equipe estará disponível. Novas inscrições ficam aprovadas imediatamente; a
+          posição inicial da chave é independente por modalidade.
+        </p>
+      </div>
+      <div class="registration-options" role="group" aria-label="Modalidades disponíveis para a equipe">
+        @for (option of workspace.registrationOptions(); track option.category.id) {
+          <div class="registration-option" [class.registration-option-selected]="option.selected">
+            <mat-checkbox
+              [checked]="option.selected"
+              (change)="workspace.toggleRegistration(option.category.id, $event.checked)">
+              <span class="registration-option-copy">
+                <lib-twemoji [emoji]="option.category.eventGroup?.emoji ?? '🏅'" aria-hidden="true" />
+                <span>
+                  <strong>{{ option.category.name }}</strong>
+                  @if (option.category.division) { <small>{{ option.category.division }}</small> }
+                </span>
+              </span>
+            </mat-checkbox>
+            @if (option.selected) {
+              <mat-form-field subscriptSizing="dynamic" class="registration-seed">
+                <mat-label>Posição inicial na chave</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  min="0"
+                  [value]="option.seed ?? 0"
+                  (input)="workspace.setRegistrationSeed(option.category.id, $event)" />
+                <mat-hint>0 = definir depois</mat-hint>
+              </mat-form-field>
+            }
+            @if (option.category.registrationFormId) {
+              <button
+                mat-button
+                type="button"
+                class="registration-form-button"
+                (click)="workspace.focusRegistrationCategory(option.category.id)">
+                <mat-icon>assignment</mat-icon>Formulário
+              </button>
+            }
+          </div>
+        } @empty {
+          <p class="empty-copy">Nenhuma modalidade foi cadastrada neste torneio.</p>
+        }
+      </div>
+      <div class="registration-actions">
+        <button
+          mat-flat-button
+          type="button"
+          (click)="workspace.saveRegistrationSelections()"
+          [disabled]="workspace.loading() || !workspace.registrationOptions().length">
+          <mat-icon>save</mat-icon>Salvar modalidades
+        </button>
       </div>
       <div [formGroup]="workspace.registrationForm" class="compact-form">
-        <mat-form-field
-          ><mat-label>Modalidade</mat-label
-          ><mat-select formControlName="categoryId">
-            @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
-              <mat-option [value]="category.id"
-                >{{ category.name }}{{ category.division ? ' · ' + category.division : '' }}</mat-option
-              >
-            }
-          </mat-select></mat-form-field
-        >
-        <mat-form-field>
-          <mat-label>Posição inicial na chave</mat-label>
-          <input matInput type="number" min="0" formControlName="seed" />
-          <mat-hint>Ordem usada na montagem da chave. Deixe 0 para definir depois.</mat-hint>
-        </mat-form-field>
         @if (workspace.registrationEventForm(); as registrationEventForm) {
           <section class="span-2 registration-questionnaire">
             <div class="subsection-title">
               <h4>{{ registrationEventForm.name }}</h4>
               <p>
-                Responda às informações exigidas para esta modalidade. As mesmas perguntas são usadas nas inscrições do
-                grande evento.
+                Responda às informações exigidas para a modalidade selecionada. As mesmas perguntas são usadas nas
+                inscrições do grande evento.
               </p>
             </div>
             <lib-event-form-renderer
               [elements]="workspace.registrationFormElements()"
-              submitLabel="Inscrever equipe"
+              submitLabel="Salvar formulário da modalidade"
               (formSubmitted)="workspace.createRegistration($event)" />
           </section>
-        } @else {
-          <button
-            mat-stroked-button
-            type="button"
-            (click)="workspace.createRegistration()"
-            [disabled]="workspace.registrationForm.invalid">
-            <mat-icon>how_to_reg</mat-icon>Inscrever equipe
-          </button>
         }
       </div>
     }

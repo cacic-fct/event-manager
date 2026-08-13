@@ -11,7 +11,12 @@ import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-ang
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
-import { CurrentUserTournamentOperations } from './sports-operations.types';
+import {
+  CurrentUserSportsPlayerApplication,
+  CurrentUserTournamentOperations,
+} from './sports-operations.types';
+
+const EDITABLE_APPLICATION_STATUSES = ['PENDING', 'CHANGES_REQUESTED'] as const;
 
 @Component({
   selector: 'app-sports-self-subscription-page',
@@ -38,12 +43,28 @@ export class SportsSelfSubscriptionPage implements OnInit {
   private readonly snackbar = inject(MatSnackBar);
 
   readonly data = signal<CurrentUserTournamentOperations | null>(null);
+  readonly application = signal<CurrentUserSportsPlayerApplication | null>(null);
   readonly selectedCategories = signal<Set<string>>(new Set());
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly submitted = signal(false);
   readonly error = signal<string | null>(null);
   private readonly formRevision = signal(0);
+  private applicationLoaded = false;
+  readonly isEditing = computed(() => {
+    const status = this.application()?.status;
+    return status ? EDITABLE_APPLICATION_STATUSES.includes(status as (typeof EDITABLE_APPLICATION_STATUSES)[number]) : false;
+  });
+  readonly applicationIsReadOnly = computed(() => Boolean(this.application()) && !this.isEditing());
+  readonly submitButtonLabel = computed(() => {
+    if (this.busy()) {
+      return this.isEditing() ? 'Salvando…' : 'Enviando…';
+    }
+    if (this.applicationIsReadOnly()) {
+      return 'Solicitação encerrada';
+    }
+    return this.isEditing() ? 'Salvar edição' : 'Enviar solicitação';
+  });
   readonly canSubmit = computed(() => {
     this.formRevision();
     const tournament = this.data()?.tournament;
@@ -51,6 +72,7 @@ export class SportsSelfSubscriptionPage implements OnInit {
       tournament &&
         !this.loading() &&
         !this.busy() &&
+        !this.applicationIsReadOnly() &&
         this.form.valid &&
         (tournament.selfSubscriptionAllowNoCategory || this.selectedCategories().size > 0),
     );
@@ -71,11 +93,26 @@ export class SportsSelfSubscriptionPage implements OnInit {
 
   ngOnInit(): void {
     this.tournamentId = this.route.snapshot.paramMap.get('tournamentId') ?? '';
-    this.load(null);
+    this.load();
   }
 
   load(requestedTeamId: string | null = this.form.controls.requestedTeamId.value.trim() || null): void {
     this.loading.set(true);
+    if (!this.applicationLoaded) {
+      this.api.currentUserApplications(this.tournamentId).subscribe({
+        next: (applications) => {
+          this.applicationLoaded = true;
+          this.initializeApplication(applications);
+          this.loadTournament(this.form.controls.requestedTeamId.value.trim() || null);
+        },
+        error: (error: unknown) => this.setLoadError(error),
+      });
+      return;
+    }
+    this.loadTournament(requestedTeamId);
+  }
+
+  private loadTournament(requestedTeamId: string | null): void {
     this.api.tournament(this.tournamentId, requestedTeamId).subscribe({
       next: (data) => {
         this.data.set(data);
@@ -98,27 +135,66 @@ export class SportsSelfSubscriptionPage implements OnInit {
         }
         paymentTier.updateValueAndValidity();
         const imageLicenseAgreement = this.form.controls.imageLicenseAgreementAccepted;
-        imageLicenseAgreement.setValue(data.imageLicenseAgreementAccepted);
+        imageLicenseAgreement.setValue(data.imageLicenseAgreementAccepted || imageLicenseAgreement.value, {
+          emitEvent: false,
+        });
         imageLicenseAgreement.setValidators(
           data.tournament.requiresImageLicenseAgreement ? Validators.requiredTrue : [],
         );
         imageLicenseAgreement.updateValueAndValidity();
+        const availableCategoryIds = new Set(data.tournament.categories.map((category) => category.id));
+        this.selectedCategories.update((current) => {
+          return new Set([...current].filter((categoryId) => availableCategoryIds.has(categoryId)));
+        });
         this.loading.set(false);
         this.error.set(null);
       },
-      error: (error: unknown) => {
-        this.loading.set(false);
-        this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a inscrição.');
-      },
+      error: (error: unknown) => this.setLoadError(error),
     });
   }
 
+  private initializeApplication(applications: CurrentUserSportsPlayerApplication[]): void {
+    const application =
+      applications.find((item) =>
+        EDITABLE_APPLICATION_STATUSES.includes(item.status as (typeof EDITABLE_APPLICATION_STATUSES)[number]),
+      ) ?? applications[0] ?? null;
+    this.application.set(application);
+    this.selectedCategories.set(new Set(application?.categories.map((category) => category.id) ?? []));
+    this.form.enable({ emitEvent: false });
+    if (!application) {
+      return;
+    }
+    this.form.patchValue(
+      {
+        requestedTeamId: application.requestedTeam?.id ?? '',
+        noticeAccepted: true,
+        imageLicenseAgreementAccepted: application.imageLicenseAgreementAccepted,
+        paymentTier: application.paymentTier ?? '',
+      },
+      { emitEvent: false },
+    );
+    if (!this.isEditing()) {
+      this.form.disable({ emitEvent: false });
+    }
+  }
+
+  private setLoadError(error: unknown): void {
+    this.loading.set(false);
+    this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a inscrição.');
+  }
+
   teamSelectionChanged(requestedTeamId: string): void {
+    if (this.applicationIsReadOnly()) {
+      return;
+    }
     this.selectedCategories.set(new Set());
-    this.load(requestedTeamId.trim() || null);
+    this.loadTournament(requestedTeamId.trim() || null);
   }
 
   toggleCategory(categoryId: string, selected: boolean): void {
+    if (this.applicationIsReadOnly()) {
+      return;
+    }
     this.selectedCategories.update((current) => {
       const next = new Set(current);
       if (selected) {
@@ -149,6 +225,7 @@ export class SportsSelfSubscriptionPage implements OnInit {
       await firstValueFrom(
         this.api.submitApplication({
           tournamentId: data.tournament.id,
+          applicationId: this.application()?.id ?? null,
           requestedTeamId: value.requestedTeamId.trim() || null,
           categoryIds: [...this.selectedCategories()],
           noticeAccepted: value.noticeAccepted,

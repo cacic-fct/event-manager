@@ -28,6 +28,7 @@ const ELIGIBLE_TEAM_REGISTRATION_STATUSES = [
 
 export interface SubmitSportsPlayerApplicationInput {
   tournamentId: string;
+  applicationId?: string | null;
   requestedTeamId?: string | null;
   categoryIds: string[];
   noticeAccepted: boolean;

@@ -5,10 +5,12 @@ import { of, throwError } from 'rxjs';
 import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import { createCurrentUserTournamentOperations } from './sports-operations.fixtures';
+import type { CurrentUserSportsPlayerApplication } from './sports-operations.types';
 
 describe('SportsSelfSubscriptionPage', () => {
   const open = vi.fn();
   const submitApplication = vi.fn(() => of({ id: 'application-fixture' }));
+  const currentUserApplications = vi.fn(() => of([] as CurrentUserSportsPlayerApplication[]));
   const tournament = vi.fn((...args: [tournamentId?: string, requestedTeamId?: string | null]) => {
     void args;
     return of(createCurrentUserTournamentOperations());
@@ -18,6 +20,8 @@ describe('SportsSelfSubscriptionPage', () => {
     open.mockReset();
     submitApplication.mockReset();
     submitApplication.mockReturnValue(of({ id: 'application-fixture' }));
+    currentUserApplications.mockReset();
+    currentUserApplications.mockReturnValue(of([]));
     tournament.mockReset();
     tournament.mockReturnValue(of(createCurrentUserTournamentOperations()));
     TestBed.configureTestingModule({
@@ -27,7 +31,7 @@ describe('SportsSelfSubscriptionPage', () => {
           useValue: { snapshot: { paramMap: convertToParamMap({ tournamentId: 'tournament-fixture' }) } },
         },
         { provide: MatSnackBar, useValue: { open } },
-        { provide: SportsOperationsApiService, useValue: { tournament, submitApplication } },
+        { provide: SportsOperationsApiService, useValue: { tournament, currentUserApplications, submitApplication } },
       ],
     });
   });
@@ -38,6 +42,7 @@ describe('SportsSelfSubscriptionPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
     page.ngOnInit();
 
+    expect(currentUserApplications).toHaveBeenCalledWith('tournament-fixture');
     expect(tournament).toHaveBeenCalledWith('tournament-fixture', null);
     expect(page.loading()).toBe(false);
     expect(page.form.controls.requestedTeamId.hasError('required')).toBe(true);
@@ -57,6 +62,42 @@ describe('SportsSelfSubscriptionPage', () => {
     expect(page.selectedCategories().size).toBe(1);
     page.toggleCategory(category.id, false);
     expect(page.selectedCategories().size).toBe(0);
+  });
+
+  it('prefills an editable pending application and changes the submit action', () => {
+    const data = createCurrentUserTournamentOperations();
+    const category = data.tournament.categories[1];
+    if (!category) throw new Error('Expected a category fixture.');
+    currentUserApplications.mockReturnValue(
+      of([
+        {
+          id: 'application-pending',
+          tournamentId: 'tournament-fixture',
+          requestedTeam: data.tournament.teams[0] ?? null,
+          categories: [category],
+          status: 'PENDING',
+          paymentTier: 'Estudante',
+          imageLicenseAgreementAccepted: true,
+          reviewMessage: null,
+        },
+      ]),
+    );
+    tournament.mockReturnValue(of(data));
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+
+    expect(tournament).toHaveBeenCalledWith('tournament-fixture', 'team-home');
+    expect(page.isEditing()).toBe(true);
+    expect(page.form.getRawValue()).toEqual(
+      expect.objectContaining({
+        requestedTeamId: 'team-home',
+        noticeAccepted: true,
+        imageLicenseAgreementAccepted: true,
+        paymentTier: 'Estudante',
+      }),
+    );
+    expect(page.selectedCategories()).toEqual(new Set([category.id]));
+    expect(page.submitButtonLabel()).toBe('Salvar edição');
   });
 
   it('reloads categories for the selected team before allowing submission', () => {

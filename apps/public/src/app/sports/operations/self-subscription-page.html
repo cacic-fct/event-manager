@@ -17,10 +17,13 @@
 } @else if (submitted()) {
 <main class="state success">
   <mat-icon>check_circle</mat-icon>
-  <h1>Solicitação enviada</h1>
+  <h1>{{ isEditing() ? 'Solicitação atualizada' : 'Solicitação enviada' }}</h1>
   <p>
-    A organização ainda precisa aprovar sua participação. Se houver cobrança, o pagamento será liberado depois da
-    aprovação.
+    {{
+      isEditing()
+        ? 'Sua edição foi enviada para nova análise da organização.'
+        : 'A organização ainda precisa aprovar sua participação. Se houver cobrança, o pagamento será liberado depois da aprovação.'
+    }}
   </p>
   <a mat-flat-button [routerLink]="['/tournament', tournamentId]">Voltar ao torneio</a>
 </main>
@@ -43,6 +46,24 @@
       </p>
     </div>
   </section>
+
+  @if (isEditing()) {
+  <section class="important-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">edit</mat-icon>
+    <div>
+      <strong>Você pode editar sua solicitação</strong>
+      <p>Revise os dados abaixo. As alterações voltarão para análise da organização.</p>
+    </div>
+  </section>
+  } @else if (applicationIsReadOnly()) {
+  <section class="important-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">lock</mat-icon>
+    <div>
+      <strong>Esta solicitação não pode mais ser editada</strong>
+      <p>A solicitação já foi analisada pela organização.</p>
+    </div>
+  </section>
+  }
 
   <form [formGroup]="form" (ngSubmit)="submit()">
     <mat-form-field>
@@ -145,7 +166,7 @@
     </section>
     }
     <button mat-flat-button type="submit" [disabled]="!canSubmit()">
-      {{ busy() ? 'Enviando…' : 'Enviar solicitação' }}
+      {{ submitButtonLabel() }}
     </button>
   </form>
 </main>

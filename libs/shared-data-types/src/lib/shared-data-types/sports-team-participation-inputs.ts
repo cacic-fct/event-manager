@@ -254,6 +254,9 @@ export class SportsPlayerApplicationCreateInput {
   tournamentId!: string;
 
   @Field(() => String, { nullable: true })
+  applicationId?: string | null;
+
+  @Field(() => String, { nullable: true })
   requestedTeamId?: string | null;
 
   @Field(() => [String])
