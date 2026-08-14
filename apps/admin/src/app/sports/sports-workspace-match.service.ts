@@ -5,8 +5,12 @@ import { SportsWorkspaceTeamService } from './sports-workspace-team.service';
 
 export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamService {
   async selectMatch(match: SportsMatchSummary, options: { navigate?: boolean } = {}): Promise<void> {
+    const selectionRevision = this.beginSelection();
     await this.run('Não foi possível carregar a partida.', async () => {
       const read = await firstValueFrom(this.api.matchReview(match.id));
+      if (selectionRevision !== this.selectionRevision) {
+        return;
+      }
       this.matchReview.set(read);
       this.selectedMatchId.set(match.id);
       this.matchForm.patchValue({
@@ -27,8 +31,11 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
         livestreamProvider: match.livestreamProvider ?? '',
         livestreamUrl: match.livestreamUrl ?? '',
       });
-      await this.loadMatchRegistrations(read);
-    });
+      await this.loadMatchRegistrations(read, selectionRevision);
+    }, true, true);
+    if (selectionRevision !== this.selectionRevision) {
+      return;
+    }
     if (options.navigate !== false && this.selectedMatchId() === match.id) {
       this.navigateToArea('matches', { categoryId: match.categoryId, matchId: match.id });
     }

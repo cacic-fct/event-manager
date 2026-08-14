@@ -85,9 +85,19 @@ export abstract class SportsMatchAdminLifecycleService extends SportsAdminBaseSe
       if (homeId && homeId === awayId) {
         throw new BadRequestException('Uma equipe não pode jogar contra si mesma.');
       }
+      const winnerAdvancesToId =
+        input.winnerAdvancesToId === undefined ? match.winnerAdvancesToId : input.winnerAdvancesToId;
+      const winnerAdvancesToSide =
+        input.winnerAdvancesToSide === undefined ? match.winnerAdvancesToSide : input.winnerAdvancesToSide;
+      const loserAdvancesToId =
+        input.loserAdvancesToId === undefined ? match.loserAdvancesToId : input.loserAdvancesToId;
+      const loserAdvancesToSide =
+        input.loserAdvancesToSide === undefined ? match.loserAdvancesToSide : input.loserAdvancesToSide;
+      this.assertAdvancementTargetPair(winnerAdvancesToId, winnerAdvancesToSide, 'vencedor');
+      this.assertAdvancementTargetPair(loserAdvancesToId, loserAdvancesToSide, 'perdedor');
       await this.assertAdvancementTargets(tx, match.categoryId, match.id, [
-        input.winnerAdvancesToId === undefined ? match.winnerAdvancesToId : input.winnerAdvancesToId,
-        input.loserAdvancesToId === undefined ? match.loserAdvancesToId : input.loserAdvancesToId,
+        winnerAdvancesToId,
+        loserAdvancesToId,
       ]);
       const livestreamProvider =
         input.livestreamProvider === undefined ? match.livestreamProvider : input.livestreamProvider;

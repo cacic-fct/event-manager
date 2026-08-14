@@ -81,6 +81,51 @@ describe('SportsBracketService generation lifecycle', () => {
     expect(eventEffects.syncEvents).toHaveBeenCalledWith([]);
   });
 
+  it('returns the committed bracket when post-commit effects fail', async () => {
+    const input = {
+      categoryId: 'category-1',
+      participants: [
+        { registrationId: 'registration-1', seed: 1 },
+        { registrationId: 'registration-2', seed: 2 },
+      ],
+      randomizeUnseeded: false,
+    };
+    const category = categoryRecord();
+    const tx = {
+      sportsCategory: { findFirst: jest.fn() },
+      sportsStage: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'stage-existing', matches: [] }]),
+        create: jest.fn(),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
+    };
+    const service = new SportsBracketService(
+      prisma as never,
+      advancement as never,
+      auditLog as never,
+      realtime as never,
+      frozen as never,
+      eventEffects as never,
+    );
+    const generationKey = internals(service).generationKey(category, input);
+    tx.sportsCategory.findFirst.mockResolvedValue({
+      ...category,
+      registrations: [
+        { id: 'registration-1', team: { name: 'Equipe 1' } },
+        { id: 'registration-2', team: { name: 'Equipe 2' } },
+      ],
+      stages: [{ id: 'stage-existing', settings: { generationKey }, matches: [] }],
+    });
+    eventEffects.syncEvents.mockRejectedValueOnce(new Error('search unavailable'));
+    realtime.publishStructuralInvalidations.mockRejectedValueOnce(new Error('redis unavailable'));
+
+    await expect(service.generate(input, { sub: 'admin-1' } as never)).resolves.toEqual([
+      { id: 'stage-existing', matches: [] },
+    ]);
+  });
+
   it('reconciles both soft-deleted and newly created backing Events after bracket replacement commits', async () => {
     const category = {
       ...categoryRecord(),
@@ -153,7 +198,7 @@ describe('SportsBracketService generation lifecycle', () => {
       {
         categoryId: category.id,
         participants: [
-          { registrationId: 'registration-1', seed: 1 },
+          { registrationId: ' registration-1 ', seed: 1 },
           { registrationId: 'registration-2', seed: 2 },
         ],
         replaceExistingDraft: true,
@@ -163,6 +208,18 @@ describe('SportsBracketService generation lifecycle', () => {
 
     expect(tx.event.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: { in: ['event-old'] }, deletedAt: null } }),
+    );
+    expect(persistence.persistSingleElimination).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        participants: [
+          { registrationId: 'registration-1', seed: 1 },
+          { registrationId: 'registration-2', seed: 2 },
+        ],
+      }),
+      expect.anything(),
+      'admin-1',
     );
     expect(eventEffects.syncEvents).toHaveBeenCalledWith(['event-old', 'event-new']);
   });

@@ -22,6 +22,7 @@ describe('OfficialSportsMatchPage', () => {
   let retainedActions: WritableSignal<number>;
   let unverifiedAttendances: WritableSignal<number>;
   let attendanceAvailable: WritableSignal<boolean>;
+  let dispatchFailure: Error | null;
 
   beforeEach(async () => {
     actions = [];
@@ -31,6 +32,7 @@ describe('OfficialSportsMatchPage', () => {
     retainedActions = signal(0);
     unverifiedAttendances = signal(0);
     attendanceAvailable = signal(true);
+    dispatchFailure = null;
     TestBed.configureTestingModule({
       imports: [OfficialSportsMatchPage],
       providers: [
@@ -61,6 +63,9 @@ describe('OfficialSportsMatchPage', () => {
             start: () => undefined,
             sync: () => Promise.resolve(),
             dispatch: async (action: SportsMatchAction) => {
+              if (dispatchFailure) {
+                throw dispatchFailure;
+              }
               actions.push(action);
               return 'sent';
             },
@@ -268,6 +273,42 @@ describe('OfficialSportsMatchPage', () => {
 
     button.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', bubbles: true }));
     expect(component.holdingStart()).toBe(false);
+  });
+
+  it('does not dispatch the start action twice when the hold is started repeatedly', async () => {
+    vi.useFakeTimers();
+    try {
+      component.match.update((match) => (match ? { ...match, state: 'SCHEDULED' } : match));
+
+      component.startHold();
+      component.startHold();
+      await vi.advanceTimersByTimeAsync(900);
+
+      expect(actions.map((action) => action.type)).toEqual(['START']);
+    } finally {
+      component.cancelStartHold();
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps an occurrence draft when the submission fails', async () => {
+    dispatchFailure = new Error('Não foi possível enviar a ação.');
+    component.occurrenceForm.controls.note.setValue('Substituição pendente de confirmação');
+
+    await component.saveOccurrence();
+
+    expect(component.occurrenceForm.controls.note.value).toBe('Substituição pendente de confirmação');
+  });
+
+  it('keeps the finalization review open when the result submission fails', async () => {
+    dispatchFailure = new Error('Conflito de revisão');
+    component.finalizeOpen.set(true);
+    component.outcomeForm.patchValue({ draw: true, loserSide: null });
+    component.finalScoreForm.setValue({ homeScore: 2, awayScore: 1 });
+
+    await component.finalize();
+
+    expect(component.finalizeOpen()).toBe(true);
   });
 
   it('starts only for the primary pointer and prevents the native pointer gesture', () => {

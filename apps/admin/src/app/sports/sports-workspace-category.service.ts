@@ -4,14 +4,21 @@ import { SportsWorkspaceBaseService } from './sports-workspace-base.service';
 
 export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBaseService {
   async selectCategory(category: SportsCategorySummary, options: { navigate?: boolean } = {}): Promise<void> {
+    const selectionRevision = this.beginSelection();
     await this.run('Não foi possível carregar a modalidade.', async () => {
       const read = await firstValueFrom(this.api.category(category.id));
+      if (selectionRevision !== this.selectionRevision) {
+        return;
+      }
       this.categoryRead.set(read);
       this.selectedCategoryId.set(category.id);
       this.categoryForm.patchValue(this.categoryToForm(read.category));
       this.registrationForm.controls.categoryId.setValue(category.id);
       this.matchForm.controls.categoryId.setValue(category.id);
-    });
+    }, true, true);
+    if (selectionRevision !== this.selectionRevision) {
+      return;
+    }
     if (options.navigate !== false && this.selectedCategoryId() === category.id) {
       this.navigateToArea(this.activeArea() === 'matches' ? 'matches' : 'categories', { categoryId: category.id });
     }

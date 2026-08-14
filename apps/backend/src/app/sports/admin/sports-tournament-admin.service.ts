@@ -122,6 +122,8 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
         data: {
           majorEventId: majorEvent.id,
           status: SportsTournamentStatus.DRAFT,
+          registrationStartDate: input.registrationStartDate ?? null,
+          registrationEndDate: input.registrationEndDate ?? null,
           selfSubscriptionEnabled: input.selfSubscriptionEnabled ?? false,
           selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam ?? false,
           selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory ?? false,
@@ -160,7 +162,11 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
     }
     await this.frozen.assertMajorEventMutable(existing.majorEventId, actor, 'edit');
     if (input.registrationStartDate !== undefined || input.registrationEndDate !== undefined) {
-      this.assertOptionalDateRange(input.registrationStartDate, input.registrationEndDate, 'inscrições do torneio');
+      this.assertOptionalDateRange(
+        input.registrationStartDate === undefined ? existing.registrationStartDate : input.registrationStartDate,
+        input.registrationEndDate === undefined ? existing.registrationEndDate : input.registrationEndDate,
+        'inscrições do torneio',
+      );
     }
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {

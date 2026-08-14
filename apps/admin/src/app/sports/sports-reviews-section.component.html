@@ -21,14 +21,25 @@
           <small>Pagamento: {{ workspace.statusLabel(application.paymentStatus) }}</small>
         }
         <div class="review-actions">
-          <button mat-button type="button" (click)="workspace.reviewApplication(application, 'REJECTED')">Negar</button>
+          <button
+            mat-button
+            type="button"
+            [disabled]="workspace.loading()"
+            (click)="workspace.reviewApplication(application, 'REJECTED')">
+            Negar
+          </button>
           <button
             mat-stroked-button
             type="button"
+            [disabled]="workspace.loading()"
             (click)="workspace.reviewApplication(application, 'CHANGES_REQUESTED')">
             Pedir ajuste
           </button>
-          <button mat-flat-button type="button" (click)="workspace.reviewApplication(application, 'APPROVED')">
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="workspace.loading()"
+            (click)="workspace.reviewApplication(application, 'APPROVED')">
             Aprovar
           </button>
         </div>
@@ -46,32 +57,40 @@
       <p>Deltas concorrentes permanecem explícitos; conflitos nunca são aprovados silenciosamente.</p>
     </div>
     @if (workspace.teamRead(); as read) {
-      @for (request of read.changeRequests; track request.id) {
-        @if (request.status === 'PENDING' || request.status === 'CONFLICT' || request.status === 'CHANGES_REQUESTED') {
-          <article class="review-item">
-            <div class="review-heading">
-              <strong>{{ changeTypeLabel(request.type) }}</strong
-              ><span class="state-label">{{ workspace.statusLabel(request.status) }}</span>
-            </div>
-            <pre>{{ request.deltaJson }}</pre>
-            <div class="review-actions">
-              <button mat-button type="button" (click)="workspace.reviewTeamChange(request, 'REJECTED')">Negar</button>
-              <button
-                mat-stroked-button
-                type="button"
-                (click)="workspace.reviewTeamChange(request, 'CHANGES_REQUESTED')">
-                Pedir ajuste
-              </button>
-              <button
-                mat-flat-button
-                type="button"
-                [disabled]="request.status === 'CONFLICT'"
-                (click)="workspace.reviewTeamChange(request, 'APPROVED')">
-                Aprovar delta
-              </button>
-            </div>
-          </article>
-        }
+      @for (
+        request of pendingTeamChangeRequests(read.changeRequests);
+        track request.id
+      ) {
+        <article class="review-item">
+          <div class="review-heading">
+            <strong>{{ changeTypeLabel(request.type) }}</strong
+            ><span class="state-label">{{ workspace.statusLabel(request.status) }}</span>
+          </div>
+          <pre>{{ request.deltaJson }}</pre>
+          <div class="review-actions">
+            <button
+              mat-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.reviewTeamChange(request, 'REJECTED')">
+              Negar
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.reviewTeamChange(request, 'CHANGES_REQUESTED')">
+              Pedir ajuste
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="workspace.loading() || request.status === 'CONFLICT'"
+              (click)="workspace.reviewTeamChange(request, 'APPROVED')">
+              Aprovar delta
+            </button>
+          </div>
+        </article>
       } @empty {
         <p class="empty-copy">Selecione uma equipe na área Equipes para revisar suas solicitações.</p>
       }
@@ -104,15 +123,32 @@
           >
           <pre>{{ item.action.payloadJson }}</pre>
           <div class="review-actions">
-            <button mat-button type="button" (click)="workspace.openMatchFromReview(item)">Abrir partida</button>
-            <button mat-button type="button" (click)="workspace.reviewAction(item.action.id, 'REJECTED')">Negar</button>
+            <button
+              mat-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.openMatchFromReview(item)">
+              Abrir partida
+            </button>
+            <button
+              mat-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.reviewAction(item.action.id, 'REJECTED')">
+              Negar
+            </button>
             <button
               mat-stroked-button
               type="button"
+              [disabled]="workspace.loading()"
               (click)="workspace.reviewAction(item.action.id, 'CHANGES_REQUESTED')">
               Pedir ajuste
             </button>
-            <button mat-flat-button type="button" (click)="workspace.reviewAction(item.action.id, 'APPROVED')">
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.reviewAction(item.action.id, 'APPROVED')">
               Aprovar
             </button>
           </div>

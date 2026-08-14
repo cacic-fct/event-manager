@@ -23,6 +23,7 @@ interface RegistrationOption {
 
 export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategoryService {
   private readonly registrationDraft = signal<Record<string, { selected: boolean; seed: number | null }>>({});
+  private peopleSearchRevision = 0;
   private readonly registrationCategoryId = toSignal(this.registrationForm.controls.categoryId.valueChanges, {
     initialValue: this.registrationForm.controls.categoryId.value,
   });
@@ -71,8 +72,12 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
   });
 
   async selectTeam(team: SportsTeamSummary, options: { navigate?: boolean } = {}): Promise<void> {
+    const selectionRevision = this.beginSelection();
     await this.run('Não foi possível carregar a equipe.', async () => {
       const read = await firstValueFrom(this.api.team(team.id));
+      if (selectionRevision !== this.selectionRevision) {
+        return;
+      }
       if (!read?.team) {
         throw new Error('A resposta da equipe não trouxe os dados esperados.');
       }
@@ -87,13 +92,18 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       });
       this.registrationForm.controls.teamId.setValue(team.id);
       this.focusRegistrationCategory(read.registrations[0]?.categoryId ?? this.tournamentRead()?.categories[0]?.id ?? '');
-    });
-    if (options.navigate !== false && this.selectedTeamId() === team.id) {
+    }, true, true);
+    if (
+      selectionRevision === this.selectionRevision &&
+      options.navigate !== false &&
+      this.selectedTeamId() === team.id
+    ) {
       this.navigateToArea(this.activeArea() === 'reviews' ? 'reviews' : 'teams', { teamId: team.id });
     }
   }
 
   override newTeam(navigate = true): void {
+    this.invalidateSelection();
     super.newTeam(navigate);
     this.registrationDraft.set({});
   }
@@ -273,6 +283,8 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
   }
 
   async searchPeople(query: string, target: 'representative' | 'official' | 'member'): Promise<void> {
+    this.clearPersonSelection(target);
+    const searchRevision = ++this.peopleSearchRevision;
     const normalized = query.trim();
     if (normalized.length < 2) {
       this.people.set([]);
@@ -283,10 +295,25 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     await this.run(
       'Não foi possível buscar pessoas.',
       async () => {
-        this.people.set(await firstValueFrom(this.peopleApi.listPeopleSummaries({ query: normalized, take: 10 })));
+        const people = await firstValueFrom(this.peopleApi.listPeopleSummaries({ query: normalized, take: 10 }));
+        if (searchRevision === this.peopleSearchRevision) {
+          this.people.set(people);
+        }
       },
       false,
     );
+  }
+
+  openRegistrationQuestionnaire(categoryId: string): void {
+    const option = this.registrationOptions().find((item) => item.category.id === categoryId);
+    if (!option) {
+      return;
+    }
+    this.registrationDraft.update((current) => ({
+      ...current,
+      [categoryId]: { selected: true, seed: option.seed },
+    }));
+    this.focusRegistrationCategory(categoryId);
   }
 
   pickPerson(person: Person, target: 'representative' | 'official' | 'member'): void {
@@ -380,6 +407,21 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     const raw = this.registrationForm.getRawValue();
     const formAnswersJson = answers ? serializeFormAnswers(answers) : raw.formAnswersJson;
     const teamRead = this.teamRead();
+    const existing = teamRead?.registrations.find((registration) => registration.categoryId === raw.categoryId);
+    if (existing) {
+      await this.run('Não foi possível atualizar o formulário da modalidade.', async () => {
+        await firstValueFrom(
+          this.api.mutate<string>('updateSportsRegistration', 'SportsRegistrationUpdateInput', {
+            id: existing.id,
+            expectedRevision: existing.revision,
+            formAnswersJson: formAnswersJson === '[]' ? null : formAnswersJson || null,
+          }),
+        );
+        await this.refreshSelectedTeamAfterRegistration(existing.teamId);
+        this.notify('Formulário da modalidade atualizado.');
+      });
+      return;
+    }
     await this.run('Não foi possível inscrever a equipe.', async () => {
       await this.createRegistrationAndAssignApprovedMembers(
         {
@@ -615,7 +657,18 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     }
   }
 
+  private clearPersonSelection(target: 'representative' | 'official' | 'member'): void {
+    const form =
+      target === 'representative'
+        ? this.representativeForm
+        : target === 'official'
+          ? this.officialForm
+          : this.memberForm;
+    form.controls.personId.setValue('');
+  }
+
   newMatch(navigate = true): void {
+    this.invalidateSelection();
     const categoryId = this.selectedCategoryId();
     this.matchReview.set(null);
     this.selectedMatchId.set('');
@@ -644,5 +697,8 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       this.navigateToArea('matches', { categoryId: categoryId || undefined });
     }
   }
-  protected abstract loadMatchRegistrations(review: import('./sports.models').SportsMatchReview): Promise<void>;
+  protected abstract loadMatchRegistrations(
+    review: import('./sports.models').SportsMatchReview,
+    selectionRevision?: number,
+  ): Promise<void>;
 }

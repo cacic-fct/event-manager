@@ -270,6 +270,123 @@ describe('SportsWorkspaceService operations', () => {
       });
     });
 
+    it('updates an existing registration questionnaire instead of creating a duplicate', async () => {
+      const read = createAdminSportsTeamRead();
+      const existing = read.registrations[0];
+      workspace.teamRead.set(read);
+      workspace.registrationForm.patchValue({
+        teamId: read.team.id,
+        categoryId: existing.categoryId,
+        seed: existing.seed ?? 0,
+        formAnswersJson: '[{"answer":"updated"}]',
+      });
+      vi.spyOn(workspace, 'loadTournament').mockResolvedValue();
+      vi.spyOn(workspace, 'selectTeam').mockResolvedValue();
+
+      await workspace.createRegistration();
+
+      expect(api.mutate).toHaveBeenCalledWith('updateSportsRegistration', 'SportsRegistrationUpdateInput', {
+        id: existing.id,
+        expectedRevision: existing.revision,
+        formAnswersJson: '[{"answer":"updated"}]',
+      });
+      expect(api.mutate).not.toHaveBeenCalledWith(
+        'createSportsRegistration',
+        'SportsRegistrationCreateInput',
+        expect.anything(),
+      );
+    });
+
+    it('clears a picked person when the operator edits the search text', async () => {
+      const peopleApi = TestBed.inject(PeopleApiService) as unknown as {
+        listPeopleSummaries: ReturnType<typeof vi.fn>;
+      };
+      peopleApi.listPeopleSummaries = vi.fn().mockReturnValue(of([]));
+      workspace.pickPerson({ id: 'person-1', name: 'Ana Souza' } as never, 'member');
+      workspace.memberForm.controls.personQuery.setValue('Bruno');
+
+      await workspace.searchPeople('Bruno', 'member');
+
+      expect(workspace.memberForm.controls.personId.value).toBe('');
+      expect(workspace.memberForm.controls.personQuery.value).toBe('Bruno');
+    });
+
+    it('does not let an older people search replace the latest result', async () => {
+      const peopleApi = TestBed.inject(PeopleApiService) as unknown as {
+        listPeopleSummaries: ReturnType<typeof vi.fn>;
+      };
+      const first = new Subject<never[]>();
+      const second = new Subject<never[]>();
+      peopleApi.listPeopleSummaries = vi.fn(({ query }: { query: string }) => (query === 'Ana' ? first : second));
+
+      const firstSearch = workspace.searchPeople('Ana', 'member');
+      const secondSearch = workspace.searchPeople('Bia', 'member');
+      second.next([{ id: 'person-bia', name: 'Bia' }] as never[]);
+      second.complete();
+      first.next([{ id: 'person-ana', name: 'Ana' }] as never[]);
+      first.complete();
+      await Promise.all([firstSearch, secondSearch]);
+
+      expect(workspace.people()).toEqual([{ id: 'person-bia', name: 'Bia' }]);
+    });
+
+    it('ignores a category response after the operator starts a new category draft', async () => {
+      const pending = new Subject<ReturnType<typeof createAdminSportsCategoryRead>>();
+      const category = createAdminSportsCategory(0);
+      const read = createAdminSportsCategoryRead(category);
+      workspace.tournamentRead.set(createAdminSportsTournamentRead());
+      api.category.mockReturnValue(pending);
+
+      const selection = workspace.selectCategory(category, { navigate: false });
+      workspace.newCategory(false);
+      pending.next(read);
+      pending.complete();
+      await selection;
+
+      expect(workspace.categoryRead()).toBeNull();
+      expect(workspace.selectedCategoryId()).toBe('');
+    });
+
+    it('keeps the loading state active until overlapping category loads all finish', async () => {
+      const first = new Subject<ReturnType<typeof createAdminSportsCategoryRead>>();
+      const second = new Subject<ReturnType<typeof createAdminSportsCategoryRead>>();
+      const firstCategory = createAdminSportsCategory(0);
+      const secondCategory = createAdminSportsCategory(1);
+      api.category.mockImplementation((id: string) => (id === firstCategory.id ? first : second));
+
+      const firstSelection = workspace.selectCategory(firstCategory, { navigate: false });
+      const secondSelection = workspace.selectCategory(secondCategory, { navigate: false });
+      first.next(createAdminSportsCategoryRead(firstCategory));
+      first.complete();
+      await firstSelection;
+
+      expect(workspace.loading()).toBe(true);
+      second.next(createAdminSportsCategoryRead(secondCategory));
+      second.complete();
+      await secondSelection;
+      expect(workspace.loading()).toBe(false);
+    });
+
+    it('ignores a duplicate save while another workspace mutation is in flight', async () => {
+      const pending = new Subject<string>();
+      api.mutate.mockReturnValue(pending);
+      const tournament = createAdminSportsTournamentRead({ teamCount: 1 });
+      workspace.tournamentRead.set(tournament);
+      workspace.newTeam(false);
+      workspace.teamForm.patchValue({ name: 'Equipe teste', institution: '', status: 'DRAFT' });
+      vi.spyOn(workspace, 'loadTournament').mockResolvedValue();
+      vi.spyOn(workspace, 'selectTeam').mockResolvedValue();
+
+      const firstSave = workspace.saveTeam();
+      const secondSave = workspace.saveTeam();
+      expect(api.mutate).toHaveBeenCalledTimes(1);
+
+      pending.next('team-new');
+      pending.complete();
+      await Promise.all([firstSave, secondSave]);
+      expect(api.mutate).toHaveBeenCalledTimes(1);
+    });
+
     it('keeps one availability and seed draft per modality before saving registrations', async () => {
       const read = createAdminSportsTeamRead();
       workspace.teamRead.set(read);
@@ -336,6 +453,29 @@ describe('SportsWorkspaceService operations', () => {
       expect(api.registration).toHaveBeenCalledTimes(2);
       expect(workspace.lineupSelections()['registration-home']).toHaveLength(5);
       expect(workspace.selectedMatchId()).toBe(review.match.id);
+    });
+
+    it('does not let stale registration reads repopulate a new match draft', async () => {
+      const review = createAdminSportsMatchReview();
+      const match = new Subject<ReturnType<typeof createAdminSportsMatchReview>>();
+      const home = new Subject<ReturnType<typeof createAdminSportsRegistrationRead>>();
+      const away = new Subject<ReturnType<typeof createAdminSportsRegistrationRead>>();
+      api.matchReview.mockReturnValue(match);
+      api.registration.mockImplementation((id: string) => (id === 'registration-home' ? home : away));
+
+      const selection = workspace.selectMatch(review.match, { navigate: false });
+      match.next(review);
+      match.complete();
+      await Promise.resolve();
+      workspace.newMatch(false);
+      home.next(createAdminSportsRegistrationRead('registration-home'));
+      home.complete();
+      away.next(createAdminSportsRegistrationRead('registration-away'));
+      away.complete();
+      await selection;
+
+      expect(workspace.registrationReads()).toEqual({});
+      expect(workspace.lineupSelections()).toEqual({});
     });
 
     it('persists only selected lineup members with trimmed shirt numbers', async () => {

@@ -112,6 +112,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   protected holdTimer: ReturnType<typeof setTimeout> | null = null;
   protected readonly subscriptions = new Subscription();
   protected handlingTimerConflict: string | null = null;
+  private loadRequestId = 0;
   protected readonly conflictEffect = effect(() => {
     const conflict = this.offline.timerConflict();
     if (conflict && conflict.matchId === this.currentMatchId() && this.handlingTimerConflict !== conflict.matchId) {
@@ -138,40 +139,49 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   }
 
   load(): void {
+    const requestId = ++this.loadRequestId;
     if (!this.matchId) {
       this.loading.set(false);
       this.error.set('A partida não foi informada.');
       return;
     }
-    this.api.match(this.matchId).subscribe({
-      next: (match) => {
-        void this.offline.prepareCollector(match.id);
-        this.match.set(match);
-        this.revision.set(match.revision);
-        this.checkInEntries.set(
-          match.rosters.flatMap((roster) =>
-            roster.entries.map((entry) => ({
-              id: entry.id,
-              name: entry.name,
-              team: roster.registrationId === match.homeRegistrationId ? 'home' : 'away',
-              checkedIn: Boolean(entry.checkedInAt),
-              role: entry.role,
-              shirtNumber: entry.shirtNumber,
-            })),
-          ),
-        );
-        this.finalScoreForm.setValue({
-          homeScore: match.scoreboard.homeScore,
-          awayScore: match.scoreboard.awayScore,
-        });
-        this.loading.set(false);
-        this.error.set(null);
-      },
-      error: (error: unknown) => {
-        this.loading.set(false);
-        this.error.set(error instanceof Error ? error.message : 'Não foi possível carregar a partida.');
-      },
-    });
+    this.subscriptions.add(
+      this.api.match(this.matchId).subscribe({
+        next: (match) => {
+          if (requestId !== this.loadRequestId) {
+            return;
+          }
+          void this.offline.prepareCollector(match.id);
+          this.match.set(match);
+          this.revision.set(match.revision);
+          this.checkInEntries.set(
+            match.rosters.flatMap((roster) =>
+              roster.entries.map((entry) => ({
+                id: entry.id,
+                name: entry.name,
+                team: roster.registrationId === match.homeRegistrationId ? 'home' : 'away',
+                checkedIn: Boolean(entry.checkedInAt),
+                role: entry.role,
+                shirtNumber: entry.shirtNumber,
+              })),
+            ),
+          );
+          this.finalScoreForm.setValue({
+            homeScore: match.scoreboard.homeScore,
+            awayScore: match.scoreboard.awayScore,
+          });
+          this.loading.set(false);
+          this.error.set(null);
+        },
+        error: (error: unknown) => {
+          if (requestId !== this.loadRequestId) {
+            return;
+          }
+          this.loading.set(false);
+          this.error.set(error instanceof Error ? error.message : 'Não foi possível carregar a partida.');
+        },
+      }),
+    );
   }
 
   protected abstract dispatch(type: SportsMatchActionType, payload: Record<string, unknown>): Promise<boolean>;

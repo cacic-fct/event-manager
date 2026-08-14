@@ -90,6 +90,8 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   readonly lineupForm = this.forms.lineup;
 
   private teamId = '';
+  private workspaceRequestId = 0;
+  private lineupRequestId = 0;
   protected profileRequest: RepresentativeTeamChange | null = null;
 
   ngOnInit(): void {
@@ -106,6 +108,7 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   loadLineup(): void {
+    const requestId = ++this.lineupRequestId;
     const { matchId, registrationId } = this.lineupForm.getRawValue();
     if (!matchId || !registrationId) {
       return;
@@ -113,11 +116,17 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     this.lineupLoading.set(true);
     this.api.lineup(matchId, registrationId).subscribe({
       next: (lineup) => {
+        if (requestId !== this.lineupRequestId) {
+          return;
+        }
         this.applyLineup(lineup);
         this.lineupLoading.set(false);
         this.lineupError.set(null);
       },
       error: (error: unknown) => {
+        if (requestId !== this.lineupRequestId) {
+          return;
+        }
         this.lineupLoading.set(false);
         this.lineupError.set(error instanceof Error ? error.message : 'Não foi possível carregar a escalação.');
       },
@@ -125,9 +134,13 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
   }
 
   load(): void {
+    const requestId = ++this.workspaceRequestId;
     this.loading.set(true);
     this.api.representativeWorkspace(this.teamId).subscribe({
       next: (workspace) => {
+        if (requestId !== this.workspaceRequestId) {
+          return;
+        }
         this.workspace.set(workspace);
         this.profileRequest =
           [...workspace.queuedChanges]
@@ -150,6 +163,9 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
         this.error.set(null);
       },
       error: (error: unknown) => {
+        if (requestId !== this.workspaceRequestId) {
+          return;
+        }
         this.loading.set(false);
         this.error.set(error instanceof Error ? error.message : 'Não foi possível abrir a equipe.');
       },
@@ -221,13 +237,15 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
       return;
     }
     const identity = this.identityForm.getRawValue();
-    await this.submitChange({
+    const submitted = await this.submitChange({
       type: 'MEMBER_ADD',
       delta: {},
       pendingKey: this.uuid(),
       identityClaims: [{ clientKey: this.uuid(), type: identity.type, value: identity.value.trim() }],
     });
-    this.identityForm.controls.value.reset();
+    if (submitted) {
+      this.identityForm.controls.value.reset();
+    }
   }
 
   selectLogo(event: Event): void {
@@ -397,10 +415,10 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
     expectedRequestRevision?: number;
     pendingKey: string;
     identityClaims?: { clientKey: string; type: string; value: string }[];
-  }): Promise<void> {
+  }): Promise<boolean> {
     const workspace = this.workspace();
     if (!workspace) {
-      return;
+      return false;
     }
     this.busy.set(true);
     try {
@@ -418,8 +436,10 @@ export class SportsTeamOperationsPage implements OnInit, OnDestroy {
       );
       this.snackbar.open('Alteração enviada para análise dos administradores.', 'Fechar', { duration: 4500 });
       this.load();
+      return true;
     } catch (error: unknown) {
       this.showError(error);
+      return false;
     } finally {
       this.busy.set(false);
     }

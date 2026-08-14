@@ -146,7 +146,32 @@ export function jsonObjectValidator(control: AbstractControl<string>): Validatio
 export function livestreamValidator(control: AbstractControl): ValidationErrors | null {
   const provider = control.get('livestreamProvider')?.value;
   const url = control.get('livestreamUrl')?.value;
-  return Boolean(provider) === Boolean(url) ? null : { incompleteLivestream: true };
+  if (Boolean(provider) !== Boolean(url)) {
+    return { incompleteLivestream: true };
+  }
+  if (!provider || !url) {
+    return null;
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(String(url).trim());
+  } catch {
+    return { invalidLivestreamUrl: true };
+  }
+  if (parsed.protocol !== 'https:') {
+    return { invalidLivestreamUrl: true };
+  }
+  const hostname = parsed.hostname.toLocaleLowerCase('en-US');
+  if (
+    (provider === 'YOUTUBE' &&
+      hostname !== 'youtu.be' &&
+      hostname !== 'youtube.com' &&
+      !hostname.endsWith('.youtube.com')) ||
+    (provider === 'TWITCH' && hostname !== 'twitch.tv' && !hostname.endsWith('.twitch.tv'))
+  ) {
+    return { invalidLivestreamUrl: true };
+  }
+  return null;
 }
 
 export function tournamentRegistrationWindowValidator(control: AbstractControl): ValidationErrors | null {
@@ -163,6 +188,44 @@ export function tournamentRegistrationWindowValidator(control: AbstractControl):
   return Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate
     ? { invalidRegistrationWindow: true }
     : null;
+}
+
+export function categoryFormValidator(control: AbstractControl): ValidationErrors | null {
+  const sport = control.get('sport')?.value;
+  if (sport === 'OTHER' && !String(control.get('customSportName')?.value ?? '').trim()) {
+    return { customSportNameRequired: true };
+  }
+  const registrationWindow = dateRangeError(
+    control.get('registrationStartDate')?.value,
+    control.get('registrationEndDate')?.value,
+  );
+  if (registrationWindow) {
+    return registrationWindow;
+  }
+  const minimum = control.get('minimumRosterSize')?.value;
+  const maximum = control.get('maximumRosterSize')?.value;
+  if (
+    typeof minimum === 'number' &&
+    typeof maximum === 'number' &&
+    minimum > 0 &&
+    maximum > 0 &&
+    minimum > maximum
+  ) {
+    return { invalidRosterRange: true };
+  }
+  return null;
+}
+
+export function matchDateRangeValidator(control: AbstractControl): ValidationErrors | null {
+  return dateRangeError(control.get('startDate')?.value, control.get('endDate')?.value, true);
+}
+
+export function integerValidator(control: AbstractControl): ValidationErrors | null {
+  return Number.isSafeInteger(control.value) ? null : { integer: true };
+}
+
+export function nonNegativeIntegerValidator(control: AbstractControl): ValidationErrors | null {
+  return Number.isSafeInteger(control.value) && control.value >= 0 ? null : { nonNegativeInteger: true };
 }
 
 export function scoreRulesValidator(control: AbstractControl<string>): ValidationErrors | null {
@@ -373,6 +436,21 @@ function safeObject(value: string | null | undefined): Record<string, unknown> {
 
 function mergeJsonObject(value: string | null | undefined, patch: Record<string, unknown>): string {
   return JSON.stringify({ ...safeObject(value), ...patch });
+}
+
+function dateRangeError(
+  start: unknown,
+  end: unknown,
+  required = false,
+): ValidationErrors | null {
+  if (!start || !end) {
+    return required || Boolean(start) !== Boolean(end) ? { incompleteDateRange: true } : null;
+  }
+  const startDate = new Date(String(start));
+  const endDate = new Date(String(end));
+  return Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate
+    ? { invalidDateRange: true }
+    : null;
 }
 
 function finiteNumber(value: unknown, fallback: number): number {

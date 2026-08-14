@@ -2,7 +2,7 @@ import { By } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, RouterLink, convertToParamMap, provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import { createCurrentUserTournamentOperations } from './sports-operations.fixtures';
@@ -152,6 +152,25 @@ describe('SportsSelfSubscriptionPage', () => {
     expect(page.data()?.tournament.categories).toEqual([]);
     expect(page.selectedCategories().size).toBe(0);
     expect(page.canSubmit()).toBe(false);
+  });
+
+  it('ignores a late tournament response for a previously selected team', () => {
+    const firstResponse = new Subject<ReturnType<typeof createCurrentUserTournamentOperations>>();
+    const secondResponse = new Subject<ReturnType<typeof createCurrentUserTournamentOperations>>();
+    tournament.mockImplementation((_tournamentId, requestedTeamId) =>
+      requestedTeamId === 'team-home' ? secondResponse : firstResponse,
+    );
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+    page.teamSelectionChanged('team-home');
+
+    const latest = createCurrentUserTournamentOperations({ empty: true });
+    secondResponse.next(latest);
+    expect(page.data()?.tournament.teams).toEqual([]);
+
+    firstResponse.next(createCurrentUserTournamentOperations());
+
+    expect(page.data()?.tournament.teams).toEqual([]);
   });
 
   it('submits normalized optional values only after all agreements are satisfied', async () => {

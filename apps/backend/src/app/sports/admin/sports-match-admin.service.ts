@@ -56,6 +56,8 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
       if (home && away && home.id === away.id) {
         throw new BadRequestException('Uma equipe não pode jogar contra si mesma.');
       }
+      this.assertAdvancementTargetPair(input.winnerAdvancesToId, input.winnerAdvancesToSide, 'vencedor');
+      this.assertAdvancementTargetPair(input.loserAdvancesToId, input.loserAdvancesToSide, 'perdedor');
       await this.assertAdvancementTargets(tx, category.id, null, [input.winnerAdvancesToId, input.loserAdvancesToId]);
 
       const generatedName = this.buildMatchName(category.name, home?.team.name, away?.team.name);

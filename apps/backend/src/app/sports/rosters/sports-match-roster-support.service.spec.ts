@@ -91,4 +91,10 @@ describe('SportsMatchRosterSupportService', () => {
 
     expect(mutationEvents.publishRosterMutation).toHaveBeenCalledWith('match-1', 'ROSTER_APPROVED', 'roster-1');
   });
+
+  it('keeps the committed roster successful when publication fails', async () => {
+    mutationEvents.publishRosterMutation.mockRejectedValueOnce(new Error('broker unavailable'));
+
+    await expect(service.publish('match-1', 'ROSTER_APPROVED', 'roster-1')).resolves.toBeUndefined();
+  });
 });

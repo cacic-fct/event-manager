@@ -87,6 +87,37 @@ describe('SportsStandingsQualifiers', () => {
     expect(syncSportsMatchEventName).toHaveBeenCalledWith(tx, 'elimination-match-1', 'actor-1');
   });
 
+  it('reconciles previously assigned group qualifiers after standings change', async () => {
+    const group = sportsGroupStageRecord({
+      standings: [
+        { registrationId: 'registration-a1', rank: 2 },
+        { registrationId: 'registration-a2', rank: 1 },
+      ],
+    });
+    const assigned = sportsQualifierMatchRecord({
+      homeRegistrationId: 'registration-a1',
+      awayRegistrationId: 'registration-a2',
+    });
+    const tx = transaction([group, sportsQualifierEliminationStageRecord({ matches: [assigned] })], assigned);
+
+    await expect(service.refresh(tx)).resolves.toEqual([
+      expect.objectContaining({ matchIds: ['elimination-match-1'] }),
+    ]);
+
+    expect(tx.sportsMatch.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          homeRegistrationId: 'registration-a1',
+          awayRegistrationId: 'registration-a2',
+        }),
+        data: expect.objectContaining({
+          homeRegistrationId: 'registration-a2',
+          awayRegistrationId: 'registration-a1',
+        }),
+      }),
+    );
+  });
+
   it('advances a BYE after assigning the available qualifier', async () => {
     const elimination = sportsQualifierEliminationStageRecord({
       settings: {

@@ -123,6 +123,43 @@ test('routes an authenticated official to the next operable match', async ({ pag
   await expect(page.getByText('Operação da partida')).toBeVisible();
 });
 
+test('submits a match occurrence through the form without navigating away', async ({ page }) => {
+  const committedActionBatches: RecordedSportsAction[][] = [];
+  await mockSportsApi(page, {
+    authenticated: true,
+    authenticatedUser: officialUserFixture(),
+    committedActionBatches,
+  });
+
+  await page.goto('/app/sports/operate/match-1');
+  await expect(page.getByText('Operação da partida')).toBeVisible();
+
+  const note = page.getByRole('textbox', { name: 'O que aconteceu?' });
+  await note.fill('Atendimento registrado aos 18 minutos.');
+  const commitResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return (
+      url.pathname === '/api/graphql' &&
+      (response.request().postData() ?? '').includes('mutation CommitSportsMatchActions')
+    );
+  });
+  await page.getByRole('button', { name: 'Salvar anotação' }).click();
+  await commitResponse;
+
+  await expect(page).toHaveURL(/\/app\/sports\/operate\/match-1/);
+  await expect(note).toHaveValue('');
+  expect(committedActionBatches).toHaveLength(1);
+  expect(committedActionBatches[0]?.[0]).toMatchObject({
+    matchId: 'match-1',
+    type: 'OCCURRENCE',
+    offline: false,
+  });
+  expect(JSON.parse(committedActionBatches[0]?.[0]?.payloadJson ?? '{}')).toMatchObject({
+    kind: 'GENERAL',
+    note: 'Atendimento registrado aos 18 minutos.',
+  });
+});
+
 test('shows a stable empty state when the authenticated user has no sports assignment', async ({ page }) => {
   await mockSportsApi(page, { authenticated: true, autoroute: null });
 

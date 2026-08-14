@@ -20,7 +20,7 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     }
     event?.preventDefault();
     const state = this.match()?.state;
-    if (this.busy() || (state !== 'SCHEDULED' && state !== 'CHECK_IN')) {
+    if (this.busy() || this.holdTimer || (state !== 'SCHEDULED' && state !== 'CHECK_IN')) {
       return;
     }
     this.holdingStart.set(true);
@@ -92,12 +92,14 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
       return;
     }
     const value = this.occurrenceForm.getRawValue();
-    await this.dispatch('OCCURRENCE', {
+    const saved = await this.dispatch('OCCURRENCE', {
       occurrenceId: this.uuid(),
       kind: value.kind,
       note: value.note.trim(),
     });
-    this.occurrenceForm.controls.note.reset();
+    if (saved) {
+      this.occurrenceForm.controls.note.reset();
+    }
   }
 
   async undoPeriod(): Promise<void> {
@@ -308,7 +310,10 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
 
   private async beginFinalization(): Promise<void> {
     if (this.match()?.state === 'LIVE') {
-      await this.dispatch('PAUSE', {});
+      const paused = await this.dispatch('PAUSE', {});
+      if (!paused) {
+        return;
+      }
     }
     this.prepareFinalize();
     if (this.isBrowser) {
@@ -369,7 +374,7 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
       );
       return;
     }
-    await this.dispatch('FINALIZE', {
+    const finalized = await this.dispatch('FINALIZE', {
       draw,
       drawWillReschedule: draw ? this.outcomeForm.controls.drawWillReschedule.value : undefined,
       winnerRegistrationId: winnerRegistrationId ?? undefined,
@@ -378,7 +383,9 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
       lossReasonDetail: draw ? undefined : this.reasonForm.controls.detail.value || undefined,
       scoreboard: this.scoreboardFromFinalForm(match.scoreboard),
     });
-    this.finalizeOpen.set(false);
+    if (finalized) {
+      this.finalizeOpen.set(false);
+    }
   }
 
   teamName(side: 'home' | 'away'): string {

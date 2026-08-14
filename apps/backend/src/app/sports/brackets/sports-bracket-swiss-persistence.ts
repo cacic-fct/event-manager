@@ -195,9 +195,9 @@ export abstract class SportsBracketSwissPersistence extends SportsBracketPersist
         ],
       };
     });
-    await Promise.all([
-      this.eventEffects.syncEvents(result.matches.map((match) => match.eventId)),
-      this.realtime.publishStructuralInvalidations(result.invalidations),
+    await this.runBestEffortPostCommitEffects([
+      ['backing event synchronization', this.eventEffects.syncEvents(result.matches.map((match) => match.eventId))],
+      ['realtime invalidation', this.realtime.publishStructuralInvalidations(result.invalidations)],
     ]);
     return result.matches;
   }

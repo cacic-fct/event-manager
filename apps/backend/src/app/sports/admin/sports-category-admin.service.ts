@@ -180,6 +180,13 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
     if (input.overallScoringRules !== undefined) {
       this.assertOverallScoringRules(input.overallScoringRules);
     }
+    if (input.registrationStartDate !== undefined || input.registrationEndDate !== undefined) {
+      this.assertOptionalDateRange(
+        input.registrationStartDate === undefined ? existing.registrationStartDate : input.registrationStartDate,
+        input.registrationEndDate === undefined ? existing.registrationEndDate : input.registrationEndDate,
+        'inscrições da modalidade',
+      );
+    }
     const joiningInstructions = this.normalizeJoiningInstructions(input.joiningInstructions);
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       await this.assertRegistrationFormForMajorEvent(tx, input.registrationFormId, existing.tournament.majorEventId);

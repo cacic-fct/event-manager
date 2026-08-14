@@ -123,7 +123,7 @@ export class SportsTeamMutationsResolver extends SportsMutationsResolverSupport 
       sportsTeamRepresentativeId: input.representativeId,
     });
     await this.admin.revokeRepresentative(input.representativeId, actor);
-    await this.mutationEvents.publishForEntity('REPRESENTATIVE', input.representativeId, false);
+    await this.publishEntityMutation('REPRESENTATIVE', input.representativeId, false);
     return true;
   }
 
@@ -206,7 +206,7 @@ export class SportsTeamMutationsResolver extends SportsMutationsResolverSupport 
       },
       actor,
     );
-    await this.mutationEvents.publishForEntity('REGISTRATION', input.registrationId, true);
+    await this.publishEntityMutation('REGISTRATION', input.registrationId, true);
     return assignment.id;
   }
 }

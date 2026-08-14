@@ -59,16 +59,21 @@ export class SportsAutoroutePage implements OnInit {
   private readonly router = inject(Router);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  private requestId = 0;
 
   ngOnInit(): void {
     this.load();
   }
 
   load(): void {
+    const requestId = ++this.requestId;
     this.loading.set(true);
     this.error.set(null);
     this.api.autoroute().subscribe({
       next: (route) => {
+        if (requestId !== this.requestId) {
+          return;
+        }
         this.loading.set(false);
         if (!route) {
           return;
@@ -92,6 +97,9 @@ export class SportsAutoroutePage implements OnInit {
         void this.router.navigate(destination, { queryParams: { mode: route.mode } });
       },
       error: (error: unknown) => {
+        if (requestId !== this.requestId) {
+          return;
+        }
         this.loading.set(false);
         this.error.set(error instanceof Error ? error.message : 'Tente novamente em instantes.');
       },

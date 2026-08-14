@@ -17,7 +17,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
     const actor = this.authenticated(context);
     await this.policy.assertPermissions(actor, [Permission.SportsTournament.Delete], { sportsTournamentId: id });
     await this.admin.deleteTournament(id, expectedRevision, actor);
-    await this.mutationEvents.publishForEntity('TOURNAMENT', id, true);
+    await this.publishEntityMutation('TOURNAMENT', id, true);
     return true;
   }
 
@@ -33,7 +33,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
       sportsCategoryId: id,
     });
     await this.admin.deleteCategory(id, expectedRevision, actor);
-    await this.mutationEvents.publishForEntity('CATEGORY', id, true);
+    await this.publishEntityMutation('CATEGORY', id, true);
     return true;
   }
 
@@ -49,7 +49,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
       sportsTeamId: id,
     });
     await this.admin.deleteTeam(id, expectedRevision, actor);
-    await this.mutationEvents.publishForEntity('TEAM', id, true);
+    await this.publishEntityMutation('TEAM', id, true);
     return true;
   }
 
@@ -63,7 +63,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
     const actor = this.authenticated(context);
     await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Delete], { sportsRegistrationId: id });
     await this.admin.deleteRegistration(id, expectedRevision, actor);
-    await this.mutationEvents.publishForEntity('REGISTRATION', id, true);
+    await this.publishEntityMutation('REGISTRATION', id, true);
     return true;
   }
 
@@ -79,7 +79,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
       sportsMatchId: id,
     });
     await this.admin.deleteMatch(id, expectedRevision, actor);
-    await this.mutationEvents.publishForEntity('MATCH', id, true);
+    await this.publishEntityMutation('MATCH', id, true);
     return true;
   }
 
@@ -96,7 +96,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
       sportsTournamentId: tournamentId,
     });
     await this.admin.deleteVenue(id, expectedRevision, actor, tournamentId);
-    await this.mutationEvents.publishForEntity('VENUE', id, true);
+    await this.publishEntityMutation('VENUE', id, true);
     return true;
   }
 
@@ -112,7 +112,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
       sportsOfficialAssignmentId: id,
     });
     await this.admin.deleteOfficial(id, expectedRevision, actor);
-    await this.mutationEvents.publishForEntity('OFFICIAL', id, true);
+    await this.publishEntityMutation('OFFICIAL', id, true);
     return true;
   }
 
@@ -159,7 +159,7 @@ export class SportsLifecycleMutationsResolver extends SportsMutationsResolverSup
       sportsTournamentId: tournamentId,
     });
     await this.admin.deleteTournamentScoreEntry(id, tournamentId, expectedRevision, actor);
-    await this.mutationEvents.publishForEntity('SCORE_ENTRY', id, true);
+    await this.publishEntityMutation('SCORE_ENTRY', id, true);
     return true;
   }
 }

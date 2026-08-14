@@ -68,7 +68,11 @@ export class SportsPageComponent {
   }
 
   protected async openTournament(tournamentId: string): Promise<void> {
-    await this.workspace.loadTournament(tournamentId);
+    try {
+      await this.workspace.loadTournament(tournamentId);
+    } catch {
+      return;
+    }
     await this.router.navigate(['/sports', tournamentId]).catch(() => undefined);
   }
 
@@ -111,7 +115,11 @@ export class SportsPageComponent {
     }
 
     if (this.workspace.tournamentId() !== route.tournamentId) {
-      await this.workspace.loadTournament(route.tournamentId);
+      try {
+        await this.workspace.loadTournament(route.tournamentId);
+      } catch {
+        return;
+      }
       if (revision !== this.routeRevision) {
         return;
       }
@@ -141,6 +149,9 @@ export class SportsPageComponent {
         if (this.workspace.selectedCategoryId() !== category.id || !this.workspace.categoryRead()) {
           await this.workspace.selectCategory(category, { navigate: false });
         }
+        if (revision !== this.routeRevision) {
+          return;
+        }
         return;
       }
       case 'teams': {
@@ -155,6 +166,9 @@ export class SportsPageComponent {
         }
         if (this.workspace.selectedTeamId() !== team.id || !this.workspace.teamRead()) {
           await this.workspace.selectTeam(team, { navigate: false });
+        }
+        if (revision !== this.routeRevision) {
+          return;
         }
         return;
       }
@@ -200,6 +214,9 @@ export class SportsPageComponent {
         }
         if (this.workspace.selectedTeamId() !== team.id || !this.workspace.teamRead()) {
           await this.workspace.selectTeam(team, { navigate: false });
+        }
+        if (revision !== this.routeRevision) {
+          return;
         }
         return;
       }

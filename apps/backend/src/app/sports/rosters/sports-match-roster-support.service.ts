@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Logger } from '@nestjs/common';
 import { Prisma, SportsRosterRole } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
@@ -20,6 +20,8 @@ export interface SportsRosterWrite {
 }
 
 export abstract class SportsMatchRosterSupportService {
+  protected readonly logger = new Logger(SportsMatchRosterSupportService.name);
+
   protected constructor(
     protected readonly prisma: PrismaService,
     protected readonly attendanceCategories: AttendanceCategoryService,
@@ -59,6 +61,13 @@ export abstract class SportsMatchRosterSupportService {
   }
 
   protected async afterRosterMutation(matchId: string, type: string, entityId: string): Promise<void> {
-    await this.mutationEvents.publishRosterMutation(matchId, type, entityId);
+    try {
+      await this.mutationEvents.publishRosterMutation(matchId, type, entityId);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Could not publish sports roster mutation ${entityId}; the committed roster remains authoritative.`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 }

@@ -119,16 +119,24 @@ export abstract class SportsMutationsResolverSupport {
     includePublic: boolean,
   ): Promise<T> {
     const result = await mutation;
+    await this.publishEntityMutation(entity, result.id, includePublic);
+    return result;
+  }
+
+  protected async publishEntityMutation(
+    entity: SportsMutationEntity,
+    entityId: string,
+    includePublic: boolean,
+  ): Promise<void> {
     try {
-      await this.mutationEvents.publishForEntity(entity, result.id, includePublic);
+      await this.mutationEvents.publishForEntity(entity, entityId, includePublic);
     } catch (error) {
       this.logger.warn(
-        `Could not publish sports mutation event for ${entity} ${result.id}: ${
+        `Could not publish sports mutation event for ${entity} ${entityId}: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
     }
-    return result;
   }
 
   protected singleMatchId(input: CommitSportsMatchActionsInput): string {

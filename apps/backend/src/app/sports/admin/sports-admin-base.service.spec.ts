@@ -42,6 +42,9 @@ class TestSportsAdminBaseService extends SportsAdminBaseService {
   ) {
     return this.assertAdvancementTargets(tx as never, 'category-1', sourceMatchId, targets);
   }
+  advancementPair(targetId: string | null | undefined, targetSide: 'HOME' | 'AWAY' | null | undefined) {
+    return this.assertAdvancementTargetPair(targetId, targetSide as never, 'vencedor');
+  }
 }
 
 const actor = { sub: 'admin-1', token: 'token', permissionSet: new Set<string>() } as never;
@@ -261,6 +264,15 @@ describe('SportsAdminBaseService', () => {
 
       await expect(service.advancement(tx, 'match-1', ['match-2'])).resolves.toBeUndefined();
       expect(tx.sportsMatch.findFirst).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['match-2', null],
+      [null, 'HOME'],
+    ])('rejects a partial advancement target pair', (targetId, targetSide) => {
+      expect(() => service.advancementPair(targetId, targetSide as never)).toThrow(
+        'Informe a partida e o lado de destino',
+      );
     });
   });
 });

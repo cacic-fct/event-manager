@@ -130,7 +130,13 @@ describe('SportsTournamentAdminService', () => {
         }),
       });
       expect(tx.sportsTournament.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ status: SportsTournamentStatus.DRAFT }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: SportsTournamentStatus.DRAFT,
+            registrationStartDate: input.registrationStartDate,
+            registrationEndDate: input.registrationEndDate,
+          }),
+        }),
       );
       expect(auditLog.record).toHaveBeenCalledWith(
         expect.objectContaining({ operation: AuditLogOperation.CREATE, entityLabel: 'Jogos Universitários' }),
@@ -236,6 +242,24 @@ describe('SportsTournamentAdminService', () => {
           actor,
         ),
       ).rejects.toThrow('Informe o início e o fim de inscrições do torneio.');
+
+      expect(tx.sportsTournament.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('validates a partial registration override against the existing window', async () => {
+      const existing = sportsAdminTournamentRecord({
+        registrationStartDate: sportsTestDate(-2 * 60 * 60_000),
+        registrationEndDate: sportsTestDate(2 * 60 * 60_000),
+      });
+      prisma.sportsTournament.findFirst.mockResolvedValue(existing);
+
+      await expect(
+        service.updateTournament(
+          'tournament-1',
+          { expectedRevision: 2, registrationStartDate: sportsTestDate(3 * 60 * 60_000) },
+          actor,
+        ),
+      ).rejects.toThrow('O fim do inscrições do torneio precisa ser posterior ao início.');
 
       expect(tx.sportsTournament.updateMany).not.toHaveBeenCalled();
     });

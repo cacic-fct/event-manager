@@ -53,6 +53,8 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   protected liveSubscription: Subscription | null = null;
   protected liveRefreshRunning = false;
   protected liveRefreshQueued = false;
+  protected selectionRevision = 0;
+  private tournamentLoadRevision = 0;
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
@@ -270,8 +272,21 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     if (!id) {
       return;
     }
+    const loadRevision = ++this.tournamentLoadRevision;
+    this.invalidateSelection();
     const sameTournament = this.tournamentId() === id;
-    const read = await firstValueFrom(this.api.tournament(id));
+    let read: SportsTournamentRead;
+    try {
+      read = await firstValueFrom(this.api.tournament(id));
+    } catch (error) {
+      if (loadRevision === this.tournamentLoadRevision) {
+        this.error.set(error instanceof Error ? error.message : 'Não foi possível carregar o torneio esportivo.');
+      }
+      throw error;
+    }
+    if (loadRevision !== this.tournamentLoadRevision) {
+      return;
+    }
     this.tournamentRead.set(read);
     this.selectedMajorEventId.set(read.tournament.majorEventId);
     this.eventForms.set(
@@ -279,6 +294,9 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
         ? await firstValueFrom(this.eventFormsApi.listForms({ majorEventId: read.tournament.majorEventId }))
         : [],
     );
+    if (loadRevision !== this.tournamentLoadRevision) {
+      return;
+    }
     this.tournamentForm.patchValue({
       ...read.tournament,
       registrationScheduleMode:
@@ -305,12 +323,17 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
         ? firstValueFrom(this.api.matchActionReviewQueue(id))
         : Promise.resolve([]),
     ]);
+    if (loadRevision !== this.tournamentLoadRevision) {
+      return;
+    }
     this.applications.set(applications);
     this.pendingMatchActions.set(pendingActions);
     this.watchTournament(id);
   }
 
   resetWorkspaceRoute(): void {
+    this.tournamentLoadRevision += 1;
+    this.invalidateSelection();
     this.liveSubscription?.unsubscribe();
     this.liveSubscription = null;
     this.tournamentRead.set(null);
@@ -357,7 +380,17 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.tournamentLoadRevision += 1;
+    this.invalidateSelection();
     this.liveSubscription?.unsubscribe();
+  }
+
+  protected beginSelection(): number {
+    return ++this.selectionRevision;
+  }
+
+  protected invalidateSelection(): void {
+    this.selectionRevision += 1;
   }
 
   async saveTournament(): Promise<void> {
@@ -422,6 +455,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   }
 
   newCategory(navigate = true): void {
+    this.invalidateSelection();
     this.selectedCategoryId.set('');
     this.categoryRead.set(null);
     this.categoryForm.reset({
@@ -484,6 +518,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     fallbackMessage: string,
     task: () => Promise<void>,
     showGlobalLoading?: boolean,
+    allowWhenLoading?: boolean,
   ): Promise<void>;
   protected abstract notify(message: string, error?: boolean): void;
   protected abstract confirmAction(title: string, message: string): Promise<boolean>;

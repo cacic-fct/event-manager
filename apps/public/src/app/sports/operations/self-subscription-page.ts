@@ -86,6 +86,7 @@ export class SportsSelfSubscriptionPage implements OnInit {
   });
 
   protected tournamentId = '';
+  private tournamentRequestId = 0;
 
   constructor() {
     this.form.valueChanges.subscribe(() => this.formRevision.update((revision) => revision + 1));
@@ -113,8 +114,12 @@ export class SportsSelfSubscriptionPage implements OnInit {
   }
 
   private loadTournament(requestedTeamId: string | null): void {
+    const requestId = ++this.tournamentRequestId;
     this.api.tournament(this.tournamentId, requestedTeamId).subscribe({
       next: (data) => {
+        if (requestId !== this.tournamentRequestId) {
+          return;
+        }
         this.data.set(data);
         const requestedTeam = this.form.controls.requestedTeamId;
         if (data.tournament.selfSubscriptionAllowNoTeam) {
@@ -149,7 +154,11 @@ export class SportsSelfSubscriptionPage implements OnInit {
         this.loading.set(false);
         this.error.set(null);
       },
-      error: (error: unknown) => this.setLoadError(error),
+      error: (error: unknown) => {
+        if (requestId === this.tournamentRequestId) {
+          this.setLoadError(error);
+        }
+      },
     });
   }
 

@@ -26,7 +26,11 @@
       <mat-icon>delete</mat-icon>
     </button>
   }
-  <button mat-flat-button type="button" (click)="workspace.saveMatch()" [disabled]="workspace.matchForm.invalid">
+  <button
+    mat-flat-button
+    type="button"
+    (click)="workspace.saveMatch()"
+    [disabled]="workspace.loading() || workspace.matchForm.invalid">
     <mat-icon>save</mat-icon>
     Salvar partida
   </button>
@@ -86,6 +90,11 @@
       <mat-form-field subscriptSizing="dynamic">
         <mat-label>Fim</mat-label>
         <input matInput type="datetime-local" formControlName="endDate" />
+        @if (workspace.matchForm.hasError('incompleteDateRange')) {
+          <mat-error>Informe o início e o fim da partida.</mat-error>
+        } @else if (workspace.matchForm.hasError('invalidDateRange')) {
+          <mat-error>O fim precisa ser posterior ao início.</mat-error>
+        }
       </mat-form-field>
       <mat-form-field subscriptSizing="dynamic">
         <mat-label>Local esportivo</mat-label>
@@ -167,8 +176,10 @@
         <mat-label>Link da transmissão</mat-label>
         <input matInput type="url" inputmode="url" formControlName="livestreamUrl" placeholder="https://" />
         <mat-hint>Use o endereço público completo da live.</mat-hint>
-        @if (workspace.matchForm.controls.livestreamUrl.invalid) {
+        @if (workspace.matchForm.controls.livestreamUrl.hasError('pattern')) {
           <mat-error>Informe um endereço HTTPS válido.</mat-error>
+        } @else if (workspace.matchForm.hasError('invalidLivestreamUrl')) {
+          <mat-error>Use um endereço válido para a plataforma escolhida.</mat-error>
         } @else if (workspace.matchForm.hasError('incompleteLivestream')) {
           <mat-error>Escolha a plataforma e informe o link.</mat-error>
         }
@@ -214,7 +225,7 @@
     <div class="lineup-grid">
       @for (
         registrationId of [review.match.homeRegistrationId, review.match.awayRegistrationId];
-        track registrationId
+        track $index
       ) {
         @if (registrationId && workspace.registrationReads()[registrationId]; as registration) {
           <section>
@@ -253,7 +264,11 @@
             } @empty {
               <p class="empty-copy">Nenhum integrante elegível nesta inscrição.</p>
             }
-            <button mat-stroked-button type="button" (click)="workspace.saveLineup(registrationId)">
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.saveLineup(registrationId)">
               <mat-icon>groups</mat-icon>
               Salvar escalação
             </button>
@@ -292,7 +307,7 @@
           <mat-option value="TOURNAMENT">Todo o torneio</mat-option>
         </mat-select>
       </mat-form-field>
-      <button mat-stroked-button type="submit" [disabled]="workspace.officialForm.invalid">
+      <button mat-stroked-button type="submit" [disabled]="workspace.loading() || workspace.officialForm.invalid">
         <mat-icon>person_add</mat-icon>
         Atribuir
       </button>

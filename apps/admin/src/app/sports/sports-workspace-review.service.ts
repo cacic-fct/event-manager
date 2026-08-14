@@ -30,6 +30,8 @@ import { SportsWorkspaceMatchService } from './sports-workspace-match.service';
 type ReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED';
 
 export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchService {
+  private loadingOperations = 0;
+
   async loadApplications(): Promise<void> {
     if (!this.tournamentId()) {
       return;
@@ -226,8 +228,17 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     return sportsMatchStatusLabel(status);
   }
 
-  protected async run(fallback: string, operation: () => Promise<void>, showGlobalLoading = true): Promise<void> {
+  protected async run(
+    fallback: string,
+    operation: () => Promise<void>,
+    showGlobalLoading = true,
+    allowWhenLoading = false,
+  ): Promise<void> {
+    if (showGlobalLoading && this.loading() && !allowWhenLoading) {
+      return;
+    }
     if (showGlobalLoading) {
+      this.loadingOperations += 1;
       this.loading.set(true);
     }
     this.error.set(null);
@@ -239,7 +250,10 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       this.notify(message, true);
     } finally {
       if (showGlobalLoading) {
-        this.loading.set(false);
+        this.loadingOperations = Math.max(0, this.loadingOperations - 1);
+        if (this.loadingOperations === 0) {
+          this.loading.set(false);
+        }
       }
     }
   }
@@ -254,11 +268,14 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     });
   }
 
-  protected async loadMatchRegistrations(review: SportsMatchReview): Promise<void> {
+  protected async loadMatchRegistrations(review: SportsMatchReview, selectionRevision = this.selectionRevision): Promise<void> {
     const ids = [review.match.homeRegistrationId, review.match.awayRegistrationId].filter((id): id is string =>
       Boolean(id),
     );
     const reads = await Promise.all(ids.map((id) => firstValueFrom(this.api.registration(id))));
+    if (selectionRevision !== this.selectionRevision) {
+      return;
+    }
     this.registrationReads.set(Object.fromEntries(reads.map((read) => [read.registration.id, read])));
     this.lineupSelections.set(
       Object.fromEntries(

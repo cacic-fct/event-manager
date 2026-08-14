@@ -23,7 +23,7 @@
     <button
       mat-flat-button
       type="submit"
-      [disabled]="!canGenerateBracket()"
+      [disabled]="workspace.loading() || !canGenerateBracket()"
       [attr.aria-describedby]="hasGeneratedBracket() ? 'bracket-generation-note' : null">
       <mat-icon>{{ hasGeneratedBracket() ? 'sync' : 'account_tree' }}</mat-icon>
       {{ hasGeneratedBracket() ? 'Substituir rascunho' : 'Gerar chave' }}

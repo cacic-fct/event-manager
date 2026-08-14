@@ -223,6 +223,16 @@ describe('SportsMatchOperationService offline command log', () => {
     expect(eventEffects.syncEvent).not.toHaveBeenCalled();
   });
 
+  it('returns the committed actions when post-commit effects fail', async () => {
+    mutationEvents.publishMatchProjection.mockRejectedValueOnce(new Error('broker unavailable'));
+    realtime.publishStructuralInvalidations.mockRejectedValueOnce(new Error('redis unavailable'));
+
+    await expect(service.commit([sportsMatchCommand()], sportsOfficialActor())).resolves.toHaveLength(1);
+
+    expect(tx.sportsMatchAction.create).toHaveBeenCalledTimes(1);
+    expect(tx.sportsMatch.updateMany).toHaveBeenCalledTimes(1);
+  });
+
   it('reconciles the backing Event after an administrator commits a reschedule', async () => {
     await service.commit(
       [

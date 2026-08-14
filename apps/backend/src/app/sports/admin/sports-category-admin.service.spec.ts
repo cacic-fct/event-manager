@@ -190,6 +190,24 @@ describe('SportsCategoryAdminService', () => {
     );
   });
 
+  it('validates a partial registration override against the existing window', async () => {
+    const existing = sportsAdminCategoryRecord({
+      registrationStartDate: sportsTestDate(-2 * 60 * 60_000),
+      registrationEndDate: sportsTestDate(2 * 60 * 60_000),
+    });
+    prisma.sportsCategory.findFirst.mockResolvedValue(existing);
+
+    await expect(
+      service.updateCategory(
+        'category-1',
+        { expectedRevision: 2, registrationEndDate: sportsTestDate(-3 * 60 * 60_000) },
+        actor,
+      ),
+    ).rejects.toThrow('O fim do inscrições da modalidade precisa ser posterior ao início.');
+
+    expect(tx.sportsCategory.updateMany).not.toHaveBeenCalled();
+  });
+
   it('rejects missing, duplicate, and concurrently changed category updates', async () => {
     prisma.sportsCategory.findFirst.mockResolvedValueOnce(null);
     await expect(

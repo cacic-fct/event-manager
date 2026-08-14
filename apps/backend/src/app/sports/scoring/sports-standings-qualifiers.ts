@@ -57,12 +57,14 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
       return [];
     }
     const standingByGroupPosition = new Map<string, string>();
+    const groupRegistrationIds = new Set<string>();
     for (const stage of groupStages) {
       const groupKey = this.readRecord(stage.settings)['groupKey'];
       if (typeof groupKey !== 'string') {
         continue;
       }
       for (const standing of stage.standings) {
+        groupRegistrationIds.add(standing.registrationId);
         if (standing.rank) {
           standingByGroupPosition.set(`${groupKey}:${standing.rank}`, standing.registrationId);
         }
@@ -94,10 +96,20 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
       if (match.canonicalState !== SportsMatchState.SCHEDULED) {
         continue;
       }
-      const slotChanges = {
-        ...(homeRegistrationId && !match.homeRegistrationId ? { homeRegistrationId } : {}),
-        ...(awayRegistrationId && !match.awayRegistrationId ? { awayRegistrationId } : {}),
-      };
+      const slotChanges: { homeRegistrationId?: string | null; awayRegistrationId?: string | null } = {};
+      for (const [field, desiredRegistrationId, currentRegistrationId] of [
+        ['homeRegistrationId', homeRegistrationId, match.homeRegistrationId],
+        ['awayRegistrationId', awayRegistrationId, match.awayRegistrationId],
+      ] as const) {
+        const currentIsGroupQualifier =
+          currentRegistrationId !== null && groupRegistrationIds.has(currentRegistrationId);
+        if (
+          (currentRegistrationId === null && desiredRegistrationId !== null) ||
+          (currentIsGroupQualifier && currentRegistrationId !== desiredRegistrationId)
+        ) {
+          slotChanges[field] = desiredRegistrationId;
+        }
+      }
       if (Object.keys(slotChanges).length === 0) {
         continue;
       }

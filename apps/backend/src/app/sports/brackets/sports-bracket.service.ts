@@ -45,7 +45,11 @@ export class SportsBracketService extends SportsBracketBasicPersistence {
     actor: AuthenticatedUser,
   ) {
     const actorId = this.requireActorId(actor);
-    const registrationIds = input.participants.map((item) => item.registrationId.trim());
+    const participants = input.participants.map((participant) => ({
+      ...participant,
+      registrationId: participant.registrationId.trim(),
+    }));
+    const registrationIds = participants.map((item) => item.registrationId);
     if (registrationIds.some((id) => !id) || new Set(registrationIds).size !== registrationIds.length) {
       throw new BadRequestException('As equipes da chave devem ser únicas e válidas.');
     }
@@ -121,7 +125,9 @@ export class SportsBracketService extends SportsBracketBasicPersistence {
       let stageIds: string[];
       switch (category.format) {
         case SportsFormat.SINGLE_ELIMINATION:
-          stageIds = [await this.persistSingleElimination(tx, category, input, teamNameByRegistration, actorId)];
+          stageIds = [
+            await this.persistSingleElimination(tx, category, { ...input, participants }, teamNameByRegistration, actorId),
+          ];
           break;
         case SportsFormat.ROUND_ROBIN:
           stageIds = [await this.persistRoundRobin(tx, category, registrationIds, teamNameByRegistration, actorId)];
@@ -130,17 +136,23 @@ export class SportsBracketService extends SportsBracketBasicPersistence {
           stageIds = await this.persistGroupStageElimination(
             tx,
             category,
-            input.participants,
+            participants,
             teamNameByRegistration,
             actorId,
           );
           break;
         case SportsFormat.DOUBLE_ELIMINATION:
-          stageIds = await this.persistDoubleElimination(tx, category, input, teamNameByRegistration, actorId);
+          stageIds = await this.persistDoubleElimination(
+            tx,
+            category,
+            { ...input, participants },
+            teamNameByRegistration,
+            actorId,
+          );
           break;
         case SportsFormat.SWISS:
           stageIds = [
-            await this.persistInitialSwissRound(tx, category, input.participants, teamNameByRegistration, actorId),
+            await this.persistInitialSwissRound(tx, category, participants, teamNameByRegistration, actorId),
           ];
           break;
         case SportsFormat.CUSTOM:
@@ -207,9 +219,9 @@ export class SportsBracketService extends SportsBracketBasicPersistence {
         ],
       };
     });
-    await Promise.all([
-      this.eventEffects.syncEvents(result.affectedEventIds),
-      this.realtime.publishStructuralInvalidations(result.invalidations),
+    await this.runBestEffortPostCommitEffects([
+      ['backing event synchronization', this.eventEffects.syncEvents(result.affectedEventIds)],
+      ['realtime invalidation', this.realtime.publishStructuralInvalidations(result.invalidations)],
     ]);
     return result.stages;
   }

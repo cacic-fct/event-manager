@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Logger } from '@nestjs/common';
 import {
   Prisma,
   PublicationState,
@@ -27,6 +27,8 @@ export interface SportsBracketParticipant {
 }
 
 export abstract class SportsBracketPersistenceSupport {
+  protected readonly logger = new Logger(SportsBracketPersistenceSupport.name);
+
   constructor(
     protected readonly prisma: PrismaService,
     protected readonly advancement: SportsBracketAdvancementService,
@@ -276,5 +278,19 @@ export abstract class SportsBracketPersistenceSupport {
       throw new BadRequestException('O administrador autenticado não possui identificador.');
     }
     return actor.sub;
+  }
+
+  protected async runBestEffortPostCommitEffects(
+    effects: ReadonlyArray<readonly [label: string, effect: Promise<unknown>]>,
+  ): Promise<void> {
+    const results = await Promise.allSettled(effects.map(([, effect]) => effect));
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.warn(
+          `Could not complete sports bracket ${effects[index][0]} after commit; the committed bracket remains authoritative.`,
+          result.reason instanceof Error ? result.reason.stack : undefined,
+        );
+      }
+    });
   }
 }

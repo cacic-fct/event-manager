@@ -56,7 +56,11 @@
             <mat-icon>delete</mat-icon>
           </button>
         }
-        <button mat-flat-button type="button" (click)="workspace.saveTeam()" [disabled]="workspace.teamForm.invalid">
+        <button
+          mat-flat-button
+          type="button"
+          (click)="workspace.saveTeam()"
+          [disabled]="workspace.loading() || workspace.teamForm.invalid">
           <mat-icon>save</mat-icon>Salvar
         </button>
       </div>
@@ -111,7 +115,10 @@
             " />
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
-        <button mat-stroked-button type="submit" [disabled]="workspace.representativeForm.invalid">
+        <button
+          mat-stroked-button
+          type="submit"
+          [disabled]="workspace.loading() || workspace.representativeForm.invalid">
           <mat-icon>person_add</mat-icon>Atribuir
         </button>
       </form>
@@ -168,7 +175,7 @@
             (input)="workspace.searchPeople(workspace.memberForm.controls.personQuery.value, 'member')" />
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
-        <button mat-stroked-button type="submit" [disabled]="workspace.memberForm.invalid">
+        <button mat-stroked-button type="submit" [disabled]="workspace.loading() || workspace.memberForm.invalid">
           <mat-icon>person_add</mat-icon>Adicionar
         </button>
       </form>
@@ -296,7 +303,7 @@
                 mat-button
                 type="button"
                 class="registration-form-button"
-                (click)="workspace.focusRegistrationCategory(option.category.id)">
+                (click)="workspace.openRegistrationQuestionnaire(option.category.id)">
                 <mat-icon>assignment</mat-icon>Formulário
               </button>
             }

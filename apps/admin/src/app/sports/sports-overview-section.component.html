@@ -129,7 +129,12 @@
         <mat-label>Motivo do ajuste</mat-label>
         <input matInput formControlName="reason" />
       </mat-form-field>
-      <button mat-stroked-button type="submit" [disabled]="workspace.scoreEntryForm.invalid">Registrar ajuste</button>
+      <button
+        mat-stroked-button
+        type="submit"
+        [disabled]="workspace.loading() || workspace.scoreEntryForm.invalid">
+        Registrar ajuste
+      </button>
     </form>
   </aside>
 
@@ -198,7 +203,7 @@
               <mat-icon>delete</mat-icon>Excluir
             </button>
           }
-          <button mat-flat-button type="submit" [disabled]="workspace.venueForm.invalid">
+          <button mat-flat-button type="submit" [disabled]="workspace.loading() || workspace.venueForm.invalid">
             <mat-icon>save</mat-icon>Salvar local
           </button>
         </div>

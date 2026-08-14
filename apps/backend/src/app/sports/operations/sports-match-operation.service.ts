@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   AuditLogOperation,
   Prisma,
@@ -47,6 +47,8 @@ export { createSportsAuditActor } from './sports-match-operation-support';
 
 @Injectable()
 export class SportsMatchOperationService extends SportsMatchOperationMutation {
+  private readonly logger = new Logger(SportsMatchOperationService.name);
+
   constructor(
     prisma: PrismaService,
     advancement: SportsBracketAdvancementService,
@@ -92,13 +94,11 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
       };
     });
 
-    await Promise.all([
-      this.mutationEvents.publishMatchProjection(result.match),
-      ...(inputs.some((input) => input.type === SportsMatchActionType.RESCHEDULE)
-        ? [this.eventEffects.syncEvent(result.match.eventId)]
-        : []),
-    ]);
-    await this.realtime.publishStructuralInvalidations(result.structuralInvalidations);
+    await this.publishPostCommitEffects(
+      result.match,
+      inputs.some((input) => input.type === SportsMatchActionType.RESCHEDULE),
+      result.structuralInvalidations,
+    );
     return result.committed;
   }
 
@@ -202,13 +202,33 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
         structuralInvalidations: mergeSportsStructuralInvalidations(...structuralInvalidations),
       };
     });
-    await Promise.all([
-      this.mutationEvents.publishMatchProjection(result.match),
-      ...(result.action.type === SportsMatchActionType.RESCHEDULE
-        ? [this.eventEffects.syncEvent(result.match.eventId)]
-        : []),
-    ]);
-    await this.realtime.publishStructuralInvalidations(result.structuralInvalidations);
+    await this.publishPostCommitEffects(
+      result.match,
+      result.action.type === SportsMatchActionType.RESCHEDULE,
+      result.structuralInvalidations,
+    );
     return result.action;
+  }
+
+  private async publishPostCommitEffects(
+    match: Parameters<SportsMutationEventsService['publishMatchProjection']>[0] & { eventId: string },
+    syncEvent: boolean,
+    structuralInvalidations: readonly SportsStructuralInvalidation[],
+  ): Promise<void> {
+    await Promise.all([
+      this.mutationEvents.publishMatchProjection(match),
+      ...(syncEvent ? [this.eventEffects.syncEvent(match.eventId)] : []),
+    ]).catch((error: unknown) => {
+      this.logger.warn(
+        `Could not publish post-commit sports match effects for ${match.id}; the committed mutation remains authoritative.`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    });
+    await this.realtime.publishStructuralInvalidations(structuralInvalidations).catch((error: unknown) => {
+      this.logger.warn(
+        `Could not publish sports structural invalidations for ${match.id}; the committed mutation remains authoritative.`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    });
   }
 }

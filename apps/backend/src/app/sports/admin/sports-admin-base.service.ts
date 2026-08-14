@@ -1,6 +1,6 @@
 import { type FormElement } from '@cacic-fct/form-contracts';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { Prisma, SportsScoreEntrySource } from '@prisma/client';
+import { Prisma, SportsBracketSide, SportsScoreEntrySource } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { normalizeAnswers } from '../../event-forms/event-form-answer-normalization';
 import { SportsAdminLookupService } from './sports-admin-lookup.service';
@@ -305,6 +305,16 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
           pending.push(current.loserAdvancesToId);
         }
       }
+    }
+  }
+
+  protected assertAdvancementTargetPair(
+    targetId: string | null | undefined,
+    targetSide: SportsBracketSide | null | undefined,
+    label: string,
+  ): void {
+    if (Boolean(targetId) !== Boolean(targetSide)) {
+      throw new BadRequestException(`Informe a partida e o lado de destino para o encaminhamento de ${label}.`);
     }
   }
 }

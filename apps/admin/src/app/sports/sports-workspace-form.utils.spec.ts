@@ -1,9 +1,13 @@
 import { FormControl, FormGroup } from '@angular/forms';
 import {
+  categoryFormValidator,
   competitionRulesFromForm,
   competitionRulesToForm,
+  integerValidator,
   jsonObjectValidator,
   livestreamValidator,
+  matchDateRangeValidator,
+  nonNegativeIntegerValidator,
   overallPlacementPointsValidator,
   overallScoringRulesFromForm,
   overallScoringRulesToForm,
@@ -55,12 +59,43 @@ describe('sports workspace form utilities', () => {
 
   it('keeps livestream provider and URL paired', () => {
     const form = new FormGroup({
-      livestreamProvider: new FormControl('YouTube', { nonNullable: true }),
+      livestreamProvider: new FormControl('GENERAL', { nonNullable: true }),
       livestreamUrl: new FormControl('', { nonNullable: true }),
     });
     expect(livestreamValidator(form)).toEqual({ incompleteLivestream: true });
     form.controls.livestreamUrl.setValue('https://example.com/live');
     expect(livestreamValidator(form)).toBeNull();
+    form.controls.livestreamProvider.setValue('YOUTUBE');
+    expect(livestreamValidator(form)).toEqual({ invalidLivestreamUrl: true });
+    form.controls.livestreamUrl.setValue('https://www.youtube.com/watch?v=abc');
+    expect(livestreamValidator(form)).toBeNull();
+  });
+
+  it('rejects invalid category, match, and numeric form values before submission', () => {
+    const startDate = new Date(Date.now() + 60 * 60 * 1_000).toISOString();
+    const endDate = new Date(Date.now() + 2 * 60 * 60 * 1_000).toISOString();
+    const category = new FormGroup({
+      sport: new FormControl('OTHER', { nonNullable: true }),
+      customSportName: new FormControl('', { nonNullable: true }),
+      registrationStartDate: new FormControl(endDate, { nonNullable: true }),
+      registrationEndDate: new FormControl(startDate, { nonNullable: true }),
+      minimumRosterSize: new FormControl(8, { nonNullable: true }),
+      maximumRosterSize: new FormControl(4, { nonNullable: true }),
+    });
+    expect(categoryFormValidator(category)).toEqual({ customSportNameRequired: true });
+    category.controls.customSportName.setValue('Queimada');
+    expect(categoryFormValidator(category)).toEqual({ invalidDateRange: true });
+    category.controls.registrationStartDate.setValue(startDate);
+    category.controls.registrationEndDate.setValue(endDate);
+    expect(categoryFormValidator(category)).toEqual({ invalidRosterRange: true });
+
+    const match = new FormGroup({
+      startDate: new FormControl(endDate, { nonNullable: true }),
+      endDate: new FormControl(startDate, { nonNullable: true }),
+    });
+    expect(matchDateRangeValidator(match)).toEqual({ invalidDateRange: true });
+    expect(integerValidator(new FormControl(1.5))).toEqual({ integer: true });
+    expect(nonNegativeIntegerValidator(new FormControl(-1))).toEqual({ nonNegativeInteger: true });
   });
 
   it('converts flexible overall scoring rules and validates placement points', () => {
