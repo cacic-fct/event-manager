@@ -23,6 +23,7 @@ describe('SportsReadAdminService', () => {
     sportsTeamRepresentative: { findMany: jest.fn() },
     sportsTeamMember: { findMany: jest.fn() },
     sportsTeamChangeRequest: { findMany: jest.fn() },
+    sportsTournamentParticipant: { findMany: jest.fn() },
   };
   const authorization = {
     assertPermissions: jest.fn(),
@@ -44,6 +45,7 @@ describe('SportsReadAdminService', () => {
     prisma.sportsTeamRepresentative.findMany.mockResolvedValue([]);
     prisma.sportsTeamMember.findMany.mockResolvedValue([]);
     prisma.sportsTeamChangeRequest.findMany.mockResolvedValue([]);
+    prisma.sportsTournamentParticipant.findMany.mockResolvedValue([]);
   });
 
   it('maps a fully readable tournament and applies unrestricted visibility filters', async () => {
@@ -113,6 +115,55 @@ describe('SportsReadAdminService', () => {
         },
       }),
     );
+  });
+
+  it('includes direct participants and their actual team/category relationships', async () => {
+    authorization.accessibleEventTargets.mockResolvedValue(null);
+    prisma.sportsTournament.findFirst.mockResolvedValue({ id: 'tournament-1' });
+    prisma.sportsCategory.findMany.mockResolvedValue([]);
+    prisma.sportsTeam.findMany.mockResolvedValue([]);
+    prisma.sportsTournamentParticipant.findMany.mockResolvedValue([
+      {
+        id: 'participant-1',
+        source: 'TEAM_ASSIGNMENT',
+        status: 'ACTIVE',
+        paymentStatus: 'NOT_REQUIRED',
+        person: { id: 'person-1', name: 'Pessoa Atleta' },
+        teamMemberships: [
+          {
+            id: 'member-1',
+            status: 'APPROVED',
+            team: { id: 'team-1', name: 'Equipe Azul' },
+            categoryAssignments: [
+              {
+                registration: {
+                  category: { id: 'category-1', name: 'Futsal', division: 'Livre' },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const result = await new SportsReadAdminService(prisma as never, authorization as never).adminTournament(
+      user as never,
+      'tournament-1',
+    );
+
+    expect(result.participants).toEqual([
+      expect.objectContaining({
+        id: 'participant-1',
+        person: { id: 'person-1', name: 'Pessoa Atleta' },
+        teams: [
+          expect.objectContaining({
+            memberId: 'member-1',
+            teamName: 'Equipe Azul',
+            categories: [{ id: 'category-1', name: 'Futsal', division: 'Livre' }],
+          }),
+        ],
+      }),
+    ]);
   });
 
   it('delegates tournament listing to the dedicated filtered list reader', async () => {

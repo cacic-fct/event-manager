@@ -115,6 +115,24 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         },
         include: { eventGroup: true },
       });
+      const teams = await tx.sportsTeam.findMany({
+        where: { tournamentId: input.tournamentId, deletedAt: null },
+        select: { id: true },
+      });
+      if (teams.length > 0) {
+        const now = new Date();
+        await tx.sportsRegistration.createMany({
+          data: teams.map((team) => ({
+            teamId: team.id,
+            categoryId: category.id,
+            status: SportsRegistrationStatus.APPROVED,
+            approvedAt: now,
+            approvedById: actorId,
+            createdById: actorId,
+            updatedById: actorId,
+          })),
+        });
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.SPORTS_CATEGORY,

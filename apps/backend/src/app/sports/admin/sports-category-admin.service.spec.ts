@@ -56,6 +56,16 @@ describe('SportsCategoryAdminService', () => {
         }),
       }),
     );
+    expect(tx.sportsRegistration.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          teamId: 'team-1',
+          categoryId: category.id,
+          status: SportsRegistrationStatus.APPROVED,
+          approvedById: 'admin-1',
+        }),
+      ],
+    });
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({
         operation: AuditLogOperation.CREATE,
@@ -311,7 +321,8 @@ function createTransaction() {
     sportsCategory: { findFirst: jest.fn(), create: jest.fn(), updateMany: jest.fn(), findUniqueOrThrow: jest.fn() },
     sportsMatch: { findMany: jest.fn(), updateMany: jest.fn() },
     sportsStage: { updateMany: jest.fn() },
-    sportsRegistration: { updateMany: jest.fn() },
+    sportsTeam: { findMany: jest.fn().mockResolvedValue([{ id: 'team-1' }]) },
+    sportsRegistration: { createMany: jest.fn(), updateMany: jest.fn() },
     sportsOfficialAssignment: { updateMany: jest.fn() },
     sportsTournamentScoreEntry: { updateMany: jest.fn() },
   };

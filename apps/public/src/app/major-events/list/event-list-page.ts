@@ -120,8 +120,21 @@ export class MajorEvent {
     );
   }
 
-  canEditSubscription(subscription: CurrentUserMajorEventSubscription): boolean {
-    return subscription.subscriptionStatus !== 'CONFIRMED' && subscription.subscriptionStatus !== 'CANCELED';
+  canEditSubscription(
+    majorEvent: PublicMajorEvent,
+    subscription: CurrentUserMajorEventSubscription,
+  ): boolean {
+    if (subscription.subscriptionStatus === 'CANCELED') {
+      return false;
+    }
+    if (subscription.subscriptionStatus !== 'CONFIRMED') {
+      return true;
+    }
+    return Boolean(
+      majorEvent.sportsTournament &&
+        majorEvent.hasEvents !== false &&
+        (subscription.selectedEvents?.length ?? 0) === 0
+    );
   }
 
   subscriptionRouteFor(majorEvent: PublicMajorEvent): string[] | null {
@@ -142,7 +155,32 @@ export class MajorEvent {
   }
 
   isSubscriptionRouteOpen(majorEvent: PublicMajorEvent): boolean {
-    return majorEvent.hasEvents === false || this.isSubscriptionOpen(majorEvent);
+    return majorEvent.hasEvents === false
+      ? Boolean(majorEvent.sportsTournament?.selfSubscriptionEnabled && majorEvent.sportsTournament.registrationOpen)
+      : this.isSubscriptionOpen(majorEvent) && majorEvent.regularSubscriptionOpen !== false;
+  }
+
+  subscriptionActionLabel(
+    majorEvent: PublicMajorEvent,
+    action: 'login' | 'create' | 'edit' | 'closed',
+  ): string {
+    if (majorEvent.hasEvents === false) {
+      return action === 'login' ? 'Entrar para solicitar inscrição' : 'Solicitar inscrição no torneio';
+    }
+    if (!majorEvent.sportsTournament) {
+      return {
+        login: 'Entrar para inscrever-se',
+        create: 'Inscrever-se',
+        edit: 'Editar inscrição',
+        closed: 'Inscrições encerradas',
+      }[action];
+    }
+    return {
+      login: 'Entrar para inscrever-se nas atividades',
+      create: 'Inscrever-se nas atividades',
+      edit: 'Editar inscrição nas atividades',
+      closed: 'Inscrições nas atividades encerradas',
+    }[action];
   }
 
   statusLabel(status: string): string {

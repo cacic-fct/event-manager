@@ -82,7 +82,42 @@ export class MajorEventSubscriptionsComponent {
   }
 
   protected statusLabel(status: string): string {
-    return getSubscriptionStatusLabel(status);
+    return (
+      {
+        PENDING: 'Aguardando análise',
+        APPROVED: 'Aprovada',
+        CHANGES_REQUESTED: 'Ajustes solicitados',
+        WAITING_PAYMENT: 'Aguardando pagamento',
+        ACTIVE: 'Participação ativa',
+        REJECTED: 'Não aprovada',
+        SUSPENDED: 'Suspensa',
+        WITHDRAWN: 'Retirada',
+      }[status] ?? getSubscriptionStatusLabel(status)
+    );
+  }
+
+  protected sportsPaymentStatusLabel(status: string): string {
+    return (
+      {
+        NOT_REQUIRED: 'Pagamento não exigido',
+        NOT_AVAILABLE: 'Pagamento indisponível',
+        WAITING_APPROVAL: 'Aguardando aprovação',
+        WAITING_PAYMENT: 'Aguardando pagamento',
+        UNDER_REVIEW: 'Pagamento em análise',
+        PAID: 'Pagamento confirmado',
+        REJECTED: 'Pagamento rejeitado',
+      }[status] ?? status
+    );
+  }
+
+  protected sportsParticipantSourceLabel(source: string): string {
+    return (
+      {
+        ADMIN: 'Adicionada pela administração',
+        TEAM_ASSIGNMENT: 'Adicionada por equipe',
+        SELF_SUBSCRIPTION: 'Inscrição da própria pessoa',
+      }[source] ?? source
+    );
   }
 
   protected receiptValidationLink(): string[] {

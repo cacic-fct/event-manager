@@ -12,7 +12,17 @@ import {
   InterruptionFlow,
 } from './interruption-flow';
 
-const NORMAL_INTERRUPTION_EXEMPTION_PATHS = ['/profile/forms/', '/attendance/collect/', '/attendance/register'];
+const NORMAL_INTERRUPTION_EXEMPTION_PATHS = [
+  '/profile/forms/',
+  '/attendance/collect/',
+  '/attendance/register',
+  '/sports/operate/',
+  '/sports/team/',
+];
+const NORMAL_INTERRUPTION_EXEMPTION_PATTERNS = [
+  /^\/major-event\/[^/]+\/(?:subscription|ranked-subscription|payment)(?:\/|\?|$)/,
+  /^\/tournament\/[^/]+\/subscribe(?:\/|\?|$)/,
+];
 
 export function selectNextInterruption(
   interruptions: readonly (Interruption | null)[],
@@ -34,7 +44,10 @@ function canApplyInterruption(interruption: Interruption, context: InterruptionC
     return true;
   }
 
-  return !NORMAL_INTERRUPTION_EXEMPTION_PATHS.some((path) => context.currentUrl.startsWith(path));
+  return !(
+    NORMAL_INTERRUPTION_EXEMPTION_PATHS.some((path) => context.currentUrl.startsWith(path)) ||
+    NORMAL_INTERRUPTION_EXEMPTION_PATTERNS.some((pattern) => pattern.test(context.currentUrl))
+  );
 }
 
 @Injectable({ providedIn: 'root' })

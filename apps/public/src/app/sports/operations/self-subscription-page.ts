@@ -17,6 +17,8 @@ import {
 } from './sports-operations.types';
 
 const EDITABLE_APPLICATION_STATUSES = ['PENDING', 'CHANGES_REQUESTED'] as const;
+const ACTIVE_APPLICATION_STATUSES = ['APPROVED', 'WAITING_PAYMENT', 'ACTIVE'] as const;
+const RETRYABLE_APPLICATION_STATUSES = ['REJECTED', 'WITHDRAWN'] as const;
 
 @Component({
   selector: 'app-sports-self-subscription-page',
@@ -44,6 +46,7 @@ export class SportsSelfSubscriptionPage implements OnInit {
 
   readonly data = signal<CurrentUserTournamentOperations | null>(null);
   readonly application = signal<CurrentUserSportsPlayerApplication | null>(null);
+  readonly previousApplication = signal<CurrentUserSportsPlayerApplication | null>(null);
   readonly selectedCategories = signal<Set<string>>(new Set());
   readonly loading = signal(true);
   readonly busy = signal(false);
@@ -166,23 +169,33 @@ export class SportsSelfSubscriptionPage implements OnInit {
     const application =
       applications.find((item) =>
         EDITABLE_APPLICATION_STATUSES.includes(item.status as (typeof EDITABLE_APPLICATION_STATUSES)[number]),
-      ) ?? applications[0] ?? null;
+      ) ??
+      applications.find((item) =>
+        ACTIVE_APPLICATION_STATUSES.includes(item.status as (typeof ACTIVE_APPLICATION_STATUSES)[number]),
+      ) ??
+      null;
+    this.previousApplication.set(
+      applications.find((item) =>
+        RETRYABLE_APPLICATION_STATUSES.includes(item.status as (typeof RETRYABLE_APPLICATION_STATUSES)[number]),
+      ) ?? null,
+    );
     this.application.set(application);
-    this.selectedCategories.set(new Set(application?.categories.map((category) => category.id) ?? []));
+    const initialApplication = application ?? this.previousApplication();
+    this.selectedCategories.set(new Set(initialApplication?.categories.map((category) => category.id) ?? []));
     this.form.enable({ emitEvent: false });
-    if (!application) {
+    if (!initialApplication) {
       return;
     }
     this.form.patchValue(
       {
-        requestedTeamId: application.requestedTeam?.id ?? '',
-        noticeAccepted: true,
-        imageLicenseAgreementAccepted: application.imageLicenseAgreementAccepted,
-        paymentTier: application.paymentTier ?? '',
+        requestedTeamId: initialApplication.requestedTeam?.id ?? '',
+        noticeAccepted: Boolean(application),
+        imageLicenseAgreementAccepted: initialApplication.imageLicenseAgreementAccepted,
+        paymentTier: initialApplication.paymentTier ?? '',
       },
       { emitEvent: false },
     );
-    if (!this.isEditing()) {
+    if (application && !this.isEditing()) {
       this.form.disable({ emitEvent: false });
     }
   }
@@ -218,6 +231,34 @@ export class SportsSelfSubscriptionPage implements OnInit {
   selectedTeam(): CurrentUserTournamentOperations['tournament']['teams'][number] | undefined {
     const selectedTeamId = this.form.controls.requestedTeamId.value;
     return this.data()?.tournament.teams.find((team) => team.id === selectedTeamId);
+  }
+
+  applicationStatusLabel(status: CurrentUserSportsPlayerApplication['status']): string {
+    return (
+      {
+        PENDING: 'Aguardando análise',
+        CHANGES_REQUESTED: 'Ajustes solicitados',
+        APPROVED: 'Aprovada',
+        WAITING_PAYMENT: 'Aguardando pagamento',
+        ACTIVE: 'Participação ativa',
+        REJECTED: 'Não aprovada',
+        WITHDRAWN: 'Retirada',
+      }[status] ?? status
+    );
+  }
+
+  paymentStatusLabel(status: string): string {
+    return (
+      {
+        NOT_REQUIRED: 'Não necessário',
+        NOT_AVAILABLE: 'Indisponível',
+        WAITING_APPROVAL: 'Aguardando aprovação',
+        WAITING_PAYMENT: 'Aguardando pagamento',
+        UNDER_REVIEW: 'Em análise',
+        PAID: 'Confirmado',
+        REJECTED: 'Recusado',
+      }[status] ?? status
+    );
   }
 
   async submit(): Promise<void> {

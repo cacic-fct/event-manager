@@ -234,4 +234,85 @@ describe('buildPublicationConsistencyWarnings', () => {
       }),
     ]);
   });
+
+  it('uses sports-aware publication warnings and accepts tournament-only major events', () => {
+    expect(
+      buildPublicationConsistencyWarnings({
+        now: NOW,
+        events: [
+          createEvent({
+            id: 'sports-match-event',
+            publicationState: 'DRAFT',
+            publiclyVisible: true,
+            sportsMatch: { id: 'match-1', category: { tournamentId: 'tournament-1' } },
+          }),
+        ],
+        majorEvents: [
+          createMajorEvent({
+            id: 'sports-only-major',
+            publicationState: 'PUBLISHED',
+            events: [],
+            sportsTournament: { id: 'tournament-1', categories: [{ id: 'category-1' }] },
+          }),
+        ],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        type: 'DRAFT_SPORTS_MATCH_VISIBLE_TO_ADMINS',
+        action: 'OPEN_SPORTS',
+        targetId: 'tournament-1',
+      }),
+    ]);
+  });
+
+  it('reports a tournament without public sports content independently of regular events', () => {
+    expect(
+      buildPublicationConsistencyWarnings({
+        now: NOW,
+        events: [],
+        majorEvents: [
+          createMajorEvent({
+            id: 'mixed-major',
+            publicationState: 'PUBLISHED',
+            events: [{ id: 'regular-event', publiclyVisible: true, publicationState: 'PUBLISHED' }],
+            sportsTournament: { id: 'tournament-1', categories: [] },
+          }),
+        ],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        type: 'SPORTS_TOURNAMENT_WITHOUT_PUBLIC_CONTENT',
+        action: 'OPEN_SPORTS',
+        targetId: 'tournament-1',
+      }),
+    ]);
+  });
+
+  it('keeps parent-publication integrity warnings for sports match backing events', () => {
+    expect(
+      buildPublicationConsistencyWarnings({
+        now: NOW,
+        events: [
+          createEvent({
+            id: 'sports-match-event',
+            publicationState: 'PUBLISHED',
+            publiclyVisible: true,
+            sportsMatch: { id: 'match-1', category: { tournamentId: 'tournament-1' } },
+            majorEventId: 'major-event-1',
+            majorEvent: {
+              id: 'major-event-1',
+              name: 'Grande evento em rascunho',
+              publicationState: 'DRAFT',
+            },
+          }),
+        ],
+        majorEvents: [],
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        type: 'PUBLISHED_EVENT_WITH_UNPUBLISHED_MAJOR_EVENT',
+        eventId: 'sports-match-event',
+      }),
+    ]);
+  });
 });

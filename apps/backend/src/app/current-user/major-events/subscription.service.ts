@@ -12,7 +12,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { MAJOR_EVENT_BASE_SELECT, EventRecord } from '../selects';
 import {
   PUBLIC_EVENT_SELECT,
-  PUBLIC_EVENT_WHERE,
+  PUBLIC_REGULAR_EVENT_WHERE,
   PUBLIC_MAJOR_EVENT_WHERE,
   PublicEvent,
 } from '../../public-events/models';
@@ -296,7 +296,7 @@ export class CurrentUserMajorEventSubscriptionService {
           },
         },
         event: {
-          AND: [PUBLIC_EVENT_WHERE],
+          AND: [PUBLIC_REGULAR_EVENT_WHERE],
         },
       },
       select: {
@@ -337,7 +337,7 @@ export class CurrentUserMajorEventSubscriptionService {
         personId,
         deletedAt: null,
         event: {
-          AND: [PUBLIC_EVENT_WHERE, { majorEventId: { in: majorEventIds } }],
+          AND: [PUBLIC_REGULAR_EVENT_WHERE, { majorEventId: { in: majorEventIds } }],
         },
       },
       select: {
@@ -377,7 +377,7 @@ export class CurrentUserMajorEventSubscriptionService {
           deletedAt: null,
         },
         event: {
-          AND: [PUBLIC_EVENT_WHERE],
+          AND: [PUBLIC_REGULAR_EVENT_WHERE],
         },
       },
       select: {
@@ -404,7 +404,7 @@ export class CurrentUserMajorEventSubscriptionService {
   }> {
     const events = await this.prisma.event.findMany({
       where: {
-        AND: [PUBLIC_EVENT_WHERE, { majorEventId }],
+        AND: [PUBLIC_REGULAR_EVENT_WHERE, { majorEventId }],
         allowSubscription: true,
       },
       select: {

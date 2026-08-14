@@ -355,6 +355,7 @@ export class DashboardInsightsService {
         ? this.prisma.eventGroup.findMany({
             where: {
               deletedAt: null,
+              sportsCategory: { is: null },
               events: {
                 some: { deletedAt: null },
               },
@@ -376,6 +377,7 @@ export class DashboardInsightsService {
         ? this.prisma.event.findMany({
             where: {
               deletedAt: null,
+              sportsMatch: { is: null },
               eventGroup: {
                 deletedAt: null,
               },
@@ -400,6 +402,7 @@ export class DashboardInsightsService {
         ? this.prisma.event.findMany({
             where: {
               deletedAt: null,
+              sportsMatch: { is: null },
               endDate: { lt: now },
               shouldIssueCertificate: true,
               attendances: { none: { status: 'PRESENT' } },
@@ -452,6 +455,7 @@ export class DashboardInsightsService {
         ? this.prisma.event.findMany({
             where: {
               deletedAt: null,
+              sportsMatch: { is: null },
               endDate: { lt: now },
               shouldIssueCertificate: true,
               shouldCollectAttendance: false,
@@ -519,6 +523,25 @@ export class DashboardInsightsService {
                   publicationState: 'SCHEDULED',
                   scheduledPublishAt: { lte: now },
                 },
+                ...(canReadSports
+                  ? [
+                      {
+                        publicationState: 'PUBLISHED' as const,
+                        sportsTournament: {
+                          is: {
+                            deletedAt: null,
+                            status: { not: 'DRAFT' as const },
+                            categories: {
+                              none: {
+                                deletedAt: null,
+                                status: { not: 'DRAFT' as const },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    ]
+                  : []),
               ],
             },
             select: {
@@ -532,6 +555,20 @@ export class DashboardInsightsService {
                   id: true,
                   publiclyVisible: true,
                   publicationState: true,
+                },
+              },
+              sportsTournament: {
+                where: {
+                  deletedAt: null,
+                  status: { not: 'DRAFT' },
+                },
+                select: {
+                  id: true,
+                  categories: {
+                    where: { deletedAt: null, status: { not: 'DRAFT' } },
+                    select: { id: true },
+                    take: 1,
+                  },
                 },
               },
             },
@@ -620,7 +657,7 @@ export class DashboardInsightsService {
         ? [
             ...buildInconsistencies({
               now,
-              events: consistencyEvents,
+              events: canReadSports ? consistencyEvents : consistencyEvents.filter((event) => !event.sportsMatch),
               majorEventsWithSubscriptionDates,
               singleEventGroups,
               mismatchingCertificateGroupEvents,
@@ -629,8 +666,10 @@ export class DashboardInsightsService {
             }),
             ...buildPublicationConsistencyWarnings({
               now,
-              events: consistencyEvents,
-              majorEvents: publicationMajorEvents,
+              events: canReadSports ? consistencyEvents : consistencyEvents.filter((event) => !event.sportsMatch),
+              majorEvents: canReadSports
+                ? publicationMajorEvents
+                : publicationMajorEvents.map((majorEvent) => ({ ...majorEvent, sportsTournament: null })),
             }),
           ].slice(0, DASHBOARD_INCONSISTENCY_LIMIT)
         : [],

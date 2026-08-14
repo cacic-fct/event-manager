@@ -64,6 +64,8 @@ export class SportsAdminService {
     this.teams.createTeamMember(...args);
   readonly updateTeamMember = (...args: Parameters<SportsTeamAdminService['updateTeamMember']>) =>
     this.teams.updateTeamMember(...args);
+  readonly setParticipantTeam = (...args: Parameters<SportsTeamAdminService['setParticipantTeam']>) =>
+    this.teams.setParticipantTeam(...args);
   readonly assignRepresentative = (...args: Parameters<SportsTeamAdminService['assignRepresentative']>) =>
     this.teams.assignRepresentative(...args);
   readonly revokeRepresentative = (...args: Parameters<SportsTeamAdminService['revokeRepresentative']>) =>

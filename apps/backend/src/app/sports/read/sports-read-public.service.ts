@@ -109,6 +109,22 @@ export class SportsReadPublicService {
     return this.mapper.mapPublicMatch(match, projected, rosters.get(match.id) ?? [], officials.get(match.id) ?? []);
   }
 
+  async operationalMatch(matchId: string): Promise<PublicSportsMatch> {
+    const match = await this.prisma.sportsMatch.findFirst({
+      where: { id: matchId, deletedAt: null },
+      select: PUBLIC_MATCH_SELECT,
+    });
+    if (!match) {
+      throw new NotFoundException(`Sports match ${matchId} was not found.`);
+    }
+    const projected = this.mapper.projectPublicMatch(match);
+    const [rosters, officials] = await Promise.all([
+      this.loader.loadPublicRosters(this.mapper.canRevealRoster(projected.state) ? [match.id] : []),
+      this.loader.loadPublicOfficials(match.categoryId, [match.id]),
+    ]);
+    return this.mapper.mapPublicMatch(match, projected, rosters.get(match.id) ?? [], officials.get(match.id) ?? []);
+  }
+
   private async loadPublicTournament(tournament: {
     id: string;
     majorEventId: string;

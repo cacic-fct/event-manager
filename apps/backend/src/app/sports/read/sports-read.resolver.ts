@@ -175,6 +175,18 @@ export class SportsCurrentUserReadResolver {
     return this.sportsRead.currentUserMatchOperations(matchId);
   }
 
+  @Query(() => PublicSportsMatch, {
+    name: 'currentUserSportsOperationalMatchDetail',
+    description: 'Authorized operational match detail, including matches that are not public yet.',
+  })
+  async currentUserSportsOperationalMatchDetail(
+    @Context() context: GraphqlContext,
+    @Args('matchId', { type: () => String }) matchId: string,
+  ): Promise<PublicSportsMatch> {
+    await this.access.requireMatchOperator(context, matchId);
+    return this.sportsRead.operationalMatch(matchId);
+  }
+
   @Query(() => CurrentUserSportsLineupRead, {
     name: 'currentUserSportsLineup',
     description: 'Participant-scoped eligible members and current per-match lineup snapshot.',

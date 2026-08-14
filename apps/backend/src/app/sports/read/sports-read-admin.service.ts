@@ -1,6 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, SportsTeamMemberStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import {
   AuthorizationPolicyService,
@@ -72,7 +72,13 @@ export class SportsReadAdminService {
     const teamTargets = canReadTeams
       ? await this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsTeam.Read)
       : null;
-    const [teams, scoreEntries, venues, officials] = await Promise.all([
+    const registrationTargets = canReadRegistrations
+      ? await this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsRegistration.Read)
+      : null;
+    const registrationCategoryVisibility = this.categoryVisibility(registrationTargets);
+    const canReadAllTournamentParticipants =
+      registrationTargets === null || registrationTargets.majorEventIds.has(tournament.majorEventId);
+    const [teams, participants, scoreEntries, venues, officials] = await Promise.all([
       canReadTeams
         ? this.prisma.sportsTeam.findMany({
             where: {
@@ -105,6 +111,74 @@ export class SportsReadAdminService {
               },
             },
             orderBy: [{ name: 'asc' }, { id: 'asc' }],
+          })
+        : Promise.resolve([]),
+      canReadRegistrations
+        ? this.prisma.sportsTournamentParticipant.findMany({
+            where: {
+              tournamentId,
+              deletedAt: null,
+              person: { deletedAt: null },
+              ...(canReadAllTournamentParticipants
+                ? {}
+                : {
+                    teamMemberships: {
+                      some: {
+                        deletedAt: null,
+                        status: SportsTeamMemberStatus.APPROVED,
+                        categoryAssignments: {
+                          some: {
+                            deletedAt: null,
+                            registration: {
+                              deletedAt: null,
+                              category: { deletedAt: null, ...registrationCategoryVisibility },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  }),
+            },
+            select: {
+              id: true,
+              source: true,
+              status: true,
+              paymentStatus: true,
+              person: { select: { id: true, name: true } },
+              teamMemberships: {
+                where: canReadTeams
+                  ? {
+                      deletedAt: null,
+                      status: SportsTeamMemberStatus.APPROVED,
+                      team: { deletedAt: null, ...this.teamVisibility(teamTargets) },
+                    }
+                  : { id: '__no_sports_team_access__' },
+                select: {
+                  id: true,
+                  status: true,
+                  team: { select: { id: true, name: true } },
+                  categoryAssignments: {
+                    where: {
+                      deletedAt: null,
+                      registration: {
+                        deletedAt: null,
+                        categoryId: { in: readableCategoryIds },
+                        category: { deletedAt: null, ...registrationCategoryVisibility },
+                      },
+                    },
+                    select: {
+                      registration: {
+                        select: {
+                          category: { select: { id: true, name: true, division: true } },
+                        },
+                      },
+                    },
+                  },
+                },
+                orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+              },
+            },
+            orderBy: [{ person: { name: 'asc' } }, { id: 'asc' }],
           })
         : Promise.resolve([]),
       canReadScores
@@ -151,6 +225,20 @@ export class SportsReadAdminService {
           categoryName: registration.category.name,
           categoryEmoji: registration.category.eventGroup.emoji || '🏅',
           status: registration.status,
+        })),
+      })),
+      participants: participants.map((participant) => ({
+        id: participant.id,
+        person: participant.person,
+        source: participant.source,
+        status: participant.status,
+        paymentStatus: participant.paymentStatus,
+        teams: participant.teamMemberships.map((membership) => ({
+          memberId: membership.id,
+          teamId: membership.team.id,
+          teamName: membership.team.name,
+          status: membership.status,
+          categories: membership.categoryAssignments.map((assignment) => assignment.registration.category),
         })),
       })),
     };

@@ -1,6 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType, AuditLogOperation, SportsTeamStatus } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, SportsRegistrationStatus, SportsTeamStatus } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 
@@ -50,6 +50,24 @@ export class SportsTeamAdminService extends SportsTeamAdminLifecycleService {
           updatedById: actorId,
         },
       });
+      const categories = await tx.sportsCategory.findMany({
+        where: { tournamentId: input.tournamentId, deletedAt: null },
+        select: { id: true },
+      });
+      if (categories.length > 0) {
+        const now = new Date();
+        await tx.sportsRegistration.createMany({
+          data: categories.map((category) => ({
+            teamId: team.id,
+            categoryId: category.id,
+            status: SportsRegistrationStatus.APPROVED,
+            approvedAt: now,
+            approvedById: actorId,
+            createdById: actorId,
+            updatedById: actorId,
+          })),
+        });
+      }
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.SPORTS_TEAM,

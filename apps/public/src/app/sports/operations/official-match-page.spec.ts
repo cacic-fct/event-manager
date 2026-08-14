@@ -42,6 +42,7 @@ describe('OfficialSportsMatchPage', () => {
           useValue: {
             snapshot: {
               paramMap: convertToParamMap({ matchId: 'match-story' }),
+              queryParamMap: convertToParamMap({}),
             },
           },
         },

@@ -4,6 +4,7 @@ import {
   SportsRegistrationUpdateInput,
   SportsRepresentativeAssignInput,
   SportsRepresentativeRevokeInput,
+  SportsParticipantTeamAssignmentInput,
   SportsTeamCreateInput,
   SportsTeamMemberCreateInput,
   SportsTeamMemberUpdateInput,
@@ -18,6 +19,27 @@ import { SportsMutationsResolverSupport } from './sports-mutations-resolver.supp
 
 @Resolver()
 export class SportsTeamMutationsResolver extends SportsMutationsResolverSupport {
+  @Mutation(() => String, { name: 'setSportsParticipantTeam' })
+  @RequirePermissions(Permission.SportsTeam.Update)
+  async setParticipantTeam(
+    @Args('input', { type: () => SportsParticipantTeamAssignmentInput })
+    input: SportsParticipantTeamAssignmentInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    const participant = await this.prisma.sportsTournamentParticipant.findFirst({
+      where: { id: input.participantId, deletedAt: null },
+      select: { tournamentId: true },
+    });
+    if (!participant) {
+      throw new NotFoundException(`Sports participant ${input.participantId} was not found.`);
+    }
+    const actor = this.authenticated(context);
+    await this.policy.assertPermissions(actor, [Permission.SportsTeam.Update], {
+      sportsTournamentId: participant.tournamentId,
+    });
+    return (await this.admin.setParticipantTeam(input.participantId, input.teamId?.trim() || null, actor)).id;
+  }
+
   @Mutation(() => String, { name: 'createSportsTeam' })
   @RequirePermissions(Permission.SportsTeam.Create)
   async createTeam(

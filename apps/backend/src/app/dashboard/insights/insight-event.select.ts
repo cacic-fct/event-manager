@@ -36,6 +36,18 @@ export const EVENT_INSIGHT_SELECT = {
       },
     },
   },
+  sportsMatch: {
+    select: {
+      id: true,
+      category: {
+        select: {
+          tournamentId: true,
+          status: true,
+          tournament: { select: { status: true } },
+        },
+      },
+    },
+  },
   shouldCollectAttendance: true,
   shouldIssueCertificate: true,
   publiclyVisible: true,

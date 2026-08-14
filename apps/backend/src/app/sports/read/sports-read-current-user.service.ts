@@ -220,6 +220,7 @@ export class SportsReadCurrentUserService {
     const availableCategoryIds = new Set(categories.map((category) => category.id));
     return {
       ...tournament,
+      selfSubscriptionAllowNoCategory: tournament.selfSubscriptionAllowNoCategory || categories.length === 0,
       categories: tournament.categories.filter((category) => availableCategoryIds.has(category.id)),
     };
   }

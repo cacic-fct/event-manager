@@ -109,10 +109,41 @@ describe('PublicationService', () => {
     expect(JSON.stringify(warningEventsCall[0].where)).toContain('event-1');
     expect(JSON.stringify(warningEventsCall[0].where)).toContain('SCHEDULED');
     expect(JSON.stringify(warningEventsCall[0].where)).toContain('publiclyVisible');
+    expect(warningEventsCall[0].select).toEqual(
+      expect.objectContaining({
+        sportsMatch: {
+          select: {
+            id: true,
+            category: {
+              select: {
+                tournamentId: true,
+                status: true,
+                tournament: { select: { status: true } },
+              },
+            },
+          },
+        },
+      }),
+    );
     expect(JSON.stringify(warningMajorEventsCall[0].where)).toContain('major-1');
     expect(JSON.stringify(warningMajorEventsCall[0].where)).toContain('SCHEDULED');
     expect(JSON.stringify(warningMajorEventsCall[0].where)).toContain('events');
     expect(JSON.stringify(warningMajorEventsCall[0].select.events.where)).toContain('event-1');
+    expect(warningMajorEventsCall[0].select).toEqual(
+      expect.objectContaining({
+        sportsTournament: {
+          where: { deletedAt: null, status: { not: 'DRAFT' } },
+          select: {
+            id: true,
+            categories: {
+              where: { deletedAt: null, status: { not: 'DRAFT' } },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      }),
+    );
   });
 
   it('builds flat event-group items from the same tree children as the hierarchy', async () => {

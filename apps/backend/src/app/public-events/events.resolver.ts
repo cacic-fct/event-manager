@@ -20,6 +20,7 @@ import {
   PublicMajorEventSubscriptionPage,
   PublicEventSubscriptionSummary,
   mapPublicMajorEvent,
+  publicRegularSubscriptionEventWhere,
 } from './models';
 
 const PUBLIC_EVENTS_MAX_TAKE = 100;
@@ -574,13 +575,11 @@ export class PublicEventsResolver {
   private publicSlotSummaryEventWhere(now: Date): Prisma.EventWhereInput {
     return {
       AND: [
-        PUBLIC_EVENT_WHERE,
+        publicRegularSubscriptionEventWhere(now),
         {
-          allowSubscription: true,
           majorEventId: {
             not: null,
           },
-          OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }],
         },
       ],
     };

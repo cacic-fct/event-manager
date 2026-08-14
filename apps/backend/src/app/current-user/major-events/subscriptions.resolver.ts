@@ -26,8 +26,23 @@ import {
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
-import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-events/models';
+import {
+  PUBLIC_MAJOR_EVENT_WHERE,
+  publicRegularSubscriptionEventWhere,
+} from '../../public-events/models';
 import { EventFormsService } from '../../event-forms/event-forms.service';
+
+export function isConfirmedSportsOnlySubscription(subscription: {
+  subscriptionStatus: SubscriptionStatus;
+  selectedEvents: readonly { id: string }[];
+  sportsTournamentParticipants: readonly { id: string }[];
+}): boolean {
+  return (
+    subscription.subscriptionStatus === SubscriptionStatus.CONFIRMED &&
+    subscription.selectedEvents.length === 0 &&
+    subscription.sportsTournamentParticipants.length > 0
+  );
+}
 
 @Resolver()
 export class CurrentUserMajorEventSubscriptionsResolver {
@@ -172,6 +187,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     await this.frozenResources.assertMajorEventMutable(input.majorEventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
+    const now = new Date();
     let selectedEventIds = this.majorEventSubscriptions.normalizeSelectedEventIds(input.selectedEventIds);
     if (selectedEventIds.length === 0) {
       throw new BadRequestException('At least one event must be selected for the major-event subscription.');
@@ -212,7 +228,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
       input.imageLicenseAgreementAccepted === true &&
       existingSubscriptionBeforeWindow != null &&
       !existingSubscriptionBeforeWindow.imageLicenseAgreementAccepted &&
-      majorEvent.endDate > new Date();
+      majorEvent.endDate > now;
     if (!isImageLicenseAgreementUpdate) {
       this.majorEventSubscriptions.ensureMajorEventSubscriptionWindowOpen(majorEvent);
     }
@@ -220,7 +236,7 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     const isRankedSubscription = majorEvent.rankedSubscriptionEnabled;
     const allSubscriptionEvents = await this.prisma.event.findMany({
       where: {
-        AND: [PUBLIC_EVENT_WHERE, { majorEventId: input.majorEventId, allowSubscription: true }],
+        AND: [publicRegularSubscriptionEventWhere(now), { majorEventId: input.majorEventId }],
       },
       select: EVENT_SELECT,
       orderBy: {
@@ -260,10 +276,9 @@ export class CurrentUserMajorEventSubscriptionsResolver {
     const allGroupedEvents = await this.prisma.event.findMany({
       where: {
         AND: [
-          PUBLIC_EVENT_WHERE,
+          publicRegularSubscriptionEventWhere(now),
           {
             majorEventId: input.majorEventId,
-            allowSubscription: true,
             eventGroupId: {
               not: null,
             },
@@ -288,7 +303,6 @@ export class CurrentUserMajorEventSubscriptionsResolver {
 
     const selfServicePayment = this.majorEventSubscriptions.resolveSelfServicePayment(majorEvent, input.paymentTier);
 
-    const now = new Date();
     const upsertResult = await this.runSerializableSubscriptionTransaction(async (tx) => {
       const submittedFormIds: string[] = [];
       const existingSubscription = await tx.majorEventSubscription.findFirst({
@@ -301,10 +315,36 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           id: true,
           subscriptionStatus: true,
           imageLicenseAgreementAccepted: true,
+          amountPaid: true,
+          paymentTier: true,
+          selectedEvents: {
+            where: { deletedAt: null },
+            select: { id: true },
+            take: 1,
+          },
+          sportsTournamentParticipants: {
+            where: { deletedAt: null },
+            select: { id: true },
+            take: 1,
+          },
         },
       });
 
-      if (existingSubscription?.subscriptionStatus === SubscriptionStatus.CONFIRMED) {
+      if (
+        existingSubscription?.sportsTournamentParticipants.length &&
+        existingSubscription.paymentTier &&
+        (existingSubscription.paymentTier !== selfServicePayment.paymentTier ||
+          existingSubscription.amountPaid !== selfServicePayment.amountPaid)
+      ) {
+        throw new BadRequestException(
+          'A faixa de pagamento já foi definida na inscrição do torneio. Use a mesma faixa para as atividades.',
+        );
+      }
+
+      if (
+        existingSubscription?.subscriptionStatus === SubscriptionStatus.CONFIRMED &&
+        !isConfirmedSportsOnlySubscription(existingSubscription)
+      ) {
         if (majorEvent.requiresImageLicenseAgreement && input.imageLicenseAgreementAccepted === true) {
           const acceptedSubscription = await tx.majorEventSubscription.update({
             where: { id: existingSubscription.id },

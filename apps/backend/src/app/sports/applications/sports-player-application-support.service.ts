@@ -68,6 +68,29 @@ export abstract class SportsPlayerApplicationSupportService {
         selfSubscriptionAllowNoCategory: true,
         allowPlayerMultipleTeams: true,
         finishedAt: true,
+        _count: {
+          select: {
+            categories: {
+              where: {
+                deletedAt: null,
+                status: {
+                  in: [SportsCategoryStatus.REGISTRATION_OPEN, SportsCategoryStatus.ACTIVE],
+                },
+                ...(requestedTeamId
+                  ? {
+                      registrations: {
+                        some: {
+                          teamId: requestedTeamId,
+                          deletedAt: null,
+                          status: { in: [...ELIGIBLE_TEAM_REGISTRATION_STATUSES] },
+                        },
+                      },
+                    }
+                  : {}),
+              },
+            },
+          },
+        },
         majorEvent: {
           select: {
             deletedAt: true,
@@ -134,8 +157,9 @@ export abstract class SportsPlayerApplicationSupportService {
     ) {
       throw new BadRequestException('Selecione uma equipe disponível para este torneio.');
     }
+    const availableCategoryCount = tournament._count?.categories ?? tournament.categories.length;
     if (
-      (categoryIds.length === 0 && !tournament.selfSubscriptionAllowNoCategory) ||
+      (categoryIds.length === 0 && availableCategoryCount > 0 && !tournament.selfSubscriptionAllowNoCategory) ||
       tournament.categories.length !== categoryIds.length
     ) {
       throw new BadRequestException('Selecione ao menos uma modalidade disponível para este torneio.');
@@ -207,6 +231,9 @@ export abstract class SportsPlayerApplicationSupportService {
     teamId: string,
     categoryIds: string[],
   ): Promise<Array<{ id: string; categoryId: string }>> {
+    if (categoryIds.length === 0) {
+      return [];
+    }
     const registrations = await tx.sportsRegistration.findMany({
       where: {
         teamId,

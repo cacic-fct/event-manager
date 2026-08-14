@@ -6,6 +6,9 @@ import {
   SportsMatchAction,
   SportsMatchRoster,
   SportsOfficialAssignment,
+  SportsParticipantSource,
+  SportsParticipantStatus,
+  SportsPaymentStatus,
   SportsRegistration,
   SportsRegistrationStatus,
   SportsRosterRole,
@@ -70,6 +73,9 @@ export class AdminSportsTournamentRead {
 
   @Field(() => [AdminSportsTournamentTeamSummary])
   teamSummaries!: AdminSportsTournamentTeamSummary[];
+
+  @Field(() => [AdminSportsTournamentParticipantSummary])
+  participants!: AdminSportsTournamentParticipantSummary[];
 }
 
 @ObjectType()
@@ -151,6 +157,57 @@ export class SportsLimitedPerson {
 
   @Field(() => String)
   name!: string;
+}
+
+@ObjectType()
+export class AdminSportsTournamentParticipantCategorySummary {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String, { nullable: true })
+  division?: string | null;
+}
+
+@ObjectType()
+export class AdminSportsTournamentParticipantTeamSummary {
+  @Field(() => String)
+  memberId!: string;
+
+  @Field(() => String)
+  teamId!: string;
+
+  @Field(() => String)
+  teamName!: string;
+
+  @Field(() => SportsTeamMemberStatus)
+  status!: SportsTeamMemberStatus;
+
+  @Field(() => [AdminSportsTournamentParticipantCategorySummary])
+  categories!: AdminSportsTournamentParticipantCategorySummary[];
+}
+
+@ObjectType()
+export class AdminSportsTournamentParticipantSummary {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => SportsLimitedPerson)
+  person!: SportsLimitedPerson;
+
+  @Field(() => SportsParticipantSource)
+  source!: SportsParticipantSource;
+
+  @Field(() => SportsParticipantStatus)
+  status!: SportsParticipantStatus;
+
+  @Field(() => SportsPaymentStatus)
+  paymentStatus!: SportsPaymentStatus;
+
+  @Field(() => [AdminSportsTournamentParticipantTeamSummary])
+  teams!: AdminSportsTournamentParticipantTeamSummary[];
 }
 
 @ObjectType()

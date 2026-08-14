@@ -207,8 +207,11 @@ export interface CurrentUserSportsPlayerApplication {
   requestedTeam: SportsTeamSummary | null;
   categories: Array<{ id: string; name: string; division?: string | null }>;
   status: SportsApplicationStatus;
+  participantStatus?: string | null;
+  paymentStatus?: string | null;
   paymentTier?: string | null;
   imageLicenseAgreementAccepted: boolean;
+  reviewedAt?: string | null;
   reviewMessage?: string | null;
 }
 

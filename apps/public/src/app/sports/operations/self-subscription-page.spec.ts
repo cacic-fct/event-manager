@@ -122,6 +122,45 @@ describe('SportsSelfSubscriptionPage', () => {
     expect(page.submitButtonLabel()).toBe('Salvar edição');
   });
 
+  it('allows a new independent request after a rejected application', async () => {
+    const data = createCurrentUserTournamentOperations({
+      paymentRequired: false,
+      requiresImageLicenseAgreement: false,
+    });
+    currentUserApplications.mockReturnValue(
+      of([
+        {
+          id: 'application-rejected',
+          tournamentId: 'tournament-fixture',
+          requestedTeam: data.tournament.teams[0] ?? null,
+          categories: data.tournament.categories.slice(0, 1),
+          status: 'REJECTED',
+          paymentTier: null,
+          imageLicenseAgreementAccepted: true,
+          reviewMessage: 'Revise a modalidade escolhida.',
+        },
+      ]),
+    );
+    tournament.mockReturnValue(of(data));
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+
+    expect(page.application()).toBeNull();
+    expect(page.previousApplication()?.id).toBe('application-rejected');
+    expect(page.form.enabled).toBe(true);
+    expect(page.form.controls.requestedTeamId.value).toBe(data.tournament.teams[0]?.id);
+    expect(page.selectedCategories()).toEqual(new Set([data.tournament.categories[0]?.id]));
+
+    const category = data.tournament.categories[0];
+    if (!category) throw new Error('Expected a category fixture.');
+    page.form.controls.requestedTeamId.setValue(data.tournament.teams[0]?.id ?? '');
+    page.form.controls.noticeAccepted.setValue(true);
+    page.toggleCategory(category.id, true);
+    await page.submit();
+
+    expect(submitApplication).toHaveBeenCalledWith(expect.objectContaining({ applicationId: null }));
+  });
+
   it('reloads categories for the selected team before allowing submission', () => {
     const allCategories = createCurrentUserTournamentOperations({
       paymentRequired: false,

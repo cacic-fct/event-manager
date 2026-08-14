@@ -99,7 +99,7 @@ describe('specialized sports mutation resolvers', () => {
         context as never,
       ),
     ).resolves.toBe('application-1');
-    expect(applications.review).toHaveBeenCalledWith('application-1', 'APPROVE', actor, undefined);
+    expect(applications.review).toHaveBeenCalledWith('application-1', 'APPROVE', actor, undefined, undefined);
 
     await expect(
       resolver.reviewMatchAction(
@@ -131,7 +131,7 @@ describe('specialized sports mutation resolvers', () => {
       { applicationId: 'application-1', decision, reviewMessage: 'Mensagem' } as never,
       context as never,
     );
-    expect(applications.review).toHaveBeenCalledWith('application-1', mapped, actor, 'Mensagem');
+    expect(applications.review).toHaveBeenCalledWith('application-1', mapped, actor, 'Mensagem', undefined);
   });
 
   it.each([

@@ -756,8 +756,31 @@ describe('EventSubscriptionsResolver', () => {
     });
     const tx = {
       majorEventSubscription: {
-        findUnique: jest.fn().mockResolvedValue(previousRecord),
+        findUnique: jest
+          .fn()
+          .mockResolvedValueOnce(previousRecord)
+          .mockResolvedValueOnce({
+            subscriptionStatus: SubscriptionStatus.CONFIRMED,
+            majorEvent: { isPaymentRequired: false },
+            sportsTournamentParticipants: [
+              {
+                id: 'participant-1',
+                tournamentId: 'tournament-1',
+                personId: 'person-1',
+                approvedAt: new Date('2026-06-01T12:00:00.000Z'),
+              },
+            ],
+          }),
         update: jest.fn().mockResolvedValue(updatedRecord),
+      },
+      sportsTournamentParticipant: {
+        update: jest.fn().mockResolvedValue({ id: 'participant-1' }),
+      },
+      sportsRegistrationMember: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+      sportsPlayerApplication: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       majorEventSubscriptionEventSelection: {
         findMany: jest
@@ -894,6 +917,10 @@ describe('EventSubscriptionsResolver', () => {
       ['event-2', 'event-3'],
       SubscriptionStatus.CONFIRMED,
     );
+    expect(tx.sportsTournamentParticipant.update).toHaveBeenCalledWith({
+      where: { id: 'participant-1' },
+      data: { status: 'ACTIVE', paymentStatus: 'NOT_REQUIRED' },
+    });
     expect(counters.refresh).toHaveBeenNthCalledWith(1, tx, expect.arrayContaining(['event-1', 'event-2', 'event-3']));
     expect(counters.refresh).toHaveBeenNthCalledWith(2, tx, ['event-2', 'event-3']);
     expect(auditLog.record).toHaveBeenCalledWith(

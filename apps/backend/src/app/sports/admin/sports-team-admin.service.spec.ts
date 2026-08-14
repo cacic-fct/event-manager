@@ -49,6 +49,16 @@ describe('SportsTeamAdminService', () => {
           fieldRevisions: { name: 1, institution: 1, logo: 1 },
         }),
       });
+      expect(tx.sportsRegistration.createMany).toHaveBeenCalledWith({
+        data: [
+          expect.objectContaining({
+            teamId: team.id,
+            categoryId: 'category-1',
+            status: SportsRegistrationStatus.APPROVED,
+            approvedById: 'actor-1',
+          }),
+        ],
+      });
       expect(auditLog.record).toHaveBeenCalledWith(
         expect.objectContaining({ operation: AuditLogOperation.CREATE }),
         tx,
@@ -151,6 +161,37 @@ describe('SportsTeamAdminService', () => {
   });
 
   describe('members and representatives', () => {
+    it('replaces a participant team or leaves the participant without one', async () => {
+      prisma.sportsTournamentParticipant.findFirst.mockResolvedValue({
+        id: 'participant-1',
+        tournamentId: 'tournament-1',
+        person: { name: 'Ana Silva' },
+        tournament: { majorEventId: 'major-event-1' },
+      });
+      tx.sportsTeam.findFirst.mockResolvedValue({ id: 'team-2', name: 'Equipe Verde' });
+      tx.sportsTeamMember.findMany.mockResolvedValue([
+        { id: 'member-1', teamId: 'team-1', status: SportsTeamMemberStatus.APPROVED, revision: 1 },
+      ]);
+      tx.sportsTeamMember.create.mockResolvedValue({ id: 'member-2', teamId: 'team-2' });
+
+      await expect(service.setParticipantTeam('participant-1', 'team-2', actor as never)).resolves.toEqual({
+        id: 'participant-1',
+      });
+
+      expect(tx.sportsTeamMember.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: { in: ['member-1'] }, deletedAt: null },
+          data: expect.objectContaining({ status: SportsTeamMemberStatus.WITHDRAWN }),
+        }),
+      );
+      expect(tx.sportsTeamMember.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-2', participantId: 'participant-1' }) }),
+      );
+      expect(tx.sportsRegistrationMember.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ eligibility: SportsEligibilityStatus.INELIGIBLE }) }),
+      );
+    });
+
     it('creates a participant-backed approved team member', async () => {
       prisma.sportsTeam.findFirst.mockResolvedValue(sportsAdminTeamRecord());
       tx.sportsTeamMember.create.mockResolvedValue(sportsAdminTeamMemberRecord());
@@ -329,6 +370,7 @@ function prismaClient(tx: ReturnType<typeof transaction>) {
   return {
     $transaction: jest.fn(async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx)),
     sportsTournament: { findFirst: jest.fn().mockResolvedValue({ majorEventId: 'major-event-1' }) },
+    sportsTournamentParticipant: { findFirst: jest.fn() },
     sportsTeam: { findFirst: jest.fn() },
     sportsTeamMember: { findFirst: jest.fn() },
     sportsTeamRepresentative: { findUnique: jest.fn() },
@@ -345,8 +387,10 @@ function transaction() {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       findUniqueOrThrow: jest.fn(),
     },
+    sportsCategory: { findMany: jest.fn().mockResolvedValue([{ id: 'category-1' }]) },
     sportsTeamMember: {
       findFirst: jest.fn().mockResolvedValue(null),
+      findMany: jest.fn().mockResolvedValue([]),
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
@@ -359,7 +403,7 @@ function transaction() {
       findUniqueOrThrow: jest.fn(),
     },
     sportsMatch: { findFirst: jest.fn().mockResolvedValue(null) },
-    sportsRegistration: { updateMany: jest.fn() },
+    sportsRegistration: { createMany: jest.fn(), updateMany: jest.fn() },
     sportsTournamentScoreEntry: { updateMany: jest.fn() },
   };
 }

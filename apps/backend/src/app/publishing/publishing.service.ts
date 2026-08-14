@@ -106,6 +106,18 @@ const PUBLICATION_WARNING_EVENT_SELECT = {
       publicationState: true,
     },
   },
+  sportsMatch: {
+    select: {
+      id: true,
+      category: {
+        select: {
+          tournamentId: true,
+          status: true,
+          tournament: { select: { status: true } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.EventSelect;
 
 const PUBLICATION_WARNING_MAJOR_EVENT_SELECT = {
@@ -121,6 +133,23 @@ const PUBLICATION_WARNING_MAJOR_EVENT_SELECT = {
       id: true,
       publiclyVisible: true,
       publicationState: true,
+    },
+  },
+  sportsTournament: {
+    where: {
+      deletedAt: null,
+      status: { not: 'DRAFT' },
+    },
+    select: {
+      id: true,
+      categories: {
+        where: {
+          deletedAt: null,
+          status: { not: 'DRAFT' },
+        },
+        select: { id: true },
+        take: 1,
+      },
     },
   },
 } satisfies Prisma.MajorEventSelect;

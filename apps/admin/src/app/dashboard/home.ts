@@ -207,7 +207,8 @@ export class Home implements OnInit, OnDestroy {
       (action === 'OPEN_EVENT' ||
         action === 'OPEN_EVENT_GROUP' ||
         action === 'OPEN_MAJOR_EVENT' ||
-        action === 'OPEN_CERTIFICATES') &&
+        action === 'OPEN_CERTIFICATES' ||
+        action === 'OPEN_SPORTS') &&
       targetId
     ) {
       return [path, targetId];

@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
-import { SubscriptionStatus } from '@prisma/client';
+import { SportsApplicationStatus, SportsTournamentStatus, SubscriptionStatus } from '@prisma/client';
+import { PUBLIC_REGULAR_EVENT_WHERE } from '../../public-events/models';
 import { DefaultRedirectRoute } from '../models';
 import { CurrentUserDefaultRedirectService } from './current-user-default-redirect.service';
 
@@ -9,6 +10,7 @@ describe('CurrentUserDefaultRedirectService', () => {
     event: { findFirst: jest.Mock };
     majorEvent: { findFirst: jest.Mock };
     sportsMatch: { findFirst: jest.Mock };
+    sportsTournament: { findFirst: jest.Mock };
   };
   let redis: { get: jest.Mock; set: jest.Mock };
   let service: CurrentUserDefaultRedirectService;
@@ -19,6 +21,7 @@ describe('CurrentUserDefaultRedirectService', () => {
       event: { findFirst: jest.fn().mockResolvedValue(null) },
       majorEvent: { findFirst: jest.fn().mockResolvedValue(null) },
       sportsMatch: { findFirst: jest.fn().mockResolvedValue(null) },
+      sportsTournament: { findFirst: jest.fn().mockResolvedValue(null) },
     };
     redis = {
       get: jest.fn().mockResolvedValue(null),
@@ -89,11 +92,27 @@ describe('CurrentUserDefaultRedirectService', () => {
             { OR: [{ subscriptionStartDate: null }, { subscriptionStartDate: { lte: now } }] },
             { OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }] },
             {
+              events: {
+                some: expect.objectContaining({
+                  AND: expect.arrayContaining([
+                    PUBLIC_REGULAR_EVENT_WHERE,
+                    expect.objectContaining({ allowSubscription: true }),
+                  ]),
+                }),
+              },
+            },
+            {
               subscriptions: {
                 none: {
                   personId: 'person-1',
                   deletedAt: null,
                   subscriptionStatus: { not: SubscriptionStatus.CANCELED },
+                  selectedEvents: {
+                    some: {
+                      deletedAt: null,
+                      event: PUBLIC_REGULAR_EVENT_WHERE,
+                    },
+                  },
                 },
               },
             },
@@ -102,6 +121,43 @@ describe('CurrentUserDefaultRedirectService', () => {
         select: { id: true },
       }),
     );
+  });
+
+  it('routes to major events when only the independent tournament subscription remains open', async () => {
+    prisma.sportsTournament.findFirst.mockResolvedValueOnce({ id: 'tournament-1' });
+
+    await expect(service.resolve('person-1')).resolves.toBe(DefaultRedirectRoute.MAJOR_EVENT);
+
+    expect(prisma.sportsTournament.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        deletedAt: null,
+        finishedAt: null,
+        status: SportsTournamentStatus.REGISTRATION_OPEN,
+        selfSubscriptionEnabled: true,
+        participants: {
+          none: {
+            personId: 'person-1',
+            deletedAt: null,
+          },
+        },
+        playerApplications: {
+          none: {
+            applicantPersonId: 'person-1',
+            deletedAt: null,
+            status: {
+              in: [
+                SportsApplicationStatus.PENDING,
+                SportsApplicationStatus.APPROVED,
+                SportsApplicationStatus.CHANGES_REQUESTED,
+                SportsApplicationStatus.WAITING_PAYMENT,
+                SportsApplicationStatus.ACTIVE,
+              ],
+            },
+          },
+        },
+      }),
+      select: { id: true },
+    });
   });
 
   it('uses calendar only when a current or future public event exists', async () => {

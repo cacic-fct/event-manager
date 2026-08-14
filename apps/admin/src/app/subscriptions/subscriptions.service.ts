@@ -40,6 +40,14 @@ import {
 import { buildSubscriberCsv, SubscriberCsvExportDialogOptions } from './subscriber-csv-export';
 import { MajorEventsService } from '../major-events/major-events.service';
 import { AttendancesService } from '../attendances/attendances.service';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { PermissionsService } from '../permissions/permissions.service';
+import type { SportsApplication } from '../sports/sports.models';
+import { SportsTextDialogComponent } from '../sports/sports-text-dialog.component';
+import type {
+  MajorEventSportsParticipant,
+  MajorEventSportsSubscriptionWorkspace,
+} from '../graphql/subscription-api.service';
 
 const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
 const EXPORT_PAGE_SIZE = 1000;
@@ -60,6 +68,7 @@ export class SubscriptionsService {
   private readonly attendanceApi = inject(AttendanceApiService);
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly permissions = inject(PermissionsService);
 
   readonly majorEvents = this.majorEventsService.majorEvents;
   readonly eventFiltersForm = this.formBuilder.nonNullable.group({
@@ -117,6 +126,9 @@ export class SubscriptionsService {
   readonly majorEventSubscriptionsPagination = createWorkspaceListPagination();
   readonly majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>([]);
   readonly selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(null);
+  readonly majorEventSportsWorkspace = signal<MajorEventSportsSubscriptionWorkspace | null>(null);
+  private readonly sportsAssignedTeams = signal<Record<string, string | null>>({});
+  private readonly sportsParticipantTeams = signal<Record<string, string | null>>({});
   readonly selectedMajorEvent = computed(() => {
     return this.majorEvents().find((item) => item.id === this.selectedMajorEventId()) ?? null;
   });
@@ -284,14 +296,40 @@ export class SubscriptionsService {
     const majorEventId = this.majorEventForm.controls.majorEventId.value;
     if (!majorEventId) {
       this.majorEventSubscriptions.set([]);
+      this.majorEventEvents.set([]);
       this.selectedMajorEventSubscription.set(null);
+      this.majorEventSportsWorkspace.set(null);
+      this.sportsAssignedTeams.set({});
+      this.sportsParticipantTeams.set({});
       return;
     }
-    const subscriptions = await firstValueFrom(
-      this.api.listMajorEventSubscriptions(majorEventId, {
-        query: this.majorEventSubscriptionSearchForm.controls.query.value.trim() || undefined,
-        ...pageVariables(this.majorEventSubscriptionsPagination.pageIndex()),
-      }),
+    const [subscriptions, sportsWorkspace] = await Promise.all([
+      firstValueFrom(
+        this.api.listMajorEventSubscriptions(majorEventId, {
+          query: this.majorEventSubscriptionSearchForm.controls.query.value.trim() || undefined,
+          ...pageVariables(this.majorEventSubscriptionsPagination.pageIndex()),
+        }),
+      ),
+      this.permissions.has(Permission.SportsRegistration.Read) && this.permissions.has(Permission.SportsTournament.Read)
+        ? firstValueFrom(this.api.majorEventSportsWorkspace(majorEventId))
+        : Promise.resolve(null),
+    ]);
+    this.majorEventSportsWorkspace.set(sportsWorkspace);
+    this.sportsAssignedTeams.set(
+      Object.fromEntries(
+        (sportsWorkspace?.applications ?? []).map((application) => [
+          application.id,
+          application.requestedTeam?.id ?? null,
+        ]),
+      ),
+    );
+    this.sportsParticipantTeams.set(
+      Object.fromEntries(
+        (sportsWorkspace?.participants ?? []).map((participant) => [
+          participant.id,
+          participant.teams.find((membership) => membership.status === 'APPROVED')?.teamId ?? null,
+        ]),
+      ),
     );
     const events =
       subscriptions[0]?.events ??
@@ -306,6 +344,94 @@ export class SubscriptionsService {
     const visibleSubscriptions = applyPagedResult(subscriptions, this.majorEventSubscriptionsPagination);
     this.majorEventSubscriptions.set(visibleSubscriptions);
     this.selectMajorEventSubscription(null, false);
+  }
+
+  sportsAssignedTeamId(applicationId: string): string | null {
+    return this.sportsAssignedTeams()[applicationId] ?? null;
+  }
+
+  setSportsAssignedTeam(applicationId: string, teamId: string | null): void {
+    this.sportsAssignedTeams.update((current) => ({ ...current, [applicationId]: teamId || null }));
+  }
+
+  sportsParticipantTeamId(participantId: string): string | null {
+    return this.sportsParticipantTeams()[participantId] ?? null;
+  }
+
+  setSportsParticipantTeamSelection(participantId: string, teamId: string | null): void {
+    this.sportsParticipantTeams.update((current) => ({ ...current, [participantId]: teamId || null }));
+  }
+
+  async saveSportsParticipantTeam(participant: MajorEventSportsParticipant): Promise<void> {
+    try {
+      await firstValueFrom(
+        this.api.setSportsParticipantTeam({
+          participantId: participant.id,
+          teamId: this.sportsParticipantTeamId(participant.id),
+        }),
+      );
+      await this.loadMajorEventSubscriptions();
+      this.snackbar.open('Equipe da participação esportiva atualizada.', 'Fechar', { duration: 2500 });
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível atualizar a equipe da participação.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
+  }
+
+  sportsParticipantFor(personId: string): MajorEventSportsParticipant | null {
+    return (
+      this.majorEventSportsWorkspace()?.participants.find((participant) => participant.person.id === personId) ?? null
+    );
+  }
+
+  sportsParticipantsWithoutApplication(): MajorEventSportsParticipant[] {
+    const workspace = this.majorEventSportsWorkspace();
+    if (!workspace) {
+      return [];
+    }
+    const applicantIds = new Set(workspace.applications.map((application) => application.applicant.personId));
+    return workspace.participants.filter((participant) => !applicantIds.has(participant.person.id));
+  }
+
+  async reviewSportsApplication(
+    application: SportsApplication,
+    decision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED',
+  ): Promise<void> {
+    const reviewMessage =
+      decision === 'APPROVED'
+        ? null
+        : await firstValueFrom(
+            this.dialog
+              .open<SportsTextDialogComponent, unknown, string>(SportsTextDialogComponent, {
+                data: {
+                  title: 'Mensagem da revisão',
+                  description: 'Explique de forma objetiva o que precisa mudar ou por que a inscrição foi negada.',
+                  label: 'Mensagem para a pessoa inscrita',
+                  required: true,
+                },
+              })
+              .afterClosed(),
+          );
+    if (decision !== 'APPROVED' && !reviewMessage) {
+      return;
+    }
+    try {
+      await firstValueFrom(
+        this.api.reviewSportsApplication({
+          applicationId: application.id,
+          decision,
+          assignedTeamId: decision === 'APPROVED' ? this.sportsAssignedTeamId(application.id) : undefined,
+          reviewMessage: reviewMessage || null,
+        }),
+      );
+      await this.loadMajorEventSubscriptions();
+      this.snackbar.open('Inscrição esportiva revisada.', 'Fechar', { duration: 2500 });
+    } catch (error) {
+      this.snackbar.open(getErrorMessage(error, 'Não foi possível revisar a inscrição esportiva.'), 'Fechar', {
+        duration: 5000,
+      });
+    }
   }
 
   async searchMajorEventSubscriptions(): Promise<void> {

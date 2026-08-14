@@ -36,6 +36,8 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
     select: {
       id: true,
       selfSubscriptionEnabled: true,
+      registrationStartDate: true,
+      registrationEndDate: true,
     },
   },
   certificateConfigs: {
@@ -57,19 +59,6 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
           id: true,
           name: true,
           value: true,
-        },
-      },
-    },
-  },
-} as const satisfies Prisma.MajorEventSelect;
-
-export const PUBLIC_MAJOR_EVENT_CARD_SELECT = {
-  ...PUBLIC_MAJOR_EVENT_SELECT,
-  _count: {
-    select: {
-      events: {
-        where: {
-          deletedAt: null,
         },
       },
     },
@@ -131,6 +120,21 @@ export const PUBLIC_EVENT_SELECT = {
   buttonText: true,
   buttonLink: true,
   sportsMatch: {
+    where: {
+      deletedAt: null,
+      category: {
+        deletedAt: null,
+        status: { not: 'DRAFT' },
+        tournament: {
+          deletedAt: null,
+          status: { not: 'DRAFT' },
+          majorEvent: {
+            deletedAt: null,
+            publicationState: 'PUBLISHED',
+          },
+        },
+      },
+    },
     select: {
       id: true,
       categoryId: true,
@@ -163,6 +167,40 @@ export const PUBLIC_EVENT_WHERE = {
   ],
 } satisfies Prisma.EventWhereInput;
 
+export const PUBLIC_REGULAR_EVENT_WHERE = {
+  AND: [PUBLIC_EVENT_WHERE, { sportsMatch: { is: null } }],
+} satisfies Prisma.EventWhereInput;
+
+export function publicRegularSubscriptionEventWhere(now: Date): Prisma.EventWhereInput {
+  return {
+    AND: [
+      PUBLIC_REGULAR_EVENT_WHERE,
+      {
+        allowSubscription: true,
+        OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }],
+      },
+    ],
+  };
+}
+
+export function publicMajorEventCardSelect(now: Date) {
+  return {
+    ...PUBLIC_MAJOR_EVENT_SELECT,
+    events: {
+      where: publicRegularSubscriptionEventWhere(now),
+      select: { id: true },
+      take: 1,
+    },
+    _count: {
+      select: {
+        events: {
+          where: PUBLIC_REGULAR_EVENT_WHERE,
+        },
+      },
+    },
+  } as const satisfies Prisma.MajorEventSelect;
+}
+
 export type PublicMajorEventRecord = Prisma.MajorEventGetPayload<{
   select: typeof PUBLIC_MAJOR_EVENT_SELECT;
 }>;
@@ -176,6 +214,7 @@ type PublicMajorEventMappable = Omit<PublicMajorEventRecord, 'sportsTournament'>
   _count?: {
     events: number;
   };
+  events?: { id: string }[];
 };
 
 export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
@@ -229,7 +268,17 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventMappable): Publi
       })),
     })),
     hasEvents: majorEvent._count ? majorEvent._count.events > 0 : undefined,
-    sportsTournament: majorEvent.sportsTournament ?? undefined,
+    regularSubscriptionOpen: majorEvent.events ? majorEvent.events.length > 0 : undefined,
+    sportsTournament: majorEvent.sportsTournament
+      ? {
+          id: majorEvent.sportsTournament.id,
+          selfSubscriptionEnabled: majorEvent.sportsTournament.selfSubscriptionEnabled,
+          registrationOpen: isRegistrationWindowOpen(
+            majorEvent.sportsTournament.registrationStartDate ?? majorEvent.subscriptionStartDate,
+            majorEvent.sportsTournament.registrationEndDate ?? majorEvent.subscriptionEndDate,
+          ),
+        }
+      : undefined,
   };
 }
 
@@ -346,6 +395,13 @@ export class PublicSportsTournamentMarker {
     description: 'Whether participants may request an individual subscription to this tournament.',
   })
   selfSubscriptionEnabled?: boolean | null;
+
+  @Field(() => Boolean)
+  registrationOpen?: boolean;
+}
+
+function isRegistrationWindowOpen(startDate: Date | null, endDate: Date | null, now = new Date()): boolean {
+  return (!startDate || now >= startDate) && (!endDate || now <= endDate);
 }
 
 @ObjectType({
@@ -491,6 +547,12 @@ export class PublicMajorEvent {
     description: 'Whether this major event has child events available to the public event experience.',
   })
   hasEvents?: boolean | null;
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether at least one regular child event currently accepts subscriptions.',
+  })
+  regularSubscriptionOpen?: boolean | null;
 
   @Field(() => PublicSportsTournamentMarker, {
     nullable: true,

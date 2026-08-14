@@ -124,8 +124,9 @@ export function buildInconsistencies(input: {
 
   for (const event of input.events) {
     const isPast = event.endDate < input.now;
+    const isSportsMatch = event.sportsMatch !== null;
     if (!isPast) {
-      if (event.lecturers.length === 0) {
+      if (!isSportsMatch && event.lecturers.length === 0) {
         inconsistencies.push({
           type: 'EVENT_WITHOUT_LECTURER',
           action: 'OPEN_EVENT',
@@ -139,17 +140,19 @@ export function buildInconsistencies(input: {
 
       if (!hasPlace(event)) {
         inconsistencies.push({
-          type: 'EVENT_WITHOUT_PLACE',
-          action: 'OPEN_EVENT',
-          targetId: event.id,
+          type: isSportsMatch ? 'SPORTS_MATCH_WITHOUT_PLACE' : 'EVENT_WITHOUT_PLACE',
+          action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_EVENT',
+          targetId: event.sportsMatch?.category.tournamentId ?? event.id,
           severity: 'WARNING',
-          title: 'Evento sem local cadastrado',
-          description: event.name,
+          title: isSportsMatch ? 'Partida sem local cadastrado' : 'Evento sem local cadastrado',
+          description: isSportsMatch
+            ? `${event.name} precisa de um local para orientar atletas, oficiais e público.`
+            : event.name,
           eventId: event.id,
         });
       }
 
-      if (hasWeakDescription(event)) {
+      if (!isSportsMatch && hasWeakDescription(event)) {
         inconsistencies.push({
           type: 'WEAK_EVENT_DESCRIPTION',
           action: 'OPEN_EVENT',
@@ -161,7 +164,7 @@ export function buildInconsistencies(input: {
         });
       }
 
-      const dateIssue = describeSubscriptionDateIssue(event);
+      const dateIssue = isSportsMatch ? null : describeSubscriptionDateIssue(event);
       if (dateIssue) {
         inconsistencies.push({
           type: 'EVENT_SUBSCRIPTION_DATE_MISMATCH',
@@ -185,6 +188,8 @@ export function buildInconsistencies(input: {
     if (event.endDate.getTime() - event.startDate.getTime() > EIGHT_HOURS_MS) {
       inconsistencies.push({
         type: 'SUSPICIOUS_DURATION',
+        action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_EVENT',
+        targetId: event.sportsMatch?.category.tournamentId ?? event.id,
         severity: 'WARNING',
         title: 'Evento com duração suspeita',
         description: `${event.name} tem mais de 8 horas de duração.`,
@@ -195,6 +200,8 @@ export function buildInconsistencies(input: {
     if (event.startDate < SUSPICIOUS_EARLIEST_DATE) {
       inconsistencies.push({
         type: 'SUSPICIOUS_DATE',
+        action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_EVENT',
+        targetId: event.sportsMatch?.category.tournamentId ?? event.id,
         severity: 'CRITICAL',
         title: 'Evento com data suspeita',
         description: `${event.name} está cadastrado antes de 2010.`,
@@ -204,15 +211,17 @@ export function buildInconsistencies(input: {
 
     if (event.emoji === DEFAULT_EMOJI) {
       inconsistencies.push({
-        type: 'PLACEHOLDER_EMOJI',
+        type: isSportsMatch ? 'SPORTS_MATCH_PLACEHOLDER_EMOJI' : 'PLACEHOLDER_EMOJI',
+        action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_EVENT',
+        targetId: event.sportsMatch?.category.tournamentId ?? event.id,
         severity: 'INFO',
-        title: 'Evento com emoji padrão',
-        description: `${event.name} ainda usa o emoji placeholder.`,
+        title: isSportsMatch ? 'Partida com emoji padrão' : 'Evento com emoji padrão',
+        description: `${event.name} ainda usa o emoji padrão.`,
         eventId: event.id,
       });
     }
 
-    const lecturerIds = new Set(event.lecturers.map((lecturer) => lecturer.personId));
+    const lecturerIds = new Set(isSportsMatch ? [] : event.lecturers.map((lecturer) => lecturer.personId));
     for (const subscription of event.subscriptions) {
       if (lecturerIds.has(subscription.personId)) {
         inconsistencies.push({
@@ -238,7 +247,7 @@ export function buildInconsistencies(input: {
       }
     }
 
-    for (const lecturer of event.lecturers) {
+    for (const lecturer of isSportsMatch ? [] : event.lecturers) {
       if (isPast) {
         continue;
       }
@@ -296,12 +305,13 @@ export function buildInconsistencies(input: {
         }
 
         if (hasDateOverlap(left, right)) {
+          const sportsEvent = left.sportsMatch ? left : right.sportsMatch ? right : null;
           inconsistencies.push({
-            type: 'PLACE_DOUBLE_BOOKED',
-            action: 'OPEN_EVENT',
-            targetId: left.id,
+            type: sportsEvent ? 'SPORTS_PLACE_DOUBLE_BOOKED' : 'PLACE_DOUBLE_BOOKED',
+            action: sportsEvent ? 'OPEN_SPORTS' : 'OPEN_EVENT',
+            targetId: sportsEvent?.sportsMatch?.category.tournamentId ?? left.id,
             severity: 'CRITICAL',
-            title: 'Local alocado em eventos simultâneos',
+            title: sportsEvent ? 'Local da partida alocado no mesmo horário' : 'Local alocado em eventos simultâneos',
             description: `${left.locationDescription ?? 'Local sem nome'}: ${left.name} e ${right.name}`,
             eventId: left.id,
             relatedEventId: right.id,

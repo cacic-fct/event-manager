@@ -18,7 +18,7 @@ export function parseSportsWorkspaceRoute(params: RouteParamReader): SportsWorks
   const tournamentId = params.get('tournamentId');
   const areaParam = params.get('area');
   const area = isSportsWorkspaceArea(areaParam) ? areaParam : 'overview';
-  const entityId = params.get('entityId');
+  const entityId = params.get('entityId') ?? params.get('categoryId');
 
   return {
     tournamentId,

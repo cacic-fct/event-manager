@@ -17,6 +17,7 @@ export class SportsReadService {
   readonly adminMatchActionReviewQueue: SportsReadAdminService['adminMatchActionReviewQueue'];
   readonly publicTournament: SportsReadPublicService['publicTournament'];
   readonly publicMatch: SportsReadPublicService['publicMatch'];
+  readonly operationalMatch: SportsReadPublicService['operationalMatch'];
   readonly currentUserTournament: SportsReadCurrentUserService['currentUserTournament'];
   readonly representativeTeamWorkspace: SportsReadCurrentUserService['representativeTeamWorkspace'];
   readonly currentUserMatchOperations: SportsReadCurrentUserService['currentUserMatchOperations'];
@@ -36,6 +37,7 @@ export class SportsReadService {
     this.adminMatchActionReviewQueue = adminReader.adminMatchActionReviewQueue.bind(adminReader);
     this.publicTournament = publicReader.publicTournament.bind(publicReader);
     this.publicMatch = publicReader.publicMatch.bind(publicReader);
+    this.operationalMatch = publicReader.operationalMatch.bind(publicReader);
     this.currentUserTournament = currentUserReader.currentUserTournament.bind(currentUserReader);
     this.representativeTeamWorkspace = currentUserReader.representativeTeamWorkspace.bind(currentUserReader);
     this.currentUserMatchOperations = currentUserReader.currentUserMatchOperations.bind(currentUserReader);

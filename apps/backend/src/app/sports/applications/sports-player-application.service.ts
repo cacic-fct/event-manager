@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType, AuditLogOperation, SportsApplicationStatus } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, SportsApplicationStatus, SportsTeamStatus } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { resolveMajorEventSelfServicePayment } from '../../current-user/major-events/major-event-payment-selection';
@@ -181,12 +181,14 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
       await tx.sportsPlayerApplicationCategory.deleteMany({
         where: { applicationId: application.id },
       });
-      await tx.sportsPlayerApplicationCategory.createMany({
-        data: categoryIds.map((categoryId) => ({
-          applicationId: application.id,
-          categoryId,
-        })),
-      });
+      if (categoryIds.length > 0) {
+        await tx.sportsPlayerApplicationCategory.createMany({
+          data: categoryIds.map((categoryId) => ({
+            applicationId: application.id,
+            categoryId,
+          })),
+        });
+      }
 
       await this.auditLog.record(
         {
@@ -225,12 +227,13 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
     decision: SportsPlayerApplicationReviewDecision,
     actor: AuthenticatedUser,
     message?: string,
+    assignedTeamId?: string | null,
   ) {
     const actorId = this.requireActorId(actor);
     const reviewMessage = message?.trim() || null;
 
     const application = await runSerializableSportsTransaction(this.prisma, async (tx) => {
-      const application = await tx.sportsPlayerApplication.findUnique({
+      let application = await tx.sportsPlayerApplication.findUnique({
         where: { id: applicationId },
         include: {
           categoryChoices: {
@@ -259,14 +262,44 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
         throw new NotFoundException(`Sports player application ${applicationId} was not found.`);
       }
 
-      if (decision === 'APPROVE') {
-        if (
-          ([SportsApplicationStatus.WAITING_PAYMENT, SportsApplicationStatus.ACTIVE] as readonly SportsApplicationStatus[]).includes(
-            application.status,
-          )
-        ) {
-          return this.getApplication(tx, application.id);
+      if (
+        decision === 'APPROVE' &&
+        ([SportsApplicationStatus.WAITING_PAYMENT, SportsApplicationStatus.ACTIVE] as readonly SportsApplicationStatus[]).includes(
+          application.status,
+        )
+      ) {
+        return this.getApplication(tx, application.id);
+      }
+
+      if (decision === 'APPROVE' && assignedTeamId !== undefined && assignedTeamId !== application.requestedTeamId) {
+        const assignedTeam = assignedTeamId
+          ? await tx.sportsTeam.findFirst({
+              where: {
+                id: assignedTeamId,
+                tournamentId: application.tournament.id,
+                deletedAt: null,
+                status: SportsTeamStatus.ACTIVE,
+              },
+              select: {
+                id: true,
+                name: true,
+                tournamentId: true,
+                status: true,
+                deletedAt: true,
+              },
+            })
+          : null;
+        if (assignedTeamId && !assignedTeam) {
+          throw new ConflictException('A equipe escolhida não está disponível neste torneio.');
         }
+        await tx.sportsPlayerApplication.update({
+          where: { id: application.id },
+          data: { requestedTeamId: assignedTeamId, updatedById: actorId },
+        });
+        application = { ...application, requestedTeamId: assignedTeamId, requestedTeam: assignedTeam };
+      }
+
+      if (decision === 'APPROVE') {
         if (application.status !== SportsApplicationStatus.APPROVED) {
           this.assertReviewable(application.status);
         }

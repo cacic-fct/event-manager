@@ -9,11 +9,11 @@ import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import {
-  PUBLIC_MAJOR_EVENT_CARD_SELECT,
   PUBLIC_MAJOR_EVENT_SELECT,
   PUBLIC_MAJOR_EVENT_WHERE,
   PublicMajorEvent,
   mapPublicMajorEvent,
+  publicMajorEventCardSelect,
 } from './models';
 
 @Public()
@@ -109,7 +109,7 @@ export class PublicMajorEventsResolver {
 
     const majorEvents = await this.prisma.majorEvent.findMany({
       where,
-      select: PUBLIC_MAJOR_EVENT_CARD_SELECT,
+      select: publicMajorEventCardSelect(new Date()),
       orderBy: {
         startDate: 'desc',
       },

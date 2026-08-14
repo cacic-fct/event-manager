@@ -92,7 +92,13 @@ export class SportsReviewMutationsResolver extends SportsMutationsResolverSuppor
     return (
       await this.publishMutation(
         'APPLICATION',
-        this.applications.review(input.applicationId, decision, actor, input.reviewMessage ?? undefined),
+        this.applications.review(
+          input.applicationId,
+          decision,
+          actor,
+          input.reviewMessage ?? undefined,
+          input.assignedTeamId,
+        ),
         decision === 'APPROVE',
       )
     ).id;

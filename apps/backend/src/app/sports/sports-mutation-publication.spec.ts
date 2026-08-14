@@ -70,4 +70,35 @@ describe('sports mutation publication boundaries', () => {
     );
     expect(mutationEvents.publishForEntity).toHaveBeenCalledWith('REGISTRATION', 'registration-1', true);
   });
+
+  it('authorizes participant team replacement in the participant tournament scope', async () => {
+    const admin = {
+      setParticipantTeam: jest.fn().mockResolvedValue({ id: 'participant-1' }),
+    };
+    const policy = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
+    const resolver = new SportsTeamMutationsResolver(
+      policy as never,
+      {} as never,
+      { sportsTournamentParticipant: { findFirst: jest.fn().mockResolvedValue({ tournamentId: 'tournament-1' }) } } as never,
+      { getAuthenticatedUser: jest.fn().mockReturnValue(actor) } as never,
+      admin as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      { publishForEntity: jest.fn() } as never,
+    );
+
+    await expect(
+      resolver.setParticipantTeam({ participantId: 'participant-1', teamId: 'team-2' }, context as never),
+    ).resolves.toBe('participant-1');
+
+    expect(policy.assertPermissions).toHaveBeenCalledWith(actor, expect.any(Array), {
+      sportsTournamentId: 'tournament-1',
+    });
+    expect(admin.setParticipantTeam).toHaveBeenCalledWith('participant-1', 'team-2', actor);
+  });
 });

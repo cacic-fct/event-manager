@@ -270,9 +270,32 @@ describe('DashboardInsightsService generation', () => {
             expect.objectContaining({ publicationState: 'SCHEDULED' }),
           ]),
         }),
+        select: expect.objectContaining({
+          sportsTournament: {
+            where: { deletedAt: null, status: { not: 'DRAFT' } },
+            select: {
+              id: true,
+              categories: {
+                where: { deletedAt: null, status: { not: 'DRAFT' } },
+                select: { id: true },
+                take: 1,
+              },
+            },
+          },
+        }),
         take: 30,
       }),
     );
+    expect(
+      prisma.eventGroup.findMany.mock.calls.some(
+        ([query]) => query.where?.sportsCategory?.is === null,
+      ),
+    ).toBe(true);
+    expect(
+      prisma.event.findMany.mock.calls.filter(
+        ([query]) => query.where?.sportsMatch?.is === null,
+      ),
+    ).toHaveLength(3);
     expect(prisma.event.findMany.mock.calls[3]?.[0].where).not.toHaveProperty('shouldCollectAttendance');
     expect(result.permissions).toEqual(
       expect.arrayContaining([

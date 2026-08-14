@@ -86,6 +86,14 @@ describe('Home', () => {
         label: 'Gerenciar esportes',
       }),
     ).toEqual(['sports']);
+    expect(
+      component.routerLinkForInconsistency(
+        createAdminDashboardInconsistency({
+          action: 'OPEN_SPORTS',
+          targetId: 'tournament-1',
+        }),
+      ),
+    ).toEqual(['sports', 'tournament-1']);
   });
 
   it('derives today, queue, and system-health state from dashboard insights', () => {

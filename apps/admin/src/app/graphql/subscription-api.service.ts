@@ -1,14 +1,38 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { map } from 'rxjs';
+import { map, of, switchMap } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
   SubscriptionStatus,
   WorkspaceEventSubscription,
   WorkspaceMajorEventSubscription,
 } from '@cacic-fct/event-manager-admin-contracts';
+import type { SportsTeamView } from '@cacic-fct/shared-frontend-types';
 import { PERSON_EXPORT_FIELDS } from './graphql-query-fragments';
 import { SubscriberCsvExportDialogOptions } from '../subscriptions/subscriber-csv-export';
+import type { SportsApplication } from '../sports/sports.models';
+
+export interface MajorEventSportsSubscriptionWorkspace {
+  tournamentId: string;
+  teams: SportsTeamView[];
+  applications: SportsApplication[];
+  participants: MajorEventSportsParticipant[];
+}
+
+export interface MajorEventSportsParticipant {
+  id: string;
+  person: { id: string; name: string };
+  source: string;
+  status: string;
+  paymentStatus: string;
+  teams: Array<{
+    memberId: string;
+    teamId: string;
+    teamName: string;
+    status: string;
+    categories: Array<{ id: string; name: string; division?: string | null }>;
+  }>;
+}
 
 export interface SubscriptionBadgeArchiveDownload {
   blob: Blob;
@@ -62,6 +86,95 @@ const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
 export class SubscriptionApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
   private readonly http = inject(HttpClient);
+
+  majorEventSportsWorkspace(majorEventId: string) {
+    return this.graphqlHttp
+      .request<{
+        adminSportsTournamentList: Array<{ tournament: { id: string; majorEventId: string } }>;
+      }>(
+        `query MajorEventSportsTournament {
+          adminSportsTournamentList(take: 200) { tournament { id majorEventId } }
+        }`,
+      )
+      .pipe(
+        switchMap(({ adminSportsTournamentList }) => {
+          const tournament = adminSportsTournamentList.find((item) => item.tournament.majorEventId === majorEventId);
+          if (!tournament) {
+            return of(null);
+          }
+          const tournamentId = tournament.tournament.id;
+          return this.graphqlHttp
+            .request<{
+              adminSportsTournamentRead: {
+                teams: Array<SportsTeamView & { status: string }>;
+                participants: MajorEventSportsParticipant[];
+              };
+              adminSportsPlayerApplicationQueue: SportsApplication[];
+            }>(
+              `query MajorEventSportsSubscriptions(
+                $tournamentId: String!
+                $statuses: [SportsApplicationStatus!]
+              ) {
+                adminSportsTournamentRead(tournamentId: $tournamentId) {
+                  teams { id tournamentId name institution status logoUrl revision fieldRevisionsJson }
+                  participants {
+                    id person { id name } source status paymentStatus
+                    teams {
+                      memberId teamId teamName status
+                      categories { id name division }
+                    }
+                  }
+                }
+                adminSportsPlayerApplicationQueue(tournamentId: $tournamentId, statuses: $statuses, limit: 200) {
+                  id tournamentId applicant { personId name }
+                  requestedTeam { id name institution logoUrl }
+                  categories { id name division }
+                  status participantStatus paymentStatus paymentTier imageLicenseAgreementAccepted reviewMessage createdAt
+                }
+              }`,
+              {
+                tournamentId,
+                statuses: ['PENDING', 'APPROVED', 'CHANGES_REQUESTED', 'REJECTED', 'WAITING_PAYMENT', 'ACTIVE', 'WITHDRAWN'],
+              },
+            )
+            .pipe(
+              map((data): MajorEventSportsSubscriptionWorkspace => ({
+                tournamentId,
+                teams: data.adminSportsTournamentRead.teams.filter((team) => team.status === 'ACTIVE'),
+                applications: data.adminSportsPlayerApplicationQueue,
+                participants: data.adminSportsTournamentRead.participants,
+              })),
+            );
+        }),
+      );
+  }
+
+  reviewSportsApplication(input: {
+    applicationId: string;
+    decision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED';
+    assignedTeamId?: string | null;
+    reviewMessage?: string | null;
+  }) {
+    return this.graphqlHttp
+      .request<{ reviewSportsPlayerApplication: string }>(
+        `mutation ReviewMajorEventSportsApplication($input: SportsPlayerApplicationReviewInput!) {
+          reviewSportsPlayerApplication(input: $input)
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.reviewSportsPlayerApplication));
+  }
+
+  setSportsParticipantTeam(input: { participantId: string; teamId: string | null }) {
+    return this.graphqlHttp
+      .request<{ setSportsParticipantTeam: string }>(
+        `mutation SetSportsParticipantTeam($input: SportsParticipantTeamAssignmentInput!) {
+          setSportsParticipantTeam(input: $input)
+        }`,
+        { input },
+      )
+      .pipe(map((data) => data.setSportsParticipantTeam));
+  }
 
   listEventSubscriptions(eventId: string, filters?: { skip?: number; take?: number }) {
     return this.graphqlHttp

@@ -13,10 +13,14 @@
           </div>
           <span class="state-label">{{ workspace.statusLabel(application.status) }}</span>
         </div>
-        <p>
-          {{ application.categories.length ? categoryName(application.categories[0].id) : 'Sem modalidade' }} ·
-          {{ application.createdAt | date: 'short' }}
-        </p>
+        <div class="application-interests">
+          <span>{{ application.createdAt | date: 'short' }}</span>
+          @for (category of application.categories; track category.id) {
+          <span>{{ categoryName(category.id) }}{{ category.division ? ' · ' + category.division : '' }}</span>
+          } @empty {
+          <span>Sem modalidade</span>
+          }
+        </div>
         @if (application.paymentStatus) {
           <small>Pagamento: {{ workspace.statusLabel(application.paymentStatus) }}</small>
         }

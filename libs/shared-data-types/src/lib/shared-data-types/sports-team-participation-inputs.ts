@@ -105,6 +105,15 @@ export class SportsTeamMemberUpdateInput {
 }
 
 @InputType()
+export class SportsParticipantTeamAssignmentInput {
+  @Field(() => String)
+  participantId!: string;
+
+  @Field(() => String, { nullable: true })
+  teamId?: string | null;
+}
+
+@InputType()
 export class SportsRepresentativeAssignInput {
   @Field(() => String)
   teamId!: string;
@@ -301,6 +310,9 @@ export class SportsPlayerApplicationReviewInput {
 
   @Field(() => SportsApplicationStatus)
   decision!: SportsApplicationStatus;
+
+  @Field(() => String, { nullable: true })
+  assignedTeamId?: string | null;
 
   @Field(() => String, { nullable: true })
   reviewMessage?: string | null;

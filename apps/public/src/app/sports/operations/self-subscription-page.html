@@ -55,12 +55,26 @@
       <p>Revise os dados abaixo. As alterações voltarão para análise da organização.</p>
     </div>
   </section>
+  } @else if (!application() && previousApplication(); as previous) {
+  <section class="important-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">history</mat-icon>
+    <div>
+      <strong>A solicitação anterior foi encerrada</strong>
+      <p>{{ previous.reviewMessage || 'Você pode revisar os dados e enviar uma nova solicitação.' }}</p>
+    </div>
+  </section>
   } @else if (applicationIsReadOnly()) {
   <section class="important-notice" aria-live="polite">
     <mat-icon aria-hidden="true">lock</mat-icon>
     <div>
       <strong>Esta solicitação não pode mais ser editada</strong>
-      <p>A solicitação já foi analisada pela organização.</p>
+      <p>Status: {{ applicationStatusLabel(application()!.status) }}.</p>
+      @if (application()!.paymentStatus; as paymentStatus) {
+      <p>Pagamento: {{ paymentStatusLabel(paymentStatus) }}.</p>
+      }
+      @if (application()!.reviewMessage; as reviewMessage) {
+      <p>{{ reviewMessage }}</p>
+      }
     </div>
   </section>
   }
@@ -124,7 +138,7 @@
       <div class="empty-options" role="status">
         <mat-icon>sports</mat-icon>
         @if (form.controls.requestedTeamId.value) {
-        <span>A equipe escolhida ainda não está inscrita em nenhuma modalidade disponível.</span>
+        <span>Você pode solicitar entrada na equipe agora e escolher modalidades quando elas estiverem disponíveis.</span>
         } @else {
         <span>Nenhuma modalidade está disponível para autoinscrição.</span>
         }

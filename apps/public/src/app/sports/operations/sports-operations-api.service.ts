@@ -48,7 +48,7 @@ export class SportsOperationsApiService {
 
   match(matchId: string): Observable<SportsOperationalMatch> {
     return this.query<{
-      publicSportsMatchDetail: Omit<
+      currentUserSportsOperationalMatchDetail: Omit<
         SportsOperationalMatch,
         'revision' | 'homeRegistrationId' | 'awayRegistrationId' | 'rosters'
       >;
@@ -58,7 +58,7 @@ export class SportsOperationsApiService {
       >;
     }>(
       `query SportsOperationalMatch($matchId: String!) {
-        publicSportsMatchDetail(matchId: $matchId) {
+        currentUserSportsOperationalMatchDetail(matchId: $matchId) {
           id eventId categoryId state timerStartedAt timerStartedAtUnixMs timerPausedAt timerPausedAtUnixMs
           elapsedBeforePauseMs
           periodTimers {
@@ -86,7 +86,7 @@ export class SportsOperationsApiService {
       { matchId },
     ).pipe(
       map((value) => ({
-        ...value.publicSportsMatchDetail,
+        ...value.currentUserSportsOperationalMatchDetail,
         ...value.currentUserSportsMatchOperations,
       })),
     );
@@ -251,7 +251,7 @@ export class SportsOperationsApiService {
     return this.query<{ currentUserSportsPlayerApplications: CurrentUserSportsPlayerApplication[] }>(
       `query CurrentUserSportsPlayerApplications($tournamentId: String!) {
         currentUserSportsPlayerApplications(tournamentId: $tournamentId) {
-          id tournamentId status paymentTier imageLicenseAgreementAccepted reviewMessage
+          id tournamentId status participantStatus paymentStatus paymentTier imageLicenseAgreementAccepted reviewedAt reviewMessage
           requestedTeam { id name institution logoUrl }
           categories { id name division }
         }

@@ -20,9 +20,15 @@ describe('sports workspace routes', () => {
     ).toMatchObject({ area: 'categories', categoryId: 'category-1' });
     expect(
       parseSportsWorkspaceRoute(
-        convertToParamMap({ tournamentId: 'tournament-1', area: 'matches', entityId: 'category-1', matchId: 'match-1' }),
+        convertToParamMap({ tournamentId: 'tournament-1', area: 'matches', categoryId: 'category-1', matchId: 'match-1' }),
       ),
-    ).toMatchObject({ area: 'matches', categoryId: 'category-1', matchId: 'match-1' });
+    ).toEqual({
+      tournamentId: 'tournament-1',
+      area: 'matches',
+      categoryId: 'category-1',
+      teamId: null,
+      matchId: 'match-1',
+    });
     expect(
       parseSportsWorkspaceRoute(
         convertToParamMap({ tournamentId: 'tournament-1', area: 'reviews', entityId: 'team-1' }),

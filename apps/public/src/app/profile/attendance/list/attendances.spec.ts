@@ -39,6 +39,23 @@ describe('Attendances', () => {
     expect(component.itemRoute(event)).toEqual(['/profile/attendances', 'event', 'event-1']);
   });
 
+  it('keeps mixed major-event participation on the regular detail when regular events are selected', async () => {
+    const { component } = await createFixture();
+    const majorEvent = subscriptionsFeedFixture.majorEventItems[0];
+    if (!majorEvent) throw new Error('Expected a major-event fixture.');
+
+    expect(
+      component.majorEventRoute({
+        ...majorEvent,
+        majorEvent: {
+          ...majorEvent.majorEvent,
+          sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: true, registrationOpen: true },
+        },
+        selectedEvents: [{ id: 'event-1' }] as never,
+      }),
+    ).toEqual(['/profile/attendances', 'major-event', majorEvent.majorEvent.id]);
+  });
+
   it('falls back to the last offline feed when the network request fails', async () => {
     const { fixture, offlineData } = await createFixture({
       onlineFeedError: new Error('offline'),
@@ -611,7 +628,7 @@ const sportsManagerSubscriptionsFeedFixture = {
         startDate: publicFixtureDateFromNow(-1),
         endDate: publicFixtureDateFromNow(1, 20),
         description: 'Torneio público.',
-        sportsTournament: { id: 'tournament-1' },
+        sportsTournament: { id: 'tournament-1', registrationOpen: true },
       },
       participation: {
         isSubscribed: false,

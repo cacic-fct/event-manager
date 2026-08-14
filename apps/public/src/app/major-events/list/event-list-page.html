@@ -62,6 +62,7 @@
           } @if (subscription) {
           <mat-chip>
             <mat-icon matChipAvatar>assignment_turned_in</mat-icon>
+            @if (majorEvent.sportsTournament && majorEvent.hasEvents !== false) { Atividades: }
             {{ statusLabel(subscription.subscriptionStatus) }}
           </mat-chip>
           }
@@ -75,19 +76,19 @@
           <mat-icon>sports</mat-icon>
           Ver torneio
         </a>
-        } @if (subscription?.subscriptionStatus === 'CONFIRMED') {
-        <button mat-flat-button type="button" disabled>
-          <mat-icon>check</mat-icon>
-          Inscrito
-        </button>
-        } @else if (subscription) { @if (subscriptionRoute && canEditSubscription(subscription)) {
+        } @if (subscription && canEditSubscription(majorEvent, subscription)) {
         <a
           mat-stroked-button
           [routerLink]="subscriptionRoute">
           <mat-icon>edit</mat-icon>
-          Editar inscrição
+          {{ subscriptionActionLabel(majorEvent, 'edit') }}
         </a>
-        } @if (canUploadReceipt(subscription)) {
+        } @else if (subscription?.subscriptionStatus === 'CONFIRMED') {
+        <button mat-flat-button type="button" disabled>
+          <mat-icon>check</mat-icon>
+          Inscrito
+        </button>
+        } @else if (subscription) { @if (canUploadReceipt(subscription)) {
         <a mat-flat-button [routerLink]="['/major-event', majorEvent.id, 'payment']">
           <mat-icon>cloud_upload</mat-icon>
           Enviar comprovante
@@ -95,7 +96,7 @@
         } } @else if (!isAuthenticated() && subscriptionRoute) {
         <button mat-flat-button type="button" (click)="login()">
           <mat-icon>login</mat-icon>
-          Entrar para inscrever-se
+          {{ subscriptionActionLabel(majorEvent, 'login') }}
         </button>
         } @else if (subscriptionRoute) {
         <a
@@ -104,7 +105,11 @@
           [disabled]="!isSubscriptionRouteOpen(majorEvent)"
           [attr.aria-disabled]="!isSubscriptionRouteOpen(majorEvent)">
           <mat-icon>event_available</mat-icon>
-          @if (isSubscriptionRouteOpen(majorEvent)) { Inscrever-se } @else { Inscrições encerradas }
+          @if (isSubscriptionRouteOpen(majorEvent)) {
+          {{ subscriptionActionLabel(majorEvent, 'create') }}
+          } @else {
+          {{ subscriptionActionLabel(majorEvent, 'closed') }}
+          }
         </a>
         } @if (majorEvent.buttonLink) {
         <a mat-button [href]="majorEvent.buttonLink" target="_blank" rel="noopener">

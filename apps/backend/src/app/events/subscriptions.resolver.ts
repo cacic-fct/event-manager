@@ -23,6 +23,7 @@ import {
 import { AttendanceCategoryService } from './attendance-category.service';
 import { EventSubscriptionSyncService } from './event-subscription-sync.service';
 import { EventSubscriptionCountersService } from './subscription-counters.service';
+import { refreshSportsParticipantForSubscription } from '../sports/sports-payment.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -581,6 +582,9 @@ export class EventSubscriptionsResolver {
         effectiveSelectedEventIds,
         updated.subscriptionStatus,
       );
+      if (previousRecord.subscriptionStatus !== updated.subscriptionStatus) {
+        await refreshSportsParticipantForSubscription(tx, id);
+      }
 
       await this.attendanceCategories.refreshForMajorEventPerson(existing.majorEventId, existing.personId, tx);
       await this.refreshEventSubscriptionCounters(tx, effectiveSelectedEventIds);
@@ -693,6 +697,8 @@ export class EventSubscriptionsResolver {
       where: {
         majorEventId,
         deletedAt: null,
+        allowSubscription: true,
+        sportsMatch: { is: null },
       },
       select: {
         id: true,
@@ -879,6 +885,8 @@ export class EventSubscriptionsResolver {
         },
         majorEventId,
         deletedAt: null,
+        allowSubscription: true,
+        sportsMatch: { is: null },
       },
       select: {
         id: true,

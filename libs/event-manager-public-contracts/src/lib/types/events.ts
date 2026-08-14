@@ -26,6 +26,7 @@ export interface PublicMajorEventPrice {
 export interface PublicSportsTournamentMarker {
   id: string;
   selfSubscriptionEnabled?: boolean | null;
+  registrationOpen?: boolean;
 }
 
 export interface PublicSportsMatchMarker {
@@ -62,6 +63,7 @@ export interface PublicMajorEvent {
   paymentInfo?: PublicPaymentInfo | null;
   majorEventPrices?: PublicMajorEventPrice[];
   hasEvents?: boolean | null;
+  regularSubscriptionOpen?: boolean | null;
   sportsTournament?: PublicSportsTournamentMarker | null;
 }
 

@@ -1,7 +1,7 @@
 import { Location } from '@angular/common';
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { SportsMatchPage } from './match-page';
 import { SportsViewerApiService } from './sports-viewer-api.service';
@@ -22,7 +22,8 @@ describe('SportsMatchPage', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: PLATFORM_ID, useValue: 'server' },
-        { provide: ActivatedRoute, useValue: { paramMap } },
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { paramMap, snapshot: { queryParamMap: convertToParamMap({}) } } },
         { provide: Location, useValue: { back } },
         { provide: SportsViewerApiService, useValue: { getMatch } },
         { provide: SportsViewerRealtimeService, useValue: { watchMatch: () => realtime } },

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   Prisma,
   SportsApplicationStatus,
@@ -206,12 +206,27 @@ export class SportsPaymentService {
       },
     });
     if (existingSubscription) {
+      const preservesExistingPayment =
+        input.source !== SportsParticipantSource.SELF_SUBSCRIPTION &&
+        input.paymentSelection.paymentTier === null &&
+        input.paymentSelection.amountPaid === null;
+      if (
+        !preservesExistingPayment &&
+        existingSubscription.paymentTier &&
+        (existingSubscription.paymentTier !== input.paymentSelection.paymentTier ||
+          existingSubscription.amountPaid !== input.paymentSelection.amountPaid)
+      ) {
+        throw new ConflictException(
+          'A faixa de pagamento já foi definida na inscrição deste grande evento. Use a mesma faixa nas atividades e no torneio.',
+        );
+      }
       const reopenedStatus = resolveReusableSubscriptionStatus(
         existingSubscription.subscriptionStatus,
         input.paymentRequired,
       );
       const wasReopened = reopenedStatus !== existingSubscription.subscriptionStatus;
       const shouldUpdatePayment =
+        !preservesExistingPayment &&
         existingSubscription.subscriptionStatus !== SubscriptionStatus.CONFIRMED &&
         (existingSubscription.amountPaid !== input.paymentSelection.amountPaid ||
           existingSubscription.paymentTier !== input.paymentSelection.paymentTier);

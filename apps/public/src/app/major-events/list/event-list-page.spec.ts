@@ -60,7 +60,7 @@ describe('MajorEvent', () => {
   it('routes tournament-only major events to the tournament subscription', () => {
     const majorEvent = createPublicMajorEvent({
       hasEvents: false,
-      sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: true },
+      sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: true, registrationOpen: true },
     });
 
     expect(component.subscriptionRouteFor(majorEvent)).toEqual(['/tournament', 'tournament-1', 'subscribe']);
@@ -69,7 +69,7 @@ describe('MajorEvent', () => {
   it('does not expose a subscription route when a major event has neither events nor a self-subscribable tournament', () => {
     const majorEvent = createPublicMajorEvent({
       hasEvents: false,
-      sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: false },
+      sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: false, registrationOpen: true },
     });
 
     expect(component.subscriptionRouteFor(majorEvent)).toBeNull();
@@ -87,5 +87,27 @@ describe('MajorEvent', () => {
       'major-event-1',
       'ranked-subscription',
     ]);
+  });
+
+  it('labels regular and tournament subscriptions independently for mixed major events', () => {
+    const majorEvent = createPublicMajorEvent({
+      hasEvents: true,
+      sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: true, registrationOpen: true },
+    });
+
+    expect(component.subscriptionActionLabel(majorEvent, 'create')).toBe('Inscrever-se nas atividades');
+    expect(component.subscriptionActionLabel(majorEvent, 'edit')).toBe('Editar inscrição nas atividades');
+    expect(
+      component.canEditSubscription(majorEvent, {
+        subscriptionStatus: 'CONFIRMED',
+        selectedEvents: [],
+      } as never),
+    ).toBe(true);
+    expect(
+      component.canEditSubscription(majorEvent, {
+        subscriptionStatus: 'CONFIRMED',
+        selectedEvents: [{ id: 'event-1' }],
+      } as never),
+    ).toBe(false);
   });
 });

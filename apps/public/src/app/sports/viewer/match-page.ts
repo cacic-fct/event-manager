@@ -7,10 +7,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SportsLiveDotComponent, SportsTeamLogoComponent } from '@cacic-fct/shared-angular';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, Subscription, catchError, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
 import { SportsViewerApiService } from './sports-viewer-api.service';
 import { SportsViewerRealtimeService } from './sports-viewer-realtime.service';
+import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 import type { PublicSportsMatch, PublicSportsRosterEntry, SportsViewerPageState } from './sports-viewer.types';
 import {
   isRosterPublic,
@@ -46,6 +47,7 @@ export class SportsMatchPage {
   private readonly location = inject(Location);
   private readonly realtime = inject(SportsViewerRealtimeService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly reload = new Subject<string>();
   private realtimeSubscription?: Subscription;
 
@@ -90,6 +92,11 @@ export class SportsMatchPage {
   }
 
   goBack(): void {
+    const returnUrl = resolveInternalReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'), '');
+    if (returnUrl) {
+      void this.router.navigateByUrl(returnUrl);
+      return;
+    }
     this.location.back();
   }
 

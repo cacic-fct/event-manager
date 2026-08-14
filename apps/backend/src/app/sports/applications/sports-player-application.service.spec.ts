@@ -112,6 +112,30 @@ describe('SportsPlayerApplicationService', () => {
     expect((tx as Record<string, unknown>)['people']).toBeUndefined();
   });
 
+  it('allows joining an active team when the tournament has no available categories', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValueOnce({
+      ...(await tx.sportsTournament.findFirst()),
+      selfSubscriptionAllowNoTeam: false,
+      selfSubscriptionAllowNoCategory: false,
+      _count: { categories: 0 },
+      categories: [],
+    });
+
+    await service.submitSelfApplication(
+      {
+        tournamentId: 'tournament-1',
+        requestedTeamId: 'team-1',
+        categoryIds: [],
+        noticeAccepted: true,
+      },
+      'person-1',
+      applicantActor,
+    );
+
+    expect(tx.sportsPlayerApplicationCategory.createMany).not.toHaveBeenCalled();
+    expect(tx.sportsPlayerApplication.upsert).toHaveBeenCalled();
+  });
+
   it('uses the tournament registration window override instead of the parent event window', async () => {
     const now = Date.now();
     tx.sportsTournament.findFirst.mockResolvedValueOnce({
@@ -407,6 +431,40 @@ describe('SportsPlayerApplicationService', () => {
     );
   });
 
+  it('allows an administrator to override the requested team or approve without one', async () => {
+    tx.sportsPlayerApplication.findUnique.mockResolvedValue(createReviewApplication([]));
+    tx.sportsTeam.findFirst.mockResolvedValue({
+      id: 'team-2',
+      name: 'Equipe B',
+      tournamentId: 'tournament-1',
+      status: SportsTeamStatus.ACTIVE,
+      deletedAt: null,
+    });
+
+    await service.review('application-1', 'APPROVE', actor, undefined, 'team-2');
+
+    expect(tx.sportsPlayerApplication.update).toHaveBeenCalledWith({
+      where: { id: 'application-1' },
+      data: { requestedTeamId: 'team-2', updatedById: 'admin-1' },
+    });
+    expect(tx.sportsTeamMember.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ teamId: 'team-2' }) }),
+    );
+  });
+
+  it('does not mutate a terminal application when approval is retried with another team', async () => {
+    tx.sportsPlayerApplication.findUnique.mockResolvedValue({
+      ...createReviewApplication([]),
+      status: SportsApplicationStatus.ACTIVE,
+      requestedTeamId: 'team-1',
+    });
+
+    await service.review('application-1', 'APPROVE', actor, undefined, 'team-2');
+
+    expect(tx.sportsTeam.findFirst).not.toHaveBeenCalled();
+    expect(tx.sportsPlayerApplication.update).not.toHaveBeenCalled();
+  });
+
   it('keeps representative approval compatible with legacy staged applications', async () => {
     const application = {
       ...createReviewApplication(['category-1']),
@@ -538,6 +596,9 @@ function createTx() {
     },
     sportsRegistration: {
       findMany: jest.fn(),
+    },
+    sportsTeam: {
+      findFirst: jest.fn(),
     },
     sportsTeamMember: {
       findFirst: jest.fn().mockResolvedValue(null),

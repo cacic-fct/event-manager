@@ -15,6 +15,119 @@ import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';
 
 export abstract class SportsTeamAdminLifecycleService extends SportsAdminBaseService {
+  async setParticipantTeam(participantId: string, teamId: string | null, actor: AuthenticatedUser) {
+    const actorId = this.requireActorId(actor);
+    const participant = await this.prisma.sportsTournamentParticipant.findFirst({
+      where: { id: participantId, deletedAt: null },
+      select: {
+        id: true,
+        tournamentId: true,
+        person: { select: { name: true } },
+        tournament: { select: { majorEventId: true } },
+      },
+    });
+    if (!participant) {
+      throw new NotFoundException(`Sports participant ${participantId} was not found.`);
+    }
+    await this.frozen.assertMajorEventMutable(participant.tournament.majorEventId, actor, 'edit');
+
+    return runSerializableSportsTransaction(this.prisma, async (tx) => {
+      const targetTeam = teamId
+        ? await tx.sportsTeam.findFirst({
+            where: {
+              id: teamId,
+              tournamentId: participant.tournamentId,
+              deletedAt: null,
+              status: SportsTeamStatus.ACTIVE,
+            },
+            select: { id: true, name: true },
+          })
+        : null;
+      if (teamId && !targetTeam) {
+        throw new BadRequestException('A equipe escolhida não está disponível neste torneio.');
+      }
+
+      const memberships = await tx.sportsTeamMember.findMany({
+        where: { participantId, deletedAt: null },
+        select: { id: true, teamId: true, status: true, revision: true },
+      });
+      const withdrawnMemberships = memberships.filter((membership) => membership.teamId !== teamId);
+      if (withdrawnMemberships.length > 0) {
+        const withdrawnIds = withdrawnMemberships.map((membership) => membership.id);
+        await tx.sportsTeamMember.updateMany({
+          where: { id: { in: withdrawnIds }, deletedAt: null },
+          data: {
+            status: SportsTeamMemberStatus.WITHDRAWN,
+            revision: { increment: 1 },
+            updatedById: actorId,
+          },
+        });
+        await tx.sportsRegistrationMember.updateMany({
+          where: { teamMemberId: { in: withdrawnIds }, deletedAt: null },
+          data: {
+            eligibility: SportsEligibilityStatus.INELIGIBLE,
+            rejectionReason: 'Equipe removida por administrador.',
+            updatedById: actorId,
+          },
+        });
+      }
+
+      const currentTarget = memberships.find((membership) => membership.teamId === teamId);
+      const assignedMembership = targetTeam
+        ? currentTarget
+          ? await tx.sportsTeamMember.update({
+              where: { id: currentTarget.id },
+              data: {
+                status: SportsTeamMemberStatus.APPROVED,
+                approvedAt: new Date(),
+                approvedById: actorId,
+                rejectedAt: null,
+                rejectedById: null,
+                rejectionReason: null,
+                revision: { increment: 1 },
+                updatedById: actorId,
+              },
+            })
+          : await tx.sportsTeamMember.create({
+              data: {
+                teamId: targetTeam.id,
+                participantId,
+                status: SportsTeamMemberStatus.APPROVED,
+                approvedAt: new Date(),
+                approvedById: actorId,
+                createdById: actorId,
+                updatedById: actorId,
+              },
+            })
+        : null;
+
+      const affectedTeamIds = [...new Set([...withdrawnMemberships.map((item) => item.teamId), ...(teamId ? [teamId] : [])])];
+      if (affectedTeamIds.length > 0) {
+        await tx.sportsTeam.updateMany({
+          where: { id: { in: affectedTeamIds } },
+          data: { revision: { increment: 1 }, updatedById: actorId },
+        });
+      }
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
+          entityId: assignedMembership?.id ?? withdrawnMemberships[0]?.id ?? participant.id,
+          entityLabel: participant.person.name,
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          before: memberships,
+          after: { participantId, teamId },
+          summary: targetTeam
+            ? `Equipe esportiva alterada para ${targetTeam.name}.`
+            : 'Participante esportivo mantido sem equipe.',
+          scope: { permission: Permission.SportsTeam.Update, majorEventId: participant.tournament.majorEventId },
+        },
+        tx,
+      );
+      return { id: participant.id };
+    });
+  }
+
   async createTeamMember(teamId: string, personId: string, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     const team = await this.prisma.sportsTeam.findFirst({

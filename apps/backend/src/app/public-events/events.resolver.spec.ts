@@ -1,5 +1,5 @@
 import { PublicEventsResolver } from './events.resolver';
-import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from './models';
+import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE, PUBLIC_REGULAR_EVENT_WHERE } from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 
 describe('PublicEventsResolver lecturer profiles', () => {
@@ -288,32 +288,33 @@ describe('PublicEventsResolver lecturer profiles', () => {
       },
       select: expect.any(Object),
     });
-    expect(prisma.event.findMany).toHaveBeenCalledWith({
-      where: {
-        AND: [
-          {
-            AND: [
-              PUBLIC_EVENT_WHERE,
-              {
-                allowSubscription: true,
-                majorEventId: {
-                  not: null,
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            {
+              AND: [
+                {
+                  AND: [
+                    PUBLIC_REGULAR_EVENT_WHERE,
+                    {
+                      allowSubscription: true,
+                      OR: [
+                        { subscriptionEndDate: null },
+                        { subscriptionEndDate: { gte: new Date('2026-06-23T12:00:00.000Z') } },
+                      ],
+                    },
+                  ],
                 },
-                OR: [
-                  { subscriptionEndDate: null },
-                  { subscriptionEndDate: { gte: new Date('2026-06-23T12:00:00.000Z') } },
-                ],
-              },
-            ],
-          },
-          { majorEventId: 'major-1' },
-        ],
-      },
-      select: expect.any(Object),
-      orderBy: {
-        startDate: 'asc',
-      },
-    });
+                { majorEventId: { not: null } },
+              ],
+            },
+            { majorEventId: 'major-1' },
+          ],
+        },
+        orderBy: { startDate: 'asc' },
+      }),
+    );
   });
 
   it('does not query subscription counts for an empty major-event subscription page', async () => {
