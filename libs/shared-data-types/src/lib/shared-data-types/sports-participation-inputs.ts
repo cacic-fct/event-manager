@@ -19,6 +19,12 @@ export class SportsTournamentCreateInput {
   @Field(() => SportsTournamentStatus, { nullable: true })
   status?: SportsTournamentStatus;
 
+  @Field(() => Date, { nullable: true })
+  registrationStartDate?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  registrationEndDate?: Date | null;
+
   @Field(() => SportsScoringMode, { nullable: true })
   scoringMode?: SportsScoringMode;
 
@@ -45,6 +51,12 @@ export class SportsTournamentUpdateInput {
 
   @Field(() => SportsTournamentStatus, { nullable: true })
   status?: SportsTournamentStatus;
+
+  @Field(() => Date, { nullable: true })
+  registrationStartDate?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  registrationEndDate?: Date | null;
 
   @Field(() => SportsScoringMode, { nullable: true })
   scoringMode?: SportsScoringMode;

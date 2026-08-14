@@ -19,10 +19,6 @@ export class SportsMatchOverlayController {
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents, [{ source: 'params', path: 'matchId' }])
   @Header('Cache-Control', 'no-store')
   @Header('X-Content-Type-Options', 'nosniff')
-  @Header(
-    'Content-Security-Policy',
-    "default-src 'none'; base-uri 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'",
-  )
   @ApiOperation({
     summary: 'Render a public sports match overlay for OBS',
     description:
@@ -40,6 +36,7 @@ export class SportsMatchOverlayController {
     @Query() query: Record<string, unknown>,
     @Res() response: Response,
   ): Promise<void> {
+    response.setHeader('Content-Security-Policy', this.overlays.contentSecurityPolicy(matchId));
     response.type('html').send(await this.overlays.render(matchId, query));
   }
 

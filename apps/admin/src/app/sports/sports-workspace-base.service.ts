@@ -33,7 +33,7 @@ import type {
   SportsTournamentListItem,
   SportsTournamentRead,
 } from './sports.models';
-import { sportsTimerPreset } from './sports-workspace-form.utils';
+import { sportsTimerPreset, toIsoDateOrNull, toLocalDate } from './sports-workspace-form.utils';
 import { createSportsWorkspaceForms } from './sports-workspace.forms';
 import { createPlacementPointForm } from './sports-workspace.forms';
 import { sportsWorkspaceRoute, type SportsWorkspaceArea } from './sports-workspace-routes';
@@ -78,6 +78,15 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly selectedTeamId = signal('');
   readonly selectedMatchId = signal('');
   readonly tournamentId = computed(() => this.tournamentRead()?.tournament.id ?? '');
+  readonly inheritedRegistrationDates = computed(() => {
+    const tournament = this.tournamentRead()?.tournament;
+    const parent =
+      tournament?.majorEvent ?? this.majorEvents().find((majorEvent) => majorEvent.id === tournament?.majorEventId);
+    return {
+      startDate: parent?.subscriptionStartDate ?? null,
+      endDate: parent?.subscriptionEndDate ?? null,
+    };
+  });
   readonly pendingCount = computed(
     () =>
       this.applications().length +
@@ -270,7 +279,13 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
         ? await firstValueFrom(this.eventFormsApi.listForms({ majorEventId: read.tournament.majorEventId }))
         : [],
     );
-    this.tournamentForm.patchValue(read.tournament);
+    this.tournamentForm.patchValue({
+      ...read.tournament,
+      registrationScheduleMode:
+        read.tournament.registrationStartDate || read.tournament.registrationEndDate ? 'CUSTOM' : 'INHERIT',
+      registrationStartDate: toLocalDate(read.tournament.registrationStartDate),
+      registrationEndDate: toLocalDate(read.tournament.registrationEndDate),
+    });
     if (!sameTournament) {
       this.categoryRead.set(null);
       this.teamRead.set(null);
@@ -322,6 +337,25 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     this.pendingMatchActions.set(await firstValueFrom(this.api.matchActionReviewQueue(id)));
   }
 
+  setTournamentRegistrationSchedule(mode: string): void {
+    if (mode !== 'CUSTOM') {
+      this.tournamentForm.controls.registrationScheduleMode.setValue('INHERIT');
+      return;
+    }
+
+    this.tournamentForm.controls.registrationScheduleMode.setValue('CUSTOM');
+    const startDate = this.tournamentForm.controls.registrationStartDate.value;
+    const endDate = this.tournamentForm.controls.registrationEndDate.value;
+    if (startDate || endDate) {
+      return;
+    }
+    const inherited = this.inheritedRegistrationDates();
+    this.tournamentForm.patchValue({
+      registrationStartDate: toLocalDate(inherited.startDate),
+      registrationEndDate: toLocalDate(inherited.endDate),
+    });
+  }
+
   ngOnDestroy(): void {
     this.liveSubscription?.unsubscribe();
   }
@@ -331,13 +365,29 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     if (!read) {
       return;
     }
-    const settings = this.tournamentForm.getRawValue();
+    const {
+      registrationScheduleMode,
+      registrationStartDate,
+      registrationEndDate,
+      ...settings
+    } = this.tournamentForm.getRawValue();
+    const registrationWindow =
+      registrationScheduleMode === 'CUSTOM'
+        ? {
+            registrationStartDate: toIsoDateOrNull(registrationStartDate),
+            registrationEndDate: toIsoDateOrNull(registrationEndDate),
+          }
+        : {
+            registrationStartDate: null,
+            registrationEndDate: null,
+          };
     await this.run('Não foi possível salvar as regras gerais.', async () => {
       await firstValueFrom(
         this.api.mutate<string>('updateSportsTournament', 'SportsTournamentUpdateInput', {
           id: read.tournament.id,
           expectedRevision: read.tournament.revision,
           ...settings,
+          ...registrationWindow,
           selfSubscriptionAllowNoTeam: settings.selfSubscriptionEnabled && settings.selfSubscriptionAllowNoTeam,
           selfSubscriptionAllowNoCategory: settings.selfSubscriptionEnabled && settings.selfSubscriptionAllowNoCategory,
           finishedAt: settings.status === 'FINISHED' ? new Date().toISOString() : null,

@@ -112,6 +112,45 @@ describe('SportsPlayerApplicationService', () => {
     expect((tx as Record<string, unknown>)['people']).toBeUndefined();
   });
 
+  it('uses the tournament registration window override instead of the parent event window', async () => {
+    const now = Date.now();
+    tx.sportsTournament.findFirst.mockResolvedValueOnce({
+      id: 'tournament-1',
+      majorEventId: 'major-1',
+      status: SportsTournamentStatus.REGISTRATION_OPEN,
+      registrationStartDate: new Date(now - 60_000),
+      registrationEndDate: new Date(now + 60_000),
+      selfSubscriptionEnabled: true,
+      selfSubscriptionAllowNoTeam: false,
+      selfSubscriptionAllowNoCategory: false,
+      allowPlayerMultipleTeams: false,
+      finishedAt: null,
+      majorEvent: {
+        isPaymentRequired: false,
+        requiresImageLicenseAgreement: false,
+        deletedAt: null,
+        subscriptionStartDate: new Date(now + 3_600_000),
+        subscriptionEndDate: new Date(now + 7_200_000),
+        majorEventPrices: [],
+      },
+      teams: [{ id: 'team-1' }],
+      categories: [{ id: 'category-1', registrationStartDate: null, registrationEndDate: null }],
+    });
+
+    await service.submitSelfApplication(
+      {
+        tournamentId: 'tournament-1',
+        requestedTeamId: 'team-1',
+        categoryIds: ['category-1'],
+        noticeAccepted: true,
+      },
+      'person-1',
+      applicantActor,
+    );
+
+    expect(tx.sportsPlayerApplication.upsert).toHaveBeenCalled();
+  });
+
   it('updates an existing pending self-application instead of creating a second request', async () => {
     tx.sportsPlayerApplication.upsert.mockResolvedValueOnce({
       id: 'application-1',

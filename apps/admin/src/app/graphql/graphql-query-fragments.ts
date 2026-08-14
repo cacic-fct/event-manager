@@ -122,6 +122,8 @@ export const MAJOR_EVENT_LIST_FIELDS = `
   emoji
   startDate
   endDate
+  subscriptionStartDate
+  subscriptionEndDate
   isPaymentRequired
   publicationState
   scheduledPublishAt

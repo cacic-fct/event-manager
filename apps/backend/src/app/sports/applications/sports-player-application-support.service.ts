@@ -61,6 +61,8 @@ export abstract class SportsPlayerApplicationSupportService {
         id: true,
         majorEventId: true,
         status: true,
+        registrationStartDate: true,
+        registrationEndDate: true,
         selfSubscriptionEnabled: true,
         selfSubscriptionAllowNoTeam: true,
         selfSubscriptionAllowNoCategory: true,
@@ -143,6 +145,8 @@ export abstract class SportsPlayerApplicationSupportService {
 
   protected assertSelfApplicationOpen(target: {
     status: SportsTournamentStatus;
+    registrationStartDate: Date | null;
+    registrationEndDate: Date | null;
     selfSubscriptionEnabled: boolean;
     selfSubscriptionAllowNoTeam: boolean;
     selfSubscriptionAllowNoCategory: boolean;
@@ -170,9 +174,11 @@ export abstract class SportsPlayerApplicationSupportService {
       throw new BadRequestException('As solicitações individuais não estão abertas para este torneio.');
     }
     const now = new Date();
+    const registrationStartDate = target.registrationStartDate ?? target.majorEvent.subscriptionStartDate;
+    const registrationEndDate = target.registrationEndDate ?? target.majorEvent.subscriptionEndDate;
     if (
-      (target.majorEvent.subscriptionStartDate && now < target.majorEvent.subscriptionStartDate) ||
-      (target.majorEvent.subscriptionEndDate && now > target.majorEvent.subscriptionEndDate) ||
+      (registrationStartDate && now < registrationStartDate) ||
+      (registrationEndDate && now > registrationEndDate) ||
       target.categories.some(
         (category) =>
           (category.registrationStartDate && now < category.registrationStartDate) ||

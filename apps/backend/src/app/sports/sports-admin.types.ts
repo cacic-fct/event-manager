@@ -28,6 +28,8 @@ export interface CreateSportsTournamentInput {
 export interface UpdateSportsTournamentInput {
   expectedRevision: number;
   status?: SportsTournamentStatus;
+  registrationStartDate?: Date | null;
+  registrationEndDate?: Date | null;
   finishedAt?: Date | null;
   selfSubscriptionEnabled?: boolean;
   selfSubscriptionAllowNoTeam?: boolean;

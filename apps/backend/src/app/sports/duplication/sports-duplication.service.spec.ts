@@ -181,6 +181,8 @@ describe('SportsDuplicationService', () => {
       data: expect.objectContaining({
         majorEventId: 'major-2',
         status: 'DRAFT',
+        registrationStartDate: null,
+        registrationEndDate: null,
         selfSubscriptionEnabled: false,
         createdById: actor.sub,
       }),

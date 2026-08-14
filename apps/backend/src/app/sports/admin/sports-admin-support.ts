@@ -168,6 +168,8 @@ export abstract class SportsAdminSupport {
     id: string;
     majorEventId: string;
     status: SportsTournamentStatus;
+    registrationStartDate: Date | null;
+    registrationEndDate: Date | null;
     scoringMode: SportsScoringMode;
     selfSubscriptionEnabled: boolean;
     selfSubscriptionAllowNoTeam: boolean;
@@ -179,6 +181,8 @@ export abstract class SportsAdminSupport {
       id: tournament.id,
       majorEventId: tournament.majorEventId,
       status: tournament.status,
+      registrationStartDate: tournament.registrationStartDate,
+      registrationEndDate: tournament.registrationEndDate,
       scoringMode: tournament.scoringMode,
       selfSubscriptionEnabled: tournament.selfSubscriptionEnabled,
       selfSubscriptionAllowNoTeam: tournament.selfSubscriptionAllowNoTeam,

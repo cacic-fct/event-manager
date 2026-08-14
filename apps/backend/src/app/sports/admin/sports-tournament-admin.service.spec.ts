@@ -87,6 +87,8 @@ describe('SportsTournamentAdminService', () => {
         data: {
           deletedAt: null,
           status: SportsTournamentStatus.DRAFT,
+          registrationStartDate: null,
+          registrationEndDate: null,
           selfSubscriptionEnabled: false,
           selfSubscriptionAllowNoTeam: false,
           selfSubscriptionAllowNoCategory: false,
@@ -166,6 +168,8 @@ describe('SportsTournamentAdminService', () => {
           {
             expectedRevision: 2,
             status: SportsTournamentStatus.FINISHED,
+            registrationStartDate: sportsTestDate(-2 * 60 * 60_000),
+            registrationEndDate: sportsTestDate(2 * 60 * 60_000),
             selfSubscriptionEnabled: false,
             scoringMode: SportsScoringMode.PER_SPORT,
           },
@@ -178,6 +182,8 @@ describe('SportsTournamentAdminService', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             status: SportsTournamentStatus.FINISHED,
+            registrationStartDate: expect.any(Date),
+            registrationEndDate: expect.any(Date),
             finishedAt: expect.any(Date),
             selfSubscriptionEnabled: false,
             revision: { increment: 1 },
@@ -218,6 +224,20 @@ describe('SportsTournamentAdminService', () => {
 
       await service.updateTournament('tournament-1', { expectedRevision: 2, allowPlayerMultipleTeams: false }, actor);
       expect(tx.sportsTournament.updateMany).toHaveBeenCalled();
+    });
+
+    it('rejects a partial tournament registration override before persistence', async () => {
+      prisma.sportsTournament.findFirst.mockResolvedValue(sportsAdminTournamentRecord());
+
+      await expect(
+        service.updateTournament(
+          'tournament-1',
+          { expectedRevision: 2, registrationStartDate: sportsTestDate(-60_000) },
+          actor,
+        ),
+      ).rejects.toThrow('Informe o início e o fim de inscrições do torneio.');
+
+      expect(tx.sportsTournament.updateMany).not.toHaveBeenCalled();
     });
 
     it('rejects missing and concurrently changed tournaments without audit', async () => {

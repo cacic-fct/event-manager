@@ -149,6 +149,22 @@ export function livestreamValidator(control: AbstractControl): ValidationErrors 
   return Boolean(provider) === Boolean(url) ? null : { incompleteLivestream: true };
 }
 
+export function tournamentRegistrationWindowValidator(control: AbstractControl): ValidationErrors | null {
+  if (control.get('registrationScheduleMode')?.value !== 'CUSTOM') {
+    return null;
+  }
+  const start = control.get('registrationStartDate')?.value;
+  const end = control.get('registrationEndDate')?.value;
+  if (!start || !end) {
+    return { incompleteRegistrationWindow: true };
+  }
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  return Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate
+    ? { invalidRegistrationWindow: true }
+    : null;
+}
+
 export function scoreRulesValidator(control: AbstractControl<string>): ValidationErrors | null {
   const base = jsonObjectValidator(control);
   if (base) {

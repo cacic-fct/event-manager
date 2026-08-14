@@ -150,6 +150,8 @@ export class SportsReadAdminListService {
           emoji: true,
           startDate: true,
           endDate: true,
+          subscriptionStartDate: true,
+          subscriptionEndDate: true,
           isPaymentRequired: true,
         },
       },

@@ -30,6 +30,8 @@ export class SportsTournamentMutationsResolver extends SportsMutationsResolverSu
           {
             majorEventId: input.majorEventId,
             status: input.status,
+            registrationStartDate: input.registrationStartDate,
+            registrationEndDate: input.registrationEndDate,
             scoringMode: input.scoringMode,
             selfSubscriptionEnabled: input.selfSubscriptionEnabled,
             selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam,
@@ -60,6 +62,8 @@ export class SportsTournamentMutationsResolver extends SportsMutationsResolverSu
           {
             expectedRevision: input.expectedRevision,
             status: input.status,
+            registrationStartDate: input.registrationStartDate,
+            registrationEndDate: input.registrationEndDate,
             scoringMode: input.scoringMode,
             selfSubscriptionEnabled: input.selfSubscriptionEnabled,
             selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam,

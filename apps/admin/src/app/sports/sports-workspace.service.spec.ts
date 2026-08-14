@@ -15,6 +15,7 @@ import {
   createAdminSportsTeamRead,
   createAdminSportsTournamentRead,
 } from './sports-story.fixtures';
+import { toLocalDate } from './sports-workspace-form.utils';
 
 describe('SportsWorkspaceService', () => {
   let workspace: SportsWorkspaceService;
@@ -41,6 +42,35 @@ describe('SportsWorkspaceService', () => {
     expect(workspace.statusLabel('REGISTRATION_OPEN')).toBe('Inscrições abertas');
     expect(workspace.statusLabel('PUBLISHED')).toBe('Publicado');
     expect(workspace.statusLabel('UNKNOWN_STATE')).toBe('UNKNOWN_STATE');
+  });
+
+  it('defaults tournament registration dates to the parent and seeds independent overrides on demand', () => {
+    const read = createAdminSportsTournamentRead({ categoryCount: 0, teamCount: 0 });
+    workspace.tournamentRead.set(read);
+    workspace.tournamentForm.patchValue({
+      registrationScheduleMode: 'INHERIT',
+      registrationStartDate: '',
+      registrationEndDate: '',
+    });
+
+    expect(workspace.inheritedRegistrationDates()).toEqual({
+      startDate: read.tournament.majorEvent?.subscriptionStartDate,
+      endDate: read.tournament.majorEvent?.subscriptionEndDate,
+    });
+
+    workspace.setTournamentRegistrationSchedule('CUSTOM');
+
+    expect(workspace.tournamentForm.controls.registrationScheduleMode.value).toBe('CUSTOM');
+    expect(workspace.tournamentForm.controls.registrationStartDate.value).toBe(
+      toLocalDate(read.tournament.majorEvent?.subscriptionStartDate),
+    );
+    expect(workspace.tournamentForm.controls.registrationEndDate.value).toBe(
+      toLocalDate(read.tournament.majorEvent?.subscriptionEndDate),
+    );
+    expect(workspace.tournamentForm.valid).toBe(true);
+
+    workspace.setTournamentRegistrationSchedule('INHERIT');
+    expect(workspace.tournamentForm.controls.registrationScheduleMode.value).toBe('INHERIT');
   });
 
   it('resolves teams through the selected category registration', () => {

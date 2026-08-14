@@ -5,6 +5,8 @@ export const ADMIN_TOURNAMENT_SELECT = {
   majorEventId: true,
   majorEvent: true,
   status: true,
+  registrationStartDate: true,
+  registrationEndDate: true,
   scoringMode: true,
   selfSubscriptionEnabled: true,
   selfSubscriptionAllowNoTeam: true,

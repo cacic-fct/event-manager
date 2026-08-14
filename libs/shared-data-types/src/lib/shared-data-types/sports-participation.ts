@@ -29,6 +29,12 @@ export class SportsTournament {
   @Field(() => SportsTournamentStatus)
   status!: SportsTournamentStatus;
 
+  @Field(() => Date, { nullable: true })
+  registrationStartDate?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  registrationEndDate?: Date | null;
+
   @Field(() => SportsScoringMode)
   scoringMode!: SportsScoringMode;
 

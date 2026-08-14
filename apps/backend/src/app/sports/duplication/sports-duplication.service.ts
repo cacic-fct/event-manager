@@ -87,6 +87,8 @@ export class SportsDuplicationService {
         data: {
           majorEventId: destinationMajorEvent.id,
           status: SportsTournamentStatus.DRAFT,
+          registrationStartDate: null,
+          registrationEndDate: null,
           scoringMode: source.scoringMode,
           selfSubscriptionEnabled: false,
           allowPlayerMultipleTeams: source.allowPlayerMultipleTeams,

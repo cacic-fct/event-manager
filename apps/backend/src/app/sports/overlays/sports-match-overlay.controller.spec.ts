@@ -6,8 +6,10 @@ describe('SportsMatchOverlayController', () => {
     data: jest.fn(),
     stylesheet: jest.fn(),
     script: jest.fn(),
+    contentSecurityPolicy: jest.fn(),
   };
   const response = {
+    setHeader: jest.fn(),
     type: jest.fn(),
     send: jest.fn(),
   };
@@ -23,10 +25,13 @@ describe('SportsMatchOverlayController', () => {
   it('renders the OBS document with validated query options from the overlay service', async () => {
     const query = { team: 'home', score: '1', periodWord: 'Turno' };
     overlays.render.mockResolvedValue('<!doctype html>');
+    overlays.contentSecurityPolicy.mockReturnValue("default-src 'none'");
 
     await controller.render('match-1', query, response as never);
 
     expect(overlays.render).toHaveBeenCalledWith('match-1', query);
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Security-Policy', "default-src 'none'");
+    expect(overlays.contentSecurityPolicy).toHaveBeenCalledWith('match-1');
     expect(response.type).toHaveBeenCalledWith('html');
     expect(response.send).toHaveBeenCalledWith('<!doctype html>');
   });

@@ -30,6 +30,8 @@ export interface SportsTournamentSummary {
   id: string;
   majorEventId: string;
   status: SportsTournamentStatus;
+  registrationStartDate?: string | null;
+  registrationEndDate?: string | null;
   scoringMode: SportsScoringMode;
   selfSubscriptionEnabled: boolean;
   selfSubscriptionAllowNoTeam: boolean;
@@ -37,6 +39,14 @@ export interface SportsTournamentSummary {
   allowPlayerMultipleTeams: boolean;
   revision: number;
   finishedAt?: string | null;
+  majorEvent?: {
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    subscriptionStartDate?: string | null;
+    subscriptionEndDate?: string | null;
+  } | null;
 }
 
 export interface SportsCategorySummary {
@@ -201,6 +211,8 @@ export interface SportsTournamentListItem {
     emoji: string;
     startDate: string;
     endDate: string;
+    subscriptionStartDate?: string | null;
+    subscriptionEndDate?: string | null;
     isPaymentRequired: boolean;
   };
   categoryCount: number;

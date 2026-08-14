@@ -89,6 +89,12 @@ export class AdminSportsTournamentMajorEventSummary {
   @Field(() => Date)
   endDate!: Date;
 
+  @Field(() => Date, { nullable: true })
+  subscriptionStartDate?: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  subscriptionEndDate?: Date | null;
+
   @Field(() => Boolean)
   isPaymentRequired!: boolean;
 }

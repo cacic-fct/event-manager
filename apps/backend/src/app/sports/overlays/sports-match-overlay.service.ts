@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import {
   DEFAULT_SPORTS_OVERLAY_PERIOD_WORD,
@@ -6,7 +9,17 @@ import {
 } from '@cacic-fct/shared-data-types';
 import type { PublicSportsMatch, PublicSportsTeam } from '../read/sports-read.models';
 import { SportsReadService } from '../read/sports-read.service';
-import { OVERLAY_ASSET_BASE, OVERLAY_RUNTIME_SCRIPT, OVERLAY_STYLESHEET } from './sports-match-overlay.assets';
+import { OVERLAY_RUNTIME_SCRIPT } from './sports-match-overlay';
+
+const OVERLAY_STYLESHEET = readFileSync(join(__dirname, 'sports-match-overlay.css'), 'utf8');
+const DEMO_INITIAL_ELAPSED_MS = 90_000;
+const DEMO_SPORTS_MATCH_OVERLAY_LOGO_URL = 'https://eventos.cacic.com.br/app/icons/favicon.svg';
+
+function cspHash(value: string): string {
+  return `'sha256-${createHash('sha256').update(value).digest('base64')}'`;
+}
+
+const SPORTS_MATCH_OVERLAY_DEMO_IMAGE_SOURCE = 'https://eventos.cacic.com.br';
 
 export type SportsMatchOverlayTeam = 'both' | 'home' | 'away';
 
@@ -43,16 +56,16 @@ export const SPORTS_MATCH_OVERLAY_DEMO_ID = 'demo';
 export const DEMO_SPORTS_MATCH_OVERLAY_DATA: SportsMatchOverlayData = {
   id: SPORTS_MATCH_OVERLAY_DEMO_ID,
   homeTeam: { name: 'Equipe A', logoUrl: null },
-  awayTeam: { name: 'Equipe B com nome longo', logoUrl: null },
+  awayTeam: { name: 'Equipe B com nome longo', logoUrl: DEMO_SPORTS_MATCH_OVERLAY_LOGO_URL },
   state: 'LIVE',
   scoreboard: {
     homeScore: 1,
     awayScore: 99,
     activePeriod: 1,
-    periods: [{ number: 1, label: '1º período', homeScore: 1, awayScore: 0, completed: false }],
+    periods: [{ number: 1, label: '1º período', homeScore: 1, awayScore: 99, completed: false }],
   },
   timerStartedAtUnixMs: null,
-  elapsedBeforePauseMs: 90_000,
+  elapsedBeforePauseMs: DEMO_INITIAL_ELAPSED_MS,
   periodTimers: [],
   overallTimerEnabled: true,
 };
@@ -115,15 +128,16 @@ export class SportsMatchOverlayService {
     const eventsUrl = `/api/sports/matches/${encodeURIComponent(data.id)}/events`;
 
     return `<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${this.escapeHtml(`Overlay esportivo - ${data.id}`)}</title>
-    <link rel="stylesheet" href="${OVERLAY_ASSET_BASE}.css">
+<html id="sports-match-overlay-document" lang="pt-BR">
+  <head id="sports-match-overlay-head">
+    <meta id="sports-match-overlay-charset" charset="utf-8">
+    <meta id="sports-match-overlay-viewport" name="viewport" content="width=device-width, initial-scale=1">
+    <title id="sports-match-overlay-title">${this.escapeHtml(`Overlay esportivo - ${data.id}`)}</title>
+    <style id="sports-match-overlay-stylesheet">${OVERLAY_STYLESHEET}</style>
   </head>
-  <body>
+  <body id="sports-match-overlay-body">
     <main
+      id="sports-match-overlay"
       class="sports-overlay"
       data-sports-match-overlay
       data-match-id="${this.escapeHtml(data.id)}"
@@ -139,20 +153,34 @@ export class SportsMatchOverlayService {
       data-period-word="${this.escapeHtml(config.periodWord)}"
     >
       ${this.renderTeam('home', data.homeTeam, data.scoreboard.homeScore, config)}
-      <div class="sports-overlay__center" data-role="center">
-        <span class="sports-overlay__state" data-role="state"${config.showState ? '' : ' hidden'}>${this.escapeHtml(initialState)}</span>
-        <strong class="sports-overlay__stopwatch" data-role="stopwatch"${config.showStopwatch && data.overallTimerEnabled ? '' : ' hidden'}>${initialStopwatch}</strong>
-        <span class="sports-overlay__period" data-role="period"${config.showPeriod && initialPeriod !== null ? '' : ' hidden'}>${initialPeriod === null ? '' : this.escapeHtml(`${config.periodWord} ${initialPeriod}`)}</span>
+      <div id="sports-match-overlay-center" class="sports-overlay__center" data-role="center">
+        <span id="sports-match-overlay-state" class="sports-overlay__state" data-role="state"${config.showState ? '' : ' hidden'}>${this.escapeHtml(initialState)}</span>
+        <strong id="sports-match-overlay-stopwatch" class="sports-overlay__stopwatch" data-role="stopwatch"${config.showStopwatch && data.overallTimerEnabled ? '' : ' hidden'}>${initialStopwatch}</strong>
+        <span id="sports-match-overlay-period" class="sports-overlay__period" data-role="period"${config.showPeriod && initialPeriod !== null ? '' : ' hidden'}>${initialPeriod === null ? '' : this.escapeHtml(`${config.periodWord} ${initialPeriod}`)}</span>
       </div>
       ${this.renderTeam('away', data.awayTeam, data.scoreboard.awayScore, config)}
     </main>
-    <script defer src="${OVERLAY_ASSET_BASE}.js"></script>
+    <script id="sports-match-overlay-runtime" defer>${OVERLAY_RUNTIME_SCRIPT}</script>
   </body>
 </html>`;
   }
 
   stylesheet(): string {
     return OVERLAY_STYLESHEET;
+  }
+
+  contentSecurityPolicy(matchId: string): string {
+    const demoImageSource = matchId === SPORTS_MATCH_OVERLAY_DEMO_ID
+      ? ` ${SPORTS_MATCH_OVERLAY_DEMO_IMAGE_SOURCE}`
+      : '';
+    return [
+      "default-src 'none'",
+      "base-uri 'none'",
+      `script-src 'self' ${cspHash(OVERLAY_RUNTIME_SCRIPT)}`,
+      `style-src 'self' ${cspHash(OVERLAY_STYLESHEET)}`,
+      `img-src 'self' data:${demoImageSource}`,
+      "connect-src 'self'",
+    ].join('; ');
   }
 
   script(): string {
@@ -182,6 +210,8 @@ export class SportsMatchOverlayService {
         ...DEMO_SPORTS_MATCH_OVERLAY_DATA.scoreboard,
         periods: DEMO_SPORTS_MATCH_OVERLAY_DATA.scoreboard.periods.map((period) => ({ ...period })),
       },
+      timerStartedAtUnixMs: Date.now() - DEMO_INITIAL_ELAPSED_MS,
+      elapsedBeforePauseMs: 0,
       periodTimers: DEMO_SPORTS_MATCH_OVERLAY_DATA.periodTimers.map((timer) => ({ ...timer })),
     };
   }
@@ -195,13 +225,15 @@ export class SportsMatchOverlayService {
     const name = team?.name || (side === 'home' ? 'Equipe da casa' : 'Equipe visitante');
     const logoUrl = team?.logoUrl ?? null;
     const visible = config.team === 'both' || config.team === side;
-    return `<section class="sports-overlay__team" data-side="${side}"${visible ? '' : ' hidden'} aria-label="${this.escapeHtml(name)}">
-        <span class="sports-overlay__icon" data-role="icon"${config.showTeamIcon ? '' : ' hidden'} aria-hidden="true">
-          <img class="sports-overlay__logo" data-role="logo" alt="" width="56" height="56"${logoUrl ? ` src="${this.escapeHtml(logoUrl)}"` : ''}${logoUrl ? '' : ' hidden'}>
-          <span class="sports-overlay__icon-placeholder" data-role="placeholder"${logoUrl ? ' hidden' : ''}>${this.escapeHtml(this.teamInitials(name))}</span>
-        </span>
-        <span class="sports-overlay__team-name" data-role="team-name"${config.showTeamName ? '' : ' hidden'}>${this.escapeHtml(name)}</span>
-        <strong class="sports-overlay__score" data-role="score"${config.showScore ? '' : ' hidden'}>${score}</strong>
+    const icon = `<span id="sports-match-overlay-${side}-icon" class="sports-overlay__icon" data-role="icon"${config.showTeamIcon ? '' : ' hidden'} aria-hidden="true">
+          <img id="sports-match-overlay-${side}-logo" class="sports-overlay__logo" data-role="logo" alt="" width="56" height="56"${logoUrl ? ` src="${this.escapeHtml(logoUrl)}"` : ''}${logoUrl ? '' : ' hidden'}>
+          <span id="sports-match-overlay-${side}-icon-placeholder" class="sports-overlay__icon-placeholder" data-role="placeholder"${logoUrl ? ' hidden' : ''}>${this.escapeHtml(this.teamInitials(name))}</span>
+        </span>`;
+    const nameElement = `<span id="sports-match-overlay-${side}-name" class="sports-overlay__team-name" data-role="team-name"${config.showTeamName ? '' : ' hidden'}>${this.escapeHtml(name)}</span>`;
+    const scoreElement = `<strong id="sports-match-overlay-${side}-score" class="sports-overlay__score" data-role="score"${config.showScore ? '' : ' hidden'}>${score}</strong>`;
+    const elements = side === 'away' ? [scoreElement, nameElement, icon] : [icon, nameElement, scoreElement];
+    return `<section id="sports-match-overlay-${side}-team" class="sports-overlay__team sports-overlay__team--${side}" data-side="${side}"${visible ? '' : ' hidden'} aria-label="${this.escapeHtml(name)}">
+        ${elements.join('\n        ')}
       </section>`;
   }
 

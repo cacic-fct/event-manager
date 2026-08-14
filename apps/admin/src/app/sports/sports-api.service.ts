@@ -16,9 +16,10 @@ import type {
 
 const TOURNAMENT_FIELDS = `
   tournament {
-    id majorEventId status scoringMode selfSubscriptionEnabled
+    id majorEventId status registrationStartDate registrationEndDate scoringMode selfSubscriptionEnabled
     selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory
     allowPlayerMultipleTeams revision finishedAt
+    majorEvent { id name startDate endDate subscriptionStartDate subscriptionEndDate }
   }
   categories {
     id tournamentId eventGroupId eventGroup { id emoji } name sport customSportName division format status
@@ -111,11 +112,13 @@ export class SportsApiService {
         `query AdminSportsTournamentList($query: String, $skip: Int, $take: Int) {
           adminSportsTournamentList(query: $query, skip: $skip, take: $take) {
             tournament {
-              id majorEventId status scoringMode selfSubscriptionEnabled
+              id majorEventId status registrationStartDate registrationEndDate scoringMode selfSubscriptionEnabled
               selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory
               allowPlayerMultipleTeams revision finishedAt
             }
-            majorEvent { id name emoji startDate endDate isPaymentRequired }
+            majorEvent {
+              id name emoji startDate endDate subscriptionStartDate subscriptionEndDate isPaymentRequired
+            }
             categoryCount teamCount pendingApplicationCount pendingReviewCount
           }
         }`,

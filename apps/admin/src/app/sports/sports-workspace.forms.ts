@@ -6,20 +6,30 @@ import {
   DEFAULT_SPORTS_SCORE_RULES,
   DEFAULT_SPORTS_STANDINGS_RULES,
 } from '@cacic-fct/shared-data-types/sports-metadata';
-import { livestreamValidator, placementPointsValidator } from './sports-workspace-form.utils';
+import {
+  livestreamValidator,
+  placementPointsValidator,
+  tournamentRegistrationWindowValidator,
+} from './sports-workspace-form.utils';
 
 export function createSportsWorkspaceForms(fb: FormBuilder) {
   const overallPlacementPoints = fb.array([createPlacementPointForm(fb, 1)], placementPointsValidator);
   overallPlacementPoints.clear();
   return {
-    tournament: fb.nonNullable.group({
-      status: ['DRAFT'],
-      scoringMode: ['PER_SPORT'],
-      selfSubscriptionEnabled: [false],
-      selfSubscriptionAllowNoTeam: [false],
-      selfSubscriptionAllowNoCategory: [false],
-      allowPlayerMultipleTeams: [false],
-    }),
+    tournament: fb.nonNullable.group(
+      {
+        status: ['DRAFT'],
+        registrationScheduleMode: ['INHERIT'],
+        registrationStartDate: [''],
+        registrationEndDate: [''],
+        scoringMode: ['PER_SPORT'],
+        selfSubscriptionEnabled: [false],
+        selfSubscriptionAllowNoTeam: [false],
+        selfSubscriptionAllowNoCategory: [false],
+        allowPlayerMultipleTeams: [false],
+      },
+      { validators: tournamentRegistrationWindowValidator },
+    ),
     category: fb.nonNullable.group({
       id: [''],
       name: ['', Validators.required],

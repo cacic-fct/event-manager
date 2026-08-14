@@ -22,6 +22,8 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
     input: {
       majorEventId: string;
       status?: SportsTournamentStatus;
+      registrationStartDate?: Date | null;
+      registrationEndDate?: Date | null;
       selfSubscriptionEnabled?: boolean;
       selfSubscriptionAllowNoTeam?: boolean;
       selfSubscriptionAllowNoCategory?: boolean;
@@ -32,6 +34,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
   ) {
     const actorId = this.requireActorId(actor);
     await this.frozen.assertMajorEventMutable(input.majorEventId, actor, 'edit');
+    this.assertOptionalDateRange(input.registrationStartDate, input.registrationEndDate, 'inscrições do torneio');
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const majorEvent = await tx.majorEvent.findFirst({
         where: { id: input.majorEventId, deletedAt: null },
@@ -51,6 +54,8 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
             data: {
               deletedAt: null,
               status: input.status ?? SportsTournamentStatus.DRAFT,
+              registrationStartDate: input.registrationStartDate ?? null,
+              registrationEndDate: input.registrationEndDate ?? null,
               selfSubscriptionEnabled: input.selfSubscriptionEnabled ?? false,
               selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam ?? false,
               selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory ?? false,
@@ -64,6 +69,8 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
             data: {
               majorEventId: majorEvent.id,
               status: input.status ?? SportsTournamentStatus.DRAFT,
+              registrationStartDate: input.registrationStartDate ?? null,
+              registrationEndDate: input.registrationEndDate ?? null,
               selfSubscriptionEnabled: input.selfSubscriptionEnabled ?? false,
               selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam ?? false,
               selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory ?? false,
@@ -152,6 +159,9 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
       throw new NotFoundException(`Sports tournament ${tournamentId} was not found.`);
     }
     await this.frozen.assertMajorEventMutable(existing.majorEventId, actor, 'edit');
+    if (input.registrationStartDate !== undefined || input.registrationEndDate !== undefined) {
+      this.assertOptionalDateRange(input.registrationStartDate, input.registrationEndDate, 'inscrições do torneio');
+    }
 
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       if (
@@ -172,6 +182,10 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
         },
         data: {
           ...(input.status !== undefined ? { status: input.status } : {}),
+          ...(input.registrationStartDate !== undefined
+            ? { registrationStartDate: input.registrationStartDate }
+            : {}),
+          ...(input.registrationEndDate !== undefined ? { registrationEndDate: input.registrationEndDate } : {}),
           ...(input.selfSubscriptionEnabled !== undefined
             ? { selfSubscriptionEnabled: input.selfSubscriptionEnabled }
             : {}),

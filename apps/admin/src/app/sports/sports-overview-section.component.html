@@ -3,9 +3,13 @@
     <div class="panel-heading">
       <div>
         <h3>Regras gerais</h3>
-        <p>O estado controla inscrições e edições não administrativas.</p>
+        <p>O estado controla o ciclo do torneio; o período de inscrições pode seguir o grande evento ou ser próprio.</p>
       </div>
-      <button mat-flat-button type="button" (click)="workspace.saveTournament()" [disabled]="workspace.loading()">
+      <button
+        mat-flat-button
+        type="button"
+        (click)="workspace.saveTournament()"
+        [disabled]="workspace.loading() || workspace.tournamentForm.invalid">
         <mat-icon>save</mat-icon>
         Salvar
       </button>
@@ -19,6 +23,32 @@
           }
         </mat-select>
       </mat-form-field>
+      <mat-form-field>
+        <mat-label>Período das inscrições</mat-label>
+        <mat-select
+          formControlName="registrationScheduleMode"
+          (selectionChange)="workspace.setTournamentRegistrationSchedule($event.value)">
+          <mat-option value="INHERIT">Herdar do grande evento</mat-option>
+          <mat-option value="CUSTOM">Personalizar para este torneio</mat-option>
+        </mat-select>
+        <mat-hint>
+          @let inherited = workspace.inheritedRegistrationDates(); @if (inherited.startDate && inherited.endDate) {
+            {{ inherited.startDate | date: 'short' }} a {{ inherited.endDate | date: 'short' }}
+          } @else if (inherited.startDate) { A partir de {{ inherited.startDate | date: 'short' }} } @else if
+          (inherited.endDate) { Até {{ inherited.endDate | date: 'short' }} } @else { Sem datas definidas no grande
+          evento. }
+        </mat-hint>
+      </mat-form-field>
+      @if (workspace.tournamentForm.controls.registrationScheduleMode.value === 'CUSTOM') {
+        <mat-form-field>
+          <mat-label>Início das inscrições</mat-label>
+          <input matInput type="datetime-local" formControlName="registrationStartDate" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Fim das inscrições</mat-label>
+          <input matInput type="datetime-local" formControlName="registrationEndDate" />
+        </mat-form-field>
+      }
       <mat-form-field>
         <mat-label>Classificação geral</mat-label>
         <mat-select formControlName="scoringMode">
