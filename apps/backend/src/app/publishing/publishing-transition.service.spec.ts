@@ -112,6 +112,27 @@ describe('PublicationTransitionService', () => {
     );
   });
 
+  it('publishes an event and synchronizes the public-site visibility override', async () => {
+    const { searchSync, service, stateWriter } = createService();
+    const sync = { eventIds: ['event-1'], majorEventIds: [] };
+    stateWriter.updateEventPublicationState.mockResolvedValue(sync);
+
+    await expect(
+      service.setEventPublicationState('event-1', PublicationState.PUBLISHED, createUser(), {
+        isPubliclyListed: true,
+      }),
+    ).resolves.toEqual(sync);
+
+    expect(stateWriter.updateEventPublicationState).toHaveBeenCalledWith(
+      'event-1',
+      PublicationState.PUBLISHED,
+      null,
+      expect.any(Object),
+      { isPubliclyListed: true },
+    );
+    expect(searchSync.syncSearch).toHaveBeenCalledWith(sync);
+  });
+
   it('rejects a scheduled state change when no schedule is provided', async () => {
     const { searchSync, service, stateWriter, targets } = createService();
 

@@ -160,7 +160,7 @@ export class TypesenseSearchService implements OnModuleInit {
     majorEventId?: string | null;
     eventGroupId?: string | null;
     shouldIssueCertificate?: boolean | null;
-    publiclyVisible?: boolean | null;
+    isPubliclyListed?: boolean | null;
     publicationState?: string | null;
     startDate: Date;
     endDate: Date;

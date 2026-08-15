@@ -47,6 +47,12 @@ export class SportsRosterEntryInput {
   @Field(() => String)
   registrationMemberId!: string;
 
+  @Field(() => String, {
+    nullable: true,
+    description: 'Optional team-member fallback used by trusted administrative roster edits.',
+  })
+  teamMemberId?: string | null;
+
   @Field(() => SportsRosterRole, { nullable: true })
   role?: SportsRosterRole;
 
@@ -124,6 +130,33 @@ export class SportsRosterCheckInInput {
     description: 'Whether the player is present. False safely reverses an accidental check-in.',
   })
   present?: boolean;
+}
+
+@InputType()
+export class SportsOfficialCheckInInput {
+  @Field(() => String)
+  clientId!: string;
+
+  @Field(() => String)
+  officialAssignmentId!: string;
+
+  @Field(() => Date, { nullable: true })
+  checkedInAt?: Date;
+
+  @Field(() => Boolean, { nullable: true })
+  offline?: boolean;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Pessoa que operou o check-in off-line. Exige credencial assinada correspondente.',
+  })
+  collectorPersonId?: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Credencial durável, assinada pelo servidor e vinculada à pessoa coletora e à partida.',
+  })
+  collectorCredential?: string | null;
 }
 
 @InputType()

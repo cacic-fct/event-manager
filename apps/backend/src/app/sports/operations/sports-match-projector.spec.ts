@@ -1,7 +1,35 @@
 import { SportsMatchActionType, SportsMatchState, SportsReviewStatus } from '@prisma/client';
 import { projectSportsMatch } from './sports-match-projector';
 
-describe('sports match occurrence projection', () => {
+describe('sports match projection', () => {
+  it('does not start a match for a non-roster attendance scan or a removed check-in', () => {
+    const authoredAt = new Date('2026-08-01T14:00:00.000Z');
+    const projection = projectSportsMatch(
+      [
+        {
+          type: SportsMatchActionType.CHECK_IN,
+          payload: { kind: 'NON_ROSTER_ATTENDANCE_SCAN' },
+          authoredAt,
+          reviewStatus: SportsReviewStatus.APPROVED,
+        },
+        {
+          type: SportsMatchActionType.CHECK_IN,
+          payload: { kind: 'ROSTER_ENTRY_CHECK_IN', present: false },
+          authoredAt,
+          reviewStatus: SportsReviewStatus.APPROVED,
+        },
+      ],
+      {
+        approvedOnly: false,
+        hasCheckedInPlayers: false,
+        maximumPeriods: null,
+        periodLabel: null,
+      },
+    );
+
+    expect(projection.state).toBe(SportsMatchState.SCHEDULED);
+  });
+
   it('keeps generic occurrences replayable without changing score or match state', () => {
     const authoredAt = new Date('2026-08-01T14:00:00.000Z');
     const projection = projectSportsMatch(

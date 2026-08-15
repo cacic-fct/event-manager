@@ -54,7 +54,7 @@ export const EVENT_DETAIL_FIELDS = `
   onlineAttendanceCode
   onlineAttendanceStartDate
   onlineAttendanceEndDate
-  publiclyVisible
+  isPubliclyListed
   displayLecturerProfile
   publicationState
   scheduledPublishAt

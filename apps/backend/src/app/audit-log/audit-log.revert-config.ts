@@ -33,7 +33,7 @@ const EVENT_MUTABLE_FIELDS = [
   'onlineAttendanceStartDate',
   'shouldAllowOralAttendance',
   'onlineAttendanceEndDate',
-  'publiclyVisible',
+  'isPubliclyListed',
   'youtubeCode',
   'buttonText',
   'buttonLink',

@@ -159,7 +159,7 @@ describe('SportsBracketService generation lifecycle', () => {
             event: {
               id: 'event-new',
               deletedAt: null,
-              publiclyVisible: false,
+              isPubliclyListed: false,
               publicationState: PublicationState.DRAFT,
             },
           },

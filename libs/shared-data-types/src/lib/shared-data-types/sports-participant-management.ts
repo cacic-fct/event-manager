@@ -323,6 +323,9 @@ export class SportsTeamChangeRequest {
   deltaJson!: string;
 
   @Field(() => String, { nullable: true })
+  pendingLogoUrl?: string | null;
+
+  @Field(() => String, { nullable: true })
   pendingKey?: string | null;
 
   @Field(() => [SportsIdentityClaim])

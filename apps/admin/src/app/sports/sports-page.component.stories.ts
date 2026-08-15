@@ -227,6 +227,12 @@ const meta: Meta<SportsStoryArgs> = {
     msw: {
       handlers: [
         sportsGraphqlHandler,
+        http.get('/api/sports/admin/teams/:sportsTeamId/logo-review/:changeRequestId', () =>
+          new HttpResponse(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96"><path fill="#1565c0" d="M48 5 84 18v25c0 23-15 39-36 48C27 82 12 66 12 43V18z"/><path fill="#fff" d="m48 22 5 14h15L56 45l4 15-12-9-12 9 4-15-12-9h15z"/></svg>',
+            { headers: { 'Content-Type': 'image/svg+xml' } },
+          ),
+        ),
         http.get('/api/sports/tournaments/:tournamentId/review-events', async () => {
           await delay('infinite');
           return new HttpResponse(null, {
@@ -335,6 +341,13 @@ export const ReviewQueues: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /revisões/i }));
     await expect(await canvas.findByText('Camila Rodrigues Pereira')).toBeVisible();
     await expect(canvas.getByText('Conflito')).toBeVisible();
+    await expect(canvas.getByText('Prévia do novo escudo')).toBeVisible();
+    const logoPreview = canvas.getByText('Prévia do novo escudo').closest('.team-change-logo-preview');
+    expect(logoPreview?.querySelector('img')).toHaveAttribute(
+      'src',
+      '/api/sports/admin/teams/team-1/logo-review/change-logo-1',
+    );
+    await expect(canvas.getByText('Delta bruto')).toBeVisible();
   },
 };
 

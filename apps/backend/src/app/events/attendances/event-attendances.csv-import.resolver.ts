@@ -13,6 +13,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AttendanceCategoryService } from '../attendance-category.service';
 import { EventAttendancesResolverBase, GraphqlContext } from './event-attendances.shared';
 import { PersonMatch } from './shared/types';
+import {
+  notifySportsMatchAttendanceMutation,
+  startSportsMatchCheckInFromAthleteAttendance,
+} from '../../sports/operations/sports-match-attendance';
+import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
 
 @Resolver(() => EventAttendance)
 export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBase {
@@ -22,8 +27,11 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
     private readonly frozenResources: FrozenResourceService = {
       assertEventMutable: async () => undefined,
     } as unknown as FrozenResourceService,
+    sportsMutationEvents: SportsMutationEventsService = {
+      publishAttendanceMutation: async () => undefined,
+    } as unknown as SportsMutationEventsService,
   ) {
-    super(prisma, attendanceCategories);
+    super(prisma, attendanceCategories, sportsMutationEvents);
   }
 
   @Mutation(() => EventAttendanceCsvImportResult, {
@@ -128,6 +136,7 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
 
     const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
     const createdPersonIds = Array.from(personIdsToCreate);
+    let checkInStarted = false;
     const createResult =
       createdPersonIds.length > 0
         ? await this.prisma.$transaction(async (tx) => {
@@ -158,9 +167,22 @@ export class EventAttendanceCsvImportResolver extends EventAttendancesResolverBa
               },
             });
             await this.attendanceCategories.refreshForEventPersons([input.eventId], createdPersonIds, tx);
+            for (const personId of createdPersonIds) {
+              checkInStarted =
+                (await startSportsMatchCheckInFromAthleteAttendance({
+                  tx,
+                  eventId: input.eventId,
+                  personId,
+                  updatedById: createdById,
+                })) || checkInStarted;
+            }
             return { count: createdPersonIds.length || result.count };
           })
         : { count: 0 };
+
+    if (checkInStarted) {
+      await notifySportsMatchAttendanceMutation(this.sportsMutationEvents, { eventId: input.eventId });
+    }
 
     return {
       createdCount: createResult.count,

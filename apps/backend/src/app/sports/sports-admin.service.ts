@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { PublicationTransitionService } from '../publishing/publishing-transition.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -30,6 +31,7 @@ export class SportsAdminService {
     frozen: FrozenResourceService,
     auditLog: AuditLogService,
     payments: SportsPaymentService,
+    publication: PublicationTransitionService,
   ) {
     const dependencies = [prisma, frozen, auditLog, payments] as const;
     this.tournaments = new SportsTournamentAdminService(...dependencies);
@@ -37,7 +39,7 @@ export class SportsAdminService {
     this.teams = new SportsTeamAdminService(...dependencies);
     this.registrations = new SportsRegistrationAdminService(...dependencies);
     this.venues = new SportsVenueAdminService(...dependencies);
-    this.matches = new SportsMatchAdminService(...dependencies);
+    this.matches = new SportsMatchAdminService(...dependencies, publication);
     this.officials = new SportsOfficialAdminService(...dependencies);
     this.scoreEntries = new SportsScoreEntryAdminService(...dependencies);
   }
@@ -94,6 +96,10 @@ export class SportsAdminService {
     this.matches.createMatch(...args);
   readonly updateMatch = (...args: Parameters<SportsMatchAdminService['updateMatch']>) =>
     this.matches.updateMatch(...args);
+  readonly publishMatch = (...args: Parameters<SportsMatchAdminService['publishMatch']>) =>
+    this.matches.publishMatch(...args);
+  readonly unpublishMatch = (...args: Parameters<SportsMatchAdminService['unpublishMatch']>) =>
+    this.matches.unpublishMatch(...args);
   readonly getMatchEventId = (...args: Parameters<SportsMatchAdminService['getMatchEventId']>) =>
     this.matches.getMatchEventId(...args);
   readonly deleteMatch = (...args: Parameters<SportsMatchAdminService['deleteMatch']>) =>

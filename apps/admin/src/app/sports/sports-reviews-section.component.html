@@ -70,7 +70,23 @@
             <strong>{{ changeTypeLabel(request.type) }}</strong
             ><span class="state-label">{{ workspace.statusLabel(request.status) }}</span>
           </div>
-          <pre>{{ request.deltaJson }}</pre>
+          @if (request.pendingLogoUrl; as pendingLogoUrl) {
+            <div class="team-change-details">
+              <div class="team-change-logo-preview">
+                <lib-sports-team-logo [logoUrl]="pendingLogoUrl" [size]="72" />
+                <div>
+                  <strong>Prévia do novo escudo</strong>
+                  <small>Imagem recebida nesta solicitação.</small>
+                </div>
+              </div>
+              <div class="team-change-raw">
+                <span class="team-change-raw-label">Delta bruto</span>
+                <pre>{{ request.deltaJson }}</pre>
+              </div>
+            </div>
+          } @else {
+            <pre>{{ request.deltaJson }}</pre>
+          }
           <div class="review-actions">
             <button
               mat-button

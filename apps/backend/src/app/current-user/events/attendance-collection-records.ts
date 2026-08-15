@@ -5,6 +5,7 @@ import { getBrazilianPhoneCandidates } from '../../common/brazilian-phone';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { createOrRestoreEventAttendance } from '../../events/attendances/shared/event-attendance-writer';
 import { PrismaService } from '../../prisma/prisma.service';
+import { startSportsMatchCheckInFromAthleteAttendance } from '../../sports/operations/sports-match-attendance';
 
 const MAX_LOCATION_ACCURACY_METERS = 200;
 
@@ -30,17 +31,34 @@ export async function createAttendance(params: {
   attendanceCategories: AttendanceCategoryService;
   input: CreateAttendanceInput;
   afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
+  afterCheckInStarted?: (attendance: { personId: string; eventId: string }) => Promise<void>;
 }) {
   getRequiredAttendanceLocationData(params.input.location);
+  let checkInStarted = false;
   try {
-    return await params.prisma.$transaction((tx) =>
+    const attendance = await params.prisma.$transaction((tx) =>
       createOrRestoreEventAttendance({
         tx,
         attendanceCategories: params.attendanceCategories,
         input: params.input,
-        afterWrite: params.afterCreate,
+        afterWrite: async (attendance, transaction) => {
+          if ((params.input.status ?? EventAttendanceStatus.PRESENT) === EventAttendanceStatus.PRESENT) {
+            checkInStarted =
+              (await startSportsMatchCheckInFromAthleteAttendance({
+                tx: transaction,
+                eventId: attendance.eventId,
+                personId: attendance.personId,
+                updatedById: params.input.committedById ?? params.input.createdById,
+              })) || checkInStarted;
+          }
+          await params.afterCreate?.(attendance, transaction);
+        },
       }),
     );
+    if (checkInStarted) {
+      await params.afterCheckInStarted?.(attendance);
+    }
+    return attendance;
   } catch (error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       throw new ConflictException('Presença já registrada para este evento.');

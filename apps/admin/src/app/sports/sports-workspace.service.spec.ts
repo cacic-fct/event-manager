@@ -84,6 +84,7 @@ describe('SportsWorkspaceService', () => {
         selfSubscriptionAllowNoTeam: false,
         selfSubscriptionAllowNoCategory: false,
         allowPlayerMultipleTeams: false,
+        shouldIssueCertificate: true,
         revision: 2,
       },
       categories: [],

@@ -1,6 +1,12 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Prisma, SportsTeamMemberStatus } from '@prisma/client';
+import {
+  Prisma,
+  SportsEligibilityStatus,
+  SportsParticipantStatus,
+  SportsRosterRole,
+  SportsTeamMemberStatus,
+} from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import {
   AuthorizationPolicyService,
@@ -61,9 +67,13 @@ export class SportsReadAdminService {
       throw new NotFoundException(`Sports tournament ${tournamentId} was not found.`);
     }
     const readableCategoryIds = categories.map((category) => category.id);
-    const canReadOfficials = await this.hasScopedPermission(user, Permission.SportsOfficial.Read, {
-      sportsTournamentId: tournamentId,
-    });
+    const [canReadOfficials, canReadPersonContacts] = await Promise.all([
+      this.hasScopedPermission(user, Permission.SportsOfficial.Read, {
+        sportsTournamentId: tournamentId,
+      }),
+      this.hasScopedPermission(user, Permission.Person.Read, {}),
+    ]);
+    const officialPersonSelect = this.officialPersonSelect(canReadPersonContacts);
     const [canReadTeams, canReadRegistrations, canReadScores] = await Promise.all([
       this.hasScopedPermission(user, Permission.SportsTeam.Read, { sportsTournamentId: tournamentId }),
       this.hasScopedPermission(user, Permission.SportsRegistration.Read, { sportsTournamentId: tournamentId }),
@@ -206,6 +216,7 @@ export class SportsReadAdminService {
               active: true,
               revokedAt: null,
             },
+            include: { person: { select: officialPersonSelect } },
             orderBy: [{ role: 'asc' }, { assignedAt: 'asc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
@@ -216,7 +227,7 @@ export class SportsReadAdminService {
       teams: teams.map((team) => this.mapper.mapAdminTeam(team)),
       scoreEntries: scoreEntries.map((entry) => this.mapper.mapAdminScoreEntry(entry)),
       venues,
-      officials,
+      officials: officials.map((official) => this.mapper.mapAdminOfficial(official, canReadPersonContacts)),
       teamSummaries: teams.map((team) => ({
         team: this.mapper.mapAdminTeam(team),
         registrations: team.registrations.map((registration) => ({
@@ -246,12 +257,15 @@ export class SportsReadAdminService {
 
   async adminCategory(user: AuthenticatedUser | undefined, categoryId: string): Promise<AdminSportsCategoryRead> {
     const categoryTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.SportsCategory.Read);
-    const [canReadOfficials, canReadRegistrations, canReadMatches, canReadScores] = await Promise.all([
-      this.hasScopedPermission(user, Permission.SportsOfficial.Read, { sportsCategoryId: categoryId }),
-      this.hasScopedPermission(user, Permission.SportsRegistration.Read, { sportsCategoryId: categoryId }),
-      this.hasScopedPermission(user, Permission.SportsMatch.Read, { sportsCategoryId: categoryId }),
-      this.hasScopedPermission(user, Permission.SportsScore.Read, { sportsCategoryId: categoryId }),
-    ]);
+    const [canReadOfficials, canReadPersonContacts, canReadRegistrations, canReadMatches, canReadScores] =
+      await Promise.all([
+        this.hasScopedPermission(user, Permission.SportsOfficial.Read, { sportsCategoryId: categoryId }),
+        this.hasScopedPermission(user, Permission.Person.Read, {}),
+        this.hasScopedPermission(user, Permission.SportsRegistration.Read, { sportsCategoryId: categoryId }),
+        this.hasScopedPermission(user, Permission.SportsMatch.Read, { sportsCategoryId: categoryId }),
+        this.hasScopedPermission(user, Permission.SportsScore.Read, { sportsCategoryId: categoryId }),
+      ]);
+    const officialPersonSelect = this.officialPersonSelect(canReadPersonContacts);
     const [category, registrations, stages, matches, standings, placements, officials] = await Promise.all([
       this.prisma.sportsCategory.findFirst({
         where: { id: categoryId, deletedAt: null, ...this.categoryVisibility(categoryTargets) },
@@ -295,6 +309,7 @@ export class SportsReadAdminService {
               active: true,
               revokedAt: null,
             },
+            include: { person: { select: officialPersonSelect } },
             orderBy: [{ role: 'asc' }, { assignedAt: 'asc' }, { id: 'asc' }],
           })
         : Promise.resolve([]),
@@ -309,7 +324,7 @@ export class SportsReadAdminService {
       matches: matches.map((match) => this.mapper.mapAdminMatch(match)),
       standings: standings.map((standing) => this.mapper.mapAdminStanding(standing)),
       placements: placements.map((placement) => this.mapper.mapAdminPlacement(placement)),
-      officials,
+      officials: officials.map((official) => this.mapper.mapAdminOfficial(official, canReadPersonContacts)),
     };
   }
 
@@ -441,11 +456,14 @@ export class SportsReadAdminService {
     await this.authorizationPolicy.assertPermissions(user, [Permission.SportsRegistration.Read], {
       sportsRegistrationId: registrationId,
     });
-    const [registration, members, rosters] = await Promise.all([
-      this.prisma.sportsRegistration.findFirst({
-        where: { id: registrationId, deletedAt: null },
-        select: ADMIN_REGISTRATION_SELECT,
-      }),
+    const registration = await this.prisma.sportsRegistration.findFirst({
+      where: { id: registrationId, deletedAt: null },
+      select: ADMIN_REGISTRATION_SELECT,
+    });
+    if (!registration) {
+      throw new NotFoundException(`Sports registration ${registrationId} was not found.`);
+    }
+    const [members, teamMembers, rosters] = await Promise.all([
       this.prisma.sportsRegistrationMember.findMany({
         where: { registrationId, deletedAt: null },
         include: {
@@ -464,6 +482,23 @@ export class SportsReadAdminService {
         },
         orderBy: [{ role: 'asc' }, { createdAt: 'asc' }],
       }),
+      this.prisma.sportsTeamMember.findMany({
+        where: {
+          teamId: registration.teamId,
+          deletedAt: null,
+          participant: { deletedAt: null },
+        },
+        select: {
+          id: true,
+          participant: {
+            select: {
+              status: true,
+              person: { select: { id: true, name: true } },
+            },
+          },
+        },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
       this.prisma.sportsMatchRoster.findMany({
         where: { registrationId, deletedAt: null },
         include: {
@@ -475,12 +510,41 @@ export class SportsReadAdminService {
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
     ]);
-    if (!registration) {
-      throw new NotFoundException(`Sports registration ${registrationId} was not found.`);
+    const lineupMembers = teamMembers.map((teamMember) => {
+      const registrationMember = members.find((member) => member.teamMemberId === teamMember.id);
+      return this.mapper.mapAdminRegistrationLineupMember({
+        id: registrationMember?.id ?? teamMember.id,
+        registrationMemberId: registrationMember?.id ?? null,
+        teamMemberId: teamMember.id,
+        role: registrationMember?.role ?? SportsRosterRole.PLAYER,
+        eligibility:
+          registrationMember?.eligibility ??
+          (teamMember.participant.status === SportsParticipantStatus.ACTIVE
+            ? SportsEligibilityStatus.ELIGIBLE
+            : SportsEligibilityStatus.PENDING),
+        person: teamMember.participant.person,
+      });
+    });
+    const lineupTeamMemberIds = new Set(teamMembers.map((teamMember) => teamMember.id));
+    for (const member of members) {
+      if (lineupTeamMemberIds.has(member.teamMemberId)) {
+        continue;
+      }
+      lineupMembers.push(
+        this.mapper.mapAdminRegistrationLineupMember({
+          id: member.id,
+          registrationMemberId: member.id,
+          teamMemberId: member.teamMemberId,
+          role: member.role,
+          eligibility: member.eligibility,
+          person: member.teamMember.participant.person,
+        }),
+      );
     }
     return {
       registration: this.mapper.mapAdminRegistration(registration),
       members: members.map((member) => this.mapper.mapAdminRegistrationMember(member)),
+      lineupMembers,
       rosters: rosters.map((roster) => this.mapper.mapAdminRoster(roster)),
     };
   }
@@ -491,6 +555,11 @@ export class SportsReadAdminService {
       [Permission.SportsMatch.Read, Permission.SportsMatch.Review],
       { sportsMatchId: matchId },
     );
+    const [canReadOfficials, canReadPersonContacts] = await Promise.all([
+      this.hasScopedPermission(user, Permission.SportsOfficial.Read, { sportsMatchId: matchId }),
+      this.hasScopedPermission(user, Permission.Person.Read, {}),
+    ]);
+    const officialPersonSelect = this.officialPersonSelect(canReadPersonContacts);
     const [match, actions, rosters, officials] = await Promise.all([
       this.prisma.sportsMatch.findFirst({
         where: { id: matchId, deletedAt: null },
@@ -510,11 +579,13 @@ export class SportsReadAdminService {
         },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       }),
-      this.prisma.sportsOfficialAssignment.findMany({
-        where: { matchId },
-        include: { person: true },
-        orderBy: [{ role: 'asc' }, { assignedAt: 'asc' }],
-      }),
+      canReadOfficials
+        ? this.prisma.sportsOfficialAssignment.findMany({
+            where: { matchId, active: true, revokedAt: null },
+            include: { person: { select: officialPersonSelect } },
+            orderBy: [{ role: 'asc' }, { assignedAt: 'asc' }],
+          })
+        : Promise.resolve([]),
     ]);
     if (!match) {
       throw new NotFoundException(`Sports match ${matchId} was not found.`);
@@ -523,7 +594,7 @@ export class SportsReadAdminService {
       match: this.mapper.mapAdminMatch(match),
       actions: actions.map((action) => this.mapper.mapAdminAction(action)),
       rosters: rosters.map((roster) => this.mapper.mapAdminRoster(roster)),
-      officials: officials.map((official) => this.mapper.mapAdminOfficial(official)),
+      officials: officials.map((official) => this.mapper.mapAdminOfficial(official, canReadPersonContacts)),
     };
   }
 
@@ -591,6 +662,12 @@ export class SportsReadAdminService {
       }
       throw error;
     }
+  }
+
+  private officialPersonSelect(includeContacts: boolean) {
+    return includeContacts
+      ? { id: true, name: true, email: true, phone: true }
+      : { id: true, name: true };
   }
 
   private hasNoAccessibleTargets(targets: AccessibleEventGrantTargets | null): boolean {

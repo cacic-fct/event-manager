@@ -77,8 +77,8 @@ model Event {
 
   shouldProvideSubscriberListToLecturer Boolean @default(false)
 
-  // If event should be visible to users or if it's only for internal (admin) use
-  publiclyVisible Boolean @default(true)
+  // Controls inclusion in anonymous public event listings. Audience-specific access is modeled separately.
+  isPubliclyListed Boolean @default(true)
   displayLecturerProfile Boolean @default(true)
 
   publicationState      PublicationState @default(DRAFT)

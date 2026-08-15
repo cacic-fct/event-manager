@@ -340,7 +340,7 @@ describe('EventsResolver', () => {
       onlineAttendanceCode: 'ABCD',
       onlineAttendanceStartDate: new Date('2026-07-01T12:00:00.000Z'),
       onlineAttendanceEndDate: new Date('2026-07-01T14:00:00.000Z'),
-      publiclyVisible: false,
+      isPubliclyListed: false,
       displayLecturerProfile: false,
       youtubeCode: 'video',
       buttonText: 'Abrir',
@@ -458,7 +458,7 @@ describe('EventsResolver', () => {
           onlineAttendanceCode: null,
           onlineAttendanceStartDate: source.onlineAttendanceStartDate,
           onlineAttendanceEndDate: source.onlineAttendanceEndDate,
-          publiclyVisible: false,
+          isPubliclyListed: false,
           displayLecturerProfile: false,
           lecturers: {
             create: [

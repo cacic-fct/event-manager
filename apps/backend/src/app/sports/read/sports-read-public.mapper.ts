@@ -15,7 +15,8 @@ export class SportsReadPublicMapper {
   projectPublicMatch(match: PublicMatchRecord) {
     return projectSportsMatch(match.actions, {
       approvedOnly: false,
-      hasCheckedInPlayers: match.rosters.some((roster) => roster.entries.length > 0),
+      hasCheckedInPlayers:
+        match.state === SportsMatchState.CHECK_IN || match.rosters.some((roster) => roster.entries.length > 0),
       maximumPeriods: match.category.maximumPeriods,
       periodLabel: match.category.periodLabel,
       periodsEnabled: match.category.periodsEnabled,

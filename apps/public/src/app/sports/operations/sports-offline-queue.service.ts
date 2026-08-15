@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, OnDestroy, PLATFORM_ID, effect, inject, signal } from '@angular/core';
 import {
   hasOfflineSportsAttendanceCollectorProof,
+  isOfflineSportsOfficialCheckIn,
   OfflineSportsCollectorCredential,
   SportsOperationOfflineQueueService,
 } from '@cacic-fct/offline-public-data-access';
@@ -14,6 +15,7 @@ import { SportsOperationsApiService } from './sports-operations-api.service';
 import {
   QueuedSportsOperation,
   SportsMatchAction,
+  SportsOfficialCheckIn,
   SportsRosterCheckIn,
   SportsScannerCheckIn,
   SportsTimerConflict,
@@ -111,6 +113,22 @@ export class SportsOfflineQueueService implements OnDestroy {
     return 'queued';
   }
 
+  async dispatchOfficialCheckIn(checkIn: SportsOfficialCheckIn): Promise<'sent' | 'queued'> {
+    await this.prepareCollector(checkIn.matchId);
+    if (this.network.isOnline()) {
+      try {
+        await firstValueFrom(this.api.checkInOfficial(checkIn));
+        return 'sent';
+      } catch (error: unknown) {
+        if (!this.isConnectionFailure(error)) {
+          throw error;
+        }
+      }
+    }
+    await this.enqueueOfficialCheckIn(checkIn);
+    return 'queued';
+  }
+
   async dispatchScannerCheckIn(scannerCheckIn: SportsScannerCheckIn): Promise<'sent' | 'queued'> {
     await this.prepareCollector(scannerCheckIn.matchId);
     if (this.network.isOnline()) {
@@ -165,6 +183,14 @@ export class SportsOfflineQueueService implements OnDestroy {
   }
 
   async enqueueCheckIn(checkIn: SportsRosterCheckIn): Promise<void> {
+    await this.enqueueAttendanceCheckIn(checkIn);
+  }
+
+  async enqueueOfficialCheckIn(checkIn: SportsOfficialCheckIn): Promise<void> {
+    await this.enqueueAttendanceCheckIn(checkIn);
+  }
+
+  private async enqueueAttendanceCheckIn(checkIn: SportsRosterCheckIn | SportsOfficialCheckIn): Promise<void> {
     const userScope = this.requireUserScope();
     const collector = await this.requireCollectorCredential(userScope, checkIn.matchId);
     await this.storage.enqueue({
@@ -268,7 +294,11 @@ export class SportsOfflineQueueService implements OnDestroy {
             if (item.kind === 'ACTION') {
               await firstValueFrom(this.api.commit([{ ...item.action, offline: true }]));
             } else if (item.kind === 'CHECK_IN') {
-              await firstValueFrom(this.api.checkIn({ ...item.checkIn, offline: true }));
+              if (isOfflineSportsOfficialCheckIn(item.checkIn)) {
+                await firstValueFrom(this.api.checkInOfficial({ ...item.checkIn, offline: true }));
+              } else {
+                await firstValueFrom(this.api.checkIn({ ...item.checkIn, offline: true }));
+              }
             } else {
               await firstValueFrom(this.api.checkInFromScanner({ ...item.scannerCheckIn, offline: true }));
             }

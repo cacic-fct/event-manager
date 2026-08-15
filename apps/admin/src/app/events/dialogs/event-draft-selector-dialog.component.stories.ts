@@ -50,7 +50,7 @@ const eventFixture: Event = {
   onlineAttendanceCode: null,
   onlineAttendanceStartDate: null,
   onlineAttendanceEndDate: null,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: 'PUBLISHED',
   scheduledPublishAt: null,

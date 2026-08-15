@@ -1,9 +1,14 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType, AuditLogOperation, SportsOfficialRole } from '@prisma/client';
+import { AuditLogEntityType, AuditLogOperation, Prisma, SportsOfficialRole } from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { SportsAdminBaseService } from './sports-admin-base.service';
+
+type SportsOfficialScope = {
+  categoryId: string | null;
+  matchId: string | null;
+};
 
 export class SportsOfficialAdminService extends SportsAdminBaseService {
   async assignOfficial(
@@ -36,6 +41,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
       }
       let eventGroupId: string | null = null;
       let eventId: string | null = null;
+      let matchCategoryId: string | null = null;
       if (input.categoryId) {
         const category = await tx.sportsCategory.findFirst({
           where: {
@@ -68,6 +74,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
           throw new BadRequestException('A partida não pertence ao escopo selecionado.');
         }
         eventId = match.eventId;
+        matchCategoryId = match.categoryId;
         eventGroupId = match.category.eventGroupId;
       }
       await this.assertOfficialScopeMutable(
@@ -88,6 +95,13 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
           personId: input.personId,
           role: input.role,
         },
+      });
+      await this.assertSingleRolePerMatch(tx, {
+        tournamentId: input.tournamentId,
+        personId: input.personId,
+        role: input.role,
+        scope: this.toOfficialScope(input.categoryId ?? null, input.matchId ?? null, matchCategoryId),
+        excludeId: existing?.id,
       });
       const assignment = existing
         ? await tx.sportsOfficialAssignment.update({
@@ -148,7 +162,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
       include: {
         tournament: { select: { majorEventId: true } },
         category: { select: { eventGroupId: true } },
-        match: { select: { eventId: true } },
+        match: { select: { eventId: true, categoryId: true } },
       },
     });
     if (!assignment) {
@@ -166,6 +180,19 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
     return runSerializableSportsTransaction(this.prisma, async (tx) => {
       const active = input.active ?? assignment.active;
       const statusChanged = active !== assignment.active;
+      if (active) {
+        await this.assertSingleRolePerMatch(tx, {
+          tournamentId: assignment.tournamentId,
+          personId: assignment.personId,
+          role: input.role ?? assignment.role,
+          scope: this.toOfficialScope(
+            assignment.categoryId ?? null,
+            assignment.matchId ?? null,
+            assignment.match?.categoryId ?? null,
+          ),
+          excludeId: assignment.id,
+        });
+      }
       const changed = await tx.sportsOfficialAssignment.updateMany({
         where: {
           id: assignment.id,
@@ -213,7 +240,7 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
       include: {
         tournament: { select: { majorEventId: true } },
         category: { select: { eventGroupId: true } },
-        match: { select: { eventId: true } },
+        match: { select: { eventId: true, categoryId: true } },
       },
     });
     if (!assignment) {
@@ -269,5 +296,67 @@ export class SportsOfficialAdminService extends SportsAdminBaseService {
         tx,
       );
     });
+  }
+
+  private async assertSingleRolePerMatch(
+    tx: Prisma.TransactionClient,
+    input: {
+      tournamentId: string;
+      personId: string;
+      role: SportsOfficialRole;
+      scope: SportsOfficialScope;
+      excludeId?: string;
+    },
+  ): Promise<void> {
+    const assignments = await tx.sportsOfficialAssignment.findMany({
+      where: {
+        tournamentId: input.tournamentId,
+        personId: input.personId,
+        active: true,
+        revokedAt: null,
+        ...(input.excludeId ? { id: { not: input.excludeId } } : {}),
+      },
+      select: {
+        id: true,
+        categoryId: true,
+        matchId: true,
+        role: true,
+        match: { select: { categoryId: true } },
+      },
+    });
+    const conflictingAssignment = assignments.find(
+      (assignment) =>
+        assignment.role !== input.role &&
+        this.officialScopesOverlap(
+          input.scope,
+          this.toOfficialScope(assignment.categoryId, assignment.matchId, assignment.match?.categoryId ?? null),
+        ),
+    );
+    if (conflictingAssignment) {
+      throw new ConflictException('A pessoa não pode ter mais de uma função na mesma partida.');
+    }
+  }
+
+  private toOfficialScope(
+    categoryId: string | null,
+    matchId: string | null,
+    matchCategoryId: string | null,
+  ): SportsOfficialScope {
+    return {
+      categoryId: matchId ? categoryId ?? matchCategoryId : categoryId,
+      matchId,
+    };
+  }
+
+  private officialScopesOverlap(left: SportsOfficialScope, right: SportsOfficialScope): boolean {
+    if (left.matchId && right.matchId) {
+      return left.matchId === right.matchId;
+    }
+    if (left.matchId || right.matchId) {
+      const matchScope = left.matchId ? left : right;
+      const broaderScope = left.matchId ? right : left;
+      return broaderScope.categoryId === null || broaderScope.categoryId === matchScope.categoryId;
+    }
+    return left.categoryId === null || right.categoryId === null || left.categoryId === right.categoryId;
   }
 }

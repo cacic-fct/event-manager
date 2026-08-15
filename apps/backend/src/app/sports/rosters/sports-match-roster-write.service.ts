@@ -18,6 +18,7 @@ import { runSerializableSportsTransaction } from '../sports-transaction';
 
 export interface SportsRosterEntryWrite {
   registrationMemberId: string;
+  teamMemberId?: string | null;
   role: SportsRosterRole;
   shirtNumber?: string | null;
   roleMetadata?: Prisma.InputJsonValue | Prisma.NullTypes.DbNull;
@@ -63,39 +64,130 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
       }
 
       const entries = this.normalizeEntries(input.entries);
+      const requestedMemberIds = entries.map((entry) => entry.registrationMemberId);
+      const requestedTeamMemberIds = entries
+        .map((entry) => entry.teamMemberId)
+        .filter((teamMemberId): teamMemberId is string => Boolean(teamMemberId));
       const members = await tx.sportsRegistrationMember.findMany({
         where: {
-          id: { in: entries.map((entry) => entry.registrationMemberId) },
+          OR: [
+            { id: { in: requestedMemberIds } },
+            ...(trustedAdmin && requestedTeamMemberIds.length
+              ? [{ teamMemberId: { in: requestedTeamMemberIds } }]
+              : []),
+          ],
           registrationId: input.registrationId,
           categoryId: match.categoryId,
           deletedAt: null,
-          eligibility: SportsEligibilityStatus.ELIGIBLE,
-          registration: {
-            deletedAt: null,
-            status: {
-              in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
-            },
-          },
-          teamMember: {
-            deletedAt: null,
-            status: SportsTeamMemberStatus.APPROVED,
-            participant: {
-              deletedAt: null,
-              status: SportsParticipantStatus.ACTIVE,
-            },
-          },
+          ...(trustedAdmin
+            ? {
+                registration: { deletedAt: null },
+                teamMember: {
+                  deletedAt: null,
+                  participant: { deletedAt: null },
+                },
+              }
+            : {
+                eligibility: SportsEligibilityStatus.ELIGIBLE,
+                registration: {
+                  deletedAt: null,
+                  status: {
+                    in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
+                  },
+                },
+                teamMember: {
+                  deletedAt: null,
+                  status: SportsTeamMemberStatus.APPROVED,
+                  participant: {
+                    deletedAt: null,
+                    status: SportsParticipantStatus.ACTIVE,
+                  },
+                },
+              }),
         },
-        select: { id: true, role: true },
+        select: { id: true, teamMemberId: true, role: true },
       });
-      if (members.length !== entries.length) {
+      const memberByReference = new Map<string, (typeof members)[number]>();
+      for (const member of members) {
+        memberByReference.set(member.id, member);
+        memberByReference.set(member.teamMemberId, member);
+      }
+      const resolvedEntries: Array<{
+        entry: (typeof entries)[number];
+        registrationMemberId: string;
+      }> = [];
+      for (const entry of entries) {
+        let member = memberByReference.get(entry.registrationMemberId);
+        if (!member && trustedAdmin && entry.teamMemberId) {
+          member = memberByReference.get(entry.teamMemberId);
+        }
+        if (!member && trustedAdmin) {
+          const teamMemberId = entry.teamMemberId;
+          if (!teamMemberId) {
+            throw new BadRequestException('O integrante da escalação não pertence à inscrição.');
+          }
+          const registration = await tx.sportsRegistration.findFirst({
+            where: {
+              id: input.registrationId,
+              categoryId: match.categoryId,
+              deletedAt: null,
+            },
+            select: { teamId: true },
+          });
+          if (!registration) {
+            throw new BadRequestException('O integrante da escalação não pertence à inscrição.');
+          }
+          const teamMember = await tx.sportsTeamMember.findFirst({
+            where: {
+              id: teamMemberId,
+              teamId: registration.teamId,
+              deletedAt: null,
+              participant: { deletedAt: null },
+            },
+            select: {
+              id: true,
+              participant: { select: { status: true } },
+            },
+          });
+          if (!teamMember) {
+            throw new BadRequestException('O integrante da escalação não pertence à inscrição.');
+          }
+          member = await tx.sportsRegistrationMember.create({
+            data: {
+              registrationId: input.registrationId,
+              categoryId: match.categoryId,
+              teamMemberId: teamMember.id,
+              role: SportsRosterRole.PLAYER,
+              eligibility:
+                teamMember.participant.status === SportsParticipantStatus.ACTIVE
+                  ? SportsEligibilityStatus.ELIGIBLE
+                  : SportsEligibilityStatus.PENDING,
+              createdById: actorId,
+              updatedById: actorId,
+            },
+            select: { id: true, teamMemberId: true, role: true },
+          });
+        }
+        if (!member) {
+          throw new BadRequestException('Uma ou mais pessoas não estão aprovadas, elegíveis ou ativas nesta modalidade.');
+        }
+        resolvedEntries.push({ entry, registrationMemberId: member.id });
+      }
+      if (new Set(resolvedEntries.map((resolved) => resolved.registrationMemberId)).size !== resolvedEntries.length) {
+        throw new BadRequestException('Uma pessoa não pode aparecer duas vezes na mesma escalação.');
+      }
+      if (resolvedEntries.length !== entries.length) {
         throw new BadRequestException('Uma ou mais pessoas não estão aprovadas, elegíveis ou ativas nesta modalidade.');
       }
       const memberRoleById = new Map(members.map((member) => [member.id, member.role]));
-      if (entries.some((entry) => memberRoleById.get(entry.registrationMemberId) !== entry.role)) {
+      if (
+        !trustedAdmin &&
+        resolvedEntries.some((resolved) => memberRoleById.get(resolved.registrationMemberId) !== resolved.entry.role)
+      ) {
         throw new BadRequestException('A função da escalação não corresponde à função aprovada.');
       }
 
-      const playerCount = entries.filter((entry) => entry.role === SportsRosterRole.PLAYER).length;
+      const playerCount = resolvedEntries.filter((resolved) => resolved.entry.role === SportsRosterRole.PLAYER).length;
       const maximumRosterSize = match.category.maximumRosterSize;
       if (maximumRosterSize !== null && playerCount > maximumRosterSize) {
         throw new BadRequestException(`A escalação permite no máximo ${maximumRosterSize} jogadores.`);
@@ -148,23 +240,26 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
         });
       }
 
-      const requestedMemberIds = new Set(entries.map((entry) => entry.registrationMemberId));
+      const requestedRosterMemberIds = new Set(
+        resolvedEntries.map((resolved) => resolved.registrationMemberId),
+      );
       await tx.sportsMatchRosterEntry.updateMany({
         where: {
           rosterId: roster.id,
           deletedAt: null,
-          registrationMemberId: { notIn: [...requestedMemberIds] },
+          registrationMemberId: { notIn: [...requestedRosterMemberIds] },
         },
         data: {
           deletedAt: new Date(),
           updatedById: actorId,
         },
       });
-      for (const entry of entries) {
+      for (const resolved of resolvedEntries) {
+        const entry = resolved.entry;
         const current = await tx.sportsMatchRosterEntry.findFirst({
           where: {
             rosterId: roster.id,
-            registrationMemberId: entry.registrationMemberId,
+            registrationMemberId: resolved.registrationMemberId,
             deletedAt: null,
           },
         });
@@ -183,7 +278,7 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
           await tx.sportsMatchRosterEntry.create({
             data: {
               rosterId: roster.id,
-              registrationMemberId: entry.registrationMemberId,
+              registrationMemberId: resolved.registrationMemberId,
               role: entry.role,
               shirtNumber: entry.shirtNumber,
               ...(entry.roleMetadata !== undefined ? { roleMetadata: entry.roleMetadata } : {}),

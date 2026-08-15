@@ -515,7 +515,7 @@ export class DashboardInsightsService {
                     none: {
                       deletedAt: null,
                       publicationState: 'PUBLISHED',
-                      publiclyVisible: true,
+                      isPubliclyListed: true,
                     },
                   },
                 },
@@ -553,7 +553,7 @@ export class DashboardInsightsService {
                 where: { deletedAt: null },
                 select: {
                   id: true,
-                  publiclyVisible: true,
+                  isPubliclyListed: true,
                   publicationState: true,
                 },
               },

@@ -95,7 +95,7 @@ export class EventCreateInput {
   onlineAttendanceEndDate?: Date;
 
   @Field(() => Boolean, { nullable: true })
-  publiclyVisible?: boolean;
+  isPubliclyListed?: boolean;
 
   @Field(() => Boolean, { nullable: true })
   displayLecturerProfile?: boolean;
@@ -212,7 +212,7 @@ export class EventUpdateInput {
   onlineAttendanceEndDate?: Date;
 
   @Field(() => Boolean, { nullable: true })
-  publiclyVisible?: boolean;
+  isPubliclyListed?: boolean;
 
   @Field(() => Boolean, { nullable: true })
   displayLecturerProfile?: boolean;

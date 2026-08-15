@@ -130,15 +130,14 @@
       <span class="hold-content">
         <mat-icon>play_arrow</mat-icon>
         <span class="hold-copy"
-          ><strong>Pressione e segure para iniciar</strong
-          ><small>Mantenha pressionado até a barra completar</small></span
+          ><strong>Segure para começar a partida</strong><small>Mantenha pressionado até a barra completar</small></span
         >
       </span>
       <span class="hold-progress" aria-hidden="true">
         <span class="hold-content hold-progress-content">
           <mat-icon>play_arrow</mat-icon>
           <span class="hold-copy"
-            ><strong>Pressione e segure para iniciar</strong
+            ><strong>Segure para começar a partida</strong
             ><small>Mantenha pressionado até a barra completar</small></span
           >
         </span>
@@ -254,12 +253,13 @@
         } }
       </div>
     </div>
-    @if (checkInEntries().length === 0) {
+    @if (checkInEntries().length === 0 && officialCheckInEntries().length === 0) {
     <div class="empty-inline">
       <mat-icon>groups</mat-icon>
-      <span>A lista de atletas ainda não está disponível para esta operação.</span>
+      <span>A lista de atletas e da arbitragem ainda não está disponível para esta operação.</span>
     </div>
     } @else {
+    @if (checkInEntries().length > 0) {
     <div class="check-in-grid">
       <section class="check-in-team" [attr.aria-label]="'Atletas de ' + teamName('home')">
         <h3>
@@ -302,6 +302,31 @@
         }
       </section>
     </div>
+    }
+    @if (officialCheckInEntries().length > 0) {
+    <section class="check-in-officials" aria-labelledby="check-in-officials-title">
+      <h3 id="check-in-officials-title">
+        <mat-icon aria-hidden="true">gavel</mat-icon>
+        <span>Árbitros e apoio</span>
+      </h3>
+      <div class="check-in-official-grid">
+        @for (official of officialCheckInEntries(); track official.id) {
+        <button
+          mat-stroked-button
+          type="button"
+          [class.checked-in]="official.checkedIn"
+          [attr.aria-label]="
+            (official.checkedIn ? 'Presença já registrada de ' : 'Confirmar presença de ') + official.name
+          "
+          [disabled]="busy() || !canEditCheckIn() || official.checkedIn"
+          (click)="toggleOfficialCheckIn(official)">
+          <mat-icon>{{ official.checkedIn ? 'check_circle' : 'gavel' }}</mat-icon>
+          <span>{{ official.name }}<small>{{ officialRoleDetail(official) }}</small></span>
+        </button>
+        }
+      </div>
+    </section>
+    }
     }
   </section>
 

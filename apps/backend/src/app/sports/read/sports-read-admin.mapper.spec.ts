@@ -108,6 +108,7 @@ describe('SportsReadAdminMapper', () => {
         baseFieldRevisionsJson: '{"name":1}',
         deltaJson: '{"set":{"name":"Nova"}}',
         resolvedDeltaJson: null,
+        pendingLogoUrl: null,
       }),
     );
     expect(
@@ -139,10 +140,57 @@ describe('SportsReadAdminMapper', () => {
     );
   });
 
+  it('exposes a scoped preview URL only for an active logo review', () => {
+    expect(
+      mapper.mapAdminChangeRequest({
+        id: 'change / 1',
+        teamId: 'team / 1',
+        type: 'LOGO',
+        status: 'PENDING',
+        baseFieldRevisions: {},
+        delta: { logo: { queuedObjectKey: 'private' } },
+        resolvedDelta: null,
+      } as never),
+    ).toEqual(
+      expect.objectContaining({
+        pendingLogoUrl: '/api/sports/admin/teams/team%20%2F%201/logo-review/change%20%2F%201',
+      }),
+    );
+    expect(
+      mapper.mapAdminChangeRequest({
+        id: 'change-2',
+        teamId: 'team-1',
+        type: 'LOGO',
+        status: 'APPROVED',
+        baseFieldRevisions: {},
+        delta: {},
+        resolvedDelta: null,
+      } as never).pendingLogoUrl,
+    ).toBeNull();
+  });
+
   it('censors identity documents while keeping only the final four digits', () => {
     expect(mapper.censorIdentityDocument('123.456.789-00')).toBe('•••••••8900');
     expect(mapper.censorIdentityDocument('letters only')).toBeNull();
     expect(mapper.censorIdentityDocument(null)).toBeNull();
+  });
+
+  it('keeps official contact fields only when the caller is allowed to see them', () => {
+    const official = {
+      id: 'official-1',
+      person: {
+        id: 'person-1',
+        name: 'Ana Souza',
+        email: 'ana@example.com',
+        phone: '+55 18 99999-0000',
+      },
+    };
+
+    expect(mapper.mapAdminOfficial(official as never, false).person).toEqual({
+      id: 'person-1',
+      name: 'Ana Souza',
+    });
+    expect(mapper.mapAdminOfficial(official as never, true).person).toEqual(official.person);
   });
 
   it('maps standings and preserves already-safe records without rebuilding them', () => {

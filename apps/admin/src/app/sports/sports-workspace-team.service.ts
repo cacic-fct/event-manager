@@ -668,6 +668,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
   }
 
   newMatch(navigate = true): void {
+    this.cancelOfficialEdit();
     this.invalidateSelection();
     const categoryId = this.selectedCategoryId();
     this.matchReview.set(null);

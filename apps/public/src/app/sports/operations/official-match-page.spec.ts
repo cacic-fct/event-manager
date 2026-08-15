@@ -17,6 +17,7 @@ describe('OfficialSportsMatchPage', () => {
   let component: OfficialSportsMatchPage;
   let actions: SportsMatchAction[];
   let checkIns: Array<{ rosterEntryId: string; present?: boolean }>;
+  let officialCheckIns: Array<{ officialAssignmentId: string }>;
   let scannerResult: 'sent' | 'queued';
   let pendingOffline: WritableSignal<number>;
   let retainedActions: WritableSignal<number>;
@@ -27,6 +28,7 @@ describe('OfficialSportsMatchPage', () => {
   beforeEach(async () => {
     actions = [];
     checkIns = [];
+    officialCheckIns = [];
     scannerResult = 'sent';
     pendingOffline = signal(0);
     retainedActions = signal(0);
@@ -72,6 +74,10 @@ describe('OfficialSportsMatchPage', () => {
             },
             dispatchCheckIn: (submission: { rosterEntryId: string; present?: boolean }) => {
               checkIns.push(submission);
+              return Promise.resolve('sent');
+            },
+            dispatchOfficialCheckIn: (submission: { officialAssignmentId: string }) => {
+              officialCheckIns.push(submission);
               return Promise.resolve('sent');
             },
             dispatchScannerCheckIn: () => Promise.resolve(scannerResult),
@@ -251,6 +257,25 @@ describe('OfficialSportsMatchPage', () => {
     expect(component.canEditCheckIn()).toBe(false);
   });
 
+  it('lists assigned officials in a separate row and registers their attendance', async () => {
+    component.match.update((match) => (match ? { ...match, state: 'CHECK_IN' } : match));
+    fixture.detectChanges();
+
+    expect(fixture.debugElement.query(By.css('.check-in-officials'))).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.check-in-officials').textContent).toContain('Mariana S.');
+    expect(fixture.nativeElement.querySelector('.check-in-officials').textContent).toContain('Intermediação');
+
+    const official = component.officialCheckInEntries()[0];
+    await component.toggleOfficialCheckIn(official);
+    fixture.detectChanges();
+
+    expect(officialCheckIns).toEqual([expect.objectContaining({ officialAssignmentId: official.id })]);
+    expect(component.officialCheckInEntries()[0]).toEqual(expect.objectContaining({ checkedIn: true }));
+    expect(
+      (fixture.debugElement.query(By.css('.check-in-official-grid button')).nativeElement as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
   it('advances the optimistic revision after queueing an offline scanner check-in', async () => {
     component.match.update((match) => (match ? { ...match, state: 'CHECK_IN' } : match));
     scannerResult = 'queued';
@@ -373,7 +398,9 @@ describe('OfficialSportsMatchPage', () => {
       periodWord: 'Turno',
     });
 
-    expect(overlayBuilder.overlayUrl()).toContain('/api/sports/public/matches/match-story/overlay?');
+    const overlayUrl = new URL(overlayBuilder.overlayUrl(), 'https://sports.example/app/');
+    expect(overlayUrl.pathname).toBe('/api/sports/public/matches/match-story/overlay');
+    expect(overlayUrl.pathname).not.toContain('/app/');
     expect(overlayBuilder.overlayUrl()).toContain('team=away');
     expect(overlayBuilder.overlayUrl()).toContain('teamName=0');
     expect(overlayBuilder.overlayUrl()).toContain('stopwatch=0');

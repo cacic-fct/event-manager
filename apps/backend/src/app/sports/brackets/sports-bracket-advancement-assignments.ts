@@ -48,7 +48,7 @@ export abstract class SportsBracketAdvancementAssignments extends SportsBracketA
         event: {
           select: {
             deletedAt: true,
-            publiclyVisible: true,
+            isPubliclyListed: true,
             publicationState: true,
           },
         },
@@ -83,7 +83,7 @@ export abstract class SportsBracketAdvancementAssignments extends SportsBracketA
         event: {
           select: {
             deletedAt: true,
-            publiclyVisible: true,
+            isPubliclyListed: true,
             publicationState: true,
           },
         },
@@ -147,7 +147,7 @@ export abstract class SportsBracketAdvancementAssignments extends SportsBracketA
       category: { tournamentId: string };
       event: {
         deletedAt: Date | null;
-        publiclyVisible: boolean;
+        isPubliclyListed: boolean;
         publicationState: PublicationState;
       };
     },

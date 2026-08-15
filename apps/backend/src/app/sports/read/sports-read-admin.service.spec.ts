@@ -1,5 +1,6 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { sportsAdminReadRecords, sportsTestDate } from '../testing/sports-backend.fixtures';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { sportsAdminOfficialAssignmentRecord, sportsAdminReadRecords, sportsTestDate } from '../testing/sports-backend.fixtures';
 import { SportsReadAdminService } from './sports-read-admin.service';
 import { SportsReadAdminListService } from './sports-read-admin-list.service';
 
@@ -79,6 +80,39 @@ describe('SportsReadAdminService', () => {
     expect(result.officials).toEqual([{ id: 'official-1' }]);
     expect(prisma.sportsTournament.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: 'tournament-1', deletedAt: null } }),
+    );
+  });
+
+  it('keeps official names visible while omitting contact fields without person read permission', async () => {
+    const official = {
+      ...sportsAdminOfficialAssignmentRecord(),
+      person: {
+        id: 'person-1',
+        name: 'Árbitra Ana',
+        email: 'ana@example.com',
+        phone: '+55 18 99999-0000',
+      },
+    };
+    authorization.accessibleEventTargets.mockResolvedValue(null);
+    authorization.assertPermissions.mockImplementation(
+      async (_user: unknown, permissions: string[]) => {
+        if (permissions.includes(Permission.Person.Read)) {
+          throw new ForbiddenException();
+        }
+      },
+    );
+    prisma.sportsTournament.findFirst.mockResolvedValue({ id: 'tournament-1' });
+    prisma.sportsCategory.findMany.mockResolvedValue([]);
+    prisma.sportsOfficialAssignment.findMany.mockResolvedValue([official]);
+
+    const result = await new SportsReadAdminService(prisma as never, authorization as never).adminTournament(
+      user as never,
+      'tournament-1',
+    );
+
+    expect(result.officials[0]?.person).toEqual({ id: 'person-1', name: 'Árbitra Ana' });
+    expect(prisma.sportsOfficialAssignment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ include: { person: { select: { id: true, name: true } } } }),
     );
   });
 
@@ -323,6 +357,36 @@ describe('SportsReadAdminService', () => {
     });
 
     await expect(service.adminRegistration(user as never, 'missing')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('exposes team members without registration links as administrative lineup candidates', async () => {
+    const records = sportsAdminReadRecords();
+    prisma.sportsRegistration.findFirst.mockResolvedValue(records.registration);
+    prisma.sportsRegistrationMember.findMany.mockResolvedValue([]);
+    prisma.sportsTeamMember.findMany.mockResolvedValue([
+      {
+        id: 'team-member-1',
+        participant: {
+          status: 'ACTIVE',
+          person: { id: 'person-1', name: 'Ana Beatriz de Souza' },
+        },
+      },
+    ]);
+    const service = new SportsReadAdminService(prisma as never, authorization as never);
+
+    const result = await service.adminRegistration(user as never, 'registration-1');
+
+    expect(result.members).toEqual([]);
+    expect(result.lineupMembers).toEqual([
+      {
+        id: 'team-member-1',
+        registrationMemberId: null,
+        teamMemberId: 'team-member-1',
+        role: 'PLAYER',
+        eligibility: 'ELIGIBLE',
+        person: { id: 'person-1', name: 'Ana Souza' },
+      },
+    ]);
   });
 
   it('filters team registrations by readable categories and maps members, representatives, and reviews', async () => {

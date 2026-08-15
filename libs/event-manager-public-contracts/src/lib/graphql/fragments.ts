@@ -171,7 +171,7 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   isOnlineAttendanceAllowed
   onlineAttendanceStartDate
   onlineAttendanceEndDate
-  publiclyVisible
+  isPubliclyListed
   youtubeCode
   buttonText
   buttonLink

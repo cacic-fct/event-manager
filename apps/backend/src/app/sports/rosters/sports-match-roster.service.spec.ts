@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
-import { AttendanceCreationMethod, SportsMatchActionType } from '@prisma/client';
+import { AttendanceCreationMethod, SportsMatchActionType, SportsMatchState } from '@prisma/client';
 import { issueSportsOfflineCollectorCredential } from '../security/sports-offline-collector-credential';
 import { SportsMatchRosterService } from './sports-match-roster.service';
 
@@ -44,6 +44,9 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     sportsMatch: {
       findFirst: jest.fn(),
       updateMany: jest.fn(),
+    },
+    sportsOfficialAssignment: {
+      findFirst: jest.fn(),
     },
     people: {
       findUnique: jest.fn(),
@@ -129,9 +132,23 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     });
     tx.sportsMatch.updateMany.mockResolvedValue({ count: 1 });
     tx.sportsMatch.findFirst.mockResolvedValue({
+      id: 'match-1',
+      eventId: 'event-1',
+      categoryId: 'category-1',
       revision: 5,
       operationSequence: 2,
       state: 'SCHEDULED',
+      category: {
+        id: 'category-1',
+        eventGroupId: 'event-group-1',
+        tournament: { id: 'tournament-1', majorEventId: 'major-event-1' },
+      },
+    });
+    tx.sportsOfficialAssignment.findFirst.mockResolvedValue({
+      id: 'official-assignment-1',
+      personId: 'person-official',
+      role: 'REFEREE',
+      person: { name: 'Mariana Santos' },
     });
   });
 
@@ -228,6 +245,47 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     expect(tx.eventAttendance.upsert).toHaveBeenCalledTimes(1);
   });
 
+  it('registers and replays an official attendance without duplicating the event record', async () => {
+    const service = createService();
+    const args = [
+      'match-1',
+      'official-assignment-1',
+      checkedInAt,
+      'official-check-in-1',
+      true,
+      'collector-person-1',
+      'collector-user-1',
+      'REFEREE',
+      { id: 'collector-person-1', name: 'Árbitro', type: 'USER' } as never,
+      collectorInput,
+    ] as const;
+
+    await expect(service.checkInOfficial(...args)).resolves.toEqual(attendance);
+    await expect(service.checkInOfficial(...args)).resolves.toEqual(attendance);
+
+    expect(tx.eventAttendance.upsert).toHaveBeenCalledTimes(1);
+    expect(tx.sportsMatchAction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        clientId: 'official-check-in-1',
+        type: SportsMatchActionType.CHECK_IN,
+        payload: {
+          kind: 'OFFICIAL_CHECK_IN',
+          officialAssignmentId: 'official-assignment-1',
+          personId: 'person-official',
+          role: 'REFEREE',
+          checkedInAt: checkedInAt.toISOString(),
+        },
+      }),
+    });
+    expect(tx.sportsMatch.updateMany).toHaveBeenCalledTimes(1);
+    expect(auditLog.record).toHaveBeenCalledTimes(1);
+    expect(mutationEvents.publishRosterMutation).toHaveBeenCalledWith(
+      'match-1',
+      'OFFICIAL_CHECKED_IN',
+      'official-assignment-1',
+    );
+  });
+
   it('clears an accidental roster check-in without deleting shared attendance', async () => {
     const service = createService();
     persistedCheckedInAt = checkedInAt;
@@ -265,6 +323,33 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     });
   });
 
+  it('does not start check-in when a scheduled roster attendance is removed', async () => {
+    const service = createService();
+    persistedCheckedInAt = checkedInAt;
+
+    await expect(
+      service.checkIn(
+        'match-1',
+        'roster-entry-1',
+        checkedInAt,
+        'scheduled-removal-1',
+        true,
+        false,
+        'official-person-1',
+        'official-user-1',
+        'REFEREE',
+        { id: 'official-person-1', name: 'Árbitro', type: 'USER' } as never,
+        collectorInput,
+      ),
+    ).resolves.toEqual(attendance);
+
+    expect(tx.sportsMatch.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ state: SportsMatchState.SCHEDULED }),
+      }),
+    );
+  });
+
   it('allows an official to correct athlete check-in while the match is live', async () => {
     matchState = 'LIVE';
     await expect(
@@ -292,7 +377,7 @@ describe('SportsMatchRosterService check-in idempotency', () => {
       state: 'SCHEDULED',
       event: {
         deletedAt: null,
-        publiclyVisible: true,
+        isPubliclyListed: true,
         publicationState: 'PUBLISHED',
       },
       category: {

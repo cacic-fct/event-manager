@@ -14,6 +14,7 @@ describe('SportsReadCurrentUserService', () => {
     majorEventSubscription: { findFirst: jest.fn() },
     sportsCategory: { findMany: jest.fn() },
     sportsMatch: { findFirst: jest.fn() },
+    sportsOfficialAssignment: { findMany: jest.fn() },
     sportsRegistrationMember: { findMany: jest.fn() },
     sportsMatchRoster: { findFirst: jest.fn() },
   };
@@ -31,6 +32,7 @@ describe('SportsReadCurrentUserService', () => {
     prisma.sportsCategory.findMany.mockResolvedValue([]);
     prisma.sportsRegistrationMember.findMany.mockResolvedValue([]);
     prisma.sportsMatchRoster.findFirst.mockResolvedValue(null);
+    prisma.sportsOfficialAssignment.findMany.mockResolvedValue([]);
   });
 
   it('orders player matches before team matches and unrelated matches while preserving relative schedules', async () => {
@@ -105,6 +107,9 @@ describe('SportsReadCurrentUserService', () => {
       id: 'match-1',
       revision: 3,
       state: 'CHECK_IN',
+      eventId: 'event-1',
+      categoryId: 'category-1',
+      category: { id: 'category-1', tournament: { id: 'tournament-1' } },
       notes: 'Observação operacional',
       occurrences: [{ type: 'WARNING' }],
       homeRegistrationId: 'registration-home',
@@ -132,10 +137,32 @@ describe('SportsReadCurrentUserService', () => {
         },
       ],
     });
+    prisma.sportsOfficialAssignment.findMany.mockResolvedValue([
+      {
+        id: 'official-assignment-1',
+        matchId: 'match-1',
+        categoryId: null,
+        role: 'REFEREE',
+        assignedAt: sportsTestDate(-120_000),
+        person: {
+          id: 'person-official-1',
+          name: 'Mariana Clara dos Santos',
+          attendances: [{ status: 'PRESENT', attendedAt: checkedInAt }],
+        },
+      },
+    ]);
 
     const result = await service().currentUserMatchOperations('match-1');
 
     expect(result.occurrencesJson).toBe('[{"type":"WARNING"}]');
+    expect(result.officials).toEqual([
+      {
+        id: 'official-assignment-1',
+        name: 'Mariana S.',
+        role: 'REFEREE',
+        checkedInAt,
+      },
+    ]);
     expect(result.rosters[0]).toEqual(
       expect.objectContaining({
         team: expect.objectContaining({ id: 'team-home' }),
@@ -202,7 +229,12 @@ describe('SportsReadCurrentUserService', () => {
     const result = await service().currentUserLineup('match-1', 'registration-home');
 
     expect(result.eligibleMembers).toEqual([
-      { registrationMemberId: 'member-1', name: 'Carlos Lima', role: 'CAPTAIN' },
+      {
+        registrationMemberId: 'member-1',
+        name: 'Carlos Lima',
+        role: 'CAPTAIN',
+        shirtNumber: '7',
+      },
     ]);
     expect(result.roster?.entries[0]).toEqual(expect.objectContaining({ roleMetadataJson: null, checkedInAt }));
   });

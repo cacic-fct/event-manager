@@ -124,7 +124,7 @@ describe('SportsOperationsApiService', () => {
     expect(request.request.body.variables).toEqual({ matchId: 'match-1' });
     request.flush({
       data: {
-        publicSportsMatchDetail: {
+        currentUserSportsOperationalMatchDetail: {
           id: 'match-1',
           eventId: 'event-1',
           categoryId: 'category-1',
@@ -147,6 +147,7 @@ describe('SportsOperationsApiService', () => {
           homeRegistrationId: 'home-registration',
           awayRegistrationId: 'away-registration',
           rosters: [],
+          officials: [],
         },
       },
     });
@@ -188,6 +189,39 @@ describe('SportsOperationsApiService', () => {
       },
     });
     request.flush({ data: { checkInSportsRosterEntry: true } });
+
+    await expect(result).resolves.toBe(true);
+    http.verify();
+  });
+
+  it('sends the official assignment and collector proof when checking in an official', async () => {
+    const api = TestBed.inject(SportsOperationsApiService);
+    const http = TestBed.inject(HttpTestingController);
+    const input = {
+      clientId: 'official-check-in-1',
+      matchId: 'match-1',
+      officialAssignmentId: 'assignment-referee-1',
+      checkedInAt: '2026-08-01T12:03:00.000Z',
+      offline: true,
+      collectorPersonId: 'person-collector',
+      collectorCredential: 'signed-proof',
+    };
+
+    const result = firstValueFrom(api.checkInOfficial(input));
+    const request = http.expectOne('/api/graphql');
+    expect(request.request.body.query).toContain('checkInSportsOfficial');
+    expect(request.request.body.variables).toEqual({
+      matchId: 'match-1',
+      input: {
+        clientId: input.clientId,
+        officialAssignmentId: input.officialAssignmentId,
+        checkedInAt: input.checkedInAt,
+        offline: input.offline,
+        collectorPersonId: input.collectorPersonId,
+        collectorCredential: input.collectorCredential,
+      },
+    });
+    request.flush({ data: { checkInSportsOfficial: true } });
 
     await expect(result).resolves.toBe(true);
     http.verify();

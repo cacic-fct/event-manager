@@ -114,7 +114,7 @@ export class Event {
   onlineAttendanceEndDate?: Date | null;
 
   @Field(() => Boolean)
-  publiclyVisible!: boolean;
+  isPubliclyListed!: boolean;
 
   @Field(() => Boolean)
   displayLecturerProfile!: boolean;

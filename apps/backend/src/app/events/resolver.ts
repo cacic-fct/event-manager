@@ -123,7 +123,7 @@ const EVENT_BASE_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -170,7 +170,7 @@ const EVENT_AUDIT_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -633,7 +633,7 @@ export class EventsResolver {
         : {}),
       ...(parts?.visibility
         ? {
-            publiclyVisible: source.publiclyVisible,
+            isPubliclyListed: source.isPubliclyListed,
             displayLecturerProfile: source.displayLecturerProfile,
           }
         : {}),

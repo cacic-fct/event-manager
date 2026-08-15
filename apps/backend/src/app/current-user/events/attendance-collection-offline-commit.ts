@@ -23,6 +23,8 @@ import {
 } from './attendance-collection-context';
 import { createAttendance, toEventAttendance } from './attendance-collection-records';
 import { OfflineAttendanceSubmissions } from './attendance-collection-offline-submissions';
+import { notifySportsMatchAttendanceMutation } from '../../sports/operations/sports-match-attendance';
+import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
 
 const MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE = 150;
 
@@ -35,6 +37,7 @@ type OfflineAttendanceCommitterDeps = {
   auditLog: AuditLogService;
   dashboardInsights: DashboardInsightsService;
   notifications: NovuNotificationsService;
+  sportsMutationEvents?: SportsMutationEventsService;
 };
 type OfflineAttendanceItem = CommitOfflineEventAttendancesInput['attendances'][number];
 
@@ -123,6 +126,8 @@ export class OfflineAttendanceCommitter {
               committedById: submittedById,
             },
           }),
+        afterCheckInStarted: (attendance) =>
+          notifySportsMatchAttendanceMutation(this.deps.sportsMutationEvents, attendance),
       });
 
       return {

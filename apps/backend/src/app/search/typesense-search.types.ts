@@ -14,7 +14,7 @@ export type EventSearchDocument = {
   eventGroupName?: string;
   startDate: number;
   endDate: number;
-  publiclyVisible: boolean;
+  isPubliclyListed: boolean;
   publicationState: string;
   majorEventPublicationState: string;
   isIssuableCertificateEvent: boolean;

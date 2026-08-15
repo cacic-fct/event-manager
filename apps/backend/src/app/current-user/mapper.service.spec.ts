@@ -243,7 +243,7 @@ function eventFixture(overrides: Record<string, unknown> = {}) {
     isOnlineAttendanceAllowed: false,
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,

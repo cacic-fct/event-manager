@@ -492,7 +492,7 @@ def write_legacy_sql_payload(database_url: str, payload: Any) -> None:
                   "shouldIssueCertificate", "shouldCollectAttendance",
                   "isOnlineAttendanceAllowed", "onlineAttendanceCode",
                   "onlineAttendanceStartDate", "onlineAttendanceEndDate",
-                  "publiclyVisible", "youtubeCode", "buttonText", "buttonLink",
+                  "isPubliclyListed", "youtubeCode", "buttonText", "buttonLink",
                   "createdAt", "createdById", "updatedAt"
                 )
                 VALUES (
@@ -502,7 +502,7 @@ def write_legacy_sql_payload(database_url: str, payload: Any) -> None:
                   %(shouldIssueCertificate)s, %(shouldCollectAttendance)s,
                   %(isOnlineAttendanceAllowed)s, %(onlineAttendanceCode)s,
                   %(onlineAttendanceStartDate)s, %(onlineAttendanceEndDate)s,
-                  %(publiclyVisible)s, %(youtubeCode)s, %(buttonText)s, %(buttonLink)s,
+                  %(isPubliclyListed)s, %(youtubeCode)s, %(buttonText)s, %(buttonLink)s,
                   %(createdAt)s, %(createdById)s, %(updatedAt)s
                 )
                 ON CONFLICT (id) DO UPDATE SET
@@ -527,7 +527,7 @@ def write_legacy_sql_payload(database_url: str, payload: Any) -> None:
                   "onlineAttendanceCode" = EXCLUDED."onlineAttendanceCode",
                   "onlineAttendanceStartDate" = EXCLUDED."onlineAttendanceStartDate",
                   "onlineAttendanceEndDate" = EXCLUDED."onlineAttendanceEndDate",
-                  "publiclyVisible" = EXCLUDED."publiclyVisible",
+                  "isPubliclyListed" = EXCLUDED."isPubliclyListed",
                   "youtubeCode" = EXCLUDED."youtubeCode",
                   "buttonText" = EXCLUDED."buttonText",
                   "buttonLink" = EXCLUDED."buttonLink",

@@ -283,7 +283,8 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
           const roster = review.rosters.find((item) => item.registrationId === read.registration.id);
           return [
             read.registration.id,
-            roster?.entries.map((entry) => entry.registrationMemberId) ?? read.members.map((member) => member.id),
+            roster?.entries.map((entry) => entry.registrationMemberId) ??
+              read.lineupMembers.map((member) => member.id),
           ];
         }),
       ),
@@ -295,12 +296,12 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
           return [
             read.registration.id,
             Object.fromEntries(
-              read.members.map((member) => {
+              read.lineupMembers.map((member) => {
                 const entry = roster?.entries.find((item) => item.registrationMemberId === member.id);
                 return [
                   member.id,
                   {
-                    role: entry?.role ?? 'PLAYER',
+                    role: entry?.role ?? member.role,
                     shirtNumber: entry?.shirtNumber ?? '',
                   },
                 ];
@@ -373,7 +374,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     });
   }
 
-  protected async confirmAction(title: string, message: string): Promise<boolean> {
+  protected async confirmAction(title: string, message: string, confirmLabel = 'Excluir'): Promise<boolean> {
     return (
       (await firstValueFrom(
         this.dialog
@@ -381,7 +382,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
             data: {
               title,
               message,
-              confirmLabel: 'Excluir',
+              confirmLabel,
               tone: 'danger',
             },
           })

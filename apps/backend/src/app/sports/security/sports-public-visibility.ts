@@ -15,7 +15,7 @@ export const PUBLIC_SPORTS_MATCH_RELATIONS_WHERE = {
   },
   event: {
     deletedAt: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     publicationState: PublicationState.PUBLISHED,
   },
 } satisfies Prisma.SportsMatchWhereInput;
@@ -35,7 +35,7 @@ export interface SportsMatchPublicationRecord {
   };
   event: {
     deletedAt: Date | null;
-    publiclyVisible: boolean;
+    isPubliclyListed: boolean;
     publicationState: PublicationState;
   };
 }
@@ -43,7 +43,7 @@ export interface SportsMatchPublicationRecord {
 export function isSportsMatchPublic(match: SportsMatchPublicationRecord): boolean {
   return (
     !match.event.deletedAt &&
-    match.event.publiclyVisible &&
+    match.event.isPubliclyListed &&
     match.event.publicationState === PublicationState.PUBLISHED &&
     !match.category.deletedAt &&
     match.category.status !== SportsCategoryStatus.DRAFT &&

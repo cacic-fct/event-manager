@@ -10,7 +10,7 @@ import {
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { toSportsPublicPlayerName } from '../domain/sports-public-name';
+import { toSportsPublicOfficialName, toSportsPublicPlayerName } from '../domain/sports-public-name';
 import {
   CurrentUserSportsLineupRead,
   CurrentUserSportsMatchOperationsRead,
@@ -238,10 +238,18 @@ export class SportsReadCurrentUserService {
         id: true,
         revision: true,
         state: true,
+        eventId: true,
+        categoryId: true,
         notes: true,
         occurrences: true,
         homeRegistrationId: true,
         awayRegistrationId: true,
+        category: {
+          select: {
+            id: true,
+            tournament: { select: { id: true } },
+          },
+        },
         rosters: {
           where: {
             deletedAt: null,
@@ -297,6 +305,73 @@ export class SportsReadCurrentUserService {
     if (!match) {
       throw new NotFoundException(`Sports match ${matchId} was not found.`);
     }
+    const assignments = await this.prisma.sportsOfficialAssignment.findMany({
+      where: {
+        tournamentId: match.category.tournament.id,
+        active: true,
+        revokedAt: null,
+        OR: [
+          { matchId: match.id },
+          { categoryId: match.categoryId, matchId: null },
+          { categoryId: null, matchId: null },
+        ],
+        person: { deletedAt: null },
+      },
+      select: {
+        id: true,
+        matchId: true,
+        categoryId: true,
+        role: true,
+        assignedAt: true,
+        person: {
+          select: {
+            id: true,
+            name: true,
+            attendances: {
+              where: { eventId: match.eventId },
+              select: { status: true, attendedAt: true },
+            },
+          },
+        },
+      },
+      orderBy: [{ role: 'asc' }, { assignedAt: 'asc' }, { id: 'asc' }],
+    });
+    const officialRoleOrder: Record<string, number> = {
+      REFEREE: 0,
+      INTERMEDIATOR: 1,
+      SCOREKEEPER: 2,
+    };
+    const seenOfficials = new Set<string>();
+    const officials = [...assignments]
+      .sort(
+        (left, right) =>
+          this.officialAssignmentScopeRank(left, match.id, match.categoryId) -
+            this.officialAssignmentScopeRank(right, match.id, match.categoryId) ||
+          left.assignedAt.getTime() - right.assignedAt.getTime() ||
+          left.id.localeCompare(right.id),
+      )
+      .flatMap((assignment) => {
+        const key = `${assignment.person.id}:${assignment.role}`;
+        if (seenOfficials.has(key)) {
+          return [];
+        }
+        seenOfficials.add(key);
+        const attendance = assignment.person.attendances[0];
+        return [
+          {
+            id: assignment.id,
+            name: toSportsPublicOfficialName(assignment.person.name),
+            role: assignment.role,
+            checkedInAt: attendance?.status === 'PRESENT' ? attendance.attendedAt : null,
+          },
+        ];
+      })
+      .sort(
+        (left, right) =>
+          (officialRoleOrder[left.role] ?? Number.MAX_SAFE_INTEGER) -
+            (officialRoleOrder[right.role] ?? Number.MAX_SAFE_INTEGER) ||
+          left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' }),
+      );
     return {
       matchId: match.id,
       revision: match.revision,
@@ -305,6 +380,7 @@ export class SportsReadCurrentUserService {
       awayRegistrationId: match.awayRegistrationId,
       notes: match.notes,
       occurrencesJson: this.mapper.serializeJson(match.occurrences),
+      officials,
       rosters: match.rosters.map((roster) => ({
         id: roster.id,
         registrationId: roster.registrationId,
@@ -322,6 +398,20 @@ export class SportsReadCurrentUserService {
         })),
       })),
     };
+  }
+
+  private officialAssignmentScopeRank(
+    assignment: { matchId: string | null; categoryId: string | null },
+    matchId: string,
+    categoryId: string,
+  ): number {
+    if (assignment.matchId === matchId) {
+      return 0;
+    }
+    if (assignment.categoryId === categoryId && assignment.matchId === null) {
+      return 1;
+    }
+    return 2;
   }
 
   async currentUserLineup(matchId: string, registrationId: string): Promise<CurrentUserSportsLineupRead> {
@@ -407,6 +497,9 @@ export class SportsReadCurrentUserService {
         },
       }),
     ]);
+    const shirtNumbersByMemberId = new Map(
+      roster?.entries.map((entry) => [entry.registrationMemberId, entry.shirtNumber]) ?? [],
+    );
     return {
       matchId: match.id,
       matchRevision: match.revision,
@@ -417,6 +510,7 @@ export class SportsReadCurrentUserService {
         registrationMemberId: member.id,
         name: toSportsPublicPlayerName(member.teamMember.participant.person.name),
         role: member.role,
+        shirtNumber: shirtNumbersByMemberId.get(member.id) ?? null,
       })),
       roster: roster
         ? {

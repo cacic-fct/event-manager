@@ -472,7 +472,7 @@ export function createAdminE2EEvent(overrides: Record<string, unknown> = {}): Ad
     onlineAttendanceCode: 'A8C2',
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
     publishedAt: relativeIsoDate(-7, 12),

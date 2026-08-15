@@ -315,7 +315,7 @@ function buildEvent(id: string, name: string, emoji: string): Event {
     allowSubscription: true,
     autoSubscribe: false,
     isOnlineAttendanceAllowed: false,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
     publishedAt: '2026-05-20T12:00:00.000Z',

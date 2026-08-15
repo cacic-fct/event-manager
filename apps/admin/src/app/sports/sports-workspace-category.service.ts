@@ -4,6 +4,7 @@ import { SportsWorkspaceBaseService } from './sports-workspace-base.service';
 
 export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBaseService {
   async selectCategory(category: SportsCategorySummary, options: { navigate?: boolean } = {}): Promise<void> {
+    this.cancelOfficialEdit();
     const selectionRevision = this.beginSelection();
     await this.run('Não foi possível carregar a modalidade.', async () => {
       const read = await firstValueFrom(this.api.category(category.id));

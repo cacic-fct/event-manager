@@ -32,6 +32,7 @@ import type {
   SportsTeamRead,
   SportsTournamentListItem,
   SportsTournamentRead,
+  SportsOfficialSummary,
 } from './sports.models';
 import { sportsTimerPreset, toIsoDateOrNull, toLocalDate } from './sports-workspace-form.utils';
 import { createSportsWorkspaceForms } from './sports-workspace.forms';
@@ -69,6 +70,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly applications = signal<SportsApplication[]>([]);
   readonly people = signal<Person[]>([]);
   readonly peopleTarget = signal<'representative' | 'official' | 'member' | null>(null);
+  readonly editingOfficial = signal<SportsOfficialSummary | null>(null);
   readonly places = signal<PlacePreset[]>([]);
   readonly selectedVenueId = signal('');
   readonly registrationReads = signal<Record<string, SportsRegistrationRead>>({});
@@ -79,6 +81,15 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly selectedCategoryId = signal('');
   readonly selectedTeamId = signal('');
   readonly selectedMatchId = signal('');
+  readonly isEditingOfficial = computed(() => this.editingOfficial() !== null);
+  readonly canReadOfficialContacts = computed(() => this.permissions.has(Permission.Person.Read));
+  readonly canEditMatchPublication = computed(() => this.permissions.has(Permission.SportsMatch.Update));
+  readonly canAssignOfficial = computed(() => this.permissions.has(Permission.SportsOfficial.Create));
+  readonly canEditOfficial = computed(() => this.permissions.has(Permission.SportsOfficial.Update));
+  readonly canRemoveOfficial = computed(() => this.permissions.has(Permission.SportsOfficial.Delete));
+  readonly canSaveOfficial = computed(() =>
+    this.isEditingOfficial() ? this.canEditOfficial() : this.canAssignOfficial(),
+  );
   readonly tournamentId = computed(() => this.tournamentRead()?.tournament.id ?? '');
   readonly inheritedRegistrationDates = computed(() => {
     const tournament = this.tournamentRead()?.tournament;
@@ -351,6 +362,14 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     this.selectedCategoryId.set('');
     this.selectedTeamId.set('');
     this.selectedMatchId.set('');
+    this.cancelOfficialEdit();
+  }
+
+  cancelOfficialEdit(): void {
+    this.editingOfficial.set(null);
+    this.people.set([]);
+    this.peopleTarget.set(null);
+    this.officialForm.reset({ personQuery: '', personId: '', role: 'REFEREE', scope: 'MATCH' });
   }
 
   async loadPendingMatchActions(): Promise<void> {
@@ -456,6 +475,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   }
 
   newCategory(navigate = true): void {
+    this.cancelOfficialEdit();
     this.invalidateSelection();
     this.selectedCategoryId.set('');
     this.categoryRead.set(null);
@@ -522,7 +542,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     allowWhenLoading?: boolean,
   ): Promise<void>;
   protected abstract notify(message: string, error?: boolean): void;
-  protected abstract confirmAction(title: string, message: string): Promise<boolean>;
+  protected abstract confirmAction(title: string, message: string, confirmLabel?: string): Promise<boolean>;
   protected abstract loadApplications(): Promise<void>;
   protected abstract watchTournament(tournamentId: string): void;
 }

@@ -534,7 +534,7 @@ def build_event_rows(
                 "onlineAttendanceCode": None,
                 "onlineAttendanceStartDate": None,
                 "onlineAttendanceEndDate": None,
-                "publiclyVisible": True,
+                "isPubliclyListed": True,
                 "youtubeCode": None,
                 "buttonText": None,
                 "buttonLink": None,

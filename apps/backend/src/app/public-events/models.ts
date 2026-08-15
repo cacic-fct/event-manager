@@ -110,7 +110,7 @@ export const PUBLIC_EVENT_SELECT = {
   isOnlineAttendanceAllowed: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -154,7 +154,7 @@ export const PUBLIC_MAJOR_EVENT_WHERE = {
 
 export const PUBLIC_EVENT_WHERE = {
   deletedAt: null,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: 'PUBLISHED',
   OR: [
     { majorEventId: null },
@@ -843,7 +843,7 @@ export class PublicEvent {
     nullable: true,
     description: 'Whether this event is currently intended to appear in public event surfaces.',
   })
-  publiclyVisible?: boolean | null;
+  isPubliclyListed?: boolean | null;
 
   displayLecturerProfile?: boolean | null;
 

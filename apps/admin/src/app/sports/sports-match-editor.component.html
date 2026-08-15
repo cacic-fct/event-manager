@@ -10,7 +10,10 @@
     </p>
   </div>
   @if (workspace.matchReview(); as review) {
-    <span class="editor-status">{{ workspace.matchStatusLabel(review.match.state) }}</span>
+    <div class="editor-status-stack">
+      <span class="editor-status">{{ workspace.matchStatusLabel(review.match.state) }}</span>
+      <span class="editor-publication-status">{{ workspace.matchPublicationLabel(review.match) }}</span>
+    </div>
   }
 </div>
 
@@ -24,6 +27,27 @@
       aria-label="Excluir partida"
       (click)="workspace.deleteSelectedMatch()">
       <mat-icon>delete</mat-icon>
+    </button>
+  }
+  @if (workspace.canPublishSelectedMatch()) {
+    <button
+      mat-stroked-button
+      type="button"
+      matTooltip="Publica a partida no site público e libera o link do OBS."
+      (click)="workspace.publishSelectedMatch()"
+      [disabled]="workspace.loading()">
+      <mat-icon>publish</mat-icon>
+      Publicar no site
+    </button>
+  } @else if (workspace.canUnpublishSelectedMatch()) {
+    <button
+      mat-stroked-button
+      type="button"
+      matTooltip="Retira a partida do site público e desativa o link do OBS."
+      (click)="workspace.unpublishSelectedMatch()"
+      [disabled]="workspace.loading()">
+      <mat-icon>visibility_off</mat-icon>
+      Despublicar
     </button>
   }
   <button
@@ -202,6 +226,12 @@
         <p>Monte o placar para usar em uma cena do OBS ou em outra ferramenta compatível.</p>
       </div>
     </div>
+    @if (!workspace.isMatchPublic(review.match)) {
+      <p class="overlay-visibility-warning" role="status">
+        <mat-icon aria-hidden="true">visibility_off</mat-icon>
+        <span>O link só funciona depois que a partida for publicada no site público.</span>
+      </p>
+    }
     <lib-sports-match-overlay-builder
       [matchId]="review.match.id"
       [homeTeamName]="workspace.teamNameForRegistration(review.match.homeRegistrationId)"
@@ -213,7 +243,8 @@
     <div>
       <h5>Escalação desta partida</h5>
       <p>
-        Marque quem poderá jogar e defina função e número para esta partida. Isso não altera o cadastro da modalidade.
+        Marque quem poderá jogar e defina função e número para esta partida. Integrantes sem vínculo nesta modalidade
+        são associados automaticamente ao salvar.
       </p>
     </div>
   </div>
@@ -233,7 +264,7 @@
               <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(registrationId)" [size]="32" />
               {{ workspace.teamNameForRegistration(registrationId) }}
             </h5>
-            @for (member of registration.members; track member.id) {
+            @for (member of registration.lineupMembers; track member.id) {
               <div class="lineup-member">
                 <mat-checkbox
                   [checked]="workspace.isLineupSelected(registrationId, member.id)"
@@ -262,7 +293,7 @@
                 </mat-form-field>
               </div>
             } @empty {
-              <p class="empty-copy">Nenhum integrante elegível nesta inscrição.</p>
+              <p class="empty-copy">Nenhum integrante disponível nesta equipe.</p>
             }
             <button
               mat-stroked-button
@@ -289,6 +320,7 @@
         <input
           matInput
           formControlName="personQuery"
+          [readonly]="workspace.isEditingOfficial()"
           (input)="workspace.searchPeople(workspace.officialForm.controls.personQuery.value, 'official')" />
       </mat-form-field>
       <mat-form-field subscriptSizing="dynamic">
@@ -301,16 +333,22 @@
       </mat-form-field>
       <mat-form-field subscriptSizing="dynamic">
         <mat-label>Escopo</mat-label>
-        <mat-select formControlName="scope">
+        <mat-select formControlName="scope" [disabled]="workspace.isEditingOfficial()">
           <mat-option value="MATCH">Somente esta partida</mat-option>
           <mat-option value="CATEGORY">Toda a modalidade</mat-option>
           <mat-option value="TOURNAMENT">Todo o torneio</mat-option>
         </mat-select>
       </mat-form-field>
-      <button mat-stroked-button type="submit" [disabled]="workspace.loading() || workspace.officialForm.invalid">
-        <mat-icon>person_add</mat-icon>
-        Atribuir
+      <button
+        mat-stroked-button
+        type="submit"
+        [disabled]="workspace.loading() || workspace.officialForm.invalid || !workspace.canSaveOfficial()">
+        <mat-icon>{{ workspace.isEditingOfficial() ? 'save' : 'person_add' }}</mat-icon>
+        {{ workspace.isEditingOfficial() ? 'Salvar função' : 'Atribuir' }}
       </button>
+      @if (workspace.isEditingOfficial()) {
+        <button mat-button type="button" (click)="workspace.cancelOfficialEdit()">Cancelar</button>
+      }
     </form>
     @if (workspace.people().length && workspace.peopleTarget() === 'official') {
       <div class="search-results">
@@ -319,11 +357,14 @@
             class="person-search-result"
             type="button"
             [attr.aria-label]="'Adicionar pessoa ' + person.name"
-            (click)="workspace.pickPerson(person, 'official')">
+            (click)="workspace.pickOfficialPerson(person)">
             <span class="person-search-result-copy">
               <strong>{{ person.name }}</strong>
-              <small>{{ person.email || 'Sem e-mail' }}</small>
-              <small>{{ personIdentityDocument(person.identityDocument) }}</small>
+              @if (workspace.canReadOfficialContacts()) {
+                <small>{{ person.email || 'Sem e-mail' }}</small>
+                <small>{{ person.phone || 'Sem telefone' }}</small>
+                <small>{{ personIdentityDocument(person.identityDocument) }}</small>
+              }
             </span>
             <mat-icon aria-hidden="true">person_add</mat-icon>
           </button>
@@ -332,29 +373,107 @@
     }
     <div class="person-list">
       @for (official of workspace.tournamentRead()?.officials ?? []; track official.id) {
-        <div>
+        <div class="official-assignment">
           <mat-icon>emoji_events</mat-icon>
-          <span>
-            <strong>{{ officialRoleLabel(official.role) }}</strong>
-            <small>Torneio inteiro · {{ official.personId }}</small>
+          <span class="official-assignment-copy">
+            <strong>{{ official.person?.name ?? 'Pessoa não encontrada' }}</strong>
+            <small>{{ officialRoleLabel(official.role) }} · {{ workspace.officialScopeLabel(official) }}</small>
+            @if (workspace.canReadOfficialContacts()) {
+              <small>E-mail: {{ official.person?.email || 'Não informado' }}</small>
+              <small>Telefone: {{ official.person?.phone || 'Não informado' }}</small>
+            }
+          </span>
+          <span class="official-assignment-actions">
+            @if (workspace.canEditOfficial()) {
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="Editar função"
+                [attr.aria-label]="'Editar função de ' + (official.person?.name ?? 'pessoa')"
+                (click)="workspace.editOfficial(official)">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+            @if (workspace.canRemoveOfficial()) {
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="Remover pessoa"
+                [attr.aria-label]="'Remover ' + (official.person?.name ?? 'pessoa')"
+                (click)="workspace.removeOfficial(official)">
+                <mat-icon>person_remove</mat-icon>
+              </button>
+            }
           </span>
         </div>
       }
       @for (official of categoryRead().officials; track official.id) {
-        <div>
+        <div class="official-assignment">
           <mat-icon>category</mat-icon>
-          <span>
-            <strong>{{ officialRoleLabel(official.role) }}</strong>
-            <small>Modalidade · {{ official.personId }}</small>
+          <span class="official-assignment-copy">
+            <strong>{{ official.person?.name ?? 'Pessoa não encontrada' }}</strong>
+            <small>{{ officialRoleLabel(official.role) }} · {{ workspace.officialScopeLabel(official) }}</small>
+            @if (workspace.canReadOfficialContacts()) {
+              <small>E-mail: {{ official.person?.email || 'Não informado' }}</small>
+              <small>Telefone: {{ official.person?.phone || 'Não informado' }}</small>
+            }
+          </span>
+          <span class="official-assignment-actions">
+            @if (workspace.canEditOfficial()) {
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="Editar função"
+                [attr.aria-label]="'Editar função de ' + (official.person?.name ?? 'pessoa')"
+                (click)="workspace.editOfficial(official)">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+            @if (workspace.canRemoveOfficial()) {
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="Remover pessoa"
+                [attr.aria-label]="'Remover ' + (official.person?.name ?? 'pessoa')"
+                (click)="workspace.removeOfficial(official)">
+                <mat-icon>person_remove</mat-icon>
+              </button>
+            }
           </span>
         </div>
       }
       @for (official of review.officials; track official.id) {
-        <div>
+        <div class="official-assignment">
           <mat-icon>sports</mat-icon>
-          <span>
-            <strong>{{ officialRoleLabel(official.role) }}</strong>
-            <small>Partida · {{ official.personId }}</small>
+          <span class="official-assignment-copy">
+            <strong>{{ official.person?.name ?? 'Pessoa não encontrada' }}</strong>
+            <small>{{ officialRoleLabel(official.role) }} · {{ workspace.officialScopeLabel(official) }}</small>
+            @if (workspace.canReadOfficialContacts()) {
+              <small>E-mail: {{ official.person?.email || 'Não informado' }}</small>
+              <small>Telefone: {{ official.person?.phone || 'Não informado' }}</small>
+            }
+          </span>
+          <span class="official-assignment-actions">
+            @if (workspace.canEditOfficial()) {
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="Editar função"
+                [attr.aria-label]="'Editar função de ' + (official.person?.name ?? 'pessoa')"
+                (click)="workspace.editOfficial(official)">
+                <mat-icon>edit</mat-icon>
+              </button>
+            }
+            @if (workspace.canRemoveOfficial()) {
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="Remover pessoa"
+                [attr.aria-label]="'Remover ' + (official.person?.name ?? 'pessoa')"
+                (click)="workspace.removeOfficial(official)">
+                <mat-icon>person_remove</mat-icon>
+              </button>
+            }
           </span>
         </div>
       }

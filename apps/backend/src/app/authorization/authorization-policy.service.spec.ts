@@ -690,7 +690,7 @@ describe('AuthorizationPolicyService', () => {
       startDate: new Date(Date.now() - 60_000),
       endDate: new Date(Date.now() + 60_000),
       deletedAt: null,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       shouldCollectAttendance: true,
     });
 
@@ -706,7 +706,7 @@ describe('AuthorizationPolicyService', () => {
       startDate: new Date(Date.now() - 60_000),
       endDate: new Date(Date.now() + 60_000),
       deletedAt: null,
-      publiclyVisible: false,
+      isPubliclyListed: false,
       shouldCollectAttendance: true,
     });
 
@@ -723,7 +723,7 @@ describe('AuthorizationPolicyService', () => {
       startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
       endDate: new Date(Date.now() - 12 * 60 * 60 * 1000),
       deletedAt: null,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       shouldCollectAttendance: true,
     });
 
@@ -740,7 +740,7 @@ describe('AuthorizationPolicyService', () => {
         startDate: new Date(Date.now() - 60_000),
         endDate: new Date(Date.now() + 60_000),
         deletedAt: null,
-        publiclyVisible: false,
+        isPubliclyListed: false,
         shouldCollectAttendance: true,
       })
       .mockResolvedValueOnce({
@@ -768,7 +768,7 @@ describe('AuthorizationPolicyService', () => {
       startDate: new Date(Date.now() - 60_000),
       endDate: new Date(Date.now() + 60_000),
       deletedAt: null,
-      publiclyVisible: false,
+      isPubliclyListed: false,
       shouldCollectAttendance: true,
       sportsMatch: {
         id: 'match-1',
@@ -803,7 +803,7 @@ describe('AuthorizationPolicyService', () => {
         startDate: new Date(Date.now() - 60_000),
         endDate: new Date(Date.now() + 60_000),
         deletedAt: new Date(),
-        publiclyVisible: true,
+        isPubliclyListed: true,
         shouldCollectAttendance: true,
       },
       'deleted event',
@@ -813,7 +813,7 @@ describe('AuthorizationPolicyService', () => {
         startDate: new Date(Date.now() - 60_000),
         endDate: new Date(Date.now() + 60_000),
         deletedAt: null,
-        publiclyVisible: true,
+        isPubliclyListed: true,
         shouldCollectAttendance: false,
       },
       'disabled collection',
@@ -831,7 +831,7 @@ describe('AuthorizationPolicyService', () => {
       startDate: new Date(Date.now() - 60_000),
       endDate: new Date(Date.now() + 60_000),
       deletedAt: null,
-      publiclyVisible: false,
+      isPubliclyListed: false,
       shouldCollectAttendance: true,
     });
 

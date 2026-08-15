@@ -165,7 +165,7 @@ describe('SportsMutationEventsService extended behavior', () => {
     await service.publishMatchProjection(
       sportsMatchRecord({
         reviewStatus: SportsReviewStatus.APPROVED,
-        event: { deletedAt: null, publiclyVisible: false, publicationState: PublicationState.DRAFT },
+        event: { deletedAt: null, isPubliclyListed: false, publicationState: PublicationState.DRAFT },
       }) as never,
     );
     expect(realtime.publish).toHaveBeenCalledTimes(1);
@@ -175,12 +175,12 @@ describe('SportsMutationEventsService extended behavior', () => {
   it.each([
     [true, PublicationState.PUBLISHED, 4],
     [false, PublicationState.DRAFT, 2],
-  ])('publishes roster mutation with public=%s', async (publiclyVisible, publicationState, publishCount) => {
+  ])('publishes roster mutation with public=%s', async (isPubliclyListed, publicationState, publishCount) => {
     prisma.sportsMatch.findFirst.mockResolvedValue({
       id: 'match-1',
       revision: 4,
       category: { tournamentId: 'tournament-1' },
-      event: { deletedAt: null, publiclyVisible, publicationState },
+      event: { deletedAt: null, isPubliclyListed, publicationState },
     });
 
     await service.publishRosterMutation('match-1', 'ROSTER_APPROVED', 'roster-1');

@@ -218,7 +218,7 @@ export const EVENT_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: true,
   scheduledPublishAt: true,
   publishedAt: true,

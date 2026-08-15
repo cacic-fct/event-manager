@@ -57,7 +57,7 @@ export type CollectorRecord = {
     startDate: Date;
     endDate: Date;
     deletedAt: Date | null;
-    publiclyVisible: boolean;
+    isPubliclyListed: boolean;
     shouldCollectAttendance: boolean;
   };
 };
@@ -294,7 +294,7 @@ export function createCollectionResolver(input: {
         if (
           !collector ||
           collector.event.deletedAt ||
-          !collector.event.publiclyVisible ||
+          !collector.event.isPubliclyListed ||
           !collector.event.shouldCollectAttendance
         ) {
           throw new ForbiddenException('Você não pode coletar presença para este evento.');
@@ -361,7 +361,7 @@ export function collectorPerson(overrides: Partial<CollectorRecord> = {}): Colle
       startDate: new Date(Date.now() - 60_000),
       endDate: new Date(Date.now() + 60_000),
       deletedAt: null,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       shouldCollectAttendance: true,
     },
     ...overrides,

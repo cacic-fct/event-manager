@@ -40,7 +40,7 @@ describe('public event record fixtures', () => {
       majorEventId: 'major-1',
       slotsAvailable: 12,
       allowSubscription: true,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       lecturers: [],
     });
   });

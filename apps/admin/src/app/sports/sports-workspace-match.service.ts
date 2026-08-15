@@ -1,10 +1,14 @@
 import { firstValueFrom } from 'rxjs';
-import type { SportsMatchSummary, SportsVenueSummary } from './sports.models';
+import type { Person } from '@cacic-fct/event-manager-admin-contracts';
+import type { SportsMatchSummary, SportsOfficialSummary, SportsVenueSummary } from './sports.models';
 import { toIsoDateOrUndefined, toLocalDate } from './sports-workspace-form.utils';
 import { SportsWorkspaceTeamService } from './sports-workspace-team.service';
 
+type SportsOfficialScope = 'MATCH' | 'CATEGORY' | 'TOURNAMENT';
+
 export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamService {
   async selectMatch(match: SportsMatchSummary, options: { navigate?: boolean } = {}): Promise<void> {
+    this.cancelOfficialEdit();
     const selectionRevision = this.beginSelection();
     await this.run('Não foi possível carregar a partida.', async () => {
       const read = await firstValueFrom(this.api.matchReview(match.id));
@@ -100,10 +104,11 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
           registrationId,
           expectedRevision: existing?.revision,
           status: 'APPROVED',
-          entries: registration.members
+          entries: registration.lineupMembers
             .filter((member) => selected.has(member.id))
             .map((member) => ({
-              registrationMemberId: member.id,
+              registrationMemberId: member.registrationMemberId ?? member.id,
+              teamMemberId: member.teamMemberId,
               role: this.lineupRole(registrationId, member.id),
               shirtNumber: this.lineupShirtNumber(registrationId, member.id).trim() || null,
               status: 'APPROVED',
@@ -193,28 +198,206 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
     });
   }
 
+  matchPublicationLabel(match: SportsMatchSummary | null | undefined): string {
+    const event = match?.event;
+    if (!event) {
+      return 'Publicação indisponível';
+    }
+    if (event.publicationState === 'PUBLISHED' && event.isPubliclyListed) {
+      return 'Publicado no site';
+    }
+    if (event.publicationState === 'PUBLISHED') {
+      return 'Publicado, mas oculto';
+    }
+    if (event.publicationState === 'SCHEDULED') {
+      return 'Publicação agendada';
+    }
+    if (event.publicationState === 'UNPUBLISHED') {
+      return 'Despublicado';
+    }
+    return 'Rascunho';
+  }
+
+  isMatchPublic(match: SportsMatchSummary | null | undefined): boolean {
+    return match?.event?.publicationState === 'PUBLISHED' && match.event.isPubliclyListed;
+  }
+
+  canPublishSelectedMatch(): boolean {
+    const match = this.matchReview()?.match;
+    return Boolean(match?.event && this.canEditMatchPublication() && !this.isMatchPublic(match));
+  }
+
+  canUnpublishSelectedMatch(): boolean {
+    const match = this.matchReview()?.match;
+    return Boolean(match && this.canEditMatchPublication() && this.isMatchPublic(match));
+  }
+
+  async publishSelectedMatch(): Promise<void> {
+    const match = this.matchReview()?.match;
+    if (!match || !this.canEditMatchPublication()) {
+      return;
+    }
+    await this.run('Não foi possível publicar a partida.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('publishSportsMatch', 'SportsMatchPublicationInput', { id: match.id }),
+      );
+      await this.selectMatch(match, { navigate: false });
+      this.notify('Partida publicada no site e disponível para o OBS.');
+    });
+  }
+
+  async unpublishSelectedMatch(): Promise<void> {
+    const match = this.matchReview()?.match;
+    if (
+      !match ||
+      !this.canEditMatchPublication() ||
+      !(await this.confirmAction(
+        'Despublicar partida?',
+        'A partida deixará de aparecer no site público e o link do OBS deixará de funcionar.',
+        'Despublicar',
+      ))
+    ) {
+      return;
+    }
+    await this.run('Não foi possível despublicar a partida.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('unpublishSportsMatch', 'SportsMatchPublicationInput', { id: match.id }),
+      );
+      await this.selectMatch(match, { navigate: false });
+      this.notify('Partida despublicada.');
+    });
+  }
+
+  officialScope(official: SportsOfficialSummary): SportsOfficialScope {
+    if (official.matchId) {
+      return 'MATCH';
+    }
+    if (official.categoryId) {
+      return 'CATEGORY';
+    }
+    return 'TOURNAMENT';
+  }
+
+  officialScopeLabel(official: SportsOfficialSummary): string {
+    return {
+      MATCH: 'Partida',
+      CATEGORY: 'Modalidade',
+      TOURNAMENT: 'Torneio inteiro',
+    }[this.officialScope(official)];
+  }
+
+  officialForPerson(personId: string): SportsOfficialSummary | null {
+    return (
+      this.matchReview()?.officials.find((official) => official.personId === personId && official.active) ??
+      this.categoryRead()?.officials.find((official) => official.personId === personId && official.active) ??
+      this.tournamentRead()?.officials.find((official) => official.personId === personId && official.active) ??
+      null
+    );
+  }
+
+  pickOfficialPerson(person: Person): void {
+    const existing = this.officialForPerson(person.id);
+    if (existing) {
+      this.editOfficial(existing);
+      return;
+    }
+    this.pickPerson(person, 'official');
+  }
+
+  editOfficial(official: SportsOfficialSummary): void {
+    this.editingOfficial.set(official);
+    this.people.set([]);
+    this.peopleTarget.set(null);
+    this.officialForm.patchValue({
+      personQuery: official.person?.name ?? 'Pessoa selecionada',
+      personId: official.personId,
+      role: official.role,
+      scope: this.officialScope(official),
+    });
+  }
+
   async assignOfficial(): Promise<void> {
     if (this.officialForm.invalid || !this.tournamentId()) {
       return;
     }
+    const editing = this.editingOfficial();
     const raw = this.officialForm.getRawValue();
+    const scope = editing ? this.officialScope(editing) : (raw.scope as SportsOfficialScope);
     await this.run('Não foi possível atribuir o oficial.', async () => {
-      await firstValueFrom(
-        this.api.mutate<string>('assignSportsOfficial', 'SportsOfficialAssignInput', {
-          tournamentId: this.tournamentId(),
-          categoryId: raw.scope === 'CATEGORY' ? this.selectedCategoryId() || null : null,
-          matchId: raw.scope === 'MATCH' ? this.selectedMatchId() || null : null,
-          personId: raw.personId,
-          role: raw.role,
-        }),
-      );
-      const match = this.matchReview()?.match;
-      if (match) {
-        await this.selectMatch(match);
+      if (editing) {
+        await firstValueFrom(
+          this.api.mutate<string>('updateSportsOfficial', 'SportsOfficialUpdateInput', {
+            id: editing.id,
+            expectedRevision: editing.revision,
+            role: raw.role,
+          }),
+        );
+      } else {
+        await firstValueFrom(
+          this.api.mutate<string>('assignSportsOfficial', 'SportsOfficialAssignInput', {
+            tournamentId: this.tournamentId(),
+            categoryId: scope === 'CATEGORY' ? this.selectedCategoryId() || null : null,
+            matchId: scope === 'MATCH' ? this.selectedMatchId() || null : null,
+            personId: raw.personId,
+            role: raw.role,
+          }),
+        );
       }
-      this.officialForm.reset({ personQuery: '', personId: '', role: 'REFEREE', scope: 'MATCH' });
-      this.notify('Função esportiva atribuída.');
+      await this.refreshOfficialAssignments(scope);
+      this.cancelOfficialEdit();
+      this.notify(editing ? 'Função esportiva atualizada.' : 'Função esportiva atribuída.');
     });
+  }
+
+  async removeOfficial(official: SportsOfficialSummary): Promise<void> {
+    if (
+      !(await this.confirmAction(
+        `Remover ${official.person?.name ?? 'esta pessoa'}?`,
+        'A pessoa deixará de exercer esta função. O histórico da atribuição será preservado.',
+        'Remover',
+      ))
+    ) {
+      return;
+    }
+    await this.run('Não foi possível remover a pessoa da equipe de arbitragem.', async () => {
+      await firstValueFrom(this.api.deleteVersioned('deleteSportsOfficial', official.id, official.revision));
+      await this.refreshOfficialAssignments(this.officialScope(official));
+      this.cancelOfficialEdit();
+      this.notify('Pessoa removida da equipe de arbitragem.');
+    });
+  }
+
+  private async refreshOfficialAssignments(scope: SportsOfficialScope): Promise<void> {
+    const currentMatch = this.matchReview()?.match;
+    const currentCategory = this.categoryRead()?.category;
+    if (scope === 'MATCH' && currentMatch) {
+      await this.selectMatch(currentMatch, { navigate: false });
+      return;
+    }
+    if (scope === 'CATEGORY' && currentCategory) {
+      await this.selectCategory(currentCategory, { navigate: false });
+      if (currentMatch) {
+        const refreshedMatch = this.categoryRead()?.matches.find((match) => match.id === currentMatch.id);
+        if (refreshedMatch) {
+          await this.selectMatch(refreshedMatch, { navigate: false });
+        }
+      }
+      return;
+    }
+    const categoryId = currentCategory?.id ?? this.selectedCategoryId();
+    const matchId = currentMatch?.id ?? this.selectedMatchId();
+    await this.loadTournament();
+    const refreshedCategory = this.tournamentRead()?.categories.find((category) => category.id === categoryId);
+    if (!refreshedCategory) {
+      return;
+    }
+    await this.selectCategory(refreshedCategory, { navigate: false });
+    if (matchId) {
+      const refreshedMatch = this.categoryRead()?.matches.find((match) => match.id === matchId);
+      if (refreshedMatch) {
+        await this.selectMatch(refreshedMatch, { navigate: false });
+      }
+    }
   }
 
   async generateBracket(): Promise<void> {

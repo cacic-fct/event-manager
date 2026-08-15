@@ -12,7 +12,7 @@ function createEvent(overrides: Partial<PublicationConsistencyEvent> = {}): Publ
   return {
     id: 'event-1',
     name: 'Evento 1',
-    publiclyVisible: false,
+    isPubliclyListed: false,
     publicationState: 'DRAFT',
     scheduledPublishAt: null,
     majorEventId: null,
@@ -41,19 +41,19 @@ describe('buildPublicationConsistencyWarnings', () => {
           id: 'hidden-published-event',
           name: 'Evento publicado oculto',
           publicationState: 'PUBLISHED',
-          publiclyVisible: false,
+          isPubliclyListed: false,
         }),
         createEvent({
           id: 'visible-draft-event',
           name: 'Evento rascunho visivel',
           publicationState: 'DRAFT',
-          publiclyVisible: true,
+          isPubliclyListed: true,
         }),
         createEvent({
           id: 'event-with-draft-major',
           name: 'Evento com grande evento em rascunho',
           publicationState: 'PUBLISHED',
-          publiclyVisible: true,
+          isPubliclyListed: true,
           majorEventId: 'major-event-1',
           majorEvent: {
             id: 'major-event-1',
@@ -65,7 +65,7 @@ describe('buildPublicationConsistencyWarnings', () => {
           id: 'overdue-scheduled-event',
           name: 'Evento agendado atrasado',
           publicationState: 'SCHEDULED',
-          publiclyVisible: true,
+          isPubliclyListed: true,
           scheduledPublishAt: PAST,
         }),
       ],
@@ -110,7 +110,7 @@ describe('buildPublicationConsistencyWarnings', () => {
           createEvent({
             id: 'visible-published-event',
             publicationState: 'PUBLISHED',
-            publiclyVisible: true,
+            isPubliclyListed: true,
             majorEvent: {
               id: 'published-major-event',
               name: 'Grande evento publicado',
@@ -120,7 +120,7 @@ describe('buildPublicationConsistencyWarnings', () => {
           createEvent({
             id: 'hidden-draft-event',
             publicationState: 'DRAFT',
-            publiclyVisible: false,
+            isPubliclyListed: false,
           }),
           createEvent({
             id: 'scheduled-without-date-event',
@@ -156,12 +156,12 @@ describe('buildPublicationConsistencyWarnings', () => {
           events: [
             {
               id: 'hidden-event',
-              publiclyVisible: false,
+              isPubliclyListed: false,
               publicationState: 'PUBLISHED',
             },
             {
               id: 'draft-event',
-              publiclyVisible: true,
+              isPubliclyListed: true,
               publicationState: 'DRAFT',
             },
           ],
@@ -215,12 +215,12 @@ describe('buildPublicationConsistencyWarnings', () => {
             events: [
               {
                 id: 'draft-event',
-                publiclyVisible: true,
+                isPubliclyListed: true,
                 publicationState: 'DRAFT',
               },
               {
                 id: 'visible-event',
-                publiclyVisible: true,
+                isPubliclyListed: true,
                 publicationState: 'PUBLISHED',
               },
             ],
@@ -243,7 +243,7 @@ describe('buildPublicationConsistencyWarnings', () => {
           createEvent({
             id: 'sports-match-event',
             publicationState: 'DRAFT',
-            publiclyVisible: true,
+            isPubliclyListed: true,
             sportsMatch: { id: 'match-1', category: { tournamentId: 'tournament-1' } },
           }),
         ],
@@ -274,7 +274,7 @@ describe('buildPublicationConsistencyWarnings', () => {
           createMajorEvent({
             id: 'mixed-major',
             publicationState: 'PUBLISHED',
-            events: [{ id: 'regular-event', publiclyVisible: true, publicationState: 'PUBLISHED' }],
+            events: [{ id: 'regular-event', isPubliclyListed: true, publicationState: 'PUBLISHED' }],
             sportsTournament: { id: 'tournament-1', categories: [] },
           }),
         ],
@@ -296,7 +296,7 @@ describe('buildPublicationConsistencyWarnings', () => {
           createEvent({
             id: 'sports-match-event',
             publicationState: 'PUBLISHED',
-            publiclyVisible: true,
+            isPubliclyListed: true,
             sportsMatch: { id: 'match-1', category: { tournamentId: 'tournament-1' } },
             majorEventId: 'major-event-1',
             majorEvent: {

@@ -168,7 +168,7 @@ function event(index = 0) {
     subscriptionEndDate: isoDaysFromNow(index + 2, 22),
     slots: 40,
     autoSubscribe: false,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     shouldIssueCertificate: true,
     shouldIssueCertificateForNonPayingAttendees: false,
     shouldIssueCertificateForNonSubscribedAttendees: false,

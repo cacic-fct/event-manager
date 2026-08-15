@@ -33,7 +33,10 @@ const TOURNAMENT_FIELDS = `
   venues {
     id tournamentId placePresetId name courtLabel capacity notes parentVenueId revision
   }
-  officials { id tournamentId categoryId matchId personId role active assignedAt revision }
+  officials {
+    id tournamentId categoryId matchId personId role active assignedAt revision
+    person { id name email phone }
+  }
   teamSummaries {
     team { id tournamentId name institution status logoUrl revision fieldRevisionsJson }
     registrations { id categoryId categoryName categoryEmoji status }
@@ -51,14 +54,17 @@ const CATEGORY_FIELDS = `
   registrations { id teamId categoryId status seed formAnswersJson revision }
   stages { id categoryId name type displayOrder generationRevision }
   matches {
-    id eventId event { id name startDate endDate locationDescription }
+    id eventId event { id name startDate endDate locationDescription isPubliclyListed publicationState }
     categoryId stageId venueId homeRegistrationId awayRegistrationId
     state canonicalState reviewStatus scoreboard { homeScore awayScore }
     revision roundNumber bracketPosition groupKey notes livestreamProvider livestreamUrl
   }
   standings { id registrationId played wins draws losses scoreFor scoreAgainst points }
   placements { id registrationId placement pointsAwarded }
-  officials { id tournamentId categoryId matchId personId role active assignedAt revision }
+  officials {
+    id tournamentId categoryId matchId personId role active assignedAt revision
+    person { id name email phone }
+  }
 `;
 
 const TEAM_FIELDS = `
@@ -70,13 +76,13 @@ const TEAM_FIELDS = `
   representatives { id personId person { id name } active assignedAt }
   registrations { id teamId categoryId status seed formAnswersJson revision }
   changeRequests {
-    id type status requestRevision baseRevision deltaJson reviewMessage updatedAt
+    id type status requestRevision baseRevision deltaJson pendingLogoUrl reviewMessage updatedAt
   }
 `;
 
 const MATCH_REVIEW_FIELDS = `
   match {
-    id eventId event { id name startDate endDate locationDescription }
+    id eventId event { id name startDate endDate locationDescription isPubliclyListed publicationState }
     categoryId stageId venueId homeRegistrationId awayRegistrationId
     state canonicalState reviewStatus scoreboard { homeScore awayScore }
     revision roundNumber bracketPosition groupKey notes livestreamProvider livestreamUrl
@@ -86,13 +92,20 @@ const MATCH_REVIEW_FIELDS = `
     id registrationId status revision
     entries { id registrationMemberId status role shirtNumber roleMetadataJson }
   }
-  officials { id personId role active revision }
+  officials {
+    id tournamentId categoryId matchId personId role active assignedAt revision
+    person { id name email phone }
+  }
 `;
 
 const REGISTRATION_FIELDS = `
   registration { id teamId categoryId status seed formAnswersJson revision }
   members {
     id registrationId categoryId teamMemberId role eligibility
+    person { id name }
+  }
+  lineupMembers {
+    id registrationMemberId teamMemberId role eligibility
     person { id name }
   }
   rosters {
@@ -189,7 +202,7 @@ export class SportsApiService {
           adminSportsMatchActionReviewQueue(tournamentId: $tournamentId) {
             action { id matchId type payloadJson reviewStatus offline authoredAt }
             match {
-              id eventId event { id name startDate endDate locationDescription }
+              id eventId event { id name startDate endDate locationDescription isPubliclyListed publicationState }
               categoryId stageId venueId homeRegistrationId awayRegistrationId
               state canonicalState reviewStatus scoreboard { homeScore awayScore }
               revision roundNumber bracketPosition groupKey notes livestreamProvider livestreamUrl

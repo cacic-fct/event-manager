@@ -7,6 +7,7 @@ import { EventFormApiService } from '../graphql/event-form-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PlacePresetApiService } from '../graphql/place-preset-api.service';
+import { PermissionsService } from '../permissions/permissions.service';
 import { createAdminMajorEvent } from '../testing/admin-entity-fixtures';
 import { SportsApiService } from './sports-api.service';
 import {
@@ -59,6 +60,7 @@ describe('SportsWorkspaceService operations', () => {
         { provide: EventFormApiService, useValue: {} },
         { provide: PeopleApiService, useValue: {} },
         { provide: PlacePresetApiService, useValue: {} },
+        { provide: PermissionsService, useValue: { has: vi.fn(() => true), hasAny: vi.fn(() => true) } },
         { provide: MatSnackBar, useValue: snackbar },
         { provide: MatDialog, useValue: dialog },
       ],
@@ -441,6 +443,43 @@ describe('SportsWorkspaceService operations', () => {
   });
 
   describe('matches and venues', () => {
+    it('publishes a draft match and refreshes its public-site publication state', async () => {
+      const review = createAdminSportsMatchReview();
+      review.match.event = {
+        ...review.match.event!,
+        isPubliclyListed: false,
+        publicationState: 'DRAFT',
+      };
+      workspace.matchReview.set(review);
+      api.matchReview.mockReturnValue(of(review));
+      vi.spyOn(workspace, 'selectMatch').mockResolvedValue();
+
+      await workspace.publishSelectedMatch();
+
+      expect(api.mutate).toHaveBeenCalledWith('publishSportsMatch', 'SportsMatchPublicationInput', {
+        id: review.match.id,
+      });
+      expect(workspace.selectMatch).toHaveBeenCalledWith(review.match, { navigate: false });
+      expect(snackbar.open).toHaveBeenCalledWith(
+        'Partida publicada no site e disponível para o OBS.',
+        'Fechar',
+        expect.objectContaining({ duration: 3000 }),
+      );
+    });
+
+    it('confirms before removing a public match from the site', async () => {
+      const review = createAdminSportsMatchReview();
+      workspace.matchReview.set(review);
+      api.matchReview.mockReturnValue(of(review));
+      vi.spyOn(workspace, 'selectMatch').mockResolvedValue();
+
+      await workspace.unpublishSelectedMatch();
+
+      expect(api.mutate).toHaveBeenCalledWith('unpublishSportsMatch', 'SportsMatchPublicationInput', {
+        id: review.match.id,
+      });
+    });
+
     it('loads both registration reads and initializes lineup selections', async () => {
       const review = createAdminSportsMatchReview();
       api.matchReview.mockReturnValue(of(review));
@@ -453,6 +492,45 @@ describe('SportsWorkspaceService operations', () => {
       expect(api.registration).toHaveBeenCalledTimes(2);
       expect(workspace.lineupSelections()['registration-home']).toHaveLength(5);
       expect(workspace.selectedMatchId()).toBe(review.match.id);
+    });
+
+    it('uses team-backed lineup candidates when a registration has no member links', async () => {
+      const review = createAdminSportsMatchReview();
+      const registration = createAdminSportsRegistrationRead('registration-home');
+      registration.members = [];
+      registration.lineupMembers = [
+        {
+          id: 'team-member-unassigned',
+          registrationMemberId: null,
+          teamMemberId: 'team-member-unassigned',
+          role: 'PLAYER',
+          eligibility: 'ELIGIBLE',
+          person: { id: 'person-unassigned', name: 'Ana Souza' },
+        },
+      ];
+      api.matchReview.mockReturnValue(of(review));
+      api.registration.mockImplementation((id: string) =>
+        of(id === 'registration-home' ? registration : createAdminSportsRegistrationRead('registration-away')),
+      );
+
+      await workspace.selectMatch(review.match);
+
+      expect(workspace.lineupSelections()['registration-home']).toEqual(['team-member-unassigned']);
+      vi.spyOn(workspace, 'selectMatch').mockResolvedValue();
+      await workspace.saveLineup('registration-home');
+
+      expect(api.mutate).toHaveBeenCalledWith(
+        'upsertAdminSportsMatchRoster',
+        'SportsMatchRosterUpsertInput',
+        expect.objectContaining({
+          entries: [
+            expect.objectContaining({
+              registrationMemberId: 'team-member-unassigned',
+              teamMemberId: 'team-member-unassigned',
+            }),
+          ],
+        }),
+      );
     });
 
     it('does not let stale registration reads repopulate a new match draft', async () => {
@@ -608,6 +686,55 @@ describe('SportsWorkspaceService operations', () => {
         role: 'REFEREE',
       });
       expect(workspace.officialForm.controls.personId.value).toBe('');
+    });
+
+    it('edits an existing official function through the versioned update mutation', async () => {
+      const review = createAdminSportsMatchReview();
+      const official = {
+        ...createAdminSportsTournamentRead().officials[0],
+        id: 'match-official-1',
+        categoryId: null,
+        matchId: review.match.id,
+        role: 'REFEREE' as const,
+        revision: 4,
+      };
+      review.officials = [official];
+      workspace.matchReview.set(review);
+      workspace.editOfficial(official);
+      workspace.officialForm.controls.role.setValue('SCOREKEEPER');
+      vi.spyOn(workspace, 'selectMatch').mockResolvedValue();
+
+      await workspace.assignOfficial();
+
+      expect(api.mutate).toHaveBeenCalledWith('updateSportsOfficial', 'SportsOfficialUpdateInput', {
+        id: 'match-official-1',
+        expectedRevision: 4,
+        role: 'SCOREKEEPER',
+      });
+      expect(workspace.isEditingOfficial()).toBe(false);
+      expect(workspace.officialForm.controls.personId.value).toBe('');
+    });
+
+    it('removes an official through the permissioned versioned delete mutation', async () => {
+      const review = createAdminSportsMatchReview();
+      const official = {
+        ...createAdminSportsTournamentRead().officials[0],
+        id: 'match-official-1',
+        categoryId: null,
+        matchId: review.match.id,
+      };
+      review.officials = [official];
+      workspace.matchReview.set(review);
+      vi.spyOn(workspace, 'selectMatch').mockResolvedValue();
+
+      await workspace.removeOfficial(official);
+
+      expect(api.deleteVersioned).toHaveBeenCalledWith('deleteSportsOfficial', 'match-official-1', official.revision);
+      expect(snackbar.open).toHaveBeenCalledWith(
+        'Pessoa removida da equipe de arbitragem.',
+        'Fechar',
+        expect.objectContaining({ duration: 3000 }),
+      );
     });
 
     it('creates a manual tournament score entry and resets its controls', async () => {

@@ -27,7 +27,7 @@ describe('public entity fixtures', () => {
     expect(event.majorEvent).toBe(majorEvent);
     expect(event.eventGroupId).toBe('group-test');
     expect(event.eventGroup).toBe(eventGroup);
-    expect(event.publiclyVisible).toBe(true);
+    expect(event.isPubliclyListed).toBe(true);
   });
 
   it('generates fixture dates relative to the current run', () => {

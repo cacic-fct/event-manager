@@ -146,7 +146,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     );
   });
 
-  it('requires standalone event subscriptions to target publicly visible events', async () => {
+  it('requires standalone event subscriptions to target publicly listed events', async () => {
     const tx = {
       event: {
         findFirst: jest.fn().mockResolvedValue(null),

@@ -29,7 +29,7 @@ export function createTypesenseCollectionSchemas(): CollectionCreateSchema[] {
       { name: 'eventGroupName', type: 'string', optional: true },
       { name: 'startDate', type: 'int64', sort: true },
       { name: 'endDate', type: 'int64', sort: true },
-      { name: 'publiclyVisible', type: 'bool', optional: true, facet: true },
+      { name: 'isPubliclyListed', type: 'bool', optional: true, facet: true },
       { name: 'publicationState', type: 'string', optional: true, facet: true },
       { name: 'majorEventPublicationState', type: 'string', optional: true, facet: true },
       { name: 'isIssuableCertificateEvent', type: 'bool', optional: true, facet: true },

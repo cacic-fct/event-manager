@@ -234,7 +234,7 @@ export abstract class SportsStandingsSupport {
         locationDescription: source.event.locationDescription,
         allowSubscription: false,
         shouldCollectAttendance: true,
-        publiclyVisible: false,
+        isPubliclyListed: false,
         publicationState: 'DRAFT',
         createdById: actorId,
         updatedById: actorId,
@@ -271,7 +271,7 @@ export abstract class SportsStandingsSupport {
         event: {
           select: {
             deletedAt: true,
-            publiclyVisible: true,
+            isPubliclyListed: true,
             publicationState: true,
           },
         },
@@ -312,14 +312,14 @@ export abstract class SportsStandingsSupport {
       category: { tournamentId: string };
       event: {
         deletedAt: Date | null;
-        publiclyVisible: boolean;
+        isPubliclyListed: boolean;
         publicationState: import('@prisma/client').PublicationState;
       };
     },
     kind: SportsStructuralInvalidation['kind'],
   ): SportsStructuralInvalidation {
     const isPublic =
-      match.event.deletedAt === null && match.event.publiclyVisible && match.event.publicationState === 'PUBLISHED';
+      match.event.deletedAt === null && match.event.isPubliclyListed && match.event.publicationState === 'PUBLISHED';
     return {
       kind,
       tournamentId: match.category.tournamentId,

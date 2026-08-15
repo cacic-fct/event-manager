@@ -45,7 +45,7 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
         event: {
           select: {
             deletedAt: true,
-            publiclyVisible: true,
+            isPubliclyListed: true,
             publicationState: true,
           },
         },
@@ -62,7 +62,8 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
         },
       },
     });
-    const hasCheckedInPlayers = match.rosters.some((roster) => roster.entries.length > 0);
+    const hasCheckedInPlayers =
+      match.state === SportsMatchState.CHECK_IN || match.rosters.some((roster) => roster.entries.length > 0);
     const common = {
       hasCheckedInPlayers,
       maximumPeriods: match.category.maximumPeriods,
@@ -142,7 +143,7 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
         event: {
           select: {
             deletedAt: true,
-            publiclyVisible: true,
+            isPubliclyListed: true,
             publicationState: true,
           },
         },
@@ -159,6 +160,7 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
     const match = await tx.sportsMatch.findUniqueOrThrow({
       where: { id: matchId },
       select: {
+        state: true,
         category: {
           select: {
             maximumPeriods: true,
@@ -185,7 +187,8 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
     });
     return projectSportsMatch(match.actions, {
       approvedOnly,
-      hasCheckedInPlayers: match.rosters.some((roster) => roster.entries.length > 0),
+      hasCheckedInPlayers:
+        match.state === SportsMatchState.CHECK_IN || match.rosters.some((roster) => roster.entries.length > 0),
       maximumPeriods: match.category.maximumPeriods,
       periodLabel: match.category.periodLabel,
       periodsEnabled: match.category.periodsEnabled,

@@ -54,7 +54,7 @@ describe('SportsBackingResourceLifecycleService', () => {
         name: 'Final atualizada',
         startDate: new Date('2026-08-12T14:00:00.000Z'),
         description: 'Descrição atualizada',
-        publiclyVisible: true,
+        isPubliclyListed: true,
         eventGroupId: 'group-1',
         creditMinutes: 60,
         emoji: '⚽',

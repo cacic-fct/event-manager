@@ -171,6 +171,9 @@ export class SportsMatchCreateInput {
   @Field(() => String, { nullable: true })
   livestreamUrl?: string | null;
 
+  @Field(() => Boolean, { nullable: true })
+  publishImmediately?: boolean;
+
   @Field(() => String, { nullable: true })
   winnerAdvancesToId?: string | null;
 
@@ -245,6 +248,12 @@ export class SportsMatchUpdateInput {
 
   @Field(() => SportsBracketSide, { nullable: true })
   loserAdvancesToSide?: SportsBracketSide | null;
+}
+
+@InputType()
+export class SportsMatchPublicationInput {
+  @Field(() => String)
+  id!: string;
 }
 
 @InputType()

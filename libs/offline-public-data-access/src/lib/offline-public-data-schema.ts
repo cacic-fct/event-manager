@@ -179,6 +179,18 @@ export interface OfflineSportsRosterCheckIn {
   collectorCredential?: string;
 }
 
+export interface OfflineSportsOfficialCheckIn {
+  clientId: string;
+  matchId: string;
+  officialAssignmentId: string;
+  checkedInAt: string;
+  offline: boolean;
+  collectorPersonId?: string;
+  collectorCredential?: string;
+}
+
+export type OfflineSportsCheckIn = OfflineSportsRosterCheckIn | OfflineSportsOfficialCheckIn;
+
 export interface OfflineSportsScannerCheckIn {
   clientId: string;
   matchId: string;
@@ -231,7 +243,7 @@ export type OfflineSportsOperationQueueItem =
       action: OfflineSportsMatchAction;
       timerSnapshot?: OfflineSportsTimerSnapshot;
     })
-  | (OfflineSportsOperationQueueItemBase & { kind: 'CHECK_IN'; checkIn: OfflineSportsRosterCheckIn })
+  | (OfflineSportsOperationQueueItemBase & { kind: 'CHECK_IN'; checkIn: OfflineSportsCheckIn })
   | (OfflineSportsOperationQueueItemBase & { kind: 'SCANNER'; scannerCheckIn: OfflineSportsScannerCheckIn });
 
 export const OFFLINE_SPORTS_COLLECTOR_PROOF_MISSING =
@@ -239,7 +251,7 @@ export const OFFLINE_SPORTS_COLLECTOR_PROOF_MISSING =
 
 export type OfflineSportsProvenAttendanceQueueItem =
   | (Extract<OfflineSportsOperationQueueItem, { kind: 'CHECK_IN' }> & {
-      checkIn: OfflineSportsRosterCheckIn & { collectorPersonId: string; collectorCredential: string };
+      checkIn: OfflineSportsCheckIn & { collectorPersonId: string; collectorCredential: string };
     })
   | (Extract<OfflineSportsOperationQueueItem, { kind: 'SCANNER' }> & {
       scannerCheckIn: OfflineSportsScannerCheckIn & { collectorPersonId: string; collectorCredential: string };
@@ -253,6 +265,12 @@ export function hasOfflineSportsAttendanceCollectorProof(
   }
   const input = item.kind === 'CHECK_IN' ? item.checkIn : item.scannerCheckIn;
   return Boolean(input.collectorPersonId && input.collectorCredential);
+}
+
+export function isOfflineSportsOfficialCheckIn(
+  input: OfflineSportsCheckIn,
+): input is OfflineSportsOfficialCheckIn {
+  return 'officialAssignmentId' in input;
 }
 
 export function markOfflineSportsCollectorProofMissing(item: OfflineSportsOperationQueueItem): void {

@@ -72,7 +72,7 @@ export abstract class SportsBracketPersistenceSupport {
       endDate: major.endDate,
       majorEventId: input.category.tournament.majorEventId,
       eventGroupId: input.category.eventGroupId,
-      publiclyVisible: false,
+      isPubliclyListed: false,
       shouldIssueCertificate: input.category.eventGroup.shouldIssueCertificate,
       publicationState: PublicationState.DRAFT,
       actorId: input.actorId,
@@ -166,7 +166,7 @@ export abstract class SportsBracketPersistenceSupport {
         id: string;
         event: {
           deletedAt: Date | null;
-          publiclyVisible: boolean;
+          isPubliclyListed: boolean;
           publicationState: PublicationState;
         };
       }>;
@@ -183,7 +183,7 @@ export abstract class SportsBracketPersistenceSupport {
         .filter(
           (match) =>
             match.event.deletedAt === null &&
-            match.event.publiclyVisible &&
+            match.event.isPubliclyListed &&
             match.event.publicationState === PublicationState.PUBLISHED,
         )
         .map((match) => match.id),

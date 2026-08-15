@@ -27,9 +27,13 @@ export class PublicationStateWriterService {
     state: PublicationState,
     scheduledPublishAt: Date | null,
     user: AuthenticatedUser | undefined,
+    options: { isPubliclyListed?: boolean } = {},
   ): Promise<TargetSync> {
     const now = new Date();
-    const data = this.buildPublicationUpdateData(state, scheduledPublishAt, user, now);
+    const data = {
+      ...this.buildPublicationUpdateData(state, scheduledPublishAt, user, now),
+      ...(options.isPubliclyListed === undefined ? {} : { isPubliclyListed: options.isPubliclyListed }),
+    };
     const outcome = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.event.findFirst({
         where: { id: eventId, deletedAt: null },
@@ -38,7 +42,7 @@ export class PublicationStateWriterService {
       if (!previous) {
         throw new NotFoundException(`Event ${eventId} was not found.`);
       }
-      if (this.hasRequestedPublicationState(previous, state, scheduledPublishAt)) {
+      if (this.hasRequestedPublicationState(previous, state, scheduledPublishAt, options.isPubliclyListed)) {
         return { event: previous, changed: false };
       }
       const updated = await tx.event.update({
@@ -217,11 +221,16 @@ export class PublicationStateWriterService {
   }
 
   private hasRequestedPublicationState(
-    target: { publicationState: PublicationState; scheduledPublishAt: Date | null },
+    target: { publicationState: PublicationState; scheduledPublishAt: Date | null; isPubliclyListed?: boolean },
     state: PublicationState,
     scheduledPublishAt: Date | null,
+    isPubliclyListed?: boolean,
   ): boolean {
     if (target.publicationState !== state) {
+      return false;
+    }
+
+    if (isPubliclyListed !== undefined && target.isPubliclyListed !== isPubliclyListed) {
       return false;
     }
 

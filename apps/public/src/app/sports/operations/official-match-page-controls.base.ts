@@ -1,9 +1,13 @@
 import { MatStepper } from '@angular/material/stepper';
 import { AztecScannerDialogComponent } from '@cacic-fct/shared-angular';
 import { ConfirmationDialogComponent, ConfirmationDialogData } from '@cacic-fct/shared-angular';
-import { sportsMatchStateLabel, sportsRosterRoleLabel } from '@cacic-fct/shared-data-types/sports-metadata';
+import {
+  sportsMatchStateLabel,
+  sportsOfficialRoleLabel,
+  sportsRosterRoleLabel,
+} from '@cacic-fct/shared-data-types/sports-metadata';
 import type { SportsOperationalMatch, SportsTimerRestoration } from './sports-operations.types';
-import type { CheckInEntry, MatchOccurrence } from './official-match-page.utils';
+import type { CheckInEntry, MatchOccurrence, OfficialCheckInEntry } from './official-match-page.utils';
 import { sortCheckInEntries } from './official-match-page.utils';
 import { OfficialMatchPageState } from './official-match-page-state.base';
 
@@ -214,6 +218,45 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     }
   }
 
+  async toggleOfficialCheckIn(official: OfficialCheckInEntry): Promise<void> {
+    if (this.busy() || !this.canEditCheckIn() || official.checkedIn) {
+      return;
+    }
+    this.busy.set(true);
+    const checkedInAt = new Date().toISOString();
+    try {
+      const result = await this.offline.dispatchOfficialCheckIn({
+        clientId: this.uuid(),
+        matchId: this.matchId,
+        officialAssignmentId: official.id,
+        checkedInAt,
+        offline: false,
+      });
+      this.match.update((match) =>
+        match
+          ? {
+              ...match,
+              officials: match.officials.map((candidate) =>
+                candidate.id === official.id ? { ...candidate, checkedInAt } : candidate,
+              ),
+            }
+          : match,
+      );
+      this.revision.update((revision) => revision + 1);
+      this.snackbar.open(
+        result === 'queued'
+          ? `A presença de ${official.name} foi salva neste dispositivo e será sincronizada.`
+          : `${official.name} confirmado na partida.`,
+        'Fechar',
+        { duration: 3500 },
+      );
+    } catch (error: unknown) {
+      this.showError(error);
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   requestCheckInEdit(): void {
     if (!this.canRequestCheckInCorrection()) {
       return;
@@ -401,6 +444,10 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
   checkInDetail(entry: CheckInEntry): string {
     const role = sportsRosterRoleLabel(entry.role);
     return entry.shirtNumber == null ? role : `${role} - camisa ${entry.shirtNumber}`;
+  }
+
+  officialRoleDetail(official: OfficialCheckInEntry): string {
+    return sportsOfficialRoleLabel(official.role);
   }
 
   periodElapsedLabel(periodNumber: number): string | null {

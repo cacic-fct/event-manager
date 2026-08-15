@@ -339,6 +339,48 @@
   white-space: pre-wrap;
 }
 
+.team-change-details {
+  align-items: start;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(8rem, 0.42fr) minmax(0, 1fr);
+}
+
+.team-change-logo-preview {
+  align-items: center;
+  background: var(--mat-sys-surface-container);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  justify-content: center;
+  min-height: 9rem;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.team-change-logo-preview > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.team-change-logo-preview small,
+.team-change-raw-label {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+}
+
+.team-change-raw {
+  min-width: 0;
+}
+
+.team-change-raw-label {
+  display: block;
+  font-weight: 600;
+  margin-block-end: 0.35rem;
+}
+
 .review-actions {
   display: flex;
   flex-wrap: wrap;
@@ -372,4 +414,18 @@
 .empty-copy {
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.9rem;
+}
+
+@media (max-width: 600px) {
+  .team-change-details {
+    grid-template-columns: 1fr;
+  }
+
+  .team-change-logo-preview {
+    align-items: center;
+    flex-direction: row;
+    justify-content: flex-start;
+    min-height: auto;
+    text-align: start;
+  }
 }

@@ -188,7 +188,7 @@ export interface Event {
   onlineAttendanceCode?: string | null;
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
-  publiclyVisible: boolean;
+  isPubliclyListed: boolean;
   displayLecturerProfile: boolean;
   youtubeCode?: string | null;
   buttonText?: string | null;

@@ -81,6 +81,9 @@ function applyAction(
   const payload = requireRecord(action.payload);
   switch (action.type) {
     case SportsMatchActionType.CHECK_IN:
+      if (payload['kind'] === 'NON_ROSTER_ATTENDANCE_SCAN' || payload['present'] === false) {
+        return current;
+      }
       return {
         ...current,
         state: current.state === SportsMatchState.SCHEDULED ? SportsMatchState.CHECK_IN : current.state,

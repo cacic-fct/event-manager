@@ -15,6 +15,7 @@ describe('SportsTeamLogoController', () => {
   } as never;
   const logos = {
     upload: jest.fn(),
+    downloadPendingReview: jest.fn(),
     download: jest.fn(),
   };
   const mutationEvents = {
@@ -85,11 +86,35 @@ describe('SportsTeamLogoController', () => {
     expect(result.getStream()).toBe(stream);
   });
 
+  it('streams an active pending review logo with private caching disabled', async () => {
+    const stream = Readable.from(['pending-logo']);
+    const sha256 = 'b'.repeat(64);
+    logos.downloadPendingReview.mockResolvedValue({
+      stream,
+      mimeType: 'image/avif',
+      sizeBytes: 12,
+      sha256,
+    });
+    const response = {
+      setHeader: jest.fn(),
+    };
+
+    const result = await controller.downloadPendingReview('team-1', 'change-1', response as never);
+
+    expect(logos.downloadPendingReview).toHaveBeenCalledWith('team-1', 'change-1');
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Type', 'image/avif');
+    expect(response.setHeader).toHaveBeenCalledWith('Content-Length', '12');
+    expect(response.setHeader).toHaveBeenCalledWith('ETag', `"sha256-${sha256}"`);
+    expect(result.getStream()).toBe(stream);
+  });
+
   it('declares scoped permissions, upload throttling, and immutable download caching', () => {
     const uploadHandler = SportsTeamLogoController.prototype.upload;
+    const pendingDownloadHandler = SportsTeamLogoController.prototype.downloadPendingReview;
     const downloadHandler = SportsTeamLogoController.prototype.download;
 
     expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, uploadHandler)).toEqual([Permission.SportsTeam.Update]);
+    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, pendingDownloadHandler)).toEqual([Permission.SportsTeam.Review]);
     expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, downloadHandler)).toEqual([Permission.SportsTeam.Read]);
     expect(Reflect.getMetadata(RATE_LIMIT_METADATA_KEY, uploadHandler) as RateLimitMetadata).toEqual({
       policy: RATE_LIMIT_POLICIES.receiptUpload,
@@ -110,6 +135,16 @@ describe('SportsTeamLogoController', () => {
           name: 'X-Content-Type-Options',
           value: 'nosniff',
         },
+      ]),
+    );
+    const pendingHeaders = Reflect.getMetadata(HEADERS_METADATA, pendingDownloadHandler) as Array<{
+      name: string;
+      value: string;
+    }>;
+    expect(pendingHeaders).toEqual(
+      expect.arrayContaining([
+        { name: 'Cache-Control', value: 'private, no-store' },
+        { name: 'X-Content-Type-Options', value: 'nosniff' },
       ]),
     );
   });

@@ -20,7 +20,7 @@ type EventSearchSource = {
   startDate: Date;
   endDate: Date;
   shouldIssueCertificate?: boolean | null;
-  publiclyVisible?: boolean | null;
+  isPubliclyListed?: boolean | null;
   publicationState?: string | null;
 };
 
@@ -59,7 +59,7 @@ export const EVENT_SEARCH_SELECT = {
   startDate: true,
   endDate: true,
   shouldIssueCertificate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: true,
 } satisfies Prisma.EventSelect;
 
@@ -82,7 +82,7 @@ export function toEventSearchDocument(event: EventSearchSource): EventSearchDocu
       event.eventGroupName ?? (event.eventGroup?.deletedAt ? undefined : toOptionalString(event.eventGroup?.name)),
     startDate: toUnixTimestamp(event.startDate),
     endDate: toUnixTimestamp(event.endDate),
-    publiclyVisible: Boolean(event.publiclyVisible),
+    isPubliclyListed: Boolean(event.isPubliclyListed),
     publicationState: event.publicationState ?? 'DRAFT',
     isIssuableCertificateEvent: isIssuableCertificateEvent(event),
   };

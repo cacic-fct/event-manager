@@ -84,7 +84,7 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
           event: {
             select: {
               deletedAt: true,
-              publiclyVisible: true,
+              isPubliclyListed: true,
               publicationState: true,
             },
           },
@@ -230,7 +230,7 @@ export abstract class SportsStandingsQualifiers extends SportsStandingsComputati
           event: {
             select: {
               deletedAt: true,
-              publiclyVisible: true,
+              isPubliclyListed: true,
               publicationState: true,
             },
           },

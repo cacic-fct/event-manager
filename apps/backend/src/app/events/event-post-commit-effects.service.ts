@@ -21,7 +21,7 @@ export interface EventPostCommitRecord {
   onlineAttendanceCode: string | null;
   onlineAttendanceStartDate: Date | null;
   onlineAttendanceEndDate: Date | null;
-  publiclyVisible: boolean;
+  isPubliclyListed: boolean;
   publicationState: PublicationState;
   startDate: Date;
   endDate: Date;
@@ -48,7 +48,7 @@ const EVENT_EFFECTS_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: true,
   startDate: true,
   endDate: true,
@@ -153,7 +153,7 @@ export class EventPostCommitEffectsService {
       majorEventId: event.majorEventId,
       eventGroupId: event.eventGroupId,
       shouldIssueCertificate: event.shouldIssueCertificate,
-      publiclyVisible: event.publiclyVisible,
+      isPubliclyListed: event.isPubliclyListed,
       publicationState: event.publicationState,
       startDate: event.startDate,
       endDate: event.endDate,

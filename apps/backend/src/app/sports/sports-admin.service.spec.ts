@@ -43,6 +43,12 @@ describe('SportsAdminService', () => {
   const auditLog = {
     record: jest.fn(),
   };
+  const payments = {
+    ensureParticipant: jest.fn(),
+  };
+  const publication = {
+    setEventPublicationState: jest.fn(),
+  };
   let tx: ReturnType<typeof createTransaction>;
   let service: SportsAdminService;
 
@@ -50,7 +56,13 @@ describe('SportsAdminService', () => {
     jest.clearAllMocks();
     tx = createTransaction();
     prisma.$transaction.mockImplementation((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx));
-    service = new SportsAdminService(prisma as never, frozen as never, auditLog as never);
+    service = new SportsAdminService(
+      prisma as never,
+      frozen as never,
+      auditLog as never,
+      payments as never,
+      publication as never,
+    );
   });
 
   it('attaches a compatible existing Event and enables shared attendance', async () => {
@@ -95,6 +107,53 @@ describe('SportsAdminService', () => {
     });
     expect(tx.event.create).not.toHaveBeenCalled();
     expect(result.id).toBe('match-1');
+  });
+
+  it('keeps a newly created match hidden until it is explicitly published', async () => {
+    prisma.sportsCategory.findFirst.mockResolvedValue({
+      eventGroupId: 'group-1',
+    });
+    tx.sportsCategory.findFirst.mockResolvedValue(createCategory());
+    tx.sportsRegistration.findFirst
+      .mockResolvedValueOnce({ id: 'registration-home', team: { name: 'Equipe A' } })
+      .mockResolvedValueOnce({ id: 'registration-away', team: { name: 'Equipe B' } });
+    const createdEvent = {
+      ...createEvent(),
+      id: 'event-new',
+      name: 'Equipe A × Equipe B',
+      isPubliclyListed: false,
+      publicationState: PublicationState.DRAFT,
+      publishedAt: null,
+    };
+    tx.event.create.mockResolvedValue(createdEvent);
+    tx.sportsMatch.create.mockResolvedValue({
+      id: 'match-1',
+      eventId: createdEvent.id,
+      categoryId: 'category-1',
+      state: 'SCHEDULED',
+      reviewStatus: 'NOT_REQUIRED',
+      revision: 1,
+      event: createdEvent,
+    });
+
+    await service.createMatch(
+      {
+        categoryId: 'category-1',
+        homeRegistrationId: 'registration-home',
+        awayRegistrationId: 'registration-away',
+        startDate: new Date(Date.now() + 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 2 * 60 * 60 * 1000),
+      },
+      actor,
+    );
+
+    expect(tx.event.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        isPubliclyListed: false,
+        publicationState: PublicationState.DRAFT,
+        publishedAt: null,
+      }),
+    });
   });
 
   it('rejects an Event outside the category EventGroup or MajorEvent', async () => {

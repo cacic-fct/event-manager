@@ -43,7 +43,7 @@ describe('typesense event search helpers', () => {
         startDate: new Date('2026-06-25T12:00:00.000Z'),
         endDate: new Date('2026-06-25T13:00:00.000Z'),
         shouldIssueCertificate: true,
-        publiclyVisible: true,
+        isPubliclyListed: true,
         publicationState: 'PUBLISHED',
       }),
     ).toEqual({
@@ -61,7 +61,7 @@ describe('typesense event search helpers', () => {
       eventGroupName: 'Grupo',
       startDate: 1782388800,
       endDate: 1782392400,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: 'PUBLISHED',
       isIssuableCertificateEvent: true,
     });

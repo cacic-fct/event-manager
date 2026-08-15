@@ -4,6 +4,7 @@ import {
   isSportsTimerAction,
   parseMatchOccurrences,
   sortCheckInEntries,
+  sortOfficialCheckInEntries,
 } from './official-match-page.utils';
 
 describe('official match page utilities', () => {
@@ -38,5 +39,19 @@ describe('official match page utilities', () => {
 
     expect(sortCheckInEntries(entries, 'home', 'LIVE').map((entry) => entry.id)).toEqual(['3', '2', '1']);
     expect(sortCheckInEntries(entries, 'home', 'CHECK_IN').map((entry) => entry.id)).toEqual(['2', '3', '1']);
+  });
+
+  it('sorts officials by role and then anonymized name', () => {
+    const officials = [
+      { id: 'scorekeeper', name: 'Zeca M.', role: 'SCOREKEEPER' as const, checkedInAt: null },
+      { id: 'referee-2', name: 'Ana C.', role: 'REFEREE' as const, checkedInAt: null },
+      { id: 'referee-1', name: 'Bia S.', role: 'REFEREE' as const, checkedInAt: '2026-08-01T12:00:00.000Z' },
+    ];
+
+    expect(sortOfficialCheckInEntries(officials).map((official) => official.id)).toEqual([
+      'referee-2',
+      'referee-1',
+      'scorekeeper',
+    ]);
   });
 });

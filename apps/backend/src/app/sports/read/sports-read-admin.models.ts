@@ -310,6 +310,27 @@ export class AdminSportsRegistrationMemberSummary {
 }
 
 @ObjectType()
+export class AdminSportsRegistrationLineupMemberSummary {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String, { nullable: true })
+  registrationMemberId?: string | null;
+
+  @Field(() => String)
+  teamMemberId!: string;
+
+  @Field(() => SportsRosterRole)
+  role!: SportsRosterRole;
+
+  @Field(() => SportsEligibilityStatus)
+  eligibility!: SportsEligibilityStatus;
+
+  @Field(() => SportsLimitedPerson)
+  person!: SportsLimitedPerson;
+}
+
+@ObjectType()
 export class AdminSportsTeamRead {
   @Field(() => SportsTeam)
   team!: SportsTeam;
@@ -334,6 +355,9 @@ export class AdminSportsRegistrationRead {
 
   @Field(() => [AdminSportsRegistrationMemberSummary])
   members!: AdminSportsRegistrationMemberSummary[];
+
+  @Field(() => [AdminSportsRegistrationLineupMemberSummary])
+  lineupMembers!: AdminSportsRegistrationLineupMemberSummary[];
 
   @Field(() => [SportsMatchRoster])
   rosters!: SportsMatchRoster[];

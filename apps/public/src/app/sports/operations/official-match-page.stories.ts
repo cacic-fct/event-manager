@@ -35,6 +35,7 @@ function currentMatch(): SportsOperationalMatch {
   }
   return createSportsOperationalMatch(activeArgs.state, {
     rosters: activeArgs.rosterMode === 'empty' ? [] : createSportsOperationalMatch(activeArgs.state).rosters,
+    officials: activeArgs.rosterMode === 'empty' ? [] : createSportsOperationalMatch(activeArgs.state).officials,
   });
 }
 
@@ -82,6 +83,7 @@ const meta: Meta<OfficialMatchStoryArgs> = {
               return of(currentMatch());
             },
             checkIn: () => of(true),
+            checkInOfficial: () => of(true),
             commit: () => of(['action-story']),
           },
         },
@@ -99,6 +101,7 @@ const meta: Meta<OfficialMatchStoryArgs> = {
             sync: () => Promise.resolve(),
             dispatch: () => Promise.resolve(activeArgs.pendingOfflineActions ? 'queued' : 'sent'),
             dispatchCheckIn: () => Promise.resolve(activeArgs.pendingOfflineActions ? 'queued' : 'sent'),
+            dispatchOfficialCheckIn: () => Promise.resolve(activeArgs.pendingOfflineActions ? 'queued' : 'sent'),
             dispatchScannerCheckIn: () => Promise.resolve(activeArgs.pendingOfflineActions ? 'queued' : 'sent'),
             attachTimerSnapshot: () => undefined,
           },
@@ -127,7 +130,7 @@ export const Scheduled: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Agendada')).toBeVisible();
-    await expect(canvas.getByRole('button', { name: /pressione e segure para iniciar/i })).toBeVisible();
+    await expect(canvas.getByRole('button', { name: /segure para começar a partida/i })).toBeVisible();
   },
 };
 
@@ -138,8 +141,10 @@ export const AthleteCheckIn: Story = {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Check-in')).toBeVisible();
     await expect(canvas.getByRole('heading', { name: 'Check-in dos atletas' })).toBeVisible();
+    await expect(canvas.getByRole('heading', { name: 'Árbitros e apoio' })).toBeVisible();
     await expect(canvas.getByText('Ana Beatriz de Souza')).toBeVisible();
     await expect(canvas.getByText('Bruno Henrique Oliveira')).toBeVisible();
+    await expect(canvas.getByText('Intermediação')).toBeVisible();
     await expect(canvas.getByRole('button', { name: 'Escanear presença' })).toBeVisible();
   },
 };

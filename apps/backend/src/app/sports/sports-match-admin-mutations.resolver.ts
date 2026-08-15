@@ -1,5 +1,6 @@
 import {
   SportsMatchCreateInput,
+  SportsMatchPublicationInput,
   SportsMatchRosterUpsertInput,
   SportsMatchUpdateInput,
   SportsOfficialAssignInput,
@@ -96,6 +97,32 @@ export class SportsMatchAdminMutationsResolver extends SportsMutationsResolverSu
     return (await this.publishMutation('MATCH', this.admin.updateMatch(input.id, input, actor), true)).id;
   }
 
+  @Mutation(() => String, { name: 'publishSportsMatch' })
+  @RequirePermissions(Permission.SportsMatch.Update)
+  async publishMatch(
+    @Args('input', { type: () => SportsMatchPublicationInput }) input: SportsMatchPublicationInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    const actor = this.authenticated(context);
+    await this.policy.assertPermissions(actor, [Permission.SportsMatch.Update], {
+      sportsMatchId: input.id,
+    });
+    return (await this.publishMutation('MATCH', this.admin.publishMatch(input.id, actor), true)).id;
+  }
+
+  @Mutation(() => String, { name: 'unpublishSportsMatch' })
+  @RequirePermissions(Permission.SportsMatch.Update)
+  async unpublishMatch(
+    @Args('input', { type: () => SportsMatchPublicationInput }) input: SportsMatchPublicationInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    const actor = this.authenticated(context);
+    await this.policy.assertPermissions(actor, [Permission.SportsMatch.Update], {
+      sportsMatchId: input.id,
+    });
+    return (await this.publishMutation('MATCH', this.admin.unpublishMatch(input.id, actor), true)).id;
+  }
+
   @Mutation(() => String, { name: 'assignSportsOfficial' })
   @RequirePermissions(Permission.SportsOfficial.Create)
   async assignOfficial(
@@ -149,6 +176,7 @@ export class SportsMatchAdminMutationsResolver extends SportsMutationsResolverSu
           expectedRevision: input.expectedRevision,
           entries: input.entries.map((entry) => ({
             registrationMemberId: entry.registrationMemberId,
+            teamMemberId: entry.teamMemberId,
             role: entry.role ?? 'PLAYER',
             shirtNumber: entry.shirtNumber,
             roleMetadata:

@@ -67,7 +67,7 @@ describe('CertificateSportsEligibility', () => {
     onlineAttendanceCode: null,
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     displayLecturerProfile: false,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,

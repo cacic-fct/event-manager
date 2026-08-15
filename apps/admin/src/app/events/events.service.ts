@@ -299,7 +299,7 @@ export class EventsService {
       onlineAttendanceCode: '',
       onlineAttendanceStartDate: '',
       onlineAttendanceEndDate: '',
-      publiclyVisible: true,
+      isPubliclyListed: true,
       displayLecturerProfile: true,
       youtubeCode: '',
       buttonText: '',
@@ -978,7 +978,7 @@ export class EventsService {
         ? toOptionalIsoDateTime(raw.onlineAttendanceStartDate)
         : null,
       onlineAttendanceEndDate: isOnlineAttendanceAllowed ? toOptionalIsoDateTime(raw.onlineAttendanceEndDate) : null,
-      publiclyVisible: raw.publiclyVisible,
+      isPubliclyListed: raw.isPubliclyListed,
       displayLecturerProfile: raw.displayLecturerProfile,
       youtubeCode: raw.youtubeCode.trim() || null,
       buttonText: raw.buttonText.trim() || null,
@@ -1086,7 +1086,7 @@ export class EventsService {
         eventItem.onlineAttendanceStartDate != null ? fromIsoToLocalInput(eventItem.onlineAttendanceStartDate) : '',
       onlineAttendanceEndDate:
         eventItem.onlineAttendanceEndDate != null ? fromIsoToLocalInput(eventItem.onlineAttendanceEndDate) : '',
-      publiclyVisible: eventItem.publiclyVisible,
+      isPubliclyListed: eventItem.isPubliclyListed,
       displayLecturerProfile: eventItem.displayLecturerProfile ?? true,
       youtubeCode: eventItem.youtubeCode ?? '',
       buttonText: eventItem.buttonText ?? '',

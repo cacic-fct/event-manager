@@ -7,6 +7,7 @@ import { SportsMutationEventsService } from '../realtime/sports-mutation-events.
 
 export interface SportsRosterEntryWrite {
   registrationMemberId: string;
+  teamMemberId?: string | null;
   role: SportsRosterRole;
   shirtNumber?: string | null;
   roleMetadata?: Prisma.InputJsonValue | Prisma.NullTypes.DbNull;
@@ -32,6 +33,7 @@ export abstract class SportsMatchRosterSupportService {
   protected normalizeEntries(entries: SportsRosterEntryWrite[]): SportsRosterEntryWrite[] {
     const result = entries.map((entry) => ({
       registrationMemberId: entry.registrationMemberId.trim(),
+      teamMemberId: entry.teamMemberId?.trim() || null,
       role: entry.role,
       shirtNumber: entry.shirtNumber?.trim() || null,
       roleMetadata: entry.roleMetadata,
@@ -39,7 +41,9 @@ export abstract class SportsMatchRosterSupportService {
     if (result.some((entry) => !entry.registrationMemberId)) {
       throw new BadRequestException('Integrante inválido na escalação.');
     }
-    if (new Set(result.map((entry) => entry.registrationMemberId)).size !== result.length) {
+    if (
+      new Set(result.map((entry) => entry.teamMemberId ?? entry.registrationMemberId)).size !== result.length
+    ) {
       throw new BadRequestException('Uma pessoa não pode aparecer duas vezes na mesma escalação.');
     }
     if (

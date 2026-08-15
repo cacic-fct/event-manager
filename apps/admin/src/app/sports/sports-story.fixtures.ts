@@ -176,6 +176,12 @@ export function createAdminSportsTournamentRead(
         categoryId: null,
         matchId: null,
         personId: 'person-official',
+        person: {
+          id: 'person-official',
+          name: 'Carlos Almeida',
+          email: 'carlos.almeida@example.com',
+          phone: '+55 18 99999-0000',
+        },
         role: 'REFEREE',
         active: true,
         assignedAt: adminSportsRelativeDate(-5),
@@ -241,6 +247,8 @@ export function createAdminSportsCategoryRead(category = createAdminSportsCatego
           startDate: adminSportsRelativeDate(31, 18),
           endDate: adminSportsRelativeDate(31, 19, 30),
           locationDescription: 'Ginásio Universitário',
+          isPubliclyListed: true,
+          publicationState: 'PUBLISHED',
         },
         categoryId: category.id,
         stageId: 'stage-1',
@@ -342,6 +350,17 @@ export function createAdminSportsTeamRead(team = createAdminSportsTeam()): Sport
         reviewMessage: 'O nome da instituição também foi alterado por uma pessoa administradora.',
         updatedAt: adminSportsRelativeDate(-1, 15, 30),
       },
+      {
+        id: 'change-logo-1',
+        type: 'LOGO',
+        status: 'PENDING',
+        requestRevision: 1,
+        baseRevision: 3,
+        deltaJson: '{"logo":{"mimeType":"image/avif","sizeBytes":18420}}',
+        pendingLogoUrl: '/api/sports/admin/teams/team-1/logo-review/change-logo-1',
+        reviewMessage: null,
+        updatedAt: adminSportsRelativeDate(-1, 16, 10),
+      },
     ],
   };
 }
@@ -413,6 +432,20 @@ export function createAdminSportsRegistrationRead(
   registrationId: 'registration-home' | 'registration-away',
 ): SportsRegistrationRead {
   const home = registrationId === 'registration-home';
+  const members: SportsRegistrationRead['members'] = Array.from({ length: 5 }, (_, index) => ({
+    id: `${registrationId}-member-${index + 1}`,
+    registrationId,
+    categoryId: 'category-1',
+    teamMemberId: `${home ? 'home' : 'away'}-team-member-${index + 1}`,
+    role: index === 0 ? 'CAPTAIN' : 'PLAYER',
+    eligibility: 'ELIGIBLE',
+    person: {
+      id: `${home ? 'home' : 'away'}-person-${index + 1}`,
+      name: home
+        ? ['Ana Souza', 'Bianca Lima', 'Carla Alves', 'Daniela Melo', 'Elisa Reis'][index]
+        : ['Fernanda Luz', 'Gabriela Dias', 'Helena Cruz', 'Isabela Paz', 'Joana Leal'][index],
+    },
+  }));
   return {
     registration: {
       id: registrationId,
@@ -423,19 +456,10 @@ export function createAdminSportsRegistrationRead(
       formAnswersJson: '{}',
       revision: 2,
     },
-    members: Array.from({ length: 5 }, (_, index) => ({
-      id: `${registrationId}-member-${index + 1}`,
-      registrationId,
-      categoryId: 'category-1',
-      teamMemberId: `${home ? 'home' : 'away'}-team-member-${index + 1}`,
-      role: index === 0 ? 'CAPTAIN' : 'PLAYER',
-      eligibility: 'ELIGIBLE',
-      person: {
-        id: `${home ? 'home' : 'away'}-person-${index + 1}`,
-        name: home
-          ? ['Ana Souza', 'Bianca Lima', 'Carla Alves', 'Daniela Melo', 'Elisa Reis'][index]
-          : ['Fernanda Luz', 'Gabriela Dias', 'Helena Cruz', 'Isabela Paz', 'Joana Leal'][index],
-      },
+    members,
+    lineupMembers: members.map((member) => ({
+      ...member,
+      registrationMemberId: member.id,
     })),
     rosters: [],
   };

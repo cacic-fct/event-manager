@@ -288,6 +288,42 @@ export class SportsTeamLogoService {
     return this.toRecord(updated, image.width, image.height);
   }
 
+  async downloadPendingReview(sportsTeamId: string, changeRequestId: string): Promise<SportsTeamLogoDownload> {
+    const request = await this.prisma.sportsTeamChangeRequest.findFirst({
+      where: {
+        id: changeRequestId,
+        teamId: sportsTeamId,
+        type: SportsTeamChangeRequestType.LOGO,
+        status: {
+          in: [
+            SportsTeamChangeRequestStatus.PENDING,
+            SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
+            SportsTeamChangeRequestStatus.CONFLICT,
+          ],
+        },
+      },
+      select: { delta: true },
+    });
+    const logo = this.readQueuedLogo(request?.delta, sportsTeamId);
+    if (!logo) {
+      throw new NotFoundException(`Pending sports team logo review ${changeRequestId} was not found.`);
+    }
+
+    const object = await this.s3.downloadFile(logo.queuedObjectKey);
+    if (
+      (object.contentType && object.contentType !== logo.mimeType) ||
+      (object.contentLength !== undefined && object.contentLength !== logo.sizeBytes)
+    ) {
+      throw new ConflictException('O arquivo de logo em análise não corresponde aos metadados aprovados.');
+    }
+    return {
+      stream: object.stream,
+      mimeType: logo.mimeType,
+      sizeBytes: object.contentLength ?? logo.sizeBytes,
+      sha256: logo.sha256,
+    };
+  }
+
   async download(sportsTeamId: string, sha256: string): Promise<SportsTeamLogoDownload> {
     return this.downloadMatchingTeam(sportsTeamId, sha256, {});
   }
@@ -357,6 +393,42 @@ export class SportsTeamLogoService {
     }
     const key = logo['queuedObjectKey'];
     return typeof key === 'string' && /^sports\/private\/team-logo-review\//.test(key) ? key : null;
+  }
+
+  private readQueuedLogo(value: Prisma.JsonValue | undefined, expectedTeamId: string): {
+    queuedObjectKey: string;
+    sha256: string;
+    mimeType: string;
+    sizeBytes: number;
+  } | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    const logo = value['logo'];
+    if (!logo || typeof logo !== 'object' || Array.isArray(logo)) {
+      return null;
+    }
+    const queuedObjectKey = logo['queuedObjectKey'];
+    const sha256 = logo['sha256'];
+    const mimeType = logo['mimeType'];
+    const sizeBytes = logo['sizeBytes'];
+    const keyMatch =
+      typeof queuedObjectKey === 'string' &&
+      /^sports\/private\/team-logo-review\/([^/]+)\/[^/]+\/([a-f0-9]{64})\.avif$/.exec(queuedObjectKey);
+    if (
+      !keyMatch ||
+      keyMatch[1] !== expectedTeamId ||
+      typeof sha256 !== 'string' ||
+      sha256 !== keyMatch[2] ||
+      typeof mimeType !== 'string' ||
+      mimeType !== 'image/avif' ||
+      typeof sizeBytes !== 'number' ||
+      !Number.isInteger(sizeBytes) ||
+      sizeBytes <= 0
+    ) {
+      return null;
+    }
+    return { queuedObjectKey, sha256, mimeType, sizeBytes };
   }
 
   private bumpLogoFieldRevision(value: Prisma.JsonValue, revision: number): Prisma.InputJsonValue {

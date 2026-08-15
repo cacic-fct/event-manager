@@ -8,6 +8,7 @@ import type {
   SportsMatchState,
   SportsOfficialRole,
   SportsParticipantStatus,
+  PublicationState,
   SportsPaymentStatus,
   SportsPreset,
   SportsRegistrationStatus,
@@ -120,6 +121,8 @@ export interface SportsMatchSummary {
     | (SportsMatchScheduleView & {
         id: string;
         name: string;
+        isPubliclyListed: boolean;
+        publicationState: PublicationState;
       })
     | null;
   categoryId: string;
@@ -180,6 +183,12 @@ export interface SportsOfficialSummary {
   categoryId?: string | null;
   matchId?: string | null;
   personId: string;
+  person?: {
+    id: string;
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+  } | null;
   role: SportsOfficialRole;
   active: boolean;
   assignedAt: string;
@@ -264,6 +273,7 @@ export interface SportsTeamRead {
     requestRevision: number;
     baseRevision: number;
     deltaJson: string;
+    pendingLogoUrl?: string | null;
     reviewMessage?: string | null;
     updatedAt: string;
   }[];
@@ -293,13 +303,7 @@ export interface SportsMatchReview {
       roleMetadataJson?: string | null;
     }[];
   }[];
-  officials: {
-    id: string;
-    personId: string;
-    role: SportsOfficialRole;
-    active: boolean;
-    revision: number;
-  }[];
+  officials: SportsOfficialSummary[];
 }
 
 export interface SportsPendingMatchAction {
@@ -324,6 +328,14 @@ export interface SportsRegistrationRead {
     id: string;
     registrationId: string;
     categoryId: string;
+    teamMemberId: string;
+    role: SportsRosterRole;
+    eligibility: SportsEligibilityStatus;
+    person: { id: string; name: string };
+  }[];
+  lineupMembers: {
+    id: string;
+    registrationMemberId?: string | null;
     teamMemberId: string;
     role: SportsRosterRole;
     eligibility: SportsEligibilityStatus;

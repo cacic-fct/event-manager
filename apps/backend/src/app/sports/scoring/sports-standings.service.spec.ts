@@ -469,7 +469,7 @@ describe('SportsStandingsService', () => {
           stageId: source.stageId,
           event: {
             deletedAt: null,
-            publiclyVisible: false,
+            isPubliclyListed: false,
             publicationState: 'DRAFT',
           },
         }),

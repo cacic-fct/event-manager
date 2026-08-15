@@ -109,7 +109,7 @@ function defaultEventPageData(overrides: Partial<EventPageData> = {}): EventPage
     isOnlineAttendanceAllowed: false,
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,

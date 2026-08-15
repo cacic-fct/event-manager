@@ -1,4 +1,5 @@
-import { SportsMatchActionType, SportsOperationalMatch } from './sports-operations.types';
+import { SportsOfficialRole } from '@cacic-fct/shared-data-types';
+import { SportsMatchActionType, SportsOperationalMatch, SportsOperationsOfficial } from './sports-operations.types';
 
 export interface CheckInEntry {
   id: string;
@@ -7,6 +8,13 @@ export interface CheckInEntry {
   checkedIn: boolean;
   role: 'PLAYER' | 'CAPTAIN' | 'COACH';
   shirtNumber?: string | null;
+}
+
+export interface OfficialCheckInEntry {
+  id: string;
+  name: string;
+  role: SportsOfficialRole;
+  checkedIn: boolean;
 }
 
 export interface MatchOccurrence {
@@ -92,4 +100,24 @@ export function sortCheckInEntries(
       }
       return left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' });
     });
+}
+
+export function sortOfficialCheckInEntries(officials: SportsOperationsOfficial[]): OfficialCheckInEntry[] {
+  const roleOrder: Record<SportsOfficialRole, number> = {
+    REFEREE: 0,
+    INTERMEDIATOR: 1,
+    SCOREKEEPER: 2,
+  };
+  return officials
+    .map((official) => ({
+      id: official.id,
+      name: official.name,
+      role: official.role,
+      checkedIn: Boolean(official.checkedInAt),
+    }))
+    .sort(
+      (left, right) =>
+        roleOrder[left.role] - roleOrder[right.role] ||
+        left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' }),
+    );
 }

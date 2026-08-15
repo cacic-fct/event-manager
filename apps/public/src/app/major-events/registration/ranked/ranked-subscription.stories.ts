@@ -171,7 +171,7 @@ function createEvent(
     isOnlineAttendanceAllowed: index % 2 === 0,
     onlineAttendanceStartDate: isoDaysFromNow(index + 10, 8),
     onlineAttendanceEndDate: isoDaysFromNow(index + 10, 18),
-    publiclyVisible: true,
+    isPubliclyListed: true,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,

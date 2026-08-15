@@ -128,7 +128,7 @@ describe('CurrentUserEventAttendanceResolver', () => {
     expect(prisma.event.findFirst).not.toHaveBeenCalled();
   });
 
-  it('requires online attendance confirmation to target a publicly visible event', async () => {
+  it('requires online attendance confirmation to target a publicly listed event', async () => {
     const prisma = {
       event: {
         findFirst: jest.fn().mockResolvedValue(null),

@@ -347,6 +347,11 @@ export function createSportsOperationalMatch(
       locationDescription: 'Campus universitário',
     },
     rosters: [roster(homeTeam, homeRegistrationId, 'home'), roster(awayTeam, awayRegistrationId, 'away')],
+    officials: [
+      { id: 'official-referee', name: 'Mariana S.', role: 'REFEREE', checkedInAt: null },
+      { id: 'official-intermediator', name: 'Carlos O.', role: 'INTERMEDIATOR', checkedInAt: null },
+      { id: 'official-scorekeeper', name: 'Joana P.', role: 'SCOREKEEPER', checkedInAt: null },
+    ],
     notes: 'Em caso de atendimento, pause o cronômetro e registre a ocorrência.',
     occurrencesJson:
       active || completed

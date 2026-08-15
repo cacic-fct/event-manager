@@ -113,6 +113,7 @@ export const PUBLIC_TEAM_SELECT = {
 export const PUBLIC_MATCH_SELECT = {
   id: true,
   eventId: true,
+  state: true,
   categoryId: true,
   stageId: true,
   homeRegistrationId: true,

@@ -202,7 +202,7 @@ function eventFixture(): PublicEvent {
     isOnlineAttendanceAllowed: false,
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,

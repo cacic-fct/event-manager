@@ -12,7 +12,8 @@ describe('OnlineAttendanceCoordinatorService', () => {
   it('does not interrupt again after the current pending attendances are dismissed', async () => {
     const { api, router, service } = createService();
 
-    expect(await resolve(service)).not.toBeNull();
+    const firstInterruption = await resolve(service);
+    expect(firstInterruption).toEqual(expect.objectContaining({ id: 'online-attendance:event-1' }));
 
     service.dismissPending(['event-1'], '/menu');
 
@@ -22,7 +23,8 @@ describe('OnlineAttendanceCoordinatorService', () => {
 
     api.listPendingEvents.mockReturnValue(of([pendingAttendanceEvent('event-2')]));
 
-    expect(await resolve(service)).not.toBeNull();
+    const secondInterruption = await resolve(service);
+    expect(secondInterruption).toEqual(expect.objectContaining({ id: 'online-attendance:event-2' }));
   });
 });
 

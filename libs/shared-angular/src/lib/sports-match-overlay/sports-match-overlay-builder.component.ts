@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -161,6 +161,7 @@ export class SportsMatchOverlayBuilderComponent {
     }),
   });
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly document = inject(DOCUMENT);
   private readonly snackbar = inject(MatSnackBar);
   private readonly overlayFormRevision = signal(0);
   readonly overlayUrl = computed(() => {
@@ -176,7 +177,15 @@ export class SportsMatchOverlayBuilderComponent {
       state: value.showState ? '1' : '0',
       periodWord: normalizeSportsOverlayPeriodWord(value.periodWord),
     });
-    return `${this.isBrowser ? window.location.origin : ''}/api/sports/public/matches/${encodeURIComponent(this.matchId())}/overlay?${query.toString()}`;
+    const path = `/api/sports/public/matches/${encodeURIComponent(this.matchId())}/overlay?${query.toString()}`;
+    if (!this.isBrowser) {
+      return path;
+    }
+    try {
+      return new URL(path, this.document.baseURI).toString();
+    } catch {
+      return new URL(path, window.location.origin).toString();
+    }
   });
   constructor() {
     this.overlayForm.valueChanges.subscribe(() => this.overlayFormRevision.update((revision) => revision + 1));

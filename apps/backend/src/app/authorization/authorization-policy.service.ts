@@ -306,7 +306,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
           startDate: true,
           endDate: true,
           deletedAt: true,
-          publiclyVisible: true,
+          isPubliclyListed: true,
           shouldCollectAttendance: true,
           sportsMatch: {
             select: {
@@ -331,7 +331,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
     }
 
-    if (collector && event.publiclyVisible) {
+    if (collector && event.isPubliclyListed) {
       return;
     }
 

@@ -151,6 +151,30 @@ describe('PublicationStateWriterService', () => {
     expect(auditLog.record).not.toHaveBeenCalled();
   });
 
+  it('updates public-site visibility together with publication state when requested', async () => {
+    const { auditLog, service, tx } = createService();
+    const previous = { ...eventRecord(), publicationState: PublicationState.PUBLISHED, isPubliclyListed: false };
+    const updated = { ...previous, isPubliclyListed: true, publishedAt: now };
+    tx.event.findFirst.mockResolvedValue(previous);
+    tx.event.update.mockResolvedValue(updated);
+
+    await expect(
+      service.updateEventPublicationState('event-1', PublicationState.PUBLISHED, null, createUser(), {
+        isPubliclyListed: true,
+      }),
+    ).resolves.toEqual({
+      eventIds: ['event-1'],
+      majorEventIds: [],
+    });
+
+    expect(tx.event.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ isPubliclyListed: true }),
+      }),
+    );
+    expect(auditLog.record).toHaveBeenCalled();
+  });
+
   it('rejects scheduled publication without a future timestamp before opening a transaction', async () => {
     const { prisma, service } = createService();
     const user = createUser();

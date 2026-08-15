@@ -183,7 +183,7 @@ function buildPublicEventsTypesenseFilter(input: {
   startDateFrom?: Date;
   startDateUntil?: Date;
 }): string {
-  const filters = ['publiclyVisible:=true', 'publicationState:=PUBLISHED', 'majorEventPublicationState:=PUBLISHED'];
+  const filters = ['isPubliclyListed:=true', 'publicationState:=PUBLISHED', 'majorEventPublicationState:=PUBLISHED'];
 
   if (input.eventGroupId) {
     filters.push(`eventGroupId:=${escapeTypesenseFilterValue(input.eventGroupId)}`);

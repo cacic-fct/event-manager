@@ -108,7 +108,7 @@ describe('PublicationService', () => {
     expect(JSON.stringify(eventsCall[0].where)).toContain('event-1');
     expect(JSON.stringify(warningEventsCall[0].where)).toContain('event-1');
     expect(JSON.stringify(warningEventsCall[0].where)).toContain('SCHEDULED');
-    expect(JSON.stringify(warningEventsCall[0].where)).toContain('publiclyVisible');
+    expect(JSON.stringify(warningEventsCall[0].where)).toContain('isPubliclyListed');
     expect(warningEventsCall[0].select).toEqual(
       expect.objectContaining({
         sportsMatch: {
@@ -162,7 +162,7 @@ describe('PublicationService', () => {
       {
         id: 'event-1',
         name: 'Evento publicado',
-        publiclyVisible: true,
+        isPubliclyListed: true,
         publicationState: PublicationState.PUBLISHED,
         scheduledPublishAt: null,
         publishedAt: new Date('2026-06-25T10:00:00.000Z'),
@@ -201,7 +201,7 @@ describe('PublicationService', () => {
     const event = {
       id: 'event-1',
       name: 'Angular avançado',
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: PublicationState.PUBLISHED,
       scheduledPublishAt: null,
       publishedAt: new Date('2026-06-25T10:00:00.000Z'),

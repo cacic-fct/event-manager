@@ -263,7 +263,7 @@ function buildCollectionEvent(args: AttendanceScannerStoryArgs): AttendanceColle
       type: 'OTHER',
       locationDescription: 'Auditório',
       shouldCollectAttendance: true,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       queueCount: 0,
     },
   };

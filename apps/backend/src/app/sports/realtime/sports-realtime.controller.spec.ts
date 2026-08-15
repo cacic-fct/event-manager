@@ -56,7 +56,7 @@ describe('SportsRealtimeController', () => {
         id: 'match-1',
         deletedAt: null,
         event: expect.objectContaining({
-          publiclyVisible: true,
+          isPubliclyListed: true,
           publicationState: 'PUBLISHED',
         }),
         category: expect.objectContaining({

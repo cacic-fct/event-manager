@@ -29,7 +29,7 @@ export abstract class SportsBracketAdvancementSupport {
         event: {
           select: {
             deletedAt: true,
-            publiclyVisible: true,
+            isPubliclyListed: true,
             publicationState: true,
           },
         },
@@ -139,7 +139,7 @@ export abstract class SportsBracketAdvancementSupport {
         event: {
           select: {
             deletedAt: true,
-            publiclyVisible: true,
+            isPubliclyListed: true,
             publicationState: true,
           },
         },
@@ -156,7 +156,7 @@ export abstract class SportsBracketAdvancementSupport {
       category: { tournamentId: string };
       event: {
         deletedAt: Date | null;
-        publiclyVisible: boolean;
+        isPubliclyListed: boolean;
         publicationState: PublicationState;
       };
     },
@@ -164,7 +164,7 @@ export abstract class SportsBracketAdvancementSupport {
   ): SportsStructuralInvalidation {
     const isPublic =
       match.event.deletedAt === null &&
-      match.event.publiclyVisible &&
+      match.event.isPubliclyListed &&
       match.event.publicationState === PublicationState.PUBLISHED;
     return {
       kind,

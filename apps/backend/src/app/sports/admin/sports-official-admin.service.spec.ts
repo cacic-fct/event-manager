@@ -25,6 +25,7 @@ describe('SportsOfficialAdminService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     tx = createTransaction();
+    tx.sportsOfficialAssignment.findMany.mockResolvedValue([]);
     prisma = createPrisma(tx);
     service = new SportsOfficialAdminService(prisma as never, frozen as never, auditLog as never, payments as never);
   });
@@ -119,6 +120,33 @@ describe('SportsOfficialAdminService', () => {
         revision: { increment: 1 },
       }),
     });
+    expect(tx.sportsOfficialAssignment.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects assigning a second function that overlaps the same match', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValue({ majorEventId: 'major-event-1' });
+    tx.people.findFirst.mockResolvedValue({ id: 'person-1', name: 'Árbitra Ana', userId: 'user-1' });
+    tx.sportsMatch.findFirst.mockResolvedValue({
+      categoryId: 'category-1',
+      eventId: 'event-1',
+      category: { eventGroupId: 'event-group-1' },
+    });
+    tx.sportsOfficialAssignment.findFirst.mockResolvedValue(null);
+    tx.sportsOfficialAssignment.findMany.mockResolvedValue([
+      { categoryId: null, matchId: 'match-1', role: SportsOfficialRole.REFEREE, match: { categoryId: 'category-1' } },
+    ]);
+
+    await expect(
+      service.assignOfficial(
+        {
+          tournamentId: 'tournament-1',
+          matchId: 'match-1',
+          personId: 'person-1',
+          role: SportsOfficialRole.SCOREKEEPER,
+        },
+        actor,
+      ),
+    ).rejects.toThrow('A pessoa não pode ter mais de uma função na mesma partida.');
     expect(tx.sportsOfficialAssignment.create).not.toHaveBeenCalled();
   });
 
@@ -228,6 +256,22 @@ describe('SportsOfficialAdminService', () => {
     });
   });
 
+  it('rejects changing an official to a function already held in an overlapping scope', async () => {
+    const assignment = assignmentFixture({
+      matchId: 'match-1',
+      match: { eventId: 'event-1', categoryId: 'category-1' },
+    });
+    prisma.sportsOfficialAssignment.findUnique.mockResolvedValue(assignment);
+    tx.sportsOfficialAssignment.findMany.mockResolvedValue([
+      { categoryId: null, matchId: null, role: SportsOfficialRole.REFEREE, match: null },
+    ]);
+
+    await expect(
+      service.updateOfficial('official-1', { expectedRevision: 2, role: SportsOfficialRole.SCOREKEEPER }, actor),
+    ).rejects.toThrow('A pessoa não pode ter mais de uma função na mesma partida.');
+    expect(tx.sportsOfficialAssignment.updateMany).not.toHaveBeenCalled();
+  });
+
   it('revokes an active assignment through update and audits the inactive state', async () => {
     const assignment = assignmentFixture();
     const revoked = assignmentFixture({ active: false, revokedAt: sportsTestDate(), revision: 4 });
@@ -313,6 +357,7 @@ function createTransaction() {
     sportsMatch: { findFirst: jest.fn() },
     sportsOfficialAssignment: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
       updateMany: jest.fn(),

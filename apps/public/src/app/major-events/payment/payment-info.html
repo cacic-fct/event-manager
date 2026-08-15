@@ -112,7 +112,7 @@
       <div>
         <p>Enviado em {{ receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}</p>
         <p>Disponível até {{ receipt.expiresAt | date: 'dd/MM/yyyy' }}</p>
-        <p>{{ receipt.sizeBytes / 1024 / 1024 | number: '1.1-1' }} MB - {{ receipt.processingStatus }}</p>
+        <p>{{ receipt.sizeBytes / 1024 / 1024 | number: '1.1-1' }} MB</p>
       </div>
     </div>
     <mat-divider></mat-divider>

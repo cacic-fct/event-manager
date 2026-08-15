@@ -96,9 +96,9 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
 
   - Se na página de "informações do organizador" será exibido um botão para download da lista de inscritos do evento em CSV. O arquivo baixado conterá o nome, email e CPF mascarado de cada inscrito.
 
-- **Visível para usuários**
+- **Listar no site público**
 
-  - Se o evento deve ser exibido para os usuários na lista de eventos do calendário.
+  - Se o evento deve ser incluído nas consultas e listagens públicas, como o calendário de eventos.
 
 - **Inscrever automaticamente pelo grande evento**
 
@@ -119,7 +119,7 @@ Se o evento faz parte de um grupo de eventos, busque e selecione o grupo corresp
 
 Eventos permitem usos criativos.
 
-Por exemplo, ao desmarcar a opcão "Visível para usuários" a lista de presenças do evento pode ser usada como uma lista de retirada de kits, já que o scanner de presenças diferencia os participantes inscritos e pagantes dos não inscritos.
+Por exemplo, ao desmarcar a opção "Listar no site público", a lista de presenças do evento pode ser usada como uma lista de retirada de kits, já que o scanner de presenças diferencia os participantes inscritos e pagantes dos não inscritos.
 
 :::
 

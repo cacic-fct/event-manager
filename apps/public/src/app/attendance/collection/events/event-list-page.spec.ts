@@ -44,7 +44,7 @@ describe('ScannerEventList', () => {
                     type: 'MINICURSO',
                     locationDescription: 'Laboratório 3',
                     shouldCollectAttendance: true,
-                    publiclyVisible: true,
+                    isPubliclyListed: true,
                     queueCount: 0,
                   },
                 },

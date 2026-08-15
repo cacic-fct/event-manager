@@ -52,6 +52,21 @@ export class PublicationTransitionService {
     };
   }
 
+  async setEventPublicationState(
+    eventId: string,
+    state: PublicationState,
+    user: AuthenticatedUser | undefined,
+    options: { isPubliclyListed?: boolean } = {},
+  ): Promise<TargetSync> {
+    if (state === PrismaPublicationState.SCHEDULED) {
+      throw new BadRequestException('Escolha a data e hora de publicação.');
+    }
+
+    const sync = await this.stateWriter.updateEventPublicationState(eventId, state, null, user, options);
+    await this.finish(sync);
+    return sync;
+  }
+
   async runBulkOperation(
     input: PublicationBulkInput,
     user: AuthenticatedUser | undefined,
@@ -144,6 +159,11 @@ export class PublicationTransitionService {
       scheduledPublishAt: input.scheduledPublishAt,
       user: input.user,
     });
+  }
+
+  private async finish(sync: TargetSync): Promise<void> {
+    await this.sitemap.refresh();
+    await this.searchSync.syncSearch(sync);
   }
 
   private async publishMissingChildren(

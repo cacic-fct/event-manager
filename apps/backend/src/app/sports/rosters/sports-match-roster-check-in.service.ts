@@ -251,7 +251,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         },
         data: {
           state:
-            entry.roster.match.state === SportsMatchState.SCHEDULED
+            present && entry.roster.match.state === SportsMatchState.SCHEDULED
               ? SportsMatchState.CHECK_IN
               : entry.roster.match.state,
           revision: { increment: 1 },
@@ -296,6 +296,216 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
     });
     if (!result.replayed) {
       await this.afterRosterMutation(matchId, 'PLAYER_CHECKED_IN', rosterEntryId);
+    }
+    return result.attendance;
+  }
+
+  async checkInOfficial(
+    matchId: string,
+    officialAssignmentId: string,
+    checkedInAt: Date | undefined,
+    clientIdValue: string,
+    offline: boolean,
+    uploaderPersonId: string,
+    uploaderUserId: string | null,
+    uploaderRole: string,
+    actor: SportsAuditActor,
+    collectorInput: SportsOfflineCollectorInput = {},
+  ) {
+    const clientId = clientIdValue.trim();
+    if (!clientId || clientId.length > 200) {
+      throw new BadRequestException('Informe um identificador offline válido para o check-in.');
+    }
+    requireSportsCheckInUploaderUserId(uploaderUserId);
+    const requestedCheckedInAt = checkedInAt?.toISOString() ?? null;
+    const result = await runSerializableSportsTransaction(this.prisma, async (tx) => {
+      const match = await tx.sportsMatch.findFirst({
+        where: { id: matchId, deletedAt: null },
+        select: {
+          id: true,
+          eventId: true,
+          categoryId: true,
+          revision: true,
+          operationSequence: true,
+          state: true,
+          category: {
+            select: {
+              id: true,
+              eventGroupId: true,
+              tournament: { select: { id: true, majorEventId: true } },
+            },
+          },
+        },
+      });
+      if (!match) {
+        throw new NotFoundException(`Sports match ${matchId} was not found.`);
+      }
+      if (
+        !(
+          [
+            SportsMatchState.SCHEDULED,
+            SportsMatchState.CHECK_IN,
+            SportsMatchState.LIVE,
+            SportsMatchState.PAUSED,
+          ] as SportsMatchState[]
+        ).includes(match.state)
+      ) {
+        throw new ConflictException('O check-in desta partida foi encerrado.');
+      }
+
+      const assignment = await tx.sportsOfficialAssignment.findFirst({
+        where: {
+          id: officialAssignmentId,
+          tournamentId: match.category.tournament.id,
+          active: true,
+          revokedAt: null,
+          person: { deletedAt: null },
+          OR: [
+            { matchId: match.id },
+            { categoryId: match.categoryId, matchId: null },
+            { categoryId: null, matchId: null },
+          ],
+        },
+        select: {
+          id: true,
+          personId: true,
+          role: true,
+          person: { select: { name: true } },
+        },
+      });
+      if (!assignment) {
+        throw new NotFoundException(`Sports official assignment ${officialAssignmentId} was not found.`);
+      }
+
+      const collector = await resolveSportsCheckInCollector({
+        prisma: tx,
+        matchId,
+        checkedInAt,
+        offline,
+        uploader: { personId: uploaderPersonId, userId: uploaderUserId, role: uploaderRole },
+        input: collectorInput,
+      });
+      const payloadHash = createHash('sha256')
+        .update(
+          JSON.stringify({
+            matchId,
+            officialAssignmentId,
+            personId: assignment.personId,
+            checkedInAt: requestedCheckedInAt,
+            collectorPersonId: collector.personId,
+          }),
+        )
+        .digest('hex');
+      const existingAction = await tx.sportsMatchAction.findUnique({
+        where: { clientId },
+      });
+      if (
+        existingAction &&
+        (existingAction.matchId !== matchId ||
+          existingAction.type !== SportsMatchActionType.CHECK_IN ||
+          existingAction.payloadHash !== payloadHash ||
+          existingAction.actorUserId !== collector.userId)
+      ) {
+        throw new ConflictException('O identificador offline já foi usado por um check-in diferente.');
+      }
+      if (existingAction) {
+        const replayedAttendance = await tx.eventAttendance.findUnique({
+          where: { personId_eventId: { personId: assignment.personId, eventId: match.eventId } },
+        });
+        if (!replayedAttendance || replayedAttendance.status !== 'PRESENT') {
+          throw new ConflictException('O check-in offline foi registrado parcialmente. Recarregue a partida.');
+        }
+        return { attendance: replayedAttendance, replayed: true };
+      }
+
+      const effectiveCheckedInAt = checkedInAt ?? new Date();
+      await tx.sportsMatchAction.create({
+        data: {
+          clientId,
+          matchId,
+          payloadHash,
+          baseRevision: match.revision,
+          sequence: match.operationSequence + 1,
+          type: SportsMatchActionType.CHECK_IN,
+          payload: {
+            kind: 'OFFICIAL_CHECK_IN',
+            officialAssignmentId,
+            personId: assignment.personId,
+            role: assignment.role,
+            checkedInAt: effectiveCheckedInAt.toISOString(),
+          },
+          reviewStatus: SportsReviewStatus.APPROVED,
+          actorPersonId: collector.actorPersonId,
+          actorUserId: collector.userId,
+          actorRole: collector.role,
+          authoredAt: effectiveCheckedInAt,
+          offline,
+          reviewedAt: new Date(),
+          reviewedById: uploaderUserId,
+        },
+      });
+      const attendance = await upsertPresentEventAttendance({
+        tx,
+        attendanceCategories: this.attendanceCategories,
+        input: {
+          personId: assignment.personId,
+          eventId: match.eventId,
+          attendedAt: effectiveCheckedInAt,
+          createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+          createdById: collector.userId,
+          committedById: uploaderUserId,
+        },
+      });
+      const updatedMatch = await tx.sportsMatch.updateMany({
+        where: {
+          id: match.id,
+          revision: match.revision,
+          operationSequence: match.operationSequence,
+          deletedAt: null,
+        },
+        data: {
+          state: match.state === SportsMatchState.SCHEDULED ? SportsMatchState.CHECK_IN : match.state,
+          revision: { increment: 1 },
+          operationSequence: { increment: 1 },
+          updatedById: uploaderPersonId,
+        },
+      });
+      if (updatedMatch.count !== 1) {
+        throw new ConflictException('A partida mudou durante o check-in. Tente enviar novamente.');
+      }
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.SPORTS_MATCH_ROSTER,
+          entityId: match.id,
+          entityLabel: `Check-in da partida ${match.id}`,
+          operation: AuditLogOperation.SCAN,
+          actor,
+          after: {
+            officialAssignmentId,
+            personId: assignment.personId,
+            role: assignment.role,
+            attendanceStatus: attendance.status,
+          },
+          summary: 'Presença de integrante da arbitragem registrada na partida.',
+          scope: {
+            majorEventId: match.category.tournament.majorEventId,
+            eventGroupId: match.category.eventGroupId,
+            eventId: match.eventId,
+          },
+          metadata: sportsCheckInProvenanceMetadata({
+            collector,
+            uploader: { personId: uploaderPersonId, userId: uploaderUserId, role: uploaderRole },
+            offline,
+            clientId,
+          }),
+          force: true,
+        },
+        tx,
+      );
+      return { attendance, replayed: false };
+    });
+    if (!result.replayed) {
+      await this.afterRosterMutation(matchId, 'OFFICIAL_CHECKED_IN', officialAssignmentId);
     }
     return result.attendance;
   }
@@ -482,7 +692,6 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
           deletedAt: null,
         },
         data: {
-          state: match.state === SportsMatchState.SCHEDULED ? SportsMatchState.CHECK_IN : match.state,
           revision: { increment: 1 },
           operationSequence: { increment: 1 },
           updatedById: officialPersonId,

@@ -23,6 +23,8 @@ describe('specialized sports mutation resolvers', () => {
     updateVenue: jest.fn(),
     createMatch: jest.fn(),
     updateMatch: jest.fn(),
+    publishMatch: jest.fn(),
+    unpublishMatch: jest.fn(),
     assignOfficial: jest.fn(),
     updateOfficial: jest.fn(),
     getMatchEventId: jest.fn(),
@@ -186,6 +188,8 @@ describe('specialized sports mutation resolvers', () => {
     admin.updateVenue.mockResolvedValue({ id: 'venue-updated' });
     admin.createMatch.mockResolvedValue({ id: 'match-created' });
     admin.updateMatch.mockResolvedValue({ id: 'match-updated' });
+    admin.publishMatch.mockResolvedValue({ id: 'match-published' });
+    admin.unpublishMatch.mockResolvedValue({ id: 'match-unpublished' });
     admin.assignOfficial.mockResolvedValue({ id: 'official-created' });
     admin.updateOfficial.mockResolvedValue({ id: 'official-updated' });
 
@@ -205,6 +209,10 @@ describe('specialized sports mutation resolvers', () => {
       ),
     ).resolves.toBe('match-created');
     await expect(resolver.updateMatch({ id: 'match-1' } as never, context as never)).resolves.toBe('match-updated');
+    await expect(resolver.publishMatch({ id: 'match-1' } as never, context as never)).resolves.toBe('match-published');
+    await expect(resolver.unpublishMatch({ id: 'match-1' } as never, context as never)).resolves.toBe(
+      'match-unpublished',
+    );
     await expect(
       resolver.assignOfficial(
         { tournamentId: 'tournament-1', categoryId: null, matchId: null } as never,

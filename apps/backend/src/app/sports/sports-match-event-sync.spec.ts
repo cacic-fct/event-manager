@@ -30,7 +30,7 @@ describe('sports match backing events', () => {
           locationDescription: 'Bloco A',
         },
       },
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: PublicationState.PUBLISHED,
       publishedAt: startDate,
       actorId: 'actor-1',
@@ -47,7 +47,7 @@ describe('sports match backing events', () => {
         locationDescription: 'Bloco A · Ginásio · Quadra 1',
         allowSubscription: false,
         shouldCollectAttendance: true,
-        publiclyVisible: true,
+        isPubliclyListed: true,
         publicationState: PublicationState.PUBLISHED,
       }),
     });

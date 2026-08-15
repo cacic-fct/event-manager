@@ -8,6 +8,7 @@ import {
   SportsLineupRead,
   SportsMatchAction,
   SportsOfflineCollectorCredential,
+  SportsOfficialCheckIn,
   SportsOperationalMatch,
   SportsRosterCheckIn,
   SportsScannerCheckIn,
@@ -50,11 +51,11 @@ export class SportsOperationsApiService {
     return this.query<{
       currentUserSportsOperationalMatchDetail: Omit<
         SportsOperationalMatch,
-        'revision' | 'homeRegistrationId' | 'awayRegistrationId' | 'rosters'
+        'revision' | 'homeRegistrationId' | 'awayRegistrationId' | 'rosters' | 'officials'
       >;
       currentUserSportsMatchOperations: Pick<
         SportsOperationalMatch,
-        'revision' | 'homeRegistrationId' | 'awayRegistrationId' | 'rosters'
+        'revision' | 'homeRegistrationId' | 'awayRegistrationId' | 'rosters' | 'officials'
       >;
     }>(
       `query SportsOperationalMatch($matchId: String!) {
@@ -81,6 +82,7 @@ export class SportsOperationsApiService {
             team { id name institution logoUrl }
             entries { id name role status checkedInAt shirtNumber }
           }
+          officials { id name role checkedInAt }
         }
       }`,
       { matchId },
@@ -130,6 +132,25 @@ export class SportsOperationsApiService {
         },
       },
     ).pipe(map((value) => value.checkInSportsRosterEntry));
+  }
+
+  checkInOfficial(input: SportsOfficialCheckIn): Observable<boolean> {
+    return this.query<{ checkInSportsOfficial: boolean }>(
+      `mutation CheckInSportsOfficial($matchId: String!, $input: SportsOfficialCheckInInput!) {
+        checkInSportsOfficial(matchId: $matchId, input: $input)
+      }`,
+      {
+        matchId: input.matchId,
+        input: {
+          clientId: input.clientId,
+          officialAssignmentId: input.officialAssignmentId,
+          checkedInAt: input.checkedInAt,
+          offline: input.offline,
+          ...(input.collectorPersonId === undefined ? {} : { collectorPersonId: input.collectorPersonId }),
+          ...(input.collectorCredential === undefined ? {} : { collectorCredential: input.collectorCredential }),
+        },
+      },
+    ).pipe(map((value) => value.checkInSportsOfficial));
   }
 
   checkInFromScanner(input: SportsScannerCheckIn): Observable<boolean> {

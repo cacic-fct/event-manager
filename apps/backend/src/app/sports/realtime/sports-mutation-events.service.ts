@@ -47,7 +47,7 @@ export interface SportsMatchMutationProjection {
       majorEvent: { deletedAt: Date | null; publicationState: PublicationState };
     };
   };
-  event: { deletedAt: Date | null; publiclyVisible: boolean; publicationState: PublicationState };
+  event: { deletedAt: Date | null; isPubliclyListed: boolean; publicationState: PublicationState };
 }
 
 @Injectable()
@@ -149,7 +149,7 @@ export class SportsMutationEventsService {
         id: true,
         revision: true,
         category: { select: { tournamentId: true } },
-        event: { select: { deletedAt: true, publiclyVisible: true, publicationState: true } },
+        event: { select: { deletedAt: true, isPubliclyListed: true, publicationState: true } },
       },
     });
     if (!match) {
@@ -159,7 +159,7 @@ export class SportsMutationEventsService {
     const payload = { type, matchId, entityId, tournamentId, revision: match.revision };
     const isPublic =
       !match.event.deletedAt &&
-      match.event.publiclyVisible &&
+      match.event.isPubliclyListed &&
       match.event.publicationState === PublicationState.PUBLISHED;
     const people = await this.autorouting.affectedPeopleForMatch(match.id);
     await Promise.all([
@@ -175,6 +175,18 @@ export class SportsMutationEventsService {
       this.defaultRedirect.invalidatePeople(people),
       this.realtime.publishAutorouteInvalidations(people),
     ]);
+  }
+
+  async publishAttendanceMutation(eventId: string): Promise<void> {
+    const match = await this.prisma.sportsMatch.findFirst({
+      where: { eventId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!match) {
+      return;
+    }
+
+    await this.publishRosterMutation(match.id, 'ATHLETE_ATTENDANCE_CHANGED', eventId);
   }
 
   async publishForEntity(entity: SportsMutationEntity, entityId: string, includePublic: boolean): Promise<void> {

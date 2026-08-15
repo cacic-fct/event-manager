@@ -154,6 +154,35 @@ export class SportsTeamLogoController {
     return result;
   }
 
+  @Get(':sportsTeamId/logo-review/:changeRequestId')
+  @RequirePermissions(Permission.SportsTeam.Review)
+  @Header('Cache-Control', 'private, no-store')
+  @Header('X-Content-Type-Options', 'nosniff')
+  @ApiOperation({
+    summary: 'Download a pending sports team logo for administrator review',
+    description: 'Streams the private logo attached to an active team-change request without exposing its storage key.',
+  })
+  @ApiParam({ name: 'sportsTeamId', description: 'Sports team identifier.' })
+  @ApiParam({ name: 'changeRequestId', description: 'Active sports team-change request identifier.' })
+  @ApiProduces(SPORTS_TEAM_LOGO_POLICY.outputMimeType)
+  @ApiOkResponse({ description: 'Raw pending logo stream without storage metadata.' })
+  @ApiForbiddenResponse({ description: `Missing scoped permission ${Permission.SportsTeam.Review}.` })
+  @ApiNotFoundResponse({ description: 'The active logo review or its private image does not exist.' })
+  async downloadPendingReview(
+    @Param('sportsTeamId') sportsTeamId: string,
+    @Param('changeRequestId') changeRequestId: string,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<StreamableFile> {
+    const logo = await this.logos.downloadPendingReview(sportsTeamId, changeRequestId);
+    response.setHeader('Content-Type', logo.mimeType);
+    response.setHeader('Content-Length', String(logo.sizeBytes));
+    response.setHeader('ETag', `"sha256-${logo.sha256}"`);
+    return new StreamableFile(logo.stream, {
+      type: logo.mimeType,
+      length: logo.sizeBytes,
+    });
+  }
+
   @Get(':sportsTeamId/logo/:sha256')
   @RequirePermissions(Permission.SportsTeam.Read)
   @Header('Cache-Control', 'private, max-age=31536000, immutable')

@@ -296,7 +296,8 @@ export class PublicationPageComponent {
   }
 
   targetDescription(node: PublicationNode, level = 0): string {
-    const hiddenFromUsers = node.publiclyVisible === false && !node.statusLabel.toLowerCase().includes('oculto');
+    const omittedFromPublicListing =
+      node.isPubliclyListed === false && !node.statusLabel.toLowerCase().includes('não listado');
     const targetLabel =
       level > 0 && node.targetType === 'EVENT_GROUP' ? 'Conjunto' : publicationTargetLabel(node.targetType);
     const parentLabel = node.parentLabel
@@ -309,7 +310,7 @@ export class PublicationPageComponent {
       node.statusLabel,
       parentLabel,
       node.childCount > 0 ? publicationChildCountLabel(node.childCount) : null,
-      hiddenFromUsers ? 'Oculto dos usuários' : null,
+      omittedFromPublicListing ? 'Não listado no site público' : null,
     ]
       .filter((item): item is string => item != null)
       .join(' · ');
@@ -325,7 +326,7 @@ export class PublicationPageComponent {
   }
 
   isWarning(node: PublicationNode): boolean {
-    return node.publicationState !== 'PUBLISHED' || node.publiclyVisible === false;
+    return node.publicationState !== 'PUBLISHED' || node.isPubliclyListed === false;
   }
 
   private parseRequestedNode(

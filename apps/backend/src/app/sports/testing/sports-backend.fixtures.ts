@@ -97,7 +97,7 @@ export function sportsMatchRecord(overrides: Record<string, unknown> = {}): Reco
     },
     event: {
       deletedAt: null,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: PublicationState.PUBLISHED,
     },
     actions: [],
@@ -122,6 +122,7 @@ export function sportsPublicMatchRecord(overrides: Record<string, unknown> = {})
   return {
     id: 'match-1',
     eventId: 'event-1',
+    state: SportsMatchState.SCHEDULED,
     categoryId: 'category-1',
     stageId: 'stage-1',
     homeRegistrationId: 'registration-home',
@@ -450,7 +451,7 @@ export function sportsQualifierMatchRecord(overrides: Record<string, unknown> = 
     category: { tournamentId: 'tournament-1' },
     event: {
       deletedAt: null,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: PublicationState.PUBLISHED,
     },
     ...overrides,
@@ -787,7 +788,7 @@ export function sportsBracketMatchRecord(overrides: Record<string, unknown> = {}
     stage: { settings: {} },
     event: {
       deletedAt: null,
-      publiclyVisible: false,
+      isPubliclyListed: false,
       publicationState: 'DRAFT',
     },
     state: 'SCHEDULED',

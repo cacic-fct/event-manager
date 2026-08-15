@@ -16,7 +16,7 @@ const eventRecord = (overrides: Partial<EventPostCommitRecord> = {}): EventPostC
   onlineAttendanceCode: null,
   onlineAttendanceStartDate: null,
   onlineAttendanceEndDate: null,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: 'PUBLISHED',
   startDate: new Date('2026-08-12T12:00:00.000Z'),
   endDate: new Date('2026-08-12T13:00:00.000Z'),

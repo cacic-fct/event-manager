@@ -168,7 +168,7 @@ describe('PublicCertificateValidationService', () => {
     const lecture = majorEventEvent('lecture-1', 'Palestra de abertura', EventType.PALESTRA, 60);
     const other = majorEventEvent('other-1', 'Mesa redonda', EventType.OTHER, 45);
     const hidden = majorEventEvent('hidden-1', 'Encontro interno', EventType.PALESTRA, 30, {
-      publiclyVisible: false,
+      isPubliclyListed: false,
     });
     const prisma = {
       certificate: {
@@ -553,7 +553,7 @@ function certificateRecord(issuedAt: Date, event: ReturnType<typeof eventRecord>
   };
 }
 
-function eventRecord(id: string, name: string, publiclyVisible: boolean, creditMinutes: number) {
+function eventRecord(id: string, name: string, isPubliclyListed: boolean, creditMinutes: number) {
   return {
     id,
     name,
@@ -562,7 +562,7 @@ function eventRecord(id: string, name: string, publiclyVisible: boolean, creditM
     endDate: new Date('2026-06-01T14:30:00.000Z'),
     creditMinutes,
     type: EventType.OTHER,
-    publiclyVisible,
+    isPubliclyListed,
     publicationState: 'PUBLISHED',
     majorEventId: null,
     majorEvent: null,

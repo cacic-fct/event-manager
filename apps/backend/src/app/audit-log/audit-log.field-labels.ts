@@ -48,7 +48,7 @@ const FIELD_LABELS: Record<string, string> = {
   permission: 'Permissão',
   personId: 'Pessoa',
   phone: 'Telefone',
-  publiclyVisible: 'Visível publicamente',
+  isPubliclyListed: 'Listado publicamente',
   publicationState: 'Estado da publicação',
   publishedAt: 'Publicado em',
   scheduledPublishAt: 'Publicação agendada',

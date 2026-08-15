@@ -31,6 +31,11 @@ import {
 } from './offline-submission-response';
 import { errorMessage } from './offline-attendance-resolution';
 import { parseStoredScannerUserId, scannerUserIdForStorage } from './user-scanner-code';
+import {
+  notifySportsMatchAttendanceMutation,
+  startSportsMatchCheckInFromAthleteAttendance,
+} from '../../sports/operations/sports-match-attendance';
+import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
 
 const EVENT_ATTENDANCE_AUDIT_SELECT = {
   personId: true,
@@ -75,8 +80,11 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     private readonly currentUserContext: CurrentUserContextService = {
       getAuthenticatedUser: () => undefined,
     } as unknown as CurrentUserContextService,
+    sportsMutationEvents: SportsMutationEventsService = {
+      publishAttendanceMutation: async () => undefined,
+    } as unknown as SportsMutationEventsService,
   ) {
-    super(prisma, attendanceCategories);
+    super(prisma, attendanceCategories, sportsMutationEvents);
   }
 
   @Mutation(() => EventAttendance, { name: 'createEventAttendance' })
@@ -88,45 +96,23 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   ) {
     await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
-
-    try {
-      const attendance = await this.prisma.$transaction(async (tx) => {
-        await tx.eventAttendance.create({
-          data: {
-            personId: input.personId,
-            eventId: input.eventId,
-            attendedAt: input.attendedAt,
-            createdById,
-            committedById: createdById,
-            createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
-          },
-        });
-        await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-        const attendance = await tx.eventAttendance.findUniqueOrThrow({
-          where: {
-            personId_eventId: {
-              personId: input.personId,
-              eventId: input.eventId,
-            },
-          },
-          select: EVENT_ATTENDANCE_AUDIT_SELECT,
-        });
-        await this.recordAttendanceCreate(
+    return this.createAttendanceWithMetadata(
+      {
+        eventId: input.eventId,
+        personId: input.personId,
+        attendedAt: input.attendedAt,
+        createdById,
+        committedById: createdById,
+        createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+      },
+      (attendance, tx) =>
+        this.recordAttendanceCreate(
           attendance,
           context,
           'Presença registrada manualmente pelo painel administrativo.',
           tx,
-        );
-        return attendance;
-      });
-      return attendance;
-    } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Presença já registrada para este evento.');
-      }
-
-      throw error;
-    }
+        ),
+    );
   }
 
   @Mutation(() => EventAttendance, { name: 'setEventOralAttendance' })
@@ -138,6 +124,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
   ) {
     await this.frozenResources.assertEventMutable(input.eventId, this.getUser(context), 'edit');
     const actorId = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
+    let checkInStarted = false;
     const attendance = await this.prisma.$transaction(async (tx) => {
       const before = await tx.eventAttendance.findUnique({
         where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
@@ -164,9 +151,21 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         select: EVENT_ATTENDANCE_AUDIT_SELECT,
       });
       await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+      if (result.status === 'PRESENT') {
+        checkInStarted =
+          (await startSportsMatchCheckInFromAthleteAttendance({
+            tx,
+            eventId: result.eventId,
+            personId: result.personId,
+            updatedById: actorId,
+          })) || checkInStarted;
+      }
       await this.recordAttendanceSet(result, before, context, tx);
       return result;
     });
+    if (checkInStarted) {
+      await notifySportsMatchAttendanceMutation(this.sportsMutationEvents, attendance);
+    }
     await this.dashboardInsights.invalidateCachedInsights();
     return attendance;
   }
@@ -189,6 +188,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     await this.frozenResources.assertEventMutable(eventId, this.getUser(context), 'edit');
     const actorId = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
     const attendances: EventAttendanceAuditRecord[] = [];
+    let checkInStarted = false;
     for (let offset = 0; offset < inputs.length; offset += ORAL_ATTENDANCE_TRANSACTION_BATCH_SIZE) {
       const chunk = inputs.slice(offset, offset + ORAL_ATTENDANCE_TRANSACTION_BATCH_SIZE);
       const chunkAttendances = await this.prisma.$transaction(async (tx) => {
@@ -224,6 +224,15 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
             select: EVENT_ATTENDANCE_AUDIT_SELECT,
           });
           await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx);
+          if (attendance.status === 'PRESENT') {
+            checkInStarted =
+              (await startSportsMatchCheckInFromAthleteAttendance({
+                tx,
+                eventId,
+                personId: attendance.personId,
+                updatedById: actorId,
+              })) || checkInStarted;
+          }
           await this.recordAttendanceSet(attendance, before, context, tx);
           beforeByPersonId.set(input.personId, attendance);
           results.push(attendance);
@@ -231,6 +240,9 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
         return results;
       });
       attendances.push(...chunkAttendances);
+    }
+    if (checkInStarted) {
+      await notifySportsMatchAttendanceMutation(this.sportsMutationEvents, { eventId });
     }
     await this.dashboardInsights.invalidateCachedInsights();
     return attendances;
@@ -280,43 +292,22 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
 
     const createdById = context.req?.user?.sub ?? context.request?.user?.sub ?? undefined;
 
-    try {
-      const attendance = await this.prisma.$transaction(async (tx) => {
-        await tx.eventAttendance.create({
-          data: {
-            eventId,
-            personId: person.id,
-            createdById,
-            committedById: createdById,
-            createdByMethod: AttendanceCreationMethod.SCANNER,
-          },
-        });
-        await this.attendanceCategories.refreshForAttendance(person.id, eventId, tx);
-        const attendance = await tx.eventAttendance.findUniqueOrThrow({
-          where: {
-            personId_eventId: {
-              personId: person.id,
-              eventId,
-            },
-          },
-          select: EVENT_ATTENDANCE_AUDIT_SELECT,
-        });
-        await this.recordAttendanceCreate(
+    return this.createAttendanceWithMetadata(
+      {
+        eventId,
+        personId: person.id,
+        createdById,
+        committedById: createdById,
+        createdByMethod: AttendanceCreationMethod.SCANNER,
+      },
+      (attendance, tx) =>
+        this.recordAttendanceCreate(
           attendance,
           context,
           'Presença registrada por leitura de código no painel administrativo.',
           tx,
-        );
-        return attendance;
-      });
-      return attendance;
-    } catch (error: unknown) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        throw new ConflictException('Presença já registrada para este evento.');
-      }
-
-      throw error;
-    }
+        ),
+    );
   }
 
   @Mutation(() => EventAttendance, {
@@ -435,6 +426,7 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     await this.frozenResources.assertEventMutable(submission.eventId, this.getUser(context), 'edit');
     const personId = await this.resolveOfflineSubmissionPersonId(submission);
     const committedById = this.getActorId(context);
+    let checkInStarted = false;
 
     try {
       await this.prisma.$transaction(async (tx) => {
@@ -508,6 +500,12 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           },
           select: EVENT_ATTENDANCE_AUDIT_SELECT,
         });
+        checkInStarted = await startSportsMatchCheckInFromAthleteAttendance({
+          tx,
+          eventId: submission.eventId,
+          personId,
+          updatedById: committedById,
+        });
         await this.recordAttendanceCreate(
           attendance,
           context,
@@ -521,6 +519,10 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
       }
 
       throw error;
+    }
+
+    if (checkInStarted) {
+      await notifySportsMatchAttendanceMutation(this.sportsMutationEvents, { eventId: submission.eventId });
     }
 
     await this.dashboardInsights.invalidateCachedInsights();

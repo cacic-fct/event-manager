@@ -81,6 +81,27 @@
   padding: 0.65rem 0.8rem;
 }
 
+.official-assignment {
+  align-items: flex-start;
+}
+
+.official-assignment-copy {
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.official-assignment-copy strong,
+.official-assignment-copy small {
+  overflow-wrap: anywhere;
+}
+
+.official-assignment-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.1rem;
+}
+
 .automatic-registration {
   align-items: center;
   background: var(--mat-sys-primary-container);

@@ -1,6 +1,7 @@
 import {
   SportsAthleteIdentifierMode,
   SportsMatchState,
+  SportsOfficialRole,
   SportsRosterEntryStatus,
   SportsRosterRole,
   SportsRosterStatus,
@@ -56,6 +57,21 @@ export class CurrentUserSportsOperationsRosterRead {
 }
 
 @ObjectType()
+export class CurrentUserSportsOfficialRead {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => SportsOfficialRole)
+  role!: SportsOfficialRole;
+
+  @Field(() => Date, { nullable: true })
+  checkedInAt?: Date | null;
+}
+
+@ObjectType()
 export class CurrentUserSportsMatchOperationsRead {
   @Field(() => String)
   matchId!: string;
@@ -75,6 +91,9 @@ export class CurrentUserSportsMatchOperationsRead {
   @Field(() => [CurrentUserSportsOperationsRosterRead])
   rosters!: CurrentUserSportsOperationsRosterRead[];
 
+  @Field(() => [CurrentUserSportsOfficialRead])
+  officials!: CurrentUserSportsOfficialRead[];
+
   @Field(() => String, { nullable: true })
   notes?: string | null;
 
@@ -92,6 +111,9 @@ export class CurrentUserSportsEligibleLineupMemberRead {
 
   @Field(() => SportsRosterRole)
   role!: SportsRosterRole;
+
+  @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
 }
 
 @ObjectType()

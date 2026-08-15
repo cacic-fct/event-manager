@@ -16,7 +16,7 @@ import {
   SportsTimerConflict,
   SportsTimerSnapshot,
 } from './sports-operations.types';
-import { CheckInEntry, MatchOccurrence } from './official-match-page.utils';
+import { CheckInEntry, MatchOccurrence, sortOfficialCheckInEntries } from './official-match-page.utils';
 
 @Directive()
 export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
@@ -48,6 +48,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   readonly unverifiedAttendanceCount = computed(() => this.offline.unverifiedAttendanceCountForMatch(this.matchId));
   readonly homeCheckInEntries = computed(() => this.sortedCheckInEntries('home'));
   readonly awayCheckInEntries = computed(() => this.sortedCheckInEntries('away'));
+  readonly officialCheckInEntries = computed(() => sortOfficialCheckInEntries(this.match()?.officials ?? []));
   readonly canRequestCheckInCorrection = computed(() => {
     const state = this.match()?.state;
     return state === 'LIVE' || state === 'PAUSED';

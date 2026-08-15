@@ -504,7 +504,7 @@ describe('SportsBracketAdvancementService', () => {
       stageId: 'stage-1',
       event: {
         deletedAt: null,
-        publiclyVisible: false,
+        isPubliclyListed: false,
         publicationState: 'DRAFT',
       },
       state: SportsMatchState.SCHEDULED,

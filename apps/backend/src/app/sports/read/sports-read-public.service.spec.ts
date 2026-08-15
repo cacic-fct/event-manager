@@ -81,7 +81,7 @@ describe('SportsReadPublicService', () => {
           id: 'match-1',
           deletedAt: null,
           category: expect.objectContaining({ tournament: expect.any(Object) }),
-          event: expect.objectContaining({ publiclyVisible: true }),
+          event: expect.objectContaining({ isPubliclyListed: true }),
         }),
       }),
     );

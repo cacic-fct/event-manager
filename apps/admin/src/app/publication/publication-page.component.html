@@ -46,7 +46,7 @@
             [class.selected-list-item]="isSelected(item.node)"
             [class.level-1]="item.level === 1"
             [class.level-2]="item.level >= 2"
-            [class.hidden]="item.node.publiclyVisible === false"
+            [class.hidden]="item.node.isPubliclyListed === false"
             [class.warning]="isWarning(item.node)"
             (click)="selectNode(item.node)"
             (keydown.enter)="selectNode(item.node)"
@@ -99,10 +99,10 @@
             @if (selected.childCount > 0) {
               <p class="child-count">{{ childCountLabel(selected.childCount) }}</p>
             }
-            @if (selected.publiclyVisible === false) {
+            @if (selected.isPubliclyListed === false) {
               <p class="visibility-warning">
                 <mat-icon aria-hidden="true">visibility_off</mat-icon>
-                Oculto dos usuários
+                Não listado no site público
               </p>
             }
           </div>

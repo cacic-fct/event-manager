@@ -128,6 +128,55 @@ describe('SportsMatchRosterWriteService', () => {
     expect(mutationEvents.publishRosterMutation).toHaveBeenCalledWith('match-1', 'ROSTER_APPROVED', 'roster-1');
   });
 
+  it('lets a trusted administrator roster a team member without a registration link', async () => {
+    tx.sportsRegistrationMember.findMany.mockResolvedValue([]);
+    tx.sportsRegistration.findFirst.mockResolvedValue({ teamId: 'team-1' });
+    tx.sportsTeamMember.findFirst.mockResolvedValue({
+      id: 'team-member-unassigned',
+      participant: { status: 'ACTIVE' },
+    });
+    tx.sportsRegistrationMember.create.mockResolvedValue({
+      id: 'member-created',
+      teamMemberId: 'team-member-unassigned',
+      role: SportsRosterRole.PLAYER,
+    });
+
+    await service.upsert(
+      sportsRosterWriteInput({
+        entries: [
+          {
+            registrationMemberId: 'lineup-candidate-team-member-unassigned',
+            teamMemberId: 'team-member-unassigned',
+            role: SportsRosterRole.COACH,
+          },
+        ],
+      }) as never,
+      'actor-1',
+      actor as never,
+      true,
+    );
+
+    expect(tx.sportsRegistrationMember.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        registrationId: 'registration-home',
+        categoryId: 'category-1',
+        teamMemberId: 'team-member-unassigned',
+        role: SportsRosterRole.PLAYER,
+        eligibility: 'ELIGIBLE',
+      }),
+      select: { id: true, teamMemberId: true, role: true },
+    });
+    expect(tx.sportsMatchRosterEntry.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          registrationMemberId: 'member-created',
+          role: SportsRosterRole.COACH,
+          status: SportsRosterEntryStatus.APPROVED,
+        }),
+      }),
+    );
+  });
+
   it.each([
     ['missing match', () => tx.sportsMatch.findFirst.mockResolvedValue(null), NotFoundException],
     [
@@ -255,7 +304,10 @@ function transaction() {
         { id: 'member-player', role: SportsRosterRole.PLAYER },
         { id: 'member-coach', role: SportsRosterRole.COACH },
       ]),
+      create: jest.fn(),
     },
+    sportsRegistration: { findFirst: jest.fn() },
+    sportsTeamMember: { findFirst: jest.fn() },
     sportsMatchRoster: {
       findFirst: jest.fn().mockResolvedValue(null),
       create: jest.fn().mockResolvedValue(roster),

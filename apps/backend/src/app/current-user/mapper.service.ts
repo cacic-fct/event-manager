@@ -124,7 +124,7 @@ export class CurrentUserEventMapperService {
       isOnlineAttendanceAllowed: event.isOnlineAttendanceAllowed,
       onlineAttendanceStartDate: event.onlineAttendanceStartDate ?? undefined,
       onlineAttendanceEndDate: event.onlineAttendanceEndDate ?? undefined,
-      publiclyVisible: event.publiclyVisible,
+      isPubliclyListed: event.isPubliclyListed,
       youtubeCode: event.youtubeCode ?? undefined,
       buttonText: event.buttonText ?? undefined,
       buttonLink: event.buttonLink ?? undefined,

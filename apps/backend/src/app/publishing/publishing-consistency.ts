@@ -3,7 +3,7 @@ import { DashboardInconsistency } from '../dashboard/models';
 type PublicationConsistencyEvent = {
   id: string;
   name: string;
-  publiclyVisible: boolean;
+  isPubliclyListed: boolean;
   publicationState: string;
   scheduledPublishAt: Date | null;
   majorEventId: string | null;
@@ -25,7 +25,7 @@ type PublicationConsistencyMajorEvent = {
   scheduledPublishAt: Date | null;
   events?: {
     id: string;
-    publiclyVisible: boolean;
+    isPubliclyListed: boolean;
     publicationState: string;
   }[];
   sportsTournament?: { id: string; categories?: { id: string }[] } | null;
@@ -42,7 +42,7 @@ export function buildPublicationConsistencyWarnings(input: {
 
   for (const event of input.events) {
     const isSportsMatch = Boolean(event.sportsMatch);
-    if (event.publicationState === 'PUBLISHED' && !event.publiclyVisible) {
+    if (event.publicationState === 'PUBLISHED' && !event.isPubliclyListed) {
       warnings.push({
         type: isSportsMatch ? 'PUBLISHED_SPORTS_MATCH_HIDDEN_FROM_USERS' : 'PUBLISHED_EVENT_HIDDEN_FROM_USERS',
         action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_PUBLICATION',
@@ -54,7 +54,7 @@ export function buildPublicationConsistencyWarnings(input: {
       });
     }
 
-    if (event.publicationState !== 'PUBLISHED' && event.publiclyVisible) {
+    if (event.publicationState !== 'PUBLISHED' && event.isPubliclyListed) {
       warnings.push({
         type: isSportsMatch ? 'DRAFT_SPORTS_MATCH_VISIBLE_TO_ADMINS' : 'DRAFT_EVENT_VISIBLE_TO_ADMINS',
         action: isSportsMatch ? 'OPEN_SPORTS' : 'OPEN_PUBLICATION',
@@ -68,7 +68,7 @@ export function buildPublicationConsistencyWarnings(input: {
 
     if (
       event.publicationState === 'PUBLISHED' &&
-      event.publiclyVisible &&
+      event.isPubliclyListed &&
       event.sportsMatch &&
       (event.sportsMatch.category.status === 'DRAFT' || event.sportsMatch.category.tournament?.status === 'DRAFT')
     ) {
@@ -137,7 +137,7 @@ export function buildPublicationConsistencyWarnings(input: {
     }
 
     const visibleChild = (majorEvent.events ?? []).some(
-      (event) => event.publicationState === 'PUBLISHED' && event.publiclyVisible,
+      (event) => event.publicationState === 'PUBLISHED' && event.isPubliclyListed,
     );
     if (!visibleChild && !majorEvent.sportsTournament) {
       warnings.push({

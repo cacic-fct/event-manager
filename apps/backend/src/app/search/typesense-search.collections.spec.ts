@@ -13,7 +13,7 @@ describe('typesense collection helpers', () => {
     expect(TYPESENSE_COLLECTIONS.events).toBe('cacic_event_manager_events');
     expect(schemas.find((schema) => schema.name === TYPESENSE_COLLECTIONS.events)?.fields).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ name: 'publiclyVisible', facet: true }),
+        expect.objectContaining({ name: 'isPubliclyListed', facet: true }),
         expect.objectContaining({ name: 'publicationState', facet: true }),
         expect.objectContaining({ name: 'isIssuableCertificateEvent', facet: true }),
       ]),

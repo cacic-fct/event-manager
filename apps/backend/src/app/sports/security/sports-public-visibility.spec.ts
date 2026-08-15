@@ -34,7 +34,7 @@ function publicMatch() {
   return {
     event: {
       deletedAt: null,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: PublicationState.PUBLISHED,
     },
     category: {

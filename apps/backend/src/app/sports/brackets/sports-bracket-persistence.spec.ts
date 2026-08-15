@@ -260,12 +260,12 @@ describe('sports bracket persistence', () => {
       {
         id: 'generated-match-1',
         eventId: 'generated-event-1',
-        event: { deletedAt: null, publiclyVisible: true, publicationState: 'PUBLISHED' },
+        event: { deletedAt: null, isPubliclyListed: true, publicationState: 'PUBLISHED' },
       },
       {
         id: 'generated-match-2',
         eventId: 'generated-event-2',
-        event: { deletedAt: null, publiclyVisible: false, publicationState: 'DRAFT' },
+        event: { deletedAt: null, isPubliclyListed: false, publicationState: 'DRAFT' },
       },
     ]);
 

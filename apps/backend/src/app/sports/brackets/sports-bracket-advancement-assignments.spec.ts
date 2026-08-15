@@ -38,7 +38,7 @@ describe('SportsBracketAdvancementAssignments', () => {
   ])('assigns an empty %s slot and returns a public invalidation', async (side, field) => {
     const current = sportsBracketMatchRecord({
       id: 'target-1',
-      event: { deletedAt: null, publiclyVisible: true, publicationState: PublicationState.PUBLISHED },
+      event: { deletedAt: null, isPubliclyListed: true, publicationState: PublicationState.PUBLISHED },
     });
     const tx = transaction(current, [{ count: 1 }]);
 

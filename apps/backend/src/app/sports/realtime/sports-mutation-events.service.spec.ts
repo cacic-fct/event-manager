@@ -125,6 +125,38 @@ describe('SportsMutationEventsService', () => {
     expect(realtime.publish).toHaveBeenCalledWith('match:match-2', expect.any(Object));
   });
 
+  it('publishes the match streams for an attendance-driven phase transition', async () => {
+    const prisma = {
+      sportsMatch: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce({ id: 'match-1' })
+          .mockResolvedValueOnce({
+            id: 'match-1',
+            revision: 3,
+            category: { tournamentId: 'tournament-1' },
+            event: { deletedAt: null, isPubliclyListed: true, publicationState: PublicationState.PUBLISHED },
+          }),
+      },
+    };
+    const service = new SportsMutationEventsService(
+      prisma as never,
+      realtime as never,
+      autorouting as never,
+      dashboardInsights as never,
+      defaultRedirect as never,
+      eventEffects as never,
+    );
+
+    await service.publishAttendanceMutation('event-1');
+
+    expect(realtime.publish).toHaveBeenCalledWith(
+      'match:match-1',
+      expect.objectContaining({ type: 'ATHLETE_ATTENDANCE_CHANGED', revision: 3 }),
+    );
+    expect(realtime.publish).toHaveBeenCalledWith('tournament:tournament-1', expect.any(Object));
+  });
+
   it('coordinates projection cache, route, admin, review, and public effects once', async () => {
     autorouting.affectedPeopleForMatch.mockResolvedValueOnce(['person-1']);
     const service = new SportsMutationEventsService(
@@ -154,7 +186,7 @@ describe('SportsMutationEventsService', () => {
           majorEvent: { deletedAt: null, publicationState: PublicationState.PUBLISHED },
         },
       },
-      event: { deletedAt: null, publiclyVisible: true, publicationState: PublicationState.PUBLISHED },
+      event: { deletedAt: null, isPubliclyListed: true, publicationState: PublicationState.PUBLISHED },
     });
 
     expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalledTimes(1);

@@ -290,7 +290,8 @@ model SportsTournament {
   deletedAt   DateTime?
 
   @@index([status])
-  @@index([registrationStartDate, registrationEndDate], map: "sports_tournaments_registrationStartDate_registrationEndDat_idx")
+  // PostgreSQL truncates the original 64-character generated identifier to this name.
+  @@index([registrationStartDate, registrationEndDate], map: "sports_tournaments_registrationStartDate_registrationEndDate_id")
   @@index([finishedAt])
   @@index([deletedAt])
   @@unique([majorEventId], map: "sports_tournaments_active_majorEventId_key", where: { deletedAt: null })

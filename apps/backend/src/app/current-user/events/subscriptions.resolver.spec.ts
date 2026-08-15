@@ -12,7 +12,7 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     jest.clearAllMocks();
   });
 
-  it('lists standalone event subscriptions only through publicly visible events', async () => {
+  it('lists standalone event subscriptions only through publicly listed events', async () => {
     const subscription = {
       event: {
         id: 'event-1',
@@ -60,7 +60,7 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     expect(mapper.mapPublicEvent).toHaveBeenCalledWith(subscription.event);
   });
 
-  it('looks up a current-user event subscription only through publicly visible events', async () => {
+  it('looks up a current-user event subscription only through publicly listed events', async () => {
     const prisma = {
       eventSubscription: {
         findFirst: jest.fn().mockResolvedValue(null),

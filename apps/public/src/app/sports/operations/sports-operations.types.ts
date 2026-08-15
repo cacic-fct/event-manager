@@ -3,6 +3,7 @@ import type {
   SportsEligibilityStatus,
   SportsIdentityType,
   SportsMatchState,
+  SportsOfficialRole,
   SportsRegistrationStatus,
   SportsRosterEntryStatus,
   SportsRosterRole,
@@ -23,6 +24,7 @@ import type {
   OfflineSportsMatchAction,
   OfflineSportsMatchActionType,
   OfflineSportsOperationQueueItem,
+  OfflineSportsOfficialCheckIn,
   OfflineSportsRosterCheckIn,
   OfflineSportsScannerCheckIn,
   OfflineSportsTimerSnapshot,
@@ -63,6 +65,7 @@ export interface SportsOperationalMatch {
   timerAllowOvertime: boolean;
   schedule: SportsOperationalMatchSchedule;
   rosters: SportsOperationsRoster[];
+  officials: SportsOperationsOfficial[];
   notes?: string | null;
   occurrencesJson?: string | null;
 }
@@ -83,6 +86,13 @@ export interface SportsOperationsRoster {
   status: SportsRosterStatus;
   team: SportsTeamSummary;
   entries: SportsOperationsRosterEntry[];
+}
+
+export interface SportsOperationsOfficial {
+  id: string;
+  name: string;
+  role: SportsOfficialRole;
+  checkedInAt?: string | null;
 }
 
 export interface SportsLineupRead {
@@ -114,6 +124,7 @@ export interface SportsLineupRead {
 
 export type SportsMatchAction = OfflineSportsMatchAction;
 export type SportsRosterCheckIn = OfflineSportsRosterCheckIn;
+export type SportsOfficialCheckIn = OfflineSportsOfficialCheckIn;
 export type SportsScannerCheckIn = OfflineSportsScannerCheckIn;
 export type SportsTimerSnapshot = OfflineSportsTimerSnapshot;
 

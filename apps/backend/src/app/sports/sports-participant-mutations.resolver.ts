@@ -2,6 +2,7 @@ import {
   CommitSportsMatchActionsInput,
   SportsMatchRosterUpsertInput,
   SportsOfflineCollectorCredential,
+  SportsOfficialCheckInInput,
   SportsAthleteProfileUpdateInput,
   SportsPlayerApplicationCreateInput,
   SportsRepresentativeApplicationReviewInput,
@@ -182,6 +183,37 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
       input.clientId,
       input.offline ?? false,
       input.present ?? true,
+      operator.actor.id,
+      uploaderUserId,
+      operator.kind === 'ADMIN' ? 'ADMIN' : operator.assignment.role,
+      operator.kind === 'ADMIN' ? authenticated : createSportsAuditActor(operator.actor),
+      {
+        collectorPersonId: input.collectorPersonId,
+        collectorCredential: input.collectorCredential,
+      },
+    );
+    return true;
+  }
+
+  @Mutation(() => Boolean, { name: 'checkInSportsOfficial' })
+  async checkInSportsOfficial(
+    @Args('matchId', { type: () => String }) matchId: string,
+    @Args('input', { type: () => SportsOfficialCheckInInput })
+    input: SportsOfficialCheckInInput,
+    @Context() context: GraphqlContext,
+  ): Promise<boolean> {
+    const operator = await this.access.requireMatchOperator(context, matchId);
+    const authenticated = this.authenticated(context);
+    const uploaderUserId = operator.actor.userId ?? authenticated.sub ?? null;
+    if (operator.kind === 'ADMIN') {
+      await this.assertMatchMutable(matchId, authenticated);
+    }
+    await this.rosters.checkInOfficial(
+      matchId,
+      input.officialAssignmentId,
+      input.checkedInAt,
+      input.clientId,
+      input.offline ?? false,
       operator.actor.id,
       uploaderUserId,
       operator.kind === 'ADMIN' ? 'ADMIN' : operator.assignment.role,

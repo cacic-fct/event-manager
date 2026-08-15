@@ -40,7 +40,7 @@ export class PublicationNode {
   unpublishedAt?: Date | null;
 
   @Field(() => Boolean, { nullable: true })
-  publiclyVisible?: boolean | null;
+  isPubliclyListed?: boolean | null;
 
   @Field(() => String, { nullable: true })
   parentLabel?: string | null;

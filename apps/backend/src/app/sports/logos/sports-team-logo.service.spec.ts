@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { Readable } from 'node:stream';
 import { SportsTeamLogoService } from './sports-team-logo.service';
 
 describe('SportsTeamLogoService representative queue', () => {
@@ -13,6 +14,7 @@ describe('SportsTeamLogoService representative queue', () => {
   const s3 = {
     uploadFile: jest.fn(),
     deleteFile: jest.fn(),
+    downloadFile: jest.fn(),
   };
   const teamChanges = {
     submit: jest.fn(),
@@ -203,5 +205,73 @@ describe('SportsTeamLogoService representative queue', () => {
     expect(result).toMatchObject({ mimeType: 'image/avif', width: 1600, height: 960 });
     const queued = s3.uploadFile.mock.calls[0]?.[1] as Buffer;
     expect((await sharp(queued).metadata()).format).toBe('heif');
+  });
+
+  it('streams the private logo attached to an active review request', async () => {
+    const sha256 = 'c'.repeat(64);
+    const queuedObjectKey = `sports/private/team-logo-review/team-1/request-1/${sha256}.avif`;
+    const stream = Readable.from(['pending-logo']);
+    prisma.sportsTeamChangeRequest.findFirst.mockResolvedValue({
+      delta: {
+        logo: {
+          queuedObjectKey,
+          sha256,
+          mimeType: 'image/avif',
+          sizeBytes: 12,
+        },
+      },
+    });
+    s3.downloadFile.mockResolvedValue({
+      stream,
+      contentType: 'image/avif',
+      contentLength: 12,
+    });
+
+    await expect(createService().downloadPendingReview('team-1', 'request-1')).resolves.toEqual({
+      stream,
+      mimeType: 'image/avif',
+      sizeBytes: 12,
+      sha256,
+    });
+    expect(prisma.sportsTeamChangeRequest.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'request-1',
+        teamId: 'team-1',
+        type: 'LOGO',
+        status: { in: ['PENDING', 'CHANGES_REQUESTED', 'CONFLICT'] },
+      },
+      select: { delta: true },
+    });
+    expect(s3.downloadFile).toHaveBeenCalledWith(queuedObjectKey);
+  });
+
+  it('does not stream a review when its queued logo metadata is invalid', async () => {
+    prisma.sportsTeamChangeRequest.findFirst.mockResolvedValue({
+      delta: { logo: { queuedObjectKey: 'sports/private/not-a-review-object' } },
+    });
+
+    await expect(createService().downloadPendingReview('team-1', 'request-1')).rejects.toThrow(
+      'Pending sports team logo review request-1 was not found.',
+    );
+    expect(s3.downloadFile).not.toHaveBeenCalled();
+  });
+
+  it('does not stream a queued logo belonging to another team', async () => {
+    const sha256 = 'd'.repeat(64);
+    prisma.sportsTeamChangeRequest.findFirst.mockResolvedValue({
+      delta: {
+        logo: {
+          queuedObjectKey: `sports/private/team-logo-review/team-2/request-1/${sha256}.avif`,
+          sha256,
+          mimeType: 'image/avif',
+          sizeBytes: 12,
+        },
+      },
+    });
+
+    await expect(createService().downloadPendingReview('team-1', 'request-1')).rejects.toThrow(
+      'Pending sports team logo review request-1 was not found.',
+    );
+    expect(s3.downloadFile).not.toHaveBeenCalled();
   });
 });

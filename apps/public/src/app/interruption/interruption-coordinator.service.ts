@@ -59,13 +59,20 @@ export class InterruptionCoordinatorService implements OnDestroy {
   private readonly router = inject(Router);
   private readonly checks = new Subject<void>();
   private readonly subscriptions = new Subscription();
+  private readonly handledNormalInterruptionIds = new Set<string>();
 
   private started = false;
   private navigating = false;
 
   constructor() {
     effect(() => {
-      if (this.auth.isAuthenticated() && this.featureFlags.booleanValue('interruptionsEnabled')) {
+      const authenticated = this.auth.isAuthenticated();
+      if (!authenticated) {
+        this.handledNormalInterruptionIds.clear();
+        return;
+      }
+
+      if (this.featureFlags.booleanValue('interruptionsEnabled')) {
         this.requestCheck();
       }
     });
@@ -102,6 +109,10 @@ export class InterruptionCoordinatorService implements OnDestroy {
             !this.featureFlags.booleanValue('interruptionsEnabled')
           ) {
             return;
+          }
+
+          if (interruption.priority === 'NORMAL') {
+            this.handledNormalInterruptionIds.add(interruption.id);
           }
 
           this.navigating = true;
@@ -142,6 +153,15 @@ export class InterruptionCoordinatorService implements OnDestroy {
     interruptions: readonly (Interruption | null)[],
     context: InterruptionContext,
   ): Interruption | null {
-    return selectNextInterruption(interruptions, context);
+    return selectNextInterruption(
+      interruptions.map((interruption) =>
+        interruption &&
+        interruption.priority === 'NORMAL' &&
+        this.handledNormalInterruptionIds.has(interruption.id)
+          ? null
+          : interruption,
+      ),
+      context,
+    );
   }
 }

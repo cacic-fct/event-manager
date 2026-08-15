@@ -123,7 +123,7 @@ export interface PublicEvent {
   isOnlineAttendanceAllowed?: boolean | null;
   onlineAttendanceStartDate?: DateTimeString | null;
   onlineAttendanceEndDate?: DateTimeString | null;
-  publiclyVisible?: boolean | null;
+  isPubliclyListed?: boolean | null;
   youtubeCode?: string | null;
   buttonText?: string | null;
   buttonLink?: string | null;

@@ -94,7 +94,7 @@ const EVENT_RELATION_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,

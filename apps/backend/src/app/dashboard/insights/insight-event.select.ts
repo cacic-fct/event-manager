@@ -50,7 +50,7 @@ export const EVENT_INSIGHT_SELECT = {
   },
   shouldCollectAttendance: true,
   shouldIssueCertificate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: true,
   scheduledPublishAt: true,
   allowSubscription: true,

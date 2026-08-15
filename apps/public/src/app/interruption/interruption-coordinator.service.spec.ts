@@ -61,10 +61,39 @@ describe('InterruptionCoordinatorService', () => {
   it('starts checks, reacts to flow changes and navigation, and stops listening on cleanup', async () => {
     const changes = new Subject<void>();
     const flow = {
-      resolve: vi.fn(() => of(attendance)),
+      resolve: vi.fn(() => of(urgent)),
       changes: () => changes,
     } satisfies InterruptionFlow;
     const { events, router, service } = createService([flow]);
+
+    service.start();
+    expect(router.navigateByUrl).toHaveBeenCalledWith(urgent.target);
+
+    await settleNavigation();
+    router.navigateByUrl.mockClear();
+    changes.next();
+    expect(router.navigateByUrl).toHaveBeenCalledWith(urgent.target);
+
+    await settleNavigation();
+    router.navigateByUrl.mockClear();
+    events.next(new NavigationEnd(1, '/menu', '/menu'));
+    expect(router.navigateByUrl).toHaveBeenCalledWith(urgent.target);
+
+    service.ngOnDestroy();
+    await settleNavigation();
+    router.navigateByUrl.mockClear();
+    changes.next();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat a normal interruption after its first trigger, but allows another normal interruption', async () => {
+    const changes = new Subject<void>();
+    let currentInterruption = attendance;
+    const flow = {
+      resolve: vi.fn(() => of(currentInterruption)),
+      changes: () => changes,
+    } satisfies InterruptionFlow;
+    const { router, service } = createService([flow]);
 
     service.start();
     expect(router.navigateByUrl).toHaveBeenCalledWith(attendance.target);
@@ -72,18 +101,11 @@ describe('InterruptionCoordinatorService', () => {
     await settleNavigation();
     router.navigateByUrl.mockClear();
     changes.next();
-    expect(router.navigateByUrl).toHaveBeenCalledWith(attendance.target);
-
-    await settleNavigation();
-    router.navigateByUrl.mockClear();
-    events.next(new NavigationEnd(1, '/menu', '/menu'));
-    expect(router.navigateByUrl).toHaveBeenCalledWith(attendance.target);
-
-    service.ngOnDestroy();
-    await settleNavigation();
-    router.navigateByUrl.mockClear();
-    changes.next();
     expect(router.navigateByUrl).not.toHaveBeenCalled();
+
+    currentInterruption = requiredForm;
+    changes.next();
+    expect(router.navigateByUrl).toHaveBeenCalledWith(requiredForm.target);
   });
 
   it('isolates a failed flow and still follows a valid interruption', () => {

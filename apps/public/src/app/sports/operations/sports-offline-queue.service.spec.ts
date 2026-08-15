@@ -74,6 +74,32 @@ describe('SportsOfflineQueueService', () => {
     expect(queue.pending()).toEqual([]);
   });
 
+  it('replays an official check-in with the assignment id and original collector proof', async () => {
+    const storage = new InMemorySportsQueueStorage();
+    const checkInOfficial = vi.fn(() => of(true));
+    const queue = createQueue(storage, { checkInOfficial });
+    await queue.enqueueOfficialCheckIn({
+      clientId: 'official-check-in-1',
+      matchId: 'match-1',
+      officialAssignmentId: 'assignment-referee-1',
+      checkedInAt: '2026-08-01T12:05:00.000Z',
+      offline: true,
+    });
+
+    await queue.sync();
+
+    expect(checkInOfficial).toHaveBeenCalledWith({
+      clientId: 'official-check-in-1',
+      matchId: 'match-1',
+      officialAssignmentId: 'assignment-referee-1',
+      checkedInAt: '2026-08-01T12:05:00.000Z',
+      offline: true,
+      collectorPersonId: 'person-official-1',
+      collectorCredential: 'credential-official-1-match-1',
+    });
+    expect(queue.pending()).toEqual([]);
+  });
+
   it('hands a prior user scanner check-in to the current uploader without changing the raw payload', async () => {
     const storage = new InMemorySportsQueueStorage();
     const online = { value: true };

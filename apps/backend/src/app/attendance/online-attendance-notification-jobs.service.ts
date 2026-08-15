@@ -131,7 +131,7 @@ export class OnlineAttendanceNotificationJobsService {
         id: input.eventId,
         deletedAt: null,
         endDate: { gte: now },
-        publiclyVisible: true,
+        isPubliclyListed: true,
         publicationState: PublicationState.PUBLISHED,
         shouldCollectAttendance: true,
         isOnlineAttendanceAllowed: true,

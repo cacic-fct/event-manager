@@ -1,13 +1,30 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType, AuditLogOperation, PublicationState } from '@prisma/client';
+import {
+  AuditLogEntityType,
+  AuditLogOperation,
+  PublicationState,
+  SportsCategoryStatus,
+  SportsTournamentStatus,
+} from '@prisma/client';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { runSerializableSportsTransaction } from '../sports-transaction';
 import { CreateSportsMatchInput } from '../sports-admin.types';
 import { createSportsMatchBackingEvent } from '../sports-match-event-sync';
+import { PublicationTransitionService } from '../../publishing/publishing-transition.service';
 
 import { SportsMatchAdminLifecycleService } from './sports-match-admin-lifecycle.service';
 
 export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
+  constructor(
+    prisma: ConstructorParameters<typeof SportsMatchAdminLifecycleService>[0],
+    frozen: ConstructorParameters<typeof SportsMatchAdminLifecycleService>[1],
+    auditLog: ConstructorParameters<typeof SportsMatchAdminLifecycleService>[2],
+    payments: ConstructorParameters<typeof SportsMatchAdminLifecycleService>[3],
+    private readonly publication: PublicationTransitionService,
+  ) {
+    super(prisma, frozen, auditLog, payments);
+  }
+
   async createMatch(input: CreateSportsMatchInput, actor: AuthenticatedUser) {
     const actorId = this.requireActorId(actor);
     if ((input.startDate && !input.endDate) || (!input.startDate && input.endDate)) {
@@ -63,6 +80,11 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
       const generatedName = this.buildMatchName(category.name, home?.team.name, away?.team.name);
       const requestedName =
         input.name === undefined ? undefined : this.requireText(input.name, 'nome da partida', 2, 160);
+      const publishImmediately =
+        input.publishImmediately === true &&
+        category.status !== SportsCategoryStatus.DRAFT &&
+        category.tournament.status !== SportsTournamentStatus.DRAFT &&
+        category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED;
       const event = input.eventId
         ? await this.attachCompatibleEvent(
             tx,
@@ -86,18 +108,12 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
             majorEventId: category.tournament.majorEventId,
             eventGroupId: category.eventGroupId,
             venue,
-            publiclyVisible: Boolean(home && away),
+            isPubliclyListed: publishImmediately,
             shouldIssueCertificate: category.eventGroup.shouldIssueCertificate,
             publicationState:
-              input.publishImmediately === true &&
-              category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED
-                ? PublicationState.PUBLISHED
-                : PublicationState.DRAFT,
+              publishImmediately ? PublicationState.PUBLISHED : PublicationState.DRAFT,
             publishedAt:
-              input.publishImmediately === true &&
-              category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED
-                ? new Date()
-                : null,
+              publishImmediately ? new Date() : null,
             actorId,
           });
       const match = await tx.sportsMatch.create({
@@ -150,5 +166,58 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
       );
       return match;
     });
+  }
+
+  async publishMatch(matchId: string, actor: AuthenticatedUser): Promise<{ id: string }> {
+    return this.setMatchPublicationState(matchId, PublicationState.PUBLISHED, actor);
+  }
+
+  async unpublishMatch(matchId: string, actor: AuthenticatedUser): Promise<{ id: string }> {
+    return this.setMatchPublicationState(matchId, PublicationState.UNPUBLISHED, actor);
+  }
+
+  private async setMatchPublicationState(
+    matchId: string,
+    state: PublicationState,
+    actor: AuthenticatedUser,
+  ): Promise<{ id: string }> {
+    const match = await this.prisma.sportsMatch.findFirst({
+      where: { id: matchId, deletedAt: null },
+      select: {
+        id: true,
+        eventId: true,
+        category: {
+          select: {
+            status: true,
+            tournament: {
+              select: {
+                status: true,
+                majorEvent: { select: { publicationState: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!match) {
+      throw new NotFoundException(`Sports match ${matchId} was not found.`);
+    }
+
+    await this.frozen.assertEventMutable(match.eventId, actor, 'edit');
+    if (
+      state === PublicationState.PUBLISHED &&
+      (match.category.status === SportsCategoryStatus.DRAFT ||
+        match.category.tournament.status === SportsTournamentStatus.DRAFT ||
+        match.category.tournament.majorEvent.publicationState !== PublicationState.PUBLISHED)
+    ) {
+      throw new BadRequestException(
+        'Publique o grande evento e ative o torneio e a modalidade antes de publicar esta partida.',
+      );
+    }
+
+    await this.publication.setEventPublicationState(match.eventId, state, actor, {
+      isPubliclyListed: state === PublicationState.PUBLISHED,
+    });
+    return { id: match.id };
   }
 }

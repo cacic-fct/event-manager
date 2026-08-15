@@ -6,6 +6,7 @@ import {
   SportsMatchRoster,
   SportsMatchRosterEntry,
   SportsOfficialAssignment,
+  Person,
   SportsRegistration,
   SportsScoreboard,
   SportsStage,
@@ -15,11 +16,12 @@ import {
   SportsTournament,
   SportsTournamentScoreEntry,
 } from '@cacic-fct/shared-data-types';
-import { Prisma } from '@prisma/client';
+import { Prisma, SportsTeamChangeRequestStatus, SportsTeamChangeRequestType } from '@prisma/client';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
 import { toSportsPublicPlayerName } from '../domain/sports-public-name';
 import {
   AdminSportsRegistrationMemberSummary,
+  AdminSportsRegistrationLineupMemberSummary,
   AdminSportsTeamCategoryAssignmentSummary,
   AdminSportsTeamMemberSummary,
   AdminSportsTeamRepresentativeSummary,
@@ -31,6 +33,12 @@ import {
   AdminTeamRecord,
   AdminTournamentRecord,
 } from './sports-read.records';
+
+const REVIEWABLE_TEAM_CHANGE_STATUSES = new Set<SportsTeamChangeRequestStatus>([
+  SportsTeamChangeRequestStatus.PENDING,
+  SportsTeamChangeRequestStatus.CHANGES_REQUESTED,
+  SportsTeamChangeRequestStatus.CONFLICT,
+]);
 
 export class SportsReadAdminMapper {
   mapAdminTournament(record: AdminTournamentRecord): SportsTournament {
@@ -217,6 +225,10 @@ export class SportsReadAdminMapper {
       ...record,
       baseFieldRevisionsJson: this.serializeJson(record.baseFieldRevisions),
       deltaJson: this.serializeJson(record.delta),
+      pendingLogoUrl:
+        record.type === SportsTeamChangeRequestType.LOGO && REVIEWABLE_TEAM_CHANGE_STATUSES.has(record.status)
+          ? `/api/sports/admin/teams/${encodeURIComponent(record.teamId)}/logo-review/${encodeURIComponent(record.id)}`
+          : null,
       resolvedDeltaJson: record.resolvedDelta === null ? null : this.serializeJson(record.resolvedDelta),
     };
   }
@@ -255,6 +267,29 @@ export class SportsReadAdminMapper {
     };
   }
 
+  mapAdminRegistrationLineupMember(
+    record: {
+      id: string;
+      registrationMemberId: string | null;
+      teamMemberId: string;
+      role: AdminSportsRegistrationLineupMemberSummary['role'];
+      eligibility: AdminSportsRegistrationLineupMemberSummary['eligibility'];
+      person: { id: string; name: string };
+    },
+  ): AdminSportsRegistrationLineupMemberSummary {
+    return {
+      id: record.id,
+      registrationMemberId: record.registrationMemberId,
+      teamMemberId: record.teamMemberId,
+      role: record.role,
+      eligibility: record.eligibility,
+      person: {
+        id: record.person.id,
+        name: toSportsPublicPlayerName(record.person.name),
+      },
+    };
+  }
+
   mapAdminRoster(record: Prisma.SportsMatchRosterGetPayload<{ include: { entries: true } }>): SportsMatchRoster {
     return {
       ...record,
@@ -275,9 +310,29 @@ export class SportsReadAdminMapper {
   }
 
   mapAdminOfficial(
-    record: Prisma.SportsOfficialAssignmentGetPayload<{ include: { person: true } }>,
+    record: Omit<SportsOfficialAssignment, 'person'> & {
+      person?: (Pick<Person, 'id' | 'name'> & Partial<Pick<Person, 'email' | 'phone'>>) | null;
+    },
+    includeContacts = true,
   ): SportsOfficialAssignment {
-    return record;
+    if (record.person === undefined) {
+      return record as unknown as SportsOfficialAssignment;
+    }
+    return {
+      ...record,
+      person: record.person
+        ? {
+            id: record.person.id,
+            name: record.person.name,
+            ...(includeContacts
+              ? {
+                  email: record.person.email ?? null,
+                  phone: record.person.phone ?? null,
+                }
+              : {}),
+          }
+        : null,
+    } as SportsOfficialAssignment;
   }
 
   mapAdminScoreEntry(record: Prisma.SportsTournamentScoreEntryGetPayload<object>): SportsTournamentScoreEntry {
