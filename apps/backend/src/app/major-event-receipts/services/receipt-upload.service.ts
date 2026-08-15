@@ -103,7 +103,6 @@ export class ReceiptUploadService {
           select: {
             id: true,
             isPaymentRequired: true,
-            subscriptionEndDate: true,
           },
         },
       },
@@ -115,10 +114,6 @@ export class ReceiptUploadService {
 
     if (!subscription.majorEvent.isPaymentRequired) {
       throw new BadRequestException(`Major event ${majorEventId} does not require receipt upload.`);
-    }
-
-    if (subscription.majorEvent.subscriptionEndDate && new Date() > subscription.majorEvent.subscriptionEndDate) {
-      throw new BadRequestException(`Receipt uploads for major event ${majorEventId} are closed.`);
     }
 
     if (subscription.subscriptionStatus === SubscriptionStatus.CONFIRMED) {

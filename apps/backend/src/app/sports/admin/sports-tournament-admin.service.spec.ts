@@ -90,6 +90,7 @@ describe('SportsTournamentAdminService', () => {
           registrationStartDate: null,
           registrationEndDate: null,
           selfSubscriptionEnabled: false,
+          shouldIssueCertificate: false,
           selfSubscriptionAllowNoTeam: false,
           selfSubscriptionAllowNoCategory: false,
           allowPlayerMultipleTeams: false,

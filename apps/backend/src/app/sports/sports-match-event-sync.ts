@@ -37,6 +37,7 @@ export function createSportsMatchBackingEvent(
     eventGroupId: string;
     venue?: SportsMatchEventVenue | null;
     publiclyVisible: boolean;
+    shouldIssueCertificate?: boolean;
     publicationState?: PublicationState;
     publishedAt?: Date | null;
     actorId: string;
@@ -54,6 +55,7 @@ export function createSportsMatchBackingEvent(
       ...sportsMatchLocation(input.venue),
       allowSubscription: false,
       shouldCollectAttendance: true,
+      shouldIssueCertificate: input.shouldIssueCertificate ?? false,
       publiclyVisible: input.publiclyVisible,
       publicationState: input.publicationState ?? PublicationState.DRAFT,
       publishedAt: input.publishedAt ?? null,

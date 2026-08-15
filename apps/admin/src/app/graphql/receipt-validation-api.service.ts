@@ -99,7 +99,7 @@ export class ReceiptValidationApiService {
         }`,
         { majorEventId },
       )
-      .pipe(map((data) => data.adminReceiptValidationQueue));
+      .pipe(map((data) => normalizeReceiptValidationQueue(data.adminReceiptValidationQueue)));
   }
 
   watchQueue(majorEventId?: string): Observable<ReceiptValidationQueue> {
@@ -108,7 +108,7 @@ export class ReceiptValidationApiService {
       decode: (event) =>
         decodeTypedSseEvent<ReceiptValidationQueue, 'queue'>(event, 'receipt-validation-queue', 'queue'),
       errorMessage: 'Não foi possível acompanhar a fila de comprovantes.',
-    });
+    }).pipe(map((queue) => normalizeReceiptValidationQueue(queue)));
   }
 
   approve(subscriptionId: string, receiptId: string, selectedEventIds?: string[]): Observable<ReceiptValidationResult> {
@@ -161,6 +161,18 @@ export class ReceiptValidationApiService {
       )
       .pipe(map((data) => data.undoAdminReceiptValidationAction));
   }
+}
+
+function normalizeReceiptValidationQueue(queue: ReceiptValidationQueue): ReceiptValidationQueue {
+  return {
+    ...queue,
+    items: Array.isArray(queue?.items)
+      ? queue.items.map((item) => ({
+          ...item,
+          events: Array.isArray(item.events) ? item.events : [],
+        }))
+      : [],
+  };
 }
 
 const RECEIPT_VALIDATION_EVENT_FIELDS = `

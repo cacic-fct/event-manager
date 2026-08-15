@@ -7,7 +7,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -79,6 +79,16 @@ export class EventGroupsResolver {
       publishForBackingEventGroup: async () => undefined,
     } as unknown as SportsMutationEventsService,
   ) {}
+
+  @ResolveField(() => Boolean)
+  async isSportsCategory(@Parent() group: { id: string }): Promise<boolean> {
+    return Boolean(
+      await this.prisma.sportsCategory.findFirst({
+        where: { eventGroupId: group.id, deletedAt: null },
+        select: { id: true },
+      }),
+    );
+  }
 
   @Query(() => [EventGroup], { name: 'eventGroups' })
   @AllowScopedCollectionPermissions()
@@ -225,7 +235,6 @@ export class EventGroupsResolver {
         tx,
         id,
         normalizedInput,
-        this.getUser(context)?.sub,
       );
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
 

@@ -160,10 +160,6 @@ export class Attendances {
   });
 
   majorEventRoute(subscription: CurrentUserMajorEventFeedItem): string[] {
-    if (subscription.majorEvent.sportsTournament && (subscription.selectedEvents?.length ?? 0) === 0) {
-      return ['/tournament', subscription.majorEvent.sportsTournament.id];
-    }
-
     return ['/profile/attendances', 'major-event', subscription.majorEvent.id];
   }
 

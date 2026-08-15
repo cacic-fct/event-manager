@@ -10,7 +10,6 @@ import {
   EventFormTargetType,
   Prisma,
   PublicationState,
-  SubscriptionStatus,
 } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
@@ -216,10 +215,6 @@ export class EventFormListingsService {
                 some: {
                   personId: person.id,
                   deletedAt: null,
-                  subscriptionStatus: SubscriptionStatus.CONFIRMED,
-                  selectedEvents: {
-                    some: { deletedAt: null },
-                  },
                 },
               },
             },

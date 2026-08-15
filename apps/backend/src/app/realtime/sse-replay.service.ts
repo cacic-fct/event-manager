@@ -6,6 +6,10 @@ import { Observable } from 'rxjs';
 const REPLAY_TTL_SECONDS = 15 * 60;
 const MAX_REPLAY_EVENTS = 512;
 const GENERATION_DURATION_MS = 6 * 60 * 60 * 1000;
+const SSE_REPLAY_DATA_ENCODING = 'json-v1';
+
+type StoredDataEncoding = typeof SSE_REPLAY_DATA_ENCODING | 'text-v1';
+
 const SSE_REPLAY_PUBLISH_SCRIPT = `
 -- sse-replay-publish
 local latest = redis.call('LINDEX', KEYS[1], 0)
@@ -34,6 +38,7 @@ interface StoredSseEvent {
   type?: string;
   retry?: number;
   data: string | object;
+  dataEncoding?: StoredDataEncoding;
   fingerprint: string;
 }
 
@@ -128,6 +133,7 @@ export class SseReplayService {
 
   private async publish(scope: string, event: MessageEvent): Promise<StoredSseEvent> {
     const fingerprint = this.fingerprint(event);
+    const serializedData = this.serializeData(event.data);
     const key = this.eventsKey(scope);
     const generation = Math.floor(Date.now() / GENERATION_DURATION_MS).toString(36);
     const stored = await this.redis.eval(
@@ -137,7 +143,8 @@ export class SseReplayService {
       this.sequenceKey(scope, generation),
       fingerprint,
       JSON.stringify({
-        data: event.data,
+        data: serializedData.data,
+        dataEncoding: serializedData.dataEncoding,
         type: event.type,
         retry: event.retry ?? 3_000,
       }),
@@ -181,7 +188,7 @@ export class SseReplayService {
   private toMessageEvent(event: StoredSseEvent): MessageEvent {
     return {
       id: event.id,
-      data: event.data,
+      data: this.deserializeData(event),
       type: event.type,
       retry: event.retry,
     };
@@ -189,8 +196,42 @@ export class SseReplayService {
 
   private fingerprint(event: MessageEvent): string {
     return createHash('sha256')
-      .update(JSON.stringify({ data: event.data, type: event.type, retry: event.retry ?? 3_000 }))
+      .update(
+        JSON.stringify({
+          data: event.data,
+          dataEncoding: SSE_REPLAY_DATA_ENCODING,
+          type: event.type,
+          retry: event.retry ?? 3_000,
+        }),
+      )
       .digest('base64url');
+  }
+
+  private serializeData(data: MessageEvent['data']): {
+    data: string;
+    dataEncoding: StoredDataEncoding;
+  } {
+    if (typeof data === 'string') {
+      return { data, dataEncoding: 'text-v1' };
+    }
+
+    return {
+      data: JSON.stringify(data) ?? 'null',
+      dataEncoding: SSE_REPLAY_DATA_ENCODING,
+    };
+  }
+
+  private deserializeData(event: StoredSseEvent): string | object {
+    if (event.dataEncoding !== SSE_REPLAY_DATA_ENCODING || typeof event.data !== 'string') {
+      return event.data;
+    }
+
+    try {
+      const parsed = JSON.parse(event.data) as unknown;
+      return parsed !== null && typeof parsed === 'object' ? parsed : event.data;
+    } catch {
+      return event.data;
+    }
   }
 
   private isHeartbeat(event: MessageEvent): boolean {

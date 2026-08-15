@@ -1,3 +1,5 @@
+import type { UrlMatcher, UrlSegment } from '@angular/router';
+
 export const SPORTS_WORKSPACE_AREAS = ['categories', 'teams', 'matches', 'reviews'] as const;
 
 export type SportsWorkspaceArea = 'overview' | (typeof SPORTS_WORKSPACE_AREAS)[number];
@@ -13,6 +15,29 @@ export interface SportsWorkspaceRouteState {
 interface RouteParamReader {
   get(name: string): string | null;
 }
+
+export const sportsWorkspaceMatcher: UrlMatcher = (segments) => {
+  if (segments.length < 1 || segments.length > 5 || segments[0]?.path !== 'sports') {
+    return null;
+  }
+
+  const [, tournamentId, area, entityId, matchId] = segments;
+  const posParams: Record<string, UrlSegment> = {};
+  if (tournamentId) {
+    posParams['tournamentId'] = tournamentId;
+  }
+  if (area) {
+    posParams['area'] = area;
+  }
+  if (entityId) {
+    posParams[area?.path === 'matches' ? 'categoryId' : 'entityId'] = entityId;
+  }
+  if (matchId) {
+    posParams['matchId'] = matchId;
+  }
+
+  return { consumed: segments, posParams };
+};
 
 export function parseSportsWorkspaceRoute(params: RouteParamReader): SportsWorkspaceRouteState {
   const tournamentId = params.get('tournamentId');

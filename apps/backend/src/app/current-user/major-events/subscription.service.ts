@@ -598,6 +598,22 @@ export class CurrentUserMajorEventSubscriptionService {
           majorEvent: {
             select: MAJOR_EVENT_BASE_SELECT,
           },
+          teams: {
+            where: {
+              deletedAt: null,
+              representatives: {
+                some: {
+                  personId,
+                  active: true,
+                  revokedAt: null,
+                },
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         },
       }),
     ]);
@@ -614,6 +630,11 @@ export class CurrentUserMajorEventSubscriptionService {
         .filter((majorEventId): majorEventId is string => !!majorEventId),
     );
     const sportsMajorEventIds = new Set(sportsMajorEvents.map(({ majorEventId }) => majorEventId));
+    const representativeTeamsByMajorEventId = new Map(
+      sportsMajorEvents
+        .filter(({ teams }) => teams.length > 0)
+        .map(({ majorEventId, teams }) => [majorEventId, teams] as const),
+    );
     const selectedEventsByMajorEventId = await this.getSelectedEventsByMajorEvent(personId, [
       ...subscribedMajorEventIds,
     ]);
@@ -630,6 +651,7 @@ export class CurrentUserMajorEventSubscriptionService {
         paymentTier: subscription.paymentTier ?? undefined,
         selectedEvents: selectedEventsByMajorEventId.get(subscription.majorEventId) ?? [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(subscription.majorEventId) ?? [],
         participation: {
           isSubscribed: true,
           isLecturer: lecturerMajorEventIds.has(subscription.majorEventId),
@@ -650,6 +672,7 @@ export class CurrentUserMajorEventSubscriptionService {
         majorEvent: this.mapper.mapPublicMajorEvent(event.majorEvent),
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(event.majorEventId) ?? [],
         participation: {
           isSubscribed: false,
           isLecturer: true,
@@ -670,6 +693,7 @@ export class CurrentUserMajorEventSubscriptionService {
         majorEvent: this.mapper.mapPublicMajorEvent(config.majorEvent),
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(config.majorEventId) ?? [],
         participation: {
           isSubscribed: false,
           isLecturer: lecturerMajorEventIds.has(config.majorEventId),
@@ -690,6 +714,7 @@ export class CurrentUserMajorEventSubscriptionService {
         majorEvent: this.mapper.mapPublicMajorEvent(event.majorEvent),
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(event.majorEventId) ?? [],
         participation: {
           isSubscribed: false,
           isLecturer: lecturerMajorEventIds.has(event.majorEventId),
@@ -710,6 +735,7 @@ export class CurrentUserMajorEventSubscriptionService {
         majorEvent: this.mapper.mapPublicMajorEvent(majorEvent),
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(majorEventId) ?? [],
         participation: {
           isSubscribed: false,
           isLecturer: lecturerMajorEventIds.has(majorEventId),

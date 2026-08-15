@@ -5,6 +5,7 @@ export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 export type PriceType = 'SINGLE' | 'TIERED';
 
 export interface EventSummary {
+  isSportsMatch?: boolean;
   id: string;
   eventGroupId: string | null;
   startDate: string;
@@ -73,6 +74,7 @@ export interface MajorEventPrice {
 }
 
 export interface EventGroup {
+  isSportsCategory?: boolean;
   id: string;
   name: string;
   emoji: string;
@@ -90,6 +92,7 @@ export interface EventGroup {
 }
 
 export interface Event {
+  isSportsMatch?: boolean;
   id: string;
   name: string;
   creditMinutes?: number | null;

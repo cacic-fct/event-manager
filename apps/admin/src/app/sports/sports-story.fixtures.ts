@@ -123,6 +123,7 @@ export function createAdminSportsTournamentRead(
   const teams = Array.from({ length: teamCount }, (_, index) => createAdminSportsTeam(index));
   return {
     tournament: {
+      shouldIssueCertificate: true,
       id: 'tournament-1',
       majorEventId: sportsStoryMajorEvent.id,
       status: options.status ?? 'LIVE',

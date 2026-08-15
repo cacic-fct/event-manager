@@ -36,6 +36,9 @@
             <span matListItemTitle class="list-title">
               <lib-twemoji [emoji]="group.emoji" />
               <span>{{ group.name }}</span>
+              @if (group.isSportsCategory) {
+                <mat-icon matTooltip="Modalidade de torneio esportivo" aria-label="Modalidade de torneio esportivo">sports</mat-icon>
+              }
             </span>
             <span matListItemLine>
               @if (workspace.getFirstEventForGroupDisplay(group.id); as firstEvent) {

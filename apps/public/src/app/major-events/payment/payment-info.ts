@@ -12,7 +12,6 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { toSVG } from '@bwip-js/browser';
-import { isBefore, parseISO } from 'date-fns';
 import { forkJoin } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
@@ -154,7 +153,7 @@ export class PaymentInfo {
 
   canUpload(): boolean {
     const subscription = this.readySubscription();
-    if (!subscription || this.isUploading()) {
+    if (!subscription || this.isUploading() || !subscription.majorEvent.isPaymentRequired) {
       return false;
     }
 
@@ -162,8 +161,7 @@ export class PaymentInfo {
       return false;
     }
 
-    const subscriptionEndDate = subscription.majorEvent.subscriptionEndDate;
-    return !subscriptionEndDate || !isBefore(parseISO(subscriptionEndDate), new Date());
+    return true;
   }
 
   private loadPage(): void {
@@ -363,9 +361,10 @@ export class PaymentInfo {
     const prices = subscription.majorEvent.majorEventPrices ?? [];
     const tiers = prices.flatMap((price) => price.tiers);
     const paymentTier = subscription.paymentTier?.trim().toLowerCase();
+    const storedAmount = subscription.amountPaid;
 
     if (paymentTier) {
-      return tiers.find((tier) => tier.name.trim().toLowerCase() === paymentTier)?.value ?? null;
+      return tiers.find((tier) => tier.name.trim().toLowerCase() === paymentTier)?.value ?? storedAmount ?? null;
     }
 
     const singlePrice = prices.find((price) => price.type === 'SINGLE');
@@ -373,7 +372,7 @@ export class PaymentInfo {
       return singlePrice.tiers[0].value;
     }
 
-    return tiers.length === 1 ? tiers[0].value : null;
+    return tiers.length === 1 ? tiers[0].value : storedAmount ?? null;
   }
 
   private normalizeBrCodeText(value: string, maxLength: number): string {

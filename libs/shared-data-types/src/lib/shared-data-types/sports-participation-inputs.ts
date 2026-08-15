@@ -39,6 +39,9 @@ export class SportsTournamentCreateInput {
 
   @Field(() => Boolean, { nullable: true })
   allowPlayerMultipleTeams?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificate?: boolean;
 }
 
 @InputType()
@@ -72,6 +75,9 @@ export class SportsTournamentUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   allowPlayerMultipleTeams?: boolean;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificate?: boolean;
 
   @Field(() => Date, { nullable: true })
   finishedAt?: Date | null;
@@ -159,6 +165,9 @@ export class SportsCategoryCreateInput {
 
   @Field(() => Boolean, { nullable: true })
   allowPlayerMultipleTeams?: boolean | null;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificate?: boolean | null;
 
   @Field(() => SportsAthleteIdentifierMode, { nullable: true })
   athleteIdentifierMode?: SportsAthleteIdentifierMode;
@@ -249,6 +258,9 @@ export class SportsCategoryUpdateInput {
 
   @Field(() => Boolean, { nullable: true })
   allowPlayerMultipleTeams?: boolean | null;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificate?: boolean | null;
 
   @Field(() => SportsAthleteIdentifierMode, { nullable: true })
   athleteIdentifierMode?: SportsAthleteIdentifierMode;

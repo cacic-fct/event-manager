@@ -7,7 +7,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { addHours, subHours } from 'date-fns';
 import {
   AuditLogEntityType,
@@ -106,6 +106,7 @@ const EVENT_BASE_SELECT = {
   eventGroup: {
     select: EVENT_GROUP_SELECT,
   },
+  sportsMatch: { select: { id: true } },
   allowSubscription: true,
   requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
@@ -259,6 +260,11 @@ export class EventsResolver {
       publishForBackingEvent: async () => undefined,
     } as unknown as SportsMutationEventsService,
   ) {}
+
+  @ResolveField(() => Boolean)
+  isSportsMatch(@Parent() event: { sportsMatch?: { id: string } | null }): boolean {
+    return Boolean(event.sportsMatch);
+  }
 
   @Query(() => [Event], { name: 'events' })
   @AllowScopedCollectionPermissions()

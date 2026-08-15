@@ -426,6 +426,12 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       maximumCaptains: category.maximumCaptains ?? 0,
       maximumCoaches: category.maximumCoaches ?? 0,
       allowPlayerMultipleTeams: category.allowPlayerMultipleTeams ?? false,
+      certificatePolicy:
+        category.shouldIssueCertificate === null || category.shouldIssueCertificate === undefined
+          ? 'INHERIT'
+          : category.shouldIssueCertificate
+            ? 'ENABLED'
+            : 'DISABLED',
       athleteIdentifierMode: category.athleteIdentifierMode,
       joiningInstructions: category.joiningInstructions ?? '',
       maximumPeriods: category.maximumPeriods ?? 0,
@@ -459,6 +465,8 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       maximumCaptains: raw.maximumCaptains || null,
       maximumCoaches: raw.maximumCoaches || null,
       allowPlayerMultipleTeams: raw.allowPlayerMultipleTeams,
+      shouldIssueCertificate:
+        raw.certificatePolicy === 'INHERIT' ? null : raw.certificatePolicy === 'ENABLED',
       athleteIdentifierMode: raw.athleteIdentifierMode,
       joiningInstructions: raw.joiningInstructions?.trim() || null,
       periodsEnabled: raw.periodsEnabled,

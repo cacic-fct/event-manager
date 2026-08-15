@@ -61,34 +61,10 @@ export class SportsBackingResourceLifecycleService {
       this.changed(input.id, event.id) ||
       this.changed(input.majorEventId, event.majorEventId) ||
       this.changed(input.eventGroupId, event.eventGroupId) ||
-      this.changed(input.creditMinutes, event.creditMinutes) ||
-      this.changed(input.emoji, event.emoji) ||
-      this.changed(input.type, event.type) ||
       this.changed(input.latitude, event.latitude) ||
       this.changed(input.longitude, event.longitude) ||
       this.changed(input.locationDescription, event.locationDescription) ||
-      this.changed(input.allowSubscription, event.allowSubscription) ||
-      this.changed(input.requiresImageLicenseAgreement, event.requiresImageLicenseAgreement) ||
-      this.changed(input.subscriptionStartDate, event.subscriptionStartDate) ||
-      this.changed(input.subscriptionEndDate, event.subscriptionEndDate) ||
-      this.changed(input.slots, event.slots) ||
-      this.changed(input.autoSubscribe, event.autoSubscribe) ||
-      this.changed(input.shouldIssueCertificate, event.shouldIssueCertificate) ||
-      this.changed(
-        input.shouldIssueCertificateForNonPayingAttendees,
-        event.shouldIssueCertificateForNonPayingAttendees,
-      ) ||
-      this.changed(
-        input.shouldIssueCertificateForNonSubscribedAttendees,
-        event.shouldIssueCertificateForNonSubscribedAttendees,
-      ) ||
-      this.changed(input.shouldCollectAttendance, event.shouldCollectAttendance) ||
-      this.changed(input.isOnlineAttendanceAllowed, event.isOnlineAttendanceAllowed) ||
-      this.changed(input.shouldProvideSubscriberListToLecturer, event.shouldProvideSubscriberListToLecturer) ||
-      this.changed(input.onlineAttendanceCode, event.onlineAttendanceCode) ||
-      this.changed(input.onlineAttendanceStartDate, event.onlineAttendanceStartDate) ||
-      this.changed(input.onlineAttendanceEndDate, event.onlineAttendanceEndDate) ||
-      this.changed(input.youtubeCode, event.youtubeCode);
+      this.changed(input.shouldIssueCertificate, event.shouldIssueCertificate);
 
     if (changesOwnership) {
       throw new ConflictException(
@@ -113,16 +89,19 @@ export class SportsBackingResourceLifecycleService {
     tx: TransactionClient,
     eventGroupId: string,
     input: EventGroupUpdateInput,
-    actorId: string | undefined,
   ): Promise<void> {
     const category = await tx.sportsCategory.findFirst({
       where: { eventGroupId, deletedAt: null },
       select: {
-        id: true,
-        name: true,
-        division: true,
-        revision: true,
-        tournamentId: true,
+        eventGroup: {
+          select: {
+            shouldIssueCertificate: true,
+            shouldIssueCertificateForNonPayingAttendees: true,
+            shouldIssueCertificateForNonSubscribedAttendees: true,
+            shouldIssueCertificateForEachEvent: true,
+            shouldIssuePartialCertificate: true,
+          },
+        },
       },
     });
     if (!category) return;
@@ -132,37 +111,21 @@ export class SportsBackingResourceLifecycleService {
         'Este grupo representa uma modalidade esportiva. O identificador do grupo não pode ser alterado.',
       );
     }
-    if (input.name === undefined || input.name === category.name) return;
-
-    const normalizedName = input.name.trim();
-    if (normalizedName.length < 2 || normalizedName.length > 160 || normalizedName !== input.name) {
+    const certificateSettingsChanged =
+      input.shouldIssueCertificate !== undefined ||
+      input.shouldIssueCertificateForNonPayingAttendees !== undefined ||
+      input.shouldIssueCertificateForNonSubscribedAttendees !== undefined ||
+      input.shouldIssueCertificateForEachEvent !== undefined ||
+      input.shouldIssuePartialCertificate !== undefined;
+    if (certificateSettingsChanged) {
       throw new ConflictException(
-        'Use um nome de modalidade entre 2 e 160 caracteres, sem espaços no início ou no fim.',
+        'Este grupo representa uma modalidade esportiva. Altere os certificados pela administração esportiva.',
       );
     }
-    const duplicate = await tx.sportsCategory.findFirst({
-      where: {
-        id: { not: category.id },
-        tournamentId: category.tournamentId,
-        division: category.division,
-        name: { equals: normalizedName, mode: 'insensitive' },
-        deletedAt: null,
-      },
-      select: { id: true },
-    });
-    if (duplicate) {
-      throw new ConflictException('Já existe uma modalidade com este nome e divisão no torneio.');
-    }
-    const updated = await tx.sportsCategory.updateMany({
-      where: { id: category.id, revision: category.revision, deletedAt: null },
-      data: {
-        name: normalizedName,
-        revision: { increment: 1 },
-        updatedById: actorId,
-      },
-    });
-    if (updated.count !== 1) {
-      throw new ConflictException('A modalidade mudou. Recarregue e tente novamente.');
+    if (input.name !== undefined) {
+      throw new ConflictException(
+        'Este grupo representa uma modalidade esportiva. Altere o nome pela administração esportiva.',
+      );
     }
   }
 

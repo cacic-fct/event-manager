@@ -95,6 +95,14 @@ export class MoreInfo {
     return ['/major-event', detail.targetId, 'payment'];
   }
 
+  sportsPanelRoute(detail: DetailViewModel): string[] {
+    return ['/tournament', detail.sportsTournamentId ?? ''];
+  }
+
+  representativeTeamRoute(teamId: string): string[] {
+    return ['/sports', 'team', teamId];
+  }
+
   organizerInfoRoute(detail: DetailViewModel): string[] {
     return ['/profile', 'attendances', detail.targetType, detail.targetId, 'organizer'];
   }

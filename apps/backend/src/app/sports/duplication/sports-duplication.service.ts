@@ -91,6 +91,7 @@ export class SportsDuplicationService {
           registrationEndDate: null,
           scoringMode: source.scoringMode,
           selfSubscriptionEnabled: false,
+          shouldIssueCertificate: false,
           allowPlayerMultipleTeams: source.allowPlayerMultipleTeams,
           createdById: actorId,
           updatedById: actorId,
@@ -101,8 +102,9 @@ export class SportsDuplicationService {
         for (const category of source.categories) {
           const eventGroup = await tx.eventGroup.create({
             data: {
-              name: category.name,
+              name: this.backingEventGroupName(destinationMajorEvent.name, category.name, category.division),
               emoji: sportsDuplicationEmoji(category.sport),
+              shouldIssueCertificate: false,
               createdById: actorId,
               updatedById: actorId,
             },
@@ -124,6 +126,7 @@ export class SportsDuplicationService {
               maximumCaptains: category.maximumCaptains,
               maximumCoaches: category.maximumCoaches,
               allowPlayerMultipleTeams: category.allowPlayerMultipleTeams,
+              shouldIssueCertificate: null,
               athleteIdentifierMode: category.athleteIdentifierMode,
               joiningInstructions: parts.rules ? category.joiningInstructions : null,
               periodsEnabled: category.periodsEnabled,
@@ -303,6 +306,7 @@ export class SportsDuplicationService {
         }),
         tx.sportsTournament.findFirst({
           where: { id: input.destinationTournamentId, deletedAt: null },
+          include: { majorEvent: { select: { name: true } } },
         }),
       ]);
       if (!source || !destination) {
@@ -311,8 +315,9 @@ export class SportsDuplicationService {
       const name = input.name?.trim() || source.name;
       const eventGroup = await tx.eventGroup.create({
         data: {
-          name,
+          name: this.backingEventGroupName(destination.majorEvent?.name ?? 'Torneio esportivo', name, source.division),
           emoji: source.eventGroup.emoji,
+          shouldIssueCertificate: destination.shouldIssueCertificate,
           createdById: actorId,
           updatedById: actorId,
         },
@@ -334,6 +339,7 @@ export class SportsDuplicationService {
           maximumCaptains: source.maximumCaptains,
           maximumCoaches: source.maximumCoaches,
           allowPlayerMultipleTeams: source.allowPlayerMultipleTeams,
+          shouldIssueCertificate: null,
           athleteIdentifierMode: source.athleteIdentifierMode,
           joiningInstructions: source.joiningInstructions,
           periodsEnabled: source.periodsEnabled,
@@ -437,6 +443,10 @@ export class SportsDuplicationService {
 
   private toJson(value: Prisma.JsonValue): Prisma.InputJsonValue {
     return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  }
+
+  private backingEventGroupName(majorEventName: string, categoryName: string, division?: string | null): string {
+    return [majorEventName, categoryName, division?.trim() || null].filter(Boolean).join(' — ');
   }
 
   private sanitizeStageSettings(value: Prisma.JsonValue): Prisma.InputJsonValue {

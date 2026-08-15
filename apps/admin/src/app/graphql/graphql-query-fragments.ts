@@ -1,5 +1,6 @@
 export const EVENT_LIST_FIELDS = `
   id
+  isSportsMatch
   name
   startDate
   endDate
@@ -23,6 +24,7 @@ export const EVENT_LIST_FIELDS = `
 
 export const EVENT_DETAIL_FIELDS = `
   id
+  isSportsMatch
   name
   creditMinutes
   startDate
@@ -204,6 +206,7 @@ export const MAJOR_EVENT_CERTIFICATE_TARGET_FIELDS = `
 
 export const EVENT_GROUP_FIELDS = `
   id
+  isSportsCategory
   name
   emoji
   requiresImageLicenseAgreement

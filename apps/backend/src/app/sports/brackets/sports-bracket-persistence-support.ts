@@ -44,7 +44,7 @@ export abstract class SportsBracketPersistenceSupport {
       category: {
         id: string;
         eventGroupId: string;
-        eventGroup: { emoji: string };
+        eventGroup: { emoji: string; shouldIssueCertificate: boolean };
         tournament: {
           majorEventId: string;
           majorEvent: {
@@ -73,6 +73,7 @@ export abstract class SportsBracketPersistenceSupport {
       majorEventId: input.category.tournament.majorEventId,
       eventGroupId: input.category.eventGroupId,
       publiclyVisible: false,
+      shouldIssueCertificate: input.category.eventGroup.shouldIssueCertificate,
       publicationState: PublicationState.DRAFT,
       actorId: input.actorId,
     });

@@ -1208,6 +1208,18 @@ export class CertificatesService {
       return 'Ministrante';
     }
 
+    const sportsLabels: Partial<Record<CertificateIssuedTo, string>> = {
+      SPORTS_PLAYER: 'Atleta',
+      SPORTS_CAPTAIN: 'Capitão',
+      SPORTS_COACH: 'Técnico',
+      SPORTS_REFEREE: 'Árbitro',
+      SPORTS_INTERMEDIATOR: 'Intermediador',
+      SPORTS_SCOREKEEPER: 'Mesário',
+    };
+    if (issuedTo in sportsLabels) {
+      return sportsLabels[issuedTo as CertificateIssuedTo] ?? null;
+    }
+
     return customLabel?.trim() || null;
   }
 

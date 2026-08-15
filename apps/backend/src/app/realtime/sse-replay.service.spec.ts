@@ -73,6 +73,34 @@ describe('SseReplayService', () => {
     subscription.unsubscribe();
   });
 
+  it('preserves empty arrays when structured event data passes through Redis replay', async () => {
+    const redis = new InMemoryRedisClient();
+    const evalSpy = jest.spyOn(redis, 'eval');
+    const service = new SseReplayService(redis as never);
+    const scope = service.scope('receipt-validation-queue', 'major-1');
+    const data = {
+      type: 'receipt-validation-queue',
+      queue: {
+        pendingCount: 1,
+        items: [{ events: [] }],
+      },
+      empty: [],
+    };
+
+    const recorded = await service.record(scope, { data });
+    const storedInput = JSON.parse(String(evalSpy.mock.calls[0]?.[5])) as {
+      data: unknown;
+      dataEncoding: string;
+    };
+
+    expect(storedInput).toMatchObject({
+      data: JSON.stringify(data),
+      dataEncoding: 'json-v1',
+    });
+    expect(recorded.data).toEqual(data);
+    await expect(firstValueFrom(service.replay(scope, undefined, NEVER).pipe(take(1)))).resolves.toEqual(recorded);
+  });
+
   it('buffers live events emitted while the initial replay is being read', async () => {
     const redis = new InMemoryRedisClient();
     const originalLrange = redis.lrange.bind(redis);

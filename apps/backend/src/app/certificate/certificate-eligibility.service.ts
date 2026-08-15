@@ -221,6 +221,7 @@ export class CertificateEligibilityService {
           majorEventId: config.majorEventId,
           deletedAt: null,
           shouldIssueCertificate: true,
+          sportsMatch: { is: null },
         },
         select: EVENT_SELECT,
         orderBy: {
@@ -455,6 +456,7 @@ export class CertificateEligibilityService {
         majorEventId: majorEvent.id,
         deletedAt: null,
         shouldIssueCertificate: true,
+        sportsMatch: { is: null },
         OR: [
           {
             eventGroupId: null,

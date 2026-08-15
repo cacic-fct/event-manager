@@ -28,6 +28,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
       selfSubscriptionAllowNoTeam?: boolean;
       selfSubscriptionAllowNoCategory?: boolean;
       allowPlayerMultipleTeams?: boolean;
+      shouldIssueCertificate?: boolean;
       scoringMode?: SportsScoringMode;
     },
     actor: AuthenticatedUser,
@@ -60,6 +61,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
               selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam ?? false,
               selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory ?? false,
               allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? false,
+              shouldIssueCertificate: input.shouldIssueCertificate ?? false,
               scoringMode: input.scoringMode ?? SportsScoringMode.PER_SPORT,
               revision: { increment: 1 },
               updatedById: actorId,
@@ -75,6 +77,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
               selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam ?? false,
               selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory ?? false,
               allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? false,
+              shouldIssueCertificate: input.shouldIssueCertificate ?? false,
               scoringMode: input.scoringMode ?? SportsScoringMode.PER_SPORT,
               createdById: actorId,
               updatedById: actorId,
@@ -128,6 +131,7 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
           selfSubscriptionAllowNoTeam: input.selfSubscriptionAllowNoTeam ?? false,
           selfSubscriptionAllowNoCategory: input.selfSubscriptionAllowNoCategory ?? false,
           allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? false,
+          shouldIssueCertificate: input.shouldIssueCertificate ?? false,
           scoringMode: input.scoringMode ?? SportsScoringMode.PER_SPORT,
           createdById: actorId,
           updatedById: actorId,
@@ -208,6 +212,9 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
           ...(input.allowPlayerMultipleTeams !== undefined
             ? { allowPlayerMultipleTeams: input.allowPlayerMultipleTeams }
             : {}),
+          ...(input.shouldIssueCertificate !== undefined
+            ? { shouldIssueCertificate: input.shouldIssueCertificate }
+            : {}),
           ...(input.scoringMode !== undefined ? { scoringMode: input.scoringMode } : {}),
           ...(input.finishedAt !== undefined
             ? { finishedAt: input.finishedAt }
@@ -222,6 +229,23 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
       });
       if (updated.count !== 1) {
         throw new ConflictException('O torneio mudou. Recarregue os dados e tente novamente.');
+      }
+      if (input.shouldIssueCertificate !== undefined) {
+        const categories = await tx.sportsCategory.findMany({
+          where: { tournamentId, deletedAt: null },
+          select: { eventGroupId: true, shouldIssueCertificate: true },
+        });
+        for (const category of categories) {
+          if (category.shouldIssueCertificate !== null) continue;
+          await tx.eventGroup.updateMany({
+            where: { id: category.eventGroupId, deletedAt: null },
+            data: { shouldIssueCertificate: input.shouldIssueCertificate, updatedById: actorId },
+          });
+          await tx.event.updateMany({
+            where: { eventGroupId: category.eventGroupId, sportsMatch: { isNot: null }, deletedAt: null },
+            data: { shouldIssueCertificate: input.shouldIssueCertificate, updatedById: actorId },
+          });
+        }
       }
       const result = await tx.sportsTournament.findUniqueOrThrow({
         where: { id: tournamentId },

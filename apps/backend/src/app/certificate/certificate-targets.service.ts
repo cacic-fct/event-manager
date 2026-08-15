@@ -1,10 +1,11 @@
-import { CertificateScope } from '@cacic-fct/shared-data-types';
+import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AccessibleEventGrantTargets } from '../authorization/authorization-policy.service';
 import { EVENT_GROUP_SELECT, EVENT_SELECT, MAJOR_EVENT_SELECT } from './certificate.constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import { isAutomaticSportsCertificateIssuedTo } from './certificate-sports-roles';
 
 @Injectable()
 export class CertificateTargetsService {
@@ -105,7 +106,6 @@ export class CertificateTargetsService {
       events: {
         some: {
           deletedAt: null,
-          majorEventId: null,
           shouldIssueCertificate: true,
         },
       },
@@ -169,23 +169,22 @@ export class CertificateTargetsService {
     const normalizedQuery = query?.trim();
     const where: Prisma.MajorEventWhereInput = {
       deletedAt: null,
-      events: {
-        some: {
-          deletedAt: null,
-          shouldIssueCertificate: true,
-          OR: [
-            {
-              eventGroupId: null,
+      OR: [
+        { sportsTournament: { shouldIssueCertificate: true, deletedAt: null } },
+        {
+          events: {
+            some: {
+              deletedAt: null,
+              majorEventId: null,
+              shouldIssueCertificate: true,
+              OR: [
+                { eventGroupId: null },
+                { eventGroup: { deletedAt: null, shouldIssueCertificate: true } },
+              ],
             },
-            {
-              eventGroup: {
-                deletedAt: null,
-                shouldIssueCertificate: true,
-              },
-            },
-          ],
+          },
         },
-      },
+      ],
     };
     if (accessibleTargets) {
       if (accessibleTargets.majorEventIds.size === 0) {
@@ -237,7 +236,10 @@ export class CertificateTargetsService {
     });
   }
 
-  async assertIssuableTarget(scope: CertificateScope, targetId: string) {
+  async assertIssuableTarget(scope: CertificateScope, targetId: string, issuedTo?: CertificateIssuedTo) {
+    if (issuedTo && isAutomaticSportsCertificateIssuedTo(issuedTo)) {
+      return this.assertIssuableSportsTarget(scope, targetId);
+    }
     if (scope === CertificateScope.EVENT) {
       const event = await this.prisma.event.findFirst({
         where: {
@@ -300,16 +302,10 @@ export class CertificateTargetsService {
             some: {
               deletedAt: null,
               shouldIssueCertificate: true,
+              sportsMatch: { is: null },
               OR: [
-                {
-                  eventGroupId: null,
-                },
-                {
-                  eventGroup: {
-                    deletedAt: null,
-                    shouldIssueCertificate: true,
-                  },
-                },
+                { eventGroupId: null },
+                { eventGroup: { deletedAt: null, shouldIssueCertificate: true } },
               ],
             },
           },
@@ -321,6 +317,49 @@ export class CertificateTargetsService {
         throw new NotFoundException(`Major event ${targetId} cannot issue certificates.`);
       }
     }
+  }
+
+  private async assertIssuableSportsTarget(scope: CertificateScope, targetId: string): Promise<void> {
+    if (scope === CertificateScope.MAJOR_EVENT) {
+      const tournament = await this.prisma.sportsTournament.findFirst({
+        where: { majorEventId: targetId, shouldIssueCertificate: true, deletedAt: null },
+        select: { id: true },
+      });
+      if (tournament) return;
+    }
+    if (scope === CertificateScope.EVENT_GROUP) {
+      const category = await this.prisma.sportsCategory.findFirst({
+        where: {
+          eventGroupId: targetId,
+          deletedAt: null,
+          OR: [
+            { shouldIssueCertificate: true },
+            { shouldIssueCertificate: null, tournament: { shouldIssueCertificate: true, deletedAt: null } },
+          ],
+        },
+        select: { id: true },
+      });
+      if (category) return;
+    }
+    if (scope === CertificateScope.EVENT) {
+      const match = await this.prisma.sportsMatch.findFirst({
+        where: {
+          eventId: targetId,
+          deletedAt: null,
+          event: { shouldIssueCertificate: true, deletedAt: null },
+          category: {
+            deletedAt: null,
+            OR: [
+              { shouldIssueCertificate: true },
+              { shouldIssueCertificate: null, tournament: { shouldIssueCertificate: true, deletedAt: null } },
+            ],
+          },
+        },
+        select: { id: true },
+      });
+      if (match) return;
+    }
+    throw new NotFoundException(`Sports certificate target ${targetId} is disabled or unavailable.`);
   }
 
   private applyAccessibleEventTargets(

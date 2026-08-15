@@ -22,6 +22,7 @@ export interface CreateSportsTournamentInput {
   selfSubscriptionAllowNoTeam?: boolean;
   selfSubscriptionAllowNoCategory?: boolean;
   allowPlayerMultipleTeams?: boolean;
+  shouldIssueCertificate?: boolean;
   scoringMode?: SportsScoringMode;
 }
 
@@ -35,6 +36,7 @@ export interface UpdateSportsTournamentInput {
   selfSubscriptionAllowNoTeam?: boolean;
   selfSubscriptionAllowNoCategory?: boolean;
   allowPlayerMultipleTeams?: boolean;
+  shouldIssueCertificate?: boolean;
   scoringMode?: SportsScoringMode;
 }
 
@@ -55,6 +57,7 @@ export interface CreateSportsCategoryInput {
   maximumCaptains?: number | null;
   maximumCoaches?: number | null;
   allowPlayerMultipleTeams?: boolean | null;
+  shouldIssueCertificate?: boolean | null;
   athleteIdentifierMode?: SportsAthleteIdentifierMode;
   joiningInstructions?: string | null;
   periodsEnabled?: boolean;

@@ -40,8 +40,9 @@ describe('SportsCategoryAdminService', () => {
     expect(frozen.assertMajorEventMutable).toHaveBeenCalledWith('major-event-1', actor, 'edit');
     expect(tx.eventGroup.create).toHaveBeenCalledWith({
       data: {
-        name: 'Futsal',
+        name: 'Torneio esportivo — Futsal',
         emoji: '⚽',
+        shouldIssueCertificate: false,
         createdById: 'admin-1',
         updatedById: 'admin-1',
       },
@@ -87,7 +88,12 @@ describe('SportsCategoryAdminService', () => {
     expect(frozen.assertEventGroupMutable).toHaveBeenCalledWith('event-group-1', actor, 'edit');
     expect(tx.eventGroup.update).toHaveBeenCalledWith({
       where: { id: 'event-group-1' },
-      data: { name: 'Futsal', emoji: '🥅', updatedById: 'admin-1' },
+      data: {
+        name: 'Torneio esportivo — Futsal',
+        emoji: '🥅',
+        shouldIssueCertificate: false,
+        updatedById: 'admin-1',
+      },
     });
   });
 
@@ -146,7 +152,7 @@ describe('SportsCategoryAdminService', () => {
     expect(frozen.assertEventGroupMutable).toHaveBeenCalledWith('event-group-1', actor, 'edit');
     expect(tx.eventGroup.update).toHaveBeenCalledWith({
       where: { id: 'event-group-1' },
-      data: { name: 'Futsal Universitário', emoji: '🥅', updatedById: 'admin-1' },
+      data: { name: 'Torneio esportivo — Futsal Universitário', emoji: '🥅', updatedById: 'admin-1' },
     });
     expect(auditLog.record).toHaveBeenCalledWith(
       expect.objectContaining({

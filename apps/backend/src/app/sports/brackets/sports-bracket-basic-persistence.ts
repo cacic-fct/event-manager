@@ -16,7 +16,7 @@ export abstract class SportsBracketBasicPersistence extends SportsBracketElimina
       id: string;
       name: string;
       eventGroupId: string;
-      eventGroup: { emoji: string };
+      eventGroup: { emoji: string; shouldIssueCertificate: boolean };
       tournament: {
         majorEventId: string;
         majorEvent: {
@@ -110,7 +110,7 @@ export abstract class SportsBracketBasicPersistence extends SportsBracketElimina
       id: string;
       name: string;
       eventGroupId: string;
-      eventGroup: { emoji: string };
+      eventGroup: { emoji: string; shouldIssueCertificate: boolean };
       standingsRules: Prisma.JsonValue;
       tournament: {
         majorEventId: string;

@@ -349,6 +349,7 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
         },
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: [],
         participation: {
           isSubscribed: false,
           isLecturer: false,
@@ -384,6 +385,7 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
           {
             majorEventId: majorEvent.id,
             majorEvent,
+            teams: [{ id: 'team-1', name: 'Equipe Azul' }],
           },
         ]),
       },
@@ -400,6 +402,7 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
         majorEvent,
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: [{ id: 'team-1', name: 'Equipe Azul' }],
         participation: {
           isSubscribed: false,
           isLecturer: false,

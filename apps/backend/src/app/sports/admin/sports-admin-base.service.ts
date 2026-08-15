@@ -15,6 +15,7 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
       name?: string;
       startDate?: Date;
       endDate?: Date;
+      shouldIssueCertificate: boolean;
       venue: {
         name: string;
         courtLabel: string | null;
@@ -55,6 +56,7 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
         startDate,
         endDate,
         shouldCollectAttendance: true,
+        shouldIssueCertificate: scope.shouldIssueCertificate,
         allowSubscription: false,
         ...(scope.venue
           ? {

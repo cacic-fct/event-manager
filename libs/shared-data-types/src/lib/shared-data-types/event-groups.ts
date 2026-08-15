@@ -2,6 +2,9 @@ import { Field, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class EventGroup {
+  @Field(() => Boolean)
+  isSportsCategory?: boolean;
+
   @Field(() => String)
   id!: string;
 

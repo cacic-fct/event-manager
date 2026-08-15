@@ -26,7 +26,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
 
     const tournament = await this.prisma.sportsTournament.findFirst({
       where: { id: input.tournamentId, deletedAt: null },
-      select: { majorEventId: true },
+      select: { majorEventId: true, shouldIssueCertificate: true, majorEvent: { select: { name: true } } },
     });
     if (!tournament) {
       throw new NotFoundException(`Sports tournament ${input.tournamentId} was not found.`);
@@ -61,8 +61,9 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           })
         : await tx.eventGroup.create({
             data: {
-              name,
+              name: this.backingEventGroupName(tournament.majorEvent?.name ?? 'Torneio esportivo', name, input.division),
               emoji: input.emoji?.trim() || this.defaultSportEmoji(input.sport),
+              shouldIssueCertificate: input.shouldIssueCertificate ?? tournament.shouldIssueCertificate ?? false,
               createdById: actorId,
               updatedById: actorId,
             },
@@ -74,8 +75,9 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         await tx.eventGroup.update({
           where: { id: eventGroup.id },
           data: {
-            name,
+            name: this.backingEventGroupName(tournament.majorEvent?.name ?? 'Torneio esportivo', name, input.division),
             ...(input.emoji?.trim() ? { emoji: input.emoji.trim() } : {}),
+            shouldIssueCertificate: input.shouldIssueCertificate ?? tournament.shouldIssueCertificate ?? false,
             updatedById: actorId,
           },
         });
@@ -97,6 +99,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           maximumCaptains: input.maximumCaptains ?? null,
           maximumCoaches: input.maximumCoaches ?? null,
           allowPlayerMultipleTeams: input.allowPlayerMultipleTeams ?? null,
+          shouldIssueCertificate: input.shouldIssueCertificate ?? null,
           athleteIdentifierMode: input.athleteIdentifierMode ?? SportsAthleteIdentifierMode.SHIRT_NUMBER,
           joiningInstructions: joiningInstructions ?? null,
           periodsEnabled: input.periodsEnabled ?? false,
@@ -167,7 +170,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
       where: { id: categoryId, deletedAt: null },
       include: {
         eventGroup: true,
-        tournament: { select: { majorEventId: true } },
+        tournament: { select: { majorEventId: true, majorEvent: { select: { name: true } } } },
       },
     });
     if (!existing) {
@@ -247,6 +250,9 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
           ...(input.allowPlayerMultipleTeams !== undefined
             ? { allowPlayerMultipleTeams: input.allowPlayerMultipleTeams }
             : {}),
+          ...(input.shouldIssueCertificate !== undefined
+            ? { shouldIssueCertificate: input.shouldIssueCertificate }
+            : {}),
           ...(input.athleteIdentifierMode !== undefined ? { athleteIdentifierMode: input.athleteIdentifierMode } : {}),
           ...(joiningInstructions !== undefined ? { joiningInstructions } : {}),
           ...(input.periodsEnabled !== undefined ? { periodsEnabled: input.periodsEnabled } : {}),
@@ -274,19 +280,46 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
       if (updated.count !== 1) {
         throw new ConflictException('A modalidade mudou. Recarregue e tente novamente.');
       }
-      if (name !== undefined || input.emoji !== undefined) {
+      if (name !== undefined || input.division !== undefined || input.emoji !== undefined || input.shouldIssueCertificate !== undefined) {
+        const tournamentPolicy = input.shouldIssueCertificate === null
+          ? await tx.sportsTournament.findUniqueOrThrow({
+              where: { id: existing.tournamentId },
+              select: { shouldIssueCertificate: true },
+            })
+          : null;
+        const effectiveCertificatePolicy =
+          input.shouldIssueCertificate === undefined
+            ? false
+            : input.shouldIssueCertificate ?? tournamentPolicy?.shouldIssueCertificate ?? false;
         await tx.eventGroup.update({
           where: { id: existing.eventGroupId },
           data: {
-            ...(name !== undefined ? { name } : {}),
+            ...(name !== undefined || input.division !== undefined
+              ? {
+                  name: this.backingEventGroupName(
+                    existing.tournament.majorEvent?.name ?? 'Torneio esportivo',
+                    name ?? existing.name,
+                    input.division === undefined ? existing.division : input.division,
+                  ),
+                }
+              : {}),
             ...(input.emoji !== undefined
               ? {
                   emoji: input.emoji.trim() || this.defaultSportEmoji(input.sport ?? existing.sport),
                 }
               : {}),
+            ...(input.shouldIssueCertificate !== undefined
+              ? { shouldIssueCertificate: effectiveCertificatePolicy }
+              : {}),
             updatedById: actorId,
           },
         });
+        if (input.shouldIssueCertificate !== undefined) {
+          await tx.event.updateMany({
+            where: { eventGroupId: existing.eventGroupId, sportsMatch: { isNot: null }, deletedAt: null },
+            data: { shouldIssueCertificate: effectiveCertificatePolicy, updatedById: actorId },
+          });
+        }
       }
       const result = await tx.sportsCategory.findUniqueOrThrow({
         where: { id: categoryId },
@@ -310,6 +343,10 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
       );
       return result;
     });
+  }
+
+  private backingEventGroupName(majorEventName: string, categoryName: string, division?: string | null): string {
+    return [majorEventName, categoryName, division?.trim() || null].filter(Boolean).join(' — ');
   }
 
   async deleteCategory(categoryId: string, expectedRevision: number, actor: AuthenticatedUser): Promise<void> {

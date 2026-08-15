@@ -79,45 +79,28 @@ describe('SportsBackingResourceLifecycleService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
     await expect(
       service.assertEventUpdateAllowed(tx as never, 'event-1', { allowSubscription: true }),
-    ).rejects.toBeInstanceOf(ConflictException);
+    ).resolves.toBeUndefined();
     await expect(
       service.assertEventUpdateAllowed(tx as never, 'event-1', { locationDescription: 'Outra quadra' }),
     ).rejects.toBeInstanceOf(ConflictException);
     await expect(
       service.assertEventUpdateAllowed(tx as never, 'event-1', { youtubeCode: 'outro-video' }),
-    ).rejects.toBeInstanceOf(ConflictException);
+    ).resolves.toBeUndefined();
     await expect(
       service.assertEventUpdateAllowed(tx as never, 'event-1', { shouldIssueCertificate: true }),
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('synchronizes a generic event-group rename into its sports category', async () => {
+  it('keeps sports category naming owned by the sports workspace', async () => {
     const tx = {
       sportsCategory: {
-        findFirst: jest
-          .fn()
-          .mockResolvedValueOnce({
-            id: 'category-1',
-            name: 'Futsal',
-            division: null,
-            revision: 4,
-            tournamentId: 'tournament-1',
-          })
-          .mockResolvedValueOnce(null),
-        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findFirst: jest.fn().mockResolvedValue({ id: 'category-1', eventGroup: {} }),
       },
     };
 
-    await service.synchronizeEventGroupUpdate(tx as never, 'group-1', { name: 'Futsal feminino' }, 'admin-1');
-
-    expect(tx.sportsCategory.updateMany).toHaveBeenCalledWith({
-      where: { id: 'category-1', revision: 4, deletedAt: null },
-      data: {
-        name: 'Futsal feminino',
-        revision: { increment: 1 },
-        updatedById: 'admin-1',
-      },
-    });
+    await expect(
+      service.synchronizeEventGroupUpdate(tx as never, 'group-1', { name: 'Futsal feminino' }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('prevents generic deletion of active sports-backed resources', async () => {

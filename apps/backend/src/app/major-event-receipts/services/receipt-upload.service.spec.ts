@@ -120,14 +120,14 @@ describe('ReceiptUploadService', () => {
     expect(s3.uploadFile).not.toHaveBeenCalled();
   });
 
-  it('uploads, records, queues, and maps a receipt', async () => {
+  it('uploads, records, queues, and maps a receipt after the subscription window closes', async () => {
     currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
     prisma.majorEventSubscription.findFirst.mockResolvedValue({
       id: 'subscription-1',
       subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
       majorEvent: {
         isPaymentRequired: true,
-        subscriptionEndDate: null,
+        subscriptionEndDate: new Date('2000-01-01T00:00:00.000Z'),
       },
     });
     prisma.majorEventReceipt.findFirst.mockResolvedValue(null);

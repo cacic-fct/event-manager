@@ -178,6 +178,10 @@ export class AttendancesApiService {
             amountPaid
             paymentDate
             paymentTier
+            sportsRepresentativeTeams {
+              id
+              name
+            }
             majorEvent {
               id
               name
@@ -358,6 +362,7 @@ export class AttendancesApiService {
           events: publicEvents,
           hasIssuedCertificate: feedItem?.participation.hasIssuedCertificate ?? false,
           isLecturer: Boolean(feedItem?.participation.isLecturer || organizerInfo),
+          sportsRepresentativeTeams: feedItem?.sportsRepresentativeTeams ?? [],
           attendances: details.currentUserEventAttendances.filter((attendance) =>
             targetEventIds.has(attendance.eventId),
           ),
@@ -630,6 +635,10 @@ export class AttendancesApiService {
             amountPaid
             paymentDate
             paymentTier
+            sportsRepresentativeTeams {
+              id
+              name
+            }
             majorEvent {
               ${PUBLIC_MAJOR_EVENT_PROFILE_FIELDS}
             }

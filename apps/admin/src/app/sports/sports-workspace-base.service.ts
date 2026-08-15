@@ -148,6 +148,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       maximumCaptains: preset.roster.maximumCaptains ?? 0,
       maximumCoaches: preset.roster.maximumCoaches ?? 0,
       allowPlayerMultipleTeams: false,
+      certificatePolicy: 'INHERIT',
       periodsEnabled: preset.periods.enabled,
       maximumPeriods: preset.periods.maximum ?? 0,
       periodLabel: preset.periods.label,

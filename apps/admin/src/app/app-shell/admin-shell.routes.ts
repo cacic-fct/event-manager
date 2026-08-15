@@ -1,6 +1,7 @@
-import { Route } from '@angular/router';
+import { Route, type UrlMatcher } from '@angular/router';
 import { canValidateReceiptsGuard, canReadFeatureGuard, superAdminGuard } from './access.guard';
 import { NavigationLinkId, NavigationLinkItem, navigationLinkItems } from './navigation';
+import { sportsWorkspaceMatcher } from '../sports/sports-workspace-routes';
 
 const eventsData = getFeatureRouteData('events');
 const placesData = getFeatureRouteData('places');
@@ -38,6 +39,26 @@ function guardedFeatureRoute(path: string, data: NavigationLinkItem, loadCompone
     },
     {
       path,
+      data,
+      loadComponent: () => import('./permission-denied.component').then((m) => m.PermissionDeniedComponent),
+    },
+  ];
+}
+
+function guardedFeatureMatcher(
+  matcher: UrlMatcher,
+  data: NavigationLinkItem,
+  loadComponent: Route['loadComponent'],
+): Route[] {
+  return [
+    {
+      matcher,
+      data,
+      canMatch: [canReadFeatureGuard],
+      loadComponent,
+    },
+    {
+      matcher,
       data,
       loadComponent: () => import('./permission-denied.component').then((m) => m.PermissionDeniedComponent),
     },
@@ -82,19 +103,7 @@ export const routes: Route[] = [
         import('../major-events/major-events-page.component').then((m) => m.MajorEventsPageComponent),
       ),
 
-      ...guardedFeatureRoute(sportsData.path, sportsData, () =>
-        import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
-      ),
-      ...guardedFeatureRoute(`${sportsData.path}/:tournamentId`, sportsData, () =>
-        import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
-      ),
-      ...guardedFeatureRoute(`${sportsData.path}/:tournamentId/:area/:categoryId/:matchId`, sportsData, () =>
-        import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
-      ),
-      ...guardedFeatureRoute(`${sportsData.path}/:tournamentId/:area/:entityId`, sportsData, () =>
-        import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
-      ),
-      ...guardedFeatureRoute(`${sportsData.path}/:tournamentId/:area`, sportsData, () =>
+      ...guardedFeatureMatcher(sportsWorkspaceMatcher, sportsData, () =>
         import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
       ),
 

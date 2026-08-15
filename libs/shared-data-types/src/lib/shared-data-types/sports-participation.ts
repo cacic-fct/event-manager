@@ -50,6 +50,9 @@ export class SportsTournament {
   @Field(() => Boolean)
   allowPlayerMultipleTeams!: boolean;
 
+  @Field(() => Boolean)
+  shouldIssueCertificate!: boolean;
+
   @Field(() => Int)
   revision!: number;
 
@@ -112,6 +115,9 @@ export class SportsCategory {
 
   @Field(() => SportsCategoryStatus)
   status!: SportsCategoryStatus;
+
+  @Field(() => Boolean, { nullable: true })
+  shouldIssueCertificate?: boolean | null;
 
   @Field(() => Date, { nullable: true })
   registrationStartDate?: Date | null;

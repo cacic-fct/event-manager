@@ -38,4 +38,27 @@ describe('ReceiptValidationApiService', () => {
     subscription.unsubscribe();
     expect(source.close).toHaveBeenCalledOnce();
   });
+
+  it('normalizes malformed event collections from replayed queue snapshots', async () => {
+    installFakeEventSource();
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), { provide: GraphqlHttpService, useValue: {} }],
+    });
+    const service = TestBed.inject(ReceiptValidationApiService);
+    const queue = firstValueFrom(service.watchQueue());
+    const source = FakeEventSource.instances[0] as FakeEventSource;
+
+    source.emitMessage({
+      type: 'receipt-validation-queue',
+      queue: {
+        pendingCount: 1,
+        items: [{ events: {} }],
+      },
+    });
+
+    await expect(queue).resolves.toMatchObject({
+      pendingCount: 1,
+      items: [{ events: [] }],
+    });
+  });
 });

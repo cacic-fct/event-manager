@@ -112,6 +112,15 @@
         </mat-select>
       </mat-form-field>
       <mat-form-field>
+        <mat-label>Certificados esportivos</mat-label>
+        <mat-select formControlName="certificatePolicy">
+          <mat-option value="INHERIT">Herdar do torneio</mat-option>
+          <mat-option value="ENABLED">Emitir nesta modalidade</mat-option>
+          <mat-option value="DISABLED">Não emitir nesta modalidade</mat-option>
+        </mat-select>
+        <mat-hint>A exceção desta modalidade prevalece sobre a regra do torneio.</mat-hint>
+      </mat-form-field>
+      <mat-form-field>
         <mat-label>Início das inscrições</mat-label>
         <input matInput type="datetime-local" formControlName="registrationStartDate" />
       </mat-form-field>

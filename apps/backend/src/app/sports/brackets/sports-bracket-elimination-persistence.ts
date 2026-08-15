@@ -12,7 +12,7 @@ interface BackedCategory {
   id: string;
   name: string;
   eventGroupId: string;
-  eventGroup: { emoji: string };
+  eventGroup: { emoji: string; shouldIssueCertificate: boolean };
   bracketRules: Prisma.JsonValue;
   standingsRules: Prisma.JsonValue;
   tournament: {

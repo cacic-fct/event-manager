@@ -141,4 +141,11 @@ describe('MoreInfo', () => {
     await fixture.whenStable();
     expect(component).toBeTruthy();
   });
+
+  it('builds direct sports and representative-area routes', () => {
+    expect(
+      component.sportsPanelRoute({ sportsTournamentId: 'tournament-1' } as Parameters<MoreInfo['sportsPanelRoute']>[0]),
+    ).toEqual(['/tournament', 'tournament-1']);
+    expect(component.representativeTeamRoute('team-1')).toEqual(['/sports', 'team', 'team-1']);
+  });
 });

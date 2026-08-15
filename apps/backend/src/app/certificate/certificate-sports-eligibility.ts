@@ -61,6 +61,7 @@ export class CertificateSportsEligibility {
       const tournament = await this.prisma.sportsTournament.findFirst({
         where: {
           majorEventId: config.majorEventId,
+          shouldIssueCertificate: true,
           deletedAt: null,
         },
         select: {
@@ -91,6 +92,10 @@ export class CertificateSportsEligibility {
           tournament: {
             deletedAt: null,
           },
+          OR: [
+            { shouldIssueCertificate: true },
+            { shouldIssueCertificate: null, tournament: { shouldIssueCertificate: true, deletedAt: null } },
+          ],
         },
         select: {
           id: true,
@@ -118,12 +123,17 @@ export class CertificateSportsEligibility {
         where: {
           eventId: config.eventId,
           deletedAt: null,
+          event: { shouldIssueCertificate: true, deletedAt: null },
           canonicalState: SportsMatchState.FINISHED,
           reviewStatus: {
             in: ACCEPTED_MATCH_REVIEW_STATUSES,
           },
           category: {
             deletedAt: null,
+            OR: [
+              { shouldIssueCertificate: true },
+              { shouldIssueCertificate: null, tournament: { shouldIssueCertificate: true, deletedAt: null } },
+            ],
             tournament: {
               deletedAt: null,
             },
@@ -171,6 +181,10 @@ export class CertificateSportsEligibility {
               category: {
                 tournamentId: target.tournamentId,
                 deletedAt: null,
+                OR: [
+                  { shouldIssueCertificate: true },
+                  { shouldIssueCertificate: null, tournament: { shouldIssueCertificate: true, deletedAt: null } },
+                ],
               },
             }),
         registration: {
@@ -292,6 +306,10 @@ export class CertificateSportsEligibility {
                     category: {
                       tournamentId: target.tournamentId,
                       deletedAt: null,
+                      OR: [
+                        { shouldIssueCertificate: true },
+                        { shouldIssueCertificate: null, tournament: { shouldIssueCertificate: true, deletedAt: null } },
+                      ],
                     },
                   }),
           },
@@ -418,6 +436,10 @@ export class CertificateSportsEligibility {
                 category: {
                   tournamentId: target.tournamentId,
                   deletedAt: null,
+                  OR: [
+                    { shouldIssueCertificate: true },
+                    { shouldIssueCertificate: null, tournament: { shouldIssueCertificate: true, deletedAt: null } },
+                  ],
                 },
               }),
       },
@@ -454,6 +476,10 @@ export class CertificateSportsEligibility {
         recipient.eventsById.set(match.event.id, match.event);
       }
       recipientsByPerson.set(assignment.personId, recipient);
+    }
+
+    for (const [recipientId, recipient] of recipientsByPerson) {
+      if (recipient.eventsById.size === 0) recipientsByPerson.delete(recipientId);
     }
 
     return this.toRecipients(recipientsByPerson);

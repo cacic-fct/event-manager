@@ -461,7 +461,11 @@ describe('CertificateConfigsService', () => {
       }),
     );
 
-    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(CertificateScope.EVENT_GROUP, 'event-group-1');
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT_GROUP,
+      'event-group-1',
+      CertificateIssuedTo.ATTENDEE,
+    );
     expect(prisma.certificateConfig.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -609,7 +613,11 @@ describe('CertificateConfigsService', () => {
         }),
       }),
     );
-    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(CertificateScope.EVENT, 'event-1');
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT,
+      'event-1',
+      CertificateIssuedTo.LECTURER,
+    );
   });
 
   it('resets optional clone parts but keeps recipient data when copying issued people', async () => {
@@ -713,7 +721,11 @@ describe('CertificateConfigsService', () => {
       eventGroupId: 'event-group-2',
     });
 
-    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(CertificateScope.EVENT_GROUP, 'event-group-2');
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT_GROUP,
+      'event-group-2',
+      CertificateIssuedTo.ATTENDEE,
+    );
     expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

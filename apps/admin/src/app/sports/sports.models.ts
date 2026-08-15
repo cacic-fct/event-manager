@@ -37,6 +37,7 @@ export interface SportsTournamentSummary {
   selfSubscriptionAllowNoTeam: boolean;
   selfSubscriptionAllowNoCategory: boolean;
   allowPlayerMultipleTeams: boolean;
+  shouldIssueCertificate: boolean;
   revision: number;
   finishedAt?: string | null;
   majorEvent?: {
@@ -60,6 +61,7 @@ export interface SportsCategorySummary {
   division?: string | null;
   format: SportsFormat;
   status: SportsCategoryStatus;
+  shouldIssueCertificate?: boolean | null;
   registrationStartDate?: string | null;
   registrationEndDate?: string | null;
   minimumRosterSize?: number | null;

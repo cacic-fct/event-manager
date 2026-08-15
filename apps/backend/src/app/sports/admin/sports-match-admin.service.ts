@@ -73,6 +73,7 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
               name: requestedName,
               startDate: input.startDate,
               endDate: input.endDate,
+              shouldIssueCertificate: category.eventGroup.shouldIssueCertificate,
               venue,
             },
             actorId,
@@ -86,6 +87,7 @@ export class SportsMatchAdminService extends SportsMatchAdminLifecycleService {
             eventGroupId: category.eventGroupId,
             venue,
             publiclyVisible: Boolean(home && away),
+            shouldIssueCertificate: category.eventGroup.shouldIssueCertificate,
             publicationState:
               input.publishImmediately === true &&
               category.tournament.majorEvent.publicationState === PublicationState.PUBLISHED

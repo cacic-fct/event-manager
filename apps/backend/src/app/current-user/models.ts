@@ -364,8 +364,20 @@ export class CurrentUserMajorEventFeedItem {
   @Field(() => [PublicEvent])
   notSubscribedEvents!: PublicEvent[];
 
+  @Field(() => [CurrentUserSportsRepresentativeTeam])
+  sportsRepresentativeTeams!: CurrentUserSportsRepresentativeTeam[];
+
   @Field(() => CurrentUserEventParticipation)
   participation!: CurrentUserEventParticipation;
+}
+
+@ObjectType()
+export class CurrentUserSportsRepresentativeTeam {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
 }
 
 @InputType()

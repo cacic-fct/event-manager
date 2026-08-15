@@ -271,6 +271,7 @@ model SportsTournament {
   selfSubscriptionAllowNoTeam     Boolean         @default(false)
   selfSubscriptionAllowNoCategory Boolean         @default(false)
   allowPlayerMultipleTeams Boolean                @default(false)
+  shouldIssueCertificate   Boolean                @default(false)
   revision                 Int                    @default(1)
   finishedAt               DateTime?
 
@@ -319,6 +320,7 @@ model SportsCategory {
   maximumCaptains          Int?
   maximumCoaches           Int?
   allowPlayerMultipleTeams Boolean?
+  shouldIssueCertificate   Boolean?
   athleteIdentifierMode    SportsAthleteIdentifierMode @default(SHIRT_NUMBER)
   joiningInstructions      String?
 

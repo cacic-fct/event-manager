@@ -369,7 +369,7 @@ export class CertificateConfigsService {
     if (scope === CertificateScope.OTHER) {
       await this.ensureFolderExists(targetId);
     } else {
-      await this.targetsService.assertIssuableTarget(scope, targetId);
+      await this.targetsService.assertIssuableTarget(scope, targetId, issuedTo);
     }
     await this.ensureNoDuplicateName(scope, targetId, name);
 
@@ -466,8 +466,6 @@ export class CertificateConfigsService {
     await this.ensureTemplateExists(mergedTemplateId);
     if (mergedScope === CertificateScope.OTHER) {
       await this.ensureFolderExists(mergedTargetId);
-    } else {
-      await this.targetsService.assertIssuableTarget(mergedScope, mergedTargetId);
     }
     await this.ensureNoDuplicateName(mergedScope, mergedTargetId, mergedName, normalizedConfigId);
 
@@ -487,6 +485,9 @@ export class CertificateConfigsService {
       mergedScope === CertificateScope.OTHER
         ? CertificateIssuedTo.OTHER
         : (nextIssuedTo ?? (changedStandaloneMode ? CertificateIssuedTo.ATTENDEE : existingConfig.issuedTo));
+    if (mergedScope !== CertificateScope.OTHER) {
+      await this.targetsService.assertIssuableTarget(mergedScope, mergedTargetId, mergedIssuedTo);
+    }
     const mergedCertificateFields =
       nextCertificateFields === undefined
         ? existingConfig.certificateFields
@@ -645,11 +646,6 @@ export class CertificateConfigsService {
       eventId,
       folderId,
     });
-    if (scope === CertificateScope.OTHER) {
-      await this.ensureFolderExists(targetId);
-    } else {
-      await this.targetsService.assertIssuableTarget(scope, targetId);
-    }
     const parts = input?.parts;
     const shouldCopyRecipientData = Boolean(parts?.recipientData || parts?.issuedPeople || parts?.manualPeople);
     const defaultIssuedTo = scope === CertificateScope.OTHER ? CertificateIssuedTo.OTHER : CertificateIssuedTo.ATTENDEE;
@@ -659,6 +655,11 @@ export class CertificateConfigsService {
         : shouldCopyRecipientData
           ? source.issuedTo
           : defaultIssuedTo;
+    if (scope === CertificateScope.OTHER) {
+      await this.ensureFolderExists(targetId);
+    } else {
+      await this.targetsService.assertIssuableTarget(scope, targetId, issuedTo);
+    }
     const certificateFields = shouldCopyRecipientData ? source.certificateFields : null;
     const certificateTypeLabel = shouldCopyRecipientData
       ? source.certificateTypeLabel

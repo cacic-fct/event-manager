@@ -1,0 +1,20 @@
+{
+  "identities": [
+    {
+      "name": "event_manager_development",
+      "credentials": [
+        {
+          "accessKey": "xyz",
+          "secretKey": "xyz"
+        }
+      ],
+      "actions": [
+        "Admin",
+        "Read:event-manager",
+        "Write:event-manager",
+        "List:event-manager",
+        "Tagging:event-manager"
+      ]
+    }
+  ]
+}

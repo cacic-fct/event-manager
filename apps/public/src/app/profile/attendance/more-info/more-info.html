@@ -33,6 +33,17 @@
   </mat-chip-set>
 
   <div class="actions">
+    @if (detail.sportsTournamentId) {
+    <a mat-flat-button [routerLink]="sportsPanelRoute(detail)">
+      <mat-icon>sports</mat-icon>
+      Abrir painel esportivo
+    </a>
+    } @for (team of detail.sportsRepresentativeTeams; track team.id) {
+    <a mat-stroked-button [routerLink]="representativeTeamRoute(team.id)">
+      <mat-icon>groups</mat-icon>
+      Área de representantes e escalação — {{ team.name }}
+    </a>
+    }
     @if (detail.isSubscribed && detail.targetType === 'major-event') {
     <a mat-flat-button [routerLink]="paymentRoute(detail)">
       <mat-icon>payments</mat-icon>

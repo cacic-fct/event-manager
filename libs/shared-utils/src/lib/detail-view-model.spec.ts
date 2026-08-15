@@ -58,6 +58,25 @@ describe('detail view model', () => {
     expect(detail?.certificateTargets).toEqual([]);
   });
 
+  it('keeps the sports panel and every representative team reachable from major-event details', () => {
+    const detail = buildMajorEventDetail({
+      subscription: null,
+      majorEvent: majorEvent({ sportsTournament: { id: 'tournament-1' } }),
+      attendances: [],
+      isLecturer: true,
+      sportsRepresentativeTeams: [
+        { id: 'team-1', name: 'Equipe Azul' },
+        { id: 'team-2', name: 'Equipe Verde' },
+      ],
+    });
+
+    expect(detail?.sportsTournamentId).toBe('tournament-1');
+    expect(detail?.sportsRepresentativeTeams).toEqual([
+      { id: 'team-1', name: 'Equipe Azul' },
+      { id: 'team-2', name: 'Equipe Verde' },
+    ]);
+  });
+
   it('returns attendance-only standalone event details without requiring a subscription', () => {
     const detail = buildEventDetail({
       subscription: null,

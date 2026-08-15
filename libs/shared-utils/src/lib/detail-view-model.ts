@@ -86,6 +86,7 @@ export function buildEventDetail(details: EventDetails): DetailViewModel | null 
       event.shouldIssueCertificate || details.hasIssuedCertificate ? [{ scope: 'EVENT', targetId: event.id }] : [],
     shouldIssueCertificate: Boolean(event.shouldIssueCertificate || details.hasIssuedCertificate),
     canViewOrganizerInfo: Boolean(details.isLecturer),
+    sportsRepresentativeTeams: [],
     buttonText: event.buttonText,
     buttonLink: event.buttonLink,
   };
@@ -140,6 +141,7 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
     certificateTargets,
     shouldIssueCertificate: certificateTargets.length > 0,
     canViewOrganizerInfo: Boolean(details.isLecturer),
+    sportsRepresentativeTeams: [],
   };
 }
 
@@ -189,6 +191,8 @@ export function buildMajorEventDetail(details: MajorEventDetails): DetailViewMod
         : [],
     shouldIssueCertificate: Boolean(majorEvent.shouldIssueCertificate || details.hasIssuedCertificate),
     canViewOrganizerInfo: Boolean(details.isLecturer),
+    sportsTournamentId: majorEvent.sportsTournament?.id,
+    sportsRepresentativeTeams: details.sportsRepresentativeTeams ?? [],
     buttonText: majorEvent.buttonText,
     buttonLink: majorEvent.buttonLink,
   };

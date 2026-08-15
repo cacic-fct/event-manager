@@ -56,6 +56,17 @@ describe('Attendances', () => {
     ).toEqual(['/profile/attendances', 'major-event', majorEvent.majorEvent.id]);
   });
 
+  it('keeps tournament-only participation on the major-event detail so subscription actions remain reachable', async () => {
+    const { component } = await createFixture({ onlineFeed: sportsManagerSubscriptionsFeedFixture });
+    const tournamentOnlyItem = sportsManagerSubscriptionsFeedFixture.majorEventItems[0];
+
+    expect(component.majorEventRoute(tournamentOnlyItem)).toEqual([
+      '/profile/attendances',
+      'major-event',
+      tournamentOnlyItem.majorEvent.id,
+    ]);
+  });
+
   it('falls back to the last offline feed when the network request fails', async () => {
     const { fixture, offlineData } = await createFixture({
       onlineFeedError: new Error('offline'),
@@ -146,7 +157,11 @@ describe('Attendances', () => {
     expect(fixture.nativeElement.textContent).toContain('Torneio com gestão esportiva');
     expect(fixture.nativeElement.textContent).not.toContain('Grande evento sem gestão esportiva');
     expect(fixture.nativeElement.textContent).toContain('1 de 2 participações');
-    expect(component.majorEventRoute(sportsManagerItem)).toEqual(['/tournament', 'tournament-1']);
+    expect(component.majorEventRoute(sportsManagerItem)).toEqual([
+      '/profile/attendances',
+      'major-event',
+      'sports-major',
+    ]);
   });
 
   it('merges standalone event-group children into one event-group item', async () => {
