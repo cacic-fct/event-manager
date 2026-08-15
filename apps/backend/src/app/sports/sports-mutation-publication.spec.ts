@@ -71,6 +71,59 @@ describe('sports mutation publication boundaries', () => {
     expect(mutationEvents.publishForEntity).toHaveBeenCalledWith('REGISTRATION', 'registration-1', true);
   });
 
+  it('publishes athlete-profile changes by registration id rather than member id', async () => {
+    const admin = {
+      updateAthleteProfile: jest.fn().mockResolvedValue({ id: 'registration-member-1' }),
+    };
+    const policy = { assertPermissions: jest.fn().mockResolvedValue(undefined) };
+    const prisma = {
+      sportsRegistrationMember: {
+        findFirst: jest.fn().mockResolvedValue({ registrationId: 'registration-1' }),
+      },
+    };
+    const mutationEvents = { publishForEntity: jest.fn().mockResolvedValue(undefined) };
+    const resolver = new SportsTeamMutationsResolver(
+      policy as never,
+      {} as never,
+      prisma as never,
+      { getAuthenticatedUser: jest.fn().mockReturnValue(actor) } as never,
+      admin as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      mutationEvents as never,
+    );
+
+    await expect(
+      resolver.updateRegistrationMemberProfile(
+        {
+          registrationMemberId: 'registration-member-1',
+          shirtNumber: '10',
+          gameNickname: 'Fênix',
+          gameAccountName: 'fenix#BR1',
+          gameAccountUrl: 'https://example.com/fenix',
+        } as never,
+        context as never,
+      ),
+    ).resolves.toBe('registration-member-1');
+
+    expect(admin.updateAthleteProfile).toHaveBeenCalledWith(
+      'registration-member-1',
+      {
+        shirtNumber: '10',
+        gameNickname: 'Fênix',
+        gameAccountName: 'fenix#BR1',
+        gameAccountUrl: 'https://example.com/fenix',
+      },
+      actor,
+    );
+    expect(mutationEvents.publishForEntity).toHaveBeenCalledWith('REGISTRATION', 'registration-1', true);
+  });
+
   it('authorizes participant team replacement in the participant tournament scope', async () => {
     const admin = {
       setParticipantTeam: jest.fn().mockResolvedValue({ id: 'participant-1' }),

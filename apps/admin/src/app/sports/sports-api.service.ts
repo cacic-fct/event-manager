@@ -71,7 +71,10 @@ const TEAM_FIELDS = `
   team { id tournamentId name institution status logoUrl revision fieldRevisionsJson }
   members {
     id teamId participantId status revision person { id name }
-    categoryAssignments { registrationId categoryId categoryName categoryEmoji }
+    categoryAssignments {
+      registrationMemberId registrationId categoryId categoryName categoryEmoji athleteIdentifierMode
+      shirtNumber gameNickname gameAccountName gameAccountUrl
+    }
   }
   representatives { id personId person { id name } active assignedAt }
   registrations { id teamId categoryId status seed formAnswersJson revision }
@@ -101,11 +104,11 @@ const MATCH_REVIEW_FIELDS = `
 const REGISTRATION_FIELDS = `
   registration { id teamId categoryId status seed formAnswersJson revision }
   members {
-    id registrationId categoryId teamMemberId role eligibility
+    id registrationId categoryId teamMemberId role eligibility shirtNumber gameNickname gameAccountName gameAccountUrl
     person { id name }
   }
   lineupMembers {
-    id registrationMemberId teamMemberId role eligibility
+    id registrationMemberId teamMemberId role eligibility shirtNumber
     person { id name }
   }
   rosters {

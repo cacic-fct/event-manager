@@ -42,6 +42,7 @@ export class SportsReadPublicLoader {
             shirtNumber: true,
             registrationMember: {
               select: {
+                shirtNumber: true,
                 gameNickname: true,
                 gameAccountName: true,
                 gameAccountUrl: true,
@@ -80,7 +81,9 @@ export class SportsReadPublicLoader {
             role: entry.role,
             athleteIdentifierMode: entry.registrationMember.category.athleteIdentifierMode,
             shirtNumber:
-              entry.registrationMember.category.athleteIdentifierMode === 'SHIRT_NUMBER' ? entry.shirtNumber : null,
+              entry.registrationMember.category.athleteIdentifierMode === 'SHIRT_NUMBER'
+                ? (entry.shirtNumber ?? entry.registrationMember.shirtNumber)
+                : null,
             gameNickname:
               entry.registrationMember.category.athleteIdentifierMode === 'GAME_ACCOUNT'
                 ? entry.registrationMember.gameNickname

@@ -44,6 +44,7 @@ describe('sports GraphQL schema', () => {
     const rosterCheckInInput = printed.match(/input SportsRosterCheckInInput \{[^}]+\}/)?.[0] ?? '';
     const officialCheckInInput = printed.match(/input SportsOfficialCheckInInput \{[^}]+\}/)?.[0] ?? '';
     const scannerCheckInInput = printed.match(/input SportsRosterScannerCheckInInput \{[^}]+\}/)?.[0] ?? '';
+    const athleteProfileInput = printed.match(/input SportsRegistrationMemberProfileUpdateInput \{[^}]+\}/)?.[0] ?? '';
 
     expect(printed).toContain('publicSportsTournamentDetail');
     expect(printed).toContain('currentUserSportsTeamWorkspace');
@@ -62,6 +63,11 @@ describe('sports GraphQL schema', () => {
     expect(officialCheckInInput).toContain('collectorCredential: String');
     expect(scannerCheckInInput).toContain('collectorPersonId: String');
     expect(scannerCheckInInput).toContain('collectorCredential: String');
+    expect(printed).toContain('updateSportsRegistrationMemberProfile');
+    expect(athleteProfileInput).toContain('shirtNumber: String');
+    expect(athleteProfileInput).toContain('gameNickname: String');
+    expect(athleteProfileInput).toContain('gameAccountName: String');
+    expect(athleteProfileInput).toContain('gameAccountUrl: String');
     expect(printed).toContain('reviewSportsTeamChange');
     expect(printed).toContain('generateSportsBracket');
     expect(printed).toContain('publishSportsMatch');

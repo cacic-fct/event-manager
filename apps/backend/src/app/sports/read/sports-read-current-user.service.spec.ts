@@ -239,6 +239,51 @@ describe('SportsReadCurrentUserService', () => {
     expect(result.roster?.entries[0]).toEqual(expect.objectContaining({ roleMetadataJson: null, checkedInAt }));
   });
 
+  it('falls back to the category assignment shirt number when the roster entry is unset', async () => {
+    prisma.sportsMatch.findFirst.mockResolvedValue({
+      id: 'match-1',
+      revision: 4,
+      categoryId: 'category-1',
+      homeRegistrationId: 'registration-home',
+      awayRegistrationId: 'registration-away',
+    });
+    prisma.sportsRegistrationMember.findMany.mockResolvedValue([
+      {
+        id: 'member-1',
+        role: 'PLAYER',
+        shirtNumber: '12',
+        teamMember: { participant: { person: { name: 'Carlos Eduardo Lima' } } },
+      },
+    ]);
+    prisma.sportsMatchRoster.findFirst.mockResolvedValue({
+      id: 'roster-1',
+      revision: 2,
+      status: 'SUBMITTED',
+      entries: [
+        {
+          id: 'entry-1',
+          registrationMemberId: 'member-1',
+          role: 'PLAYER',
+          status: 'APPROVED',
+          checkedInAt: null,
+          shirtNumber: null,
+          roleMetadata: null,
+        },
+      ],
+    });
+
+    const result = await service().currentUserLineup('match-1', 'registration-home');
+
+    expect(result.eligibleMembers).toEqual([
+      {
+        registrationMemberId: 'member-1',
+        name: 'Carlos Lima',
+        role: 'PLAYER',
+        shirtNumber: '12',
+      },
+    ]);
+  });
+
   it('reports a lineup registration that does not participate and preserves an absent roster as null', async () => {
     prisma.sportsMatch.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
       id: 'match-1',

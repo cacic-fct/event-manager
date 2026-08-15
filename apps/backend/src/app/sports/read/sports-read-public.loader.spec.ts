@@ -82,6 +82,30 @@ describe('SportsReadPublicLoader', () => {
     ]);
   });
 
+  it('uses the category assignment shirt number when a match roster has no override', async () => {
+    prisma.sportsMatchRoster.findMany.mockResolvedValue([
+      sportsPublicRosterRecord({
+        entries: [
+          {
+            role: 'PLAYER',
+            shirtNumber: null,
+            registrationMember: {
+              category: { athleteIdentifierMode: 'SHIRT_NUMBER' },
+              shirtNumber: '12',
+              teamMember: { participant: { person: { name: 'Ana Beatriz de Souza' } } },
+            },
+          },
+        ],
+      }),
+    ]);
+
+    const result = await loader.loadPublicRosters(['match-1']);
+
+    expect(result.get('match-1')?.[0].entries[0]).toEqual(
+      expect.objectContaining({ athleteIdentifierMode: 'SHIRT_NUMBER', shirtNumber: '12' }),
+    );
+  });
+
   it('returns no officials when the category no longer exists', async () => {
     prisma.sportsCategory.findUnique.mockResolvedValue(null);
 

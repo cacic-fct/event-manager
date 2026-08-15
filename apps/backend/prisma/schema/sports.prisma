@@ -565,6 +565,7 @@ model SportsRegistrationMember {
   role        SportsRosterRole
   eligibility SportsEligibilityStatus @default(PENDING)
 
+  shirtNumber     String?
   gameNickname    String?
   gameAccountName String?
   gameAccountUrl  String?

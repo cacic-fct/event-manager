@@ -252,10 +252,16 @@ export interface SportsTeamRead {
     revision: number;
     person: { id: string; name: string };
     categoryAssignments: {
+      registrationMemberId: string;
       registrationId: string;
       categoryId: string;
       categoryName: string;
       categoryEmoji: string;
+      athleteIdentifierMode: 'SHIRT_NUMBER' | 'GAME_ACCOUNT';
+      shirtNumber?: string | null;
+      gameNickname?: string | null;
+      gameAccountName?: string | null;
+      gameAccountUrl?: string | null;
     }[];
   }[];
   representatives: {
@@ -331,6 +337,10 @@ export interface SportsRegistrationRead {
     teamMemberId: string;
     role: SportsRosterRole;
     eligibility: SportsEligibilityStatus;
+    shirtNumber?: string | null;
+    gameNickname?: string | null;
+    gameAccountName?: string | null;
+    gameAccountUrl?: string | null;
     person: { id: string; name: string };
   }[];
   lineupMembers: {
@@ -339,6 +349,7 @@ export interface SportsRegistrationRead {
     teamMemberId: string;
     role: SportsRosterRole;
     eligibility: SportsEligibilityStatus;
+    shirtNumber?: string | null;
     person: { id: string; name: string };
   }[];
   rosters: {

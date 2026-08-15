@@ -21,6 +21,8 @@ interface RegistrationOption {
   seed: number | null;
 }
 
+type SportsTeamCategoryAssignment = SportsTeamRead['members'][number]['categoryAssignments'][number];
+
 export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategoryService {
   private readonly registrationDraft = signal<Record<string, { selected: boolean; seed: number | null }>>({});
   private peopleSearchRevision = 0;
@@ -398,6 +400,52 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
       await this.selectTeam(team);
       this.notify('Status do integrante atualizado.');
     });
+  }
+
+  async updateShirtNumber(assignment: SportsTeamCategoryAssignment, value: string): Promise<void> {
+    await this.updateAthleteProfile(assignment, { shirtNumber: this.normalizeProfileValue(value) });
+  }
+
+  async updateGameProfile(
+    assignment: SportsTeamCategoryAssignment,
+    gameNickname: string,
+    gameAccountName: string,
+    gameAccountUrl: string,
+  ): Promise<void> {
+    await this.updateAthleteProfile(assignment, {
+      gameNickname: this.normalizeProfileValue(gameNickname),
+      gameAccountName: this.normalizeProfileValue(gameAccountName),
+      gameAccountUrl: this.normalizeProfileValue(gameAccountUrl),
+    });
+  }
+
+  private async updateAthleteProfile(
+    assignment: SportsTeamCategoryAssignment,
+    profile: {
+      shirtNumber?: string | null;
+      gameNickname?: string | null;
+      gameAccountName?: string | null;
+      gameAccountUrl?: string | null;
+    },
+  ): Promise<void> {
+    const team = this.teamRead()?.team;
+    if (!team) {
+      return;
+    }
+    await this.run('Não foi possível salvar a identificação do atleta.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('updateSportsRegistrationMemberProfile', 'SportsRegistrationMemberProfileUpdateInput', {
+          registrationMemberId: assignment.registrationMemberId,
+          ...profile,
+        }),
+      );
+      await this.selectTeam(team);
+      this.notify('Identificação da modalidade atualizada.');
+    });
+  }
+
+  private normalizeProfileValue(value: string): string | null {
+    return value.trim() || null;
   }
 
   async createRegistration(answers?: readonly FormResponseAnswer[]): Promise<void> {

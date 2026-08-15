@@ -302,7 +302,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
                   member.id,
                   {
                     role: entry?.role ?? member.role,
-                    shirtNumber: entry?.shirtNumber ?? '',
+                    shirtNumber: entry?.shirtNumber ?? member.shirtNumber ?? '',
                   },
                 ];
               }),

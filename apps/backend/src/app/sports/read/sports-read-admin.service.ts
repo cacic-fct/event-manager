@@ -418,8 +418,13 @@ export class SportsReadAdminService {
             id: true,
             registrationId: true,
             categoryId: true,
+            shirtNumber: true,
+            gameNickname: true,
+            gameAccountName: true,
+            gameAccountUrl: true,
             category: {
               select: {
+                athleteIdentifierMode: true,
                 name: true,
                 eventGroup: { select: { emoji: true } },
               },
@@ -522,6 +527,7 @@ export class SportsReadAdminService {
           (teamMember.participant.status === SportsParticipantStatus.ACTIVE
             ? SportsEligibilityStatus.ELIGIBLE
             : SportsEligibilityStatus.PENDING),
+        shirtNumber: registrationMember?.shirtNumber ?? null,
         person: teamMember.participant.person,
       });
     });
@@ -537,6 +543,7 @@ export class SportsReadAdminService {
           teamMemberId: member.teamMemberId,
           role: member.role,
           eligibility: member.eligibility,
+          shirtNumber: member.shirtNumber,
           person: member.teamMember.participant.person,
         }),
       );

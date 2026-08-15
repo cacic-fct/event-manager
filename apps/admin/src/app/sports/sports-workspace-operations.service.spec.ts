@@ -223,6 +223,35 @@ describe('SportsWorkspaceService operations', () => {
       });
     });
 
+    it('saves category-scoped shirt and game identity fields without conflating them', async () => {
+      const read = createAdminSportsTeamRead();
+      const [shirtAssignment, gameAssignment] = read.members[0].categoryAssignments;
+      workspace.teamRead.set(read);
+      vi.spyOn(workspace, 'selectTeam').mockResolvedValue();
+
+      await workspace.updateShirtNumber(shirtAssignment, ' 11 ');
+      expect(api.mutate).toHaveBeenCalledWith(
+        'updateSportsRegistrationMemberProfile',
+        'SportsRegistrationMemberProfileUpdateInput',
+        {
+          registrationMemberId: shirtAssignment.registrationMemberId,
+          shirtNumber: '11',
+        },
+      );
+
+      await workspace.updateGameProfile(gameAssignment, ' Fênix ', ' fenix#BR1 ', ' https://example.com/fenix ');
+      expect(api.mutate).toHaveBeenLastCalledWith(
+        'updateSportsRegistrationMemberProfile',
+        'SportsRegistrationMemberProfileUpdateInput',
+        {
+          registrationMemberId: gameAssignment.registrationMemberId,
+          gameNickname: 'Fênix',
+          gameAccountName: 'fenix#BR1',
+          gameAccountUrl: 'https://example.com/fenix',
+        },
+      );
+    });
+
     it('assigns representatives and members from the selected people fixture', async () => {
       const read = createAdminSportsTeamRead();
       workspace.teamRead.set(read);

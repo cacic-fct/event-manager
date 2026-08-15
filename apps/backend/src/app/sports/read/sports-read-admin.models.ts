@@ -213,6 +213,9 @@ export class AdminSportsTournamentParticipantSummary {
 @ObjectType()
 export class AdminSportsTeamCategoryAssignmentSummary {
   @Field(() => String)
+  registrationMemberId!: string;
+
+  @Field(() => String)
   registrationId!: string;
 
   @Field(() => String)
@@ -223,6 +226,21 @@ export class AdminSportsTeamCategoryAssignmentSummary {
 
   @Field(() => String)
   categoryEmoji!: string;
+
+  @Field(() => SportsAthleteIdentifierMode)
+  athleteIdentifierMode!: SportsAthleteIdentifierMode;
+
+  @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameNickname?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  gameAccountUrl?: string | null;
 }
 
 @ObjectType()
@@ -294,6 +312,9 @@ export class AdminSportsRegistrationMemberSummary {
   eligibility!: SportsEligibilityStatus;
 
   @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
+
+  @Field(() => String, { nullable: true })
   gameNickname?: string | null;
 
   @Field(() => String, { nullable: true })
@@ -325,6 +346,9 @@ export class AdminSportsRegistrationLineupMemberSummary {
 
   @Field(() => SportsEligibilityStatus)
   eligibility!: SportsEligibilityStatus;
+
+  @Field(() => String, { nullable: true })
+  shirtNumber?: string | null;
 
   @Field(() => SportsLimitedPerson)
   person!: SportsLimitedPerson;

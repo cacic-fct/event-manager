@@ -67,20 +67,34 @@ describe('SportsReadAdminMapper', () => {
           id: 'assignment-1',
           registrationId: 'registration-1',
           categoryId: 'category-1',
-          category: { name: 'Futsal', eventGroup: { emoji: '' } },
+          shirtNumber: '10',
+          gameNickname: null,
+          gameAccountName: null,
+          gameAccountUrl: null,
+          category: { athleteIdentifierMode: 'SHIRT_NUMBER', name: 'Futsal', eventGroup: { emoji: '' } },
         },
         {
           id: 'assignment-duplicate',
           registrationId: 'registration-2',
           categoryId: 'category-1',
-          category: { name: 'Futsal', eventGroup: { emoji: '⚽' } },
+          shirtNumber: '11',
+          gameNickname: null,
+          gameAccountName: null,
+          gameAccountUrl: null,
+          category: { athleteIdentifierMode: 'SHIRT_NUMBER', name: 'Futsal', eventGroup: { emoji: '⚽' } },
         },
       ],
     } as never);
 
     expect(member.person.name).toBe('Ana Souza');
     expect(member.categoryAssignments).toEqual([
-      expect.objectContaining({ registrationId: 'registration-1', categoryEmoji: '🏅' }),
+      expect.objectContaining({
+        registrationMemberId: 'assignment-1',
+        registrationId: 'registration-1',
+        categoryEmoji: '🏅',
+        athleteIdentifierMode: 'SHIRT_NUMBER',
+        shirtNumber: '10',
+      }),
     ]);
     expect(
       mapper.mapAdminRepresentative({
@@ -119,10 +133,23 @@ describe('SportsReadAdminMapper', () => {
         teamMemberId: 'member-1',
         role: 'PLAYER',
         eligibility: 'ELIGIBLE',
+        shirtNumber: '12',
+        gameNickname: 'Fênix',
+        gameAccountName: 'fenix#BR1',
+        gameAccountUrl: 'https://example.com/fenix',
         category: { athleteIdentifierMode: 'NAME' },
         teamMember: { participant: { person: { id: 'person-1', name: 'Mariana Clara dos Santos' } } },
-      } as never).person.name,
-    ).toBe('Mariana Santos');
+      } as never),
+    ).toEqual(
+      expect.objectContaining({
+        shirtNumber: '12',
+        gameNickname: 'Fênix',
+        gameAccountName: 'fenix#BR1',
+        gameAccountUrl: 'https://example.com/fenix',
+        athleteIdentifierMode: 'NAME',
+        person: { id: 'person-1', name: 'Mariana Santos' },
+      }),
+    );
     expect(
       mapper.mapAdminRoster({
         id: 'roster-1',

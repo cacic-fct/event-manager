@@ -149,8 +149,13 @@ export class SportsReadAdminMapper {
             id: true;
             registrationId: true;
             categoryId: true;
+            shirtNumber: true;
+            gameNickname: true;
+            gameAccountName: true;
+            gameAccountUrl: true;
             category: {
               select: {
+                athleteIdentifierMode: true;
                 name: true;
                 eventGroup: { select: { emoji: true } };
               };
@@ -179,7 +184,15 @@ export class SportsReadAdminMapper {
       id: string;
       registrationId: string;
       categoryId: string;
-      category: { name: string; eventGroup: { emoji: string } };
+      shirtNumber: string | null;
+      gameNickname: string | null;
+      gameAccountName: string | null;
+      gameAccountUrl: string | null;
+      category: {
+        athleteIdentifierMode: AdminSportsTeamCategoryAssignmentSummary['athleteIdentifierMode'];
+        name: string;
+        eventGroup: { emoji: string };
+      };
     }>,
   ): AdminSportsTeamCategoryAssignmentSummary[] {
     const uniqueAssignments = new Map<string, (typeof assignments)[number]>();
@@ -189,10 +202,16 @@ export class SportsReadAdminMapper {
       }
     }
     return [...uniqueAssignments.values()].map((assignment) => ({
+      registrationMemberId: assignment.id,
       registrationId: assignment.registrationId,
       categoryId: assignment.categoryId,
       categoryName: assignment.category.name,
       categoryEmoji: assignment.category.eventGroup.emoji || '🏅',
+      athleteIdentifierMode: assignment.category.athleteIdentifierMode,
+      shirtNumber: assignment.shirtNumber,
+      gameNickname: assignment.gameNickname,
+      gameAccountName: assignment.gameAccountName,
+      gameAccountUrl: assignment.gameAccountUrl,
     }));
   }
 
@@ -256,6 +275,7 @@ export class SportsReadAdminMapper {
       teamMemberId: record.teamMemberId,
       role: record.role,
       eligibility: record.eligibility,
+      shirtNumber: record.shirtNumber,
       gameNickname: record.gameNickname,
       gameAccountName: record.gameAccountName,
       gameAccountUrl: record.gameAccountUrl,
@@ -274,6 +294,7 @@ export class SportsReadAdminMapper {
       teamMemberId: string;
       role: AdminSportsRegistrationLineupMemberSummary['role'];
       eligibility: AdminSportsRegistrationLineupMemberSummary['eligibility'];
+      shirtNumber?: string | null;
       person: { id: string; name: string };
     },
   ): AdminSportsRegistrationLineupMemberSummary {
@@ -283,6 +304,7 @@ export class SportsReadAdminMapper {
       teamMemberId: record.teamMemberId,
       role: record.role,
       eligibility: record.eligibility,
+      shirtNumber: record.shirtNumber,
       person: {
         id: record.person.id,
         name: toSportsPublicPlayerName(record.person.name),

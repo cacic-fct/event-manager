@@ -243,6 +243,7 @@ export type PublicRosterRecord = {
       select: { role: true };
     }>['role'];
     registrationMember: {
+      shirtNumber: string | null;
       gameNickname: string | null;
       gameAccountName: string | null;
       gameAccountUrl: string | null;

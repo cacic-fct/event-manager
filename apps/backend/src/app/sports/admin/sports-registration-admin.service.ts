@@ -300,6 +300,92 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
     });
   }
 
+  async updateAthleteProfile(
+    registrationMemberId: string,
+    input: Pick<SportsAthleteProfilePatch, 'shirtNumber' | 'gameNickname' | 'gameAccountName' | 'gameAccountUrl'>,
+    actor: AuthenticatedUser,
+  ) {
+    const actorId = this.requireActorId(actor);
+    const profile = normalizeSportsAthleteProfilePatch(input);
+    const scope = await this.prisma.sportsRegistrationMember.findFirst({
+      where: { id: registrationMemberId, deletedAt: null },
+      select: { category: { select: { eventGroupId: true } } },
+    });
+    if (!scope) {
+      throw new NotFoundException(`Sports registration member ${registrationMemberId} was not found.`);
+    }
+    await this.frozen.assertEventGroupMutable(scope.category.eventGroupId, actor, 'edit');
+
+    return runSerializableSportsTransaction(this.prisma, async (tx) => {
+      const member = await tx.sportsRegistrationMember.findFirst({
+        where: { id: registrationMemberId, deletedAt: null },
+        include: {
+          registration: {
+            select: { id: true, team: { select: { name: true } } },
+          },
+          category: {
+            select: {
+              name: true,
+              eventGroupId: true,
+              tournament: { select: { majorEventId: true } },
+            },
+          },
+          teamMember: {
+            select: {
+              participant: { select: { person: { select: { name: true } } } },
+            },
+          },
+        },
+      });
+      if (!member) {
+        throw new NotFoundException(`Sports registration member ${registrationMemberId} was not found.`);
+      }
+
+      const updated = await tx.sportsRegistrationMember.updateMany({
+        where: { id: member.id, deletedAt: null },
+        data: {
+          ...profile,
+          updatedById: actorId,
+        },
+      });
+      if (updated.count !== 1) {
+        throw new ConflictException('A identificação do atleta mudou. Recarregue e tente novamente.');
+      }
+
+      const result = await tx.sportsRegistrationMember.findUniqueOrThrow({
+        where: { id: member.id },
+      });
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
+          entityId: member.id,
+          entityLabel: `${member.teamMember.participant.person.name} · ${member.category.name}`,
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          before: {
+            shirtNumber: member.shirtNumber,
+            gameNickname: member.gameNickname,
+            gameAccountName: member.gameAccountName,
+            gameAccountUrl: member.gameAccountUrl,
+          },
+          after: {
+            shirtNumber: result.shirtNumber,
+            gameNickname: result.gameNickname,
+            gameAccountName: result.gameAccountName,
+            gameAccountUrl: result.gameAccountUrl,
+          },
+          summary: 'Identificação do atleta atualizada por administrador.',
+          scope: {
+            majorEventId: member.category.tournament.majorEventId,
+            eventGroupId: member.category.eventGroupId,
+          },
+        },
+        tx,
+      );
+      return result;
+    });
+  }
+
   async updateOwnAthleteProfile(
     registrationMemberId: string,
     personId: string,

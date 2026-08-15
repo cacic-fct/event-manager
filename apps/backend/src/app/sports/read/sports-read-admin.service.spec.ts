@@ -340,6 +340,7 @@ describe('SportsReadAdminService', () => {
         teamMemberId: 'team-member-1',
         role: 'PLAYER',
         eligibility: 'ELIGIBLE',
+        shirtNumber: '12',
         category: { athleteIdentifierMode: 'NAME' },
         teamMember: { participant: { person: { id: 'person-1', name: 'Ana Beatriz de Souza' } } },
       },
@@ -351,6 +352,8 @@ describe('SportsReadAdminService', () => {
 
     const result = await service.adminRegistration(user as never, 'registration-1');
     expect(result.members[0]?.person.name).toBe('Ana Souza');
+    expect(result.members[0]?.shirtNumber).toBe('12');
+    expect(result.lineupMembers[0]?.shirtNumber).toBe('12');
     expect(result.rosters[0]?.entries[0]?.roleMetadataJson).toBe('{"position":"GOALKEEPER"}');
     expect(authorization.assertPermissions).toHaveBeenCalledWith(user, [expect.any(String)], {
       sportsRegistrationId: 'registration-1',
@@ -384,6 +387,7 @@ describe('SportsReadAdminService', () => {
         teamMemberId: 'team-member-1',
         role: 'PLAYER',
         eligibility: 'ELIGIBLE',
+        shirtNumber: null,
         person: { id: 'person-1', name: 'Ana Souza' },
       },
     ]);

@@ -1,2 +1,2 @@
-ALTER TABLE "Event"
+ALTER TABLE "events"
 RENAME COLUMN "publiclyVisible" TO "isPubliclyListed";

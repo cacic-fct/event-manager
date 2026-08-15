@@ -1,6 +1,7 @@
 import {
   SportsRegistrationCreateInput,
   SportsRegistrationMemberUpsertInput,
+  SportsRegistrationMemberProfileUpdateInput,
   SportsRegistrationUpdateInput,
   SportsRepresentativeAssignInput,
   SportsRepresentativeRevokeInput,
@@ -111,6 +112,38 @@ export class SportsTeamMutationsResolver extends SportsMutationsResolverSupport 
         true,
       )
     ).id;
+  }
+
+  @Mutation(() => String, { name: 'updateSportsRegistrationMemberProfile' })
+  @RequirePermissions(Permission.SportsRegistration.Update)
+  async updateRegistrationMemberProfile(
+    @Args('input', { type: () => SportsRegistrationMemberProfileUpdateInput })
+    input: SportsRegistrationMemberProfileUpdateInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    const actor = this.authenticated(context);
+    const member = await this.prisma.sportsRegistrationMember.findFirst({
+      where: { id: input.registrationMemberId, deletedAt: null },
+      select: { registrationId: true },
+    });
+    if (!member) {
+      throw new NotFoundException(`Sports registration member ${input.registrationMemberId} was not found.`);
+    }
+    await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Update], {
+      sportsRegistrationId: member.registrationId,
+    });
+    const updated = await this.admin.updateAthleteProfile(
+      input.registrationMemberId,
+      {
+        shirtNumber: input.shirtNumber,
+        gameNickname: input.gameNickname,
+        gameAccountName: input.gameAccountName,
+        gameAccountUrl: input.gameAccountUrl,
+      },
+      actor,
+    );
+    await this.publishEntityMutation('REGISTRATION', member.registrationId, true);
+    return updated.id;
   }
 
   @Mutation(() => String, { name: 'assignSportsTeamRepresentative' })

@@ -247,6 +247,7 @@ export class SportsReadCurrentUserService {
         category: {
           select: {
             id: true,
+            athleteIdentifierMode: true,
             tournament: { select: { id: true } },
           },
         },
@@ -281,6 +282,7 @@ export class SportsReadCurrentUserService {
                 roleMetadata: true,
                 registrationMember: {
                   select: {
+                    shirtNumber: true,
                     teamMember: {
                       select: {
                         participant: {
@@ -393,7 +395,10 @@ export class SportsReadCurrentUserService {
           role: entry.role,
           status: entry.status,
           checkedInAt: entry.checkedInAt,
-          shirtNumber: entry.shirtNumber,
+          shirtNumber:
+            match.category.athleteIdentifierMode === 'SHIRT_NUMBER'
+              ? (entry.shirtNumber ?? entry.registrationMember.shirtNumber)
+              : null,
           roleMetadataJson: entry.roleMetadata === null ? null : this.mapper.serializeJson(entry.roleMetadata),
         })),
       })),
@@ -457,6 +462,7 @@ export class SportsReadCurrentUserService {
         select: {
           id: true,
           role: true,
+          shirtNumber: true,
           teamMember: {
             select: {
               participant: {
@@ -510,7 +516,7 @@ export class SportsReadCurrentUserService {
         registrationMemberId: member.id,
         name: toSportsPublicPlayerName(member.teamMember.participant.person.name),
         role: member.role,
-        shirtNumber: shirtNumbersByMemberId.get(member.id) ?? null,
+        shirtNumber: shirtNumbersByMemberId.get(member.id) ?? member.shirtNumber ?? null,
       })),
       roster: roster
         ? {

@@ -313,6 +313,7 @@ export function sportsPublicRosterRecord(overrides: Record<string, unknown> = {}
         role: 'PLAYER',
         registrationMember: {
           category: { athleteIdentifierMode: 'NAME' },
+          shirtNumber: null,
           teamMember: { participant: { person: { name: 'Ana Beatriz de Souza' } } },
         },
       },
