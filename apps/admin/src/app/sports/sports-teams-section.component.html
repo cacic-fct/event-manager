@@ -115,16 +115,16 @@
         [formGroup]="workspace.representativeForm"
         class="person-search"
         (ngSubmit)="workspace.assignRepresentative()">
-        <mat-form-field>
-          <mat-label>Buscar pessoa autorizada</mat-label>
-          <input
-            matInput
-            formControlName="personQuery"
-            (input)="
-              workspace.searchPeople(workspace.representativeForm.controls.personQuery.value, 'representative')
-            " />
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
+        <app-person-search
+          label="Buscar pessoa autorizada"
+          [query]="workspace.representativeForm.controls.personQuery.value"
+          [results]="workspace.peopleTarget() === 'representative' ? workspace.people() : []"
+          [loading]="workspace.loading()"
+          [disabled]="!workspace.canSearchPeople()"
+          resultActionLabel="Selecionar representante"
+          (queryChange)="workspace.representativeForm.controls.personQuery.setValue($event)"
+          (searchRequested)="workspace.searchPeople($event, 'representative')"
+          (personSelected)="workspace.pickPerson($event, 'representative')" />
         <button
           mat-stroked-button
           type="submit"
@@ -132,24 +132,6 @@
           <mat-icon>person_add</mat-icon>Atribuir
         </button>
       </form>
-      @if (workspace.people().length && workspace.peopleTarget() === 'representative') {
-        <div class="search-results">
-          @for (person of workspace.people(); track person.id) {
-            <button
-              class="person-search-result"
-              type="button"
-              [attr.aria-label]="'Adicionar pessoa ' + person.name"
-              (click)="workspace.pickPerson(person, 'representative')">
-              <span class="person-search-result-copy">
-                <strong>{{ person.name }}</strong>
-                <small>{{ person.email || 'Sem e-mail' }}</small>
-                <small>{{ personIdentityDocument(person.identityDocument) }}</small>
-              </span>
-              <mat-icon aria-hidden="true">person_add</mat-icon>
-            </button>
-          }
-        </div>
-      }
       <div class="person-list">
         @for (representative of read.representatives; track representative.id) {
           <div>
@@ -178,36 +160,20 @@
         <p>Defina a identificação padrão de cada atleta por modalidade para reutilizá-la nas escalações e páginas públicas.</p>
       </div>
       <form [formGroup]="workspace.memberForm" class="person-search" (ngSubmit)="workspace.addTeamMember()">
-        <mat-form-field>
-          <mat-label>Buscar pessoa para o elenco</mat-label>
-          <input
-            matInput
-            formControlName="personQuery"
-            (input)="workspace.searchPeople(workspace.memberForm.controls.personQuery.value, 'member')" />
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
+        <app-person-search
+          label="Buscar pessoa para o elenco"
+          [query]="workspace.memberForm.controls.personQuery.value"
+          [results]="workspace.peopleTarget() === 'member' ? workspace.people() : []"
+          [loading]="workspace.loading()"
+          [disabled]="!workspace.canSearchPeople()"
+          resultActionLabel="Selecionar para o elenco"
+          (queryChange)="workspace.memberForm.controls.personQuery.setValue($event)"
+          (searchRequested)="workspace.searchPeople($event, 'member')"
+          (personSelected)="workspace.pickPerson($event, 'member')" />
         <button mat-stroked-button type="submit" [disabled]="workspace.loading() || workspace.memberForm.invalid">
           <mat-icon>person_add</mat-icon>Adicionar
         </button>
       </form>
-      @if (workspace.people().length && workspace.peopleTarget() === 'member') {
-        <div class="search-results">
-          @for (person of workspace.people(); track person.id) {
-            <button
-              class="person-search-result"
-              type="button"
-              [attr.aria-label]="'Adicionar pessoa ' + person.name"
-              (click)="workspace.pickPerson(person, 'member')">
-              <span class="person-search-result-copy">
-                <strong>{{ person.name }}</strong>
-                <small>{{ person.email || 'Sem e-mail' }}</small>
-                <small>{{ personIdentityDocument(person.identityDocument) }}</small>
-              </span>
-              <mat-icon aria-hidden="true">person_add</mat-icon>
-            </button>
-          }
-        </div>
-      }
       <div class="member-grid">
         @for (member of read.members; track member.id) {
           <div class="member-card">

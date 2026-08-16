@@ -21,6 +21,7 @@ import { PeopleApiService } from '../graphql/people-api.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { bindLiveSearch } from '../search/live-search';
 import { createWorkspaceListPagination } from '../pagination/list-pagination';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import {
   PERMISSION_GRANT_GROUPS,
   PERMISSION_GRANT_PRESET_OPTIONS,
@@ -49,6 +50,7 @@ export abstract class PeopleState {
   protected readonly permissionGrantsApi = inject(PermissionGrantsApiService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly snackbar = inject(MatSnackBar);
+  protected readonly feedback = inject(AdminFeedbackService);
   protected readonly dialog = inject(MatDialog);
   protected readonly formBuilder = inject(FormBuilder);
   protected readonly router = inject(Router);

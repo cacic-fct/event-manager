@@ -27,6 +27,29 @@ describe('Attendances', () => {
     expect(offlineData.replaceAttendanceFeed).toHaveBeenCalledWith('user-1', subscriptionsFeedFixture);
   });
 
+  it('renders ordered status icons with accessible labels and preserves detailed status text for assistive technology', async () => {
+    const { component, fixture } = await createFixture();
+
+    await settle(fixture);
+
+    const statusIcons = Array.from(fixture.nativeElement.querySelectorAll('.status-icon')) as HTMLElement[];
+    expect(statusIcons.map((statusIcon) => statusIcon.getAttribute('aria-label'))).toEqual([
+      'Certificado emitido',
+      'Presença registrada',
+      'Certificado emitido',
+    ]);
+    expect(statusIcons.map((statusIcon) => statusIcon.textContent?.trim())).toEqual([
+      'workspace_premium',
+      'how_to_reg',
+      'workspace_premium',
+    ]);
+    expect(component.statusItems('Presença registrada em 1 de 2 eventos, Palestrante, Certificado emitido')).toEqual([
+      { label: 'Presença registrada em 1 de 2 eventos', icon: 'how_to_reg' },
+      { label: 'Palestrante', icon: 'record_voice_over' },
+      { label: 'Certificado emitido', icon: 'workspace_premium' },
+    ]);
+  });
+
   it('uses absolute attendance detail routes', async () => {
     const { component } = await createFixture();
     const majorEvent = subscriptionsFeedFixture.majorEventItems[0];

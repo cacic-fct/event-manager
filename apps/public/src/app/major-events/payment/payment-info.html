@@ -1,3 +1,5 @@
+@let currentState = state();
+
 <mat-toolbar>
   <button
     matIconButton
@@ -6,12 +8,14 @@
     aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
-  <span>Pagamento</span>
+  <h1 class="global-toolbar-title">
+    {{ currentState.status === 'ready' ? currentState.subscription.majorEvent.name : 'Pagamento' }}
+  </h1>
 </mat-toolbar>
 
 <main class="payment-page">
-  @let currentState = state(); @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando pagamento"></mat-progress-bar>
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>
@@ -21,10 +25,6 @@
   majorEvent.paymentInfo; @let receipt = currentState.receipt;
 
   <header class="payment-header">
-    <div>
-      <p class="eyebrow">Informações de pagamento</p>
-      <h1>{{ majorEvent.name }}</h1>
-    </div>
     <span class="status-pill">{{ statusLabel(subscription.subscriptionStatus) }}</span>
   </header>
 
@@ -140,7 +140,10 @@
       <small>Arraste uma imagem aqui ou clique para selecionar. Máximo 15 MB.</small>
     </button>
     @if (uploadProgress() !== null) {
-    <mat-progress-bar mode="determinate" [value]="uploadProgress() ?? 0"></mat-progress-bar>
+    <mat-progress-bar
+      mode="determinate"
+      aria-label="Enviando comprovante"
+      [value]="uploadProgress() ?? 0"></mat-progress-bar>
     } } @else {
     <p class="empty-text">O envio de comprovantes não está disponível para esta inscrição.</p>
     }

@@ -212,6 +212,14 @@ describe('Event', () => {
     expect(component).toBeTruthy();
   });
 
+  it('uses the event name as the concise toolbar title', () => {
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('mat-toolbar h1')?.textContent?.trim()).toBe('Evento teste');
+    expect(host.querySelector('.event-header h1')).toBeNull();
+  });
+
   it('renders formatted descriptions without creating unsafe HTML', async () => {
     TestBed.resetTestingModule();
     const eventPageData = defaultEventPageData();

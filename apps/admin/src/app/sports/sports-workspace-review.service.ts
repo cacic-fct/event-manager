@@ -345,7 +345,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     } catch (error) {
       const message = getErrorMessage(error, fallback);
       this.error.set(message);
-      this.notify(message, true);
+      this.feedback.showErrorMessage(message);
     } finally {
       if (showGlobalLoading) {
         this.loadingOperations = Math.max(0, this.loadingOperations - 1);

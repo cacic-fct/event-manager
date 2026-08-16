@@ -1,16 +1,17 @@
 @if (eventChildActive()) {
 <router-outlet />
 } @else {
+@let state = store.pageState();
 <mat-toolbar>
   <button matIconButton type="button" routerLink="/menu" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
-  <span>Inscrição</span>
+  <h1 class="global-toolbar-title">{{ state.status === 'ready' ? state.data.majorEvent.name : 'Inscrição' }}</h1>
 </mat-toolbar>
 
 <main class="subscription-page">
-  @let state = store.pageState(); @if (state.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  @if (state.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando inscrição"></mat-progress-bar>
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">hourglass_top</mat-icon>
     <p>Carregando inscrição...</p>
@@ -27,8 +28,6 @@
       <img class="twemoji" [src]="emoji.getTwemojiUrl(majorEvent.emoji)" [alt]="majorEvent.emoji" />
     </div>
     <div class="header-copy">
-      <p class="eyebrow">Grande evento</p>
-      <h1>{{ majorEvent.name }}</h1>
       <p>{{ store.dateLine() }}</p>
     </div>
   </header>

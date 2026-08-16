@@ -28,6 +28,7 @@ import { ShellService } from './admin-shell.service';
 import { findNavigationItemForUrl, navigationItems } from './navigation';
 import { isPlatformBrowser } from '@angular/common';
 import { MatDividerModule } from '@angular/material/divider';
+import { RequestActivityService } from '../feedback/request-activity.service';
 
 export type NavigationMode = 'icons' | 'full' | 'auto';
 
@@ -66,6 +67,7 @@ export class AdminShellComponent {
   public readonly router = inject(Router);
 
   readonly shell = inject(ShellService);
+  protected readonly requestActivity = inject(RequestActivityService);
   protected readonly permissions = inject(PermissionsService);
 
   readonly initialNavMode = input<NavigationMode | null>(null);

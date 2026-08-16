@@ -6,17 +6,14 @@
   padding: 20px 16px 44px;
 }
 
-.page-header {
-  margin-bottom: 20px;
-}
-
 .certificate-name {
   color: var(--mat-sys-on-surface-variant);
   margin: 0;
 }
 
-.eyebrow {
+.certificate-status {
   font: var(--mat-sys-label-large);
+  margin: 0;
 }
 
 h1,

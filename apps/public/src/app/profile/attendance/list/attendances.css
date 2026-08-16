@@ -6,16 +6,6 @@
   padding: 20px 16px 40px;
 }
 
-.page-header {
-  margin-bottom: 20px;
-}
-
-.eyebrow {
-  color: var(--mat-sys-primary);
-  font: var(--mat-sys-label-large);
-  margin: 0 0 4px;
-}
-
 h1,
 h2 {
   margin: 0;
@@ -81,6 +71,30 @@ h2 {
   display: block;
   height: 28px;
   width: 28px;
+}
+
+.status-icons {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 20px;
+  white-space: normal;
+}
+
+.status-icon {
+  align-items: center;
+  color: var(--mat-sys-primary);
+  cursor: help;
+  display: inline-flex;
+  justify-content: center;
+  padding: 2px;
+}
+
+.status-icon mat-icon {
+  font-size: 20px;
+  height: 20px;
+  width: 20px;
 }
 
 .empty-section {

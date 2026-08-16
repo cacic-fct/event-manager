@@ -8,6 +8,7 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { ShellService } from './admin-shell.service';
 import { AdminShellComponent, NavigationMode } from './admin-shell.component';
 import { NavigationLinkId } from './navigation';
+import { RequestActivityService } from '../feedback/request-activity.service';
 
 type WorkspaceLayoutStoryArgs = {
   navMode: NavigationMode;
@@ -62,6 +63,12 @@ const meta: Meta<WorkspaceLayoutStoryArgs> = {
           useValue: {
             loading: shellLoading,
             loadInitialData: async () => undefined,
+          },
+        },
+        {
+          provide: RequestActivityService,
+          useValue: {
+            loading: shellLoading,
           },
         },
         {

@@ -105,55 +105,29 @@
       <section class="surface">
         <h4>Criação manual</h4>
         <form [formGroup]="workspace.eventSubscriptionForm" class="manual-form">
-          <mat-form-field>
-            <mat-label>Identificador</mat-label>
-            <mat-select formControlName="identifierType">
-              <mat-option value="email">E-mail</mat-option>
-              <mat-option value="identityDocument">Documento</mat-option>
-              <mat-option value="userId">ID de usuário</mat-option>
-              <mat-option value="phone">Telefone</mat-option>
-              <mat-option value="query">Nome</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field>
-            <mat-label>Valor</mat-label>
-            <input matInput formControlName="identifier" />
-          </mat-form-field>
-
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="!workspace.selectedEvent() || !permissions.has(Permission.Person.Read)"
-            (click)="workspace.findEventPerson()">
-            <mat-icon>person_search</mat-icon>
-            Buscar pessoa
-          </button>
+          <app-person-search
+            label="Buscar pessoa para inscrever"
+            [query]="workspace.eventSubscriptionForm.controls.identifier.value"
+            [results]="workspace.eventPersonMatches()"
+            [disabled]="
+              !workspace.selectedEvent() ||
+              !permissions.has(Permission.Person.Read) ||
+              !canEditSelectedEventSubscriptions()
+            "
+            [disabledReason]="
+              !permissions.has(Permission.Person.Read)
+                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                : 'Criar inscrições exige permissão para editar as inscrições deste evento.'
+            "
+            resultActionLabel="Inscrever"
+            (queryChange)="workspace.eventSubscriptionForm.controls.identifier.setValue($event)"
+            (searchRequested)="
+              workspace.eventSubscriptionForm.controls.identifierType.setValue('query');
+              workspace.eventSubscriptionForm.controls.identifier.setValue($event);
+              workspace.findEventPerson()
+            "
+            (personSelected)="workspace.createEventSubscription($event)" />
         </form>
-
-        <div class="inline-list">
-          @for (person of workspace.eventPersonMatches(); track person.id) {
-            @if (canEditSelectedEventSubscriptions()) {
-              <button mat-stroked-button type="button" (click)="workspace.createEventSubscription(person)">
-                <span class="person-choice">
-                  <span>Inscrever {{ person.name }}</span>
-                  <small
-                    >{{ person.identityDocument || 'Sem documento' }} ·
-                    {{ person.email || 'Sem e-mail principal' }}</small
-                  >
-                </span>
-              </button>
-            }
-          } @empty {
-            <span class="empty-note">
-              {{
-                permissions.has(Permission.Person.Read)
-                  ? 'Busque uma pessoa para inscrever.'
-                  : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
-              }}
-            </span>
-          }
-        </div>
       </section>
 
       <section class="surface">

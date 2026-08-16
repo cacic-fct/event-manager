@@ -14,7 +14,7 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
       <a matIconButton routerLink="/menu" aria-label="Voltar para o menu">
         <mat-icon>arrow_back</mat-icon>
       </a>
-      <span>Preferências</span>
+      <h1 class="global-toolbar-title">Preferências</h1>
     </mat-toolbar>
 
     <main class="global-container">
@@ -40,16 +40,15 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
             <span matListItemTitle>Editar informações da conta</span>
           </a>
 
-          <a
-            mat-list-item
+          <mat-list-item
             role="button"
             tabindex="0"
             (click)="authService.logout()"
             (keydown.enter)="authService.logout()"
-            (keydown.space)="authService.logout()">
+            (keydown.space)="authService.logout(); $event.preventDefault()">
             <mat-icon matListItemIcon>logout</mat-icon>
             <span matListItemTitle>Sair da conta</span>
-          </a>
+          </mat-list-item>
         }
       </mat-nav-list>
     </main>

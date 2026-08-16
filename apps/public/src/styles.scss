@@ -121,14 +121,17 @@ body {
   margin-right: auto;
 }
 
-.global-eyebrow {
-  color: var(--mat-sys-primary);
-  font: var(--mat-sys-label-large);
-  margin: 0 0 4px;
-}
-
 .global-page-header {
   margin-bottom: 20px;
+}
+
+mat-toolbar h1.global-toolbar-title {
+  font: var(--mat-sys-title-large);
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 mat-toolbar .global-toolbar-spacer {

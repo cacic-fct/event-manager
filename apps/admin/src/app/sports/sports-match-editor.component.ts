@@ -13,6 +13,7 @@ import { SportsMatchOverlayBuilderComponent, SportsTeamLogoComponent } from '@ca
 import { SPORTS_ROSTER_ROLE_LABELS, type SportsRosterRole } from '@cacic-fct/shared-data-types/sports-metadata';
 import type { SportsCategoryRead } from './sports.models';
 import { SportsWorkspaceSection } from './sports-workspace-section.base';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
 
 @Component({
   selector: 'app-sports-match-editor',
@@ -35,6 +36,7 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
     MatTooltipModule,
     SportsMatchOverlayBuilderComponent,
     SportsTeamLogoComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './sports-match-editor.component.html',
 })

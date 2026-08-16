@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { MergeCandidateApiService } from '../graphql/merge-candidate-api.service';
 import { MergeCandidate, MergeCandidateStatus } from '@cacic-fct/event-manager-admin-contracts';
 import { MergeCandidateDialogComponent } from './dialogs/merge-candidate-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
@@ -23,6 +23,7 @@ import { PeopleService } from '../people/people.service';
 export class MergeCandidatesService {
   private readonly api = inject(MergeCandidateApiService);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly peopleService = inject(PeopleService);
@@ -67,9 +68,7 @@ export class MergeCandidatesService {
         });
       }
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível verificar duplicidades.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível verificar duplicidades.');
     }
   }
 
@@ -112,9 +111,7 @@ export class MergeCandidatesService {
       await this.refreshMergeCandidates();
       await this.peopleService.searchPeople('');
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível unificar as pessoas.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível unificar as pessoas.');
     }
   }
 
@@ -125,9 +122,7 @@ export class MergeCandidatesService {
       await this.refreshMergeCandidates();
       await this.peopleService.searchPeople('');
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível desfazer a unificação.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível desfazer a unificação.');
     }
   }
 }

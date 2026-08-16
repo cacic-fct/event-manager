@@ -429,53 +429,27 @@
           <section class="surface">
             <h4>Pessoa</h4>
             <form [formGroup]="workspace.majorEventPersonForm" class="manual-form">
-              <mat-form-field>
-                <mat-label>Identificador</mat-label>
-                <mat-select formControlName="identifierType">
-                  <mat-option value="email">E-mail</mat-option>
-                  <mat-option value="identityDocument">Documento</mat-option>
-                  <mat-option value="userId">ID de usuário</mat-option>
-                  <mat-option value="phone">Telefone</mat-option>
-                  <mat-option value="query">Nome</mat-option>
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field>
-                <mat-label>Valor</mat-label>
-                <input matInput formControlName="identifier" />
-              </mat-form-field>
-
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="!permissions.has(Permission.Person.Read)"
-                (click)="workspace.findMajorEventPerson()">
-                <mat-icon>person_search</mat-icon>
-                Buscar pessoa
-              </button>
+              <app-person-search
+                label="Buscar pessoa para inscrever"
+                [query]="workspace.majorEventPersonForm.controls.identifier.value"
+                [results]="workspace.majorEventPersonMatches()"
+                [disabled]="
+                  !permissions.has(Permission.Person.Read) || !canEditSelectedMajorEventSubscriptions()
+                "
+                [disabledReason]="
+                  !permissions.has(Permission.Person.Read)
+                    ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                    : 'Criar inscrições exige permissão para editar este grande evento.'
+                "
+                resultActionLabel="Selecionar para inscrição"
+                (queryChange)="workspace.majorEventPersonForm.controls.identifier.setValue($event)"
+                (searchRequested)="
+                  workspace.majorEventPersonForm.controls.identifierType.setValue('query');
+                  workspace.majorEventPersonForm.controls.identifier.setValue($event);
+                  workspace.findMajorEventPerson()
+                "
+                (personSelected)="workspace.selectMajorEventPerson($event)" />
             </form>
-
-            <div class="inline-list">
-              @for (person of workspace.majorEventPersonMatches(); track person.id) {
-                <button mat-stroked-button type="button" (click)="workspace.selectMajorEventPerson(person)">
-                  <span class="person-choice">
-                    <span>Usar {{ person.name }}</span>
-                    <small
-                      >{{ person.identityDocument || 'Sem documento' }} ·
-                      {{ person.email || 'Sem e-mail principal' }}</small
-                    >
-                  </span>
-                </button>
-              } @empty {
-                <span class="empty-note">
-                  {{
-                    permissions.has(Permission.Person.Read)
-                      ? 'Busque uma pessoa para inscrever.'
-                      : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
-                  }}
-                </span>
-              }
-            </div>
           </section>
         }
 

@@ -1,4 +1,8 @@
 @media (max-width: 768px) {
+  .global-request-progress {
+    inset-block-start: 56px;
+  }
+
   .layout {
     height: calc(100dvh - 56px);
   }

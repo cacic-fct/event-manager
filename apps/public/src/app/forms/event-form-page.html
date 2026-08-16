@@ -1,13 +1,17 @@
+@let currentState = state();
+
 <mat-toolbar>
   <a matIconButton routerLink="/profile/attendances" aria-label="Voltar para participações">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <span>Formulário</span>
+  <h1 class="global-toolbar-title">
+    {{ currentState.status === 'ready' ? currentState.form.name : 'Formulário' }}
+  </h1>
 </mat-toolbar>
 
 <main class="form-page">
-  @let currentState = state(); @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate" />
+  @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando formulário" />
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon>error</mat-icon>
@@ -15,10 +19,8 @@
   </section>
   } @else {
   <header>
-    <p>Formulário</p>
-    <h1>{{ currentState.form.name }}</h1>
     @if (currentState.form.description) {
-    <span>{{ currentState.form.description }}</span>
+    <p>{{ currentState.form.description }}</p>
     }
   </header>
 
@@ -44,7 +46,7 @@
     <p>Este formulário está encerrado.</p>
   </section>
   } @if (resultsLoading()) {
-  <mat-progress-bar mode="indeterminate" />
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando resultados" />
   } @if (results(); as currentResults) {
   <section class="results-section" aria-live="polite">
     <header>

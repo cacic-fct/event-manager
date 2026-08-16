@@ -1,5 +1,5 @@
 <mat-toolbar class="calendar-toolbar">
-  <span>Calendário</span>
+  <h1 class="global-toolbar-title">Calendário</h1>
   <span class="toolbar-spacer"></span>
   <mat-button-toggle-group [value]="viewMode()" (valueChange)="setViewMode($event)" aria-label="Modo de visualização">
     <mat-button-toggle value="list" aria-label="Visualização em lista">
@@ -15,13 +15,13 @@
   <form class="filter-form" aria-label="Filtros do calendário">
     <div class="search-controls">
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="search-field">
+        <mat-label>Buscar eventos</mat-label>
         <input
           matInput
           type="search"
           [formField]="filterForm.query"
           autocomplete="off"
-          placeholder="Buscar eventos"
-          aria-label="Buscar eventos" />
+          placeholder="Nome ou descrição" />
         @if (filterModel().query) {
         <button
           matIconButton
@@ -76,7 +76,7 @@
   </form>
 
   @let state = calendarState(); @if (state.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando eventos"></mat-progress-bar>
   } @else if (state.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>

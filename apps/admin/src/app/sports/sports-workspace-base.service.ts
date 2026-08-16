@@ -46,6 +46,7 @@ import {
   resetPagination,
 } from '../pagination/list-pagination';
 import { bindLiveSearch } from '../search/live-search';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 
 interface SportsMajorEventWorkspaceFilters {
   query: string;
@@ -64,6 +65,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   private readonly permissions = inject(PermissionsService);
   private readonly router = inject(Router, { optional: true });
   protected readonly snackbar = inject(MatSnackBar);
+  protected readonly feedback = inject(AdminFeedbackService);
   protected readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
@@ -168,6 +170,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   });
   readonly isEditingOfficial = computed(() => this.editingOfficial() !== null);
   readonly canReadOfficialContacts = computed(() => this.permissions.has(Permission.Person.Read));
+  readonly canSearchPeople = computed(() => this.permissions.has(Permission.Person.Read));
   readonly canEditMatchPublication = computed(() => this.permissions.has(Permission.SportsMatch.Update));
   readonly canOperateMatch = computed(() => this.permissions.has(Permission.SportsMatch.Operate));
   readonly canReviewMatch = computed(() => this.permissions.has(Permission.SportsMatch.Review));

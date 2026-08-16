@@ -1,13 +1,17 @@
+@let currentState = detailState();
+
 <mat-toolbar>
   <a matIconButton routerLink="/profile/attendances" aria-label="Voltar para inscrições">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <span>Detalhes</span>
+  <h1 class="global-toolbar-title">
+    {{ currentState.status === 'ready' ? currentState.detail.title : 'Detalhes' }}
+  </h1>
 </mat-toolbar>
 
 <main class="detail-page">
-  @let currentState = detailState(); @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando detalhes da participação"></mat-progress-bar>
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>
@@ -20,8 +24,6 @@
       <img class="twemoji" [src]="emoji.getTwemojiUrl(detail.emoji)" [alt]="detail.emoji" />
     </div>
     <div class="header-copy">
-      <p class="eyebrow">{{ detail.typeLabel }}</p>
-      <h1>{{ detail.title }}</h1>
       <p class="date-line">{{ detail.dateLine }}</p>
     </div>
   </header>

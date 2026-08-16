@@ -1,13 +1,15 @@
+@let state = pageState();
+
 <mat-toolbar>
   <button matIconButton type="button" aria-label="Voltar" (click)="goBack()">
     <mat-icon>arrow_back</mat-icon>
   </button>
-  <span>Torneio</span>
+  <h1 class="global-toolbar-title">{{ state.status === 'ready' ? state.data.name : 'Torneio' }}</h1>
 </mat-toolbar>
 
 <main class="tournament-page">
-  @let state = pageState(); @if (state.status === 'loading') {
-  <mat-progress-bar mode="indeterminate" />
+  @if (state.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando torneio" />
   <section class="message-state" aria-live="polite">
     <mat-icon aria-hidden="true">sports_score</mat-icon>
     <p>Carregando o torneio...</p>
@@ -28,7 +30,6 @@
   <header class="tournament-header">
     <lib-twemoji class="tournament-emoji" [emoji]="tournament.emoji" />
     <div>
-      <h1>{{ tournament.name }}</h1>
       <p class="date-line">
         {{ tournament.startDate | date: 'dd/MM/yyyy' }} a {{ tournament.endDate | date: 'dd/MM/yyyy' }}
       </p>

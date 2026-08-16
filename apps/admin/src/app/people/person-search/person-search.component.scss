@@ -1,0 +1,91 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.person-search-control {
+  align-items: start;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+}
+
+.person-search-control mat-form-field {
+  min-width: 0;
+}
+
+.person-search-control button {
+  min-height: 3.5rem;
+}
+
+.person-search-control mat-spinner {
+  display: inline-block;
+  margin-inline-end: 0.5rem;
+}
+
+.person-search-hint {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+  margin: 0.5rem 0 0;
+}
+
+.person-search-results {
+  display: grid;
+  gap: 0.35rem;
+  margin-block-start: 0.5rem;
+}
+
+.person-search-result {
+  align-items: center;
+  background: var(--mat-sys-surface-container-low);
+  border: 0;
+  border-radius: 12px;
+  color: var(--mat-sys-on-surface);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 1rem;
+  justify-content: space-between;
+  min-height: 3.5rem;
+  padding: 0.65rem 0.8rem;
+  text-align: start;
+  width: 100%;
+}
+
+.person-search-result:hover {
+  background: var(--mat-sys-surface-container);
+}
+
+.person-search-result:focus-visible {
+  outline: 3px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+.person-search-result > span {
+  display: grid;
+  min-width: 0;
+}
+
+.person-search-result strong,
+.person-search-result small {
+  overflow-wrap: anywhere;
+}
+
+.person-search-result small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.person-search-result > mat-icon {
+  color: var(--mat-sys-primary);
+  flex: 0 0 auto;
+}
+
+@media (max-width: 600px) {
+  .person-search-control {
+    grid-template-columns: 1fr;
+  }
+
+  .person-search-control button {
+    width: 100%;
+  }
+}

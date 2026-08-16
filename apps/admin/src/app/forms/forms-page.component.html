@@ -434,19 +434,28 @@
       </form>
 
       <mat-tab-group>
-        <mat-tab label="Editor">
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <span class="workspace-tab-label"><mat-icon>edit_note</mat-icon>Editor</span>
+          </ng-template>
           <div class="tab-panel">
             <lib-event-form-builder
               [elements]="workspace.elements()"
               (elementsChange)="workspace.updateElements($event)" />
           </div>
         </mat-tab>
-        <mat-tab label="Prévia">
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <span class="workspace-tab-label"><mat-icon>visibility</mat-icon>Prévia</span>
+          </ng-template>
           <div class="tab-panel">
             <lib-event-form-renderer [elements]="workspace.elements()" submitLabel="Enviar respostas de teste" />
           </div>
         </mat-tab>
-        <mat-tab label="Resultados">
+        <mat-tab>
+          <ng-template mat-tab-label>
+            <span class="workspace-tab-label"><mat-icon>analytics</mat-icon>Resultados</span>
+          </ng-template>
           <div class="tab-panel">
             <div class="panel-actions results-actions">
               <button

@@ -23,6 +23,7 @@ import {
 } from '../resource-state/frozen-resource';
 import { CertificatesService } from './certificates.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
 
 @Component({
   selector: 'app-workspace-certificates-tab',
@@ -40,6 +41,7 @@ import { PermissionsService } from '../permissions/permissions.service';
     MatSelectModule,
     MatTooltipModule,
     TwemojiComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './certificates-page.component.html',
   styleUrls: [

@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -30,6 +31,7 @@ const RETRYABLE_APPLICATION_STATUSES = ['REJECTED', 'WITHDRAWN'] as const;
     MatIconModule,
     MatSelectModule,
     MatSnackBarModule,
+    MatToolbarModule,
     ReactiveFormsModule,
     RouterLink,
     CurrencyPipe,

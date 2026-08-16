@@ -6,6 +6,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import {
   CurrentUserMajorEventFeedItem,
@@ -50,6 +51,11 @@ interface AttendanceFilterOption {
   label: string;
 }
 
+interface AttendanceStatusIcon {
+  label: string;
+  icon: string;
+}
+
 const EMPTY_SUBSCRIPTIONS_FEED = {
   majorEventItems: [],
   eventItems: [],
@@ -73,6 +79,7 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
     MatButtonModule,
     MatDialogModule,
     MatSnackBarModule,
+    MatTooltipModule,
   ],
 })
 export class Attendances {
@@ -185,6 +192,52 @@ export class Attendances {
 
   itemStatusLine(item: SubscribedItem, attendances: SubscriptionsFeed['attendances']): string {
     return getSubscribedItemStatusLine(item, attendances);
+  }
+
+  statusItems(statusLine: string): AttendanceStatusIcon[] {
+    return statusLine.split(', ').map((label) => ({
+      label,
+      icon: this.statusIcon(label),
+    }));
+  }
+
+  itemAriaLabel(title: string, statusLine: string): string {
+    return `Abrir detalhes de ${title}. Status: ${statusLine}`;
+  }
+
+  private statusIcon(label: string): string {
+    if (label.startsWith('Presença registrada')) {
+      return 'how_to_reg';
+    }
+
+    switch (label) {
+      case 'Inscrito':
+        return 'event_available';
+      case 'Palestrante':
+        return 'record_voice_over';
+      case 'Gestão esportiva':
+        return 'sports';
+      case 'Certificado emitido':
+        return 'workspace_premium';
+      case 'Comprovante pendente':
+        return 'receipt_long';
+      case 'Em análise':
+        return 'hourglass_top';
+      case 'Comprovante inválido':
+        return 'error';
+      case 'Sem vagas':
+        return 'event_busy';
+      case 'Conflito de horário':
+        return 'schedule';
+      case 'Inscrição rejeitada':
+        return 'cancel';
+      case 'Inscrição cancelada':
+        return 'event_busy';
+      case 'Sem inscrição':
+        return 'person_off';
+      default:
+        return 'info';
+    }
   }
 
   majorEventDateLine(subscription: CurrentUserMajorEventFeedItem): string {

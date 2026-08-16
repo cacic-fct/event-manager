@@ -21,6 +21,7 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { isFrozenEvent, isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.component';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
 
 @Component({
   selector: 'app-workspace-events-tab',
@@ -40,6 +41,7 @@ import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.c
     MatTooltipModule,
     TwemojiComponent,
     EventFilterPanelComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './events-page.component.html',
   styleUrls: [

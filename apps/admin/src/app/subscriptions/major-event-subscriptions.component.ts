@@ -18,6 +18,7 @@ import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
 
 @Component({
   selector: 'app-workspace-major-event-subscriptions-subtab',
@@ -35,6 +36,7 @@ import { SubscriptionsService } from './subscriptions.service';
     MatTooltipModule,
     RouterLink,
     TwemojiComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './major-event-subscriptions.component.html',
   styleUrls: [

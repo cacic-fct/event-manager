@@ -2,6 +2,8 @@
   <a matIconButton routerLink="/menu" aria-label="Voltar ao menu" matTooltip="Voltar ao menu">
     <mat-icon>arrow_back</mat-icon>
   </a>
+  <h1 class="global-toolbar-title">Validar certificado</h1>
+  <span class="global-toolbar-spacer"></span>
   <lib-cacic-logo
     routerLink="/"
     [class.logo-bark-mode]="isDarkSignal()"
@@ -12,10 +14,6 @@
 </mat-toolbar>
 
 <main class="validation-page">
-  <header class="page-header">
-    <h1>Validar certificado</h1>
-  </header>
-
   @let currentState = state();
 
   <form class="lookup-form" (submit)="$event.preventDefault(); submit()">
@@ -52,7 +50,12 @@
         <mat-icon>search</mat-icon>
         Validar
       </button>
-      <button matIconButton type="button" [disabled]="validationCooldownSeconds() > 0" (click)="scanCode()">
+      <button
+        matIconButton
+        type="button"
+        aria-label="Escanear código do certificado"
+        [disabled]="validationCooldownSeconds() > 0"
+        (click)="scanCode()">
         <mat-icon>qr_code_scanner</mat-icon>
       </button>
     </div>
@@ -62,7 +65,7 @@
   </form>
 
   @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Validando certificado"></mat-progress-bar>
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>
@@ -79,7 +82,7 @@
           [alt]="certificate.targetEmoji || 'Certificado'" />
       </div>
       <div class="header-copy">
-        <p class="eyebrow">Certificado válido</p>
+        <p class="certificate-status">Certificado válido</p>
         <h2>{{ certificate.targetName || certificate.certificateName }}</h2>
         <p class="certificate-name">{{ certificate.certificateName }}</p>
       </div>
@@ -173,14 +176,14 @@
 
       <mat-list>
         @for (event of section.events; track event.name + event.startDate) {
-        <mat-list-item [routerLink]="'/event/' + event.id" [queryParams]="{ back: router.url }">
+        <a mat-list-item [routerLink]="'/event/' + event.id" [queryParams]="{ back: router.url }">
           <div matListItemIcon class="small-emoji-frame">
             <img class="small-twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
           </div>
           <div matListItemTitle>{{ event.name }}</div>
           <div matListItemLine>{{ formatEventDate(event) }}</div>
           <div matListItemLine>{{ formatCredit(event.creditMinutes) }}</div>
-        </mat-list-item>
+        </a>
         }
       </mat-list>
     </section>

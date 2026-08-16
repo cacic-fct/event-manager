@@ -25,10 +25,11 @@ import { SubscriptionCsvColumnDialogComponent } from './dialogs/import/subscript
 import { SubscriptionCsvImportResultDialogComponent } from './dialogs/import/subscription-csv-import-result-dialog.component';
 import { SubscriberCsvExportDialogComponent } from './dialogs/export/subscriber-csv-export-dialog.component';
 import { SubscriberBadgeExportErrorDialogComponent } from './dialogs/export/subscriber-badge-export-error-dialog.component';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { getErrorMessage } from '../feedback/error-message';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-filters/event-list-filters';
 import { bindLiveSearch } from '../search/live-search';
-import { buildPeopleLookupFilters } from '../people/people-lookup';
+import { buildPeopleCandidateLookupFilters, buildPeopleLookupFilters } from '../people/people-lookup';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
@@ -65,6 +66,7 @@ export class SubscriptionsService {
   private readonly attendancesService = inject(AttendancesService);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly attendanceApi = inject(AttendanceApiService);
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
@@ -279,7 +281,7 @@ export class SubscriptionsService {
       this.eventPersonMatches.set([]);
       this.snackbar.open('Inscrição criada.', 'Fechar', { duration: 2500 });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível criar a inscrição.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível criar a inscrição.');
     }
   }
 
@@ -374,9 +376,7 @@ export class SubscriptionsService {
       await this.loadMajorEventSubscriptions();
       this.snackbar.open('Equipe da participação esportiva atualizada.', 'Fechar', { duration: 2500 });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível atualizar a equipe da participação.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível atualizar a equipe da participação.');
     }
   }
 
@@ -429,9 +429,7 @@ export class SubscriptionsService {
       await this.loadMajorEventSubscriptions();
       this.snackbar.open('Inscrição esportiva revisada.', 'Fechar', { duration: 2500 });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível revisar a inscrição esportiva.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível revisar a inscrição esportiva.');
     }
   }
 
@@ -580,7 +578,7 @@ export class SubscriptionsService {
       await this.attendancesService.refreshMajorEventUserAttendancesFor(saved.majorEventId);
       this.snackbar.open('Inscrição salva.', 'Fechar', { duration: 2500 });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a inscrição.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível salvar a inscrição.');
     }
   }
 
@@ -618,6 +616,17 @@ export class SubscriptionsService {
   }
 
   private async findPeople(identifierType: string, identifierValue: string): Promise<Person[]> {
+    if (identifierType === 'query') {
+      const searches = buildPeopleCandidateLookupFilters(identifierValue, 10).map((filters) =>
+        firstValueFrom(this.peopleApi.listPeopleSummaries(filters)),
+      );
+      const peopleById = new Map<string, Person>();
+      for (const person of (await Promise.all(searches)).flat()) {
+        peopleById.set(person.id, person);
+      }
+      return [...peopleById.values()].slice(0, 10);
+    }
+
     const filters = buildPeopleLookupFilters(identifierType, identifierValue, { take: 10 });
     if (!filters) {
       return [];
@@ -680,9 +689,7 @@ export class SubscriptionsService {
         data: result,
       });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível importar o CSV.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível importar o CSV.');
     } finally {
       this.isImportingCsv.set(false);
     }
@@ -703,9 +710,7 @@ export class SubscriptionsService {
       this.eventSubscriptions.set(subscriptions);
       options = await this.openExportDialog('Baixar inscrições do evento', subscriptions.length);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível preparar a exportação do CSV.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível preparar a exportação do CSV.');
       return;
     }
     if (!options) {
@@ -740,9 +745,7 @@ export class SubscriptionsService {
       this.majorEventSubscriptions.set(subscriptions);
       options = await this.openExportDialog('Baixar inscrições do grande evento', subscriptions.length);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível preparar a exportação do CSV.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível preparar a exportação do CSV.');
       return;
     }
     if (!options) {

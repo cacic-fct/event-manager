@@ -137,7 +137,10 @@
         </div>
 
         <mat-tab-group animationDuration="0ms">
-          <mat-tab label="Cadastro">
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span class="workspace-tab-label"><mat-icon>person</mat-icon>Cadastro</span>
+            </ng-template>
             <form [formGroup]="workspace.personForm" class="surface field-group">
               <h4>Dados cadastrais</h4>
               @if (workspace.hasExternallyManagedProfile()) {
@@ -223,7 +226,10 @@
           </mat-tab>
 
           @if (workspace.selectedPerson()) {
-            <mat-tab label="Ministrante">
+            <mat-tab>
+              <ng-template mat-tab-label>
+                <span class="workspace-tab-label"><mat-icon>badge</mat-icon>Ministrante</span>
+              </ng-template>
               <form [formGroup]="workspace.lecturerProfileForm" class="surface field-group">
                 <div class="surface-heading">
                   <div>
@@ -277,7 +283,10 @@
               </form>
             </mat-tab>
 
-            <mat-tab label="Permissões">
+            <mat-tab>
+              <ng-template mat-tab-label>
+                <span class="workspace-tab-label"><mat-icon>admin_panel_settings</mat-icon>Permissões</span>
+              </ng-template>
               <section class="surface field-group">
                 <div class="surface-heading">
                   <div>

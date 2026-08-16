@@ -1,17 +1,17 @@
-<header class="team-toolbar">
+<mat-toolbar class="team-toolbar">
   <a mat-icon-button routerLink="/calendar" aria-label="Voltar"><mat-icon>arrow_back</mat-icon></a>
   @if (workspace()?.team; as team) {
   <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="36" />
   }
-  <div><strong>{{ workspace()?.team?.name || 'Equipe' }}</strong><span>Área de representantes e escalação</span></div>
-</header>
+  <h1 class="global-toolbar-title">{{ workspace()?.team?.name || 'Equipe' }}</h1>
+</mat-toolbar>
 
 @if (loading()) {
 <main class="state"><p>Carregando equipe…</p></main>
 } @else if (error()) {
 <main class="state">
   <mat-icon>error_outline</mat-icon>
-  <h1>Não foi possível abrir a equipe</h1>
+  <h2>Não foi possível abrir a equipe</h2>
   <p>{{ error() }}</p>
   <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
 </main>
@@ -20,7 +20,7 @@
   <mat-tab-group animationDuration="180ms">
     <mat-tab label="Dados da equipe">
       <form [formGroup]="profileForm" class="form-panel" (ngSubmit)="saveProfile()">
-        <h1>Informações da equipe</h1>
+        <h2>Informações da equipe</h2>
         <p>Alterações novas são combinadas com o pedido que já estiver na fila.</p>
         <mat-form-field><mat-label>Nome da equipe</mat-label><input matInput formControlName="name" /></mat-form-field>
         <mat-form-field>
@@ -65,7 +65,7 @@
       <section class="people-panel">
         <section class="form-panel member-overview" aria-labelledby="current-members-title">
           <div>
-            <h1 id="current-members-title">Pessoas da equipe</h1>
+            <h2 id="current-members-title">Pessoas da equipe</h2>
             <p>Todos os integrantes, independente de modalidade</p>
           </div>
           <div class="overall-member-list">
@@ -93,7 +93,7 @@
 
         <section class="form-panel join-queue" aria-labelledby="join-queue-title">
           <div>
-            <h1 id="join-queue-title">Solicitações para entrar</h1>
+            <h2 id="join-queue-title">Solicitações para entrar</h2>
             <p>
               A organização do torneio está analisando as solicitações feitas para esta equipe. Nenhum dado pessoal é
               exibido aqui.
@@ -112,7 +112,7 @@
         </section>
 
         <form [formGroup]="identityForm" class="form-panel member-request" (ngSubmit)="addMember()">
-          <h1>Adicionar integrante</h1>
+          <h2>Adicionar integrante</h2>
           <p>
             Informe apenas um identificador por vez. Os dados do integrante só aparecerão depois de aprovação da
             organização .
@@ -139,7 +139,7 @@
     <mat-tab label="Escalação por partida">
       <section class="people-panel match-lineup-area">
         <form [formGroup]="lineupForm" class="form-panel lineup-panel" (ngSubmit)="saveLineup()">
-          <h1>Escalação da partida</h1>
+          <h2>Escalação da partida</h2>
           <mat-form-field>
             <mat-label>Partida</mat-label>
             <mat-select [value]="lineupForm.controls.matchId.value" (valueChange)="selectMatch($event)">
@@ -294,7 +294,7 @@
 
     <mat-tab label="Acompanhamento">
       <section class="queue-panel">
-        <h1>Pedidos enviados</h1>
+        <h2>Pedidos enviados</h2>
         @for (change of currentWorkspace.queuedChanges; track change.id) {
         <article>
           <div><strong>{{ changeLabel(change) }}</strong><span>{{ statusLabel(change.status) }}</span></div>

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatIconModule } from '@angular/material/icon';
 import { AttendancesService } from './attendances.service';
 import { EventAttendancesComponent } from './event-attendances.component';
 import { MajorEventAttendancesComponent } from './major-event-attendances.component';
@@ -9,13 +10,14 @@ import { MajorEventAttendancesComponent } from './major-event-attendances.compon
 @Component({
   selector: 'app-workspace-attendances-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatTabsModule, EventAttendancesComponent, MajorEventAttendancesComponent],
+  imports: [MatTabsModule, MatIconModule, EventAttendancesComponent, MajorEventAttendancesComponent],
   templateUrl: './attendances-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
     '../app-shell/layout/lists-layout.shared.scss',
     '../app-shell/layout/entity-permissions.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
+    '../app-shell/layout/workspace-tabs.shared.scss',
     './attendances-page.component.scss',
   ],
 })

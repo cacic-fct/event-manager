@@ -93,9 +93,6 @@
 .finalize-panel {
   border: 1px solid var(--mat-sys-outline-variant);
 }
-.protected-stepper ::ng-deep .mat-step-header {
-  pointer-events: none;
-}
 .finalize-heading {
   display: flex;
   align-items: start;

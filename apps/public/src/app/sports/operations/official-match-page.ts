@@ -14,6 +14,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatStepperModule } from '@angular/material/stepper';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   SportsLiveDotComponent,
@@ -40,6 +41,7 @@ import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
     MatSelectModule,
     MatSnackBarModule,
     MatStepperModule,
+    MatToolbarModule,
     ReactiveFormsModule,
     RouterLink,
     SportsLiveDotComponent,

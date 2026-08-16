@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -48,6 +49,7 @@ import { createTeamOperationsForms } from './team-operations-page.forms';
     MatSelectModule,
     MatSnackBarModule,
     MatTabsModule,
+    MatToolbarModule,
     DatePipe,
     ReactiveFormsModule,
     RouterLink,

@@ -14,10 +14,6 @@
   border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
-.match-toolbar div {
-  display: grid;
-  flex: 1;
-}
 .match-toolbar span {
   color: var(--mat-sys-on-surface-variant);
   font-size: 0.8rem;

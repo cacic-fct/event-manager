@@ -28,7 +28,7 @@ import { RestaurantCardService } from '../../services/restaurant-card.service';
       <a matIconButton routerLink="/profile/wallet/add-card" aria-label="Voltar para os cartões disponíveis">
         <mat-icon>arrow_back</mat-icon>
       </a>
-      <span>Cartão do R.U.</span>
+      <h1 class="global-toolbar-title">Cartão do R.U.</h1>
     </mat-toolbar>
 
     <main class="global-container restaurant-enrollment-page">

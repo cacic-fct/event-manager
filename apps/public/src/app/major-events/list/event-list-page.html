@@ -1,10 +1,10 @@
 <mat-toolbar>
-  <span>{{ isPreview() ? 'Pré-Visualização' : 'Grandes eventos' }}</span>
+  <h1 class="global-toolbar-title">{{ isPreview() ? 'Pré-visualização' : 'Grandes eventos' }}</h1>
 </mat-toolbar>
 
 <main class="major-event-page">
   @let state = pageState(); @if (state.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando grandes eventos"></mat-progress-bar>
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">hourglass_top</mat-icon>
     <p>Carregando eventos...</p>

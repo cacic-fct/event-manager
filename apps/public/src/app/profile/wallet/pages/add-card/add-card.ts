@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
       <a matIconButton routerLink="/profile/wallet" aria-label="Voltar para a carteira">
         <mat-icon>arrow_back</mat-icon>
       </a>
-      <span>Adicionar cartão</span>
+      <h1 class="global-toolbar-title">Adicionar cartão</h1>
     </mat-toolbar>
 
     <main class="global-container wallet-add-page">

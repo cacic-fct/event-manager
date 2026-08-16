@@ -11,16 +11,6 @@
   background: var(--mat-sys-surface);
   border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
-.team-toolbar div {
-  display: grid;
-  min-width: 0;
-  gap: 0.15rem;
-}
-.team-toolbar span {
-  font-size: 0.8rem;
-  color: var(--mat-sys-on-surface-variant);
-  overflow-wrap: anywhere;
-}
 .team-shell {
   width: min(900px, 100%);
   margin: 0 auto;

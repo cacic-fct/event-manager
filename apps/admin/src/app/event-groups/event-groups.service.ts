@@ -11,7 +11,7 @@ import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { PublicationApiService } from '../graphql/publishing-api.service';
 import { Event, EventGroup, EventGroupInput, EventSummary } from '@cacic-fct/event-manager-admin-contracts';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../events/dialogs/clone-asset-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
@@ -37,6 +37,7 @@ export class EventGroupsService {
   private readonly publicationApi = inject(PublicationApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly eventsService = inject(EventsService);
   private readonly permissions = inject(PermissionsService);
@@ -236,7 +237,7 @@ export class EventGroupsService {
         await this.loadEventsForGroup(selectedGroup.id);
       }
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grupo.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível salvar o grupo.');
     } finally {
       this.savingEventGroup.set(false);
     }
@@ -329,7 +330,7 @@ export class EventGroupsService {
       }
       await this.loadEventGroups();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o grupo.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível excluir o grupo.');
     }
   }
 
@@ -352,7 +353,7 @@ export class EventGroupsService {
       await this.loadEventGroups();
       await this.pickEventGroup(created);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar o grupo.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível duplicar o grupo.');
     }
   }
 

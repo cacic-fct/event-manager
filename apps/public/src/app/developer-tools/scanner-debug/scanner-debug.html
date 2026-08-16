@@ -2,18 +2,18 @@
   <a matIconButton routerLink="/dev-tools" aria-label="Voltar para o menu">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <span>Dev tools</span>
+  <h1 class="global-toolbar-title">Scanner</h1>
 </mat-toolbar>
 
 <button mat-button (click)="scanCode()">
   <mat-icon>qr_code_scanner</mat-icon>
   Abrir scanner
 </button>
-<h1>Resultado:</h1>
+<h2>Resultado:</h2>
 {{ scannedCode() }}
 
 <hr />
-<h1>Feedback visual e sonoro</h1>
+<h2>Feedback visual e sonoro</h2>
 <button mat-button (click)="showFeedback('valid')">Valid</button>
 <button mat-button (click)="showFeedback('invalid')">Invalid</button>
 <button mat-button (click)="showFeedback('duplicate')">Duplicate</button>

@@ -595,18 +595,26 @@
         </div>
 
         <form [formGroup]="workspace.lecturerLookupForm" class="compact-form">
-          <mat-form-field>
-            <mat-label>Buscar pessoa</mat-label>
-            <input matInput formControlName="query" />
-          </mat-form-field>
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="!permissions.has(Permission.Person.Read)"
-            (click)="workspace.searchLecturerCandidates()">
-            <mat-icon>person_search</mat-icon>
-            Buscar
-          </button>
+          <app-person-search
+            label="Buscar ministrante"
+            [query]="workspace.lecturerLookupForm.controls.query.value"
+            [results]="workspace.lecturerSearchResults()"
+            [loading]="workspace.loading()"
+            [disabled]="
+              !permissions.has(Permission.Person.Read) ||
+              !canEditSelectedEventRelation(Permission.EventLecturer.Create)
+            "
+            [disabledReason]="
+              !permissions.has(Permission.Person.Read)
+                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                : 'Vincular ministrantes exige permissão para editar este evento.'
+            "
+            resultActionLabel="Adicionar ministrante"
+            (queryChange)="workspace.lecturerLookupForm.controls.query.setValue($event)"
+            (searchRequested)="
+              workspace.lecturerLookupForm.controls.query.setValue($event); workspace.searchLecturerCandidates()
+            "
+            (personSelected)="workspace.addLecturer($event)" />
           @if (
             canEditSelectedEventRelation(Permission.EventLecturer.Create) &&
             permissions.canEdit(Permission.Person.Create)
@@ -617,31 +625,6 @@
             </button>
           }
         </form>
-
-        <div class="inline-list">
-          @for (candidate of workspace.lecturerSearchResults(); track candidate.id) {
-            @if (canEditSelectedEventRelation(Permission.EventLecturer.Create)) {
-              <button mat-stroked-button type="button" (click)="workspace.addLecturer(candidate)">
-                <mat-icon>add</mat-icon>
-                <span class="person-choice">
-                  <span>Adicionar {{ candidate.name }}</span>
-                  <small>
-                    {{ candidate.identityDocument || 'Sem documento' }} ·
-                    {{ candidate.email || 'Sem e-mail principal' }}
-                  </small>
-                </span>
-              </button>
-            }
-          } @empty {
-            <span class="empty-note">
-              {{
-                permissions.has(Permission.Person.Read)
-                  ? 'Busque uma pessoa pelo nome, e-mail ou CPF.'
-                  : 'Buscar pessoas exige permissão de Pessoa - Visualizar.'
-              }}
-            </span>
-          }
-        </div>
 
         @if (workspace.eventForm.controls.eventGroupId.value && workspace.suggestedGroupLecturers().length > 0) {
           <div class="inline-list">
@@ -680,44 +663,28 @@
         </div>
 
         <form [formGroup]="workspace.attendanceCollectorLookupForm" class="compact-form">
-          <mat-form-field>
-            <mat-label>Buscar pessoa</mat-label>
-            <input matInput formControlName="query" />
-          </mat-form-field>
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="!permissions.has(Permission.Person.Read)"
-            (click)="workspace.searchAttendanceCollectorCandidates()">
-            <mat-icon>person_search</mat-icon>
-            Buscar
-          </button>
+          <app-person-search
+            label="Buscar coletor de presença"
+            [query]="workspace.attendanceCollectorLookupForm.controls.query.value"
+            [results]="workspace.attendanceCollectorSearchResults()"
+            [loading]="workspace.loading()"
+            [disabled]="
+              !permissions.has(Permission.Person.Read) ||
+              !canEditSelectedEventRelation(Permission.EventAttendanceCollector.Create)
+            "
+            [disabledReason]="
+              !permissions.has(Permission.Person.Read)
+                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                : 'Vincular coletores exige permissão para editar este evento.'
+            "
+            resultActionLabel="Adicionar coletor"
+            (queryChange)="workspace.attendanceCollectorLookupForm.controls.query.setValue($event)"
+            (searchRequested)="
+              workspace.attendanceCollectorLookupForm.controls.query.setValue($event);
+              workspace.searchAttendanceCollectorCandidates()
+            "
+            (personSelected)="workspace.addAttendanceCollector($event)" />
         </form>
-
-        <div class="inline-list">
-          @for (candidate of workspace.attendanceCollectorSearchResults(); track candidate.id) {
-            @if (canEditSelectedEventRelation(Permission.EventAttendanceCollector.Create)) {
-              <button mat-stroked-button type="button" (click)="workspace.addAttendanceCollector(candidate)">
-                <mat-icon>add</mat-icon>
-                <span class="person-choice">
-                  <span>Adicionar {{ candidate.name }}</span>
-                  <small>
-                    {{ candidate.identityDocument || 'Sem documento' }} ·
-                    {{ candidate.email || 'Sem e-mail principal' }}
-                  </small>
-                </span>
-              </button>
-            }
-          } @empty {
-            <span class="empty-note">
-              {{
-                permissions.has(Permission.Person.Read)
-                  ? 'Busque uma pessoa pelo nome, e-mail ou CPF.'
-                  : 'Buscar pessoas exige permissão de Pessoa - Visualizar.'
-              }}
-            </span>
-          }
-        </div>
 
         <div class="inline-list">
           @for (collector of workspace.eventAttendanceCollectors(); track collector.personId) {

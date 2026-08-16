@@ -5,7 +5,6 @@ import {
   PersonLinkedDataDialogComponent,
   PersonLinkedDataDialogData,
 } from './dialogs/person-linked-data-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
 import {
   applyPagedResult,
   loadNextPage,
@@ -133,7 +132,7 @@ export abstract class PeopleRecords extends PeopleState {
       await this.selectPerson(savedPerson);
       await this.searchPeople(this.peopleSearchQuery(), { preserveSelection: true });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a pessoa.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível salvar a pessoa.');
     }
   }
 
@@ -173,9 +172,7 @@ export abstract class PeopleRecords extends PeopleState {
       );
       await this.searchPeople(this.peopleSearchQuery(), { preserveSelection: true });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o perfil de ministrante.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível salvar o perfil de ministrante.');
     }
   }
 

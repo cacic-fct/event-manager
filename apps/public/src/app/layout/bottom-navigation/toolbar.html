@@ -1,10 +1,11 @@
 <mat-toolbar class="bottom-toolbar" role="navigation" aria-label="Barra de navegação inferior" #toolbar>
   @for (item of items(); track item.label) { @if (!item.hidden) {
-  <button
+  <a
     mat-button
     class="nav-btn"
     [routerLink]="item.route"
     routerLinkActive="active"
+    ariaCurrentWhenActive="page"
     [routerLinkActiveOptions]="{ exact: true }"
     [attr.aria-label]="item.label">
     <span class="icon-wrap">
@@ -17,6 +18,6 @@
       }
     </span>
     <span class="label">{{ item.shortLabel }}</span>
-  </button>
+  </a>
   } }
 </mat-toolbar>

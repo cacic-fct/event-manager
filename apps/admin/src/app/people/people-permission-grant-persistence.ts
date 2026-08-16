@@ -71,9 +71,7 @@ export abstract class PeoplePermissionGrantPersistence extends PeoplePermissionG
       this.resetPermissionGrantForm({ clearDrafts: false });
       this.snackbar.open('Permissão atualizada.', 'Fechar', { duration: 2500 });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível atualizar a permissão.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível atualizar a permissão.');
     }
   }
 
@@ -83,9 +81,7 @@ export abstract class PeoplePermissionGrantPersistence extends PeoplePermissionG
       this.permissionGrants.update((grants) => grants.filter((item) => item.id !== grant.id));
       this.snackbar.open('Permissão removida.', 'Fechar', { duration: 2500 });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível remover a permissão.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível remover a permissão.');
     }
   }
 
@@ -108,9 +104,7 @@ export abstract class PeoplePermissionGrantPersistence extends PeoplePermissionG
         return;
       }
       this.permissionGrants.set([]);
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível carregar as permissões.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível carregar as permissões.');
     }
   }
 
@@ -170,15 +164,14 @@ export abstract class PeoplePermissionGrantPersistence extends PeoplePermissionG
     await this.loadPermissionGrantsForPerson(selectedPerson);
     if (createdGrants.length > 0) {
       this.resetPermissionGrantForm();
-      this.snackbar.open(
+      this.feedback.showErrorMessage(
         `${createdGrants.length} de ${inputs.length} permissões concedidas. ${getErrorMessage(failedGrant.reason, 'Algumas permissões não puderam ser concedidas.')}`,
-        'Fechar',
-        { duration: 6000 },
+        'Operação concluída parcialmente',
       );
       return;
     }
 
-    this.snackbar.open(getErrorMessage(failedGrant.reason, messages.failure), 'Fechar', { duration: 5000 });
+    this.feedback.error(failedGrant.reason, messages.failure);
   }
 
   private async loadPermissionGrantTargets(): Promise<boolean> {
@@ -198,9 +191,7 @@ export abstract class PeoplePermissionGrantPersistence extends PeoplePermissionG
       this.eventGroupPermissionGrantTargets.set(eventGroups ?? []);
       return true;
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível carregar os alvos de permissão.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível carregar os alvos de permissão.');
       return false;
     }
   }

@@ -26,6 +26,7 @@ import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { EventApiService } from '../../graphql/event-api.service';
 import { AttendancesService } from '../attendances.service';
 import { OralAttendanceSyncFailureDialogComponent } from './oral-attendance-sync-failure-dialog.component';
+import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 
 interface PendingAdminDecision {
   eventId: string;
@@ -68,6 +69,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
   private eventId = '';
   private syncTimer: ReturnType<typeof setTimeout> | null = null;
@@ -130,7 +132,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
     void firstValueFrom(this.api.createEventAttendanceFromManualInput({ eventId: this.eventId, value }))
       .then(() => this.attendancesService.invalidateExplicitAbsences(this.eventId))
       .then(() => this.snackbar.open('Presença manual registrada.', 'Fechar', { duration: 2500 }))
-      .catch(() => this.snackbar.open('Não foi possível registrar a presença manual.', 'Fechar', { duration: 5000 }));
+      .catch((error: unknown) => this.feedback.error(error, 'Não foi possível registrar a presença manual.'));
   }
 
   private scheduleSync(delayMs = this.syncRetryAttempt ? this.syncRetryDelay() : INITIAL_SYNC_DELAY_MS): void {

@@ -13,6 +13,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { EventFormRendererComponent, SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { SportsWorkspaceSection } from './sports-workspace-section.base';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
 
 @Component({
   selector: 'app-sports-teams-section',
@@ -33,6 +34,7 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
     SportsTeamLogoComponent,
     EventFormRendererComponent,
     TwemojiComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './sports-teams-section.component.html',
 })

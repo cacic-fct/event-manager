@@ -32,10 +32,10 @@ import { AttendanceScannerDialogComponent } from './dialogs/scanning/attendance-
 import { OfflineAttendanceSubmissionEditDialogComponent } from './dialogs/offline/offline-attendance-submission-edit-dialog.component';
 import { OfflineAttendanceSubmissionDialogComponent } from './dialogs/offline/offline-attendance-submission-dialog.component';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-filters/event-list-filters';
 import { bindLiveSearch } from '../search/live-search';
-import { buildPeopleLookupFilters } from '../people/people-lookup';
+import { buildPeopleCandidateLookupFilters, buildPeopleLookupFilters } from '../people/people-lookup';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
@@ -135,6 +135,7 @@ export class AttendancesService {
   private readonly peopleApi = inject(PeopleApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly majorEventsService = inject(MajorEventsService);
   private readonly router = inject(Router);
@@ -310,12 +311,22 @@ export class AttendancesService {
       return;
     }
 
-    const filters = buildPeopleLookupFilters(
-      this.attendanceForm.controls.identifierType.value,
-      this.attendanceForm.controls.identifier.value,
-      { take: 10 },
-    );
-    const people = filters ? await firstValueFrom(this.peopleApi.listPeopleSummaries(filters)) : [];
+    const identifierType = this.attendanceForm.controls.identifierType.value;
+    const identifierValue = this.attendanceForm.controls.identifier.value;
+    let people: Person[] = [];
+    if (identifierType === 'query') {
+      const searches = buildPeopleCandidateLookupFilters(identifierValue, 10).map((filters) =>
+        firstValueFrom(this.peopleApi.listPeopleSummaries(filters)),
+      );
+      const peopleById = new Map<string, Person>();
+      for (const person of (await Promise.all(searches)).flat()) {
+        peopleById.set(person.id, person);
+      }
+      people = [...peopleById.values()].slice(0, 10);
+    } else {
+      const filters = buildPeopleLookupFilters(identifierType, identifierValue, { take: 10 });
+      people = filters ? await firstValueFrom(this.peopleApi.listPeopleSummaries(filters)) : [];
+    }
     this.attendancePersonMatches.set(people);
   }
 
@@ -373,9 +384,7 @@ export class AttendancesService {
         duration: 2500,
       });
     } catch (error: unknown) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível registrar a presença.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível registrar a presença.');
     }
   }
 
@@ -457,9 +466,7 @@ export class AttendancesService {
         data: result,
       });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível importar o CSV.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível importar o CSV.');
     } finally {
       this.isImportingCsv.set(false);
     }
@@ -884,7 +891,7 @@ export class AttendancesService {
       await this.loadMajorEventUserAttendances();
       this.snackbar.open('Presença atualizada.', 'Fechar', { duration: 2500 });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a presença.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível salvar a presença.');
     }
   }
 

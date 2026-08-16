@@ -1,23 +1,23 @@
-<header class="subscription-toolbar">
+<mat-toolbar class="subscription-toolbar">
   <a mat-icon-button [routerLink]="['/tournament', tournamentId]" [replaceUrl]="true" aria-label="Voltar ao torneio">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <strong>Inscrição individual</strong>
-</header>
+  <h1 class="global-toolbar-title">Inscrição individual</h1>
+</mat-toolbar>
 
 @if (loading()) {
 <main class="state"><p>Carregando opções de inscrição…</p></main>
 } @else if (error()) {
 <main class="state">
   <mat-icon>error_outline</mat-icon>
-  <h1>Inscrição indisponível</h1>
+  <h2>Inscrição indisponível</h2>
   <p>{{ error() }}</p>
   <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
 </main>
 } @else if (submitted()) {
 <main class="state success">
   <mat-icon>check_circle</mat-icon>
-  <h1>{{ isEditing() ? 'Solicitação atualizada' : 'Solicitação enviada' }}</h1>
+  <h2>{{ isEditing() ? 'Solicitação atualizada' : 'Solicitação enviada' }}</h2>
   <p>
     {{
       isEditing()
@@ -30,10 +30,10 @@
 } @else if (data(); as currentData) {
 <main class="subscription-shell">
   <div class="heading">
-    <h1>
+    <h2>
       <lib-twemoji [emoji]="currentData.tournament.emoji" />
       {{ currentData.tournament.name }}
-    </h1>
+    </h2>
   </div>
 
   <section class="important-notice">

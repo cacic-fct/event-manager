@@ -29,7 +29,7 @@ import {
 } from '@cacic-fct/event-manager-admin-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { bindLiveSearch } from '../search/live-search';
 import {
   applyPagedResult,
@@ -39,7 +39,7 @@ import {
   pageVariables,
   resetPagination,
 } from '../pagination/list-pagination';
-import { buildPeopleSearchFilters } from '../people/people-lookup';
+import { buildPeopleCandidateLookupFilters } from '../people/people-lookup';
 import {
   CertificateConfigCloneDialogComponent,
   CertificateConfigCloneDialogResult,
@@ -88,6 +88,7 @@ export class CertificatesService {
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly permissions = inject(PermissionsService);
@@ -451,9 +452,7 @@ export class CertificatesService {
       this.selectCertificateConfig(created);
       await this.loadCertificates();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar a configuração de certificado.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível duplicar a configuração de certificado.');
     }
   }
 
@@ -517,9 +516,7 @@ export class CertificatesService {
       void this.router.navigate(['/certificates', 'folder', savedFolder.id]);
       await this.applyTargetSelection(savedFolder);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a pasta.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível salvar a pasta.');
     }
   }
 
@@ -584,9 +581,14 @@ export class CertificatesService {
       return;
     }
 
-    this.personSearchResults.set(
-      await firstValueFrom(this.peopleApi.listPeopleSummaries(buildPeopleSearchFilters(query, { take: 20 }))),
+    const searches = buildPeopleCandidateLookupFilters(query, 20).map((filters) =>
+      firstValueFrom(this.peopleApi.listPeopleSummaries(filters)),
     );
+    const peopleById = new Map<string, Person>();
+    for (const person of (await Promise.all(searches)).flat()) {
+      peopleById.set(person.id, person);
+    }
+    this.personSearchResults.set([...peopleById.values()].slice(0, 20));
   }
 
   async issueCertificateForPerson(person: Person): Promise<void> {
@@ -604,9 +606,7 @@ export class CertificatesService {
       });
       await this.loadCertificates();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível emitir o certificado.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível emitir o certificado.');
     }
   }
 
@@ -700,9 +700,7 @@ export class CertificatesService {
         },
       });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível importar o CSV.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível importar o CSV.');
     } finally {
       this.isImportingPeopleCsv.set(false);
     }
@@ -723,9 +721,7 @@ export class CertificatesService {
       });
       await this.loadCertificates();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível emitir os certificados.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível emitir os certificados.');
     }
   }
 
@@ -750,9 +746,7 @@ export class CertificatesService {
       }
       await Promise.all([this.loadCertificateConfigs(), this.loadCertificates()]);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir a configuração de certificado.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível excluir a configuração de certificado.');
     }
   }
 
@@ -773,9 +767,7 @@ export class CertificatesService {
       this.snackbar.open('Certificado excluído.', 'Fechar', { duration: 2500 });
       await this.loadCertificates();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o certificado.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível excluir o certificado.');
     }
   }
 

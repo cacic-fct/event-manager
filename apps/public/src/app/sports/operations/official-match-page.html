@@ -1,8 +1,8 @@
-<header class="match-toolbar">
+<mat-toolbar class="match-toolbar">
   <a mat-icon-button [routerLink]="backUrl" aria-label="Voltar"><mat-icon>arrow_back</mat-icon></a>
-  <div>
-    <strong>Operação da partida</strong>
-  </div>
+  <h1 class="global-toolbar-title">
+    {{ match() ? teamName(displaySide('left')) + ' × ' + teamName(displaySide('right')) : 'Operação da partida' }}
+  </h1>
   @if (pendingCount() > 0) {
   <button mat-button type="button" (click)="offline.sync()">
     <mat-icon>cloud_upload</mat-icon>{{ pendingCount() }} para enviar
@@ -20,7 +20,7 @@
     <span class="retained-offline-label">&nbsp;presenças antigas sem credencial mantidas</span>
   </span>
   }
-</header>
+</mat-toolbar>
 
 @if (loading()) {
 <main class="center-state">
@@ -30,15 +30,12 @@
 } @else if (error()) {
 <main class="center-state">
   <mat-icon>error_outline</mat-icon>
-  <h1>Não foi possível abrir a partida</h1>
+  <h2>Não foi possível abrir a partida</h2>
   <p>{{ error() }}</p>
   <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
 </main>
 } @else if (match(); as currentMatch) {
 <main class="operation-shell">
-  <h1 class="score-announcement">
-    Operação: {{ teamName(displaySide('left')) }} × {{ teamName(displaySide('right')) }}
-  </h1>
   <span class="score-announcement" aria-live="polite" aria-atomic="true">
     Placar: {{ teamName(displaySide('left')) }} {{ scoreFor(displaySide('left')) }},
     {{ teamName(displaySide('right')) }} {{ scoreFor(displaySide('right')) }}
@@ -349,7 +346,7 @@
       </button>
     </div>
     <mat-stepper #finalizeStepper class="protected-stepper" linear orientation="vertical">
-      <mat-step [stepControl]="outcomeForm" [completed]="outcomeStepCompleted()" label="Resultado">
+      <mat-step [stepControl]="outcomeForm" [completed]="outcomeStepCompleted()" [editable]="false" label="Resultado">
         <form [formGroup]="outcomeForm" class="step-form">
           <mat-checkbox formControlName="draw">A partida terminou empatada</mat-checkbox>
           @if (outcomeForm.controls.draw.value) {
@@ -364,7 +361,7 @@
           <button mat-flat-button type="button" (click)="completeOutcomeStep(finalizeStepper)">Continuar</button>
         </form>
       </mat-step>
-      <mat-step [stepControl]="reasonForm" [completed]="reasonStepCompleted()" label="Motivo">
+      <mat-step [stepControl]="reasonForm" [completed]="reasonStepCompleted()" [editable]="false" label="Motivo">
         <form [formGroup]="reasonForm" class="step-form">
           @if (!outcomeForm.controls.draw.value) {
           <mat-form-field>
@@ -389,7 +386,7 @@
           </div>
         </form>
       </mat-step>
-      <mat-step [stepControl]="finalScoreForm" [completed]="scoreStepCompleted()" label="Placar">
+      <mat-step [stepControl]="finalScoreForm" [completed]="scoreStepCompleted()" [editable]="false" label="Placar">
         <form [formGroup]="finalScoreForm" class="step-form">
           <div class="score-inputs">
             <mat-form-field>
@@ -407,7 +404,7 @@
           </div>
         </form>
       </mat-step>
-      <mat-step label="Confirmar">
+      <mat-step [editable]="false" label="Confirmar">
         <div class="summary">
           <strong
             >{{ teamName('home') }} {{ finalScoreForm.controls.homeScore.value }} × {{

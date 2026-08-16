@@ -2,16 +2,12 @@
   <a matIconButton routerLink="/menu" aria-label="Voltar para o menu">
     <mat-icon>arrow_back</mat-icon>
   </a>
+  <h1 class="global-toolbar-title">Minhas participações</h1>
 </mat-toolbar>
 
 <main class="attendances-page">
-  <header class="page-header">
-    <p class="eyebrow">Perfil</p>
-    <h1>Minhas participações</h1>
-  </header>
-
   @let currentState = feedState(); @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando participações"></mat-progress-bar>
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>
@@ -53,10 +49,11 @@
     } @else {
     <mat-action-list class="wrapping-list">
       @for ( subscription of visibleFeed.majorEventItems; track subscription.id ) {
+      @let statusLine = majorEventStatusLine(subscription, currentState.data.attendances);
       <a
         mat-list-item
         [routerLink]="majorEventRoute(subscription)"
-        [attr.aria-label]="'Abrir detalhes de ' + subscription.majorEvent.name">
+        [attr.aria-label]="itemAriaLabel(subscription.majorEvent.name, statusLine)">
         <div matListItemIcon class="emoji-frame">
           <img
             class="twemoji"
@@ -65,7 +62,13 @@
         </div>
         <div matListItemTitle>{{ subscription.majorEvent.name }}</div>
         <div matListItemLine>{{ majorEventDateLine(subscription) }}</div>
-        <div matListItemLine>{{ majorEventStatusLine(subscription, currentState.data.attendances) }}</div>
+        <div matListItemLine class="status-icons">
+          @for (status of statusItems(statusLine); track status.label) {
+          <span class="status-icon" role="img" [attr.aria-label]="status.label" [matTooltip]="status.label">
+            <mat-icon aria-hidden="true">{{ status.icon }}</mat-icon>
+          </span>
+          }
+        </div>
       </a>
       }
     </mat-action-list>
@@ -82,13 +85,23 @@
     } @else {
     <mat-action-list class="wrapping-list">
       @for (item of visibleFeed.eventItems; track item.id) {
-      <a mat-list-item [routerLink]="itemRoute(item)" [attr.aria-label]="'Abrir detalhes de ' + itemTitle(item)">
+      @let statusLine = itemStatusLine(item, currentState.data.attendances);
+      <a
+        mat-list-item
+        [routerLink]="itemRoute(item)"
+        [attr.aria-label]="itemAriaLabel(itemTitle(item), statusLine)">
         <div matListItemIcon class="emoji-frame">
           <img class="twemoji" [src]="emoji.getTwemojiUrl(itemEmoji(item))" [alt]="itemEmoji(item)" />
         </div>
         <div matListItemTitle>{{ itemTitle(item) }}</div>
         <div matListItemLine>{{ itemDateLine(item) }}</div>
-        <div matListItemLine>{{ itemStatusLine(item, currentState.data.attendances) }}</div>
+        <div matListItemLine class="status-icons">
+          @for (status of statusItems(statusLine); track status.label) {
+          <span class="status-icon" role="img" [attr.aria-label]="status.label" [matTooltip]="status.label">
+            <mat-icon aria-hidden="true">{{ status.icon }}</mat-icon>
+          </span>
+          }
+        </div>
       </a>
       }
     </mat-action-list>

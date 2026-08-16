@@ -62,14 +62,9 @@
   min-width: 0;
 }
 
-.eyebrow,
 .date-line {
   color: var(--mat-sys-on-surface-variant);
   margin: 0;
-}
-
-.eyebrow {
-  font: var(--mat-sys-label-large);
 }
 
 h1,

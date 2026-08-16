@@ -18,7 +18,7 @@
   display: grid;
   gap: 1.25rem;
 }
-.heading h1 {
+.heading h2 {
   align-items: center;
   display: flex;
   gap: 0.7rem;
@@ -27,7 +27,7 @@
   letter-spacing: -0.03em;
   text-wrap: balance;
 }
-.heading h1 lib-twemoji {
+.heading h2 lib-twemoji {
   --twemoji-size: 2.4rem;
 }
 .heading p,

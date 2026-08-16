@@ -346,14 +346,16 @@
       <mat-panel-description>Funções atribuídas nesta partida</mat-panel-description>
     </mat-expansion-panel-header>
     <form [formGroup]="workspace.officialForm" class="official-form" (ngSubmit)="workspace.assignOfficial()">
-      <mat-form-field subscriptSizing="dynamic">
-        <mat-label>Buscar pessoa</mat-label>
-        <input
-          matInput
-          formControlName="personQuery"
-          [readonly]="workspace.isEditingOfficial()"
-          (input)="workspace.searchPeople(workspace.officialForm.controls.personQuery.value, 'official')" />
-      </mat-form-field>
+      <app-person-search
+        label="Buscar pessoa"
+        [query]="workspace.officialForm.controls.personQuery.value"
+        [results]="workspace.peopleTarget() === 'official' ? workspace.people() : []"
+        [loading]="workspace.loading()"
+        [disabled]="workspace.isEditingOfficial() || !workspace.canSearchPeople()"
+        resultActionLabel="Selecionar para arbitragem"
+        (queryChange)="workspace.officialForm.controls.personQuery.setValue($event)"
+        (searchRequested)="workspace.searchPeople($event, 'official')"
+        (personSelected)="workspace.pickOfficialPerson($event)" />
       <mat-form-field subscriptSizing="dynamic">
         <mat-label>Função</mat-label>
         <mat-select formControlName="role">
@@ -381,27 +383,6 @@
         <button mat-button type="button" (click)="workspace.cancelOfficialEdit()">Cancelar</button>
       }
     </form>
-    @if (workspace.people().length && workspace.peopleTarget() === 'official') {
-      <div class="search-results">
-        @for (person of workspace.people(); track person.id) {
-          <button
-            class="person-search-result"
-            type="button"
-            [attr.aria-label]="'Adicionar pessoa ' + person.name"
-            (click)="workspace.pickOfficialPerson(person)">
-            <span class="person-search-result-copy">
-              <strong>{{ person.name }}</strong>
-              @if (workspace.canReadOfficialContacts()) {
-                <small>{{ person.email || 'Sem e-mail' }}</small>
-                <small>{{ person.phone || 'Sem telefone' }}</small>
-                <small>{{ personIdentityDocument(person.identityDocument) }}</small>
-              }
-            </span>
-            <mat-icon aria-hidden="true">person_add</mat-icon>
-          </button>
-        }
-      </div>
-    }
     <div class="person-list">
       @for (official of workspace.tournamentRead()?.officials ?? []; track official.id) {
         <div class="official-assignment">

@@ -426,45 +426,24 @@
           </div>
 
           <form [formGroup]="workspace.personLookupForm" class="compact-form">
-            <mat-form-field>
-              <mat-label>Pessoa (nome, e-mail ou documento)</mat-label>
-              <mat-icon matPrefix>person_search</mat-icon>
-              <input matInput formControlName="query" />
-            </mat-form-field>
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="!permissions.has(Permission.Person.Read)"
-              (click)="workspace.searchPeopleForManualIssue()">
-              <mat-icon>search</mat-icon>
-              Buscar
-            </button>
+            <app-person-search
+              label="Pessoa (nome, e-mail ou documento)"
+              [query]="workspace.personLookupForm.controls.query.value"
+              [results]="workspace.personSearchResults()"
+              [disabled]="!permissions.has(Permission.Person.Read) || !canEditSelectedTarget()"
+              [disabledReason]="
+                !permissions.has(Permission.Person.Read)
+                  ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                  : 'Emitir certificados exige permissão para editar este destino.'
+              "
+              resultActionIcon="workspace_premium"
+              resultActionLabel="Emitir certificado para"
+              (queryChange)="workspace.personLookupForm.controls.query.setValue($event)"
+              (searchRequested)="
+                workspace.personLookupForm.controls.query.setValue($event); workspace.searchPeopleForManualIssue()
+              "
+              (personSelected)="workspace.issueCertificateForPerson($event)" />
           </form>
-
-          <div class="inline-list">
-            @for (person of workspace.personSearchResults(); track person.id) {
-              @if (canEditSelectedTarget()) {
-                <button mat-stroked-button type="button" (click)="workspace.issueCertificateForPerson(person)">
-                  <mat-icon>workspace_premium</mat-icon>
-                  <span class="person-choice">
-                    <span>Emitir para {{ person.name }}</span>
-                    <small
-                      >{{ person.identityDocument || 'Sem documento' }} ·
-                      {{ person.email || 'Sem e-mail principal' }}</small
-                    >
-                  </span>
-                </button>
-              }
-            } @empty {
-              <span class="empty-note">
-                {{
-                  permissions.has(Permission.Person.Read)
-                    ? 'Busque uma pessoa para emitir.'
-                    : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
-                }}
-              </span>
-            }
-          </div>
         </section>
 
         <section class="surface field-group">

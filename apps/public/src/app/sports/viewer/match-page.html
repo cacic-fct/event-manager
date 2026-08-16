@@ -1,13 +1,17 @@
+@let state = pageState();
+
 <mat-toolbar>
   <button matIconButton type="button" aria-label="Voltar" (click)="goBack()">
     <mat-icon>arrow_back</mat-icon>
   </button>
-  <span>Partida</span>
+  <h1 class="global-toolbar-title">
+    {{ state.status === 'ready' ? teamName(state.data, 'home') + ' × ' + teamName(state.data, 'away') : 'Partida' }}
+  </h1>
 </mat-toolbar>
 
 <main class="match-page">
-  @let state = pageState(); @if (state.status === 'loading') {
-  <mat-progress-bar mode="indeterminate" />
+  @if (state.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando partida" />
   <section class="message-state" aria-live="polite">
     <mat-icon aria-hidden="true">scoreboard</mat-icon>
     <p>Carregando a partida...</p>
@@ -26,7 +30,6 @@
   }
 
   <section class="score-hero" [class.live]="isLive(match)">
-    <h1 class="score-announcement">{{ teamName(match, 'home') }} × {{ teamName(match, 'away') }}</h1>
     <span class="score-announcement" aria-live="polite" aria-atomic="true">
       Placar: {{ teamName(match, 'home') }} {{ match.scoreboard.homeScore }},
       {{ teamName(match, 'away') }} {{ match.scoreboard.awayScore }}

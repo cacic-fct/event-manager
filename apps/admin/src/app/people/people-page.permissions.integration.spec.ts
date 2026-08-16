@@ -295,7 +295,7 @@ function buttonByLabel(element: HTMLElement, label: string): HTMLButtonElement |
 
 async function openTab(fixture: ComponentFixture<PeoplePageComponent>, element: HTMLElement, label: string) {
   const tab = [...element.querySelectorAll<HTMLElement>('[role="tab"]')].find(
-    (candidate) => candidate.textContent?.trim() === label,
+    (candidate) => candidate.textContent?.includes(label),
   );
   tab?.click();
   fixture.detectChanges();

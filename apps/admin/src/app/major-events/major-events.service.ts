@@ -12,7 +12,7 @@ import { Event, MajorEvent, MajorEventInput, PriceType } from '@cacic-fct/event-
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { addDays, format, parseISO, subDays } from 'date-fns';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../events/dialogs/clone-asset-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
@@ -38,6 +38,7 @@ export class MajorEventsService {
   private readonly publicationApi = inject(PublicationApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly permissions = inject(PermissionsService);
   private readonly router = inject(Router);
@@ -205,9 +206,7 @@ export class MajorEventsService {
         this.resetMajorEventForm();
       }
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grande evento.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível salvar o grande evento.');
     } finally {
       this.ui.loading.set(false);
     }
@@ -361,9 +360,7 @@ export class MajorEventsService {
       }
       await this.loadMajorEvents();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o grande evento.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível excluir o grande evento.');
     }
   }
 
@@ -388,9 +385,7 @@ export class MajorEventsService {
       await this.loadMajorEvents();
       await this.pickMajorEvent(created);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar o grande evento.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível duplicar o grande evento.');
     }
   }
 

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
@@ -14,13 +15,14 @@ import { MajorEventSubscriptionsComponent } from './major-event-subscriptions.co
 @Component({
   selector: 'app-workspace-subscriptions-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatTabsModule, EventSubscriptionsComponent, MajorEventSubscriptionsComponent],
+  imports: [MatTabsModule, MatIconModule, EventSubscriptionsComponent, MajorEventSubscriptionsComponent],
   templateUrl: './subscriptions-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
     '../app-shell/layout/lists-layout.shared.scss',
     '../app-shell/layout/entity-permissions.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
+    '../app-shell/layout/workspace-tabs.shared.scss',
     './subscription-subtabs.shared.scss',
   ],
 })

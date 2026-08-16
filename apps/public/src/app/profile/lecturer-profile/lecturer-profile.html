@@ -4,12 +4,12 @@
   <a matIconButton routerLink="/profile/attendances" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <span>Perfil de ministrante</span>
+  <h1 class="global-toolbar-title">Perfil público</h1>
 </mat-toolbar>
 
 <main class="lecturer-profile-page">
   @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando perfil público"></mat-progress-bar>
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>
@@ -18,7 +18,6 @@
   } @else {
   <section class="profile-header">
     <div>
-      <h1>Seu perfil público</h1>
       <p>
         Este perfil é único: os mesmos dados aparecem em todos os eventos em que você estiver como ministrante. As
         informações salvas aqui serão públicas.
@@ -32,7 +31,7 @@
   </section>
 
   @if (!isEditing()) { @if (profilePreview(); as profile) {
-  <h1>Pré-visualização</h1>
+  <h2>Pré-visualização</h2>
   <section class="profile-card">
     @if (profile.publishGoogleUserPicture && profile.googleUserPicture) {
     <img class="profile-avatar" [src]="googlePictureUrl(profile.googleUserPicture)" alt="" />

@@ -23,7 +23,7 @@ import { format, isBefore, isValid, parseISO } from 'date-fns';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { ShellUiService } from '../app-shell/ui.service';
 
 type FormOwnerType = EventFormTargetType;
@@ -52,6 +52,7 @@ export class FormsService {
   private readonly majorEventApi = inject(MajorEventApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
   private readonly ui = inject(ShellUiService);
 
@@ -772,7 +773,7 @@ export class FormsService {
   }
 
   private showError(error: unknown, fallback: string): void {
-    this.snackbar.open(getErrorMessage(error, fallback), 'Fechar', { duration: 6000 });
+    this.feedback.error(error, fallback);
   }
 
   private syncLiveResultsStream(form: EventForm): void {

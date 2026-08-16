@@ -1086,10 +1086,11 @@ describe('SportsWorkspaceService operations', () => {
 
       expect(workspace.error()).toBe('Review service unavailable');
       expect(workspace.loading()).toBe(false);
-      expect(snackbar.open).toHaveBeenCalledWith(
-        'Review service unavailable',
-        'Fechar',
-        expect.objectContaining({ duration: 6000, panelClass: ['snackbar-error'] }),
+      expect(dialog.open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          data: expect.objectContaining({ message: 'Review service unavailable' }),
+        }),
       );
     });
 

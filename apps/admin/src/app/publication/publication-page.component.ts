@@ -35,6 +35,7 @@ import {
 } from '../graphql/publishing-api.service';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 import { bindLiveSearch } from '../search/live-search';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import {
   defaultScheduledPublicationDate,
   flattenPublicationListItems,
@@ -78,6 +79,7 @@ export class PublicationPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly platformId = inject(PLATFORM_ID);
@@ -156,7 +158,7 @@ export class PublicationPageComponent {
         null;
       this.selectedNode.set(nextSelection ?? this.workspaceItems()[0] ?? null);
     } catch (error) {
-      this.snackbar.open(publicationErrorMessage(error), 'Fechar', { duration: 6000 });
+      this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       this.loading.set(false);
     }
@@ -262,7 +264,7 @@ export class PublicationPageComponent {
         window.open(result.url, '_blank', 'noopener');
       }
     } catch (error) {
-      this.snackbar.open(publicationErrorMessage(error), 'Fechar', { duration: 6000 });
+      this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       this.loading.set(false);
     }
@@ -424,7 +426,7 @@ export class PublicationPageComponent {
       this.snackbar.open(result.message, 'Fechar', { duration: 4000 });
       await this.refresh();
     } catch (error) {
-      this.snackbar.open(publicationErrorMessage(error), 'Fechar', { duration: 6000 });
+      this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       this.loading.set(false);
     }
@@ -463,7 +465,7 @@ export class PublicationPageComponent {
       this.snackbar.open(result.message, 'Fechar', { duration: 4000 });
       await this.refresh();
     } catch (error) {
-      this.snackbar.open(publicationErrorMessage(error), 'Fechar', { duration: 6000 });
+      this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       this.loading.set(false);
     }

@@ -17,12 +17,6 @@
   justify-content: space-between;
 }
 
-.eyebrow {
-  color: var(--mat-sys-primary);
-  font: var(--mat-sys-label-large);
-  margin: 0 0 6px;
-}
-
 h1,
 h2,
 p {
