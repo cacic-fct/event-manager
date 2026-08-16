@@ -51,11 +51,11 @@ export class SportsOperationsApiService {
     return this.query<{
       currentUserSportsOperationalMatchDetail: Omit<
         SportsOperationalMatch,
-        'revision' | 'homeRegistrationId' | 'awayRegistrationId' | 'rosters' | 'officials'
+        'revision' | 'homeRegistrationId' | 'awayRegistrationId' | 'rosters' | 'officials' | 'readiness'
       >;
       currentUserSportsMatchOperations: Pick<
         SportsOperationalMatch,
-        'revision' | 'homeRegistrationId' | 'awayRegistrationId' | 'rosters' | 'officials'
+        'revision' | 'homeRegistrationId' | 'awayRegistrationId' | 'rosters' | 'officials' | 'readiness'
       >;
     }>(
       `query SportsOperationalMatch($matchId: String!) {
@@ -77,6 +77,10 @@ export class SportsOperationsApiService {
         }
         currentUserSportsMatchOperations(matchId: $matchId) {
           revision homeRegistrationId awayRegistrationId notes occurrencesJson
+          readiness {
+            ready
+            issues { code message registrationId missing required actual }
+          }
           rosters {
             id registrationId revision status
             team { id name institution logoUrl }

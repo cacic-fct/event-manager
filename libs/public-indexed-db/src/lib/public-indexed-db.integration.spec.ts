@@ -102,7 +102,7 @@ describe('offline public data access integration', () => {
       eventId: 'event-1',
       personId: 'person-1',
       status: 'ABSENT',
-      collectedAt: '2026-07-29T12:00:00.000Z',
+      collectedAt: fixtureDate(-1, 12),
       location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 9 },
     });
     await service.enqueue({
@@ -110,7 +110,7 @@ describe('offline public data access integration', () => {
       eventId: 'event-1',
       personId: 'person-1',
       status: 'PRESENT',
-      collectedAt: '2026-07-29T12:01:00.000Z',
+      collectedAt: fixtureDate(-1, 13),
       location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 9 },
     });
 
@@ -119,7 +119,7 @@ describe('offline public data access integration', () => {
       expect.objectContaining({
         personId: 'person-1',
         status: 'PRESENT',
-        collectedAt: '2026-07-29T12:01:00.000Z',
+        collectedAt: fixtureDate(-1, 13),
       }),
     ]);
   });
@@ -132,7 +132,7 @@ describe('offline public data access integration', () => {
       eventId: 'event-1',
       status: 'PRESENT' as const,
       location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 9 },
-      collectedAt: '2026-07-29T12:00:00.000Z',
+      collectedAt: fixtureDate(-1, 12),
       queuedAt: now,
       attempts: 0,
     };
@@ -166,6 +166,65 @@ describe('offline public data access integration', () => {
     await expect(database.oralAttendanceDecisions.get('pending')).resolves.toEqual(
       expect.objectContaining({ syncedAt: expect.any(Number) }),
     );
+  });
+
+  it('lists, watches, retries, and removes oral attendance decisions within the requested user and event', async () => {
+    const service = injectService(OralAttendanceOfflineService);
+    const location = { latitude: -22.12, longitude: -51.4, accuracyMeters: 9 };
+    const older = await service.enqueue({
+      queuedByUserId: 'user-1',
+      eventId: 'event-1',
+      personId: 'person-1',
+      status: 'PRESENT',
+      collectedAt: fixtureDate(-1, 12),
+      location,
+    });
+    const newer = await service.enqueue({
+      queuedByUserId: 'user-1',
+      eventId: 'event-1',
+      personId: 'person-2',
+      status: 'ABSENT',
+      collectedAt: fixtureDate(-1, 13),
+      location,
+    });
+    const otherEvent = await service.enqueue({
+      queuedByUserId: 'user-1',
+      eventId: 'event-2',
+      personId: 'person-3',
+      status: 'PRESENT',
+      collectedAt: fixtureDate(-1, 14),
+      location,
+    });
+    const otherUser = await service.enqueue({
+      queuedByUserId: 'user-2',
+      eventId: 'event-1',
+      personId: 'person-4',
+      status: 'PRESENT',
+      collectedAt: fixtureDate(-1, 15),
+      location,
+    });
+
+    await service.markSynced([older.clientId]);
+    await service.recordFailure([newer.clientId], 'Sem conexão.');
+
+    await expect(service.listPending('user-1')).resolves.toEqual([
+      expect.objectContaining({ clientId: newer.clientId, attempts: 1, lastError: 'Sem conexão.' }),
+      expect.objectContaining({ clientId: otherEvent.clientId }),
+    ]);
+    await expect(service.listAll('user-1', 'event-1')).resolves.toEqual([
+      expect.objectContaining({ clientId: older.clientId, syncedAt: expect.any(Number) }),
+      expect.objectContaining({ clientId: newer.clientId, syncedAt: null }),
+    ]);
+    await expect(firstValueFrom(service.watchPending('user-1', 'event-1'))).resolves.toEqual([
+      expect.objectContaining({ clientId: newer.clientId }),
+    ]);
+
+    await service.remove([newer.clientId, otherUser.clientId]);
+
+    await expect(database.oralAttendanceDecisions.get(newer.clientId)).resolves.toBeUndefined();
+    await expect(database.oralAttendanceDecisions.get(otherUser.clientId)).resolves.toBeUndefined();
+    await expect(database.oralAttendanceDecisions.get(older.clientId)).resolves.toBeDefined();
+    await expect(database.oralAttendanceDecisions.get(otherEvent.clientId)).resolves.toBeDefined();
   });
 
   it.each([
@@ -474,6 +533,7 @@ describe('offline public data access integration', () => {
         CalendarPreferencesStorageService,
         UserOfflineDataService,
         TotpSeedCacheService,
+        OralAttendanceOfflineService,
       ],
       rootEnvironmentInjector,
     );
@@ -487,6 +547,7 @@ describe('offline public data access integration', () => {
       );
       const userData = runInInjectionContext(unavailableInjector, () => new UserOfflineDataService());
       const totpSeeds = runInInjectionContext(unavailableInjector, () => new TotpSeedCacheService());
+      const oralAttendance = runInInjectionContext(unavailableInjector, () => new OralAttendanceOfflineService());
 
       await expect(calendarData.getEvents(fixtureDate(-3650))).resolves.toEqual([]);
       await expect(calendarData.getLastRefresh('calendarEvents')).resolves.toBeNull();
@@ -519,6 +580,14 @@ describe('offline public data access integration', () => {
       await expect(totpSeeds.clearExpiredSeeds()).resolves.toBeUndefined();
       await expect(totpSeeds.clearSeedsExcept('user-1')).resolves.toBeUndefined();
       await expect(totpSeeds.clearSeeds()).resolves.toBeUndefined();
+      await expect(oralAttendance.cacheRoster('user-1', 'event-1', [])).resolves.toBeUndefined();
+      await expect(oralAttendance.getRoster('user-1', 'event-1')).resolves.toEqual([]);
+      await expect(oralAttendance.listPending('user-1', 'event-1')).resolves.toEqual([]);
+      await expect(oralAttendance.listAll('user-1', 'event-1')).resolves.toEqual([]);
+      await expect(firstValueFrom(oralAttendance.watchPending('user-1', 'event-1'))).resolves.toEqual([]);
+      await expect(oralAttendance.remove(['offline'])).resolves.toBeUndefined();
+      await expect(oralAttendance.markSynced(['offline'])).resolves.toBeUndefined();
+      await expect(oralAttendance.recordFailure(['offline'], 'Falha')).resolves.toBeUndefined();
     } finally {
       unavailableInjector.destroy();
     }

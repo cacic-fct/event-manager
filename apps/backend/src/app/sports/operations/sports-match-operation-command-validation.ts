@@ -9,6 +9,7 @@ import {
 } from '../domain/sports-score-rules';
 import { normalizeSportsScoreboard } from '../domain/sports-scoreboard';
 import { projectSportsMatch, restoreSportsStopwatch, SportsProjectedOutcome } from './sports-match-projector';
+import type { SportsMatchReadiness } from './sports-match-readiness';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
 
@@ -50,6 +51,7 @@ interface MatchProjectionContext {
       majorEventId: string;
     };
   };
+  readiness?: SportsMatchReadiness | null;
 }
 
 import { SportsMatchOperationActorValidation } from './sports-match-operation-actor-validation';
@@ -59,7 +61,7 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
     type: SportsMatchActionType,
     payloadValue: Prisma.InputJsonValue | Prisma.JsonValue,
     current: SportsProjectedOutcome,
-    match: Pick<MatchProjectionContext, 'homeRegistrationId' | 'awayRegistrationId' | 'category'>,
+    match: Pick<MatchProjectionContext, 'homeRegistrationId' | 'awayRegistrationId' | 'category' | 'readiness'>,
     actorKind: SportsMatchActorKind,
   ): void {
     const payload = this.requireRecord(payloadValue);
@@ -130,8 +132,29 @@ export abstract class SportsMatchOperationCommandValidation extends SportsMatchO
     ) {
       throw new ConflictException('A partida não pode ser iniciada neste estado.');
     }
-    if (type === SportsMatchActionType.START && (!match.homeRegistrationId || !match.awayRegistrationId)) {
-      throw new ConflictException('Defina as duas equipes antes de iniciar a partida.');
+    if (type === SportsMatchActionType.START) {
+      if (!match.homeRegistrationId || !match.awayRegistrationId) {
+        throw new ConflictException('Defina as duas equipes antes de iniciar a partida.');
+      }
+      const readinessOverride = payload['readinessOverride'];
+      if (readinessOverride !== undefined && typeof readinessOverride !== 'boolean') {
+        throw new BadRequestException('readinessOverride deve ser booleano.');
+      }
+      if (readinessOverride === true) {
+        if (actorKind === 'LINEUP_MANAGER') {
+          throw new BadRequestException('Somente a arbitragem ou administradores podem substituir a prontidão.');
+        }
+        const overrideReason = payload['readinessOverrideReason'];
+        if (overrideReason !== undefined && (typeof overrideReason !== 'string' || overrideReason.trim().length > 500)) {
+          throw new BadRequestException('O motivo da substituição da prontidão deve ter no máximo 500 caracteres.');
+        }
+      } else if (match.readiness && !match.readiness.ready) {
+        const messages = match.readiness.issues.map((issue) => issue.message).join(' ');
+        throw new ConflictException({
+          message: `A partida não está pronta para iniciar. ${messages}`.trim(),
+          readiness: match.readiness,
+        });
+      }
     }
     if (type === SportsMatchActionType.PAUSE && current.state !== SportsMatchState.LIVE) {
       throw new ConflictException('Somente uma partida ao vivo pode ser pausada.');

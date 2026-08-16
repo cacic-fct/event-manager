@@ -374,7 +374,6 @@ describe('TypesenseSearchService', () => {
       id: 'template-1',
       name: 'Certificado',
       description: null,
-      version: 2,
       isActive: true,
     });
     await service.deleteCertificateTemplate('template-1');
@@ -536,7 +535,6 @@ describe('TypesenseSearchService', () => {
           id: 'template-1',
           name: 'Certificado',
           description: null,
-          version: 2,
           isActive: true,
         },
       ],

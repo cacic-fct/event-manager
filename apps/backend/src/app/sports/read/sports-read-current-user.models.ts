@@ -78,6 +78,36 @@ export class CurrentUserSportsOfficialRead {
 }
 
 @ObjectType()
+export class CurrentUserSportsMatchReadinessIssue {
+  @Field(() => String)
+  code!: string;
+
+  @Field(() => String)
+  message!: string;
+
+  @Field(() => String, { nullable: true })
+  registrationId?: string | null;
+
+  @Field(() => Int, { nullable: true })
+  missing?: number | null;
+
+  @Field(() => Int, { nullable: true })
+  required?: number | null;
+
+  @Field(() => Int, { nullable: true })
+  actual?: number | null;
+}
+
+@ObjectType()
+export class CurrentUserSportsMatchReadiness {
+  @Field(() => Boolean)
+  ready!: boolean;
+
+  @Field(() => [CurrentUserSportsMatchReadinessIssue])
+  issues!: CurrentUserSportsMatchReadinessIssue[];
+}
+
+@ObjectType()
 export class CurrentUserSportsMatchOperationsRead {
   @Field(() => String)
   matchId!: string;
@@ -87,6 +117,9 @@ export class CurrentUserSportsMatchOperationsRead {
 
   @Field(() => SportsMatchState)
   state!: SportsMatchState;
+
+  @Field(() => CurrentUserSportsMatchReadiness)
+  readiness!: CurrentUserSportsMatchReadiness;
 
   @Field(() => String, { nullable: true })
   homeRegistrationId?: string | null;

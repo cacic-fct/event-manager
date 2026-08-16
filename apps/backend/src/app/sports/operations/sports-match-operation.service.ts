@@ -21,6 +21,7 @@ import {
 } from '../realtime/sports-structural-invalidation';
 import { SportsStandingsService } from '../scoring/sports-standings.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
+import { loadSportsMatchReadiness } from './sports-match-readiness';
 
 export type SportsMatchActorKind = 'ADMIN' | 'OFFICIAL' | 'LINEUP_MANAGER';
 
@@ -172,7 +173,11 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
         options.correctedPayload === undefined ? action.payload : this.normalizePayload(options.correctedPayload);
       if (decision === SportsReviewStatus.APPROVED) {
         const current = await this.loadProjection(tx, action.matchId, true, action.sequence);
-        this.validateCommand(action.type, payload, current, action.match, 'ADMIN');
+        const readiness =
+          action.type === SportsMatchActionType.START
+            ? await loadSportsMatchReadiness(tx, action.matchId)
+            : undefined;
+        this.validateCommand(action.type, payload, current, { ...action.match, readiness }, 'ADMIN');
       }
       const reviewed = await tx.sportsMatchAction.update({
         where: { id: action.id },

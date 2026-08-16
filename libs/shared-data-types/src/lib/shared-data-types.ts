@@ -6,6 +6,7 @@ export * from './shared-data-types/events';
 export * from './shared-data-types/forms';
 export * from './shared-data-types/people';
 export * from './shared-data-types/attendance';
+export * from './shared-data-types/attendance-analytics';
 export * from './shared-data-types/subscriptions';
 export * from './shared-data-types/lecturers';
 export * from './shared-data-types/lecturer-profiles';

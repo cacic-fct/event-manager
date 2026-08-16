@@ -45,10 +45,6 @@
 
           <div class="resource-group-body">
             @let state = groupPage(group.type);
-            @if (state.loading) {
-              <mat-progress-bar mode="indeterminate" />
-            }
-
             @if (state.error) {
               <div class="panel-state" role="alert">
                 <mat-icon>error</mat-icon>

@@ -1,14 +1,15 @@
-<mat-toolbar>
+<mat-toolbar class="certificate-validation-toolbar">
+  <a matIconButton routerLink="/menu" aria-label="Voltar ao menu" matTooltip="Voltar ao menu">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
   <lib-cacic-logo
+    class="certificate-validation-toolbar-logo"
     routerLink="/"
     [class.logo-bark-mode]="isDarkSignal()"
     [class.logo-light-mode]="!isDarkSignal()"
     aria-label="Voltar ao início"
     matTooltip="Voltar ao início"
     role="link" />
-  <a matIconButton routerLink="/menu" aria-label="Voltar ao menu" matTooltip="Voltar ao menu">
-    <mat-icon>arrow_back</mat-icon>
-  </a>
   <h1 class="global-toolbar-title">Validar certificado</h1>
   <span class="global-toolbar-spacer"></span>
 </mat-toolbar>

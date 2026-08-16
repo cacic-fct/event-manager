@@ -73,6 +73,7 @@ type CertificateFieldDefinition = {
   required: boolean;
   defaultValue: string;
 };
+type CertificateTemplatesLoadState = 'loading' | 'ready' | 'empty' | 'error';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 
@@ -100,6 +101,7 @@ export class CertificatesService {
   readonly targetsPagination = createWorkspaceListPagination();
   readonly selectedTarget = signal<{ id: string; name: string } | null>(null);
   readonly certificateTemplates = signal<CertificateTemplate[]>([]);
+  readonly certificateTemplatesLoadState = signal<CertificateTemplatesLoadState>('loading');
   readonly certificateConfigs = signal<CertificateConfig[]>([]);
   readonly certificateConfigsPagination = createWorkspaceListPagination();
   readonly selectedCertificateConfig = signal<CertificateConfig | null>(null);
@@ -113,6 +115,11 @@ export class CertificatesService {
     this.requiresCustomCertificateTypeLabel(this.certificateConfigModel().issuedTo),
   );
   readonly isManualCertificateIssue = computed(() => this.certificateConfigModel().issuedTo === 'OTHER');
+  readonly certificateOperationsEnabled = computed(
+    () =>
+      this.certificateTemplatesLoadState() === 'ready' &&
+      this.isCertificateTemplateAvailable(this.certificateConfigModel().certificateTemplateId),
+  );
   private certificateFieldValuesJson: string | null | undefined;
 
   private selectedCertificateTemplate(
@@ -168,14 +175,21 @@ export class CertificatesService {
   }
 
   async loadCertificateTemplates(): Promise<void> {
-    this.certificateTemplates.set(
-      await firstValueFrom(
+    this.certificateTemplatesLoadState.set('loading');
+    try {
+      const templates = await firstValueFrom(
         this.api.listCertificateTemplates({
           take: 200,
           includeInactive: false,
         }),
-      ),
-    );
+      );
+      this.certificateTemplates.set(templates);
+      this.certificateTemplatesLoadState.set(templates.length > 0 ? 'ready' : 'empty');
+    } catch {
+      this.certificateTemplates.set([]);
+      this.certificateTemplatesLoadState.set('error');
+    }
+
     const selectedTemplateId = this.certificateConfigModel().certificateTemplateId;
     if (!selectedTemplateId && this.certificateTemplates().length > 0) {
       this.certificateConfigForm().reset({
@@ -187,6 +201,10 @@ export class CertificatesService {
     }
 
     this.syncCertificateFieldsForm(this.certificateFieldValuesJson, selectedTemplateId);
+  }
+
+  isCertificateTemplateAvailable(templateId: string): boolean {
+    return this.certificateTemplates().some((template) => template.id === templateId);
   }
 
   async searchTargets(): Promise<void> {
@@ -521,6 +539,13 @@ export class CertificatesService {
   }
 
   private async persistCertificateConfig(options?: { showSnackbar?: boolean }): Promise<CertificateConfig | null> {
+    if (!this.certificateOperationsEnabled()) {
+      this.snackbar.open('Selecione um modelo de certificado disponível antes de continuar.', 'Fechar', {
+        duration: 3500,
+      });
+      return null;
+    }
+
     let savedConfig: CertificateConfig | null = null;
 
     const success = await submit(this.certificateConfigForm, async (field) => {
@@ -1057,7 +1082,7 @@ export class CertificatesService {
     for (const definition of this.certificateFieldDefinitions()) {
       const value = this.normalizeCertificateFieldValue(values[definition.key]);
 
-      if (value) {
+      if (value && value !== definition.defaultValue) {
         certificateFields[definition.key] = value;
       }
     }

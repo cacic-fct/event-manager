@@ -861,7 +861,6 @@ export function createAdminCertificateTemplate(overrides: Partial<CertificateTem
     id: 'template-1',
     name: 'Template',
     description: null,
-    version: 1,
     isActive: true,
     certificateFieldsJson: null,
     createdAt: adminFixtureDate,

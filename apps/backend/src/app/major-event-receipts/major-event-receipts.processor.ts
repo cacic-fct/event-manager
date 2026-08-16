@@ -26,6 +26,8 @@ import {
   normalizeReceiptImageProcessingError,
   readProcessableReceiptImageMetadata,
 } from './utils/receipt-image-processing.utils';
+import { processReceiptPdf, ReceiptPdfProcessingError } from './utils/receipt-pdf-processing.utils';
+import { isPdfReceiptMimeType } from './utils/receipt-file.utils';
 
 sharp.cache({ files: 0, items: 0, memory: 32 });
 sharp.concurrency(1);
@@ -79,11 +81,13 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
       const storedFile = await this.s3.downloadFile(receipt.objectKey);
       this.assertStoredObjectSizeWithinLimit(storedFile.contentLength);
       const originalBuffer = await this.streamToBuffer(storedFile.stream, MAX_RECEIPT_FILE_SIZE_BYTES);
-      await readProcessableReceiptImageMetadata(originalBuffer);
-      const ocrBuffer = await this.prepareForOcr(originalBuffer);
-      const ocrText = await this.recognizeReceiptText(ocrBuffer);
+      const processedPdf = isPdfReceiptMimeType(receipt.mimeType) ? await processReceiptPdf(originalBuffer) : undefined;
+      const receiptImageBuffer = processedPdf?.previewBuffer ?? originalBuffer;
+      const receiptText = processedPdf
+        ? processedPdf.text
+        : await this.recognizeRasterReceiptText(receiptImageBuffer);
       const expectedAmountCents = this.resolveExpectedAmountCents(receipt.subscription);
-      const analysis = this.analysis.analyze(ocrText, receipt.subscription.person.name, expectedAmountCents);
+      const analysis = this.analysis.analyze(receiptText, receipt.subscription.person.name, expectedAmountCents);
 
       await this.prisma.majorEventReceipt.update({
         where: {
@@ -93,7 +97,7 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
           processingStatus: ReceiptProcessingStatus.OCR_DONE,
           processedAt: new Date(),
           processingError: null,
-          ocrText,
+          ocrText: receiptText,
           expectedAmountCents: analysis.expectedAmountCents,
           matchedAmountCents: analysis.matchedAmountCents,
           amountMatched: analysis.amountMatched,
@@ -103,7 +107,7 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
         },
       });
 
-      await this.convertReceiptToAvif(receipt.id, receipt.objectKey, originalBuffer, receipt.expiresAt);
+      await this.convertReceiptToAvif(receipt.id, receipt.objectKey, receiptImageBuffer, receipt.expiresAt);
     } catch (error: unknown) {
       const processingErrorMessage = error instanceof Error ? error.message : 'Unknown receipt processing error.';
       this.logger.error(`Failed to process receipt ${receiptId}`, error);
@@ -140,6 +144,11 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
         .toBuffer(),
       'Receipt OCR image preparation',
     );
+  }
+
+  private async recognizeRasterReceiptText(buffer: Buffer): Promise<string> {
+    await readProcessableReceiptImageMetadata(buffer);
+    return this.recognizeReceiptText(await this.prepareForOcr(buffer));
   }
 
   private async convertReceiptToAvif(
@@ -272,7 +281,7 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
   }
 
   private toBullProcessingError(error: unknown, message: string): Error {
-    if (isReceiptImageProcessingError(error)) {
+    if (isReceiptImageProcessingError(error) || error instanceof ReceiptPdfProcessingError) {
       return new UnrecoverableError(message);
     }
 

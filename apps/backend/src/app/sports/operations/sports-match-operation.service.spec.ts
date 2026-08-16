@@ -93,6 +93,42 @@ describe('SportsMatchOperationService offline command log', () => {
     expect(tx.sportsMatchAction.create).toHaveBeenCalledTimes(1);
   });
 
+  it('persists and audits an explicit readiness override on a start action', async () => {
+    await service.commit(
+      [
+        sportsMatchCommand({
+          payload: {
+            readinessOverride: true,
+            readinessOverrideReason: 'A arbitragem autorizou o início excepcional.',
+          },
+        }),
+      ],
+      sportsOfficialActor(),
+    );
+
+    expect(tx.sportsMatchAction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: SportsMatchActionType.START,
+          payload: {
+            readinessOverride: true,
+            readinessOverrideReason: 'A arbitragem autorizou o início excepcional.',
+          },
+        }),
+      }),
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        summary: 'Ação de partida registrada com substituição manual da prontidão.',
+        after: expect.objectContaining({
+          readinessOverride: true,
+          readinessOverrideReason: 'A arbitragem autorizou o início excepcional.',
+        }),
+      }),
+      tx,
+    );
+  });
+
   it('rebases a commutative score delta from an older positive revision', async () => {
     tx.state.revision = 4;
     tx.state.operationSequence = 3;

@@ -91,7 +91,6 @@ export async function reindexAllSearchDocuments(input: {
         id: true,
         name: true,
         description: true,
-        version: true,
         isActive: true,
       },
     }),

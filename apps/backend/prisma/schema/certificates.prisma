@@ -7,12 +7,16 @@ enum CertificateScope {
 
 model CertificateTemplate {
   id          String  @id @default(uuid(7))
+  registryKey String  @unique
   name        String
   description String?
 
-  // Version the template instead of editing old rows in place
-  version  Int  @default(1)
-  template Json
+  // Validated, self-contained rendering snapshot synchronized from certificate-templates metadata.
+  htmlTemplate String
+  cssTemplate  String?
+  contentChecksum String
+  /// Recovery-only copy of the pre-registry path configuration. Runtime rendering never reads it.
+  legacyTemplate Json?
 
   isActive Boolean @default(true)
 

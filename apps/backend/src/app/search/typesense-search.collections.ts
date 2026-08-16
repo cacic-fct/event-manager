@@ -65,7 +65,6 @@ export function createTypesenseCollectionSchemas(): CollectionCreateSchema[] {
       { name: 'id', type: 'string' },
       { name: 'name', type: 'string' },
       { name: 'description', type: 'string', optional: true },
-      { name: 'version', type: 'int32', sort: true },
       { name: 'isActive', type: 'bool', facet: true },
     ]),
     createTypesenseCollectionSchema(TYPESENSE_COLLECTIONS.auditLogs, [

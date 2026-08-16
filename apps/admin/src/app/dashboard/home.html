@@ -84,6 +84,37 @@
     </div>
 
     <section class="dashboard-grid">
+      @if (attendanceReviewEvents().length > 0) {
+      <mat-card appearance="outlined">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>rule</mat-icon>
+          <mat-card-title>Sinais de presença para revisar</mat-card-title>
+          <mat-card-subtitle>Alertas operacionais válidos aguardando avaliação humana.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-list class="compact-list embedded-list">
+            @for (item of attendanceReviewEvents(); track item.eventId) {
+            <mat-list-item>
+              <span matListItemTitle class="list-title">
+                <lib-twemoji [emoji]="item.emoji" />
+                <span>{{ item.eventName }}</span>
+              </span>
+              <span matListItemLine>{{ item.pendingCount }} sinal(is) · {{ item.startDate | date: 'shortDate' }}</span>
+              <a
+                matIconButton
+                matListItemMeta
+                aria-label="Revisar sinais de presença"
+                matTooltip="Revisar sinais de presença"
+                [routerLink]="attendanceReviewLink(item)"
+                fragment="revisoes">
+                <mat-icon>arrow_forward</mat-icon>
+              </a>
+            </mat-list-item>
+            }
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+      }
       @if (dashboard.pendingOfflineAttendanceEvents.length > 0) {
       <mat-card appearance="outlined">
         <mat-card-header>

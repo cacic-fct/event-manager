@@ -160,6 +160,34 @@ describe('SportsMatchOverlayService', () => {
     expect(sportsRead.publicMatch).toHaveBeenCalledWith('match-1');
   });
 
+  it('keeps scheduled matches non-running in the overlay projection', async () => {
+    const match = createMatch({
+      state: 'SCHEDULED',
+      timerStartedAt: null,
+      timerStartedAtUnixMs: null,
+      elapsedBeforePauseMs: 0,
+      scoreboard: {
+        homeScore: 0,
+        awayScore: 0,
+        activePeriod: null,
+        periods: [],
+      },
+    });
+    sportsRead.publicMatch.mockResolvedValue(match);
+
+    await expect(createService().data('match-1')).resolves.toEqual({
+      id: 'match-1',
+      homeTeam: { name: 'Atlética Azul', logoUrl: '/logos/home.png' },
+      awayTeam: { name: 'Atlética Vermelha', logoUrl: null },
+      state: 'SCHEDULED',
+      scoreboard: match.scoreboard,
+      timerStartedAtUnixMs: null,
+      elapsedBeforePauseMs: 0,
+      periodTimers: [],
+      overallTimerEnabled: true,
+    });
+  });
+
   it('serves generic hardcoded data for the demo match without reading the database', async () => {
     const service = createService();
     const before = Date.now();

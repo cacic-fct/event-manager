@@ -22,10 +22,14 @@ import type {
   DashboardWeatherAlert,
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
-import { Subscription, interval, startWith, switchMap } from 'rxjs';
+import type { AttendanceReviewEventSummary } from '@cacic-fct/event-manager-admin-contracts';
+import { Subscription, forkJoin, interval, of, startWith, switchMap } from 'rxjs';
 import { DashboardApiService } from '../graphql/dashboard-api.service';
+import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { navigationLinkItems } from '../app-shell/navigation';
+import { PermissionsService } from '../permissions/permissions.service';
+import { Permission } from '@cacic-fct/shared-permissions';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
@@ -51,6 +55,8 @@ type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissi
 export class Home implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly dashboardApi = inject(DashboardApiService);
+  private readonly attendanceApi = inject(AttendanceApiService);
+  private readonly permissions = inject(PermissionsService);
 
   private minuteTimeoutId?: ReturnType<typeof setTimeout>;
   private minuteIntervalId?: ReturnType<typeof setInterval>;
@@ -58,6 +64,7 @@ export class Home implements OnInit, OnDestroy {
 
   readonly currentDate = signal<Date>(new Date());
   readonly insights = signal<WorkspaceDashboardHomeInsights | null>(null);
+  readonly attendanceReviewEvents = signal<AttendanceReviewEventSummary[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
@@ -88,7 +95,8 @@ export class Home implements OnInit, OnDestroy {
     const dashboard = this.insights();
     return Boolean(
       dashboard &&
-        (dashboard.pendingOfflineAttendanceEvents.length > 0 ||
+        (this.attendanceReviewEvents().length > 0 ||
+          dashboard.pendingOfflineAttendanceEvents.length > 0 ||
           dashboard.pendingReceiptMajorEvents.length > 0 ||
           this.sportsTournamentsNeedingReview().length > 0 ||
           this.criticalInconsistencies().length > 0),
@@ -152,12 +160,18 @@ export class Home implements OnInit, OnDestroy {
         switchMap(() => {
           this.loading.set(true);
           this.error.set(null);
-          return this.dashboardApi.getWorkspaceDashboardInsights();
+          return forkJoin({
+            insights: this.dashboardApi.getWorkspaceDashboardInsights(),
+            attendanceReviewEvents: this.permissions.has(Permission.EventAttendance.Update)
+              ? this.attendanceApi.listAttendanceReviewEventSummaries()
+              : of([]),
+          });
         }),
       )
       .subscribe({
-        next: (insights) => {
+        next: ({ insights, attendanceReviewEvents }) => {
           this.insights.set(insights);
+          this.attendanceReviewEvents.set(attendanceReviewEvents);
           this.loading.set(false);
         },
         error: (error: unknown) => {
@@ -239,6 +253,10 @@ export class Home implements OnInit, OnDestroy {
 
   offlineAttendanceLink(item: DashboardPendingOfflineAttendanceEvent): string[] {
     return [this.navMap()['attendances']?.path ?? 'attendances', 'event', item.eventId];
+  }
+
+  attendanceReviewLink(item: AttendanceReviewEventSummary): string[] {
+    return [this.navMap()['attendances']?.path ?? 'attendances', 'event', item.eventId, 'statistics'];
   }
 
   sportsTournamentLink(item: DashboardSportsTournament | DashboardSportsMatch): string[] {

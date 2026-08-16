@@ -207,6 +207,34 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     expect(eventSubscriptions.getCurrentUserSubscribedItems).not.toHaveBeenCalled();
   });
 
+  it('returns no required image-license interruptions when the current user has no person', async () => {
+    const { currentUserContext, eventSubscriptions, resolver } = createResolver();
+    currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: null });
+
+    await expect(
+      resolver.currentUserRequiredImageLicenseAgreementInterruptions(context()),
+    ).resolves.toEqual([]);
+    expect(eventSubscriptions.listRequiredImageLicenseAgreementInterruptions).not.toHaveBeenCalled();
+  });
+
+  it('loads required image-license interruptions only for the resolved current person', async () => {
+    const { currentUserContext, eventSubscriptions, resolver } = createResolver();
+    const interruptions = [
+      {
+        targetType: 'EVENT',
+        targetId: 'event-1',
+        targetName: 'Evento',
+      },
+    ];
+    currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+    eventSubscriptions.listRequiredImageLicenseAgreementInterruptions.mockResolvedValue(interruptions);
+
+    await expect(
+      resolver.currentUserRequiredImageLicenseAgreementInterruptions(context()),
+    ).resolves.toBe(interruptions);
+    expect(eventSubscriptions.listRequiredImageLicenseAgreementInterruptions).toHaveBeenCalledWith('person-1');
+  });
+
   it('maps current-user event and group subscriptions when records exist', async () => {
     const { currentUserContext, eventSubscriptions, mapper, prisma, resolver } = createResolver();
     const createdAt = new Date('2026-06-01T10:00:00.000Z');
@@ -379,6 +407,7 @@ function createResolver() {
   const eventSubscriptions = {
     getCurrentUserSubscribedItems: jest.fn(),
     getSubscribedEventsByEventGroupSubscription: jest.fn(),
+    listRequiredImageLicenseAgreementInterruptions: jest.fn(),
     subscribeCurrentUserEventGroup: jest.fn(),
     subscribeCurrentUserEvent: jest.fn(),
     unsubscribeCurrentUserEvent: jest.fn(),

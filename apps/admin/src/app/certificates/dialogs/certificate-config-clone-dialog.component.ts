@@ -7,7 +7,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { firstValueFrom, Observable } from 'rxjs';
 import {
@@ -51,7 +50,6 @@ export type CertificateConfigCloneDialogResult = {
     MatIconModule,
     MatInputModule,
     MatListModule,
-    MatProgressBarModule,
     MatSelectModule,
     TwemojiComponent,
   ],
@@ -80,10 +78,6 @@ export type CertificateConfigCloneDialogResult = {
           <h3>Destino</h3>
           <span>{{ targets().length }} itens</span>
         </header>
-
-        @if (loading()) {
-          <mat-progress-bar mode="indeterminate" />
-        }
 
         <mat-list class="target-list">
           @for (target of targets(); track target.id) {

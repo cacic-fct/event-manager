@@ -1,4 +1,5 @@
 export * from './attendance.models';
+export * from './attendance-analytics.models';
 export * from './audit-log.models';
 export * from './certificate.models';
 export * from './event-form.models';

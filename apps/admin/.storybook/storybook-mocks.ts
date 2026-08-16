@@ -275,7 +275,6 @@ const certificateTemplate = {
   id: 'template-1',
   name: 'Certificado padrao',
   description: 'Modelo com dados do participante e evento.',
-  version: 1,
   isActive: true,
   certificateFieldsJson: '{}',
   createdAt: isoDaysFromNow(-60),
@@ -976,3 +975,22 @@ export const cacicEventosHandlers = [
   http.post('/api/major-event-receipts/admin/actions/:actionId/undo', () => HttpResponse.json(receiptQueue().items[0])),
   http.all('/api/*', () => HttpResponse.json({ ok: true })),
 ];
+
+export const emptyCertificateTemplatesHandler = http.post('/api/graphql', async ({ request }) => {
+  const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+  const query = body.query ?? '';
+  const response = query.includes('ListCertificateTemplates')
+    ? { certificateTemplates: [] }
+    : graphqlData(query, body.variables ?? {});
+  return HttpResponse.json(isGraphqlMockError(response) ? response : { data: response });
+});
+
+export const failedCertificateTemplatesHandler = http.post('/api/graphql', async ({ request }) => {
+  const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+  const query = body.query ?? '';
+  if (query.includes('ListCertificateTemplates')) {
+    return HttpResponse.json({ errors: [{ message: 'Template registry unavailable' }] });
+  }
+  const response = graphqlData(query, body.variables ?? {});
+  return HttpResponse.json(isGraphqlMockError(response) ? response : { data: response });
+});

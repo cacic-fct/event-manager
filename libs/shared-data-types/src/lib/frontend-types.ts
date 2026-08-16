@@ -99,7 +99,6 @@ export interface CertificateTemplate {
   id: string;
   name: string;
   description?: string | null;
-  version: number;
   isActive: boolean;
   certificateFieldsJson?: string | null;
   createdAt: string;

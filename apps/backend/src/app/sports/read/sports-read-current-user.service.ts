@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import {
   SportsCategoryStatus,
   SportsMatchActionType,
+  SportsReviewStatus,
   SportsRegistrationStatus,
   SportsRosterEntryStatus,
   SportsRosterStatus,
@@ -23,6 +24,7 @@ import { PUBLIC_TEAM_SELECT } from './sports-read.records';
 import { SportsReadAdminMapper } from './sports-read-admin.mapper';
 import { SportsReadPublicService } from './sports-read-public.service';
 import { SportsReadRepresentativeService } from './sports-read-representative.service';
+import { evaluateSportsMatchReadiness } from '../operations/sports-match-readiness';
 
 const SELF_SUBSCRIPTION_CATEGORY_STATUSES = [
   SportsCategoryStatus.REGISTRATION_OPEN,
@@ -250,6 +252,7 @@ export class SportsReadCurrentUserService {
           select: {
             id: true,
             athleteIdentifierMode: true,
+            minimumRosterSize: true,
             tournament: { select: { id: true } },
           },
         },
@@ -290,6 +293,7 @@ export class SportsReadCurrentUserService {
                         participant: {
                           select: {
                             personId: true,
+                            paymentStatus: true,
                             person: {
                               select: { name: true },
                             },
@@ -306,9 +310,30 @@ export class SportsReadCurrentUserService {
           orderBy: [{ registrationId: 'asc' }, { id: 'asc' }],
         },
         actions: {
-          where: { type: SportsMatchActionType.CHECK_IN },
+          where: {
+            type: SportsMatchActionType.CHECK_IN,
+            reviewStatus: SportsReviewStatus.APPROVED,
+          },
           orderBy: { sequence: 'asc' },
           select: { payload: true },
+        },
+        winnerSources: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            canonicalState: true,
+            reviewStatus: true,
+            winnerRegistrationId: true,
+          },
+        },
+        loserSources: {
+          where: { deletedAt: null },
+          select: {
+            id: true,
+            canonicalState: true,
+            reviewStatus: true,
+            loserRegistrationId: true,
+          },
         },
       },
     });
@@ -407,10 +432,25 @@ export class SportsReadCurrentUserService {
             (officialRoleOrder[right.role] ?? Number.MAX_SAFE_INTEGER) ||
           left.name.localeCompare(right.name, 'pt-BR', { sensitivity: 'base' }),
       );
+    const readiness = evaluateSportsMatchReadiness({
+      minimumRosterSize: match.category.minimumRosterSize ?? null,
+      homeRegistrationId: match.homeRegistrationId,
+      awayRegistrationId: match.awayRegistrationId,
+      rosters: match.rosters,
+      assignments: assignments.map((assignment) => ({
+        ...assignment,
+        personId: assignment.person.id,
+      })),
+      actions: match.actions ?? [],
+      winnerSources: match.winnerSources ?? [],
+      loserSources: match.loserSources ?? [],
+      attendances: [],
+    });
     return {
       matchId: match.id,
       revision: match.revision,
       state: match.state,
+      readiness,
       homeRegistrationId: match.homeRegistrationId,
       awayRegistrationId: match.awayRegistrationId,
       notes: match.notes,

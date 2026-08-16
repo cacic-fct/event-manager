@@ -1,0 +1,23 @@
+{
+  "$schema": "../../certificate-template.schema.json",
+  "key": "cacic-unesp/lecturer",
+  "name": "CACiC Unesp - Palestrante/Ministrante",
+  "description": "Certificado para palestrantes e ministrantes",
+  "html": "cacic-unesp-lecturer.template.html",
+  "css": "cacic-unesp-lecturer.template.css",
+  "font": "inter-variable",
+  "certificateFields": {
+    "top-text": {
+      "label": "Texto em cima do nome",
+      "type": "string",
+      "required": true,
+      "default": "Certificamos que"
+    },
+    "bottom-text": {
+      "label": "Texto embaixo do nome",
+      "type": "string",
+      "required": true,
+      "default": "foi ministrante/palestrante (EDITE) no evento"
+    }
+  }
+}

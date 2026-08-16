@@ -1,0 +1,23 @@
+{
+  "$schema": "../../certificate-template.schema.json",
+  "key": "cacic-unesp/extension",
+  "name": "CACiC Unesp - Extensão",
+  "description": "Certificado para alunos de extensão",
+  "html": "cacic-unesp-extension.template.html",
+  "css": "cacic-unesp-extension.template.css",
+  "font": "inter-variable",
+  "certificateFields": {
+    "top-text": {
+      "label": "Texto em cima do nome",
+      "type": "string",
+      "required": true,
+      "default": "Certificamos a participação de"
+    },
+    "bottom-text": {
+      "label": "Texto embaixo do nome",
+      "type": "string",
+      "required": true,
+      "default": "como aluno de extensão no evento"
+    }
+  }
+}

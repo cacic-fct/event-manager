@@ -41,8 +41,63 @@ describe('SportsTeamChangeService member lifecycle', () => {
       $transaction: jest.fn((callback: (transaction: typeof tx) => Promise<unknown>) => callback(tx)),
       sportsTeamChangeRequest: tx.sportsTeamChangeRequest,
     };
-    service = new SportsTeamChangeService(prisma as never, identities as never, payments as never, auditLog as never);
+    service = new SportsTeamChangeService(
+      prisma as never,
+      identities as never,
+      payments as never,
+      auditLog as never,
+      {} as never,
+    );
   });
+
+  it('rejects approval when the applicant already belongs to another team in a single-team tournament', async () => {
+    const request = reviewRequest({
+      type: SportsTeamChangeRequestType.MEMBER_ADD,
+      delta: { categoryIds: ['category-1'] },
+      identityClaims: [
+        {
+          id: 'claim-1',
+          type: SportsIdentityType.EMAIL,
+          encryptedValue: 'encrypted:EMAIL:person@example.com',
+        },
+      ],
+      team: {
+        ...reviewRequest().team,
+        revision: 1,
+        fieldRevisions: { name: 1, institution: 1 },
+        tournament: {
+          ...reviewRequest().team.tournament,
+          status: SportsTournamentStatus.REGISTRATION_OPEN,
+          finishedAt: null,
+          deletedAt: null,
+        },
+      },
+    });
+    tx.sportsTeamChangeRequest.findUnique.mockResolvedValue(request);
+    tx.sportsCategory.findMany.mockResolvedValue([{ id: 'category-1', allowPlayerMultipleTeams: true }]);
+    tx.sportsTournament.findFirst.mockResolvedValue({ id: 'tournament-1', allowPlayerMultipleTeams: false });
+    tx.people.findMany.mockResolvedValue([{ id: 'person-1' }]);
+    tx.sportsTeamMember.findFirst.mockResolvedValue({ id: 'other-team-member' });
+    identities.reveal.mockReturnValue('person@example.com');
+
+    await expect(service.review('request-1', 'APPROVE', adminActor())).rejects.toThrow(
+      'A pessoa já integra outra equipe neste torneio.',
+    );
+
+    expect(tx.sportsTeamMember.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          teamId: { not: 'team-1' },
+          status: SportsTeamMemberStatus.APPROVED,
+          team: expect.objectContaining({ tournamentId: 'tournament-1' }),
+          participant: expect.objectContaining({ personId: 'person-1' }),
+        }),
+      }),
+    );
+    expect(tx.sportsTeamMember.create).not.toHaveBeenCalled();
+    expect(tx.sportsRegistrationMember.create).not.toHaveBeenCalled();
+  });
+
   it('updates a member with child revision CAS and makes suspended assignments ineligible', async () => {
     tx.sportsTeamChangeRequest.findUnique.mockResolvedValue(
       reviewRequest({
@@ -85,6 +140,42 @@ describe('SportsTeamChangeService member lifecycle', () => {
       data: {
         eligibility: 'INELIGIBLE',
         rejectionReason: 'Integrante suspenso.',
+        updatedById: 'admin-1',
+      },
+    });
+  });
+
+  it('restores eligible assignments when a suspended member is approved again', async () => {
+    tx.sportsTeamChangeRequest.findUnique.mockResolvedValue(
+      reviewRequest({
+        type: SportsTeamChangeRequestType.MEMBER_UPDATE,
+        delta: {
+          memberChanges: [
+            {
+              teamMemberId: 'member-1',
+              expectedRevision: 3,
+              status: SportsTeamMemberStatus.APPROVED,
+            },
+          ],
+        },
+      }),
+    );
+    tx.sportsTeamMember.findFirst.mockResolvedValueOnce(
+      lifecycleMember({ revision: 3, status: SportsTeamMemberStatus.SUSPENDED }),
+    );
+
+    await service.review('request-1', 'APPROVE', adminActor(), {
+      expectedRequestRevision: 1,
+    });
+
+    expect(tx.sportsRegistrationMember.updateMany).toHaveBeenCalledWith({
+      where: {
+        teamMemberId: 'member-1',
+        deletedAt: null,
+        eligibility: 'PENDING',
+      },
+      data: {
+        eligibility: 'ELIGIBLE',
         updatedById: 'admin-1',
       },
     });

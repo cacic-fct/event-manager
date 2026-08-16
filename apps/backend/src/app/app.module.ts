@@ -28,6 +28,7 @@ import { CalendarService } from './calendar/calendar.service';
 import { CertificateConfigsService } from './certificate/certificate-configs.service';
 import { CertificateCsvImportResolver } from './certificate/certificate-csv-import.resolver';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
+import { CertificateTemplateRegistryService } from './certificate/certificate-template-registry.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
 import { CertificateSportsEligibility } from './certificate/certificate-sports-eligibility';
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
@@ -48,7 +49,10 @@ import { CertificatesResolver } from './certificate/certificates.resolver';
 import { PublicCertificateValidationService } from './certificate/public-certificate-validation.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { EventAttendancesController } from './events/attendances.controller';
+import { AttendanceAnalyticsController } from './events/attendance-analytics.controller';
 import {
+  AttendanceAnalyticsResolver,
+  AttendanceAnalyticsService,
   EventAttendanceCsvImportResolver,
   EventAttendancesMutationsResolver,
   EventAttendancesQueriesResolver,
@@ -340,6 +344,7 @@ const schedulerProviders = useInMemoryTestInfra
     CalendarController,
     AccountProfileUpdateController,
     EventAttendancesController,
+    AttendanceAnalyticsController,
     SubscriptionBadgeExportController,
     EventFormsController,
     MajorEventReceiptsController,
@@ -448,6 +453,8 @@ const schedulerProviders = useInMemoryTestInfra
     DashboardInsightsService,
     PublicPlatformStatsService,
     AttendanceCategoryService,
+    AttendanceAnalyticsService,
+    AttendanceAnalyticsResolver,
     EventSubscriptionSyncService,
     EventSubscriptionCountersService,
     EventAttendanceCollectorsResolver,
@@ -490,6 +497,7 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateConfigsService,
     CertificateCsvImportResolver,
     CertificateDownloadService,
+    CertificateTemplateRegistryService,
     CertificateEligibilityService,
     CertificateSportsEligibility,
     CertificateIssuingService,

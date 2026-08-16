@@ -214,6 +214,45 @@ describe('SportsPaymentService', () => {
     expect(tx.majorEventSubscription.update).not.toHaveBeenCalled();
   });
 
+  it('selects the only sports-enabled tier without treating regular-event tiers as tournament tiers', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValue({
+      id: 'tournament-1',
+      majorEventId: 'major-1',
+      majorEvent: {
+        isPaymentRequired: true,
+        requiresImageLicenseAgreement: false,
+        deletedAt: null,
+        majorEventPrices: [
+          {
+            tiers: [
+              { name: 'Atividades', value: 3000, includesSportsRegistration: false },
+              { name: 'Atividades e torneio', value: 7000, includesSportsRegistration: true },
+            ],
+          },
+        ],
+      },
+      playerApplications: [],
+    });
+
+    await service.ensureParticipant(tx as never, {
+      tournamentId: 'tournament-1',
+      personId: 'person-1',
+      source: SportsParticipantSource.TEAM_ASSIGNMENT,
+      actorId: 'admin-1',
+      approved: true,
+    });
+
+    expect(tx.majorEventSubscription.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          amountPaid: 7000,
+          paymentTier: 'Atividades e torneio',
+          subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+        }),
+      }),
+    );
+  });
+
   it('reopens a canceled paid subscription so a team-assigned player can upload a receipt', async () => {
     tx.majorEventSubscription.findFirst.mockResolvedValue({
       id: 'subscription-existing',

@@ -118,6 +118,12 @@
 .primary-actions button {
   min-height: 52px;
 }
+.start-action {
+  display: grid;
+  justify-items: center;
+  gap: 0.75rem;
+  width: min(100%, 560px);
+}
 .hold-button {
   position: relative;
   overflow: hidden;
@@ -126,6 +132,30 @@
   user-select: none;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
+}
+.readiness-issues {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  text-align: start;
+}
+.readiness-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.readiness-heading mat-icon {
+  flex: 0 0 auto;
+}
+.readiness-issues ul {
+  margin: 0.5rem 0 0;
+  padding-inline-start: 1.5rem;
+}
+.readiness-issues li + li {
+  margin-block-start: 0.25rem;
 }
 .hold-button * {
   user-select: none;

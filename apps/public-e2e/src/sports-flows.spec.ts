@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { expect, test } from './support/e2e-test';
 
 interface RecordedSportsAction {
@@ -37,9 +38,11 @@ interface SportsMockOptions {
   authenticated?: boolean;
   authenticatedUser?: Record<string, unknown>;
   autoroute?: { matchId?: string; teamId?: string; mode: string } | null;
+  autorouteRequests?: { count: number };
   collectorCredential?: SportsCollectorCredential;
   committedActionBatches?: RecordedSportsAction[][];
   includeOperationalRoster?: boolean;
+  matchState?: 'SCHEDULED' | 'LIVE';
   recordedRosterCheckIns?: RecordedRosterCheckIn[];
   tournamentError?: string;
 }
@@ -120,7 +123,35 @@ test('routes an authenticated official to the next operable match', async ({ pag
   await page.goto('/app/sports');
 
   await expect(page).toHaveURL(/\/app\/sports\/operate\/match-1\?mode=OPERATE/);
-  await expect(page.getByText('Operação da partida')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipe Azul × Equipe Verde' })).toBeVisible();
+});
+
+test('redirects a one-shot check-in suggestion with its operation mode', async ({ page }) => {
+  const autorouteRequests = { count: 0 };
+  await mockSportsApi(page, {
+    authenticated: true,
+    authenticatedUser: officialUserFixture(),
+    autoroute: { matchId: 'match-1', mode: 'CHECK_IN' },
+    autorouteRequests,
+  });
+
+  await page.goto('/app/sports');
+
+  await expect(page).toHaveURL(/\/app\/sports\/operate\/match-1\?mode=CHECK_IN/);
+  expect(autorouteRequests.count).toBe(1);
+});
+
+test('renders a scheduled match view with location and private roster state', async ({ page }) => {
+  await mockSportsApi(page, { matchState: 'SCHEDULED' });
+
+  await page.goto('/app/sports/match/match-1');
+
+  await expect(page.getByRole('heading', { name: 'Equipe Azul', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipe Verde', exact: true })).toBeVisible();
+  await expect(page.getByText('Agendada', { exact: true })).toBeVisible();
+  await expect(page.getByText('Ginásio · Quadra 1 · Ginásio principal', { exact: true })).toBeVisible();
+  await expect(page.getByText('As escalações são disponibilizadas após o encerramento da partida.')).toBeVisible();
+  await expect(page.getByText('Ao vivo', { exact: true })).toHaveCount(0);
 });
 
 test('submits a match occurrence through the form without navigating away', async ({ page }) => {
@@ -132,7 +163,7 @@ test('submits a match occurrence through the form without navigating away', asyn
   });
 
   await page.goto('/app/sports/operate/match-1');
-  await expect(page.getByText('Operação da partida')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipe Azul × Equipe Verde' })).toBeVisible();
 
   const note = page.getByRole('textbox', { name: 'O que aconteceu?' });
   await note.fill('Atendimento registrado aos 18 minutos.');
@@ -190,7 +221,7 @@ test('queues an authenticated official score operation offline and flushes it ex
   const homeScore = homeTeam.locator('.score-controls > strong');
   const pendingButton = page.getByRole('button', { name: /1 para enviar/ });
 
-  await expect(page.getByText('Operação da partida')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipe Azul × Equipe Verde' })).toBeVisible();
   await expect(homeScore).toHaveText('2');
 
   await context.setOffline(true);
@@ -256,7 +287,7 @@ test('uploads proven attendance across users while retaining the original user a
   const collectorCredential: SportsCollectorCredential = {
     credential: 'signed-collector-official-1-match-1',
     collectorPersonId: 'person-official-1',
-    issuedAt: '2026-08-11T12:00:00.000Z',
+    issuedAt: publicFixtureDateFromNow(-1),
   };
   const committedActionBatches: RecordedSportsAction[][] = [];
   const recordedRosterCheckIns: RecordedRosterCheckIn[] = [];
@@ -274,7 +305,7 @@ test('uploads proven attendance across users while retaining the original user a
   );
   await page.goto('/app/sports/operate/match-1');
   await credentialResponse;
-  await expect(page.getByText('Operação da partida')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Equipe Azul × Equipe Verde' })).toBeVisible();
 
   await context.setOffline(true);
   await expect(page.getByText('Você está off-line.')).toBeVisible();
@@ -284,6 +315,8 @@ test('uploads proven attendance across users while retaining the original user a
   await page.getByRole('button', { name: 'Editar check-in' }).click();
   await expect(page.getByRole('heading', { name: 'Editar check-in após o início?' })).toBeVisible();
   await page.getByRole('button', { name: 'Sim, editar' }).click();
+  await expect(page.getByRole('heading', { name: 'Árbitros e apoio' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirmar presença de Marina S.' })).toBeVisible();
   const athleteCheckIn = page.getByRole('button', { name: 'Confirmar presença de Ana Beatriz de Souza' });
   await expect(athleteCheckIn).toBeEnabled();
   await athleteCheckIn.click();
@@ -412,7 +445,7 @@ async function fulfillSportsGraphql(route: Route, options: SportsMockOptions): P
     const credential = options.collectorCredential ?? {
       credential: `signed-collector-${collectorSub}-${body.variables?.matchId ?? 'match'}`,
       collectorPersonId: `person-${collectorSub}`,
-      issuedAt: '2026-08-11T12:00:00.000Z',
+      issuedAt: publicFixtureDateFromNow(-1),
     };
     await route.fulfill({
       status: 200,
@@ -440,7 +473,7 @@ async function fulfillSportsGraphql(route: Route, options: SportsMockOptions): P
     return;
   }
   if (query.includes('query SportsOperationalMatch')) {
-    const match = matchFixture({ includeRoster: options.includeOperationalRoster });
+    const match = matchFixture({ includeRoster: options.includeOperationalRoster, state: options.matchState });
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -454,6 +487,9 @@ async function fulfillSportsGraphql(route: Route, options: SportsMockOptions): P
     return;
   }
   if (query.includes('query CurrentUserSportsAutoroute')) {
+    if (options.autorouteRequests) {
+      options.autorouteRequests.count += 1;
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -496,7 +532,7 @@ async function fulfillSportsGraphql(route: Route, options: SportsMockOptions): P
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { publicSportsMatchDetail: matchFixture() } }),
+      body: JSON.stringify({ data: { publicSportsMatchDetail: matchFixture({ state: options.matchState }) } }),
     });
     return;
   }
@@ -548,7 +584,9 @@ function authenticatedUserSub(user: Record<string, unknown> | undefined): string
   return typeof sub === 'string' ? sub : undefined;
 }
 
-function matchFixture(options: { includeRoster?: boolean } = {}) {
+function matchFixture(options: { includeRoster?: boolean; state?: 'SCHEDULED' | 'LIVE' } = {}) {
+  const state = options.state ?? 'LIVE';
+  const isScheduled = state === 'SCHEDULED';
   const timerStartedAtUnixMs = Date.now() - 5 * 60_000;
   return {
     id: 'match-1',
@@ -560,23 +598,25 @@ function matchFixture(options: { includeRoster?: boolean } = {}) {
     awayRegistrationId: 'registration-green',
     homeTeam: { id: 'blue', name: 'Equipe Azul', institution: 'FCT', logoUrl: null },
     awayTeam: { id: 'green', name: 'Equipe Verde', institution: 'FEIS', logoUrl: null },
-    state: 'LIVE',
+    state,
     scoreboard: {
-      homeScore: 2,
-      awayScore: 1,
-      activePeriod: 2,
-      periods: [
-        { number: 1, label: '1º tempo', homeScore: 1, awayScore: 0, completed: true },
-        { number: 2, label: '2º tempo', homeScore: 1, awayScore: 1, completed: false },
-      ],
+      homeScore: isScheduled ? 0 : 2,
+      awayScore: isScheduled ? 0 : 1,
+      activePeriod: isScheduled ? null : 2,
+      periods: isScheduled
+        ? []
+        : [
+            { number: 1, label: '1º tempo', homeScore: 1, awayScore: 0, completed: true },
+            { number: 2, label: '2º tempo', homeScore: 1, awayScore: 1, completed: false },
+          ],
     },
     winner: null,
     loser: null,
     lossReason: null,
     lossReasonDetail: null,
     drawWillReschedule: null,
-    timerStartedAt: new Date(timerStartedAtUnixMs).toISOString(),
-    timerStartedAtUnixMs,
+    timerStartedAt: isScheduled ? null : new Date(timerStartedAtUnixMs).toISOString(),
+    timerStartedAtUnixMs: isScheduled ? null : timerStartedAtUnixMs,
     timerPausedAt: null,
     timerPausedAtUnixMs: null,
     elapsedBeforePauseMs: 0,

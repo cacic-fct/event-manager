@@ -169,6 +169,65 @@ describe('CurrentUserEventSubscriptionService', () => {
     });
   });
 
+  it('allows an existing user to accept an image-license agreement after a standalone event has started', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-16T12:00:00.000Z'));
+
+    try {
+      const event = {
+        id: 'event-1',
+        eventGroupId: null,
+        majorEventId: null,
+        allowSubscription: true,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        startDate: new Date(Date.now() - 60_000),
+        slots: null,
+        requiresImageLicenseAgreement: true,
+        eventGroup: null,
+      };
+      const existingSubscription = {
+        id: 'subscription-1',
+        imageLicenseAgreementAccepted: false,
+      };
+      const tx = {
+        event: { findFirst: jest.fn().mockResolvedValue(event) },
+        eventSubscription: {
+          findFirst: jest.fn().mockResolvedValue(existingSubscription),
+          update: jest.fn(),
+        },
+      };
+      const prisma = {
+        $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+      };
+      const mapper = { mapPublicEvent: jest.fn().mockReturnValue({ id: 'event-1' }) };
+      const eventForms = {
+        submitSubscriptionFlowResponses: jest.fn().mockResolvedValue([]),
+        emitResultsDeltas: jest.fn(),
+      };
+      const service = new CurrentUserEventSubscriptionService(
+        prisma as never,
+        mapper as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        eventForms as never,
+      );
+
+      await expect(
+        service.subscribeCurrentUserEvent('person-1', 'event-1', undefined, undefined, true),
+      ).resolves.toEqual({ id: 'event-1' });
+
+      expect(tx.eventSubscription.update).toHaveBeenCalledWith({
+        where: { id: 'subscription-1' },
+        data: { imageLicenseAgreementAccepted: true },
+      });
+      expect(tx.eventSubscription.findFirst).toHaveBeenCalled();
+      expect(eventForms.emitResultsDeltas).toHaveBeenCalledWith([]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('requires standalone event unsubscriptions to target existing non-deleted events', async () => {
     const tx = {
       event: {

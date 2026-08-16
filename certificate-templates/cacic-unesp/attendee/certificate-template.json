@@ -1,0 +1,23 @@
+{
+  "$schema": "../../certificate-template.schema.json",
+  "key": "cacic-unesp/attendee",
+  "name": "CACiC Unesp - Participante",
+  "description": "Certificado para participantes",
+  "html": "cacic-unesp-attendee.template.html",
+  "css": "cacic-unesp-attendee.template.css",
+  "font": "inter-variable",
+  "certificateFields": {
+    "top-text": {
+      "label": "Texto em cima do nome",
+      "type": "string",
+      "required": true,
+      "default": "Certificamos a participação de"
+    },
+    "bottom-text": {
+      "label": "Texto embaixo do nome",
+      "type": "string",
+      "required": true,
+      "default": "no evento"
+    }
+  }
+}

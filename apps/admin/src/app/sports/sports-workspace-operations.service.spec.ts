@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { FormBuilder } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { EMPTY, Subject, of, throwError } from 'rxjs';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
@@ -11,6 +12,7 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { createAdminMajorEvent } from '../testing/admin-entity-fixtures';
 import { SportsApiService } from './sports-api.service';
 import {
+  adminSportsRelativeDate,
   createAdminSportsApplications,
   createAdminSportsCategory,
   createAdminSportsCategoryRead,
@@ -43,10 +45,16 @@ describe('SportsWorkspaceService operations', () => {
   const snackbar = { open: vi.fn() };
   const dialog = { open: vi.fn() };
   const majorEventsApi = { listMajorEvents: vi.fn() };
+  const permissions = {
+    has: vi.fn<(permission: Permission) => boolean>(() => true),
+    hasAny: vi.fn<(permissions: Permission[]) => boolean>(() => true),
+  };
   let workspace: SportsWorkspaceService;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    permissions.has.mockImplementation(() => true);
+    permissions.hasAny.mockImplementation(() => true);
     api.mutate.mockReturnValue(of('saved-id'));
     api.deleteVersioned.mockReturnValue(of(true));
     api.uploadTeamLogo.mockReturnValue(of(true));
@@ -63,7 +71,7 @@ describe('SportsWorkspaceService operations', () => {
         { provide: EventFormApiService, useValue: {} },
         { provide: PeopleApiService, useValue: {} },
         { provide: PlacePresetApiService, useValue: {} },
-        { provide: PermissionsService, useValue: { has: vi.fn(() => true), hasAny: vi.fn(() => true) } },
+        { provide: PermissionsService, useValue: permissions },
         { provide: MatSnackBar, useValue: snackbar },
         { provide: MatDialog, useValue: dialog },
       ],
@@ -189,6 +197,16 @@ describe('SportsWorkspaceService operations', () => {
   });
 
   describe('categories', () => {
+    it('does not submit an invalid category draft and marks it for correction', async () => {
+      workspace.newCategory(false);
+
+      await workspace.saveCategory();
+
+      expect(api.mutate).not.toHaveBeenCalled();
+      expect(workspace.categoryForm.controls.name.touched).toBe(true);
+      expect(workspace.categoryForm.controls.sport.touched).toBe(true);
+    });
+
     it('creates a category from structured form values and reselects the returned category', async () => {
       const category = createAdminSportsCategory(1);
       const tournament = createAdminSportsTournamentRead();
@@ -591,6 +609,62 @@ describe('SportsWorkspaceService operations', () => {
   });
 
   describe('matches and venues', () => {
+    it('does not submit a match with an inverted date range', async () => {
+      workspace.selectedCategoryId.set('category-1');
+      workspace.newMatch(false);
+      workspace.matchForm.patchValue({
+        categoryId: 'category-1',
+        name: 'Final',
+        startDate: adminSportsRelativeDate(2, 14),
+        endDate: adminSportsRelativeDate(2, 13),
+      });
+
+      await workspace.saveMatch();
+
+      expect(api.mutate).not.toHaveBeenCalled();
+      expect(workspace.matchForm.hasError('invalidDateRange')).toBe(true);
+      expect(workspace.matchForm.controls.startDate.touched).toBe(true);
+      expect(workspace.matchForm.controls.endDate.touched).toBe(true);
+    });
+
+    it('creates a match with nullable optional fields instead of empty strings', async () => {
+      const category = createAdminSportsCategory(0);
+      workspace.tournamentRead.set(createAdminSportsTournamentRead());
+      workspace.selectedCategoryId.set(category.id);
+      workspace.newMatch(false);
+      workspace.matchForm.patchValue({
+        categoryId: category.id,
+        name: 'Final',
+        startDate: adminSportsRelativeDate(2, 14),
+        endDate: adminSportsRelativeDate(2, 16),
+      });
+      api.mutate.mockReturnValue(of('match-new'));
+      vi.spyOn(workspace, 'selectCategory').mockResolvedValue();
+
+      await workspace.saveMatch();
+
+      expect(api.mutate).toHaveBeenCalledWith(
+        'createSportsMatch',
+        'SportsMatchCreateInput',
+        expect.objectContaining({
+          categoryId: category.id,
+          name: 'Final',
+          startDate: expect.any(String),
+          endDate: expect.any(String),
+          stageId: null,
+          venueId: null,
+          homeRegistrationId: null,
+          awayRegistrationId: null,
+          groupKey: null,
+          notes: null,
+          livestreamProvider: null,
+          livestreamUrl: null,
+          roundNumber: 1,
+          bracketPosition: 1,
+        }),
+      );
+    });
+
     it('publishes a draft match and refreshes its public-site publication state', async () => {
       const review = createAdminSportsMatchReview();
       review.match.event = {
@@ -834,6 +908,44 @@ describe('SportsWorkspaceService operations', () => {
         role: 'REFEREE',
       });
       expect(workspace.officialForm.controls.personId.value).toBe('');
+    });
+
+    it('derives staff save state from create versus update permissions', () => {
+      permissions.has.mockImplementation(
+        (permission) => permission === Permission.SportsOfficial.Create,
+      );
+      const review = createAdminSportsMatchReview();
+      const official = {
+        ...createAdminSportsTournamentRead().officials[0],
+        id: 'match-official-1',
+        categoryId: null,
+        matchId: review.match.id,
+      };
+
+      expect(workspace.canAssignOfficial()).toBe(true);
+      expect(workspace.canEditOfficial()).toBe(false);
+      expect(workspace.canRemoveOfficial()).toBe(false);
+      expect(workspace.canSaveOfficial()).toBe(true);
+
+      workspace.editOfficial(official);
+
+      expect(workspace.canSaveOfficial()).toBe(false);
+    });
+
+    it('cancels official removal without calling the delete mutation', async () => {
+      const review = createAdminSportsMatchReview();
+      const official = {
+        ...createAdminSportsTournamentRead().officials[0],
+        id: 'match-official-1',
+        categoryId: null,
+        matchId: review.match.id,
+      };
+      review.officials = [official];
+      dialog.open.mockReturnValue({ afterClosed: () => of(false) });
+
+      await workspace.removeOfficial(official);
+
+      expect(api.deleteVersioned).not.toHaveBeenCalled();
     });
 
     it('edits an existing official function through the versioned update mutation', async () => {

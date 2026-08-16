@@ -76,7 +76,7 @@ RUN --mount=type=bind,from=deps,source=/workspace,target=/workspace-src,readonly
     cd /workspace-src \
     && bun x playwright install-deps chromium \
     && apt-get update \
-    && apt-get install -y --no-install-recommends dumb-init \
+    && apt-get install -y --no-install-recommends dumb-init poppler-utils \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system app \
     && useradd --system --gid app --home-dir /app app
@@ -88,7 +88,6 @@ COPY --from=production-deps --chown=app:app /workspace/apps/backend/prisma ./app
 COPY --from=builder --chown=app:app /workspace/dist/apps/backend ./
 COPY --from=playwright --chown=app:app /ms-playwright /ms-playwright
 
-COPY --chown=app:app certificate-templates ./certificate-templates
 COPY --chown=app:app tools/evcomp-import ./tools/evcomp-import
 
 USER app

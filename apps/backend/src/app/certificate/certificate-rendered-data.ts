@@ -95,7 +95,7 @@ function buildExampleTemplateData(
   const issueDay = formatIssueDate(issuedAt, '2-digit');
   const issueMonth = formatIssueDate(issuedAt, 'long');
   const issueYear = formatIssueDate(issuedAt, 'numeric');
-  const verificationUrl = 'eventos.cacic.com.br/app/validate/{certificateID}';
+  const verificationUrl = '/app/validate/{certificateID}';
   const formattedDocument = formatIdentityDocument(recipient.person.identityDocument);
   const sortedEvents = sortEvents(recipient.events);
   const minicursos = sortedEvents.filter((event) => event.type === EventType.MINICURSO);

@@ -64,6 +64,19 @@ describe('EventsPageComponent', () => {
     });
   });
 
+  it('disables publication while the event editor is invalid', async () => {
+    await configureComponent('populated');
+    const { element, fixture } = createComponent();
+    fixture.componentInstance.workspace.eventForm.controls.name.setValue('');
+    fixture.detectChanges();
+
+    const publishButton = [...element.querySelectorAll('button')].find((item) =>
+      item.textContent?.includes('Atualizar publicação'),
+    ) as HTMLButtonElement | undefined;
+
+    expect(publishButton?.disabled).toBe(true);
+  });
+
   async function configureComponent(mode: PageStoryMode, dialog: Partial<MatDialog> = { open: vi.fn() }): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [EventsPageComponent],

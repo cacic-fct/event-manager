@@ -433,7 +433,6 @@ export const CERTIFICATE_TEMPLATE_FIELDS = `
   id
   name
   description
-  version
   isActive
   certificateFieldsJson
   createdAt
@@ -500,7 +499,6 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   certificateTemplate {
     id
     name
-    version
   }
 `;
 
@@ -540,7 +538,6 @@ export const CERTIFICATE_FIELDS = `
   certificateTemplate {
     id
     name
-    version
   }
 `;
 

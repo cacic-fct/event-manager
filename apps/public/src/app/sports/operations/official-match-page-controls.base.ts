@@ -31,7 +31,7 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     this.holdTimer = setTimeout(() => {
       this.holdTimer = null;
       this.holdingStart.set(false);
-      void this.dispatch('START', {});
+      void this.dispatch('START', this.readinessIssues().length > 0 ? { readinessOverride: true } : {});
     }, 900);
   }
 

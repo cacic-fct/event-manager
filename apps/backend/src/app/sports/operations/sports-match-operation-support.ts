@@ -78,9 +78,10 @@ export abstract class SportsMatchOperationSupport {
     tx: Prisma.TransactionClient,
     match: MatchProjectionContext,
     actor: AuthenticatedUser | AuditActor,
-    action: Pick<SportsMatchAction, 'id' | 'type' | 'sequence' | 'reviewStatus' | 'offline'>,
+    action: Pick<SportsMatchAction, 'id' | 'type' | 'sequence' | 'reviewStatus' | 'offline' | 'payload'>,
     operation: AuditLogOperation,
   ): Promise<void> {
+    const readinessOverride = this.readinessOverrideAuditMetadata(action.payload);
     await this.auditLog.record(
       {
         entityType: AuditLogEntityType.SPORTS_MATCH_ACTION,
@@ -94,8 +95,11 @@ export abstract class SportsMatchOperationSupport {
           sequence: action.sequence,
           reviewStatus: action.reviewStatus,
           offline: action.offline,
+          ...readinessOverride,
         },
-        summary: 'Ação de partida registrada.',
+        summary: readinessOverride.readinessOverride
+          ? 'Ação de partida registrada com substituição manual da prontidão.'
+          : 'Ação de partida registrada.',
         scope: {
           majorEventId: match.category.tournament.majorEventId,
           eventGroupId: match.category.eventGroupId,
@@ -105,6 +109,26 @@ export abstract class SportsMatchOperationSupport {
       },
       tx,
     );
+  }
+
+  protected readinessOverrideAuditMetadata(payload: Prisma.JsonValue | undefined): {
+    readinessOverride?: true;
+    readinessOverrideReason?: string | null;
+  } {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return {};
+    }
+    const record = payload as Record<string, Prisma.JsonValue>;
+    if (record['readinessOverride'] !== true) {
+      return {};
+    }
+    return {
+      readinessOverride: true,
+      readinessOverrideReason:
+        typeof record['readinessOverrideReason'] === 'string'
+          ? record['readinessOverrideReason'].trim() || null
+          : null,
+    };
   }
 
   protected auditOperation(type: SportsMatchActionType): AuditLogOperation {

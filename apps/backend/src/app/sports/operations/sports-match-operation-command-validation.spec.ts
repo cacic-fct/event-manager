@@ -134,6 +134,57 @@ describe('SportsMatchOperationCommandValidation', () => {
     ).toThrow('Defina as duas equipes antes de iniciar a partida.');
   });
 
+  it('blocks a normal start when readiness has actionable blockers', () => {
+    expect(() =>
+      service.validate(SportsMatchActionType.START, {}, SportsMatchState.SCHEDULED, 'OFFICIAL', {
+        readiness: {
+          ready: false,
+          issues: [
+            {
+              code: 'ATHLETE_ATTENDANCE',
+              message: 'Faltam 2 atletas presentes',
+              registrationId: 'registration-home',
+              missing: 2,
+              required: 5,
+              actual: 3,
+            },
+          ],
+        },
+      }),
+    ).toThrow('Faltam 2 atletas presentes');
+  });
+
+  it.each(['ADMIN', 'OFFICIAL'] as const)('allows an authorized %s actor to override readiness explicitly', (kind) => {
+    expect(() =>
+      service.validate(SportsMatchActionType.START, { readinessOverride: true }, SportsMatchState.SCHEDULED, kind, {
+        readiness: {
+          ready: false,
+          issues: [
+            {
+              code: 'OFFICIAL_ATTENDANCE',
+              message: 'Nenhum oficial foi designado para a partida.',
+              registrationId: null,
+              missing: 1,
+              required: 1,
+              actual: 0,
+            },
+          ],
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects a readiness override from a lineup manager or with an invalid flag', () => {
+    expect(() =>
+      service.validate(SportsMatchActionType.START, { readinessOverride: true }, SportsMatchState.SCHEDULED, 'LINEUP_MANAGER', {
+        readiness: { ready: true, issues: [] },
+      }),
+    ).toThrow('Somente a arbitragem ou administradores podem substituir a prontidão.');
+    expect(() =>
+      service.validate(SportsMatchActionType.START, { readinessOverride: 'yes' }, SportsMatchState.SCHEDULED, 'OFFICIAL'),
+    ).toThrow('readinessOverride deve ser booleano.');
+  });
+
   it('limits lineup-manager forfeits to pre-match states', () => {
     expect(() =>
       service.validate(SportsMatchActionType.FORFEIT, validOutcome(), SportsMatchState.LIVE, 'LINEUP_MANAGER'),

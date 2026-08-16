@@ -69,13 +69,11 @@ export const StandaloneFolder: Story = {
                   certificateTemplate: {
                     id: 'template-1',
                     name: 'Modelo CACiC',
-                    version: 1,
                   },
                 },
                 certificateTemplate: {
                   id: 'template-1',
                   name: 'Modelo CACiC',
-                  version: 1,
                 },
               },
             ],

@@ -22,6 +22,11 @@ module.exports = {
           input: './src/app/sports/overlays',
           output: '.',
         },
+        {
+          glob: '**/*',
+          input: '../../certificate-templates',
+          output: 'certificate-templates',
+        },
       ],
       optimization: false,
       outputHashing: 'none',

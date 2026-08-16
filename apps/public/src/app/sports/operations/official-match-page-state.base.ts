@@ -34,6 +34,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   readonly busy = signal(false);
   readonly now = signal(Date.now());
   readonly holdingStart = signal(false);
+  readonly readinessIssues = computed(() => this.match()?.readiness.issues ?? []);
   readonly finalizeOpen = signal(false);
   readonly outcomeStepCompleted = signal(false);
   readonly reasonStepCompleted = signal(false);

@@ -17,8 +17,15 @@ describe('CertificateValidation', () => {
     fixture.detectChanges();
 
     const toolbar = fixture.nativeElement.querySelector('mat-toolbar') as HTMLElement | null;
+    const logo = toolbar?.querySelector('lib-cacic-logo') as HTMLElement | null;
 
-    expect(toolbar?.firstElementChild?.tagName.toLowerCase()).toBe('lib-cacic-logo');
+    expect(Array.from(toolbar?.children ?? []).slice(0, 3).map((element) => element.tagName.toLowerCase())).toEqual([
+      'a',
+      'lib-cacic-logo',
+      'h1',
+    ]);
+    expect(toolbar?.classList.contains('certificate-validation-toolbar')).toBe(true);
+    expect(logo?.classList.contains('certificate-validation-toolbar-logo')).toBe(true);
     expect(toolbar?.querySelector('a[routerlink="/menu"]')).not.toBeNull();
     expect(toolbar?.querySelector('h1.global-toolbar-title')?.textContent).toContain('Validar certificado');
   });

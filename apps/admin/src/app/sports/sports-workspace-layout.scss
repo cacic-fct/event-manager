@@ -8,16 +8,6 @@
   min-width: 0;
 }
 
-.sports-loading-indicator {
-  block-size: 4px;
-  display: block;
-  visibility: hidden;
-}
-
-.sports-loading-indicator.is-loading {
-  visibility: visible;
-}
-
 .sports-header,
 .panel-heading,
 .review-heading,

@@ -71,6 +71,26 @@ describe('SportsMatchPage', () => {
     fixture.destroy();
   });
 
+  it('renders a scheduled match as upcoming without exposing live-only controls', () => {
+    getMatch.mockReturnValue(of(createSportsViewerMatch({
+      state: 'SCHEDULED',
+      scoreboard: { homeScore: 0, awayScore: 0, activePeriod: null, periods: [] },
+      timerStartedAt: null,
+      periodTimers: [],
+    })));
+    const fixture = TestBed.createComponent(SportsMatchPage);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelector('mat-chip')?.textContent).toContain('Agendada');
+    expect(element.querySelector('.score-hero.live')).toBeNull();
+    expect(element.querySelector('.public-clock')).toBeNull();
+    expect(element.textContent).toContain('Ginásio da FCT');
+    expect(element.textContent).toContain('As escalações são disponibilizadas após o encerramento da partida.');
+
+    fixture.destroy();
+  });
+
   it('calculates capped and overtime clocks from fixture-relative timestamps', () => {
     const page = TestBed.runInInjectionContext(() => new SportsMatchPage());
     page.now.set(10_000);

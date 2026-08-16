@@ -153,6 +153,11 @@ export const routes: Route[] = [
       ...guardedFeatureRoute(`${attendancesData.path}/event/:eventId/oral`, attendancesData, () =>
         import('../attendances/oral/oral-attendance-page.component').then((m) => m.AdminOralAttendancePageComponent),
       ),
+      ...guardedFeatureRoute(`${attendancesData.path}/event/:eventId/statistics`, attendancesData, () =>
+        import('../attendances/statistics/attendance-statistics-page.component').then(
+          (m) => m.AttendanceStatisticsPageComponent,
+        ),
+      ),
       ...guardedFeatureRoute(`${attendancesData.path}/event/:eventId`, attendancesData, () =>
         import('../attendances/attendances-page.component').then((m) => m.AttendancesPageComponent),
       ),

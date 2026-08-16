@@ -207,7 +207,12 @@
               </section>
             }
 
-            @if (item.receipt && !imageUnavailable()) {
+            @if (item.receipt?.mimeType === 'application/pdf') {
+              <div class="missing-receipt">
+                <mat-icon>picture_as_pdf</mat-icon>
+                <span>Preparando a pré-visualização de todas as páginas do PDF...</span>
+              </div>
+            } @else if (item.receipt && !imageUnavailable()) {
               <div class="receipt-image-shell">
                 <img [src]="item.receipt.imageUrl" alt="Comprovante enviado" (error)="onImageError()" />
               </div>

@@ -127,7 +127,7 @@ describe('shared utility coverage from public app', () => {
     expect(majorDetail).toEqual(
       expect.objectContaining({
         targetType: 'major-event',
-        statusLabel: 'Comprovante em análise',
+        statusLabel: 'Em análise',
         shouldIssueCertificate: true,
       }),
     );
@@ -186,7 +186,7 @@ describe('shared utility coverage from public app', () => {
       getSubscribedItemStatusLine(feed.eventItems[0], [{ eventId: event.id, attendedAt: '2026-05-21T10:00:00' }]),
     ).toContain('Presença registrada em 1 de 1 eventos');
     expect(getMajorEventStatusLine({ ...feed.majorEventItems[0], subscriptionStatus: 'CANCELED' })).toBe(
-      'Inscrição cancelada, Inscrito',
+      'Inscrição cancelada, Sem inscrição',
     );
     expect(getParticipationStatusLabels({ isSubscribed: true, isLecturer: true, hasIssuedCertificate: true })).toEqual([
       'Inscrito',

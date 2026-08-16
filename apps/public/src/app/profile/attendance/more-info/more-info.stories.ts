@@ -159,13 +159,11 @@ function moreInfoGraphqlData(query: string, args: MoreInfoStoryArgs) {
                 certificateTemplate: {
                   id: 'certificate-template-story',
                   name: 'Modelo CACiC',
-                  version: 1,
                 },
               },
               certificateTemplate: {
                 id: 'certificate-template-story',
                 name: 'Modelo CACiC',
-                version: 1,
               },
             },
           ]

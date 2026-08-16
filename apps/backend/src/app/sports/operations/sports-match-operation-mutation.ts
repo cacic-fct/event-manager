@@ -25,6 +25,7 @@ export interface SportsMatchCommandInput {
 }
 
 import { SportsMatchOperationProjection } from './sports-match-operation-projection';
+import { loadSportsMatchReadiness } from './sports-match-readiness';
 
 export abstract class SportsMatchOperationMutation extends SportsMatchOperationProjection {
   protected async commitOne(
@@ -78,7 +79,9 @@ export abstract class SportsMatchOperationMutation extends SportsMatchOperationP
     }
 
     const current = await this.loadProjection(tx, match.id, false);
-    this.validateCommand(input.type, payload, current, match, actor.kind);
+    const readiness =
+      input.type === SportsMatchActionType.START ? await loadSportsMatchReadiness(tx, match.id) : undefined;
+    this.validateCommand(input.type, payload, current, { ...match, readiness }, actor.kind);
     if (input.type === SportsMatchActionType.OCCURRENCE) {
       await this.validateOccurrence(tx, match, this.requireRecord(payload));
     }

@@ -55,7 +55,6 @@ export type CertificateTemplateSearchDocument = {
   id: string;
   name: string;
   description?: string;
-  version: number;
   isActive: boolean;
 };
 

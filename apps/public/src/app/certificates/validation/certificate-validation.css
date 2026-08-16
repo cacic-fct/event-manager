@@ -6,6 +6,10 @@
   padding: 20px 16px 44px;
 }
 
+.certificate-validation-toolbar {
+  gap: 8px;
+}
+
 .certificate-name {
   color: var(--mat-sys-on-surface-variant);
   margin: 0;
@@ -201,6 +205,10 @@ lib-cacic-logo {
   margin-top: 0.5rem;
   cursor: pointer;
   aspect-ratio: 427.97 / 248.98;
+}
+
+.certificate-validation-toolbar-logo {
+  transform: translateY(-4px);
 }
 
 .button-container {

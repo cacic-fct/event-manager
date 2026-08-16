@@ -1,4 +1,5 @@
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
+import { HttpErrorResponse } from '@angular/common/http';
 import { PaymentInfo } from './payment-info';
 
 describe('PaymentInfo', () => {
@@ -8,6 +9,7 @@ describe('PaymentInfo', () => {
     readySubscription(): CurrentUserMajorEventSubscription | null;
     isUploading(): boolean;
     canUpload(): boolean;
+    receiptUploadErrorMessage(error: unknown): string;
   };
 
   it('normalizes formatted alphanumeric CNPJ Pix keys', () => {
@@ -42,5 +44,13 @@ describe('PaymentInfo', () => {
     component.isUploading = () => false;
 
     expect(component.canUpload()).toBe(true);
+  });
+
+  it('shows the backend PDF page-limit message to the participant', () => {
+    expect(
+      component.receiptUploadErrorMessage(
+        new HttpErrorResponse({ status: 400, error: { message: 'Envie um arquivo com no máximo 10 páginas.' } }),
+      ),
+    ).toBe('Envie um arquivo com no máximo 10 páginas.');
   });
 });

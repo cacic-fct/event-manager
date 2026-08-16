@@ -798,6 +798,9 @@ export class CertificateConfigsService {
       where: {
         id: templateId,
         deletedAt: null,
+        isActive: true,
+        contentChecksum: { not: 'pending-metadata' },
+        htmlTemplate: { not: '' },
       },
       select: {
         id: true,

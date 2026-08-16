@@ -217,7 +217,8 @@ describe('NovuNotificationsService', () => {
           isPositive: false,
           isNegative: true,
           rejectionReason: 'Documento ilegivel',
-          actionUrl: '/profile/attendances/major-event/major-event-1',
+          actionLabel: 'Enviar comprovante',
+          actionUrl: '/major-event/major-event-1/payment',
         }),
       }),
     );
@@ -341,14 +342,14 @@ describe('NovuNotificationsService', () => {
           certificateName: 'Certificado de participacao',
           targetName: 'Semana da Computacao',
           issuedAt: '2026-05-23T15:30:00.000Z',
-          actionLabel: 'Ver certificados',
-          actionUrl: '/profile/attendances',
+          actionLabel: 'Ver certificado',
+          actionUrl: '/validate/certificate-1',
         }),
       }),
     );
     expect(body.overrides.webPush.data).toEqual(
       expect.objectContaining({
-        url: '/profile/attendances',
+        url: '/validate/certificate-1',
         certificateId: 'certificate-1',
         configId: 'config-1',
         subscriberId: 'user-1',
@@ -357,14 +358,72 @@ describe('NovuNotificationsService', () => {
   });
 
   it.each([
-    [SubscriptionStatus.WAITING_RECEIPT_UPLOAD, 'Aguardando comprovante', false, false],
-    [SubscriptionStatus.RECEIPT_UNDER_REVIEW, 'Comprovante em análise', false, false],
-    [SubscriptionStatus.CONFIRMED, 'Confirmada', true, false],
-    [SubscriptionStatus.CANCELED, 'Cancelada', false, true],
-    [SubscriptionStatus.REJECTED_NO_SLOTS, 'Sem vagas', false, true],
-    [SubscriptionStatus.REJECTED_SCHEDULE_CONFLICT, 'Conflito de horário', false, true],
-    [SubscriptionStatus.REJECTED_GENERIC, 'Inscrição recusada', false, true],
-  ])('sends the expected status metadata for %s', async (nextStatus, statusLabel, isPositive, isNegative) => {
+    {
+      nextStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+      statusLabel: 'Aguardando comprovante',
+      isPositive: false,
+      isNegative: false,
+      actionLabel: 'Enviar comprovante',
+      actionUrl: '/major-event/major-event-1/payment',
+    },
+    {
+      nextStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
+      statusLabel: 'Comprovante em análise',
+      isPositive: false,
+      isNegative: false,
+      actionLabel: 'Ver comprovante',
+      actionUrl: '/major-event/major-event-1/payment',
+    },
+    {
+      nextStatus: SubscriptionStatus.CONFIRMED,
+      statusLabel: 'Confirmada',
+      isPositive: true,
+      isNegative: false,
+      actionLabel: 'Ver inscrição',
+      actionUrl: '/profile/attendances/major-event/major-event-1',
+    },
+    {
+      nextStatus: SubscriptionStatus.CANCELED,
+      statusLabel: 'Cancelada',
+      isPositive: false,
+      isNegative: true,
+      actionLabel: 'Ver inscrição',
+      actionUrl: '/profile/attendances/major-event/major-event-1',
+    },
+    {
+      nextStatus: SubscriptionStatus.REJECTED_INVALID_RECEIPT,
+      statusLabel: 'Comprovante recusado',
+      isPositive: false,
+      isNegative: true,
+      actionLabel: 'Enviar comprovante',
+      actionUrl: '/major-event/major-event-1/payment',
+    },
+    {
+      nextStatus: SubscriptionStatus.REJECTED_NO_SLOTS,
+      statusLabel: 'Sem vagas',
+      isPositive: false,
+      isNegative: true,
+      actionLabel: 'Revisar inscrição',
+      actionUrl: '/major-event/major-event-1/subscription',
+    },
+    {
+      nextStatus: SubscriptionStatus.REJECTED_SCHEDULE_CONFLICT,
+      statusLabel: 'Conflito de horário',
+      isPositive: false,
+      isNegative: true,
+      actionLabel: 'Revisar inscrição',
+      actionUrl: '/major-event/major-event-1/subscription',
+    },
+    {
+      nextStatus: SubscriptionStatus.REJECTED_GENERIC,
+      statusLabel: 'Inscrição recusada',
+      isPositive: false,
+      isNegative: true,
+      actionLabel: 'Ver inscrição',
+      actionUrl: '/profile/attendances/major-event/major-event-1',
+    },
+  ])('sends the expected status metadata for $nextStatus', async (testCase) => {
+    const { nextStatus, statusLabel, isPositive, isNegative, actionLabel, actionUrl } = testCase;
     await service.notifyMajorEventSubscriptionStatusChanged(
       notificationFixture({
         previousStatus:
@@ -381,6 +440,8 @@ describe('NovuNotificationsService', () => {
         statusLabel,
         isPositive,
         isNegative,
+        actionLabel,
+        actionUrl,
       }),
     );
     expect(body.payload.body).toContain('Semana da Computacao');

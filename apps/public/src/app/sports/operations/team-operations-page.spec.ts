@@ -65,8 +65,33 @@ describe('SportsTeamOperationsPage', () => {
 
     expect(page.lineupMembers()).toEqual([]);
   });
+
+  it('keeps a started match lineup read-only while loading its selected registration', () => {
+    const workspace = createRepresentativeTeamWorkspace();
+    const match = workspace.matches[0];
+    if (!match) throw new Error('Expected a team match fixture.');
+    pageWithStartedMatch(workspace, match.id);
+
+    const page = createPage();
+    page.workspace.set(workspace);
+    page.selectMatch(match.id);
+
+    expect(page.selectedMatchId()).toBe(match.id);
+    expect(page.lineupReadOnly()).toBe(true);
+    expect(lineup).toHaveBeenCalledWith(match.id, 'registration-home');
+    expect(page.lineupMembers()).not.toHaveLength(0);
+  });
 });
 
 function createPage(): SportsTeamOperationsPage {
   return TestBed.runInInjectionContext(() => new SportsTeamOperationsPage());
+}
+
+function pageWithStartedMatch(
+  workspace: ReturnType<typeof createRepresentativeTeamWorkspace>,
+  matchId: string,
+): void {
+  workspace.matches = workspace.matches.map((match) =>
+    match.id === matchId ? { ...match, state: 'LIVE' as const } : match,
+  );
 }

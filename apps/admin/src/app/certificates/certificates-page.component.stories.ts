@@ -1,5 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
+import {
+  emptyCertificateTemplatesHandler,
+  failedCertificateTemplatesHandler,
+} from '../../../.storybook/storybook-mocks';
 import { CertificatesPageComponent } from './certificates-page.component';
 
 const meta: Meta<CertificatesPageComponent> = {
@@ -48,4 +52,39 @@ export const CompactIssuanceWorkspace: Story = {
   ...Playground,
   name: 'Emissão em workspace compacto',
   parameters: { viewport: { defaultViewport: 'tablet' } },
+};
+
+export const NoRegisteredTemplates: Story = {
+  ...Playground,
+  name: 'Sem templates registrados',
+  parameters: {
+    msw: { handlers: [emptyCertificateTemplatesHandler] },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const targets = await canvas.findAllByRole('listitem');
+    await userEvent.click(targets[0]);
+    await expect(
+      await canvas.findByText(
+        'Nenhum modelo de certificado está disponível. Verifique o cadastro dos arquivos do ambiente.',
+      ),
+    ).toBeVisible();
+  },
+};
+
+export const TemplateRegistryUnavailable: Story = {
+  ...Playground,
+  name: 'Falha ao carregar modelos',
+  parameters: {
+    msw: { handlers: [failedCertificateTemplatesHandler] },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const targets = await canvas.findAllByRole('listitem');
+    await userEvent.click(targets[0]);
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'Não foi possível carregar os modelos de certificado.',
+    );
+    await expect(canvas.getByRole('button', { name: 'Tentar novamente' })).toBeVisible();
+  },
 };

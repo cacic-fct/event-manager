@@ -368,6 +368,31 @@ describe('OfficialSportsMatchPage', () => {
     expect(component.officialCheckInEntries()[0].checkedIn).toBe(false);
   });
 
+  it('keeps independent athlete and official attendance records separate', async () => {
+    component.match.update((match) => (match ? { ...match, state: 'CHECK_IN' } : match));
+    fixture.detectChanges();
+
+    const athlete = component.homeCheckInEntries()[0];
+    const official = component.officialCheckInEntries()[0];
+    expect(athlete).toBeDefined();
+    expect(official).toBeDefined();
+
+    await component.toggleCheckIn(athlete);
+
+    expect(checkIns).toEqual([
+      expect.objectContaining({ rosterEntryId: athlete.id, present: !athlete.checkedIn }),
+    ]);
+    expect(officialCheckIns).toEqual([]);
+    expect(component.officialCheckInEntries()[0]).toEqual(expect.objectContaining({ checkedIn: false }));
+
+    await component.toggleOfficialCheckIn(official);
+
+    expect(officialCheckIns).toEqual([
+      expect.objectContaining({ officialAssignmentId: official.id, present: true }),
+    ]);
+    expect(component.homeCheckInEntries()[0]).toEqual(expect.objectContaining({ checkedIn: false }));
+  });
+
   it('advances the optimistic revision after queueing an offline scanner check-in', async () => {
     component.match.update((match) => (match ? { ...match, state: 'CHECK_IN' } : match));
     scannerResult = 'queued';
@@ -403,6 +428,95 @@ describe('OfficialSportsMatchPage', () => {
       await vi.advanceTimersByTimeAsync(900);
 
       expect(actions.map((action) => action.type)).toEqual(['START']);
+    } finally {
+      component.cancelStartHold();
+      vi.useRealTimers();
+    }
+  });
+
+  it('lists readiness inconsistencies below the start button and uses the same hold as an override', async () => {
+    vi.useFakeTimers();
+    try {
+      component.match.update((match) =>
+        match
+          ? {
+              ...match,
+              state: 'SCHEDULED',
+              readiness: {
+                ready: false,
+                issues: [
+                  {
+                    code: 'ATHLETE_ATTENDANCE',
+                    message: 'Faltam 2 atletas presentes',
+                    registrationId: 'registration-home',
+                    missing: 2,
+                    required: 5,
+                    actual: 3,
+                  },
+                  {
+                    code: 'PAYMENT',
+                    message: 'Falta 1 pagamento obrigatório',
+                    missing: 1,
+                  },
+                ],
+              },
+            }
+          : match,
+      );
+      fixture.detectChanges();
+
+      const button = fixture.nativeElement.querySelector('.hold-button') as HTMLButtonElement;
+      const issues = fixture.nativeElement.querySelector('.readiness-issues') as HTMLElement;
+      expect(button.textContent).toContain('Segure para iniciar mesmo assim');
+      expect(issues.textContent).toContain('Faltam 2 atletas presentes');
+      expect(issues.textContent).toContain('Falta 1 pagamento obrigatório');
+
+      component.startHold();
+      await vi.advanceTimersByTimeAsync(900);
+      fixture.detectChanges();
+
+      expect(JSON.parse(actions[0]?.payloadJson ?? '{}')).toEqual({ readinessOverride: true });
+      expect(component.match()?.state).toBe('LIVE');
+      expect(fixture.nativeElement.querySelector('.readiness-issues')).toBeNull();
+    } finally {
+      component.cancelStartHold();
+      vi.useRealTimers();
+    }
+  });
+
+  it('starts the active phase optimistically after the hold completes', async () => {
+    vi.useFakeTimers();
+    try {
+      component.match.update((match) =>
+        match
+          ? {
+              ...match,
+              state: 'CHECK_IN',
+              scoreboard: { ...match.scoreboard, activePeriod: 2 },
+              periodTimers: [],
+            }
+          : match,
+      );
+
+      component.startHold();
+      await vi.advanceTimersByTimeAsync(900);
+
+      expect(actions.map((action) => action.type)).toEqual(['START']);
+      expect(component.match()).toEqual(
+        expect.objectContaining({
+          state: 'LIVE',
+          timerStartedAt: expect.any(String),
+          timerStartedAtUnixMs: expect.any(Number),
+          timerPausedAt: null,
+        }),
+      );
+      expect(component.match()?.periodTimers).toEqual([
+        expect.objectContaining({
+          periodNumber: 2,
+          startedAtUnixMs: expect.any(Number),
+          pausedAtUnixMs: null,
+        }),
+      ]);
     } finally {
       component.cancelStartHold();
       vi.useRealTimers();

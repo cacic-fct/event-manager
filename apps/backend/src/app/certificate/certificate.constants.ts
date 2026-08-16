@@ -131,7 +131,6 @@ export const CERTIFICATE_TEMPLATE_SELECT = {
   id: true,
   name: true,
   description: true,
-  version: true,
   isActive: true,
   certificateFields: true,
   createdAt: true,

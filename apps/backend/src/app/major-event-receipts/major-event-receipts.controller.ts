@@ -55,7 +55,7 @@ type RequestWithUser = Request & {
 
 class ReceiptUploadBodyDto {
   @ApiProperty({
-    description: 'Receipt image file selected in the Angular receipt upload form.',
+    description: 'Receipt image or PDF file selected in the Angular receipt upload form.',
     type: 'string',
     format: 'binary',
   })
@@ -494,8 +494,8 @@ export class MajorEventReceiptsController {
         file: UploadedReceiptFile,
         callback: (error: Error | null, acceptFile: boolean) => void,
       ) => {
-        if (!isAllowedReceiptMimeType(file.mimetype)) {
-          callback(new BadRequestException('Receipt must be a supported raster image.'), false);
+        if (!isAllowedReceiptMimeType(file.mimetype, file.originalname)) {
+          callback(new BadRequestException('Receipt must be a supported image or PDF.'), false);
           return;
         }
 
@@ -506,7 +506,7 @@ export class MajorEventReceiptsController {
   @ApiOperation({
     summary: 'Upload a major-event payment receipt',
     description:
-      'Stores a receipt image for the authenticated participant and selected major event. This endpoint is throttled because it accepts user-uploaded files and feeds the payment validation workflow used by the event admin interface.',
+      'Stores a receipt image or PDF for the authenticated participant and selected major event. PDFs are rendered to a protected image preview and their embedded text is used for receipt matching without OCR.',
   })
   @ApiParam({
     name: 'majorEventId',
@@ -524,7 +524,7 @@ export class MajorEventReceiptsController {
   })
   @ApiBadRequestResponse({
     description:
-      'Returned when the authenticated user is missing, the file is absent, or the uploaded file is not an accepted receipt image.',
+      'Returned when the authenticated user is missing, the file is absent, or the uploaded file is not an accepted receipt image or PDF.',
   })
   @ApiResponse({
     status: 413,

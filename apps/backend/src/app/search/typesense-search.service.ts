@@ -264,7 +264,6 @@ export class TypesenseSearchService implements OnModuleInit {
     id: string;
     name: string;
     description?: string | null;
-    version: number;
     isActive: boolean;
   }): Promise<void> {
     await this.upsertDocument<CertificateTemplateSearchDocument>(

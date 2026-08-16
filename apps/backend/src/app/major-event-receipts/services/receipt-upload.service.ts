@@ -34,7 +34,11 @@ import {
   ReceiptProcessingJob,
   UploadedReceiptFile,
 } from '../receipt.types';
-import { assertValidReceiptUpload, buildReceiptObjectKey } from '../utils/receipt-file.utils';
+import { assertValidReceiptUpload, buildReceiptObjectKey, isPdfReceiptMimeType } from '../utils/receipt-file.utils';
+import {
+  assertReceiptPdfPageCountWithinLimit,
+  ReceiptPdfProcessingError,
+} from '../utils/receipt-pdf-processing.utils';
 import {
   assertReceiptBufferWithinProcessingLimits,
   isReceiptImageProcessingError,
@@ -124,7 +128,7 @@ export class ReceiptUploadService {
       throw new BadRequestException(`Subscription for major event ${majorEventId} is canceled.`);
     }
 
-    await this.assertReceiptImageCanBeProcessed(file.buffer);
+    await this.assertReceiptCanBeProcessed(file.buffer, file.mimetype);
 
     const receiptId = randomUUID();
     const uploadedAt = new Date();
@@ -246,7 +250,20 @@ export class ReceiptUploadService {
     };
   }
 
-  private async assertReceiptImageCanBeProcessed(buffer: Buffer): Promise<void> {
+  private async assertReceiptCanBeProcessed(buffer: Buffer, mimeType: string): Promise<void> {
+    if (isPdfReceiptMimeType(mimeType)) {
+      try {
+        await assertReceiptPdfPageCountWithinLimit(buffer);
+      } catch (error: unknown) {
+        if (error instanceof ReceiptPdfProcessingError) {
+          throw new BadRequestException(error.message);
+        }
+
+        throw error;
+      }
+      return;
+    }
+
     try {
       await assertReceiptBufferWithinProcessingLimits(buffer);
     } catch (error: unknown) {

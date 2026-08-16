@@ -66,8 +66,23 @@ export interface SportsOperationalMatch {
   schedule: SportsOperationalMatchSchedule;
   rosters: SportsOperationsRoster[];
   officials: SportsOperationsOfficial[];
+  readiness: SportsMatchReadiness;
   notes?: string | null;
   occurrencesJson?: string | null;
+}
+
+export interface SportsMatchReadinessIssue {
+  code: 'MINIMUM_ROSTER' | 'ATHLETE_ATTENDANCE' | 'OFFICIAL_ATTENDANCE' | 'PRIOR_BRACKET_RESULT' | 'PAYMENT';
+  message: string;
+  registrationId?: string | null;
+  missing?: number | null;
+  required?: number | null;
+  actual?: number | null;
+}
+
+export interface SportsMatchReadiness {
+  ready: boolean;
+  issues: SportsMatchReadinessIssue[];
 }
 
 export interface SportsOperationsRosterEntry {

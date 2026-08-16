@@ -108,7 +108,14 @@
     <h2>Comprovante</h2>
     @if (receipt) {
     <div class="receipt-view">
+      @if (receipt.mimeType === 'application/pdf') {
+      <div class="receipt-pdf-processing">
+        <mat-icon aria-hidden="true">picture_as_pdf</mat-icon>
+        <span>A pré-visualização do PDF está sendo preparada.</span>
+      </div>
+      } @else {
       <img [src]="receipt.imageUrl" alt="Comprovante enviado" />
+      }
       <div>
         <p>Enviado em {{ receipt.uploadedAt | date: 'dd/MM/yyyy HH:mm' }}</p>
         <p>Disponível até {{ receipt.expiresAt | date: 'dd/MM/yyyy' }}</p>
@@ -123,8 +130,8 @@
       #fileInput
       class="file-input"
       type="file"
-      accept="image/*"
-      aria-label="Enviar imagem do comprovante de pagamento"
+      accept="image/*,application/pdf"
+      aria-label="Enviar imagem ou PDF do comprovante de pagamento"
       (change)="onFileSelected($event)" />
     <button
       class="upload-box"
@@ -137,7 +144,7 @@
       (drop)="onDrop($event)">
       <mat-icon aria-hidden="true">cloud_upload</mat-icon>
       <span>{{ receipt ? 'Enviar novo comprovante' : 'Enviar comprovante' }}</span>
-      <small>Arraste uma imagem aqui ou clique para selecionar. Máximo 15 MB.</small>
+      <small>Arraste uma imagem ou PDF aqui ou clique para selecionar. Máximo 15 MB.</small>
     </button>
     @if (uploadProgress() !== null) {
     <mat-progress-bar

@@ -5,7 +5,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -48,7 +47,6 @@ const LINKED_RESOURCE_PAGE_SIZE = 10;
     MatDialogModule,
     MatExpansionModule,
     MatIconModule,
-    MatProgressBarModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
   ],

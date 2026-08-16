@@ -2,6 +2,7 @@ import type { Route } from '@playwright/test';
 import { expect, test } from './support/e2e-test';
 import {
   adminSportsTournamentListFixture,
+  adminSportsTournamentReadFixture,
   authenticatedAdminUserFixture,
   mockAdminApi,
   preventSilentSso,
@@ -46,6 +47,49 @@ test('opens sports management from workspace navigation and lists configured tou
   await expect(page.getByText('Semana da Computação')).toBeVisible();
   await expect(page.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();
   await expect(page.getByText('3 pendências')).toBeVisible();
+});
+
+test('keeps the selected tournament workspace state on a deep link', async ({ page }) => {
+  await mockAdminApi(page, {
+    user: authenticatedAdminUserFixture(),
+    permissions: sportsReadPermissions,
+  });
+  await page.route('**/api/graphql', async (route) => {
+    const body = route.request().postDataJSON() as { query?: string };
+    if (body.query?.includes('query AdminSportsApplications')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { adminSportsPlayerApplicationQueue: [] } }),
+      });
+      return;
+    }
+    if (body.query?.includes('query AdminSportsMatchActionReviewQueue')) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ data: { adminSportsMatchActionReviewQueue: [] } }),
+      });
+      return;
+    }
+    if (!body.query?.includes('query AdminSportsTournament(')) {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: { adminSportsTournamentRead: adminSportsTournamentReadFixture() },
+      }),
+    });
+  });
+
+  await page.goto('/admin/sports/tournament-1');
+
+  await expect(page).toHaveURL(/\/admin\/sports\/tournament-1$/);
+  await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /Partidas e chaves/ })).toBeVisible();
 });
 
 test('shows the unified empty state when no sports event is available', async ({ page }) => {

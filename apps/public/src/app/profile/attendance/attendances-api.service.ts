@@ -137,13 +137,11 @@ const CERTIFICATE_FIELDS = `
     certificateTemplate {
       id
       name
-      version
     }
   }
   certificateTemplate {
     id
     name
-    version
   }
 `;
 

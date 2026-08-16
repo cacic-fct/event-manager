@@ -262,6 +262,16 @@ describe('CertificateConfigsService', () => {
     );
 
     expect(targetsService.assertIssuableTarget).not.toHaveBeenCalled();
+    expect(prisma.certificateTemplate.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'template-1',
+        deletedAt: null,
+        isActive: true,
+        contentChecksum: { not: 'pending-metadata' },
+        htmlTemplate: { not: '' },
+      },
+      select: { id: true },
+    });
     expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -1033,7 +1043,6 @@ function baseTemplate() {
     id: 'template-1',
     name: 'Template',
     description: 'Descricao',
-    version: 1,
     isActive: true,
     certificateFields: null,
     createdAt: new Date('2026-06-01T12:00:00.000Z'),

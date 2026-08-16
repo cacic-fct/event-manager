@@ -352,6 +352,7 @@ export function createSportsOperationalMatch(
       { id: 'official-intermediator', name: 'Carlos O.', role: 'INTERMEDIATOR', checkedInAt: null },
       { id: 'official-scorekeeper', name: 'Joana P.', role: 'SCOREKEEPER', checkedInAt: null },
     ],
+    readiness: { ready: true, issues: [] },
     notes: 'Em caso de atendimento, pause o cronômetro e registre a ocorrência.',
     occurrencesJson:
       active || completed

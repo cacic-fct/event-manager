@@ -82,7 +82,6 @@ function certificateTemplateRecord(overrides: Partial<CertificateTemplateFixture
     id: 'template-1',
     name: 'Template',
     description: null,
-    version: 1,
     isActive: true,
     certificateFields: null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),

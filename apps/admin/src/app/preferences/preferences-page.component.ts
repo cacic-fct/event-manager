@@ -7,7 +7,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -52,7 +51,6 @@ const STALE_ADMIN_ACCESS_DISABLED_REASON = 'STALE_ADMIN_ACCESS';
     MatIconModule,
     MatInputModule,
     MatListModule,
-    MatProgressBarModule,
     MatSlideToggleModule,
     MatSnackBarModule,
     MatTooltipModule,

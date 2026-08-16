@@ -131,6 +131,36 @@ describe('EventsService', () => {
     vi.useRealTimers();
   });
 
+  it('keeps online attendance fields disabled until the event allows online attendance', () => {
+    const code = service.eventForm.controls.onlineAttendanceCode;
+    const startsAt = service.eventForm.controls.onlineAttendanceStartDate;
+    const endsAt = service.eventForm.controls.onlineAttendanceEndDate;
+
+    expect(code.disabled).toBe(true);
+    expect(startsAt.disabled).toBe(true);
+    expect(endsAt.disabled).toBe(true);
+
+    service.eventForm.controls.isOnlineAttendanceAllowed.setValue(true);
+    expect(code.enabled).toBe(true);
+    expect(startsAt.enabled).toBe(true);
+    expect(endsAt.enabled).toBe(true);
+
+    service.eventForm.controls.isOnlineAttendanceAllowed.setValue(false);
+    expect(code.disabled).toBe(true);
+    expect(startsAt.disabled).toBe(true);
+    expect(endsAt.disabled).toBe(true);
+  });
+
+  it('does not publish an event while required editor fields are invalid', async () => {
+    service.eventForm.controls.name.setValue('');
+
+    await service.saveEvent('PUBLISH');
+
+    expect(api.createEvent).not.toHaveBeenCalled();
+    expect(api.updateEvent).not.toHaveBeenCalled();
+    expect(service.eventForm.controls.name.touched).toBe(true);
+  });
+
   it('creates an event draft and keeps the event unpublished on draft save', async () => {
     await service.saveEvent('DRAFT');
 

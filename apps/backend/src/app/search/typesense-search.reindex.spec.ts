@@ -33,7 +33,7 @@ describe('typesense reindex helpers', () => {
       eventGroup: [{ id: 'group-1', name: 'Grupo' }],
       people: [{ id: 'person-1', name: 'Ana', secondaryEmails: [] }],
       placePreset: [{ id: 'place-1', name: 'Lab' }],
-      certificateTemplate: [{ id: 'template-1', name: 'Certificado', version: 1, isActive: true }],
+      certificateTemplate: [{ id: 'template-1', name: 'Certificado', isActive: true }],
     });
 
     await reindexAllSearchDocuments({

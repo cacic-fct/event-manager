@@ -91,6 +91,12 @@
         accept=".csv,text/csv"
         (change)="workspace.importAttendancesFromCsv($any($event.target).files?.[0] ?? null); csvInput.value = ''" />
       <div class="panel-actions">
+        @if (workspace.selectedAttendanceEvent(); as statisticsEvent) {
+          <a mat-stroked-button [routerLink]="['/attendances/event', statisticsEvent.id, 'statistics']">
+            <mat-icon>monitoring</mat-icon>
+            Ver estatísticas
+          </a>
+        }
         <button
           mat-stroked-button
           type="button"

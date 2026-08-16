@@ -129,7 +129,6 @@ export interface EventGroupDetails {
 export interface CertificateTemplate {
   id: string;
   name: string;
-  version?: number | null;
 }
 
 export interface CertificateConfig {

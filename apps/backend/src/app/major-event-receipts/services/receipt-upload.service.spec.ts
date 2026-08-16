@@ -4,6 +4,7 @@ import sharp from 'sharp';
 import { Readable } from 'stream';
 import { RECEIPT_ADMIN_PERMISSION, RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';
 import { ReceiptUploadService } from './receipt-upload.service';
+import * as receiptPdfProcessing from '../utils/receipt-pdf-processing.utils';
 
 let validPngBuffer: Buffer;
 
@@ -117,6 +118,37 @@ describe('ReceiptUploadService', () => {
     expect(frozenResources.assertMajorEventMutable).not.toHaveBeenCalled();
     expect(currentUserContext.requireCurrentPerson).not.toHaveBeenCalled();
     expect(prisma.majorEventSubscription.findFirst).not.toHaveBeenCalled();
+    expect(s3.uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('returns the PDF page-limit feedback before storing the file', async () => {
+    const frozenResources = {
+      assertMajorEventMutable: jest.fn(),
+    };
+    service = new ReceiptUploadService(
+      prisma as never,
+      s3 as never,
+      currentUserContext as never,
+      attendanceCategories as never,
+      dashboardInsights as never,
+      authorizationPolicy as never,
+      receiptQueue as never,
+      frozenResources as never,
+    );
+    currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    prisma.majorEventSubscription.findFirst.mockResolvedValue({
+      id: 'subscription-1',
+      subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+      majorEvent: { isPaymentRequired: true },
+    });
+    jest
+      .spyOn(receiptPdfProcessing, 'assertReceiptPdfPageCountWithinLimit')
+      .mockRejectedValue(new receiptPdfProcessing.ReceiptPdfProcessingError('Envie um arquivo com no máximo 10 páginas.'));
+
+    await expect(service.uploadReceipt('major-1', createPdfFile(), user)).rejects.toThrow(
+      'Envie um arquivo com no máximo 10 páginas.',
+    );
+
     expect(s3.uploadFile).not.toHaveBeenCalled();
   });
 
@@ -290,6 +322,15 @@ function createValidFile() {
 
 function createInvalidFile() {
   return createFile();
+}
+
+function createPdfFile() {
+  return {
+    buffer: Buffer.from('unverified PDF contents'),
+    mimetype: 'application/pdf',
+    originalname: 'receipt.pdf',
+    size: 23,
+  };
 }
 
 function createReceipt() {

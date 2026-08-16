@@ -61,6 +61,33 @@ export function adminSportsTournamentListFixture(overrides: Record<string, unkno
   };
 }
 
+export function adminSportsTournamentReadFixture(overrides: Record<string, unknown> = {}) {
+  const summary = adminSportsTournamentListFixture();
+  return {
+    tournament: {
+      ...summary.tournament,
+      registrationStartDate: null,
+      registrationEndDate: null,
+      allowPlayerMultipleTeams: false,
+      shouldIssueCertificate: true,
+      majorEvent: {
+        ...summary.majorEvent,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        requiresImageLicenseAgreement: false,
+        majorEventPrices: [],
+      },
+    },
+    categories: [],
+    teams: [],
+    scoreEntries: [],
+    venues: [],
+    officials: [],
+    teamSummaries: [],
+    ...overrides,
+  };
+}
+
 export const adminE2EReadPermissions = [
   'event#read',
   'major-event#read',

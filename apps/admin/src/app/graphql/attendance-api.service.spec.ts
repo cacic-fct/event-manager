@@ -27,4 +27,24 @@ describe('AttendanceApiService', () => {
     await expect(feed).resolves.toEqual([{ eventId: 'event-1', personId: 'person-1' }]);
     expect(source.close).toHaveBeenCalledOnce();
   });
+
+  it('watches replayable analytics for the selected event and time window', async () => {
+    installFakeEventSource();
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), { provide: GraphqlHttpService, useValue: {} }],
+    });
+    const service = TestBed.inject(AttendanceApiService);
+    const analytics = firstValueFrom(service.watchEventAttendanceAnalytics('event / 1', 120));
+    const source = FakeEventSource.instances[0] as FakeEventSource;
+
+    expect(source.url).toBe('/api/event-attendances/events/event%20%2F%201/analytics/events?windowMinutes=120');
+    expect(source.init).toEqual({ withCredentials: true });
+    source.emitMessage({
+      type: 'event-attendance-analytics',
+      snapshot: { eventId: 'event-1', eventName: 'Evento', windowMinutes: 120 },
+    });
+
+    await expect(analytics).resolves.toMatchObject({ eventId: 'event-1', windowMinutes: 120 });
+    expect(source.close).toHaveBeenCalledOnce();
+  });
 });

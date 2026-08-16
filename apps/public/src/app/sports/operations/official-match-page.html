@@ -117,36 +117,52 @@
 
   <section class="primary-actions" aria-label="Controles da partida">
     @if (currentMatch.state === 'SCHEDULED' || currentMatch.state === 'CHECK_IN') {
-    <button
-      class="hold-button"
-      mat-flat-button
-      type="button"
-      [class.holding]="holdingStart()"
-      [disabled]="busy()"
-      (pointerdown)="startHold($event)"
-      (pointerup)="cancelStartHold()"
-      (pointerleave)="cancelStartHold()"
-      (pointercancel)="cancelStartHold()"
-      (contextmenu)="$event.preventDefault()"
-      (keydown)="startKeyboardHold($event)"
-      (keyup)="cancelKeyboardHold($event)"
-      (blur)="cancelStartHold()">
-      <span class="hold-content">
-        <mat-icon>play_arrow</mat-icon>
-        <span class="hold-copy"
-          ><strong>Segure para começar a partida</strong><small>Mantenha pressionado até a barra completar</small></span
-        >
-      </span>
-      <span class="hold-progress" aria-hidden="true">
-        <span class="hold-content hold-progress-content">
+    <div class="start-action">
+      <button
+        class="hold-button"
+        mat-flat-button
+        type="button"
+        [class.holding]="holdingStart()"
+        [disabled]="busy()"
+        (pointerdown)="startHold($event)"
+        (pointerup)="cancelStartHold()"
+        (pointerleave)="cancelStartHold()"
+        (pointercancel)="cancelStartHold()"
+        (contextmenu)="$event.preventDefault()"
+        (keydown)="startKeyboardHold($event)"
+        (keyup)="cancelKeyboardHold($event)"
+        (blur)="cancelStartHold()">
+        <span class="hold-content">
           <mat-icon>play_arrow</mat-icon>
           <span class="hold-copy"
-            ><strong>Segure para começar a partida</strong
-            ><small>Mantenha pressionado até a barra completar</small></span
+            ><strong>{{ readinessIssues().length ? 'Segure para iniciar mesmo assim' : 'Segure para começar a partida' }}</strong
+            ><small>{{ readinessIssues().length ? 'O início manual ficará registrado' : 'Mantenha pressionado até a barra completar' }}</small></span
           >
         </span>
-      </span>
-    </button>
+        <span class="hold-progress" aria-hidden="true">
+          <span class="hold-content hold-progress-content">
+            <mat-icon>play_arrow</mat-icon>
+            <span class="hold-copy"
+              ><strong>{{ readinessIssues().length ? 'Segure para iniciar mesmo assim' : 'Segure para começar a partida' }}</strong
+              ><small>{{ readinessIssues().length ? 'O início manual ficará registrado' : 'Mantenha pressionado até a barra completar' }}</small></span
+            >
+          </span>
+        </span>
+      </button>
+      @if (readinessIssues().length) {
+      <div class="readiness-issues" role="status" aria-labelledby="readiness-title">
+        <div class="readiness-heading">
+          <mat-icon aria-hidden="true">warning_amber</mat-icon>
+          <strong id="readiness-title">Verifique antes de iniciar</strong>
+        </div>
+        <ul>
+          @for (issue of readinessIssues(); track issue.code + ':' + (issue.registrationId ?? '') + ':' + issue.message) {
+          <li>{{ issue.message }}</li>
+          }
+        </ul>
+      </div>
+      }
+    </div>
     } @else if (currentMatch.state === 'LIVE' || currentMatch.state === 'PAUSED') {
     <button mat-flat-button type="button" [disabled]="busy()" (click)="togglePause()">
       <mat-icon>{{ currentMatch.state === 'PAUSED' ? 'play_arrow' : 'pause' }}</mat-icon>

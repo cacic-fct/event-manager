@@ -259,13 +259,11 @@ function standaloneFolder(id: string, name: string, issuedAt: string | null) {
               certificateTemplate: {
                 id: 'template-1',
                 name: 'Modelo',
-                version: 1,
               },
             },
             certificateTemplate: {
               id: 'template-1',
               name: 'Modelo',
-              version: 1,
             },
           },
         ]

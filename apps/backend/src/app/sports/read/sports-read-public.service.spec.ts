@@ -265,6 +265,30 @@ describe('SportsReadPublicService', () => {
     );
   });
 
+  it('exposes only payment tiers that include sports registration', async () => {
+    prisma.sportsTournament.findFirst.mockResolvedValue(
+      sportsPublicTournamentRecord({
+        majorEvent: {
+          ...sportsPublicTournamentRecord().majorEvent,
+          majorEventPrices: [
+            {
+              tiers: [
+                { id: 'activities-only', name: 'Somente atividades', value: 3000, includesSportsRegistration: false },
+                { id: 'sports', name: 'Atividades e torneio', value: 7000, includesSportsRegistration: true },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    const result = await new SportsReadPublicService(prisma as never).publicTournament({
+      tournamentId: 'tournament-1',
+    });
+
+    expect(result.paymentTiers).toEqual([{ id: 'sports', name: 'Atividades e torneio', value: 7000 }]);
+  });
+
   it('coalesces concurrent refreshes for the same tournament', async () => {
     const tournament = sportsPublicTournamentRecord();
     prisma.sportsTournament.findFirst.mockResolvedValue(tournament);

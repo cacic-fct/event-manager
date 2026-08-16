@@ -524,13 +524,11 @@ const subscriptionsFeedFixture: SubscriptionsFeed = {
             certificateTemplate: {
               id: 'template-1',
               name: 'Modelo',
-              version: 1,
             },
           },
           certificateTemplate: {
             id: 'template-1',
             name: 'Modelo',
-            version: 1,
           },
         },
       ],
