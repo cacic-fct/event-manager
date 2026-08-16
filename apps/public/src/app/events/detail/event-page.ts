@@ -49,6 +49,7 @@ import {
   type SubscriptionFormAnswer,
   type SubscriptionFormContext,
 } from '../../major-events/registration/standard/confirm-dialog';
+import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 
 type EventPageState =
   | { status: 'loading' }
@@ -156,7 +157,9 @@ export class Event {
   private readonly imageLicenseAgreementDialogOpened = signal(false);
 
   private readonly returnUrl = toSignal(
-    this.route.queryParamMap.pipe(map((params) => params.get('back') || params.get('returnUrl') || '/menu')),
+    this.route.queryParamMap.pipe(
+      map((params) => resolveInternalReturnUrl(params.get('back') || params.get('returnUrl'), '/menu')),
+    ),
     { initialValue: '/menu' },
   );
   private readonly previewToken = toSignal(

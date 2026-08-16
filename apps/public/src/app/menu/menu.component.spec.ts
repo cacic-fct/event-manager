@@ -92,6 +92,17 @@ describe('MenuComponent', () => {
     expect(fixture.nativeElement.querySelector('a[href="https://account.cacic.com.br/app/"]')).toBeNull();
   });
 
+  it('shows the map first in the Utilities list', () => {
+    const utilityList = [...fixture.nativeElement.querySelectorAll('mat-nav-list')].find((list: Element) =>
+      list.textContent?.includes('Utilitários'),
+    );
+    const links = utilityList?.querySelectorAll('a');
+
+    expect(links?.[0]?.getAttribute('href')).toBe('/map');
+    expect(links?.[0]?.textContent).toContain('Mapa');
+    expect(links?.[0]?.textContent).toContain('Eventos por localização');
+  });
+
   it('shows the admin panel link for users with workspace entry permissions', async () => {
     authService.user.set({
       sub: 'admin-user',

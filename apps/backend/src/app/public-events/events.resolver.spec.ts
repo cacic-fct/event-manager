@@ -1,10 +1,49 @@
 import { PublicEventsResolver } from './events.resolver';
-import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE, PUBLIC_REGULAR_EVENT_WHERE } from './models';
+import {
+  PUBLIC_EVENT_WHERE,
+  PUBLIC_MAJOR_EVENT_WHERE,
+  PUBLIC_MAP_EVENT_SELECT,
+  PUBLIC_REGULAR_EVENT_WHERE,
+  publicMapEventWhere,
+} from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 
 describe('PublicEventsResolver lecturer profiles', () => {
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it('lists ongoing and future public map events with valid coordinates in chronological order', async () => {
+    const now = new Date('2026-08-16T15:00:00.000Z');
+    jest.useFakeTimers().setSystemTime(now);
+    const events = [
+      {
+        id: 'event-1',
+        startDate: new Date('2026-08-16T16:00:00.000Z'),
+        latitude: -22.12103,
+        longitude: -51.40775,
+      },
+      {
+        id: 'event-without-coordinates',
+        startDate: new Date('2026-08-16T17:00:00.000Z'),
+        latitude: null,
+        longitude: null,
+      },
+    ];
+    const prisma = {
+      event: {
+        findMany: jest.fn().mockResolvedValue(events),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(resolver.publicMapEvents()).resolves.toEqual([events[0]]);
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith({
+      where: publicMapEventWhere(now),
+      select: PUBLIC_MAP_EVENT_SELECT,
+      orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+    });
   });
 
   it('uses Typesense rank for public event searches before applying pagination', async () => {

@@ -17,10 +17,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PlacePresetsService } from './place-presets.service';
+import {
+  LocationCoordinatePickerDialogComponent,
+  type LocationCoordinates,
+} from '../app-shell/dialogs/location-coordinate-picker-dialog.component';
 
 @Component({
   selector: 'app-workspace-places-tab',
@@ -47,6 +52,7 @@ import { PlacePresetsService } from './place-presets.service';
 export class PlacesPageComponent implements OnDestroy {
   readonly workspace = inject(PlacePresetsService);
   private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(MatDialog);
   private readonly document = inject(DOCUMENT);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
@@ -95,6 +101,20 @@ export class PlacesPageComponent implements OnDestroy {
 
   protected hasLocation(): boolean {
     return this.location() !== null;
+  }
+
+  protected openLocationPicker(): void {
+    const location = this.location();
+    this.dialog
+      .open(LocationCoordinatePickerDialogComponent, { data: { coordinates: location }, maxWidth: 'calc(100vw - 32px)' })
+      .afterClosed()
+      .subscribe((result: LocationCoordinates | undefined) => {
+        if (!result) return;
+        this.workspace.placeForm.patchValue({
+          latitude: result.latitude.toString(),
+          longitude: result.longitude.toString(),
+        });
+      });
   }
 
   private async renderMap(): Promise<void> {

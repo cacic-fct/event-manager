@@ -338,6 +338,27 @@ describe('Event', () => {
     expect(component.backUrl()).toBe('/menu');
   });
 
+  it.each(['https://evil.example/map', '//evil.example/map', '/\\evil.example/map', 'map']) (
+    'should reject unsafe back URL %s',
+    async (unsafeBackUrl) => {
+      TestBed.resetTestingModule();
+      const newFixture = await createEventComponentFixture({ back: unsafeBackUrl });
+      await newFixture.whenStable();
+
+      expect(newFixture.componentInstance.backUrl()).toBe('/menu');
+    },
+  );
+
+  it('should preserve a filtered map URL for back navigation', async () => {
+    TestBed.resetTestingModule();
+    const newFixture = await createEventComponentFixture({
+      back: '/map?participacao=meus&periodo=hoje',
+    });
+    await newFixture.whenStable();
+
+    expect(newFixture.componentInstance.backUrl()).toBe('/map?participacao=meus&periodo=hoje');
+  });
+
   it('renders lecturer profiles with contact links', async () => {
     fixture.detectChanges();
     await fixture.whenStable();

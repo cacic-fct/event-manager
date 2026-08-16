@@ -131,6 +131,17 @@ export interface PublicEvent {
   lecturers?: PublicLecturerProfile[];
 }
 
+export interface PublicMapEvent {
+  id: string;
+  name: string;
+  startDate: DateTimeString;
+  endDate: DateTimeString;
+  emoji: string;
+  latitude: number;
+  longitude: number;
+  locationDescription?: string | null;
+}
+
 export interface PublicEventSubscriptionSummary {
   eventId: string;
   hasAvailableSlots: boolean;

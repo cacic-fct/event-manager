@@ -4,6 +4,7 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MarkdownPreviewDialogComponent } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
+import { LocationCoordinatePickerDialogComponent } from '../app-shell/dialogs/location-coordinate-picker-dialog.component';
 import { createPageStoryProviders, defaultPageStoryArgs, type PageStoryMode } from '../stories/page-story-support';
 import { EventsPageComponent } from './events-page.component';
 
@@ -62,6 +63,25 @@ describe('EventsPageComponent', () => {
       },
       maxWidth: 'calc(100vw - 32px)',
     });
+  });
+
+  it('copies coordinates confirmed in the map picker into the event form', async () => {
+    const dialog = {
+      open: vi.fn().mockReturnValue({
+        afterClosed: () => of({ latitude: -22.12103, longitude: -51.40775 }),
+      }),
+    };
+    await configureComponent('populated', dialog);
+    const { element, fixture } = createComponent();
+
+    button(element, 'Selecionar no mapa')?.click();
+
+    expect(dialog.open).toHaveBeenCalledWith(LocationCoordinatePickerDialogComponent, {
+      data: { coordinates: { latitude: -22.1211, longitude: -51.4086 } },
+      maxWidth: 'calc(100vw - 32px)',
+    });
+    expect(fixture.componentInstance.workspace.eventForm.controls.latitude.value).toBe('-22.12103');
+    expect(fixture.componentInstance.workspace.eventForm.controls.longitude.value).toBe('-51.40775');
   });
 
   it('disables publication while the event editor is invalid', async () => {

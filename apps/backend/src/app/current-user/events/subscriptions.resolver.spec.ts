@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { CurrentUserEventSubscriptionsResolver } from './subscriptions.resolver';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
+import { currentUserMapEventWhere } from './map-event-ids';
 
 describe('CurrentUserEventSubscriptionsResolver', () => {
   const frozenResources = {
@@ -10,6 +11,66 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('returns chronologically ordered public map event IDs associated with the current person', async () => {
+    const now = new Date('2026-08-16T15:00:00.000Z');
+    jest.useFakeTimers().setSystemTime(now);
+    const prisma = {
+      event: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]),
+      },
+    };
+    const currentUserContext = {
+      getAuthenticatedUser: jest.fn().mockReturnValue({ sub: 'user-1' }),
+      resolveCurrentUserContext: jest.fn().mockResolvedValue({ person: { id: 'person-1' }, user: { id: 'user-1' } }),
+    };
+    const resolver = new CurrentUserEventSubscriptionsResolver(
+      prisma as never,
+      currentUserContext as never,
+      {} as never,
+      {} as never,
+      frozenResources as never,
+    );
+
+    await expect(
+      resolver.currentUserMapEventIds({ req: { user: { sub: 'user-1' } } } as never),
+    ).resolves.toEqual(['event-1', 'event-2']);
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith({
+      where: currentUserMapEventWhere('person-1', 'user-1', now),
+      select: { id: true },
+      orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+    });
+  });
+
+  it('returns no map event IDs when the authenticated account has no person', async () => {
+    const prisma = {
+      event: {
+        findMany: jest.fn(),
+      },
+    };
+    const currentUserContext = {
+      getAuthenticatedUser: jest.fn().mockReturnValue({ sub: 'user-1' }),
+      resolveCurrentUserContext: jest.fn().mockResolvedValue({ person: null }),
+    };
+    const resolver = new CurrentUserEventSubscriptionsResolver(
+      prisma as never,
+      currentUserContext as never,
+      {} as never,
+      {} as never,
+      frozenResources as never,
+    );
+
+    await expect(
+      resolver.currentUserMapEventIds({ req: { user: { sub: 'user-1' } } } as never),
+    ).resolves.toEqual([]);
+
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
   });
 
   it('lists standalone event subscriptions only through publicly listed events', async () => {

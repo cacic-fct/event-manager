@@ -151,6 +151,17 @@ export const PUBLIC_CALENDAR_EVENT_FIELDS = `
   }
 `;
 
+export const PUBLIC_MAP_EVENT_FIELDS = `
+  id
+  name
+  startDate
+  endDate
+  emoji
+  latitude
+  longitude
+  locationDescription
+`;
+
 export const PUBLIC_EVENT_PAGE_FIELDS = `
   id
   name

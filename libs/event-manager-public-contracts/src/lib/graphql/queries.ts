@@ -10,6 +10,7 @@ import type {
   PublicEventWeather,
   PublicMajorEvent,
   PublicMajorEventSubscriptionPage,
+  PublicMapEvent,
   PublicPlatformStats,
 } from '../types';
 import {
@@ -21,6 +22,7 @@ import {
   PUBLIC_EVENT_WEATHER_FIELDS,
   PUBLIC_MAJOR_EVENT_CARD_FIELDS,
   PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS,
+  PUBLIC_MAP_EVENT_FIELDS,
   PUBLIC_SUBSCRIPTION_EVENT_FIELDS,
 } from './fragments';
 
@@ -92,6 +94,28 @@ export const PUBLIC_CALENDAR_EVENTS_QUERY = `
     ) {
       ${PUBLIC_CALENDAR_EVENT_FIELDS}
     }
+  }
+`;
+
+export interface PublicMapEventsQuery {
+  publicMapEvents: PublicMapEvent[];
+}
+
+export const PUBLIC_MAP_EVENTS_QUERY = `
+  query PublicMapEvents {
+    publicMapEvents {
+      ${PUBLIC_MAP_EVENT_FIELDS}
+    }
+  }
+`;
+
+export interface CurrentUserMapEventIdsQuery {
+  currentUserMapEventIds: string[];
+}
+
+export const CURRENT_USER_MAP_EVENT_IDS_QUERY = `
+  query CurrentUserMapEventIds {
+    currentUserMapEventIds
   }
 `;
 

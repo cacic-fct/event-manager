@@ -74,6 +74,11 @@ export const appRoutes: Route[] = [
     title: 'Evento',
   },
   {
+    path: 'map',
+    loadComponent: () => import('./map/public-map-page').then((m) => m.PublicMapPage),
+    title: 'Mapa de eventos',
+  },
+  {
     path: 'tournament/:tournamentId/subscribe',
     loadComponent: () => import('./sports/operations/self-subscription-page').then((m) => m.SportsSelfSubscriptionPage),
     title: 'Inscrição no torneio',

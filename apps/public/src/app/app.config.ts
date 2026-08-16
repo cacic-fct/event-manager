@@ -44,6 +44,7 @@ import { TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS } from '@cacic-fct/shared-utils';
 import { PageTitleStrategy } from './shared/page-title-strategy';
 import { DefaultRedirectOnTabEntryService } from './landing/default-redirect-on-tab-entry.service';
 import { SportsAutorouteInterruptionFlow } from './sports/operations/sports-autoroute-interruption.flow';
+import { publicMapCacheInvalidationInterceptor } from './map/public-map-cache.interceptor';
 
 registerLocaleData(localePt);
 
@@ -128,7 +129,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
     { provide: TitleStrategy, useClass: PageTitleStrategy },
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, publicMapCacheInvalidationInterceptor])),
     provideInterruptionFlow(OnlineAttendanceCoordinatorService),
     provideInterruptionFlow(SportsAutorouteInterruptionFlow),
     provideInterruptionFlow(ImageLicenseAgreementInterruptionFlow),

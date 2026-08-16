@@ -1,0 +1,93 @@
+<section class="map-page">
+  <mat-toolbar class="map-toolbar">
+    <button matIconButton type="button" (click)="goBack()" aria-label="Voltar">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <h1 class="global-toolbar-title">Mapa de eventos</h1>
+    <span class="global-toolbar-spacer"></span>
+    @if (filterCount() > 0) {
+      <span class="filter-summary" aria-label="Filtros ativos">{{ filterCount() }}</span>
+    }
+  </mat-toolbar>
+
+  <div class="map-stage">
+    <div #mapTarget class="map-target" role="region" aria-label="Mapa interativo de eventos"></div>
+
+    @let currentState = state();
+    @if (currentState.status === 'loading') {
+      <mat-progress-bar class="loading-bar" mode="indeterminate" aria-label="Carregando eventos no mapa" />
+    } @else if (currentState.status === 'error') {
+      <section class="map-message" role="alert">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p>{{ currentState.message }}</p>
+      </section>
+    } @else if (filteredEvents().length === 0) {
+      <section class="map-message" aria-live="polite">
+        <mat-icon aria-hidden="true">event_busy</mat-icon>
+        <p>{{ filterCount() ? 'Nenhum evento corresponde aos filtros.' : 'Nenhum evento com localização disponível.' }}</p>
+        @if (filterCount()) {
+          <button mat-stroked-button type="button" (click)="openFilters()">Revisar filtros</button>
+        }
+      </section>
+    }
+
+    <nav class="fab-container" [class.open]="utilityMenuOpen()" aria-label="Controles do mapa">
+      @if (utilityMenuOpen()) {
+        <button class="fab-overlay" type="button" aria-label="Fechar menu" (click)="closeUtilityMenu()"></button>
+      }
+
+      @if (utilityMenuMounted()) {
+      <div
+        id="map-utility-actions"
+        class="fab-menu"
+        [class.visible]="utilityMenuOpen()"
+        (transitionend)="onUtilityMenuTransitionEnd($event)">
+        <button mat-mini-fab type="button" matTooltip="Centralizar eventos" aria-label="Centralizar eventos" (click)="centerEvents()">
+          <mat-icon>center_focus_strong</mat-icon>
+        </button>
+        <button mat-mini-fab type="button" matTooltip="Filtrar eventos" aria-label="Filtrar eventos" (click)="openFilters()">
+          <mat-icon>filter_list</mat-icon>
+        </button>
+        <button
+          mat-mini-fab
+          type="button"
+          [class.control-disabled]="locationPermission() === 'denied' || locationPermission() === 'unsupported'"
+          [attr.aria-disabled]="locationPermission() === 'denied' || locationPermission() === 'unsupported'"
+          [attr.aria-busy]="isLocating()"
+          matTooltip="Usar minha localização"
+          aria-label="Usar minha localização"
+          (click)="locate()">
+          <mat-icon>{{ locationIcon() }}</mat-icon>
+        </button>
+      </div>
+      }
+
+      <button class="main-fab zoom-fab" mat-fab type="button" aria-label="Aumentar zoom" matTooltip="Aumentar zoom" matTooltipPosition="left" [disableRipple]="true" (click)="zoomBy(1)">
+        <mat-icon>add</mat-icon>
+      </button>
+      <button class="main-fab zoom-fab" mat-fab type="button" aria-label="Diminuir zoom" matTooltip="Diminuir zoom" matTooltipPosition="left" [disableRipple]="true" (click)="zoomBy(-1)">
+        <mat-icon>remove</mat-icon>
+      </button>
+
+      <button
+        mat-mini-fab
+        type="button"
+        class="menu-fab"
+        [class.active]="utilityMenuOpen()"
+        [attr.aria-expanded]="utilityMenuOpen()"
+        aria-controls="map-utility-actions"
+        [attr.aria-label]="utilityMenuOpen() ? 'Fechar utilitários do mapa' : 'Abrir utilitários do mapa'"
+        matTooltip="Mais opções"
+        matTooltipPosition="left"
+        (click)="toggleUtilityMenu()">
+        <mat-icon>{{ utilityMenuOpen() ? 'close' : 'more_vert' }}</mat-icon>
+      </button>
+    </nav>
+
+    <section class="accessible-event-list" aria-label="Eventos visíveis no mapa">
+      @for (event of filteredEvents(); track event.id) {
+        <button type="button" (click)="openEventFromList(event)">{{ event.name }}</button>
+      }
+    </section>
+  </div>
+</section>

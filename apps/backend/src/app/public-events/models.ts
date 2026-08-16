@@ -148,6 +148,17 @@ export const PUBLIC_EVENT_SELECT = {
   },
 } satisfies Prisma.EventSelect;
 
+export const PUBLIC_MAP_EVENT_SELECT = {
+  id: true,
+  name: true,
+  startDate: true,
+  endDate: true,
+  emoji: true,
+  latitude: true,
+  longitude: true,
+  locationDescription: true,
+} satisfies Prisma.EventSelect;
+
 export const PUBLIC_MAJOR_EVENT_WHERE = {
   deletedAt: null,
   publicationState: 'PUBLISHED',
@@ -167,6 +178,17 @@ export const PUBLIC_EVENT_WHERE = {
     },
   ],
 } satisfies Prisma.EventWhereInput;
+
+export function publicMapEventWhere(now: Date): Prisma.EventWhereInput {
+  return {
+    AND: [
+      PUBLIC_EVENT_WHERE,
+      { endDate: { gte: now } },
+      { latitude: { gte: -90, lte: 90 } },
+      { longitude: { gte: -180, lte: 180 } },
+    ],
+  };
+}
 
 export const PUBLIC_REGULAR_EVENT_WHERE = {
   AND: [PUBLIC_EVENT_WHERE, { sportsMatch: { is: null } }],
@@ -656,6 +678,52 @@ export class PublicLecturerProfile {
     description: 'Optional public WhatsApp number in E.164 format.',
   })
   whatsapp?: string | null;
+}
+
+@ObjectType({
+  description: 'A current or future publicly listed event with a valid map location.',
+})
+export class PublicMapEvent {
+  @Field(() => String, {
+    description: 'Event identifier used to navigate from the map marker to the public event page.',
+  })
+  id!: string;
+
+  @Field(() => String, {
+    description: 'Participant-facing event title displayed for the map marker.',
+  })
+  name!: string;
+
+  @Field(() => Date, {
+    description: 'Event start date used to order and filter map markers.',
+  })
+  startDate!: Date;
+
+  @Field(() => Date, {
+    description: 'Event end date used to retain ongoing events and exclude past events.',
+  })
+  endDate!: Date;
+
+  @Field(() => String, {
+    description: 'Visual marker associated with the event.',
+  })
+  emoji!: string;
+
+  @Field(() => Float, {
+    description: 'Validated event latitude in the inclusive range from -90 to 90.',
+  })
+  latitude!: number;
+
+  @Field(() => Float, {
+    description: 'Validated event longitude in the inclusive range from -180 to 180.',
+  })
+  longitude!: number;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Optional participant-facing description of the mapped location.',
+  })
+  locationDescription?: string | null;
 }
 
 @ObjectType({

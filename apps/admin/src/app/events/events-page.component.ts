@@ -22,6 +22,10 @@ import { AuditLogService } from '../audit-logs/audit-log.service';
 import { isFrozenEvent, isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.component';
 import { PersonSearchComponent } from '../people/person-search/person-search.component';
+import {
+  LocationCoordinatePickerDialogComponent,
+  type LocationCoordinates,
+} from '../app-shell/dialogs/location-coordinate-picker-dialog.component';
 
 @Component({
   selector: 'app-workspace-events-tab',
@@ -87,6 +91,22 @@ export class EventsPageComponent {
       },
       maxWidth: 'calc(100vw - 32px)',
     });
+  }
+
+  protected openLocationPicker(): void {
+    const latitude = Number(this.workspace.eventForm.controls.latitude.value);
+    const longitude = Number(this.workspace.eventForm.controls.longitude.value);
+    const coordinates = Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : null;
+    this.dialog
+      .open(LocationCoordinatePickerDialogComponent, { data: { coordinates }, maxWidth: 'calc(100vw - 32px)' })
+      .afterClosed()
+      .subscribe((result: LocationCoordinates | undefined) => {
+        if (!result) return;
+        this.workspace.eventForm.patchValue({
+          latitude: result.latitude.toString(),
+          longitude: result.longitude.toString(),
+        });
+      });
   }
 
   protected describeEventType(type: EventType | null | undefined): string {

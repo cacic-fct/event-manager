@@ -460,6 +460,11 @@
               <mat-label>Longitude</mat-label>
               <input matInput formControlName="longitude" />
             </mat-form-field>
+
+            <button mat-stroked-button type="button" class="span-2" (click)="openLocationPicker()">
+              <mat-icon>map</mat-icon>
+              Selecionar no mapa
+            </button>
             @if (
               workspace.eventForm.hasError('latitudeRequireslongitude') ||
               workspace.eventForm.hasError('buttonTextRequiresbuttonLink')

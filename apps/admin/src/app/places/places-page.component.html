@@ -168,6 +168,11 @@
               <input matInput formControlName="longitude" />
             </mat-form-field>
 
+            <button mat-stroked-button type="button" class="span-2" (click)="openLocationPicker()">
+              <mat-icon>map</mat-icon>
+              Selecionar no mapa
+            </button>
+
             <mat-form-field class="span-2">
               <mat-label>Nome e descrição exibidos aos usuários</mat-label>
               <input matInput formControlName="locationDescription" />

@@ -86,6 +86,11 @@
 
     <mat-nav-list>
       <h3 matSubheader>Utilitários</h3>
+      <a mat-list-item routerLink="/map">
+        <mat-icon matListItemIcon>map</mat-icon>
+        <span matListItemTitle>Mapa</span>
+      </a>
+
       <a mat-list-item routerLink="/validate" (click)="$event.preventDefault()">
         <mat-icon matListItemIcon>license</mat-icon>
         <span matListItemTitle>Validar certificado</span>
