@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-import { connectPostgres } from './common.mts';
+import { connectPostgres, normalizeWgs84Coordinates } from './common.mts';
 import { createUuidV5, createUuidV7 } from './ids.mts';
 
 export type SqlLiteral = string | number | null;
@@ -534,6 +534,10 @@ export async function writeLegacySqlPayload(
 ): Promise<void> {
   const ownsClient = typeof databaseOrClient === 'string';
   const db = (ownsClient ? await connectPostgres(databaseOrClient) : databaseOrClient) as LegacyPostgresClient;
+  const events = payload.events.map((event) => ({
+    ...event,
+    ...normalizeWgs84Coordinates(event.latitude, event.longitude, `event ${event.id}`),
+  }));
   try {
     await db.query('BEGIN');
     const { oldPersonIdToExternalRef, resolvedPersonIdByExternalRef } = await reconcilePeopleIdsWithDatabase(
@@ -581,7 +585,7 @@ export async function writeLegacySqlPayload(
          "onlineAttendanceStartDate"=EXCLUDED."onlineAttendanceStartDate", "onlineAttendanceEndDate"=EXCLUDED."onlineAttendanceEndDate",
          "isPubliclyListed"=EXCLUDED."isPubliclyListed", "youtubeCode"=EXCLUDED."youtubeCode", "buttonText"=EXCLUDED."buttonText",
          "buttonLink"=EXCLUDED."buttonLink", "updatedAt"=EXCLUDED."updatedAt"`,
-      payload.events,
+      events,
       (row) => [
         row.id,
         row.name,

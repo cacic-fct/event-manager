@@ -51,6 +51,7 @@ function fixture() {
           eventEndDate: timestamp(1_700_000_020),
           createdOn: timestamp(1_700_000_000),
           inMajorEvent: 'm1',
+          location: { lat: '-22.1211', lon: -51.4086, description: 'FCT/Unesp' },
           eventGroup: { groupDisplayName: 'Group', mainEventID: 'e1', groupEventIDs: ['e1', 'e2'] },
           __collections__: {
             subscriptions: { u1: { time: timestamp(1_700_000_010), author: 'admin' } },
@@ -109,6 +110,22 @@ test('builds deterministic rows and preserves Firestore subscription/attendance 
   assert.equal(majorEvent.updatedAt.toISOString(), '2026-01-01T00:00:00.000Z');
   assert.equal(majorEventSubscription.subscriptionStatus, 'CONFIRMED');
   assert.equal(payload.eventSubscriptions.filter((row) => row.eventGroupSubscriptionId).length, 2);
+  assert.deepEqual(
+    payload.events.map(({ latitude, longitude, locationDescription }) => ({ latitude, longitude, locationDescription })),
+    [
+      { latitude: -22.1211, longitude: -51.4086, locationDescription: 'FCT/Unesp' },
+      { latitude: null, longitude: null, locationDescription: null },
+    ],
+  );
+});
+
+test('rejects Firestore coordinates that cannot become WGS 84 points', () => {
+  const input = fixture();
+  input.__collections__.events.e1.location.lat = '-91';
+  assert.throws(
+    () => buildPayload(input, { now: new Date('2026-01-01T00:00:00.000Z') }),
+    /event e1 has a latitude outside/,
+  );
 });
 
 test('matches Python-style scalar coercions and timestamp parsing', () => {

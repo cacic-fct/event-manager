@@ -1,6 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { adminFixtureDateFromNow } from '../testing/admin-entity-fixtures';
+import {
+  adminFixtureDateFromNow,
+  createAdminEvent,
+  createAdminMajorEvent,
+  createAdminPerson,
+} from '../testing/admin-entity-fixtures';
 import { firstValueFrom, of, throwError } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import { ReceiptValidationApiService } from './receipt-validation-api.service';
@@ -83,18 +88,21 @@ function receiptResultFixture() {
 }
 
 function queueFixture() {
+  const event = createAdminEvent({ id: 'event-1', name: 'Credenciamento' });
+  const majorEvent = createAdminMajorEvent({ id: 'major-1', name: 'Semana' });
+  const person = createAdminPerson({ id: 'person-1', name: 'Ada Lovelace', email: 'ada@example.edu' });
   return {
     pendingCount: 1,
     items: [
       {
         subscriptionId: 'subscription-1',
         majorEventId: 'major-1',
-        majorEventName: 'Semana',
-        majorEventCreatedAt: adminFixtureDateFromNow(-10),
-        majorEventEndDate: adminFixtureDateFromNow(2, 21),
-        personId: 'person-1',
-        personName: 'Ada Lovelace',
-        personEmail: 'ada@example.edu',
+        majorEventName: majorEvent.name,
+        majorEventCreatedAt: majorEvent.createdAt,
+        majorEventEndDate: majorEvent.endDate,
+        personId: person.id,
+        personName: person.name,
+        personEmail: person.email,
         subscriptionFlow: 'RECEIPT',
         subscriptionStatus: 'PENDING_PAYMENT',
         subscriptionUpdatedAt: adminFixtureDateFromNow(-1, 15),
@@ -102,11 +110,11 @@ function queueFixture() {
         events: [
           {
             id: 'event-1',
-            name: 'Credenciamento',
-            emoji: 'clipboard',
+            name: event.name,
+            emoji: event.emoji,
             type: 'OTHER',
-            startDate: adminFixtureDateFromNow(1),
-            endDate: adminFixtureDateFromNow(1, 14),
+            startDate: event.startDate,
+            endDate: event.endDate,
             autoSubscribe: false,
             selectedForConfirmation: true,
             hasScheduleConflict: false,

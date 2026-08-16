@@ -58,7 +58,7 @@ describe('AttendanceApiService operation contracts', () => {
         if (query.includes('EventAttendanceCount')) {
           return of({ eventAttendanceCount: 4 });
         }
-        if (query.includes('OfflineEventAttendanceSubmissions')) {
+        if (query.includes('query OfflineEventAttendanceSubmissions')) {
           return of({ offlineEventAttendanceSubmissions: [offlineSubmissionFixture()] });
         }
         if (query.includes('UpdateOfflineEventAttendanceSubmission')) {

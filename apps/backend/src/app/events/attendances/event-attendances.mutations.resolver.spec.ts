@@ -1161,6 +1161,12 @@ function offlineSubmissionFixture(overrides: Record<string, unknown> = {}) {
 function createFullPrisma() {
   return {
     $transaction: jest.fn(),
+    attendanceReviewFlag: {
+      upsert: jest.fn(),
+    },
+    attendanceScanAttemptCounter: {
+      upsert: jest.fn().mockResolvedValue({ count: 1 }),
+    },
     eventAttendance: {
       findMany: jest.fn().mockResolvedValue([]),
       findUnique: jest.fn(),

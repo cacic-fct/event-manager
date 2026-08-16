@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of, throwError } from 'rxjs';
+import { createAdminEventGroup } from '../testing/admin-entity-fixtures';
 import { EventGroupApiService } from './event-group-api.service';
 import { GraphqlHttpService } from './graphql-http.service';
 
@@ -93,9 +94,5 @@ describe('EventGroupApiService', () => {
 });
 
 function eventGroupFixture(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'group-1',
-    name: 'Grupo de eventos',
-    ...overrides,
-  };
+  return createAdminEventGroup({ id: 'group-1', name: 'Grupo de eventos', ...overrides });
 }

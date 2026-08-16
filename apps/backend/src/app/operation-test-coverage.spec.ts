@@ -68,7 +68,7 @@ function readDecoratedOperations(file: string): DecoratedOperation[] {
     if (ts.isMethodDeclaration(node) && node.name && ts.isIdentifier(node.name)) {
       const decorators = ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
       if (decorators.some(isOperationDecorator)) {
-        operations.push({ file: relativeToApp(file), methodName: node.name.text });
+        operations.push({ file, methodName: node.name.text });
       }
     }
     ts.forEachChild(node, visit);

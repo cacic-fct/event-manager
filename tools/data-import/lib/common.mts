@@ -25,6 +25,29 @@ export interface DatabaseOptions {
   envFile?: string;
 }
 
+export interface Wgs84Coordinates {
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export function normalizeWgs84Coordinates(
+  latitude: number | null,
+  longitude: number | null,
+  context = 'coordinate pair',
+): Wgs84Coordinates {
+  if (latitude === null && longitude === null) return { latitude: null, longitude: null };
+  if (latitude === null || longitude === null) {
+    throw new Error(`${context} must include both latitude and longitude.`);
+  }
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
+    throw new Error(`${context} has a latitude outside the WGS 84 range (-90 to 90).`);
+  }
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+    throw new Error(`${context} has a longitude outside the WGS 84 range (-180 to 180).`);
+  }
+  return { latitude, longitude };
+}
+
 interface JsonObject {
   [key: string]: unknown;
 }

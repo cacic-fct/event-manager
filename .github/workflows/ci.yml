@@ -72,7 +72,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:18
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -310,7 +310,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:18
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -601,7 +601,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:18
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -722,7 +722,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:18
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres

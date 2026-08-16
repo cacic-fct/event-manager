@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, of, throwError } from 'rxjs';
-import { adminFixtureDate, adminFixtureDateFromNow } from '../testing/admin-entity-fixtures';
+import { adminFixtureDate, createAdminEvent } from '../testing/admin-entity-fixtures';
 import { GraphqlHttpService } from './graphql-http.service';
 import { PermissionGrantsApiService } from './permission-grants-api.service';
 
@@ -110,12 +110,13 @@ function grantFixture(overrides: Record<string, unknown> = {}) {
 }
 
 function targetFixture() {
+  const event = createAdminEvent({ id: 'event-1', name: 'Evento' });
   return {
-    id: 'event-1',
-    label: 'Evento',
-    description: 'Descrição',
-    emoji: '📚',
-    startDate: adminFixtureDateFromNow(1, 9),
-    endDate: adminFixtureDateFromNow(1, 11),
+    id: event.id,
+    label: event.name,
+    description: event.description,
+    emoji: event.emoji,
+    startDate: event.startDate,
+    endDate: event.endDate,
   };
 }

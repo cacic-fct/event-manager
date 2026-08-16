@@ -2,7 +2,7 @@ name: event-manager
 
 services:
   events-db:
-    image: postgres:18-alpine
+    image: postgis/postgis:18-3.6-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}

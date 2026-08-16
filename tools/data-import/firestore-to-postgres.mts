@@ -3,7 +3,7 @@
 
 import { readFileSync } from 'node:fs';
 import process from 'node:process';
-import { connectPostgres, databaseUrlFromOptions, isMain } from './lib/common.mts';
+import { connectPostgres, databaseUrlFromOptions, isMain, normalizeWgs84Coordinates } from './lib/common.mts';
 import { createUuidV5 } from './lib/ids.mts';
 
 export const DEFAULT_UNKNOWN_EMOJI = '❔';
@@ -810,6 +810,7 @@ export function mapEvents(
       longitude = parseFloatValue(location.lon);
       locationDescription = coerceText(location.description);
     }
+    ({ latitude, longitude } = normalizeWgs84Coordinates(latitude, longitude, `event ${legacyEventId}`));
 
     const legacyMajorEventRef = coerceText(rawEvent.inMajorEvent);
     let majorEventId = null;
