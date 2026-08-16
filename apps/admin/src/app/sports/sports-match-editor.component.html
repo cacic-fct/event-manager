@@ -50,6 +50,17 @@
       Despublicar
     </button>
   }
+  @if (workspace.canCorrectConsolidatedResult()) {
+    <button
+      mat-stroked-button
+      type="button"
+      matTooltip="Registra uma correção administrativa sem expor controles ao vivo."
+      (click)="workspace.correctConsolidatedResult()"
+      [disabled]="workspace.loading()">
+      <mat-icon>fact_check</mat-icon>
+      Corrigir resultado
+    </button>
+  }
   <button
     mat-flat-button
     type="button"
@@ -66,7 +77,7 @@
       <mat-icon aria-hidden="true">sports_score</mat-icon>
       <div>
         <h5>O essencial</h5>
-        <p>Confronto, horário, local e estado que aparecem na agenda.</p>
+        <p>Confronto, horário e local que aparecem na agenda.</p>
       </div>
     </div>
 
@@ -130,22 +141,6 @@
             </mat-option>
           }
         </mat-select>
-      </mat-form-field>
-      <mat-form-field subscriptSizing="dynamic">
-        <mat-label>Estado</mat-label>
-        <mat-select formControlName="state">
-          @for (state of matchStates; track state[0]) {
-            <mat-option [value]="state[0]">
-              {{ state[1] }}
-              @if (state[0] === 'CANCELED') {
-                <small class="option-description">A partida precisará ser reagendada</small>
-              }
-            </mat-option>
-          }
-        </mat-select>
-        @if (workspace.matchForm.controls.state.value === 'CANCELED') {
-          <mat-hint>Use quando esta partida será remarcada para outra data.</mat-hint>
-        }
       </mat-form-field>
     </div>
   </section>
@@ -218,6 +213,42 @@
 </form>
 
 @if (workspace.matchReview(); as review) {
+  @if (workspace.matchOccurrences(); as occurrences) {
+    @if (occurrences.length > 0) {
+      <section class="match-feature" aria-labelledby="occurrences-title">
+        <div class="feature-heading">
+          <mat-icon aria-hidden="true">assignment</mat-icon>
+          <div>
+            <h5 id="occurrences-title">Histórico de ocorrências</h5>
+            <p>Registros feitos durante a partida. Correções posteriores permanecem auditáveis.</p>
+          </div>
+        </div>
+        <div class="review-list">
+          @for (action of occurrences; track action.id) {
+            <article class="review-card compact-card">
+              <div class="review-card-heading">
+                <strong>{{ workspace.occurrenceValue(action, 'kind') || 'Ocorrência' }}</strong>
+                <span class="state-label">{{ workspace.statusLabel(action.reviewStatus) }}</span>
+              </div>
+              <p>{{ workspace.occurrenceValue(action, 'note') || 'Sem observação.' }}</p>
+              <small>{{ action.authoredAt | date: 'short' }}{{ action.offline ? ' · enviada off-line' : '' }}</small>
+              @if (workspace.canCorrectConsolidatedOccurrence(action)) {
+                <div class="review-actions">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="workspace.loading()"
+                    (click)="workspace.correctConsolidatedOccurrence(action)">
+                    Corrigir ocorrência
+                  </button>
+                </div>
+              }
+            </article>
+          }
+        </div>
+      </section>
+    }
+  }
   <section class="match-feature match-feature--overlay" aria-labelledby="overlay-title">
     <div class="feature-heading">
       <mat-icon aria-hidden="true">live_tv</mat-icon>

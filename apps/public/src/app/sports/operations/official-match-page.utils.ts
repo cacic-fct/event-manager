@@ -3,6 +3,7 @@ import { SportsMatchActionType, SportsOperationalMatch, SportsOperationsOfficial
 
 export interface CheckInEntry {
   id: string;
+  attendanceSyncKey?: string | null;
   name: string;
   team: 'home' | 'away';
   checkedIn: boolean;
@@ -12,6 +13,7 @@ export interface CheckInEntry {
 
 export interface OfficialCheckInEntry {
   id: string;
+  attendanceSyncKey?: string | null;
   name: string;
   role: SportsOfficialRole;
   checkedIn: boolean;
@@ -111,6 +113,7 @@ export function sortOfficialCheckInEntries(officials: SportsOperationsOfficial[]
   return officials
     .map((official) => ({
       id: official.id,
+      attendanceSyncKey: official.attendanceSyncKey,
       name: official.name,
       role: official.role,
       checkedIn: Boolean(official.checkedInAt),

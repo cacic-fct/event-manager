@@ -18,4 +18,24 @@ export class SportsReviewsSectionComponent extends SportsWorkspaceSection {
       (request) => request.status === 'PENDING' || request.status === 'CONFLICT' || request.status === 'CHANGES_REQUESTED',
     );
   }
+
+  protected identityTypeLabel(type: SportsTeamRead['changeRequests'][number]['identityClaims'][number]['type']): string {
+    return {
+      EMAIL: 'E-mail',
+      PHONE: 'Telefone',
+      IDENTITY_DOCUMENT: 'Documento de identidade',
+    }[type];
+  }
+
+  protected identityStatusLabel(
+    status: SportsTeamRead['changeRequests'][number]['identityClaims'][number]['status'],
+  ): string {
+    return {
+      PENDING: 'Aguardando resolução',
+      RESOLVED: 'Pessoa localizada',
+      NOT_FOUND: 'Pessoa não localizada',
+      AMBIGUOUS: 'Mais de uma pessoa localizada',
+      REJECTED: 'Identificação rejeitada',
+    }[status];
+  }
 }

@@ -109,6 +109,7 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
     options: {
       reviewMessage?: string | null;
       correctedPayload?: unknown;
+      allowApprovedOccurrenceCorrection?: boolean;
     } = {},
   ) {
     if (
@@ -152,7 +153,14 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
         throw new NotFoundException(`Sports match action ${actionId} was not found.`);
       }
       await this.frozen.assertEventMutable(action.match.eventId, actor, 'edit');
+      const isApprovedOccurrenceCorrection =
+        options.allowApprovedOccurrenceCorrection === true &&
+        action.type === SportsMatchActionType.OCCURRENCE &&
+        action.reviewStatus === SportsReviewStatus.APPROVED &&
+        decision === SportsReviewStatus.APPROVED &&
+        options.correctedPayload !== undefined;
       if (
+        !isApprovedOccurrenceCorrection &&
         !([SportsReviewStatus.PENDING, SportsReviewStatus.CHANGES_REQUESTED] as SportsReviewStatus[]).includes(
           action.reviewStatus,
         )
@@ -190,11 +198,13 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
         action.match,
         actor,
         reviewed,
-        decision === SportsReviewStatus.APPROVED
-          ? AuditLogOperation.APPROVE
-          : decision === SportsReviewStatus.REJECTED
-            ? AuditLogOperation.REJECT
-            : AuditLogOperation.REQUEST_CHANGES,
+        isApprovedOccurrenceCorrection
+          ? AuditLogOperation.UPDATE
+          : decision === SportsReviewStatus.APPROVED
+            ? AuditLogOperation.APPROVE
+            : decision === SportsReviewStatus.REJECTED
+              ? AuditLogOperation.REJECT
+              : AuditLogOperation.REQUEST_CHANGES,
       );
       return {
         action: reviewed,
@@ -208,6 +218,13 @@ export class SportsMatchOperationService extends SportsMatchOperationMutation {
       result.structuralInvalidations,
     );
     return result.action;
+  }
+
+  async correctApprovedOccurrence(actionId: string, correctedPayload: unknown, actor: AuthenticatedUser) {
+    return this.review(actionId, SportsReviewStatus.APPROVED, actor, {
+      correctedPayload,
+      allowApprovedOccurrenceCorrection: true,
+    });
   }
 
   private async publishPostCommitEffects(

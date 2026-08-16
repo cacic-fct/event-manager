@@ -29,6 +29,11 @@ export interface SubmitSportsPlayerApplicationInput {
   paymentTier?: string | null;
 }
 export type SportsPlayerApplicationReviewDecision = 'APPROVE' | 'REQUEST_CHANGES' | 'REJECT';
+export interface UpdatePendingSportsPlayerApplicationInput {
+  requestedTeamId?: string | null;
+  categoryIds: string[];
+  paymentTier?: string | null;
+}
 import { SportsPlayerApplicationApprovalService } from './sports-player-application-approval.service';
 
 @Injectable()
@@ -323,6 +328,86 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
       return reviewed;
     });
     await this.realtime.publishApplicationChanged(application.id, 'REVIEWED');
+    return application;
+  }
+
+  async updatePendingApplication(
+    applicationId: string,
+    input: UpdatePendingSportsPlayerApplicationInput,
+    actor: AuthenticatedUser,
+  ) {
+    const actorId = this.requireActorId(actor);
+    const requestedTeamId = input.requestedTeamId?.trim() || null;
+    const categoryIds = this.normalizeCategoryIds(input.categoryIds);
+
+    const application = await runSerializableSportsTransaction(this.prisma, async (tx) => {
+      const current = await tx.sportsPlayerApplication.findFirst({
+        where: { id: applicationId, deletedAt: null, tournament: { deletedAt: null } },
+        include: {
+          categoryChoices: { select: { categoryId: true } },
+          tournament: { select: { id: true, majorEventId: true } },
+        },
+      });
+      if (!current) {
+        throw new NotFoundException(`Sports player application ${applicationId} was not found.`);
+      }
+      this.assertReviewable(current.status);
+
+      const target = await this.loadApplicationTarget(tx, current.tournamentId, requestedTeamId, categoryIds);
+      const paymentSelection = resolveMajorEventSelfServicePayment(target.majorEvent, input.paymentTier);
+      const pendingKey = this.applicationPendingKey(current.tournamentId, current.applicantPersonId, requestedTeamId);
+      if (pendingKey !== current.pendingKey) {
+        const conflictingApplication = await tx.sportsPlayerApplication.findFirst({
+          where: { pendingKey, id: { not: current.id }, deletedAt: null },
+          select: { id: true },
+        });
+        if (conflictingApplication) {
+          throw new ConflictException('Já existe uma solicitação pendente para esta equipe neste torneio.');
+        }
+      }
+
+      const previousCategoryIds = current.categoryChoices.map((choice) => choice.categoryId).sort();
+      await tx.sportsPlayerApplication.update({
+        where: { id: current.id },
+        data: {
+          requestedTeamId,
+          paymentTier: paymentSelection.paymentTier,
+          pendingKey,
+          updatedById: actorId,
+        },
+      });
+      await tx.sportsPlayerApplicationCategory.deleteMany({ where: { applicationId: current.id } });
+      if (categoryIds.length > 0) {
+        await tx.sportsPlayerApplicationCategory.createMany({
+          data: categoryIds.map((categoryId) => ({ applicationId: current.id, categoryId })),
+        });
+      }
+
+      await this.auditLog.record(
+        {
+          entityType: AuditLogEntityType.SPORTS_PLAYER_APPLICATION,
+          entityId: current.id,
+          entityLabel: 'Solicitação individual para equipe',
+          operation: AuditLogOperation.UPDATE,
+          actor,
+          before: {
+            requestedTeamId: current.requestedTeamId,
+            categoryIds: previousCategoryIds,
+            paymentTier: current.paymentTier,
+          },
+          after: {
+            requestedTeamId,
+            categoryIds,
+            paymentTier: paymentSelection.paymentTier,
+          },
+          summary: 'Dados da solicitação individual corrigidos pela organização.',
+          scope: { majorEventId: current.tournament.majorEventId },
+        },
+        tx,
+      );
+      return this.getApplication(tx, current.id);
+    });
+    await this.realtime.publishApplicationChanged(application.id, 'SUBMITTED');
     return application;
   }
 

@@ -130,7 +130,9 @@ describe('SportsReadCurrentUserService', () => {
               shirtNumber: '10',
               roleMetadata: { position: 'GOALKEEPER' },
               registrationMember: {
-                teamMember: { participant: { person: { name: 'Ana Beatriz de Souza' } } },
+                teamMember: {
+                  participant: { personId: 'person-athlete-1', person: { name: 'Ana Beatriz de Souza' } },
+                },
               },
             },
           ],
@@ -158,6 +160,7 @@ describe('SportsReadCurrentUserService', () => {
     expect(result.officials).toEqual([
       {
         id: 'official-assignment-1',
+        attendanceSyncKey: expect.any(String),
         name: 'Mariana S.',
         role: 'REFEREE',
         checkedInAt,
@@ -180,6 +183,163 @@ describe('SportsReadCurrentUserService', () => {
   it('reports a missing current-user operations match', async () => {
     prisma.sportsMatch.findFirst.mockResolvedValue(null);
     await expect(service().currentUserMatchOperations('missing')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('uses the latest match-scoped official check-in action for removal', async () => {
+    const checkedInAt = sportsTestDate(-60_000);
+    prisma.sportsMatch.findFirst.mockResolvedValue({
+      id: 'match-1',
+      revision: 5,
+      state: 'LIVE',
+      eventId: 'event-1',
+      categoryId: 'category-1',
+      category: { id: 'category-1', tournament: { id: 'tournament-1' } },
+      notes: null,
+      occurrences: [],
+      homeRegistrationId: 'registration-home',
+      awayRegistrationId: 'registration-away',
+      actions: [
+        {
+          payload: {
+            kind: 'OFFICIAL_CHECK_IN',
+            officialAssignmentId: 'official-assignment-1',
+            personId: 'person-official-1',
+            checkedInAt: checkedInAt.toISOString(),
+            present: true,
+          },
+        },
+        {
+          payload: {
+            kind: 'OFFICIAL_CHECK_IN',
+            officialAssignmentId: 'official-assignment-1',
+            personId: 'person-official-1',
+            checkedInAt: sportsTestDate().toISOString(),
+            present: false,
+          },
+        },
+      ],
+      rosters: [],
+    });
+    prisma.sportsOfficialAssignment.findMany.mockResolvedValue([
+      {
+        id: 'official-assignment-1',
+        matchId: 'match-1',
+        categoryId: null,
+        role: 'REFEREE',
+        assignedAt: sportsTestDate(-120_000),
+        person: {
+          id: 'person-official-1',
+          name: 'Mariana Clara dos Santos',
+          attendances: [{ status: 'PRESENT', attendedAt: checkedInAt }],
+        },
+      },
+    ]);
+
+    const result = await service().currentUserMatchOperations('match-1');
+
+    expect(result.officials).toEqual([
+      {
+        id: 'official-assignment-1',
+        attendanceSyncKey: expect.any(String),
+        name: 'Mariana S.',
+        role: 'REFEREE',
+        checkedInAt: null,
+      },
+    ]);
+  });
+
+  it('synchronizes an athlete and official check-in for the same person', async () => {
+    const checkedInAt = sportsTestDate(-60_000);
+    const sharedPerson = {
+      id: 'person-shared',
+      name: 'Ana Beatriz de Souza',
+      attendances: [],
+    };
+    const baseMatch = {
+      id: 'match-1',
+      revision: 5,
+      state: 'CHECK_IN',
+      eventId: 'event-1',
+      categoryId: 'category-1',
+      category: { id: 'category-1', tournament: { id: 'tournament-1' } },
+      notes: null,
+      occurrences: [],
+      homeRegistrationId: 'registration-home',
+      awayRegistrationId: 'registration-away',
+      rosters: [
+        {
+          id: 'roster-1',
+          registrationId: 'registration-home',
+          revision: 2,
+          status: 'APPROVED',
+          registration: { team: sportsPublicTeamRecord() },
+          entries: [
+            {
+              id: 'entry-shared',
+              role: 'PLAYER',
+              status: 'APPROVED',
+              checkedInAt: null,
+              shirtNumber: '10',
+              roleMetadata: null,
+              registrationMember: {
+                teamMember: { participant: { personId: sharedPerson.id, person: { name: sharedPerson.name } } },
+              },
+            },
+          ],
+        },
+      ],
+    };
+    prisma.sportsMatch.findFirst
+      .mockResolvedValueOnce({
+        ...baseMatch,
+        actions: [
+          {
+            payload: {
+              kind: 'OFFICIAL_CHECK_IN',
+              officialAssignmentId: 'official-assignment-shared',
+              personId: sharedPerson.id,
+              checkedInAt: checkedInAt.toISOString(),
+              present: true,
+            },
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ...baseMatch,
+        rosters: baseMatch.rosters.map((roster) => ({
+          ...roster,
+          entries: roster.entries.map((entry) => ({ ...entry, checkedInAt })),
+        })),
+        actions: [
+          {
+            payload: {
+              kind: 'ROSTER_ENTRY_CHECK_IN',
+              rosterEntryId: 'entry-shared',
+              checkedInAt: sportsTestDate().toISOString(),
+              present: false,
+            },
+          },
+        ],
+      });
+    prisma.sportsOfficialAssignment.findMany.mockResolvedValue([
+      {
+        id: 'official-assignment-shared',
+        matchId: 'match-1',
+        categoryId: null,
+        role: 'REFEREE',
+        assignedAt: sportsTestDate(-120_000),
+        person: sharedPerson,
+      },
+    ]);
+
+    const registered = await service().currentUserMatchOperations('match-1');
+    expect(registered.rosters[0].entries[0].checkedInAt).toEqual(checkedInAt);
+    expect(registered.officials[0].checkedInAt).toEqual(checkedInAt);
+    expect(registered.rosters[0].entries[0].attendanceSyncKey).toBe(registered.officials[0].attendanceSyncKey);
+
+    const removed = await service().currentUserMatchOperations('match-1');
+    expect(removed.rosters[0].entries[0].checkedInAt).toBeNull();
+    expect(removed.officials[0].checkedInAt).toBeNull();
   });
 
   it('delegates representative workspace reads to the dedicated privacy reader', async () => {

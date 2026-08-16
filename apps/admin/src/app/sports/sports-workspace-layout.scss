@@ -339,6 +339,43 @@
   white-space: pre-wrap;
 }
 
+.application-review-details,
+.identity-claim-list {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.application-review-details small,
+.identity-claim-list > small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.identity-claim-list {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.identity-claim-row {
+  align-items: center;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  min-width: 0;
+  padding-block-start: 0.55rem;
+}
+
+.identity-claim-row > div {
+  display: grid;
+  min-width: 0;
+}
+
+.identity-claim-row b,
+.identity-claim-row small {
+  overflow-wrap: anywhere;
+}
+
 .team-change-details {
   align-items: start;
   display: grid;

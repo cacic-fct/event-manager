@@ -185,6 +185,7 @@ export interface OfflineSportsOfficialCheckIn {
   officialAssignmentId: string;
   checkedInAt: string;
   offline: boolean;
+  present?: boolean;
   collectorPersonId?: string;
   collectorCredential?: string;
 }

@@ -159,6 +159,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
             match.rosters.flatMap((roster) =>
               roster.entries.map((entry) => ({
                 id: entry.id,
+                attendanceSyncKey: entry.attendanceSyncKey,
                 name: entry.name,
                 team: roster.registrationId === match.homeRegistrationId ? 'home' : 'away',
                 checkedIn: Boolean(entry.checkedInAt),

@@ -306,6 +306,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
     checkedInAt: Date | undefined,
     clientIdValue: string,
     offline: boolean,
+    present: boolean,
     uploaderPersonId: string,
     uploaderUserId: string | null,
     uploaderRole: string,
@@ -392,6 +393,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             officialAssignmentId,
             personId: assignment.personId,
             checkedInAt: requestedCheckedInAt,
+            present,
             collectorPersonId: collector.personId,
           }),
         )
@@ -412,7 +414,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
         const replayedAttendance = await tx.eventAttendance.findUnique({
           where: { personId_eventId: { personId: assignment.personId, eventId: match.eventId } },
         });
-        if (!replayedAttendance || replayedAttendance.status !== 'PRESENT') {
+        if (present && (!replayedAttendance || replayedAttendance.status !== 'PRESENT')) {
           throw new ConflictException('O check-in offline foi registrado parcialmente. Recarregue a partida.');
         }
         return { attendance: replayedAttendance, replayed: true };
@@ -433,6 +435,7 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             personId: assignment.personId,
             role: assignment.role,
             checkedInAt: effectiveCheckedInAt.toISOString(),
+            present,
           },
           reviewStatus: SportsReviewStatus.APPROVED,
           actorPersonId: collector.actorPersonId,
@@ -444,18 +447,22 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
           reviewedById: uploaderUserId,
         },
       });
-      const attendance = await upsertPresentEventAttendance({
-        tx,
-        attendanceCategories: this.attendanceCategories,
-        input: {
-          personId: assignment.personId,
-          eventId: match.eventId,
-          attendedAt: effectiveCheckedInAt,
-          createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
-          createdById: collector.userId,
-          committedById: uploaderUserId,
-        },
-      });
+      const attendance = present
+        ? await upsertPresentEventAttendance({
+            tx,
+            attendanceCategories: this.attendanceCategories,
+            input: {
+              personId: assignment.personId,
+              eventId: match.eventId,
+              attendedAt: effectiveCheckedInAt,
+              createdByMethod: AttendanceCreationMethod.MANUAL_INPUT,
+              createdById: collector.userId,
+              committedById: uploaderUserId,
+            },
+          })
+        : await tx.eventAttendance.findUnique({
+            where: { personId_eventId: { personId: assignment.personId, eventId: match.eventId } },
+          });
       const updatedMatch = await tx.sportsMatch.updateMany({
         where: {
           id: match.id,
@@ -464,7 +471,8 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
           deletedAt: null,
         },
         data: {
-          state: match.state === SportsMatchState.SCHEDULED ? SportsMatchState.CHECK_IN : match.state,
+          state:
+            present && match.state === SportsMatchState.SCHEDULED ? SportsMatchState.CHECK_IN : match.state,
           revision: { increment: 1 },
           operationSequence: { increment: 1 },
           updatedById: uploaderPersonId,
@@ -484,9 +492,11 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
             officialAssignmentId,
             personId: assignment.personId,
             role: assignment.role,
-            attendanceStatus: attendance.status,
+            attendanceStatus: attendance?.status ?? null,
           },
-          summary: 'Presença de integrante da arbitragem registrada na partida.',
+          summary: present
+            ? 'Presença de integrante da arbitragem registrada na partida.'
+            : 'Check-in de integrante da arbitragem removido da partida.',
           scope: {
             majorEventId: match.category.tournament.majorEventId,
             eventGroupId: match.category.eventGroupId,
@@ -505,7 +515,11 @@ export abstract class SportsMatchRosterCheckInService extends SportsMatchRosterC
       return { attendance, replayed: false };
     });
     if (!result.replayed) {
-      await this.afterRosterMutation(matchId, 'OFFICIAL_CHECKED_IN', officialAssignmentId);
+      await this.afterRosterMutation(
+        matchId,
+        present ? 'OFFICIAL_CHECKED_IN' : 'OFFICIAL_CHECK_IN_REMOVED',
+        officialAssignmentId,
+      );
     }
     return result.attendance;
   }

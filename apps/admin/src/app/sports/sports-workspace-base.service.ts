@@ -84,6 +84,8 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly isEditingOfficial = computed(() => this.editingOfficial() !== null);
   readonly canReadOfficialContacts = computed(() => this.permissions.has(Permission.Person.Read));
   readonly canEditMatchPublication = computed(() => this.permissions.has(Permission.SportsMatch.Update));
+  readonly canOperateMatch = computed(() => this.permissions.has(Permission.SportsMatch.Operate));
+  readonly canReviewMatch = computed(() => this.permissions.has(Permission.SportsMatch.Review));
   readonly canAssignOfficial = computed(() => this.permissions.has(Permission.SportsOfficial.Create));
   readonly canEditOfficial = computed(() => this.permissions.has(Permission.SportsOfficial.Update));
   readonly canRemoveOfficial = computed(() => this.permissions.has(Permission.SportsOfficial.Delete));

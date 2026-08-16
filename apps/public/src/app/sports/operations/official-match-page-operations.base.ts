@@ -166,12 +166,24 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
       if (type === 'SCORE_DELTA') {
         const side = payload['side'];
         const amount = Number(payload['amount']);
+        const homeScore = match.scoreboard.homeScore + (side === 'HOME' ? amount : 0);
+        const awayScore = match.scoreboard.awayScore + (side === 'AWAY' ? amount : 0);
+        const activePeriod = match.scoreboard.activePeriod;
         return {
           ...match,
           scoreboard: {
             ...match.scoreboard,
-            homeScore: match.scoreboard.homeScore + (side === 'HOME' ? amount : 0),
-            awayScore: match.scoreboard.awayScore + (side === 'AWAY' ? amount : 0),
+            homeScore,
+            awayScore,
+            periods: match.scoreboard.periods.map((period) =>
+              period.number === activePeriod
+                ? {
+                    ...period,
+                    homeScore: period.homeScore + (side === 'HOME' ? amount : 0),
+                    awayScore: period.awayScore + (side === 'AWAY' ? amount : 0),
+                  }
+                : period,
+            ),
           },
         };
       }

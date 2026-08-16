@@ -19,7 +19,10 @@ const TOURNAMENT_FIELDS = `
     id majorEventId status registrationStartDate registrationEndDate scoringMode selfSubscriptionEnabled
     selfSubscriptionAllowNoTeam selfSubscriptionAllowNoCategory
     allowPlayerMultipleTeams shouldIssueCertificate revision finishedAt
-    majorEvent { id name startDate endDate subscriptionStartDate subscriptionEndDate }
+    majorEvent {
+      id name startDate endDate subscriptionStartDate subscriptionEndDate
+      requiresImageLicenseAgreement isPaymentRequired majorEventPrices { id tiers { id name value } }
+    }
   }
   categories {
     id tournamentId eventGroupId eventGroup { id emoji } name sport customSportName division format status
@@ -56,7 +59,11 @@ const CATEGORY_FIELDS = `
   matches {
     id eventId event { id name startDate endDate locationDescription isPubliclyListed publicationState }
     categoryId stageId venueId homeRegistrationId awayRegistrationId
-    state canonicalState reviewStatus scoreboard { homeScore awayScore }
+    state canonicalState reviewStatus
+    scoreboard {
+      homeScore awayScore activePeriod periods { number label homeScore awayScore completed }
+    }
+    winnerRegistrationId loserRegistrationId lossReason lossReasonDetail drawWillReschedule
     revision roundNumber bracketPosition groupKey notes livestreamProvider livestreamUrl
   }
   standings { id registrationId played wins draws losses scoreFor scoreAgainst points }
@@ -80,6 +87,9 @@ const TEAM_FIELDS = `
   registrations { id teamId categoryId status seed formAnswersJson revision }
   changeRequests {
     id type status requestRevision baseRevision deltaJson pendingLogoUrl reviewMessage updatedAt
+    identityClaims {
+      id type displayHint status resolvedPersonId resolvedPerson { id name } resolvedAt
+    }
   }
 `;
 
@@ -87,7 +97,11 @@ const MATCH_REVIEW_FIELDS = `
   match {
     id eventId event { id name startDate endDate locationDescription isPubliclyListed publicationState }
     categoryId stageId venueId homeRegistrationId awayRegistrationId
-    state canonicalState reviewStatus scoreboard { homeScore awayScore }
+    state canonicalState reviewStatus
+    scoreboard {
+      homeScore awayScore activePeriod periods { number label homeScore awayScore completed }
+    }
+    winnerRegistrationId loserRegistrationId lossReason lossReasonDetail drawWillReschedule
     revision roundNumber bracketPosition groupKey notes livestreamProvider livestreamUrl
   }
   actions { id type payloadJson reviewStatus offline authoredAt }
@@ -207,7 +221,11 @@ export class SportsApiService {
             match {
               id eventId event { id name startDate endDate locationDescription isPubliclyListed publicationState }
               categoryId stageId venueId homeRegistrationId awayRegistrationId
-              state canonicalState reviewStatus scoreboard { homeScore awayScore }
+              state canonicalState reviewStatus
+              scoreboard {
+                homeScore awayScore activePeriod periods { number label homeScore awayScore completed }
+              }
+              winnerRegistrationId loserRegistrationId lossReason lossReasonDetail drawWillReschedule
               revision roundNumber bracketPosition groupKey notes livestreamProvider livestreamUrl
             }
             categoryName homeTeamName awayTeamName
@@ -226,7 +244,8 @@ export class SportsApiService {
             id tournamentId applicant { personId name }
             requestedTeam { id name institution logoUrl }
             categories { id name division }
-            status participantStatus paymentStatus paymentTier imageLicenseAgreementAccepted reviewMessage createdAt
+            status participantStatus paymentStatus paymentTier noticeAcceptedAt imageLicenseAgreementAccepted
+            reviewMessage createdAt
           }
         }`,
         { tournamentId, statuses },

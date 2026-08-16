@@ -3,7 +3,10 @@ import type {
   SportsCategoryStatus,
   SportsEligibilityStatus,
   SportsFormat,
+  SportsIdentityClaimStatus,
+  SportsIdentityType,
   SportsLivestreamProvider,
+  SportsLossReason,
   SportsMatchActionType,
   SportsMatchState,
   SportsOfficialRole,
@@ -48,6 +51,12 @@ export interface SportsTournamentSummary {
     endDate: string;
     subscriptionStartDate?: string | null;
     subscriptionEndDate?: string | null;
+    requiresImageLicenseAgreement: boolean;
+    isPaymentRequired: boolean;
+    majorEventPrices?: {
+      id: string;
+      tiers: { id: string; name: string; value: number }[];
+    }[] | null;
   } | null;
 }
 
@@ -112,7 +121,7 @@ export interface SportsStageSummary {
   generationRevision: number;
 }
 
-export type SportsScoreboard = Pick<SportsScoreboardView, 'homeScore' | 'awayScore'>;
+export type SportsScoreboard = SportsScoreboardView;
 
 export interface SportsMatchSummary {
   id: string;
@@ -134,6 +143,11 @@ export interface SportsMatchSummary {
   canonicalState: SportsMatchState;
   reviewStatus: SportsReviewStatus;
   scoreboard: SportsScoreboard;
+  winnerRegistrationId?: string | null;
+  loserRegistrationId?: string | null;
+  lossReason?: SportsLossReason | null;
+  lossReasonDetail?: string | null;
+  drawWillReschedule?: boolean | null;
   revision: number;
   roundNumber?: number | null;
   bracketPosition?: number | null;
@@ -280,6 +294,15 @@ export interface SportsTeamRead {
     baseRevision: number;
     deltaJson: string;
     pendingLogoUrl?: string | null;
+    identityClaims: {
+      id: string;
+      type: SportsIdentityType;
+      displayHint: string;
+      status: SportsIdentityClaimStatus;
+      resolvedPersonId?: string | null;
+      resolvedPerson?: { id: string; name: string } | null;
+      resolvedAt?: string | null;
+    }[];
     reviewMessage?: string | null;
     updatedAt: string;
   }[];
@@ -379,6 +402,7 @@ export interface SportsApplication {
   participantStatus?: SportsParticipantStatus | null;
   paymentStatus?: SportsPaymentStatus | null;
   paymentTier?: string | null;
+  noticeAcceptedAt: string;
   imageLicenseAgreementAccepted: boolean;
   reviewMessage?: string | null;
   createdAt: string;

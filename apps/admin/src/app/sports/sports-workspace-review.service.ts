@@ -6,6 +6,16 @@ import {
   SportsCloneTournamentDialogComponent,
   type SportsCloneTournamentDialogResult,
 } from './sports-clone-tournament-dialog.component';
+import {
+  SportsApplicationEditDialogComponent,
+  type SportsApplicationEditDialogData,
+  type SportsApplicationEditDialogResult,
+} from './sports-application-edit-dialog.component';
+import {
+  SportsMatchCorrectionDialogComponent,
+  supportsEventualActionCorrection,
+  type SportsMatchCorrectionDialogResult,
+} from './sports-match-correction-dialog.component';
 import type {
   SportsApplication,
   SportsCategorySummary,
@@ -63,6 +73,54 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       );
       await this.loadApplications();
       this.notify('Inscrição revisada.');
+    });
+  }
+
+  async editApplication(application: SportsApplication): Promise<void> {
+    const tournament = this.tournamentRead();
+    if (!tournament) {
+      return;
+    }
+    const majorEvent = tournament.tournament.majorEvent;
+    const paymentTiers =
+      majorEvent?.majorEventPrices?.flatMap((price) => price.tiers).map((tier) => ({
+        name: tier.name,
+        value: tier.value,
+      })) ?? [];
+    const result = await firstValueFrom(
+      this.dialog
+        .open<
+          SportsApplicationEditDialogComponent,
+          SportsApplicationEditDialogData,
+          SportsApplicationEditDialogResult
+        >(SportsApplicationEditDialogComponent, {
+          data: {
+            application,
+            teams: tournament.teams.filter((team) => team.status === 'ACTIVE'),
+            categories: tournament.categories,
+            teamSummaries: tournament.teamSummaries,
+            paymentTiers,
+            allowNoTeam: tournament.tournament.selfSubscriptionAllowNoTeam,
+            allowNoCategory: tournament.tournament.selfSubscriptionAllowNoCategory,
+            paymentRequired: majorEvent?.isPaymentRequired === true,
+          },
+          maxWidth: 'min(96vw, 42rem)',
+        })
+        .afterClosed(),
+    );
+    if (!result) {
+      return;
+    }
+    await this.run('Não foi possível corrigir a inscrição.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>(
+          'updateSportsPlayerApplicationReviewData',
+          'SportsPlayerApplicationAdminUpdateInput',
+          { applicationId: application.id, ...result },
+        ),
+      );
+      await this.loadApplications();
+      this.notify('Dados da inscrição corrigidos.');
     });
   }
 
@@ -138,6 +196,51 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     });
   }
 
+  supportsActionCorrection(item: SportsPendingMatchAction): boolean {
+    return supportsEventualActionCorrection(item.action.type);
+  }
+
+  async correctAction(item: SportsPendingMatchAction): Promise<void> {
+    if (!this.supportsActionCorrection(item)) {
+      return;
+    }
+    const result = (await firstValueFrom(
+      this.dialog
+        .open(SportsMatchCorrectionDialogComponent, {
+          data: {
+            mode: 'ACTION',
+            actionType: item.action.type,
+            payloadJson: item.action.payloadJson,
+            homeRegistrationId: item.match.homeRegistrationId ?? null,
+            awayRegistrationId: item.match.awayRegistrationId ?? null,
+            homeTeamName: item.homeTeamName,
+            awayTeamName: item.awayTeamName,
+          },
+          maxWidth: 'min(96vw, 42rem)',
+        })
+        .afterClosed(),
+    )) as SportsMatchCorrectionDialogResult | undefined;
+    if (!result) {
+      return;
+    }
+    const selectedMatch = this.matchReview()?.match;
+    await this.run('Não foi possível corrigir a ação.', async () => {
+      await firstValueFrom(
+        this.api.reviewMatchAction({
+          actionId: item.action.id,
+          decision: 'APPROVED',
+          reviewMessage: null,
+          correctedPayloadJson: result.payloadJson,
+        }),
+      );
+      await this.loadPendingMatchActions();
+      if (selectedMatch?.id === item.match.id) {
+        await this.selectMatch(selectedMatch, { navigate: false });
+      }
+      this.notify('Ação corrigida e aprovada.');
+    });
+  }
+
   async openMatchFromReview(item: SportsPendingMatchAction): Promise<void> {
     this.activeArea.set('matches');
     const category = this.tournamentRead()?.categories.find((candidate) => candidate.id === item.match.categoryId);
@@ -195,14 +298,6 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
       this.navigateToArea('overview');
       this.notify('Torneio duplicado e aberto para revisão.');
     });
-  }
-
-  teamNameForRegistration(registrationId?: string | null): string {
-    if (!registrationId) {
-      return 'A definir';
-    }
-    const registration = this.categoryRead()?.registrations.find((item) => item.id === registrationId);
-    return this.tournamentRead()?.teams.find((team) => team.id === registration?.teamId)?.name ?? 'Equipe removida';
   }
 
   teamModalitiesLabel(teamId: string): string {

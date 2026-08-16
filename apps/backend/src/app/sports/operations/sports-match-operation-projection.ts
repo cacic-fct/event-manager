@@ -80,11 +80,6 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
       approvedOnly: true,
     });
     const reviewStatus = this.resolveMatchReviewStatus(match.actions);
-    const terminalStates: SportsMatchState[] = [
-      SportsMatchState.FINISHED,
-      SportsMatchState.DRAW,
-      SportsMatchState.CANCELED,
-    ];
     const consolidatedOccurrences = match.actions
       .filter(
         (action) =>
@@ -115,7 +110,7 @@ export abstract class SportsMatchOperationProjection extends SportsMatchOperatio
         timerStartedAt: provisional.timerStartedAt,
         timerPausedAt: provisional.timerPausedAt,
         elapsedBeforePauseMs: provisional.elapsedBeforePauseMs,
-        ...(terminalStates.includes(provisional.state) ? { occurrences: this.toJson(consolidatedOccurrences) } : {}),
+        occurrences: this.toJson(consolidatedOccurrences),
         updatedById: actorId,
       },
       include: {

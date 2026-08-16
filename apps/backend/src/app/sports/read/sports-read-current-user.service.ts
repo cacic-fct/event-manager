@@ -1,7 +1,9 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import {
   SportsCategoryStatus,
+  SportsMatchActionType,
   SportsRegistrationStatus,
   SportsRosterEntryStatus,
   SportsRosterStatus,
@@ -287,6 +289,7 @@ export class SportsReadCurrentUserService {
                       select: {
                         participant: {
                           select: {
+                            personId: true,
                             person: {
                               select: { name: true },
                             },
@@ -302,11 +305,26 @@ export class SportsReadCurrentUserService {
           },
           orderBy: [{ registrationId: 'asc' }, { id: 'asc' }],
         },
+        actions: {
+          where: { type: SportsMatchActionType.CHECK_IN },
+          orderBy: { sequence: 'asc' },
+          select: { payload: true },
+        },
       },
     });
     if (!match) {
       throw new NotFoundException(`Sports match ${matchId} was not found.`);
     }
+    const attendanceSyncKeys = new Map<string, string>();
+    const attendanceSyncKey = (personId: string): string => {
+      const existing = attendanceSyncKeys.get(personId);
+      if (existing) {
+        return existing;
+      }
+      const key = randomUUID();
+      attendanceSyncKeys.set(personId, key);
+      return key;
+    };
     const assignments = await this.prisma.sportsOfficialAssignment.findMany({
       where: {
         tournamentId: match.category.tournament.id,
@@ -338,6 +356,15 @@ export class SportsReadCurrentUserService {
       },
       orderBy: [{ role: 'asc' }, { assignedAt: 'asc' }, { id: 'asc' }],
     });
+    const rosterEntryPersonIdById = new Map(
+      match.rosters.flatMap((roster) =>
+        roster.entries.map((entry) => [
+          entry.id,
+          entry.registrationMember.teamMember.participant.personId,
+        ] as const),
+      ),
+    );
+    const checkInAtByPersonId = this.checkInAtByPersonId(match.actions, rosterEntryPersonIdById);
     const officialRoleOrder: Record<string, number> = {
       REFEREE: 0,
       INTERMEDIATOR: 1,
@@ -359,12 +386,18 @@ export class SportsReadCurrentUserService {
         }
         seenOfficials.add(key);
         const attendance = assignment.person.attendances[0];
+        const hasMatchCheckIn = checkInAtByPersonId.has(assignment.person.id);
         return [
           {
             id: assignment.id,
+            attendanceSyncKey: attendanceSyncKey(assignment.person.id),
             name: toSportsPublicOfficialName(assignment.person.name),
             role: assignment.role,
-            checkedInAt: attendance?.status === 'PRESENT' ? attendance.attendedAt : null,
+            checkedInAt: hasMatchCheckIn
+              ? (checkInAtByPersonId.get(assignment.person.id) ?? null)
+              : attendance?.status === 'PRESENT'
+                ? attendance.attendedAt
+                : null,
           },
         ];
       })
@@ -389,18 +422,23 @@ export class SportsReadCurrentUserService {
         revision: roster.revision,
         status: roster.status,
         team: this.publicReader.mapPublicTeam(roster.registration.team),
-        entries: roster.entries.map((entry) => ({
-          id: entry.id,
-          name: toSportsPublicPlayerName(entry.registrationMember.teamMember.participant.person.name),
-          role: entry.role,
-          status: entry.status,
-          checkedInAt: entry.checkedInAt,
-          shirtNumber:
-            match.category.athleteIdentifierMode === 'SHIRT_NUMBER'
-              ? (entry.shirtNumber ?? entry.registrationMember.shirtNumber)
-              : null,
-          roleMetadataJson: entry.roleMetadata === null ? null : this.mapper.serializeJson(entry.roleMetadata),
-        })),
+        entries: roster.entries.map((entry) => {
+          const personId = entry.registrationMember.teamMember.participant.personId;
+          const hasMatchCheckIn = checkInAtByPersonId.has(personId);
+          return {
+            id: entry.id,
+            attendanceSyncKey: attendanceSyncKey(personId),
+            name: toSportsPublicPlayerName(entry.registrationMember.teamMember.participant.person.name),
+            role: entry.role,
+            status: entry.status,
+            checkedInAt: hasMatchCheckIn ? (checkInAtByPersonId.get(personId) ?? null) : entry.checkedInAt,
+            shirtNumber:
+              match.category.athleteIdentifierMode === 'SHIRT_NUMBER'
+                ? (entry.shirtNumber ?? entry.registrationMember.shirtNumber)
+                : null,
+            roleMetadataJson: entry.roleMetadata === null ? null : this.mapper.serializeJson(entry.roleMetadata),
+          };
+        }),
       })),
     };
   }
@@ -417,6 +455,41 @@ export class SportsReadCurrentUserService {
       return 1;
     }
     return 2;
+  }
+
+  private checkInAtByPersonId(
+    actions: Array<{ payload: unknown }> | undefined,
+    rosterEntryPersonIdById: ReadonlyMap<string, string>,
+  ): Map<string, Date | null> {
+    const checkIns = new Map<string, Date | null>();
+    for (const action of actions ?? []) {
+      if (!action.payload || typeof action.payload !== 'object' || Array.isArray(action.payload)) {
+        continue;
+      }
+      const payload = action.payload as Record<string, unknown>;
+      const kind = payload['kind'];
+      let personId: string | undefined;
+      if (kind === 'OFFICIAL_CHECK_IN' && typeof payload['personId'] === 'string') {
+        personId = payload['personId'];
+      } else if (kind === 'ROSTER_ENTRY_CHECK_IN' && typeof payload['rosterEntryId'] === 'string') {
+        personId = rosterEntryPersonIdById.get(payload['rosterEntryId']);
+      } else {
+        continue;
+      }
+      if (!personId) {
+        continue;
+      }
+      if (payload['present'] === false) {
+        checkIns.set(personId, null);
+        continue;
+      }
+      const checkedInAt = typeof payload['checkedInAt'] === 'string' ? new Date(payload['checkedInAt']) : null;
+      checkIns.set(
+        personId,
+        checkedInAt && !Number.isNaN(checkedInAt.getTime()) ? checkedInAt : null,
+      );
+    }
+    return checkIns;
   }
 
   async currentUserLineup(matchId: string, registrationId: string): Promise<CurrentUserSportsLineupRead> {

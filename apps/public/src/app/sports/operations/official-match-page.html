@@ -316,9 +316,9 @@
           type="button"
           [class.checked-in]="official.checkedIn"
           [attr.aria-label]="
-            (official.checkedIn ? 'Presença já registrada de ' : 'Confirmar presença de ') + official.name
+            (official.checkedIn ? 'Remover presença de ' : 'Confirmar presença de ') + official.name
           "
-          [disabled]="busy() || !canEditCheckIn() || official.checkedIn"
+          [disabled]="busy() || !canEditCheckIn()"
           (click)="toggleOfficialCheckIn(official)">
           <mat-icon>{{ official.checkedIn ? 'check_circle' : 'gavel' }}</mat-icon>
           <span>{{ official.name }}<small>{{ officialRoleDetail(official) }}</small></span>

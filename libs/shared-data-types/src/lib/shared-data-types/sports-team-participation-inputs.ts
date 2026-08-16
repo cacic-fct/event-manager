@@ -335,3 +335,18 @@ export class SportsPlayerApplicationReviewInput {
   @Field(() => String, { nullable: true })
   reviewMessage?: string | null;
 }
+
+@InputType()
+export class SportsPlayerApplicationAdminUpdateInput {
+  @Field(() => String)
+  applicationId!: string;
+
+  @Field(() => String, { nullable: true })
+  requestedTeamId?: string | null;
+
+  @Field(() => [String])
+  categoryIds!: string[];
+
+  @Field(() => String, { nullable: true })
+  paymentTier?: string | null;
+}

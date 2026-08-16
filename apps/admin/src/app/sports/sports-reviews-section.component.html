@@ -24,7 +24,25 @@
         @if (application.paymentStatus) {
           <small>Pagamento: {{ workspace.statusLabel(application.paymentStatus) }}</small>
         }
+        <div class="application-review-details">
+          @if (application.paymentTier) {
+            <small>Faixa escolhida: {{ application.paymentTier }}</small>
+          }
+          <small>Aviso de escalação aceito em {{ application.noticeAcceptedAt | date: 'short' }}</small>
+          @if (workspace.tournamentRead()?.tournament?.majorEvent?.requiresImageLicenseAgreement) {
+            <small>
+              Licença de imagem: {{ application.imageLicenseAgreementAccepted ? 'aceita' : 'não aceita' }}
+            </small>
+          }
+        </div>
         <div class="review-actions">
+          <button
+            mat-button
+            type="button"
+            [disabled]="workspace.loading()"
+            (click)="workspace.editApplication(application)">
+            Corrigir dados
+          </button>
           <button
             mat-button
             type="button"
@@ -86,6 +104,24 @@
             </div>
           } @else {
             <pre>{{ request.deltaJson }}</pre>
+          }
+          @if (request.identityClaims.length) {
+            <section class="identity-claim-list" aria-label="Identificações informadas pelo representante">
+              <strong>Identificações protegidas</strong>
+              @for (claim of request.identityClaims; track claim.id) {
+                <div class="identity-claim-row">
+                  <div>
+                    <span>{{ identityTypeLabel(claim.type) }}</span>
+                    <b>{{ claim.displayHint }}</b>
+                    @if (claim.resolvedPerson; as person) {
+                      <small>Vinculada a {{ person.name }}</small>
+                    }
+                  </div>
+                  <span class="state-label">{{ identityStatusLabel(claim.status) }}</span>
+                </div>
+              }
+              <small>O valor completo permanece protegido; a resolução ocorre no servidor durante a aprovação.</small>
+            </section>
           }
           <div class="review-actions">
             <button
@@ -164,6 +200,15 @@
               (click)="workspace.reviewAction(item.action.id, 'CHANGES_REQUESTED')">
               Pedir ajuste
             </button>
+            @if (workspace.supportsActionCorrection(item)) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="workspace.loading()"
+                (click)="workspace.correctAction(item)">
+                Corrigir e aprovar
+              </button>
+            }
             <button
               mat-flat-button
               type="button"

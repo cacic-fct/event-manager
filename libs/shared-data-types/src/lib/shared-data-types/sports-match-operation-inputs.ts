@@ -143,6 +143,9 @@ export class SportsOfficialCheckInInput {
   @Field(() => Date, { nullable: true })
   checkedInAt?: Date;
 
+  @Field(() => Boolean, { nullable: true, description: 'Whether the official is present.' })
+  present?: boolean;
+
   @Field(() => Boolean, { nullable: true })
   offline?: boolean;
 
@@ -277,6 +280,15 @@ export class SportsMatchActionReviewInput {
 
   @Field(() => String, { nullable: true })
   correctedPayloadJson?: string | null;
+}
+
+@InputType()
+export class SportsMatchOccurrenceCorrectionInput {
+  @Field(() => String)
+  actionId!: string;
+
+  @Field(() => String)
+  correctedPayloadJson!: string;
 }
 
 @InputType()

@@ -1,6 +1,8 @@
 import {
   SportsBracketGenerateInput,
   SportsMatchActionReviewInput,
+  SportsMatchOccurrenceCorrectionInput,
+  SportsPlayerApplicationAdminUpdateInput,
   SportsPlayerApplicationReviewInput,
   SportsTeamChangeReviewInput,
 } from '@cacic-fct/shared-data-types';
@@ -104,6 +106,35 @@ export class SportsReviewMutationsResolver extends SportsMutationsResolverSuppor
     ).id;
   }
 
+  @Mutation(() => String, { name: 'updateSportsPlayerApplicationReviewData' })
+  @RequirePermissions(Permission.SportsRegistration.Approve)
+  async updatePlayerApplicationReviewData(
+    @Args('input', { type: () => SportsPlayerApplicationAdminUpdateInput })
+    input: SportsPlayerApplicationAdminUpdateInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    const actor = this.authenticated(context);
+    await this.policy.assertPermissions(actor, [Permission.SportsRegistration.Approve], {
+      sportsPlayerApplicationId: input.applicationId,
+    });
+    await this.assertPlayerApplicationReviewMutable(input.applicationId, actor);
+    return (
+      await this.publishMutation(
+        'APPLICATION',
+        this.applications.updatePendingApplication(
+          input.applicationId,
+          {
+            requestedTeamId: input.requestedTeamId,
+            categoryIds: input.categoryIds,
+            paymentTier: input.paymentTier,
+          },
+          actor,
+        ),
+        false,
+      )
+    ).id;
+  }
+
   @Mutation(() => String, { name: 'reviewSportsMatchAction' })
   @RequirePermissions(Permission.SportsMatch.Review)
   async reviewMatchAction(
@@ -134,6 +165,27 @@ export class SportsReviewMutationsResolver extends SportsMutationsResolverSuppor
           ? this.parseJson(input.correctedPayloadJson, 'correção da ação')
           : undefined,
       })
+    ).id;
+  }
+
+  @Mutation(() => String, { name: 'correctAdminSportsMatchOccurrence' })
+  @RequirePermissions(Permission.SportsMatch.Review)
+  async correctMatchOccurrence(
+    @Args('input', { type: () => SportsMatchOccurrenceCorrectionInput })
+    input: SportsMatchOccurrenceCorrectionInput,
+    @Context() context: GraphqlContext,
+  ): Promise<string> {
+    const actor = this.authenticated(context);
+    await this.policy.assertPermissions(actor, [Permission.SportsMatch.Review], {
+      sportsMatchActionId: input.actionId,
+    });
+    await this.assertMatchActionReviewMutable(input.actionId, actor);
+    return (
+      await this.operations.correctApprovedOccurrence(
+        input.actionId,
+        this.parseJson(input.correctedPayloadJson, 'correção da ocorrência'),
+        actor,
+      )
     ).id;
   }
 

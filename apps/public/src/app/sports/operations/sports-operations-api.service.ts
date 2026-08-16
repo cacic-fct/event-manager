@@ -80,9 +80,9 @@ export class SportsOperationsApiService {
           rosters {
             id registrationId revision status
             team { id name institution logoUrl }
-            entries { id name role status checkedInAt shirtNumber }
+            entries { id attendanceSyncKey name role status checkedInAt shirtNumber }
           }
-          officials { id name role checkedInAt }
+          officials { id attendanceSyncKey name role checkedInAt }
         }
       }`,
       { matchId },
@@ -145,6 +145,7 @@ export class SportsOperationsApiService {
           clientId: input.clientId,
           officialAssignmentId: input.officialAssignmentId,
           checkedInAt: input.checkedInAt,
+          ...(input.present === undefined ? {} : { present: input.present }),
           offline: input.offline,
           ...(input.collectorPersonId === undefined ? {} : { collectorPersonId: input.collectorPersonId }),
           ...(input.collectorCredential === undefined ? {} : { collectorCredential: input.collectorCredential }),

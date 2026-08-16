@@ -1,12 +1,177 @@
 import { firstValueFrom } from 'rxjs';
 import type { Person } from '@cacic-fct/event-manager-admin-contracts';
-import type { SportsMatchSummary, SportsOfficialSummary, SportsVenueSummary } from './sports.models';
+import type { SportsMatchReview, SportsMatchSummary, SportsOfficialSummary, SportsVenueSummary } from './sports.models';
 import { toIsoDateOrUndefined, toLocalDate } from './sports-workspace-form.utils';
 import { SportsWorkspaceTeamService } from './sports-workspace-team.service';
+import {
+  SportsMatchCorrectionDialogComponent,
+  type SportsMatchCorrectionDialogResult,
+} from './sports-match-correction-dialog.component';
 
 type SportsOfficialScope = 'MATCH' | 'CATEGORY' | 'TOURNAMENT';
 
 export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamService {
+  matchOccurrences(): SportsMatchReview['actions'] {
+    return this.matchReview()?.actions.filter((action) => action.type === 'OCCURRENCE') ?? [];
+  }
+
+  occurrenceValue(action: SportsMatchReview['actions'][number], key: 'kind' | 'note'): string {
+    try {
+      const payload: unknown = JSON.parse(action.payloadJson);
+      if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+        const value = (payload as Record<string, unknown>)[key];
+        return typeof value === 'string' ? value : '';
+      }
+    } catch {
+      return '';
+    }
+    return '';
+  }
+
+  canCorrectConsolidatedOccurrence(action: SportsMatchReview['actions'][number]): boolean {
+    const state = this.matchReview()?.match.state;
+    return Boolean(
+      this.canReviewMatch() &&
+        action.type === 'OCCURRENCE' &&
+        action.reviewStatus === 'APPROVED' &&
+        (state === 'FINISHED' || state === 'DRAW' || state === 'CANCELED'),
+    );
+  }
+
+  async correctConsolidatedOccurrence(action: SportsMatchReview['actions'][number]): Promise<void> {
+    const match = this.matchReview()?.match;
+    if (!match || !this.canCorrectConsolidatedOccurrence(action)) {
+      return;
+    }
+    const result = (await firstValueFrom(
+      this.dialog
+        .open(SportsMatchCorrectionDialogComponent, {
+          data: {
+            mode: 'HISTORY',
+            actionType: 'OCCURRENCE',
+            payloadJson: action.payloadJson,
+            homeRegistrationId: match.homeRegistrationId ?? null,
+            awayRegistrationId: match.awayRegistrationId ?? null,
+            homeTeamName: this.teamNameForRegistration(match.homeRegistrationId),
+            awayTeamName: this.teamNameForRegistration(match.awayRegistrationId),
+          },
+          maxWidth: 'min(96vw, 42rem)',
+        })
+        .afterClosed(),
+    )) as SportsMatchCorrectionDialogResult | undefined;
+    if (!result) {
+      return;
+    }
+    await this.run('Não foi possível corrigir a ocorrência.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('correctAdminSportsMatchOccurrence', 'SportsMatchOccurrenceCorrectionInput', {
+          actionId: action.id,
+          correctedPayloadJson: result.payloadJson,
+        }),
+      );
+      await this.selectMatch(match, { navigate: false });
+      this.notify('Ocorrência corrigida no histórico da partida.');
+    });
+  }
+
+  teamNameForRegistration(registrationId?: string | null): string {
+    if (!registrationId) {
+      return 'A definir';
+    }
+    const registration = this.categoryRead()?.registrations.find((item) => item.id === registrationId);
+    return this.tournamentRead()?.teams.find((team) => team.id === registration?.teamId)?.name ?? 'Equipe removida';
+  }
+
+  canCorrectConsolidatedResult(): boolean {
+    const match = this.matchReview()?.match;
+    return Boolean(
+      this.canOperateMatch() &&
+        match &&
+        (match.state === 'FINISHED' || match.state === 'DRAW') &&
+        match.homeRegistrationId &&
+        match.awayRegistrationId,
+    );
+  }
+
+  async correctConsolidatedResult(): Promise<void> {
+    const match = this.matchReview()?.match;
+    if (!match || !this.canCorrectConsolidatedResult()) {
+      return;
+    }
+    const payload = {
+      draw: match.state === 'DRAW',
+      drawWillReschedule: match.drawWillReschedule ?? false,
+      winnerRegistrationId: match.winnerRegistrationId ?? undefined,
+      loserRegistrationId: match.loserRegistrationId ?? undefined,
+      lossReason: match.lossReason ?? 'SCORE',
+      lossReasonDetail: match.lossReasonDetail ?? undefined,
+      scoreboard: {
+        home: match.scoreboard.homeScore,
+        away: match.scoreboard.awayScore,
+        activePeriodNumber: match.scoreboard.activePeriod ?? undefined,
+        periods: match.scoreboard.periods.map((period) => ({
+          number: period.number,
+          label: period.label,
+          home: period.homeScore,
+          away: period.awayScore,
+          closed: period.completed,
+        })),
+      },
+    };
+    const result = (await firstValueFrom(
+      this.dialog
+        .open(SportsMatchCorrectionDialogComponent, {
+          data: {
+            mode: 'RESULT',
+            actionType: 'FINALIZE',
+            payloadJson: JSON.stringify(payload),
+            homeRegistrationId: match.homeRegistrationId ?? null,
+            awayRegistrationId: match.awayRegistrationId ?? null,
+            homeTeamName: this.teamNameForRegistration(match.homeRegistrationId),
+            awayTeamName: this.teamNameForRegistration(match.awayRegistrationId),
+          },
+          maxWidth: 'min(96vw, 42rem)',
+        })
+        .afterClosed(),
+    )) as SportsMatchCorrectionDialogResult | undefined;
+    if (!result) {
+      return;
+    }
+    const authoredAt = new Date().toISOString();
+    await this.run('Não foi possível corrigir o resultado.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string[]>('commitAdminSportsMatchActions', 'CommitSportsMatchActionsInput', {
+          actions: [
+            {
+              clientId: this.matchActionClientId('reset'),
+              matchId: match.id,
+              baseRevision: match.revision,
+              type: 'RESET',
+              payloadJson: '{}',
+              authoredAt,
+              offline: false,
+            },
+            {
+              clientId: this.matchActionClientId('finalize'),
+              matchId: match.id,
+              baseRevision: match.revision + 1,
+              type: 'FINALIZE',
+              payloadJson: result.payloadJson,
+              authoredAt,
+              offline: false,
+            },
+          ],
+        }),
+      );
+      await this.selectMatch(match, { navigate: false });
+      this.notify('Resultado corrigido e classificação recalculada.');
+    });
+  }
+
+  private matchActionClientId(kind: string): string {
+    return `admin-${kind}-${crypto.randomUUID()}`;
+  }
+
   async selectMatch(match: SportsMatchSummary, options: { navigate?: boolean } = {}): Promise<void> {
     this.cancelOfficialEdit();
     const selectionRevision = this.beginSelection();

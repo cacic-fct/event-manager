@@ -41,6 +41,8 @@ describe('sports GraphQL schema', () => {
     const credentialType = printed.match(/type SportsOfflineCollectorCredential \{[^}]+\}/)?.[0] ?? '';
     const eligibleLineupMemberType =
       printed.match(/type CurrentUserSportsEligibleLineupMemberRead \{[^}]+\}/)?.[0] ?? '';
+    const currentUserRosterEntryType = printed.match(/type CurrentUserSportsRosterEntryRead \{[^}]+\}/)?.[0] ?? '';
+    const currentUserOfficialType = printed.match(/type CurrentUserSportsOfficialRead \{[^}]+\}/)?.[0] ?? '';
     const rosterCheckInInput = printed.match(/input SportsRosterCheckInInput \{[^}]+\}/)?.[0] ?? '';
     const officialCheckInInput = printed.match(/input SportsOfficialCheckInInput \{[^}]+\}/)?.[0] ?? '';
     const scannerCheckInInput = printed.match(/input SportsRosterScannerCheckInInput \{[^}]+\}/)?.[0] ?? '';
@@ -57,9 +59,12 @@ describe('sports GraphQL schema', () => {
     expect(credentialType).toContain('collectorPersonId: String!');
     expect(credentialType).toContain('issuedAt: DateTime!');
     expect(eligibleLineupMemberType).toContain('shirtNumber: String');
+    expect(currentUserRosterEntryType).toContain('attendanceSyncKey: String!');
+    expect(currentUserOfficialType).toContain('attendanceSyncKey: String!');
     expect(rosterCheckInInput).toContain('collectorPersonId: String');
     expect(rosterCheckInInput).toContain('collectorCredential: String');
     expect(officialCheckInInput).toContain('officialAssignmentId: String!');
+    expect(officialCheckInInput).toContain('present: Boolean');
     expect(officialCheckInInput).toContain('collectorCredential: String');
     expect(scannerCheckInInput).toContain('collectorPersonId: String');
     expect(scannerCheckInInput).toContain('collectorCredential: String');

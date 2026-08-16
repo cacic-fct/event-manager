@@ -69,11 +69,17 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     if ((score ?? 0) + amount < 0) {
       return;
     }
-    await this.dispatch('SCORE_DELTA', {
+    const changed = await this.dispatch('SCORE_DELTA', {
       side: side.toUpperCase(),
       amount,
       periodNumber: this.match()?.scoreboard.activePeriod ?? undefined,
     });
+    if (changed && this.finalizeOpen()) {
+      this.finalScoreForm.patchValue({
+        homeScore: this.scoreFor('home'),
+        awayScore: this.scoreFor('away'),
+      });
+    }
   }
 
   async rollPeriod(): Promise<void> {
@@ -188,19 +194,23 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
       return;
     }
     const present = !entry.checkedIn;
+    const checkedInAt = new Date().toISOString();
     this.busy.set(true);
     try {
       const result = await this.offline.dispatchCheckIn({
         clientId: this.uuid(),
         matchId: this.matchId,
         rosterEntryId: entry.id,
-        checkedInAt: new Date().toISOString(),
+        checkedInAt,
         offline: false,
         present,
       });
-      this.checkInEntries.update((entries) =>
-        entries.map((candidate) => (candidate.id === entry.id ? { ...candidate, checkedIn: present } : candidate)),
-      );
+      this.syncCheckInViews({
+        attendanceSyncKey: entry.attendanceSyncKey,
+        checkedInAt,
+        present,
+        rosterEntryId: entry.id,
+      });
       this.revision.update((revision) => revision + 1);
       this.snackbar.open(
         result === 'queued'
@@ -219,9 +229,10 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
   }
 
   async toggleOfficialCheckIn(official: OfficialCheckInEntry): Promise<void> {
-    if (this.busy() || !this.canEditCheckIn() || official.checkedIn) {
+    if (this.busy() || !this.canEditCheckIn()) {
       return;
     }
+    const present = !official.checkedIn;
     this.busy.set(true);
     const checkedInAt = new Date().toISOString();
     try {
@@ -231,22 +242,21 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
         officialAssignmentId: official.id,
         checkedInAt,
         offline: false,
+        present,
       });
-      this.match.update((match) =>
-        match
-          ? {
-              ...match,
-              officials: match.officials.map((candidate) =>
-                candidate.id === official.id ? { ...candidate, checkedInAt } : candidate,
-              ),
-            }
-          : match,
-      );
+      this.syncCheckInViews({
+        attendanceSyncKey: official.attendanceSyncKey,
+        checkedInAt,
+        officialAssignmentId: official.id,
+        present,
+      });
       this.revision.update((revision) => revision + 1);
       this.snackbar.open(
         result === 'queued'
-          ? `A presença de ${official.name} foi salva neste dispositivo e será sincronizada.`
-          : `${official.name} confirmado na partida.`,
+          ? `A correção de ${official.name} foi salva neste dispositivo e será sincronizada.`
+          : present
+            ? `${official.name} confirmado na partida.`
+            : `Presença de ${official.name} removida.`,
         'Fechar',
         { duration: 3500 },
       );
@@ -255,6 +265,46 @@ export abstract class OfficialMatchPageControls extends OfficialMatchPageState {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  private syncCheckInViews(options: {
+    attendanceSyncKey?: string | null;
+    checkedInAt: string;
+    officialAssignmentId?: string;
+    present: boolean;
+    rosterEntryId?: string;
+  }): void {
+    const checkedInAt = options.present ? options.checkedInAt : null;
+    const matchesSyncKey = (candidateKey?: string | null): boolean =>
+      options.attendanceSyncKey != null && candidateKey === options.attendanceSyncKey;
+
+    this.checkInEntries.update((entries) =>
+      entries.map((entry) =>
+        entry.id === options.rosterEntryId || matchesSyncKey(entry.attendanceSyncKey)
+          ? { ...entry, checkedIn: options.present }
+          : entry,
+      ),
+    );
+    this.match.update((match) =>
+      match
+        ? {
+            ...match,
+            officials: match.officials.map((official) =>
+              official.id === options.officialAssignmentId || matchesSyncKey(official.attendanceSyncKey)
+                ? { ...official, checkedInAt }
+                : official,
+            ),
+            rosters: match.rosters.map((roster) => ({
+              ...roster,
+              entries: roster.entries.map((entry) =>
+                entry.id === options.rosterEntryId || matchesSyncKey(entry.attendanceSyncKey)
+                  ? { ...entry, checkedInAt }
+                  : entry,
+              ),
+            })),
+          }
+        : match,
+    );
   }
 
   requestCheckInEdit(): void {

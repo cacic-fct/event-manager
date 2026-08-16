@@ -223,6 +223,34 @@ describe('SportsMatchOperationService offline command log', () => {
     expect(eventEffects.syncEvent).not.toHaveBeenCalled();
   });
 
+  it('persists a provisional occurrence in the operational match projection', async () => {
+    await service.commit(
+      [
+        sportsMatchCommand({
+          clientId: 'occurrence_client_0001',
+          type: SportsMatchActionType.OCCURRENCE,
+          payload: {
+            occurrenceId: 'occurrence-1',
+            kind: 'GENERAL',
+            note: 'Atendimento registrado na lateral da quadra.',
+          },
+        }),
+      ],
+      sportsOfficialActor(),
+    );
+
+    expect(tx.state.occurrences).toEqual([
+      expect.objectContaining({
+        payload: {
+          occurrenceId: 'occurrence-1',
+          kind: 'GENERAL',
+          note: 'Atendimento registrado na lateral da quadra.',
+        },
+        reviewStatus: SportsReviewStatus.PENDING,
+      }),
+    ]);
+  });
+
   it('returns the committed actions when post-commit effects fail', async () => {
     mutationEvents.publishMatchProjection.mockRejectedValueOnce(new Error('broker unavailable'));
     realtime.publishStructuralInvalidations.mockRejectedValueOnce(new Error('redis unavailable'));
@@ -323,6 +351,56 @@ describe('SportsMatchOperationService offline command log', () => {
       }),
     );
   });
+
+  it('allows an administrator to correct an approved occurrence while preserving its action identity', async () => {
+    const occurrence = {
+      id: 'action-occurrence-1',
+      clientId: 'occurrence_client_1',
+      matchId: 'match-1',
+      payloadHash: 'hash',
+      baseRevision: 1,
+      sequence: 1,
+      type: SportsMatchActionType.OCCURRENCE,
+      payload: { occurrenceId: 'occ-1', kind: 'GENERAL', note: 'Registro original' },
+      reviewStatus: SportsReviewStatus.APPROVED,
+      scorerRosterEntryId: null,
+      actorPersonId: 'official-person-1',
+      actorUserId: 'official-user-1',
+      actorRole: 'REFEREE',
+      authoredAt: new Date('2026-07-29T11:55:00.000Z'),
+      offline: false,
+      reviewedAt: SPORTS_TEST_NOW,
+      reviewedById: 'admin-1',
+      reviewMessage: null,
+      createdAt: SPORTS_TEST_NOW,
+      updatedAt: SPORTS_TEST_NOW,
+      match: { ...tx.state, category: tx.state.category },
+    };
+    tx.actions.push(occurrence);
+    tx.actionById.set(occurrence.id, occurrence);
+    const actor = { sub: 'admin-2', token: 'token', permissionSet: new Set<string>() } as never;
+
+    await service.correctApprovedOccurrence(
+      occurrence.id,
+      { occurrenceId: 'occ-1', kind: 'INJURY', note: 'Atendimento corrigido' },
+      actor,
+    );
+
+    expect(tx.sportsMatchAction.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: occurrence.id },
+        data: expect.objectContaining({
+          reviewStatus: SportsReviewStatus.APPROVED,
+          payload: { occurrenceId: 'occ-1', kind: 'INJURY', note: 'Atendimento corrigido' },
+          reviewedById: 'admin-2',
+        }),
+      }),
+    );
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({ operation: 'UPDATE' }),
+      tx,
+    );
+  });
 });
 
 function createTransaction() {
@@ -338,6 +416,7 @@ function createTransaction() {
     homeRegistrationId: string;
     awayRegistrationId: string;
     scoreboard: object;
+    occurrences?: unknown;
     category: {
       eventGroupId: string;
       maximumPeriods: number;

@@ -876,6 +876,89 @@ describe('SportsWorkspaceService operations', () => {
       expect(workspace.pendingMatchActions()).toEqual([]);
     });
 
+    it('approves a supported pending action with a structured corrected payload', async () => {
+      const item = createAdminSportsPendingMatchActions()[0];
+      dialog.open.mockReturnValue({
+        afterClosed: () => of({ payloadJson: '{"side":"AWAY","amount":2}' }),
+      });
+      api.reviewMatchAction.mockReturnValue(of(item.action.id));
+      api.matchActionReviewQueue.mockReturnValue(of([]));
+
+      await workspace.correctAction(item);
+
+      expect(api.reviewMatchAction).toHaveBeenCalledWith({
+        actionId: item.action.id,
+        decision: 'APPROVED',
+        reviewMessage: null,
+        correctedPayloadJson: '{"side":"AWAY","amount":2}',
+      });
+      expect(workspace.pendingMatchActions()).toEqual([]);
+    });
+
+    it('corrects a completed result through audited reset and finalize actions', async () => {
+      const review = createAdminSportsMatchReview();
+      review.match.state = 'FINISHED';
+      review.match.canonicalState = 'FINISHED';
+      workspace.matchReview.set(review);
+      workspace.categoryRead.set(createAdminSportsCategoryRead());
+      dialog.open.mockReturnValue({
+        afterClosed: () => of({ payloadJson: '{"draw":false,"scoreboard":{"home":3,"away":1}}' }),
+      });
+      api.mutate.mockReturnValue(of(['reset-id', 'finalize-id']));
+      vi.spyOn(workspace, 'selectMatch').mockResolvedValue();
+
+      await workspace.correctConsolidatedResult();
+
+      expect(api.mutate).toHaveBeenCalledWith(
+        'commitAdminSportsMatchActions',
+        'CommitSportsMatchActionsInput',
+        expect.objectContaining({
+          actions: [
+            expect.objectContaining({ matchId: review.match.id, baseRevision: review.match.revision, type: 'RESET' }),
+            expect.objectContaining({
+              matchId: review.match.id,
+              baseRevision: review.match.revision + 1,
+              type: 'FINALIZE',
+              payloadJson: '{"draw":false,"scoreboard":{"home":3,"away":1}}',
+            }),
+          ],
+        }),
+      );
+      expect(workspace.selectMatch).toHaveBeenCalledWith(review.match, { navigate: false });
+    });
+
+    it('corrects an approved occurrence after the match without exposing live controls', async () => {
+      const review = createAdminSportsMatchReview();
+      review.match.state = 'FINISHED';
+      review.actions[0] = {
+        ...review.actions[0],
+        type: 'OCCURRENCE',
+        reviewStatus: 'APPROVED',
+        payloadJson: '{"occurrenceId":"occ-1","kind":"GENERAL","note":"Registro original"}',
+      };
+      workspace.matchReview.set(review);
+      dialog.open.mockReturnValue({
+        afterClosed: () =>
+          of({
+            payloadJson: '{"occurrenceId":"occ-1","kind":"INJURY","note":"Atendimento corrigido"}',
+          }),
+      });
+      api.mutate.mockReturnValue(of(review.actions[0].id));
+      vi.spyOn(workspace, 'selectMatch').mockResolvedValue();
+
+      await workspace.correctConsolidatedOccurrence(review.actions[0]);
+
+      expect(api.mutate).toHaveBeenCalledWith(
+        'correctAdminSportsMatchOccurrence',
+        'SportsMatchOccurrenceCorrectionInput',
+        {
+          actionId: review.actions[0].id,
+          correctedPayloadJson: '{"occurrenceId":"occ-1","kind":"INJURY","note":"Atendimento corrigido"}',
+        },
+      );
+      expect(workspace.selectMatch).toHaveBeenCalledWith(review.match, { navigate: false });
+    });
+
     it('surfaces API review failures and always releases global loading', async () => {
       const application = createAdminSportsApplications(1)[0];
       api.reviewApplication.mockReturnValue(throwError(() => new Error('Review service unavailable')));

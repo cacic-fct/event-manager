@@ -278,6 +278,53 @@ describe('SportsPlayerApplicationService', () => {
     });
   });
 
+  it('lets an administrator correct pending team and category choices with an audit record', async () => {
+    tx.sportsTournament.findFirst.mockResolvedValueOnce({
+      ...(await tx.sportsTournament.findFirst()),
+      categories: [{ id: 'category-2', registrationStartDate: null, registrationEndDate: null }],
+    });
+    tx.sportsPlayerApplication.findFirst
+      .mockResolvedValueOnce({
+        id: 'application-1',
+        tournamentId: 'tournament-1',
+        applicantPersonId: 'person-1',
+        requestedTeamId: 'team-1',
+        status: SportsApplicationStatus.PENDING,
+        pendingKey: 'self:tournament-1:person-1:team-1',
+        paymentTier: null,
+        deletedAt: null,
+        categoryChoices: [{ categoryId: 'category-1' }],
+        tournament: { id: 'tournament-1', majorEventId: 'major-1' },
+      })
+      .mockResolvedValueOnce(null);
+
+    await service.updatePendingApplication(
+      'application-1',
+      { requestedTeamId: 'team-1', categoryIds: ['category-2'], paymentTier: null },
+      actor,
+    );
+
+    expect(tx.sportsPlayerApplication.update).toHaveBeenCalledWith({
+      where: { id: 'application-1' },
+      data: expect.objectContaining({
+        requestedTeamId: 'team-1',
+        pendingKey: 'self:tournament-1:person-1:team-1',
+        updatedById: 'admin-1',
+      }),
+    });
+    expect(tx.sportsPlayerApplicationCategory.createMany).toHaveBeenCalledWith({
+      data: [{ applicationId: 'application-1', categoryId: 'category-2' }],
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: 'UPDATE',
+        before: expect.objectContaining({ categoryIds: ['category-1'] }),
+        after: expect.objectContaining({ categoryIds: ['category-2'] }),
+      }),
+      tx,
+    );
+  });
+
   it('rejects a selected category when the requested team is not registered in it', async () => {
     tx.sportsTournament.findFirst.mockResolvedValueOnce({
       id: 'tournament-1',

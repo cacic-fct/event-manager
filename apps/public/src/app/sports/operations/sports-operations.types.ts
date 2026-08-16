@@ -72,6 +72,7 @@ export interface SportsOperationalMatch {
 
 export interface SportsOperationsRosterEntry {
   id: string;
+  attendanceSyncKey?: string | null;
   name: string;
   role: SportsRosterRole;
   status: SportsRosterEntryStatus;
@@ -90,6 +91,7 @@ export interface SportsOperationsRoster {
 
 export interface SportsOperationsOfficial {
   id: string;
+  attendanceSyncKey?: string | null;
   name: string;
   role: SportsOfficialRole;
   checkedInAt?: string | null;

@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,6 +23,7 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
     'aria-labelledby': 'match-editor-title',
   },
   imports: [
+    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatCheckboxModule,

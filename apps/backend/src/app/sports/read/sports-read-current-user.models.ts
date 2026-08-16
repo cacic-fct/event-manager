@@ -16,6 +16,9 @@ export class CurrentUserSportsRosterEntryRead {
   @Field(() => String)
   id!: string;
 
+  @Field(() => String, { description: 'Opaque key used to synchronize check-in categories for the same person.' })
+  attendanceSyncKey!: string;
+
   @Field(() => String)
   name!: string;
 
@@ -60,6 +63,9 @@ export class CurrentUserSportsOperationsRosterRead {
 export class CurrentUserSportsOfficialRead {
   @Field(() => String)
   id!: string;
+
+  @Field(() => String, { description: 'Opaque key used to synchronize check-in categories for the same person.' })
+  attendanceSyncKey!: string;
 
   @Field(() => String)
   name!: string;

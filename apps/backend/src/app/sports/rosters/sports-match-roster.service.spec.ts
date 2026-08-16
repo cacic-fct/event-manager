@@ -253,6 +253,7 @@ describe('SportsMatchRosterService check-in idempotency', () => {
       checkedInAt,
       'official-check-in-1',
       true,
+      true,
       'collector-person-1',
       'collector-user-1',
       'REFEREE',
@@ -274,6 +275,7 @@ describe('SportsMatchRosterService check-in idempotency', () => {
           personId: 'person-official',
           role: 'REFEREE',
           checkedInAt: checkedInAt.toISOString(),
+          present: true,
         },
       }),
     });
@@ -321,6 +323,42 @@ describe('SportsMatchRosterService check-in idempotency', () => {
         payload: expect.objectContaining({ present: false }),
       }),
     });
+  });
+
+  it('removes an official check-in without deleting shared event attendance', async () => {
+    const service = createService();
+    const args = [
+      'match-1',
+      'official-assignment-1',
+      checkedInAt,
+      'official-check-in-removal-1',
+      true,
+      false,
+      'collector-person-1',
+      'collector-user-1',
+      'REFEREE',
+      { id: 'collector-person-1', name: 'Árbitro', type: 'USER' } as never,
+      collectorInput,
+    ] as const;
+
+    await expect(service.checkInOfficial(...args)).resolves.toEqual(attendance);
+
+    expect(tx.eventAttendance.upsert).not.toHaveBeenCalled();
+    expect(tx.eventAttendance.delete).not.toHaveBeenCalled();
+    expect(tx.sportsMatchAction.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        payload: expect.objectContaining({
+          kind: 'OFFICIAL_CHECK_IN',
+          officialAssignmentId: 'official-assignment-1',
+          present: false,
+        }),
+      }),
+    });
+    expect(mutationEvents.publishRosterMutation).toHaveBeenCalledWith(
+      'match-1',
+      'OFFICIAL_CHECK_IN_REMOVED',
+      'official-assignment-1',
+    );
   });
 
   it('does not start check-in when a scheduled roster attendance is removed', async () => {

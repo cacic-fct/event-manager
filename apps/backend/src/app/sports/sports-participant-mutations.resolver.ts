@@ -214,6 +214,7 @@ export class SportsParticipantMutationsResolver extends SportsMutationsResolverS
       input.checkedInAt,
       input.clientId,
       input.offline ?? false,
+      input.present ?? true,
       operator.actor.id,
       uploaderUserId,
       operator.kind === 'ADMIN' ? 'ADMIN' : operator.assignment.role,

@@ -17,7 +17,7 @@ describe('OfficialSportsMatchPage', () => {
   let component: OfficialSportsMatchPage;
   let actions: SportsMatchAction[];
   let checkIns: Array<{ rosterEntryId: string; present?: boolean }>;
-  let officialCheckIns: Array<{ officialAssignmentId: string }>;
+  let officialCheckIns: Array<{ officialAssignmentId: string; present?: boolean }>;
   let scannerResult: 'sent' | 'queued';
   let pendingOffline: WritableSignal<number>;
   let retainedActions: WritableSignal<number>;
@@ -76,7 +76,7 @@ describe('OfficialSportsMatchPage', () => {
               checkIns.push(submission);
               return Promise.resolve('sent');
             },
-            dispatchOfficialCheckIn: (submission: { officialAssignmentId: string }) => {
+            dispatchOfficialCheckIn: (submission: { officialAssignmentId: string; present?: boolean }) => {
               officialCheckIns.push(submission);
               return Promise.resolve('sent');
             },
@@ -257,7 +257,7 @@ describe('OfficialSportsMatchPage', () => {
     expect(component.canEditCheckIn()).toBe(false);
   });
 
-  it('lists assigned officials in a separate row and registers their attendance', async () => {
+  it('lists assigned officials in a separate row and allows their attendance to be removed', async () => {
     component.match.update((match) => (match ? { ...match, state: 'CHECK_IN' } : match));
     fixture.detectChanges();
 
@@ -269,11 +269,91 @@ describe('OfficialSportsMatchPage', () => {
     await component.toggleOfficialCheckIn(official);
     fixture.detectChanges();
 
-    expect(officialCheckIns).toEqual([expect.objectContaining({ officialAssignmentId: official.id })]);
+    expect(officialCheckIns).toEqual([
+      expect.objectContaining({ officialAssignmentId: official.id, present: true }),
+    ]);
     expect(component.officialCheckInEntries()[0]).toEqual(expect.objectContaining({ checkedIn: true }));
+    await component.toggleOfficialCheckIn(component.officialCheckInEntries()[0]);
+
+    expect(officialCheckIns).toEqual([
+      expect.objectContaining({ officialAssignmentId: official.id, present: true }),
+      expect.objectContaining({ officialAssignmentId: official.id, present: false }),
+    ]);
+    expect(component.officialCheckInEntries()[0]).toEqual(expect.objectContaining({ checkedIn: false }));
     expect(
       (fixture.debugElement.query(By.css('.check-in-official-grid button')).nativeElement as HTMLButtonElement).disabled,
-    ).toBe(true);
+    ).toBe(false);
+  });
+
+  it('unlocks corrections for both athlete and official check-ins', async () => {
+    const athlete = component.homeCheckInEntries()[0];
+    const official = component.officialCheckInEntries()[0];
+    component.match.update((match) =>
+      match
+        ? {
+            ...match,
+            state: 'LIVE',
+            officials: match.officials.map((candidate) =>
+              candidate.id === official.id ? { ...candidate, checkedInAt: new Date().toISOString() } : candidate,
+            ),
+          }
+        : match,
+    );
+    fixture.detectChanges();
+
+    component.requestCheckInEdit();
+
+    await component.toggleCheckIn(athlete);
+    await component.toggleOfficialCheckIn(component.officialCheckInEntries()[0]);
+
+    expect(checkIns).toHaveLength(1);
+    expect(checkIns[0]).toEqual(expect.objectContaining({ rosterEntryId: athlete.id, present: !athlete.checkedIn }));
+    expect(officialCheckIns).toEqual([
+      expect.objectContaining({ officialAssignmentId: official.id, present: false }),
+    ]);
+  });
+
+  it('synchronizes athlete and official attendance for the same person', async () => {
+    const athleteId = component.homeCheckInEntries()[0].id;
+    const officialId = component.officialCheckInEntries()[0].id;
+    const attendanceSyncKey = 'shared-person-in-this-match';
+    component.match.update((match) =>
+      match
+        ? {
+            ...match,
+            state: 'CHECK_IN',
+            officials: match.officials.map((official) =>
+              official.id === officialId ? { ...official, attendanceSyncKey } : official,
+            ),
+            rosters: match.rosters.map((roster) => ({
+              ...roster,
+              entries: roster.entries.map((entry) =>
+                entry.id === athleteId ? { ...entry, attendanceSyncKey } : entry,
+              ),
+            })),
+          }
+        : match,
+    );
+    component.checkInEntries.update((entries) =>
+      entries.map((entry) => (entry.id === athleteId ? { ...entry, attendanceSyncKey } : entry)),
+    );
+    fixture.detectChanges();
+
+    await component.toggleOfficialCheckIn(component.officialCheckInEntries()[0]);
+    expect(component.homeCheckInEntries()[0].checkedIn).toBe(true);
+    expect(component.officialCheckInEntries()[0].checkedIn).toBe(true);
+
+    await component.toggleCheckIn(component.homeCheckInEntries()[0]);
+    expect(component.homeCheckInEntries()[0].checkedIn).toBe(false);
+    expect(component.officialCheckInEntries()[0].checkedIn).toBe(false);
+
+    await component.toggleCheckIn(component.homeCheckInEntries()[0]);
+    expect(component.homeCheckInEntries()[0].checkedIn).toBe(true);
+    expect(component.officialCheckInEntries()[0].checkedIn).toBe(true);
+
+    await component.toggleOfficialCheckIn(component.officialCheckInEntries()[0]);
+    expect(component.homeCheckInEntries()[0].checkedIn).toBe(false);
+    expect(component.officialCheckInEntries()[0].checkedIn).toBe(false);
   });
 
   it('advances the optimistic revision after queueing an offline scanner check-in', async () => {
@@ -324,6 +404,32 @@ describe('OfficialSportsMatchPage', () => {
     await component.saveOccurrence();
 
     expect(component.occurrenceForm.controls.note.value).toBe('Substituição pendente de confirmação');
+  });
+
+  it('keeps the score correction in the active period after its timer reaches the cap', async () => {
+    const startedAtUnixMs = Date.now() - 60 * 60_000;
+    component.match.update((match) =>
+      match
+        ? {
+            ...match,
+            timerAllowOvertime: false,
+            periodTimers: match.periodTimers.map((timer) =>
+              timer.periodNumber === match.scoreboard.activePeriod
+                ? { ...timer, startedAtUnixMs, capMs: 45 * 60_000, allowOvertime: false }
+                : timer,
+            ),
+          }
+        : match,
+    );
+
+    expect(component.periodElapsedLabel(component.match()?.scoreboard.activePeriod ?? 0)).toBe('00:45:00');
+    await component.changeScore('home', -1);
+
+    expect(component.scoreFor('home')).toBe(1);
+    expect(component.match()?.scoreboard.periods.at(-1)?.homeScore).toBe(0);
+    expect(JSON.parse(actions.at(-1)?.payloadJson ?? '{}')).toEqual(
+      expect.objectContaining({ side: 'HOME', amount: -1, periodNumber: 2 }),
+    );
   });
 
   it('keeps the finalization review open when the result submission fails', async () => {
