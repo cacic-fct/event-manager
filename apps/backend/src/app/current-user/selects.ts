@@ -103,6 +103,7 @@ export const MAJOR_EVENT_BASE_SELECT = {
           id: true,
           name: true,
           value: true,
+          includesSportsRegistration: true,
         },
       },
     },

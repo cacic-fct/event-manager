@@ -139,6 +139,7 @@ export const MAJOR_EVENT_LIST_FIELDS = `
       id
       name
       value
+      includesSportsRegistration
     }
   }
 `;
@@ -165,6 +166,9 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees
   additionalPaymentInfo
+  sportsTournament {
+    id
+  }
   publicationState
   scheduledPublishAt
   publishedAt
@@ -186,6 +190,7 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
       id
       name
       value
+      includesSportsRegistration
     }
   }
   deletedAt

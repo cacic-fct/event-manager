@@ -16,6 +16,7 @@ export const PUBLIC_MAJOR_EVENT_PRICE_FIELDS = `
     id
     name
     value
+    includesSportsRegistration
   }
 `;
 
@@ -69,6 +70,11 @@ export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
   }
   majorEventPrices {
     ${PUBLIC_MAJOR_EVENT_PRICE_FIELDS}
+  }
+  sportsTournament {
+    id
+    selfSubscriptionEnabled
+    registrationOpen
   }
 `;
 

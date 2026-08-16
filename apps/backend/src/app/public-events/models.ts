@@ -59,6 +59,7 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
           id: true,
           name: true,
           value: true,
+          includesSportsRegistration: true,
         },
       },
     },
@@ -265,6 +266,7 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventMappable): Publi
         id: tier.id,
         name: tier.name,
         value: tier.value,
+        includesSportsRegistration: tier.includesSportsRegistration,
       })),
     })),
     hasEvents: majorEvent._count ? majorEvent._count.events > 0 : undefined,
@@ -360,6 +362,11 @@ export class PublicMajorEventPriceTier {
     description: 'Tier value in the smallest currency unit used by the application.',
   })
   value!: number;
+
+  @Field(() => Boolean, {
+    description: 'Whether choosing this tier continues into the linked sports tournament registration flow.',
+  })
+  includesSportsRegistration!: boolean;
 }
 
 @ObjectType({

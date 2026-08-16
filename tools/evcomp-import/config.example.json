@@ -1,0 +1,17 @@
+{
+  "actorId": null,
+  "personMappings": [],
+  "eventMappings": [
+    {
+      "sourceEventId": 1,
+      "targetMajorEventId": "00000000-0000-7000-8000-000000000001"
+    }
+  ],
+  "activityMappings": [
+    {
+      "sourceActivityId": 10,
+      "targetEventId": "00000000-0000-7000-8000-000000000010"
+    }
+  ],
+  "sourceSchema": {}
+}

@@ -51,6 +51,7 @@ const MAJOR_EVENT_PRICE_SELECT = {
       id: true,
       name: true,
       value: true,
+      includesSportsRegistration: true,
     },
     orderBy: {
       value: 'asc',
@@ -80,6 +81,10 @@ const MAJOR_EVENT_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
+  sportsTournament: {
+    where: { deletedAt: null },
+    select: { id: true },
+  },
   majorEventPrices: {
     select: MAJOR_EVENT_PRICE_SELECT,
   },
@@ -476,6 +481,7 @@ export class MajorEventsResolver {
                   tiers: sourcePrice.tiers.map((tier) => ({
                     name: tier.name,
                     value: tier.value,
+                    includesSportsRegistration: false,
                   })),
                 }
               : undefined,
@@ -838,6 +844,12 @@ export class MajorEventsResolver {
 
     const tiers = this.buildPriceTierPayloads(input);
 
+    if (tiers.some((tier) => tier.includesSportsRegistration)) {
+      throw new BadRequestException(
+        'Sports registration can only be included after a tournament is linked to the major event.',
+      );
+    }
+
     if (tiers.length === 0) {
       return undefined;
     }
@@ -869,6 +881,18 @@ export class MajorEventsResolver {
     }
 
     const tiers = this.buildPriceTierPayloads(input);
+
+    if (tiers.some((tier) => tier.includesSportsRegistration)) {
+      const tournament = await tx.sportsTournament.findFirst({
+        where: { majorEventId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!tournament) {
+        throw new BadRequestException(
+          'Sports registration can only be included when the major event has a linked tournament.',
+        );
+      }
+    }
 
     if (tiers.length === 0) {
       await this.deleteMajorEventPrice(tx, majorEventId);
@@ -923,6 +947,7 @@ export class MajorEventsResolver {
     const tiers = input.tiers.map((tier) => ({
       name: tier.name?.trim() ?? '',
       value: Math.round(tier.value),
+      includesSportsRegistration: tier.includesSportsRegistration === true,
     }));
 
     if (tiers.some((tier) => tier.name.length === 0)) {
