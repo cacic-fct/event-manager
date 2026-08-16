@@ -1,20 +1,18 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSelectModule } from '@angular/material/select';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterLink } from '@angular/router';
 import {
+  compareIsoDateDesc,
   CurrentUserMajorEventFeedItem,
   SubscribedItem,
   SubscriptionsFeed,
-  getMajorEventDateLine,
   getMajorEventStatusLine,
-  getSubscribedItemDateLine,
+  getEventTypeLabel,
   getSubscribedItemEmoji,
   getSubscribedItemStatusLine,
   getSubscribedItemTitle,
@@ -22,7 +20,9 @@ import {
 } from '@cacic-fct/shared-utils';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
-import { catchError, from, map, of, startWith, switchMap } from 'rxjs';
+import { catchError, finalize, from, map, of, startWith, switchMap } from 'rxjs';
+import { format, isSameDay, isSameMonth, isSameYear, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale/pt-BR';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
 import { EmojiService } from '../../../shared/emoji.service';
@@ -34,8 +34,8 @@ import { CertificateFileDownloadService } from '../../../shared/certificate-file
 import { CertificateDialog, CertificateDialogData } from '../certificate-dialog/certificate-dialog';
 import type { StandaloneCertificateFolderItem, SubscribedEventGroupItem } from '@cacic-fct/shared-utils';
 
-type AttendanceFilter = 'subscribed' | 'present' | 'certificate' | 'lecturer' | 'sportsManager';
-type AttendanceFilterSelection = AttendanceFilter | 'none';
+type ParticipationTypeFilter = 'majorEvent' | 'eventGroup' | 'event';
+type AttendanceStatusFilter = 'subscribed' | 'present' | 'certificate' | 'lecturer' | 'sportsManager';
 
 type FeedState =
   | { status: 'loading' }
@@ -46,14 +46,28 @@ type NormalizedSubscriptionsFeed = Omit<SubscriptionsFeed, 'standaloneCertificat
   standaloneCertificateFolders: StandaloneCertificateFolderItem[];
 };
 
-interface AttendanceFilterOption {
-  value: AttendanceFilter;
+interface AttendanceFilterOption<TValue extends string> {
+  value: TValue;
   label: string;
+  icon?: string;
 }
 
 interface AttendanceStatusIcon {
   label: string;
   icon: string;
+}
+
+interface ParticipationFeedItem {
+  id: string;
+  emoji: string;
+  title: string;
+  dateLine: string;
+  startDate: string;
+  type: ParticipationTypeFilter;
+  typeLabel: string;
+  route: string[];
+  statusLine: string;
+  statuses: AttendanceStatusFilter[];
 }
 
 const EMPTY_SUBSCRIPTIONS_FEED = {
@@ -70,10 +84,8 @@ const EMPTY_SUBSCRIPTIONS_FEED = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     MatIconModule,
-    MatListModule,
     MatProgressBarModule,
-    MatFormFieldModule,
-    MatSelectModule,
+    MatProgressSpinnerModule,
     RouterLink,
     MatToolbarModule,
     MatButtonModule,
@@ -92,13 +104,20 @@ export class Attendances {
   private readonly dialog = inject(MatDialog);
   readonly emoji = inject(EmojiService);
   readonly isDownloadingCertificates = signal(false);
-  readonly selectedFilters = signal<AttendanceFilter[]>([]);
-  readonly filterOptions: AttendanceFilterOption[] = [
-    { value: 'subscribed', label: 'Inscrito' },
-    { value: 'present', label: 'Presente' },
-    { value: 'certificate', label: 'Certificado emitido' },
-    { value: 'lecturer', label: 'Palestrante' },
-    { value: 'sportsManager', label: 'Gestão esportiva' },
+  readonly filtersOpen = signal(false);
+  readonly selectedTypeFilters = signal<ParticipationTypeFilter[]>([]);
+  readonly selectedStatusFilters = signal<AttendanceStatusFilter[]>([]);
+  readonly typeFilterOptions: AttendanceFilterOption<ParticipationTypeFilter>[] = [
+    { value: 'majorEvent', label: 'Grandes eventos' },
+    { value: 'eventGroup', label: 'Grupos de eventos' },
+    { value: 'event', label: 'Eventos' },
+  ];
+  readonly statusFilterOptions: AttendanceFilterOption<AttendanceStatusFilter>[] = [
+    { value: 'subscribed', label: 'Inscrito', icon: 'event_available' },
+    { value: 'present', label: 'Presença registrada', icon: 'how_to_reg' },
+    { value: 'certificate', label: 'Certificado emitido', icon: 'workspace_premium' },
+    { value: 'lecturer', label: 'Palestrante', icon: 'record_voice_over' },
+    { value: 'sportsManager', label: 'Gestão esportiva', icon: 'sports' },
   ];
 
   readonly feedState = toSignal(
@@ -120,78 +139,58 @@ export class Attendances {
     { initialValue: { status: 'loading' } satisfies FeedState },
   );
 
-  readonly filteredFeed = computed(() => {
+  readonly activeFilterCount = computed(
+    () => this.selectedTypeFilters().length + this.selectedStatusFilters().length,
+  );
+
+  readonly visibleParticipations = computed(() => {
     const state = this.feedState();
     if (state.status !== 'ready') {
-      return null;
+      return [];
     }
 
-    const filters = this.selectedFilters();
-    return {
-      ...state.data,
-      majorEventItems: state.data.majorEventItems.filter((item) =>
-        this.matchesMajorEventFilters(item, state.data.attendances, filters),
-      ),
-      eventItems: state.data.eventItems.filter((item) =>
-        this.matchesEventItemFilters(item, state.data.attendances, filters),
-      ),
-    } satisfies SubscriptionsFeed;
+    return [
+      ...state.data.majorEventItems.map((item) => this.majorEventFeedItem(item, state.data.attendances)),
+      ...state.data.eventItems.map((item) => this.eventFeedItem(item, state.data.attendances)),
+    ]
+      .filter((item) => this.matchesFilters(item))
+      .sort((left, right) => compareIsoDateDesc(left.startDate, right.startDate));
   });
 
-  readonly filterTriggerLabel = computed(() => {
-    const filters = this.selectedFilters();
-    if (filters.length === 0) {
-      return 'Sem filtro';
-    }
-
-    return this.filterOptions
-      .filter((option) => filters.includes(option.value))
-      .map((option) => option.label)
-      .join(', ');
-  });
-
-  readonly filteredResultSummary = computed(() => {
+  readonly hasParticipations = computed(() => {
     const state = this.feedState();
-    const feed = this.filteredFeed();
-    if (state.status !== 'ready' || !feed) {
-      return '';
-    }
-
-    const totalCount = state.data.majorEventItems.length + state.data.eventItems.length;
-    const visibleCount = feed.majorEventItems.length + feed.eventItems.length;
-    if (this.selectedFilters().length === 0) {
-      return `${totalCount} participações`;
-    }
-
-    return `${visibleCount} de ${totalCount} participações`;
+    return state.status === 'ready' && state.data.majorEventItems.length + state.data.eventItems.length > 0;
   });
 
-  majorEventRoute(subscription: CurrentUserMajorEventFeedItem): string[] {
-    return ['/profile/attendances', 'major-event', subscription.majorEvent.id];
+  toggleFilters(): void {
+    this.filtersOpen.update((isOpen) => !isOpen);
   }
 
-  itemRoute(item: SubscribedItem): string[] {
-    if (item.__typename === 'SubscribedSingleEventItem') {
-      return ['/profile/attendances', 'event', item.event.id];
-    }
-
-    return ['/profile/attendances', 'event-group', item.eventGroup.id];
+  setTypeFilter(filter: ParticipationTypeFilter, selected: boolean): void {
+    this.selectedTypeFilters.update((filters) => this.updateFilterSelection(filters, filter, selected));
   }
 
-  itemEmoji(item: SubscribedItem): string {
-    return getSubscribedItemEmoji(item);
+  setStatusFilter(filter: AttendanceStatusFilter, selected: boolean): void {
+    this.selectedStatusFilters.update((filters) => this.updateFilterSelection(filters, filter, selected));
   }
 
-  itemTitle(item: SubscribedItem): string {
-    return getSubscribedItemTitle(item);
+  clearFilters(): void {
+    this.selectedTypeFilters.set([]);
+    this.selectedStatusFilters.set([]);
   }
 
-  itemDateLine(item: SubscribedItem): string {
-    return getSubscribedItemDateLine(item);
+  hasActiveFilters(): boolean {
+    return this.activeFilterCount() > 0;
   }
 
-  itemStatusLine(item: SubscribedItem, attendances: SubscriptionsFeed['attendances']): string {
-    return getSubscribedItemStatusLine(item, attendances);
+  emptyFeedText(): string {
+    return this.hasActiveFilters() && this.hasParticipations()
+      ? 'Nenhuma participação encontrada para os filtros selecionados.'
+      : 'Nenhuma participação encontrada.';
+  }
+
+  itemAriaLabel(item: ParticipationFeedItem): string {
+    return `Abrir detalhes de ${item.title}. ${item.typeLabel}. ${item.dateLine}. Status: ${item.statusLine}`;
   }
 
   statusItems(statusLine: string): AttendanceStatusIcon[] {
@@ -199,10 +198,6 @@ export class Attendances {
       label,
       icon: this.statusIcon(label),
     }));
-  }
-
-  itemAriaLabel(title: string, statusLine: string): string {
-    return `Abrir detalhes de ${title}. Status: ${statusLine}`;
   }
 
   private statusIcon(label: string): string {
@@ -240,51 +235,6 @@ export class Attendances {
     }
   }
 
-  majorEventDateLine(subscription: CurrentUserMajorEventFeedItem): string {
-    return getMajorEventDateLine(subscription);
-  }
-
-  majorEventStatusLine(
-    subscription: CurrentUserMajorEventFeedItem,
-    attendances: SubscriptionsFeed['attendances'],
-  ): string {
-    return getMajorEventStatusLine(subscription, attendances);
-  }
-
-  updateFilters(values: readonly AttendanceFilterSelection[]): void {
-    if (values.includes('none')) {
-      this.selectedFilters.set([]);
-      return;
-    }
-
-    this.selectedFilters.set(values.filter((value): value is AttendanceFilter => value !== 'none'));
-  }
-
-  hasActiveFilters(): boolean {
-    return this.selectedFilters().length > 0;
-  }
-
-  majorEventsEmptyText(totalCount: number): string {
-    if (this.hasActiveFilters() && totalCount > 0) {
-      return 'Nenhum grande evento encontrado para os filtros selecionados.';
-    }
-
-    return 'Nenhuma participação em grande evento.';
-  }
-
-  eventItemsEmptyText(totalCount: number): string {
-    if (this.hasActiveFilters() && totalCount > 0) {
-      return 'Nenhum evento avulso ou grupo encontrado para os filtros selecionados.';
-    }
-
-    return 'Nenhum evento avulso ou grupo registrado.';
-  }
-
-  standaloneCertificateLine(folder: StandaloneCertificateFolderItem): string {
-    const count = folder.certificates.length;
-    return count === 1 ? '1 certificado disponível' : `${count} certificados disponíveis`;
-  }
-
   openStandaloneCertificates(folder: StandaloneCertificateFolderItem): void {
     this.dialog.open<CertificateDialog, CertificateDialogData>(CertificateDialog, {
       data: {
@@ -301,21 +251,22 @@ export class Attendances {
     }
 
     this.isDownloadingCertificates.set(true);
-    this.api.downloadCurrentUserCertificatesArchive().subscribe({
-      next: (download) => {
-        this.certificateFileDownload.saveBlob(download.blob, download.fileName);
-        this.snackBar.open('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
-        this.isDownloadingCertificates.set(false);
-      },
-      error: (error: unknown) => {
-        const message =
-          error instanceof HttpErrorResponse && error.status === 404
-            ? 'Nenhum certificado disponível para download.'
-            : 'Não foi possível baixar seus certificados.';
-        this.snackBar.open(message, 'Fechar', { duration: 5000 });
-        this.isDownloadingCertificates.set(false);
-      },
-    });
+    this.api
+      .downloadCurrentUserCertificatesArchive()
+      .pipe(finalize(() => this.isDownloadingCertificates.set(false)))
+      .subscribe({
+        next: (download) => {
+          this.certificateFileDownload.saveBlob(download.blob, download.fileName);
+          this.snackBar.open('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
+        },
+        error: (error: unknown) => {
+          const message =
+            error instanceof HttpErrorResponse && error.status === 404
+              ? 'Nenhum certificado disponível para download.'
+              : 'Não foi possível baixar seus certificados.';
+          this.snackBar.open(message, 'Fechar', { duration: 5000 });
+        },
+      });
   }
 
   private loadFeed() {
@@ -411,54 +362,112 @@ export class Attendances {
     };
   }
 
-  private matchesMajorEventFilters(
+  private majorEventFeedItem(
     item: CurrentUserMajorEventFeedItem,
     attendances: SubscriptionsFeed['attendances'],
-    filters: readonly AttendanceFilter[],
-  ): boolean {
-    if (filters.length === 0) {
-      return true;
-    }
+  ): ParticipationFeedItem {
+    const statusLine = getMajorEventStatusLine(item, attendances);
+    const isPresent = attendances.some((attendance) => attendance.event?.majorEventId === item.majorEventId);
 
-    return filters.some((filter) => {
-      switch (filter) {
-        case 'subscribed':
-          return item.participation.isSubscribed;
-        case 'present':
-          return attendances.some((attendance) => attendance.event?.majorEventId === item.majorEventId);
-        case 'certificate':
-          return item.participation.hasIssuedCertificate;
-        case 'lecturer':
-          return item.participation.isLecturer;
-        case 'sportsManager':
-          return item.participation.isSportsManager === true;
-      }
-    });
+    return {
+      id: `major-event:${item.id}`,
+      emoji: item.majorEvent.emoji,
+      title: item.majorEvent.name,
+      dateLine: this.participationDateLine(item.majorEvent.startDate, item.majorEvent.endDate),
+      startDate: item.majorEvent.startDate,
+      type: 'majorEvent',
+      typeLabel: item.majorEvent.sportsTournament ? 'Grande evento com torneio' : 'Grande evento',
+      route: ['/profile/attendances', 'major-event', item.majorEvent.id],
+      statusLine,
+      statuses: this.participationStatuses(item.participation, isPresent),
+    };
   }
 
-  private matchesEventItemFilters(
+  private eventFeedItem(
     item: SubscribedItem,
     attendances: SubscriptionsFeed['attendances'],
-    filters: readonly AttendanceFilter[],
-  ): boolean {
-    if (filters.length === 0) {
-      return true;
+  ): ParticipationFeedItem {
+    const isSingleEvent = item.__typename === 'SubscribedSingleEventItem';
+    const firstEvent = isSingleEvent ? item.event : item.events[0];
+    const lastEvent = isSingleEvent ? item.event : item.events[item.events.length - 1];
+    const startDate = firstEvent?.startDate ?? item.startDate;
+    const endDate = lastEvent?.endDate ?? startDate;
+    const statusLine = getSubscribedItemStatusLine(item, attendances);
+    const isPresent = this.eventItemHasAttendance(item, attendances);
+
+    return {
+      id: `${isSingleEvent ? 'event' : 'event-group'}:${item.id}`,
+      emoji: getSubscribedItemEmoji(item),
+      title: getSubscribedItemTitle(item),
+      dateLine: this.participationDateLine(startDate, endDate),
+      startDate,
+      type: isSingleEvent ? 'event' : 'eventGroup',
+      typeLabel: isSingleEvent ? getEventTypeLabel(item.event.type) : 'Grupo de eventos',
+      route: isSingleEvent
+        ? ['/profile/attendances', 'event', item.event.id]
+        : ['/profile/attendances', 'event-group', item.eventGroup.id],
+      statusLine,
+      statuses: this.participationStatuses(item.participation, isPresent),
+    };
+  }
+
+  participationDateLine(startDate: string, endDate: string): string {
+    const start = parseISO(startDate);
+    const end = parseISO(endDate);
+    const startDay = format(start, 'd', { locale: ptBR });
+    const endDay = format(end, 'd', { locale: ptBR });
+    const startMonth = this.shortMonth(start);
+    const endMonth = this.shortMonth(end);
+    const startYear = format(start, 'yyyy', { locale: ptBR });
+    const endYear = format(end, 'yyyy', { locale: ptBR });
+
+    if (isSameDay(start, end)) {
+      return `${startDay} ${startMonth} ${startYear}, ${format(start, 'HH:mm')}-${format(end, 'HH:mm')}`;
     }
 
-    return filters.some((filter) => {
-      switch (filter) {
-        case 'subscribed':
-          return item.participation.isSubscribed;
-        case 'present':
-          return this.eventItemHasAttendance(item, attendances);
-        case 'certificate':
-          return item.participation.hasIssuedCertificate;
-        case 'lecturer':
-          return item.participation.isLecturer;
-        case 'sportsManager':
-          return false;
-      }
-    });
+    if (isSameMonth(start, end)) {
+      return `${startDay} a ${endDay} ${endMonth} ${endYear}`;
+    }
+
+    if (isSameYear(start, end)) {
+      return `${startDay} ${startMonth} a ${endDay} ${endMonth} ${endYear}`;
+    }
+
+    return `${startDay} ${startMonth} ${startYear} a ${endDay} ${endMonth} ${endYear}`;
+  }
+
+  private participationStatuses(
+    participation: CurrentUserMajorEventFeedItem['participation'],
+    isPresent: boolean,
+  ): AttendanceStatusFilter[] {
+    return [
+      participation.isSubscribed ? 'subscribed' : undefined,
+      isPresent ? 'present' : undefined,
+      participation.hasIssuedCertificate ? 'certificate' : undefined,
+      participation.isLecturer ? 'lecturer' : undefined,
+      participation.isSportsManager ? 'sportsManager' : undefined,
+    ].filter((status): status is AttendanceStatusFilter => status !== undefined);
+  }
+
+  private matchesFilters(item: ParticipationFeedItem): boolean {
+    const typeFilters = this.selectedTypeFilters();
+    const statusFilters = this.selectedStatusFilters();
+    const matchesType = typeFilters.length === 0 || typeFilters.includes(item.type);
+    const matchesStatus = statusFilters.length === 0 || statusFilters.some((filter) => item.statuses.includes(filter));
+
+    return matchesType && matchesStatus;
+  }
+
+  private updateFilterSelection<TValue extends string>(
+    filters: readonly TValue[],
+    filter: TValue,
+    selected: boolean,
+  ): TValue[] {
+    return selected ? [...new Set([...filters, filter])] : filters.filter((value) => value !== filter);
+  }
+
+  private shortMonth(date: Date): string {
+    return format(date, 'MMM', { locale: ptBR }).replace('.', '');
   }
 
   private eventItemHasAttendance(item: SubscribedItem, attendances: SubscriptionsFeed['attendances']): boolean {

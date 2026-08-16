@@ -149,50 +149,57 @@
       </div>
     </section>
   } @else {
-    <nav class="area-nav" aria-label="Áreas da gestão esportiva">
-      <button type="button" [class.active]="workspace.activeArea() === 'overview'" (click)="setArea('overview')">
-        <mat-icon>tune</mat-icon>
-        Visão geral
-      </button>
-      <button type="button" [class.active]="workspace.activeArea() === 'categories'" (click)="setArea('categories')">
-        <mat-icon>sports</mat-icon>
-        Modalidades
-        <span>{{ workspace.tournamentRead()?.categories?.length ?? 0 }}</span>
-      </button>
-      <button type="button" [class.active]="workspace.activeArea() === 'teams'" (click)="setArea('teams')">
-        <mat-icon>groups</mat-icon>
-        Equipes
-        <span>{{ workspace.tournamentRead()?.teams?.length ?? 0 }}</span>
-      </button>
-      <button type="button" [class.active]="workspace.activeArea() === 'matches'" (click)="setArea('matches')">
-        <mat-icon>scoreboard</mat-icon>
-        Partidas e chaves
-      </button>
-      <button type="button" [class.active]="workspace.activeArea() === 'reviews'" (click)="setArea('reviews')">
-        <mat-icon>fact_check</mat-icon>
-        Revisões
-        @if (workspace.pendingCount()) {
-          <span class="pending-count">{{ workspace.pendingCount() }}</span>
-        }
-      </button>
-    </nav>
-
-    @switch (workspace.activeArea()) {
-      @case ('overview') {
-        <app-sports-overview-section />
-      }
-      @case ('categories') {
-        <app-sports-categories-section />
-      }
-      @case ('teams') {
-        <app-sports-teams-section />
-      }
-      @case ('matches') {
-        <app-sports-matches-section />
-      }
-      @case ('reviews') {
-        <app-sports-reviews-section />
-      }
-    }
+    <mat-tab-group
+      class="area-nav"
+      animationDuration="160ms"
+      mat-stretch-tabs="false"
+      [selectedIndex]="activeAreaIndex()"
+      (selectedIndexChange)="onAreaTabChange($event)"
+      aria-label="Áreas da gestão esportiva">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label"><mat-icon>tune</mat-icon>Visão geral</span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-overview-section /></ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label">
+            <mat-icon>sports</mat-icon>
+            Modalidades
+            <span class="workspace-tab-count">{{ workspace.tournamentRead()?.categories?.length ?? 0 }}</span>
+          </span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-categories-section /></ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label">
+            <mat-icon>groups</mat-icon>
+            Equipes
+            <span class="workspace-tab-count">{{ workspace.tournamentRead()?.teams?.length ?? 0 }}</span>
+          </span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-teams-section /></ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label"><mat-icon>scoreboard</mat-icon>Partidas e chaves</span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-matches-section /></ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label">
+            <mat-icon>fact_check</mat-icon>
+            Revisões
+            @if (workspace.pendingCount()) {
+              <span class="workspace-tab-count">{{ workspace.pendingCount() }}</span>
+            }
+          </span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-reviews-section /></ng-template>
+      </mat-tab>
+    </mat-tab-group>
   }
 </section>

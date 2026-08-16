@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ViewEncapsulation, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
@@ -28,6 +29,14 @@ import {
   type SportsWorkspaceRouteState,
 } from './sports-workspace-routes';
 
+const SPORTS_WORKSPACE_TAB_AREAS: readonly SportsWorkspaceArea[] = [
+  'overview',
+  'categories',
+  'teams',
+  'matches',
+  'reviews',
+];
+
 @Component({
   selector: 'app-workspace-sports-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,6 +52,7 @@ import {
     MatListModule,
     MatProgressBarModule,
     MatSelectModule,
+    MatTabsModule,
     MatTooltipModule,
     TwemojiComponent,
     SportsCategoriesSectionComponent,
@@ -57,6 +67,7 @@ import {
     '../app-shell/layout/page-layout.shared.scss',
     '../app-shell/layout/lists-layout.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
+    '../app-shell/layout/workspace-tabs.shared.scss',
     './sports-workspace-layout.scss',
     './sports-workspace-teams.scss',
     './sports-workspace-matches.scss',
@@ -65,6 +76,7 @@ import {
 })
 export class SportsPageComponent {
   protected readonly workspace = inject(SportsWorkspaceService);
+  protected readonly activeAreaIndex = computed(() => SPORTS_WORKSPACE_TAB_AREAS.indexOf(this.workspace.activeArea()));
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private initialization: Promise<void> | null = null;
@@ -110,6 +122,13 @@ export class SportsPageComponent {
         }),
       )
       .catch(() => undefined);
+  }
+
+  protected onAreaTabChange(index: number): void {
+    const area = SPORTS_WORKSPACE_TAB_AREAS[index];
+    if (area) {
+      this.setArea(area);
+    }
   }
 
   private async applyRoute(params: { get(name: string): string | null }): Promise<void> {

@@ -55,13 +55,31 @@ test('lists current-user subscriptions, standalone certificates, and downloads t
   await page.goto('/app/profile/attendances');
 
   await expect(page.getByRole('heading', { name: 'Minhas participações' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recentes' })).toBeVisible();
   await expect(page.getByText('SECOMPP Pago')).toBeVisible();
   await expect(page.getByRole('img', { name: 'Comprovante pendente' })).toBeVisible();
   await expect(page.getByText('Oficina pública')).toBeVisible();
+  await expect(page.getByText(/1 ago 2027, \d{2}:\d{2}-\d{2}:\d{2}/)).toBeVisible();
+  await expect(page.getByText('1 a 3 ago 2027', { exact: true })).toBeVisible();
+  await expect(page.getByText('Grande evento', { exact: true })).toBeVisible();
+  await expect(page.getByText('Minicurso', { exact: true })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Presença registrada' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Certificado emitido' })).toHaveCount(2);
   await expect(page.getByRole('heading', { name: 'Certificados avulsos' })).toBeVisible();
   await expect(page.getByText('Atividades complementares')).toBeVisible();
+  await expect(page.getByText(/\d+ participações/)).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Filtros' }).click();
+  const clearFiltersButton = page.getByRole('button', { name: 'Limpar filtros' });
+  await expect(clearFiltersButton).toBeDisabled();
+  await page.getByRole('button', { name: 'Eventos', exact: true }).click();
+  await page.getByRole('button', { name: 'Certificado emitido' }).click();
+  await expect(clearFiltersButton).toBeEnabled();
+  await expect(page.getByText('Oficina pública')).toBeVisible();
+  await expect(page.getByText('SECOMPP Pago')).toBeHidden();
+  await clearFiltersButton.click();
+  await expect(clearFiltersButton).toBeDisabled();
+  await expect(page.getByText('SECOMPP Pago')).toBeVisible();
 
   await page.getByRole('button', { name: /Atividades complementares/ }).click();
   await expect(page.getByRole('heading', { name: 'Certificados', exact: true })).toBeVisible();

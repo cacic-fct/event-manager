@@ -43,6 +43,19 @@ const exerciseStandaloneStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: 'Recentes' })).toBeVisible();
+    await exerciseStandaloneStory(canvasElement);
+  },
+};
+
+export const Mobile: Story = {
+  args: {},
+  globals: { theme: 'light', network: 'online' },
+  parameters: {
+    viewport: { defaultViewport: 'mobile1' },
+  },
   play: async ({ canvasElement }) => exerciseStandaloneStory(canvasElement),
 };
 
@@ -58,9 +71,8 @@ export const FilteredPresent: Story = {
   play: async ({ canvasElement }) => {
     await exerciseStory(canvasElement);
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('combobox', { name: /filtrar resultados/i }));
-    const listbox = within(document.body);
-    await userEvent.click(await listbox.findByRole('option', { name: 'Presente' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Filtros' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Presença registrada' }));
     await expect(await canvas.findByText(/Grande evento com presença/)).toBeVisible();
     await expect(await canvas.findByText(/Oficina presente sem inscrição/)).toBeVisible();
     await expect(await canvas.findByText(/Grupo presente sem inscrição/)).toBeVisible();

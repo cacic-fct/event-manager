@@ -93,7 +93,7 @@ function highlightCode(source: string, language: string): string {
 }
 
 const markdown = new MarkdownIt({
-  breaks: false,
+  breaks: true,
   highlight: highlightCode,
   html: false,
   linkify: true,

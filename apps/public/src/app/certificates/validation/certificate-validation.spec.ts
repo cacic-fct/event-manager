@@ -12,6 +12,17 @@ import { CertificateValidation } from './certificate-validation';
 import { CertificateValidationApiService } from './certificate-validation-api.service';
 
 describe('CertificateValidation', () => {
+  it('keeps the CACiC logo at the start of the global toolbar', async () => {
+    const { fixture } = await createFixture();
+    fixture.detectChanges();
+
+    const toolbar = fixture.nativeElement.querySelector('mat-toolbar') as HTMLElement | null;
+
+    expect(toolbar?.firstElementChild?.tagName.toLowerCase()).toBe('lib-cacic-logo');
+    expect(toolbar?.querySelector('a[routerlink="/menu"]')).not.toBeNull();
+    expect(toolbar?.querySelector('h1.global-toolbar-title')?.textContent).toContain('Validar certificado');
+  });
+
   it('waits for a Turnstile token before validating a certificate from a link', async () => {
     const { api, component } = await createFixture({ routeParams: { certificateId: 'certificate-1' } });
 

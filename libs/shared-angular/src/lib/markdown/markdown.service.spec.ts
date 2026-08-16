@@ -34,6 +34,13 @@ describe('MarkdownService', () => {
     expect(html).toContain('href="https://eventos.cacic.com.br/app/"');
   });
 
+  it('renders single line breaks as HTML line breaks', () => {
+    const html = renderMarkdown('Primeira linha\nSegunda linha', window as unknown as WindowLike);
+
+    expect(html).toContain('Primeira linha<br>');
+    expect(html).toContain('Segunda linha');
+  });
+
   it('highlights explicitly tagged fenced code without loading every language', () => {
     const html = renderMarkdown(
       '```typescript\nconst answer: number = 42;\n```',
