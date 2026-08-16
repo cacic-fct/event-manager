@@ -32,6 +32,8 @@
 }
 
 .nav-btn {
+  flex: 1 1 0;
+  max-width: 8rem;
   min-width: 3.5rem;
   display: flex;
   flex-direction: column;
@@ -45,6 +47,20 @@
   background: transparent;
   border-radius: 0.375rem;
   color: var(--mat-sys-on-surface);
+}
+
+.nav-btn.collapsed {
+  flex: 0 0 0;
+  max-width: 0;
+  min-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  padding-inline: 0;
+  pointer-events: none;
+}
+
+.nav-btn.pending {
+  visibility: hidden;
 }
 
 .icon-wrap {
@@ -90,6 +106,9 @@
     background-color 180ms ease,
     color 180ms ease,
     box-shadow 180ms ease,
+    max-width 180ms ease,
+    opacity 180ms ease,
+    padding 180ms ease,
     transform 140ms ease;
 }
 

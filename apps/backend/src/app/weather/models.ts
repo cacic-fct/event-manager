@@ -15,6 +15,12 @@ export class PublicEventWeather {
   })
   temperature!: number;
 
+  @Field(() => Float, {
+    nullable: true,
+    description: 'Forecast UV index at the event time when the provider exposes it.',
+  })
+  uvIndex?: number | null;
+
   @Field(() => Int, {
     description: 'Weather provider condition code used to derive the summary and icon.',
   })

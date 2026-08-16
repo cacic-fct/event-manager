@@ -2,6 +2,7 @@ export const PUBLIC_FEATURE_FLAGS = {
   calendarTabEnabled: 'events-public-calendar-tab-enabled',
   majorEventTabEnabled: 'events-public-major-event-tab-enabled',
   notificationsTabEnabled: 'events-public-notifications-tab-enabled',
+  myDayTabEnabled: 'events-public-my-day-tab-enabled',
   defaultLoginRedirectPath: 'events-public-default-login-redirect-path',
   calendarDefaultView: 'events-public-calendar-default-view',
   onboardingEnforcementEnabled: 'events-public-onboarding-enforcement-enabled',
@@ -17,6 +18,7 @@ export interface PublicFeatureFlagValues {
   calendarTabEnabled: boolean;
   majorEventTabEnabled: boolean;
   notificationsTabEnabled: boolean;
+  myDayTabEnabled: boolean;
   defaultLoginRedirectPath: string;
   calendarDefaultView: string;
   onboardingEnforcementEnabled: boolean;
@@ -29,6 +31,7 @@ export const PUBLIC_FEATURE_FLAG_DEFAULTS: PublicFeatureFlagValues = {
   calendarTabEnabled: true,
   majorEventTabEnabled: true,
   notificationsTabEnabled: true,
+  myDayTabEnabled: true,
   defaultLoginRedirectPath: '/calendar',
   calendarDefaultView: 'list',
   onboardingEnforcementEnabled: true,
@@ -41,6 +44,7 @@ export const PUBLIC_FEATURE_FLAG_BOOLEAN_KEYS = [
   'calendarTabEnabled',
   'majorEventTabEnabled',
   'notificationsTabEnabled',
+  'myDayTabEnabled',
   'onboardingEnforcementEnabled',
   'cookieBannerEnabled',
   'undergraduateUnespRoleVerificationDisabled',

@@ -14,6 +14,12 @@
     <div #mapTarget class="map-target" role="region" aria-label="Mapa interativo de eventos"></div>
 
     @let currentState = state();
+    @if (currentState.status === 'ready' && isUsingSavedData()) {
+      <p class="offline-notice" role="status">
+        <mat-icon aria-hidden="true">offline_bolt</mat-icon>
+        Mapa salvo. As informações podem estar desatualizadas.
+      </p>
+    }
     @if (currentState.status === 'loading') {
       <mat-progress-bar class="loading-bar" mode="indeterminate" aria-label="Carregando eventos no mapa" />
     } @else if (currentState.status === 'error') {

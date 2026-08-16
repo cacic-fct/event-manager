@@ -10,6 +10,7 @@ import {
   input,
   viewChild,
 } from '@angular/core';
+import { PublicMapTileCacheWarmupService } from '../../shared/map/public-map-tile-cache-warmup.service';
 
 @Component({
   selector: 'app-event-location-map',
@@ -23,6 +24,7 @@ export class EventLocationMap implements OnDestroy {
   readonly title = input.required<string>();
 
   private readonly document = inject(DOCUMENT);
+  private readonly tileCacheWarmup = inject(PublicMapTileCacheWarmupService);
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
   private readonly markerIconUrl = new URL('assets/shared/pin.svg', this.document.baseURI).toString();
 
@@ -63,6 +65,7 @@ export class EventLocationMap implements OnDestroy {
     }
 
     const version = ++this.renderVersion;
+    void this.tileCacheWarmup.warmLocation(latitude, longitude);
 
     const [
       { default: Feature },

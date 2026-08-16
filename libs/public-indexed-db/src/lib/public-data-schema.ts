@@ -1,4 +1,9 @@
-import type { EventTargetType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type {
+  CurrentUserMyDay,
+  EventTargetType,
+  PublicEvent,
+  PublicMapEvent,
+} from '@cacic-fct/event-manager-public-contracts';
 import type { AttendanceCreationMethod, SportsMatchActionType } from '@cacic-fct/shared-data-types';
 import type { EventDetails, EventGroupDetails, MajorEventDetails, SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import Dexie, { Table } from 'dexie';
@@ -17,6 +22,19 @@ export interface CachedCalendarEvent {
 export interface PublicDataSyncMetadata {
   key: string;
   refreshedAt: number;
+}
+
+export interface CachedPublicMapEvent {
+  id: string;
+  endDate: string;
+  cachedAt: number;
+  event: PublicMapEvent;
+}
+
+export interface CachedPublicMapUserEventIds {
+  userId: string;
+  updatedAt: number;
+  eventIds: string[];
 }
 
 export interface OfflineUserSnapshot {
@@ -68,6 +86,14 @@ export interface CalendarPreferencesRecord {
   key: 'calendar';
   defaultItemView: CalendarDefaultItemViewPreference;
   updatedAt: number;
+}
+
+export interface OfflineMyDayRecord {
+  key: string;
+  userId: string;
+  date: string;
+  updatedAt: number;
+  data: CurrentUserMyDay;
 }
 
 export interface OfflineTotpSeedRecord {
@@ -300,6 +326,9 @@ export class PublicDataDatabase extends Dexie {
   oralAttendanceDecisions!: Table<OfflineOralAttendanceDecision, string>;
   sportsOperationQueue!: Table<OfflineSportsOperationQueueItem, [string, string]>;
   sportsCollectorCredentials!: Table<OfflineSportsCollectorCredential, [string, string]>;
+  publicMapEvents!: Table<CachedPublicMapEvent, string>;
+  publicMapUserEventIds!: Table<CachedPublicMapUserEventIds, string>;
+  myDaySnapshots!: Table<OfflineMyDayRecord, string>;
 
   constructor(name = PUBLIC_DATA_DATABASE_NAME) {
     super(name);
@@ -524,5 +553,68 @@ export class PublicDataDatabase extends Dexie {
           .toCollection()
           .modify(markOfflineSportsCollectorProofMissing);
       });
+
+    this.version(12).stores({
+      calendarEvents: 'id, startDate, cachedAt',
+      syncMetadata: 'key',
+      userSnapshots: 'userId, updatedAt',
+      restaurantCards: 'userId, updatedAt',
+      attendanceFeeds: 'key, userId, updatedAt',
+      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+      featureFlagCache: 'key, updatedAt',
+      calendarPreferences: 'key, updatedAt',
+      totpSeeds: 'userId, primaryEmail, sessionExpiresAt, updatedAt',
+      attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      attendanceQueue: [
+        'clientId',
+        'queuedByUserId',
+        'eventId',
+        'status',
+        'queuedAt',
+        'updatedAt',
+        '[queuedByUserId+eventId]',
+        '[queuedByUserId+status]',
+        '[eventId+status]',
+      ].join(', '),
+      oralAttendanceRosters: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      oralAttendanceDecisions:
+        'clientId, queuedByUserId, eventId, personId, queuedAt, [queuedByUserId+eventId], [queuedByUserId+eventId+personId]',
+      sportsOperationQueue: '[userScope+id], userScope, queuedAt',
+      sportsCollectorCredentials: '[userScope+matchId], userScope, matchId, issuedAt',
+      publicMapEvents: 'id, endDate, cachedAt',
+      publicMapUserEventIds: 'userId, updatedAt',
+    });
+
+    this.version(13).stores({
+      calendarEvents: 'id, startDate, cachedAt',
+      syncMetadata: 'key',
+      userSnapshots: 'userId, updatedAt',
+      restaurantCards: 'userId, updatedAt',
+      attendanceFeeds: 'key, userId, updatedAt',
+      attendanceDetails: 'key, userId, [userId+targetType+targetId], updatedAt',
+      featureFlagCache: 'key, updatedAt',
+      calendarPreferences: 'key, updatedAt',
+      totpSeeds: 'userId, primaryEmail, sessionExpiresAt, updatedAt',
+      attendanceCollectionEvents: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      attendanceQueue: [
+        'clientId',
+        'queuedByUserId',
+        'eventId',
+        'status',
+        'queuedAt',
+        'updatedAt',
+        '[queuedByUserId+eventId]',
+        '[queuedByUserId+status]',
+        '[eventId+status]',
+      ].join(', '),
+      oralAttendanceRosters: 'key, userId, eventId, cachedAt, [userId+eventId]',
+      oralAttendanceDecisions:
+        'clientId, queuedByUserId, eventId, personId, queuedAt, [queuedByUserId+eventId], [queuedByUserId+eventId+personId]',
+      sportsOperationQueue: '[userScope+id], userScope, queuedAt',
+      sportsCollectorCredentials: '[userScope+matchId], userScope, matchId, issuedAt',
+      publicMapEvents: 'id, endDate, cachedAt',
+      publicMapUserEventIds: 'userId, updatedAt',
+      myDaySnapshots: 'key, userId, date, updatedAt, [userId+date]',
+    });
   }
 }

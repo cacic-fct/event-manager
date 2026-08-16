@@ -1,0 +1,72 @@
+:host {
+  display: block;
+}
+
+.week-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 0 8px;
+}
+
+.hcal {
+  font-size: 1.25rem;
+  position: relative;
+  width: 100%;
+}
+
+.hcal-header {
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  padding-top: 8px;
+  text-align: center;
+}
+
+.hcal-header-days,
+.hcal-header-dates {
+  display: flex;
+  justify-content: space-between;
+}
+
+.hcal-header-days {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+}
+
+.hcal-header-dates {
+  margin-top: 3px;
+}
+
+.hcal-header-day,
+.hcal-header-date {
+  text-align: center;
+  width: 14.2857%;
+}
+
+.hcal-header-date {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--mat-sys-on-surface);
+  cursor: pointer;
+  font: var(--mat-sys-title-medium);
+  height: 38px;
+  margin: 0 auto 5px;
+  width: 38px;
+}
+
+.hcal-header-date.active {
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+  font-weight: 600;
+}
+
+.hcal-header-date:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+
+.hcal-header-today {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-medium);
+  margin-top: 10px;
+  padding-bottom: 10px;
+}

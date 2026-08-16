@@ -15,53 +15,58 @@ export function currentUserMapEventWhere(
   now: Date,
 ): Prisma.EventWhereInput {
   return {
-    AND: [
-      publicMapEventWhere(now),
+    AND: [publicMapEventWhere(now), currentUserAssociatedEventWhere(personId, userId, now)],
+  };
+}
+
+export function currentUserAssociatedEventWhere(
+  personId: string,
+  userId: string | undefined,
+  now: Date,
+): Prisma.EventWhereInput {
+  return {
+    OR: [
       {
-        OR: [
-          {
-            subscriptions: {
-              some: {
-                personId,
-                deletedAt: null,
+        subscriptions: {
+          some: {
+            personId,
+            deletedAt: null,
+          },
+        },
+      },
+      {
+        majorEventSelections: {
+          some: {
+            deletedAt: null,
+            subscription: {
+              personId,
+              deletedAt: null,
+              subscriptionStatus: {
+                not: SubscriptionStatus.CANCELED,
               },
             },
           },
-          {
-            majorEventSelections: {
-              some: {
-                deletedAt: null,
-                subscription: {
-                  personId,
-                  deletedAt: null,
-                  subscriptionStatus: {
-                    not: SubscriptionStatus.CANCELED,
-                  },
-                },
-              },
-            },
+        },
+      },
+      {
+        lecturers: {
+          some: {
+            personId,
           },
-          {
-            lecturers: {
-              some: {
-                personId,
-              },
-            },
+        },
+      },
+      {
+        attendanceCollectors: {
+          some: {
+            personId,
           },
-          {
-            attendanceCollectors: {
-              some: {
-                personId,
-              },
-            },
-          },
-          ...currentUserManagerEventWhere(userId, now),
-          {
-            sportsMatch: {
-              is: currentUserSportsMatchWhere(personId),
-            },
-          },
-        ],
+        },
+      },
+      ...currentUserManagerEventWhere(userId, now),
+      {
+        sportsMatch: {
+          is: currentUserSportsMatchWhere(personId),
+        },
       },
     ],
   };

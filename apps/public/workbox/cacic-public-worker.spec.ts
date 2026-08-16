@@ -400,6 +400,72 @@ describe('cacic-public-worker', () => {
     });
   });
 
+  it('caches only viewed OpenStreetMap tiles with bounded background revalidation', () => {
+    const harness = createWorkerHarness();
+
+    const tileRoute = harness.routes.find((route) =>
+      route.matcher(
+        requestContext('https://tile.openstreetmap.org/16/23456/34567.png', {
+          destination: 'image',
+        }),
+      ),
+    );
+
+    expect(tileRoute?.handler).toBeInstanceOf(MockStaleWhileRevalidate);
+    expect(tileRoute?.matcher(requestContext('https://tile.openstreetmap.org/styles/current.json'))).toBe(false);
+    expect(tileRoute?.matcher(requestContext('https://tiles.example.org/16/23456/34567.png'))).toBe(false);
+    const tileHandler = tileRoute?.handler as unknown as MockStaleWhileRevalidate;
+    expect(tileHandler.options).toMatchObject({ cacheName: 'openstreetmap-tiles' });
+    expect((tileHandler.options['plugins'] as Array<{ options?: unknown }>)[1].options).toMatchObject({
+      maxEntries: 200,
+      maxAgeSeconds: 60 * 60 * 24 * 7,
+      purgeOnQuotaError: true,
+    });
+  });
+
+  it('warms validated map tiles into the shared runtime cache', async () => {
+    const harness = createWorkerHarness();
+    const replies: unknown[] = [];
+    const urls = [
+      'https://tile.openstreetmap.org/16/23456/34567.png',
+      'https://tile.openstreetmap.org/18/93824/138268.png',
+    ];
+    harness.fetchMock.mockResolvedValue(new Response('tile', { status: 200 }));
+
+    await dispatchMessage(harness, {
+      data: { type: 'CACHE_MAP_TILES', urls },
+      ports: [{ postMessage: (message) => replies.push(message) }],
+    });
+
+    expect(replies).toEqual([{ type: 'CACHE_MAP_TILES_RESULT', ok: true }]);
+    expect(harness.fetchMock).toHaveBeenCalledTimes(2);
+    expect(harness.caches.open).toHaveBeenCalledWith('openstreetmap-tiles');
+    expect(harness.openedCaches.get('openstreetmap-tiles')?.put).toHaveBeenCalledTimes(2);
+    expect(harness.cacheExpirations).toHaveLength(2);
+    expect(harness.cacheExpirations.every(({ cacheName }) => cacheName === 'openstreetmap-tiles')).toBe(true);
+    expect(harness.cacheExpirations.every(({ updateTimestamp }) => updateTimestamp.mock.calls.length === 1)).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    ['untrusted origin', ['https://tiles.example.org/16/23456/34567.png']],
+    ['invalid URL', ['not a URL']],
+    ['oversized batch', Array.from({ length: 21 }, (_, index) => `https://tile.openstreetmap.org/16/${index}/1.png`)],
+  ])('rejects an %s map tile warmup batch', async (_case, urls) => {
+    const harness = createWorkerHarness();
+    const replies: unknown[] = [];
+
+    await dispatchMessage(harness, {
+      data: { type: 'CACHE_MAP_TILES', urls },
+      ports: [{ postMessage: (message) => replies.push(message) }],
+    });
+
+    expect(replies).toEqual([{ type: 'CACHE_MAP_TILES_RESULT', ok: false }]);
+    expect(harness.fetchMock).not.toHaveBeenCalled();
+    expect(harness.caches.open).not.toHaveBeenCalled();
+  });
+
   it('returns the precached CSR shell when an offline navigation misses the network', async () => {
     const harness = createWorkerHarness();
     const navigationRoute = harness.routes.find((route) =>

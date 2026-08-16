@@ -33,6 +33,7 @@ import { catchError, forkJoin, of } from 'rxjs';
 import { EmojiService } from '../shared/emoji.service';
 import { PublicMapGeolocationService } from '../shared/map/public-map-geolocation.service';
 import { PublicUserLocationLayerService } from '../shared/map/public-user-location-layer.service';
+import { PublicMapTileCacheWarmupService } from '../shared/map/public-map-tile-cache-warmup.service';
 import { PublicMapApiService } from './public-map-api.service';
 import {
   PublicMapFilterDialog,
@@ -79,6 +80,7 @@ export class PublicMapPage implements AfterViewInit {
   private readonly emoji = inject(EmojiService);
   private readonly geolocation = inject(PublicMapGeolocationService);
   private readonly locationLayer = inject(PublicUserLocationLayerService);
+  private readonly tileCacheWarmup = inject(PublicMapTileCacheWarmupService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -87,6 +89,7 @@ export class PublicMapPage implements AfterViewInit {
   private readonly mapTarget = viewChild<ElementRef<HTMLDivElement>>('mapTarget');
 
   readonly state = signal<MapState>({ status: 'loading' });
+  readonly isUsingSavedData = this.api.isUsingSavedData;
   readonly events = signal<PublicMapEvent[]>([]);
   readonly currentUserEventIds = signal<ReadonlySet<string>>(new Set());
   readonly filters = signal(this.initialFilters());
@@ -669,6 +672,7 @@ export class PublicMapPage implements AfterViewInit {
 
   private openEvent(event: PublicMapEvent): void {
     this.saveMapState();
+    void this.tileCacheWarmup.warmLocation(event.latitude, event.longitude);
     void this.router.navigate(['/event', event.id], {
       queryParams: { back: this.safeMapReturnUrl() },
     });

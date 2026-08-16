@@ -1,14 +1,16 @@
 import { Injectable, inject } from '@angular/core';
-import type { EventTargetType, PublicEvent } from '@cacic-fct/event-manager-public-contracts';
+import type { EventTargetType, PublicEvent, PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { CalendarDataCacheService } from './calendar-data-cache.service';
 import { OfflineAttendanceDetail, OfflineRestaurantCard, OfflineUserSnapshot } from './public-data-schema';
 import { UserOfflineDataService } from './user-offline-data.service';
+import { PublicMapDataCacheService } from './public-map-data-cache.service';
 
 @Injectable({ providedIn: 'root' })
 export class PublicDataAccessService {
   private readonly calendarData = inject(CalendarDataCacheService);
   private readonly userData = inject(UserOfflineDataService);
+  private readonly publicMapData = inject(PublicMapDataCacheService);
 
   async getCalendarEvents(startDateFrom: string): Promise<PublicEvent[]> {
     return this.calendarData.getEvents(startDateFrom);
@@ -20,6 +22,48 @@ export class PublicDataAccessService {
 
   async getLastRefresh(datasetKey: string): Promise<number | null> {
     return this.calendarData.getLastRefresh(datasetKey);
+  }
+
+  async replacePublicMapEvents(events: readonly PublicMapEvent[]): Promise<void> {
+    await this.publicMapData.replaceEvents(events);
+  }
+
+  async getPublicMapEvents(maxAgeMs: number): Promise<PublicMapEvent[] | null> {
+    const mapEvents = await this.publicMapData.getEvents(maxAgeMs);
+    if (mapEvents !== null) {
+      return mapEvents;
+    }
+
+    const minimumDate = new Date();
+    minimumDate.setMonth(minimumDate.getMonth() - 1);
+    const lastCalendarRefresh = await this.calendarData.getLastRefresh('calendarEvents');
+    if (lastCalendarRefresh === null || Date.now() - lastCalendarRefresh > maxAgeMs) {
+      return null;
+    }
+    const calendarEvents = await this.calendarData.getEvents(minimumDate.toISOString());
+    return calendarEvents
+      .filter(
+        (event): event is PublicEvent & { latitude: number; longitude: number } =>
+          event.latitude != null && event.longitude != null && new Date(event.endDate).getTime() >= Date.now(),
+      )
+      .map(({ id, name, startDate, endDate, emoji, latitude, longitude, locationDescription }) => ({
+        id,
+        name,
+        startDate,
+        endDate,
+        emoji,
+        latitude,
+        longitude,
+        locationDescription,
+      }));
+  }
+
+  async replacePublicMapUserEventIds(userId: string, eventIds: readonly string[]): Promise<void> {
+    await this.publicMapData.replaceUserEventIds(userId, eventIds);
+  }
+
+  async getPublicMapUserEventIds(userId: string, maxAgeMs: number): Promise<string[] | null> {
+    return this.publicMapData.getUserEventIds(userId, maxAgeMs);
   }
 
   async replaceUserSnapshot(snapshot: OfflineUserSnapshot): Promise<void> {

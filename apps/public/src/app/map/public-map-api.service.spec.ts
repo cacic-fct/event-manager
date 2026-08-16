@@ -11,11 +11,20 @@ describe('PublicMapApiService', () => {
   let httpTesting: HttpTestingController;
   let cache: {
     read: ReturnType<typeof vi.fn>;
-    write: ReturnType<typeof vi.fn>;
+    writeEvents: ReturnType<typeof vi.fn>;
+    writeUserEventIds: ReturnType<typeof vi.fn>;
+    readOfflineEvents: ReturnType<typeof vi.fn>;
+    readOfflineUserEventIds: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
-    cache = { read: vi.fn(() => null), write: vi.fn() };
+    cache = {
+      read: vi.fn(() => null),
+      writeEvents: vi.fn(),
+      writeUserEventIds: vi.fn(),
+      readOfflineEvents: vi.fn(() => Promise.resolve(null)),
+      readOfflineUserEventIds: vi.fn(() => Promise.resolve(null)),
+    };
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -39,7 +48,7 @@ describe('PublicMapApiService', () => {
     request.flush({ data: { publicMapEvents: [event] } });
 
     await expect(response).resolves.toEqual([event]);
-    expect(cache.write).toHaveBeenCalledWith('events', [event], 300_000);
+    expect(cache.writeEvents).toHaveBeenCalledWith([event], 300_000);
   });
 
   it('returns cached events without issuing a request', async () => {
@@ -59,7 +68,7 @@ describe('PublicMapApiService', () => {
     request.flush({ data: { currentUserMapEventIds: ['event-1', 'event-2'] } });
 
     await expect(response).resolves.toEqual(new Set(['event-1', 'event-2']));
-    expect(cache.write).toHaveBeenCalledWith('mine:user-1', ['event-1', 'event-2'], 300_000);
+    expect(cache.writeUserEventIds).toHaveBeenCalledWith('user-1', ['event-1', 'event-2'], 300_000);
   });
 
   it('recreates a Set from cached my-event ids', async () => {
@@ -80,7 +89,31 @@ describe('PublicMapApiService', () => {
     httpTesting.expectOne('/api/graphql').flush(body);
 
     await expect(response).rejects.toThrow(expectedError);
-    expect(cache.write).not.toHaveBeenCalled();
+    expect(cache.writeEvents).not.toHaveBeenCalled();
+  });
+
+  it('falls back to durable event data when the map query is unavailable', async () => {
+    const event = eventFixture();
+    cache.readOfflineEvents.mockResolvedValueOnce([event]);
+    const response = firstValueFrom(api.getEvents());
+    httpTesting.expectOne('/api/graphql').flush({}, { status: 503, statusText: 'Unavailable' });
+
+    await expect(response).resolves.toEqual([event]);
+    expect(api.isUsingSavedData()).toBe(true);
+    expect(cache.readOfflineEvents).toHaveBeenCalledWith(604_800_000);
+  });
+
+  it('falls back to cached user associations and preserves the original error when none exist', async () => {
+    cache.readOfflineUserEventIds.mockResolvedValueOnce(['event-2']);
+    const cachedResponse = firstValueFrom(api.getCurrentUserEventIds('user-1'));
+    httpTesting.expectOne('/api/graphql').flush({}, { status: 503, statusText: 'Unavailable' });
+
+    await expect(cachedResponse).resolves.toEqual(new Set(['event-2']));
+    expect(api.isUsingSavedData()).toBe(true);
+
+    const failedResponse = firstValueFrom(api.getCurrentUserEventIds('user-2'));
+    httpTesting.expectOne('/api/graphql').flush({}, { status: 503, statusText: 'Unavailable' });
+    await expect(failedResponse).rejects.toMatchObject({ status: 503 });
   });
 });
 

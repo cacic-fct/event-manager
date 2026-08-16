@@ -102,6 +102,8 @@ import { CurrentUserSubscriptionFeedService } from './current-user/subscription-
 import { CurrentUserSubscriptionFeedResolver } from './current-user/subscription-feed/resolver';
 import { CurrentUserDefaultRedirectService } from './current-user/default-redirect/current-user-default-redirect.service';
 import { CurrentUserDefaultRedirectResolver } from './current-user/default-redirect/resolver';
+import { CurrentUserMyDayResolver } from './current-user/my-day/resolver';
+import { CurrentUserMyDayService } from './current-user/my-day/service';
 import { DashboardInsightsProcessor } from './dashboard/insights.processor';
 import { DashboardInsightsResolver } from './dashboard/insights.resolver';
 import { DashboardInsightsSchedulerService } from './dashboard/insights-scheduler.service';
@@ -405,6 +407,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserMajorEventSubscriptionService,
     CurrentUserSubscriptionFeedService,
     CurrentUserDefaultRedirectService,
+    CurrentUserMyDayService,
     CurrentUserCertificatesResolver,
     CurrentUserProfileResolver,
     CurrentUserMajorEventSubscriptionsResolver,
@@ -414,6 +417,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserOnlineAttendanceRealtimeService,
     CurrentUserSubscriptionFeedResolver,
     CurrentUserDefaultRedirectResolver,
+    CurrentUserMyDayResolver,
     SportsTournamentMutationsResolver,
     SportsTeamMutationsResolver,
     SportsMatchAdminMutationsResolver,

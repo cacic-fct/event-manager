@@ -4,6 +4,7 @@ import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,
 } from './attendance/collection/access.service';
+import { myDayFeatureGuard } from './my-day/my-day.guard';
 
 export const appRoutes: Route[] = [
   {
@@ -32,6 +33,13 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./major-events/list/event-list-page').then((m) => m.MajorEvent),
         title: 'Grandes eventos',
         data: { reuseTab: true },
+      },
+      {
+        path: 'my-day',
+        loadComponent: () => import('./my-day/my-day.page').then((m) => m.MyDayPage),
+        title: 'Meu dia',
+        data: { reuseTab: true },
+        canActivate: [myDayFeatureGuard],
       },
       {
         path: 'notifications',

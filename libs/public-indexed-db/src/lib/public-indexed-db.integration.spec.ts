@@ -14,6 +14,7 @@ import { CalendarPreferencesStorageService } from './calendar-preferences-storag
 import { TotpSeedCacheService } from './totp-seed-cache.service';
 import { PublicDataAccessService } from './public-data-access.service';
 import { UserOfflineDataService } from './user-offline-data.service';
+import { PublicMapDataCacheService } from './public-map-data-cache.service';
 
 describe('offline public data access integration', () => {
   let database: PublicDataDatabase;
@@ -35,6 +36,7 @@ describe('offline public data access integration', () => {
         CalendarDataCacheService,
         CalendarPreferencesStorageService,
         UserOfflineDataService,
+        PublicMapDataCacheService,
         TotpSeedCacheService,
         PublicDataAccessService,
         OralAttendanceOfflineService,
@@ -66,6 +68,62 @@ describe('offline public data access integration', () => {
       event('later-event', fixtureDate(31, 14)),
     ]);
     await expect(database.calendarEvents.get('expired-event')).resolves.toBeUndefined();
+  });
+
+  it('reuses calendar and participation caches for offline public map data', async () => {
+    const service = injectService(PublicDataAccessService);
+    const locatedEvent = {
+      ...event('located-event', fixtureDate(30)),
+      latitude: -22.121,
+      longitude: -51.408,
+      locationDescription: 'Auditório',
+    };
+    await service.upsertCalendarEvents([locatedEvent, event('remote-event', fixtureDate(31))]);
+
+    await expect(service.getPublicMapEvents(60_000)).resolves.toEqual([
+      expect.objectContaining({ id: 'located-event', latitude: -22.121, longitude: -51.408 }),
+    ]);
+
+    await service.replaceAttendanceFeed('user-1', {
+      majorEventItems: [],
+      eventItems: [
+        {
+          __typename: 'SubscribedSingleEventItem',
+          id: 'subscription-1',
+          type: 'single',
+          startDate: locatedEvent.startDate,
+          event: locatedEvent,
+          participation: { isSubscribed: true, isLecturer: false, hasIssuedCertificate: false },
+        },
+      ],
+      standaloneCertificateFolders: [],
+      attendances: [{ eventId: 'attended-event', attendedAt: fixtureDate(-1) }],
+    });
+
+    await expect(service.getPublicMapUserEventIds('user-1', 60_000)).resolves.toEqual([
+      'attended-event',
+      'located-event',
+    ]);
+  });
+
+  it('stores the compact map snapshot and replaces it atomically', async () => {
+    const service = injectService(PublicDataAccessService);
+    const first = {
+      id: 'first',
+      name: 'Primeiro',
+      startDate: fixtureDate(30),
+      endDate: fixtureDate(31),
+      emoji: '📍',
+      latitude: -22.121,
+      longitude: -51.408,
+    };
+    const second = { ...first, id: 'second', name: 'Segundo' };
+
+    await service.replacePublicMapEvents([first]);
+    await service.replacePublicMapEvents([second]);
+
+    await expect(service.getPublicMapEvents(60_000)).resolves.toEqual([second]);
+    await expect(database.publicMapEvents.get('first')).resolves.toBeUndefined();
   });
 
   it('keeps attendance collection events scoped by user and sorted by event date', async () => {
@@ -532,6 +590,7 @@ describe('offline public data access integration', () => {
         CalendarDataCacheService,
         CalendarPreferencesStorageService,
         UserOfflineDataService,
+        PublicMapDataCacheService,
         TotpSeedCacheService,
         OralAttendanceOfflineService,
       ],

@@ -18,6 +18,7 @@ interface OpenMeteoResponse {
     time?: string[];
     temperature_2m?: number[];
     weather_code?: number[];
+    uv_index?: number[];
   };
 }
 
@@ -204,7 +205,7 @@ export class WeatherService {
     const url = new URL('https://api.open-meteo.com/v1/forecast');
     url.searchParams.set('latitude', String(event.latitude));
     url.searchParams.set('longitude', String(event.longitude));
-    url.searchParams.set('hourly', 'temperature_2m,weather_code');
+    url.searchParams.set('hourly', 'temperature_2m,weather_code,uv_index');
     url.searchParams.set('timezone', TIME_ZONE);
     url.searchParams.set('start_date', eventDate);
     url.searchParams.set('end_date', eventDate);
@@ -218,6 +219,7 @@ export class WeatherService {
     const index = this.findForecastIndex(data, event.startDate);
     const temperature = data.hourly?.temperature_2m?.[index];
     const weatherCode = data.hourly?.weather_code?.[index];
+    const uvIndex = data.hourly?.uv_index?.[index];
 
     if (temperature == null || weatherCode == null) {
       throw new Error(`Open-Meteo did not return weather for event ${event.id}.`);
@@ -226,6 +228,7 @@ export class WeatherService {
     return {
       eventId: event.id,
       temperature: Math.round(temperature),
+      uvIndex: uvIndex == null ? null : Math.round(uvIndex * 10) / 10,
       weatherCode,
       ...this.describeWeather(weatherCode, event.startDate),
       forecastTime: event.startDate,

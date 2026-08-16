@@ -8,3 +8,5 @@ export * from './lib/public-database-provider';
 export * from './lib/oral-attendance-offline.service';
 export * from './lib/totp-seed-cache.service';
 export * from './lib/sports-operation-offline-queue.service';
+export * from './lib/my-day-cache.service';
+export * from './lib/public-map-data-cache.service';

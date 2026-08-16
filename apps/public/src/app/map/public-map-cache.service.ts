@@ -1,5 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import type { PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 
 interface CacheEntry<T> {
   expiresAt: number;
@@ -11,6 +13,7 @@ const CACHE_PREFIX = 'cacic-eventos:public-map:v1:';
 @Injectable({ providedIn: 'root' })
 export class PublicMapCacheService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly offlineData = inject(PublicDataAccessService);
 
   read<T>(key: string): T | null {
     if (!this.isBrowser) {
@@ -51,6 +54,24 @@ export class PublicMapCacheService {
     } catch {
       // Storage can be unavailable in private browsing or under quota pressure.
     }
+  }
+
+  readOfflineEvents(maxAgeMs: number): Promise<PublicMapEvent[] | null> {
+    return this.offlineData.getPublicMapEvents(maxAgeMs);
+  }
+
+  writeEvents(events: readonly PublicMapEvent[], ttlMs: number): void {
+    this.write('events', events, ttlMs);
+    void this.offlineData.replacePublicMapEvents(events).catch(() => undefined);
+  }
+
+  readOfflineUserEventIds(userId: string, maxAgeMs: number): Promise<string[] | null> {
+    return this.offlineData.getPublicMapUserEventIds(userId, maxAgeMs);
+  }
+
+  writeUserEventIds(userId: string, eventIds: readonly string[], ttlMs: number): void {
+    this.write(`mine:${userId}`, eventIds, ttlMs);
+    void this.offlineData.replacePublicMapUserEventIds(userId, eventIds).catch(() => undefined);
   }
 
   invalidate(): void {

@@ -88,6 +88,7 @@ export class PublicFeatureFlagService {
       calendarTabEnabled: this.clientBooleanValue('calendarTabEnabled'),
       majorEventTabEnabled: this.clientBooleanValue('majorEventTabEnabled'),
       notificationsTabEnabled: this.clientBooleanValue('notificationsTabEnabled'),
+      myDayTabEnabled: this.clientBooleanValue('myDayTabEnabled'),
       defaultLoginRedirectPath: this.stringVariantValue(
         client.getVariant(PUBLIC_FEATURE_FLAGS.defaultLoginRedirectPath),
         PUBLIC_FEATURE_FLAG_DEFAULTS.defaultLoginRedirectPath,
@@ -131,6 +132,7 @@ export class PublicFeatureFlagService {
       calendarTabEnabled: enabled('calendarTabEnabled'),
       majorEventTabEnabled: enabled('majorEventTabEnabled'),
       notificationsTabEnabled: enabled('notificationsTabEnabled'),
+      myDayTabEnabled: enabled('myDayTabEnabled'),
       defaultLoginRedirectPath: this.stringVariantValue(
         defaultRedirect?.variant,
         PUBLIC_FEATURE_FLAG_DEFAULTS.defaultLoginRedirectPath,

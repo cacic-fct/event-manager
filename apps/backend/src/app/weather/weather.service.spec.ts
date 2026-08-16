@@ -30,6 +30,7 @@ describe('WeatherService', () => {
           time: ['2026-05-22T09:00'],
           temperature_2m: [21.6],
           weather_code: [61],
+          uv_index: [4.26],
         },
       }),
     });
@@ -61,6 +62,7 @@ describe('WeatherService', () => {
       JSON.stringify({
         eventId: 'event-1',
         temperature: 22,
+        uvIndex: 4.3,
         weatherCode: 61,
         summary: 'Chuva leve',
         materialIcon: 'rainy',
@@ -113,6 +115,9 @@ describe('WeatherService', () => {
       expect.objectContaining({
         href: expect.stringContaining('https://api.open-meteo.com/v1/forecast'),
       }),
+    );
+    expect((global.fetch as jest.Mock).mock.calls[0][0].searchParams.get('hourly')).toBe(
+      'temperature_2m,weather_code,uv_index',
     );
     expect(redis.set).toHaveBeenCalledWith(
       'weather:event:event-1',

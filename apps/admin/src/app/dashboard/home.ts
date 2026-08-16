@@ -30,6 +30,7 @@ import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { navigationLinkItems } from '../app-shell/navigation';
 import { PermissionsService } from '../permissions/permissions.service';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { timeAwareGreeting } from '@cacic-fct/shared-utils';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
@@ -379,11 +380,8 @@ export class Home implements OnInit, OnDestroy {
   }
 
   private getGreetings(): string {
-    const hour = this.currentDate().getHours();
     const name = this.authService.user()?.claims?.name;
-    const greeting = hour < 5 ? 'Boa madrugada' : hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
-
-    return name ? `${greeting}, ${name}!` : `${greeting}!`;
+    return timeAwareGreeting(this.currentDate(), typeof name === 'string' ? name : null);
   }
 
   isToday(event: DashboardCalendarEvent): boolean {

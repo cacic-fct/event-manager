@@ -76,6 +76,30 @@
   z-index: 8;
 }
 
+.offline-notice {
+  position: absolute;
+  z-index: 10;
+  inset-block-start: 12px;
+  inset-inline: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  margin: 0 auto;
+  padding: 8px 12px;
+  border-radius: 12px;
+  color: var(--mat-sys-on-secondary-container);
+  background: var(--mat-sys-secondary-container);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--mat-sys-shadow) 20%, transparent);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.offline-notice mat-icon {
+  flex: 0 0 auto;
+}
+
 .map-message p {
   margin: 0;
 }

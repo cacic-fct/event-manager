@@ -108,17 +108,23 @@ export class UserOfflineDataService {
 
     await database.transaction(
       'rw',
-      database.userSnapshots,
-      database.attendanceFeeds,
-      database.attendanceDetails,
-      database.restaurantCards,
-      database.totpSeeds,
+      [
+        database.userSnapshots,
+        database.attendanceFeeds,
+        database.attendanceDetails,
+        database.restaurantCards,
+        database.totpSeeds,
+        database.publicMapUserEventIds,
+        database.myDaySnapshots,
+      ],
       async () => {
         await database.userSnapshots.clear();
         await database.attendanceFeeds.clear();
         await database.attendanceDetails.clear();
         await database.restaurantCards.clear();
         await database.totpSeeds.clear();
+        await database.publicMapUserEventIds.clear();
+        await database.myDaySnapshots.clear();
       },
     );
   }

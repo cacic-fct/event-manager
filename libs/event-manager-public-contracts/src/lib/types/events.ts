@@ -158,6 +158,7 @@ export interface PublicMajorEventSubscriptionPage {
 export interface PublicEventWeather {
   eventId: string;
   temperature: number;
+  uvIndex?: number | null;
   weatherCode: number;
   summary: string;
   materialIcon: string;

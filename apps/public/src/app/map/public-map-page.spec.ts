@@ -10,13 +10,18 @@ import { Observable, Subject, of, throwError } from 'rxjs';
 import { EmojiService } from '../shared/emoji.service';
 import { PublicMapGeolocationService } from '../shared/map/public-map-geolocation.service';
 import { PublicUserLocationLayerService } from '../shared/map/public-user-location-layer.service';
+import { PublicMapTileCacheWarmupService } from '../shared/map/public-map-tile-cache-warmup.service';
 import { PublicMapApiService } from './public-map-api.service';
 import { PublicMapPage } from './public-map-page';
 import { PublicMapStateService, StoredPublicMapState } from './public-map-state.service';
 
 describe('PublicMapPage', () => {
   let fixture: ComponentFixture<PublicMapPage>;
-  let api: { getEvents: ReturnType<typeof vi.fn>; getCurrentUserEventIds: ReturnType<typeof vi.fn> };
+  let api: {
+    getEvents: ReturnType<typeof vi.fn>;
+    getCurrentUserEventIds: ReturnType<typeof vi.fn>;
+    isUsingSavedData: ReturnType<typeof signal<boolean>>;
+  };
   let authenticated: ReturnType<typeof signal<boolean>>;
   let user: ReturnType<typeof signal<{ sub: string } | null>>;
   let dialog: { open: ReturnType<typeof vi.fn> };
@@ -29,6 +34,7 @@ describe('PublicMapPage', () => {
     stopAndHide: ReturnType<typeof vi.fn>;
     destroy: ReturnType<typeof vi.fn>;
   };
+  let tileCacheWarmup: { warmLocation: ReturnType<typeof vi.fn> };
   let stateStorage: {
     read: ReturnType<typeof vi.fn>;
     write: ReturnType<typeof vi.fn>;
@@ -60,6 +66,16 @@ describe('PublicMapPage', () => {
       message: 'Não foi possível carregar o mapa de eventos. Tente novamente em instantes.',
     });
     expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível');
+  });
+
+  it('discloses when the map is using saved data that may be outdated', async () => {
+    await createPage();
+    api.isUsingSavedData.set(true);
+    await refresh();
+
+    expect(fixture.nativeElement.querySelector('[role="status"]')?.textContent).toContain(
+      'Mapa salvo. As informações podem estar desatualizadas.',
+    );
   });
 
   it('does not request private event ids for signed-out visitors and rejects a stale my-events URL filter', async () => {
@@ -205,6 +221,10 @@ describe('PublicMapPage', () => {
 
     component.openEventFromList(component.filteredEvents()[0]);
 
+    expect(tileCacheWarmup.warmLocation).toHaveBeenCalledWith(
+      component.filteredEvents()[0].latitude,
+      component.filteredEvents()[0].longitude,
+    );
     expect(router.navigate).toHaveBeenCalledWith(['/event', 'event-1'], {
       queryParams: { back: '/map?participacao=meus&periodo=hoje' },
     });
@@ -254,6 +274,7 @@ describe('PublicMapPage', () => {
     api = {
       getEvents: vi.fn(() => options.eventsResponse ?? of(eventFixtures())),
       getCurrentUserEventIds: vi.fn(() => options.mineResponse ?? of(new Set<string>())),
+      isUsingSavedData: signal(false),
     };
     dialog = { open: vi.fn(() => ({ afterClosed: () => of(options.dialogResult) })) };
     router = { navigate: vi.fn(() => Promise.resolve(true)), navigateByUrl: vi.fn(() => Promise.resolve(true)) };
@@ -265,6 +286,7 @@ describe('PublicMapPage', () => {
       stopAndHide: vi.fn(),
       destroy: vi.fn(),
     };
+    tileCacheWarmup = { warmLocation: vi.fn(() => Promise.resolve(true)) };
     stateStorage = { read: vi.fn(() => options.storedState ?? null), write: vi.fn() };
     const route = {
       snapshot: { queryParamMap: convertToParamMap(options.query ?? {}) },
@@ -287,6 +309,7 @@ describe('PublicMapPage', () => {
           useValue: { permission, isRequesting: signal(false) },
         },
         { provide: PublicUserLocationLayerService, useValue: locationLayer },
+        { provide: PublicMapTileCacheWarmupService, useValue: tileCacheWarmup },
         { provide: PublicMapStateService, useValue: stateStorage },
       ],
     })

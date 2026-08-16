@@ -281,6 +281,7 @@ export const PUBLIC_EVENT_SUBSCRIPTION_SUMMARY_FIELDS = `
 export const PUBLIC_EVENT_WEATHER_FIELDS = `
   eventId
   temperature
+  uvIndex
   weatherCode
   summary
   materialIcon

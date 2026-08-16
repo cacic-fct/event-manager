@@ -11,6 +11,7 @@ import type {
   PublicMajorEvent,
   PublicMajorEventSubscriptionPage,
   PublicMapEvent,
+  CurrentUserMyDay,
   PublicPlatformStats,
 } from '../types';
 import {
@@ -116,6 +117,98 @@ export interface CurrentUserMapEventIdsQuery {
 export const CURRENT_USER_MAP_EVENT_IDS_QUERY = `
   query CurrentUserMapEventIds {
     currentUserMapEventIds
+  }
+`;
+
+export interface CurrentUserMyDayQueryVariables {
+  date: string;
+}
+
+export interface CurrentUserMyDayQuery {
+  currentUserMyDay: CurrentUserMyDay;
+}
+
+export const CURRENT_USER_MY_DAY_QUERY = `
+  query CurrentUserMyDay($date: String!) {
+    currentUserMyDay(date: $date) {
+      generatedAt
+      selectedDate
+      minimumDate
+      hasContent
+      currentEvent {
+        ...CurrentUserMyDayEventFields
+      }
+      nextEvent {
+        ...CurrentUserMyDayEventFields
+      }
+      laterEvents {
+        ...CurrentUserMyDayEventFields
+      }
+      attention {
+        id
+        kind
+        title
+        description
+        materialIcon
+        route
+        priority
+        offlineCapable
+      }
+      weather {
+        id
+        kind
+        title
+        advice
+        materialIcon
+        eventId
+        eventName
+        forecastTime
+        temperature
+        uvIndex
+        route
+      }
+    }
+  }
+
+  fragment CurrentUserMyDayEventFields on CurrentUserMyDayEvent {
+    id
+    name
+    emoji
+    startDate
+    endDate
+    locationDescription
+    roles {
+      kind
+      label
+    }
+    attendanceAction {
+      kind
+      label
+      materialIcon
+      route
+      offlineCapable
+    }
+    sportsActions {
+      kind
+      label
+      materialIcon
+      route
+      offlineCapable
+    }
+    infoAction {
+      kind
+      label
+      materialIcon
+      route
+      offlineCapable
+    }
+    mapAction {
+      kind
+      label
+      materialIcon
+      route
+      offlineCapable
+    }
   }
 `;
 

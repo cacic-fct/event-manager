@@ -41,8 +41,8 @@ describe('SportsOperationOfflineQueueService', () => {
     await Dexie.delete(DATABASE_NAME);
   });
 
-  it('adds schema version 11 and scopes duplicate client ids by user', async () => {
-    expect(database.verno).toBe(11);
+  it('keeps sports queues while later cache schemas are added and scopes duplicate client ids by user', async () => {
+    expect(database.verno).toBe(13);
     expect(database.tables.map((table) => table.name)).toContain('sportsOperationQueue');
     expect(database.tables.map((table) => table.name)).toContain('sportsCollectorCredentials');
 
