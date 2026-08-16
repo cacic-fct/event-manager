@@ -4,13 +4,50 @@
 // Learn more about theming and how to use it for your application's
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
+@use 'sass:meta';
 
 @import '@fontsource-variable/inter/index.css';
 @import '@fontsource-variable/source-code-pro/index.css';
 @import '@fontsource/material-symbols-outlined/index.css';
 
 @import '@cacic-fct/account-manager-cookie-banner/styles.css';
+@import 'github-markdown-css/github-markdown.css';
+@import 'katex/dist/katex.min.css';
 @import 'ol/ol.css';
+
+@media (prefers-color-scheme: light) {
+  @include meta.load-css('highlight.js/scss/atom-one-light');
+}
+
+@media (prefers-color-scheme: dark) {
+  @include meta.load-css('highlight.js/scss/atom-one-dark');
+}
+
+.markdown-body pre.markdown-code-block {
+  color: inherit;
+}
+
+.markdown-body pre.markdown-code-block > code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+@media (prefers-color-scheme: light) {
+  .markdown-body pre.markdown-code-block {
+    background: #fafafa;
+    color: #383a42;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .markdown-body pre.markdown-code-block {
+    background: #282c34;
+    color: #abb2bf;
+  }
+}
 
 html {
   height: 100%;

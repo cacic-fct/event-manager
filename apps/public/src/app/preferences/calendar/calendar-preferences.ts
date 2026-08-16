@@ -17,7 +17,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   CalendarDefaultItemViewPreference,
   CalendarPreferencesStorageService,
-} from '@cacic-fct/offline-public-data-access';
+} from '@cacic-fct/public-indexed-db';
 import {
   AuthService,
   CalendarFeedReenableChoice,

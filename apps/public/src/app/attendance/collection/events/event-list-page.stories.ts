@@ -1,6 +1,6 @@
 import { provideRouter } from '@angular/router';
 import { fakerPT_BR as faker } from '@faker-js/faker';
-import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { NEVER, of, throwError } from 'rxjs';

@@ -69,6 +69,7 @@ export class CurrentUserEventMapperService {
           id: tier.id,
           name: tier.name,
           value: tier.value,
+          includesSportsRegistration: tier.includesSportsRegistration,
         })),
       })),
       sportsTournament:

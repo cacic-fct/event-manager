@@ -11,7 +11,7 @@ import {
 } from '@prisma/client';
 import {
   MajorEventPaymentSelection,
-  resolveMajorEventSelfServicePayment,
+  resolveSportsSelfServicePayment,
 } from '../current-user/major-events/major-event-payment-selection';
 
 type ParticipantApprovalInput = {
@@ -56,6 +56,7 @@ export class SportsPaymentService {
                   select: {
                     name: true,
                     value: true,
+                    includesSportsRegistration: true,
                   },
                 },
               },
@@ -296,18 +297,21 @@ export class SportsPaymentService {
     majorEvent: {
       isPaymentRequired: boolean;
       majorEventPrices: Array<{
-        tiers: Array<{ name: string; value: number }>;
+        tiers: Array<{ name: string; value: number; includesSportsRegistration?: boolean }>;
       }>;
     },
     input: ParticipantApprovalInput,
   ): MajorEventPaymentSelection {
-    const tierCount = majorEvent.majorEventPrices.reduce((count, price) => count + price.tiers.length, 0);
+    const tierCount = majorEvent.majorEventPrices.reduce(
+      (count, price) => count + price.tiers.filter((tier) => tier.includesSportsRegistration === true).length,
+      0,
+    );
     if (
       input.source === SportsParticipantSource.SELF_SUBSCRIPTION ||
       input.paymentTier !== undefined ||
-      tierCount <= 1
+      tierCount === 1
     ) {
-      return resolveMajorEventSelfServicePayment(majorEvent, input.paymentTier);
+      return resolveSportsSelfServicePayment(majorEvent, input.paymentTier);
     }
     return {
       amountPaid: null,

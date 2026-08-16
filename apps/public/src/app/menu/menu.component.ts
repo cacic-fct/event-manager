@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService, CacicLogoComponent } from '@cacic-fct/shared-angular';
-import { OfflineUserSnapshot } from '@cacic-fct/offline-public-data-access';
+import { OfflineUserSnapshot } from '@cacic-fct/public-indexed-db';
 import { WORKSPACE_ENTRY_PERMISSIONS } from '@cacic-fct/shared-permissions';
 import { MatButtonModule } from '@angular/material/button';
 import { NetworkStatusService } from '../shared/network-status.service';

@@ -57,26 +57,26 @@
           <mat-option value="BOTH">Por modalidade e geral</mat-option>
         </mat-select>
       </mat-form-field>
-      <mat-slide-toggle formControlName="selfSubscriptionEnabled">
+      <mat-checkbox formControlName="selfSubscriptionEnabled">
         Permitir autoinscrição de participantes
-      </mat-slide-toggle>
-      <mat-slide-toggle formControlName="allowPlayerMultipleTeams">
+      </mat-checkbox>
+      <mat-checkbox formControlName="allowPlayerMultipleTeams">
         Permitir uma mesma pessoa em mais de uma equipe
-      </mat-slide-toggle>
-      <mat-slide-toggle formControlName="shouldIssueCertificate">
+      </mat-checkbox>
+      <mat-checkbox formControlName="shouldIssueCertificate">
         Emitir certificados esportivos neste torneio
-      </mat-slide-toggle>
+      </mat-checkbox>
       @if (workspace.tournamentForm.controls.selfSubscriptionEnabled.value) {
         <div class="subsection-title span-2">
           <h4>Opções da autoinscrição</h4>
           <p>Sem estas opções, cada candidatura deve indicar uma equipe e ao menos uma modalidade.</p>
         </div>
-        <mat-slide-toggle formControlName="selfSubscriptionAllowNoTeam">
+        <mat-checkbox formControlName="selfSubscriptionAllowNoTeam">
           Aceitar candidatura sem equipe escolhida
-        </mat-slide-toggle>
-        <mat-slide-toggle formControlName="selfSubscriptionAllowNoCategory">
+        </mat-checkbox>
+        <mat-checkbox formControlName="selfSubscriptionAllowNoCategory">
           Aceitar candidatura sem modalidade escolhida
-        </mat-slide-toggle>
+        </mat-checkbox>
       }
     </form>
   </section>
@@ -105,6 +105,18 @@
       }
     </div>
     <form [formGroup]="workspace.scoreEntryForm" class="compact-form" (ngSubmit)="workspace.createScoreEntry()">
+      <div class="sports-subsection-heading span-2">
+        <div>
+          <h4>Novo ajuste</h4>
+          <p>Registre uma pontuação manual ou penalidade com o motivo.</p>
+        </div>
+        <button
+          mat-stroked-button
+          type="submit"
+          [disabled]="workspace.loading() || workspace.scoreEntryForm.invalid">
+          Registrar ajuste
+        </button>
+      </div>
       <mat-form-field>
         <mat-label>Equipe</mat-label>
         <mat-select formControlName="teamId">
@@ -132,12 +144,6 @@
         <mat-label>Motivo do ajuste</mat-label>
         <input matInput formControlName="reason" />
       </mat-form-field>
-      <button
-        mat-stroked-button
-        type="submit"
-        [disabled]="workspace.loading() || workspace.scoreEntryForm.invalid">
-        Registrar ajuste
-      </button>
     </form>
   </aside>
 
@@ -170,45 +176,53 @@
           >
         }
       </mat-list>
-      <form [formGroup]="workspace.venueForm" class="form-grid" (ngSubmit)="workspace.saveVenue()">
-        <mat-form-field
-          ><mat-label>Local base</mat-label
-          ><mat-select formControlName="placePresetId">
-            @for (place of workspace.places(); track place.id) {
-              <mat-option [value]="place.id">{{ place.name }}</mat-option>
+      <form [formGroup]="workspace.venueForm" class="sports-venue-form" (ngSubmit)="workspace.saveVenue()">
+        <div class="sports-subsection-heading">
+          <div>
+            <h4>{{ workspace.selectedVenueId() ? 'Editar local' : 'Novo local' }}</h4>
+            <p>Cadastre quadras, piscinas ou arenas usadas pelas partidas.</p>
+          </div>
+          <div class="panel-actions">
+            @if (workspace.selectedVenueId()) {
+              <button mat-button type="button" (click)="workspace.deleteSelectedVenue()">
+                <mat-icon>delete</mat-icon>Excluir
+              </button>
             }
-          </mat-select></mat-form-field
-        >
-        <mat-form-field><mat-label>Nome público</mat-label><input matInput formControlName="name" /></mat-form-field>
-        <mat-form-field
-          ><mat-label>Quadra, raia ou sala</mat-label><input matInput formControlName="courtLabel"
-        /></mat-form-field>
-        <mat-form-field
-          ><mat-label>Capacidade</mat-label><input matInput type="number" min="0" formControlName="capacity"
-        /></mat-form-field>
-        <mat-form-field
-          ><mat-label>Local pai</mat-label
-          ><mat-select formControlName="parentVenueId">
-            <mat-option value="">Nenhum</mat-option>
-            @for (venue of workspace.tournamentRead()?.venues ?? []; track venue.id) {
-              @if (venue.id !== workspace.venueForm.controls.id.value) {
-                <mat-option [value]="venue.id">{{ venue.name }}</mat-option>
-              }
-            }
-          </mat-select></mat-form-field
-        >
-        <mat-form-field
-          ><mat-label>Orientações internas</mat-label><input matInput formControlName="notes"
-        /></mat-form-field>
-        <div class="panel-actions">
-          @if (workspace.selectedVenueId()) {
-            <button mat-button type="button" (click)="workspace.deleteSelectedVenue()">
-              <mat-icon>delete</mat-icon>Excluir
+            <button mat-flat-button type="submit" [disabled]="workspace.loading() || workspace.venueForm.invalid">
+              <mat-icon>save</mat-icon>Salvar local
             </button>
-          }
-          <button mat-flat-button type="submit" [disabled]="workspace.loading() || workspace.venueForm.invalid">
-            <mat-icon>save</mat-icon>Salvar local
-          </button>
+          </div>
+        </div>
+        <div class="form-grid">
+          <mat-form-field
+            ><mat-label>Local base</mat-label
+            ><mat-select formControlName="placePresetId">
+              @for (place of workspace.places(); track place.id) {
+                <mat-option [value]="place.id">{{ place.name }}</mat-option>
+              }
+            </mat-select></mat-form-field
+          >
+          <mat-form-field><mat-label>Nome público</mat-label><input matInput formControlName="name" /></mat-form-field>
+          <mat-form-field
+            ><mat-label>Quadra, raia ou sala</mat-label><input matInput formControlName="courtLabel"
+          /></mat-form-field>
+          <mat-form-field
+            ><mat-label>Capacidade</mat-label><input matInput type="number" min="0" formControlName="capacity"
+          /></mat-form-field>
+          <mat-form-field
+            ><mat-label>Local pai</mat-label
+            ><mat-select formControlName="parentVenueId">
+              <mat-option value="">Nenhum</mat-option>
+              @for (venue of workspace.tournamentRead()?.venues ?? []; track venue.id) {
+                @if (venue.id !== workspace.venueForm.controls.id.value) {
+                  <mat-option [value]="venue.id">{{ venue.name }}</mat-option>
+                }
+              }
+            </mat-select></mat-form-field
+          >
+          <mat-form-field
+            ><mat-label>Orientações internas</mat-label><input matInput formControlName="notes"
+          /></mat-form-field>
         </div>
       </form>
     </div>
@@ -220,18 +234,22 @@
         <h3>Reutilizar ou remover</h3>
         <p>Duplique configurações em outro grande evento ou remova somente o modo esportivo.</p>
       </div>
-      <button mat-flat-button type="button" (click)="workspace.cloneTournament()">
-        <mat-icon>content_copy</mat-icon>
-        Duplicar torneio
-      </button>
+      <div class="panel-actions">
+        <button mat-flat-button type="button" (click)="workspace.cloneTournament()">
+          <mat-icon>content_copy</mat-icon>
+          Duplicar torneio
+        </button>
+        <button mat-stroked-button type="button" (click)="workspace.deleteTournament()">
+          <mat-icon>delete</mat-icon>
+          Excluir torneio
+        </button>
+      </div>
     </div>
     <div class="danger-zone">
-      <span
-        ><strong>Remover somente o modo esportivo</strong>O grande evento e seu conteúdo comum serão preservados.</span
-      >
-      <button mat-stroked-button type="button" (click)="workspace.deleteTournament()">
-        <mat-icon>delete</mat-icon>Excluir torneio
-      </button>
+      <span>
+        <strong>Remover somente o modo esportivo</strong>
+        O grande evento e seu conteúdo comum serão preservados.
+      </span>
     </div>
   </section>
 </div>

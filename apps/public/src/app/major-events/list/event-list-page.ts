@@ -9,7 +9,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
@@ -46,6 +46,7 @@ const RECEIPT_UPLOAD_STATUSES = new Set([
     MatIconModule,
     MatProgressBarModule,
     MatToolbarModule,
+    MarkdownComponent,
     RouterLink,
   ],
   templateUrl: './event-list-page.html',

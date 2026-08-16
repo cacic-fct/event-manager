@@ -81,10 +81,20 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
           deletedAt: null,
           ...(trustedAdmin
             ? {
-                registration: { deletedAt: null },
+                registration: {
+                  deletedAt: null,
+                  status: {
+                    in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
+                  },
+                },
+                eligibility: SportsEligibilityStatus.ELIGIBLE,
                 teamMember: {
                   deletedAt: null,
-                  participant: { deletedAt: null },
+                  status: SportsTeamMemberStatus.APPROVED,
+                  participant: {
+                    deletedAt: null,
+                    status: SportsParticipantStatus.ACTIVE,
+                  },
                 },
               }
             : {
@@ -131,8 +141,11 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
               id: input.registrationId,
               categoryId: match.categoryId,
               deletedAt: null,
+              status: {
+                in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE],
+              },
             },
-            select: { teamId: true },
+            select: { teamId: true, status: true },
           });
           if (!registration) {
             throw new BadRequestException('O integrante da escalação não pertence à inscrição.');
@@ -142,14 +155,25 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
               id: teamMemberId,
               teamId: registration.teamId,
               deletedAt: null,
-              participant: { deletedAt: null },
+              status: SportsTeamMemberStatus.APPROVED,
+              participant: {
+                deletedAt: null,
+                status: SportsParticipantStatus.ACTIVE,
+              },
             },
             select: {
               id: true,
+              status: true,
               participant: { select: { status: true } },
             },
           });
-          if (!teamMember) {
+          if (
+            !teamMember ||
+            (registration.status !== SportsRegistrationStatus.APPROVED &&
+              registration.status !== SportsRegistrationStatus.ACTIVE) ||
+            teamMember.status !== SportsTeamMemberStatus.APPROVED ||
+            teamMember.participant.status !== SportsParticipantStatus.ACTIVE
+          ) {
             throw new BadRequestException('O integrante da escalação não pertence à inscrição.');
           }
           member = await tx.sportsRegistrationMember.create({
@@ -157,11 +181,10 @@ export abstract class SportsMatchRosterWriteService extends SportsMatchRosterChe
               registrationId: input.registrationId,
               categoryId: match.categoryId,
               teamMemberId: teamMember.id,
-              role: SportsRosterRole.PLAYER,
-              eligibility:
-                teamMember.participant.status === SportsParticipantStatus.ACTIVE
-                  ? SportsEligibilityStatus.ELIGIBLE
-                  : SportsEligibilityStatus.PENDING,
+              role: entry.role,
+              eligibility: SportsEligibilityStatus.ELIGIBLE,
+              approvedAt: new Date(),
+              approvedById: actorId,
               createdById: actorId,
               updatedById: actorId,
             },

@@ -117,6 +117,18 @@ describe('OfficialSportsMatchPage', () => {
     expect(component.scoreFor('away')).toBe(2);
   });
 
+  it('exposes one page heading and an atomic score announcement', () => {
+    const element = fixture.nativeElement as HTMLElement;
+    const pageHeadings = element.querySelectorAll('h1');
+    const teamHeadings = element.querySelectorAll('.scoreboard .team h2');
+    const scoreAnnouncement = element.querySelector('[aria-live="polite"][aria-atomic="true"]');
+
+    expect(pageHeadings).toHaveLength(1);
+    expect(pageHeadings[0]?.textContent).toContain('Engenharia Atlética');
+    expect(teamHeadings).toHaveLength(2);
+    expect(scoreAnnouncement?.textContent).toContain('Placar:');
+  });
+
   it('distinguishes uploadable entries from retained prior-user operations', () => {
     pendingOffline.set(2);
     retainedActions.set(3);
@@ -493,6 +505,10 @@ describe('OfficialSportsMatchPage', () => {
   it('builds an OBS overlay link from the selected presentation options', () => {
     const overlayBuilder = fixture.debugElement.query(By.directive(SportsMatchOverlayBuilderComponent))
       .componentInstance as SportsMatchOverlayBuilderComponent;
+    const overlayElement = fixture.nativeElement.querySelector('lib-sports-match-overlay-builder') as HTMLElement;
+    expect(overlayElement.querySelector('mat-slide-toggle[formcontrolname="showTeamName"]')).not.toBeNull();
+    expect(overlayElement.querySelector('mat-checkbox[formcontrolname="showTeamName"]')).toBeNull();
+
     overlayBuilder.overlayForm.patchValue({
       team: 'away',
       showTeamName: false,

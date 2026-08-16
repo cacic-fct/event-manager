@@ -47,8 +47,8 @@ export function createPublicMajorEventPrice(overrides: Partial<PublicMajorEventP
     id: 'price-1',
     type: 'TIERED',
     tiers: [
-      { id: 'tier-student', name: 'Estudante', value: 2500 },
-      { id: 'tier-community', name: 'Comunidade', value: 5000 },
+      { id: 'tier-student', name: 'Estudante', value: 2500, includesSportsRegistration: false },
+      { id: 'tier-community', name: 'Comunidade', value: 5000, includesSportsRegistration: false },
     ],
     ...overrides,
   };
@@ -277,8 +277,18 @@ export function createStoryPublicMajorEvent(
           createPublicMajorEventPrice({
             id: `price-${index + 1}`,
             tiers: [
-              { id: `tier-${index + 1}-student`, name: 'Estudante', value: 2500 },
-              { id: `tier-${index + 1}-community`, name: 'Comunidade externa', value: 5000 },
+              {
+                id: `tier-${index + 1}-student`,
+                name: 'Estudante',
+                value: 2500,
+                includesSportsRegistration: false,
+              },
+              {
+                id: `tier-${index + 1}-community`,
+                name: 'Comunidade externa',
+                value: 5000,
+                includesSportsRegistration: false,
+              },
             ],
           }),
         ]

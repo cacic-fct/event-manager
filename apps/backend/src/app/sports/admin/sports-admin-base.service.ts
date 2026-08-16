@@ -6,6 +6,30 @@ import { normalizeAnswers } from '../../event-forms/event-form-answer-normalizat
 import { SportsAdminLookupService } from './sports-admin-lookup.service';
 
 export abstract class SportsAdminBaseService extends SportsAdminLookupService {
+  protected async assertBackingEventGroupsHaveNoOrdinaryEvents(
+    tx: Prisma.TransactionClient,
+    eventGroupIds: string | readonly string[],
+  ): Promise<void> {
+    const ids = typeof eventGroupIds === 'string' ? [eventGroupIds] : [...eventGroupIds];
+    if (ids.length === 0) {
+      return;
+    }
+
+    const ordinaryEvent = await tx.event.findFirst({
+      where: {
+        eventGroupId: { in: ids },
+        deletedAt: null,
+        sportsMatch: null,
+      },
+      select: { id: true },
+    });
+    if (ordinaryEvent) {
+      throw new ConflictException(
+        'O grupo de eventos contém eventos comuns e não pode ser usado ou excluído como modalidade esportiva.',
+      );
+    }
+  }
+
   protected async attachCompatibleEvent(
     tx: Prisma.TransactionClient,
     eventId: string,

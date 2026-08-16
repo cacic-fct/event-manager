@@ -8,13 +8,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { SportsTeamLogoComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SportsOperationsApiService } from './sports-operations-api.service';
 import {
   CurrentUserSportsPlayerApplication,
   CurrentUserTournamentOperations,
 } from './sports-operations.types';
+import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 
 const EDITABLE_APPLICATION_STATUSES = ['PENDING', 'CHANGES_REQUESTED'] as const;
 const ACTIVE_APPLICATION_STATUSES = ['APPROVED', 'WAITING_PAYMENT', 'ACTIVE'] as const;
@@ -42,6 +43,7 @@ const RETRYABLE_APPLICATION_STATUSES = ['REJECTED', 'WITHDRAWN'] as const;
 export class SportsSelfSubscriptionPage implements OnInit {
   private readonly api = inject(SportsOperationsApiService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly snackbar = inject(MatSnackBar);
 
   readonly data = signal<CurrentUserTournamentOperations | null>(null);
@@ -51,6 +53,7 @@ export class SportsSelfSubscriptionPage implements OnInit {
   readonly loading = signal(true);
   readonly busy = signal(false);
   readonly submitted = signal(false);
+  readonly paymentTierLocked = signal(false);
   readonly error = signal<string | null>(null);
   private readonly formRevision = signal(0);
   private applicationLoaded = false;
@@ -89,6 +92,8 @@ export class SportsSelfSubscriptionPage implements OnInit {
   });
 
   protected tournamentId = '';
+  private requestedPaymentTier: string | null = null;
+  private returnUrl: string | null = null;
   private tournamentRequestId = 0;
 
   constructor() {
@@ -97,6 +102,8 @@ export class SportsSelfSubscriptionPage implements OnInit {
 
   ngOnInit(): void {
     this.tournamentId = this.route.snapshot.paramMap.get('tournamentId') ?? '';
+    this.requestedPaymentTier = this.route.snapshot.queryParamMap.get('paymentTier')?.trim() || null;
+    this.returnUrl = resolveInternalReturnUrl(this.route.snapshot.queryParamMap.get('returnUrl'), '') || null;
     this.load();
   }
 
@@ -132,10 +139,17 @@ export class SportsSelfSubscriptionPage implements OnInit {
         }
         requestedTeam.updateValueAndValidity();
         const paymentTier = this.form.controls.paymentTier;
-        if (data.tournament.isPaymentRequired && data.tournament.paymentTiers.length > 0) {
+        if (data.tournament.isPaymentRequired) {
           paymentTier.addValidators(Validators.required);
-          if (data.tournament.paymentTiers.length === 1) {
+          const requestedTier = data.tournament.paymentTiers.find((tier) => tier.name === this.requestedPaymentTier);
+          if (!this.application() && requestedTier) {
+            paymentTier.setValue(requestedTier.name);
+            paymentTier.disable({ emitEvent: false });
+            this.paymentTierLocked.set(true);
+          } else if (data.tournament.paymentTiers.length === 1) {
             paymentTier.setValue(data.tournament.paymentTiers[0].name);
+          } else if (data.tournament.paymentTiers.length === 0) {
+            paymentTier.setValue('');
           }
         } else {
           paymentTier.clearValidators();
@@ -285,6 +299,9 @@ export class SportsSelfSubscriptionPage implements OnInit {
         }),
       );
       this.submitted.set(true);
+      if (this.returnUrl) {
+        await this.router.navigateByUrl(this.returnUrl, { replaceUrl: true });
+      }
     } catch (error: unknown) {
       this.snackbar.open(error instanceof Error ? error.message : 'Não foi possível enviar a inscrição.', 'Fechar', {
         duration: 6000,

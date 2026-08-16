@@ -29,6 +29,7 @@ export class CertificateTargetsService {
     const where: Prisma.EventWhereInput = {
       deletedAt: null,
       majorEventId: null,
+      sportsMatch: { is: null },
       shouldIssueCertificate: true,
       OR: [
         {
@@ -37,6 +38,7 @@ export class CertificateTargetsService {
         {
           eventGroup: {
             deletedAt: null,
+            sportsCategory: { is: null },
             shouldIssueCertificate: true,
             shouldIssueCertificateForEachEvent: true,
           },
@@ -101,11 +103,14 @@ export class CertificateTargetsService {
     const normalizedQuery = query?.trim();
     const where: Prisma.EventGroupWhereInput = {
       deletedAt: null,
+      sportsCategory: { is: null },
       shouldIssueCertificate: true,
       shouldIssueCertificateForEachEvent: false,
       events: {
         some: {
           deletedAt: null,
+          majorEventId: null,
+          sportsMatch: { is: null },
           shouldIssueCertificate: true,
         },
       },
@@ -175,11 +180,17 @@ export class CertificateTargetsService {
           events: {
             some: {
               deletedAt: null,
-              majorEventId: null,
+              sportsMatch: { is: null },
               shouldIssueCertificate: true,
               OR: [
                 { eventGroupId: null },
-                { eventGroup: { deletedAt: null, shouldIssueCertificate: true } },
+                {
+                  eventGroup: {
+                    deletedAt: null,
+                    sportsCategory: { is: null },
+                    shouldIssueCertificate: true,
+                  },
+                },
               ],
             },
           },
@@ -246,6 +257,7 @@ export class CertificateTargetsService {
           id: targetId,
           deletedAt: null,
           majorEventId: null,
+          sportsMatch: { is: null },
           shouldIssueCertificate: true,
           OR: [
             {
@@ -254,6 +266,7 @@ export class CertificateTargetsService {
             {
               eventGroup: {
                 deletedAt: null,
+                sportsCategory: { is: null },
                 shouldIssueCertificate: true,
                 shouldIssueCertificateForEachEvent: true,
               },
@@ -274,12 +287,14 @@ export class CertificateTargetsService {
         where: {
           id: targetId,
           deletedAt: null,
+          sportsCategory: { is: null },
           shouldIssueCertificate: true,
           shouldIssueCertificateForEachEvent: false,
           events: {
             some: {
               deletedAt: null,
               majorEventId: null,
+              sportsMatch: { is: null },
               shouldIssueCertificate: true,
             },
           },
@@ -305,7 +320,13 @@ export class CertificateTargetsService {
               sportsMatch: { is: null },
               OR: [
                 { eventGroupId: null },
-                { eventGroup: { deletedAt: null, shouldIssueCertificate: true } },
+                {
+                  eventGroup: {
+                    deletedAt: null,
+                    sportsCategory: { is: null },
+                    shouldIssueCertificate: true,
+                  },
+                },
               ],
             },
           },

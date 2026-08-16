@@ -28,7 +28,7 @@ import type {
   OfflineSportsRosterCheckIn,
   OfflineSportsScannerCheckIn,
   OfflineSportsTimerSnapshot,
-} from '@cacic-fct/offline-public-data-access';
+} from '@cacic-fct/public-indexed-db';
 
 export type { SportsMatchState } from '@cacic-fct/shared-data-types';
 

@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { MarkdownPreviewDialogComponent } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { createPageStoryProviders, defaultPageStoryArgs, type PageStoryMode } from '../stories/page-story-support';
 import { EventsPageComponent } from './events-page.component';
@@ -44,7 +46,25 @@ describe('EventsPageComponent', () => {
     expect(button(element, 'Grupo')?.querySelector('lib-twemoji')).not.toBeNull();
   });
 
-  async function configureComponent(mode: PageStoryMode): Promise<void> {
+  it('previews the current unsaved event description', async () => {
+    const dialog = { open: vi.fn() };
+    await configureComponent('populated', dialog);
+    const { element, fixture } = createComponent();
+    fixture.componentInstance.workspace.eventForm.controls.description.setValue('**Texto ainda não salvo**');
+    fixture.detectChanges();
+
+    element.querySelector<HTMLButtonElement>('button[aria-label="Pré-visualizar descrição"]')?.click();
+
+    expect(dialog.open).toHaveBeenCalledWith(MarkdownPreviewDialogComponent, {
+      data: {
+        content: '**Texto ainda não salvo**',
+        title: 'Pré-visualização da descrição do evento',
+      },
+      maxWidth: 'calc(100vw - 32px)',
+    });
+  });
+
+  async function configureComponent(mode: PageStoryMode, dialog: Partial<MatDialog> = { open: vi.fn() }): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [EventsPageComponent],
       providers: [
@@ -60,7 +80,9 @@ describe('EventsPageComponent', () => {
           },
         },
       ],
-    }).compileComponents();
+    });
+    TestBed.overrideProvider(MatDialog, { useValue: dialog });
+    await TestBed.compileComponents();
   }
 
   function createComponent(): {

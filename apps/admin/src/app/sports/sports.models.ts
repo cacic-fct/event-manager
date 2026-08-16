@@ -246,6 +246,21 @@ export interface SportsTournamentListItem {
   pendingReviewCount: number;
 }
 
+export interface SportsMajorEventWorkspaceItem {
+  majorEvent: {
+    id: string;
+    name: string;
+    emoji: string;
+    startDate: string;
+    endDate: string;
+    subscriptionStartDate?: string | null;
+    subscriptionEndDate?: string | null;
+  };
+  tournament?: SportsTournamentListItem;
+}
+
+export type SportsMajorEventConfigurationFilter = 'ALL' | 'CONFIGURED' | 'UNCONFIGURED';
+
 export interface SportsCategoryRead {
   category: SportsCategorySummary;
   registrations: SportsRegistrationSummary[];

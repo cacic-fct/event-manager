@@ -145,7 +145,12 @@ export function createAdminSportsTournamentRead(
         subscriptionEndDate: sportsStoryMajorEvent.subscriptionEndDate,
         requiresImageLicenseAgreement: true,
         isPaymentRequired: true,
-        majorEventPrices: [{ id: 'price-1', tiers: [{ id: 'tier-1', name: 'Atleta', value: 5000 }] }],
+        majorEventPrices: [
+          {
+            id: 'price-1',
+            tiers: [{ id: 'tier-1', name: 'Atleta', value: 5000 }],
+          },
+        ],
       },
     },
     categories,

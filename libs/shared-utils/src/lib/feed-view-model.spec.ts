@@ -64,7 +64,7 @@ describe('feed view model', () => {
     expect(getSubscribedItemTitle(item)).toBe('Evento event-1');
     expect(getSubscribedItemDateLine(item)).toBe('26/06/2026, 09:00-10:00');
     expect(getSubscribedItemStatusLine(item, [{ eventId: 'event-1', attendedAt: '2026-06-26T09:30:00' }])).toBe(
-      'Presença registrada às 26/06/2026, 09:30, Inscrito',
+      'Presença registrada',
     );
   });
 
@@ -87,7 +87,7 @@ describe('feed view model', () => {
     expect(getSubscribedItemTitle(item)).toBe('Grupo');
     expect(getSubscribedItemDateLine(item)).toBe('26/06/2026, 09:00 - 27/06/2026, 15:00');
     expect(getSubscribedItemStatusLine(item, [{ eventId: 'first', attendedAt: '2026-06-26T09:30:00' }])).toBe(
-      'Presença registrada em 1 de 2 eventos, Inscrito, Palestrante',
+      'Presença registrada em 1 de 2 eventos, Palestrante',
     );
   });
 
@@ -148,7 +148,7 @@ describe('feed view model', () => {
           hasIssuedCertificate: true,
         }),
       ),
-    ).toBe('Aguardando envio de comprovante, Inscrito, Certificado emitido');
+    ).toBe('Comprovante pendente, Certificado emitido');
     expect(
       getMajorEventStatusLine(majorEventFeedItem('major-attended', '2026-06-26T09:00:00'), [
         {
@@ -157,7 +157,7 @@ describe('feed view model', () => {
           event: { id: 'event-1', majorEventId: 'major-attended' },
         },
       ]),
-    ).toBe('Presença registrada, Inscrito');
+    ).toBe('Presença registrada');
     expect(
       getMajorEventStatusLine(
         majorEventFeedItem('sports-manager', publicFixtureDateFromNow(-1, 9), undefined, {

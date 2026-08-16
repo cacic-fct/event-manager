@@ -42,6 +42,7 @@ describe('SportsWorkspaceService operations', () => {
   };
   const snackbar = { open: vi.fn() };
   const dialog = { open: vi.fn() };
+  const majorEventsApi = { listMajorEvents: vi.fn() };
   let workspace: SportsWorkspaceService;
 
   beforeEach(() => {
@@ -49,14 +50,16 @@ describe('SportsWorkspaceService operations', () => {
     api.mutate.mockReturnValue(of('saved-id'));
     api.deleteVersioned.mockReturnValue(of(true));
     api.uploadTeamLogo.mockReturnValue(of(true));
+    api.tournaments.mockReturnValue(of([]));
     api.watchTournamentReview.mockReturnValue(EMPTY);
+    majorEventsApi.listMajorEvents.mockReturnValue(of([]));
     dialog.open.mockReturnValue({ afterClosed: () => of(true) });
     TestBed.configureTestingModule({
       providers: [
         FormBuilder,
         SportsWorkspaceService,
         { provide: SportsApiService, useValue: api },
-        { provide: MajorEventApiService, useValue: {} },
+        { provide: MajorEventApiService, useValue: majorEventsApi },
         { provide: EventFormApiService, useValue: {} },
         { provide: PeopleApiService, useValue: {} },
         { provide: PlacePresetApiService, useValue: {} },
@@ -67,6 +70,122 @@ describe('SportsWorkspaceService operations', () => {
     });
     workspace = TestBed.inject(SportsWorkspaceService);
     workspace.tournamentRead.set(createAdminSportsTournamentRead());
+  });
+
+  describe('workspace entry', () => {
+    it('merges configured and unconfigured major events into one list', () => {
+      const configuredMajorEvent = createAdminMajorEvent({ id: 'major-event-1', name: 'Jogos configurados' });
+      const unconfiguredMajorEvent = createAdminMajorEvent({ id: 'major-event-2', name: 'Jogos disponíveis' });
+      const tournament = createAdminSportsTournamentRead().tournament;
+      workspace.majorEvents.set([configuredMajorEvent, unconfiguredMajorEvent]);
+      workspace.tournaments.set([
+        {
+          tournament,
+          majorEvent: {
+            id: configuredMajorEvent.id,
+            name: configuredMajorEvent.name,
+            emoji: configuredMajorEvent.emoji,
+            startDate: configuredMajorEvent.startDate,
+            endDate: configuredMajorEvent.endDate,
+            isPaymentRequired: configuredMajorEvent.isPaymentRequired,
+          },
+          categoryCount: 2,
+          teamCount: 4,
+          pendingApplicationCount: 1,
+          pendingReviewCount: 0,
+        },
+      ]);
+
+      expect(workspace.majorEventWorkspaceItems().map((item) => [item.majorEvent.name, Boolean(item.tournament)])).toEqual([
+        ['Jogos configurados', true],
+        ['Jogos disponíveis', false],
+      ]);
+    });
+
+    it('confirms before creating a tournament for a major event', async () => {
+      const majorEvent = createAdminMajorEvent({ id: 'major-event-new', name: 'Novo campeonato' });
+      workspace.majorEvents.set([majorEvent]);
+      dialog.open.mockReturnValue({ afterClosed: () => of(false) });
+
+      await workspace.openMajorEvent(majorEvent.id);
+
+      expect(api.mutate).not.toHaveBeenCalled();
+      expect(dialog.open).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          data: expect.objectContaining({
+            title: 'Criar torneio esportivo?',
+            confirmLabel: 'Criar torneio',
+            tone: 'default',
+            details: expect.arrayContaining(['Será criada uma configuração esportiva vinculada a este grande evento.']),
+          }),
+        }),
+      );
+    });
+
+    it('applies the reusable list search, date, and configuration filters', async () => {
+      const configuredMajorEvent = createAdminMajorEvent({
+        id: 'major-event-configured',
+        name: 'Copa configurada',
+        startDate: '2026-09-10T12:00:00.000Z',
+        endDate: '2026-09-12T12:00:00.000Z',
+      });
+      const unconfiguredMajorEvent = createAdminMajorEvent({
+        id: 'major-event-unconfigured',
+        name: 'Copa disponível',
+        startDate: '2026-10-10T12:00:00.000Z',
+        endDate: '2026-10-12T12:00:00.000Z',
+      });
+      const configuredTournament = createAdminSportsTournamentRead().tournament;
+      configuredTournament.majorEventId = configuredMajorEvent.id;
+      const configuredListItem = {
+        tournament: configuredTournament,
+        majorEvent: {
+          id: configuredMajorEvent.id,
+          name: configuredMajorEvent.name,
+          emoji: configuredMajorEvent.emoji,
+          startDate: configuredMajorEvent.startDate,
+          endDate: configuredMajorEvent.endDate,
+          isPaymentRequired: configuredMajorEvent.isPaymentRequired,
+        },
+        categoryCount: 2,
+        teamCount: 4,
+        pendingApplicationCount: 0,
+        pendingReviewCount: 0,
+      };
+      majorEventsApi.listMajorEvents.mockReturnValue(of([configuredMajorEvent, unconfiguredMajorEvent]));
+      api.tournaments.mockReturnValue(of([configuredListItem]));
+      workspace.majorEventWorkspaceFilterForm.patchValue({
+        query: 'Copa',
+        startDateFrom: '2026-10-01',
+        startDateUntil: '2026-12-31',
+        configuration: 'UNCONFIGURED',
+      });
+
+      await workspace.applyMajorEventWorkspaceFilters();
+
+      expect(majorEventsApi.listMajorEvents).toHaveBeenCalledWith({
+        query: 'Copa',
+        startDateFrom: '2026-10-01T00:00:00.000Z',
+        startDateUntil: '2026-12-31T23:59:59.999Z',
+        take: 100,
+      });
+      expect(workspace.majorEventWorkspaceItems().map((item) => item.majorEvent.name)).toEqual(['Copa disponível']);
+    });
+
+    it('clears the deleted tournament before replacing the route with the list', async () => {
+      const tournaments = vi.spyOn(workspace, 'navigateToTournamentList').mockResolvedValue();
+      workspace.error.set('Sports tournament tournament-1 was not found.');
+      api.tournaments.mockReturnValue(of([]));
+
+      await workspace.deleteTournament();
+
+      expect(api.deleteVersioned).toHaveBeenCalledWith('deleteSportsTournament', 'tournament-1', 7);
+      expect(tournaments).toHaveBeenCalledWith(true);
+      expect(workspace.tournamentRead()).toBeNull();
+      expect(workspace.error()).toBeNull();
+      expect(workspace.tournaments()).toEqual([]);
+    });
   });
 
   describe('categories', () => {

@@ -20,7 +20,7 @@ import {
   sortSubscriptionsFeed,
 } from '@cacic-fct/shared-utils';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { catchError, from, map, of, startWith, switchMap } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
@@ -79,7 +79,7 @@ export class Attendances {
   private readonly api = inject(AttendancesApiService);
   private readonly auth = inject(AuthService);
   private readonly networkStatus = inject(NetworkStatusService);
-  private readonly offlineData = inject(OfflinePublicDataAccessService);
+  private readonly offlineData = inject(PublicDataAccessService);
   private readonly certificateFileDownload = inject(CertificateFileDownloadService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);

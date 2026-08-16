@@ -49,6 +49,7 @@ export class SportsMatchPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly reload = new Subject<string>();
+  private currentMatchId = '';
   private realtimeSubscription?: Subscription;
 
   readonly pageState = signal<SportsViewerPageState<PublicSportsMatch>>({ status: 'loading' });
@@ -85,10 +86,19 @@ export class SportsMatchPage {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((matchId) => {
+        this.currentMatchId = matchId;
         this.pageState.set({ status: 'loading' });
         this.reload.next(matchId);
         this.watchMatch(matchId);
       });
+  }
+
+  retry(): void {
+    if (!this.currentMatchId) {
+      return;
+    }
+    this.pageState.set({ status: 'loading' });
+    this.reload.next(this.currentMatchId);
   }
 
   goBack(): void {

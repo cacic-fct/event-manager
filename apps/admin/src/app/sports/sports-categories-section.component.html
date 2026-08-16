@@ -42,10 +42,16 @@
             mat-icon-button
             type="button"
             matTooltip="Duplicar modalidade"
+            aria-label="Duplicar modalidade"
             (click)="workspace.cloneSelectedCategory()">
             <mat-icon>content_copy</mat-icon>
           </button>
-          <button mat-icon-button type="button" matTooltip="Excluir" (click)="workspace.deleteCategory(read.category)">
+          <button
+            mat-icon-button
+            type="button"
+            matTooltip="Excluir modalidade"
+            aria-label="Excluir modalidade"
+            (click)="workspace.deleteCategory(read.category)">
             <mat-icon>delete</mat-icon>
           </button>
         }
@@ -290,7 +296,7 @@
         <input matInput type="number" min="0.000001" step="any" formControlName="scorePointStep" />
         <mat-hint>Ex.: 1 para gols, 0,5 para notas fracionadas.</mat-hint>
       </mat-form-field>
-      <mat-slide-toggle formControlName="scoreAllowDraw">Permitir resultado empatado</mat-slide-toggle>
+      <mat-checkbox formControlName="scoreAllowDraw">Permitir resultado empatado</mat-checkbox>
 
       <div class="subsection-title span-2">
         <h4>Classificação</h4>
@@ -317,9 +323,9 @@
         workspace.categoryForm.controls.format.value === 'ROUND_ROBIN' ||
         workspace.categoryForm.controls.format.value === 'GROUP_STAGE_ELIMINATION'
       ) {
-        <mat-slide-toggle class="span-2" formControlName="doubleRoundRobin">
+        <mat-checkbox class="span-2" formControlName="doubleRoundRobin">
           Turno e returno — cada equipe enfrenta as demais duas vezes
-        </mat-slide-toggle>
+        </mat-checkbox>
       }
       @if (workspace.categoryForm.controls.format.value === 'GROUP_STAGE_ELIMINATION') {
         <mat-form-field>
@@ -359,10 +365,10 @@
       <mat-form-field
         ><mat-label>Técnicos</mat-label><input matInput type="number" min="0" formControlName="maximumCoaches"
       /></mat-form-field>
-      <mat-slide-toggle formControlName="allowPlayerMultipleTeams"
-        >Permitir um mesmo atleta em múltiplas equipes nesta modalidade</mat-slide-toggle
+      <mat-checkbox formControlName="allowPlayerMultipleTeams"
+        >Permitir um mesmo atleta em múltiplas equipes nesta modalidade</mat-checkbox
       >
-      <mat-slide-toggle formControlName="periodsEnabled">Registrar tempos, sets ou rodadas</mat-slide-toggle>
+      <mat-checkbox formControlName="periodsEnabled">Registrar tempos, sets ou rodadas</mat-checkbox>
       @if (workspace.categoryForm.controls.periodsEnabled.value) {
         <mat-form-field>
           <mat-label>Quantidade máxima de tempos, sets ou rodadas</mat-label>
@@ -405,9 +411,9 @@
           <mat-error>Use somente minutos positivos separados por vírgulas.</mat-error>
         }
       </mat-form-field>
-      <mat-slide-toggle formControlName="timerOverallEnabled">Exibir cronômetro geral</mat-slide-toggle>
-      <mat-slide-toggle formControlName="timerPeriodEnabled">Exibir cronômetro por período</mat-slide-toggle>
-      <mat-slide-toggle formControlName="timerAllowOvertime">Permitir acréscimos além do limite</mat-slide-toggle>
+      <mat-checkbox formControlName="timerOverallEnabled">Exibir cronômetro geral</mat-checkbox>
+      <mat-checkbox formControlName="timerPeriodEnabled">Exibir cronômetro por período</mat-checkbox>
+      <mat-checkbox formControlName="timerAllowOvertime">Permitir acréscimos além do limite</mat-checkbox>
       <mat-form-field class="span-2">
         <mat-label>Regras públicas</mat-label>
         <textarea matInput rows="4" formControlName="rulesText"></textarea>
@@ -437,6 +443,7 @@
                 mat-icon-button
                 type="button"
                 matTooltip="Excluir inscrição"
+                [attr.aria-label]="'Excluir inscrição de ' + workspace.teamNameForRegistration(registration.id)"
                 (click)="workspace.deleteRegistration(registration)">
                 <mat-icon>delete</mat-icon>
               </button>

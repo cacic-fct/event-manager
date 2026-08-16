@@ -104,6 +104,7 @@ export abstract class SportsPlayerApplicationSupportService {
                   select: {
                     name: true,
                     value: true,
+                    includesSportsRegistration: true,
                   },
                 },
               },

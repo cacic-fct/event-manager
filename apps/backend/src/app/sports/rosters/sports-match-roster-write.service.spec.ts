@@ -1,10 +1,14 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import {
   AuditLogOperation,
+  SportsEligibilityStatus,
   SportsMatchState,
+  SportsParticipantStatus,
+  SportsRegistrationStatus,
   SportsRosterEntryStatus,
   SportsRosterRole,
   SportsRosterStatus,
+  SportsTeamMemberStatus,
 } from '@prisma/client';
 import {
   sportsRosterPersistenceMatch,
@@ -130,15 +134,19 @@ describe('SportsMatchRosterWriteService', () => {
 
   it('lets a trusted administrator roster a team member without a registration link', async () => {
     tx.sportsRegistrationMember.findMany.mockResolvedValue([]);
-    tx.sportsRegistration.findFirst.mockResolvedValue({ teamId: 'team-1' });
+    tx.sportsRegistration.findFirst.mockResolvedValue({
+      teamId: 'team-1',
+      status: SportsRegistrationStatus.APPROVED,
+    });
     tx.sportsTeamMember.findFirst.mockResolvedValue({
       id: 'team-member-unassigned',
-      participant: { status: 'ACTIVE' },
+      status: SportsTeamMemberStatus.APPROVED,
+      participant: { status: SportsParticipantStatus.ACTIVE },
     });
     tx.sportsRegistrationMember.create.mockResolvedValue({
       id: 'member-created',
       teamMemberId: 'team-member-unassigned',
-      role: SportsRosterRole.PLAYER,
+      role: SportsRosterRole.COACH,
     });
 
     await service.upsert(
@@ -161,8 +169,10 @@ describe('SportsMatchRosterWriteService', () => {
         registrationId: 'registration-home',
         categoryId: 'category-1',
         teamMemberId: 'team-member-unassigned',
-        role: SportsRosterRole.PLAYER,
-        eligibility: 'ELIGIBLE',
+        role: SportsRosterRole.COACH,
+        eligibility: SportsEligibilityStatus.ELIGIBLE,
+        approvedAt: expect.any(Date),
+        approvedById: 'actor-1',
       }),
       select: { id: true, teamMemberId: true, role: true },
     });
@@ -175,6 +185,101 @@ describe('SportsMatchRosterWriteService', () => {
         }),
       }),
     );
+  });
+
+  it('requires eligible registration members for trusted administrative rosters', async () => {
+    await service.upsert(sportsRosterWriteInput() as never, 'actor-1', actor as never, true);
+
+    expect(tx.sportsRegistrationMember.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          eligibility: SportsEligibilityStatus.ELIGIBLE,
+          registration: expect.objectContaining({
+            status: { in: [SportsRegistrationStatus.APPROVED, SportsRegistrationStatus.ACTIVE] },
+          }),
+          teamMember: expect.objectContaining({
+            status: SportsTeamMemberStatus.APPROVED,
+            participant: expect.objectContaining({ status: SportsParticipantStatus.ACTIVE }),
+          }),
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    ['pending team member', { status: SportsTeamMemberStatus.PENDING, participantStatus: SportsParticipantStatus.ACTIVE }],
+    ['rejected team member', { status: SportsTeamMemberStatus.REJECTED, participantStatus: SportsParticipantStatus.ACTIVE }],
+    ['suspended team member', { status: SportsTeamMemberStatus.SUSPENDED, participantStatus: SportsParticipantStatus.ACTIVE }],
+    ['withdrawn team member', { status: SportsTeamMemberStatus.WITHDRAWN, participantStatus: SportsParticipantStatus.ACTIVE }],
+    ['pending participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.PENDING }],
+    ['approved but inactive participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.APPROVED }],
+    ['waiting-payment participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.WAITING_PAYMENT }],
+    ['rejected participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.REJECTED }],
+    ['suspended participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.SUSPENDED }],
+    ['withdrawn participant', { status: SportsTeamMemberStatus.APPROVED, participantStatus: SportsParticipantStatus.WITHDRAWN }],
+  ])('rejects a trusted administrator roster fallback for a %s', async (_name, state) => {
+    tx.sportsRegistrationMember.findMany.mockResolvedValue([]);
+    tx.sportsRegistration.findFirst.mockResolvedValue({
+      teamId: 'team-1',
+      status: SportsRegistrationStatus.APPROVED,
+    });
+    tx.sportsTeamMember.findFirst.mockResolvedValue({
+      id: 'team-member-unassigned',
+      status: state.status,
+      participant: { status: state.participantStatus },
+    });
+
+    await expect(
+      service.upsert(
+        sportsRosterWriteInput({
+          entries: [
+            {
+              registrationMemberId: 'lineup-candidate-team-member-unassigned',
+              teamMemberId: 'team-member-unassigned',
+              role: SportsRosterRole.PLAYER,
+            },
+          ],
+        }) as never,
+        'actor-1',
+        actor as never,
+        true,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(tx.sportsRegistrationMember.create).not.toHaveBeenCalled();
+    expect(tx.sportsMatchRoster.create).not.toHaveBeenCalled();
+  });
+
+  it('requires an approved registration for trusted administrative roster fallback', async () => {
+    tx.sportsRegistrationMember.findMany.mockResolvedValue([]);
+    tx.sportsRegistration.findFirst.mockResolvedValue({
+      teamId: 'team-1',
+      status: SportsRegistrationStatus.REJECTED,
+    });
+    tx.sportsTeamMember.findFirst.mockResolvedValue({
+      id: 'team-member-unassigned',
+      status: SportsTeamMemberStatus.APPROVED,
+      participant: { status: SportsParticipantStatus.ACTIVE },
+    });
+
+    await expect(
+      service.upsert(
+        sportsRosterWriteInput({
+          entries: [
+            {
+              registrationMemberId: 'lineup-candidate-team-member-unassigned',
+              teamMemberId: 'team-member-unassigned',
+              role: SportsRosterRole.PLAYER,
+            },
+          ],
+        }) as never,
+        'actor-1',
+        actor as never,
+        true,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(tx.sportsRegistrationMember.create).not.toHaveBeenCalled();
   });
 
   it.each([

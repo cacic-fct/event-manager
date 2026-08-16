@@ -154,8 +154,19 @@
         <mat-option [value]="tier.name"> {{ tier.name }} · {{ tier.value / 100 | currency: 'BRL' }} </mat-option>
         }
       </mat-select>
-      <mat-hint>O pagamento só será liberado após a aprovação.</mat-hint>
+      <mat-hint>
+        @if (paymentTierLocked()) {
+          Esta faixa foi escolhida na inscrição das atividades.
+        } @else {
+          O pagamento só será liberado após a aprovação.
+        }
+      </mat-hint>
     </mat-form-field>
+    } @else if (currentData.tournament.isPaymentRequired) {
+    <div class="empty-options" role="status">
+      <mat-icon>payments</mat-icon>
+      <span>Nenhuma faixa de pagamento inclui a inscrição neste torneio.</span>
+    </div>
     }
 
     <mat-checkbox formControlName="noticeAccepted">

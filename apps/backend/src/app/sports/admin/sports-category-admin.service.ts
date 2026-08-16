@@ -72,6 +72,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         throw new ConflictException('O grupo de eventos não existe ou já pertence a outra modalidade.');
       }
       if (input.eventGroupId) {
+        await this.assertBackingEventGroupsHaveNoOrdinaryEvents(tx, eventGroup.id);
         await tx.eventGroup.update({
           where: { id: eventGroup.id },
           data: {
@@ -369,6 +370,7 @@ export class SportsCategoryAdminService extends SportsAdminBaseService {
         where: { categoryId, deletedAt: null },
         select: { id: true, eventId: true },
       });
+      await this.assertBackingEventGroupsHaveNoOrdinaryEvents(tx, category.eventGroupId);
       const changed = await tx.sportsCategory.updateMany({
         where: { id: categoryId, revision: expectedRevision, deletedAt: null },
         data: {

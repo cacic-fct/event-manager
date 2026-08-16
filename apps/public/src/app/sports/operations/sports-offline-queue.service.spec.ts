@@ -5,7 +5,7 @@ import {
   OfflineSportsCollectorCredential,
   OfflineSportsOperationQueueItem,
   SportsOperationOfflineQueueService,
-} from '@cacic-fct/offline-public-data-access';
+} from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { NEVER, of, throwError } from 'rxjs';
 import { NetworkStatusService } from '../../shared/network-status.service';

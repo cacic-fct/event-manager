@@ -140,7 +140,7 @@ h5 {
 
 .live-label {
   align-items: center;
-  color: #b3261e;
+  color: var(--mat-sys-error);
   display: inline-flex;
   font: var(--mat-sys-label-large);
   gap: 7px;

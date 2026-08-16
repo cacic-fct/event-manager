@@ -947,7 +947,7 @@ export class MajorEventsResolver {
     const tiers = input.tiers.map((tier) => ({
       name: tier.name?.trim() ?? '',
       value: Math.round(tier.value),
-      includesSportsRegistration: tier.includesSportsRegistration === true,
+      ...(tier.includesSportsRegistration === true ? { includesSportsRegistration: true } : {}),
     }));
 
     if (tiers.some((tier) => tier.name.length === 0)) {

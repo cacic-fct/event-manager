@@ -290,8 +290,13 @@ function buildMajorEvent(id: string, name: string, emoji: string): MajorEvent {
         id: `${id}-price`,
         type: 'TIERED',
         tiers: [
-          { id: `${id}-student-tier`, name: 'Estudante', value: 12000 },
-          { id: `${id}-regular-tier`, name: 'Comunidade externa', value: 18000 },
+          { id: `${id}-student-tier`, name: 'Estudante', value: 12000, includesSportsRegistration: false },
+          {
+            id: `${id}-regular-tier`,
+            name: 'Comunidade externa',
+            value: 18000,
+            includesSportsRegistration: false,
+          },
         ],
       },
     ],

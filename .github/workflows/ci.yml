@@ -103,7 +103,7 @@ jobs:
         project:
           - admin
           - backend
-          - offline-public-data-access
+          - public-indexed-db
           - public
           - shared-seo-angular
           - shared-utils
@@ -156,8 +156,8 @@ jobs:
             backend)
               coverage_roots=(coverage/apps/backend)
               ;;
-            offline-public-data-access)
-              coverage_roots=(coverage/libs/offline-public-data-access)
+            public-indexed-db)
+              coverage_roots=(coverage/libs/public-indexed-db)
               ;;
             public)
               coverage_roots=(coverage/apps/public coverage/public)
@@ -662,7 +662,7 @@ jobs:
         uses: nrwl/nx-set-shas@v5
 
       - name: Run unit tests with coverage
-        run: bunx nx run-many -t test -p admin,backend,offline-public-data-access,public,shared-seo-angular,shared-utils --parallel=3 --coverage
+        run: bunx nx run-many -t test -p admin,backend,public-indexed-db,public,shared-seo-angular,shared-utils --parallel=3 --coverage
 
   untrusted-pr-frontend-e2e:
     name: Untrusted PR frontend E2E (${{ matrix.project }})

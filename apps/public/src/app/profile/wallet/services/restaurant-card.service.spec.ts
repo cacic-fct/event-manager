@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { RestaurantCardService } from './restaurant-card.service';
 
 describe('RestaurantCardService', () => {
@@ -14,7 +14,7 @@ describe('RestaurantCardService', () => {
       providers: [
         RestaurantCardService,
         {
-          provide: OfflinePublicDataAccessService,
+          provide: PublicDataAccessService,
           useValue: { getRestaurantCard, replaceRestaurantCard },
         },
       ],

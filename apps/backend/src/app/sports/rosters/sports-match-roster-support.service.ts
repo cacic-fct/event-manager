@@ -53,7 +53,7 @@ export abstract class SportsMatchRosterSupportService {
           (entry.shirtNumber.length > 12 || !/^[\p{L}\p{N}._-]+$/u.test(entry.shirtNumber)),
       )
     ) {
-      throw new BadRequestException('O número de camisa deve ter até 12 letras ou números.');
+      throw new BadRequestException('O número de camisa deve ter até 12 letras, números ou os símbolos ., _ e -.');
     }
     const playerShirtNumbers = result
       .filter((entry) => entry.role === SportsRosterRole.PLAYER && entry.shirtNumber !== null)

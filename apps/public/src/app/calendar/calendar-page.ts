@@ -12,8 +12,8 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import {
   CalendarPreferencesStorageService,
-  OfflinePublicDataAccessService,
-} from '@cacic-fct/offline-public-data-access';
+  PublicDataAccessService,
+} from '@cacic-fct/public-indexed-db';
 import { getEventTypeLabel } from '@cacic-fct/shared-utils';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { addDays, isAfter, isBefore, startOfDay, startOfWeek, subDays, subMonths } from 'date-fns';
@@ -78,7 +78,7 @@ export class Calendar {
   private readonly featureFlags = inject(PublicFeatureFlagService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly networkStatus = inject(NetworkStatusService);
-  private readonly offlineData = inject(OfflinePublicDataAccessService);
+  private readonly offlineData = inject(PublicDataAccessService);
   private readonly todayDate = startOfDay(new Date());
   private readonly minimumDate = startOfDay(subMonths(this.todayDate, 1));
   private readonly refreshCooldownMs = 5 * 60 * 1000;

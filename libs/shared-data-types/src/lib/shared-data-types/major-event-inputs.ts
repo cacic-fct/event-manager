@@ -33,6 +33,9 @@ export class PriceTierInput {
 
   @Field(() => Int)
   value!: number;
+
+  @Field(() => Boolean, { nullable: true })
+  includesSportsRegistration?: boolean;
 }
 
 @InputType()

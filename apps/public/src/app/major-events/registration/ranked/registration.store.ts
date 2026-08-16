@@ -33,6 +33,7 @@ import {
 } from '../standard/confirm-dialog';
 import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage } from '../subscription-api.service';
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
+import { subscriptionSuccessRoute } from '../subscription-success-route';
 
 export type RankedSubscriptionPageState =
   | { status: 'loading' }
@@ -69,6 +70,10 @@ export class RankedSubscriptionStore {
   readonly subscriptionCooldownSeconds = this.subscriptionCooldown.seconds;
   readonly pageState = signal<RankedSubscriptionPageState>({ status: 'loading' });
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
+  readonly confirmedSportsOnlySubscription = computed(() => {
+    const subscription = this.currentUserSubscription();
+    return subscription?.subscriptionStatus === 'CONFIRMED' && subscription.selectedEvents?.length === 0;
+  });
   readonly selectedEventIds = signal<ReadonlySet<string>>(new Set());
   readonly rankingItems = signal<RankedItem[]>([]);
   readonly notWantedItems = signal<RankedItem[]>([]);
@@ -451,8 +456,9 @@ export class RankedSubscriptionStore {
               replaceUrl: true,
             });
           }
-          if (data.majorEvent.isPaymentRequired) {
-            void this.router.navigate(['/major-event', data.majorEvent.id, 'payment']);
+          const successRoute = subscriptionSuccessRoute(data.majorEvent, this.selectedPriceTier());
+          if (successRoute) {
+            void this.router.navigate(successRoute.commands, { queryParams: successRoute.queryParams });
           }
         },
         error: (error: unknown) => {

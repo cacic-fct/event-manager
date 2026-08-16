@@ -5,6 +5,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -13,7 +14,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { TwemojiComponent } from '@cacic-fct/shared-angular';
+import { MarkdownPreviewDialogComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
@@ -28,6 +29,7 @@ import { PermissionsService } from '../permissions/permissions.service';
     ReactiveFormsModule,
     MatButtonModule,
     MatCheckboxModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -47,6 +49,7 @@ import { PermissionsService } from '../permissions/permissions.service';
 })
 export class MajorEventsPageComponent {
   readonly workspace = inject(MajorEventsService);
+  private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
@@ -62,6 +65,16 @@ export class MajorEventsPageComponent {
       if (this.workspace.selectedMajorEvent()) {
         this.workspace.resetMajorEventForm();
       }
+    });
+  }
+
+  protected previewDescription(): void {
+    this.dialog.open(MarkdownPreviewDialogComponent, {
+      data: {
+        content: this.workspace.majorEventForm.controls.description.value,
+        title: 'Pré-visualização da descrição do grande evento',
+      },
+      maxWidth: 'calc(100vw - 32px)',
     });
   }
 

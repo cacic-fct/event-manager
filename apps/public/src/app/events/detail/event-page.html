@@ -190,7 +190,7 @@
   @if (event.description) {
   <section class="detail-section">
     <h2>Sobre</h2>
-    <p class="description">{{ event.description }}</p>
+    <lib-markdown class="description" [content]="event.description" />
   </section>
   } @if (event.lecturers?.length) {
   <section class="detail-section">

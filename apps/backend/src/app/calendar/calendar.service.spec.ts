@@ -14,8 +14,10 @@ import {
 
 describe('CalendarService', () => {
   const now = new Date('2026-06-23T12:00:00.000Z');
+  const calendarFeedKeyPepper = 'development-calendar-feed-key-pepper';
+  const originalCalendarFeedKeyPepper = process.env.CALENDAR_FEED_KEY_PEPPER;
   const deriveFeedKey = (feedKeyNonce: string): string =>
-    createHmac('sha512', 'development-calendar-feed-key-pepper')
+    createHmac('sha512', calendarFeedKeyPepper)
       .update('calendar-feed-url-key', 'utf8')
       .update(feedKeyNonce, 'utf8')
       .digest('base64url');
@@ -61,10 +63,16 @@ describe('CalendarService', () => {
   };
 
   beforeEach(() => {
+    process.env.CALENDAR_FEED_KEY_PEPPER = calendarFeedKeyPepper;
     jest.useFakeTimers().setSystemTime(now);
   });
 
   afterEach(() => {
+    if (originalCalendarFeedKeyPepper === undefined) {
+      delete process.env.CALENDAR_FEED_KEY_PEPPER;
+    } else {
+      process.env.CALENDAR_FEED_KEY_PEPPER = originalCalendarFeedKeyPepper;
+    }
     jest.useRealTimers();
   });
 

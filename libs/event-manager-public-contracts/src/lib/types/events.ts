@@ -15,6 +15,7 @@ export interface PublicMajorEventPriceTier {
   id: string;
   name: string;
   value: number;
+  includesSportsRegistration: boolean;
 }
 
 export interface PublicMajorEventPrice {

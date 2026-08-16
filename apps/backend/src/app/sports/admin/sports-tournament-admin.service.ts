@@ -286,6 +286,10 @@ export class SportsTournamentAdminService extends SportsAdminBaseService {
         where: { tournamentId, deletedAt: null },
         select: { id: true, eventGroupId: true },
       });
+      await this.assertBackingEventGroupsHaveNoOrdinaryEvents(
+        tx,
+        categories.map((category) => category.eventGroupId),
+      );
       const categoryIds = categories.map((category) => category.id);
       const matches = await tx.sportsMatch.findMany({
         where: { categoryId: { in: categoryIds }, deletedAt: null },

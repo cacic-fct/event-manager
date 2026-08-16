@@ -43,7 +43,7 @@ describe('SportsMatchAdminService publication', () => {
       'event-1',
       PublicationState.PUBLISHED,
       actor,
-      { publiclyVisible: true },
+      { isPubliclyListed: true },
     );
   });
 
@@ -71,7 +71,7 @@ describe('SportsMatchAdminService publication', () => {
       'event-1',
       PublicationState.UNPUBLISHED,
       actor,
-      { publiclyVisible: false },
+      { isPubliclyListed: false },
     );
   });
 });

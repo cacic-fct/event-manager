@@ -172,7 +172,13 @@ export function sportsPublicTournamentRecord(overrides: Record<string, unknown> 
       endDate: sportsTestDate(3 * 24 * 60 * 60_000),
       requiresImageLicenseAgreement: true,
       isPaymentRequired: true,
-      majorEventPrices: [{ tiers: [{ id: 'student', name: 'Estudante', value: 2500 }] }],
+      majorEventPrices: [
+        {
+          tiers: [
+            { id: 'student', name: 'Estudante', value: 2500, includesSportsRegistration: true },
+          ],
+        },
+      ],
     },
     ...overrides,
   };

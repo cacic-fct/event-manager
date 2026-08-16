@@ -91,6 +91,21 @@ describe('SportsBackingResourceLifecycleService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
+  it('prevents ordinary events from being moved into a sports category group', async () => {
+    const tx = {
+      sportsMatch: {
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
+      sportsCategory: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'category-1' }),
+      },
+    };
+
+    await expect(
+      service.assertEventUpdateAllowed(tx as never, 'event-1', { eventGroupId: 'sports-group-1' }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
   it('keeps sports category naming owned by the sports workspace', async () => {
     const tx = {
       sportsCategory: {

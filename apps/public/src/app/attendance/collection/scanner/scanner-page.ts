@@ -19,7 +19,7 @@ import {
   AuthService,
   AuthenticatedUser,
 } from '@cacic-fct/shared-angular';
-import { AttendanceOfflineQueueService, OfflineAttendanceQueueItem } from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService, OfflineAttendanceQueueItem } from '@cacic-fct/public-indexed-db';
 import { formatUnespRole, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { firstValueFrom, of } from 'rxjs';
 import {

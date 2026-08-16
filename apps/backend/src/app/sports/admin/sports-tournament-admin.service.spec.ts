@@ -337,6 +337,20 @@ describe('SportsTournamentAdminService', () => {
       await expect(service.deleteTournament('tournament-1', 1, actor)).rejects.toBeInstanceOf(ConflictException);
       expect(auditLog.record).not.toHaveBeenCalled();
     });
+
+    it('refuses to delete a tournament whose backing group contains an ordinary event', async () => {
+      const tournament = sportsAdminTournamentRecord();
+      prisma.sportsTournament.findFirst.mockResolvedValue(tournament);
+      tx.sportsCategory.findMany.mockResolvedValue([{ id: 'category-1', eventGroupId: 'event-group-1' }]);
+      tx.event.findFirst.mockResolvedValue({ id: 'ordinary-event-1' });
+
+      await expect(service.deleteTournament('tournament-1', 2, actor)).rejects.toThrow(
+        'O grupo de eventos contém eventos comuns',
+      );
+
+      expect(tx.sportsTournament.updateMany).not.toHaveBeenCalled();
+      expect(tx.eventGroup.updateMany).not.toHaveBeenCalled();
+    });
   });
 });
 
@@ -391,6 +405,6 @@ function createTransaction() {
     sportsOfficialAssignment: updateManyModel(),
     sportsPlayerApplication: updateManyModel(),
     sportsTournamentScoreEntry: updateManyModel(),
-    event: updateManyModel(),
+    event: { findFirst: jest.fn(), ...updateManyModel() },
   };
 }

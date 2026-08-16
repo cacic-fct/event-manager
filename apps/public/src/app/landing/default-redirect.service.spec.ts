@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { NEVER, of } from 'rxjs';
@@ -47,7 +47,7 @@ describe('DefaultRedirectService', () => {
         { provide: DefaultRedirectApiService, useValue: api },
         { provide: NovuNotificationsService, useValue: notifications },
         { provide: NetworkStatusService, useValue: network },
-        { provide: OfflinePublicDataAccessService, useValue: offlineData },
+        { provide: PublicDataAccessService, useValue: offlineData },
         {
           provide: PublicFeatureFlagService,
           useValue: { stringValue: vi.fn(() => '/feature-default') },

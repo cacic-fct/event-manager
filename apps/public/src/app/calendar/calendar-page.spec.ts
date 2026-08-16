@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { CalendarPreferencesStorageService } from '@cacic-fct/offline-public-data-access';
+import { CalendarPreferencesStorageService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { of } from 'rxjs';

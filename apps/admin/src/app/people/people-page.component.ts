@@ -11,7 +11,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
@@ -31,7 +30,6 @@ import { PermissionsService } from '../permissions/permissions.service';
     MatInputModule,
     MatListModule,
     MatSelectModule,
-    MatSlideToggleModule,
     MatTabsModule,
     MatTooltipModule,
     TwemojiComponent,

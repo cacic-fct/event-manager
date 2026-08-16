@@ -81,6 +81,7 @@ describe('SportsCategoryAdminService', () => {
     prisma.sportsTournament.findFirst.mockResolvedValue({ majorEventId: 'major-event-1' });
     tx.sportsCategory.findFirst.mockResolvedValue(null);
     tx.eventGroup.findFirst.mockResolvedValue(category.eventGroup);
+    tx.event.findFirst.mockResolvedValue(null);
     tx.sportsCategory.create.mockResolvedValue(category);
 
     await service.createCategory(categoryInput({ eventGroupId: 'event-group-1', emoji: ' 🥅 ' }), actor);
@@ -95,6 +96,25 @@ describe('SportsCategoryAdminService', () => {
         updatedById: 'admin-1',
       },
     });
+    expect(tx.event.findFirst).toHaveBeenCalledWith({
+      where: { eventGroupId: { in: ['event-group-1'] }, deletedAt: null, sportsMatch: null },
+      select: { id: true },
+    });
+  });
+
+  it('rejects attaching an event group that already contains an ordinary event', async () => {
+    const category = sportsAdminCategoryRecord();
+    prisma.sportsTournament.findFirst.mockResolvedValue({ majorEventId: 'major-event-1' });
+    tx.sportsCategory.findFirst.mockResolvedValue(null);
+    tx.eventGroup.findFirst.mockResolvedValue(category.eventGroup);
+    tx.event.findFirst.mockResolvedValue({ id: 'ordinary-event-1' });
+
+    await expect(service.createCategory(categoryInput({ eventGroupId: 'event-group-1' }), actor)).rejects.toThrow(
+      'O grupo de eventos contém eventos comuns',
+    );
+
+    expect(tx.eventGroup.update).not.toHaveBeenCalled();
+    expect(tx.sportsCategory.create).not.toHaveBeenCalled();
   });
 
   it('rejects missing tournaments and duplicate category divisions', async () => {
@@ -273,6 +293,20 @@ describe('SportsCategoryAdminService', () => {
     );
   });
 
+  it('refuses to delete a category whose backing group contains an ordinary event', async () => {
+    const category = sportsAdminCategoryRecord();
+    prisma.sportsCategory.findFirst.mockResolvedValue(category);
+    tx.sportsMatch.findMany.mockResolvedValue([]);
+    tx.event.findFirst.mockResolvedValue({ id: 'ordinary-event-1' });
+
+    await expect(service.deleteCategory('category-1', 2, actor)).rejects.toThrow(
+      'O grupo de eventos contém eventos comuns',
+    );
+
+    expect(tx.sportsCategory.updateMany).not.toHaveBeenCalled();
+    expect(tx.eventGroup.updateMany).not.toHaveBeenCalled();
+  });
+
   it('rejects missing and concurrently changed category deletes without cascade audit', async () => {
     prisma.sportsCategory.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(sportsAdminCategoryRecord());
     await expect(service.deleteCategory('missing', 1, actor)).rejects.toBeInstanceOf(NotFoundException);
@@ -323,7 +357,7 @@ function createTransaction() {
   return {
     eventForm: { findFirst: jest.fn() },
     eventGroup: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), updateMany: jest.fn() },
-    event: { updateMany: jest.fn() },
+    event: { findFirst: jest.fn(), updateMany: jest.fn() },
     sportsCategory: { findFirst: jest.fn(), create: jest.fn(), updateMany: jest.fn(), findUniqueOrThrow: jest.fn() },
     sportsMatch: { findMany: jest.fn(), updateMany: jest.fn() },
     sportsStage: { updateMany: jest.fn() },

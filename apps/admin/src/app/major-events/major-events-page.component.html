@@ -204,6 +204,16 @@
             <mat-form-field class="span-2">
               <mat-label>Descrição</mat-label>
               <textarea matInput rows="3" formControlName="description"></textarea>
+              <mat-hint>Este campo aceita Markdown, inclusive fórmulas matemáticas.</mat-hint>
+              <button
+                mat-icon-button
+                matSuffix
+                type="button"
+                aria-label="Pré-visualizar descrição"
+                matTooltip="Pré-visualizar descrição"
+                (click)="previewDescription()">
+                <mat-icon>preview</mat-icon>
+              </button>
             </mat-form-field>
 
             <mat-form-field>
@@ -357,6 +367,15 @@
                   <input matInput type="number" min="0" step="0.01" formControlName="value" />
                   <span matTextPrefix>R$&nbsp;</span>
                 </mat-form-field>
+
+                @if (workspace.selectedMajorEvent()?.sportsTournament) {
+                  <mat-checkbox
+                    formControlName="includesSportsRegistration"
+                    class="span-2"
+                    matTooltip="Após escolher as atividades, a pessoa continuará para a inscrição no torneio.">
+                    Inclui inscrição no torneio esportivo
+                  </mat-checkbox>
+                }
 
                 @if (workspace.majorEventForm.controls.priceType.value === 'TIERED') {
                   <button

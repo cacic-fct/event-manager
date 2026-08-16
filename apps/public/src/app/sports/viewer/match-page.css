@@ -15,9 +15,19 @@ dd {
   margin: 0;
 }
 
-h1 {
+.team h2 {
   font: var(--mat-sys-title-large);
+  margin: 0;
   overflow-wrap: anywhere;
+}
+
+.score-announcement {
+  block-size: 1px;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
 }
 
 h2 {
@@ -363,7 +373,7 @@ dd {
     gap: 8px;
   }
 
-  .team h1 {
+  .team h2 {
     font: var(--mat-sys-title-medium);
   }
 

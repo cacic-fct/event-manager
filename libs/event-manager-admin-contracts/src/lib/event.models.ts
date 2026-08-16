@@ -21,6 +21,7 @@ export interface MajorEvent {
   emoji: string;
   startDate: string;
   endDate: string;
+  sportsTournament?: { id: string } | null;
   description?: string | null;
   subscriptionStartDate?: string | null;
   subscriptionEndDate?: string | null;
@@ -65,6 +66,7 @@ export interface MajorEventPriceTier {
   id: string;
   name: string;
   value: number;
+  includesSportsRegistration: boolean;
 }
 
 export interface MajorEventPrice {
@@ -221,6 +223,7 @@ export interface PriceTierInput {
   id?: string;
   name: string;
   value: number;
+  includesSportsRegistration?: boolean;
 }
 
 export interface MajorEventPriceInput {

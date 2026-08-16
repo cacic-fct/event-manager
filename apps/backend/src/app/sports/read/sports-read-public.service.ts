@@ -79,6 +79,7 @@ export class SportsReadPublicService {
                     id: true,
                     name: true,
                     value: true,
+                    includesSportsRegistration: true,
                   },
                 },
               },
@@ -140,7 +141,7 @@ export class SportsReadPublicService {
       requiresImageLicenseAgreement: boolean;
       isPaymentRequired: boolean;
       majorEventPrices: Array<{
-        tiers: Array<{ id: string; name: string; value: number }>;
+        tiers: Array<{ id: string; name: string; value: number; includesSportsRegistration: boolean }>;
       }>;
     };
   }): Promise<PublicSportsTournamentDetail> {
@@ -159,7 +160,7 @@ export class SportsReadPublicService {
         selfSubscriptionAllowNoCategory: tournament.selfSubscriptionAllowNoCategory,
         requiresImageLicenseAgreement: tournament.majorEvent.requiresImageLicenseAgreement,
         isPaymentRequired: tournament.majorEvent.isPaymentRequired,
-        paymentTiers: tournament.majorEvent.majorEventPrices.flatMap((price) => price.tiers),
+        paymentTiers: this.sportsPaymentTiers(tournament.majorEvent.majorEventPrices),
       };
     }
 
@@ -192,7 +193,7 @@ export class SportsReadPublicService {
       requiresImageLicenseAgreement: boolean;
       isPaymentRequired: boolean;
       majorEventPrices: Array<{
-        tiers: Array<{ id: string; name: string; value: number }>;
+        tiers: Array<{ id: string; name: string; value: number; includesSportsRegistration: boolean }>;
       }>;
     };
   }): Promise<PublicSportsTournamentDetail> {
@@ -437,7 +438,7 @@ export class SportsReadPublicService {
       selfSubscriptionAllowNoCategory: tournament.selfSubscriptionAllowNoCategory,
       requiresImageLicenseAgreement: tournament.majorEvent.requiresImageLicenseAgreement,
       isPaymentRequired: tournament.majorEvent.isPaymentRequired,
-      paymentTiers: tournament.majorEvent.majorEventPrices.flatMap((price) => price.tiers),
+      paymentTiers: this.sportsPaymentTiers(tournament.majorEvent.majorEventPrices),
       teams: teams.map((team) => this.mapper.mapPublicTeam(team)),
       categories: publicCategories,
       matches: publicMatches,
@@ -447,6 +448,18 @@ export class SportsReadPublicService {
     };
     await this.cache.cachePublicTournamentIfCurrent(tournament.id, cacheVersion, detail);
     return detail;
+  }
+
+  private sportsPaymentTiers(
+    prices: Array<{
+      tiers: Array<{ id: string; name: string; value: number; includesSportsRegistration: boolean }>;
+    }>,
+  ): Array<{ id: string; name: string; value: number }> {
+    return prices.flatMap((price) =>
+      price.tiers
+        .filter((tier) => tier.includesSportsRegistration)
+        .map(({ id, name, value }) => ({ id, name, value })),
+    );
   }
 
   private publicMatchWhere(target: { id?: string; tournamentId?: string }): Prisma.SportsMatchWhereInput {

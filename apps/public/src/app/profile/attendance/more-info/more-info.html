@@ -26,11 +26,12 @@
     </div>
   </header>
 
-  <mat-chip-set aria-label="Resumo da inscrição">
-    @if (detail.statusLabel) {
-    <mat-chip>{{ detail.statusLabel }}</mat-chip>
-    }
-  </mat-chip-set>
+  @if (detail.statusLabel; as statusLabel) {
+  <p class="status-summary" role="status">
+    <mat-icon aria-hidden="true">{{ statusIcon(detail) }}</mat-icon>
+    <span>{{ statusLabel }}</span>
+  </p>
+  }
 
   <div class="actions">
     @if (detail.sportsTournamentId) {
@@ -89,7 +90,7 @@
   } @if (detail.description) {
   <section class="detail-section">
     <h2>Sobre</h2>
-    <p class="description">{{ detail.description }}</p>
+    <lib-markdown class="description" [content]="detail.description" />
   </section>
   }
 

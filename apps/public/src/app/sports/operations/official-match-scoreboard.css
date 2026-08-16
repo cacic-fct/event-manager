@@ -57,7 +57,7 @@
   gap: 0.75rem;
   text-align: center;
 }
-.team h1 {
+.team h2 {
   margin: 0;
   max-width: 18ch;
   font-size: clamp(1.1rem, 3vw, 1.75rem);
@@ -99,8 +99,16 @@
   font-weight: 700;
 }
 .state.live {
-  color: #b3261e;
+  color: var(--mat-sys-error);
   background: var(--mat-sys-surface-container);
+}
+.score-announcement {
+  block-size: 1px;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
 }
 .swap-sides {
   margin-block-start: 0.25rem;

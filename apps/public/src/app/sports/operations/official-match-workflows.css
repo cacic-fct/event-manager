@@ -172,7 +172,7 @@
     grid-column: 1 / -1;
     grid-row: 1;
   }
-  .team h1 {
+  .team h2 {
     min-height: 2.7em;
   }
   .score-controls {
@@ -247,6 +247,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .hold-button.holding .hold-progress {
-    transition-duration: 1ms;
+    transition-timing-function: steps(3, end);
   }
 }

@@ -7,6 +7,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   DEFAULT_SPORTS_OVERLAY_PERIOD_WORD,
@@ -27,6 +28,7 @@ type SportsOverlayTeam = 'both' | 'home' | 'away';
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    MatSlideToggleModule,
     MatSnackBarModule,
     ReactiveFormsModule,
   ],
@@ -53,12 +55,12 @@ type SportsOverlayTeam = 'both' | 'home' | 'away';
             }</mat-select
           ><mat-hint>Escolha uma palavra permitida para o período</mat-hint></mat-form-field
         >
-        <mat-checkbox formControlName="showTeamName">Exibir nome da equipe</mat-checkbox
-        ><mat-checkbox formControlName="showTeamIcon">Exibir ícone da equipe</mat-checkbox
-        ><mat-checkbox formControlName="showScore">Exibir placar</mat-checkbox
-        ><mat-checkbox formControlName="showStopwatch">Exibir cronômetro</mat-checkbox
-        ><mat-checkbox formControlName="showPeriod">Exibir rodada/turno</mat-checkbox
-        ><mat-checkbox formControlName="showState">Exibir estado da partida</mat-checkbox>
+        <mat-slide-toggle formControlName="showTeamName">Exibir nome da equipe</mat-slide-toggle
+        ><mat-slide-toggle formControlName="showTeamIcon">Exibir ícone da equipe</mat-slide-toggle
+        ><mat-slide-toggle formControlName="showScore">Exibir placar</mat-slide-toggle
+        ><mat-slide-toggle formControlName="showStopwatch">Exibir cronômetro</mat-slide-toggle
+        ><mat-slide-toggle formControlName="showPeriod">Exibir rodada/turno</mat-slide-toggle
+        ><mat-slide-toggle formControlName="showState">Exibir estado da partida</mat-slide-toggle>
       </form>
       <div class="overlay-url">
         <mat-form-field class="overlay-url-field" subscriptSizing="dynamic"

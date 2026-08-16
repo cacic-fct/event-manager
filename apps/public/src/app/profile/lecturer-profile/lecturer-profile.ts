@@ -5,11 +5,11 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { catchError, map, of, startWith } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { AttendancesApiService, LecturerProfile, LecturerProfileInput } from '../attendance/attendances-api.service';
@@ -25,11 +25,11 @@ type LecturerProfileState =
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
     MatProgressBarModule,
-    MatSlideToggleModule,
     MatSnackBarModule,
     MatToolbarModule,
   ],

@@ -47,7 +47,7 @@ describe('public entity fixtures', () => {
     const paymentInfo = createPublicPaymentInfo({ pixKey: 'financeiro@example.com' });
     const price = createPublicMajorEventPrice({
       type: 'SINGLE',
-      tiers: [{ id: 'tier-1', name: 'Comunidade', value: 5000 }],
+      tiers: [{ id: 'tier-1', name: 'Comunidade', value: 5000, includesSportsRegistration: false }],
     });
     const majorEvent = createPublicMajorEvent({
       isPaymentRequired: true,

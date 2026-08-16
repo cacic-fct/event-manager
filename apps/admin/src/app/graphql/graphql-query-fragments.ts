@@ -127,6 +127,9 @@ export const MAJOR_EVENT_LIST_FIELDS = `
   subscriptionStartDate
   subscriptionEndDate
   isPaymentRequired
+  sportsTournament {
+    id
+  }
   publicationState
   scheduledPublishAt
   publishedAt

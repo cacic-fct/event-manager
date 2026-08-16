@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, LOCALE_ID, input, signal } from '@a
 import {
   CalendarDefaultItemViewPreference,
   CalendarPreferencesStorageService,
-} from '@cacic-fct/offline-public-data-access';
+} from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';

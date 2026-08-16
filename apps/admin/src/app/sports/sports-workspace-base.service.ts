@@ -1,4 +1,4 @@
-import { Directive, OnDestroy, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Directive, OnDestroy, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormBuilder } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -29,6 +29,8 @@ import type {
   SportsMatchReview,
   SportsPendingMatchAction,
   SportsRegistrationRead,
+  SportsMajorEventConfigurationFilter,
+  SportsMajorEventWorkspaceItem,
   SportsTeamRead,
   SportsTournamentListItem,
   SportsTournamentRead,
@@ -38,6 +40,19 @@ import { sportsTimerPreset, toIsoDateOrNull, toLocalDate } from './sports-worksp
 import { createSportsWorkspaceForms } from './sports-workspace.forms';
 import { createPlacementPointForm } from './sports-workspace.forms';
 import { sportsWorkspaceRoute, type SportsWorkspaceArea } from './sports-workspace-routes';
+import {
+  WORKSPACE_LIST_PAGE_SIZE,
+  createWorkspaceListPagination,
+  resetPagination,
+} from '../pagination/list-pagination';
+import { bindLiveSearch } from '../search/live-search';
+
+interface SportsMajorEventWorkspaceFilters {
+  query: string;
+  startDateFrom: string;
+  startDateUntil: string;
+  configuration: SportsMajorEventConfigurationFilter;
+}
 
 @Directive()
 export abstract class SportsWorkspaceBaseService implements OnDestroy {
@@ -51,6 +66,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   protected readonly snackbar = inject(MatSnackBar);
   protected readonly dialog = inject(MatDialog);
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
   protected liveSubscription: Subscription | null = null;
   protected liveRefreshRunning = false;
   protected liveRefreshQueued = false;
@@ -81,6 +97,75 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly selectedCategoryId = signal('');
   readonly selectedTeamId = signal('');
   readonly selectedMatchId = signal('');
+  readonly majorEventWorkspacePagination = createWorkspaceListPagination();
+  readonly majorEventWorkspaceFilterForm = this.fb.nonNullable.group({
+    query: [''],
+    startDateFrom: [''],
+    startDateUntil: [''],
+    configuration: ['ALL' as SportsMajorEventConfigurationFilter],
+  });
+  private readonly majorEventWorkspaceFilters = signal<SportsMajorEventWorkspaceFilters>({
+    query: '',
+    startDateFrom: '',
+    startDateUntil: '',
+    configuration: 'ALL',
+  });
+  readonly majorEventWorkspaceItems = computed<SportsMajorEventWorkspaceItem[]>(() => {
+    const tournamentsByMajorEventId = new Map(
+      this.tournaments().map((item) => [item.majorEvent.id, item] as const),
+    );
+    const seenMajorEventIds = new Set<string>();
+    const items: SportsMajorEventWorkspaceItem[] = this.majorEvents().map((majorEvent) => {
+      seenMajorEventIds.add(majorEvent.id);
+      return {
+        majorEvent,
+        tournament: tournamentsByMajorEventId.get(majorEvent.id),
+      };
+    });
+
+    for (const item of this.tournaments()) {
+      if (!seenMajorEventIds.has(item.majorEvent.id)) {
+        items.push({ majorEvent: item.majorEvent, tournament: item });
+      }
+    }
+
+    const filters = this.majorEventWorkspaceFilters();
+    const query = filters.query.trim().toLocaleLowerCase('pt-BR');
+    const startDateFrom = dateBoundary(filters.startDateFrom, 'start');
+    const startDateUntil = dateBoundary(filters.startDateUntil, 'end');
+
+    return items.filter((item) => {
+      const hasTournament = Boolean(item.tournament);
+      const startsAt = new Date(item.majorEvent.startDate).getTime();
+      return (
+        (!query || item.majorEvent.name.toLocaleLowerCase('pt-BR').includes(query)) &&
+        (filters.configuration === 'ALL' ||
+          (filters.configuration === 'CONFIGURED' && hasTournament) ||
+          (filters.configuration === 'UNCONFIGURED' && !hasTournament)) &&
+        (!startDateFrom || startsAt >= startDateFrom) &&
+        (!startDateUntil || startsAt <= startDateUntil)
+      );
+    });
+  });
+  readonly visibleMajorEventWorkspaceItems = computed(() => {
+    const start = this.majorEventWorkspacePagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE;
+    return this.majorEventWorkspaceItems().slice(start, start + WORKSPACE_LIST_PAGE_SIZE);
+  });
+  readonly majorEventWorkspaceHasNextPage = computed(
+    () =>
+      (this.majorEventWorkspacePagination.pageIndex() + 1) * WORKSPACE_LIST_PAGE_SIZE <
+      this.majorEventWorkspaceItems().length,
+  );
+  readonly majorEventWorkspacePaginationLabel = computed(() => {
+    const total = this.majorEventWorkspaceItems().length;
+    if (!total) {
+      return '0';
+    }
+
+    const first = this.majorEventWorkspacePagination.pageIndex() * WORKSPACE_LIST_PAGE_SIZE + 1;
+    const last = Math.min(first + WORKSPACE_LIST_PAGE_SIZE - 1, total);
+    return `${first}-${last} de ${total}`;
+  });
   readonly isEditingOfficial = computed(() => this.editingOfficial() !== null);
   readonly canReadOfficialContacts = computed(() => this.permissions.has(Permission.Person.Read));
   readonly canEditMatchPublication = computed(() => this.permissions.has(Permission.SportsMatch.Update));
@@ -118,6 +203,14 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       ]),
     ),
   );
+
+  constructor() {
+    bindLiveSearch({
+      control: this.majorEventWorkspaceFilterForm,
+      destroyRef: this.destroyRef,
+      search: () => this.applyMajorEventWorkspaceFilters(),
+    });
+  }
 
   private readonly forms = createSportsWorkspaceForms(this.fb);
   readonly tournamentForm = this.forms.tournament;
@@ -241,34 +334,86 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     void this.router.navigate(sportsWorkspaceRoute(tournamentId, area, selection)).catch(() => undefined);
   }
 
-  navigateToTournamentList(): void {
+  async navigateToTournamentList(replaceUrl = false): Promise<void> {
     if (!this.router) {
       return;
     }
-    void this.router.navigate(['/sports']).catch(() => undefined);
+    await this.router.navigate(['/sports'], { replaceUrl }).catch(() => undefined);
   }
 
   async initialize(): Promise<void> {
     await this.run('Não foi possível carregar os grandes eventos.', async () => {
-      const [tournaments, majorEvents, places] = await Promise.all([
-        firstValueFrom(this.api.tournaments({ take: 100 })),
-        this.permissions.has(Permission.MajorEvent.Read)
-          ? firstValueFrom(this.majorEventsApi.listMajorEvents({ take: 100 }))
-          : Promise.resolve([]),
+      const [, places] = await Promise.all([
+        this.loadMajorEventWorkspaceData(),
         this.permissions.has(Permission.PlacePreset.Read)
           ? firstValueFrom(this.placesApi.listPlacePresets({ take: 100 }))
           : Promise.resolve([]),
       ]);
-      this.tournaments.set(tournaments);
-      this.majorEvents.set(majorEvents);
       this.places.set(places);
     });
+  }
+
+  async applyMajorEventWorkspaceFilters(): Promise<void> {
+    const filters = this.majorEventWorkspaceFilterForm.getRawValue();
+    this.majorEventWorkspaceFilters.set(filters);
+    resetPagination(this.majorEventWorkspacePagination);
+    await this.run('Não foi possível filtrar os grandes eventos.', () => this.loadMajorEventWorkspaceData());
+  }
+
+  async resetMajorEventWorkspaceFilters(): Promise<void> {
+    this.majorEventWorkspaceFilterForm.reset(
+      {
+        query: '',
+        startDateFrom: '',
+        startDateUntil: '',
+        configuration: 'ALL',
+      },
+      { emitEvent: false },
+    );
+    await this.applyMajorEventWorkspaceFilters();
+  }
+
+  async previousMajorEventWorkspacePage(): Promise<void> {
+    this.majorEventWorkspacePagination.pageIndex.update((page) => Math.max(0, page - 1));
+  }
+
+  async nextMajorEventWorkspacePage(): Promise<void> {
+    if (!this.majorEventWorkspaceHasNextPage()) {
+      return;
+    }
+
+    this.majorEventWorkspacePagination.pageIndex.update((page) => page + 1);
   }
 
   async openMajorEvent(majorEventId: string): Promise<void> {
     if (!majorEventId) {
       return;
     }
+    const existingTournament = this.tournaments().find((item) => item.majorEvent.id === majorEventId);
+    if (existingTournament) {
+      await this.loadTournament(existingTournament.tournament.id);
+      this.navigateToArea('overview');
+      return;
+    }
+
+    const majorEvent = this.majorEvents().find((item) => item.id === majorEventId) ??
+      this.tournaments().find((item) => item.majorEvent.id === majorEventId)?.majorEvent;
+    if (
+      !majorEvent ||
+      !(await this.confirmAction(
+        'Criar torneio esportivo?',
+        `O grande evento “${majorEvent.name}” ainda não possui uma configuração esportiva.`,
+        'Criar torneio',
+        'default',
+        [
+          'Será criada uma configuração esportiva vinculada a este grande evento.',
+          'O grande evento, suas atividades, inscrições, pagamentos e certificados serão preservados.',
+        ],
+      ))
+    ) {
+      return;
+    }
+
     this.selectedMajorEventId.set(majorEventId);
     await this.run('Não foi possível abrir ou criar o torneio.', async () => {
       const id = await firstValueFrom(
@@ -277,9 +422,32 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
         }),
       );
       await this.loadTournament(id);
-      this.tournaments.set(await firstValueFrom(this.api.tournaments({ take: 100 })));
+      await this.loadMajorEventWorkspaceData();
       this.navigateToArea('overview');
     });
+  }
+
+  private async loadMajorEventWorkspaceData(): Promise<void> {
+    const filters = this.majorEventWorkspaceFilters();
+    const query = filters.query.trim();
+    const majorEventFilters = {
+      ...(query ? { query } : {}),
+      ...(filters.startDateFrom ? { startDateFrom: dateFilterIso(filters.startDateFrom, 'start') } : {}),
+      ...(filters.startDateUntil ? { startDateUntil: dateFilterIso(filters.startDateUntil, 'end') } : {}),
+      take: 100,
+    };
+    const tournamentFilters = {
+      ...(query ? { query } : {}),
+      take: 100,
+    };
+    const [tournaments, majorEvents] = await Promise.all([
+      firstValueFrom(this.api.tournaments(tournamentFilters)),
+      this.permissions.has(Permission.MajorEvent.Read)
+        ? firstValueFrom(this.majorEventsApi.listMajorEvents(majorEventFilters))
+        : Promise.resolve([]),
+    ]);
+    this.tournaments.set(tournaments);
+    this.majorEvents.set(majorEvents);
   }
 
   async loadTournament(id = this.tournamentId()): Promise<void> {
@@ -348,6 +516,8 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   resetWorkspaceRoute(): void {
     this.tournamentLoadRevision += 1;
     this.invalidateSelection();
+    this.error.set(null);
+    resetPagination(this.majorEventWorkspacePagination);
     this.liveSubscription?.unsubscribe();
     this.liveSubscription = null;
     this.tournamentRead.set(null);
@@ -467,11 +637,10 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     }
     await this.run('Não foi possível excluir o torneio.', async () => {
       await firstValueFrom(this.api.deleteVersioned('deleteSportsTournament', tournament.id, tournament.revision));
-      this.tournamentRead.set(null);
-      this.pendingMatchActions.set([]);
-      this.tournaments.set(await firstValueFrom(this.api.tournaments({ take: 100 })));
+      this.tournaments.update((items) => items.filter((item) => item.tournament.id !== tournament.id));
       this.resetWorkspaceRoute();
-      this.navigateToTournamentList();
+      await this.navigateToTournamentList(true);
+      await this.loadMajorEventWorkspaceData();
       this.notify('Torneio esportivo excluído. O grande evento foi preservado.');
     });
   }
@@ -544,7 +713,26 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     allowWhenLoading?: boolean,
   ): Promise<void>;
   protected abstract notify(message: string, error?: boolean): void;
-  protected abstract confirmAction(title: string, message: string, confirmLabel?: string): Promise<boolean>;
+  protected abstract confirmAction(
+    title: string,
+    message: string,
+    confirmLabel?: string,
+    tone?: 'default' | 'danger',
+    details?: readonly string[],
+  ): Promise<boolean>;
   protected abstract loadApplications(): Promise<void>;
   protected abstract watchTournament(tournamentId: string): void;
+}
+
+function dateFilterIso(value: string, boundary: 'start' | 'end'): string {
+  return `${value}T${boundary === 'start' ? '00:00:00.000' : '23:59:59.999'}Z`;
+}
+
+function dateBoundary(value: string, boundary: 'start' | 'end'): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = new Date(dateFilterIso(value, boundary)).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
 }

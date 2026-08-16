@@ -103,8 +103,8 @@ function createMajorEvent(scenario: StoryScenario): PublicMajorEvent {
         id: 'price-1',
         type: 'TIERED',
         tiers: [
-          { id: 'tier-student', name: 'Estudante', value: 2500 },
-          { id: 'tier-community', name: 'Comunidade', value: 5000 },
+          { id: 'tier-student', name: 'Estudante', value: 2500, includesSportsRegistration: false },
+          { id: 'tier-community', name: 'Comunidade', value: 5000, includesSportsRegistration: false },
         ],
       }),
     ],

@@ -8,7 +8,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { SportsFormatGuideComponent } from './sports-format-guide.component';
@@ -27,7 +26,6 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
     MatInputModule,
     MatListModule,
     MatSelectModule,
-    MatSlideToggleModule,
     MatTooltipModule,
     TwemojiComponent,
     SportsFormatGuideComponent,

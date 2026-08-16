@@ -13,6 +13,22 @@
   margin-bottom: 16px;
 }
 
+.status-summary {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: flex;
+  font: var(--mat-sys-title-small);
+  gap: 8px;
+  margin: 0 0 24px;
+}
+
+.status-summary mat-icon {
+  color: var(--mat-sys-primary);
+  font-size: 20px;
+  height: 20px;
+  width: 20px;
+}
+
 .emoji-frame,
 .small-emoji-frame {
   align-items: center;

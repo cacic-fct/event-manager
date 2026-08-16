@@ -20,7 +20,7 @@ import type {
   PublicLecturerProfile,
   SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, MailtoService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
+import { AuthService, MailtoService, MarkdownComponent, parseFormAnswersJson } from '@cacic-fct/shared-angular';
 import { DocumentSeoService } from '@cacic-fct/shared-seo-angular';
 import { formatDateRange, getEventTypeLabel, isOnlineAttendanceRegistrationOpen } from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
@@ -108,6 +108,7 @@ type EventStructuredData = {
     MatDialogModule,
     MatIconModule,
     MatListModule,
+    MarkdownComponent,
     MatProgressBarModule,
     MatSnackBarModule,
     MatToolbarModule,

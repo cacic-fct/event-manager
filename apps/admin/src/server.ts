@@ -114,7 +114,7 @@ function adminCspPolicy(nonce: string): string {
     "media-src 'self' blob:",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    'trusted-types angular angular#bundler angular#unsafe-bypass default cacic#external-script',
+    'trusted-types angular angular#bundler angular#unsafe-bypass default cacic#external-script dompurify',
     "require-trusted-types-for 'script'",
     'upgrade-insecure-requests',
   ].join('; ');

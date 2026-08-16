@@ -129,6 +129,9 @@ export const Playground: Story = {
 
     await expect(await canvas.findByRole('tab', { name: 'Cadastro' })).toBeVisible();
     await expect(await canvas.findByRole('tab', { name: 'Ministrante' })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Ministrante' }));
+    await expect(await canvas.findByRole('checkbox', { name: /publicar foto do usuário Google/i })).toBeVisible();
+    expect(canvas.queryByRole('switch', { name: /publicar foto do usuário Google/i })).toBeNull();
     await userEvent.click(await canvas.findByRole('tab', { name: 'Permissões' }));
     await expect(await canvas.findByText('Permissões do Event Manager')).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: /vínculos/i }));

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@ang
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { AttendanceCollectionApiService, AttendanceCollectionEvent } from '../attendance-collection-api.service';
 

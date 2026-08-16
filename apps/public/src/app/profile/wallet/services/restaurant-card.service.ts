@@ -1,11 +1,11 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
-import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 
 @Injectable({ providedIn: 'root' })
 export class RestaurantCardService {
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly offlineData = inject(OfflinePublicDataAccessService);
+  private readonly offlineData = inject(PublicDataAccessService);
   private readonly numbers = signal<Record<string, string>>({});
   private readonly versions = new Map<string, number>();
 

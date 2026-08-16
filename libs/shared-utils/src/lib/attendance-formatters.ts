@@ -95,6 +95,19 @@ export function getSubscriptionStatusLabel(status: string): string {
   }
 }
 
+export function getSubscriptionStatusSummaryLabel(status: string): string {
+  switch (status) {
+    case 'WAITING_RECEIPT_UPLOAD':
+      return 'Comprovante pendente';
+    case 'RECEIPT_UNDER_REVIEW':
+      return 'Em análise';
+    case 'CONFIRMED':
+      return 'Inscrito';
+    default:
+      return getSubscriptionStatusLabel(status);
+  }
+}
+
 export const SUBSCRIPTION_STATUS_VALUES = [
   'WAITING_RECEIPT_UPLOAD',
   'RECEIPT_UNDER_REVIEW',

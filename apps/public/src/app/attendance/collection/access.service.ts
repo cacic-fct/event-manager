@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { addHours, isValid, isWithinInterval, parseISO, subHours } from 'date-fns';
 import { firstValueFrom, map } from 'rxjs';

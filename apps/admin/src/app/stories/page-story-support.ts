@@ -175,8 +175,12 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     pixKey: [''],
     priceType: ['TIERED' as const],
     priceTiers: formBuilder.array([
-      formBuilder.nonNullable.group({ name: ['Estudante'], value: ['40'] }),
-      formBuilder.nonNullable.group({ name: ['Comunidade externa'], value: ['80'] }),
+      formBuilder.nonNullable.group({ name: ['Estudante'], value: ['40'], includesSportsRegistration: [false] }),
+      formBuilder.nonNullable.group({
+        name: ['Comunidade externa'],
+        value: ['80'],
+        includesSportsRegistration: [false],
+      }),
     ]),
   });
 

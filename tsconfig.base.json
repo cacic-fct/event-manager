@@ -59,7 +59,7 @@
       "@cacic-fct/shared-notifications-angular/service": [
         "./libs/shared-notifications-angular/src/lib/novu-notifications.service.ts"
       ],
-      "@cacic-fct/offline-public-data-access": ["./libs/offline-public-data-access/src/index.ts"],
+      "@cacic-fct/public-indexed-db": ["./libs/public-indexed-db/src/index.ts"],
       "@cacic-fct/event-manager-public-testing": ["./libs/event-manager-public-testing/src/index.ts"],
       "@cacic-fct/event-manager-public-contracts": ["./libs/event-manager-public-contracts/src/index.ts"],
       "@cacic-fct/event-manager-public-contracts/types": [

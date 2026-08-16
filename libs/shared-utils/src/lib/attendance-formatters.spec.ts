@@ -11,6 +11,7 @@ import {
   getEventGroupCertificateLabel,
   getEventTypeLabel,
   getSubscriptionStatusLabel,
+  getSubscriptionStatusSummaryLabel,
   isOnlineAttendanceRegistrationOpen,
   joinUnique,
 } from './attendance-formatters';
@@ -83,6 +84,10 @@ describe('attendance formatters', () => {
     expect(getSubscriptionStatusLabel('CONFIRMED')).toBe('Inscrição confirmada');
     expect(getSubscriptionStatusLabel('CANCELED')).toBe('Inscrição cancelada');
     expect(getSubscriptionStatusLabel('CUSTOM')).toBe('CUSTOM');
+    expect(getSubscriptionStatusSummaryLabel('WAITING_RECEIPT_UPLOAD')).toBe('Comprovante pendente');
+    expect(getSubscriptionStatusSummaryLabel('RECEIPT_UNDER_REVIEW')).toBe('Em análise');
+    expect(getSubscriptionStatusSummaryLabel('CONFIRMED')).toBe('Inscrito');
+    expect(getSubscriptionStatusSummaryLabel('REJECTED_NO_SLOTS')).toBe('Sem vagas');
 
     const attendances = [
       { eventId: 'event-1', attendedAt: '2026-06-26T09:15:00' },

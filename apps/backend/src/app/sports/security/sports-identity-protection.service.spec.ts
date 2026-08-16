@@ -41,7 +41,11 @@ describe('SportsIdentityProtectionService', () => {
   it('rejects malformed, tampered, and semantically invalid values without leaking details', () => {
     const service = createService('test-secret');
     const protectedIdentity = service.protect(SportsIdentityType.EMAIL, 'maria@example.com');
-    const tampered = `${protectedIdentity.encryptedValue.slice(0, -1)}x`;
+    const tamperedSegments = protectedIdentity.encryptedValue.split('.');
+    const tamperedAuthenticationTag = Buffer.from(tamperedSegments[2], 'base64url');
+    tamperedAuthenticationTag[0] ^= 1;
+    tamperedSegments[2] = tamperedAuthenticationTag.toString('base64url');
+    const tampered = tamperedSegments.join('.');
 
     expect(() => service.reveal(SportsIdentityType.EMAIL, tampered)).toThrow(BadRequestException);
     expect(() => service.reveal(SportsIdentityType.EMAIL, 'not-ciphertext')).toThrow(BadRequestException);

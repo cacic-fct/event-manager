@@ -5,6 +5,9 @@ import { provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { ServiceWorkerService } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
+import { TotpSeedSessionService } from '../../../../shared/totp/totp-seed-session.service';
+import { createWalletStoryTotpSeed } from '../../testing/wallet-story-fixtures';
+import { OfflineCodeStateService } from '../../components/offline-code-card/offline-code-state.service';
 import { Wallet } from './wallet';
 
 describe('Wallet', () => {
@@ -14,6 +17,7 @@ describe('Wallet', () => {
   let dialog: { open: ReturnType<typeof vi.fn> };
   let printSpy: ReturnType<typeof vi.spyOn>;
   let scrollToSpy: ReturnType<typeof vi.spyOn>;
+  let getWalletSeed: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     hasServiceWorker = signal(false);
@@ -24,6 +28,7 @@ describe('Wallet', () => {
     };
     printSpy = vi.spyOn(window, 'print').mockImplementation(() => undefined);
     scrollToSpy = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+    getWalletSeed = vi.fn(() => Promise.resolve(createWalletStoryTotpSeed()));
 
     await TestBed.configureTestingModule({
       imports: [Wallet],
@@ -39,6 +44,10 @@ describe('Wallet', () => {
         {
           provide: MatDialog,
           useValue: dialog,
+        },
+        {
+          provide: TotpSeedSessionService,
+          useValue: { getWalletSeed },
         },
       ],
     })
@@ -109,6 +118,25 @@ describe('Wallet', () => {
 
     vi.advanceTimersByTime(420);
     expect(component.walletView()).toBe('detail');
+  });
+
+  it('keeps the prepared TOTP state when the selected card enters detail view', async () => {
+    const offlineCodeState = fixture.debugElement.injector.get(OfflineCodeStateService);
+    const initialState = offlineCodeState.state();
+
+    expect(initialState.status).toBe('ready');
+    expect(getWalletSeed).toHaveBeenCalledOnce();
+
+    vi.useFakeTimers();
+    component.selectCard('offline-code');
+    vi.advanceTimersByTime(420);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(component.walletView()).toBe('detail');
+    expect(getWalletSeed).toHaveBeenCalledOnce();
+    expect(offlineCodeState.state()).toBe(initialState);
+    expect(fixture.nativeElement.querySelector('.offline-card-email')?.textContent).toContain('marina@unesp.br');
   });
 
   it('returns to the card list when the expanded card header is selected', () => {

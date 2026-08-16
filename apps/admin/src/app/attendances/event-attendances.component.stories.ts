@@ -18,6 +18,7 @@ type Story = StoryObj<EventAttendancesComponent>;
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
+  await expect(await canvas.findByLabelText('Partida de torneio esportivo')).toBeVisible();
   await userEvent.tab();
   const buttons = canvas.queryAllByRole('button');
   const enabledButton = buttons.find(

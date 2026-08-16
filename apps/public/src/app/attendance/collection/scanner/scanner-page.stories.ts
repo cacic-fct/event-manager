@@ -6,7 +6,7 @@ import { applicationConfig } from '@storybook/angular';
 import { expect, within } from 'storybook/test';
 import { NEVER, of, throwError } from 'rxjs';
 import { AuthService, ScannerFeedbackService } from '@cacic-fct/shared-angular';
-import { AttendanceOfflineQueueService, OfflineAttendanceQueueItem } from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService, OfflineAttendanceQueueItem } from '@cacic-fct/public-indexed-db';
 import { AttendanceCollectionAccessService } from '../access.service';
 import {
   AttendanceCollectionApiService,

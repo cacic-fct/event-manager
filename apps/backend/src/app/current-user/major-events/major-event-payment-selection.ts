@@ -6,6 +6,7 @@ export interface MajorEventPaymentSelectionSource {
     tiers: Array<{
       name: string;
       value: number;
+      includesSportsRegistration?: boolean;
     }>;
   }>;
 }
@@ -68,4 +69,28 @@ export function resolveMajorEventSelfServicePayment(
     amountPaid: selectedTier.value,
     paymentTier: selectedTier.name,
   };
+}
+
+export function resolveSportsSelfServicePayment(
+  majorEvent: MajorEventPaymentSelectionSource,
+  paymentTierInput?: string | null,
+): MajorEventPaymentSelection {
+  if (!majorEvent.isPaymentRequired) {
+    return resolveMajorEventSelfServicePayment(majorEvent, paymentTierInput);
+  }
+
+  const sportsTiers = majorEvent.majorEventPrices.flatMap((price) =>
+    price.tiers.filter((tier) => tier.includesSportsRegistration === true),
+  );
+  if (sportsTiers.length === 0) {
+    throw new BadRequestException('Nenhuma faixa de pagamento inclui a inscrição no torneio.');
+  }
+
+  return resolveMajorEventSelfServicePayment(
+    {
+      ...majorEvent,
+      majorEventPrices: [{ tiers: sportsTiers }],
+    },
+    paymentTierInput,
+  );
 }

@@ -212,6 +212,23 @@ describe('Event', () => {
     expect(component).toBeTruthy();
   });
 
+  it('renders formatted descriptions without creating unsafe HTML', async () => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData();
+    eventPageData.event = {
+      ...eventPageData.event,
+      description: '## Conteúdo\n\n**Importante** <img src=x onerror=alert(1)>',
+    };
+    const newFixture = await createEventComponentFixture({}, { eventPageData });
+    await newFixture.whenStable();
+
+    const description = (newFixture.nativeElement as HTMLElement).querySelector('lib-markdown');
+    expect(description?.querySelector('h2')?.textContent).toBe('Conteúdo');
+    expect(description?.querySelector('strong')?.textContent).toBe('Importante');
+    expect(description?.querySelector('img')).toBeNull();
+    expect(description?.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+
   it('publishes complete metadata and structured data for public events', async () => {
     TestBed.resetTestingModule();
     const eventPageData = defaultEventPageData();

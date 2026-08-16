@@ -35,12 +35,19 @@ describe('SportsMatchRosterSupportService', () => {
         { registrationMemberId: 'member-2', role: SportsRosterRole.COACH, shirtNumber: ' ' },
       ]),
     ).toEqual([
-      { registrationMemberId: 'member-1', role: SportsRosterRole.PLAYER, shirtNumber: '10', roleMetadata },
+      {
+        registrationMemberId: 'member-1',
+        role: SportsRosterRole.PLAYER,
+        shirtNumber: '10',
+        roleMetadata,
+        teamMemberId: null,
+      },
       {
         registrationMemberId: 'member-2',
         role: SportsRosterRole.COACH,
         shirtNumber: null,
         roleMetadata: undefined,
+        teamMemberId: null,
       },
     ]);
   });
@@ -59,11 +66,11 @@ describe('SportsMatchRosterSupportService', () => {
     },
     {
       entries: [{ registrationMemberId: 'member-1', role: SportsRosterRole.PLAYER, shirtNumber: '1234567890123' }],
-      message: 'O número de camisa deve ter até 12 letras ou números.',
+      message: 'O número de camisa deve ter até 12 letras, números ou os símbolos ., _ e -.',
     },
     {
       entries: [{ registrationMemberId: 'member-1', role: SportsRosterRole.PLAYER, shirtNumber: '10!' }],
-      message: 'O número de camisa deve ter até 12 letras ou números.',
+      message: 'O número de camisa deve ter até 12 letras, números ou os símbolos ., _ e -.',
     },
     {
       entries: [

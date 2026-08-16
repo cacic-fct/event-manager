@@ -52,7 +52,7 @@
   </mat-chip-set>
 
   @if (majorEvent.description) {
-  <p class="description">{{ majorEvent.description }}</p>
+  <lib-markdown class="description" [content]="majorEvent.description" />
   } @if (currentStep() === 'select') {
   <app-ranked-subscription-select-step (continue)="showRankingStep()" />
   } @else {

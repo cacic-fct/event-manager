@@ -11,7 +11,7 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AttendanceOfflineQueueService, OralAttendanceOfflineService } from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService, OralAttendanceOfflineService } from '@cacic-fct/public-indexed-db';
 import {
   AuthService,
   OralAttendanceComponent,

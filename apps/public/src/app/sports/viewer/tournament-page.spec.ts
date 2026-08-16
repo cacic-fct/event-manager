@@ -92,7 +92,10 @@ describe('SportsTournamentPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsTournamentPage());
     expect(page.pageState()).toEqual({ status: 'error', message: 'Não foi possível carregar este torneio.' });
 
-    page.pageState.set({ status: 'ready', data: createSportsViewerTournament(), liveConnectionLost: false });
+    getTournament.mockReturnValueOnce(of(createSportsViewerTournament()));
+    page.retry();
+    expect(page.pageState()).toEqual(expect.objectContaining({ status: 'ready' }));
+
     realtime.error(new Error('closed'));
     expect(page.pageState()).toEqual(expect.objectContaining({ status: 'ready', liveConnectionLost: true }));
   });

@@ -8,6 +8,7 @@ import {
 } from './support/admin-e2e-fixtures';
 
 const sportsReadPermissions = [
+  'major-event#read',
   'sports-tournament#read',
   'sports-category#read',
   'sports-team#read',
@@ -42,12 +43,12 @@ test('opens sports management from workspace navigation and lists configured tou
 
   await expect(page).toHaveURL(/\/admin\/sports$/);
   await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
-  await expect(page.getByText('Jogos Universitários')).toBeVisible();
+  await expect(page.getByText('Semana da Computação')).toBeVisible();
   await expect(page.getByText('2 modalidades · 8 equipes · Publicado')).toBeVisible();
   await expect(page.getByText('3 pendências')).toBeVisible();
 });
 
-test('shows the sports empty state when no tournament is configured', async ({ page }) => {
+test('shows the unified empty state when no sports event is available', async ({ page }) => {
   await mockAdminApi(page, {
     user: authenticatedAdminUserFixture(),
     permissions: sportsReadPermissions,
@@ -56,8 +57,7 @@ test('shows the sports empty state when no tournament is configured', async ({ p
   await page.goto('/admin/sports');
 
   await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
-  await expect(page.getByText('Nenhum torneio configurado')).toBeVisible();
-  await expect(page.getByText('Escolha um grande evento abaixo para ativar o modo esportivo.')).toBeVisible();
+  await expect(page.getByText('Nenhum grande evento disponível')).toBeVisible();
 });
 
 test('shows the sports permission boundary when every sports read permission is missing', async ({ page }) => {

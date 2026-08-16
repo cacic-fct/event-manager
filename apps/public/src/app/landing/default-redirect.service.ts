@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular';
 import type { DefaultRedirectRoute } from '@cacic-fct/event-manager-public-contracts';
 import { firstValueFrom } from 'rxjs';
@@ -27,7 +27,7 @@ export class DefaultRedirectService {
   private readonly featureFlags = inject(PublicFeatureFlagService);
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly notifications = inject(NovuNotificationsService);
-  private readonly offlineData = inject(OfflinePublicDataAccessService);
+  private readonly offlineData = inject(PublicDataAccessService);
 
   async resolve(): Promise<string> {
     const fallback = this.featureFlagFallback();

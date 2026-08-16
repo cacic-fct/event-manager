@@ -36,10 +36,17 @@
 </main>
 } @else if (match(); as currentMatch) {
 <main class="operation-shell">
+  <h1 class="score-announcement">
+    Operação: {{ teamName(displaySide('left')) }} × {{ teamName(displaySide('right')) }}
+  </h1>
+  <span class="score-announcement" aria-live="polite" aria-atomic="true">
+    Placar: {{ teamName(displaySide('left')) }} {{ scoreFor(displaySide('left')) }},
+    {{ teamName(displaySide('right')) }} {{ scoreFor(displaySide('right')) }}
+  </span>
   <section class="scoreboard" aria-label="Placar da partida">
     <div class="team">
       <lib-sports-team-logo [logoUrl]="teamLogo(displaySide('left'))" [size]="52" />
-      <h1>{{ teamName(displaySide('left')) }}</h1>
+      <h2>{{ teamName(displaySide('left')) }}</h2>
       <div class="score-controls">
         <button
           mat-icon-button
@@ -88,7 +95,7 @@
 
     <div class="team">
       <lib-sports-team-logo [logoUrl]="teamLogo(displaySide('right'))" [size]="52" />
-      <h1>{{ teamName(displaySide('right')) }}</h1>
+      <h2>{{ teamName(displaySide('right')) }}</h2>
       <div class="score-controls">
         <button
           mat-icon-button

@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import { AuditLogEntityType, AuditLogOperation, SportsApplicationStatus, SportsTeamStatus } from '@prisma/client';
 import { AuditLogService } from '../../audit-log/audit-log.service';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
-import { resolveMajorEventSelfServicePayment } from '../../current-user/major-events/major-event-payment-selection';
+import { resolveSportsSelfServicePayment } from '../../current-user/major-events/major-event-payment-selection';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SportsPaymentService } from '../sports-payment.service';
 import { runSerializableSportsTransaction } from '../sports-transaction';
@@ -70,7 +70,7 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
         input.imageLicenseAgreementAccepted,
         `o torneio ${input.tournamentId}`,
       );
-      const paymentSelection = resolveMajorEventSelfServicePayment(target.majorEvent, input.paymentTier);
+      const paymentSelection = resolveSportsSelfServicePayment(target.majorEvent, input.paymentTier);
       const existingApplication = input.applicationId
         ? await tx.sportsPlayerApplication.findFirst({
             where: {
@@ -354,7 +354,7 @@ export class SportsPlayerApplicationService extends SportsPlayerApplicationAppro
       this.assertReviewable(current.status);
 
       const target = await this.loadApplicationTarget(tx, current.tournamentId, requestedTeamId, categoryIds);
-      const paymentSelection = resolveMajorEventSelfServicePayment(target.majorEvent, input.paymentTier);
+      const paymentSelection = resolveSportsSelfServicePayment(target.majorEvent, input.paymentTier);
       const pendingKey = this.applicationPendingKey(current.tournamentId, current.applicantPersonId, requestedTeamId);
       if (pendingKey !== current.pendingKey) {
         const conflictingApplication = await tx.sportsPlayerApplication.findFirst({

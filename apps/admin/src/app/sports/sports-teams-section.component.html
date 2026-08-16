@@ -49,10 +49,20 @@
       </div>
       <div class="panel-actions">
         @if (workspace.teamRead()) {
-          <button mat-icon-button type="button" matTooltip="Duplicar equipe" (click)="workspace.cloneSelectedTeam()">
+          <button
+            mat-icon-button
+            type="button"
+            matTooltip="Duplicar equipe"
+            aria-label="Duplicar equipe"
+            (click)="workspace.cloneSelectedTeam()">
             <mat-icon>content_copy</mat-icon>
           </button>
-          <button mat-icon-button type="button" matTooltip="Excluir equipe" (click)="workspace.deleteSelectedTeam()">
+          <button
+            mat-icon-button
+            type="button"
+            matTooltip="Excluir equipe"
+            aria-label="Excluir equipe"
+            (click)="workspace.deleteSelectedTeam()">
             <mat-icon>delete</mat-icon>
           </button>
         }
@@ -152,6 +162,7 @@
               mat-icon-button
               type="button"
               matTooltip="Revogar acesso"
+              [attr.aria-label]="'Revogar acesso de ' + representative.person.name"
               (click)="workspace.revokeRepresentative(representative.id)">
               <mat-icon>person_remove</mat-icon>
             </button>

@@ -661,6 +661,34 @@ describe('MajorEventsResolver', () => {
     );
   });
 
+  it('requires a linked tournament before a price tier can include sports registration', async () => {
+    const { resolver, prisma, tx } = createResolver();
+    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
+    tx.sportsTournament.findFirst.mockResolvedValue(null);
+
+    await expect(
+      resolver.updateMajorEvent(
+        'major-1',
+        {
+          price: {
+            type: 'SINGLE',
+            tiers: [
+              {
+                name: 'Atividades e torneio',
+                value: 7000,
+                includesSportsRegistration: true,
+              },
+            ],
+          },
+        } as never,
+        context() as never,
+      ),
+    ).rejects.toThrow('Sports registration can only be included when the major event has a linked tournament.');
+
+    expect(tx.majorEventPrice.upsert).not.toHaveBeenCalled();
+  });
+
   it('deletes payment info and price tiers when update inputs clear them', async () => {
     const { resolver, prisma, tx } = createResolver({ paymentInfoTableExists: true });
     const existing = majorEventRecord({
@@ -831,6 +859,9 @@ function createResolver(options: { paymentInfoTableExists?: boolean } = {}) {
     },
     certificateConfig: {
       create: jest.fn(),
+    },
+    sportsTournament: {
+      findFirst: jest.fn(),
     },
   };
   const prisma = {

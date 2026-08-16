@@ -16,6 +16,7 @@
   <section class="message-state" aria-live="assertive">
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ state.message }}</p>
+    <button mat-flat-button type="button" (click)="retry()">Tentar novamente</button>
   </section>
   } @else { @let tournament = state.data; @if (state.liveConnectionLost) {
   <section class="connection-notice" aria-live="polite">
@@ -35,7 +36,7 @@
   </header>
 
   @if (tournament.description) {
-  <p class="description">{{ tournament.description }}</p>
+  <lib-markdown class="description" [content]="tournament.description" />
   } @if (tournament.selfSubscriptionEnabled) {
   <section class="registration-action" aria-label="Inscrição individual">
     <div>

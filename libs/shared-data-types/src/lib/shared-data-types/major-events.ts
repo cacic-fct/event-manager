@@ -39,6 +39,15 @@ export class MajorEventPriceTier {
 
   @Field(() => Int)
   value!: number;
+
+  @Field(() => Boolean)
+  includesSportsRegistration!: boolean;
+}
+
+@ObjectType()
+export class MajorEventSportsTournamentMarker {
+  @Field(() => String)
+  id!: string;
 }
 
 @ObjectType()
@@ -69,6 +78,9 @@ export class MajorEvent {
 
   @Field(() => Date)
   endDate!: Date;
+
+  @Field(() => MajorEventSportsTournamentMarker, { nullable: true })
+  sportsTournament?: MajorEventSportsTournamentMarker | null;
 
   @Field(() => String, { nullable: true })
   description?: string | null;

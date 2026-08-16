@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,7 +14,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { TwemojiComponent } from '@cacic-fct/shared-angular';
+import { MarkdownPreviewDialogComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { Event, EventType, MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { EventsService } from './events.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -29,6 +30,7 @@ import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.c
     ReactiveFormsModule,
     MatAutocompleteModule,
     MatButtonModule,
+    MatDialogModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
@@ -51,6 +53,7 @@ export class EventsPageComponent {
   @ViewChild(EventFilterPanelComponent)
   private eventFilterPanel?: EventFilterPanelComponent;
   readonly workspace = inject(EventsService);
+  private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
@@ -72,6 +75,16 @@ export class EventsPageComponent {
 
   focusQuickSearch(): void {
     this.eventFilterPanel?.focusQuickSearch();
+  }
+
+  protected previewDescription(): void {
+    this.dialog.open(MarkdownPreviewDialogComponent, {
+      data: {
+        content: this.workspace.eventForm.controls.description.value,
+        title: 'Pré-visualização da descrição do evento',
+      },
+      maxWidth: 'calc(100vw - 32px)',
+    });
   }
 
   protected describeEventType(type: EventType | null | undefined): string {

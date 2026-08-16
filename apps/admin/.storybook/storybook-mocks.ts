@@ -119,8 +119,18 @@ function majorEvent(index = 0) {
         id: `price-${index + 1}`,
         type: 'TIERED',
         tiers: [
-          { id: `tier-${index + 1}-student`, name: 'Estudante', value: 2500 },
-          { id: `tier-${index + 1}-community`, name: 'Comunidade', value: 5000 },
+          {
+            id: `tier-${index + 1}-student`,
+            name: 'Estudante',
+            value: 2500,
+            includesSportsRegistration: false,
+          },
+          {
+            id: `tier-${index + 1}-community`,
+            name: 'Comunidade',
+            value: 5000,
+            includesSportsRegistration: false,
+          },
         ],
       },
     ],
@@ -137,6 +147,7 @@ function event(index = 0) {
 
   return {
     id: `event-${index + 1}`,
+    isSportsMatch: index === 1,
     name: faker.helpers.arrayElement([
       'Arquitetura Angular com Signals',
       'IA aplicada a eventos acadêmicos',

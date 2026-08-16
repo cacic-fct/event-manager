@@ -1,11 +1,15 @@
 import { DatePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, ViewEncapsulation, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatDividerModule } from '@angular/material/divider';
+import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { SportsApiService } from './sports-api.service';
@@ -15,6 +19,7 @@ import { SportsOverviewSectionComponent } from './sports-overview-section.compon
 import { SportsReviewsSectionComponent } from './sports-reviews-section.component';
 import { SportsTeamsSectionComponent } from './sports-teams-section.component';
 import { SportsWorkspaceService } from './sports-workspace.service';
+import type { SportsMajorEventWorkspaceItem } from './sports.models';
 import {
   isSportsWorkspaceArea,
   parseSportsWorkspaceRoute,
@@ -30,11 +35,15 @@ import {
   encapsulation: ViewEncapsulation.None,
   imports: [
     DatePipe,
+    ReactiveFormsModule,
     MatButtonModule,
-    MatDividerModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
     MatListModule,
     MatProgressBarModule,
+    MatSelectModule,
+    MatTooltipModule,
     TwemojiComponent,
     SportsCategoriesSectionComponent,
     SportsMatchesSectionComponent,
@@ -70,10 +79,19 @@ export class SportsPageComponent {
   protected async openTournament(tournamentId: string): Promise<void> {
     try {
       await this.workspace.loadTournament(tournamentId);
-    } catch {
+    } catch (error) {
+      await this.redirectFromMissingTournament(error);
       return;
     }
     await this.router.navigate(['/sports', tournamentId]).catch(() => undefined);
+  }
+
+  protected openMajorEvent(item: SportsMajorEventWorkspaceItem): void {
+    if (item.tournament) {
+      void this.openTournament(item.tournament.tournament.id);
+      return;
+    }
+    void this.workspace.openMajorEvent(item.majorEvent.id);
   }
 
   protected setArea(area: SportsWorkspaceArea): void {
@@ -117,7 +135,8 @@ export class SportsPageComponent {
     if (this.workspace.tournamentId() !== route.tournamentId) {
       try {
         await this.workspace.loadTournament(route.tournamentId);
-      } catch {
+      } catch (error) {
+        await this.redirectFromMissingTournament(error, revision);
         return;
       }
       if (revision !== this.routeRevision) {
@@ -226,5 +245,17 @@ export class SportsPageComponent {
   private initializeWorkspace(): Promise<void> {
     this.initialization ??= this.workspace.initialize();
     return this.initialization;
+  }
+
+  private async redirectFromMissingTournament(error: unknown, revision = this.routeRevision): Promise<void> {
+    if (revision !== this.routeRevision || !this.isMissingTournamentError(error)) {
+      return;
+    }
+    this.workspace.resetWorkspaceRoute();
+    await this.router.navigate(['/sports'], { replaceUrl: true }).catch(() => undefined);
+  }
+
+  private isMissingTournamentError(error: unknown): boolean {
+    return error instanceof Error && /Sports tournament .* was not found\./i.test(error.message);
   }
 }

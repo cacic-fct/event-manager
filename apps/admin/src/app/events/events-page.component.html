@@ -270,6 +270,16 @@
             <mat-form-field class="span-2">
               <mat-label>Descrição</mat-label>
               <textarea matInput rows="3" formControlName="description"></textarea>
+              <mat-hint>Este campo aceita Markdown, inclusive fórmulas matemáticas.</mat-hint>
+              <button
+                mat-icon-button
+                matSuffix
+                type="button"
+                aria-label="Pré-visualizar descrição"
+                matTooltip="Pré-visualizar descrição"
+                (click)="previewDescription()">
+                <mat-icon>preview</mat-icon>
+              </button>
             </mat-form-field>
           </div>
         </section>

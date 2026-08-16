@@ -6,7 +6,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
-import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { of, throwError } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
@@ -325,7 +325,7 @@ async function createFixture({
         },
       },
       {
-        provide: OfflinePublicDataAccessService,
+        provide: PublicDataAccessService,
         useValue: offlineData,
       },
       {

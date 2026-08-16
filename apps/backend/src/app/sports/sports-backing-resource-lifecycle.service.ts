@@ -54,7 +54,12 @@ export class SportsBackingResourceLifecycleService {
         },
       },
     });
-    if (!match) return;
+    if (!match) {
+      if (input.eventGroupId !== undefined) {
+        await this.assertEventCreateAllowed(tx, input.eventGroupId);
+      }
+      return;
+    }
 
     const event = match.event;
     const changesOwnership =

@@ -22,6 +22,9 @@
           <span matListItemTitle class="list-title">
             <lib-twemoji [emoji]="eventItem.emoji" />
             <span>{{ eventItem.name }}</span>
+            @if (eventItem.isSportsMatch) {
+              <mat-icon matTooltip="Partida de torneio esportivo" aria-label="Partida de torneio esportivo">sports</mat-icon>
+            }
           </span>
           <span matListItemLine>
             {{ eventItem.startDate | date: 'short' }} ·

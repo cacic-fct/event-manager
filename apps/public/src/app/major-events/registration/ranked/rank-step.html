@@ -150,7 +150,9 @@
     [disabled]="
       store.isSubmitting() ||
       store.effectiveSelectedEventIds().size === 0 ||
-      (store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' && !store.needsImageLicenseAgreement()) ||
+      (store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
+        !store.confirmedSportsOnlySubscription() &&
+        !store.needsImageLicenseAgreement()) ||
       store.subscriptionCooldownSeconds() > 0
     "
     (click)="submit()">

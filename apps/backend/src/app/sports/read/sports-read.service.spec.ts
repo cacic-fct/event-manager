@@ -23,10 +23,14 @@ describe('SportsReadService admin tournament list', () => {
     sportsMatchRoster: {
       findFirst: jest.fn(),
     },
+    sportsOfficialAssignment: {
+      findMany: jest.fn(),
+    },
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
+    prisma.sportsOfficialAssignment.findMany.mockResolvedValue([]);
   });
 
   it('does not enumerate tournaments when the actor has no readable sports scope', async () => {
@@ -236,8 +240,17 @@ describe('SportsReadService admin tournament list', () => {
       id: 'match-1',
       revision: 7,
       state: 'CHECK_IN',
+      eventId: 'event-1',
+      categoryId: 'category-1',
+      category: {
+        athleteIdentifierMode: 'NONE',
+        tournament: { id: 'tournament-1' },
+      },
       homeRegistrationId: 'registration-home',
       awayRegistrationId: 'registration-away',
+      notes: null,
+      occurrences: [],
+      actions: [],
       rosters: [
         {
           id: 'roster-home',

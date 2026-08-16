@@ -6,14 +6,21 @@ import { AnalyticsService } from './analytics.service';
 describe('AnalyticsService', () => {
   let service: AnalyticsService;
   let fetchMock: jest.MockedFunction<typeof fetch>;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     service = new AnalyticsService();
-    fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(undefined, { status: 202 }));
+    fetchMock = jest.fn().mockResolvedValue(createFetchResponse(202));
+    global.fetch = fetchMock as never;
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
+    if (originalFetch === undefined) {
+      delete (global as { fetch?: typeof fetch }).fetch;
+    } else {
+      global.fetch = originalFetch;
+    }
   });
 
   it('does not forward empty envelopes or unknown projects', async () => {
@@ -58,7 +65,7 @@ describe('AnalyticsService', () => {
   it('logs and rejects when GlitchTip rejects the envelope', async () => {
     const warn = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
     fetchMock.mockResolvedValue(
-      new Response('upstream unavailable', { status: 503, statusText: 'Service Unavailable' }),
+      createFetchResponse(503, 'Service Unavailable', 'upstream unavailable'),
     );
 
     await expect(service.forwardEnvelope('admin', createRequest(Buffer.from('envelope')))).rejects.toBeInstanceOf(
@@ -95,5 +102,14 @@ describe('AnalyticsService', () => {
               'content-type': contentType,
             },
     } as unknown as RawBodyRequest<Request>;
+  }
+
+  function createFetchResponse(status: number, statusText = '', body = ''): Response {
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      statusText,
+      text: jest.fn().mockResolvedValue(body),
+    } as unknown as Response;
   }
 });

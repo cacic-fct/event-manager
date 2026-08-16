@@ -12,6 +12,7 @@ import {
   SportsLiveDotComponent,
   SportsTeamLogoComponent,
   TwemojiComponent,
+  MarkdownComponent,
 } from '@cacic-fct/shared-angular';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subject, Subscription, catchError, distinctUntilChanged, filter, map, of, switchMap } from 'rxjs';
@@ -43,6 +44,7 @@ import { SportsAthletePreparationPanel } from './athlete-preparation-panel';
     MatProgressBarModule,
     MatTabsModule,
     MatToolbarModule,
+    MarkdownComponent,
     RouterLink,
     SportsBracketComponent,
     SportsLiveDotComponent,
@@ -62,6 +64,7 @@ export class SportsTournamentPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly reload = new Subject<string>();
+  private currentTournamentId = '';
   private realtimeSubscription?: Subscription;
 
   readonly pageState = signal<SportsViewerPageState<PublicSportsTournamentDetail>>({ status: 'loading' });
@@ -136,10 +139,19 @@ export class SportsTournamentPage {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((tournamentId) => {
+        this.currentTournamentId = tournamentId;
         this.pageState.set({ status: 'loading' });
         this.reload.next(tournamentId);
         this.watchTournament(tournamentId);
       });
+  }
+
+  retry(): void {
+    if (!this.currentTournamentId) {
+      return;
+    }
+    this.pageState.set({ status: 'loading' });
+    this.reload.next(this.currentTournamentId);
   }
 
   goBack(): void {

@@ -49,7 +49,9 @@ describe('public entity fixtures', () => {
     const price = createPublicMajorEventPrice({
       id: 'price-custom',
       type: 'SINGLE',
-      tiers: [{ id: 'tier-custom', name: 'Participante', value: 4500 }],
+              tiers: [
+                { id: 'tier-custom', name: 'Participante', value: 4500, includesSportsRegistration: false },
+              ],
     });
 
     const majorEvent = createPublicMajorEvent({

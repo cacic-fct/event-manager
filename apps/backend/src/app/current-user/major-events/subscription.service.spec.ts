@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { CurrentUserMajorEventSubscriptionService } from './subscription.service';
-import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-events/models';
+import { PUBLIC_REGULAR_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-events/models';
 
 describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
   let service: CurrentUserMajorEventSubscriptionService;
@@ -264,7 +264,7 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
 
     expect(prisma.event.findMany).toHaveBeenCalledWith({
       where: {
-        AND: [PUBLIC_EVENT_WHERE, { majorEventId: 'major-1' }],
+        AND: [PUBLIC_REGULAR_EVENT_WHERE, { majorEventId: 'major-1' }],
         allowSubscription: true,
       },
       select: expect.objectContaining({

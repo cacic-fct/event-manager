@@ -16,6 +16,7 @@
   <section class="message-state" aria-live="assertive">
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ state.message }}</p>
+    <button mat-flat-button type="button" (click)="retry()">Tentar novamente</button>
   </section>
   } @else { @let match = state.data; @if (state.liveConnectionLost) {
   <section class="connection-notice" aria-live="polite">
@@ -25,6 +26,11 @@
   }
 
   <section class="score-hero" [class.live]="isLive(match)">
+    <h1 class="score-announcement">{{ teamName(match, 'home') }} × {{ teamName(match, 'away') }}</h1>
+    <span class="score-announcement" aria-live="polite" aria-atomic="true">
+      Placar: {{ teamName(match, 'home') }} {{ match.scoreboard.homeScore }},
+      {{ teamName(match, 'away') }} {{ match.scoreboard.awayScore }}
+    </span>
     <header>
       <mat-chip [class.live-chip]="isLive(match)">
         @if (isLive(match)) {
@@ -46,7 +52,7 @@
     <div class="scoreboard" aria-label="Placar da partida">
       <article class="team home-team">
         <lib-sports-team-logo [logoUrl]="match.homeTeam?.logoUrl" [size]="72" />
-        <h1>{{ teamName(match, 'home') }}</h1>
+        <h2>{{ teamName(match, 'home') }}</h2>
         @if (match.homeTeam?.institution) {
         <p>{{ match.homeTeam.institution }}</p>
         }
@@ -60,7 +66,7 @@
 
       <article class="team away-team">
         <lib-sports-team-logo [logoUrl]="match.awayTeam?.logoUrl" [size]="72" />
-        <h1>{{ teamName(match, 'away') }}</h1>
+        <h2>{{ teamName(match, 'away') }}</h2>
         @if (match.awayTeam?.institution) {
         <p>{{ match.awayTeam.institution }}</p>
         }

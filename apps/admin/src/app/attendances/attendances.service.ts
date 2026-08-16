@@ -202,6 +202,7 @@ export class AttendancesService {
         id: `selected-${selectedTier}`,
         name: selectedTier,
         value: 0,
+        includesSportsRegistration: false,
       },
       ...tiers,
     ];

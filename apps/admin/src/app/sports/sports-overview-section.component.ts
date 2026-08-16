@@ -9,7 +9,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { SportsTeamLogoComponent } from '@cacic-fct/shared-angular';
 import { SportsWorkspaceSection } from './sports-workspace-section.base';
 
@@ -27,7 +26,6 @@ import { SportsWorkspaceSection } from './sports-workspace-section.base';
     MatInputModule,
     MatListModule,
     MatSelectModule,
-    MatSlideToggleModule,
     SportsTeamLogoComponent,
   ],
   templateUrl: './sports-overview-section.component.html',

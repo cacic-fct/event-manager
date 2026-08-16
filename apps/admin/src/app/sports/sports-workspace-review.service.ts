@@ -1,7 +1,10 @@
 import { firstValueFrom } from 'rxjs';
 import { getDefaultSportsEmoji } from '@cacic-fct/shared-data-types/sports-metadata';
 import { getErrorMessage } from '../feedback/error-message';
-import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
+import {
+  ConfirmationDialogComponent,
+  type ConfirmationDialogData,
+} from '../app-shell/dialogs/confirmation-dialog.component';
 import {
   SportsCloneTournamentDialogComponent,
   type SportsCloneTournamentDialogResult,
@@ -469,7 +472,13 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
     });
   }
 
-  protected async confirmAction(title: string, message: string, confirmLabel = 'Excluir'): Promise<boolean> {
+  protected async confirmAction(
+    title: string,
+    message: string,
+    confirmLabel = 'Excluir',
+    tone: ConfirmationDialogData['tone'] = 'danger',
+    details?: readonly string[],
+  ): Promise<boolean> {
     return (
       (await firstValueFrom(
         this.dialog
@@ -478,7 +487,8 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
               title,
               message,
               confirmLabel,
-              tone: 'danger',
+              tone,
+              ...(details ? { details } : {}),
             },
           })
           .afterClosed(),

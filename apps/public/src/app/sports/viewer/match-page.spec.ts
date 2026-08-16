@@ -59,6 +59,18 @@ describe('SportsMatchPage', () => {
     expect(back).toHaveBeenCalledOnce();
   });
 
+  it('renders a single page heading and an atomic live-score announcement', () => {
+    const fixture = TestBed.createComponent(SportsMatchPage);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+
+    expect(element.querySelectorAll('h1')).toHaveLength(1);
+    expect(element.querySelectorAll('.scoreboard .team h2')).toHaveLength(2);
+    expect(element.querySelector('[aria-live="polite"][aria-atomic="true"]')?.textContent).toContain('Placar:');
+
+    fixture.destroy();
+  });
+
   it('calculates capped and overtime clocks from fixture-relative timestamps', () => {
     const page = TestBed.runInInjectionContext(() => new SportsMatchPage());
     page.now.set(10_000);
@@ -89,7 +101,10 @@ describe('SportsMatchPage', () => {
     const page = TestBed.runInInjectionContext(() => new SportsMatchPage());
     expect(page.pageState()).toEqual({ status: 'error', message: 'Partida indisponível' });
 
-    page.pageState.set({ status: 'ready', data: createSportsViewerMatch(), liveConnectionLost: false });
+    getMatch.mockReturnValueOnce(of(createSportsViewerMatch()));
+    page.retry();
+    expect(page.pageState()).toEqual(expect.objectContaining({ status: 'ready' }));
+
     realtime.error(new Error('stream closed'));
     expect(page.pageState()).toEqual(expect.objectContaining({ status: 'ready', liveConnectionLost: true }));
   });

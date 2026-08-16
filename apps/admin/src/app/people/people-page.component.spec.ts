@@ -29,6 +29,14 @@ describe('PeoplePageComponent permissions section', () => {
     expect(element.querySelector('.permission-grant-form')).toBeNull();
   });
 
+  it('uses a checkbox for lecturer profile settings saved with the profile', async () => {
+    const { element, fixture } = await renderComponent();
+    await openTab(fixture, element, 'Ministrante');
+
+    expect(element.querySelector('mat-checkbox[formcontrolname="publishGoogleUserPicture"]')).not.toBeNull();
+    expect(element.querySelector('mat-slide-toggle[formcontrolname="publishGoogleUserPicture"]')).toBeNull();
+  });
+
   it('renders the empty permission state and keeps write actions disabled without grant permissions', async () => {
     const { element, fixture } = await renderComponent({
       grantedPermissions: [Permission.Person.Read, Permission.Person.Update, Permission.PermissionGrant.Read],

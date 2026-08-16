@@ -1,7 +1,7 @@
 import { By } from '@angular/platform-browser';
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { ActivatedRoute, RouterLink, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink, convertToParamMap, provideRouter } from '@angular/router';
 import { Subject, of, throwError } from 'rxjs';
 import { SportsSelfSubscriptionPage } from './self-subscription-page';
 import { SportsOperationsApiService } from './sports-operations-api.service';
@@ -27,9 +27,15 @@ describe('SportsSelfSubscriptionPage', () => {
     tournament.mockReturnValue(of(createCurrentUserTournamentOperations()));
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { paramMap: convertToParamMap({ tournamentId: 'tournament-fixture' }) } },
+          useValue: {
+            snapshot: {
+              paramMap: convertToParamMap({ tournamentId: 'tournament-fixture' }),
+              queryParamMap: convertToParamMap({}),
+            },
+          },
         },
         { provide: MatSnackBar, useValue: { open } },
         { provide: SportsOperationsApiService, useValue: { tournament, currentUserApplications, submitApplication } },
@@ -247,6 +253,41 @@ describe('SportsSelfSubscriptionPage', () => {
     );
     expect(page.submitted()).toBe(true);
     expect(page.busy()).toBe(false);
+  });
+
+  it('locks the tier handed off by an event subscription and continues to its safe return URL', async () => {
+    TestBed.overrideProvider(ActivatedRoute, {
+      useValue: {
+        snapshot: {
+          paramMap: convertToParamMap({ tournamentId: 'tournament-fixture' }),
+          queryParamMap: convertToParamMap({
+            paymentTier: 'Estudante',
+            returnUrl: '/major-event/major-1/payment',
+          }),
+        },
+      },
+    });
+    const router = TestBed.inject(Router);
+    const navigateByUrl = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    const page = TestBed.runInInjectionContext(() => new SportsSelfSubscriptionPage());
+    page.ngOnInit();
+    const data = page.data();
+    if (!data) throw new Error('Expected tournament fixture data.');
+    const team = data.tournament.teams[0];
+    const category = data.tournament.categories[0];
+    if (!team || !category) throw new Error('Expected tournament options.');
+    page.form.controls.requestedTeamId.setValue(team.id);
+    page.form.controls.noticeAccepted.setValue(true);
+    page.form.controls.imageLicenseAgreementAccepted.setValue(true);
+    page.toggleCategory(category.id, true);
+
+    expect(page.paymentTierLocked()).toBe(true);
+    expect(page.form.controls.paymentTier.disabled).toBe(true);
+    expect(page.form.getRawValue().paymentTier).toBe('Estudante');
+
+    await page.submit();
+
+    expect(navigateByUrl).toHaveBeenCalledWith('/major-event/major-1/payment', { replaceUrl: true });
   });
 
   it('guides missing category selection and reports load and submission failures', async () => {

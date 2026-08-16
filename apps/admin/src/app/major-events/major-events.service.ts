@@ -81,7 +81,7 @@ export class MajorEventsService {
       paymentDocument: [''],
       pixKey: [''],
       priceType: ['SINGLE' as PriceType],
-      priceTiers: this.formBuilder.array([this.createPriceTierGroup('Preço único', '')]),
+      priceTiers: this.formBuilder.array([this.createPriceTierGroup('Preço único', '', false)]),
     },
     {
       validators: [
@@ -113,7 +113,7 @@ export class MajorEventsService {
   }
 
   addPriceTier(): void {
-    this.priceTiers.push(this.createPriceTierGroup('', ''));
+    this.priceTiers.push(this.createPriceTierGroup('', '', false));
     this.syncPriceTierControls(this.majorEventForm.controls.priceType.value);
   }
 
@@ -272,7 +272,7 @@ export class MajorEventsService {
       pixKey: '',
       priceType: 'SINGLE',
     });
-    this.resetPriceTiers([this.createPriceTierGroup('Preço único', '')]);
+    this.resetPriceTiers([this.createPriceTierGroup('Preço único', '', false)]);
     this.syncCertificateExceptionControls();
   }
 
@@ -337,8 +337,14 @@ export class MajorEventsService {
     });
     this.resetPriceTiers(
       price?.tiers.length
-        ? price.tiers.map((tier) => this.createPriceTierGroup(tier.name, this.fromCentsToCurrencyInput(tier.value)))
-        : [this.createPriceTierGroup('Preço único', '')],
+        ? price.tiers.map((tier) =>
+            this.createPriceTierGroup(
+              tier.name,
+              this.fromCentsToCurrencyInput(tier.value),
+              Boolean(majorEvent.sportsTournament && tier.includesSportsRegistration),
+            ),
+          )
+        : [this.createPriceTierGroup('Preço único', '', false)],
     );
     this.syncCertificateExceptionControls();
     void this.loadEventsForMajorEvent(majorEvent.id);
@@ -451,9 +457,14 @@ export class MajorEventsService {
       .map((tier) => ({
         name: tier.name.trim(),
         value: this.toCents(tier.value),
+        ...(Boolean(this.selectedMajorEvent()?.sportsTournament) && tier.includesSportsRegistration
+          ? { includesSportsRegistration: true }
+          : {}),
       }))
       .filter((tier) => tier.name.length > 0 || tier.value !== null);
-    const validPriceTiers = priceTiers.filter((tier): tier is { name: string; value: number } => tier.value !== null);
+    const validPriceTiers = priceTiers.filter(
+      (tier): tier is { name: string; value: number; includesSportsRegistration?: true } => tier.value !== null,
+    );
 
     return {
       name: raw.name.trim() || (options.allowIncompleteDraft ? DEFAULT_DRAFT_MAJOR_EVENT_NAME : ''),
@@ -565,10 +576,11 @@ export class MajorEventsService {
     return (value / 100).toFixed(2);
   }
 
-  private createPriceTierGroup(name: string, value: string) {
+  private createPriceTierGroup(name: string, value: string, includesSportsRegistration: boolean) {
     return this.formBuilder.nonNullable.group({
       name: [name],
       value: [value],
+      includesSportsRegistration: [includesSportsRegistration],
     });
   }
 

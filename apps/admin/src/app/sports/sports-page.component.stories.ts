@@ -252,6 +252,8 @@ async function openTournament(canvasElement: HTMLElement) {
   const tournament = await canvas.findByText('Jogos Universitários 2026');
   await userEvent.click(tournament);
   await expect(await canvas.findByRole('heading', { name: 'Regras gerais' })).toBeVisible();
+  await expect(await canvas.findByRole('checkbox', { name: 'Permitir autoinscrição de participantes' })).toBeVisible();
+  expect(canvas.queryByRole('switch', { name: 'Permitir autoinscrição de participantes' })).toBeNull();
   return canvas;
 }
 
@@ -268,6 +270,7 @@ export const CategoriesAndBracketFormats: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /modalidades/i }));
     await userEvent.click(await canvas.findByText('Futebol feminino'));
     await expect(await canvas.findByText('Grupos + eliminatórias')).toBeVisible();
+    await expect(await canvas.findByRole('checkbox', { name: 'Permitir resultado empatado' })).toBeVisible();
     await expect(canvas.getByLabelText('Exemplo ilustrativo: Grupos + eliminatórias')).toBeVisible();
     await expect(canvas.getByText('Xadrez rápido')).toBeVisible();
     await expect(canvas.getByText('Natação 50 m livre')).toBeVisible();
