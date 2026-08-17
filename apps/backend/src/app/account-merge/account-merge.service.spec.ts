@@ -453,6 +453,8 @@ function createTransactionMock() {
     eventGroupSubscription: delegate(),
     majorEventSubscription: delegate(),
     eventFormResponse: delegate(),
+    eventManagerRoleAssignment: delegate(),
+    eventManagerPermissionGroupMember: delegate(),
     peopleMergeOperation: {
       create: jest.fn(),
     },

@@ -1,5 +1,5 @@
 import {
-  EventManagerPermissionGrantScope,
+  EventManagerPermissionScope,
   SportsEligibilityStatus,
   SportsParticipantStatus,
   SportsRegistrationStatus,
@@ -47,16 +47,16 @@ describe('currentUserMapEventWhere', () => {
               },
             },
             {
-              eventManagerPermissionGrants: {
-                some: activeScopedManagerGrantWhere('user-1', EventManagerPermissionGrantScope.EVENT, now),
+              eventManagerRoleAssignmentScopes: {
+                some: activeScopedManagerGrantWhere('user-1', EventManagerPermissionScope.EVENT, now),
               },
             },
             {
               eventGroup: {
-                eventManagerPermissionGrants: {
+                eventManagerRoleAssignmentScopes: {
                   some: activeScopedManagerGrantWhere(
                     'user-1',
-                    EventManagerPermissionGrantScope.EVENT_GROUP,
+                    EventManagerPermissionScope.EVENT_GROUP,
                     now,
                   ),
                 },
@@ -64,10 +64,10 @@ describe('currentUserMapEventWhere', () => {
             },
             {
               majorEvent: {
-                eventManagerPermissionGrants: {
+                eventManagerRoleAssignmentScopes: {
                   some: activeScopedManagerGrantWhere(
                     'user-1',
-                    EventManagerPermissionGrantScope.MAJOR_EVENT,
+                    EventManagerPermissionScope.MAJOR_EVENT,
                     now,
                   ),
                 },
@@ -120,21 +120,32 @@ describe('currentUserMapEventWhere', () => {
   });
 
   it.each([
-    EventManagerPermissionGrantScope.EVENT,
-    EventManagerPermissionGrantScope.EVENT_GROUP,
-    EventManagerPermissionGrantScope.MAJOR_EVENT,
+    EventManagerPermissionScope.EVENT,
+    EventManagerPermissionScope.EVENT_GROUP,
+    EventManagerPermissionScope.MAJOR_EVENT,
   ])('requires active, non-deleted %s grants and excludes global scope', (scope) => {
     const now = new Date('2026-08-16T15:00:00.000Z');
 
-    expect(activeScopedManagerGrantWhere('user-1', scope, now)).toEqual({
-      userId: 'user-1',
-      scope,
-      deletedAt: null,
-      OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-      AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
-    });
+    expect(activeScopedManagerGrantWhere('user-1', scope, now)).toEqual(
+      expect.objectContaining({
+        scope,
+        archivedAt: null,
+        OR: [{ validFrom: null }, { validFrom: { lte: now } }],
+        AND: expect.arrayContaining([
+          expect.objectContaining({
+            assignment: expect.objectContaining({
+              archivedAt: null,
+              role: { archivedAt: null },
+              OR: expect.arrayContaining([
+                { person: { userId: 'user-1', deletedAt: null } },
+              ]),
+            }),
+          }),
+        ]),
+      }),
+    );
     expect(activeScopedManagerGrantWhere('user-1', scope, now)).not.toEqual(
-      expect.objectContaining({ scope: EventManagerPermissionGrantScope.GLOBAL }),
+      expect.objectContaining({ scope: EventManagerPermissionScope.GLOBAL }),
     );
   });
 });

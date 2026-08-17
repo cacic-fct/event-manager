@@ -220,6 +220,9 @@ export function createPrisma(input: {
     user: {
       findMany: jest.fn().mockResolvedValue(input.collectorUsers),
     },
+    eventManagerRoleAssignment: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
   };
 }
 

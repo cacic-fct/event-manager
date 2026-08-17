@@ -1055,3 +1055,8 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
     jest.useRealTimers();
   });
 });
+jest.mock('../../authorization/effective-role-scopes', () => ({
+  findActiveRolePermissionScopes: jest.fn((prisma: { eventManagerPermissionGrant?: { findMany: () => unknown } }) =>
+    prisma.eventManagerPermissionGrant?.findMany() ?? Promise.resolve([])),
+  resolveRoleIdsForPermission: jest.fn().mockResolvedValue([]),
+}));

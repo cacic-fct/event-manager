@@ -9,8 +9,7 @@ type AuditEntityDelegateName =
   | 'event'
   | 'majorEvent'
   | 'eventGroup'
-  | 'placePreset'
-  | 'eventManagerPermissionGrant';
+  | 'placePreset';
 
 type AuditEntityDelegate = {
   findUnique: jest.Mock;
@@ -23,7 +22,6 @@ const ENTITY_DELEGATES = [
   [AuditLogEntityType.MAJOR_EVENT, 'majorEvent'],
   [AuditLogEntityType.EVENT_GROUP, 'eventGroup'],
   [AuditLogEntityType.PLACE_PRESET, 'placePreset'],
-  [AuditLogEntityType.PERMISSION_GRANT, 'eventManagerPermissionGrant'],
 ] as const satisfies readonly (readonly [AuditLogEntityType, AuditEntityDelegateName])[];
 
 function createDelegate(): AuditEntityDelegate {
@@ -40,7 +38,6 @@ function createPrismaMock(): Record<AuditEntityDelegateName, AuditEntityDelegate
     majorEvent: createDelegate(),
     eventGroup: createDelegate(),
     placePreset: createDelegate(),
-    eventManagerPermissionGrant: createDelegate(),
   };
 }
 
@@ -72,6 +69,12 @@ describe('findCurrentAuditEntityRecord', () => {
       ),
     ).resolves.toBeNull();
   });
+
+  it('keeps legacy permission-grant audit snapshots historical only', async () => {
+    await expect(
+      findCurrentAuditEntityRecord(createPrismaMock() as unknown as PrismaService, AuditLogEntityType.PERMISSION_GRANT, 'grant-1'),
+    ).resolves.toBeNull();
+  });
 });
 
 describe('updateAuditEntityRecord', () => {
@@ -100,6 +103,12 @@ describe('updateAuditEntityRecord', () => {
         'attendance-1',
         { deletedAt: new Date('2026-07-07T15:00:00.000Z') },
       ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('does not generically restore legacy permission grants', async () => {
+    await expect(
+      updateAuditEntityRecord(createPrismaMock() as unknown as Prisma.TransactionClient, AuditLogEntityType.PERMISSION_GRANT, 'grant-1', {}),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 });

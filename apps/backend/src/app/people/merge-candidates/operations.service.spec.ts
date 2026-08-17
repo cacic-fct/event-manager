@@ -345,6 +345,18 @@ function createTransaction() {
       findMany: jest.fn().mockResolvedValue([]),
       updateMany: jest.fn(),
     },
+    eventManagerRoleAssignment: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    eventManagerPermissionGroupMember: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
   };
 }
 

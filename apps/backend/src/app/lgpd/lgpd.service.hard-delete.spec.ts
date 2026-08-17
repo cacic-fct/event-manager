@@ -168,8 +168,11 @@ describe('LgpdService hard delete', () => {
     expect(tx.people.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ['source-person', 'target-person'] } },
     });
-    expect(tx.eventManagerPermissionGrant.deleteMany).toHaveBeenCalledWith({
-      where: { userId: { in: ['old-user', 'new-user'] } },
+    expect(tx.eventManagerRoleAssignment.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['assignment-1', 'assignment-2'] } },
+    });
+    expect(tx.eventManagerPermissionGroupMember.deleteMany).toHaveBeenCalledWith({
+      where: { personId: { in: ['source-person', 'target-person'] } },
     });
     expect(tx.user.deleteMany).toHaveBeenCalledWith({
       where: { id: { in: ['old-user', 'new-user'] } },
@@ -352,7 +355,7 @@ describe('LgpdService hard delete', () => {
     expect(tx.majorEventReceipt.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       tx.majorEventSubscription.deleteMany.mock.invocationCallOrder[0],
     );
-    expect(tx.eventManagerPermissionGrant.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(tx.eventManagerRoleAssignment.deleteMany.mock.invocationCallOrder[0]).toBeLessThan(
       tx.user.deleteMany.mock.invocationCallOrder[0],
     );
     expect(tx.offlineEventAttendanceSubmission.update).toHaveBeenCalledWith({
