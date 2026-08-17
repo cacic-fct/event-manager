@@ -15,6 +15,8 @@ import { NEVER, of } from 'rxjs';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { publicHandlers } from './storybook-mocks';
 
+const [publicGraphqlHandler, ...publicRestHandlers] = publicHandlers;
+
 registerLocaleData(localePt);
 
 initialize({
@@ -286,7 +288,12 @@ const preview: Preview = {
   ],
   loaders: [mswLoader],
   parameters: {
-    msw: { handlers: publicHandlers },
+    msw: {
+      handlers: {
+        graphql: publicGraphqlHandler,
+        rest: publicRestHandlers,
+      },
+    },
     backgrounds: {
       default: 'app',
       values: [

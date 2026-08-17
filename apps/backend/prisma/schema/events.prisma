@@ -41,29 +41,29 @@ model Event {
   eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id])
   eventGroupId String?
 
-  drafts EventDraft[]
-  ownedForms    EventForm[]     @relation("EventFormOwnerEvent")
-  formLinks     EventFormLink[] @relation("EventFormLinkEvent")
+  drafts        EventDraft[]
+  ownedForms    EventForm[]         @relation("EventFormOwnerEvent")
+  formLinks     EventFormLink[]     @relation("EventFormLinkEvent")
   formResponses EventFormResponse[] @relation("EventFormResponseEvent")
 
-  attendances                   EventAttendance[]
-  attendanceCollectors          EventAttendanceCollector[]
-  offlineAttendanceSubmissions  OfflineEventAttendanceSubmission[]
-  lecturers                     EventLecturer[]
+  attendances                  EventAttendance[]
+  attendanceCollectors         EventAttendanceCollector[]
+  offlineAttendanceSubmissions OfflineEventAttendanceSubmission[]
+  lecturers                    EventLecturer[]
   eventManagerPermissionGrants EventManagerPermissionGrant[]
 
-  allowSubscription     Boolean             @default(false)
-  requiresImageLicenseAgreement Boolean     @default(false)
-  subscriptionStartDate DateTime?
-  subscriptionEndDate   DateTime?
-  subscriptions         EventSubscription[]
-  slots                 Int?
-  slotsAvailable        Int?
-  queueCount            Int                 @default(0)
+  allowSubscription             Boolean                                @default(false)
+  requiresImageLicenseAgreement Boolean                                @default(false)
+  subscriptionStartDate         DateTime?
+  subscriptionEndDate           DateTime?
+  subscriptions                 EventSubscription[]
+  slots                         Int?
+  slotsAvailable                Int?
+  queueCount                    Int                                    @default(0)
   // When true and only if event is part of a major event, users will be automatically subscribed to this event when subscribing to the major event
-  autoSubscribe         Boolean             @default(false)
-  majorEventSelections  MajorEventSubscriptionEventSelection[]
-  sportsMatch           SportsMatch?
+  autoSubscribe                 Boolean                                @default(false)
+  majorEventSelections          MajorEventSubscriptionEventSelection[]
+  sportsMatch                   SportsMatch?
 
   shouldIssueCertificate                          Boolean             @default(false)
   shouldIssueCertificateForNonPayingAttendees     Boolean             @default(false)
@@ -80,13 +80,13 @@ model Event {
   shouldProvideSubscriberListToLecturer Boolean @default(false)
 
   // Controls inclusion in anonymous public event listings. Audience-specific access is modeled separately.
-  isPubliclyListed Boolean @default(true)
+  isPubliclyListed       Boolean @default(true)
   displayLecturerProfile Boolean @default(true)
 
-  publicationState      PublicationState @default(DRAFT)
-  scheduledPublishAt    DateTime?
-  publishedAt           DateTime?
-  unpublishedAt         DateTime?
+  publicationState       PublicationState @default(DRAFT)
+  scheduledPublishAt     DateTime?
+  publishedAt            DateTime?
+  unpublishedAt          DateTime?
   publicationScheduledBy String?
   publicationUpdatedBy   String?
 
@@ -139,7 +139,7 @@ model EventDraft {
 }
 
 model PlacePreset {
-  id                  String  @id @default(uuid(7))
+  id                  String                    @id @default(uuid(7))
   name                String
   latitude            Float?
   longitude           Float?
@@ -181,12 +181,12 @@ model EventLecturer {
 model PublicationPreview {
   id String @id(map: "public_content_previews_pkey") @default(uuid(7))
 
-  previewTokenHash String @unique(map: "public_content_previews_previewTokenHash_key")
-  targetType        PublicationPreviewTargetType
-  targetId          String
-  targetLabel       String
+  previewTokenHash String                       @unique(map: "public_content_previews_previewTokenHash_key")
+  targetType       PublicationPreviewTargetType
+  targetId         String
+  targetLabel      String
 
-  previewAt DateTime?
+  previewAt  DateTime?
   publicPath String
   redisKey   String
 
@@ -197,8 +197,8 @@ model PublicationPreview {
   expiresAt  DateTime
   trimAfter  DateTime
   lastUsedAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   @@unique([targetType, targetId, createdById], map: "public_content_previews_targetType_targetId_createdById_key")
   @@index([targetType, targetId], map: "public_content_previews_targetType_targetId_idx")

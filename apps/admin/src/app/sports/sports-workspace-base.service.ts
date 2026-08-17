@@ -171,6 +171,36 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
   readonly isEditingOfficial = computed(() => this.editingOfficial() !== null);
   readonly canReadOfficialContacts = computed(() => this.permissions.has(Permission.Person.Read));
   readonly canSearchPeople = computed(() => this.permissions.has(Permission.Person.Read));
+  readonly canCreateTournament = computed(() => this.permissions.has(Permission.SportsTournament.Create));
+  readonly canUpdateTournament = computed(() => this.permissions.has(Permission.SportsTournament.Update));
+  readonly canDuplicateTournament = computed(() => this.permissions.has(Permission.SportsTournament.Duplicate));
+  readonly canDeleteTournament = computed(() => this.permissions.has(Permission.SportsTournament.Delete));
+  readonly canCreateCategory = computed(() => this.permissions.has(Permission.SportsCategory.Create));
+  readonly canUpdateCategory = computed(() => this.permissions.has(Permission.SportsCategory.Update));
+  readonly canDuplicateCategory = computed(() => this.permissions.has(Permission.SportsCategory.Duplicate));
+  readonly canDeleteCategory = computed(() => this.permissions.has(Permission.SportsCategory.Delete));
+  readonly canCreateTeam = computed(() => this.permissions.has(Permission.SportsTeam.Create));
+  readonly canUpdateTeam = computed(() => this.permissions.has(Permission.SportsTeam.Update));
+  readonly canDuplicateTeam = computed(() => this.permissions.has(Permission.SportsTeam.Duplicate));
+  readonly canDeleteTeam = computed(() => this.permissions.has(Permission.SportsTeam.Delete));
+  readonly canAssignRepresentative = computed(() =>
+    this.permissions.has(Permission.SportsTeam.AssignRepresentative),
+  );
+  readonly canUpdateScore = computed(() => this.permissions.has(Permission.SportsScore.Update));
+  readonly canCreateRegistration = computed(() => this.permissions.has(Permission.SportsRegistration.Create));
+  readonly canUpdateRegistration = computed(() => this.permissions.has(Permission.SportsRegistration.Update));
+  readonly canApproveRegistration = computed(() => this.permissions.has(Permission.SportsRegistration.Approve));
+  readonly canRejectRegistration = computed(() => this.permissions.has(Permission.SportsRegistration.Reject));
+  readonly canDeleteRegistration = computed(() => this.permissions.has(Permission.SportsRegistration.Delete));
+  readonly canCreateAndPopulateRegistration = computed(
+    () => this.canCreateRegistration() && this.canUpdateRegistration(),
+  );
+  readonly canManageRegistrationSelections = computed(
+    () =>
+      this.canCreateRegistration() &&
+      this.canUpdateRegistration() &&
+      this.canDeleteRegistration(),
+  );
   readonly canEditMatchPublication = computed(() => this.permissions.has(Permission.SportsMatch.Update));
   readonly canOperateMatch = computed(() => this.permissions.has(Permission.SportsMatch.Operate));
   readonly canReviewMatch = computed(() => this.permissions.has(Permission.SportsMatch.Review));
@@ -398,6 +428,9 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
       this.navigateToArea('overview');
       return;
     }
+    if (!this.canCreateTournament()) {
+      return;
+    }
 
     const majorEvent = this.majorEvents().find((item) => item.id === majorEventId) ??
       this.tournaments().find((item) => item.majorEvent.id === majorEventId)?.majorEvent;
@@ -590,7 +623,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
 
   async saveTournament(): Promise<void> {
     const read = this.tournamentRead();
-    if (!read) {
+    if (!read || !this.canUpdateTournament()) {
       return;
     }
     const {
@@ -631,6 +664,7 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     const tournament = this.tournamentRead()?.tournament;
     if (
       !tournament ||
+      !this.canDeleteTournament() ||
       !(await this.confirmAction(
         'Excluir torneio esportivo?',
         'Modalidades, equipes, partidas e revisões esportivas serão removidas. O grande evento será preservado.',

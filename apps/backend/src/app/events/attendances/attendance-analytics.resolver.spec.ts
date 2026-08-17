@@ -27,7 +27,25 @@ describe('AttendanceAnalyticsResolver', () => {
 
     await expect(subject.eventAttendanceAnalytics('event-1', 30)).resolves.toBe(snapshot);
     await expect(subject.attendanceReviewEventSummaries()).resolves.toBe(summaries);
-    expect(analytics.snapshot).toHaveBeenCalledWith('event-1', 30);
+    expect(analytics.snapshot).toHaveBeenCalledWith('event-1', {
+      windowMinutes: 30,
+      start: undefined,
+      end: undefined,
+    });
+  });
+
+  it('forwards a fixed time interval without changing global review access', async () => {
+    const start = new Date('2026-08-16T12:00:00.000Z');
+    const end = new Date('2026-08-16T13:00:00.000Z');
+    analytics.snapshot.mockResolvedValueOnce({ eventId: 'event-1' });
+
+    await resolver().eventAttendanceAnalytics('event-1', undefined, start, end);
+
+    expect(analytics.snapshot).toHaveBeenCalledWith('event-1', {
+      windowMinutes: undefined,
+      start,
+      end,
+    });
   });
 
   it.each([AttendanceReviewFlagStatus.RESOLVED, AttendanceReviewFlagStatus.DISMISSED])(

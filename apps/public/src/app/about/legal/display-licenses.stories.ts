@@ -45,12 +45,14 @@ export const LoadingDarkReducedMotion: Story = {
   globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
   parameters: {
     msw: {
-      handlers: [
-        http.get('/app/3rdpartylicenses.txt', async () => {
-          await delay('infinite');
-          return HttpResponse.text('');
-        }),
-      ],
+      handlers: {
+        rest: [
+          http.get('/app/3rdpartylicenses.txt', async () => {
+            await delay('infinite');
+            return HttpResponse.text('');
+          }),
+        ],
+      },
     },
   },
   play: async ({ canvasElement }) => {
@@ -61,7 +63,9 @@ export const LoadingDarkReducedMotion: Story = {
 export const LoadError: Story = {
   parameters: {
     msw: {
-      handlers: [http.get('/app/3rdpartylicenses.txt', () => new HttpResponse(null, { status: 503 }))],
+      handlers: {
+        rest: [http.get('/app/3rdpartylicenses.txt', () => new HttpResponse(null, { status: 503 }))],
+      },
     },
   },
   play: async ({ canvasElement }) => {

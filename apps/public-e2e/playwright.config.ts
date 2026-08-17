@@ -93,6 +93,24 @@ export default defineConfig({
       },
     },
 
+    {
+      name: 'service-worker-firefox',
+      testMatch: serviceWorkerTestMatch,
+      use: {
+        ...devices['Desktop Firefox'],
+        serviceWorkers: 'allow',
+      },
+    },
+
+    {
+      name: 'service-worker-webkit',
+      testMatch: serviceWorkerTestMatch,
+      use: {
+        ...devices['Desktop Safari'],
+        serviceWorkers: 'allow',
+      },
+    },
+
     // Uncomment for mobile browsers support
     /* {
       name: 'Mobile Chrome',

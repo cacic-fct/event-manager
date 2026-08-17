@@ -4,11 +4,12 @@ import { createAdminEventFormResults } from '../testing/admin-entity-fixtures';
 import { FormResultsComponent } from './form-results.component';
 
 const echartsMock = vi.hoisted(() => ({
+  setOption: vi.fn(),
   init: vi.fn((element: HTMLElement) => ({
     dispose: vi.fn(),
     getDom: () => element,
     resize: vi.fn(),
-    setOption: vi.fn(),
+    setOption: echartsMock.setOption,
   })),
 }));
 
@@ -24,6 +25,7 @@ describe('FormResultsComponent', () => {
 
   beforeEach(async () => {
     echartsMock.init.mockClear();
+    echartsMock.setOption.mockClear();
     resizeCallbacks = [];
     chartWidth = 320;
     chartHeight = 220;
@@ -86,7 +88,17 @@ describe('FormResultsComponent', () => {
     expect(element.textContent).toContain('Você irá participar do coffee break?');
     expect(element.textContent).toContain('1 resposta');
     expect(element.textContent).toContain('Sim');
-    expect(echartsMock.init).toHaveBeenCalledTimes(1);
+    expect(echartsMock.init).toHaveBeenCalledWith(chart, undefined, { renderer: 'canvas' });
+    expect(echartsMock.setOption).toHaveBeenCalledWith(
+      expect.objectContaining({
+        color: [expect.not.stringContaining('light-dark(')],
+        series: [
+          expect.objectContaining({
+            itemStyle: expect.objectContaining({ color: expect.not.stringContaining('light-dark(') }),
+          }),
+        ],
+      }),
+    );
   });
 
   it('waits for hidden chart containers to receive dimensions before creating ECharts instances', () => {

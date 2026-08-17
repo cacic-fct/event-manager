@@ -329,6 +329,7 @@ export interface WorkspaceMajorEventSubscription {
 export interface MajorEventEventAttendanceStatus {
   eventId: string;
   eventName: string;
+  eventEmoji?: string | null;
   eventStartDate?: string | null;
   attended: boolean;
   attendedAt?: string | null;

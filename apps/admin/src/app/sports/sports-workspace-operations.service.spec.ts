@@ -667,8 +667,11 @@ describe('SportsWorkspaceService operations', () => {
 
     it('publishes a draft match and refreshes its public-site publication state', async () => {
       const review = createAdminSportsMatchReview();
+      if (!review.match.event) {
+        throw new Error('Expected the match fixture to include its backing event.');
+      }
       review.match.event = {
-        ...review.match.event!,
+        ...review.match.event,
         isPubliclyListed: false,
         publicationState: 'DRAFT',
       };

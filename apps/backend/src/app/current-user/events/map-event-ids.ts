@@ -1,6 +1,7 @@
 import {
   EventManagerPermissionGrantScope,
   Prisma,
+  SportsEligibilityStatus,
   SportsParticipantStatus,
   SportsRegistrationStatus,
   SportsTeamMemberStatus,
@@ -175,8 +176,10 @@ function currentUserSportsRegistrationWhere(personId: string): Prisma.SportsRegi
     team: {
       deletedAt: null,
       status: SportsTeamStatus.ACTIVE,
-      OR: [
-        {
+    },
+    OR: [
+      {
+        team: {
           representatives: {
             some: {
               personId,
@@ -185,9 +188,13 @@ function currentUserSportsRegistrationWhere(personId: string): Prisma.SportsRegi
             },
           },
         },
-        {
-          members: {
-            some: {
+      },
+      {
+        members: {
+          some: {
+            deletedAt: null,
+            eligibility: SportsEligibilityStatus.ELIGIBLE,
+            teamMember: {
               deletedAt: null,
               status: SportsTeamMemberStatus.APPROVED,
               participant: {
@@ -198,8 +205,8 @@ function currentUserSportsRegistrationWhere(personId: string): Prisma.SportsRegi
             },
           },
         },
-      ],
-    },
+      },
+    ],
   };
 }
 

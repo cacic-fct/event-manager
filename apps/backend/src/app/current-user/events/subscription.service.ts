@@ -3,8 +3,6 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   EventFormTargetType,
-  PublicationState,
-  SubscriptionStatus,
 } from '@prisma/client';
 import { RequiredImageLicenseAgreementInterruption, SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -27,6 +25,7 @@ import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE, PublicEvent } from '../../publ
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
 import { EventFormsService } from '../../event-forms/event-forms.service';
+import { requiredMajorEventImageLicenseAgreementWhere } from './image-license-agreement';
 
 export type CurrentUserSubscribedItem =
   | {
@@ -121,26 +120,7 @@ export class CurrentUserEventSubscriptionService {
     const now = new Date();
     const [majorEventSubscriptions, eventSubscriptions, eventGroupSubscriptions] = await Promise.all([
       this.prisma.majorEventSubscription.findMany({
-        where: {
-          personId,
-          deletedAt: null,
-          imageLicenseAgreementAccepted: false,
-          // Only confirmed regular event subscriptions participate in this blocking
-          // flow. Pending payment states and tournament-only subscriptions remain
-          // navigable so the user can upload a receipt or manage the tournament.
-          subscriptionStatus: SubscriptionStatus.CONFIRMED,
-          selectedEvents: {
-            some: {
-              deletedAt: null,
-            },
-          },
-          majorEvent: {
-            deletedAt: null,
-            publicationState: PublicationState.PUBLISHED,
-            endDate: { gt: now },
-            requiresImageLicenseAgreement: true,
-          },
-        },
+        where: requiredMajorEventImageLicenseAgreementWhere(personId, now),
         select: {
           majorEventId: true,
           majorEvent: {

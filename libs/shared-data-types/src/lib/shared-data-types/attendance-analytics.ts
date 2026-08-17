@@ -131,8 +131,14 @@ export class EventAttendanceAnalyticsSnapshot {
   @Field(() => Date)
   generatedAt!: Date;
 
-  @Field(() => Int)
-  windowMinutes!: number;
+  @Field(() => Int, { nullable: true })
+  windowMinutes!: number | null;
+
+  @Field(() => Date, { nullable: true })
+  windowStart!: Date | null;
+
+  @Field(() => Date, { nullable: true })
+  windowEnd!: Date | null;
 
   @Field(() => Int)
   presentCount!: number;

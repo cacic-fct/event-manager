@@ -12,11 +12,11 @@ model CertificateTemplate {
   description String?
 
   // Validated, self-contained rendering snapshot synchronized from certificate-templates metadata.
-  htmlTemplate String
-  cssTemplate  String?
+  htmlTemplate    String
+  cssTemplate     String?
   contentChecksum String
   /// Recovery-only copy of the pre-registry path configuration. Runtime rendering never reads it.
-  legacyTemplate Json?
+  legacyTemplate  Json?
 
   isActive Boolean @default(true)
 
@@ -98,12 +98,12 @@ model CertificateConfig {
   certificateTemplateId String
   certificateTemplate   CertificateTemplate @relation(fields: [certificateTemplateId], references: [id])
 
-  certificateText String?
+  certificateText          String?
   shouldAutofillSecondPage Boolean @default(true)
-  secondPageText String?
-  isActive        Boolean @default(true)
+  secondPageText           String?
+  isActive                 Boolean @default(true)
 
-  issuedTo CertificateIssuedTo @default(OTHER)
+  issuedTo             CertificateIssuedTo @default(OTHER)
   certificateTypeLabel String?
 
   certificates Certificate[]
@@ -149,7 +149,7 @@ model Certificate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  deletedAt              DateTime?
+  deletedAt             DateTime?
   lgpdDeletionRequestId String?
 
   @@unique([personId, configId])

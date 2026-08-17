@@ -106,6 +106,34 @@ describe('offline public data access integration', () => {
     ]);
   });
 
+  it('does not treat explicitly unsubscribed major-event children as current-user map events', async () => {
+    const service = injectService(PublicDataAccessService);
+    const selectedEvent = event('selected-event', fixtureDate(30));
+    const notSubscribedEvent = event('not-subscribed-event', fixtureDate(31));
+    await service.replaceAttendanceFeed('user-1', {
+      majorEventItems: [
+        {
+          id: 'major-subscription-1',
+          majorEventId: 'major-event-1',
+          majorEvent: {
+            id: 'major-event-1',
+            name: 'Grande evento',
+            startDate: fixtureDate(29),
+            endDate: fixtureDate(32),
+          } as never,
+          selectedEvents: [selectedEvent],
+          notSubscribedEvents: [notSubscribedEvent],
+          participation: { isSubscribed: true, isLecturer: false, hasIssuedCertificate: false },
+        },
+      ],
+      eventItems: [],
+      standaloneCertificateFolders: [],
+      attendances: [],
+    });
+
+    await expect(service.getPublicMapUserEventIds('user-1', 60_000)).resolves.toEqual(['selected-event']);
+  });
+
   it('stores the compact map snapshot and replaces it atomically', async () => {
     const service = injectService(PublicDataAccessService);
     const first = {

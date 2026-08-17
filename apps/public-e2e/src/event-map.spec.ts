@@ -26,8 +26,7 @@ test('opens the fullscreen event map, navigates through a Twemoji marker, and re
   await expect(page).toHaveURL(/participacao=meus/);
   await expect(page).toHaveURL(/periodo=hoje/);
 
-  const map = page.locator('.map-target');
-  await map.click();
+  await clickMapMarker(page, 'map-event-1');
 
   await expect(page).toHaveURL(/\/app\/event\/map-event-1/);
   await expect(page.getByRole('heading', { name: 'Evento no mapa' })).toBeVisible();
@@ -82,7 +81,7 @@ test('centers an authorized event deep link and silently ignores unknown ids', a
 
   await page.goto('/app/map?evento=map-event-1');
   await expect(page.locator('.map-target canvas')).toBeVisible();
-  await page.locator('.map-target').click();
+  await clickMapMarker(page, 'map-event-1');
   await expect(page).toHaveURL(/\/app\/event\/map-event-1/);
 
   await page.goto('/app/map?evento=unknown-event');
@@ -152,6 +151,55 @@ async function mockMapApi(
 
 async function openMap(page: Page): Promise<void> {
   await page.goto('/app/map');
+}
+
+async function clickMapMarker(page: Page, eventId: string): Promise<void> {
+  const map = page.getByRole('region', { name: 'Mapa interativo de eventos' });
+  await expect(map).toHaveAttribute('aria-busy', 'false');
+  let markerPixel: number[] | null = null;
+  await expect.poll(async () => {
+    markerPixel = await page.evaluate((expectedEventId) => {
+      interface FeatureLike {
+        get(key: string): unknown;
+      }
+      const eventMap = (globalThis as typeof globalThis & {
+        __eventMap?: {
+          forEachFeatureAtPixel<T>(
+            pixel: number[],
+            callback: (feature: FeatureLike) => T | undefined,
+          ): T | undefined;
+          getSize(): number[] | undefined;
+        };
+      }).__eventMap;
+      const size = eventMap?.getSize();
+      if (!eventMap || !size) {
+        return null;
+      }
+      for (let y = 0; y < size[1]; y += 4) {
+        for (let x = 0; x < size[0]; x += 4) {
+          const hit = eventMap.forEachFeatureAtPixel(
+            [x, y],
+            (feature) => {
+              const directEvent = feature.get('mapEvent') as { id?: string } | undefined;
+              const members = (feature.get('features') as FeatureLike[] | undefined) ?? [];
+              return directEvent?.id ?? members
+                .map((member) => member.get('mapEvent') as { id?: string } | undefined)
+                .find((event) => event?.id === expectedEventId)?.id;
+            },
+          );
+          if (hit === expectedEventId) {
+            return [x, y];
+          }
+        }
+      }
+      return null;
+    }, eventId);
+    return markerPixel !== null;
+  }).toBe(true);
+  if (!markerPixel) {
+    throw new Error(`Could not locate the map marker for ${eventId}.`);
+  }
+  await map.click({ position: { x: markerPixel[0], y: markerPixel[1] } });
 }
 
 function mapEvents() {

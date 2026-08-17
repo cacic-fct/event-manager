@@ -32,6 +32,7 @@ export class MyDayStore {
   private readonly cooldown = createRateLimitCooldown(this.destroyRef);
   private requestVersion = 0;
   private started = false;
+  private activeContextKey: string | null = null;
 
   readonly state = this.stateSignal.asReadonly();
   readonly selectedDate = this.selectedDateSignal.asReadonly();
@@ -48,10 +49,17 @@ export class MyDayStore {
     effect(() => {
       const userId = this.auth.user()?.sub;
       const enabled = this.featureFlags.booleanValue('myDayTabEnabled');
-      if (!userId || !enabled) {
+      const contextKey = userId && enabled ? userId : null;
+      if (contextKey !== this.activeContextKey) {
+        this.activeContextKey = contextKey;
         this.requestVersion += 1;
-        this.availableSignal.set(false);
+        this.requestCancellation.next();
+        this.inFlight.clear();
+        this.cooldown.clear();
+        this.availableSignal.set(contextKey ? null : false);
         this.stateSignal.set({ status: 'idle', data: null, offline: !this.network.isOnline() });
+      }
+      if (!userId || !enabled) {
         return;
       }
       void this.warmInitialDates(userId);
@@ -72,18 +80,19 @@ export class MyDayStore {
       return;
     }
     this.selectedDateSignal.set(date);
-    const existing = this.inFlight.get(date);
+    const requestKey = `${userId}:${date}`;
+    const existing = this.inFlight.get(requestKey);
     if (existing && !force) {
       return existing;
     }
 
     const request = this.loadDate(userId, date, force);
-    this.inFlight.set(date, request);
+    this.inFlight.set(requestKey, request);
     try {
       await request;
     } finally {
-      if (this.inFlight.get(date) === request) {
-        this.inFlight.delete(date);
+      if (this.inFlight.get(requestKey) === request) {
+        this.inFlight.delete(requestKey);
       }
     }
   }
@@ -91,7 +100,7 @@ export class MyDayStore {
   private async loadDate(userId: string, date: string, force: boolean): Promise<void> {
     const requestVersion = ++this.requestVersion;
     const cached = await this.cache.get(userId, date);
-    if (requestVersion !== this.requestVersion) {
+    if (!this.isCurrentRequest(requestVersion, userId)) {
       return;
     }
     if (cached) {
@@ -119,17 +128,20 @@ export class MyDayStore {
     try {
       this.requestCancellation.next();
       const data = await firstValueFrom(this.api.get(date).pipe(takeUntil(this.requestCancellation)));
-      if (requestVersion !== this.requestVersion) {
+      if (!this.isCurrentRequest(requestVersion, userId)) {
         return;
       }
       await this.cache.put(userId, data);
+      if (!this.isCurrentRequest(requestVersion, userId)) {
+        return;
+      }
       this.cooldown.clear();
       this.stateSignal.set({ status: 'ready', data, offline: false });
       if (date === myDayDateKey(new Date())) {
         this.availableSignal.set(data.hasContent);
       }
     } catch (error: unknown) {
-      if (requestVersion !== this.requestVersion) {
+      if (!this.isCurrentRequest(requestVersion, userId)) {
         return;
       }
       if (error instanceof RateLimitError) {
@@ -151,11 +163,18 @@ export class MyDayStore {
   private async warmInitialDates(userId: string): Promise<void> {
     const today = myDayDateKey(new Date());
     const cachedToday = await this.cache.get(userId, today);
+    if (this.auth.user()?.sub !== userId || !this.featureFlags.booleanValue('myDayTabEnabled')) {
+      return;
+    }
     if (cachedToday) {
       this.availableSignal.set(cachedToday.hasContent);
     }
     if (this.selectedDateSignal() === today) {
       await this.load(today);
     }
+  }
+
+  private isCurrentRequest(requestVersion: number, userId: string): boolean {
+    return requestVersion === this.requestVersion && this.auth.user()?.sub === userId;
   }
 }

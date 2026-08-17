@@ -22,25 +22,29 @@ type WorkspaceNotificationsStoryArgs = {
   permission: NotificationPermissionState;
   notificationCount: number;
   unreadCount: number;
+  loadState: 'ready' | 'loading' | 'error';
+  archivedEvery: number;
+  actionEvery: number;
+  longContent: boolean;
 };
 
-function notification(index: number, unreadCount: number): MutableNotification {
+function notification(index: number, args: WorkspaceNotificationsStoryArgs): MutableNotification {
   return {
     id: `workspace-notification-${index + 1}`,
     transactionId: `workspace-transaction-${index + 1}`,
-    subject: faker.helpers.arrayElement([
+    subject: `${faker.helpers.arrayElement([
       'Comprovante aguardando validação',
       'Certificados reemitidos',
       'Pessoa duplicada detectada',
       'Inscrições importadas',
-    ]),
-    body: faker.lorem.sentence(),
-    isRead: index >= unreadCount,
-    isSeen: index >= unreadCount,
-    isArchived: false,
+    ])}${args.longContent ? ` · ${faker.company.catchPhrase()}` : ''}`,
+    body: args.longContent ? faker.lorem.paragraphs(2) : faker.lorem.sentence(),
+    isRead: index >= args.unreadCount,
+    isSeen: index >= args.unreadCount,
+    isArchived: args.archivedEvery > 0 && (index + 1) % Math.round(args.archivedEvery) === 0,
     isSnoozed: false,
     createdAt: faker.date.recent({ days: 4 }).toISOString(),
-    readAt: index >= unreadCount ? faker.date.recent({ days: 2 }).toISOString() : null,
+    readAt: index >= args.unreadCount ? faker.date.recent({ days: 2 }).toISOString() : null,
     firstSeenAt: null,
     archivedAt: null,
     channelType: 'in_app',
@@ -52,12 +56,16 @@ function notification(index: number, unreadCount: number): MutableNotification {
       name: 'Operações do workspace',
       identifier: 'workspace-story-workflow',
     },
-    primaryAction: index % 2 === 0 ? { label: 'Abrir item', redirect: { url: '/admin/subscriptions' } } : undefined,
+    primaryAction:
+      args.actionEvery > 0 && (index + 1) % Math.round(args.actionEvery) === 0
+        ? { label: 'Abrir item', redirect: { url: '/admin/subscriptions' } }
+        : undefined,
   } as unknown as MutableNotification;
 }
 
 class WorkspaceNotificationsStoryService {
   private readonly notifications = signal<MutableNotification[]>([]);
+  private loadState: WorkspaceNotificationsStoryArgs['loadState'] = 'ready';
 
   readonly loadingConfig = signal(false);
   readonly notificationPermission = signal<NotificationPermissionState>('default');
@@ -69,8 +77,13 @@ class WorkspaceNotificationsStoryService {
 
   configure(args: WorkspaceNotificationsStoryArgs): void {
     faker.seed(20260620 + args.notificationCount + args.unreadCount);
+    this.loadState = args.loadState;
+    this.loadingConfig.set(args.loadState === 'loading');
+    this.lastError.set(args.loadState === 'error' ? 'Não foi possível carregar as notificações.' : null);
     this.notificationPermission.set(args.permission);
-    const items = Array.from({ length: args.notificationCount }, (_, index) => notification(index, args.unreadCount));
+    const items = Array.from({ length: Math.max(0, Math.min(50, args.notificationCount)) }, (_, index) =>
+      notification(index, args),
+    );
     this.notifications.set(items);
     this.unreadCount.set(items.filter((item) => !item.isRead).length);
   }
@@ -93,6 +106,8 @@ class WorkspaceNotificationsStoryService {
   }
 
   async listNotificationPage(args: NovuListNotificationsArgs = {}): Promise<ListNotificationsResponse> {
+    if (this.loadState === 'loading') return new Promise(() => undefined);
+    if (this.loadState === 'error') throw new Error('Não foi possível carregar as notificações.');
     return {
       notifications: this.notifications().filter((item) => item.isArchived === Boolean(args.archived)),
       hasMore: false,
@@ -178,11 +193,19 @@ const meta: Meta<WorkspaceNotificationsStoryArgs> = {
     permission: 'default',
     notificationCount: 6,
     unreadCount: 3,
+    loadState: 'ready',
+    archivedEvery: 0,
+    actionEvery: 2,
+    longContent: false,
   },
   argTypes: {
     permission: { control: 'select', options: ['default', 'granted', 'denied', 'unsupported'] },
-    notificationCount: { control: { type: 'range', min: 0, max: 12, step: 1 } },
-    unreadCount: { control: { type: 'range', min: 0, max: 12, step: 1 } },
+    notificationCount: { control: { type: 'range', min: 0, max: 50, step: 1 } },
+    unreadCount: { control: { type: 'range', min: 0, max: 50, step: 1 } },
+    loadState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    archivedEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    actionEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    longContent: { control: 'boolean' },
   },
   render: (args) => {
     notificationsService.configure(args);
@@ -217,5 +240,32 @@ export const Empty: Story = {
 
 export const DarkReducedMotion: Story = {
   ...Empty,
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const DenseInbox: Story = {
+  args: { notificationCount: 50, unreadCount: 32, archivedEvery: 5, actionEvery: 3 },
+};
+
+export const AllRead: Story = {
+  args: { notificationCount: 20, unreadCount: 0 },
+};
+
+export const AllUnread: Story = {
+  args: { notificationCount: 20, unreadCount: 20 },
+};
+
+export const Loading: Story = {
+  args: { loadState: 'loading' },
+};
+
+export const LoadError: Story = {
+  args: { loadState: 'error' },
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const LongContentMobile: Story = {
+  args: { notificationCount: 18, unreadCount: 10, longContent: true, actionEvery: 2 },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
   globals: { theme: 'dark', motion: 'reduced' },
 };

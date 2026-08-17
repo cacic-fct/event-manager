@@ -47,7 +47,7 @@ describe('MoreInfo', () => {
   afterEach(() => {
     try {
       httpTesting.verify();
-    } catch (_e) {
+    } catch {
       // Ignore verification errors if no requests match
     }
   });

@@ -234,6 +234,9 @@ export class MajorEventEventAttendanceStatus {
   @Field(() => String)
   eventName!: string;
 
+  @Field(() => String, { nullable: true })
+  eventEmoji?: string;
+
   @Field(() => Date, { nullable: true })
   eventStartDate?: Date;
 

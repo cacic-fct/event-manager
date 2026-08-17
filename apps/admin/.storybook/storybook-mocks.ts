@@ -4,7 +4,7 @@ import {
   Permission,
 } from '@cacic-fct/shared-permissions';
 import { fakerPT_BR as faker } from '@faker-js/faker';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 
 faker.seed(20260516);
 
@@ -994,3 +994,42 @@ export const failedCertificateTemplatesHandler = http.post('/api/graphql', async
   const response = graphqlData(query, body.variables ?? {});
   return HttpResponse.json(isGraphqlMockError(response) ? response : { data: response });
 });
+
+export interface CertificateTemplatesStoryOptions {
+  state: 'ready' | 'empty' | 'loading' | 'error';
+  count: number;
+  latencyMs: number;
+  namePrefix: string;
+  inactiveEvery: number;
+}
+
+export function createCertificateTemplatesStoryHandler(getOptions: () => CertificateTemplatesStoryOptions) {
+  return http.post('/api/graphql', async ({ request }) => {
+    const options = getOptions();
+    const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+    const query = body.query ?? '';
+
+    if (query.includes('ListCertificateTemplates')) {
+      if (options.state === 'loading') await delay('infinite');
+      if (options.latencyMs > 0) await delay(options.latencyMs);
+      if (options.state === 'error') {
+        return HttpResponse.json({ errors: [{ message: 'Template registry unavailable' }] });
+      }
+      const count = options.state === 'empty' ? 0 : Math.max(0, Math.min(30, Math.round(options.count)));
+      return HttpResponse.json({
+        data: {
+          certificateTemplates: Array.from({ length: count }, (_, index) => ({
+            ...certificateTemplate,
+            id: `template-story-${index + 1}`,
+            name: `${options.namePrefix.trim() ? `${options.namePrefix.trim()} ` : ''}${index + 1}`,
+            description: faker.lorem.sentence(),
+            isActive: !(options.inactiveEvery > 0 && (index + 1) % Math.round(options.inactiveEvery) === 0),
+          })),
+        },
+      });
+    }
+
+    const response = graphqlData(query, body.variables ?? {});
+    return HttpResponse.json(isGraphqlMockError(response) ? response : { data: response });
+  });
+}

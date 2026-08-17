@@ -1,115 +1,178 @@
-import { applicationConfig, Meta, StoryObj } from '@storybook/angular';
-import { ActivatedRoute, provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import type { EventAttendanceAnalyticsSnapshot } from '@cacic-fct/event-manager-admin-contracts';
+import type { Meta, StoryObj } from '@storybook/angular';
+import { expect, userEvent, within } from 'storybook/test';
+import { NEVER, delay, of, throwError } from 'rxjs';
 import { AttendanceApiService } from '../../graphql/attendance-api.service';
 import { PermissionsService } from '../../permissions/permissions.service';
-import { EventAttendanceAnalyticsSnapshot } from '@cacic-fct/event-manager-admin-contracts';
 import { AttendanceStatisticsPageComponent } from './attendance-statistics-page.component';
+import { createAttendanceStatisticsSnapshot } from './attendance-statistics-story.fixtures';
 
-const now = new Date();
+type RequestState = 'ready' | 'loading' | 'error';
+
+interface AttendanceStatisticsStoryArgs {
+  actionFails: boolean;
+  canReview: boolean;
+  collectorCount: number;
+  eventName: string;
+  historyMinutes: number;
+  noShowCount: number;
+  pendingOfflineCount: number;
+  presentCount: number;
+  requestState: RequestState;
+  responseDelay: number;
+  reviewCount: number;
+}
+
 const eventId = 'event-command-center-demo';
+const defaultArgs: AttendanceStatisticsStoryArgs = {
+  actionFails: false,
+  canReview: true,
+  collectorCount: 4,
+  eventName: 'Credenciamento e abertura da SECOMPP',
+  historyMinutes: 60,
+  noShowCount: 37,
+  pendingOfflineCount: 12,
+  presentCount: 284,
+  requestState: 'ready',
+  responseDelay: 80,
+  reviewCount: 3,
+};
 
-const meta: Meta<AttendanceStatisticsPageComponent> = {
-  title: 'Páginas/Presenças/Central de estatísticas',
+const meta: Meta<AttendanceStatisticsStoryArgs> = {
   component: AttendanceStatisticsPageComponent,
-  parameters: { layout: 'fullscreen' },
-  decorators: [storyProviders(snapshotFixture())],
+  title: 'CACiC Eventos/Attendance/Statistics/Command Center',
+  tags: ['autodocs'],
+  args: defaultArgs,
+  argTypes: {
+    requestState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    eventName: { control: 'text', if: { arg: 'requestState', eq: 'ready' } },
+    presentCount: { control: { type: 'range', min: 0, max: 2_000, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
+    noShowCount: { control: { type: 'range', min: 0, max: 1_000, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
+    pendingOfflineCount: { control: { type: 'range', min: 0, max: 100, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
+    reviewCount: { control: { type: 'range', min: 0, max: 12, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
+    collectorCount: { control: { type: 'range', min: 0, max: 16, step: 1 }, if: { arg: 'requestState', eq: 'ready' } },
+    historyMinutes: { control: 'select', options: [60, 240, 1_440, 10_080] },
+    canReview: { control: 'boolean', if: { arg: 'requestState', eq: 'ready' } },
+    actionFails: { control: 'boolean', if: { arg: 'canReview', eq: true } },
+    responseDelay: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
+  },
+  render: (args) => ({
+    props: {},
+    applicationConfig: { providers: createStoryProviders(args) },
+  }),
+  parameters: { layout: 'fullscreen', a11y: { test: 'error' } },
 };
 
 export default meta;
-type Story = StoryObj<AttendanceStatisticsPageComponent>;
+type Story = StoryObj<AttendanceStatisticsStoryArgs>;
 
-export const OperacaoAoVivo: Story = {};
-
-export const SemColetasNaJanela: Story = {
-  decorators: [
-    storyProviders({
-      ...snapshotFixture(),
-      presentCount: 0,
-      noShowCount: 84,
-      pendingReviewCount: 0,
-      pendingOfflineCount: 0,
-      scansPerMinute: [],
-      scansByHour: [],
-      collectors: [],
-      methods: [],
-      heatmapPoints: [],
-      reviewItems: [],
-    }),
-  ],
+export const Playground: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('heading', { name: defaultArgs.eventName })).toBeVisible();
+    await expect(canvas.getByLabelText('Resumo geral de presença e destaque do período em foco')).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Atualizar' })).toBeEnabled();
+  },
 };
 
-export const SomenteLeitura: Story = {
-  decorators: [storyProviders(snapshotFixture(), false)],
+export const EmptyWindow: Story = {
+  name: 'Período sem coletas',
+  args: { collectorCount: 0, noShowCount: 84, pendingOfflineCount: 0, presentCount: 0, reviewCount: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Nenhuma presença foi coletada neste período.')).toBeVisible();
+    await expect(canvas.getByText('Nenhuma pessoa coletora aparece neste período.')).toBeVisible();
+  },
 };
 
-function storyProviders(snapshot: EventAttendanceAnalyticsSnapshot, canReview = true) {
-  return applicationConfig({
-    providers: [
-      provideRouter([]),
-      {
-        provide: ActivatedRoute,
-        useValue: { snapshot: { paramMap: { get: (key: string) => (key === 'eventId' ? eventId : null) } } },
-      },
-      {
-        provide: AttendanceApiService,
-        useValue: {
-          watchEventAttendanceAnalytics: () => of(snapshot),
-          getEventAttendanceAnalytics: () => of(snapshot),
-          reviewAttendanceFlag: () => of(snapshot.reviewItems[0]),
+export const DenseOperation: Story = {
+  name: 'Operação densa com muitas revisões',
+  args: { collectorCount: 16, pendingOfflineCount: 73, presentCount: 1_864, reviewCount: 12 },
+};
+
+export const ReadOnly: Story = {
+  name: 'Somente leitura',
+  args: { canReview: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Revisão humana')).toBeVisible();
+    await expect(canvas.queryByRole('button', { name: 'Concluir' })).not.toBeInTheDocument();
+  },
+};
+
+export const ReviewFailure: Story = {
+  name: 'Falha ao concluir revisão',
+  args: { actionFails: true, responseDelay: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const [button] = await canvas.findAllByRole('button', { name: 'Concluir' });
+    if (!button) throw new Error('Expected at least one review action.');
+    await userEvent.click(button);
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Não foi possível concluir a revisão.');
+  },
+};
+
+export const Loading: Story = {
+  args: { requestState: 'loading' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Preparando a central de presença...')).toBeVisible();
+  },
+};
+
+export const ConnectionError: Story = {
+  name: 'Atualização ao vivo interrompida',
+  args: { requestState: 'error', responseDelay: 0 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('A conexão com a central foi interrompida.');
+    await expect(canvas.getByRole('button', { name: 'Atualizar' })).toBeEnabled();
+  },
+};
+
+export const LongContentOnMobile: Story = {
+  name: 'Conteúdo extenso no celular',
+  args: {
+    eventName: 'Credenciamento integrado dos cursos de Ciência da Computação, Sistemas de Informação e comunidades convidadas',
+    collectorCount: 8,
+    reviewCount: 6,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+};
+
+function createStoryProviders(args: AttendanceStatisticsStoryArgs) {
+  const snapshot = createSnapshot(args);
+  const response = <T>(value: T) => args.responseDelay > 0 ? of(value).pipe(delay(args.responseDelay)) : of(value);
+  return [
+    provideRouter([]),
+    { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ eventId }) } } },
+    {
+      provide: AttendanceApiService,
+      useValue: {
+        watchEventAttendanceAnalytics: () => {
+          if (args.requestState === 'loading') return NEVER;
+          if (args.requestState === 'error') return throwError(() => new Error('A conexão com a central foi interrompida.'));
+          return response(snapshot);
         },
+        getEventAttendanceAnalytics: () => response(snapshot),
+        reviewAttendanceFlag: () => args.actionFails
+          ? throwError(() => new Error('Não foi possível concluir a revisão.'))
+          : response(snapshot.reviewItems[0]),
       },
-      {
-        provide: PermissionsService,
-        useValue: { has: () => canReview },
-      },
-    ],
-  });
+    },
+    { provide: PermissionsService, useValue: { has: () => args.canReview } },
+  ];
 }
 
-function snapshotFixture(): EventAttendanceAnalyticsSnapshot {
-  const minute = (offset: number) => new Date(now.getTime() + offset * 60_000).toISOString();
-  return {
-    eventId,
-    eventName: 'Credenciamento e abertura da SECOMPP',
-    emoji: '🎓',
-    generatedAt: now.toISOString(),
-    windowMinutes: 60,
-    presentCount: 284,
-    noShowCount: 37,
-    pendingReviewCount: 3,
-    pendingOfflineCount: 12,
-    eventLatitude: -22.1208,
-    eventLongitude: -51.4079,
-    scansPerMinute: Array.from({ length: 18 }, (_, index) => ({
-      start: minute(index - 17),
-      count: [2, 4, 3, 7, 11, 8, 13, 18, 15, 9, 6, 12, 16, 10, 8, 5, 4, 3][index],
-    })),
-    scansByHour: [
-      { start: minute(-120), count: 42 },
-      { start: minute(-60), count: 167 },
-      { start: minute(0), count: 75 },
-    ],
-    collectors: [
-      { actorId: 'collector-1', name: 'Marina Costa', count: 96, firstScanAt: minute(-58), lastScanAt: minute(-2), onlineCount: 82, offlineCount: 14, methods: [{ method: 'SCANNER', count: 96 }] },
-      { actorId: 'collector-2', name: 'Rafael Lima', count: 78, firstScanAt: minute(-55), lastScanAt: minute(-1), onlineCount: 78, offlineCount: 0, methods: [{ method: 'SCANNER', count: 72 }, { method: 'MANUAL_INPUT', count: 6 }] },
-      { actorId: 'collector-3', name: 'Beatriz Souza', count: 63, firstScanAt: minute(-49), lastScanAt: minute(-4), onlineCount: 51, offlineCount: 12, methods: [{ method: 'SCANNER', count: 63 }] },
-      { actorId: 'collector-4', name: 'Equipe de apoio', count: 47, firstScanAt: minute(-43), lastScanAt: minute(-6), onlineCount: 47, offlineCount: 0, methods: [{ method: 'MANUAL_INPUT', count: 31 }, { method: 'ORAL_CALL', count: 16 }] },
-    ],
-    methods: [
-      { method: 'SCANNER', count: 231 },
-      { method: 'MANUAL_INPUT', count: 37 },
-      { method: 'ORAL_CALL', count: 16 },
-    ],
-    heatmapPoints: [
-      { latitude: -22.1208, longitude: -51.4079, count: 155, averageAccuracyMeters: 18 },
-      { latitude: -22.1206, longitude: -51.4081, count: 84, averageAccuracyMeters: 24 },
-      { latitude: -22.121, longitude: -51.4077, count: 45, averageAccuracyMeters: 31 },
-    ],
-    reviewItems: [
-      { id: 'review-1', eventId, kind: 'UNUSUAL_VOLUME', severity: 'WARNING', status: 'PENDING', title: 'Volume de coleta incomum', summary: 'Marina Costa registrou 22 presenças em um minuto.', detectedAt: minute(-13), actorId: 'collector-1', actorName: 'Marina Costa' },
-      { id: 'review-2', eventId, kind: 'OFFLINE_BACKLOG', severity: 'CRITICAL', status: 'PENDING', title: 'Fila off-line acumulada', summary: '32 envios aguardam reconciliação; o mais antigo está pendente há 41 min.', detectedAt: minute(-9) },
-      { id: 'review-3', eventId, kind: 'DISTANT_LOCATION', severity: 'INFO', status: 'PENDING', title: 'Padrão de localização inconsistente', summary: 'Foram observadas três transições geográficas improváveis em uma sequência de oito coletas.', detectedAt: minute(-6), actorId: 'collector-3', actorName: 'Beatriz Souza' },
-    ],
-  };
+function createSnapshot(args: AttendanceStatisticsStoryArgs): EventAttendanceAnalyticsSnapshot {
+  return createAttendanceStatisticsSnapshot({
+    collectorCount: args.collectorCount,
+    eventName: args.eventName,
+    noShowCount: args.noShowCount,
+    pendingOfflineCount: args.pendingOfflineCount,
+    presentCount: args.presentCount,
+    reviewCount: args.reviewCount,
+    historyMinutes: args.historyMinutes,
+  });
 }

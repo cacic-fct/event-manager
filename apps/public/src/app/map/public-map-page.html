@@ -11,7 +11,19 @@
   </mat-toolbar>
 
   <div class="map-stage">
-    <div #mapTarget class="map-target" role="region" aria-label="Mapa interativo de eventos"></div>
+    <div
+      #mapTarget
+      class="map-target"
+      role="region"
+      aria-label="Mapa interativo de eventos"
+      [attr.aria-busy]="!mapInteractionReady()"></div>
+    <a
+      class="map-attribution"
+      href="https://www.openstreetmap.org/copyright"
+      target="_blank"
+      rel="noopener noreferrer">
+      © OpenStreetMap
+    </a>
 
     @let currentState = state();
     @if (currentState.status === 'ready' && isUsingSavedData()) {
@@ -48,7 +60,7 @@
         class="fab-menu"
         [class.visible]="utilityMenuOpen()"
         (transitionend)="onUtilityMenuTransitionEnd($event)">
-        <button mat-mini-fab type="button" matTooltip="Centralizar eventos" aria-label="Centralizar eventos" (click)="centerEvents()">
+        <button mat-mini-fab type="button" matTooltip="Centralizar eventos" aria-label="Centralizar eventos" [disabled]="!mapInteractionReady()" (click)="centerEvents()">
           <mat-icon>center_focus_strong</mat-icon>
         </button>
         <button mat-mini-fab type="button" matTooltip="Filtrar eventos" aria-label="Filtrar eventos" (click)="openFilters()">
@@ -57,6 +69,7 @@
         <button
           mat-mini-fab
           type="button"
+          [disabled]="!mapInteractionReady()"
           [class.control-disabled]="locationPermission() === 'denied' || locationPermission() === 'unsupported'"
           [attr.aria-disabled]="locationPermission() === 'denied' || locationPermission() === 'unsupported'"
           [attr.aria-busy]="isLocating()"
@@ -68,10 +81,10 @@
       </div>
       }
 
-      <button class="main-fab zoom-fab" mat-fab type="button" aria-label="Aumentar zoom" matTooltip="Aumentar zoom" matTooltipPosition="left" [disableRipple]="true" (click)="zoomBy(1)">
+      <button class="main-fab zoom-fab" mat-fab type="button" aria-label="Aumentar zoom" matTooltip="Aumentar zoom" matTooltipPosition="left" [disableRipple]="true" [disabled]="!mapInteractionReady()" (click)="zoomBy(1)">
         <mat-icon>add</mat-icon>
       </button>
-      <button class="main-fab zoom-fab" mat-fab type="button" aria-label="Diminuir zoom" matTooltip="Diminuir zoom" matTooltipPosition="left" [disableRipple]="true" (click)="zoomBy(-1)">
+      <button class="main-fab zoom-fab" mat-fab type="button" aria-label="Diminuir zoom" matTooltip="Diminuir zoom" matTooltipPosition="left" [disableRipple]="true" [disabled]="!mapInteractionReady()" (click)="zoomBy(-1)">
         <mat-icon>remove</mat-icon>
       </button>
 

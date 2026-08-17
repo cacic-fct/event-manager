@@ -1,51 +1,82 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { applicationConfig } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
+import {
+  AttendanceWorkspaceStoryControls,
+  attendanceWorkspaceStoryControlArgTypes,
+  attendanceWorkspaceStoryDefaultControls,
+  createAttendanceWorkspaceStoryController,
+} from './attendance-workspace-story.fixtures';
 import { AttendancesPageComponent } from './attendances-page.component';
 
-const meta: Meta<AttendancesPageComponent> = {
+const controller = createAttendanceWorkspaceStoryController();
+
+const meta: Meta<AttendanceWorkspaceStoryControls> = {
   component: AttendancesPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Attendances/Workspace Attendances Tab',
+  title: 'CACiC Eventos/Workspace/Tabs/Attendances/Page',
   tags: ['autodocs'],
-  parameters: {
-    layout: 'fullscreen',
-    a11y: { test: 'todo' },
-  },
+  args: attendanceWorkspaceStoryDefaultControls,
+  argTypes: attendanceWorkspaceStoryControlArgTypes,
+  render: controller.render,
+  decorators: [applicationConfig({ providers: [controller.provider] })],
+  parameters: { layout: 'fullscreen', a11y: { test: 'todo' } },
 };
 
 export default meta;
-
-type Story = StoryObj<AttendancesPageComponent>;
-
-const exerciseStory = async (canvasElement: HTMLElement) => {
-  const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find(
-    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
-  );
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
-};
+type Story = StoryObj<AttendanceWorkspaceStoryControls>;
 
 export const Playground: Story = {
-  args: {},
   globals: { theme: 'light' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('tab', { name: /Por evento/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(canvas.getByRole('heading', { name: 'Presenças off-line em revisão' })).toBeVisible();
+    await userEvent.click(canvas.getByRole('tab', { name: /Por grande evento/ }));
+    await expect(canvas.getByRole('heading', { name: 'Presenças no grande evento' })).toBeVisible();
+  },
 };
 
-export const DarkReducedMotion: Story = {
-  ...Playground,
-  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
+export const EmptyWorkspace: Story = {
+  args: {
+    eventCount: 0,
+    selectedEvent: false,
+    attendanceCount: 0,
+    explicitAbsenceCount: 0,
+    implicitAbsenceCount: 0,
+    offlineSubmissionCount: 0,
+    majorEventPersonCount: 0,
+    selectedMajorEventPerson: false,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('Nenhum evento encontrado')).toBeVisible();
+    await userEvent.click(canvas.getByRole('tab', { name: /Por grande evento/ }));
+    await expect(canvas.getByText('Nenhuma pessoa carregada')).toBeVisible();
+  },
+};
+
+export const DenseWorkspace: Story = {
+  args: { eventCount: 30, attendanceCount: 80, offlineSubmissionCount: 30, majorEventPersonCount: 50 },
+  parameters: { viewport: { defaultViewport: 'desktop' } },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('80 registros')).toBeVisible();
+  },
 };
 
 export const CompactWorkspace: Story = {
-  ...Playground,
-  name: 'Workspace compacto',
+  args: { eventCount: 6, attendanceCount: 8, offlineSubmissionCount: 2 },
   parameters: { viewport: { defaultViewport: 'tablet' } },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByRole('tablist')).toBeVisible();
+  },
+};
+
+export const FrozenSportsEvent: Story = {
+  args: { frozenEvent: true, sportsEventCount: 8 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('heading', { name: 'Evento congelado' })).toBeVisible();
+    await expect(canvas.getAllByLabelText('Partida de torneio esportivo').length).toBeGreaterThan(1);
+  },
 };

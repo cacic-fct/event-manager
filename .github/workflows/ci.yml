@@ -66,13 +66,22 @@ jobs:
       - name: Lint all projects
         run: bunx nx run-many -t lint --all --parallel=3
 
+      - name: Validate import tools
+        run: |
+          bun run typecheck:data-import
+          bun run test:data-import
+          node --test tools/evcomp-import/*.test.mjs
+
+      - name: Audit Storybook stories
+        run: bun run storybook:quality
+
   unit-tests:
     name: Unit tests (${{ matrix.project }})
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgis/postgis:18-alpine
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -103,8 +112,11 @@ jobs:
         project:
           - admin
           - backend
+          - event-manager-public-testing
           - public-indexed-db
           - public
+          - shared-angular
+          - shared-permissions
           - shared-seo-angular
           - shared-utils
 
@@ -272,6 +284,14 @@ jobs:
       - name: Run frontend e2e tests
         run: E2E_START_SERVER=true E2E_COVERAGE=true E2E_COVERAGE_OUTPUT_DIR=coverage/${{ matrix.project }} bunx nx e2e ${{ matrix.project }} -- --project=chromium
 
+      - name: Install Playwright service-worker browsers
+        if: matrix.project == 'public-e2e'
+        run: bunx playwright install --with-deps firefox webkit
+
+      - name: Run public service-worker e2e tests
+        if: matrix.project == 'public-e2e'
+        run: E2E_START_SERVER=true E2E_PUBLIC_STATIC_SERVER=true bunx nx e2e public-e2e -- --project=service-worker-chromium --project=service-worker-firefox --project=service-worker-webkit
+
       - name: Collect frontend e2e coverage reports
         id: coverage
         shell: bash
@@ -310,7 +330,7 @@ jobs:
 
     services:
       postgres:
-        image: postgis/postgis:18-alpine
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -595,13 +615,22 @@ jobs:
       - name: Lint all projects
         run: bunx nx run-many -t lint --all --parallel=3
 
+      - name: Validate import tools
+        run: |
+          bun run typecheck:data-import
+          bun run test:data-import
+          node --test tools/evcomp-import/*.test.mjs
+
+      - name: Audit Storybook stories
+        run: bun run storybook:quality
+
   untrusted-pr-unit-tests:
     name: Untrusted PR unit tests
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgis/postgis:18-alpine
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -662,7 +691,7 @@ jobs:
         uses: nrwl/nx-set-shas@v5
 
       - name: Run unit tests with coverage
-        run: bunx nx run-many -t test -p admin,backend,public-indexed-db,public,shared-seo-angular,shared-utils --parallel=3 --coverage
+        run: bunx nx run-many -t test -p admin,backend,event-manager-public-testing,public-indexed-db,public,shared-angular,shared-permissions,shared-seo-angular,shared-utils --parallel=3 --coverage
 
   untrusted-pr-frontend-e2e:
     name: Untrusted PR frontend E2E (${{ matrix.project }})
@@ -716,13 +745,21 @@ jobs:
       - name: Run frontend e2e tests
         run: E2E_START_SERVER=true bunx nx e2e ${{ matrix.project }} -- --project=chromium
 
+      - name: Install Playwright service-worker browsers
+        if: matrix.project == 'public-e2e'
+        run: bunx playwright install --with-deps firefox webkit
+
+      - name: Run public service-worker e2e tests
+        if: matrix.project == 'public-e2e'
+        run: E2E_START_SERVER=true E2E_PUBLIC_STATIC_SERVER=true bunx nx e2e public-e2e -- --project=service-worker-chromium --project=service-worker-firefox --project=service-worker-webkit
+
   untrusted-pr-backend-e2e:
     name: Untrusted PR backend E2E
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgis/postgis:18-alpine
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres

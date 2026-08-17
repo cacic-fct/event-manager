@@ -2,16 +2,16 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { CalendarWeekView } from './week-view';
 import {
-  CalendarStoryEventControls,
+  CalendarStoryCollectionControls,
   calendarStoryDateObject,
   calendarStoryWeekDays,
-  calendarStoryEventControlArgTypes,
-  calendarStoryEventDefaultControls,
+  calendarStoryCollectionControlArgTypes,
+  calendarStoryCollectionDefaultControls,
   createCalendarStoryEvents,
   startOfCalendarStoryWeek,
 } from '../story-fixtures';
 
-type CalendarWeekViewStoryArgs = CalendarStoryEventControls & {
+type CalendarWeekViewStoryArgs = CalendarStoryCollectionControls & {
   canGoPrevious: boolean;
   returnUrl: string;
 };
@@ -21,12 +21,12 @@ const meta: Meta<CalendarWeekViewStoryArgs> = {
   title: 'CACiC Eventos/Calendar/Week View',
   tags: ['autodocs'],
   args: {
-    ...calendarStoryEventDefaultControls,
+    ...calendarStoryCollectionDefaultControls,
     canGoPrevious: true,
     returnUrl: '/calendar',
   },
   argTypes: {
-    ...calendarStoryEventControlArgTypes,
+    ...calendarStoryCollectionControlArgTypes,
     canGoPrevious: { control: 'boolean' },
     returnUrl: { control: 'text' },
   },
@@ -59,6 +59,21 @@ export const PreviousWeekLocked: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('button', { name: 'Semana anterior' })).toBeDisabled();
+  },
+};
+
+export const DenseWeek: Story = {
+  args: { eventCount: 30, dayOffset: 0 },
+  play: async ({ canvasElement }) => {
+    const eventLinks = await within(canvasElement).findAllByRole('link');
+    await expect(eventLinks.length).toBeGreaterThan(10);
+  },
+};
+
+export const EmptyWeek: Story = {
+  args: { eventCount: 0 },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Nenhum evento nesta data.')).toBeVisible();
   },
 };
 

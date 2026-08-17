@@ -486,7 +486,10 @@ export class EventsResolver {
         select: EVENT_AUDIT_SELECT,
       });
       if (!previousEvent) throw new NotFoundException(`Event ${id} was not found.`);
-      await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, id, normalizedInput);
+      await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, id, {
+        ...normalizedInput,
+        publishAfterUpdate,
+      });
       const updatedCount = await tx.event.updateMany({
         where: { id, deletedAt: null },
         data: {

@@ -252,7 +252,7 @@ describe('SportsRegistrationAdminService', () => {
     });
 
     it('returns an existing role assignment without duplicating it', async () => {
-      const existing = { id: 'assignment-1' };
+      const existing = { id: 'assignment-1', role: SportsRosterRole.CAPTAIN };
       tx.sportsRegistration.findFirst.mockResolvedValue(sportsAdminRegistrationRecord());
       tx.sportsTeamMember.findFirst.mockResolvedValue(
         sportsAdminTeamMemberRecord({ participant: { status: 'ACTIVE' } }),
@@ -261,11 +261,45 @@ describe('SportsRegistrationAdminService', () => {
 
       await expect(
         service.assignCategoryRole(
-          { registrationId: 'registration-1', teamMemberId: 'member-1', role: SportsRosterRole.PLAYER },
+          { registrationId: 'registration-1', teamMemberId: 'member-1', role: SportsRosterRole.CAPTAIN },
           actor as never,
         ),
       ).resolves.toEqual(existing);
+      expect(tx.sportsRegistrationMember.count).not.toHaveBeenCalled();
       expect(tx.sportsRegistrationMember.create).not.toHaveBeenCalled();
+    });
+
+    it('updates the existing category assignment when its role changes', async () => {
+      const existing = {
+        id: 'assignment-1',
+        registrationId: 'registration-1',
+        teamMemberId: 'member-1',
+        role: SportsRosterRole.PLAYER,
+      };
+      const updated = { ...existing, role: SportsRosterRole.CAPTAIN };
+      tx.sportsRegistration.findFirst.mockResolvedValue(sportsAdminRegistrationRecord());
+      tx.sportsTeamMember.findFirst.mockResolvedValue(
+        sportsAdminTeamMemberRecord({ participant: { status: 'ACTIVE' } }),
+      );
+      tx.sportsRegistrationMember.findFirst.mockResolvedValue(existing);
+      tx.sportsRegistrationMember.update.mockResolvedValue(updated);
+
+      await expect(
+        service.assignCategoryRole(
+          { registrationId: 'registration-1', teamMemberId: 'member-1', role: SportsRosterRole.CAPTAIN },
+          actor as never,
+        ),
+      ).resolves.toEqual(updated);
+
+      expect(tx.sportsRegistrationMember.update).toHaveBeenCalledWith({
+        where: { id: 'assignment-1' },
+        data: { role: SportsRosterRole.CAPTAIN, updatedById: 'actor-1' },
+      });
+      expect(tx.sportsRegistrationMember.create).not.toHaveBeenCalled();
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ operation: AuditLogOperation.UPDATE }),
+        tx,
+      );
     });
 
     it('rejects missing scope/records or an exceeded category role limit', async () => {
@@ -361,6 +395,7 @@ function transaction() {
     sportsRegistrationMember: {
       findFirst: jest.fn().mockResolvedValue(null),
       create: jest.fn(),
+      update: jest.fn(),
       count: jest.fn().mockResolvedValue(0),
       updateMany: jest.fn(),
     },

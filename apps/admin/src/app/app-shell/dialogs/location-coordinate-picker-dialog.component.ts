@@ -187,7 +187,7 @@ export class LocationCoordinatePickerDialogComponent implements OnDestroy {
     updateMarker(this.selectedCoordinates());
 
     const view = new View({
-      center: fromLonLat(DEFAULT_MAP_CENTER),
+      center: fromLonLat([...DEFAULT_MAP_CENTER]),
       zoom: DEFAULT_MAP_ZOOM,
       maxZoom: MAX_MAP_ZOOM,
     });

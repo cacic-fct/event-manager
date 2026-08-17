@@ -28,6 +28,7 @@ describe('SportsBackingResourceLifecycleService', () => {
             latitude: -22.12,
             longitude: -51.4,
             locationDescription: 'Ginásio · Quadra 1',
+            isPubliclyListed: true,
             allowSubscription: false,
             requiresImageLicenseAgreement: false,
             subscriptionStartDate: null,
@@ -38,6 +39,7 @@ describe('SportsBackingResourceLifecycleService', () => {
             shouldIssueCertificateForNonPayingAttendees: false,
             shouldIssueCertificateForNonSubscribedAttendees: false,
             shouldCollectAttendance: true,
+            shouldAllowOralAttendance: false,
             isOnlineAttendanceAllowed: false,
             shouldProvideSubscriberListToLecturer: false,
             onlineAttendanceCode: null,
@@ -79,7 +81,13 @@ describe('SportsBackingResourceLifecycleService', () => {
     ).rejects.toBeInstanceOf(ConflictException);
     await expect(
       service.assertEventUpdateAllowed(tx as never, 'event-1', { allowSubscription: true }),
-    ).resolves.toBeUndefined();
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.assertEventUpdateAllowed(tx as never, 'event-1', { publishAfterUpdate: true }),
+    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(
+      service.assertEventUpdateAllowed(tx as never, 'event-1', { isPubliclyListed: false }),
+    ).rejects.toBeInstanceOf(ConflictException);
     await expect(
       service.assertEventUpdateAllowed(tx as never, 'event-1', { locationDescription: 'Outra quadra' }),
     ).rejects.toBeInstanceOf(ConflictException);

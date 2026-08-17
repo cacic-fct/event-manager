@@ -5,7 +5,7 @@ model EventAttendance {
   person People @relation(fields: [personId], references: [id])
   event  Event  @relation(fields: [eventId], references: [id])
 
-  category AttendanceCategory @default(UNKNOWN)
+  category AttendanceCategory    @default(UNKNOWN)
   status   EventAttendanceStatus @default(PRESENT)
 
   attendedAt DateTime @default(now())
@@ -82,8 +82,8 @@ model OfflineEventAttendanceSubmission {
   committedAt   DateTime?
   committedById String?
 
-  rejectedAt     DateTime?
-  rejectedById   String?
+  rejectedAt      DateTime?
+  rejectedById    String?
   rejectionReason String?
 
   @@unique([submittedById, clientId])

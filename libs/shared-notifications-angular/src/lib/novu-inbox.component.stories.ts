@@ -362,10 +362,12 @@ const meta: Meta<NovuInboxStoryHostComponent> = {
   parameters: {
     layout: 'fullscreen',
     msw: {
-      handlers: [
-        http.all('https://notifications.cacic.com.br/api/*', () => HttpResponse.json({ storybook: true })),
-        http.all('https://notifications.cacic.com.br/*', () => HttpResponse.json({ storybook: true })),
-      ],
+      handlers: {
+        rest: [
+          http.all('https://notifications.cacic.com.br/api/*', () => HttpResponse.json({ storybook: true })),
+          http.all('https://notifications.cacic.com.br/*', () => HttpResponse.json({ storybook: true })),
+        ],
+      },
     },
   },
   argTypes: {

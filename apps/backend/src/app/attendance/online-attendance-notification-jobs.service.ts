@@ -149,7 +149,6 @@ export class OnlineAttendanceNotificationJobsService {
         subscriptions: {
           where: {
             deletedAt: null,
-            subscriptionStatus: SubscriptionStatus.CONFIRMED,
           },
           select: { person: { select: PERSON_SELECT } },
         },

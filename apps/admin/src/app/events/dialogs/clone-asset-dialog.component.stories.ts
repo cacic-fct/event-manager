@@ -7,36 +7,48 @@ import { CloneAssetDialogComponent, CloneAssetPartOption } from './clone-asset-d
 
 type CloneAssetDialogStoryArgs = {
   sourceName: string;
-  includeDisabledOption: boolean;
+  title: string;
+  sourceLabel: string;
+  copySuffix: string;
+  includeLecturers: boolean;
+  includeCertificate: boolean;
+  includeAttendance: boolean;
+  disableCertificate: boolean;
+  defaultSelected: boolean;
 };
 
 const dialogRefMock = {
   close: () => undefined,
 };
 
-function parts(includeDisabledOption: boolean): CloneAssetPartOption[] {
-  return [
+function parts(args: CloneAssetDialogStoryArgs): CloneAssetPartOption[] {
+  const options: CloneAssetPartOption[] = [
     {
       key: 'lecturers',
       label: 'Ministrantes',
       description: 'Copia os vínculos com pessoas ministrantes.',
-      defaultSelected: true,
+      defaultSelected: args.defaultSelected,
     },
     {
       key: 'certificateConfig',
       label: 'Configuração de certificado',
       description: 'Copia regras de emissão e modelos de certificado.',
-      defaultSelected: true,
-      disabled: includeDisabledOption,
+      defaultSelected: args.defaultSelected,
+      disabled: args.disableCertificate,
       disabledReason: 'Exige permissão para visualizar e criar configurações de certificado.',
     },
     {
       key: 'attendanceSettings',
       label: 'Presença',
       description: 'Copia coleta e janelas de presença, sem copiar o código de presença.',
-      defaultSelected: true,
+      defaultSelected: args.defaultSelected,
     },
   ];
+  return options.filter((part) => {
+    if (part.key === 'lecturers') return args.includeLecturers;
+    if (part.key === 'certificateConfig') return args.includeCertificate;
+    return args.includeAttendance;
+  });
 }
 
 @Component({
@@ -50,7 +62,14 @@ class CloneAssetDialogStoryHostComponent {
 
   readonly component = CloneAssetDialogComponent;
   readonly sourceName = input('Oficina de Git');
-  readonly includeDisabledOption = input(false);
+  readonly title = input('Duplicar evento');
+  readonly sourceLabel = input('Evento existente');
+  readonly copySuffix = input('(cópia)');
+  readonly includeLecturers = input(true);
+  readonly includeCertificate = input(true);
+  readonly includeAttendance = input(true);
+  readonly disableCertificate = input(false);
+  readonly defaultSelected = input(true);
 
   readonly storyInjector = computed(() =>
     Injector.create({
@@ -59,11 +78,21 @@ class CloneAssetDialogStoryHostComponent {
         {
           provide: MAT_DIALOG_DATA,
           useValue: {
-            title: 'Duplicar evento',
-            sourceLabel: 'Evento existente',
+            title: this.title(),
+            sourceLabel: this.sourceLabel(),
             sourceName: this.sourceName(),
-            defaultName: `${this.sourceName()} (cópia)`,
-            parts: parts(this.includeDisabledOption()),
+            defaultName: `${this.sourceName()} ${this.copySuffix()}`.trim(),
+            parts: parts({
+              sourceName: this.sourceName(),
+              title: this.title(),
+              sourceLabel: this.sourceLabel(),
+              copySuffix: this.copySuffix(),
+              includeLecturers: this.includeLecturers(),
+              includeCertificate: this.includeCertificate(),
+              includeAttendance: this.includeAttendance(),
+              disableCertificate: this.disableCertificate(),
+              defaultSelected: this.defaultSelected(),
+            }),
           },
         },
         { provide: MatDialogRef, useValue: dialogRefMock },
@@ -78,11 +107,25 @@ const meta: Meta<CloneAssetDialogStoryArgs> = {
   tags: ['autodocs'],
   args: {
     sourceName: 'Oficina de Git',
-    includeDisabledOption: false,
+    title: 'Duplicar evento',
+    sourceLabel: 'Evento existente',
+    copySuffix: '(cópia)',
+    includeLecturers: true,
+    includeCertificate: true,
+    includeAttendance: true,
+    disableCertificate: false,
+    defaultSelected: true,
   },
   argTypes: {
     sourceName: { control: 'text' },
-    includeDisabledOption: { control: 'boolean' },
+    title: { control: 'text' },
+    sourceLabel: { control: 'text' },
+    copySuffix: { control: 'text' },
+    includeLecturers: { control: 'boolean' },
+    includeCertificate: { control: 'boolean' },
+    includeAttendance: { control: 'boolean' },
+    disableCertificate: { control: 'boolean' },
+    defaultSelected: { control: 'boolean' },
   },
   parameters: {
     layout: 'fullscreen',
@@ -104,8 +147,27 @@ export const Playground: Story = {
 
 export const MissingCertificatePermission: Story = {
   args: {
-    includeDisabledOption: true,
+    disableCertificate: true,
   },
+};
+
+export const NoOptionalParts: Story = {
+  args: { includeLecturers: false, includeCertificate: false, includeAttendance: false },
+};
+
+export const NothingPreselected: Story = {
+  args: { defaultSelected: false },
+};
+
+export const LongContentMobile: Story = {
+  args: {
+    title: 'Duplicar atividade interdisciplinar',
+    sourceLabel: 'Evento acadêmico, cultural e esportivo existente',
+    sourceName: 'Oficina interdisciplinar de tecnologia, acessibilidade e extensão universitária',
+    copySuffix: '(cópia para revisão editorial e publicação futura)',
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const DarkReducedMotion: Story = {

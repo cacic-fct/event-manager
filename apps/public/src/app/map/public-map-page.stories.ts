@@ -1,35 +1,94 @@
 import { signal } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import type { PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
+import type OlMap from 'ol/Map';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { delay, HttpResponse, http } from 'msw';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
+import type {
+  PublicMapDeviceOrientation,
+  PublicMapGeolocationError,
+  PublicMapLocationPermission,
+  PublicMapUserLocation,
+} from '../shared/map/public-map-geolocation.service';
 import { PublicMapGeolocationService } from '../shared/map/public-map-geolocation.service';
-import { PublicUserLocationLayerService } from '../shared/map/public-user-location-layer.service';
 import { PublicMapCacheService } from './public-map-cache.service';
 import { PublicMapPage } from './public-map-page';
+import {
+  createPublicMapStoryEvents,
+  createPublicMapStoryMineIds,
+  publicMapStoryCenter,
+  type PublicMapCoordinateLayout,
+} from './public-map-story.fixtures';
 import { PublicMapStateService } from './public-map-state.service';
 
-type CoordinateLayout = 'spread' | 'nearby' | 'coincident';
+type ApiState = 'ready' | 'loading' | 'error' | 'offline';
+type LocationState = 'hidden' | 'locating' | 'live' | 'denied' | 'unsupported' | 'error';
 
-interface PublicMapStoryControls {
+interface PublicMapStoryArgs {
+  accuracyMeters: number;
+  apiState: ApiState;
+  centerLatitude: number;
+  centerLongitude: number;
+  coordinateLayout: PublicMapCoordinateLayout;
   eventCount: number;
+  eventDurationMinutes: number;
+  eventNamePrefix: string;
+  firstEventDayOffset: number;
+  headingDegrees: number;
+  locationState: LocationState;
   mineCount: number;
-  coordinateLayout: CoordinateLayout;
+  responseDelay: number;
+  spreadRadiusMeters: number;
+  userLatitude: number;
+  userLongitude: number;
 }
 
-interface PublicMapStoryContext {
-  args: PublicMapStoryControls;
-}
+const defaultArgs: PublicMapStoryArgs = {
+  accuracyMeters: 14,
+  apiState: 'ready',
+  centerLatitude: publicMapStoryCenter.latitude,
+  centerLongitude: publicMapStoryCenter.longitude,
+  coordinateLayout: 'spread',
+  eventCount: 8,
+  eventDurationMinutes: 90,
+  eventNamePrefix: '',
+  firstEventDayOffset: 0,
+  headingDegrees: 35,
+  locationState: 'hidden',
+  mineCount: 3,
+  responseDelay: 80,
+  spreadRadiusMeters: 720,
+  userLatitude: publicMapStoryCenter.latitude + 0.00025,
+  userLongitude: publicMapStoryCenter.longitude - 0.00018,
+};
+
+let activeArgs = defaultArgs;
 
 class StoryMapCacheService {
-  read(): null {
+  read<T>(): T | null {
     return null;
   }
 
   write(): void {
     return undefined;
+  }
+
+  writeEvents(): void {
+    return undefined;
+  }
+
+  writeUserEventIds(): void {
+    return undefined;
+  }
+
+  readOfflineEvents(): Promise<PublicMapEvent[] | null> {
+    return Promise.resolve(activeArgs.apiState === 'offline' ? createEvents(activeArgs) : null);
+  }
+
+  readOfflineUserEventIds(): Promise<string[] | null> {
+    return Promise.resolve(activeArgs.apiState === 'offline' ? mineIds(activeArgs) : null);
   }
 
   invalidate(): void {
@@ -48,305 +107,386 @@ class StoryMapStateService {
 }
 
 class StoryGeolocationService {
-  readonly permission = signal<'prompt' | 'granted' | 'denied' | 'unsupported'>('prompt');
-  readonly isRequesting = signal(false);
-}
+  readonly permission;
+  readonly orientationPermission = signal<PublicMapLocationPermission>('granted');
+  readonly location = signal<PublicMapUserLocation | null>(null);
+  readonly orientation = signal<PublicMapDeviceOrientation | null>(null);
+  readonly error;
+  readonly isRequesting;
+  readonly isTracking = signal(false);
+  readonly isTrackingOrientation = signal(false);
+  readonly isSupported;
 
-class StoryDeniedGeolocationService extends StoryGeolocationService {
-  override readonly permission = signal<'denied'>('denied');
-}
+  constructor(private readonly storyArgs: PublicMapStoryArgs) {
+    this.permission = signal<PublicMapLocationPermission>(locationPermission(storyArgs.locationState));
+    this.error = signal<PublicMapGeolocationError | null>(locationError(storyArgs.locationState));
+    this.isRequesting = signal(storyArgs.locationState === 'locating');
+    this.isSupported = signal(storyArgs.locationState !== 'unsupported');
+  }
 
-class StoryLocationLayerService {
-  addToMap(): void {
-    return undefined;
+  async requestLocation(): Promise<PublicMapUserLocation | null> {
+    if (this.storyArgs.locationState === 'denied' || this.storyArgs.locationState === 'unsupported') {
+      return null;
+    }
+    if (this.storyArgs.locationState === 'error') {
+      this.error.set(locationError('error'));
+      return null;
+    }
+    const location = storyLocation(this.storyArgs);
+    this.permission.set('granted');
+    this.location.set(location);
+    return location;
   }
-  stopAndHide(): void {
-    return undefined;
+
+  async startTracking(): Promise<boolean> {
+    if (this.storyArgs.locationState === 'locating') {
+      this.isRequesting.set(true);
+      return new Promise<boolean>(() => undefined);
+    }
+    const location = await this.requestLocation();
+    if (!location) {
+      return false;
+    }
+    this.isRequesting.set(false);
+    this.isTracking.set(true);
+    this.isTrackingOrientation.set(true);
+    this.orientation.set({
+      heading: this.storyArgs.headingDegrees,
+      absolute: true,
+      timestamp: Date.now(),
+    });
+    return true;
   }
+
+  stopTracking(): void {
+    this.isTracking.set(false);
+    this.isTrackingOrientation.set(false);
+  }
+
   destroy(): void {
-    return undefined;
-  }
-  async startAndCenter(): Promise<{ success: true }> {
-    return { success: true };
+    this.stopTracking();
   }
 }
 
-const defaultControls: PublicMapStoryControls = {
-  eventCount: 6,
-  mineCount: 2,
-  coordinateLayout: 'spread',
-};
+const mapGraphqlHandler = http.post('/api/graphql', async ({ request }) => {
+  const query = await graphQlQuery(request);
+  if (query.includes('CurrentUserMapEventIds')) {
+    if (activeArgs.apiState === 'offline') {
+      return HttpResponse.json({ errors: [{ message: 'Sem conexão para consultar participações.' }] });
+    }
+    return HttpResponse.json({ data: { currentUserMapEventIds: mineIds(activeArgs) } });
+  }
+  if (!query.includes('PublicMapEvents')) {
+    return HttpResponse.json({ data: {} });
+  }
+  if (activeArgs.apiState === 'loading') {
+    await delay('infinite');
+  }
+  if (activeArgs.apiState === 'error' || activeArgs.apiState === 'offline') {
+    return HttpResponse.json({ errors: [{ message: 'Falha controlada do mapa.' }] });
+  }
+  if (activeArgs.responseDelay > 0) {
+    await delay(activeArgs.responseDelay);
+  }
+  return HttpResponse.json({ data: { publicMapEvents: createEvents(activeArgs) } });
+});
 
-const meta: Meta<PublicMapStoryControls> = {
+const meta: Meta<PublicMapStoryArgs> = {
   component: PublicMapPage,
   title: 'CACiC Eventos/Map/Page',
   tags: ['autodocs'],
-  args: defaultControls,
+  args: defaultArgs,
   argTypes: {
-    eventCount: {
-      control: { type: 'range', min: 0, max: 30, step: 1 },
-      description: 'Quantidade de eventos devolvida pela API.',
+    apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error', 'offline'] },
+    eventCount: { control: { type: 'range', min: 0, max: 60, step: 1 } },
+    eventNamePrefix: { control: 'text' },
+    eventDurationMinutes: { control: { type: 'range', min: 15, max: 480, step: 15 } },
+    firstEventDayOffset: { control: { type: 'range', min: -7, max: 30, step: 1 } },
+    mineCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
+    coordinateLayout: { control: 'inline-radio', options: ['spread', 'nearby', 'coincident'] },
+    spreadRadiusMeters: { control: { type: 'range', min: 1, max: 5_000, step: 10 } },
+    centerLatitude: { control: { type: 'number', min: -90, max: 90, step: 0.00001 } },
+    centerLongitude: { control: { type: 'number', min: -180, max: 180, step: 0.00001 } },
+    responseDelay: { control: { type: 'range', min: 0, max: 3_000, step: 100 } },
+    locationState: {
+      control: 'select',
+      options: ['hidden', 'locating', 'live', 'denied', 'unsupported', 'error'],
     },
-    mineCount: {
-      control: { type: 'range', min: 0, max: 10, step: 1 },
-      description: 'Quantidade inicial de eventos associados ao usuário.',
-    },
-    coordinateLayout: {
-      control: 'inline-radio',
-      options: ['spread', 'nearby', 'coincident'],
-      description: 'Distribuição espacial usada para exercitar agrupamento e sobreposição.',
-    },
+    userLatitude: { control: { type: 'number', min: -90, max: 90, step: 0.00001 } },
+    userLongitude: { control: { type: 'number', min: -180, max: 180, step: 0.00001 } },
+    accuracyMeters: { control: { type: 'range', min: 1, max: 500, step: 1 } },
+    headingDegrees: { control: { type: 'range', min: 0, max: 359, step: 1 } },
+  },
+  render: (args) => {
+    activeArgs = { ...defaultArgs, ...args };
+    return { props: {} };
   },
   decorators: [
-    applicationConfig({
-      providers: [
-        { provide: PublicMapCacheService, useClass: StoryMapCacheService },
-        { provide: PublicMapStateService, useClass: StoryMapStateService },
-        { provide: PublicMapGeolocationService, useClass: StoryGeolocationService },
-        { provide: PublicUserLocationLayerService, useClass: StoryLocationLayerService },
-      ],
-    }),
+    (story, context) =>
+      applicationConfig({
+        providers: [
+          { provide: PublicMapCacheService, useClass: StoryMapCacheService },
+          { provide: PublicMapStateService, useClass: StoryMapStateService },
+          {
+            provide: PublicMapGeolocationService,
+            useFactory: () => new StoryGeolocationService({ ...defaultArgs, ...context.args }),
+          },
+        ],
+      })(story, context),
   ],
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'error' },
     viewport: { defaultViewport: 'desktop' },
+    msw: { handlers: { graphql: [mapGraphqlHandler] } },
   },
 };
 
 export default meta;
-
-type Story = StoryObj<PublicMapStoryControls>;
-
-const playgroundContext = createContext();
-const clusterContext = createContext({ eventCount: 12, coordinateLayout: 'nearby' });
-const coincidentContext = createContext({ eventCount: 8, coordinateLayout: 'coincident' });
-const myEventsContext = createContext({ eventCount: 7, mineCount: 3, coordinateLayout: 'nearby' });
-const deniedContext = createContext({ eventCount: 4 });
+type Story = StoryObj<PublicMapStoryArgs>;
 
 export const Playground: Story = {
-  render: (args) => renderStory(args, playgroundContext),
-  parameters: mapParameters(playgroundContext),
-  globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
+    await expectReadyMap(canvasElement, args.eventCount);
     const canvas = within(canvasElement);
-
-    await expect(await canvas.findByRole('heading', { name: 'Mapa de eventos' })).toBeVisible();
-    await expect(await canvas.findByRole('region', { name: 'Mapa interativo de eventos' })).toBeVisible();
-    await expect(await canvas.findByRole('button', { name: 'Evento 1' })).toBeInTheDocument();
-
     await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
     await userEvent.click(await canvas.findByRole('button', { name: 'Filtrar eventos' }));
-
     const dialog = within(document.body);
-    await expect(await dialog.findByRole('heading', { name: 'Filtrar eventos' })).toBeVisible();
-    await userEvent.click(dialog.getByRole('radio', { name: 'Eventos de hoje' }));
+    await userEvent.click(await dialog.findByRole('radio', { name: 'Eventos de hoje' }));
     await userEvent.click(dialog.getByRole('button', { name: 'Aplicar' }));
     await expect(await canvas.findByLabelText('Filtros ativos')).toHaveTextContent('1');
   },
 };
 
-export const Loading: Story = {
-  parameters: {
-    msw: {
-      handlers: [
-        http.post('/api/graphql', async ({ request }) => {
-          const query = await graphQlQuery(request);
-          if (query.includes('PublicMapEvents')) {
-            await delay('infinite');
-          }
-          return HttpResponse.json({ data: { currentUserMapEventIds: [] } });
-        }),
-      ],
-    },
-  },
-  play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByLabelText('Carregando eventos no mapa'),
-    ).toBeVisible();
-  },
-};
-
-export const ApiError: Story = {
-  parameters: {
-    msw: {
-      handlers: [
-        http.post('/api/graphql', async ({ request }) => {
-          const query = await graphQlQuery(request);
-          return query.includes('PublicMapEvents')
-            ? HttpResponse.json({ errors: [{ message: 'Falha controlada do mapa.' }] })
-            : HttpResponse.json({ data: { currentUserMapEventIds: [] } });
-        }),
-      ],
-    },
-  },
-  play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText('Não foi possível carregar o mapa de eventos. Tente novamente em instantes.'),
-    ).toBeVisible();
-  },
-};
-
-export const Empty: Story = {
-  parameters: staticMapParameters([]),
-  play: async ({ canvasElement }) => {
-    await expect(
-      await within(canvasElement).findByText('Nenhum evento com localização disponível.'),
-    ).toBeVisible();
-  },
-};
-
 export const NearbyClusters: Story = {
-  args: clusterContext.args,
-  render: (args) => renderStory(args, clusterContext),
-  parameters: mapParameters(clusterContext),
-  play: async ({ canvasElement }) => {
-    const events = await within(canvasElement).findAllByRole('button', { name: /^Evento / });
-    await expect(events).toHaveLength(clusterContext.args.eventCount);
+  name: 'Agrupamentos próximos',
+  args: { coordinateLayout: 'nearby', eventCount: 18, spreadRadiusMeters: 12 },
+  play: async ({ args, canvasElement }) => {
+    await expectReadyMap(canvasElement, args.eventCount);
+    await expectClusterWithAtLeast(2);
   },
 };
 
 export const CoincidentEvents: Story = {
-  args: coincidentContext.args,
-  render: (args) => renderStory(args, coincidentContext),
-  parameters: mapParameters(coincidentContext),
+  name: 'Eventos na mesma coordenada',
+  args: { coordinateLayout: 'coincident', eventCount: 8 },
   globals: { theme: 'dark', motion: 'reduced' },
-  play: async ({ canvasElement }) => {
-    const events = await within(canvasElement).findAllByRole('button', { name: /^Evento / });
-    await expect(events).toHaveLength(coincidentContext.args.eventCount);
+  play: async ({ args, canvasElement }) => {
+    await expectReadyMap(canvasElement, args.eventCount);
+    await expectClusterWithAtLeast(args.eventCount);
   },
 };
 
-export const MyEvents: Story = {
-  args: myEventsContext.args,
-  render: (args) => renderStory(args, myEventsContext),
-  decorators: [
-    applicationConfig({
-      providers: [
-        {
-          provide: ActivatedRoute,
-          useValue: mapRoute({ participacao: 'meus' }),
-        },
-      ],
-    }),
-  ],
-  parameters: mapParameters(myEventsContext),
+export const LiveLocation: Story = {
+  name: 'Localização ao vivo com precisão e direção',
+  args: { locationState: 'live', coordinateLayout: 'nearby', eventCount: 12, spreadRadiusMeters: 16 },
+  play: async ({ canvasElement }) => {
+    await expectReadyMap(canvasElement, 12);
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
+    const locationButton = await canvas.findByRole('button', { name: 'Usar minha localização' });
+    await expect(locationButton).not.toHaveAttribute('aria-disabled', 'true');
+    await userEvent.click(locationButton);
+    await expectLocationFeatures(['public-user-location-dot', 'public-user-location-accuracy', 'public-user-location-direction']);
+  },
+};
+
+export const Locating: Story = {
+  name: 'Localização em andamento',
+  args: { locationState: 'locating' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(await canvas.findByLabelText('Filtros ativos')).toHaveTextContent('1');
-    const events = await canvas.findAllByRole('button', { name: /^Evento / });
-    await expect(events).toHaveLength(myEventsContext.args.mineCount);
+    await expectReadyMap(canvasElement, defaultArgs.eventCount);
+    await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
+    await expect(await canvas.findByRole('button', { name: 'Usar minha localização' })).toHaveAttribute('aria-busy', 'true');
   },
 };
 
 export const LocationDenied: Story = {
-  args: deniedContext.args,
-  render: (args) => renderStory(args, deniedContext),
-  decorators: [
-    applicationConfig({
-      providers: [
-        { provide: PublicMapGeolocationService, useClass: StoryDeniedGeolocationService },
-      ],
-    }),
-  ],
-  parameters: mapParameters(deniedContext),
+  name: 'Permissão de localização bloqueada',
+  args: { locationState: 'denied' },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole('button', { name: 'Abrir utilitários do mapa' }));
-    const locationButton = await canvas.findByRole('button', { name: 'Usar minha localização' });
-    await expect(locationButton).toHaveAttribute('aria-disabled', 'true');
-    await expect(locationButton).toHaveTextContent('location_disabled');
-    await userEvent.click(locationButton);
-    await expect(
-      await within(document.body).findByText(
-        'A localização está bloqueada. Libere a permissão nas configurações do navegador.',
-      ),
-    ).toBeVisible();
+    await expectLocationUnavailable(canvasElement, 'A localização está bloqueada. Libere a permissão nas configurações do navegador.');
   },
 };
 
-function createContext(args: Partial<PublicMapStoryControls> = {}): PublicMapStoryContext {
-  return { args: { ...defaultControls, ...args } };
+export const LocationUnsupported: Story = {
+  name: 'Localização não suportada',
+  args: { locationState: 'unsupported' },
+  play: async ({ canvasElement }) => {
+    await expectLocationUnavailable(canvasElement, 'Este navegador não oferece localização para o mapa.');
+  },
+};
+
+export const LocationError: Story = {
+  name: 'Falha recuperável de localização',
+  args: { locationState: 'error' },
+  play: async ({ canvasElement }) => {
+    await expectReadyMap(canvasElement, defaultArgs.eventCount);
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
+    await userEvent.click(await canvas.findByRole('button', { name: 'Usar minha localização' }));
+    await expect(await within(document.body).findByText('Não foi possível determinar a localização simulada.')).toBeVisible();
+  },
+};
+
+export const MyEvents: Story = {
+  name: 'Somente meus eventos',
+  args: { coordinateLayout: 'nearby', eventCount: 10, mineCount: 4, spreadRadiusMeters: 16 },
+  decorators: [
+    applicationConfig({ providers: [{ provide: ActivatedRoute, useValue: mapRoute({ participacao: 'meus' }) }] }),
+  ],
+  play: async ({ args, canvasElement }) => {
+    await expectReadyMap(canvasElement, args.mineCount);
+    await expect(await within(canvasElement).findByLabelText('Filtros ativos')).toHaveTextContent('1');
+  },
+};
+
+export const DeepLinkedEvent: Story = {
+  name: 'Evento destacado por link',
+  decorators: [
+    applicationConfig({ providers: [{ provide: ActivatedRoute, useValue: mapRoute({ evento: 'map-event-2' }) }] }),
+  ],
+  play: async ({ args, canvasElement }) => expectReadyMap(canvasElement, args.eventCount),
+};
+
+export const OfflineCache: Story = {
+  name: 'Mapa salvo sem conexão',
+  args: { apiState: 'offline', coordinateLayout: 'nearby', eventCount: 9, spreadRadiusMeters: 14 },
+  globals: { network: 'offline' },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expectReadyMap(canvasElement, args.eventCount);
+    await expect(await canvas.findByText('Mapa salvo. As informações podem estar desatualizadas.')).toBeVisible();
+  },
+};
+
+export const Loading: Story = {
+  args: { apiState: 'loading' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByLabelText('Carregando eventos no mapa')).toBeVisible();
+  },
+};
+
+export const ApiError: Story = {
+  args: { apiState: 'error' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Não foi possível carregar o mapa de eventos. Tente novamente em instantes.')).toBeVisible();
+  },
+};
+
+export const Empty: Story = {
+  args: { eventCount: 0 },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Nenhum evento com localização disponível.')).toBeVisible();
+  },
+};
+
+export const LongContentOnMobile: Story = {
+  name: 'Conteúdo extenso no celular',
+  args: {
+    coordinateLayout: 'nearby',
+    eventCount: 24,
+    eventNamePrefix: 'Semana integrada de ciência, tecnologia, cultura e extensão universitária · ',
+    spreadRadiusMeters: 18,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  play: async ({ args, canvasElement }) => expectReadyMap(canvasElement, args.eventCount),
+};
+
+function createEvents(args: PublicMapStoryArgs): PublicMapEvent[] {
+  return createPublicMapStoryEvents(args);
 }
 
-function renderStory(args: PublicMapStoryControls, context: PublicMapStoryContext): { props: Record<string, never> } {
-  context.args = { ...defaultControls, ...args };
-  return { props: {} };
+function mineIds(args: PublicMapStoryArgs): string[] {
+  return createPublicMapStoryMineIds(args.eventCount, args.mineCount);
 }
 
-function mapParameters(context: PublicMapStoryContext) {
-  return staticMapParameters(() => createEvents(context.args), () => mineIds(context.args));
-}
-
-function staticMapParameters(
-  events: PublicMapEvent[] | (() => PublicMapEvent[]),
-  currentUserEventIds: string[] | (() => string[]) = [],
-) {
+function storyLocation(args: PublicMapStoryArgs): PublicMapUserLocation {
   return {
-    msw: {
-      handlers: [
-        http.post('/api/graphql', async ({ request }) => {
-          const query = await graphQlQuery(request);
-          if (query.includes('CurrentUserMapEventIds')) {
-            return HttpResponse.json({
-              data: {
-                currentUserMapEventIds:
-                  typeof currentUserEventIds === 'function' ? currentUserEventIds() : currentUserEventIds,
-              },
-            });
-          }
-          if (query.includes('PublicMapEvents')) {
-            return HttpResponse.json({
-              data: { publicMapEvents: typeof events === 'function' ? events() : events },
-            });
-          }
-          return HttpResponse.json({ data: {} });
-        }),
-      ],
-    },
+    latitude: args.userLatitude,
+    longitude: args.userLongitude,
+    accuracy: args.accuracyMeters,
+    altitude: 431,
+    altitudeAccuracy: 8,
+    heading: args.headingDegrees,
+    speed: 1.2,
+    timestamp: Date.now(),
   };
+}
+
+function locationPermission(state: LocationState): PublicMapLocationPermission {
+  if (state === 'live') return 'granted';
+  if (state === 'denied') return 'denied';
+  if (state === 'unsupported') return 'unsupported';
+  return 'prompt';
+}
+
+function locationError(state: LocationState): PublicMapGeolocationError | null {
+  return state === 'error'
+    ? { code: 'position-unavailable', message: 'Não foi possível determinar a localização simulada.' }
+    : null;
+}
+
+async function expectReadyMap(canvasElement: HTMLElement, eventCount: number): Promise<void> {
+  const canvas = within(canvasElement);
+  await expect(await canvas.findByRole('heading', { name: 'Mapa de eventos' })).toBeVisible();
+  await expect(await canvas.findByRole('region', { name: 'Mapa interativo de eventos' })).toBeVisible();
+  const eventList = canvas.getByLabelText('Eventos visíveis no mapa');
+  await waitFor(() => expect(eventList.querySelectorAll('button')).toHaveLength(eventCount));
+  await waitFor(() => expect(canvasElement.querySelectorAll('.ol-layer canvas').length).toBeGreaterThan(0));
+}
+
+async function expectClusterWithAtLeast(memberCount: number): Promise<void> {
+  await waitFor(() => {
+    const sizes = clusterSizes();
+    expect(sizes.some((size) => size >= memberCount)).toBe(true);
+  });
+}
+
+function clusterSizes(): number[] {
+  return mapLayers().flatMap((layer) => {
+    const source = (layer as unknown as {
+      getSource?: () => { getFeatures?: () => Array<{ get: (name: string) => unknown }> } | null;
+    }).getSource?.();
+    return (source?.getFeatures?.() ?? []).flatMap((feature) => {
+      const members = feature.get('features');
+      return Array.isArray(members) ? [members.length] : [];
+    });
+  });
+}
+
+async function expectLocationFeatures(expectedIds: string[]): Promise<void> {
+  await waitFor(() => {
+    const featureIds = mapLayers().flatMap((layer) => {
+      const source = (layer as unknown as {
+        getSource?: () => { getFeatures?: () => Array<{ getId: () => string | number | undefined }> } | null;
+      }).getSource?.();
+      return (source?.getFeatures?.() ?? []).map((feature) => String(feature.getId()));
+    });
+    expect(featureIds).toEqual(expect.arrayContaining(expectedIds));
+  });
+}
+
+function mapLayers() {
+  const map = (globalThis as typeof globalThis & { __eventMap?: OlMap }).__eventMap;
+  return map?.getLayers().getArray() ?? [];
+}
+
+async function expectLocationUnavailable(canvasElement: HTMLElement, message: string): Promise<void> {
+  await expectReadyMap(canvasElement, defaultArgs.eventCount);
+  const canvas = within(canvasElement);
+  await userEvent.click(canvas.getByRole('button', { name: 'Abrir utilitários do mapa' }));
+  const locationButton = await canvas.findByRole('button', { name: 'Usar minha localização' });
+  await expect(locationButton).toHaveTextContent('location_disabled');
+  await userEvent.click(locationButton);
+  await expect(await within(document.body).findByText(message)).toBeVisible();
 }
 
 async function graphQlQuery(request: Request): Promise<string> {
   const body = (await request.json()) as { query?: unknown };
   return typeof body.query === 'string' ? body.query : '';
-}
-
-function mineIds(controls: PublicMapStoryControls): string[] {
-  return Array.from({ length: Math.min(controls.eventCount, controls.mineCount) }, (_, index) => `event-${index + 1}`);
-}
-
-function createEvents(controls: PublicMapStoryControls): PublicMapEvent[] {
-  const now = new Date();
-  return Array.from({ length: controls.eventCount }, (_, index) => {
-    const start = new Date(now);
-    start.setHours(9 + (index % 8), 0, 0, 0);
-    start.setDate(now.getDate() + (index % 3));
-    const end = new Date(start.getTime() + 90 * 60 * 1000);
-    const [longitude, latitude] = storyCoordinates(index, controls.coordinateLayout);
-    return {
-      id: `event-${index + 1}`,
-      name: `Evento ${index + 1}`,
-      startDate: start.toISOString(),
-      endDate: end.toISOString(),
-      emoji: ['🎓', '🧠', '♿', '🎨'][index % 4] ?? '📍',
-      longitude,
-      latitude,
-      locationDescription: `Espaço ${index + 1}`,
-    };
-  });
-}
-
-function storyCoordinates(index: number, layout: CoordinateLayout): [number, number] {
-  if (layout === 'coincident') {
-    return [-51.40775, -22.12103];
-  }
-  if (layout === 'nearby') {
-    return [-51.40775 + (index % 4) * 0.00004, -22.12103 + Math.floor(index / 4) * 0.00004];
-  }
-  const angle = (index * Math.PI) / 3;
-  const ring = 0.008 + Math.floor(index / 6) * 0.004;
-  return [-51.40775 + Math.cos(angle) * ring, -22.12103 + Math.sin(angle) * ring];
 }
 
 function mapRoute(query: Record<string, string> = {}) {

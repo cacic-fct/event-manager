@@ -20,9 +20,9 @@ import { AuthorizationPolicyService } from '../../authorization/authorization-po
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { Permission } from '@cacic-fct/shared-permissions';
 
-const DEFAULT_WINDOW_MINUTES = 60;
 const MIN_WINDOW_MINUTES = 15;
 const MAX_WINDOW_MINUTES = 240;
+const REVIEW_DETECTION_WINDOW_MINUTES = 60;
 const MAX_ANALYTICS_ATTENDANCES = 10_000;
 const MAX_REVIEW_ITEMS = 100;
 const UNUSUAL_SCANS_PER_MINUTE = 20;
@@ -84,6 +84,19 @@ type FlagCandidate = {
   details?: Prisma.InputJsonValue;
 };
 
+export interface AttendanceAnalyticsWindowRequest {
+  windowMinutes?: number;
+  start?: Date;
+  end?: Date;
+}
+
+interface ResolvedAttendanceAnalyticsWindow {
+  start: Date | null;
+  end: Date | null;
+  windowMinutes: number | null;
+  attendedAt?: Prisma.DateTimeFilter;
+}
+
 @Injectable()
 export class AttendanceAnalyticsService {
   constructor(
@@ -91,15 +104,25 @@ export class AttendanceAnalyticsService {
     private readonly authorization: AuthorizationPolicyService,
   ) {}
 
-  async snapshot(eventId: string, requestedWindowMinutes?: number): Promise<EventAttendanceAnalyticsSnapshot> {
-    const windowMinutes = this.resolveWindowMinutes(requestedWindowMinutes);
+  async snapshot(
+    eventId: string,
+    requestedWindow: AttendanceAnalyticsWindowRequest = {},
+  ): Promise<EventAttendanceAnalyticsSnapshot> {
     const event = await this.findEvent(eventId);
     const generatedAt = new Date();
-    const windowStart = new Date(generatedAt.getTime() - windowMinutes * 60_000);
+    const window = resolveAttendanceAnalyticsWindow(requestedWindow, generatedAt);
+    const reviewDetectionStart = new Date(
+      generatedAt.getTime() - REVIEW_DETECTION_WINDOW_MINUTES * 60_000,
+    );
 
-    const [windowAttendances, allPresentAttendances, pendingOfflineSubmissions] = await Promise.all([
+    const [windowAttendances, reviewDetectionAttendances, allPresentAttendances, pendingOfflineSubmissions] = await Promise.all([
       this.prisma.eventAttendance.findMany({
-        where: { eventId, attendedAt: { gte: windowStart } },
+        where: { eventId, ...(window.attendedAt ? { attendedAt: window.attendedAt } : {}) },
+        select: analyticsAttendanceSelect,
+        orderBy: { attendedAt: 'asc' },
+      }),
+      this.prisma.eventAttendance.findMany({
+        where: { eventId, attendedAt: { gte: reviewDetectionStart } },
         select: analyticsAttendanceSelect,
         orderBy: { attendedAt: 'asc' },
         take: MAX_ANALYTICS_ATTENDANCES,
@@ -117,8 +140,14 @@ export class AttendanceAnalyticsService {
       }),
     ]);
 
-    const actorNames = await this.actorNames(windowAttendances);
-    await this.detectReviewFlags(event, windowAttendances, pendingOfflineSubmissions, generatedAt, actorNames);
+    const actorNames = await this.actorNames([...windowAttendances, ...reviewDetectionAttendances]);
+    await this.detectReviewFlags(
+      event,
+      reviewDetectionAttendances,
+      pendingOfflineSubmissions,
+      generatedAt,
+      actorNames,
+    );
 
     const [subscribedPersonIds, reviewItems] = await Promise.all([
       this.subscribedPersonIds(event),
@@ -131,7 +160,9 @@ export class AttendanceAnalyticsService {
       eventName: event.name,
       emoji: event.emoji,
       generatedAt,
-      windowMinutes,
+      windowMinutes: window.windowMinutes,
+      windowStart: window.start,
+      windowEnd: window.end,
       presentCount: presentPersonIds.size,
       noShowCount: [...subscribedPersonIds].filter((personId) => !presentPersonIds.has(personId)).length,
       pendingReviewCount: reviewItems.length,
@@ -234,14 +265,6 @@ export class AttendanceAnalyticsService {
     });
     if (!event) throw new NotFoundException(`Event ${eventId} was not found.`);
     return event;
-  }
-
-  private resolveWindowMinutes(requested?: number): number {
-    if (requested === undefined) return DEFAULT_WINDOW_MINUTES;
-    if (!Number.isInteger(requested) || requested < MIN_WINDOW_MINUTES || requested > MAX_WINDOW_MINUTES) {
-      throw new BadRequestException(`A janela deve ter entre ${MIN_WINDOW_MINUTES} e ${MAX_WINDOW_MINUTES} minutos.`);
-    }
-    return requested;
   }
 
   private async actorNames(attendances: AnalyticsAttendance[]): Promise<Map<string, string>> {
@@ -489,6 +512,55 @@ const analyticsAttendanceSelect = {
   collectedLongitude: true,
   collectedAccuracyMeters: true,
 } satisfies Prisma.EventAttendanceSelect;
+
+export function resolveAttendanceAnalyticsWindow(
+  requested: AttendanceAnalyticsWindowRequest,
+  now = new Date(),
+): ResolvedAttendanceAnalyticsWindow {
+  const hasFixedBoundary = requested.start !== undefined || requested.end !== undefined;
+  if (requested.windowMinutes !== undefined && hasFixedBoundary) {
+    throw new BadRequestException('Use uma duração ou um intervalo fixo, não ambos.');
+  }
+  if (hasFixedBoundary) {
+    if (requested.start === undefined || requested.end === undefined) {
+      throw new BadRequestException('Informe o início e o fim do intervalo de presença.');
+    }
+    const start = new Date(requested.start);
+    const end = new Date(requested.end);
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+      throw new BadRequestException('O intervalo de presença informado é inválido.');
+    }
+    if (start.getTime() >= end.getTime()) {
+      throw new BadRequestException('O fim do intervalo deve ser posterior ao início.');
+    }
+    return {
+      start,
+      end,
+      windowMinutes: Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 60_000)),
+      attendedAt: { gte: start, lte: end },
+    };
+  }
+  if (requested.windowMinutes === undefined) {
+    return { start: null, end: null, windowMinutes: null };
+  }
+  if (
+    !Number.isInteger(requested.windowMinutes) ||
+    requested.windowMinutes < MIN_WINDOW_MINUTES ||
+    requested.windowMinutes > MAX_WINDOW_MINUTES
+  ) {
+    throw new BadRequestException(
+      `A janela deve ter entre ${MIN_WINDOW_MINUTES} e ${MAX_WINDOW_MINUTES} minutos.`,
+    );
+  }
+  const end = new Date(now);
+  const start = new Date(end.getTime() - requested.windowMinutes * 60_000);
+  return {
+    start,
+    end,
+    windowMinutes: requested.windowMinutes,
+    attendedAt: { gte: start },
+  };
+}
 
 export function buildTimeBuckets(attendances: AnalyticsAttendance[], precision: 'minute' | 'hour'): AttendanceTimeBucket[] {
   const counts = new Map<string, number>();

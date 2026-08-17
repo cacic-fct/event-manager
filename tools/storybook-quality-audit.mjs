@@ -18,10 +18,19 @@ function collectStoryFiles(directory) {
 
 const files = storyRoots.flatMap((root) => collectStoryFiles(join(repositoryRoot, root))).sort();
 const failures = [];
+const semanticReport = [];
+const semanticReportRequested = process.argv.includes('--semantic-report');
 
 for (const file of files) {
   const source = readFileSync(file, 'utf8');
   const storyCount = source.match(/export const /g)?.length ?? 0;
+  const directControlCount = source.match(/\bcontrol\s*:/g)?.length ?? 0;
+  const importedControlSets =
+    (source.match(/\.\.\.[A-Za-z0-9_$]*(?:ControlArgTypes|ArgTypes)/g)?.length ?? 0) +
+    (source.match(/argTypes\s*:\s*[A-Za-z0-9_$]*(?:ControlArgTypes|ArgTypes)/g)?.length ?? 0);
+  const variationNames = [...source.matchAll(/export const ([A-Za-z0-9_$]+)/g)]
+    .map((match) => match[1])
+    .filter((name) => name !== 'Playground');
   const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   let metaTitle;
 
@@ -73,6 +82,44 @@ for (const file of files) {
 
   if (source.includes('@faker-js/faker') && !/faker\.seed\s*\(/.test(source)) {
     failures.push(`${relative(repositoryRoot, file)}: faker data must use a deterministic seed`);
+  }
+
+  if (/handlers\s*:\s*\[/.test(source)) {
+    failures.push(
+      `${relative(repositoryRoot, file)}: MSW handlers must use named graphql/rest groups so story mocks override preview mocks`,
+    );
+  }
+
+  if (semanticReportRequested) {
+    const statefulSurface = /(?:Page|Dashboard|Workspace|Workbench|List|Viewer|Attendance|Subscription)/i.test(
+      metaTitle ?? '',
+    );
+    const stateVariationCount = variationNames.filter((name) =>
+      /(?:Dense|Empty|Loading|Error|Offline|Unavailable|Denied|Unsupported|Long|Mobile|Success|Failure|Rate|Permission|Frozen|No[A-Z])/.test(
+        name,
+      ),
+    ).length;
+    const reasons = [];
+
+    if (statefulSurface && directControlCount < 5 && importedControlSets === 0) {
+      reasons.push(`${directControlCount} direct controls and ${importedControlSets} shared control sets`);
+    }
+    if (statefulSurface && stateVariationCount < 3) {
+      reasons.push(`${stateVariationCount} explicit data or operational state variations`);
+    }
+    if (statefulSurface && storyCount < 5) {
+      reasons.push(`${storyCount} stories on a stateful surface`);
+    }
+    if (reasons.length > 0) {
+      semanticReport.push(`${relative(repositoryRoot, file)}: ${reasons.join('; ')}`);
+    }
+  }
+}
+
+if (semanticReportRequested) {
+  console.log(`Storybook semantic review candidates (${semanticReport.length}/${files.length}):`);
+  for (const item of semanticReport) {
+    console.log(`- ${item}`);
   }
 }
 

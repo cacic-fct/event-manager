@@ -1,21 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import {
-  PublicEventStoryControls,
+  PublicEventCollectionStoryControls,
   createPublicStoryEvents,
-  publicEventStoryControlArgTypes,
-  publicEventStoryDefaultControls,
+  publicEventCollectionStoryControlArgTypes,
+  publicEventCollectionStoryDefaultControls,
 } from '../../../testing/public-event-story-fixtures';
 import { SubscriptionEventList } from './event-list';
 
-interface SubscriptionEventListStoryArgs extends PublicEventStoryControls {
+interface SubscriptionEventListStoryArgs extends PublicEventCollectionStoryControls {
   selectedFirstEvent: boolean;
   autoSelectSecondEvent: boolean;
   disableSoldOutEvents: boolean;
 }
 
 const defaultArgs: SubscriptionEventListStoryArgs = {
-  ...publicEventStoryDefaultControls,
+  ...publicEventCollectionStoryDefaultControls,
   selectedFirstEvent: true,
   autoSelectSecondEvent: false,
   disableSoldOutEvents: false,
@@ -27,7 +27,7 @@ const meta: Meta<SubscriptionEventListStoryArgs> = {
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
-    ...publicEventStoryControlArgTypes,
+    ...publicEventCollectionStoryControlArgTypes,
     selectedFirstEvent: { control: 'boolean' },
     autoSelectSecondEvent: { control: 'boolean' },
     disableSoldOutEvents: { control: 'boolean' },
@@ -107,6 +107,52 @@ export const SoldOutAndAutomaticSelection: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(canvas.getAllByText('Sem vagas disponíveis')[0]).toBeVisible();
+  },
+};
+
+export const DenseGroupedCatalog: Story = {
+  args: { eventCount: 30, selectedFirstEvent: true, autoSelectSecondEvent: true },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findAllByRole('checkbox')).toHaveLength(30);
+  },
+};
+
+export const Empty: Story = {
+  args: { eventCount: 0, selectedFirstEvent: false },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).queryAllByRole('checkbox')).toHaveLength(0);
+  },
+};
+
+export const UnlimitedAvailability: Story = {
+  args: { eventCount: 8, slotsAvailable: -1, queueCount: 0 },
+  render: (args) => {
+    const events = createPublicStoryEvents(args).map((event) => ({ ...event, slotsAvailable: null }));
+    return {
+      props: {
+        events,
+        summariesByEventId: buildSummaries(events),
+        selectedEventIds: new Set<string>(),
+        autoSelectedEventIds: new Set<string>(),
+        disabledReasons: new Map<string, string>(),
+      },
+    };
+  },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findAllByText(/Vagas ilimitadas/)).toHaveLength(8);
+  },
+};
+
+export const LongContentMobile: Story = {
+  args: {
+    eventCount: 6,
+    name: 'Atividade interdisciplinar universitária de tecnologia, ciência, cultura e acessibilidade',
+    eventGroupName: 'Trilha extensa de experiências acadêmicas e comunitárias',
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText(/Atividade interdisciplinar/)).toBeVisible();
   },
 };
 

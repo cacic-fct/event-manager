@@ -85,7 +85,6 @@ export class PublicMapDataCacheService {
 
     for (const item of feed.majorEventItems) {
       item.selectedEvents?.forEach(({ id }) => eventIds.add(id));
-      item.notSubscribedEvents?.forEach(({ id }) => eventIds.add(id));
     }
 
     return [...eventIds];

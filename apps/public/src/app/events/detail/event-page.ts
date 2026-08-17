@@ -138,6 +138,10 @@ export class Event {
   private readonly standaloneSubscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private readonly isRegistrationEventDetail = [
+    'major-event/:majorEventId/subscription',
+    'major-event/:majorEventId/ranked-subscription',
+  ].includes(this.route.parent?.snapshot.routeConfig?.path ?? '');
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.authService.isAuthenticated;
@@ -199,7 +203,7 @@ export class Event {
 
   private readonly sportsMatchRedirect = effect(() => {
     const currentState = this.eventState();
-    if (currentState.status !== 'ready' || currentState.data.preview) {
+    if (currentState.status !== 'ready' || currentState.data.preview || this.isRegistrationEventDetail) {
       return;
     }
 

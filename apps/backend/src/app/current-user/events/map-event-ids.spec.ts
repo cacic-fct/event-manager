@@ -1,5 +1,6 @@
 import {
   EventManagerPermissionGrantScope,
+  SportsEligibilityStatus,
   SportsParticipantStatus,
   SportsRegistrationStatus,
   SportsTeamMemberStatus,
@@ -147,15 +148,21 @@ function sportsRegistrationWhere(personId: string) {
     team: {
       deletedAt: null,
       status: SportsTeamStatus.ACTIVE,
-      OR: [
-        {
+    },
+    OR: [
+      {
+        team: {
           representatives: {
             some: { personId, active: true, revokedAt: null },
           },
         },
-        {
-          members: {
-            some: {
+      },
+      {
+        members: {
+          some: {
+            deletedAt: null,
+            eligibility: SportsEligibilityStatus.ELIGIBLE,
+            teamMember: {
               deletedAt: null,
               status: SportsTeamMemberStatus.APPROVED,
               participant: {
@@ -166,8 +173,8 @@ function sportsRegistrationWhere(personId: string) {
             },
           },
         },
-      ],
-    },
+      },
+    ],
   };
 }
 

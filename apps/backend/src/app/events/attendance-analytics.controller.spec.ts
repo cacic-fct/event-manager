@@ -29,6 +29,8 @@ describe('AttendanceAnalyticsController', () => {
           .streamAnalytics(
             'event-1',
             30,
+            undefined,
+            undefined,
             'cursor-4',
             { user: { sub: 'admin-1' }, headers: { cookie: 'session=secret' } } as never,
           )
@@ -36,7 +38,9 @@ describe('AttendanceAnalyticsController', () => {
       ),
     ).resolves.toEqual({ data: { type: 'event-attendance-analytics', snapshot } });
 
-    expect(analytics.snapshot).toHaveBeenCalledWith('event-1', 30);
+    expect(analytics.snapshot).toHaveBeenCalledWith('event-1', {
+      windowMinutes: 30,
+    });
     expect(replay.scope).toHaveBeenCalledWith('event-attendance-analytics', 'event-1:30', 'admin-1');
     expect(replay.replay).toHaveBeenCalledWith('analytics-scope', 'cursor-4', expect.anything());
   });
@@ -50,6 +54,8 @@ describe('AttendanceAnalyticsController', () => {
           'event-1',
           undefined,
           undefined,
+          undefined,
+          undefined,
           { headers: { cookie: 'session=cookie-user' } } as never,
         )
         .pipe(take(1)),
@@ -57,8 +63,38 @@ describe('AttendanceAnalyticsController', () => {
 
     expect(replay.scope).toHaveBeenCalledWith(
       'event-attendance-analytics',
-      'event-1:60',
+      'event-1:all',
       'session=cookie-user',
+    );
+  });
+
+  it('binds a fixed interval to both the snapshot and replay scope', async () => {
+    analytics.snapshot.mockResolvedValue({ eventId: 'event-1' });
+    const start = '2026-08-16T12:00:00.000Z';
+    const end = '2026-08-16T13:00:00.000Z';
+
+    await firstValueFrom(
+      controller()
+        .streamAnalytics(
+          'event-1',
+          undefined,
+          start,
+          end,
+          undefined,
+          { user: { sub: 'admin-1' }, headers: {} } as never,
+        )
+        .pipe(take(1)),
+    );
+
+    expect(analytics.snapshot).toHaveBeenCalledWith('event-1', {
+      windowMinutes: undefined,
+      start: new Date(start),
+      end: new Date(end),
+    });
+    expect(replay.scope).toHaveBeenCalledWith(
+      'event-attendance-analytics',
+      `event-1:${start}:${end}`,
+      'admin-1',
     );
   });
 
@@ -68,7 +104,7 @@ describe('AttendanceAnalyticsController', () => {
     await expect(
       firstValueFrom(
         controller()
-          .streamAnalytics('event-1', 60, undefined, { headers: {} } as never)
+          .streamAnalytics('event-1', 60, undefined, undefined, undefined, { headers: {} } as never)
           .pipe(take(1)),
       ),
     ).rejects.toThrow('Analytics unavailable.');

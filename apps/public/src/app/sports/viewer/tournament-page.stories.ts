@@ -13,24 +13,34 @@ import { createMultiSportViewerTournament, createSportsViewerTournament } from '
 type LoadMode = 'ready' | 'loading' | 'error';
 
 interface TournamentStoryArgs {
+  categoryCount: number;
   name: string;
   liveScoreHome: number;
   liveScoreAway: number;
+  matchCount: number;
+  overallScoreRows: number;
+  responseDelay: number;
   showOverallScore: boolean;
   showRules: boolean;
   showTeams: boolean;
+  teamCount: number;
   multiSport: boolean;
   loadMode: LoadMode;
   liveConnectionLost: boolean;
 }
 
 const defaultArgs: TournamentStoryArgs = {
+  categoryCount: 6,
   name: 'InterFCT 2026',
   liveScoreHome: 2,
   liveScoreAway: 1,
+  matchCount: 12,
+  overallScoreRows: 8,
+  responseDelay: 80,
   showOverallScore: true,
   showRules: true,
   showTeams: true,
+  teamCount: 12,
   multiSport: true,
   loadMode: 'ready',
   liveConnectionLost: false,
@@ -53,9 +63,12 @@ function controlledTournament() {
   return {
     ...tournament,
     name: activeArgs.name,
-    teams: activeArgs.showTeams ? tournament.teams : [],
-    overallScores: activeArgs.showOverallScore ? tournament.overallScores : [],
-    categories: tournament.categories.map((category) => ({
+    teams: activeArgs.showTeams ? tournament.teams.slice(0, activeArgs.teamCount) : [],
+    matches: tournament.matches.slice(0, activeArgs.matchCount),
+    overallScores: activeArgs.showOverallScore
+      ? tournament.overallScores.slice(0, activeArgs.overallScoreRows)
+      : [],
+    categories: tournament.categories.slice(0, activeArgs.categoryCount).map((category) => ({
       ...category,
       rulesText: activeArgs.showRules ? category.rulesText : null,
     })),
@@ -68,12 +81,23 @@ const meta: Meta<TournamentStoryArgs> = {
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
+    categoryCount: { control: { type: 'range', min: 0, max: 12, step: 1 } },
     name: { control: 'text' },
     liveScoreHome: { control: { type: 'number', min: 0, max: 999 } },
     liveScoreAway: { control: { type: 'number', min: 0, max: 999 } },
+    matchCount: { control: { type: 'range', min: 0, max: 24, step: 1 } },
+    overallScoreRows: {
+      control: { type: 'range', min: 0, max: 16, step: 1 },
+      if: { arg: 'showOverallScore', eq: true },
+    },
+    responseDelay: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
     showOverallScore: { control: 'boolean' },
     showRules: { control: 'boolean' },
     showTeams: { control: 'boolean' },
+    teamCount: {
+      control: { type: 'range', min: 0, max: 24, step: 1 },
+      if: { arg: 'showTeams', eq: true },
+    },
     multiSport: { control: 'boolean' },
     loadMode: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
     liveConnectionLost: { control: 'boolean' },
@@ -103,7 +127,8 @@ const meta: Meta<TournamentStoryArgs> = {
   parameters: {
     layout: 'fullscreen',
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async () => {
           if (activeArgs.loadMode === 'loading') {
             await delay('infinite');
@@ -113,11 +138,15 @@ const meta: Meta<TournamentStoryArgs> = {
               errors: [{ message: 'O torneio não está disponível para visualização.' }],
             });
           }
+          if (activeArgs.responseDelay > 0) {
+            await delay(activeArgs.responseDelay);
+          }
           return HttpResponse.json({
             data: { publicSportsTournamentDetail: controlledTournament() },
           });
         }),
-      ],
+        ],
+      },
     },
   },
 };
@@ -163,7 +192,8 @@ export const WithoutPublishedMatches: Story = {
   name: 'Sem partidas publicadas',
   parameters: {
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', () =>
           HttpResponse.json({
             data: {
@@ -174,11 +204,32 @@ export const WithoutPublishedMatches: Story = {
             },
           }),
         ),
-      ],
+        ],
+      },
     },
   },
   play: async ({ canvasElement }) => {
     await expect(await within(canvasElement).findByText('Nenhuma próxima partida foi publicada.')).toBeVisible();
+  },
+};
+
+export const SparsePublication: Story = {
+  name: 'Publicação parcial e esparsa',
+  args: {
+    categoryCount: 1,
+    matchCount: 1,
+    overallScoreRows: 2,
+    teamCount: 2,
+  },
+};
+
+export const DensePublication: Story = {
+  name: 'Publicação densa',
+  args: {
+    categoryCount: 12,
+    matchCount: 24,
+    overallScoreRows: 16,
+    teamCount: 24,
   },
 };
 

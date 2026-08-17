@@ -3,6 +3,7 @@ import { EventsPageComponent } from './events-page.component';
 import {
   defaultPageStoryArgs,
   exercisePageStory,
+  pageStoryArgTypes,
   withPageStoryProviders,
   type PageStoryArgs,
 } from '../stories/page-story-support';
@@ -12,18 +13,7 @@ const meta: Meta<PageStoryArgs> = {
   title: 'CACiC Eventos/Workspace/Tabs/Events/Workspace Events Tab',
   tags: ['autodocs'],
   args: defaultPageStoryArgs,
-  argTypes: {
-    mode: {
-      control: 'select',
-      options: ['populated', 'empty', 'readonly', 'loading', 'drafts'],
-    },
-    itemCount: { control: { type: 'range', min: 0, max: 8, step: 1 } },
-    selectedIndex: { control: { type: 'range', min: 0, max: 7, step: 1 } },
-    publicationState: {
-      control: 'select',
-      options: ['DRAFT', 'PUBLISHED', 'SCHEDULED', 'UNPUBLISHED'],
-    },
-  },
+  argTypes: pageStoryArgTypes,
   decorators: [withPageStoryProviders],
   parameters: {
     layout: 'fullscreen',
@@ -44,6 +34,28 @@ export const WithDrafts: Story = {
     mode: 'drafts',
     publicationState: 'PUBLISHED',
   },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const DenseMixedEvents: Story = {
+  args: { itemCount: 30, sportsEvery: 2, coordinates: true, certificateMode: 'mixed' },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const Loading: Story = {
+  args: { mode: 'loading' },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const FrozenSportsEvent: Story = {
+  args: { frozenSelected: true, sportsEvery: 1, selectedIndex: 2 },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const LongContentTablet: Story = {
+  args: { longContent: true, itemCount: 12 },
+  parameters: { viewport: { defaultViewport: 'tablet' } },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
 };
 

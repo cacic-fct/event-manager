@@ -1,7 +1,7 @@
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import type { PublicEvent, PublicEventForm } from '@cacic-fct/event-manager-public-contracts';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import { of } from 'rxjs';
@@ -22,6 +22,9 @@ import {
 import { Event } from './event-page';
 
 interface EventStoryArgs extends PublicEventStoryControls, PublicLecturerStoryControls {
+  apiState: 'ready' | 'loading' | 'error';
+  latencyMs: number;
+  weatherState: 'forecast' | 'unavailable' | 'extreme-heat';
   allowSubscription: boolean;
   hasAvailableSlots: boolean;
   isSubscribed: boolean;
@@ -31,6 +34,9 @@ interface EventStoryArgs extends PublicEventStoryControls, PublicLecturerStoryCo
 const defaultArgs: EventStoryArgs = {
   ...publicEventStoryDefaultControls,
   ...publicLecturerStoryDefaultControls,
+  apiState: 'ready',
+  latencyMs: 120,
+  weatherState: 'forecast',
   allowSubscription: true,
   hasAvailableSlots: true,
   isSubscribed: false,
@@ -48,6 +54,8 @@ const previewRoute = {
   },
 };
 
+const onlineContext = createStoryContext();
+
 const meta: Meta<EventStoryArgs> = {
   component: Event,
   title: 'CACiC Eventos/Events/Detail Page',
@@ -56,6 +64,9 @@ const meta: Meta<EventStoryArgs> = {
   argTypes: {
     ...publicEventStoryControlArgTypes,
     ...publicLecturerStoryControlArgTypes,
+    apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
+    weatherState: { control: 'select', options: ['forecast', 'unavailable', 'extreme-heat'] },
     allowSubscription: { control: 'boolean' },
     hasAvailableSlots: { control: 'boolean' },
     isSubscribed: { control: 'boolean' },
@@ -64,7 +75,9 @@ const meta: Meta<EventStoryArgs> = {
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
+    ...eventParameters(onlineContext),
   },
+  render: (args) => renderStory(args, onlineContext),
 };
 
 export default meta;
@@ -72,15 +85,6 @@ export default meta;
 type Story = StoryObj<EventStoryArgs>;
 
 const previewContext = createStoryContext();
-const onlineContext = createStoryContext();
-const withoutLecturersContext = createStoryContext({ lecturerCount: 0 });
-const lecturerWithoutContactContext = createStoryContext({
-  lecturerCount: 1,
-  lecturerEmail: '',
-  lecturerWhatsapp: '',
-  publishGoogleUserPicture: false,
-});
-const withAttendanceFormsContext = createStoryContext({ hasAttendance: true });
 
 const exerciseStory = async (canvasElement: HTMLElement) => {
   const canvas = within(canvasElement);
@@ -100,8 +104,6 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 };
 
 export const Playground: Story = {
-  render: (args) => renderStory(args, onlineContext),
-  parameters: eventParameters(onlineContext),
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -110,8 +112,6 @@ export const WithoutLecturers: Story = {
   args: {
     lecturerCount: 0,
   },
-  render: (args) => renderStory(args, withoutLecturersContext),
-  parameters: eventParameters(withoutLecturersContext),
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -126,8 +126,6 @@ export const LecturerWithoutContact: Story = {
     lecturerWhatsapp: '',
     publishGoogleUserPicture: false,
   },
-  render: (args) => renderStory(args, lecturerWithoutContactContext),
-  parameters: eventParameters(lecturerWithoutContactContext),
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -141,8 +139,6 @@ export const WithAttendanceForms: Story = {
   args: {
     hasAttendance: true,
   },
-  render: (args) => renderStory(args, withAttendanceFormsContext),
-  parameters: eventParameters(withAttendanceFormsContext),
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -155,6 +151,42 @@ export const OfflineFallback: Story = {
   args: {},
   globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const SoldOut: Story = {
+  args: { hasAvailableSlots: false, slotsAvailable: 0, allowSubscription: true },
+  globals: { theme: 'light', network: 'online' },
+};
+
+export const AlreadySubscribed: Story = {
+  args: { isSubscribed: true, hasAttendance: false },
+  globals: { theme: 'light', network: 'online' },
+};
+
+export const ExtremeHeatForecast: Story = {
+  args: { weatherState: 'extreme-heat' },
+  globals: { theme: 'light', network: 'online' },
+};
+
+export const Loading: Story = {
+  args: { apiState: 'loading', latencyMs: 0 },
+  globals: { theme: 'light', network: 'online' },
+};
+
+export const LoadError: Story = {
+  args: { apiState: 'error', latencyMs: 0 },
+  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+};
+
+export const LongContentMobile: Story = {
+  args: {
+    name: 'Encontro interdisciplinar de tecnologia, acessibilidade, ciência aberta e transformação social',
+    shortDescription: 'Uma programação detalhada para validar descrições extensas, múltiplas seções e ações em telas estreitas.',
+    lecturerBiography: 'Pesquisadora e educadora com atuação interdisciplinar em produtos públicos digitais acessíveis.',
+    lecturerCount: 8,
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
 };
 
 export const PreviewLink: Story = {
@@ -185,12 +217,23 @@ function renderStory(args: EventStoryArgs, context: EventStoryContext) {
 function eventParameters(context: EventStoryContext) {
   return {
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async ({ request }) => {
+          if (context.args.apiState === 'loading') {
+            await delay('infinite');
+          }
+          if (context.args.latencyMs > 0) {
+            await delay(context.args.latencyMs);
+          }
           const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+          if (context.args.apiState === 'error') {
+            return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar o evento.' }] });
+          }
           return HttpResponse.json({ data: eventGraphqlData(body.query ?? '', context.args) });
         }),
-      ],
+        ],
+      },
     },
   };
 }
@@ -198,7 +241,8 @@ function eventParameters(context: EventStoryContext) {
 function previewParameters(context: EventStoryContext) {
   return {
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', () =>
           HttpResponse.json({
             data: {
@@ -206,7 +250,8 @@ function previewParameters(context: EventStoryContext) {
             },
           }),
         ),
-      ],
+        ],
+      },
     },
   };
 }
@@ -234,7 +279,7 @@ function eventGraphqlData(query: string, args: EventStoryArgs) {
     return {
       publicEvent: event,
       publicEventSubscriptionSummary: { eventId: event.id, hasAvailableSlots: args.hasAvailableSlots },
-      publicEventWeather: publicEventWeather(event),
+      publicEventWeather: args.weatherState === 'unavailable' ? null : publicEventWeather(event, args.weatherState),
       currentUserEventSubscription: args.isSubscribed ? currentUserEventSubscription(event) : null,
       currentUserEventAttendance: args.hasAttendance ? currentUserEventAttendance(event) : null,
     };
@@ -339,13 +384,13 @@ function currentUserEventAttendance(event: PublicEvent) {
   };
 }
 
-function publicEventWeather(event: PublicEvent) {
+function publicEventWeather(event: PublicEvent, state: EventStoryArgs['weatherState']) {
   return {
     eventId: event.id,
-    temperature: 24,
-    weatherCode: 1,
-    summary: 'Ensolarado',
-    materialIcon: 'wb_sunny',
+    temperature: state === 'extreme-heat' ? 41 : 24,
+    weatherCode: state === 'extreme-heat' ? 0 : 1,
+    summary: state === 'extreme-heat' ? 'Calor extremo' : 'Ensolarado',
+    materialIcon: state === 'extreme-heat' ? 'device_thermostat' : 'wb_sunny',
     forecastTime: event.startDate,
     fetchedAt: new Date().toISOString(),
     attribution: 'Open-Meteo',

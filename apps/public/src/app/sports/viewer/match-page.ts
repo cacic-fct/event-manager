@@ -48,6 +48,7 @@ export class SportsMatchPage {
   private readonly realtime = inject(SportsViewerRealtimeService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly reload = new Subject<string>();
   private currentMatchId = '';
   private realtimeSubscription?: Subscription;
@@ -56,7 +57,7 @@ export class SportsMatchPage {
   readonly now = signal(Date.now());
 
   constructor() {
-    if (isPlatformBrowser(inject(PLATFORM_ID))) {
+    if (this.isBrowser) {
       const timer = setInterval(() => this.now.set(Date.now()), 1000);
       this.destroyRef.onDestroy(() => clearInterval(timer));
     }
@@ -89,7 +90,9 @@ export class SportsMatchPage {
         this.currentMatchId = matchId;
         this.pageState.set({ status: 'loading' });
         this.reload.next(matchId);
-        this.watchMatch(matchId);
+        if (this.isBrowser) {
+          this.watchMatch(matchId);
+        }
       });
   }
 

@@ -49,11 +49,13 @@ export const OfflineFallback: Story = {
 export const ApiError: Story = {
   parameters: {
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', () =>
           HttpResponse.json({ errors: [{ message: 'Pagamento temporariamente indisponível.' }] }),
         ),
-      ],
+        ],
+      },
     },
   },
   play: async ({ canvasElement }) => {

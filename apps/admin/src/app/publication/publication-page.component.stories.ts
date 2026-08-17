@@ -128,7 +128,7 @@ function renderStory(args: PublicationStoryArgs, context: PublicationStoryContex
 function storyParameters(context: PublicationStoryContext) {
   return {
     msw: {
-      handlers: [createGraphqlHandler(context)],
+      handlers: { graphql: [createGraphqlHandler(context)] },
     },
   };
 }

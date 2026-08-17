@@ -1,6 +1,7 @@
 import { ContactType, EventType } from '@cacic-fct/shared-data-types';
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
+import { PUBLIC_SPORTS_MATCH_RELATIONS_WHERE } from '../sports/security/sports-public-visibility';
 
 export const PUBLIC_MAJOR_EVENT_SELECT = {
   id: true,
@@ -168,13 +169,30 @@ export const PUBLIC_EVENT_WHERE = {
   deletedAt: null,
   isPubliclyListed: true,
   publicationState: 'PUBLISHED',
-  OR: [
-    { majorEventId: null },
+  AND: [
     {
-      majorEvent: {
-        deletedAt: null,
-        publicationState: 'PUBLISHED',
-      },
+      OR: [
+        { majorEventId: null },
+        {
+          majorEvent: {
+            deletedAt: null,
+            publicationState: 'PUBLISHED',
+          },
+        },
+      ],
+    },
+    {
+      OR: [
+        { sportsMatch: { is: null } },
+        {
+          sportsMatch: {
+            is: {
+              deletedAt: null,
+              category: PUBLIC_SPORTS_MATCH_RELATIONS_WHERE.category,
+            },
+          },
+        },
+      ],
     },
   ],
 } satisfies Prisma.EventWhereInput;

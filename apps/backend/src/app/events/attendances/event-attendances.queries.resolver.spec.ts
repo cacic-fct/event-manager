@@ -64,8 +64,8 @@ describe('EventAttendancesQueriesResolver', () => {
   it('builds major event attendance rows from paginated subscriptions', async () => {
     prisma.majorEvent.findFirst.mockResolvedValue({ id: 'major-1' });
     prisma.event.findMany.mockResolvedValue([
-      { id: 'event-1', name: 'Opening', startDate: new Date('2026-05-21T12:00:00.000Z') },
-      { id: 'event-2', name: 'Workshop', startDate: new Date('2026-05-22T12:00:00.000Z') },
+      { id: 'event-1', name: 'Opening', emoji: '🎉', startDate: new Date('2026-05-21T12:00:00.000Z') },
+      { id: 'event-2', name: 'Workshop', emoji: '🛠️', startDate: new Date('2026-05-22T12:00:00.000Z') },
     ]);
     prisma.majorEventSubscription.findMany.mockResolvedValue([
       {
@@ -101,8 +101,8 @@ describe('EventAttendancesQueriesResolver', () => {
         subscriptionId: 'subscription-1',
         subscriptionStatus: SubscriptionStatus.CONFIRMED,
         attendances: [
-          expect.objectContaining({ eventId: 'event-1', attended: true, category: AttendanceCategory.REGULAR }),
-          expect.objectContaining({ eventId: 'event-2', attended: false, category: AttendanceCategory.UNKNOWN }),
+          expect.objectContaining({ eventId: 'event-1', eventEmoji: '🎉', attended: true, category: AttendanceCategory.REGULAR }),
+          expect.objectContaining({ eventId: 'event-2', eventEmoji: '🛠️', attended: false, category: AttendanceCategory.UNKNOWN }),
         ],
       }),
     ]);

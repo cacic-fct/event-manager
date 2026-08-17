@@ -252,18 +252,48 @@ export class SportsRegistrationAdminService extends SportsAdminBaseService {
       if (!registration || !member) {
         throw new NotFoundException('Inscrição ou integrante da equipe não encontrado.');
       }
-      await this.assertRoleLimit(tx, registration.category, registration.id, input.role);
-
       const existing = await tx.sportsRegistrationMember.findFirst({
         where: {
           registrationId: registration.id,
           teamMemberId: member.id,
-          role: input.role,
           deletedAt: null,
         },
       });
-      if (existing) {
+      if (existing?.role === input.role) {
         return existing;
+      }
+      await this.assertRoleLimit(tx, registration.category, registration.id, input.role);
+      if (existing) {
+        const assignment = await tx.sportsRegistrationMember.update({
+          where: { id: existing.id },
+          data: {
+            role: input.role,
+            updatedById: actorId,
+          },
+        });
+        await this.auditLog.record(
+          {
+            entityType: AuditLogEntityType.SPORTS_TEAM_MEMBER,
+            entityId: assignment.id,
+            entityLabel: `${registration.team.name} · ${registration.category.name}`,
+            operation: AuditLogOperation.UPDATE,
+            actor,
+            before: {
+              registrationId: existing.registrationId,
+              teamMemberId: existing.teamMemberId,
+              role: existing.role,
+            },
+            after: {
+              registrationId: assignment.registrationId,
+              teamMemberId: assignment.teamMemberId,
+              role: assignment.role,
+            },
+            summary: 'Função esportiva atualizada.',
+            scope: { eventGroupId: registration.category.eventGroupId },
+          },
+          tx,
+        );
+        return assignment;
       }
       const assignment = await tx.sportsRegistrationMember.create({
         data: {

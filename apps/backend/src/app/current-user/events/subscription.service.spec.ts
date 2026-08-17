@@ -1,7 +1,8 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { AuditLogEntityType, SubscriptionStatus } from '@prisma/client';
+import { AuditLogEntityType } from '@prisma/client';
 import { CurrentUserEventSubscriptionService } from './subscription.service';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
+import { requiredMajorEventImageLicenseAgreementWhere } from './image-license-agreement';
 
 describe('CurrentUserEventSubscriptionService', () => {
   it('requires explicit image-license acceptance when a target enables it', () => {
@@ -75,13 +76,7 @@ describe('CurrentUserEventSubscriptionService', () => {
 
     expect(prisma.majorEventSubscription.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          subscriptionStatus: SubscriptionStatus.CONFIRMED,
-          selectedEvents: { some: { deletedAt: null } },
-          majorEvent: expect.objectContaining({
-            requiresImageLicenseAgreement: true,
-          }),
-        }),
+        where: requiredMajorEventImageLicenseAgreementWhere('person-1', expect.any(Date)),
       }),
     );
   });

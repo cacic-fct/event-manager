@@ -6,7 +6,6 @@
 .command-title h1 { font-size: clamp(1.35rem, 2.1vw, 2rem); font-weight: 650; line-height: 1.15; }
 .command-title p, .section-heading p { color: var(--mat-sys-on-surface-variant); margin-top: 4px; max-width: 72ch; }
 .header-actions { align-items: stretch; }
-.header-actions mat-form-field { width: 180px; }
 .surface { border: 1px solid var(--mat-sys-outline-variant); border-radius: 12px; background: var(--mat-sys-surface); overflow: hidden; }
 .section-heading { justify-content: space-between; align-items: flex-start; padding: 16px 18px 12px; }
 .section-heading h2 { font-size: 1rem; font-weight: 650; }
@@ -21,6 +20,12 @@
 .chart-panel { min-width: 0; }
 .chart-wide { grid-column: 1 / -1; }
 .chart { width: 100%; height: 320px; }
+.throughput-chart { cursor: crosshair; touch-action: pan-y; }
+.throughput-heading { gap: 20px; }
+.time-window-control, .time-window-label { display: flex; align-items: center; gap: 8px; }
+.time-window-control { justify-content: flex-end; flex-wrap: wrap; min-width: min(100%, 320px); }
+.time-window-label { color: var(--mat-sys-on-surface-variant); font-size: .875rem; font-variant-numeric: tabular-nums; }
+.time-window-label mat-icon { width: 18px; height: 18px; font-size: 18px; }
 .collectors-chart { height: min(480px, 42vh); min-height: 300px; }
 .empty-chart { min-height: 220px; display: grid; place-content: center; margin: 0; color: var(--mat-sys-on-surface-variant); }
 .review-list { padding: 0 8px 8px; }
@@ -41,7 +46,8 @@
 @media (max-width: 980px) {
   .command-header { flex-direction: column; }
   .header-actions { width: 100%; }
-  .header-actions mat-form-field { flex: 1; }
+  .throughput-heading { flex-direction: column; }
+  .time-window-control { justify-content: flex-start; }
   .status-strip { grid-template-columns: repeat(2, 1fr); }
   .status-strip .top-collector { grid-column: 1 / -1; }
   .analytics-grid { grid-template-columns: 1fr; }
@@ -51,7 +57,6 @@
   .command-center { padding: 12px; }
   .command-header, .header-actions { gap: 8px; }
   .header-actions { flex-wrap: wrap; }
-  .header-actions mat-form-field { min-width: 160px; }
   .status-strip { grid-template-columns: 1fr 1fr; }
   .status-strip > div { min-height: 72px; padding: 10px 12px; }
   .review-list mat-list-item { padding-block: 8px; }

@@ -63,6 +63,7 @@ export class SportsTournamentPage {
   private readonly realtime = inject(SportsViewerRealtimeService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly reload = new Subject<string>();
   private currentTournamentId = '';
   private realtimeSubscription?: Subscription;
@@ -82,6 +83,12 @@ export class SportsTournamentPage {
       tournament?.categories[0] ??
       null
     );
+  });
+  readonly selectedCategoryIndex = computed(() => {
+    const tournament = this.tournament();
+    if (!tournament) return 0;
+    const index = tournament.categories.findIndex((category) => category.id === this.selectedCategoryId());
+    return index < 0 ? 0 : index;
   });
   readonly orderedMatches = computed(() => {
     const tournament = this.tournament();
@@ -103,7 +110,7 @@ export class SportsTournamentPage {
   );
 
   constructor() {
-    if (isPlatformBrowser(inject(PLATFORM_ID))) {
+    if (this.isBrowser) {
       const timer = setInterval(() => this.now.set(Date.now()), 1000);
       this.destroyRef.onDestroy(() => clearInterval(timer));
     }
@@ -142,7 +149,9 @@ export class SportsTournamentPage {
         this.currentTournamentId = tournamentId;
         this.pageState.set({ status: 'loading' });
         this.reload.next(tournamentId);
-        this.watchTournament(tournamentId);
+        if (this.isBrowser) {
+          this.watchTournament(tournamentId);
+        }
       });
   }
 

@@ -152,7 +152,8 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async ({ request }) => {
           const body = (await request.json()) as GraphqlBody;
           const query = body.query ?? '';
@@ -197,7 +198,8 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
 
           return HttpResponse.json({ data: {} });
         }),
-      ],
+        ],
+      },
     },
   },
 };

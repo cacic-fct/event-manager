@@ -1,9 +1,9 @@
 model AttendanceReviewFlag {
   id String @id @default(uuid(7))
 
-  eventId String
+  eventId  String
   personId String?
-  actorId String?
+  actorId  String?
 
   kind     AttendanceReviewFlagKind
   severity AttendanceReviewFlagSeverity @default(WARNING)
@@ -14,11 +14,11 @@ model AttendanceReviewFlag {
   summary   String
   details   Json?
 
-  detectedAt DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  reviewedAt DateTime?
+  detectedAt   DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  reviewedAt   DateTime?
   reviewedById String?
-  reviewNote String?
+  reviewNote   String?
 
   @@index([status, detectedAt])
   @@index([eventId, status, detectedAt])
@@ -50,12 +50,12 @@ enum AttendanceReviewFlagStatus {
 model AttendanceScanAttemptCounter {
   id String @id @default(uuid(7))
 
-  dedupeKey String @unique
+  dedupeKey String                   @unique
   eventId   String
   personId  String
   actorId   String?
   method    AttendanceCreationMethod
-  count     Int @default(1)
+  count     Int                      @default(1)
 
   windowStartedAt DateTime
   createdAt       DateTime @default(now())

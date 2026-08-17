@@ -9,6 +9,7 @@ import { WeatherService } from '../../weather/weather.service';
 import { CurrentUserContextService } from '../context.service';
 import { findCurrentUserAttendanceCollectionEvents } from '../events/attendance-collection-events';
 import { CurrentUserOnlineAttendanceRealtimeService } from '../events/attendance-realtime.service';
+import { requiresMajorEventImageLicenseAgreement } from '../events/image-license-agreement';
 import { activeScopedManagerGrantWhere, currentUserAssociatedEventWhere } from '../events/map-event-ids';
 import { EVENT_SELECT, EventRecord, GraphqlContext } from '../selects';
 import {
@@ -110,18 +111,7 @@ export class CurrentUserMyDayService {
     const viewModels = events.map((event) =>
       this.mapEvent(event, roleState, pendingOnlineEventIds, collectionEventIds, sportsRoute),
     );
-    const currentIndex = isToday
-      ? events.findIndex((event) => event.startDate <= generatedAt && event.endDate >= generatedAt)
-      : -1;
-    const nextIndex = events.findIndex((event, index) => {
-      if (index === currentIndex) {
-        return false;
-      }
-      return event.startDate > (isToday ? generatedAt : selectedBounds.start);
-    });
-    const effectiveNextIndex = nextIndex >= 0 ? nextIndex : currentIndex < 0 && !isToday ? 0 : -1;
-    const excluded = new Set([currentIndex, effectiveNextIndex].filter((index) => index >= 0));
-    const laterEvents = viewModels.filter((_, index) => !excluded.has(index) && index > effectiveNextIndex);
+    const timeline = resolveMyDayTimeline(events, isToday, generatedAt);
     const conflicts = buildConflictAlerts(events);
 
     return {
@@ -129,9 +119,9 @@ export class CurrentUserMyDayService {
       selectedDate: normalizedDate,
       minimumDate,
       hasContent,
-      currentEvent: currentIndex >= 0 ? viewModels[currentIndex] : null,
-      nextEvent: effectiveNextIndex >= 0 ? viewModels[effectiveNextIndex] : null,
-      laterEvents,
+      currentEvent: timeline.currentIndex >= 0 ? viewModels[timeline.currentIndex] : null,
+      nextEvent: timeline.nextIndex >= 0 ? viewModels[timeline.nextIndex] : null,
+      laterEvents: timeline.laterIndexes.map((index) => viewModels[index]),
       attention: [...pendingActions, ...conflicts].sort(
         (left, right) => left.priority - right.priority || left.id.localeCompare(right.id),
       ),
@@ -159,6 +149,11 @@ export class CurrentUserMyDayService {
         subscriptionStatus: true,
         receiptRejectionReason: true,
         imageLicenseAgreementAccepted: true,
+        selectedEvents: {
+          where: { deletedAt: null },
+          select: { id: true },
+          take: 1,
+        },
         majorEvent: {
           select: {
             name: true,
@@ -211,9 +206,7 @@ export class CurrentUserMyDayService {
       }
 
       if (
-        subscription.majorEvent.requiresImageLicenseAgreement &&
-        !subscription.imageLicenseAgreementAccepted &&
-        subscription.subscriptionStatus !== SubscriptionStatus.CANCELED
+        requiresMajorEventImageLicenseAgreement(subscription)
       ) {
         items.push({
           id: `image-license:${subscription.id}`,
@@ -522,6 +515,28 @@ export function formatSaoPauloDate(date: Date): string {
     month: '2-digit',
     day: '2-digit',
   }).format(date);
+}
+
+export function resolveMyDayTimeline(
+  events: readonly Pick<EventRecord, 'startDate' | 'endDate'>[],
+  isToday: boolean,
+  now: Date,
+): { currentIndex: number; nextIndex: number; laterIndexes: number[] } {
+  if (!isToday) {
+    return {
+      currentIndex: -1,
+      nextIndex: events.length > 0 ? 0 : -1,
+      laterIndexes: events.slice(1).map((_, index) => index + 1),
+    };
+  }
+
+  const currentIndex = events.findIndex((event) => event.startDate <= now && event.endDate >= now);
+  const nextIndex = events.findIndex((event) => event.startDate > now);
+  return {
+    currentIndex,
+    nextIndex,
+    laterIndexes: nextIndex < 0 ? [] : events.slice(nextIndex + 1).map((_, index) => nextIndex + index + 1),
+  };
 }
 
 export function buildConflictAlerts(events: readonly EventRecord[]): CurrentUserMyDayAttentionItem[] {

@@ -32,6 +32,9 @@ export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBase
     }
     const raw = this.categoryForm.getRawValue();
     const existing = this.categoryRead()?.category;
+    if (existing ? !this.canUpdateCategory() : !this.canCreateCategory()) {
+      return;
+    }
     await this.run('Não foi possível salvar a modalidade.', async () => {
       const payload = {
         ...this.nullableCategoryValues(raw),
@@ -58,6 +61,7 @@ export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBase
 
   async deleteCategory(category: SportsCategorySummary): Promise<void> {
     if (
+      !this.canDeleteCategory() ||
       !(await this.confirmAction(
         `Excluir ${category.name}?`,
         'Inscrições, chave e partidas vinculadas serão removidas.',
@@ -74,7 +78,7 @@ export abstract class SportsWorkspaceCategoryService extends SportsWorkspaceBase
 
   async cloneSelectedCategory(): Promise<void> {
     const category = this.categoryRead()?.category;
-    if (!category) {
+    if (!category || !this.canDuplicateCategory()) {
       return;
     }
     const destinationTournamentId = await this.askText(

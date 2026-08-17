@@ -5,14 +5,16 @@
         <h3>Regras gerais</h3>
         <p>O estado controla o ciclo do torneio; o período de inscrições pode seguir o grande evento ou ser próprio.</p>
       </div>
-      <button
-        mat-flat-button
-        type="button"
-        (click)="workspace.saveTournament()"
-        [disabled]="workspace.loading() || workspace.tournamentForm.invalid">
-        <mat-icon>save</mat-icon>
-        Salvar
-      </button>
+      @if (workspace.canUpdateTournament()) {
+        <button
+          mat-flat-button
+          type="button"
+          (click)="workspace.saveTournament()"
+          [disabled]="workspace.loading() || workspace.tournamentForm.invalid">
+          <mat-icon>save</mat-icon>
+          Salvar
+        </button>
+      }
     </div>
     <form [formGroup]="workspace.tournamentForm" class="form-grid">
       <mat-form-field>
@@ -104,7 +106,8 @@
         <p class="empty-copy">Nenhum ajuste manual. Resultados automáticos aparecerão aqui.</p>
       }
     </div>
-    <form [formGroup]="workspace.scoreEntryForm" class="compact-form" (ngSubmit)="workspace.createScoreEntry()">
+    @if (workspace.canUpdateScore()) {
+      <form [formGroup]="workspace.scoreEntryForm" class="compact-form" (ngSubmit)="workspace.createScoreEntry()">
       <div class="sports-subsection-heading span-2">
         <div>
           <h4>Novo ajuste</h4>
@@ -144,7 +147,8 @@
         <mat-label>Motivo do ajuste</mat-label>
         <input matInput formControlName="reason" />
       </mat-form-field>
-    </form>
+      </form>
+    }
   </aside>
 
   <section class="panel panel-stack span-all">
@@ -152,9 +156,11 @@
       <div>
         <h3>Locais esportivos</h3>
       </div>
-      <button mat-stroked-button type="button" (click)="workspace.newVenue()">
-        <mat-icon>add_location</mat-icon>Novo local
-      </button>
+      @if (workspace.canUpdateTournament()) {
+        <button mat-stroked-button type="button" (click)="workspace.newVenue()">
+          <mat-icon>add_location</mat-icon>Novo local
+        </button>
+      }
     </div>
     <div class="venue-layout">
       <mat-list class="result-list">
@@ -183,14 +189,16 @@
             <p>Cadastre quadras, piscinas ou arenas usadas pelas partidas.</p>
           </div>
           <div class="panel-actions">
-            @if (workspace.selectedVenueId()) {
+            @if (workspace.selectedVenueId() && workspace.canUpdateTournament()) {
               <button mat-button type="button" (click)="workspace.deleteSelectedVenue()">
                 <mat-icon>delete</mat-icon>Excluir
               </button>
             }
-            <button mat-flat-button type="submit" [disabled]="workspace.loading() || workspace.venueForm.invalid">
-              <mat-icon>save</mat-icon>Salvar local
-            </button>
+            @if (workspace.canUpdateTournament()) {
+              <button mat-flat-button type="submit" [disabled]="workspace.loading() || workspace.venueForm.invalid">
+                <mat-icon>save</mat-icon>Salvar local
+              </button>
+            }
           </div>
         </div>
         <div class="form-grid">
@@ -235,14 +243,18 @@
         <p>Duplique configurações em outro grande evento ou remova somente o modo esportivo.</p>
       </div>
       <div class="panel-actions">
-        <button mat-flat-button type="button" (click)="workspace.cloneTournament()">
-          <mat-icon>content_copy</mat-icon>
-          Duplicar torneio
-        </button>
-        <button mat-stroked-button type="button" (click)="workspace.deleteTournament()">
-          <mat-icon>delete</mat-icon>
-          Excluir torneio
-        </button>
+        @if (workspace.canDuplicateTournament()) {
+          <button mat-flat-button type="button" (click)="workspace.cloneTournament()">
+            <mat-icon>content_copy</mat-icon>
+            Duplicar torneio
+          </button>
+        }
+        @if (workspace.canDeleteTournament()) {
+          <button mat-stroked-button type="button" (click)="workspace.deleteTournament()">
+            <mat-icon>delete</mat-icon>
+            Excluir torneio
+          </button>
+        }
       </div>
     </div>
     <div class="danger-zone">

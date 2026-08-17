@@ -112,7 +112,8 @@ function renderStory(args: GroupPreviewStoryArgs, context: GroupPreviewStoryCont
 function storyParameters(context: GroupPreviewStoryContext) {
   return {
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', () =>
           HttpResponse.json({
             data: {
@@ -120,7 +121,8 @@ function storyParameters(context: GroupPreviewStoryContext) {
             },
           }),
         ),
-      ],
+        ],
+      },
     },
   };
 }

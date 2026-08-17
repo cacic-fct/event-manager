@@ -14,20 +14,22 @@ describe('SportsTournamentPage', () => {
   const navigate = vi.fn();
   const back = vi.fn();
   const getTournament = vi.fn(() => of(createSportsViewerTournament()));
+  const watchTournament = vi.fn(() => realtime);
 
   beforeEach(() => {
     realtime = new Subject<void>();
     paramMap.next(convertToParamMap({ tournamentId: 'tournament-fixture' }));
     getTournament.mockReset();
     getTournament.mockReturnValue(of(createSportsViewerTournament()));
+    watchTournament.mockClear();
     TestBed.configureTestingModule({
       providers: [
-        { provide: PLATFORM_ID, useValue: 'server' },
+        { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: ActivatedRoute, useValue: { paramMap } },
         { provide: Router, useValue: { navigate } },
         { provide: Location, useValue: { back } },
         { provide: SportsViewerApiService, useValue: { getTournament } },
-        { provide: SportsViewerRealtimeService, useValue: { watchTournament: () => realtime } },
+        { provide: SportsViewerRealtimeService, useValue: { watchTournament } },
       ],
     });
   });
@@ -42,6 +44,12 @@ describe('SportsTournamentPage', () => {
         createSportsViewerMatchForState('PAUSED'),
       ],
     });
+    const firstCategory = tournament.categories[0];
+    if (!firstCategory) throw new Error('Expected a tournament category fixture.');
+    tournament.categories = [
+      firstCategory,
+      { ...firstCategory, id: 'category-second', name: 'Vôlei' },
+    ];
     getTournament.mockReturnValue(of(tournament));
     const page = TestBed.runInInjectionContext(() => new SportsTournamentPage());
     const category = tournament.categories[0];
@@ -60,10 +68,19 @@ describe('SportsTournamentPage', () => {
 
     page.selectCategory(1);
     expect(page.selectedCategoryId()).toBe(tournament.categories[1]?.id ?? null);
+    expect(page.selectedCategoryIndex()).toBe(1);
     page.openMatch('match-target');
     expect(navigate).toHaveBeenCalledWith(['/sports/match', 'match-target']);
     page.goBack();
     expect(back).toHaveBeenCalledOnce();
+  });
+
+  it('does not open a browser-only realtime stream during server rendering', () => {
+    TestBed.overrideProvider(PLATFORM_ID, { useValue: 'server' });
+
+    TestBed.runInInjectionContext(() => new SportsTournamentPage());
+
+    expect(watchTournament).not.toHaveBeenCalled();
   });
 
   it('preserves personalized ordering and formats running overall time', () => {

@@ -180,6 +180,9 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     }
     const raw = this.teamForm.getRawValue();
     const existing = this.teamRead()?.team;
+    if (existing ? !this.canUpdateTeam() : !this.canCreateTeam()) {
+      return;
+    }
     await this.run('Não foi possível salvar a equipe.', async () => {
       const id = await firstValueFrom(
         this.api.mutate<string>(
@@ -214,6 +217,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     const team = this.teamRead()?.team;
     if (
       !team ||
+      !this.canDeleteTeam() ||
       !(await this.confirmAction(
         `Excluir ${team.name}?`,
         'Inscrições e escalações desta equipe serão removidas do torneio.',
@@ -230,7 +234,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
 
   async uploadTeamLogo(file: File): Promise<void> {
     const team = this.teamRead()?.team;
-    if (!team) {
+    if (!team || !this.canUpdateTeam()) {
       return;
     }
     if (!['image/avif', 'image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
@@ -254,7 +258,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
 
   async cloneSelectedTeam(): Promise<void> {
     const team = this.teamRead()?.team;
-    if (!team) {
+    if (!team || !this.canDuplicateTeam()) {
       return;
     }
     const destinationTournamentId = await this.askText(
@@ -332,7 +336,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
 
   async assignRepresentative(): Promise<void> {
     const team = this.teamRead()?.team;
-    if (!team || this.representativeForm.invalid) {
+    if (!team || !this.canAssignRepresentative() || this.representativeForm.invalid) {
       return;
     }
     await this.run('Não foi possível atribuir o representante.', async () => {
@@ -350,7 +354,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
 
   async revokeRepresentative(representativeId: string): Promise<void> {
     const team = this.teamRead()?.team;
-    if (!team) {
+    if (!team || !this.canAssignRepresentative()) {
       return;
     }
     await this.run('Não foi possível revogar o representante.', async () => {
@@ -365,7 +369,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
 
   async addTeamMember(): Promise<void> {
     const team = this.teamRead()?.team;
-    if (!team || this.memberForm.invalid) {
+    if (!team || !this.canUpdateTeam() || this.memberForm.invalid) {
       return;
     }
     await this.run('Não foi possível adicionar o integrante.', async () => {
@@ -386,7 +390,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     status: SportsTeamMemberStatus,
   ): Promise<void> {
     const team = this.teamRead()?.team;
-    if (!team) {
+    if (!team || !this.canUpdateTeam()) {
       return;
     }
     await this.run('Não foi possível alterar o integrante.', async () => {
@@ -403,6 +407,9 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
   }
 
   async updateShirtNumber(assignment: SportsTeamCategoryAssignment, value: string): Promise<void> {
+    if (!this.canUpdateTeam()) {
+      return;
+    }
     await this.updateAthleteProfile(assignment, { shirtNumber: this.normalizeProfileValue(value) });
   }
 
@@ -412,6 +419,9 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     gameAccountName: string,
     gameAccountUrl: string,
   ): Promise<void> {
+    if (!this.canUpdateTeam()) {
+      return;
+    }
     await this.updateAthleteProfile(assignment, {
       gameNickname: this.normalizeProfileValue(gameNickname),
       gameAccountName: this.normalizeProfileValue(gameAccountName),
@@ -457,6 +467,9 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     const teamRead = this.teamRead();
     const existing = teamRead?.registrations.find((registration) => registration.categoryId === raw.categoryId);
     if (existing) {
+      if (!this.canUpdateRegistration()) {
+        return;
+      }
       await this.run('Não foi possível atualizar o formulário da modalidade.', async () => {
         await firstValueFrom(
           this.api.mutate<string>('updateSportsRegistration', 'SportsRegistrationUpdateInput', {
@@ -468,6 +481,9 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
         await this.refreshSelectedTeamAfterRegistration(existing.teamId);
         this.notify('Formulário da modalidade atualizado.');
       });
+      return;
+    }
+    if (!this.canCreateAndPopulateRegistration()) {
       return;
     }
     await this.run('Não foi possível inscrever a equipe.', async () => {
@@ -488,7 +504,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
   async saveRegistrationSelections(): Promise<void> {
     const teamRead = this.teamRead();
     const options = this.registrationOptions();
-    if (!teamRead || !options.length) {
+    if (!teamRead || !options.length || !this.canManageRegistrationSelections()) {
       return;
     }
     const pendingQuestionnaires = options.filter(
@@ -554,6 +570,9 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
   async autoRegisterTeamInEligibleCategories(): Promise<void> {
     const teamRead = this.teamRead();
     const categories = this.automaticTeamCategories();
+    if (!this.canCreateAndPopulateRegistration()) {
+      return;
+    }
     if (!teamRead || !categories.length) {
       this.notify('Nenhuma modalidade nova atende ao mínimo de atletas aprovados.', true);
       return;
@@ -643,7 +662,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     status: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED' | 'ACTIVE',
   ): Promise<void> {
     const category = this.categoryRead()?.category;
-    if (!category) {
+    if (!category || !this.canUpdateRegistration()) {
       return;
     }
     await this.run('Não foi possível atualizar a inscrição.', async () => {
@@ -663,6 +682,7 @@ export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategory
     const category = this.categoryRead()?.category;
     if (
       !category ||
+      !this.canDeleteRegistration() ||
       !(await this.confirmAction(
         'Excluir inscrição?',
         'A equipe deixará esta modalidade e suas escalações serão removidas.',

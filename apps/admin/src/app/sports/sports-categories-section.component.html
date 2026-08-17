@@ -5,7 +5,9 @@
         <h3>Modalidades</h3>
         <p>Esporte, divisão e formato competitivo.</p>
       </div>
-      <button mat-stroked-button type="button" (click)="workspace.newCategory()"><mat-icon>add</mat-icon>Novo</button>
+      @if (workspace.canCreateCategory()) {
+        <button mat-stroked-button type="button" (click)="workspace.newCategory()"><mat-icon>add</mat-icon>Novo</button>
+      }
     </div>
     <mat-list class="result-list">
       @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
@@ -38,30 +40,39 @@
       </div>
       <div class="panel-actions">
         @if (workspace.categoryRead(); as read) {
+          @if (workspace.canDuplicateCategory()) {
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Duplicar modalidade"
+              aria-label="Duplicar modalidade"
+              (click)="workspace.cloneSelectedCategory()">
+              <mat-icon>content_copy</mat-icon>
+            </button>
+          }
+          @if (workspace.canDeleteCategory()) {
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Excluir modalidade"
+              aria-label="Excluir modalidade"
+              (click)="workspace.deleteCategory(read.category)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          }
+        }
+        @if (
+          (workspace.categoryRead() && workspace.canUpdateCategory()) ||
+          (!workspace.categoryRead() && workspace.canCreateCategory())
+        ) {
           <button
-            mat-icon-button
+            mat-flat-button
             type="button"
-            matTooltip="Duplicar modalidade"
-            aria-label="Duplicar modalidade"
-            (click)="workspace.cloneSelectedCategory()">
-            <mat-icon>content_copy</mat-icon>
-          </button>
-          <button
-            mat-icon-button
-            type="button"
-            matTooltip="Excluir modalidade"
-            aria-label="Excluir modalidade"
-            (click)="workspace.deleteCategory(read.category)">
-            <mat-icon>delete</mat-icon>
+            (click)="workspace.saveCategory()"
+            [disabled]="workspace.loading() || workspace.categoryForm.invalid">
+            <mat-icon>save</mat-icon>Salvar
           </button>
         }
-        <button
-          mat-flat-button
-          type="button"
-          (click)="workspace.saveCategory()"
-          [disabled]="workspace.loading() || workspace.categoryForm.invalid">
-          <mat-icon>save</mat-icon>Salvar
-        </button>
       </div>
     </div>
     <form [formGroup]="workspace.categoryForm" class="form-grid">
@@ -439,21 +450,29 @@
               >
             </span>
             <div class="review-actions">
-              <button
-                mat-icon-button
-                type="button"
-                matTooltip="Excluir inscrição"
-                [attr.aria-label]="'Excluir inscrição de ' + workspace.teamNameForRegistration(registration.id)"
-                (click)="workspace.deleteRegistration(registration)">
-                <mat-icon>delete</mat-icon>
-              </button>
-              <button
-                mat-button
-                type="button"
-                (click)="workspace.setRegistrationStatus(registration, 'CHANGES_REQUESTED')">
-                Pedir ajuste
-              </button>
-              @if (registration.status !== 'APPROVED' && registration.status !== 'ACTIVE') {
+              @if (workspace.canDeleteRegistration()) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Excluir inscrição"
+                  [attr.aria-label]="'Excluir inscrição de ' + workspace.teamNameForRegistration(registration.id)"
+                  (click)="workspace.deleteRegistration(registration)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              }
+              @if (workspace.canUpdateRegistration()) {
+                <button
+                  mat-button
+                  type="button"
+                  (click)="workspace.setRegistrationStatus(registration, 'CHANGES_REQUESTED')">
+                  Pedir ajuste
+                </button>
+              }
+              @if (
+                workspace.canUpdateRegistration() &&
+                registration.status !== 'APPROVED' &&
+                registration.status !== 'ACTIVE'
+              ) {
                 <button
                   mat-stroked-button
                   type="button"
@@ -461,7 +480,7 @@
                   Aprovar inscrição
                 </button>
               }
-              @if (registration.status === 'APPROVED') {
+              @if (workspace.canUpdateRegistration() && registration.status === 'APPROVED') {
                 <button mat-flat-button type="button" (click)="workspace.setRegistrationStatus(registration, 'ACTIVE')">
                   Liberar para competir
                 </button>

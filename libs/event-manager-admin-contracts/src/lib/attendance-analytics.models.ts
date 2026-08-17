@@ -56,7 +56,9 @@ export interface EventAttendanceAnalyticsSnapshot {
   eventName: string;
   emoji: string;
   generatedAt: string;
-  windowMinutes: number;
+  windowMinutes: number | null;
+  windowStart: string | null;
+  windowEnd: string | null;
   presentCount: number;
   noShowCount: number;
   pendingReviewCount: number;

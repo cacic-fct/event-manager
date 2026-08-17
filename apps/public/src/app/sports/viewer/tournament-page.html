@@ -115,7 +115,11 @@
     }
   </section>
 
-  <mat-tab-group animationDuration="180ms" [selectedIndex]="0" (selectedIndexChange)="selectCategory($event)">
+  <mat-tab-group
+    animationDuration="180ms"
+    [selectedIndex]="selectedCategoryIndex()"
+    (selectedIndexChange)="selectCategory($event)"
+  >
     @for (category of tournament.categories; track category.id) {
     <mat-tab>
       <ng-template mat-tab-label>

@@ -11,6 +11,8 @@ import { applicationConfig } from '@storybook/angular';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { cacicEventosHandlers } from './storybook-mocks';
 
+const [cacicEventosGraphqlHandler, ...cacicEventosRestHandlers] = cacicEventosHandlers;
+
 initialize({
   onUnhandledRequest: 'bypass',
   serviceWorker: {
@@ -202,7 +204,12 @@ const preview: Preview = {
   ],
   loaders: [mswLoader],
   parameters: {
-    msw: { handlers: cacicEventosHandlers },
+    msw: {
+      handlers: {
+        graphql: cacicEventosGraphqlHandler,
+        rest: cacicEventosRestHandlers,
+      },
+    },
     backgrounds: {
       default: 'workspace',
       values: [

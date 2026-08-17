@@ -34,6 +34,7 @@ export class SportsBackingResourceLifecycleService {
             latitude: true,
             longitude: true,
             locationDescription: true,
+            isPubliclyListed: true,
             allowSubscription: true,
             requiresImageLicenseAgreement: true,
             subscriptionStartDate: true,
@@ -44,6 +45,7 @@ export class SportsBackingResourceLifecycleService {
             shouldIssueCertificateForNonPayingAttendees: true,
             shouldIssueCertificateForNonSubscribedAttendees: true,
             shouldCollectAttendance: true,
+            shouldAllowOralAttendance: true,
             isOnlineAttendanceAllowed: true,
             shouldProvideSubscriberListToLecturer: true,
             onlineAttendanceCode: true,
@@ -69,7 +71,30 @@ export class SportsBackingResourceLifecycleService {
       this.changed(input.latitude, event.latitude) ||
       this.changed(input.longitude, event.longitude) ||
       this.changed(input.locationDescription, event.locationDescription) ||
-      this.changed(input.shouldIssueCertificate, event.shouldIssueCertificate);
+      this.changed(input.isPubliclyListed, event.isPubliclyListed) ||
+      this.changed(input.allowSubscription, event.allowSubscription) ||
+      this.changed(input.requiresImageLicenseAgreement, event.requiresImageLicenseAgreement) ||
+      this.changed(input.subscriptionStartDate, event.subscriptionStartDate) ||
+      this.changed(input.subscriptionEndDate, event.subscriptionEndDate) ||
+      this.changed(input.slots, event.slots) ||
+      this.changed(input.autoSubscribe, event.autoSubscribe) ||
+      this.changed(input.shouldIssueCertificate, event.shouldIssueCertificate) ||
+      this.changed(
+        input.shouldIssueCertificateForNonPayingAttendees,
+        event.shouldIssueCertificateForNonPayingAttendees,
+      ) ||
+      this.changed(
+        input.shouldIssueCertificateForNonSubscribedAttendees,
+        event.shouldIssueCertificateForNonSubscribedAttendees,
+      ) ||
+      this.changed(input.shouldCollectAttendance, event.shouldCollectAttendance) ||
+      this.changed(input.shouldAllowOralAttendance, event.shouldAllowOralAttendance) ||
+      this.changed(input.isOnlineAttendanceAllowed, event.isOnlineAttendanceAllowed) ||
+      this.changed(input.shouldProvideSubscriberListToLecturer, event.shouldProvideSubscriberListToLecturer) ||
+      this.changed(input.onlineAttendanceCode, event.onlineAttendanceCode) ||
+      this.changed(input.onlineAttendanceStartDate, event.onlineAttendanceStartDate) ||
+      this.changed(input.onlineAttendanceEndDate, event.onlineAttendanceEndDate) ||
+      input.publishAfterUpdate === true;
 
     if (changesOwnership) {
       throw new ConflictException(

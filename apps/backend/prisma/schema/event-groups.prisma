@@ -2,11 +2,11 @@ model EventGroup {
   id   String @id @default(uuid(7))
   name String
 
-  emoji String @default("❔")
+  emoji                         String  @default("❔")
   requiresImageLicenseAgreement Boolean @default(false)
 
-  events        Event[]
-  subscriptions EventGroupSubscription[]
+  events                       Event[]
+  subscriptions                EventGroupSubscription[]
   eventManagerPermissionGrants EventManagerPermissionGrant[]
   sportsCategory               SportsCategory?
 

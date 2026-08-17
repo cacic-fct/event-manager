@@ -1,48 +1,83 @@
+import { DEFAULT_MAP_CENTER } from '@cacic-fct/shared-utils';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { applicationConfig } from '@storybook/angular';
+import { expect, fn, waitFor } from 'storybook/test';
+import { PublicMapTileCacheWarmupService } from '../../shared/map/public-map-tile-cache-warmup.service';
 import { EventLocationMap } from './location-map';
 
-const meta: Meta<EventLocationMap> = {
+interface EventLocationMapStoryArgs {
+  latitude: number | null;
+  longitude: number | null;
+  title: string;
+}
+
+const warmLocation = fn(async () => undefined);
+const defaultArgs: EventLocationMapStoryArgs = {
+  latitude: DEFAULT_MAP_CENTER[1],
+  longitude: DEFAULT_MAP_CENTER[0],
+  title: 'FCT-Unesp',
+};
+
+const meta: Meta<EventLocationMapStoryArgs> = {
   component: EventLocationMap,
   title: 'CACiC Eventos/Events/Location Map',
   tags: ['autodocs'],
+  args: defaultArgs,
+  argTypes: {
+    latitude: { control: { type: 'number', min: -90, max: 90, step: 0.00001 } },
+    longitude: { control: { type: 'number', min: -180, max: 180, step: 0.00001 } },
+    title: { control: 'text' },
+  },
+  decorators: [
+    applicationConfig({
+      providers: [
+        {
+          provide: PublicMapTileCacheWarmupService,
+          useValue: { warmLocation },
+        },
+      ],
+    }),
+  ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };
 
 export default meta;
-
-type Story = StoryObj<EventLocationMap>;
-
-const exerciseStory = async (canvasElement: HTMLElement) => {
-  const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find(
-    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
-  );
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
-};
+type Story = StoryObj<EventLocationMapStoryArgs>;
 
 export const Playground: Story = {
-  args: { latitude: -22.1211, longitude: -51.4086, title: 'FCT-Unesp' },
-  globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  play: async ({ args, canvasElement }) => {
+    await expectRenderedMap(canvasElement);
+    await expect(warmLocation).toHaveBeenCalledWith(args.latitude, args.longitude);
+  },
 };
 
-export const OfflineFallback: Story = {
-  args: { latitude: -22.1211, longitude: -51.4086, title: 'Auditório' },
-  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+export const NearbyCampusBuilding: Story = {
+  name: 'Outro ponto próximo no campus',
+  args: {
+    latitude: DEFAULT_MAP_CENTER[1] + 0.0011,
+    longitude: DEFAULT_MAP_CENTER[0] - 0.0009,
+    title: 'Auditório da FCT-Unesp',
+  },
+  play: async ({ canvasElement }) => expectRenderedMap(canvasElement),
+};
+
+export const EquatorAndPrimeMeridian: Story = {
+  name: 'Coordenadas zero válidas',
+  args: { latitude: 0, longitude: 0, title: 'Encontro entre o Equador e Greenwich' },
+  play: async ({ canvasElement }) => expectRenderedMap(canvasElement),
+};
+
+export const LongLocationName: Story = {
+  name: 'Nome de localização extenso',
+  args: {
+    title: 'Faculdade de Ciências e Tecnologia da Universidade Estadual Paulista Júlio de Mesquita Filho · Campus de Presidente Prudente',
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  play: async ({ canvasElement }) => expectRenderedMap(canvasElement),
 };
 
 export const MissingCoordinates: Story = {
@@ -53,3 +88,16 @@ export const MissingCoordinates: Story = {
     await expect(map).toBeEmptyDOMElement();
   },
 };
+
+export const PartialCoordinates: Story = {
+  name: 'Coordenadas incompletas',
+  args: { latitude: DEFAULT_MAP_CENTER[1], longitude: null, title: 'Longitude ausente' },
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.querySelector('.map-target')).toBeEmptyDOMElement();
+  },
+};
+
+async function expectRenderedMap(canvasElement: HTMLElement): Promise<void> {
+  await waitFor(() => expect(canvasElement.querySelectorAll('.ol-layer canvas').length).toBeGreaterThan(0));
+  await expect(canvasElement.querySelector('.map-target')).not.toBeEmptyDOMElement();
+}

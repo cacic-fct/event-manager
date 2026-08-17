@@ -284,6 +284,7 @@ export const MAJOR_EVENT_USER_ATTENDANCE_FIELDS = `
   attendances {
     eventId
     eventName
+    eventEmoji
     eventStartDate
     attended
     attendedAt

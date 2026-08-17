@@ -10,25 +10,36 @@ import { SportsViewerRealtimeService } from './sports-viewer-realtime.service';
 
 describe('SportsMatchPage', () => {
   const paramMap = new BehaviorSubject(convertToParamMap({ matchId: 'match-fixture' }));
-  const realtime = new Subject<void>();
+  let realtime: Subject<void>;
   const back = vi.fn();
   const getMatch = vi.fn(() => of(createSportsViewerMatch({ id: 'match-fixture' })));
+  const watchMatch = vi.fn(() => realtime);
 
   beforeEach(() => {
+    realtime = new Subject<void>();
     paramMap.next(convertToParamMap({ matchId: 'match-fixture' }));
     getMatch.mockReset();
     getMatch.mockReturnValue(of(createSportsViewerMatch({ id: 'match-fixture' })));
     back.mockReset();
+    watchMatch.mockClear();
     TestBed.configureTestingModule({
       providers: [
-        { provide: PLATFORM_ID, useValue: 'server' },
+        { provide: PLATFORM_ID, useValue: 'browser' },
         provideRouter([]),
         { provide: ActivatedRoute, useValue: { paramMap, snapshot: { queryParamMap: convertToParamMap({}) } } },
         { provide: Location, useValue: { back } },
         { provide: SportsViewerApiService, useValue: { getMatch } },
-        { provide: SportsViewerRealtimeService, useValue: { watchMatch: () => realtime } },
+        { provide: SportsViewerRealtimeService, useValue: { watchMatch } },
       ],
     });
+  });
+
+  it('does not open a browser-only realtime stream during server rendering', () => {
+    TestBed.overrideProvider(PLATFORM_ID, { useValue: 'server' });
+
+    TestBed.runInInjectionContext(() => new SportsMatchPage());
+
+    expect(watchMatch).not.toHaveBeenCalled();
   });
 
   afterEach(() => TestBed.resetTestingModule());

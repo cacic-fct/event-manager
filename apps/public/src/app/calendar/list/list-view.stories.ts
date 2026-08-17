@@ -2,13 +2,13 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { CalendarListView } from './list-view';
 import {
-  CalendarStoryEventControls,
-  calendarStoryEventControlArgTypes,
-  calendarStoryEventDefaultControls,
+  CalendarStoryCollectionControls,
+  calendarStoryCollectionControlArgTypes,
+  calendarStoryCollectionDefaultControls,
   createCalendarStoryEvents,
 } from '../story-fixtures';
 
-type CalendarListViewStoryArgs = CalendarStoryEventControls & {
+type CalendarListViewStoryArgs = CalendarStoryCollectionControls & {
   canLoadOlder: boolean;
   isLoadingOlder: boolean;
   returnUrl: string;
@@ -19,13 +19,13 @@ const meta: Meta<CalendarListViewStoryArgs> = {
   title: 'CACiC Eventos/Calendar/List View',
   tags: ['autodocs'],
   args: {
-    ...calendarStoryEventDefaultControls,
+    ...calendarStoryCollectionDefaultControls,
     canLoadOlder: true,
     isLoadingOlder: false,
     returnUrl: '/calendar',
   },
   argTypes: {
-    ...calendarStoryEventControlArgTypes,
+    ...calendarStoryCollectionControlArgTypes,
     canLoadOlder: { control: 'boolean' },
     isLoadingOlder: { control: 'boolean' },
     returnUrl: { control: 'text' },
@@ -66,6 +66,21 @@ export const LoadingOlder: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByRole('button', { name: 'Carregando...' })).toBeDisabled();
+  },
+};
+
+export const DenseList: Story = {
+  args: { eventCount: 30 },
+  play: async ({ canvasElement }) => {
+    const eventLinks = await within(canvasElement).findAllByRole('link');
+    await expect(eventLinks).toHaveLength(30);
+  },
+};
+
+export const Empty: Story = {
+  args: { eventCount: 0, canLoadOlder: false },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Nenhum evento encontrado.')).toBeVisible();
   },
 };
 

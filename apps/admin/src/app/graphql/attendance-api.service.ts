@@ -30,6 +30,11 @@ import {
   PERSON_SEARCH_FIELDS,
 } from './graphql-query-fragments';
 
+export interface AttendanceAnalyticsTimeWindow {
+  start: string;
+  end: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AttendanceApiService {
   private readonly http = inject(HttpClient);
@@ -347,16 +352,18 @@ export class AttendanceApiService {
     );
   }
 
-  getEventAttendanceAnalytics(eventId: string, windowMinutes: number) {
+  getEventAttendanceAnalytics(eventId: string, window: AttendanceAnalyticsTimeWindow | null = null) {
     return this.graphqlHttp
       .request<{ eventAttendanceAnalytics: EventAttendanceAnalyticsSnapshot }>(
-        `query EventAttendanceAnalytics($eventId: String!, $windowMinutes: Int!) {
-          eventAttendanceAnalytics(eventId: $eventId, windowMinutes: $windowMinutes) {
+        `query EventAttendanceAnalytics($eventId: String!, $windowStart: DateTime, $windowEnd: DateTime) {
+          eventAttendanceAnalytics(eventId: $eventId, windowStart: $windowStart, windowEnd: $windowEnd) {
             eventId
             eventName
             emoji
             generatedAt
             windowMinutes
+            windowStart
+            windowEnd
             presentCount
             noShowCount
             pendingReviewCount
@@ -393,14 +400,20 @@ export class AttendanceApiService {
             }
           }
         }`,
-        { eventId, windowMinutes },
+        { eventId, windowStart: window?.start ?? null, windowEnd: window?.end ?? null },
       )
       .pipe(map((data) => data.eventAttendanceAnalytics));
   }
 
-  watchEventAttendanceAnalytics(eventId: string, windowMinutes: number): Observable<EventAttendanceAnalyticsSnapshot> {
+  watchEventAttendanceAnalytics(
+    eventId: string,
+    window: AttendanceAnalyticsTimeWindow | null = null,
+  ): Observable<EventAttendanceAnalyticsSnapshot> {
+    const query = window
+      ? `?windowStart=${encodeURIComponent(window.start)}&windowEnd=${encodeURIComponent(window.end)}`
+      : '';
     return watchReplayableEventSource(
-      `/api/event-attendances/events/${encodeURIComponent(eventId)}/analytics/events?windowMinutes=${windowMinutes}`,
+      `/api/event-attendances/events/${encodeURIComponent(eventId)}/analytics/events${query}`,
       {
         decode: (event) => {
           const parsed = JSON.parse(event.data) as {

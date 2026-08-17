@@ -111,7 +111,7 @@ describe('AttendanceApiService operation contracts', () => {
 
     await expect(firstValueFrom(service.listEventAttendanceOralRoster(eventId))).resolves.toEqual([attendanceFixture()]);
     await expect(firstValueFrom(service.setEventOralAttendances(oralInputs))).resolves.toEqual([attendanceFixture()]);
-    await expect(firstValueFrom(service.getEventAttendanceAnalytics(eventId, 30))).resolves.toEqual(analyticsFixture());
+    await expect(firstValueFrom(service.getEventAttendanceAnalytics(eventId))).resolves.toEqual(analyticsFixture());
     await expect(firstValueFrom(service.listAttendanceReviewEventSummaries())).resolves.toEqual([reviewSummaryFixture()]);
     await expect(
       firstValueFrom(service.reviewAttendanceFlag('flag-1', eventId, 'RESOLVED', 'Reviewed by admin')),
@@ -133,7 +133,8 @@ describe('AttendanceApiService operation contracts', () => {
     });
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(3, expect.stringContaining('query EventAttendanceAnalytics'), {
       eventId,
-      windowMinutes: 30,
+      windowStart: null,
+      windowEnd: null,
     });
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(4, expect.stringContaining('query AttendanceReviewEventSummaries'));
     expect(graphqlHttp.request).toHaveBeenNthCalledWith(5, expect.stringContaining('mutation ReviewAttendanceFlag'), {
@@ -158,6 +159,8 @@ describe('AttendanceApiService operation contracts', () => {
     expect(oralRosterQuery).toContain('personId');
     const analyticsQuery = graphqlHttp.request.mock.calls[2][0] as string;
     expect(analyticsQuery).toContain('pendingOfflineCount');
+    expect(analyticsQuery).toContain('windowStart');
+    expect(analyticsQuery).toContain('windowEnd');
     expect(analyticsQuery).toContain('reviewItems');
     const reviewQuery = graphqlHttp.request.mock.calls[4][0] as string;
     expect(reviewQuery).toContain('reviewAttendanceFlag');
@@ -272,16 +275,23 @@ describe('AttendanceApiService operation contracts', () => {
     );
   });
 
-  it('watches analytics for an encoded event and requested time window', async () => {
+  it('watches analytics for an encoded event and requested fixed interval', async () => {
     installFakeEventSource();
-    const analytics = firstValueFrom(service.watchEventAttendanceAnalytics('event / 1', 120));
+    const window = {
+      start: '2026-08-16T12:00:00.000Z',
+      end: '2026-08-16T13:00:00.000Z',
+    };
+    const analytics = firstValueFrom(service.watchEventAttendanceAnalytics('event / 1', window));
     const source = FakeEventSource.instances[0] as FakeEventSource;
 
-    expect(source.url).toBe('/api/event-attendances/events/event%20%2F%201/analytics/events?windowMinutes=120');
+    expect(source.url).toBe(
+      '/api/event-attendances/events/event%20%2F%201/analytics/events' +
+      '?windowStart=2026-08-16T12%3A00%3A00.000Z&windowEnd=2026-08-16T13%3A00%3A00.000Z',
+    );
     expect(source.init).toEqual({ withCredentials: true });
-    source.emitMessage({ type: 'event-attendance-analytics', snapshot: analyticsFixture(120) });
+    source.emitMessage({ type: 'event-attendance-analytics', snapshot: analyticsFixture(null, window) });
 
-    await expect(analytics).resolves.toEqual(analyticsFixture(120));
+    await expect(analytics).resolves.toEqual(analyticsFixture(null, window));
     expect(source.close).toHaveBeenCalledOnce();
   });
 });
@@ -337,11 +347,16 @@ function majorCsvImportFixture() {
   };
 }
 
-function analyticsFixture(windowMinutes = 30) {
+function analyticsFixture(
+  windowMinutes: number | null = null,
+  window: { start: string; end: string } | null = null,
+) {
   return {
     eventId: 'event-1',
     eventName: 'Evento',
     windowMinutes,
+    windowStart: window?.start ?? null,
+    windowEnd: window?.end ?? null,
     presentCount: 1,
     noShowCount: 0,
     pendingReviewCount: 0,

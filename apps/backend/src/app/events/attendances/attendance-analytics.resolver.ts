@@ -16,8 +16,10 @@ export class AttendanceAnalyticsResolver {
   eventAttendanceAnalytics(
     @Args('eventId', { type: () => String }) eventId: string,
     @Args('windowMinutes', { type: () => Int, nullable: true }) windowMinutes?: number,
+    @Args('windowStart', { type: () => Date, nullable: true }) windowStart?: Date,
+    @Args('windowEnd', { type: () => Date, nullable: true }) windowEnd?: Date,
   ): Promise<EventAttendanceAnalyticsSnapshot> {
-    return this.analytics.snapshot(eventId, windowMinutes);
+    return this.analytics.snapshot(eventId, { windowMinutes, start: windowStart, end: windowEnd });
   }
 
   @Query(() => [AttendanceReviewEventSummary], { name: 'attendanceReviewEventSummaries' })

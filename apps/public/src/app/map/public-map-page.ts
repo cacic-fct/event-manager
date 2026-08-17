@@ -29,6 +29,7 @@ import type Point from 'ol/geom/Point';
 import type ClusterSource from 'ol/source/Cluster';
 import type VectorSource from 'ol/source/Vector';
 import type { EventsKey } from 'ol/events';
+import type { Coordinate } from 'ol/coordinate';
 import { catchError, forkJoin, of } from 'rxjs';
 import { EmojiService } from '../shared/emoji.service';
 import { PublicMapGeolocationService } from '../shared/map/public-map-geolocation.service';
@@ -95,6 +96,7 @@ export class PublicMapPage implements AfterViewInit {
   readonly filters = signal(this.initialFilters());
   readonly utilityMenuOpen = signal(false);
   readonly utilityMenuMounted = signal(false);
+  readonly mapInteractionReady = signal(false);
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly locationPermission = this.geolocation.permission;
   readonly isLocating = this.geolocation.isRequesting;
@@ -116,6 +118,7 @@ export class PublicMapPage implements AfterViewInit {
   private clusterSource: ClusterSource<Feature<Point>> | null = null;
   private spreadSource: VectorSource<Feature<Point>> | null = null;
   private deepLinkSource: VectorSource<Feature<Point>> | null = null;
+  private projectCoordinate: ((coordinate: Coordinate) => Coordinate) | null = null;
   private mapEventKeys: EventsKey[] = [];
   private readonly eventIconImages = new globalThis.Map<string, HTMLCanvasElement>();
   private readonly restoredState = this.stateStorage.read();
@@ -123,6 +126,7 @@ export class PublicMapPage implements AfterViewInit {
   private hasAppliedInitialView = false;
   private utilityMenuShowPending = false;
   private utilityMenuAnimationFrame: number | null = null;
+  private mapRenderRevision = 0;
 
   private readonly dataLoader = effect((onCleanup) => {
     const authenticated = this.auth.isAuthenticated();
@@ -317,7 +321,6 @@ export class PublicMapPage implements AfterViewInit {
       { default: OlVectorLayer },
       { fromLonLat },
       { default: OSM },
-      { default: Attribution },
       { default: OlClusterSource },
       { default: OlVectorSource },
       { Circle: CircleStyle, Fill, Icon, Stroke, Style, Text },
@@ -328,7 +331,6 @@ export class PublicMapPage implements AfterViewInit {
       import('ol/layer/Vector'),
       import('ol/proj'),
       import('ol/source/OSM'),
-      import('ol/control/Attribution'),
       import('ol/source/Cluster'),
       import('ol/source/Vector'),
       import('ol/style'),
@@ -349,9 +351,17 @@ export class PublicMapPage implements AfterViewInit {
     const deepLinkSource = new OlVectorSource<Feature<Point>>({ wrapX: false });
     const eventStyleCache = new globalThis.Map<string, InstanceType<typeof Style>[]>();
     const clusterStyleCache = new globalThis.Map<number, InstanceType<typeof Style>>();
-    const computedStyles = this.document.defaultView?.getComputedStyle(target);
-    const primaryColor = computedStyles?.getPropertyValue('--mat-sys-primary').trim() || '#0b57d0';
-    const surfaceColor = computedStyles?.getPropertyValue('--mat-sys-surface').trim() || '#ffffff';
+    const resolveThemeColor = (property: string, fallback: string): string => {
+      const probe = this.document.createElement('span');
+      probe.hidden = true;
+      probe.style.color = `var(${property}, ${fallback})`;
+      target.appendChild(probe);
+      const resolved = this.document.defaultView?.getComputedStyle(probe).color || fallback;
+      probe.remove();
+      return resolved;
+    };
+    const primaryColor = resolveThemeColor('--mat-sys-primary', '#0b57d0');
+    const surfaceColor = resolveThemeColor('--mat-sys-surface', '#ffffff');
 
     const eventStyles = (event: PublicMapEvent) => {
       const isDeepLinked = event.id === this.deepLinkedEventId;
@@ -376,7 +386,9 @@ export class PublicMapPage implements AfterViewInit {
           text: image ? undefined : new Text({ text: event.emoji, font: '26px sans-serif' }),
         }),
       ];
-      eventStyleCache.set(cacheKey, styles);
+      if (image) {
+        eventStyleCache.set(cacheKey, styles);
+      }
       return styles;
     };
 
@@ -439,7 +451,7 @@ export class PublicMapPage implements AfterViewInit {
     });
     const map = new OlMap({
       target,
-      controls: [new Attribution({ collapsible: true, collapsed: true })],
+      controls: [],
       layers: [new TileLayer({ source: new OSM() }), clusterLayer, spreadLayer, deepLinkLayer],
       view,
     });
@@ -450,6 +462,7 @@ export class PublicMapPage implements AfterViewInit {
     this.clusterSource = clusterSource;
     this.spreadSource = spreadSource;
     this.deepLinkSource = deepLinkSource;
+    this.projectCoordinate = fromLonLat;
     this.locationLayer.addToMap(map);
 
     const clickKey = map.on('singleclick', (mapEvent) => this.handleMapClick(mapEvent.pixel));
@@ -460,24 +473,26 @@ export class PublicMapPage implements AfterViewInit {
     });
     this.mapEventKeys = [clickKey, moveKey, moveEndKey, pointerKey];
 
-    this.renderEvents(!stored);
+    await this.renderEvents(!stored);
     requestAnimationFrame(() => map.updateSize());
     setTimeout(() => {
       if (this.map === map) {
         map.updateSize();
-        map.renderSync();
+        map.render();
       }
     }, 250);
 
   }
 
   private async renderEvents(fit: boolean): Promise<void> {
+    const renderRevision = ++this.mapRenderRevision;
+    this.mapInteractionReady.set(false);
     const source = this.eventSource;
     if (!source) {
       return;
     }
     const events = this.filteredEvents();
-    await this.preloadEventIcons(events);
+    this.preloadEventIcons(events);
     const [{ default: FeatureClass }, { default: PointClass }, { fromLonLat }] = await Promise.all([
       import('ol/Feature'),
       import('ol/geom/Point'),
@@ -512,61 +527,68 @@ export class PublicMapPage implements AfterViewInit {
       this.deepLinkSource?.addFeature(deepLinkedFeature);
     }
     if (fit && deepLinkedEvent) {
-      await this.focusEvent(deepLinkedEvent, false);
+      this.focusEvent(deepLinkedEvent, false);
     } else if (fit) {
       this.fitVisibleEvents(false);
     }
     this.hasAppliedInitialView = true;
+    if (renderRevision === this.mapRenderRevision && this.map) {
+      this.map.render();
+      this.mapInteractionReady.set(true);
+    }
   }
 
-  private async preloadEventIcons(events: readonly PublicMapEvent[]): Promise<void> {
+  private preloadEventIcons(events: readonly PublicMapEvent[]): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
     const emojis = [...new Set(events.map((event) => event.emoji))];
-    await Promise.all(emojis.map(async (emoji) => {
+    emojis.forEach((emoji) => {
       if (this.eventIconImages.has(emoji)) {
         return;
       }
       const image = new Image();
       image.crossOrigin = 'anonymous';
       image.src = this.emoji.getTwemojiUrl(emoji);
-      try {
-        await image.decode();
-        if (!this.destroyRef.destroyed) {
+      void image
+        .decode()
+        .then(() => {
+          if (this.destroyRef.destroyed) {
+            return;
+          }
           const canvas = this.document.createElement('canvas');
           canvas.width = 36;
           canvas.height = 36;
           canvas.getContext('2d')?.drawImage(image, 0, 0, 36, 36);
           this.eventIconImages.set(emoji, canvas);
-        }
-      } catch {
-        // The style falls back to the platform emoji when the cached Twemoji cannot load.
-      }
-    }));
+          this.map?.render();
+        })
+        .catch(() => {
+          // The style keeps using the platform emoji when Twemoji cannot load.
+        });
+    });
   }
 
-  private async focusEvent(event: PublicMapEvent, animate: boolean): Promise<void> {
-    if (!this.map || event.longitude == null || event.latitude == null) {
+  private focusEvent(event: PublicMapEvent, animate: boolean): void {
+    if (!this.map || !this.projectCoordinate || event.longitude == null || event.latitude == null) {
       return;
     }
-    const { fromLonLat } = await import('ol/proj');
     this.map.getView().animate({
-      center: fromLonLat([event.longitude, event.latitude]),
+      center: this.projectCoordinate([event.longitude, event.latitude]),
       zoom: DEFAULT_MAP_ZOOM,
       duration: animate ? 260 : 0,
     });
   }
 
-  private async fitVisibleEvents(animate: boolean): Promise<void> {
+  private fitVisibleEvents(animate: boolean): void {
     const map = this.map;
+    const projectCoordinate = this.projectCoordinate;
     const events = this.filteredEvents();
     const average = averageCoordinates(events);
-    if (!map || !average) {
+    if (!map || !projectCoordinate || !average) {
       if (map) {
-        const { fromLonLat } = await import('ol/proj');
         map.getView().animate({
-          center: fromLonLat([...DEFAULT_MAP_CENTER]),
+          center: projectCoordinate?.([...DEFAULT_MAP_CENTER]) ?? map.getView().getCenter(),
           zoom: DEFAULT_MAP_ZOOM,
           duration: animate ? 260 : 0,
         });
@@ -574,10 +596,11 @@ export class PublicMapPage implements AfterViewInit {
       return;
     }
 
-    const { fromLonLat } = await import('ol/proj');
-    const projectedCenter = fromLonLat(average);
+    const projectedCenter = projectCoordinate(average);
     const projected = events.flatMap((event) =>
-      event.longitude == null || event.latitude == null ? [] : [fromLonLat([event.longitude, event.latitude])],
+      event.longitude == null || event.latitude == null
+        ? []
+        : [projectCoordinate([event.longitude, event.latitude])],
     );
     const maximumDelta = projected.reduce(
       (delta, coordinate) => [
@@ -726,6 +749,7 @@ export class PublicMapPage implements AfterViewInit {
 
   private async destroyMap(): Promise<void> {
     this.locationLayer.destroy();
+    this.mapInteractionReady.set(false);
     const map = this.map;
     if (!map) {
       return;
@@ -744,5 +768,6 @@ export class PublicMapPage implements AfterViewInit {
     this.clusterSource = null;
     this.spreadSource = null;
     this.deepLinkSource = null;
+    this.projectCoordinate = null;
   }
 }

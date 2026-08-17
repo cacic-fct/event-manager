@@ -9,9 +9,7 @@ import { of, throwError } from 'rxjs';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
-import { SubscriptionApiService } from '../graphql/subscription-api.service';
 import {
-  adminFixtureDateFromNow,
   createAdminEvent,
   createAdminEventAttendance,
   createAdminMajorEvent,
@@ -41,7 +39,6 @@ describe('AttendancesService', () => {
     updateOfflineEventAttendanceSubmission: ReturnType<typeof vi.fn>;
     listMajorEventUserAttendances: ReturnType<typeof vi.fn>;
   };
-  let subscriptionApi: { updateMajorEventSubscription: ReturnType<typeof vi.fn> };
   let eventApi: { listEvents: ReturnType<typeof vi.fn>; getEvent: ReturnType<typeof vi.fn> };
   let peopleApi: { listPeopleSummaries: ReturnType<typeof vi.fn> };
   let dialog: { open: ReturnType<typeof vi.fn> };
@@ -85,9 +82,6 @@ describe('AttendancesService', () => {
         of([createAdminMajorEventUserAttendance({ majorEventId: majorEvent.id }, person, majorEvent)]),
       ),
     };
-    subscriptionApi = {
-      updateMajorEventSubscription: vi.fn(() => of({})),
-    };
     eventApi = {
       listEvents: vi.fn(() => of([event])),
       getEvent: vi.fn(() => of(event)),
@@ -107,7 +101,6 @@ describe('AttendancesService', () => {
         FormBuilder,
         AttendancesService,
         { provide: AttendanceApiService, useValue: api },
-        { provide: SubscriptionApiService, useValue: subscriptionApi },
         { provide: EventApiService, useValue: eventApi },
         { provide: PeopleApiService, useValue: peopleApi },
         { provide: MajorEventsService, useValue: { majorEvents: signal([majorEvent]) } },
@@ -321,60 +314,31 @@ describe('AttendancesService', () => {
     expect(service.canApproveOfflineAttendanceSubmission(invalid as never)).toBe(false);
   });
 
-  it('edits major-event attendance and synchronizes subscription and event attendance mutations', async () => {
+  it('exposes only attended major-event activities in the selected-person summary', () => {
     const attendance = createAdminMajorEventUserAttendance(
       {
         majorEventId: majorEvent.id,
         personId: person.id,
         attendances: [
-          { eventId: 'event-1', eventName: 'Evento 1', eventStartDate: event.startDate, attended: true, attendedAt: null, category: 'REGULAR' },
-          { eventId: 'event-2', eventName: 'Evento 2', eventStartDate: event.startDate, attended: false, attendedAt: null, category: 'REGULAR' },
+          { eventId: 'event-1', eventName: 'Evento 1', eventEmoji: '🎓', eventStartDate: event.startDate, attended: true, attendedAt: null, category: 'REGULAR' },
+          { eventId: 'event-2', eventName: 'Evento 2', eventEmoji: '💡', eventStartDate: event.startDate, attended: false, attendedAt: null, category: 'REGULAR' },
         ],
       },
       person,
       majorEvent,
     );
-    service.majorEventAttendanceForm.controls.majorEventId.setValue(majorEvent.id);
     service.selectMajorEventUserAttendance(attendance);
-    service.enableMajorEventAttendanceEdit();
-    service.setMajorEventAttendanceEvent('event-1', false);
-    service.setMajorEventAttendanceEvent('event-2', true);
-    service.majorEventAttendanceEditForm.patchValue({
-      subscriptionStatus: 'CANCELED',
-      amountPaid: 10,
-      paymentDate: adminFixtureDateFromNow(2).slice(0, 10),
-      paymentTier: 'Aluno',
-    });
 
-    await service.saveMajorEventAttendanceEdit();
-
-    expect(subscriptionApi.updateMajorEventSubscription).toHaveBeenCalledWith(attendance.subscriptionId, {
-      subscriptionStatus: 'CANCELED',
-      amountPaid: 10,
-      paymentDate: adminFixtureDateFromNow(2).slice(0, 10),
-      paymentTier: 'Aluno',
-    });
-    expect(api.createEventAttendance).toHaveBeenCalledWith({ eventId: 'event-2', personId: person.id });
-    expect(api.deleteEventAttendance).toHaveBeenCalledWith({ eventId: 'event-1', personId: person.id });
-    expect(service.majorEventAttendanceEditMode()).toBe(false);
-
-    service.selectMajorEventUserAttendance(null);
-    await service.saveMajorEventAttendanceEdit();
-    expect(feedback.error).not.toHaveBeenCalled();
+    expect(service.selectedMajorEventAttendances()).toEqual([
+      expect.objectContaining({ eventId: 'event-1', eventEmoji: '🎓' }),
+    ]);
   });
 
-  it('loads major-event attendance, supports selection/edit cancellation, and guards stale refreshes', async () => {
+  it('loads major-event attendance, supports selection, and guards stale refreshes', async () => {
     await service.selectMajorEventAttendancesById(majorEvent.id);
     expect(api.listMajorEventUserAttendances).toHaveBeenCalledWith(majorEvent.id, { skip: 0, take: 51 });
     expect(router.navigate).toHaveBeenCalledWith(['/attendances/major-event', majorEvent.id]);
     expect(service.selectedMajorEventUserAttendance()?.majorEventId).toBe(majorEvent.id);
-
-    service.enableMajorEventAttendanceEdit();
-    service.toggleMajorEventAttendanceEvent('event-2');
-    expect(service.selectedMajorEventAttendanceEventIds()).toContain('event-2');
-    service.cancelMajorEventAttendanceEdit();
-    expect(service.majorEventAttendanceEditMode()).toBe(false);
-    expect(service.selectedMajorEventAttendanceEventIds()).not.toContain('event-2');
 
     const calls = api.listMajorEventUserAttendances.mock.calls.length;
     await service.refreshMajorEventUserAttendancesFor('other-major');
@@ -382,7 +346,7 @@ describe('AttendancesService', () => {
     expect(service.getAttendanceCategoryLabel('NON_PAYING')).toBe('Sem pagamento');
   });
 
-  it('validates CSV exports before opening download flows and maps export dialog cancellation', async () => {
+  it('validates event CSV exports before opening download flows and maps export dialog cancellation', async () => {
     await service.exportEventAttendancesCsv();
     expect(snackBar.open).toHaveBeenCalledWith('Selecione um evento antes de baixar o CSV.', 'Fechar', {
       duration: 3000,
@@ -393,11 +357,6 @@ describe('AttendancesService', () => {
     dialog.open.mockReturnValueOnce({ afterClosed: () => of(null) });
     await service.exportEventAttendancesCsv();
     expect(api.listEventAttendances).toHaveBeenCalledWith(event.id, { skip: 0, take: 1000, status: undefined });
-
-    await service.exportMajorEventAttendancesCsv();
-    expect(snackBar.open).toHaveBeenCalledWith('Selecione um grande evento antes de baixar o CSV.', 'Fechar', {
-      duration: 3000,
-    });
   });
 });
 

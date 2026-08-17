@@ -32,9 +32,21 @@
   touch-action: none;
 }
 
-:host ::ng-deep .map-target .ol-attribution.ol-control {
-  left: 8px !important;
-  right: auto !important;
+.map-attribution {
+  background: color-mix(in srgb, var(--mat-sys-surface) 86%, transparent);
+  bottom: 4px;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  left: 4px;
+  padding: 2px 5px;
+  position: absolute;
+  text-decoration: none;
+  z-index: 7;
+}
+
+.map-attribution:hover,
+.map-attribution:focus-visible {
+  text-decoration: underline;
 }
 
 .loading-bar {

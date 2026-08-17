@@ -159,7 +159,8 @@ const meta: Meta<HomeStoryArgs> = {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async () => {
           const args = activeArgs ?? defaultArgs;
           if (args.state === 'loading') {
@@ -178,7 +179,8 @@ const meta: Meta<HomeStoryArgs> = {
             },
           });
         }),
-      ],
+        ],
+      },
     },
   },
 };

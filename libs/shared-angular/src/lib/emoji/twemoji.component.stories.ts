@@ -14,14 +14,16 @@ const meta: Meta<TwemojiComponent> = {
   parameters: {
     layout: 'centered',
     msw: {
-      handlers: [
-        http.get('https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/:asset', () =>
-          HttpResponse.text(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="#ffcc4d"/></svg>',
-            { headers: { 'Content-Type': 'image/svg+xml' } },
+      handlers: {
+        rest: [
+          http.get('https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/svg/:asset', () =>
+            HttpResponse.text(
+              '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="#ffcc4d"/></svg>',
+              { headers: { 'Content-Type': 'image/svg+xml' } },
+            ),
           ),
-        ),
-      ],
+        ],
+      },
     },
   },
 };

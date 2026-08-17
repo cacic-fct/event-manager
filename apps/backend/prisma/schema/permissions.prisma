@@ -29,12 +29,16 @@ model EventManagerPermissionGrant {
   validFrom  DateTime?
   validUntil DateTime?
 
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   createdById String?
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime  @updatedAt
   updatedById String?
   deletedAt   DateTime?
 
+  @@unique([userId, permission], map: "event_manager_permission_grants_global_not_deleted_key", where: raw("\"deletedAt\" IS NULL AND \"scope\" = 'GLOBAL'"))
+  @@unique([userId, permission, eventId], map: "event_manager_permission_grants_event_not_deleted_key", where: raw("\"deletedAt\" IS NULL AND \"scope\" = 'EVENT'"))
+  @@unique([userId, permission, majorEventId], map: "event_manager_permission_grants_major_event_not_deleted_key", where: raw("\"deletedAt\" IS NULL AND \"scope\" = 'MAJOR_EVENT'"))
+  @@unique([userId, permission, eventGroupId], map: "event_manager_permission_grants_event_group_not_deleted_key", where: raw("\"deletedAt\" IS NULL AND \"scope\" = 'EVENT_GROUP'"))
   @@index([userId])
   @@index([personId])
   @@index([permission])
@@ -45,9 +49,5 @@ model EventManagerPermissionGrant {
   @@index([validFrom])
   @@index([validUntil])
   @@index([deletedAt])
-  @@unique([userId, permission], map: "event_manager_permission_grants_global_not_deleted_key", where: raw("\"deletedAt\" IS NULL AND \"scope\" = 'GLOBAL'"))
-  @@unique([userId, permission, eventId], map: "event_manager_permission_grants_event_not_deleted_key", where: raw("\"deletedAt\" IS NULL AND \"scope\" = 'EVENT'"))
-  @@unique([userId, permission, majorEventId], map: "event_manager_permission_grants_major_event_not_deleted_key", where: raw("\"deletedAt\" IS NULL AND \"scope\" = 'MAJOR_EVENT'"))
-  @@unique([userId, permission, eventGroupId], map: "event_manager_permission_grants_event_group_not_deleted_key", where: raw("\"deletedAt\" IS NULL AND \"scope\" = 'EVENT_GROUP'"))
   @@map("event_manager_permission_grants")
 }

@@ -73,16 +73,18 @@ const meta: Meta<SportsBracketStoryArgs> = {
     layout: 'padded',
     viewport: { defaultViewport: 'responsive' },
     msw: {
-      handlers: [
-        http.get('/api/storybook/sports/team-logo/:teamId', ({ request }) => {
-          const requestedColor = new URL(request.url).searchParams.get('color') ?? '';
-          const color = /^#[0-9a-f]{6}$/i.test(requestedColor) ? requestedColor : '#315da8';
-          return HttpResponse.text(
-            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path fill="${color}" d="M32 5 52 12v18c0 13-8 24-20 29C20 54 12 43 12 30V12z"/><path fill="white" d="m24 31 5 5 11-12 4 4-15 16-9-9z"/></svg>`,
-            { headers: { 'Content-Type': 'image/svg+xml' } },
-          );
-        }),
-      ],
+      handlers: {
+        rest: [
+          http.get('/api/storybook/sports/team-logo/:teamId', ({ request }) => {
+            const requestedColor = new URL(request.url).searchParams.get('color') ?? '';
+            const color = /^#[0-9a-f]{6}$/i.test(requestedColor) ? requestedColor : '#315da8';
+            return HttpResponse.text(
+              `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><path fill="${color}" d="M32 5 52 12v18c0 13-8 24-20 29C20 54 12 43 12 30V12z"/><path fill="white" d="m24 31 5 5 11-12 4 4-15 16-9-9z"/></svg>`,
+              { headers: { 'Content-Type': 'image/svg+xml' } },
+            );
+          }),
+        ],
+      },
     },
   },
 };

@@ -260,7 +260,7 @@ export abstract class SportsWorkspaceReviewService extends SportsWorkspaceMatchS
 
   async cloneTournament(): Promise<void> {
     const tournament = this.tournamentRead()?.tournament;
-    if (!tournament) {
+    if (!tournament || !this.canDuplicateTournament()) {
       return;
     }
     const source = this.majorEvents().find((majorEvent) => majorEvent.id === tournament.majorEventId);

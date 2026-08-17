@@ -20,6 +20,7 @@ interface EventComponentFixtureOptions {
   formsApi?: Partial<PublicEventFormApiService>;
   dialog?: Partial<MatDialog>;
   routeParams?: Params;
+  parentRoutePath?: string;
 }
 
 async function createEventComponentFixture(
@@ -44,6 +45,9 @@ async function createEventComponentFixture(
         useValue: {
           paramMap: of(convertToParamMap({ eventId: 'event-1', ...options.routeParams })),
           queryParamMap: of(convertToParamMap(queryParamMap)),
+          parent: options.parentRoutePath
+            ? { snapshot: { routeConfig: { path: options.parentRoutePath } } }
+            : null,
         },
       },
       {
@@ -74,6 +78,7 @@ async function createEventComponentFixture(
         provide: Router,
         useValue: {
           url: '/event/event-1',
+          navigate: vi.fn(),
           navigateByUrl: vi.fn(),
         },
       },
@@ -336,6 +341,32 @@ describe('Event', () => {
 
   it('should default to /menu if neither back nor returnUrl is provided', async () => {
     expect(component.backUrl()).toBe('/menu');
+  });
+
+  it('redirects a standalone sports event to its match viewer', async () => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData();
+    eventPageData.event = { ...eventPageData.event, sportsMatch: sportsMatchMarker() };
+    const newFixture = await createEventComponentFixture({}, { eventPageData });
+    await newFixture.whenStable();
+
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/sports/match', 'match-1'], {
+      queryParams: { returnUrl: '/menu' },
+      replaceUrl: true,
+    });
+  });
+
+  it.each([
+    'major-event/:majorEventId/subscription',
+    'major-event/:majorEventId/ranked-subscription',
+  ])('keeps sports event details inside the registration flow for %s', async (parentRoutePath) => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData();
+    eventPageData.event = { ...eventPageData.event, sportsMatch: sportsMatchMarker() };
+    const newFixture = await createEventComponentFixture({}, { eventPageData, parentRoutePath });
+    await newFixture.whenStable();
+
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
   });
 
   it.each(['https://evil.example/map', '//evil.example/map', '/\\evil.example/map', 'map']) (
@@ -757,3 +788,11 @@ describe('Event', () => {
     );
   });
 });
+
+function sportsMatchMarker() {
+  return {
+    id: 'match-1',
+    categoryId: 'category-1',
+    category: { tournamentId: 'tournament-1' },
+  };
+}

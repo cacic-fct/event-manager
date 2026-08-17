@@ -7,6 +7,7 @@ import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { EventFormApiService } from '../graphql/event-form-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import { PlacePresetApiService } from '../graphql/place-preset-api.service';
+import { PermissionsService } from '../permissions/permissions.service';
 import { SportsApiService } from './sports-api.service';
 import { SportsWorkspaceService } from './sports-workspace.service';
 import {
@@ -19,8 +20,14 @@ import { toLocalDate } from './sports-workspace-form.utils';
 
 describe('SportsWorkspaceService', () => {
   let workspace: SportsWorkspaceService;
+  const permissions = {
+    has: vi.fn((permission: string) => permission.startsWith('sports-')),
+    hasAll: vi.fn(() => true),
+  };
 
   beforeEach(() => {
+    permissions.has.mockImplementation((permission: string) => permission.startsWith('sports-'));
+    permissions.hasAll.mockReturnValue(true);
     TestBed.configureTestingModule({
       providers: [
         FormBuilder,
@@ -30,6 +37,7 @@ describe('SportsWorkspaceService', () => {
         { provide: EventFormApiService, useValue: {} },
         { provide: PeopleApiService, useValue: {} },
         { provide: PlacePresetApiService, useValue: {} },
+        { provide: PermissionsService, useValue: permissions },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: MatDialog, useValue: { open: vi.fn() } },
       ],
@@ -416,6 +424,20 @@ describe('SportsWorkspaceService', () => {
       { registrationId: 'registration-auto', teamMemberId: 'member-1', role: 'PLAYER' },
     ]);
     expect(api.team).toHaveBeenCalledWith('team-1');
+  });
+
+  it('does not call a mutation when the current user only has read access', async () => {
+    const api = TestBed.inject(SportsApiService) as unknown as {
+      mutate: ReturnType<typeof vi.fn>;
+    };
+    api.mutate = vi.fn();
+    permissions.has.mockReturnValue(false);
+    workspace.tournamentRead.set(createAdminSportsTournamentRead());
+
+    await workspace.saveTournament();
+
+    expect(workspace.canUpdateTournament()).toBe(false);
+    expect(api.mutate).not.toHaveBeenCalled();
   });
 
   it('reviews a pending action without a selected match', async () => {

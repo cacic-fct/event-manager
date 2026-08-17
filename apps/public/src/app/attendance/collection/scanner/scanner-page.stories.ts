@@ -31,11 +31,13 @@ type AttendanceScannerStoryArgs = {
   queueScenario: QueueScenario;
   feedScenario: FeedScenario;
   queueCount: number;
+  feedCount: number;
+  eventStartOffsetMinutes: number;
+  eventDurationMinutes: number;
+  eventLocation: string;
 };
 
 const now = new Date();
-const eventStart = new Date(now.getTime() + 20 * 60_000);
-const eventEnd = new Date(eventStart.getTime() + 2 * 60 * 60_000);
 
 const defaultArgs: AttendanceScannerStoryArgs = {
   eventName: 'Credenciamento',
@@ -45,6 +47,10 @@ const defaultArgs: AttendanceScannerStoryArgs = {
   queueScenario: 'empty',
   feedScenario: 'recent',
   queueCount: 3,
+  feedCount: 2,
+  eventStartOffsetMinutes: 20,
+  eventDurationMinutes: 120,
+  eventLocation: 'Auditório',
 };
 
 let activeArgs = defaultArgs;
@@ -88,6 +94,10 @@ const meta: Meta<AttendanceScannerStoryArgs> = {
     queueScenario: { control: 'select', options: ['empty', 'pending', 'syncing', 'failed', 'review', 'mixed'] },
     feedScenario: { control: 'select', options: ['recent', 'empty'] },
     queueCount: { control: { type: 'range', min: 1, max: 8, step: 1 }, if: { arg: 'queueScenario', neq: 'empty' } },
+    feedCount: { control: { type: 'range', min: 0, max: 50, step: 1 }, if: { arg: 'feedScenario', eq: 'recent' } },
+    eventStartOffsetMinutes: { control: { type: 'range', min: -240, max: 1_440, step: 20 } },
+    eventDurationMinutes: { control: { type: 'range', min: 30, max: 480, step: 30 } },
+    eventLocation: { control: 'text' },
   },
   decorators: [
     applicationConfig({
@@ -151,7 +161,7 @@ const meta: Meta<AttendanceScannerStoryArgs> = {
               activeArgs.eventSource === 'online'
                 ? of([buildCollectionEvent(activeArgs)])
                 : throwError(() => new Error('Rede indisponível no Storybook.')),
-            listFeed: () => of(activeArgs.feedScenario === 'recent' ? buildFeed() : []),
+            listFeed: () => of(activeArgs.feedScenario === 'recent' ? buildFeed(activeArgs) : []),
             watchFeed: () => NEVER,
             registerScannerCode: () =>
               activeArgs.networkOnline
@@ -251,7 +261,30 @@ export const LocationDenied: Story = {
   },
 };
 
+export const ImpreciseLocation: Story = {
+  args: { locationState: 'imprecise' },
+};
+
+export const DenseRecentFeed: Story = {
+  args: { feedScenario: 'recent', feedCount: 50, queueScenario: 'mixed', queueCount: 8 },
+};
+
+export const EventAlreadyEnded: Story = {
+  args: { eventStartOffsetMinutes: -240, eventDurationMinutes: 60 },
+};
+
+export const LongEventNameMobile: Story = {
+  args: {
+    eventName: 'Credenciamento interdisciplinar de participantes, convidados, palestrantes e equipes esportivas',
+    eventLocation: 'Auditório principal do Centro de Eventos, bloco acadêmico e cultural',
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
 function buildCollectionEvent(args: AttendanceScannerStoryArgs): AttendanceCollectionEvent {
+  const eventStart = new Date(now.getTime() + args.eventStartOffsetMinutes * 60_000);
+  const eventEnd = new Date(eventStart.getTime() + args.eventDurationMinutes * 60_000);
   return {
     eventId: 'event-open',
     event: {
@@ -261,7 +294,7 @@ function buildCollectionEvent(args: AttendanceScannerStoryArgs): AttendanceColle
       endDate: eventEnd.toISOString(),
       emoji: '✅',
       type: 'OTHER',
-      locationDescription: 'Auditório',
+      locationDescription: args.eventLocation || null,
       shouldCollectAttendance: true,
       isPubliclyListed: true,
       queueCount: 0,
@@ -269,30 +302,19 @@ function buildCollectionEvent(args: AttendanceScannerStoryArgs): AttendanceColle
   };
 }
 
-function buildFeed(): AttendanceScannerFeedItem[] {
-  return [
-    {
-      personId: 'person-1',
-      eventId: 'event-open',
-      fullName: 'Ana Beatriz Silva',
-      unespRole: 'aluno-graduacao',
-      subscriptionStatus: 'CONFIRMED',
-      attendedAt: new Date(now.getTime() - 2 * 60_000).toISOString(),
-      createdByMethod: 'SCANNER',
-      collectedByFirstName: 'Marina',
-    },
-    {
-      personId: 'person-2',
-      eventId: 'event-open',
-      fullName: 'Carlos Eduardo Lima',
-      unespRole: 'external',
-      subscriptionStatus: null,
-      attendedAt: new Date(now.getTime() - 8 * 60_000).toISOString(),
-      createdByMethod: 'MANUAL_INPUT',
-      collectedByFirstName: 'Marina',
-      committedByFirstName: 'João',
-    },
-  ];
+function buildFeed(args: AttendanceScannerStoryArgs): AttendanceScannerFeedItem[] {
+  faker.seed(20260816 + args.feedCount);
+  return Array.from({ length: Math.max(0, Math.min(50, Math.round(args.feedCount))) }, (_, index) => ({
+    personId: `person-${index + 1}`,
+    eventId: 'event-open',
+    fullName: faker.person.fullName(),
+    unespRole: index % 3 === 0 ? 'aluno-graduacao' : 'external',
+    subscriptionStatus: index % 4 === 0 ? 'CONFIRMED' : null,
+    attendedAt: new Date(now.getTime() - (index + 1) * 2 * 60_000).toISOString(),
+    createdByMethod: index % 2 === 0 ? 'SCANNER' : 'MANUAL_INPUT',
+    collectedByFirstName: index % 5 === 0 ? 'Marina Aparecida' : 'Marina',
+    ...(index % 3 === 0 ? { committedByFirstName: 'João' } : {}),
+  }));
 }
 
 function buildQueue(args: AttendanceScannerStoryArgs): OfflineAttendanceQueueItem[] {

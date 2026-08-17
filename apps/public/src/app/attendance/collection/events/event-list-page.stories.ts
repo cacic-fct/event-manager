@@ -9,31 +9,44 @@ import { createPublicStoryEvent } from '../../../testing/public-event-story-fixt
 import { AttendanceCollectionApiService, type AttendanceCollectionEvent } from '../attendance-collection-api.service';
 import { ScannerEventList } from './event-list-page';
 
-type LoadMode = 'ready' | 'loading' | 'empty' | 'offline-cache';
+type LoadMode = 'ready' | 'loading' | 'empty' | 'offline-cache' | 'offline-empty';
 
 interface ScannerEventListStoryArgs {
   loadMode: LoadMode;
   eventCount: number;
+  cacheCount: number;
+  namePrefix: string;
+  startOffsetMinutes: number;
+  durationMinutes: number;
+  oralAttendanceEvery: number;
+  missingLocationEvery: number;
 }
 
 const defaultArgs: ScannerEventListStoryArgs = {
   loadMode: 'ready',
   eventCount: 4,
+  cacheCount: 4,
+  namePrefix: '',
+  startOffsetMinutes: 30,
+  durationMinutes: 120,
+  oralAttendanceEvery: 2,
+  missingLocationEvery: 3,
 };
 
 let activeArgs = defaultArgs;
 
-function collectionEvents(): AttendanceCollectionEvent[] {
-  faker.seed(20260813 + activeArgs.eventCount);
+function collectionEvents(count = activeArgs.eventCount): AttendanceCollectionEvent[] {
+  faker.seed(20260813 + count);
   const now = new Date();
 
-  return Array.from({ length: activeArgs.eventCount }, (_, index) => {
-    const startsAt = new Date(now.getTime() + (index === 0 ? 30 : index * 8 * 60) * 60_000);
-    const endsAt = new Date(startsAt.getTime() + 2 * 60 * 60_000);
+  return Array.from({ length: Math.max(0, Math.min(30, Math.round(count))) }, (_, index) => {
+    const startsAt = new Date(now.getTime() + (activeArgs.startOffsetMinutes + index * 8 * 60) * 60_000);
+    const endsAt = new Date(startsAt.getTime() + activeArgs.durationMinutes * 60_000);
+    const missingLocation = activeArgs.missingLocationEvery > 0 && (index + 1) % activeArgs.missingLocationEvery === 0;
     const baseEvent = createPublicStoryEvent({
       id: `collection-event-${index + 1}`,
       index,
-      name:
+      name: `${activeArgs.namePrefix.trim() ? `${activeArgs.namePrefix.trim()} ` : ''}${
         index === 0
           ? 'Credenciamento'
           : faker.helpers.arrayElement([
@@ -41,16 +54,17 @@ function collectionEvents(): AttendanceCollectionEvent[] {
               'Arquitetura Angular com Signals',
               'Observabilidade para APIs GraphQL',
               'Introdução à segurança ofensiva',
-            ]),
+            ])}`,
       emoji: faker.helpers.arrayElement(['✅', '🧪', '🧠', '📡']),
-      locationDescription: index % 3 === 2 ? null : `Sala ${index + 1}`,
+      locationDescription: missingLocation ? null : `Sala ${index + 1}`,
     });
     const event = {
       ...baseEvent,
-      locationDescription: index % 3 === 2 ? null : `Sala ${index + 1}`,
+      locationDescription: missingLocation ? null : `Sala ${index + 1}`,
       startDate: startsAt.toISOString(),
       endDate: endsAt.toISOString(),
-      shouldAllowOralAttendance: index % 2 === 1,
+      shouldAllowOralAttendance:
+        activeArgs.oralAttendanceEvery > 0 && (index + 1) % activeArgs.oralAttendanceEvery === 0,
     };
     return { eventId: event.id, event };
   });
@@ -64,13 +78,19 @@ const meta: Meta<ScannerEventListStoryArgs> = {
   argTypes: {
     loadMode: {
       control: 'inline-radio',
-      options: ['ready', 'loading', 'empty', 'offline-cache'],
+      options: ['ready', 'loading', 'empty', 'offline-cache', 'offline-empty'],
       description: 'Origem e estado da lista autorizada para coleta.',
     },
     eventCount: {
-      control: { type: 'range', min: 1, max: 12, step: 1 },
+      control: { type: 'range', min: 0, max: 30, step: 1 },
       description: 'Quantidade de eventos gerados deterministicamente.',
     },
+    cacheCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
+    namePrefix: { control: 'text' },
+    startOffsetMinutes: { control: { type: 'range', min: -240, max: 1_440, step: 30 } },
+    durationMinutes: { control: { type: 'range', min: 30, max: 480, step: 30 } },
+    oralAttendanceEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    missingLocationEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
   },
   render: (args) => {
     activeArgs = args;
@@ -88,7 +108,8 @@ const meta: Meta<ScannerEventListStoryArgs> = {
           provide: AttendanceOfflineQueueService,
           useValue: {
             replaceCollectionEvents: () => Promise.resolve(),
-            getCollectionEvents: () => Promise.resolve(collectionEvents()),
+            getCollectionEvents: () =>
+              Promise.resolve(activeArgs.loadMode === 'offline-empty' ? [] : collectionEvents(activeArgs.cacheCount)),
           },
         },
         {
@@ -98,7 +119,7 @@ const meta: Meta<ScannerEventListStoryArgs> = {
               if (activeArgs.loadMode === 'loading') {
                 return NEVER;
               }
-              if (activeArgs.loadMode === 'offline-cache') {
+              if (activeArgs.loadMode === 'offline-cache' || activeArgs.loadMode === 'offline-empty') {
                 return throwError(() => new Error('Sem conexão com o servidor.'));
               }
               return of(activeArgs.loadMode === 'empty' ? [] : collectionEvents());
@@ -147,7 +168,7 @@ export const Playground: Story = {
 
 export const ManyAuthorizedEvents: Story = {
   name: 'Muitos eventos autorizados',
-  args: { eventCount: 12 },
+  args: { eventCount: 30 },
 };
 
 export const Empty: Story = {
@@ -169,4 +190,23 @@ export const OfflineCache: Story = {
 
 export const Loading: Story = {
   args: { loadMode: 'loading' },
+};
+
+export const OfflineWithoutCache: Story = {
+  args: { loadMode: 'offline-empty', cacheCount: 0 },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+};
+
+export const PastEvents: Story = {
+  args: { eventCount: 8, startOffsetMinutes: -240, durationMinutes: 60 },
+};
+
+export const LongNamesMobile: Story = {
+  args: {
+    eventCount: 12,
+    namePrefix: 'Atividade interdisciplinar de tecnologia, acessibilidade e extensão universitária',
+    missingLocationEvery: 2,
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
 };

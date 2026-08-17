@@ -591,7 +591,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
   }
 
   async createScoreEntry(): Promise<void> {
-    if (this.scoreEntryForm.invalid || !this.tournamentId()) {
+    if (!this.canUpdateScore() || this.scoreEntryForm.invalid || !this.tournamentId()) {
       return;
     }
     await this.run('Não foi possível registrar a pontuação.', async () => {
@@ -635,7 +635,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
 
   async saveVenue(): Promise<void> {
     const tournament = this.tournamentRead()?.tournament;
-    if (!tournament || this.venueForm.invalid) {
+    if (!tournament || !this.canUpdateTournament() || this.venueForm.invalid) {
       this.venueForm.markAllAsTouched();
       return;
     }
@@ -678,6 +678,7 @@ export abstract class SportsWorkspaceMatchService extends SportsWorkspaceTeamSer
     if (
       !tournament ||
       !venue ||
+      !this.canUpdateTournament() ||
       !(await this.confirmAction(`Excluir ${venue.name}?`, 'Partidas futuras precisarão receber outro local.'))
     ) {
       return;

@@ -7,17 +7,17 @@ model MajorEvent {
   description String?
   emoji       String  @default("❔")
 
-  events Event[]
+  events                       Event[]
   eventManagerPermissionGrants EventManagerPermissionGrant[]
-  ownedForms    EventForm[]         @relation("EventFormOwnerMajorEvent")
-  formLinks     EventFormLink[]     @relation("EventFormLinkMajorEvent")
-  formResponses EventFormResponse[] @relation("EventFormResponseMajorEvent")
+  ownedForms                   EventForm[]                   @relation("EventFormOwnerMajorEvent")
+  formLinks                    EventFormLink[]               @relation("EventFormLinkMajorEvent")
+  formResponses                EventFormResponse[]           @relation("EventFormResponseMajorEvent")
 
-  subscriptions         MajorEventSubscription[]
-  sportsTournament      SportsTournament?
-  requiresImageLicenseAgreement Boolean @default(true)
-  subscriptionStartDate DateTime?
-  subscriptionEndDate   DateTime?
+  subscriptions                 MajorEventSubscription[]
+  sportsTournament              SportsTournament?
+  requiresImageLicenseAgreement Boolean                  @default(true)
+  subscriptionStartDate         DateTime?
+  subscriptionEndDate           DateTime?
 
   maxCoursesPerAttendee       Int?
   maxLecturesPerAttendee      Int?
@@ -40,10 +40,10 @@ model MajorEvent {
 
   certificateConfigs CertificateConfig[]
 
-  publicationState      PublicationState @default(DRAFT)
-  scheduledPublishAt    DateTime?
-  publishedAt           DateTime?
-  unpublishedAt         DateTime?
+  publicationState       PublicationState @default(DRAFT)
+  scheduledPublishAt     DateTime?
+  publishedAt            DateTime?
+  unpublishedAt          DateTime?
   publicationScheduledBy String?
   publicationUpdatedBy   String?
 
@@ -64,7 +64,7 @@ model MajorEvent {
 }
 
 model PaymentInfo {
-  id       String @id @default(uuid(7))
+  id       String  @id @default(uuid(7))
   bankName String
   agency   String
   account  String
@@ -110,8 +110,8 @@ model MajorEventReceipt {
   nameMatched     Boolean?
   matchedNameText String?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime                            @default(now())
+  updatedAt         DateTime                            @updatedAt
   validationActions MajorEventReceiptValidationAction[]
 
   @@index([subscriptionId])
@@ -137,7 +137,7 @@ model MajorEventReceiptValidationAction {
   previousRejectionReason String?
   nextRejectionReason     String?
 
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   createdById String?
   undoneAt    DateTime?
   undoneById  String?
@@ -181,13 +181,13 @@ enum PriceType {
 }
 
 model PriceTier {
-  id                         String          @id @default(uuid(7))
-  priceId                    String
-  price                      MajorEventPrice @relation(fields: [priceId], references: [id])
+  id      String          @id @default(uuid(7))
+  priceId String
+  price   MajorEventPrice @relation(fields: [priceId], references: [id])
 
   name                       String
   value                      Int
-  includesSportsRegistration Boolean         @default(false)
+  includesSportsRegistration Boolean @default(false)
 
   @@index([priceId])
   @@map("price_tiers")

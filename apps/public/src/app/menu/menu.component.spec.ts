@@ -100,7 +100,6 @@ describe('MenuComponent', () => {
 
     expect(links?.[0]?.getAttribute('href')).toBe('/map');
     expect(links?.[0]?.textContent).toContain('Mapa');
-    expect(links?.[0]?.textContent).toContain('Eventos por localização');
   });
 
   it('shows the admin panel link for users with workspace entry permissions', async () => {

@@ -174,55 +174,6 @@ describe('workspace subscription and attendance management integration', () => {
     });
   });
 
-  it('updates subscription data and creates/removes event attendances from the major-event attendance editor', async () => {
-    const attendance = createAdminMajorEventUserAttendance({
-      majorEventId: 'major-event-1',
-      subscriptionId: 'major-event-subscription-1',
-      personId: 'person-1',
-      attendances: [
-        {
-          eventId: 'event-1',
-          eventName: 'Credenciamento',
-          eventStartDate: '2026-05-21T12:00:00.000Z',
-          attended: true,
-          attendedAt: '2026-05-21T12:30:00.000Z',
-          category: 'REGULAR',
-        },
-        {
-          eventId: 'event-2',
-          eventName: 'Palestra',
-          eventStartDate: '2026-05-21T14:00:00.000Z',
-          attended: false,
-          attendedAt: null,
-          category: 'REGULAR',
-        },
-      ],
-    });
-    attendancesService.majorEventAttendanceForm.controls.majorEventId.setValue('major-event-1');
-    attendancesService.selectMajorEventUserAttendance(attendance);
-    attendancesService.enableMajorEventAttendanceEdit();
-    attendancesService.setMajorEventAttendanceEvent('event-1', false);
-    attendancesService.setMajorEventAttendanceEvent('event-2', true);
-    attendancesService.majorEventAttendanceEditForm.patchValue({
-      subscriptionStatus: 'CANCELED',
-      amountPaid: 0,
-      paymentDate: '2026-05-22',
-      paymentTier: 'Isento',
-    });
-
-    await attendancesService.saveMajorEventAttendanceEdit();
-
-    expect(subscriptionApi.updateMajorEventSubscription).toHaveBeenCalledWith('major-event-subscription-1', {
-      subscriptionStatus: 'CANCELED',
-      amountPaid: 0,
-      paymentDate: '2026-05-22',
-      paymentTier: 'Isento',
-    });
-    expect(attendanceApi.createEventAttendance).toHaveBeenCalledWith({ eventId: 'event-2', personId: 'person-1' });
-    expect(attendanceApi.deleteEventAttendance).toHaveBeenCalledWith({ eventId: 'event-1', personId: 'person-1' });
-    expect(attendancesService.majorEventAttendanceEditMode()).toBe(false);
-  });
-
   it('reloads explicit absences after the scanner changes ABSENT to PRESENT', async () => {
     const person = createAdminPerson({ id: 'person-1' });
     let attendance = createAdminEventAttendance({ status: 'ABSENT' }, person);

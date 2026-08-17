@@ -88,6 +88,7 @@ COPY --from=production-deps --chown=app:app /workspace/apps/backend/prisma ./app
 COPY --from=builder --chown=app:app /workspace/dist/apps/backend ./
 COPY --from=playwright --chown=app:app /ms-playwright /ms-playwright
 
+COPY --chown=app:app certificate-templates ./certificate-templates
 COPY --chown=app:app tools/evcomp-import ./tools/evcomp-import
 
 USER app

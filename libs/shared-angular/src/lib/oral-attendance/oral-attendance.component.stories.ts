@@ -9,17 +9,27 @@ type StoryArgs = {
   peopleCount: number;
   decidedCount: number;
   syncLabel: string;
+  presentEvery: number;
+  missingDocumentEvery: number;
+  missingRoleEvery: number;
+  longNames: boolean;
   decisionChanged: ReturnType<typeof fn>;
   manualSubmitted: ReturnType<typeof fn>;
 };
 
-function buildPeople(count: number): OralAttendancePerson[] {
+function buildPeople(args: StoryArgs): OralAttendancePerson[] {
   faker.seed(20260729);
-  return Array.from({ length: count }, (_, index) => ({
+  return Array.from({ length: args.peopleCount }, (_, index) => ({
     personId: `person-${index + 1}`,
-    fullName: faker.person.fullName(),
-    identityDocument: `•••.${faker.string.numeric(3)}.${faker.string.numeric(3)}-••`,
-    unespRole: faker.helpers.arrayElement(['Graduação', 'Pós-graduação', 'Docente', 'Comunidade externa']),
+    fullName: `${faker.person.fullName()}${args.longNames ? ` ${faker.company.catchPhrase()}` : ''}`,
+    identityDocument:
+      args.missingDocumentEvery > 0 && (index + 1) % Math.round(args.missingDocumentEvery) === 0
+        ? null
+        : `•••.${faker.string.numeric(3)}.${faker.string.numeric(3)}-••`,
+    unespRole:
+      args.missingRoleEvery > 0 && (index + 1) % Math.round(args.missingRoleEvery) === 0
+        ? null
+        : faker.helpers.arrayElement(['Graduação', 'Pós-graduação', 'Docente', 'Comunidade externa']),
   }));
 }
 
@@ -33,6 +43,10 @@ const meta: Meta<StoryArgs> = {
     peopleCount: 12,
     decidedCount: 3,
     syncLabel: 'Tudo sincronizado',
+    presentEvery: 2,
+    missingDocumentEvery: 0,
+    missingRoleEvery: 0,
+    longNames: false,
     decisionChanged: fn(),
     manualSubmitted: fn(),
   },
@@ -41,15 +55,22 @@ const meta: Meta<StoryArgs> = {
     peopleCount: { control: { type: 'range', min: 0, max: 80, step: 1 } },
     decidedCount: { control: { type: 'range', min: 0, max: 80, step: 1 } },
     syncLabel: { control: 'text' },
+    presentEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    missingDocumentEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    missingRoleEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    longNames: { control: 'boolean' },
     decisionChanged: { table: { disable: true } },
     manualSubmitted: { table: { disable: true } },
   },
   render: (args) => {
-    const people = buildPeople(args.peopleCount);
+    const people = buildPeople(args);
     const decisions = new Map<string, OralAttendanceDecision>(
       people
         .slice(0, Math.min(args.decidedCount, people.length))
-        .map((person, index) => [person.personId, index % 4 === 0 ? 'ABSENT' : 'PRESENT']),
+        .map((person, index) => [
+          person.personId,
+          args.presentEvery > 0 && (index + 1) % Math.round(args.presentEvery) === 0 ? 'PRESENT' : 'ABSENT',
+        ]),
     );
     return {
       template: `
@@ -128,5 +149,34 @@ export const DarkReducedMotion: Story = {
     decidedCount: 6,
     syncLabel: '2 alterações aguardando conexão',
   },
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const DenseMixedRoster: Story = {
+  args: {
+    peopleCount: 80,
+    decidedCount: 48,
+    presentEvery: 3,
+    missingDocumentEvery: 5,
+    missingRoleEvery: 7,
+    syncLabel: '12 alterações aguardando sincronização',
+  },
+};
+
+export const AllPresent: Story = {
+  args: { peopleCount: 20, decidedCount: 20, presentEvery: 1 },
+};
+
+export const AllAbsent: Story = {
+  args: { peopleCount: 20, decidedCount: 20, presentEvery: 0 },
+};
+
+export const IncompleteIdentityData: Story = {
+  args: { peopleCount: 24, decidedCount: 8, missingDocumentEvery: 2, missingRoleEvery: 3 },
+};
+
+export const LongNamesMobile: Story = {
+  args: { peopleCount: 30, decidedCount: 12, longNames: true, missingDocumentEvery: 4 },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
   globals: { theme: 'dark', motion: 'reduced' },
 };

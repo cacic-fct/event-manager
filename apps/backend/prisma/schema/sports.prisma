@@ -263,17 +263,17 @@ model SportsTournament {
   majorEventId String
   majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
 
-  status                   SportsTournamentStatus @default(DRAFT)
-  registrationStartDate    DateTime?
-  registrationEndDate      DateTime?
-  scoringMode              SportsScoringMode      @default(PER_SPORT)
-  selfSubscriptionEnabled  Boolean                @default(false)
-  selfSubscriptionAllowNoTeam     Boolean         @default(false)
-  selfSubscriptionAllowNoCategory Boolean         @default(false)
-  allowPlayerMultipleTeams Boolean                @default(false)
-  shouldIssueCertificate   Boolean                @default(false)
-  revision                 Int                    @default(1)
-  finishedAt               DateTime?
+  status                          SportsTournamentStatus @default(DRAFT)
+  registrationStartDate           DateTime?
+  registrationEndDate             DateTime?
+  scoringMode                     SportsScoringMode      @default(PER_SPORT)
+  selfSubscriptionEnabled         Boolean                @default(false)
+  selfSubscriptionAllowNoTeam     Boolean                @default(false)
+  selfSubscriptionAllowNoCategory Boolean                @default(false)
+  allowPlayerMultipleTeams        Boolean                @default(false)
+  shouldIssueCertificate          Boolean                @default(false)
+  revision                        Int                    @default(1)
+  finishedAt                      DateTime?
 
   categories         SportsCategory[]
   teams              SportsTeam[]
@@ -289,12 +289,12 @@ model SportsTournament {
   updatedById String?
   deletedAt   DateTime?
 
+  @@unique([majorEventId], map: "sports_tournaments_active_majorEventId_key", where: { deletedAt: null })
   @@index([status])
   // PostgreSQL truncates the original 64-character generated identifier to this name.
   @@index([registrationStartDate, registrationEndDate], map: "sports_tournaments_registrationStartDate_registrationEndDate_id")
   @@index([finishedAt])
   @@index([deletedAt])
-  @@unique([majorEventId], map: "sports_tournaments_active_majorEventId_key", where: { deletedAt: null })
   @@map("sports_tournaments")
 }
 
@@ -325,16 +325,16 @@ model SportsCategory {
   athleteIdentifierMode    SportsAthleteIdentifierMode @default(SHIRT_NUMBER)
   joiningInstructions      String?
 
-  periodsEnabled Boolean @default(false)
-  maximumPeriods Int?
-  periodLabel    String?
-  timerRules     Json @default("{}")
-  scoreRules     Json
-  overallScoringRules Json @default("{}")
-  rosterRules    Json
-  bracketRules   Json
-  standingsRules Json
-  rulesText      String?
+  periodsEnabled      Boolean @default(false)
+  maximumPeriods      Int?
+  periodLabel         String?
+  timerRules          Json    @default("{}")
+  scoreRules          Json
+  overallScoringRules Json    @default("{}")
+  rosterRules         Json
+  bracketRules        Json
+  standingsRules      Json
+  rulesText           String?
 
   registrationFormId String?
   registrationForm   EventForm? @relation("SportsCategoryRegistrationForm", fields: [registrationFormId], references: [id], onDelete: SetNull)
@@ -357,13 +357,13 @@ model SportsCategory {
   updatedById              String?
   sportsCategoryPlacements SportsCategoryPlacement[]
 
+  @@unique([eventGroupId], map: "sports_categories_active_eventGroupId_key", where: { deletedAt: null })
   @@index([tournamentId, status])
   @@index([tournamentId, sport])
   @@index([registrationStartDate, registrationEndDate])
   @@index([registrationFormId])
   @@index([finishedAt])
   @@index([deletedAt])
-  @@unique([eventGroupId], map: "sports_categories_active_eventGroupId_key", where: { deletedAt: null })
   @@map("sports_categories")
 }
 
@@ -437,9 +437,9 @@ model SportsTournamentParticipant {
   updatedById String?
   deletedAt   DateTime?
 
+  @@unique([tournamentId, personId], map: "sports_tournament_participants_active_person_key", where: raw("\"deletedAt\" IS NULL"))
   @@index([tournamentId, personId])
   @@index([majorEventSubscriptionId], map: "sports_tournament_participants_majorEventSubscriptionId_idx")
-  @@unique([tournamentId, personId], map: "sports_tournament_participants_active_person_key", where: raw("\"deletedAt\" IS NULL"))
   @@index([tournamentId, status])
   @@index([personId])
   @@index([paymentStatus])
@@ -473,11 +473,11 @@ model SportsTeamMember {
   updatedById String?
   deletedAt   DateTime?
 
+  @@unique([teamId, participantId], map: "sports_team_members_active_team_participant_key", where: { deletedAt: null })
   @@index([teamId, participantId])
   @@index([teamId, status])
   @@index([participantId])
   @@index([deletedAt])
-  @@unique([teamId, participantId], map: "sports_team_members_active_team_participant_key", where: { deletedAt: null })
   @@map("sports_team_members")
 }
 
@@ -541,12 +541,12 @@ model SportsRegistration {
   deletedAt       DateTime?
   sportsStandings SportsStanding[]
 
+  @@unique([teamId, categoryId], map: "sports_registrations_active_team_category_key", where: { deletedAt: null })
   @@index([teamId, categoryId])
   @@index([categoryId, status])
   @@index([teamId])
   @@index([seed])
   @@index([deletedAt])
-  @@unique([teamId, categoryId], map: "sports_registrations_active_team_category_key", where: { deletedAt: null })
   @@map("sports_registrations")
 }
 
@@ -582,11 +582,11 @@ model SportsRegistrationMember {
   updatedById String?
   deletedAt   DateTime?
 
+  @@unique([registrationId, teamMemberId], map: "sports_registration_members_active_registration_member_key", where: { deletedAt: null })
   @@index([registrationId, teamMemberId])
   @@index([categoryId, role, eligibility])
   @@index([teamMemberId])
   @@index([deletedAt])
-  @@unique([registrationId, teamMemberId], map: "sports_registration_members_active_registration_member_key", where: { deletedAt: null })
   @@map("sports_registration_members")
 }
 
@@ -751,7 +751,7 @@ model SportsMatch {
   lossReasonDetail   String?
   drawWillReschedule Boolean?
   notes              String?
-  occurrences        Json @default("[]")
+  occurrences        Json              @default("[]")
 
   livestreamProvider SportsLivestreamProvider?
   livestreamUrl      String?
@@ -831,11 +831,11 @@ model SportsMatchRoster {
   updatedById String?
   deletedAt   DateTime?
 
+  @@unique([matchId, registrationId], map: "sports_match_rosters_active_match_registration_key", where: { deletedAt: null })
   @@index([matchId, registrationId])
   @@index([registrationId])
   @@index([copiedFromRosterId])
   @@index([deletedAt])
-  @@unique([matchId, registrationId], map: "sports_match_rosters_active_match_registration_key", where: { deletedAt: null })
   @@map("sports_match_rosters")
 }
 
@@ -848,8 +848,8 @@ model SportsMatchRosterEntry {
   registrationMemberId String
   registrationMember   SportsRegistrationMember @relation(fields: [registrationMemberId], references: [id], onDelete: Restrict)
 
-  status SportsRosterEntryStatus @default(DRAFT)
-  role   SportsRosterRole        @default(PLAYER)
+  status       SportsRosterEntryStatus @default(DRAFT)
+  role         SportsRosterRole        @default(PLAYER)
   shirtNumber  String?
   roleMetadata Json?
 
@@ -864,10 +864,10 @@ model SportsMatchRosterEntry {
   updatedById String?
   deletedAt   DateTime?
 
+  @@unique([rosterId, registrationMemberId], map: "sports_roster_entries_active_roster_member_key", where: { deletedAt: null })
   @@index([rosterId, registrationMemberId])
   @@index([registrationMemberId])
   @@index([deletedAt])
-  @@unique([rosterId, registrationMemberId], map: "sports_roster_entries_active_roster_member_key", where: { deletedAt: null })
   @@map("sports_match_roster_entries")
 }
 
@@ -954,16 +954,16 @@ model SportsStanding {
   registrationId String
   registration   SportsRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
 
-  played       Int  @default(0)
-  wins         Int  @default(0)
-  draws        Int  @default(0)
-  losses       Int  @default(0)
+  played       Int   @default(0)
+  wins         Int   @default(0)
+  draws        Int   @default(0)
+  losses       Int   @default(0)
   scoreFor     Float @default(0)
   scoreAgainst Float @default(0)
   points       Float @default(0)
   rank         Int?
-  tiebreakData Json @default("{}")
-  revision     Int  @default(1)
+  tiebreakData Json  @default("{}")
+  revision     Int   @default(1)
 
   updatedAt DateTime @updatedAt
 
@@ -1043,11 +1043,11 @@ model SportsPlayerApplication {
   requestedTeamId String?
   requestedTeam   SportsTeam? @relation(fields: [requestedTeamId], references: [id], onDelete: Restrict)
 
-  status           SportsApplicationStatus @default(PENDING)
-  noticeAcceptedAt DateTime
-  imageLicenseAgreementAccepted Boolean @default(false)
-  pendingKey       String?                 @unique
-  paymentTier      String?
+  status                        SportsApplicationStatus @default(PENDING)
+  noticeAcceptedAt              DateTime
+  imageLicenseAgreementAccepted Boolean                 @default(false)
+  pendingKey                    String?                 @unique
+  paymentTier                   String?
 
   categoryChoices SportsPlayerApplicationCategory[]
 

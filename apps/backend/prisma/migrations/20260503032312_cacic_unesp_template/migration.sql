@@ -17,8 +17,8 @@ SELECT
   {
     "engine": "playwright",
     "templateName": "CACiC Unesp",
-    "htmlTemplatePath": "apps/events-backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.html",
-    "cssTemplatePath": "apps/events-backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.css",
+    "htmlTemplatePath": "apps/backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.html",
+    "cssTemplatePath": "apps/backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.css",
     "verificationUrlPattern": "eventos.cacic.dev.br/app/validate/{certificateID}"
   }
   $template$::jsonb,

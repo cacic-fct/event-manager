@@ -43,7 +43,9 @@ export const LicensesUnavailable: Story = {
   ...Playground,
   parameters: {
     msw: {
-      handlers: [http.get('/app/3rdpartylicenses.txt', () => new HttpResponse(null, { status: 503 }))],
+      handlers: {
+        rest: [http.get('/app/3rdpartylicenses.txt', () => new HttpResponse(null, { status: 503 }))],
+      },
     },
   },
   play: async ({ canvasElement }) => {

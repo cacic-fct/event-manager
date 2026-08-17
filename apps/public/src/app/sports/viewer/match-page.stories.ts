@@ -21,6 +21,12 @@ interface MatchStoryArgs {
   loadMode: LoadMode;
   liveConnectionLost: boolean;
   livestream: 'NONE' | 'YOUTUBE' | 'TWITCH' | 'GENERAL';
+  homeTeamName: string;
+  awayTeamName: string;
+  institution: string;
+  venueName: string;
+  courtLabel: string;
+  latencyMs: number;
 }
 
 const defaultArgs: MatchStoryArgs = {
@@ -33,6 +39,12 @@ const defaultArgs: MatchStoryArgs = {
   loadMode: 'ready',
   liveConnectionLost: false,
   livestream: 'YOUTUBE',
+  homeTeamName: 'Atlética FCT',
+  awayTeamName: 'Ciência da Computação',
+  institution: 'FCT-Unesp',
+  venueName: 'Ginásio da FCT',
+  courtLabel: 'Quadra principal',
+  latencyMs: 120,
 };
 
 let activeArgs = defaultArgs;
@@ -46,6 +58,13 @@ function controlledMatch() {
   const match = createSportsViewerMatchForState(activeArgs.state);
   return {
     ...match,
+    homeTeam: { ...match.homeTeam, name: activeArgs.homeTeamName, institution: activeArgs.institution },
+    awayTeam: { ...match.awayTeam, name: activeArgs.awayTeamName, institution: activeArgs.institution },
+    schedule: {
+      ...match.schedule,
+      venueName: activeArgs.venueName,
+      courtLabel: activeArgs.courtLabel,
+    },
     scoreboard: {
       ...match.scoreboard,
       homeScore: activeArgs.homeScore,
@@ -85,6 +104,12 @@ const meta: Meta<MatchStoryArgs> = {
       control: 'select',
       options: ['NONE', 'YOUTUBE', 'TWITCH', 'GENERAL'],
     },
+    homeTeamName: { control: 'text' },
+    awayTeamName: { control: 'text' },
+    institution: { control: 'text' },
+    venueName: { control: 'text' },
+    courtLabel: { control: 'text' },
+    latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
   },
   render: (args) => {
     activeArgs = args;
@@ -109,10 +134,14 @@ const meta: Meta<MatchStoryArgs> = {
   parameters: {
     layout: 'fullscreen',
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async () => {
           if (activeArgs.loadMode === 'loading') {
             await delay('infinite');
+          }
+          if (activeArgs.latencyMs > 0) {
+            await delay(activeArgs.latencyMs);
           }
           if (activeArgs.loadMode === 'error') {
             return HttpResponse.json({
@@ -123,7 +152,8 @@ const meta: Meta<MatchStoryArgs> = {
             data: { publicSportsMatchDetail: controlledMatch() },
           });
         }),
-      ],
+        ],
+      },
     },
   },
 };
@@ -215,7 +245,19 @@ export const ReconnectingLiveData: Story = {
 };
 
 export const Loading: Story = {
-  args: { loadMode: 'loading' },
+  args: { loadMode: 'loading', latencyMs: 0 },
+};
+
+export const LongTeamAndVenueNamesMobile: Story = {
+  args: {
+    homeTeamName: 'Associação Atlética Acadêmica de Ciência e Tecnologia de Presidente Prudente',
+    awayTeamName: 'Equipe Interdisciplinar de Computação, Estatística e Engenharia Ambiental',
+    institution: 'Universidade Estadual Paulista Júlio de Mesquita Filho',
+    venueName: 'Complexo esportivo universitário e centro de convivência estudantil',
+    courtLabel: 'Quadra poliesportiva principal - setor norte',
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const LoadError: Story = {

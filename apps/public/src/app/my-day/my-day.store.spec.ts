@@ -1,3 +1,4 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMyDay } from '@cacic-fct/event-manager-public-contracts';
@@ -9,12 +10,14 @@ import { RateLimitError } from '../shared/rate-limit-error';
 import { MyDayApiService } from './my-day-api.service';
 import { MyDayStore } from './my-day.store';
 
+const requests: Array<{ date: string; subject: Subject<CurrentUserMyDay> }> = [];
+
 describe('MyDayStore request control', () => {
-  const requests = new Map<string, Subject<CurrentUserMyDay>>();
+  const authUser = signal<{ sub: string } | null>({ sub: 'user-1' });
   const api = {
     get: vi.fn((date: string) => {
       const request = new Subject<CurrentUserMyDay>();
-      requests.set(date, request);
+      requests.push({ date, subject: request });
       return request.asObservable();
     }),
   };
@@ -25,7 +28,8 @@ describe('MyDayStore request control', () => {
   let store: MyDayStore;
 
   beforeEach(() => {
-    requests.clear();
+    requests.length = 0;
+    authUser.set({ sub: 'user-1' });
     api.get.mockClear();
     cache.get.mockClear();
     cache.put.mockClear();
@@ -33,7 +37,7 @@ describe('MyDayStore request control', () => {
     TestBed.configureTestingModule({
       providers: [
         MyDayStore,
-        { provide: AuthService, useValue: { user: () => ({ sub: 'user-1' }) } },
+        { provide: AuthService, useValue: { user: authUser } },
         { provide: MyDayApiService, useValue: api },
         { provide: MyDayCacheService, useValue: cache },
         { provide: NetworkStatusService, useValue: { isOnline: () => true, watchStatusChanges: () => NEVER } },
@@ -51,22 +55,22 @@ describe('MyDayStore request control', () => {
     await Promise.resolve();
 
     expect(api.get).toHaveBeenCalledTimes(1);
-    requests.get('2026-08-16')?.next(day('2026-08-16'));
-    requests.get('2026-08-16')?.complete();
+    latestRequest('2026-08-16').next(day('2026-08-16'));
+    latestRequest('2026-08-16').complete();
     await Promise.all([first, second]);
   });
 
   it('unsubscribes a superseded date request', async () => {
     const first = store.load('2026-08-16');
     await Promise.resolve();
-    const firstRequest = requests.get('2026-08-16');
+    const firstRequest = latestRequest('2026-08-16');
 
     const second = store.load('2026-08-17');
     await Promise.resolve();
 
     expect(firstRequest?.observed).toBe(false);
-    requests.get('2026-08-17')?.next(day('2026-08-17'));
-    requests.get('2026-08-17')?.complete();
+    latestRequest('2026-08-17').next(day('2026-08-17'));
+    latestRequest('2026-08-17').complete();
     await Promise.all([first, second]);
     expect(store.data()?.selectedDate).toBe('2026-08-17');
   });
@@ -74,7 +78,7 @@ describe('MyDayStore request control', () => {
   it('starts the visible cooldown after a rate-limit response', async () => {
     const result = store.load('2026-08-16');
     await Promise.resolve();
-    requests.get('2026-08-16')?.error(new RateLimitError(12));
+    latestRequest('2026-08-16').error(new RateLimitError(12));
     await result;
 
     expect(store.cooldownSeconds()).toBe(12);
@@ -82,7 +86,35 @@ describe('MyDayStore request control', () => {
       expect.objectContaining({ status: 'error', message: 'Muitas tentativas. Aguarde 12 segundos para tentar novamente.' }),
     );
   });
+
+  it('does not share or publish an in-flight response across user identities', async () => {
+    const first = store.load('2026-08-16');
+    await Promise.resolve();
+    const firstRequest = latestRequest('2026-08-16');
+
+    authUser.set({ sub: 'user-2' });
+    const second = store.load('2026-08-16');
+    await Promise.resolve();
+
+    expect(api.get).toHaveBeenCalledTimes(2);
+    expect(firstRequest.observed).toBe(false);
+    latestRequest('2026-08-16').next(day('2026-08-16'));
+    latestRequest('2026-08-16').complete();
+    await Promise.all([first, second]);
+
+    expect(cache.put).toHaveBeenCalledWith('user-2', expect.objectContaining({ selectedDate: '2026-08-16' }));
+    expect(cache.put).not.toHaveBeenCalledWith('user-1', expect.anything());
+    expect(store.data()?.selectedDate).toBe('2026-08-16');
+  });
 });
+
+function latestRequest(date: string): Subject<CurrentUserMyDay> {
+  const request = [...requests].reverse().find((entry) => entry.date === date)?.subject;
+  if (!request) {
+    throw new Error(`Expected a request for ${date}.`);
+  }
+  return request;
+}
 
 function day(selectedDate: string): CurrentUserMyDay {
   return {

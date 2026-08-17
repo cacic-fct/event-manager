@@ -8,14 +8,16 @@ import { GlobalOperationsPageComponent } from './global-operations-page.componen
 type GlobalOperationsStoryArgs = {
   configCount: number;
   certificateCount: number;
-  slowResponse: boolean;
+  operationState: 'ready' | 'loading' | 'error';
+  latencyMs: number;
   canReissue: boolean;
 };
 
 let activeArgs: GlobalOperationsStoryArgs = {
   configCount: 4,
   certificateCount: 138,
-  slowResponse: false,
+  operationState: 'ready',
+  latencyMs: 120,
   canReissue: true,
 };
 
@@ -40,7 +42,8 @@ const meta: Meta<GlobalOperationsStoryArgs> = {
   argTypes: {
     configCount: { control: { type: 'range', min: 0, max: 20, step: 1 } },
     certificateCount: { control: { type: 'range', min: 0, max: 500, step: 1 } },
-    slowResponse: { control: 'boolean' },
+    operationState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
     canReissue: { control: 'boolean' },
   },
   render: (args) => {
@@ -51,13 +54,16 @@ const meta: Meta<GlobalOperationsStoryArgs> = {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async ({ request }) => {
           const body = (await request.json()) as { query?: string };
 
           if (body.query?.includes('ReissueAllCertificates')) {
-            if (activeArgs.slowResponse) {
-              await delay(1200);
+            if (activeArgs.operationState === 'loading') await delay('infinite');
+            if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
+            if (activeArgs.operationState === 'error') {
+              return HttpResponse.json({ errors: [{ message: 'Não foi possível reemitir os certificados.' }] });
             }
             return HttpResponse.json({
               data: {
@@ -71,7 +77,8 @@ const meta: Meta<GlobalOperationsStoryArgs> = {
 
           return HttpResponse.json({ data: {} });
         }),
-      ],
+        ],
+      },
     },
   },
 };
@@ -93,10 +100,27 @@ export const Playground: Story = {
 
 export const SlowReissue: Story = {
   args: {
-    slowResponse: true,
+    latencyMs: 1_500,
     configCount: 8,
     certificateCount: 420,
   },
+};
+
+export const ZeroResult: Story = {
+  args: { configCount: 0, certificateCount: 0, latencyMs: 0 },
+};
+
+export const LargeResult: Story = {
+  args: { configCount: 20, certificateCount: 500, latencyMs: 0 },
+};
+
+export const OperationLoading: Story = {
+  args: { operationState: 'loading', latencyMs: 0 },
+};
+
+export const OperationError: Story = {
+  args: { operationState: 'error', latencyMs: 0 },
+  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 export const WithoutPermission: Story = {

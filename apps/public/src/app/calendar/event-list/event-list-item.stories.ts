@@ -95,3 +95,37 @@ export const SportsMatch: Story = {
     await expect(canvas.getByText('Futsal aberto · Semifinal')).toBeVisible();
   },
 };
+
+export const NotSubscribed: Story = {
+  args: { isSubscribed: false },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).queryByText('Inscrito')).not.toBeInTheDocument();
+  },
+};
+
+export const SoldOutWithQueue: Story = {
+  args: { slotsAvailable: 0, queueCount: 48, isSubscribed: false },
+};
+
+export const ShortDescriptionOnly: Story = {
+  args: { context: 'short-description', isSubscribed: false },
+};
+
+export const EventGroupContext: Story = {
+  args: { context: 'event-group', eventGroupName: 'Trilha de desenvolvimento web e acessibilidade' },
+};
+
+export const MajorEventContext: Story = {
+  args: { context: 'major-event', majorEventName: 'Congresso interdisciplinar universitário de tecnologia' },
+};
+
+export const LongContentMobile: Story = {
+  args: {
+    name: 'Atividade interdisciplinar de tecnologia, acessibilidade, ciência aberta e transformação social',
+    locationDescription: 'Auditório principal do centro de eventos, bloco acadêmico e cultural',
+    context: 'short-description',
+    shortDescription: 'Uma descrição longa para validar a hierarquia da linha do calendário em telas estreitas.',
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', motion: 'reduced' },
+};

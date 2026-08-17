@@ -1,5 +1,5 @@
 import { fakerPT_BR as faker } from '@faker-js/faker';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import type { PlacePreset } from '@cacic-fct/event-manager-admin-contracts';
@@ -11,11 +11,19 @@ faker.seed(20260616);
 type PlacesTabStoryArgs = {
   placeCount: number;
   includeIncompletePlace: boolean;
+  apiState: 'ready' | 'loading' | 'error';
+  latencyMs: number;
+  incompleteEvery: number;
+  longNames: boolean;
 };
 
 let activeArgs: PlacesTabStoryArgs = {
   placeCount: 4,
   includeIncompletePlace: true,
+  apiState: 'ready',
+  latencyMs: 120,
+  incompleteEvery: 0,
+  longNames: false,
 };
 
 function placePreset(index: number, incomplete = false): PlacePreset {
@@ -23,7 +31,7 @@ function placePreset(index: number, incomplete = false): PlacePreset {
 
   return createAdminPlacePreset({
     id: `place-${index + 1}`,
-    name: names[index % names.length],
+    name: `${names[index % names.length]}${activeArgs.longNames ? ` · ${faker.company.catchPhrase()}` : ''}`,
     latitude: incomplete ? null : Number((-22.1211 + index * 0.001).toFixed(6)),
     longitude: incomplete ? null : Number((-51.4086 - index * 0.001).toFixed(6)),
     locationDescription: incomplete
@@ -37,8 +45,12 @@ function placePreset(index: number, incomplete = false): PlacePreset {
 }
 
 function places(args: PlacesTabStoryArgs): PlacePreset[] {
-  return Array.from({ length: args.placeCount }, (_, index) =>
-    placePreset(index, args.includeIncompletePlace && index === args.placeCount - 1),
+  return Array.from({ length: Math.max(0, Math.min(30, Math.round(args.placeCount))) }, (_, index) =>
+    placePreset(
+      index,
+      (args.includeIncompletePlace && index === args.placeCount - 1) ||
+        (args.incompleteEvery > 0 && (index + 1) % Math.round(args.incompleteEvery) === 0),
+    ),
   );
 }
 
@@ -48,8 +60,12 @@ const meta: Meta<PlacesTabStoryArgs> = {
   tags: ['autodocs'],
   args: activeArgs,
   argTypes: {
-    placeCount: { control: { type: 'range', min: 0, max: 12, step: 1 } },
+    placeCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     includeIncompletePlace: { control: 'boolean' },
+    apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
+    incompleteEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    longNames: { control: 'boolean' },
   },
   render: (args) => {
     activeArgs = args;
@@ -60,10 +76,16 @@ const meta: Meta<PlacesTabStoryArgs> = {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async ({ request }) => {
+          if (activeArgs.apiState === 'loading') await delay('infinite');
+          if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
           const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
           const query = body.query ?? '';
+          if (activeArgs.apiState === 'error') {
+            return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar os locais.' }] });
+          }
           const items = places(activeArgs);
 
           if (query.includes('ListPlacePresets')) {
@@ -92,7 +114,8 @@ const meta: Meta<PlacesTabStoryArgs> = {
 
           return HttpResponse.json({ data: {} });
         }),
-      ],
+        ],
+      },
     },
   },
 };
@@ -120,5 +143,24 @@ export const EmptyList: Story = {
 
 export const DarkReducedMotion: Story = {
   ...EmptyList,
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const DensePlaces: Story = {
+  args: { placeCount: 30, incompleteEvery: 4, includeIncompletePlace: false, latencyMs: 0 },
+};
+
+export const Loading: Story = {
+  args: { apiState: 'loading', latencyMs: 0 },
+};
+
+export const LoadError: Story = {
+  args: { apiState: 'error', latencyMs: 0 },
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const LongNamesMobile: Story = {
+  args: { placeCount: 16, longNames: true, incompleteEvery: 3, latencyMs: 0 },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
   globals: { theme: 'dark', motion: 'reduced' },
 };
