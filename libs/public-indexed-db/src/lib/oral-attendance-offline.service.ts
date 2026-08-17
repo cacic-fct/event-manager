@@ -28,17 +28,26 @@ export class OralAttendanceOfflineService {
     decision: Omit<OfflineOralAttendanceDecision, 'clientId' | 'queuedAt' | 'attempts'>,
   ): Promise<OfflineOralAttendanceDecision> {
     const database = this.databaseProvider.getDatabase();
-    const item: OfflineOralAttendanceDecision = {
-      ...decision,
-      clientId: this.createClientId(),
-      queuedAt: Date.now(),
-      attempts: 0,
-      syncedAt: null,
-    };
     if (!database) {
-      return item;
+      return {
+        ...decision,
+        clientId: this.createClientId(),
+        queuedAt: Date.now(),
+        attempts: 0,
+        syncedAt: null,
+      };
     }
+
+    let item!: OfflineOralAttendanceDecision;
     await database.transaction('rw', database.oralAttendanceDecisions, async () => {
+      const latest = await database.oralAttendanceDecisions.orderBy('queuedAt').last();
+      item = {
+        ...decision,
+        clientId: this.createClientId(),
+        queuedAt: Math.max(Date.now(), (latest?.queuedAt ?? 0) + 1),
+        attempts: 0,
+        syncedAt: null,
+      };
       const previous = await database.oralAttendanceDecisions
         .where('[queuedByUserId+eventId+personId]')
         .equals([decision.queuedByUserId, decision.eventId, decision.personId])

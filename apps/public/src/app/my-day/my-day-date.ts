@@ -1,14 +1,8 @@
-import { addDays, differenceInMinutes, startOfDay } from 'date-fns';
-
-const TIME_ZONE = 'America/Sao_Paulo';
+import { addDays, differenceInMinutes } from 'date-fns';
+import { publicLocalDateKey, publicLocalDayBounds } from '../shared/public-local-date';
 
 export function myDayDateKey(date: Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(date);
+  return publicLocalDateKey(date);
 }
 
 export function myDayTomorrowKey(date = new Date()): string {
@@ -33,7 +27,7 @@ export function myDayCountdown(startDate: string, now: Date): string | null {
 
 export function myDayTimeProgress(startDate: string, now: Date): number {
   const eventStart = new Date(startDate);
-  const midnight = startOfDay(eventStart);
+  const midnight = publicLocalDayBounds(eventStart).start;
   const duration = eventStart.getTime() - midnight.getTime();
   if (duration <= 0) {
     return now >= eventStart ? 100 : 0;

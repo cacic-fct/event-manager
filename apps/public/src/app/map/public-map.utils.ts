@@ -1,6 +1,6 @@
 import type { PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
-import { endOfDay, startOfDay } from 'date-fns';
 import { PublicMapFilters } from './public-map.models';
+import { publicLocalDayBounds } from '../shared/public-local-date';
 
 export const PUBLIC_MAP_EVENT_QUERY_PARAM = 'evento';
 
@@ -15,8 +15,9 @@ export function filterPublicMapEvents(
   currentUserEventIds: ReadonlySet<string>,
   now = new Date(),
 ): PublicMapEvent[] {
-  const todayStart = startOfDay(now).getTime();
-  const todayEnd = endOfDay(now).getTime();
+  const { start, end } = publicLocalDayBounds(now);
+  const todayStart = start.getTime();
+  const todayEnd = end.getTime();
 
   return events.filter((event) => {
     if (filters.audience === 'MINE' && !currentUserEventIds.has(event.id)) {

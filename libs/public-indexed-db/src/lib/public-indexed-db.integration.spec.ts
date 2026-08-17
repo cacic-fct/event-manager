@@ -313,6 +313,39 @@ describe('offline public data access integration', () => {
     await expect(database.oralAttendanceDecisions.get(otherEvent.clientId)).resolves.toBeDefined();
   });
 
+  it('keeps oral attendance enqueue order when timestamps collide', async () => {
+    const service = injectService(OralAttendanceOfflineService);
+    const location = { latitude: -22.12, longitude: -51.4, accuracyMeters: 9 };
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000);
+
+    try {
+      const first = await service.enqueue({
+        queuedByUserId: 'user-1',
+        eventId: 'event-1',
+        personId: 'person-1',
+        status: 'PRESENT',
+        collectedAt: fixtureDate(-1, 12),
+        location,
+      });
+      const second = await service.enqueue({
+        queuedByUserId: 'user-1',
+        eventId: 'event-1',
+        personId: 'person-2',
+        status: 'ABSENT',
+        collectedAt: fixtureDate(-1, 13),
+        location,
+      });
+
+      expect(second.queuedAt).toBe(first.queuedAt + 1);
+      await expect(service.listPending('user-1', 'event-1')).resolves.toEqual([
+        expect.objectContaining({ clientId: first.clientId }),
+        expect.objectContaining({ clientId: second.clientId }),
+      ]);
+    } finally {
+      nowSpy.mockRestore();
+    }
+  });
+
   it.each([
     [{ authorUserId: null, queuedByUserId: 'queued-user' }, 'queued-user'],
     [{ authorUserId: 'author-user', queuedByUserId: null }, 'author-user'],
