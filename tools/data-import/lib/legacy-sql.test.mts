@@ -12,6 +12,7 @@ import {
   parseMysqlDate,
   parseMysqlDatetime,
   parseMysqlTime,
+  parseSqlLiteral,
   parseValuesBlock,
   writeLegacySqlPayload,
 } from './legacy-sql.mts';
@@ -22,6 +23,10 @@ test('parses quoted parentheses, commas, escapes, and NULL values', () => {
     parseValuesBlock("(1,'Ana (teste), D\\'Ávila',NULL),(2,'a''b',-3.50)"),
     [[1, "Ana (teste), D'Ávila", null], [2, "a'b", '-3.50']],
   );
+});
+
+test('decodes backslash escapes once so literal backslashes are preserved', () => {
+  assert.equal(parseSqlLiteral(String.raw`'C:\\temp'`), String.raw`C:\temp`);
 });
 
 test('reads expected INSERT tables and ignores malformed row widths', async () => {

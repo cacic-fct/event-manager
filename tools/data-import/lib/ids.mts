@@ -3,6 +3,8 @@ import { createHash, randomBytes } from 'node:crypto';
 const URL_NAMESPACE = Buffer.from('6ba7b8119dad11d180b400c04fd430c8', 'hex');
 
 export function createUuidV5(seed: string, prefix = 'fct-app-import:'): string {
+  // codeql[js/weak-cryptographic-algorithm]
+  // UUIDv5 requires SHA-1 for deterministic identifiers; this is not a security digest.
   const digest = createHash('sha1')
     .update(Buffer.concat([URL_NAMESPACE, Buffer.from(`${prefix}${seed}`, 'utf8')]))
     .digest();

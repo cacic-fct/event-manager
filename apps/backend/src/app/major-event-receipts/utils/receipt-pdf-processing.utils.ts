@@ -65,6 +65,8 @@ async function withReceiptPdf<T>(buffer: Buffer, operation: (inputPath: string, 
   const inputPath = join(directory, 'receipt.pdf');
 
   try {
+    // codeql[js/http-to-file-access]
+    // Uploaded PDFs are written to a private, mkdtemp-created directory for bounded processing.
     await fs.writeFile(inputPath, buffer, { mode: 0o600 });
     return await operation(inputPath, directory);
   } catch (error: unknown) {

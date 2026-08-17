@@ -317,14 +317,7 @@ export function parseTuple(tupleContent: string): SqlLiteral[] {
 export function parseSqlLiteral(token: string): SqlLiteral {
   if (token.toUpperCase() === 'NULL') return null;
   if (token.startsWith("'") && token.endsWith("'")) {
-    const inner = token.slice(1, -1);
-    const normalized = inner
-      .replaceAll('\\r', '\r')
-      .replaceAll('\\n', '\n')
-      .replaceAll('\\t', '\t')
-      .replaceAll('\\\\', '\\')
-      .replaceAll("\\'", "'")
-      .replaceAll("''", "'");
+    const normalized = decodeLegacySqlString(token.slice(1, -1));
     if (normalized.trim().toLowerCase() === 'null') return null;
     return normalized;
   }
@@ -334,6 +327,52 @@ export function parseSqlLiteral(token: string): SqlLiteral {
     return Number.isSafeInteger(number) ? number : token;
   }
   return token;
+}
+
+function decodeLegacySqlString(value: string): string {
+  let decoded = '';
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index];
+    if (character === '\\') {
+      const escapedCharacter = value[index + 1];
+      switch (escapedCharacter) {
+        case 'r':
+          decoded += '\r';
+          index += 1;
+          continue;
+        case 'n':
+          decoded += '\n';
+          index += 1;
+          continue;
+        case 't':
+          decoded += '\t';
+          index += 1;
+          continue;
+        case '\\':
+          decoded += '\\';
+          index += 1;
+          continue;
+        case "'":
+          decoded += "'";
+          index += 1;
+          continue;
+        default:
+          decoded += '\\';
+          continue;
+      }
+    }
+
+    if (character === "'" && value[index + 1] === "'") {
+      decoded += "'";
+      index += 1;
+      continue;
+    }
+
+    decoded += character ?? '';
+  }
+
+  return decoded;
 }
 
 export function cleanIdentifier(rawIdentifier: string): string {

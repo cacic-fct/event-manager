@@ -35,12 +35,20 @@ const startStaticBuildProxy = async (upstreamBaseURL: string) => {
       return;
     }
 
-    const upstreamURL = new URL(request.url ?? '/', upstreamOrigin);
+    const requestedURL = new URL(request.url ?? '/', 'http://static-build-proxy');
+    const upstreamPath =
+      requestedURL.pathname === '/app' || requestedURL.pathname.startsWith('/app/')
+        ? requestedURL.pathname.slice('/app'.length) || '/'
+        : requestedURL.pathname;
+    const upstreamPathWithSearch = `${upstreamPath}${requestedURL.search}`;
     const upstreamRequest = requestUpstream(
-      upstreamURL,
       {
+        protocol: upstreamOrigin.protocol,
+        hostname: upstreamOrigin.hostname,
+        port: upstreamOrigin.port || undefined,
+        path: upstreamPathWithSearch,
         method: request.method,
-        headers: { ...request.headers, host: upstreamURL.host },
+        headers: { ...request.headers, host: upstreamOrigin.host },
       },
       (upstreamResponse) => {
         response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
@@ -134,7 +142,7 @@ test.describe('public service worker offline support', () => {
       const cacheState = await page.evaluate(async () => {
         return {
           cacheNames: await caches.keys(),
-          hasCsrShell: Boolean(await caches.match('/app/index.csr.html')),
+          hasCsrShell: Boolean(await caches.match('/app/index.csr.html', { ignoreSearch: true })),
         };
       });
 
@@ -144,12 +152,11 @@ test.describe('public service worker offline support', () => {
       await staticBuildProxy.close();
 
       const response = await page.goto(`${staticBuildProxy.origin}/app/offline/service-worker-probe`, {
-        waitUntil: 'domcontentloaded',
+        waitUntil: 'commit',
       });
-      const html = await page.content();
 
       expect(response?.status()).toBe(200);
-      expect(html).toContain('<app-root');
+      expect(await response?.text()).toContain('<app-root');
     } finally {
       await staticBuildProxy.close();
     }
