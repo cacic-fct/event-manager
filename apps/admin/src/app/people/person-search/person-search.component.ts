@@ -35,6 +35,7 @@ export class PersonSearchComponent {
   readonly minimumQueryLength = input(2);
   readonly resultActionIcon = input('person_add');
   readonly resultActionLabel = input('Selecionar');
+  readonly showIdentitySummary = input(true);
 
   readonly queryChange = output<string>();
   readonly searchRequested = output<string>();
@@ -78,6 +79,11 @@ export class PersonSearchComponent {
 
   protected identitySummary(person: Person): string {
     return person.identityDocument || (person.academicId ? `Matrícula ${person.academicId}` : 'Sem documento informado');
+  }
+
+  protected showNoResults(): boolean {
+    return !this.disabled() && !this.loading() && this.results().length === 0
+      && this.queryControl.value.trim().length >= this.minimumQueryLength();
   }
 
   private emitSearch(query: string): void {

@@ -372,6 +372,31 @@ export class MergeCandidateOperationsService {
         });
       }
 
+      if (movedRelations.movedRoleAssignmentIds.length > 0) {
+        await tx.eventManagerRoleAssignment.updateMany({
+          where: { id: { in: movedRelations.movedRoleAssignmentIds } },
+          data: { personId: sourcePerson.id },
+        });
+      }
+      if (movedRelations.archivedRoleAssignmentIds.length > 0) {
+        await tx.eventManagerRoleAssignment.updateMany({
+          where: { id: { in: movedRelations.archivedRoleAssignmentIds } },
+          data: { archivedAt: null, archivedReason: null },
+        });
+      }
+      if (movedRelations.movedPermissionGroupMembershipIds.length > 0) {
+        await tx.eventManagerPermissionGroupMember.updateMany({
+          where: { id: { in: movedRelations.movedPermissionGroupMembershipIds } },
+          data: { personId: sourcePerson.id },
+        });
+      }
+      if (movedRelations.archivedPermissionGroupMembershipIds.length > 0) {
+        await tx.eventManagerPermissionGroupMember.updateMany({
+          where: { id: { in: movedRelations.archivedPermissionGroupMembershipIds } },
+          data: { archivedAt: null, archivedReason: null },
+        });
+      }
+
       await tx.people.update({
         where: {
           id: targetPerson.id,

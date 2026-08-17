@@ -4,6 +4,8 @@ import {
   PersonCreateInput,
   PersonLinkedDataSummary,
   PersonLinkedResourcePage,
+  RelatedPerson,
+  RelatedPersonUpdateInput,
   PersonUpdateInput,
 } from '@cacic-fct/shared-data-types';
 import { EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
@@ -110,15 +112,18 @@ export class PeopleResolver {
       this.addPeopleWhereCondition(where, {
         OR: [
           {
-            eventManagerPermissionGrants: {
+            eventManagerRoleAssignments: {
               some: permissionGrantWhere,
             },
           },
           {
-            user: {
-              is: {
-                eventManagerPermissionGrants: {
-                  some: permissionGrantWhere,
+            eventManagerGroupMemberships: {
+              some: {
+                archivedAt: null,
+                group: {
+                  assignments: {
+                    some: permissionGrantWhere,
+                  },
                 },
               },
             },
@@ -191,9 +196,10 @@ export class PeopleResolver {
       .slice(pagination.skip, pagination.skip + pagination.take);
   }
 
-  private buildPermissionGrantWhere(filter: PermissionGrantFilter): Prisma.EventManagerPermissionGrantWhereInput {
-    const where: Prisma.EventManagerPermissionGrantWhereInput = {
-      deletedAt: null,
+  private buildPermissionGrantWhere(filter: PermissionGrantFilter): Prisma.EventManagerRoleAssignmentWhereInput {
+    const where: Prisma.EventManagerRoleAssignmentWhereInput = {
+      archivedAt: null,
+      role: { archivedAt: null },
     };
 
     if (filter === 'ACTIVE') {
@@ -220,6 +226,97 @@ export class PeopleResolver {
   private addPeopleWhereCondition(where: Prisma.PeopleWhereInput, condition: Prisma.PeopleWhereInput): void {
     const existingConditions = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
     where.AND = [...existingConditions, condition];
+  }
+
+  @Query(() => [RelatedPerson], { name: 'relatedPeople' })
+  @RequirePermissions(Permission.RelatedPerson.Read)
+  async relatedPeople(
+    @Args('query', { type: () => String, nullable: true }) query?: string,
+    @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
+    @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
+    @Args('eventGroupId', { type: () => String, nullable: true }) eventGroupId?: string,
+    @Args('take', { type: () => Int, nullable: true }) take?: number,
+  ): Promise<RelatedPerson[]> {
+    const target = this.normalizeRelatedPersonTarget(eventId, majorEventId, eventGroupId);
+    const where = this.buildRelatedPersonWhere(target);
+    const normalizedQuery = query?.trim();
+    if (normalizedQuery) {
+      this.addPeopleWhereCondition(where, {
+        OR: [
+          { name: { contains: normalizedQuery, mode: 'insensitive' } },
+          { email: { contains: normalizedQuery, mode: 'insensitive' } },
+          { phone: { contains: normalizedQuery, mode: 'insensitive' } },
+          { identityDocument: { contains: normalizedQuery } },
+          { academicId: { contains: normalizedQuery } },
+        ],
+      });
+    }
+    const people = await this.prisma.people.findMany({
+      where,
+      select: { id: true, name: true, email: true, phone: true, identityDocument: true, userId: true },
+      orderBy: { name: 'asc' },
+      take: Math.min(Math.max(Math.trunc(take ?? 25), 1), 50),
+    });
+    return people.map((person) => ({
+      id: person.id,
+      name: person.name,
+      email: person.email,
+      phone: person.phone,
+      maskedIdentityDocument: this.maskIdentityDocument(person.identityDocument),
+      hasLinkedUser: Boolean(person.userId),
+    }));
+  }
+
+  @Mutation(() => RelatedPerson, { name: 'updateRelatedPerson' })
+  @RequirePermissions(Permission.RelatedPerson.Update)
+  async updateRelatedPerson(
+    @Args('id', { type: () => String }) id: string,
+    @Args('input', { type: () => RelatedPersonUpdateInput }) input: RelatedPersonUpdateInput,
+    @Args('eventId', { type: () => String, nullable: true }) eventId: string | undefined,
+    @Args('majorEventId', { type: () => String, nullable: true }) majorEventId: string | undefined,
+    @Args('eventGroupId', { type: () => String, nullable: true }) eventGroupId: string | undefined,
+    @Context() context: GraphqlContext,
+  ): Promise<RelatedPerson> {
+    const target = this.normalizeRelatedPersonTarget(eventId, majorEventId, eventGroupId);
+    const existing = await this.prisma.people.findFirst({
+      where: { ...this.buildRelatedPersonWhere(target), id },
+      select: PERSON_AUDIT_SELECT,
+    });
+    if (!existing) throw new NotFoundException('Pessoa não encontrada entre os vínculos deste escopo.');
+    const data: Prisma.PeopleUpdateInput = {
+      secondaryEmails: input.secondaryEmails?.map((email) => email.trim()).filter(Boolean),
+      ...(!existing.userId
+        ? {
+            ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+            ...(input.email !== undefined ? { email: input.email.trim() || null } : {}),
+            ...(input.phone !== undefined ? { phone: input.phone.trim() || null } : {}),
+          }
+        : {}),
+      updatedById: this.getUser(context)?.sub,
+    };
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const person = await tx.people.update({ where: { id }, data, select: PERSON_AUDIT_SELECT });
+      await this.auditLog.record({
+        entityType: AuditLogEntityType.PERSON,
+        entityId: id,
+        entityLabel: person.name,
+        operation: AuditLogOperation.UPDATE,
+        actor: this.getUser(context),
+        before: existing,
+        after: person,
+        scope: { permission: Permission.RelatedPerson.Update, ...target },
+        summary: 'Pessoa relacionada ao escopo atualizada.',
+      }, tx);
+      return person;
+    });
+    return {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      phone: updated.phone,
+      maskedIdentityDocument: this.maskIdentityDocument(updated.identityDocument),
+      hasLinkedUser: Boolean(updated.userId),
+    };
   }
 
   @Query(() => Person, { name: 'person' })
@@ -470,6 +567,57 @@ export class PeopleResolver {
     if (duplicate) {
       throw new ConflictException(`Person ${duplicate.id} already exists with matching identity document or email.`);
     }
+  }
+
+  private normalizeRelatedPersonTarget(eventId?: string, majorEventId?: string, eventGroupId?: string) {
+    const target = {
+      eventId: eventId?.trim() || undefined,
+      majorEventId: majorEventId?.trim() || undefined,
+      eventGroupId: eventGroupId?.trim() || undefined,
+    };
+    if (Number(Boolean(target.eventId)) + Number(Boolean(target.majorEventId)) + Number(Boolean(target.eventGroupId)) !== 1) {
+      throw new BadRequestException('Informe exatamente um evento, grupo de eventos ou grande evento.');
+    }
+    return target;
+  }
+
+  private buildRelatedPersonWhere(target: { eventId?: string; majorEventId?: string; eventGroupId?: string }): Prisma.PeopleWhereInput {
+    const eventWhere: Prisma.EventWhereInput = target.eventId
+      ? { id: target.eventId }
+      : target.eventGroupId
+        ? { eventGroupId: target.eventGroupId }
+        : { majorEventId: target.majorEventId };
+    return {
+      deletedAt: null,
+      OR: [
+        { eventSubscriptions: { some: { deletedAt: null, event: eventWhere } } },
+        { attendances: { some: { event: eventWhere } } },
+        { lectures: { some: { event: eventWhere } } },
+        { attendanceCollectorFor: { some: { event: eventWhere } } },
+        ...(target.eventGroupId
+          ? [{ eventGroupSubscriptions: { some: { deletedAt: null, eventGroupId: target.eventGroupId } } }]
+          : []),
+        ...(target.majorEventId
+          ? [
+              { majorEventSubscriptions: { some: { deletedAt: null, majorEventId: target.majorEventId } } },
+              { sportsTournamentParticipants: { some: { deletedAt: null, tournament: { majorEventId: target.majorEventId } } } },
+              { sportsOfficialAssignments: { some: { active: true, revokedAt: null, tournament: { majorEventId: target.majorEventId } } } },
+            ]
+          : []),
+        ...(target.eventGroupId
+          ? [{ sportsOfficialAssignments: { some: { active: true, revokedAt: null, category: { eventGroupId: target.eventGroupId } } } }]
+          : []),
+        ...(target.eventId
+          ? [{ sportsOfficialAssignments: { some: { active: true, revokedAt: null, match: { eventId: target.eventId } } } }]
+          : []),
+      ],
+    };
+  }
+
+  private maskIdentityDocument(value: string | null): string | null {
+    if (!value) return null;
+    const visible = value.replace(/\D/g, '').slice(-4);
+    return visible ? `••••${visible}` : '••••';
   }
 
   private shouldRefreshCertificates(

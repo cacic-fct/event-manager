@@ -1,5 +1,4 @@
 import { LecturerProfileInput, Person, PersonInput } from '@cacic-fct/event-manager-admin-contracts';
-import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import {
   PersonLinkedDataDialogComponent,
@@ -13,12 +12,7 @@ import {
   resetPagination,
 } from '../pagination/list-pagination';
 import { buildPeopleSearchFilters } from './people-lookup';
-import { PeopleState, type PeoplePermissionSearchFilter } from './people-state';
-
-type PeopleSearchApiFilters = {
-  permissionGrantFilter?: 'ACTIVE' | 'ANY';
-  hasLecturerProfile?: boolean;
-};
+import { PeopleState } from './people-state';
 
 export abstract class PeopleRecords extends PeopleState {
   async searchPeople(query: string, options?: { preserveSelection?: boolean }): Promise<void> {
@@ -74,8 +68,6 @@ export abstract class PeopleRecords extends PeopleState {
       externalRef: '',
     });
     this.resetLecturerProfileForm();
-    this.permissionGrants.set([]);
-    this.resetPermissionGrantForm();
     this.updateExternallyManagedControls();
   }
 
@@ -95,8 +87,6 @@ export abstract class PeopleRecords extends PeopleState {
       externalRef: '',
     });
     this.resetLecturerProfileForm();
-    this.permissionGrants.set([]);
-    this.resetPermissionGrantForm();
     this.updateExternallyManagedControls();
   }
 
@@ -272,10 +262,6 @@ export abstract class PeopleRecords extends PeopleState {
       externalRef: person.externalRef ?? '',
     });
     this.populateLecturerProfileForm(person);
-    this.permissionGrants.set([]);
-    this.resetPermissionGrantForm();
-    void this.loadPermissionGrantsForPerson(person);
-    void this.ensurePermissionGrantTargetsLoaded();
     this.updateExternallyManagedControls();
   }
 
@@ -321,31 +307,9 @@ export abstract class PeopleRecords extends PeopleState {
     return /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : value;
   }
 
-  private buildPeopleSearchApiFilters(): PeopleSearchApiFilters {
+  private buildPeopleSearchApiFilters(): { hasLecturerProfile?: boolean } {
     return {
-      ...this.getPermissionGrantApiFilter(this.peopleSearchForm.controls.permissionFilter.value),
       ...(this.peopleSearchForm.controls.hasLecturerProfile.value ? { hasLecturerProfile: true } : {}),
     };
   }
-
-  private getPermissionGrantApiFilter(filter: PeoplePermissionSearchFilter): PeopleSearchApiFilters {
-    if (!this.permissions.has(Permission.PermissionGrant.Read)) {
-      return {};
-    }
-
-    switch (filter) {
-      case 'ACTIVE_GRANTS':
-        return { permissionGrantFilter: 'ACTIVE' };
-      case 'ANY_GRANTS':
-        return { permissionGrantFilter: 'ANY' };
-      default:
-        return {};
-    }
-  }
-
-  protected abstract resetPermissionGrantForm(options?: { clearDrafts?: boolean }): void;
-
-  protected abstract loadPermissionGrantsForPerson(person: Person): Promise<void>;
-
-  protected abstract ensurePermissionGrantTargetsLoaded(): Promise<void>;
 }

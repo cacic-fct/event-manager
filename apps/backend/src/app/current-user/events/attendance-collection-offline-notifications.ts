@@ -1,5 +1,6 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import { EventManagerPermissionGrantScope, Prisma, UserRole } from '@prisma/client';
+import { EventManagerPermissionScope, Prisma, UserRole } from '@prisma/client';
+import { resolveRoleIdsForPermission } from '../../authorization/effective-role-scopes';
 import { NovuNotificationsService } from '../../notifications/novu-notifications.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -40,39 +41,63 @@ async function findOfflineAttendanceReviewRecipients(params: {
   submission: OfflineAttendanceReviewQueuedSubmission;
 }) {
   const now = new Date();
-  const scopedGrantMatches: Prisma.EventManagerPermissionGrantWhereInput[] = [
-    { scope: EventManagerPermissionGrantScope.GLOBAL },
-    { scope: EventManagerPermissionGrantScope.EVENT, eventId: params.submission.eventId },
+  const scopedGrantMatches: Prisma.EventManagerRoleAssignmentScopeWhereInput[] = [
+    { scope: EventManagerPermissionScope.GLOBAL },
+    { scope: EventManagerPermissionScope.EVENT, eventId: params.submission.eventId },
   ];
   if (params.submission.event.majorEventId) {
     scopedGrantMatches.push({
-      scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+      scope: EventManagerPermissionScope.MAJOR_EVENT,
       majorEventId: params.submission.event.majorEventId,
     });
   }
   if (params.submission.event.eventGroupId) {
     scopedGrantMatches.push({
-      scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+      scope: EventManagerPermissionScope.EVENT_GROUP,
       eventGroupId: params.submission.event.eventGroupId,
     });
   }
 
-  const users = await params.prisma.user.findMany({
+  const roleIds = await resolveRoleIdsForPermission(params.prisma, Permission.EventAttendance.Update);
+  const assignments = await params.prisma.eventManagerRoleAssignment.findMany({
     where: {
-      OR: [
-        { role: UserRole.ADMIN },
-        {
-          eventManagerPermissionGrants: {
-            some: {
-              permission: Permission.EventAttendance.Update,
-              deletedAt: null,
+      roleId: { in: roleIds },
+      archivedAt: null,
+      OR: [{ validFrom: null }, { validFrom: { lte: now } }],
+      AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
+      scopes: {
+        some: {
+          archivedAt: null,
+          OR: scopedGrantMatches,
+          AND: [
+            { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+            { OR: [{ validUntil: null }, { validUntil: { gt: now } }] },
+          ],
+        },
+      },
+    },
+    select: {
+      person: { select: { userId: true } },
+      group: {
+        select: {
+          members: {
+            where: {
+              archivedAt: null,
               OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-              AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }, { OR: scopedGrantMatches }],
+              AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
             },
+            select: { person: { select: { userId: true } } },
           },
         },
-      ],
+      },
     },
+  });
+  const assignedUserIds = assignments.flatMap((assignment) => [
+    ...(assignment.person?.userId ? [assignment.person.userId] : []),
+    ...(assignment.group?.members.flatMap((member) => member.person.userId ? [member.person.userId] : []) ?? []),
+  ]);
+  const users = await params.prisma.user.findMany({
+    where: { OR: [{ role: UserRole.ADMIN }, { id: { in: assignedUserIds } }] },
     select: {
       id: true,
       email: true,

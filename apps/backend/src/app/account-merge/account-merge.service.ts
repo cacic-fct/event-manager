@@ -5,7 +5,14 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { EventFormResponseMode, EventFormTargetType, ExternalAccountMergeResult, People, Prisma } from '@prisma/client';
+import {
+  EventFormResponseMode,
+  EventFormTargetType,
+  EventManagerPermissionArchiveReason,
+  ExternalAccountMergeResult,
+  People,
+  Prisma,
+} from '@prisma/client';
 import { differenceInDays, isValid, parseISO } from 'date-fns';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -61,6 +68,10 @@ type MovedRelationsSnapshot = {
   movedMajorEventSubscriptionIds: string[];
   movedEventFormResponseIds: string[];
   coalescedEventFormResponseIds: string[];
+  movedRoleAssignmentIds: string[];
+  archivedRoleAssignmentIds: string[];
+  movedPermissionGroupMembershipIds: string[];
+  archivedPermissionGroupMembershipIds: string[];
 };
 
 @Injectable()
@@ -466,6 +477,7 @@ export class AccountMergeService {
       sourcePersonId,
     );
     const movedEventFormResponses = await this.moveEventFormResponses(tx, targetPersonId, sourcePersonId);
+    const permissionRelations = await this.movePermissionRelations(tx, targetPersonId, sourcePersonId);
 
     return {
       sourceAttendances: sourceAttendances.map((attendance) => ({
@@ -487,6 +499,71 @@ export class AccountMergeService {
       movedMajorEventSubscriptionIds,
       movedEventFormResponseIds: movedEventFormResponses.movedIds,
       coalescedEventFormResponseIds: movedEventFormResponses.coalescedIds,
+      ...permissionRelations,
+    };
+  }
+
+  private async movePermissionRelations(
+    tx: Prisma.TransactionClient,
+    targetPersonId: string,
+    sourcePersonId: string,
+  ): Promise<Pick<
+    MovedRelationsSnapshot,
+    | 'movedRoleAssignmentIds'
+    | 'archivedRoleAssignmentIds'
+    | 'movedPermissionGroupMembershipIds'
+    | 'archivedPermissionGroupMembershipIds'
+  >> {
+    const movedRoleAssignmentIds: string[] = [];
+    const archivedRoleAssignmentIds: string[] = [];
+    const assignments = await tx.eventManagerRoleAssignment.findMany({
+      where: { personId: sourcePersonId, archivedAt: null },
+      select: { id: true, roleId: true },
+    });
+    for (const assignment of assignments) {
+      const conflict = await tx.eventManagerRoleAssignment.findFirst({
+        where: { roleId: assignment.roleId, personId: targetPersonId, archivedAt: null },
+        select: { id: true },
+      });
+      if (conflict) {
+        await tx.eventManagerRoleAssignment.update({
+          where: { id: assignment.id },
+          data: { archivedAt: new Date(), archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
+        });
+        archivedRoleAssignmentIds.push(assignment.id);
+      } else {
+        await tx.eventManagerRoleAssignment.update({ where: { id: assignment.id }, data: { personId: targetPersonId } });
+        movedRoleAssignmentIds.push(assignment.id);
+      }
+    }
+
+    const movedPermissionGroupMembershipIds: string[] = [];
+    const archivedPermissionGroupMembershipIds: string[] = [];
+    const memberships = await tx.eventManagerPermissionGroupMember.findMany({
+      where: { personId: sourcePersonId, archivedAt: null },
+      select: { id: true, groupId: true },
+    });
+    for (const membership of memberships) {
+      const conflict = await tx.eventManagerPermissionGroupMember.findFirst({
+        where: { groupId: membership.groupId, personId: targetPersonId, archivedAt: null },
+        select: { id: true },
+      });
+      if (conflict) {
+        await tx.eventManagerPermissionGroupMember.update({
+          where: { id: membership.id },
+          data: { archivedAt: new Date(), archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
+        });
+        archivedPermissionGroupMembershipIds.push(membership.id);
+      } else {
+        await tx.eventManagerPermissionGroupMember.update({ where: { id: membership.id }, data: { personId: targetPersonId } });
+        movedPermissionGroupMembershipIds.push(membership.id);
+      }
+    }
+    return {
+      movedRoleAssignmentIds,
+      archivedRoleAssignmentIds,
+      movedPermissionGroupMembershipIds,
+      archivedPermissionGroupMembershipIds,
     };
   }
 

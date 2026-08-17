@@ -50,7 +50,7 @@ model Event {
   attendanceCollectors         EventAttendanceCollector[]
   offlineAttendanceSubmissions OfflineEventAttendanceSubmission[]
   lecturers                    EventLecturer[]
-  eventManagerPermissionGrants EventManagerPermissionGrant[]
+  eventManagerRoleAssignmentScopes EventManagerRoleAssignmentScope[]
 
   allowSubscription             Boolean                                @default(false)
   requiresImageLicenseAgreement Boolean                                @default(false)

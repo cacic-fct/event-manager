@@ -27,6 +27,18 @@ const RECEIPT_CONTEXT_FIELDS = [
 export const EVENT_MANAGER_PERMISSION_INCLUDED_DATA: Readonly<
   Partial<Record<Permission, readonly PermissionIncludedData[]>>
 > = {
+  [Permission.RelatedPerson.Read]: [
+    {
+      label: 'Pessoas relacionadas ao escopo',
+      fields: ['nome', 'e-mail principal', 'telefone', 'documento mascarado', 'conta vinculada'],
+    },
+  ],
+  [Permission.RelatedPerson.Update]: [
+    {
+      label: 'Dados editáveis de pessoas relacionadas',
+      fields: ['nome local', 'e-mails secundários', 'telefone'],
+    },
+  ],
   [Permission.EventLecturer.Read]: [
     {
       label: 'Dados limitados da pessoa ministrante',

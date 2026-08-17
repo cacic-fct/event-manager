@@ -5,9 +5,12 @@ model EventGroup {
   emoji                         String  @default("❔")
   requiresImageLicenseAgreement Boolean @default(false)
 
+  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
+  majorEventId String?
+
   events                       Event[]
   subscriptions                EventGroupSubscription[]
-  eventManagerPermissionGrants EventManagerPermissionGrant[]
+  eventManagerRoleAssignmentScopes EventManagerRoleAssignmentScope[]
   sportsCategory               SportsCategory?
 
   shouldIssueCertificate                          Boolean @default(false)
@@ -27,6 +30,7 @@ model EventGroup {
   deletedAt   DateTime?
 
   @@index([name], map: "event_groups_name_idx", where: raw("\"deletedAt\" IS NULL"))
+  @@index([majorEventId])
   @@index([deletedAt])
   @@map("event_groups")
 }

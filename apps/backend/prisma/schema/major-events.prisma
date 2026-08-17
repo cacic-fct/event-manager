@@ -7,8 +7,9 @@ model MajorEvent {
   description String?
   emoji       String  @default("❔")
 
-  events                       Event[]
-  eventManagerPermissionGrants EventManagerPermissionGrant[]
+  events                           Event[]
+  eventGroups                      EventGroup[]
+  eventManagerRoleAssignmentScopes EventManagerRoleAssignmentScope[]
   ownedForms                   EventForm[]                   @relation("EventFormOwnerMajorEvent")
   formLinks                    EventFormLink[]               @relation("EventFormLinkMajorEvent")
   formResponses                EventFormResponse[]           @relation("EventFormResponseMajorEvent")

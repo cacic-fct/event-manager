@@ -11,8 +11,8 @@ import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuditLogResolver } from './audit-log/audit-log.resolver';
 import { AuditLogService } from './audit-log/audit-log.service';
 import { AuthModule } from './auth/auth.module';
-import { PermissionGrantsResolver } from './authorization/permission-grants.resolver';
-import { PermissionGrantsService } from './authorization/permission-grants.service';
+import { PermissionManagementResolver } from './authorization/permission-management.resolver';
+import { PermissionManagementService } from './authorization/permission-management.service';
 import { KeycloakScopeGuard } from './auth/guards/keycloak-scope.guard';
 import { KeycloakAuthService } from './auth/keycloak-auth.service';
 import { createIntrospectionAuthPlugin } from './auth/introspection-auth.plugin';
@@ -385,8 +385,8 @@ const schedulerProviders = useInMemoryTestInfra
     UsersResolver,
     PeopleResolver,
     LecturerProfilesResolver,
-    PermissionGrantsResolver,
-    PermissionGrantsService,
+    PermissionManagementResolver,
+    PermissionManagementService,
     AuditLogResolver,
     AuditLogService,
     CalendarResolver,

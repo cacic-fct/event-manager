@@ -39,7 +39,10 @@ export async function countPersonLinkedResourceGroups(
     prisma.eventLecturer.count({ where: { personId } }),
     prisma.eventAttendanceCollector.count({ where: { personId } }),
     prisma.offlineEventAttendanceSubmission.count({ where: { personId } }),
-    prisma.eventManagerPermissionGrant.count({ where: { personId, deletedAt: null } }),
+    Promise.all([
+      prisma.eventManagerRoleAssignment.count({ where: { personId, archivedAt: null } }),
+      prisma.eventManagerPermissionGroupMember.count({ where: { personId, archivedAt: null } }),
+    ]).then(([direct, groups]) => direct + groups),
     prisma.lecturerProfile.findUnique({ where: { personId }, select: { id: true } }),
     prisma.people.count({ where: { mergedIntoId: personId, deletedAt: null } }),
     prisma.mergeCandidate.count({ where: { OR: [{ personAId: personId }, { personBId: personId }] } }),
@@ -102,10 +105,16 @@ export async function personHasLinkedData(
     prisma.eventLecturer.findFirst({ where: { personId: person.id }, select: { personId: true } }),
     prisma.eventAttendanceCollector.findFirst({ where: { personId: person.id }, select: { personId: true } }),
     prisma.offlineEventAttendanceSubmission.findFirst({ where: { personId: person.id }, select: { id: true } }),
-    prisma.eventManagerPermissionGrant.findFirst({
-      where: { personId: person.id, deletedAt: null },
-      select: { id: true },
-    }),
+    Promise.all([
+      prisma.eventManagerRoleAssignment.findFirst({
+        where: { personId: person.id, archivedAt: null },
+        select: { id: true },
+      }),
+      prisma.eventManagerPermissionGroupMember.findFirst({
+        where: { personId: person.id, archivedAt: null },
+        select: { id: true },
+      }),
+    ]).then(([direct, group]) => direct ?? group),
     prisma.lecturerProfile.findUnique({ where: { personId: person.id }, select: { id: true } }),
     prisma.people.findFirst({
       where: { mergedIntoId: person.id, deletedAt: null },

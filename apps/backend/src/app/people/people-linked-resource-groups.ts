@@ -4,7 +4,6 @@ import {
   buildLinkedGroup,
   getCertificateRoute,
   getCertificateTargetLabel,
-  getPermissionGrantTargetLabel,
   normalizeLinkedResourceGroups,
   PersonLinkedResourcePrisma,
 } from './people-linked-resource-definitions';
@@ -112,15 +111,60 @@ export async function buildPersonLinkedResourceGroups(
       include: { event: { select: { id: true, name: true, startDate: true } } },
       orderBy: { submittedAt: 'desc' },
     }),
-    prisma.eventManagerPermissionGrant.findMany({
-      where: { personId, deletedAt: null },
-      include: {
-        event: { select: { id: true, name: true } },
-        eventGroup: { select: { id: true, name: true } },
-        majorEvent: { select: { id: true, name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
+    Promise.all([
+      prisma.eventManagerRoleAssignment.findMany({
+        where: { personId, archivedAt: null },
+        select: {
+          id: true,
+          createdAt: true,
+          role: { select: { name: true } },
+          scopes: {
+            where: { archivedAt: null },
+            select: {
+              scope: true,
+              event: { select: { name: true } },
+              eventGroup: { select: { name: true } },
+              majorEvent: { select: { name: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.eventManagerPermissionGroupMember.findMany({
+        where: { personId, archivedAt: null },
+        select: {
+          id: true,
+          createdAt: true,
+          group: {
+            select: {
+              name: true,
+              assignments: {
+                where: { archivedAt: null },
+                select: { role: { select: { name: true } } },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]).then(([assignments, memberships]) => [
+      ...assignments.map((assignment) => ({
+        id: assignment.id,
+        label: assignment.role.name,
+        description: assignment.scopes
+          .map((scope) => scope.event?.name ?? scope.eventGroup?.name ?? scope.majorEvent?.name ?? 'Toda a plataforma')
+          .join(', '),
+        status: 'Cargo direto',
+        createdAt: assignment.createdAt,
+      })),
+      ...memberships.map((membership) => ({
+        id: membership.id,
+        label: membership.group.name,
+        description: membership.group.assignments.map((assignment) => assignment.role.name).join(', ') || 'Sem cargos ativos',
+        status: 'Grupo',
+        createdAt: membership.createdAt,
+      })),
+    ]),
     prisma.lecturerProfile.findUnique({
       where: { personId },
       select: { id: true, displayName: true, updatedAt: true },
@@ -274,13 +318,13 @@ export async function buildPersonLinkedResourceGroups(
       'PERMISSION_GRANT',
       'Permissões',
       'admin_panel_settings',
-      permissionGrants.map((grant) => ({
-        id: grant.id,
-        label: grant.permission,
-        description: getPermissionGrantTargetLabel(grant),
-        route: `/people/${person.id}`,
-        status: grant.scope,
-        occurredAt: grant.createdAt,
+      permissionGrants.map((assignment) => ({
+        id: assignment.id,
+        label: assignment.label,
+        description: assignment.description,
+        route: `/permissions/manage/people/${person.id}`,
+        status: assignment.status,
+        occurredAt: assignment.createdAt,
       })),
     ),
     buildLinkedGroup('MERGE', 'Unificações', 'call_merge', [

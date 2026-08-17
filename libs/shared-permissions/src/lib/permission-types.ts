@@ -75,6 +75,10 @@ export const Permission = {
     Update: 'person#update',
     Delete: 'person#delete',
   },
+  RelatedPerson: {
+    Read: 'related-person#read',
+    Update: 'related-person#update',
+  },
   PermissionGrant: {
     Read: 'permission-grant#read',
     Create: 'permission-grant#create',

@@ -50,4 +50,8 @@ export type MovedRelationsSnapshot = {
   movedEventSubscriptionIds: string[];
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
+  movedRoleAssignmentIds: string[];
+  archivedRoleAssignmentIds: string[];
+  movedPermissionGroupMembershipIds: string[];
+  archivedPermissionGroupMembershipIds: string[];
 };

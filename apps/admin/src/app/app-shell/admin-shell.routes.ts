@@ -193,9 +193,12 @@ export const routes: Route[] = [
       ...guardedFeatureRoute(`${subscriptionsData.path}/major-event/:majorEventId`, subscriptionsData, () =>
         import('../subscriptions/subscriptions-page.component').then((m) => m.SubscriptionsPageComponent),
       ),
-      ...guardedFeatureRoute(permissionsData.path, permissionsData, () =>
-        import('../permissions/permissions-page.component').then((m) => m.PermissionsPageComponent),
-      ),
+      {
+        path: permissionsData.path,
+        data: permissionsData,
+        canMatch: [canReadFeatureGuard],
+        loadChildren: () => import('../permissions/permissions.routes').then((m) => m.routes),
+      },
       ...guardedFeatureRoute(globalOperationsData.path, globalOperationsData, () =>
         import('../global-operations/global-operations-page.component').then((m) => m.GlobalOperationsPageComponent),
       ),

@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { EventManagerPermissionArchiveReason, Prisma } from '@prisma/client';
 import { MovedRelationsSnapshot } from './types';
 
 export async function moveRelations(
@@ -227,6 +227,52 @@ export async function moveRelations(
     });
   }
 
+  const movedRoleAssignmentIds: string[] = [];
+  const archivedRoleAssignmentIds: string[] = [];
+  const sourceRoleAssignments = await tx.eventManagerRoleAssignment.findMany({
+    where: { personId: sourcePersonId, archivedAt: null },
+    select: { id: true, roleId: true },
+  });
+  for (const assignment of sourceRoleAssignments) {
+    const conflict = await tx.eventManagerRoleAssignment.findFirst({
+      where: { roleId: assignment.roleId, personId: targetPersonId, archivedAt: null },
+      select: { id: true },
+    });
+    if (conflict) {
+      await tx.eventManagerRoleAssignment.update({
+        where: { id: assignment.id },
+        data: { archivedAt: new Date(), archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
+      });
+      archivedRoleAssignmentIds.push(assignment.id);
+    } else {
+      await tx.eventManagerRoleAssignment.update({ where: { id: assignment.id }, data: { personId: targetPersonId } });
+      movedRoleAssignmentIds.push(assignment.id);
+    }
+  }
+
+  const movedPermissionGroupMembershipIds: string[] = [];
+  const archivedPermissionGroupMembershipIds: string[] = [];
+  const sourceMemberships = await tx.eventManagerPermissionGroupMember.findMany({
+    where: { personId: sourcePersonId, archivedAt: null },
+    select: { id: true, groupId: true },
+  });
+  for (const membership of sourceMemberships) {
+    const conflict = await tx.eventManagerPermissionGroupMember.findFirst({
+      where: { groupId: membership.groupId, personId: targetPersonId, archivedAt: null },
+      select: { id: true },
+    });
+    if (conflict) {
+      await tx.eventManagerPermissionGroupMember.update({
+        where: { id: membership.id },
+        data: { archivedAt: new Date(), archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
+      });
+      archivedPermissionGroupMembershipIds.push(membership.id);
+    } else {
+      await tx.eventManagerPermissionGroupMember.update({ where: { id: membership.id }, data: { personId: targetPersonId } });
+      movedPermissionGroupMembershipIds.push(membership.id);
+    }
+  }
+
   return {
     sourceAttendances: sourceAttendances.map((attendance) => ({
       eventId: attendance.eventId,
@@ -245,5 +291,9 @@ export async function moveRelations(
     movedEventSubscriptionIds,
     movedEventGroupSubscriptionIds,
     movedMajorEventSubscriptionIds,
+    movedRoleAssignmentIds,
+    archivedRoleAssignmentIds,
+    movedPermissionGroupMembershipIds,
+    archivedPermissionGroupMembershipIds,
   };
 }

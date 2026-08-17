@@ -368,8 +368,18 @@ export class LgpdService {
       await tx.accountUserMerge.deleteMany({
         where: { OR: [{ oldUserId: { in: userIds } }, { newUserId: { in: userIds } }] },
       });
-      const permissionGrants = await tx.eventManagerPermissionGrant.deleteMany({
-        where: { userId: { in: userIds } },
+      const roleAssignmentIds = await tx.eventManagerRoleAssignment.findMany({
+        where: { personId: { in: personIds } },
+        select: { id: true },
+      });
+      const roleAssignmentScopes = await tx.eventManagerRoleAssignmentScope.deleteMany({
+        where: { assignmentId: { in: roleAssignmentIds.map((assignment) => assignment.id) } },
+      });
+      const roleAssignments = await tx.eventManagerRoleAssignment.deleteMany({
+        where: { id: { in: roleAssignmentIds.map((assignment) => assignment.id) } },
+      });
+      const permissionGroupMemberships = await tx.eventManagerPermissionGroupMember.deleteMany({
+        where: { personId: { in: personIds } },
       });
       const people = await tx.people.deleteMany({ where: { id: { in: personIds } } });
       const users = await tx.user.deleteMany({ where: { id: { in: userIds } } });
@@ -388,7 +398,9 @@ export class LgpdService {
           majorEventSubscriptions.count +
           attendances.count +
           lecturers.count +
-          permissionGrants.count +
+          roleAssignmentScopes.count +
+          roleAssignments.count +
+          permissionGroupMemberships.count +
           offlineAttendanceSubmissions +
           eventDrafts,
       };

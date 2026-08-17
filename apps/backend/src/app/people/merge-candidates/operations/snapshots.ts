@@ -91,5 +91,17 @@ export function parseMovedRelations(value: Prisma.JsonValue): MovedRelationsSnap
         ? []
         : readStringArray(value, 'movedEventGroupSubscriptionIds'),
     movedMajorEventSubscriptionIds: readStringArray(value, 'movedMajorEventSubscriptionIds'),
+    movedRoleAssignmentIds:
+      value.movedRoleAssignmentIds === undefined ? [] : readStringArray(value, 'movedRoleAssignmentIds'),
+    archivedRoleAssignmentIds:
+      value.archivedRoleAssignmentIds === undefined ? [] : readStringArray(value, 'archivedRoleAssignmentIds'),
+    movedPermissionGroupMembershipIds:
+      value.movedPermissionGroupMembershipIds === undefined
+        ? []
+        : readStringArray(value, 'movedPermissionGroupMembershipIds'),
+    archivedPermissionGroupMembershipIds:
+      value.archivedPermissionGroupMembershipIds === undefined
+        ? []
+        : readStringArray(value, 'archivedPermissionGroupMembershipIds'),
   };
 }

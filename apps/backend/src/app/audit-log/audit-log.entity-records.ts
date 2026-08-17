@@ -28,11 +28,6 @@ export async function findCurrentAuditEntityRecord(
         where: { id: entityId },
         select: getAuditLogRevertConfig(entityType).select,
       });
-    case AuditLogEntityType.PERMISSION_GRANT:
-      return prisma.eventManagerPermissionGrant.findUnique({
-        where: { id: entityId },
-        select: getAuditLogRevertConfig(entityType).select,
-      });
     default:
       return null;
   }
@@ -63,12 +58,6 @@ export async function updateAuditEntityRecord(
       });
     case AuditLogEntityType.PLACE_PRESET:
       return tx.placePreset.update({
-        where: { id: entityId },
-        data,
-        select: getAuditLogRevertConfig(entityType).select,
-      });
-    case AuditLogEntityType.PERMISSION_GRANT:
-      return tx.eventManagerPermissionGrant.update({
         where: { id: entityId },
         data,
         select: getAuditLogRevertConfig(entityType).select,

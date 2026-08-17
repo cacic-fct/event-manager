@@ -119,6 +119,8 @@ export function getPermissionResourceLabel(resource: string): string {
       return 'Pessoa duplicada';
     case 'person':
       return 'Pessoa';
+    case 'related-person':
+      return 'Pessoa relacionada ao escopo';
     case 'permission-grant':
       return 'Permissão do Event Manager';
     case 'place-preset':
@@ -172,6 +174,8 @@ export function getPermissionResourceIcon(resource: string): string {
       return 'merge_type';
     case 'person':
       return 'person';
+    case 'related-person':
+      return 'group';
     case 'permission-grant':
       return 'admin_panel_settings';
     case 'place-preset':

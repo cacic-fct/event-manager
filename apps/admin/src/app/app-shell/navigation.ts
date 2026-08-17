@@ -197,7 +197,7 @@ export const navigationItems = [
     id: 'permissions',
     path: 'permissions',
     label: 'Permissões',
-    description: 'Consulte os acessos concedidos para este usuário.',
+    description: 'Consulte seus acessos e administre cargos, pessoas e grupos.',
     icon: 'admin_panel_settings',
     group: 'Administração',
     helpLink:

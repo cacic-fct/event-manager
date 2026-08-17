@@ -2,7 +2,7 @@ import { signal } from '@angular/core';
 import { EVENT_MANAGER_PERMISSION_CATALOG, type Permission } from '@cacic-fct/shared-permissions';
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
-import { PermissionsPageComponent } from './permissions-page.component';
+import { MyPermissionsComponent } from './my-permissions/my-permissions.component';
 import { PermissionsService } from './permissions.service';
 
 type PermissionPreset = 'all' | 'read-only' | 'events' | 'certificates' | 'none';
@@ -25,11 +25,11 @@ function selectPermissions(args: PermissionsPageStoryArgs): Permission[] {
   let permissions: Permission[];
   switch (args.preset) {
     case 'read-only':
-      permissions = EVENT_MANAGER_PERMISSION_CATALOG.filter((permission) => permission.endsWith('.read'));
+      permissions = EVENT_MANAGER_PERMISSION_CATALOG.filter((permission) => permission.endsWith('#read'));
       break;
     case 'events':
       permissions = EVENT_MANAGER_PERMISSION_CATALOG.filter((permission) =>
-        ['event.', 'event-group.', 'major-event.', 'publication.'].some((prefix) => permission.startsWith(prefix)),
+        ['event#', 'event-group#', 'major-event#'].some((prefix) => permission.startsWith(prefix)),
       );
       break;
     case 'certificates':
@@ -47,8 +47,8 @@ function selectPermissions(args: PermissionsPageStoryArgs): Permission[] {
 }
 
 const meta: Meta<PermissionsPageStoryArgs> = {
-  component: PermissionsPageComponent,
-  title: 'CACiC Eventos/Workspace/Tabs/Permissions/Workspace Permissions Tab',
+  component: MyPermissionsComponent,
+  title: 'CACiC Eventos/Workspace/Permissões/Minhas permissões',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {

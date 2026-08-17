@@ -205,33 +205,17 @@ export function getAuditLogRevertConfig(entityType: AuditLogEntityType): RevertE
     case AuditLogEntityType.PERMISSION_GRANT:
       return {
         readPermission: Permission.PermissionGrant.Read,
-        updatePermission: Permission.PermissionGrant.Update,
-        deletePermission: Permission.PermissionGrant.Delete,
-        supportsSoftDelete: true,
-        mutableFields: [
-          'userId',
-          'personId',
-          'permission',
-          'scope',
-          'eventId',
-          'majorEventId',
-          'eventGroupId',
-          'validFrom',
-          'validUntil',
-          'deletedAt',
-        ],
-        select: {
-          userId: true,
-          personId: true,
-          permission: true,
-          scope: true,
-          eventId: true,
-          majorEventId: true,
-          eventGroupId: true,
-          validFrom: true,
-          validUntil: true,
-          deletedAt: true,
-        },
+        supportsSoftDelete: false,
+        mutableFields: [],
+        select: {},
+      };
+    case AuditLogEntityType.PERMISSION_ROLE:
+    case AuditLogEntityType.PERMISSION_GROUP:
+      return {
+        readPermission: Permission.PermissionGrant.Read,
+        supportsSoftDelete: false,
+        mutableFields: [],
+        select: {},
       };
     case AuditLogEntityType.EVENT_SUBSCRIPTION:
     case AuditLogEntityType.EVENT_GROUP_SUBSCRIPTION:

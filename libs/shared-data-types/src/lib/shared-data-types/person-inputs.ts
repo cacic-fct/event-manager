@@ -65,3 +65,18 @@ export class PersonUpdateInput {
   @Field(() => String, { nullable: true })
   externalRef?: string;
 }
+
+@InputType()
+export class RelatedPersonUpdateInput {
+  @Field(() => String, { nullable: true })
+  name?: string;
+
+  @Field(() => String, { nullable: true })
+  email?: string;
+
+  @Field(() => [String], { nullable: true })
+  secondaryEmails?: string[];
+
+  @Field(() => String, { nullable: true })
+  phone?: string;
+}
