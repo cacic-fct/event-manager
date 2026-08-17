@@ -14,10 +14,10 @@
         <span matListItemTitle>{{ permission.label }}</span>
         <div matListItemMeta class="permission-action-icons">
           @for (action of permission.actions; track action.scope) {
-            <button matIconButton type="button" [attr.aria-label]="permission.label + ': ' + action.label"
-              [matTooltip]="action.label" matTooltipPosition="above" disableRipple class="permission-icon">
+            <span [attr.aria-label]="permission.label + ': ' + action.label"
+              [matTooltip]="action.label" matTooltipPosition="above" class="permission-icon">
               <mat-icon>{{ action.icon }}</mat-icon>
-            </button>
+            </span>
           }
         </div>
       </mat-list-item>

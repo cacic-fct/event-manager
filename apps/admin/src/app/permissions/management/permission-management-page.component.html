@@ -2,107 +2,228 @@
   <div class="management-heading">
     <div>
       <h2>Gerenciamento de permissões</h2>
-      <p>Cargos combinam permissões, pessoas ou grupos e escopos com validade explícita.</p>
     </div>
-    <div class="heading-actions"><mat-checkbox [checked]="store.showArchived()" (change)="store.toggleArchived($event.checked)">Mostrar arquivados</mat-checkbox>
-      <span class="privacy-note"><mat-icon>privacy_tip</mat-icon>Prefira o menor escopo necessário.</span></div>
+    <div class="heading-actions">
+      <mat-checkbox [checked]="store.showArchived()" (change)="store.toggleArchived($event.checked)"
+        >Mostrar arquivados</mat-checkbox
+      >
+    </div>
   </div>
 
   @if (store.loading()) {
     <div class="loading-state"><mat-spinner diameter="32" /><span>Carregando cargos e atribuições…</span></div>
   } @else if (store.loadError()) {
-    <div class="empty-state"><mat-icon>cloud_off</mat-icon><h3>Não foi possível carregar as permissões</h3>
+    <div class="empty-state">
+      <mat-icon>cloud_off</mat-icon>
+      <h3>Não foi possível carregar as permissões</h3>
       <p>A conexão falhou ou seu acesso mudou. Tente novamente.</p>
       <button mat-flat-button type="button" (click)="store.load()"><mat-icon>refresh</mat-icon>Tentar novamente</button>
     </div>
   } @else {
-    <mat-tab-group [selectedIndex]="store.selectedTab()" (selectedIndexChange)="store.selectTab($event)" animationDuration="0ms">
+    <mat-tab-group
+      [selectedIndex]="store.selectedTab()"
+      (selectedIndexChange)="store.selectTab($event)"
+      animationDuration="0ms">
       <mat-tab>
-        <ng-template mat-tab-label><span class="workspace-tab-label"><mat-icon>badge</mat-icon>Cargos</span></ng-template>
+        <ng-template mat-tab-label
+          ><span class="workspace-tab-label"><mat-icon>badge</mat-icon>Cargos</span></ng-template
+        >
         <div class="tab-grid management-grid">
           <aside class="panel role-rail">
             <div class="panel-heading">
-              <div><h3>Cargos</h3><p>Predefinidos e personalizados.</p></div>
-              <button mat-flat-button type="button" [disabled]="!store.canCreate()" (click)="openNewRoleDialog()"><mat-icon>add</mat-icon>Novo cargo</button>
+              <div>
+                <h3>Cargos</h3>
+                <p>Predefinidos e personalizados.</p>
+              </div>
+              <button mat-flat-button type="button" [disabled]="!store.canCreate()" (click)="openNewRoleDialog()">
+                <mat-icon>add</mat-icon>Novo cargo
+              </button>
             </div>
             <h4>Predefinidos</h4>
             <div class="entity-list">
               @for (role of store.predefinedRoles(); track role.id) {
-                <button type="button" class="entity-row" [attr.aria-pressed]="store.selectedRoleId() === role.id" [class.entity-row--selected]="store.selectedRoleId() === role.id"
+                <button
+                  type="button"
+                  class="entity-row"
+                  [attr.aria-pressed]="store.selectedRoleId() === role.id"
+                  [class.entity-row--selected]="store.selectedRoleId() === role.id"
                   (click)="store.selectRole(role)">
                   <lib-twemoji [emoji]="role.emoji" />
-                  <span><strong>{{ role.name }}</strong><small>{{ role.description }}</small>
-                    <small>{{ role.archivedAt ? 'Arquivado' : (role.directPeopleCount + role.groupPeopleCount) + ' pessoas · ' + role.directPeopleCount + ' diretas' }}</small></span>
+                  <span
+                    ><strong>{{ role.name }}</strong
+                    ><small>{{ role.description }}</small>
+                    <small>{{
+                      role.archivedAt
+                        ? 'Arquivado'
+                        : role.directPeopleCount +
+                          role.groupPeopleCount +
+                          ' pessoas · ' +
+                          role.directPeopleCount +
+                          ' diretas'
+                    }}</small></span
+                  >
                 </button>
               }
             </div>
             <h4>Personalizados</h4>
             <div class="entity-list">
               @for (role of store.customRoles(); track role.id) {
-                <button type="button" class="entity-row" [attr.aria-pressed]="store.selectedRoleId() === role.id" [class.entity-row--selected]="store.selectedRoleId() === role.id"
+                <button
+                  type="button"
+                  class="entity-row"
+                  [attr.aria-pressed]="store.selectedRoleId() === role.id"
+                  [class.entity-row--selected]="store.selectedRoleId() === role.id"
                   (click)="store.selectRole(role)">
                   <lib-twemoji [emoji]="role.emoji" />
-                  <span><strong>{{ role.name }}</strong><small>{{ role.description }}</small>
-                    <small>{{ role.archivedAt ? 'Arquivado' : (role.directPeopleCount + role.groupPeopleCount) + ' pessoas · ' + role.directPeopleCount + ' diretas' }}</small></span>
+                  <span
+                    ><strong>{{ role.name }}</strong
+                    ><small>{{ role.description }}</small>
+                    <small>{{
+                      role.archivedAt
+                        ? 'Arquivado'
+                        : role.directPeopleCount +
+                          role.groupPeopleCount +
+                          ' pessoas · ' +
+                          role.directPeopleCount +
+                          ' diretas'
+                    }}</small></span
+                  >
                 </button>
-              } @empty { <p class="empty-note">Nenhum cargo personalizado.</p> }
+              } @empty {
+                <p class="empty-note">Nenhum cargo personalizado.</p>
+              }
             </div>
           </aside>
 
           <section class="panel role-editor">
             @if (store.roleDraft(); as role) {
               <div class="panel-heading">
-                <div class="role-title"><lib-twemoji [emoji]="role.emoji" /><div><h3>{{ role.name }}</h3>
-                  <p>{{ role.isExternal ? 'Administrado pelo Keycloak' : role.isSystem ? 'Predefinido · atribuição permitida' : 'Cargo personalizado' }}</p></div></div>
+                <div class="role-title">
+                  <lib-twemoji [emoji]="role.emoji" />
+                  <div>
+                    <h3>{{ role.name }}</h3>
+                    <p>
+                      {{
+                        role.isExternal
+                          ? 'Administrado pelo Keycloak'
+                          : role.isSystem
+                            ? 'Predefinido · atribuição permitida'
+                            : 'Cargo personalizado'
+                      }}
+                    </p>
+                  </div>
+                </div>
                 <div class="panel-actions">
-                <button mat-stroked-button type="button" [disabled]="role.isExternal || !!role.archivedAt || !store.canCreate()" (click)="store.duplicateRole()">
-                  <mat-icon>content_copy</mat-icon>Duplicar cargo
-                </button>
-                @if (!role.isSystem && role.id && !role.archivedAt) {
-                  <button mat-button type="button" [disabled]="!store.canDelete()" (click)="store.archiveCurrentRole()"><mat-icon>archive</mat-icon>Arquivar</button>
-                }
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="role.isExternal || !!role.archivedAt || !store.canCreate()"
+                    (click)="store.duplicateRole()">
+                    <mat-icon>content_copy</mat-icon>Duplicar cargo
+                  </button>
+                  @if (!role.isSystem && role.id && !role.archivedAt) {
+                    <button
+                      mat-button
+                      type="button"
+                      [disabled]="!store.canDelete()"
+                      (click)="store.archiveCurrentRole()">
+                      <mat-icon>archive</mat-icon>Arquivar
+                    </button>
+                  }
                 </div>
               </div>
-              @if (role.archivedAt) { <p class="archive-note"><mat-icon>archive</mat-icon>Este cargo está arquivado e disponível apenas para consulta e auditoria.</p> }
+              @if (role.archivedAt) {
+                <p class="archive-note">
+                  <mat-icon>archive</mat-icon>Este cargo está arquivado e disponível apenas para consulta e auditoria.
+                </p>
+              }
 
               <section class="editor-section">
-                <div class="section-heading"><div><h4>Identidade do cargo</h4><p>Nome e ícone reconhecíveis reduzem atribuições por engano.</p></div></div>
+                <div class="section-heading">
+                  <div>
+                    <h4>Identidade do cargo</h4>
+                    <p>Nome e ícone reconhecíveis reduzem atribuições por engano.</p>
+                  </div>
+                </div>
                 <div class="role-fields">
-                  <mat-form-field><mat-label>Ícone Twemoji</mat-label><input matInput [value]="role.emoji" [readonly]="role.isSystem || !store.canEditRole()"
-                    (input)="store.patchRole({ emoji: $any($event.target).value })" /></mat-form-field>
-                  <mat-form-field><mat-label>Nome</mat-label><input matInput [value]="role.name" [readonly]="role.isSystem || !store.canEditRole()"
-                    (input)="store.patchRole({ name: $any($event.target).value })" /></mat-form-field>
-                  <mat-form-field class="span-2"><mat-label>Descrição</mat-label><textarea matInput rows="2" [value]="role.description"
-                    [readonly]="role.isSystem || !store.canEditRole()" (input)="store.patchRole({ description: $any($event.target).value })"></textarea></mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Emoji</mat-label
+                    ><input
+                      matInput
+                      [value]="role.emoji"
+                      [readonly]="role.isSystem || !store.canEditRole()"
+                      (input)="store.patchRole({ emoji: $any($event.target).value })"
+                  /></mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Nome</mat-label
+                    ><input
+                      matInput
+                      [value]="role.name"
+                      [readonly]="role.isSystem || !store.canEditRole()"
+                      (input)="store.patchRole({ name: $any($event.target).value })"
+                  /></mat-form-field>
+                  <mat-form-field class="span-2"
+                    ><mat-label>Descrição</mat-label
+                    ><textarea
+                      matInput
+                      rows="2"
+                      [value]="role.description"
+                      [readonly]="role.isSystem || !store.canEditRole()"
+                      (input)="store.patchRole({ description: $any($event.target).value })"></textarea>
+                  </mat-form-field>
                 </div>
               </section>
 
               <section class="editor-section">
-                <div class="section-heading"><div><h4>Herança</h4><p>Permissões herdadas ficam bloqueadas e mostram o cargo de origem.</p></div></div>
+                <div class="section-heading">
+                  <div>
+                    <h4>Herança</h4>
+                    <p>Permissões herdadas ficam bloqueadas e mostram o cargo de origem.</p>
+                  </div>
+                </div>
                 <div class="parent-role-grid">
                   @for (candidate of store.roles(); track candidate.id) {
                     @if (!candidate.isExternal && candidate.id !== role.id) {
-                          <mat-checkbox [checked]="role.parentRoleIds.includes(candidate.id)" [disabled]="role.isSystem || !store.canEditRole()"
-                        (change)="store.toggleParentRole(candidate.id, $event.checked)">{{ candidate.name }}</mat-checkbox>
+                      <mat-checkbox
+                        [checked]="role.parentRoleIds.includes(candidate.id)"
+                        [disabled]="role.isSystem || !store.canEditRole()"
+                        (change)="store.toggleParentRole(candidate.id, $event.checked)"
+                        >{{ candidate.name }}</mat-checkbox
+                      >
                     }
                   }
                 </div>
               </section>
 
               <section class="editor-section">
-                <div class="section-heading"><div><h4>Permissões</h4><p>Ações marcam automaticamente as visualizações necessárias. Dependências entre áreas pedem confirmação.</p></div></div>
+                <div class="section-heading">
+                  <div>
+                    <h4>Permissões</h4>
+                    <p>
+                      Ações marcam automaticamente as visualizações necessárias. Dependências entre áreas pedem
+                      confirmação.
+                    </p>
+                  </div>
+                </div>
                 <div class="permission-matrix">
                   @for (group of store.permissionGroups; track group.type) {
                     <section class="permission-category">
-                      <header><mat-icon>{{ group.resourceIcon }}</mat-icon><strong>{{ group.label }}</strong></header>
+                      <header>
+                        <mat-icon>{{ group.resourceIcon }}</mat-icon
+                        ><strong>{{ group.label }}</strong>
+                      </header>
                       <div>
                         @for (action of group.actions; track action.scope) {
                           @let permission = permissionValue(group.type, action.scope);
                           @let inherited = role.inheritedPermissions.includes(permission);
-                          <mat-checkbox [checked]="role.permissions.includes(permission) || inherited"
-                            [disabled]="role.isSystem || inherited || !store.canEditRole()" (change)="store.togglePermission(permission, $event.checked)">
+                          <mat-checkbox
+                            [checked]="role.permissions.includes(permission) || inherited"
+                            [disabled]="role.isSystem || inherited || !store.canEditRole()"
+                            (change)="store.togglePermission(permission, $event.checked)">
                             <span>{{ action.label }}</span>
-                            @if (inherited) { <small>Herdada de {{ inheritedFrom(permission) }}</small> }
+                            @if (inherited) {
+                              <small>Herdada de {{ inheritedFrom(permission) }}</small>
+                            }
                           </mat-checkbox>
                         }
                       </div>
@@ -113,34 +234,133 @@
 
               @if (!role.isExternal) {
                 <section class="editor-section">
-                  <div class="section-heading"><div><h4>Atribuições e escopos</h4><p>A pessoa pode receber o cargo antes de ter uma conta. Cada atribuição e escopo tem validade própria.</p></div></div>
-                  <app-person-search label="Adicionar pessoa" [results]="store.peopleResults()" [loading]="store.searchingPeople()" [showIdentitySummary]="false" [disabled]="!store.canEditRole()"
-                    (searchRequested)="store.searchPeople($event)" (personSelected)="store.addPersonAssignment($event)" />
-                  <div class="group-assignment-add">
-                    <mat-form-field><mat-label>Adicionar grupo</mat-label><mat-select #groupAssignment>
-                      @for (group of store.groups(); track group.id) { <mat-option [value]="group.id">{{ group.name }}</mat-option> }
-                    </mat-select></mat-form-field>
-                    <button mat-stroked-button type="button" [disabled]="!store.canEditRole()" (click)="store.addGroupAssignment(groupAssignment.value); groupAssignment.value = null">
-                      <mat-icon>group_add</mat-icon>Adicionar grupo
-                    </button>
+                  <div class="section-heading">
+                    <div>
+                      <h4>Atribuições e escopos</h4>
+                      <p>
+                        A pessoa pode receber o cargo antes de ter uma conta. Cada atribuição e escopo tem validade
+                        própria.
+                      </p>
+                    </div>
+                  </div>
+                  <app-person-search
+                    label="Adicionar pessoa"
+                    [results]="store.peopleResults()"
+                    [loading]="store.searchingPeople()"
+                    [showIdentitySummary]="false"
+                    [disabled]="!store.canEditRole()"
+                    (searchRequested)="store.searchPeople($event)"
+                    (personSelected)="store.addPersonAssignment($event)" />
+                  <div class="group-assignment-search">
+                    <div class="group-search-control">
+                      <mat-form-field subscriptSizing="dynamic">
+                        <mat-label>Buscar grupo</mat-label>
+                        <mat-icon matPrefix>groups</mat-icon>
+                        <input
+                          matInput
+                          type="search"
+                          autocomplete="off"
+                          [value]="store.groupAssignmentSearchQuery()"
+                          [disabled]="!store.canEditRole()"
+                          (input)="store.searchGroups($any($event.target).value)"
+                          (keydown.enter)="store.searchGroups(store.groupAssignmentSearchQuery()); $event.preventDefault()" />
+                      </mat-form-field>
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        [disabled]="!store.canEditRole() || !store.groupAssignmentSearchActive()"
+                        (click)="store.searchGroups(store.groupAssignmentSearchQuery())">
+                        <mat-icon>search</mat-icon>Buscar
+                      </button>
+                    </div>
+                    @if (store.groupAssignmentSearchActive()) {
+                      <div class="group-search-results" aria-label="Grupos encontrados">
+                        @for (group of store.groupAssignmentResults(); track group.id) {
+                          <button
+                            mat-stroked-button
+                            type="button"
+                            class="group-search-result"
+                            [attr.aria-label]="'Adicionar grupo ' + group.name"
+                            [disabled]="!store.canEditRole()"
+                            (click)="store.addGroupAssignment(group.id)">
+                            <lib-twemoji [emoji]="group.emoji" />
+                            <span>
+                              <strong>{{ group.name }}</strong>
+                              <small>{{ group.description || 'Sem descrição' }} · {{ group.members.length }} integrantes</small>
+                            </span>
+                            <mat-icon aria-hidden="true">group_add</mat-icon>
+                          </button>
+                        } @empty {
+                          <p class="search-hint">Nenhum grupo encontrado para esta busca.</p>
+                        }
+                      </div>
+                    }
                   </div>
 
                   <div class="assignment-list">
                     @for (assignment of role.assignments; track $index; let assignmentIndex = $index) {
                       <article class="assignment">
-                        <header><div><mat-icon>{{ assignment.personId ? 'person' : 'groups' }}</mat-icon>
-                          <span><strong>{{ store.assignmentName(assignment) }}</strong>
-                            @if (assignment.personId && !store.roles().flatMap(r => r.assignments).find(a => a.personId === assignment.personId)?.subjectHasLinkedUser) {
-                              <small>Sem usuário vinculado · o acesso será ativado quando uma conta for associada.</small>
-                            }</span></div>
-                          <button mat-icon-button type="button" aria-label="Remover atribuição" [disabled]="!store.canEditRole()" (click)="store.removeAssignment(assignmentIndex)"><mat-icon>close</mat-icon></button>
+                        <header>
+                          <div>
+                            <mat-icon>{{ assignment.personId ? 'person' : 'groups' }}</mat-icon>
+                            <span
+                              ><strong>{{ store.assignmentName(assignment) }}</strong>
+                              @if (assignment.personId && !store.assignmentHasLinkedUser(assignment)) {
+                                <small
+                                  >Sem usuário vinculado · o acesso será ativado quando uma conta for associada.</small
+                                >
+                              }
+                            </span>
+                          </div>
+                          <button
+                            mat-icon-button
+                            type="button"
+                            aria-label="Remover atribuição"
+                            [disabled]="!store.canEditRole()"
+                            (click)="store.removeAssignment(assignmentIndex)">
+                            <mat-icon>close</mat-icon>
+                          </button>
                         </header>
                         <div class="validity-row">
-                          <mat-checkbox [checked]="assignment.unlimited" [disabled]="!store.canEditRole()" (change)="store.patchAssignment(assignmentIndex, { unlimited: $event.checked, validUntil: $event.checked ? null : assignment.validUntil })">Sem limite de tempo</mat-checkbox>
-                          <mat-form-field><mat-label>Início</mat-label><input matInput type="datetime-local" [disabled]="!store.canEditRole()" [value]="store.dateTimeForInput(assignment.validFrom)"
-                            (input)="store.patchAssignment(assignmentIndex, { validFrom: store.dateTimeFromInput($any($event.target).value) })" /></mat-form-field>
-                          <mat-form-field><mat-label>Expiração</mat-label><input matInput type="datetime-local" [disabled]="assignment.unlimited || !store.canEditRole()" [value]="store.dateTimeForInput(assignment.validUntil)"
-                            (input)="store.patchAssignment(assignmentIndex, { validUntil: store.dateTimeFromInput($any($event.target).value) })" /></mat-form-field>
+                          <mat-checkbox
+                            [checked]="assignment.unlimited"
+                            [disabled]="!store.canEditRole()"
+                            (change)="
+                              store.patchAssignment(assignmentIndex, {
+                                unlimited: $event.checked,
+                                validUntil: $event.checked ? null : assignment.validUntil,
+                              })
+                            "
+                            >Sem limite de tempo</mat-checkbox
+                          >
+                          <div class="validity-fields">
+                            <mat-form-field
+                              ><mat-label>Início</mat-label
+                              ><input
+                                matInput
+                                type="datetime-local"
+                                [disabled]="!store.canEditRole()"
+                                [value]="store.dateTimeForInput(assignment.validFrom)"
+                                (input)="
+                                  store.patchAssignment(assignmentIndex, {
+                                    validFrom: store.dateTimeFromInput($any($event.target).value),
+                                  })
+                                "
+                            /></mat-form-field>
+                            <mat-form-field
+                              ><mat-label>Expiração</mat-label
+                              ><input
+                                matInput
+                                type="datetime-local"
+                                [disabled]="assignment.unlimited || !store.canEditRole()"
+                                [value]="store.dateTimeForInput(assignment.validUntil)"
+                                (input)="
+                                  store.patchAssignment(assignmentIndex, {
+                                    validUntil: store.dateTimeFromInput($any($event.target).value),
+                                  })
+                                "
+                            /></mat-form-field>
+                          </div>
                         </div>
                         @if (store.scopeIssue(assignmentIndex); as issue) {
                           <p class="scope-error"><mat-icon>error</mat-icon>{{ issue }}</p>
@@ -148,62 +368,165 @@
                         <div class="scope-list">
                           @for (scope of assignment.scopes; track $index; let scopeIndex = $index) {
                             <div class="scope-row">
-                              <mat-form-field><mat-label>Escopo</mat-label><mat-select [value]="scope.scope" [disabled]="!store.canEditRole()"
-                                (selectionChange)="store.patchScope(assignmentIndex, scopeIndex, { scope: $event.value })">
-                                @for (compatibleScope of store.compatibleScopes(); track compatibleScope) {
-                                  <mat-option [value]="compatibleScope">
-                                    @switch (compatibleScope) { @case ('GLOBAL') { Global } @case ('MAJOR_EVENT') { Grande evento }
-                                      @case ('EVENT_GROUP') { Grupo de eventos } @case ('EVENT') { Evento } }
-                                  </mat-option>
-                                }
-                              </mat-select></mat-form-field>
-                              @if (scope.scope !== 'GLOBAL') {
-                                <mat-form-field><mat-label>Alvo</mat-label><mat-select [value]="store.targetId(scope)" [disabled]="!store.canEditRole()"
-                                  (selectionChange)="store.setScopeTarget(assignmentIndex, scopeIndex, scope.scope, $event.value)">
-                                  @for (target of store.targets()[scope.scope]; track target.id) {
-                                    <mat-option [value]="target.id">{{ target.label }} · {{ target.description }}</mat-option>
+                              <mat-form-field
+                                ><mat-label>Escopo</mat-label
+                                ><mat-select
+                                  [value]="scope.scope"
+                                  [disabled]="!store.canEditRole()"
+                                  (selectionChange)="
+                                    store.patchScope(assignmentIndex, scopeIndex, { scope: $event.value })
+                                  ">
+                                  @for (
+                                    compatibleScope of store.compatibleScopes(assignmentIndex, scopeIndex);
+                                    track compatibleScope
+                                  ) {
+                                    <mat-option [value]="compatibleScope">
+                                      @switch (compatibleScope) {
+                                        @case ('GLOBAL') {
+                                          Global
+                                        }
+                                        @case ('MAJOR_EVENT') {
+                                          Grande evento
+                                        }
+                                        @case ('EVENT_GROUP') {
+                                          Grupo de eventos
+                                        }
+                                        @case ('EVENT') {
+                                          Evento
+                                        }
+                                      }
+                                    </mat-option>
                                   }
-                                </mat-select></mat-form-field>
+                                </mat-select></mat-form-field
+                              >
+                              @if (scope.scope !== 'GLOBAL') {
+                                <mat-form-field
+                                  ><mat-label>Alvo</mat-label
+                                  ><mat-select
+                                    [value]="store.targetId(scope)"
+                                    [disabled]="!store.canEditRole()"
+                                    (selectionChange)="
+                                      store.setScopeTarget(assignmentIndex, scopeIndex, scope.scope, $event.value)
+                                    ">
+                                    @for (target of store.targets()[scope.scope]; track target.id) {
+                                      <mat-option [value]="target.id"
+                                        >{{ target.label }} · {{ target.description }}</mat-option
+                                      >
+                                    }
+                                  </mat-select></mat-form-field
+                                >
                               }
-                              <mat-checkbox [checked]="scope.unlimited" [disabled]="!store.canEditRole()" (change)="store.patchScope(assignmentIndex, scopeIndex, { unlimited: $event.checked, validUntil: $event.checked ? null : scope.validUntil })">Sem limite</mat-checkbox>
-                              <mat-form-field><mat-label>Expiração do escopo</mat-label><input matInput type="datetime-local"
-                                [value]="store.dateTimeForInput(scope.validUntil)" [disabled]="scope.unlimited || !store.canEditRole()" (input)="store.patchScope(assignmentIndex, scopeIndex, { validUntil: store.dateTimeFromInput($any($event.target).value) })" /></mat-form-field>
-                              <button mat-icon-button type="button" aria-label="Remover escopo" [disabled]="assignment.scopes.length === 1 || !store.canEditRole()"
-                                (click)="store.removeScope(assignmentIndex, scopeIndex)"><mat-icon>delete</mat-icon></button>
+                              <mat-checkbox
+                                [checked]="scope.unlimited"
+                                [disabled]="!store.canEditRole()"
+                                (change)="
+                                  store.patchScope(assignmentIndex, scopeIndex, {
+                                    unlimited: $event.checked,
+                                    validUntil: $event.checked ? null : scope.validUntil,
+                                  })
+                                "
+                                >Sem limite</mat-checkbox
+                              >
+                              <mat-form-field
+                                ><mat-label>Expiração do escopo</mat-label
+                                ><input
+                                  matInput
+                                  type="datetime-local"
+                                  [value]="store.dateTimeForInput(scope.validUntil)"
+                                  [disabled]="scope.unlimited || !store.canEditRole()"
+                                  (input)="
+                                    store.patchScope(assignmentIndex, scopeIndex, {
+                                      validUntil: store.dateTimeFromInput($any($event.target).value),
+                                    })
+                                  "
+                              /></mat-form-field>
+                              <button
+                                mat-icon-button
+                                type="button"
+                                aria-label="Remover escopo"
+                                [disabled]="assignment.scopes.length === 1 || !store.canEditRole()"
+                                (click)="store.removeScope(assignmentIndex, scopeIndex)">
+                                <mat-icon>delete</mat-icon>
+                              </button>
                             </div>
                           }
-                          <button mat-button type="button" [disabled]="!store.canEditRole()" (click)="store.addScope(assignmentIndex)"><mat-icon>add_location_alt</mat-icon>Adicionar escopo</button>
+                          <button
+                            mat-button
+                            type="button"
+                            [disabled]="!store.canEditRole()"
+                            (click)="store.addScope(assignmentIndex)">
+                            <mat-icon>add_location_alt</mat-icon>Adicionar escopo
+                          </button>
                         </div>
                       </article>
-                    } @empty { <p class="empty-note">Nenhuma pessoa ou grupo recebeu este cargo.</p> }
+                    } @empty {
+                      <p class="empty-note">Nenhuma pessoa ou grupo recebeu este cargo.</p>
+                    }
                   </div>
                 </section>
               }
-            } @else { <div class="empty-state"><mat-icon>badge</mat-icon><h3>Selecione ou crie um cargo</h3></div> }
+            } @else {
+              <div class="empty-state">
+                <mat-icon>badge</mat-icon>
+                <h3>Selecione ou crie um cargo</h3>
+              </div>
+            }
           </section>
         </div>
       </mat-tab>
 
       <mat-tab>
-        <ng-template mat-tab-label><span class="workspace-tab-label"><mat-icon>person</mat-icon>Pessoas</span></ng-template>
+        <ng-template mat-tab-label
+          ><span class="workspace-tab-label"><mat-icon>person</mat-icon>Pessoas</span></ng-template
+        >
         <section class="people-workspace panel">
-          <div class="panel-heading"><div><h3>Acessos por pessoa</h3><p>Encontre a pessoa, mesmo que ela ainda não tenha criado uma conta.</p></div></div>
-          <app-person-search [results]="store.peopleResults()" [loading]="store.searchingPeople()" [showIdentitySummary]="false" (searchRequested)="store.searchPeople($event)"
+          <div class="panel-heading">
+            <div>
+              <h3>Acessos por pessoa</h3>
+              <p>Encontre a pessoa, mesmo que ela ainda não tenha criado uma conta.</p>
+            </div>
+          </div>
+          <app-person-search
+            [results]="store.peopleResults()"
+            [loading]="store.searchingPeople()"
+            [showIdentitySummary]="false"
+            (searchRequested)="store.searchPeople($event)"
             (personSelected)="store.selectPerson($event)" />
           @if (store.selectedPerson(); as person) {
             <div class="person-overview">
-              <header><mat-icon>{{ person.userId ? 'person_check' : 'person_off' }}</mat-icon><div><h4>{{ person.name }}</h4>
-                <p>{{ person.userId ? 'Usuário vinculado' : 'Sem usuário vinculado · atribuições ficam dormentes até uma conta ser associada.' }}</p></div></header>
+              <header>
+                <mat-icon>{{ person.userId ? 'person_check' : 'person_off' }}</mat-icon>
+                <div>
+                  <h4>{{ person.name }}</h4>
+                  <p>
+                    {{
+                      person.userId
+                        ? 'Usuário vinculado'
+                        : 'Sem usuário vinculado · atribuições ficam dormentes até uma conta ser associada.'
+                    }}
+                  </p>
+                </div>
+              </header>
               <div class="overview-columns">
-                <section><h4>Cargos diretos</h4>
+                <section>
+                  <h4>Cargos diretos</h4>
                   @for (role of store.personDirectRoles(); track role.id) {
-                    <button mat-stroked-button type="button" (click)="store.editRoleFromPeople(role)"><lib-twemoji [emoji]="role.emoji" />{{ role.name }}<mat-icon>arrow_forward</mat-icon></button>
-                  } @empty { <p class="empty-note">Nenhum cargo direto.</p> }
+                    <button mat-stroked-button type="button" (click)="store.editRoleFromPeople(role)">
+                      <lib-twemoji [emoji]="role.emoji" />{{ role.name }}<mat-icon>arrow_forward</mat-icon>
+                    </button>
+                  } @empty {
+                    <p class="empty-note">Nenhum cargo direto.</p>
+                  }
                 </section>
-                <section><h4>Grupos</h4>
+                <section>
+                  <h4>Grupos</h4>
                   @for (group of store.personGroups(); track group.id) {
-                    <button mat-stroked-button type="button" (click)="store.editGroupFromPeople(group)"><lib-twemoji [emoji]="group.emoji" />{{ group.name }}<mat-icon>arrow_forward</mat-icon></button>
-                  } @empty { <p class="empty-note">Não participa de grupos de permissão.</p> }
+                    <button mat-stroked-button type="button" (click)="store.editGroupFromPeople(group)">
+                      <lib-twemoji [emoji]="group.emoji" />{{ group.name }}<mat-icon>arrow_forward</mat-icon>
+                    </button>
+                  } @empty {
+                    <p class="empty-note">Não participa de grupos de permissão.</p>
+                  }
                 </section>
               </div>
             </div>
@@ -212,50 +535,173 @@
       </mat-tab>
 
       <mat-tab>
-        <ng-template mat-tab-label><span class="workspace-tab-label"><mat-icon>groups</mat-icon>Grupos</span></ng-template>
+        <ng-template mat-tab-label
+          ><span class="workspace-tab-label"><mat-icon>groups</mat-icon>Grupos</span></ng-template
+        >
         <div class="tab-grid management-grid">
           <aside class="panel role-rail">
-            <div class="panel-heading"><div><h3>Grupos</h3><p>Atribua cargos a equipes recorrentes.</p></div>
-              <button mat-flat-button type="button" [disabled]="!store.canCreate()" (click)="store.startNewGroup()"><mat-icon>group_add</mat-icon>Novo grupo</button></div>
+            <div class="panel-heading">
+              <div>
+                <h3>Grupos</h3>
+                <p>Atribua cargos a equipes recorrentes.</p>
+              </div>
+              <button mat-flat-button type="button" [disabled]="!store.canCreate()" (click)="store.startNewGroup()">
+                <mat-icon>group_add</mat-icon>Novo grupo
+              </button>
+            </div>
             <div class="entity-list">
               @for (group of store.groups(); track group.id) {
-                <button type="button" class="entity-row" [attr.aria-pressed]="store.selectedGroupId() === group.id" [class.entity-row--selected]="store.selectedGroupId() === group.id" (click)="store.selectGroup(group)">
-                  <lib-twemoji [emoji]="group.emoji" /><span><strong>{{ group.name }}</strong><small>{{ group.description }}</small><small>{{ group.archivedAt ? 'Arquivado' : group.members.length + ' integrantes' }}</small></span>
+                <button
+                  type="button"
+                  class="entity-row"
+                  [attr.aria-pressed]="store.selectedGroupId() === group.id"
+                  [class.entity-row--selected]="store.selectedGroupId() === group.id"
+                  (click)="store.selectGroup(group)">
+                  <lib-twemoji [emoji]="group.emoji" /><span
+                    ><strong>{{ group.name }}</strong
+                    ><small>{{ group.description }}</small
+                    ><small>{{ group.archivedAt ? 'Arquivado' : group.members.length + ' integrantes' }}</small></span
+                  >
                 </button>
-              } @empty { <p class="empty-note">Nenhum grupo criado.</p> }
+              } @empty {
+                <p class="empty-note">Nenhum grupo criado.</p>
+              }
             </div>
           </aside>
           <section class="panel role-editor">
             @if (store.groupDraft(); as group) {
-              <div class="panel-heading"><div class="role-title"><lib-twemoji [emoji]="group.emoji" /><div><h3>{{ group.name }}</h3><p>Grupo de permissões</p></div></div>
-                @if (group.id && !group.archivedAt) { <button mat-button type="button" [disabled]="!store.canDelete()" (click)="store.archiveCurrentGroup()"><mat-icon>archive</mat-icon>Arquivar</button> }
+              <div class="panel-heading">
+                <div class="role-title">
+                  <lib-twemoji [emoji]="group.emoji" />
+                  <div>
+                    <h3>{{ group.name }}</h3>
+                    <p>Grupo de permissões</p>
+                  </div>
+                </div>
+                @if (group.id && !group.archivedAt) {
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="!store.canDelete()"
+                    (click)="store.archiveCurrentGroup()">
+                    <mat-icon>archive</mat-icon>Arquivar
+                  </button>
+                }
               </div>
-              @if (group.archivedAt) { <p class="archive-note"><mat-icon>archive</mat-icon>Este grupo está arquivado e disponível apenas para consulta e auditoria.</p> }
+              @if (group.archivedAt) {
+                <p class="archive-note">
+                  <mat-icon>archive</mat-icon>Este grupo está arquivado e disponível apenas para consulta e auditoria.
+                </p>
+              }
               <section class="editor-section">
                 <div class="role-fields">
-                  <mat-form-field><mat-label>Ícone Twemoji</mat-label><input matInput [value]="group.emoji" [readonly]="!store.canEditGroup()" (input)="store.patchGroup({ emoji: $any($event.target).value })" /></mat-form-field>
-                  <mat-form-field><mat-label>Nome</mat-label><input matInput [value]="group.name" [readonly]="!store.canEditGroup()" (input)="store.patchGroup({ name: $any($event.target).value })" /></mat-form-field>
-                  <mat-form-field class="span-2"><mat-label>Descrição</mat-label><textarea matInput rows="2" [value]="group.description" [readonly]="!store.canEditGroup()" (input)="store.patchGroup({ description: $any($event.target).value })"></textarea></mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Emoji</mat-label
+                    ><input
+                      matInput
+                      [value]="group.emoji"
+                      [readonly]="!store.canEditGroup()"
+                      (input)="store.patchGroup({ emoji: $any($event.target).value })"
+                  /></mat-form-field>
+                  <mat-form-field
+                    ><mat-label>Nome</mat-label
+                    ><input
+                      matInput
+                      [value]="group.name"
+                      [readonly]="!store.canEditGroup()"
+                      (input)="store.patchGroup({ name: $any($event.target).value })"
+                  /></mat-form-field>
+                  <mat-form-field class="span-2"
+                    ><mat-label>Descrição</mat-label
+                    ><textarea
+                      matInput
+                      rows="2"
+                      [value]="group.description"
+                      [readonly]="!store.canEditGroup()"
+                      (input)="store.patchGroup({ description: $any($event.target).value })"></textarea>
+                  </mat-form-field>
                 </div>
               </section>
-              <section class="editor-section"><div class="section-heading"><div><h4>Cargos atribuídos</h4><p>Edite escopos e validade dentro de cada cargo.</p></div></div>
-                <div class="linked-role-actions">@for (role of store.selectedGroupRoles(); track role.id) {
-                  <button mat-stroked-button type="button" (click)="store.editRoleFromPeople(role)">{{ role.name }}<mat-icon>arrow_forward</mat-icon></button>
-                } @empty { <span class="empty-note">Nenhum cargo atribuído.</span> }</div>
+              <section class="editor-section">
+                <div class="section-heading">
+                  <div>
+                    <h4>Cargos atribuídos</h4>
+                    <p>Edite escopos e validade dentro de cada cargo.</p>
+                  </div>
+                </div>
+                <div class="linked-role-actions">
+                  @for (role of store.selectedGroupRoles(); track role.id) {
+                    <button mat-stroked-button type="button" (click)="store.editRoleFromPeople(role)">
+                      {{ role.name }}<mat-icon>arrow_forward</mat-icon>
+                    </button>
+                  } @empty {
+                    <span class="empty-note">Nenhum cargo atribuído.</span>
+                  }
+                </div>
               </section>
-              <section class="editor-section"><div class="section-heading"><div><h4>Integrantes</h4><p>A participação no grupo também pode expirar.</p></div></div>
-                <app-person-search label="Adicionar integrante" [results]="store.peopleResults()" [loading]="store.searchingPeople()" [showIdentitySummary]="false" [disabled]="!store.canEditGroup()" (searchRequested)="store.searchPeople($event)" (personSelected)="store.addGroupMember($event)" />
+              <section class="editor-section">
+                <div class="section-heading">
+                  <div>
+                    <h4>Integrantes</h4>
+                    <p>A participação no grupo também pode expirar.</p>
+                  </div>
+                </div>
+                <app-person-search
+                  label="Adicionar integrante"
+                  [results]="store.peopleResults()"
+                  [loading]="store.searchingPeople()"
+                  [showIdentitySummary]="false"
+                  [disabled]="!store.canEditGroup()"
+                  (searchRequested)="store.searchPeople($event)"
+                  (personSelected)="store.addGroupMember($event)" />
                 <div class="member-list">
                   @for (member of group.members; track member.personId; let memberIndex = $index) {
-                    <div class="member-row"><mat-icon>person</mat-icon><strong>{{ store.groupMemberName(member.personId) }}</strong>
-                      <mat-checkbox [checked]="member.unlimited" [disabled]="!store.canEditGroup()" (change)="store.patchGroupMember(memberIndex, { unlimited: $event.checked, validUntil: $event.checked ? null : member.validUntil })">Sem limite de tempo</mat-checkbox>
-                      <mat-form-field><mat-label>Expiração</mat-label><input matInput type="datetime-local" [disabled]="member.unlimited || !store.canEditGroup()" [value]="store.dateTimeForInput(member.validUntil)" (input)="store.patchGroupMember(memberIndex, { validUntil: store.dateTimeFromInput($any($event.target).value) })" /></mat-form-field>
-                      <button mat-icon-button type="button" aria-label="Remover integrante" [disabled]="!store.canEditGroup()" (click)="store.removeGroupMember(memberIndex)"><mat-icon>close</mat-icon></button>
+                    <div class="member-row">
+                      <mat-icon>person</mat-icon><strong>{{ store.groupMemberName(member.personId) }}</strong>
+                      <mat-checkbox
+                        [checked]="member.unlimited"
+                        [disabled]="!store.canEditGroup()"
+                        (change)="
+                          store.patchGroupMember(memberIndex, {
+                            unlimited: $event.checked,
+                            validUntil: $event.checked ? null : member.validUntil,
+                          })
+                        "
+                        >Sem limite de tempo</mat-checkbox
+                      >
+                      <mat-form-field
+                        ><mat-label>Expiração</mat-label
+                        ><input
+                          matInput
+                          type="datetime-local"
+                          [disabled]="member.unlimited || !store.canEditGroup()"
+                          [value]="store.dateTimeForInput(member.validUntil)"
+                          (input)="
+                            store.patchGroupMember(memberIndex, {
+                              validUntil: store.dateTimeFromInput($any($event.target).value),
+                            })
+                          "
+                      /></mat-form-field>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        aria-label="Remover integrante"
+                        [disabled]="!store.canEditGroup()"
+                        (click)="store.removeGroupMember(memberIndex)">
+                        <mat-icon>close</mat-icon>
+                      </button>
                     </div>
-                  } @empty { <p class="empty-note">Nenhum integrante.</p> }
+                  } @empty {
+                    <p class="empty-note">Nenhum integrante.</p>
+                  }
                 </div>
               </section>
-            } @else { <div class="empty-state"><mat-icon>groups</mat-icon><h3>Selecione ou crie um grupo</h3></div> }
+            } @else {
+              <div class="empty-state">
+                <mat-icon>groups</mat-icon>
+                <h3>Selecione ou crie um grupo</h3>
+              </div>
+            }
           </section>
         </div>
       </mat-tab>

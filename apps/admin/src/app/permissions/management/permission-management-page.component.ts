@@ -12,6 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute } from '@angular/router';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { type Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
@@ -40,8 +41,9 @@ import { UnsavedChangesBarComponent } from './unsaved-changes-bar.component';
 export class PermissionManagementPageComponent {
   protected readonly store = inject(PermissionManagementStore);
   private readonly dialog = inject(MatDialog);
+  private readonly route = inject(ActivatedRoute);
 
-  constructor() { void this.store.load(); }
+  constructor() { void this.store.load(this.route.snapshot.paramMap.get('personId') ?? undefined); }
 
   protected async openNewRoleDialog(): Promise<void> {
     const reference = this.dialog.open(RoleTemplateDialogComponent, { width: 'min(44rem, calc(100vw - 2rem))' });

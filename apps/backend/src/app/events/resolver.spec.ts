@@ -381,6 +381,7 @@ describe('EventsResolver', () => {
     const tx = {
       event: {
         create: jest.fn().mockResolvedValue(created),
+        findFirst: jest.fn().mockResolvedValue({ majorEventId: 'major-1' }),
       },
       eventGroup: {
         updateMany: jest.fn(),

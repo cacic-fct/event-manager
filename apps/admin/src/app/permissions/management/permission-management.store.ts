@@ -21,7 +21,7 @@ import {
   Permission,
   type EventManagerRoleTemplate,
 } from '@cacic-fct/shared-permissions';
-import { firstValueFrom, forkJoin } from 'rxjs';
+import { firstValueFrom, forkJoin, of } from 'rxjs';
 import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 import { PermissionsService } from '../permissions.service';
 import { ConfirmationDialogComponent } from '@cacic-fct/shared-angular';
@@ -67,6 +67,7 @@ export class PermissionManagementStore {
   readonly loadError = signal(false);
   readonly showArchived = signal(false);
   readonly searchingPeople = signal(false);
+  readonly groupAssignmentSearchQuery = signal('');
   readonly saving = signal(false);
   readonly roles = signal<PermissionRole[]>([]);
   readonly groups = signal<PermissionGroup[]>([]);
@@ -106,18 +107,31 @@ export class PermissionManagementStore {
     const groupId = this.groupDraft()?.id;
     return groupId ? this.roles().filter((role) => role.assignments.some((assignment) => assignment.groupId === groupId)) : [];
   });
+  readonly groupAssignmentSearchActive = computed(() => this.groupAssignmentSearchQuery().trim().length >= 2);
+  readonly groupAssignmentResults = computed(() => {
+    const query = this.groupAssignmentSearchQuery().trim().toLocaleLowerCase('pt-BR');
+    if (query.length < 2) return [];
+    const assignedGroupIds = new Set(
+      (this.roleDraft()?.assignments ?? [])
+        .map((assignment) => assignment.groupId)
+        .filter((groupId): groupId is string => Boolean(groupId)),
+    );
+    return this.groups().filter((group) => !assignedGroupIds.has(group.id)
+      && `${group.name} ${group.description}`.toLocaleLowerCase('pt-BR').includes(query));
+  });
 
   constructor() {
     this.pending.register({ reset: () => this.resetCurrentDraft(), save: () => this.saveCurrentDraft() });
   }
 
-  async load(): Promise<void> {
+  async load(personId?: string): Promise<void> {
     this.loading.set(true);
     this.loadError.set(false);
     try {
-      const [roles, groups, events, majorEvents, eventGroups] = await firstValueFrom(forkJoin([
-        this.api.listRoles(this.showArchived()), this.api.listGroups(this.showArchived()), this.api.listTargets('EVENT'),
-        this.api.listTargets('MAJOR_EVENT'), this.api.listTargets('EVENT_GROUP'),
+      const [roles, groups, events, majorEvents, eventGroups, linkedPerson] = await firstValueFrom(forkJoin([
+        this.api.listRoles(this.showArchived()), this.api.listGroups(this.showArchived()), this.loadAllTargets('EVENT'),
+        this.loadAllTargets('MAJOR_EVENT'), this.loadAllTargets('EVENT_GROUP'),
+        personId ? this.api.getPerson(personId) : of(null),
       ]));
       this.roles.set(roles);
       this.groups.set(groups);
@@ -126,11 +140,26 @@ export class PermissionManagementStore {
       if (firstRole) this.selectRole(firstRole, true);
       const firstGroup = groups[0];
       if (firstGroup) this.selectGroup(firstGroup, true);
+      if (linkedPerson) {
+        this.peopleResults.set([linkedPerson]);
+        this.selectedPerson.set(linkedPerson);
+        this.selectedTab.set(1);
+      }
     } catch (error) {
       this.loadError.set(true);
       this.feedback.error(error, 'Não foi possível carregar o gerenciamento de permissões.');
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private async loadAllTargets(scope: Exclude<PermissionScope, 'GLOBAL'>): Promise<PermissionScopeTarget[]> {
+    const pageSize = 100;
+    const targets: PermissionScopeTarget[] = [];
+    for (let skip = 0; ; skip += pageSize) {
+      const page = await firstValueFrom(this.api.listTargets(scope, skip, pageSize));
+      targets.push(...page);
+      if (page.length < pageSize) return targets;
     }
   }
 
@@ -151,6 +180,7 @@ export class PermissionManagementStore {
     if (!force && role.id === this.selectedRoleId()) return;
     if (!force && role.id !== this.selectedRoleId() && this.pending.blockNavigation()) return;
     this.selectedRoleId.set(role.id);
+    this.groupAssignmentSearchQuery.set('');
     this.roleDraft.set(this.toRoleDraft(role));
     this.pending.clear();
   }
@@ -167,6 +197,7 @@ export class PermissionManagementStore {
     if (!this.canCreate()) return;
     if (this.pending.blockNavigation()) return;
     this.selectedRoleId.set(null);
+    this.groupAssignmentSearchQuery.set('');
     this.roleDraft.set({
       id: null,
       expectedVersion: null,
@@ -190,6 +221,7 @@ export class PermissionManagementStore {
     if (this.pending.blockNavigation()) return;
     this.roleDraft.set({ ...draft, id: null, expectedVersion: null, isSystem: false, archivedAt: null, name: `Cópia de ${draft.name}`, assignments: [] });
     this.selectedRoleId.set(null);
+    this.groupAssignmentSearchQuery.set('');
     this.pending.markDirty();
   }
 
@@ -235,11 +267,14 @@ export class PermissionManagementStore {
     this.patchRole({ permissions: [...next] });
   }
 
-  compatibleScopes(): PermissionScope[] {
+  compatibleScopes(assignmentIndex?: number, scopeIndex?: number): PermissionScope[] {
     const draft = this.roleDraft();
     const permissions = draft ? [...draft.permissions, ...draft.inheritedPermissions] : [];
+    const currentScope = assignmentIndex === undefined || scopeIndex === undefined
+      ? null
+      : draft?.assignments[assignmentIndex]?.scopes[scopeIndex]?.scope;
     return (['GLOBAL', 'MAJOR_EVENT', 'EVENT_GROUP', 'EVENT'] as PermissionScope[])
-      .filter((scope) => permissions.every((permission) => isPermissionGrantScopeCompatible(permission, scope)));
+      .filter((scope) => scope === currentScope || permissions.every((permission) => isPermissionGrantScopeCompatible(permission, scope)));
   }
 
   scopeIssue(assignmentIndex: number): string | null {
@@ -285,6 +320,7 @@ export class PermissionManagementStore {
     const draft = this.roleDraft();
     if (!draft || !groupId || draft.assignments.some((assignment) => assignment.groupId === groupId)) return;
     this.patchRole({ assignments: [...draft.assignments, this.newAssignment({ groupId })] });
+    this.groupAssignmentSearchQuery.set('');
   }
 
   removeAssignment(index: number): void {
@@ -331,6 +367,14 @@ export class PermissionManagementStore {
     return this.groups().find((group) => group.id === assignment.groupId)?.name ?? 'Grupo';
   }
 
+  assignmentHasLinkedUser(assignment: PermissionRoleSaveInput['assignments'][number]): boolean {
+    if (!assignment.personId) return true;
+    const result = this.peopleResults().find((person) => person.id === assignment.personId);
+    if (result) return Boolean(result.userId);
+    return Boolean(this.roles().flatMap((role) => role.assignments)
+      .find((item) => item.personId === assignment.personId)?.subjectHasLinkedUser);
+  }
+
   async searchPeople(query: string): Promise<void> {
     const normalized = query.trim();
     if (normalized.length < 2) { this.peopleResults.set([]); return; }
@@ -338,6 +382,10 @@ export class PermissionManagementStore {
     try { this.peopleResults.set(await firstValueFrom(this.api.searchPeople(normalized))); }
     catch (error) { this.feedback.error(error, 'Não foi possível buscar pessoas.'); }
     finally { this.searchingPeople.set(false); }
+  }
+
+  searchGroups(query: string): void {
+    this.groupAssignmentSearchQuery.set(query);
   }
 
   selectPerson(person: Person): void {
@@ -428,6 +476,7 @@ export class PermissionManagementStore {
       this.roleDraft.set(null);
       this.selectedRoleId.set(null);
       if (next) this.selectRole(next, true);
+      else this.pending.clear();
       this.snackbar.open('Cargo arquivado.', 'Fechar', { duration: 2500 });
     } catch (error) { this.feedback.error(error, 'Não foi possível arquivar o cargo.'); }
   }
@@ -451,6 +500,7 @@ export class PermissionManagementStore {
       this.groupDraft.set(null);
       this.selectedGroupId.set(null);
       if (next) this.selectGroup(next, true);
+      else this.pending.clear();
       this.snackbar.open('Grupo arquivado.', 'Fechar', { duration: 2500 });
     } catch (error) { this.feedback.error(error, 'Não foi possível arquivar o grupo.'); }
   }

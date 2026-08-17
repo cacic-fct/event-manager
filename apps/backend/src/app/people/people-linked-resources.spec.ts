@@ -292,7 +292,7 @@ describe('people linked resources', () => {
             id: 'assignment-1',
             label: 'Operação do credenciamento',
             description: 'Credenciamento',
-            route: '/permissions/manage',
+            route: '/permissions/manage/people/person-1',
             status: 'Cargo direto',
           }),
         ],

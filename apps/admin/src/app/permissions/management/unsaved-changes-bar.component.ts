@@ -9,8 +9,8 @@ import { PendingPermissionChangesService } from './pending-permission-changes.se
   imports: [MatButtonModule, MatIconModule],
   template: `
     @if (pending.dirty()) {
-      <aside class="unsaved-bar" [class.unsaved-bar--blocked]="pending.blockedNavigation()" role="status">
-        <span><mat-icon>edit_note</mat-icon><strong>Alterações não salvas</strong></span>
+      <aside class="unsaved-bar" [class.unsaved-bar--blocked]="pending.blockedNavigation()">
+        <span role="status"><mat-icon>edit_note</mat-icon><strong>Alterações não salvas</strong></span>
         <div>
           <button mat-button type="button" [disabled]="pending.saving()" (click)="pending.reset()">Redefinir</button>
           <button mat-flat-button type="button" [disabled]="pending.saving()" (click)="pending.save()"><mat-icon>save</mat-icon>{{ pending.saving() ? 'Salvando…' : 'Salvar alterações' }}</button>
@@ -21,7 +21,8 @@ import { PendingPermissionChangesService } from './pending-permission-changes.se
   styles: `
     .unsaved-bar { position: fixed; z-index: 1100; inset-inline: max(1rem, calc((100vw - 72rem) / 2)); bottom: 1rem;
       display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem 1rem;
-      color: var(--mat-sys-on-inverse-surface); background: var(--mat-sys-inverse-surface); border-radius: 12px;
+      color: var(--mat-sys-on-surface); background: var(--mat-sys-surface-container-high);
+      border: 1px solid var(--mat-sys-outline-variant); border-radius: 12px;
       box-shadow: 0 8px 24px color-mix(in srgb, var(--mat-sys-shadow) 28%, transparent); }
     .unsaved-bar span, .unsaved-bar div { display: flex; align-items: center; gap: .5rem; }
     .unsaved-bar--blocked { color: var(--mat-sys-on-error-container); background: var(--mat-sys-error-container);

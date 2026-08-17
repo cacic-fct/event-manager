@@ -39,6 +39,17 @@ describe('PersonSearchComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Buscar pessoas exige permissão');
   });
 
+  it('keeps the static search icon visible while a search is loading', () => {
+    const fixture = TestBed.createComponent(PersonSearchComponent);
+    fixture.componentRef.setInput('loading', true);
+    fixture.componentRef.setInput('query', 'Ada');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('mat-spinner')).toBeNull();
+    expect(fixture.nativeElement.querySelector('mat-icon')?.textContent?.trim()).toBe('person_search');
+    expect(fixture.nativeElement.querySelectorAll('mat-icon')[1]?.textContent?.trim()).toBe('search');
+  });
+
   it('hides identity details and only shows the empty state after a completed search', () => {
     const fixture = TestBed.createComponent(PersonSearchComponent);
     fixture.componentRef.setInput('showIdentitySummary', false);

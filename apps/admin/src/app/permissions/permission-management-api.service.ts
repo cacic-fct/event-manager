@@ -40,12 +40,12 @@ export class PermissionManagementApiService {
     }`, { includeArchived }).pipe(map((data) => data.permissionGroups));
   }
 
-  listTargets(scope: PermissionScope) {
+  listTargets(scope: PermissionScope, skip = 0, take = 100) {
     return this.graphql.request<{ permissionScopeTargets: PermissionScopeTarget[] }>(
-      `query PermissionScopeTargets($scope: EventManagerPermissionScope!) {
-        permissionScopeTargets(scope: $scope) { id label description emoji parentId }
+      `query PermissionScopeTargets($scope: EventManagerPermissionScope!, $skip: Int, $take: Int) {
+        permissionScopeTargets(scope: $scope, skip: $skip, take: $take) { id label description emoji parentId }
       }`,
-      { scope },
+      { scope, skip, take },
     ).pipe(map((data) => data.permissionScopeTargets));
   }
 
@@ -56,6 +56,15 @@ export class PermissionManagementApiService {
       }`,
       { query },
     ).pipe(map((data) => data.people));
+  }
+
+  getPerson(id: string) {
+    return this.graphql.request<{ person: Person }>(
+      `query PermissionPerson($id: String!) {
+        person(id: $id) { id name email userId }
+      }`,
+      { id },
+    ).pipe(map((data) => data.person));
   }
 
   saveRole(input: PermissionRoleSaveInput) {

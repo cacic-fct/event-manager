@@ -443,7 +443,7 @@ export class EventsResolver {
         },
         select: EVENT_DETAIL_SELECT,
       });
-      await this.disableGroupPerEventModeForMajorEvent(createdEvent, tx);
+      await this.syncEventGroupMajorEvent(createdEvent, undefined, tx);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -505,7 +505,7 @@ export class EventsResolver {
         where: { id, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
-      await this.disableGroupPerEventModeForMajorEvent(updated, tx);
+      await this.syncEventGroupMajorEvent(updated, previousEvent.eventGroupId, tx);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -711,7 +711,7 @@ export class EventsResolver {
         actorId,
       );
 
-      await this.disableGroupPerEventModeForMajorEvent(createdEvent, tx);
+      await this.syncEventGroupMajorEvent(createdEvent, undefined, tx);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -758,6 +758,7 @@ export class EventsResolver {
       if (deleted.count !== 1) {
         throw new NotFoundException(`Event ${id} was not found.`);
       }
+      await this.syncEventGroupMajorEvent({ eventGroupId: null, majorEventId: null }, event.eventGroupId, tx);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -977,27 +978,28 @@ export class EventsResolver {
     return new Date();
   }
 
-  private async disableGroupPerEventModeForMajorEvent(
+  private async syncEventGroupMajorEvent(
     event: {
       eventGroupId?: string | null;
       majorEventId?: string | null;
     },
+    previousEventGroupId?: string | null,
     prisma: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
-    if (!event.eventGroupId || !event.majorEventId) {
-      return;
+    const groupIds = [...new Set([previousEventGroupId, event.eventGroupId].filter((id): id is string => Boolean(id)))];
+    for (const groupId of groupIds) {
+      const groupedEvent = await prisma.event.findFirst({
+        where: { eventGroupId: groupId, deletedAt: null, majorEventId: { not: null } },
+        select: { majorEventId: true },
+      });
+      await prisma.eventGroup.updateMany({
+        where: { id: groupId, deletedAt: null },
+        data: {
+          majorEventId: groupedEvent?.majorEventId ?? null,
+          ...(groupedEvent?.majorEventId ? { shouldIssueCertificateForEachEvent: false } : {}),
+        },
+      });
     }
-
-    await prisma.eventGroup.updateMany({
-      where: {
-        id: event.eventGroupId,
-        deletedAt: null,
-        shouldIssueCertificateForEachEvent: true,
-      },
-      data: {
-        shouldIssueCertificateForEachEvent: false,
-      },
-    });
   }
 
   private didChangeOnlineAttendanceWindow(input: EventUpdateInput): boolean {

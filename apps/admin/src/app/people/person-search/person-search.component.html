@@ -17,11 +17,7 @@
     type="button"
     [disabled]="disabled() || loading() || queryControl.value.trim().length < minimumQueryLength()"
     (click)="searchNow()">
-    @if (loading()) {
-      <mat-spinner diameter="18" aria-label="Buscando pessoas" />
-    } @else {
-      <mat-icon>search</mat-icon>
-    }
+    <mat-icon>search</mat-icon>
     Buscar
   </button>
 </div>

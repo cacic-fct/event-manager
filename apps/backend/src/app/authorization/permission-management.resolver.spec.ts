@@ -32,7 +32,7 @@ describe('PermissionManagementResolver', () => {
     expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PermissionManagementResolver.prototype.permissionRoles))
       .toEqual([Permission.PermissionGrant.Read]);
     expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PermissionManagementResolver.prototype.savePermissionRole))
-      .toEqual([Permission.PermissionGrant.Read]);
+      .toEqual([]);
     expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, PermissionManagementResolver.prototype.archivePermissionGroup))
       .toEqual([Permission.PermissionGrant.Delete]);
   });

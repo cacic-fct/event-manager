@@ -19,6 +19,7 @@ describe('PermissionManagementApiService', () => {
       .mockReturnValueOnce(of({ permissionGroups: [] }))
       .mockReturnValueOnce(of({ permissionScopeTargets: [] }))
       .mockReturnValueOnce(of({ people: [] }))
+      .mockReturnValueOnce(of({ person: { id: 'person-1' } }))
       .mockReturnValueOnce(of({ savePermissionRole: { id: 'role-1' } }))
       .mockReturnValueOnce(of({ savePermissionGroup: { id: 'group-1' } }))
       .mockReturnValueOnce(of({ archivePermissionRole: true }))
@@ -28,6 +29,7 @@ describe('PermissionManagementApiService', () => {
     service.listGroups().subscribe((value) => expect(value).toEqual([]));
     service.listTargets('GLOBAL').subscribe((value) => expect(value).toEqual([]));
     service.searchPeople('ana').subscribe((value) => expect(value).toEqual([]));
+    service.getPerson('person-1').subscribe((value) => expect(value).toEqual({ id: 'person-1' }));
     service.saveRole({} as never).subscribe((value) => expect(value).toEqual({ id: 'role-1' }));
     service.saveGroup({} as never).subscribe((value) => expect(value).toEqual({ id: 'group-1' }));
     service.archiveRole('role-1').subscribe((value) => expect(value).toBe(true));

@@ -374,7 +374,7 @@ async function buildRequestedLinkedResourcePage(
           description: assignment.scopes
             .map((scope) => scope.event?.name ?? scope.eventGroup?.name ?? scope.majorEvent?.name ?? 'Toda a plataforma')
             .join(', '),
-          route: '/permissions/manage',
+          route: `/permissions/manage/people/${personId}`,
           status: 'Cargo direto',
           occurredAt: assignment.createdAt,
         })),
@@ -382,7 +382,7 @@ async function buildRequestedLinkedResourcePage(
           id: membership.id,
           label: membership.group.name,
           description: membership.group.assignments.map((assignment) => assignment.role.name).join(', ') || 'Sem cargos ativos',
-          route: '/permissions/manage',
+          route: `/permissions/manage/people/${personId}`,
           status: 'Grupo',
           occurredAt: membership.createdAt,
         })),

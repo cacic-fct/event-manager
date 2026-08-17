@@ -322,7 +322,7 @@ export async function buildPersonLinkedResourceGroups(
         id: assignment.id,
         label: assignment.label,
         description: assignment.description,
-        route: '/permissions/manage',
+        route: `/permissions/manage/people/${person.id}`,
         status: assignment.status,
         occurredAt: assignment.createdAt,
       })),

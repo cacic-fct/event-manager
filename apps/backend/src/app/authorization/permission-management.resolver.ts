@@ -34,9 +34,10 @@ export class PermissionManagementResolver {
   @RequirePermissions(Permission.PermissionGrant.Read)
   permissionScopeTargets(
     @Args('scope', { type: () => EventManagerPermissionScope }) scope: EventManagerPermissionScope,
+    @Args('skip', { type: () => Int, nullable: true }) skip?: number,
     @Args('take', { type: () => Int, nullable: true }) take?: number,
   ) {
-    return this.management.listScopeTargets(scope, take);
+    return this.management.listScopeTargets(scope, skip, take);
   }
 
   @Mutation(() => PermissionRole, { name: 'savePermissionRole' })

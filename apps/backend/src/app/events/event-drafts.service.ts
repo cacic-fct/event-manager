@@ -376,7 +376,7 @@ export class EventDraftsService {
         where: { id: draft.sourceEventId, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
-      await this.disableGroupPerEventModeForMajorEvent(updated, tx);
+      await this.syncEventGroupMajorEvent(updated, previousEvent.eventGroupId, tx);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -857,24 +857,25 @@ export class EventDraftsService {
     };
   }
 
-  private async disableGroupPerEventModeForMajorEvent(
+  private async syncEventGroupMajorEvent(
     event: { eventGroupId?: string | null; majorEventId?: string | null },
+    previousEventGroupId?: string | null,
     prisma: PrismaService | Prisma.TransactionClient = this.prisma,
   ): Promise<void> {
-    if (!event.eventGroupId || !event.majorEventId) {
-      return;
+    const groupIds = [...new Set([previousEventGroupId, event.eventGroupId].filter((id): id is string => Boolean(id)))];
+    for (const groupId of groupIds) {
+      const groupedEvent = await prisma.event.findFirst({
+        where: { eventGroupId: groupId, deletedAt: null, majorEventId: { not: null } },
+        select: { majorEventId: true },
+      });
+      await prisma.eventGroup.updateMany({
+        where: { id: groupId, deletedAt: null },
+        data: {
+          majorEventId: groupedEvent?.majorEventId ?? null,
+          ...(groupedEvent?.majorEventId ? { shouldIssueCertificateForEachEvent: false } : {}),
+        },
+      });
     }
-
-    await prisma.eventGroup.updateMany({
-      where: {
-        id: event.eventGroupId,
-        deletedAt: null,
-        shouldIssueCertificateForEachEvent: true,
-      },
-      data: {
-        shouldIssueCertificateForEachEvent: false,
-      },
-    });
   }
 
   private isEmptyAccessibleEventTargets(targets: {

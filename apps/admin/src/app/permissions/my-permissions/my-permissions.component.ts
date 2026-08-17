@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
@@ -9,7 +8,7 @@ import { PermissionsService } from '../permissions.service';
 
 @Component({
   selector: 'app-my-permissions',
-  imports: [MatButtonModule, MatChipsModule, MatIconModule, MatListModule, MatTooltip],
+  imports: [MatChipsModule, MatIconModule, MatListModule, MatTooltip],
   templateUrl: './my-permissions.component.html',
   styleUrl: './my-permissions.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

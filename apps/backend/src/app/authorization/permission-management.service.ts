@@ -141,14 +141,16 @@ export class PermissionManagementService {
     return groups.map((group) => this.mapGroup(group, includeArchived));
   }
 
-  async listScopeTargets(scope: EventManagerPermissionScope, take = 300): Promise<PermissionScopeTarget[]> {
-    const resolvedTake = Math.min(Math.max(Math.trunc(take), 1), 500);
+  async listScopeTargets(scope: EventManagerPermissionScope, skip = 0, take = 100): Promise<PermissionScopeTarget[]> {
+    const resolvedSkip = Math.max(Math.trunc(skip), 0);
+    const resolvedTake = Math.min(Math.max(Math.trunc(take), 1), 200);
     if (scope === EventManagerPermissionScope.GLOBAL) return [];
     if (scope === EventManagerPermissionScope.MAJOR_EVENT) {
       return this.prisma.majorEvent.findMany({
         where: { deletedAt: null },
         select: { id: true, name: true, emoji: true },
         orderBy: { startDate: 'desc' },
+        skip: resolvedSkip,
         take: resolvedTake,
       }).then((items) => items.map((item) => ({ ...item, label: item.name, description: 'Grande evento' })));
     }
@@ -157,6 +159,7 @@ export class PermissionManagementService {
         where: { deletedAt: null },
         select: { id: true, name: true, emoji: true, majorEventId: true, majorEvent: { select: { name: true } } },
         orderBy: { name: 'asc' },
+        skip: resolvedSkip,
         take: resolvedTake,
       }).then((items) => items.map((item) => ({
         id: item.id,
@@ -178,6 +181,7 @@ export class PermissionManagementService {
         eventGroup: { select: { name: true } },
       },
       orderBy: { startDate: 'desc' },
+      skip: resolvedSkip,
       take: resolvedTake,
     }).then((items) => items.map((item) => ({
       id: item.id,

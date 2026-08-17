@@ -81,8 +81,8 @@ type Story = StoryObj<PermissionsPageStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect((await canvas.findAllByRole('button')).length).toBeGreaterThan(10);
-    await userEvent.click(canvas.getByText('Permissões brutas'));
+    await expect((await canvas.findAllByLabelText(/:/)).length).toBeGreaterThan(10);
+    await userEvent.click(canvas.getByText('Detalhes técnicos'));
     await expect(await canvas.findByText(EVENT_MANAGER_PERMISSION_CATALOG[0])).toBeVisible();
     await expect(
       await canvas.findByText(EVENT_MANAGER_PERMISSION_CATALOG[EVENT_MANAGER_PERMISSION_CATALOG.length - 1]),

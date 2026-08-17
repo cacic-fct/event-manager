@@ -5,7 +5,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import type { Person } from '@cacic-fct/event-manager-admin-contracts';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 
@@ -20,7 +19,6 @@ let nextPersonSearchId = 0;
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatProgressSpinnerModule,
   ],
   templateUrl: './person-search.component.html',
   styleUrl: './person-search.component.scss',
