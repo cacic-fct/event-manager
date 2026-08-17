@@ -283,6 +283,8 @@ export class PeopleResolver {
       select: PERSON_AUDIT_SELECT,
     });
     if (!existing) throw new NotFoundException('Pessoa não encontrada entre os vínculos deste escopo.');
+    this.ensureExternallyManagedFieldsAreUnchanged(input, existing);
+    await this.ensureNoDuplicateIdentity(input, id);
     const data: Prisma.PeopleUpdateInput = {
       secondaryEmails: input.secondaryEmails?.map((email) => email.trim()).filter(Boolean),
       ...(!existing.userId
@@ -309,6 +311,26 @@ export class PeopleResolver {
       }, tx);
       return person;
     });
+    await this.typesenseSearch.upsertPerson({
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      secondaryEmails: updated.secondaryEmails,
+      phone: updated.phone,
+      identityDocument: updated.identityDocument,
+      academicId: updated.academicId,
+      userId: updated.userId,
+    });
+    if (this.shouldRefreshCertificates(existing, updated)) {
+      try {
+        await this.certificateIssuingService.refreshIssuedCertificatesForPerson(updated.id);
+      } catch (error) {
+        this.logger.error(
+          `Failed to refresh certificates after related-person update for person ${updated.id}.`,
+          error instanceof Error ? error.stack : String(error),
+        );
+      }
+    }
     return {
       id: updated.id,
       name: updated.name,
@@ -583,10 +605,10 @@ export class PeopleResolver {
 
   private buildRelatedPersonWhere(target: { eventId?: string; majorEventId?: string; eventGroupId?: string }): Prisma.PeopleWhereInput {
     const eventWhere: Prisma.EventWhereInput = target.eventId
-      ? { id: target.eventId }
+      ? { id: target.eventId, deletedAt: null }
       : target.eventGroupId
-        ? { eventGroupId: target.eventGroupId }
-        : { majorEventId: target.majorEventId };
+        ? { eventGroupId: target.eventGroupId, deletedAt: null }
+        : { majorEventId: target.majorEventId, deletedAt: null };
     return {
       deletedAt: null,
       OR: [
@@ -600,6 +622,7 @@ export class PeopleResolver {
         ...(target.majorEventId
           ? [
               { majorEventSubscriptions: { some: { deletedAt: null, majorEventId: target.majorEventId } } },
+              { eventGroupSubscriptions: { some: { deletedAt: null, eventGroup: { majorEventId: target.majorEventId, deletedAt: null } } } },
               { sportsTournamentParticipants: { some: { deletedAt: null, tournament: { majorEventId: target.majorEventId } } } },
               { sportsOfficialAssignments: { some: { active: true, revokedAt: null, tournament: { majorEventId: target.majorEventId } } } },
             ]

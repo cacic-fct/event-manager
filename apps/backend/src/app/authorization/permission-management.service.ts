@@ -219,6 +219,7 @@ export class PermissionManagementService {
     this.assertContextDependencies(effectivePermissions);
     await this.assertAssignments(normalized.assignments, effectivePermissions);
     await this.assertDelegation(actor, effectivePermissions, normalized.assignments);
+    if (existing) await this.assertDescendantDelegation(actor, roleId, effectivePermissions);
 
     const actorId = actor.sub;
     const savedId = await this.prisma.$transaction(async (tx) => {
@@ -352,6 +353,9 @@ export class PermissionManagementService {
       throw new ConflictException('Este grupo foi alterado por outra pessoa. Recarregue antes de salvar.');
     }
 
+    await this.assertGroupMembers(members);
+    if (existing) await this.assertGroupDelegation(actor, existing);
+
     const groupId = existing?.id ?? crypto.randomUUID();
     const actorId = actor.sub;
     await this.prisma.$transaction(async (tx) => {
@@ -406,6 +410,10 @@ export class PermissionManagementService {
       await tx.eventManagerRoleAssignment.updateMany({
         where: { roleId: id, archivedAt: null },
         data: { archivedAt: now, archivedReason: EventManagerPermissionArchiveReason.ROLE_ARCHIVED, updatedById: actor.sub },
+      });
+      await tx.eventManagerRoleInheritance.updateMany({
+        where: { parentRoleId: id, archivedAt: null },
+        data: { archivedAt: now, updatedById: actor.sub },
       });
       await this.auditLog.record({
         entityType: AuditLogEntityType.PERMISSION_ROLE, entityId: id, entityLabel: role.name,
@@ -518,11 +526,44 @@ export class PermissionManagementService {
     });
   }
 
+  private async assertGroupMembers(members: ReturnType<PermissionManagementService['normalizeMembers']>): Promise<void> {
+    const activePeopleCount = members.length
+      ? await this.prisma.people.count({ where: { id: { in: members.map((member) => member.personId) }, deletedAt: null } })
+      : 0;
+    if (activePeopleCount !== members.length) {
+      throw new BadRequestException('Uma pessoa do grupo não existe mais ou foi excluída.');
+    }
+  }
+
+  private async assertGroupDelegation(actor: AuthenticatedUser, group: GroupRecord): Promise<void> {
+    if (this.authorization.isSuperAdmin(actor) || group.assignments.length === 0) return;
+    const roles = await this.prisma.eventManagerRole.findMany({
+      where: { id: { in: group.assignments.map((assignment) => assignment.roleId) }, archivedAt: null },
+      select: roleSelect,
+    });
+    const actorPermissions = await this.authorization.grantedPermissionSet(actor);
+    for (const role of this.mapRoles(roles, false)) {
+      const permissions = [...new Set([...role.permissions, ...role.inheritedPermissions])] as Permission[];
+      const outsideCeiling = permissions.filter((permission) => !actorPermissions.has(permission));
+      if (outsideCeiling.length) throw new ForbiddenException(`Você não pode delegar permissões que não possui: ${outsideCeiling.join(', ')}.`);
+      for (const assignment of role.assignments.filter((item) => item.groupId === group.id)) {
+        for (const scope of assignment.scopes) {
+          await this.authorization.assertPermissions(actor, permissions, {
+            eventId: scope.eventId ?? undefined,
+            majorEventId: scope.majorEventId ?? undefined,
+            eventGroupId: scope.eventGroupId ?? undefined,
+          });
+        }
+      }
+    }
+  }
+
   private normalizeValidity(validFrom: Date | null | undefined, validUntil: Date | null | undefined, unlimited: boolean) {
     const from = validFrom ? new Date(validFrom) : null;
     const until = validUntil ? new Date(validUntil) : null;
     if (!unlimited && !until) throw new BadRequestException('Informe a expiração ou marque Sem limite de tempo.');
     if (unlimited && until) throw new BadRequestException('Acesso sem limite de tempo não pode ter expiração.');
+    if (until && until <= new Date()) throw new BadRequestException('A expiração deve estar no futuro.');
     if (from && until && from >= until) throw new BadRequestException('A expiração deve ser posterior ao início.');
     return { validFrom: from, validUntil: unlimited ? null : until, unlimited };
   }
@@ -607,6 +648,18 @@ export class PermissionManagementService {
     ]);
     if (peopleCount !== personIds.length || groupCount !== groupIds.length) throw new BadRequestException('Uma pessoa ou grupo atribuído não existe mais.');
 
+    const eventIds = [...new Set(assignments.flatMap((assignment) => assignment.scopes.flatMap((scope) => scope.eventId ? [scope.eventId] : [])))];
+    const majorEventIds = [...new Set(assignments.flatMap((assignment) => assignment.scopes.flatMap((scope) => scope.majorEventId ? [scope.majorEventId] : [])))];
+    const eventGroupIds = [...new Set(assignments.flatMap((assignment) => assignment.scopes.flatMap((scope) => scope.eventGroupId ? [scope.eventGroupId] : [])))];
+    const [eventCount, majorEventCount, eventGroupCount] = await Promise.all([
+      eventIds.length ? this.prisma.event.count({ where: { id: { in: eventIds }, deletedAt: null } }) : 0,
+      majorEventIds.length ? this.prisma.majorEvent.count({ where: { id: { in: majorEventIds }, deletedAt: null } }) : 0,
+      eventGroupIds.length ? this.prisma.eventGroup.count({ where: { id: { in: eventGroupIds }, deletedAt: null } }) : 0,
+    ]);
+    if (eventCount !== eventIds.length || majorEventCount !== majorEventIds.length || eventGroupCount !== eventGroupIds.length) {
+      throw new BadRequestException('Um alvo de escopo não existe mais ou foi excluído.');
+    }
+
     for (const assignment of assignments) {
       for (const scope of assignment.scopes) {
         const incompatible = permissions.filter((permission) => !isPermissionGrantScopeCompatible(permission, scope.scope));
@@ -674,6 +727,48 @@ export class PermissionManagementService {
     }
   }
 
+  private async assertDescendantDelegation(actor: AuthenticatedUser, roleId: string, permissions: Permission[]): Promise<void> {
+    if (this.authorization.isSuperAdmin(actor)) return;
+    const links = await this.prisma.eventManagerRoleInheritance.findMany({
+      where: { archivedAt: null },
+      select: { parentRoleId: true, childRoleId: true },
+    });
+    const childrenByParent = new Map<string, string[]>();
+    for (const link of links) {
+      childrenByParent.set(link.parentRoleId, [...(childrenByParent.get(link.parentRoleId) ?? []), link.childRoleId]);
+    }
+    const descendants = new Set<string>();
+    const pending = [...(childrenByParent.get(roleId) ?? [])];
+    while (pending.length) {
+      const childId = pending.pop();
+      if (!childId || descendants.has(childId)) continue;
+      descendants.add(childId);
+      pending.push(...(childrenByParent.get(childId) ?? []));
+    }
+    if (descendants.size === 0) return;
+    const actorPermissions = await this.authorization.grantedPermissionSet(actor);
+    const outsideCeiling = permissions.filter((permission) => !actorPermissions.has(permission));
+    if (outsideCeiling.length) throw new ForbiddenException(`Você não pode delegar permissões que não possui: ${outsideCeiling.join(', ')}.`);
+    const assignments = await this.prisma.eventManagerRoleAssignment.findMany({
+      where: { roleId: { in: [...descendants] }, archivedAt: null },
+      select: {
+        scopes: {
+          where: { archivedAt: null },
+          select: { eventId: true, majorEventId: true, eventGroupId: true },
+        },
+      },
+    });
+    for (const assignment of assignments) {
+      for (const scope of assignment.scopes) {
+        await this.authorization.assertPermissions(actor, permissions, {
+          eventId: scope.eventId ?? undefined,
+          majorEventId: scope.majorEventId ?? undefined,
+          eventGroupId: scope.eventGroupId ?? undefined,
+        });
+      }
+    }
+  }
+
   private mapRoles(records: RoleRecord[], includeArchived: boolean): PermissionRole[] {
     const byId = new Map(records.map((role) => [role.id, role] as const));
     const inherited = (role: RoleRecord, visiting = new Set<string>()): Set<string> => {
@@ -717,6 +812,12 @@ export class PermissionManagementService {
             archivedAt: scope.archivedAt,
           })),
         }));
+      const groupMemberIdsByGroupId = new Map(
+        role.assignments
+          .flatMap((assignment) => assignment.groupId
+            ? [[assignment.groupId, assignment.group?.members.map((member) => member.personId) ?? []] as const]
+            : []),
+      );
       return {
         id: role.id,
         systemKey: role.systemKey,
@@ -727,17 +828,13 @@ export class PermissionManagementService {
         isExternal: Boolean(definition?.external),
         assignable: definition?.assignable ?? true,
         version: role.version,
-        permissions: [...(definition?.permissions ?? role.permissions.map((item) => item.permission))],
-        inheritedPermissions: [...inherited(role)],
+        permissions: [...expandHardPermissionDependencies(definition?.permissions ?? role.permissions.map((item) => item.permission as Permission))],
+        inheritedPermissions: [...expandHardPermissionDependencies(inherited(role) as Set<Permission>)],
         parentRoleIds: role.parentLinks.map((link) => link.parentRoleId),
         assignments,
         directPeopleCount: assignments.filter((assignment) => Boolean(assignment.personId)).length,
         groupPeopleCount: new Set(
-          assignments.flatMap((assignment) =>
-            assignment.groupId
-              ? (role.assignments.find((item) => item.id === assignment.id)?.group?.members.map((member) => member.personId) ?? [])
-              : [],
-          ),
+          assignments.flatMap((assignment) => assignment.groupId ? groupMemberIdsByGroupId.get(assignment.groupId) ?? [] : []),
         ).size,
         archivedAt: role.archivedAt,
         updatedAt: role.updatedAt,

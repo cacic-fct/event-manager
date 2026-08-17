@@ -26,7 +26,7 @@ export class PendingPermissionChangesService {
   blockNavigation(): boolean {
     if (!this.dirty()) return false;
     this.blockedNavigation.set(true);
-    window.setTimeout(() => this.blockedNavigation.set(false), 1200);
+    globalThis.setTimeout(() => this.blockedNavigation.set(false), 1200);
     return true;
   }
 

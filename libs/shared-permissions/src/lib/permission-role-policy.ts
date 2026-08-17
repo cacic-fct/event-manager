@@ -185,6 +185,11 @@ export const EVENT_MANAGER_CONTEXT_PERMISSION_DEPENDENCIES = [
     reason: 'Recusar um comprovante consulta e altera o estado da inscrição relacionada.',
   },
   {
+    permission: Permission.Receipt.Undo,
+    requires: [Permission.Subscription.Read, Permission.Subscription.Update],
+    reason: 'Desfazer um comprovante consulta e altera o estado da inscrição relacionada.',
+  },
+  {
     permission: Permission.SportsTeam.AssignRepresentative,
     requires: [Permission.RelatedPerson.Read],
     reason: 'Designar representante exige localizar pessoas já relacionadas ao escopo.',

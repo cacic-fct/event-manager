@@ -25,7 +25,7 @@ export class PermissionManagementResolver {
   }
 
   @Query(() => [PermissionGroup], { name: 'permissionGroups' })
-  @RequirePermissions(Permission.PermissionGrant.Read)
+  @RequirePermissions(Permission.PermissionGrant.Read, Permission.Person.Read)
   permissionGroups(@Args('includeArchived', { type: () => Boolean, nullable: true }) includeArchived?: boolean) {
     return this.management.listGroups(includeArchived ?? false);
   }
@@ -40,7 +40,7 @@ export class PermissionManagementResolver {
   }
 
   @Mutation(() => PermissionRole, { name: 'savePermissionRole' })
-  @RequirePermissions(Permission.PermissionGrant.Read)
+  @RequirePermissions()
   savePermissionRole(
     @Args('input', { type: () => PermissionRoleSaveInput }) input: PermissionRoleSaveInput,
     @Context() context: GraphqlContext,
@@ -49,7 +49,7 @@ export class PermissionManagementResolver {
   }
 
   @Mutation(() => PermissionGroup, { name: 'savePermissionGroup' })
-  @RequirePermissions(Permission.PermissionGrant.Read)
+  @RequirePermissions()
   savePermissionGroup(
     @Args('input', { type: () => PermissionGroupSaveInput }) input: PermissionGroupSaveInput,
     @Context() context: GraphqlContext,

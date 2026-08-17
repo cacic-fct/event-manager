@@ -84,6 +84,14 @@ export class PermissionManagementStore {
   readonly canCreate = computed(() => this.permissions.has(Permission.PermissionGrant.Create));
   readonly canUpdate = computed(() => this.permissions.has(Permission.PermissionGrant.Update));
   readonly canDelete = computed(() => this.permissions.has(Permission.PermissionGrant.Delete));
+  readonly canEditRole = computed(() => {
+    const draft = this.roleDraft();
+    return Boolean(draft && !draft.archivedAt && (draft.id ? this.canUpdate() : this.canCreate()));
+  });
+  readonly canEditGroup = computed(() => {
+    const draft = this.groupDraft();
+    return Boolean(draft && !draft.archivedAt && (draft.id ? this.canUpdate() : this.canCreate()));
+  });
   readonly predefinedRoles = computed(() => this.roles().filter((role) => role.isSystem));
   readonly customRoles = computed(() => this.roles().filter((role) => !role.isSystem));
   readonly personDirectRoles = computed(() => {
@@ -140,6 +148,7 @@ export class PermissionManagementStore {
   }
 
   selectRole(role: PermissionRole, force = false): void {
+    if (!force && role.id === this.selectedRoleId()) return;
     if (!force && role.id !== this.selectedRoleId() && this.pending.blockNavigation()) return;
     this.selectedRoleId.set(role.id);
     this.roleDraft.set(this.toRoleDraft(role));
@@ -147,6 +156,7 @@ export class PermissionManagementStore {
   }
 
   selectGroup(group: PermissionGroup, force = false): void {
+    if (!force && group.id === this.selectedGroupId()) return;
     if (!force && group.id !== this.selectedGroupId() && this.pending.blockNavigation()) return;
     this.selectedGroupId.set(group.id);
     this.groupDraft.set(this.toGroupDraft(group));
@@ -177,6 +187,7 @@ export class PermissionManagementStore {
   duplicateRole(): void {
     const draft = this.roleDraft();
     if (!draft || draft.isExternal || !this.canCreate()) return;
+    if (this.pending.blockNavigation()) return;
     this.roleDraft.set({ ...draft, id: null, expectedVersion: null, isSystem: false, archivedAt: null, name: `Cópia de ${draft.name}`, assignments: [] });
     this.selectedRoleId.set(null);
     this.pending.markDirty();
@@ -192,7 +203,7 @@ export class PermissionManagementStore {
 
   patchRole(patch: Partial<RoleDraft>): void {
     const draft = this.roleDraft();
-    if (!draft || draft.archivedAt || !this.canUpdate()) return;
+    if (!draft || draft.archivedAt || (draft.id ? !this.canUpdate() : !this.canCreate())) return;
     if (draft.isSystem && Object.keys(patch).some((key) => key !== 'assignments')) return;
     this.roleDraft.set({ ...draft, ...patch });
     this.pending.markDirty();
@@ -200,7 +211,7 @@ export class PermissionManagementStore {
 
   patchGroup(patch: Partial<GroupDraft>): void {
     const draft = this.groupDraft();
-    if (!draft || draft.archivedAt || !this.canUpdate()) return;
+    if (!draft || draft.archivedAt || (draft.id ? !this.canUpdate() : !this.canCreate())) return;
     this.groupDraft.set({ ...draft, ...patch });
     this.pending.markDirty();
   }
@@ -379,6 +390,18 @@ export class PermissionManagementStore {
       majorEventId: scope === 'MAJOR_EVENT' ? targetId : null,
       eventGroupId: scope === 'EVENT_GROUP' ? targetId : null,
     });
+  }
+
+  dateTimeForInput(value: string | Date | null | undefined): string {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString().slice(0, 16);
+  }
+
+  dateTimeFromInput(value: string): string | null {
+    return value ? new Date(value).toISOString() : null;
   }
 
   private async saveCurrentDraft(): Promise<void> {

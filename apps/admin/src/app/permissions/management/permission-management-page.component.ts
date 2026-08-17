@@ -13,7 +13,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TwemojiComponent } from '@cacic-fct/shared-angular';
-import { type EventManagerRoleTemplate, type Permission } from '@cacic-fct/shared-permissions';
+import { type Permission } from '@cacic-fct/shared-permissions';
+import { firstValueFrom } from 'rxjs';
 import { PersonSearchComponent } from '../../people/person-search/person-search.component';
 import { PermissionManagementStore } from './permission-management.store';
 import { RoleTemplateDialogComponent } from './role-template-dialog.component';
@@ -44,8 +45,7 @@ export class PermissionManagementPageComponent {
 
   protected async openNewRoleDialog(): Promise<void> {
     const reference = this.dialog.open(RoleTemplateDialogComponent, { width: 'min(44rem, calc(100vw - 2rem))' });
-    const template = await new Promise<EventManagerRoleTemplate | null | undefined>((resolve) =>
-      reference.afterClosed().subscribe(resolve));
+    const template = await firstValueFrom(reference.afterClosed());
     if (template !== undefined) this.store.startNewRole(template);
   }
 

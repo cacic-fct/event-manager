@@ -3,6 +3,7 @@ import { SubscriptionStatus } from '@prisma/client';
 import { subMonths } from 'date-fns';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { findActiveRolePermissionScopes } from '../../authorization/effective-role-scopes';
+import { Permission } from '@cacic-fct/shared-permissions';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
 import { SportsAutoroutingService } from '../../sports/routing/sports-autorouting.service';
@@ -25,6 +26,12 @@ import { buildMyDayWeatherAdvisories } from './weather-advisories';
 
 const TIME_ZONE = 'America/Sao_Paulo';
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MY_DAY_MANAGER_PERMISSIONS = [
+  Permission.Event.Update,
+  Permission.Event.Delete,
+  Permission.EventAttendance.Update,
+  Permission.Subscription.Update,
+] as const;
 
 @Injectable()
 export class CurrentUserMyDayService {
@@ -236,7 +243,7 @@ export class CurrentUserMyDayService {
         where: { personId, eventId: { in: eventIds } },
         select: { eventId: true },
       }),
-      findActiveRolePermissionScopes(this.prisma, userId, undefined, now),
+      findActiveRolePermissionScopes(this.prisma, userId, MY_DAY_MANAGER_PERMISSIONS, now),
       this.prisma.sportsMatch.findMany({
         where: { eventId: { in: eventIds }, deletedAt: null },
         select: {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, effect, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -43,6 +43,7 @@ export class PersonSearchComponent {
 
   protected readonly queryControl = new FormControl('', { nonNullable: true });
   protected readonly disabledHintId = `person-search-permission-hint-${nextPersonSearchId++}`;
+  private readonly hasSearched = signal(false);
 
   constructor() {
     effect(() => {
@@ -66,6 +67,7 @@ export class PersonSearchComponent {
   }
 
   protected onQueryInput(query: string): void {
+    this.hasSearched.set(false);
     this.queryChange.emit(query);
   }
 
@@ -82,7 +84,7 @@ export class PersonSearchComponent {
   }
 
   protected showNoResults(): boolean {
-    return !this.disabled() && !this.loading() && this.results().length === 0
+    return this.hasSearched() && !this.disabled() && !this.loading() && this.results().length === 0
       && this.queryControl.value.trim().length >= this.minimumQueryLength();
   }
 
@@ -91,6 +93,8 @@ export class PersonSearchComponent {
     if (this.disabled()) {
       return;
     }
-    this.searchRequested.emit(normalized.length >= this.minimumQueryLength() ? normalized : '');
+    const canSearch = normalized.length >= this.minimumQueryLength();
+    this.hasSearched.set(canSearch);
+    this.searchRequested.emit(canSearch ? normalized : '');
   }
 }

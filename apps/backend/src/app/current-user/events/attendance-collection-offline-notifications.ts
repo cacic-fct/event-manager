@@ -64,7 +64,10 @@ async function findOfflineAttendanceReviewRecipients(params: {
       roleId: { in: roleIds },
       archivedAt: null,
       OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-      AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
+      AND: [
+        { OR: [{ validUntil: null }, { validUntil: { gt: now } }] },
+        { OR: [{ person: { deletedAt: null } }, { group: { archivedAt: null } }] },
+      ],
       scopes: {
         some: {
           archivedAt: null,
@@ -77,12 +80,13 @@ async function findOfflineAttendanceReviewRecipients(params: {
       },
     },
     select: {
-      person: { select: { userId: true } },
+      person: { select: { userId: true, deletedAt: true } },
       group: {
         select: {
           members: {
             where: {
               archivedAt: null,
+              person: { deletedAt: null },
               OR: [{ validFrom: null }, { validFrom: { lte: now } }],
               AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
             },
@@ -93,7 +97,7 @@ async function findOfflineAttendanceReviewRecipients(params: {
     },
   });
   const assignedUserIds = assignments.flatMap((assignment) => [
-    ...(assignment.person?.userId ? [assignment.person.userId] : []),
+    ...(assignment.person && !assignment.person.deletedAt && assignment.person.userId ? [assignment.person.userId] : []),
     ...(assignment.group?.members.flatMap((member) => member.person.userId ? [member.person.userId] : []) ?? []),
   ]);
   const users = await params.prisma.user.findMany({

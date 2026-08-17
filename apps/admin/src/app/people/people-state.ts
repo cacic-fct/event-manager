@@ -63,7 +63,11 @@ export abstract class PeopleState {
     });
     this.peopleSearchForm.controls.hasLecturerProfile.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => void this.searchPeople(this.peopleSearchForm.controls.query.value));
+      .subscribe(() => {
+        void this.searchPeople(this.peopleSearchForm.controls.query.value).catch((error: unknown) =>
+          this.feedback.error(error, 'Não foi possível carregar as pessoas.'),
+        );
+      });
   }
 
   abstract searchPeople(query: string): Promise<void>;

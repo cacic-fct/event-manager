@@ -199,6 +199,11 @@ export const routes: Route[] = [
         canMatch: [canReadFeatureGuard],
         loadChildren: () => import('../permissions/permissions.routes').then((m) => m.routes),
       },
+      {
+        path: permissionsData.path,
+        data: permissionsData,
+        loadComponent: () => import('./permission-denied.component').then((m) => m.PermissionDeniedComponent),
+      },
       ...guardedFeatureRoute(globalOperationsData.path, globalOperationsData, () =>
         import('../global-operations/global-operations-page.component').then((m) => m.GlobalOperationsPageComponent),
       ),

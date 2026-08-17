@@ -518,14 +518,27 @@ export class AccountMergeService {
     const archivedRoleAssignmentIds: string[] = [];
     const assignments = await tx.eventManagerRoleAssignment.findMany({
       where: { personId: sourcePersonId, archivedAt: null },
-      select: { id: true, roleId: true },
+      select: { id: true, roleId: true, validFrom: true, validUntil: true, unlimited: true },
     });
+    const conflictsByRoleId = new Map((await tx.eventManagerRoleAssignment.findMany({
+      where: { personId: targetPersonId, roleId: { in: assignments.map((assignment) => assignment.roleId) }, archivedAt: null },
+      select: { id: true, roleId: true, validFrom: true, validUntil: true, unlimited: true },
+    })).map((assignment) => [assignment.roleId, assignment] as const));
     for (const assignment of assignments) {
-      const conflict = await tx.eventManagerRoleAssignment.findFirst({
-        where: { roleId: assignment.roleId, personId: targetPersonId, archivedAt: null },
-        select: { id: true },
-      });
+      const conflict = conflictsByRoleId.get(assignment.roleId);
       if (conflict) {
+        await tx.eventManagerRoleAssignmentScope.updateMany({
+          where: { assignmentId: assignment.id, archivedAt: null },
+          data: { assignmentId: conflict.id },
+        });
+        await tx.eventManagerRoleAssignment.update({
+          where: { id: conflict.id },
+          data: {
+            validFrom: assignment.validFrom && conflict.validFrom ? new Date(Math.min(+assignment.validFrom, +conflict.validFrom)) : null,
+            validUntil: assignment.unlimited || conflict.unlimited ? null : new Date(Math.max(+(assignment.validUntil ?? new Date(0)), +(conflict.validUntil ?? new Date(0)))),
+            unlimited: assignment.unlimited || conflict.unlimited,
+          },
+        });
         await tx.eventManagerRoleAssignment.update({
           where: { id: assignment.id },
           data: { archivedAt: new Date(), archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
@@ -541,14 +554,23 @@ export class AccountMergeService {
     const archivedPermissionGroupMembershipIds: string[] = [];
     const memberships = await tx.eventManagerPermissionGroupMember.findMany({
       where: { personId: sourcePersonId, archivedAt: null },
-      select: { id: true, groupId: true },
+      select: { id: true, groupId: true, validFrom: true, validUntil: true, unlimited: true },
     });
+    const conflictsByGroupId = new Map((await tx.eventManagerPermissionGroupMember.findMany({
+      where: { personId: targetPersonId, groupId: { in: memberships.map((membership) => membership.groupId) }, archivedAt: null },
+      select: { id: true, groupId: true, validFrom: true, validUntil: true, unlimited: true },
+    })).map((membership) => [membership.groupId, membership] as const));
     for (const membership of memberships) {
-      const conflict = await tx.eventManagerPermissionGroupMember.findFirst({
-        where: { groupId: membership.groupId, personId: targetPersonId, archivedAt: null },
-        select: { id: true },
-      });
+      const conflict = conflictsByGroupId.get(membership.groupId);
       if (conflict) {
+        await tx.eventManagerPermissionGroupMember.update({
+          where: { id: conflict.id },
+          data: {
+            validFrom: membership.validFrom && conflict.validFrom ? new Date(Math.min(+membership.validFrom, +conflict.validFrom)) : null,
+            validUntil: membership.unlimited || conflict.unlimited ? null : new Date(Math.max(+(membership.validUntil ?? new Date(0)), +(conflict.validUntil ?? new Date(0)))),
+            unlimited: membership.unlimited || conflict.unlimited,
+          },
+        });
         await tx.eventManagerPermissionGroupMember.update({
           where: { id: membership.id },
           data: { archivedAt: new Date(), archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
