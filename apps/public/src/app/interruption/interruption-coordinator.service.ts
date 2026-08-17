@@ -2,7 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Injectable, OnDestroy, PLATFORM_ID, effect, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { EMPTY, Subject, Subscription, catchError, filter, forkJoin, map, of, switchMap } from 'rxjs';
+import { Observable, Subject, Subscription, catchError, defer, filter, forkJoin, map, of, switchMap } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import {
   INTERRUPTION_FLOW,
@@ -23,6 +23,11 @@ const NORMAL_INTERRUPTION_EXEMPTION_PATTERNS = [
   /^\/major-event\/[^/]+\/(?:subscription|ranked-subscription|payment)(?:\/|\?|$)/,
   /^\/tournament\/[^/]+\/subscribe(?:\/|\?|$)/,
 ];
+
+type InterruptionResolution = {
+  interruption: Interruption | null;
+  isFallback: boolean;
+};
 
 export function selectNextInterruption(
   interruptions: readonly (Interruption | null)[],
@@ -102,11 +107,11 @@ export class InterruptionCoordinatorService implements OnDestroy {
           filter(() => this.auth.isAuthenticated() && !this.navigating),
           switchMap(() => this.resolveNextInterruption()),
         )
-        .subscribe((interruption) => {
+        .subscribe(({ interruption, isFallback }) => {
           if (
             !interruption ||
             !this.auth.isAuthenticated() ||
-            !this.featureFlags.booleanValue('interruptionsEnabled')
+            (!this.featureFlags.booleanValue('interruptionsEnabled') && !isFallback)
           ) {
             return;
           }
@@ -135,16 +140,38 @@ export class InterruptionCoordinatorService implements OnDestroy {
   }
 
   private resolveNextInterruption() {
-    if (!this.featureFlags.booleanValue('interruptionsEnabled')) {
-      return of(null);
-    }
-
-    if (this.flows.length === 0) {
-      return EMPTY;
-    }
-
     const context: InterruptionContext = { currentUrl: this.router.url || '/menu' };
-    return forkJoin(this.flows.map((flow) => flow.resolve(context).pipe(catchError(() => of(null))))).pipe(
+    const fallbackFlows = this.flows.filter((flow) => flow.isFallback);
+    const interruptionFlows = this.featureFlags.booleanValue('interruptionsEnabled')
+      ? this.flows.filter((flow) => !flow.isFallback)
+      : [];
+    const fallbackResolution = this.resolveFlows(fallbackFlows, context).pipe(
+      map((interruption): InterruptionResolution => ({ interruption, isFallback: true })),
+    );
+
+    return this.resolveFlows(interruptionFlows, context).pipe(
+      switchMap((interruption): Observable<InterruptionResolution> =>
+        interruption
+          ? of({ interruption, isFallback: false })
+          : fallbackResolution,
+      ),
+    );
+  }
+
+  private resolveFlows(flows: readonly InterruptionFlow[], context: InterruptionContext) {
+    if (flows.length === 0) {
+      return of<Interruption | null>(null);
+    }
+
+    return defer(() =>
+      forkJoin(
+        flows.map((flow) =>
+          defer(() => flow.resolve(context)).pipe(
+            catchError(() => of(null)),
+          ),
+        ),
+      ),
+    ).pipe(
       map((interruptions) => this.selectNext(interruptions, context)),
     );
   }

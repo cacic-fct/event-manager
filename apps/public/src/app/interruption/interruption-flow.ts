@@ -18,6 +18,7 @@ export const INTERRUPTION_PRIORITY_ORDERS = {
   ONLINE_ATTENDANCE: 100,
   IMAGE_LICENSE_AGREEMENT: 150,
   REQUIRED_SUBSCRIPTION_FORM: 200,
+  DEFAULT_REDIRECT: Number.MAX_SAFE_INTEGER,
 } as const;
 
 export type InterruptionContext = {
@@ -34,6 +35,8 @@ export type Interruption = {
 export interface InterruptionFlow {
   resolve(context: InterruptionContext): Observable<Interruption | null>;
   changes?(): Observable<unknown>;
+  /** Resolve only after ordinary interruption flows produce no applicable candidate. */
+  isFallback?: boolean;
 }
 
 export const INTERRUPTION_FLOW = new InjectionToken<InterruptionFlow>('INTERRUPTION_FLOW');

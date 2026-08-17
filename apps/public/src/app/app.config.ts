@@ -131,6 +131,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(appRoutes),
     { provide: TitleStrategy, useClass: PageTitleStrategy },
     provideHttpClient(withInterceptors([authInterceptor, publicMapCacheInvalidationInterceptor])),
+    provideInterruptionFlow(DefaultRedirectOnTabEntryService),
     provideInterruptionFlow(OnlineAttendanceCoordinatorService),
     provideInterruptionFlow(SportsAutorouteInterruptionFlow),
     provideInterruptionFlow(ImageLicenseAgreementInterruptionFlow),
