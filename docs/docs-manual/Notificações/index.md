@@ -1,23 +1,30 @@
-# Notificações
+---
+title: Notificações
+---
 
-O sistema envia notificações de forma automática para os usuários, em determinadas situações.
+O sistema cria notificações para acontecimentos transacionais, como mudança de inscrição, pagamento, formulário, presença, certificado ou revisão.
 
-Não é possível enviar notificações de forma manual.
+Uma notificação informa que algo aconteceu e oferece um atalho para a tela relacionada.
 
-As notificações são usadas para informações transacionais, como confirmação de inscrição, confirmação de pagamento, etc. 
 
-Elas não são usadas para comunicações em massa, como divulgação de eventos ou envio de mensagens para grupos de usuários.
+A caixa de notificações é compartilhada entre a interface pública e o painel administrativo, para a pessoa autenticada.
 
-## Posso enviar e-mail?
+## Notificações push
 
-O sistema não possui um recurso de envio de e-mails em massa, pois provedores de e-mail em massa geralmente possuem custos elevados, o que não é viável para o projeto.
+Bloquear push não impede o uso da caixa de entrada. Se a permissão foi negada, ela precisa ser alterada nas configurações do navegador.
 
-É possível enviar e-mails de forma manual, a partir do download de tabelas de pessoas.
+Em um dispositivo compartilhado, não habilite push para sua conta pessoal.
 
-## Caixa de notificações
+## Preferências
 
-A caixa de notificações aparece na interface pública e no painel administrativo para usuários autenticados.
+A aba **Configurações** permite habilitar ou desabilitar canais por tipo de notificação.
 
-Ela deve ser usada para acompanhar avisos transacionais, como mudanças de inscrição, pagamento, certificado ou outras ações do sistema.
+A opção **In-app** controla a caixa de entrada. A opção **Push** controla alertas do navegador quando esse canal estiver disponível.
 
-Notificações não substituem a conferência das telas específicas. Um administrador ainda deve validar comprovantes, presenças e certificados nas respectivas áreas do painel.
+Desativar um canal não desfaz acontecimentos registrados no sistema, apenas impede que novas notificações sejam enviadas por ele.
+
+## Comunicação em massa
+
+A caixa não é uma ferramenta de campanha e não permite redigir envios manuais.
+
+Para uma comunicação externa autorizada, use o processo institucional adequado e trate qualquer exportação de contatos como dado pessoal.

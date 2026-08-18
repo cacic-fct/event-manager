@@ -2,48 +2,73 @@
 title: Presenças
 ---
 
-A tela de presenças serve para consultar, corrigir, importar e exportar registros de participação.
+A área de presenças serve para preparar a coleta, acompanhar o que chegou ao servidor, revisar pendências e corrigir o resultado antes da emissão de certificados.
 
-Para coleta durante o evento, use a interface pública sempre que possível. O painel administrativo é mais adequado para conferência e correções.
+A coleta em campo deve usar a interface pública sempre que possível.
 
-## Por evento
+## Caminho crítico
 
-Na visão por evento, selecione uma atividade e carregue as presenças antes de registrar ou exportar dados.
+1. Confirme a configuração do evento e os coletores autorizados;
+2. Prepare o dispositivo e o método de coleta;
+3. Acompanhe a sincronização durante a atividade;
+4. Revise pendências off-line e identificações duvidosas;
+5. Analise sinais e ausências;
+6. Corrija pendências antes de emitir certificados.
 
-É possível registrar presença:
+## Visão por evento
 
-- Manualmente, buscando uma pessoa por identificador;
-- Por leitura de código;
-- Por importação de CSV.
+Selecione o evento antes de carregar os registros.
 
-Presenças importadas por CSV dependem da coluna escolhida para localizar pessoas. Revise o resumo da importação e registre manualmente os valores que não foram encontrados.
+A tela permite consulta, atualização, exportação, importação, leitura de código, chamada oral e registro manual. Use as operações administrativas para conferência e exceções; o fluxo normal do participante deve permanecer na interface pública.
 
-## Revisão de presenças off-line
+Uma importação localiza pessoas pela coluna escolhida. Revise o resumo e trate separadamente valores não encontrados ou ambíguos.
 
-Presenças coletadas no app público sem conexão podem chegar como pendências de revisão. Isso acontece quando o servidor não consegue confirmar com segurança a pessoa vinculada, quando há conflito ou quando a submissão precisa de validação administrativa.
+## Chamada oral
 
-Ao aprovar uma pendência, o painel registra a presença real do evento e preserva quem coletou originalmente e quem aprovou. Se a presença já existir, a revisão é marcada como resolvida sem duplicar o registro.
+A chamada oral percorre uma lista de pessoas e registra decisões no navegador.
 
-Ao dispensar uma pendência, informe o motivo quando ele ajudar a auditoria futura. Dispensar não apaga o histórico da submissão off-line.
+Abra a lista enquanto houver conexão. Depois de preparada, ela pode continuar funcionando em uma interrupção de rede. A inclusão de uma pessoa fora da lista pode depender do servidor.
 
-Revise em lote apenas quando as pendências possuem o mesmo contexto e o mesmo grau de confiança. Em caso de dúvida, abra o detalhe da submissão antes de aprovar.
+A indicação **Tudo sincronizado** significa que não há alterações locais aguardando envio. Não entregue o dispositivo a outro operador, não feche o navegador e não limpe os dados do site enquanto houver pendências.
 
-## Categorias
+## Revisão de registros off-line
 
-As presenças podem aparecer agrupadas por categoria, como participante regular, não inscrito, não pagante ou desconhecido.
+Uma coleta off-line pode ser aceita automaticamente ou chegar para revisão.
 
-Essas categorias ajudam a identificar se a presença deve gerar certificado. Antes de corrigir certificados, confira se a categoria da presença reflete a regra do evento.
+Abra o detalhe quando houver dúvida sobre pessoa, evento, método ou contexto. Ao aprovar, o sistema cria ou concilia a presença e preserva a autoria da coleta e da revisão.
 
-## Por grande evento
+Se a presença já existir, resolva a pendência sem criar duplicidade.
 
-Na visão por grande evento, o painel mostra a situação de cada pessoa em relação às atividades vinculadas.
+Rejeitar ou dispensar uma pendência não apaga o histórico. Registre um motivo útil quando a decisão puder precisar de explicação futura.
 
-Use essa visão para revisar presença por participante, conferir pagamento e corrigir casos pontuais antes da emissão de certificados.
+Faça revisão em lote apenas quando os itens tiverem a mesma origem e o mesmo grau de confiança.
 
-## Exclusão
+## Estatísticas e sinais de revisão
 
-Remova presenças somente quando houver erro claro de registro.
+A visão de estatísticas ajuda a encontrar padrões incomuns, como concentração de registros, ritmo de coleta, distribuição por método, atividade de coletores e períodos que merecem conferência.
 
-Se uma pessoa participou sem inscrição ou sem pagamento, normalmente a presença deve permanecer registrada. A decisão de emitir certificado depende das regras configuradas no evento, grupo ou grande evento.
+Um sinal não invalida uma presença por si só. Ele orienta a investigação humana.
 
-Leia também [Boas práticas](../03-Coleta%20de%20presenças/Boas%20práticas.md).
+Quando o caso estiver explicado, registre a decisão ou descarte o sinal conforme o fluxo disponível.
+
+## Categorias e ausências
+
+A interface pode distinguir participantes regulares, pessoas não inscritas, não pagantes ou identificações ainda não resolvidas.
+
+Presença e elegibilidade para certificado são decisões diferentes. Corrija a categoria ou a inscrição quando necessário; não apague uma participação real apenas para impedir certificado.
+
+Ausências explícitas registram uma decisão do coletor. Ausências implícitas resultam da falta de presença dentro da lista esperada.
+
+## Visão por grande evento
+
+A visão por grande evento reúne a situação da pessoa nas atividades vinculadas.
+
+Use-a para conciliar inscrição, pagamento, presença e certificado antes de reprocessar emissões. Corrija o dado na área que é sua fonte, em vez de ajustar somente o resultado final.
+
+## Exclusão e recursos antigos
+
+Remova uma presença apenas quando houver erro claro de registro.
+
+Eventos antigos podem estar congelados. A correção exige a autorização normal e a autorização específica para recursos congelados.
+
+Leia [Boas práticas de coleta](../03-Coleta%20de%20presenças/Boas%20práticas.md) e [Coletar presenças na interface pública](../08-Interface%20pública/Presenças/Coletar%20presenças.md).

@@ -1,27 +1,49 @@
-# Conceitos gerais
+---
+title: Conceitos gerais
+---
 
-## Painel de administração
+O Event Manager mantém os mesmos eventos, pessoas e participações em duas interfaces. A diferença entre elas é a responsabilidade de quem está usando o sistema.
 
-O painel de administração é a interface principal para gerenciar o sistema, onde os organizadores podem configurar eventos, gerenciar usuários, criar formulários e coletar presenças. Ele é acessível apenas para usuários com permissões administrativas, que são definidas no Keycloak.
+## Interface administrativa
 
-O painel é desktop-first e não é otimizado para uso em dispositivos móveis. Ele também não é otimizado para conexões limitadas, pois consome muitos dados. Portanto, para coletar presenças durante o evento, é recomendado usar o aplicativo público, que é projetado para ser leve e fácil de usar em dispositivos móveis.
+A interface administrativa é a área de trabalho dos organizadores. Ela concentra cadastros, configurações, conferências, correções, revisões e operações com impacto coletivo.
 
-Está disponível em https://eventos.cacic.com.br/admin/
+O painel é pensado principalmente para computador e conexão estável. Em atividades de campo, como coleta de presença ou operação de uma partida, prefira a interface pública quando ela oferecer o fluxo necessário.
 
-### Soft delete
+## Interface pública
 
-O sistema é adepto do "soft delete", ou seja, quando um item é deletado, ele não é removido permanentemente do banco de dados, mas sim marcado como deletado. Isso permite que o item seja restaurado posteriormente, caso necessário.
+A interface pública atende participantes, ministrantes, coletores de presença, representantes de equipe e oficiais de partidas.
 
-Por conta disso, não crie itens (eventos, etc.) para teste, pois eles não serão permanentemente deletados e podem causar confusão no futuro. 
+Além da programação aberta, ela reúne os dados e as ações da pessoa autenticada: inscrições, pagamentos, carteira, participações, formulários, notificações, agenda do dia e tarefas operacionais autorizadas.
 
-Execute o projeto localmente para realizar testes.
+Uma pessoa pode executar uma responsabilidade limitada pela interface pública sem receber acesso amplo ao painel administrativo.
 
-Também pode acontecer de itens já deletados aparecerem na interface administrativa. Caso isso aconteça, [crie uma issue no GitHub](https://github.com/cacic-fct/event-manager/issues/new) ou entre em contato com a equipe de DevOps para que o item seja permanentemente deletado do banco de dados.
+## Identidade e autorização
 
-## Aplicativo público
+O Keycloak confirma a identidade e libera a entrada administrativa. O que a pessoa pode fazer dentro do Event Manager é definido pelos cargos, grupos, escopos e períodos de validade mantidos no próprio sistema.
 
-O aplicativo público é a interface voltada para os participantes do evento, onde eles podem se inscrever, acessar informações sobre o evento e coletar suas presenças. Ele é acessível para todos os usuários, incluindo aqueles sem permissões administrativas.
+O papel `access` permite entrar no painel. O papel `super-admin` ignora as restrições do sistema.
 
-Também possui funcionalidades específicas para professores e para organizadores, para não ser necessário a liberação do painel de administração para estes grupos.
+Leia [Permissões e recursos congelados](05-Interface%20administrativa/02-Permissões%20e%20recursos%20congelados.md) para entender o modelo completo.
 
-Está disponível em https://eventos.cacic.com.br/app/
+## Pessoa e usuário
+
+A pessoa representa o cadastro usado no sistema. O usuário representa a conta autenticada.
+
+Os dois registros podem existir em momentos diferentes. Uma pessoa pode ser cadastrada antes de criar uma conta, e algumas responsabilidades podem ser preparadas antes desse vínculo. A conta passa a usar essas responsabilidades quando o vínculo e o acesso base estiverem disponíveis.
+
+Leia [Pessoas x Usuários](Gerenciar%20pessoas/01-Pessoas%20x%20Usuários.md).
+
+## Histórico dos dados
+
+Várias exclusões usam *soft delete*: o registro deixa de participar do fluxo normal, mas permanece preservado para auditoria, restauração ou manutenção.
+
+Por isso, **não** crie eventos, pessoas, inscrições ou certificados de teste no ambiente de produção. Faça experimentos em ambiente local ou de demonstração.
+
+Um item antigo também pode ficar congelado. A correção continua possível para pessoas autorizadas, mas exige uma motivação explícita porque pode afetar inscrições, presenças, resultados ou certificados já consolidados.
+
+## Dados locais e uso off-line
+
+Algumas páginas guardam dados no dispositivo para consulta ou trabalho temporário sem conexão. Isso não significa que toda ação esteja disponível off-line.
+
+Antes de uma operação em campo, abra o fluxo com internet, confirme a conta em uso e verifique se os dados necessários foram preparados. Depois, aguarde a confirmação de sincronização antes de fechar o navegador, trocar de conta ou limpar os dados do site.

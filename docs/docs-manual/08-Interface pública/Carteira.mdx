@@ -2,89 +2,48 @@
 title: Carteira
 ---
 
-import comparison from '@site/static/assets/wallet/comparison.png';
-import quietZoneQR from '@site/static/assets/wallet/quiet-zone-qr.png';
-import quietZoneAztec from '@site/static/assets/wallet/quiet-zone-aztec.png';
-import devices from '@site/static/assets/wallet/devices.jpg';
-import damagedQR from '@site/static/assets/wallet/damaged-qr.png';
-import damagedAztec from '@site/static/assets/wallet/damaged-aztec.jpg';
+A carteira reúne cartões que a pessoa pode apresentar no celular ou preparar para uso sem conexão.
 
-A carteira é onde ficam os cartões de identificação dos usuários e seus bilhetes, caso possuam.
+Os cartões disponíveis dependem dos dados da conta e do que foi configurado neste navegador.
 
-## Cartão de identificação
+## Cartão CACiC Eventos
 
-Substitui o cartão de identificação (crachá) físico, mas pode ser impresso e utilizado como tal.
+O cartão principal identifica a pessoa no Event Manager e exibe o código usado pelos coletores de presença.
 
-### Dados
+Quando a leitura falhar, a organização pode localizar a pessoa por um identificador e registrar a presença manualmente.
 
-- Nome completo;
-- Vínculo com a Unesp:
-  - Curso;
-  - Cargo;
-  - Externo.
-- Código Aztec;
-- CPF.
+## Código off-line
 
-### Código
+O cartão **Código off-line** mostra um código temporário associado à conta do e-mail exibido.
 
-#### Dados do código
+Abra a carteira uma vez com internet e login para preparar esse cartão no dispositivo. Depois disso, ele pode continuar disponível, mesmo em uma interrupção de rede.
 
-O código de barras é gerado a partir da identificação única (uuid) do usuário no Keycloak e segue o seguinte formato:
+O código muda com o tempo. Apresente o valor somente quando a organização solicitar.
 
-- `user:<uuid>` — Onde `<uuid>` é a identificação única do usuário sem `<>`.
+## Registro Acadêmico
 
-O prefixo `user:` é utilizado para identificar o tipo de dado que está sendo lido.
+O cartão de registro acadêmico aparece automaticamente para contas de graduação que possuem matrícula disponível.
 
-#### Aztec Code
+Os dados vêm da conta. Quando estiverem incorretos, use o Account Manager para corrigi-los.
 
-O código é um Aztec Code, um tipo de código de barras bidimensional.  
-É possível lê-lo de maneira mais rápida e precisa que um QR Code, além dele ser mais compacto.  
-Isso permite a leitura de códigos em distâncias maiores e evita a formação de filas.
+## Cartão do R.U.
 
-<img src={comparison} alt="Comparação entre os códigos." />
+Em **Adicionar cartão**, informe o número de cliente usado no Restaurante Universitário.
 
-> O mesmo dado está representado nos três códigos.  
->  Há uma margem maior no Aztec Code, que pode ser usada para o algoritmo de correção de erros.
+Esse número é salvo localmente neste navegador. Ele não é sincronizado para outros dispositivos.
 
-#### Edge cases
+Ao trocar de celular, limpar os dados do site ou usar outro perfil do navegador, adicione o cartão novamente.
 
-##### Quiet zone
+## Impressão
 
-<img src={quietZoneQR} alt="Demonstração do Quiet Zone do QR Code." width="200" />
+Use **Imprimir crachá** e confira a pré-visualização antes de imprimir.
 
-> Só é possível ler o QR Code caso ele possua uma margem considerável em volta dele
+A impressão é uma alternativa para quem não poderá apresentar o celular, mas não altera a conta nem cria uma credencial diferente.
 
-<img src={quietZoneAztec} alt="Demonstração do Quiet Zone do Aztec Code." width="200" />
+## Disponibilidade off-line
 
-> É possível ler este Aztec Code, mesmo não havendo uma margem em volta dele
+O indicador de nuvem informa se o suporte geral a recursos off-line está instalado. Ele não garante, sozinho, que todos os cartões já foram preparados.
 
-###### Tamanho da tela
+Abra a carteira com internet antes do evento e confirme que os cartões necessários aparecem.
 
-<img src={devices} alt="Dispositivos de tamanhos diferentes mostrando um Aztec Code." />
-
-Quanto menor a tela, menor é a margem disponível para uma Quiet Zone.
-
-A área do código também será menor, o que obriga o usuário a aproximar o celular demais do leitor.
-
-###### Inversão de cores
-
-Alguns usuários podem usar extensões para inverter as cores de um site, o que dificulta a leitura de QR Codes, por conta da perda da Quiet Zone. Veja: [cacic-fct/event-manager #32](https://github.com/cacic-fct/event-manager/pull/32)
-
-No Aztec Code, isso não é um problema.
-
-###### Impressão
-
-<img src={damagedQR} alt="Uma representação gráfica de um QR Code com uma das Finder Patterns cobertas" width="200" />
-
-> Apesar de estar preservado, não é possível ler este QR Code, pois uma das Finder Patterns está incompleta.
-
-<img src={damagedAztec} alt="Uma representação gráfica de um Aztec Code rasgado" width="200" />
-
-> É possível ler um Aztec
-> code desde que o Finder Pattern (quadrado no centro) esteja preservado.
-
-Caso os professores desejem a volta do crachá impresso, o Aztec Code também é a opção mais ideal, já que pode ser lido mesmo que o crachá esteja amassado, sujo ou rasgado.
-
-## Attributions
-
-This article has content and images from [www.masabi.com](https://www.masabi.com/2011/03/04/connecting-the-dots-an-introduction-to-2d-barcodes-3/)
+Para manutenção do aplicativo, consulte [Preferências](Preferências.md).

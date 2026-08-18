@@ -2,73 +2,101 @@
 title: Permissões e recursos congelados
 ---
 
-As permissões administrativas controlam quais dados podem ser lidos, criados, atualizados, importados, validados, emitidos ou excluídos no painel administrativo.
+As permissões administrativas representam responsabilidades. O sistema combina cargos, grupos, escopos e validade para decidir quem pode agir, onde e por quanto tempo.
 
-O Keycloak libera a entrada no Event Manager, mas as permissões de negócio são concessões gravadas no próprio Event Manager. Isso permite conceder acessos globais, temporários ou restritos a um evento, grupo de eventos ou grande evento.
+O Keycloak libera a entrada no painel. As autorizações de negócio são mantidas no Event Manager.
 
-## Como a autorização funciona
+## Modelo mental
 
-Para uma ação administrativa ser autorizada, o sistema avalia camadas diferentes:
+Um **cargo** reúne as permissões necessárias para uma responsabilidade.
 
-1. O usuário precisa estar autenticado.
-2. O usuário precisa possuir `access` no cliente Keycloak do Event Manager ou `super-admin`.
-3. Se não for super administrador, precisa possuir uma concessão ativa no Event Manager.
-4. A concessão precisa cobrir a ação solicitada e o escopo do recurso.
-5. O backend ainda aplica regras de domínio, como recurso removido, recurso congelado, janela de coleta de presença e vínculos com eventos.
+Uma **atribuição** liga o cargo a uma pessoa ou a um grupo de permissões.
 
-A interface usa essas permissões para mostrar abas, botões e mensagens de acesso. Essa indicação ajuda o usuário, mas a decisão de segurança é sempre reavaliada no backend.
+O **escopo** limita os dados alcançados pela atribuição.
 
-## Escopos de concessão
+A **validade** limita quando a atribuição ou um de seus escopos produz acesso.
 
-As concessões podem ter quatro escopos:
+Um **grupo de permissões** reúne pessoas que exercem uma responsabilidade recorrente. Ele não é o mesmo que grupo de eventos.
 
-| Escopo | Uso principal |
-| --- | --- |
-| Global | Acesso a todos os registros cobertos pela permissão. Também é obrigatório para permissões que não fazem sentido em um evento específico, como gestão de pessoas, resolução de duplicidades e gestão de permissões. |
-| Grande evento | Acesso ao grande evento escolhido e às operações associadas a ele. |
-| Grupo de eventos | Acesso ao grupo escolhido e aos eventos associados quando a operação suporta esse vínculo. |
-| Evento | Acesso a um evento específico. |
+## Minhas permissões
 
-Ao validar uma operação, o backend resolve o alvo real do recurso. Uma inscrição, comprovante ou certificado pode ser ligado a um evento ou grande evento, e a concessão precisa cobrir esse alvo.
+A área **Minhas permissões** mostra o acesso efetivo da pessoa autenticada.
 
-## Página de permissões
+Ela combina cargos diretos, participação em grupos, herança entre cargos, escopos ativos e acessos externos. Use essa visão para entender o resultado, não para editar a autorização.
 
-A página de permissões do painel é somente informativa. Ela mostra os acessos reconhecidos pela aplicação para o usuário logado e ajuda a diagnosticar problemas.
+Os detalhes técnicos ficam recolhidos para diagnóstico. O catálogo completo não é reproduzido no manual porque a própria aplicação é a fonte de verdade.
 
-Ela não concede permissões. Para conceder, editar ou remover permissões, use o painel de pessoas.
+## Gerenciamento de permissões
 
-## Permissões ausentes
+A área **Gerenciamento de permissões** organiza o trabalho por cargo, pessoa e grupo.
 
-Quando uma tela indicar permissões ausentes:
+### Cargos
 
-1. Confira se o usuário possui `access` no cliente Keycloak do Event Manager.
-2. Confira se existe uma concessão ativa no Event Manager.
-3. Confira se a validade da concessão já começou e ainda não expirou.
-4. Confira se o escopo da concessão cobre o evento, grupo ou grande evento da operação.
-5. Confira se a tela exige permissões relacionadas. Algumas abas precisam carregar eventos, pessoas, inscrições, comprovantes ou certificados ao mesmo tempo.
+Comece por um modelo ou por um cargo vazio. Dê ao cargo um nome que represente a responsabilidade, revise as permissões e salve apenas o necessário.
+
+Quando uma permissão depender de outras leituras, a interface informa a exposição adicional antes de incluí-las.
+
+Permissões herdadas permanecem associadas ao cargo de origem. Em vez de copiar manualmente o mesmo conjunto para vários cargos, use a herança quando a relação de responsabilidade for duradoura.
+
+Alguns cargos são predefinidos ou administrados externamente. Quando precisar de uma variação, crie ou duplique um cargo personalizado em vez de alterar a referência do sistema.
+
+### Pessoas
+
+A visão por pessoa mostra cargos diretos e participação em grupos.
+
+Uma pessoa pode receber um cargo antes de ter uma conta vinculada. A atribuição fica preparada, mas não libera acesso até que a conta seja associada e receba a entrada administrativa no Keycloak.
+
+### Grupos
+
+Use grupos para equipes recorrentes, como uma comissão ou um conjunto de validadores.
+
+Atribua cargos ao grupo e mantenha a lista de integrantes. A participação de cada pessoa também pode expirar, sem exigir a remoção do cargo compartilhado.
 
 ## Escopos
 
-As permissões seguem o formato `recurso#ação`.
+| Escopo | Efeito |
+| --- | --- |
+| Global | Alcança todos os registros compatíveis e as responsabilidades que não pertencem a um evento específico. |
+| Grande evento | Alcança o grande evento escolhido e os dados associados que suportam esse vínculo. |
+| Grupo de eventos | Alcança o grupo escolhido e os eventos relacionados quando a operação usa essa estrutura. |
+| Evento | Alcança uma atividade específica. |
 
-Exemplos:
+O sistema impede escopos incompatíveis ou redundantes. Um escopo pai pode tornar desnecessário adicionar seus filhos individualmente.
 
-- `event#read`;
-- `event#create`;
-- `event#update`;
-- `event#delete`;
-- `certificate#issue`;
-- `receipt#approve`;
-- `permission-grant#create`.
+Cada atribuição pode ter sua própria validade. Cada escopo também pode expirar antes da atribuição, o que permite manter o cargo e retirar somente uma área de atuação.
 
-O catálogo de permissões é mantido no código compartilhado do Event Manager. A documentação não duplica a lista completa para evitar divergência.
+## Alterações não salvas
 
-Leia [Permissões](../09-Keycloak/Permissões.md) para entender o papel do Keycloak e [Concessão de permissões](../07-Procedimentos/Cargos/Concessão%20de%20permissões.md) para o procedimento operacional.
+O workspace mantém uma revisão antes de gravar.
+
+Quando a barra de alterações não salvas estiver visível, use **Salvar** ou **Redefinir** antes de sair. Fechar a aba ou trocar de tela sem concluir descarta alterações não salvas.
+
+## Arquivar, expirar e revogar
+
+Expirar encerra o acesso na data prevista.
+
+Remover uma atribuição retira o acesso daquela pessoa ou grupo.
+
+Arquivar um cargo ou grupo impede novo uso normal, mas preserva sua referência para consulta e auditoria. Não use arquivamento como substituto de revogar uma atribuição que ainda está ativa.
 
 ## Recursos congelados
 
-Eventos, grupos e grandes eventos antigos podem ficar congelados para edição e exclusão. Em geral, isso protege registros encerrados há mais de dois meses.
+Eventos, grupos e grandes eventos antigos podem ficar protegidos contra atualização ou exclusão.
 
-Alterar um recurso congelado exige a permissão normal da operação e também uma permissão específica de `frozen`, como `frozen#update` ou `frozen#delete`.
+A permissão comum continua necessária. Além dela, a pessoa precisa estar autorizada a alterar recursos congelados.
 
-Use essas permissões apenas para correções administrativas. Mudanças tardias podem afetar inscrições, presenças, comprovantes, certificados já emitidos e auditoria.
+Use esse acesso apenas para correções justificadas. Mudanças tardias podem afetar inscrições, presenças, resultados esportivos, comprovantes e certificados já emitidos.
+
+## Quando o acesso não funciona
+
+Confira a cadeia inteira:
+
+1. A conta está autenticada?;
+2. O Keycloak liberou a entrada administrativa?;
+3. O cargo ou grupo está ativo?;
+4. A validade já começou e não terminou?;
+5. O escopo cobre o recurso?;
+6. As dependências de leitura necessárias foram incluídas?;
+7. O recurso não está congelado para aquela ação?
+
+Para conceder acesso, leia [Concessão de permissões](../07-Procedimentos/Cargos/Concessão%20de%20permissões.md). Para o limite do Keycloak, leia [Permissões no Keycloak](../09-Keycloak/Permissões.md).

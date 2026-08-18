@@ -2,50 +2,54 @@
 title: Overlay de esportes para OBS
 ---
 
-O gerenciamento público da partida tem, no final da página, o acordeão **Overlay para transmissão**.
+O overlay transforma o estado público de uma partida em uma fonte para transmissão.
 
-O overlay é servido pelo backend e acompanha a projeção pública da partida em tempo real. O fundo é transparente e a fonte padrão é a `Inter`; o CSS personalizado da fonte de navegador do OBS pode substituir fonte, cores, tamanhos e posicionamento.
+Use o construtor disponível na operação da partida como fonte de verdade. Ele gera o link com as opções visuais suportadas pela versão atual, sem exigir edição manual de parâmetros.
 
+## Antes de gerar o link
 
-## URL
+A partida precisa estar publicada.
 
-```text
-GET /api/sports/public/matches/{matchId}/overlay
-```
+Confirme também que equipes, placar inicial e informações que serão exibidas estão corretos. Despublicar a partida retira a página pública e desativa o overlay.
 
-O caminho identifica a partida. As opções visuais são query params para que vários layouts da mesma partida possam ser usados em fontes diferentes do OBS.
+## Gerar e testar
 
-Para testar o overlay sem criar ou publicar uma partida, use o identificador reservado `demo`:
+Na operação pública da partida, abra **Overlay para transmissão**.
+
+Escolha o conteúdo que deve aparecer, copie o link gerado e abra-o em uma nova aba para conferir o resultado.
+
+Para testar o layout sem depender de uma partida real, use:
 
 ```text
 /api/sports/public/matches/demo/overlay
 ```
 
-Esse link exibe dados genéricos fixos.
+Para maior personalização, você pode criar várias Fontes de navegador (Browser Source), com diferentes parâmetros de estilo e de exibição, em múltiplos links.
 
-| Parâmetro | Valores | Padrão | Efeito |
-| --- | --- | --- | --- |
-| `team` | `both`, `home`, `away` | `both` | Exibe as duas equipes ou apenas uma delas. |
-| `teamName` | `0`, `1` | `1` | Exibe o nome das equipes. |
-| `teamIcon` | `0`, `1` | `1` | Exibe o logo; sem logo, exibe iniciais. |
-| `score` | `0`, `1` | `1` | Exibe o placar. |
-| `stopwatch` | `0`, `1` | `1` | Exibe o cronômetro da partida. |
-| `period` | `0`, `1` | `1` | Exibe o período/rodada ativo. |
-| `state` | `0`, `1` | `1` | Exibe o estado, como `Ao vivo` ou `Pausada`. |
-| `periodWord` | `Rodada`, `Tempo`, `Turno`, `Etapa`, `Período`, `Round`, `Set`, `Fase`, `Parcial`, `Mapa` ou `Heat` | `Rodada` | Palavra permitida antes do número do período. Valores desconhecidos voltam para `Rodada`. |
+## Adicionar no OBS
 
-Exemplo de link compacto para mostrar somente o placar das duas equipes:
+Crie uma **Fonte de navegador** e informe o link gerado.
 
-```text
-/api/sports/public/matches/{matchId}/overlay?teamName=0&teamIcon=0&stopwatch=0&period=0&state=0
-```
+Use uma área compatível com a resolução da transmissão e mantenha o fundo transparente. A aparência também pode ser ajustada pelo CSS personalizado da fonte do OBS.
 
-No OBS, ajuste o tamanho da fonte de navegador conforme a resolução da transmissão. Para personalizar a aparência:
+Quando a transmissão usar mais de um layout, gere um link para cada fonte em vez de editar manualmente uma URL existente.
 
-```css
-.sports-overlay {
-  --sports-overlay-text: #ffffff;
-  --sports-overlay-muted: #d8dee9;
-  --sports-overlay-font-family: "Inter Variable", sans-serif;
-}
-```
+## Durante a partida
+
+O overlay acompanha a projeção pública do placar, cronômetros e períodos.
+
+Mantenha um dispositivo principal para operar a partida. Alterações concorrentes em vários dispositivos podem exigir resolução de conflito antes de chegar ao estado público.
+
+Se as atualizações ao vivo forem interrompidas, a fonte pode continuar mostrando o último estado recebido. Verifique a conexão e atualize a fonte antes de corrigir o placar por outro caminho.
+
+## Quando estiver vazio ou desatualizado
+
+Confira, nesta ordem:
+
+1. A partida está publicada?;
+2. O link pertence à partida correta?;
+3. A página pública da partida abre e mostra dados?;
+4. O dispositivo operador está sincronizado?;
+5. A fonte de navegador foi atualizada?
+
+Leia [Operar uma partida](03-Operar%20uma%20partida.md).

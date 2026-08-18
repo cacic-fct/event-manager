@@ -2,29 +2,38 @@
 title: Tipos de coleta de presença
 ---
 
-## Por leitura de código de barras
+O sistema oferece métodos diferentes porque o fluxo de uma fila, uma sala e uma confirmação individual não é o mesmo.
 
-Neste método, um organizador do evento lê o código de barras do crachá do usuário para coletar a presença.
+## Leitura do crachá
 
-Caso não seja possível ler o código de barras, o organizador pode inserir manualmente o e-mail do usuário.
+Um coletor autorizado lê o código da carteira do participante.
 
-## Por inserção de código alfanumérico
+É o método preferencial para entradas e saídas com muitas pessoas. Quando a leitura falhar, o coletor pode localizar a pessoa por um identificador, desde que confira o dado antes de registrar.
 
-Também conhecido como "presença on-line" ou "self-attendance".
+## Chamada oral
 
-Neste método, o usuário coleta a própria presença por meio de um código de 4 dígitos alfanuméricos fornecido pelos organizadores do evento.
+Um coletor percorre a lista preparada para o evento e marca a situação de cada pessoa.
 
-A página de coleta de presença é aberta automaticamente ao acessar o aplicativo.  
-Caso ela não seja aberta, o usuário pode acessá-la por meio da aba de calendário ou por meio da página "participações" caso o evento não pertença a um grande evento.
+A chamada oral é adequada para turmas menores, conferência nominal ou locais onde apontar a câmera para cada crachá seria inconveniente.
 
-O código de presença é gerado automaticamente ao autorizar a coleta de presença na página de gerenciamento de eventos.
+Depois que a lista foi carregada, as decisões podem ser mantidas temporariamente no dispositivo. Pessoas fora da lista ou buscas adicionais podem exigir conexão.
 
-Não há motivação para fazer códigos de uso único, pois a distribuição deles é feita de forma manual, o que é trabalhoso e requer o uso de papel.
+## Confirmação pelo participante
 
-:::caution[Cuidado]
+A própria pessoa autenticada informa o código de presença divulgado pela organização.
 
-A coleta de presença pode ser fraudada neste método.
+Esse método depende de uma janela de confirmação aberta para o evento. O código deve ser mostrado apenas no momento previsto, pois pode ser compartilhado.
 
-No entanto, não há motivação para o CACiC dificultar a obtenção de horas complementares.
+## Registro administrativo
 
-:::
+O painel administrativo permite correções pontuais e importações.
+
+Use esse caminho para conciliar dados depois da atividade, não como substituto do fluxo em campo. Uma importação precisa ser revisada antes de ser tratada como resultado definitivo.
+
+## Off-line não é um método separado
+
+Scanner e chamada oral podem guardar trabalho no dispositivo quando o evento foi preparado antes da perda de conexão.
+
+O item só conclui o caminho quando é sincronizado. Dependendo do identificador e das regras do evento, ele pode ser aceito diretamente ou encaminhado para revisão administrativa.
+
+Para preparação e encerramento da coleta, leia [Boas práticas](Boas%20práticas.md).

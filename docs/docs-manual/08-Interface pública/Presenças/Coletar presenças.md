@@ -2,32 +2,61 @@
 title: Coletar presenças
 ---
 
-A coleta de presenças pela interface pública é destinada a pessoas autorizadas como coletores de presença.
+A coleta pela interface pública é destinada a pessoas autorizadas para um evento.
 
-Ela é mais adequada para uso em campo do que o painel administrativo.
+Ela registra a autoria do coletor e é o caminho preferencial para uso em celular.
 
-## Eventos disponíveis
+## Preparar o dispositivo
 
-A lista mostra eventos autorizados para coleta no período permitido.
+Entre com a conta do coletor e abra **Coletar presenças** enquanto houver conexão.
 
-Eventos fora do período, sem autorização ou sem as condições necessárias não aparecem como disponíveis para coleta.
+Permita a localização precisa quando solicitada. Para leitura do crachá, permita também a câmera.
 
-## Localização
+Abra o evento antes de perder conexão para que as informações necessárias possam ser preparadas no dispositivo.
 
-A tela exige que o usuário conceda a permissão de localização precisa.
+:::danger[Perigo]
 
-Permitir localização ajuda a registrar contexto da coleta e a reduzir uso indevido do recurso. Se a localização não estiver precisa, a coleta pode ficar bloqueada ou marcada como inadequada conforme a configuração do sistema.
+Uma guia anônima pode apagar os dados coletados de maneira off-line. Não a use quando houver a possibilidade de ter de trabalhar sem internet.
 
-## Leitura do crachá
+:::
 
-O coletor deve escanear o código Aztec do crachá do participante.
+## Escolher o método
 
-O código representa o usuário autenticado no sistema. Por isso, o participante deve apresentar o próprio crachá, impresso ou no celular.
+Depois de abrir o evento, escolha o método adequado.
 
-## Registro manual
+### Leitura de crachá
 
-Quando a leitura não for possível, o coletor pode registrar manualmente por e-mail, telefone ou documento.
+Aponte a câmera para o código da carteira da pessoa.
 
-Use o registro manual com cuidado, conferindo a identidade da pessoa para evitar presença em nome errado.
+Quando a leitura não for possível, use a entrada manual por um identificador aceito e confirme o dado antes de registrar.
 
-Leia [Boas práticas](../../03-Coleta%20de%20presenças/Boas%20práticas.md).
+A área de sincronização mostra itens guardados no dispositivo, tentativas que falharam e ações de recuperação.
+
+### Chamada oral
+
+Percorra a lista preparada e marque a presença de cada pessoa.
+
+As marcações da lista podem continuar durante uma interrupção de rede. Buscar ou incluir alguém que não estava preparado pode exigir conexão.
+
+Observe o estado no topo. **Tudo sincronizado** significa que não há alterações aguardando envio.
+
+## Sincronização off-line
+
+Uma presença salva off-line ainda precisa chegar ao servidor.
+
+Ao reconectar:
+
+1. Aguarde a sincronização automática;
+2. Tente novamente os itens que falharam;
+3. Remova uma pendência somente quando tiver certeza de que ela não deve mais ser enviada;
+4. Confira o resumo final.
+
+Alguns itens podem seguir para revisão administrativa em vez de se tornarem presença imediatamente.
+
+:::warning[Troca de operador]
+
+Não troque de conta enquanto houver pendências.
+
+:::
+
+Leia [Boas práticas](../../03-Coleta%20de%20presenças/Boas%20práticas.md) e [Presenças no painel administrativo](../../05-Interface%20administrativa/04-Presenças.md).
