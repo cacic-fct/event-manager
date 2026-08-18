@@ -1,19 +1,30 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
-  AfterViewInit,
   ChangeDetectionStrategy,
   Component,
   ElementRef,
   OnDestroy,
   PLATFORM_ID,
-  ViewChild,
+  computed,
   effect,
   inject,
   input,
+  viewChild,
 } from '@angular/core';
 import { AttendanceHeatmapPoint } from '@cacic-fct/event-manager-admin-contracts';
-import type Map from 'ol/Map';
+import Feature from 'ol/Feature';
+import Map from 'ol/Map';
+import View from 'ol/View';
+import { boundingExtent } from 'ol/extent';
+import Point from 'ol/geom/Point';
 import type BaseLayer from 'ol/layer/Base';
+import Heatmap from 'ol/layer/Heatmap';
+import TileLayer from 'ol/layer/Tile';
+import VectorLayer from 'ol/layer/Vector';
+import { fromLonLat } from 'ol/proj';
+import OSM from 'ol/source/OSM';
+import VectorSource from 'ol/source/Vector';
+import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
 
 @Component({
   selector: 'app-attendance-heatmap',
@@ -41,75 +52,56 @@ import type BaseLayer from 'ol/layer/Base';
     @media (max-width: 720px) { .attendance-heatmap { min-height: 300px; } }
   `,
 })
-export class AttendanceHeatmapComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('mapTarget') private mapTarget?: ElementRef<HTMLElement>;
-
+export class AttendanceHeatmapComponent implements OnDestroy {
   readonly points = input<AttendanceHeatmapPoint[]>([]);
   readonly eventLatitude = input<number | null | undefined>();
   readonly eventLongitude = input<number | null | undefined>();
+  readonly hasLocationData = computed(
+    () => this.points().length > 0 || (this.eventLatitude() != null && this.eventLongitude() != null),
+  );
 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly mapTarget = viewChild<ElementRef<HTMLElement>>('mapTarget');
   private map: Map | null = null;
-  private renderVersion = 0;
 
   constructor() {
     effect(() => {
-      this.points();
-      this.eventLatitude();
-      this.eventLongitude();
-      queueMicrotask(() => void this.render());
-    });
-  }
+      const target = this.mapTarget()?.nativeElement;
+      const points = this.points();
+      const eventLatitude = this.eventLatitude();
+      const eventLongitude = this.eventLongitude();
 
-  ngAfterViewInit(): void {
-    void this.render();
+      this.render(target, points, eventLatitude, eventLongitude);
+    });
   }
 
   ngOnDestroy(): void {
     this.destroyMap();
   }
 
-  hasLocationData(): boolean {
-    return this.points().length > 0 || (this.eventLatitude() != null && this.eventLongitude() != null);
-  }
-
-  private async render(): Promise<void> {
-    if (!this.isBrowser || !this.mapTarget?.nativeElement || !this.hasLocationData()) return;
-    const version = ++this.renderVersion;
-    const [
-      { default: Feature },
-      { default: Map },
-      { default: View },
-      { default: Point },
-      { default: Heatmap },
-      { default: TileLayer },
-      { fromLonLat },
-      { default: OSM },
-      { default: VectorSource },
-      { Circle: CircleStyle, Fill, Stroke, Style },
-    ] = await Promise.all([
-      import('ol/Feature'),
-      import('ol/Map'),
-      import('ol/View'),
-      import('ol/geom/Point'),
-      import('ol/layer/Heatmap'),
-      import('ol/layer/Tile'),
-      import('ol/proj'),
-      import('ol/source/OSM'),
-      import('ol/source/Vector'),
-      import('ol/style'),
-    ]);
-    if (version !== this.renderVersion || !this.mapTarget?.nativeElement) return;
+  private render(
+    target: HTMLElement | undefined,
+    points: AttendanceHeatmapPoint[],
+    eventLatitude: number | null | undefined,
+    eventLongitude: number | null | undefined,
+  ): void {
+    if (!this.isBrowser || !target) {
+      this.destroyMap();
+      return;
+    }
 
     this.destroyMap();
-    const points = this.points();
     const maxCount = Math.max(1, ...points.map((point) => point.count));
     const heatFeatures = points.map((point) => {
       const feature = new Feature({ geometry: new Point(fromLonLat([point.longitude, point.latitude])) });
       feature.set('weight', Math.max(0.12, point.count / maxCount));
       return feature;
     });
-    const centerCoordinates = this.resolveCenter(points);
+    const projectedPoints = points.map((point) => fromLonLat([point.longitude, point.latitude]));
+    const eventCenter = eventLatitude != null && eventLongitude != null
+      ? fromLonLat([eventLongitude, eventLatitude])
+      : null;
+    const center = eventCenter ?? projectedPoints[0];
     const layers: BaseLayer[] = [
       new TileLayer({ source: new OSM() }),
       new Heatmap({
@@ -121,8 +113,6 @@ export class AttendanceHeatmapComponent implements AfterViewInit, OnDestroy {
       }),
     ];
 
-    const eventLatitude = this.eventLatitude();
-    const eventLongitude = this.eventLongitude();
     if (eventLatitude != null && eventLongitude != null) {
       const eventFeature = new Feature({
         geometry: new Point(fromLonLat([eventLongitude, eventLatitude])),
@@ -134,30 +124,25 @@ export class AttendanceHeatmapComponent implements AfterViewInit, OnDestroy {
           stroke: new Stroke({ color: '#1b5e20', width: 3 }),
         }),
       }));
-      const { default: VectorLayer } = await import('ol/layer/Vector');
       layers.push(new VectorLayer({ source: new VectorSource({ features: [eventFeature] }) }));
     }
 
+    const view = new View({ center, zoom: 17, maxZoom: 19 });
     this.map = new Map({
-      target: this.mapTarget.nativeElement,
+      target,
       layers,
-      view: new View({ center: fromLonLat(centerCoordinates), zoom: points.length > 1 ? 15 : 17, maxZoom: 19 }),
+      view,
       controls: [],
     });
-    requestAnimationFrame(() => this.map?.updateSize());
-  }
 
-  private resolveCenter(points: AttendanceHeatmapPoint[]): [number, number] {
-    const eventLatitude = this.eventLatitude();
-    const eventLongitude = this.eventLongitude();
-    if (eventLatitude != null && eventLongitude != null) {
-      return [eventLongitude, eventLatitude];
+    const visibleCoordinates = eventCenter ? [...projectedPoints, eventCenter] : projectedPoints;
+    if (visibleCoordinates.length > 1) {
+      view.fit(boundingExtent(visibleCoordinates), {
+        maxZoom: 17,
+        padding: [32, 32, 32, 32],
+      });
     }
-    const totalWeight = points.reduce((sum, point) => sum + point.count, 0) || 1;
-    return [
-      points.reduce((sum, point) => sum + point.longitude * point.count, 0) / totalWeight,
-      points.reduce((sum, point) => sum + point.latitude * point.count, 0) / totalWeight,
-    ];
+    requestAnimationFrame(() => this.map?.updateSize());
   }
 
   private destroyMap(): void {
