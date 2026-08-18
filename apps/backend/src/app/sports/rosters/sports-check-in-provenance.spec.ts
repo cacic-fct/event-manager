@@ -122,7 +122,7 @@ describe('sports check-in provenance', () => {
       resolveSportsCheckInCollector({
         prisma,
         matchId: 'match-1',
-        checkedInAt: new Date(Date.now() + 5 * 60_000 + 1),
+        checkedInAt: sportsTestDate(6 * 60_000),
         offline: true,
         uploader,
         input: { collectorPersonId: 'collector-person', collectorCredential: 'credential' },
