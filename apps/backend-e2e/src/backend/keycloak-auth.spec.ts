@@ -1,13 +1,15 @@
 import axios from 'axios';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { EventManagerPermissionGrantScope, PrismaClient } from '@prisma/client';
+import { EventManagerPermissionScope, PrismaClient } from '@prisma/client';
 
 const describeKeycloak = process.env.KEYCLOAK_BACKED_E2E === 'true' ? describe : describe.skip;
 const keycloakRealmUrl = process.env.KEYCLOAK_REALM_URL ?? 'http://localhost:18080/realms/cacic-sso';
 const backendHost = process.env.HOST ?? 'localhost';
 const backendPort = process.env.PORT ?? '3000';
-const permissionGrantE2eActorId = 'backend-e2e-permission-evaluation';
+const permissionRoleE2eActorId = 'backend-e2e-permission-evaluation';
+const permissionRoleE2eRoleId = 'backend-e2e-permission-role';
+const permissionRoleE2ePersonId = 'backend-e2e-permission-person';
 
 describeKeycloak('Keycloak-backed authentication', () => {
   let prisma: PrismaClient;
@@ -90,7 +92,7 @@ describeKeycloak('Keycloak-backed authentication', () => {
     );
   });
 
-  it('evaluates permissions from persisted Event Manager DB grants for session users', async () => {
+  it('evaluates permissions from persisted Event Manager role assignments for session users', async () => {
     const loginResponse = await axios.post(
       '/api/auth/password-login',
       {
@@ -118,6 +120,8 @@ describeKeycloak('Keycloak-backed authentication', () => {
       },
     });
 
+    await cleanupPermissionEvaluationRole(prisma);
+
     await prisma.user.upsert({
       where: {
         id: userId,
@@ -129,16 +133,59 @@ describeKeycloak('Keycloak-backed authentication', () => {
       },
       update: {},
     });
-    await cleanupPermissionEvaluationGrants(prisma, userId);
+
+    await prisma.people.upsert({
+      where: {
+        id: permissionRoleE2ePersonId,
+      },
+      create: {
+        id: permissionRoleE2ePersonId,
+        name: 'Permission E2E Person',
+        email: `${sanitizeEmailLocalPart(userId)}@permission-e2e.local`,
+        secondaryEmails: [],
+        userId,
+      },
+      update: {
+        userId,
+        deletedAt: null,
+      },
+    });
 
     try {
-      await prisma.eventManagerPermissionGrant.create({
+      await prisma.eventManagerRole.create({
         data: {
-          userId,
+          id: permissionRoleE2eRoleId,
+          name: 'Permission E2E Role',
+          description: 'Role used by the backend E2E permission evaluation test.',
+          createdById: permissionRoleE2eActorId,
+          updatedById: permissionRoleE2eActorId,
+        },
+      });
+      await prisma.eventManagerRolePermission.create({
+        data: {
+          roleId: permissionRoleE2eRoleId,
           permission: Permission.Event.Create,
-          scope: EventManagerPermissionGrantScope.GLOBAL,
-          createdById: permissionGrantE2eActorId,
-          updatedById: permissionGrantE2eActorId,
+          createdById: permissionRoleE2eActorId,
+        },
+      });
+      const assignment = await prisma.eventManagerRoleAssignment.create({
+        data: {
+          id: `${permissionRoleE2eRoleId}-assignment`,
+          roleId: permissionRoleE2eRoleId,
+          personId: permissionRoleE2ePersonId,
+          unlimited: true,
+          createdById: permissionRoleE2eActorId,
+          updatedById: permissionRoleE2eActorId,
+        },
+      });
+      await prisma.eventManagerRoleAssignmentScope.create({
+        data: {
+          id: `${permissionRoleE2eRoleId}-scope`,
+          assignmentId: assignment.id,
+          scope: EventManagerPermissionScope.GLOBAL,
+          unlimited: true,
+          createdById: permissionRoleE2eActorId,
+          updatedById: permissionRoleE2eActorId,
         },
       });
 
@@ -160,7 +207,8 @@ describeKeycloak('Keycloak-backed authentication', () => {
         permissions: [Permission.Event.Create],
       });
     } finally {
-      await cleanupPermissionEvaluationGrants(prisma, userId);
+      await cleanupPermissionEvaluationRole(prisma);
+      await prisma.people.deleteMany({ where: { id: permissionRoleE2ePersonId } });
       if (!existingUser) {
         await prisma.user.delete({ where: { id: userId } }).catch(() => undefined);
       }
@@ -248,13 +296,29 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
-async function cleanupPermissionEvaluationGrants(prisma: PrismaClient, userId: string): Promise<void> {
-  await prisma.eventManagerPermissionGrant.deleteMany({
+async function cleanupPermissionEvaluationRole(prisma: PrismaClient): Promise<void> {
+  const assignments = await prisma.eventManagerRoleAssignment.findMany({
+    where: { roleId: permissionRoleE2eRoleId },
+    select: { id: true },
+  });
+  const assignmentIds = assignments.map((assignment) => assignment.id);
+
+  if (assignmentIds.length > 0) {
+    await prisma.eventManagerRoleAssignmentScope.deleteMany({
+      where: { assignmentId: { in: assignmentIds } },
+    });
+    await prisma.eventManagerRoleAssignment.deleteMany({
+      where: { id: { in: assignmentIds } },
+    });
+  }
+
+  await prisma.eventManagerRolePermission.deleteMany({ where: { roleId: permissionRoleE2eRoleId } });
+  await prisma.eventManagerRoleInheritance.deleteMany({
     where: {
-      userId,
-      createdById: permissionGrantE2eActorId,
+      OR: [{ childRoleId: permissionRoleE2eRoleId }, { parentRoleId: permissionRoleE2eRoleId }],
     },
   });
+  await prisma.eventManagerRole.deleteMany({ where: { id: permissionRoleE2eRoleId } });
 }
 
 function sanitizeEmailLocalPart(value: string): string {
