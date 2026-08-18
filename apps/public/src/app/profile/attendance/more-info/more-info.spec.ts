@@ -57,15 +57,20 @@ describe('MoreInfo', () => {
     await fixture.whenStable();
     const requests = httpTesting.match(() => true);
 
-    if (requests.length >= 2) {
-      const detailsRequest = requests.find((request) =>
-        String(request.request.body.query).includes('CurrentUserEventDetails'),
-      );
-      const certificatesRequest = requests.find((request) =>
-        String(request.request.body.query).includes('CurrentUserCertificates'),
-      );
+    const detailsRequest = requests.find((request) =>
+      String(request.request.body.query).includes('CurrentUserEventDetails'),
+    );
+    const certificatesRequest = requests.find((request) =>
+      String(request.request.body.query).includes('CurrentUserCertificates'),
+    );
+    const organizerRequest = requests.find((request) =>
+      String(request.request.body.query).includes('CurrentUserOrganizerInfo'),
+    );
+    const publicEventRequest = requests.find((request) =>
+      String(request.request.body.query).includes('PublicEventForAttendanceDetails'),
+    );
 
-      detailsRequest?.flush({
+    detailsRequest?.flush({
         data: {
           currentUserEventSubscription: {
             eventId: 'event-1',
@@ -133,12 +138,21 @@ describe('MoreInfo', () => {
           },
         },
       });
-      certificatesRequest?.flush({
-        data: {
-          currentUserCertificates: [],
-        },
-      });
-    }
+    certificatesRequest?.flush({
+      data: {
+        currentUserCertificates: [],
+      },
+    });
+    organizerRequest?.flush({
+      data: {
+        currentUserOrganizerInfo: null,
+      },
+    });
+    publicEventRequest?.flush({
+      data: {
+        publicEvent: null,
+      },
+    });
     await fixture.whenStable();
     fixture.detectChanges();
 
