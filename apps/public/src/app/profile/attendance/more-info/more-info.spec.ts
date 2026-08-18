@@ -52,7 +52,7 @@ describe('MoreInfo', () => {
     }
   });
 
-  it('should create', async () => {
+  it('renders the event name in the page body instead of the toolbar', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const requests = httpTesting.match(() => true);
@@ -140,7 +140,13 @@ describe('MoreInfo', () => {
       });
     }
     await fixture.whenStable();
+    fixture.detectChanges();
+
     expect(component).toBeTruthy();
+    const host = fixture.nativeElement as HTMLElement;
+    expect(host.querySelector('mat-toolbar > span')?.textContent?.trim()).toBe('Detalhes');
+    expect(host.querySelector('mat-toolbar h1')).toBeNull();
+    expect(host.querySelector('.detail-header h1')?.textContent?.trim()).toBe('Evento teste');
   });
 
   it('builds direct sports and representative-area routes', () => {
