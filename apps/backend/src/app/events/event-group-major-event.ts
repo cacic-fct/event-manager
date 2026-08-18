@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -6,15 +7,17 @@ export async function syncEventGroupMajorEvent(
   groupIds: readonly (string | null | undefined)[],
 ): Promise<void> {
   for (const groupId of [...new Set(groupIds.filter((id): id is string => Boolean(id)))]) {
-    const groupedEvent = await prisma.event.findFirst({
-      where: { eventGroupId: groupId, deletedAt: null, majorEventId: { not: null } },
-      select: { majorEventId: true },
-    });
-    const majorEventId = groupedEvent?.majorEventId ?? null;
-    await prisma.event.updateMany({
+    const groupedEvents = await prisma.event.findMany({
       where: { eventGroupId: groupId, deletedAt: null },
-      data: { majorEventId },
+      select: { majorEventId: true },
+      distinct: ['majorEventId'],
+      take: 2,
     });
+    const majorEventIds = new Set(groupedEvents.map((event) => event.majorEventId));
+    if (majorEventIds.size > 1) {
+      throw new ConflictException('Os eventos deste grupo pertencem a grandes eventos diferentes.');
+    }
+    const majorEventId = groupedEvents[0]?.majorEventId ?? null;
     await prisma.eventGroup.updateMany({
       where: { id: groupId, deletedAt: null },
       data: { majorEventId },

@@ -36,20 +36,22 @@ const meta: Meta<PermissionManagementPageComponent> = {
   parameters: {
     layout: 'fullscreen',
     msw: {
-      handlers: [
-        http.post('/api/graphql', async ({ request }) => {
-          const body = await request.json() as { query?: string };
-          const query = body.query ?? '';
-          if (query.includes('PermissionRoles')) return HttpResponse.json({ data: { permissionRoles: [role] } });
-          if (query.includes('PermissionGroups')) return HttpResponse.json({ data: { permissionGroups: [group] } });
-          if (query.includes('PermissionScopeTargets')) {
-            return HttpResponse.json({ data: { permissionScopeTargets: [
-              { id: 'event-1', label: 'Credenciamento', description: 'SECOMP', emoji: '🎫', parentId: 'major-1' },
-            ] } });
-          }
-          return HttpResponse.json({ data: {} });
-        }),
-      ],
+      handlers: {
+        graphql: [
+          http.post('/api/graphql', async ({ request }) => {
+            const body = await request.json() as { query?: string };
+            const query = body.query ?? '';
+            if (query.includes('PermissionRoles')) return HttpResponse.json({ data: { permissionRoles: [role] } });
+            if (query.includes('PermissionGroups')) return HttpResponse.json({ data: { permissionGroups: [group] } });
+            if (query.includes('PermissionScopeTargets')) {
+              return HttpResponse.json({ data: { permissionScopeTargets: [
+                { id: 'event-1', label: 'Credenciamento', description: 'SECOMP', emoji: '🎫', parentId: 'major-1' },
+              ] } });
+            }
+            return HttpResponse.json({ data: {} });
+          }),
+        ],
+      },
     },
   },
 };
@@ -57,7 +59,7 @@ const meta: Meta<PermissionManagementPageComponent> = {
 export default meta;
 type Story = StoryObj<PermissionManagementPageComponent>;
 
-export const Default: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const groupSearch = await canvas.findByRole('searchbox', { name: 'Buscar grupo' });
@@ -65,6 +67,8 @@ export const Default: Story = {
     await expect(canvas.getByRole('button', { name: 'Adicionar grupo Equipe de credenciamento' })).toBeVisible();
   },
 };
+
+export const Default: Story = Playground;
 
 export const UnsavedChanges: Story = {
   play: async ({ canvasElement }) => {

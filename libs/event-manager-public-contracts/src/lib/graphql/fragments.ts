@@ -35,6 +35,7 @@ export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
   startDate
   endDate
   hasEvents
+  regularSubscriptionOpen
   description
   subscriptionStartDate
   subscriptionEndDate
@@ -46,6 +47,7 @@ export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
   sportsTournament {
     id
     selfSubscriptionEnabled
+    registrationOpen
   }
 `;
 

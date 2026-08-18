@@ -33,6 +33,8 @@ describe('MajorEventSubscriptionApiService', () => {
     const request = httpTesting.expectOne('/api/graphql');
 
     expect(request.request.body.query).toContain('query PublicMajorEvents');
+    expect(request.request.body.query).toContain('regularSubscriptionOpen');
+    expect(request.request.body.query).toContain('registrationOpen');
     expect(request.request.body.variables).toEqual({ startDateFrom });
     request.flush({ data: { publicMajorEvents: events } });
 
@@ -46,6 +48,8 @@ describe('MajorEventSubscriptionApiService', () => {
     const request = httpTesting.expectOne('/api/graphql');
 
     expect(request.request.body.query).toContain('query PublicationPreviewMajorEvent');
+    expect(request.request.body.query).toContain('regularSubscriptionOpen');
+    expect(request.request.body.query).toContain('registrationOpen');
     expect(request.request.body.variables).toEqual({ previewToken: 'preview-token' });
     request.flush({
       data: {

@@ -16,6 +16,24 @@ ALTER TYPE "AuditLogEntityType" ADD VALUE IF NOT EXISTS 'PERMISSION_GROUP';
 
 ALTER TABLE "event_groups" ADD COLUMN "majorEventId" TEXT;
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM "events"
+    WHERE "deletedAt" IS NULL
+      AND "eventGroupId" IS NOT NULL
+    GROUP BY "eventGroupId"
+    HAVING COUNT(DISTINCT "majorEventId") > 1
+      OR (
+        COUNT(*) FILTER (WHERE "majorEventId" IS NULL) > 0
+        AND COUNT(*) FILTER (WHERE "majorEventId" IS NOT NULL) > 0
+      )
+  ) THEN
+    RAISE EXCEPTION 'Cannot migrate event groups: live child events have conflicting major-event ownership.';
+  END IF;
+END $$;
+
 UPDATE "event_groups" AS event_group
 SET "majorEventId" = candidate."majorEventId"
 FROM (
@@ -27,13 +45,6 @@ FROM (
   GROUP BY "eventGroupId"
 ) AS candidate
 WHERE event_group."id" = candidate."eventGroupId";
-
-UPDATE "events" AS event
-SET "majorEventId" = event_group."majorEventId"
-FROM "event_groups" AS event_group
-WHERE event."eventGroupId" = event_group."id"
-  AND event."deletedAt" IS NULL
-  AND event."majorEventId" IS DISTINCT FROM event_group."majorEventId";
 
 CREATE INDEX "event_groups_majorEventId_idx" ON "event_groups"("majorEventId");
 ALTER TABLE "event_groups"
@@ -415,9 +426,29 @@ BEGIN
 
   SELECT "majorEventId" INTO configured_major_event_id
   FROM "event_groups"
-  WHERE "id" = NEW."eventGroupId";
+  WHERE "id" = NEW."eventGroupId"
+  FOR UPDATE;
 
-  IF configured_major_event_id IS NOT NULL AND NEW."majorEventId" IS DISTINCT FROM configured_major_event_id THEN
+  IF configured_major_event_id IS NULL AND NEW."majorEventId" IS NOT NULL THEN
+    IF EXISTS (
+      SELECT 1
+      FROM "events"
+      WHERE "eventGroupId" = NEW."eventGroupId"
+        AND "deletedAt" IS NULL
+        AND "id" <> NEW."id"
+    ) THEN
+      RAISE EXCEPTION 'A non-empty standalone event group cannot be moved into a major event through one child event.';
+    END IF;
+
+    UPDATE "event_groups"
+    SET "majorEventId" = NEW."majorEventId"
+    WHERE "id" = NEW."eventGroupId";
+    configured_major_event_id := NEW."majorEventId";
+  END IF;
+
+  IF NEW."majorEventId" IS NULL AND configured_major_event_id IS NOT NULL THEN
+    NEW."majorEventId" := configured_major_event_id;
+  ELSIF NEW."majorEventId" IS DISTINCT FROM configured_major_event_id THEN
     RAISE EXCEPTION 'Event majorEventId must match its event group majorEventId.';
   END IF;
 
