@@ -4,6 +4,8 @@ import { request as requestHttps } from 'node:https';
 import type { AddressInfo } from 'node:net';
 
 const serviceWorkerProbePath = '/app/service-worker-offline-probe';
+// Firefox on CI can need several seconds to install the full production precache before `ready` resolves.
+const serviceWorkerReadyTimeoutMs = 30_000;
 
 const serviceWorkerProbeHtml = `
   <!doctype html>
@@ -103,7 +105,7 @@ test.describe('public service worker offline support', () => {
     try {
       await page.goto(`${staticBuildProxy.origin}${serviceWorkerProbePath}`, { waitUntil: 'domcontentloaded' });
 
-      const serviceWorkerReady = await page.evaluate(async () => {
+      const serviceWorkerReady = await page.evaluate(async (readyTimeoutMs) => {
         if (!('serviceWorker' in navigator)) {
           return false;
         }
@@ -112,7 +114,7 @@ test.describe('public service worker offline support', () => {
           (window as Window & { __serviceWorkerProbe?: Promise<boolean> }).__serviceWorkerProbe ??
             Promise.resolve(false),
           new Promise<boolean>((resolve) => {
-            setTimeout(() => resolve(false), 5000);
+            setTimeout(() => resolve(false), readyTimeoutMs);
           }),
         ]);
 
@@ -132,7 +134,7 @@ test.describe('public service worker offline support', () => {
             setTimeout(() => resolve(Boolean(navigator.serviceWorker.controller)), 5000);
           }),
         ]);
-      });
+      }, serviceWorkerReadyTimeoutMs);
 
       expect(
         serviceWorkerReady,
