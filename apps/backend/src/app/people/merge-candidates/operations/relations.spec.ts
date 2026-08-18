@@ -60,6 +60,13 @@ describe('merge candidate relation movement', () => {
       movedEventSubscriptionIds: ['event-subscription-1'],
       movedEventGroupSubscriptionIds: ['group-subscription-1'],
       movedMajorEventSubscriptionIds: ['major-subscription-1'],
+      movedRoleAssignmentIds: [],
+      archivedRoleAssignmentIds: [],
+      movedPermissionGroupMembershipIds: [],
+      archivedPermissionGroupMembershipIds: [],
+      roleAssignmentSnapshots: [],
+      roleAssignmentScopeSnapshots: [],
+      permissionGroupMembershipSnapshots: [],
     });
 
     expect(tx.eventAttendance.createMany).toHaveBeenCalledWith({
@@ -104,11 +111,126 @@ describe('merge candidate relation movement', () => {
       movedEventSubscriptionIds: [],
       movedEventGroupSubscriptionIds: [],
       movedMajorEventSubscriptionIds: [],
+      movedRoleAssignmentIds: [],
+      archivedRoleAssignmentIds: [],
+      movedPermissionGroupMembershipIds: [],
+      archivedPermissionGroupMembershipIds: [],
+      roleAssignmentSnapshots: [],
+      roleAssignmentScopeSnapshots: [],
+      permissionGroupMembershipSnapshots: [],
     });
 
     expect(tx.eventAttendance.createMany).not.toHaveBeenCalled();
     expect(tx.eventAttendance.deleteMany).not.toHaveBeenCalled();
     expect(tx.eventSubscription.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('moves unique permission relations and archives merge duplicates without deleting audit history', async () => {
+    const tx = createTransaction();
+    tx.eventManagerRoleAssignment.findMany.mockResolvedValue([
+      { id: 'assignment-move', roleId: 'role-1' },
+      { id: 'assignment-conflict', roleId: 'role-2' },
+    ]);
+    tx.eventManagerRoleAssignment.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'target-assignment' });
+    tx.eventManagerPermissionGroupMember.findMany.mockResolvedValue([
+      { id: 'membership-move', groupId: 'group-1' },
+      { id: 'membership-conflict', groupId: 'group-2' },
+    ]);
+    tx.eventManagerPermissionGroupMember.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'target-membership' });
+
+    await expect(moveRelations(tx as never, 'target-person', 'source-person')).resolves.toEqual(
+      expect.objectContaining({
+        movedRoleAssignmentIds: ['assignment-move'],
+        archivedRoleAssignmentIds: ['assignment-conflict'],
+        movedPermissionGroupMembershipIds: ['membership-move'],
+        archivedPermissionGroupMembershipIds: ['membership-conflict'],
+      }),
+    );
+    expect(tx.eventManagerRoleAssignment.update).toHaveBeenCalledWith({
+      where: { id: 'assignment-move' },
+      data: { personId: 'target-person' },
+    });
+    expect(tx.eventManagerRoleAssignment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'assignment-conflict' },
+        data: expect.objectContaining({ archivedReason: 'PERSON_MERGED' }),
+      }),
+    );
+  });
+
+  it('preserves each assignment window when coalescing role scopes', async () => {
+    const tx = createTransaction();
+    const targetAssignment = {
+      id: 'target-assignment',
+      validFrom: new Date('2026-05-01T00:00:00.000Z'),
+      validUntil: new Date('2026-06-01T00:00:00.000Z'),
+      unlimited: false,
+      scopes: [
+        {
+          id: 'target-scope',
+          scope: 'EVENT',
+          eventId: 'event-target',
+          majorEventId: null,
+          eventGroupId: null,
+          validFrom: new Date('2026-04-01T00:00:00.000Z'),
+          validUntil: null,
+          unlimited: true,
+        },
+      ],
+    };
+    const sourceAssignment = {
+      id: 'source-assignment',
+      roleId: 'role-1',
+      validFrom: new Date('2026-06-15T00:00:00.000Z'),
+      validUntil: new Date('2026-07-01T00:00:00.000Z'),
+      unlimited: false,
+      scopes: [
+        {
+          id: 'source-scope',
+          scope: 'EVENT',
+          eventId: 'event-source',
+          majorEventId: null,
+          eventGroupId: null,
+          validFrom: null,
+          validUntil: null,
+          unlimited: true,
+        },
+      ],
+    };
+    tx.eventManagerRoleAssignment.findMany.mockResolvedValue([sourceAssignment]);
+    tx.eventManagerRoleAssignment.findFirst.mockResolvedValue({ ...targetAssignment, roleId: 'role-1' });
+
+    await moveRelations(tx as never, 'target-person', 'source-person');
+
+    expect(tx.eventManagerRoleAssignmentScope.update).toHaveBeenCalledWith({
+      where: { id: 'target-scope' },
+      data: {
+        validFrom: new Date('2026-05-01T00:00:00.000Z'),
+        validUntil: new Date('2026-06-01T00:00:00.000Z'),
+        unlimited: false,
+      },
+    });
+    expect(tx.eventManagerRoleAssignmentScope.update).toHaveBeenCalledWith({
+      where: { id: 'source-scope' },
+      data: {
+        assignmentId: 'target-assignment',
+        validFrom: new Date('2026-06-15T00:00:00.000Z'),
+        validUntil: new Date('2026-07-01T00:00:00.000Z'),
+        unlimited: false,
+      },
+    });
+    expect(tx.eventManagerRoleAssignment.update).toHaveBeenCalledWith({
+      where: { id: 'target-assignment' },
+      data: {
+        validFrom: new Date('2026-05-01T00:00:00.000Z'),
+        validUntil: new Date('2026-07-01T00:00:00.000Z'),
+        unlimited: false,
+      },
+    });
   });
 });
 
@@ -135,6 +257,22 @@ function createTransaction() {
     majorEventSubscription: {
       findMany: jest.fn().mockResolvedValue([]),
       updateMany: jest.fn(),
+    },
+    eventManagerRoleAssignment: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
+    },
+    eventManagerRoleAssignmentScope: {
+      update: jest.fn(),
+    },
+    eventManagerRoleAssignmentScope: {
+      update: jest.fn(),
+    },
+    eventManagerPermissionGroupMember: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
     },
   };
 }

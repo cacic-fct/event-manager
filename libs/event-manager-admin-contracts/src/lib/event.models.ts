@@ -5,6 +5,7 @@ export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
 export type PriceType = 'SINGLE' | 'TIERED';
 
 export interface EventSummary {
+  isSportsMatch?: boolean;
   id: string;
   eventGroupId: string | null;
   startDate: string;
@@ -20,6 +21,7 @@ export interface MajorEvent {
   emoji: string;
   startDate: string;
   endDate: string;
+  sportsTournament?: { id: string } | null;
   description?: string | null;
   subscriptionStartDate?: string | null;
   subscriptionEndDate?: string | null;
@@ -64,6 +66,7 @@ export interface MajorEventPriceTier {
   id: string;
   name: string;
   value: number;
+  includesSportsRegistration: boolean;
 }
 
 export interface MajorEventPrice {
@@ -73,6 +76,7 @@ export interface MajorEventPrice {
 }
 
 export interface EventGroup {
+  isSportsCategory?: boolean;
   id: string;
   name: string;
   emoji: string;
@@ -90,6 +94,7 @@ export interface EventGroup {
 }
 
 export interface Event {
+  isSportsMatch?: boolean;
   id: string;
   name: string;
   creditMinutes?: number | null;
@@ -122,7 +127,7 @@ export interface Event {
   onlineAttendanceCode?: string | null;
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
-  publiclyVisible: boolean;
+  isPubliclyListed: boolean;
   displayLecturerProfile: boolean;
   publicationState: PublicationState;
   scheduledPublishAt?: string | null;
@@ -218,6 +223,7 @@ export interface PriceTierInput {
   id?: string;
   name: string;
   value: number;
+  includesSportsRegistration?: boolean;
 }
 
 export interface MajorEventPriceInput {
@@ -278,7 +284,7 @@ export interface EventInput {
   onlineAttendanceCode?: string | null;
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
-  publiclyVisible?: boolean;
+  isPubliclyListed?: boolean;
   displayLecturerProfile?: boolean;
   youtubeCode?: string | null;
   buttonText?: string | null;

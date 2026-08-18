@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
-import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { AttendanceCollectionApiService } from '../attendance-collection-api.service';
 import { ScannerEventList } from './event-list-page';
@@ -44,7 +44,7 @@ describe('ScannerEventList', () => {
                     type: 'MINICURSO',
                     locationDescription: 'Laboratório 3',
                     shouldCollectAttendance: true,
-                    publiclyVisible: true,
+                    isPubliclyListed: true,
                     queueCount: 0,
                   },
                 },

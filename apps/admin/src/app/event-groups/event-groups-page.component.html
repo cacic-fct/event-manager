@@ -34,8 +34,11 @@
             (click)="workspace.pickEventGroup(group)"
             [class.selected-list-item]="workspace.selectedEventGroup()?.id === group.id">
             <span matListItemTitle class="list-title">
-              <app-twemoji [emoji]="group.emoji" />
+              <lib-twemoji [emoji]="group.emoji" />
               <span>{{ group.name }}</span>
+              @if (group.isSportsCategory) {
+                <mat-icon matTooltip="Modalidade de torneio esportivo" aria-label="Modalidade de torneio esportivo">sports</mat-icon>
+              }
             </span>
             <span matListItemLine>
               @if (workspace.getFirstEventForGroupDisplay(group.id); as firstEvent) {
@@ -215,7 +218,7 @@
 
           <mat-form-field>
             <mat-label>Emoji</mat-label>
-            <app-twemoji matPrefix [emoji]="workspace.eventGroupForm.controls.emoji.value" />
+            <lib-twemoji matPrefix [emoji]="workspace.eventGroupForm.controls.emoji.value" />
             <input matInput formControlName="emoji" maxlength="16" />
           </mat-form-field>
         </div>
@@ -230,9 +233,7 @@
           <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
             Emitir certificados para presentes não inscritos?
           </mat-checkbox>
-          <mat-checkbox
-            formControlName="shouldIssueCertificateForEachEvent"
-            [disabled]="workspace.selectedEventGroupHasMajorEventEvents()">
+          <mat-checkbox formControlName="shouldIssueCertificateForEachEvent">
             Um certificado por evento
           </mat-checkbox>
           <mat-checkbox formControlName="shouldIssuePartialCertificate"> Permitir certificado parcial </mat-checkbox>
@@ -250,7 +251,7 @@
             @for (eventItem of workspace.eventGroupEvents(); track eventItem.id) {
               <mat-list-item>
                 <span matListItemTitle class="list-title">
-                  <app-twemoji [emoji]="eventItem.emoji" />
+                  <lib-twemoji [emoji]="eventItem.emoji" />
                   <span>{{ eventItem.name }}</span>
                 </span>
                 <span matListItemLine>
@@ -294,7 +295,7 @@
             @for (eventItem of workspace.eventGroupEventSearchResults(); track eventItem.id) {
               @if (canEditSelectedGroupEvents()) {
                 <button mat-stroked-button type="button" (click)="workspace.addEventToSelectedGroup(eventItem)">
-                  <app-twemoji [emoji]="eventItem.emoji" />
+                  <lib-twemoji [emoji]="eventItem.emoji" />
                   {{ eventItem.name }}
                   {{ eventItem.startDate | date: 'shortDate' }}
                 </button>

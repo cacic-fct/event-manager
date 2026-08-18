@@ -81,9 +81,7 @@ export class OralAttendanceComponent {
       !this.reminderConfirmed() &&
       (this.reminderVisible() || (this.viewMode() === 'CARDS' && this.undecidedPeople().length === 0)),
   );
-  protected readonly shouldShowManual = computed(
-    () => this.reminderConfirmed() && this.undecidedPeople().length === 0,
-  );
+  protected readonly shouldShowManual = computed(() => this.reminderConfirmed() && this.undecidedPeople().length === 0);
 
   protected setViewMode(mode: OralAttendanceViewMode): void {
     this.viewMode.set(mode);

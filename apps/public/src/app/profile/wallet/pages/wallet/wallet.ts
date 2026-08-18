@@ -22,11 +22,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatToolbarModule } from '@angular/material/toolbar';
 
 import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
-import { OfflineUserSnapshot } from '@cacic-fct/offline-public-data-access';
+import { OfflineUserSnapshot } from '@cacic-fct/public-indexed-db';
 
 import { WalletPrintStyles } from '../../components/wallet-print-styles';
 import { WalletCard } from '../../components/card/wallet-card';
 import { WalletCardKind, WalletCardUser } from '../../components/card/wallet-card.types';
+import { OfflineCodeStateService } from '../../components/offline-code-card/offline-code-state.service';
 import { PrintDialog } from '../../dialogs/print/print-dialog';
 import { RestaurantCardService } from '../../services/restaurant-card.service';
 import { NetworkStatusService } from '../../../../shared/network-status.service';
@@ -45,6 +46,7 @@ import { OfflineUserDataService } from '../../../../shared/offline-user-data.ser
     MatDialogModule,
     MatTooltipModule,
   ],
+  providers: [OfflineCodeStateService],
   templateUrl: './wallet.html',
   styleUrl: './wallet.css',
 })
@@ -286,7 +288,11 @@ export class Wallet {
   }
 
   private get prefersReducedMotion(): boolean {
-    return this.isBrowser && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    return (
+      this.isBrowser &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
   }
 
   public availableOffline(): void {

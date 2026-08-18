@@ -23,7 +23,7 @@
           (click)="workspace.selectMajorEventById(majorEvent.id)"
           [class.selected-list-item]="workspace.majorEventForm.controls.majorEventId.value === majorEvent.id">
           <span matListItemTitle class="list-title">
-            <app-twemoji [emoji]="majorEvent.emoji" />
+            <lib-twemoji [emoji]="majorEvent.emoji" />
             <span>{{ majorEvent.name }}</span>
           </span>
           <span matListItemLine>
@@ -192,6 +192,160 @@
     }
 
     <section class="panel subscription-detail">
+      @if (workspace.majorEventSportsWorkspace(); as sportsWorkspace) {
+      <section class="surface sports-subscriptions" aria-labelledby="sports-subscriptions-title">
+        <div class="surface-heading">
+          <div>
+            <h4 id="sports-subscriptions-title">Participações esportivas</h4>
+            <p>Solicitações, modalidades de interesse e equipe são independentes da inscrição nas atividades.</p>
+          </div>
+          <a mat-stroked-button [routerLink]="['/sports', sportsWorkspace.tournamentId, 'reviews']">
+            <mat-icon>sports</mat-icon>
+            Abrir gestão esportiva
+          </a>
+        </div>
+
+        <div class="inline-list">
+          @for (application of sportsWorkspace.applications; track application.id) {
+          <article class="sports-subscription-card">
+            <div>
+              <strong>{{ application.applicant.name }}</strong>
+              <span>{{ statusLabel(application.status) }}</span>
+            </div>
+            <p>
+              Equipe solicitada: {{ application.requestedTeam?.name ?? 'Sem equipe' }}
+            </p>
+            <div class="sports-interest-list" aria-label="Modalidades de interesse">
+              @for (category of application.categories; track category.id) {
+              <span>{{ category.name }}{{ category.division ? ' · ' + category.division : '' }}</span>
+              } @empty {
+              <span>Sem modalidade</span>
+              }
+            </div>
+            @if (workspace.sportsParticipantFor(application.applicant.personId); as participant) {
+            <p>
+              Participação efetiva: {{ statusLabel(participant.status) }} ·
+              {{ sportsPaymentStatusLabel(participant.paymentStatus) }}
+            </p>
+            <div class="sports-interest-list" aria-label="Equipes e modalidades efetivas">
+              @for (membership of participant.teams; track membership.memberId) {
+              <span>
+                {{ membership.teamName }}
+                @if (membership.categories.length > 0) {
+                ·
+                @for (category of membership.categories; track category.id; let last = $last) {
+                {{ category.name }}{{ category.division ? ' · ' + category.division : '' }}{{ last ? '' : ', ' }}
+                }
+                }
+              </span>
+              } @empty {
+              <span>Sem equipe atribuída</span>
+              }
+            </div>
+            @if (permissions.has(Permission.SportsTeam.Update)) {
+            <div class="participant-team-editor">
+              <mat-form-field>
+                <mat-label>Equipe efetiva</mat-label>
+                <mat-select
+                  [value]="workspace.sportsParticipantTeamId(participant.id)"
+                  (selectionChange)="workspace.setSportsParticipantTeamSelection(participant.id, $event.value)">
+                  <mat-option [value]="null">Sem equipe</mat-option>
+                  @for (team of sportsWorkspace.teams; track team.id) {
+                  <mat-option [value]="team.id">{{ team.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <button mat-stroked-button type="button" (click)="workspace.saveSportsParticipantTeam(participant)">
+                Aplicar equipe
+              </button>
+              <small>A escolha substitui as demais equipes efetivas desta pessoa no torneio.</small>
+            </div>
+            }
+            }
+            @if (
+              permissions.has(Permission.SportsRegistration.Approve) &&
+              (application.status === 'PENDING' || application.status === 'CHANGES_REQUESTED')
+            ) {
+            <mat-form-field>
+              <mat-label>Equipe ao aprovar</mat-label>
+              <mat-select
+                [value]="workspace.sportsAssignedTeamId(application.id)"
+                (selectionChange)="workspace.setSportsAssignedTeam(application.id, $event.value)">
+                <mat-option [value]="null">Sem equipe</mat-option>
+                @for (team of sportsWorkspace.teams; track team.id) {
+                <mat-option [value]="team.id">{{ team.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <div class="review-actions">
+              <button mat-button type="button" (click)="workspace.reviewSportsApplication(application, 'REJECTED')">
+                Negar
+              </button>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="workspace.reviewSportsApplication(application, 'CHANGES_REQUESTED')">
+                Pedir ajuste
+              </button>
+              <button mat-flat-button type="button" (click)="workspace.reviewSportsApplication(application, 'APPROVED')">
+                Aprovar
+              </button>
+            </div>
+            }
+          </article>
+          }
+          @for (participant of workspace.sportsParticipantsWithoutApplication(); track participant.id) {
+          <article class="sports-subscription-card">
+            <div>
+              <strong>{{ participant.person.name }}</strong>
+              <span>{{ statusLabel(participant.status) }}</span>
+            </div>
+            <p>
+              {{ sportsParticipantSourceLabel(participant.source) }} ·
+              {{ sportsPaymentStatusLabel(participant.paymentStatus) }}
+            </p>
+            <div class="sports-interest-list" aria-label="Equipes e modalidades efetivas">
+              @for (membership of participant.teams; track membership.memberId) {
+              <span>
+                {{ membership.teamName }}
+                @if (membership.categories.length > 0) {
+                ·
+                @for (category of membership.categories; track category.id; let last = $last) {
+                {{ category.name }}{{ category.division ? ' · ' + category.division : '' }}{{ last ? '' : ', ' }}
+                }
+                }
+              </span>
+              } @empty {
+              <span>Sem equipe atribuída</span>
+              }
+            </div>
+            @if (permissions.has(Permission.SportsTeam.Update)) {
+            <div class="participant-team-editor">
+              <mat-form-field>
+                <mat-label>Equipe efetiva</mat-label>
+                <mat-select
+                  [value]="workspace.sportsParticipantTeamId(participant.id)"
+                  (selectionChange)="workspace.setSportsParticipantTeamSelection(participant.id, $event.value)">
+                  <mat-option [value]="null">Sem equipe</mat-option>
+                  @for (team of sportsWorkspace.teams; track team.id) {
+                  <mat-option [value]="team.id">{{ team.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <button mat-stroked-button type="button" (click)="workspace.saveSportsParticipantTeam(participant)">
+                Aplicar equipe
+              </button>
+              <small>A escolha substitui as demais equipes efetivas desta pessoa no torneio.</small>
+            </div>
+            }
+          </article>
+          }
+          @if (sportsWorkspace.applications.length === 0 && workspace.sportsParticipantsWithoutApplication().length === 0) {
+          <span class="empty-note">Nenhuma participação esportiva foi registrada para este grande evento.</span>
+          }
+        </div>
+      </section>
+      }
       @if (workspace.selectedMajorEventSubscription() || workspace.editMode()) {
         <div class="panel-heading">
           <div>
@@ -275,53 +429,27 @@
           <section class="surface">
             <h4>Pessoa</h4>
             <form [formGroup]="workspace.majorEventPersonForm" class="manual-form">
-              <mat-form-field>
-                <mat-label>Identificador</mat-label>
-                <mat-select formControlName="identifierType">
-                  <mat-option value="email">E-mail</mat-option>
-                  <mat-option value="identityDocument">Documento</mat-option>
-                  <mat-option value="userId">ID de usuário</mat-option>
-                  <mat-option value="phone">Telefone</mat-option>
-                  <mat-option value="query">Nome</mat-option>
-                </mat-select>
-              </mat-form-field>
-
-              <mat-form-field>
-                <mat-label>Valor</mat-label>
-                <input matInput formControlName="identifier" />
-              </mat-form-field>
-
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="!permissions.has(Permission.Person.Read)"
-                (click)="workspace.findMajorEventPerson()">
-                <mat-icon>person_search</mat-icon>
-                Buscar pessoa
-              </button>
+              <app-person-search
+                label="Buscar pessoa para inscrever"
+                [query]="workspace.majorEventPersonForm.controls.identifier.value"
+                [results]="workspace.majorEventPersonMatches()"
+                [disabled]="
+                  !permissions.has(Permission.Person.Read) || !canEditSelectedMajorEventSubscriptions()
+                "
+                [disabledReason]="
+                  !permissions.has(Permission.Person.Read)
+                    ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                    : 'Criar inscrições exige permissão para editar este grande evento.'
+                "
+                resultActionLabel="Selecionar para inscrição"
+                (queryChange)="workspace.majorEventPersonForm.controls.identifier.setValue($event)"
+                (searchRequested)="
+                  workspace.majorEventPersonForm.controls.identifierType.setValue('query');
+                  workspace.majorEventPersonForm.controls.identifier.setValue($event);
+                  workspace.findMajorEventPerson()
+                "
+                (personSelected)="workspace.selectMajorEventPerson($event)" />
             </form>
-
-            <div class="inline-list">
-              @for (person of workspace.majorEventPersonMatches(); track person.id) {
-                <button mat-stroked-button type="button" (click)="workspace.selectMajorEventPerson(person)">
-                  <span class="person-choice">
-                    <span>Usar {{ person.name }}</span>
-                    <small
-                      >{{ person.identityDocument || 'Sem documento' }} ·
-                      {{ person.email || 'Sem e-mail principal' }}</small
-                    >
-                  </span>
-                </button>
-              } @empty {
-                <span class="empty-note">
-                  {{
-                    permissions.has(Permission.Person.Read)
-                      ? 'Busque uma pessoa para inscrever.'
-                      : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
-                  }}
-                </span>
-              }
-            </div>
           </section>
         }
 

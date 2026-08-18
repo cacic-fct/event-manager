@@ -140,6 +140,7 @@ export const SqlFallback: Story = {
 };
 
 export const RequestError: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     requestState: 'error',
     responseDelay: 0,

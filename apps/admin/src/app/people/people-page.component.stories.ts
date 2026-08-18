@@ -2,7 +2,7 @@ import { EventManagerKeycloakRole, EventManagerPermissionGrantScope, Permission 
 import { computed, signal } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { fakerPT_BR as faker } from '@faker-js/faker';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import { applicationConfig } from '@storybook/angular';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, screen, userEvent, within } from 'storybook/test';
@@ -22,6 +22,9 @@ type PeoplePermissionsStoryArgs = {
   personCount: number;
   grantCount: number;
   includeExpiredGrant: boolean;
+  apiState: 'ready' | 'loading' | 'error';
+  latencyMs: number;
+  longNames: boolean;
 };
 
 type GrantTarget = {
@@ -76,6 +79,9 @@ const defaultArgs: PeoplePermissionsStoryArgs = {
   personCount: 6,
   grantCount: 4,
   includeExpiredGrant: true,
+  apiState: 'ready',
+  latencyMs: 120,
+  longNames: false,
 };
 let activeArgs = defaultArgs;
 let activeData = buildStoryData(defaultArgs);
@@ -86,9 +92,12 @@ const meta: Meta<PeoplePermissionsStoryArgs> = {
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
-    personCount: { control: { type: 'range', min: 1, max: 12, step: 1 } },
-    grantCount: { control: { type: 'range', min: 0, max: 6, step: 1 } },
+    personCount: { control: { type: 'range', min: 1, max: 30, step: 1 } },
+    grantCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
     includeExpiredGrant: { control: 'boolean' },
+    apiState: { control: 'inline-radio', options: ['ready', 'loading', 'error'] },
+    latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
+    longNames: { control: 'boolean' },
   },
   render: (args) => {
     storyRoles.set([EventManagerKeycloakRole.SuperAdmin]);
@@ -105,12 +114,19 @@ const meta: Meta<PeoplePermissionsStoryArgs> = {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async ({ request }) => {
+          if (activeArgs.apiState === 'loading') await delay('infinite');
+          if (activeArgs.latencyMs > 0) await delay(activeArgs.latencyMs);
+          if (activeArgs.apiState === 'error') {
+            return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar as pessoas.' }] });
+          }
           const body = (await request.json()) as GraphqlBody;
           return HttpResponse.json({ data: graphqlData(body.query ?? '', body.variables ?? {}) });
         }),
-      ],
+        ],
+      },
     },
   },
 };
@@ -119,7 +135,7 @@ export default meta;
 
 type Story = StoryObj<PeoplePermissionsStoryArgs>;
 
-export const PermissionManagement: Story = {
+export const Playground: Story = {
   globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -129,6 +145,9 @@ export const PermissionManagement: Story = {
 
     await expect(await canvas.findByRole('tab', { name: 'Cadastro' })).toBeVisible();
     await expect(await canvas.findByRole('tab', { name: 'Ministrante' })).toBeVisible();
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Ministrante' }));
+    await expect(await canvas.findByRole('checkbox', { name: /publicar foto do usuário Google/i })).toBeVisible();
+    expect(canvas.queryByRole('switch', { name: /publicar foto do usuário Google/i })).toBeNull();
     await userEvent.click(await canvas.findByRole('tab', { name: 'Permissões' }));
     await expect(await canvas.findByText('Permissões do Event Manager')).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: /vínculos/i }));
@@ -169,11 +188,11 @@ export const PermissionManagement: Story = {
 };
 
 export const EmptyPermissions: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     grantCount: 0,
     includeExpiredGrant: false,
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.type(await canvas.findByLabelText(/buscar pessoa/i), 'ana');
@@ -197,6 +216,25 @@ export const DeletablePersonWithoutLinks: Story = {
     await expect(await screen.findByText('Nenhum vínculo encontrado')).toBeVisible();
     await expect(await screen.findByRole('button', { name: 'Excluir pessoa' })).toBeEnabled();
   },
+};
+
+export const DensePeopleAndPermissions: Story = {
+  args: { personCount: 30, grantCount: 30, includeExpiredGrant: true, latencyMs: 0 },
+};
+
+export const Loading: Story = {
+  args: { apiState: 'loading', latencyMs: 0 },
+};
+
+export const LoadError: Story = {
+  args: { apiState: 'error', latencyMs: 0 },
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const LongNamesMobile: Story = {
+  args: { personCount: 20, grantCount: 12, longNames: true, latencyMs: 0 },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', motion: 'reduced' },
 };
 
 function graphqlData(query: string, variables: Record<string, unknown>) {
@@ -454,7 +492,7 @@ function person(index: number): Person {
 
   return {
     id,
-    name: `${firstName} ${lastName}`,
+    name: `${firstName} ${lastName}${activeArgs.longNames ? ` ${faker.company.catchPhrase()}` : ''}`,
     email: faker.internet.email({ firstName, lastName }).toLocaleLowerCase('pt-BR'),
     secondaryEmails: [faker.internet.email().toLocaleLowerCase('pt-BR')],
     phone: faker.phone.number({ style: 'national' }),

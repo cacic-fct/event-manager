@@ -1,10 +1,59 @@
 import { RATE_LIMIT_METADATA_KEY } from '../rate-limit/rate-limit.decorator';
 import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { PublicMajorEventsResolver } from './major-events.resolver';
-import { PUBLIC_MAJOR_EVENT_WHERE } from './models';
+import { PUBLIC_MAJOR_EVENT_WHERE, PUBLIC_REGULAR_EVENT_WHERE } from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 
 describe('PublicMajorEventsResolver', () => {
+  it('exposes child-event and tournament self-subscription capabilities on public cards', async () => {
+    const prisma = {
+      majorEvent: {
+        findMany: jest.fn().mockResolvedValue([
+          createPublicMajorEventRecord({
+            _count: { events: 0 },
+            events: [],
+            sportsTournament: {
+              id: 'tournament-1',
+              selfSubscriptionEnabled: true,
+              registrationStartDate: null,
+              registrationEndDate: null,
+            },
+          }),
+        ]),
+      },
+    };
+    const resolver = new PublicMajorEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(resolver.publicMajorEvents()).resolves.toEqual([
+      expect.objectContaining({
+        hasEvents: false,
+        regularSubscriptionOpen: false,
+        sportsTournament: {
+          id: 'tournament-1',
+          selfSubscriptionEnabled: true,
+          registrationOpen: true,
+        },
+      }),
+    ]);
+    expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        select: expect.objectContaining({
+          _count: {
+            select: {
+              events: {
+                where: PUBLIC_REGULAR_EVENT_WHERE,
+              },
+            },
+          },
+          events: expect.objectContaining({
+            where: expect.objectContaining({ AND: expect.arrayContaining([PUBLIC_REGULAR_EVENT_WHERE]) }),
+            take: 1,
+          }),
+        }),
+      }),
+    );
+  });
+
   it('uses a bounded Typesense page for public major-event search pagination', async () => {
     const prisma = {
       majorEvent: {

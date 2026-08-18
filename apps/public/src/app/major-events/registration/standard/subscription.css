@@ -41,12 +41,6 @@ mat-toolbar {
   min-width: 0;
 }
 
-.eyebrow {
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-label-large);
-  margin: 0 0 4px;
-}
-
 h1 {
   font: var(--mat-sys-headline-medium);
   margin: 0;

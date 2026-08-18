@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, SubscriptionStatus } from '@prisma/client';
 import { EventSubscriptionSyncService } from '../../events/event-subscription-sync.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
+import { refreshSportsParticipantForSubscription } from '../../sports/sports-payment.service';
 
 @Injectable()
 export class ReceiptSubscriptionSyncService {
@@ -30,5 +31,9 @@ export class ReceiptSubscriptionSyncService {
 
   async refreshEventSubscriptionCounters(tx: Prisma.TransactionClient, eventIds: string[]): Promise<void> {
     await this.counters.refresh(tx, eventIds);
+  }
+
+  async refreshSportsParticipantPayment(tx: Prisma.TransactionClient, subscriptionId: string): Promise<void> {
+    await refreshSportsParticipantForSubscription(tx, subscriptionId);
   }
 }

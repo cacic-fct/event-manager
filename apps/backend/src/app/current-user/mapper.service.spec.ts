@@ -109,6 +109,28 @@ describe('CurrentUserEventMapperService', () => {
     );
   });
 
+  it('preserves the sports-registration flag on mapped major-event price tiers', () => {
+    const event = eventFixture();
+    (event.majorEvent as { majorEventPrices: unknown[] }).majorEventPrices = [
+      {
+        id: 'price-1',
+        type: 'TIERED',
+        tiers: [
+          {
+            id: 'tier-1',
+            name: 'Atividades e torneio',
+            value: 7000,
+            includesSportsRegistration: true,
+          },
+        ],
+      },
+    ];
+
+    expect(service.mapPublicEvent(event as never).majorEvent?.majorEventPrices[0]?.tiers[0]).toEqual(
+      expect.objectContaining({ includesSportsRegistration: true }),
+    );
+  });
+
   it('builds subscription feed items and default participation', () => {
     const event = service.mapPublicEvent(eventFixture() as never);
     const createdAt = new Date('2026-05-20T12:00:00.000Z');
@@ -243,7 +265,7 @@ function eventFixture(overrides: Record<string, unknown> = {}) {
     isOnlineAttendanceAllowed: false,
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,

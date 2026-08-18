@@ -1,0 +1,194 @@
+<header class="my-day-toolbar">
+  <div class="toolbar-copy">
+    <h1>{{ greeting() }}</h1>
+    @if (store.state().offline) {
+    <span class="offline-status"><mat-icon aria-hidden="true">cloud_off</mat-icon>Dados salvos</span>
+    }
+  </div>
+</header>
+
+<main class="my-day-page">
+  @if (store.cooldownSeconds() > 0) {
+  <section class="rate-limit-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">schedule</mat-icon>
+    <span>Muitas consultas em sequência. Você pode continuar vendo os dias salvos; novas atualizações estarão disponíveis em {{ store.cooldownSeconds() }} s.</span>
+  </section>
+  }
+
+  <div class="date-control">
+    <mat-accordion>
+      <mat-expansion-panel #datePanel class="date-panel" hideToggle>
+        <mat-expansion-panel-header>
+          <mat-panel-title (click)="$event.stopPropagation()">
+            <mat-icon aria-hidden="true">calendar_month</mat-icon>
+            {{ selectedDate() | date: "EEE, d 'de' MMM" }}
+          </mat-panel-title>
+          <mat-icon class="expand-icon" aria-hidden="true">expand_more</mat-icon>
+        </mat-expansion-panel-header>
+        <div class="calendar-overlay">
+          <app-calendar-week-date-selector
+            [weekDays]="weekDays()"
+            [selectedDate]="selectedDate()"
+            [canGoPrevious]="canGoPreviousWeek()"
+            (previousWeek)="previousWeek()"
+            (nextWeek)="nextWeek()"
+            (today)="goToToday()"
+            (selectDate)="selectDate($event, datePanel)" />
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+  </div>
+
+  @let state = store.state();
+  @if (state.status === 'loading' && !state.data) {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando seu dia" />
+  <section class="loading-copy" aria-live="polite">
+    <p>Organizando seus compromissos…</p>
+  </section>
+  } @else if (state.status === 'error' && !state.data) {
+  <section class="empty-state" aria-live="polite">
+    <mat-icon aria-hidden="true">cloud_off</mat-icon>
+    <h2>Não foi possível abrir este dia</h2>
+    <p>{{ state.message }}</p>
+    @if (!state.offline) {
+    <button matButton="filled" type="button" (click)="store.refresh()">Tentar novamente</button>
+    }
+  </section>
+  } @else if (state.data; as day) {
+    @if (day.currentEvent; as current) {
+    <section class="now-section" aria-labelledby="now-heading">
+      <h2 id="now-heading">Agora</h2>
+      <div class="now-row">
+        <lib-twemoji class="event-emoji" [emoji]="current.emoji" aria-hidden="true" />
+        <div class="event-copy">
+          <h3>{{ current.name }}</h3>
+          @if (current.roles.length) {
+          <p class="roles">{{ current.roles[0].label }}</p>
+          }
+        </div>
+        <div class="icon-actions">
+          @if (current.mapAction; as mapAction) {
+          <a matIconButton [routerLink]="link(mapAction.route)" [attr.aria-label]="mapAction.label">
+            <mat-icon>{{ mapAction.materialIcon }}</mat-icon>
+          </a>
+          }
+          <a matIconButton [routerLink]="link(current.infoAction.route)" [attr.aria-label]="current.infoAction.label">
+            <mat-icon>info</mat-icon>
+          </a>
+        </div>
+      </div>
+      @if (eventActions(current).length) {
+      <div class="operation-row">
+        @for (action of eventActions(current); track action.kind) {
+        <a matButton="filled" [routerLink]="link(action.route)"><mat-icon>{{ action.materialIcon }}</mat-icon>{{ action.label }}</a>
+        }
+      </div>
+      }
+    </section>
+    }
+
+    @if (day.nextEvent; as next) {
+    <section class="next-section" aria-labelledby="next-heading">
+      <h2 id="next-heading">Próximo compromisso</h2>
+      <article class="next-card">
+        <div class="next-summary">
+          <lib-twemoji class="event-emoji" [emoji]="next.emoji" aria-hidden="true" />
+          <div class="event-copy">
+            <time [attr.datetime]="next.startDate">{{ next.startDate | date: 'HH:mm' }}</time>
+            <h3>{{ next.name }}</h3>
+            @if (next.locationDescription) {
+            <p class="location"><mat-icon aria-hidden="true">location_on</mat-icon>{{ next.locationDescription }}</p>
+            }
+          </div>
+          <a matIconButton [routerLink]="link(next.infoAction.route)" [attr.aria-label]="next.infoAction.label">
+            <mat-icon>info</mat-icon>
+          </a>
+        </div>
+
+        @if (next.roles.length) {
+        <div class="role-row" aria-label="Papéis neste compromisso">
+          @for (role of next.roles; track role.kind) {
+          <span>{{ role.label }}</span>
+          }
+        </div>
+        }
+
+        <div class="time-glance">
+          <mat-progress-bar mode="determinate" [value]="timeProgress(next)" aria-label="Progresso até o compromisso" />
+          @if (countdown(next); as countdownLabel) {
+          <span>{{ countdownLabel }}</span>
+          }
+        </div>
+
+        <div class="next-actions">
+          @for (action of eventActions(next); track action.kind) {
+          <a matButton="filled" [routerLink]="link(action.route)"><mat-icon>{{ action.materialIcon }}</mat-icon>{{ action.label }}</a>
+          }
+          @if (next.mapAction; as mapAction) {
+          <a matButton="outlined" [routerLink]="link(mapAction.route)"><mat-icon>map</mat-icon>Ver no mapa</a>
+          }
+        </div>
+      </article>
+    </section>
+    }
+
+    @if (visibleAttention().length || day.weather.length) {
+    <section class="attention-section" aria-labelledby="attention-heading">
+      <h2 id="attention-heading">Atenção</h2>
+      @if (visibleAttention().length) {
+      <div class="attention-list">
+        @for (item of visibleAttention(); track item.id) {
+        <a class="attention-row" [routerLink]="link(item.route)">
+          <span class="attention-icon" [class.critical]="item.kind === 'CONFLICT'">
+            <mat-icon aria-hidden="true">{{ item.materialIcon }}</mat-icon>
+          </span>
+          <span class="attention-copy"><strong>{{ item.title }}</strong><small>{{ attentionDescription(item) }}</small></span>
+          <mat-icon aria-hidden="true">chevron_right</mat-icon>
+        </a>
+        }
+      </div>
+      }
+
+      @if (day.weather.length) {
+      <div class="weather-strip" aria-label="Alertas de clima">
+        @for (alert of day.weather; track alert.id) {
+        <a [routerLink]="link(alert.route)" class="weather-alert">
+          <mat-icon aria-hidden="true">{{ alert.materialIcon }}</mat-icon>
+          <span><strong>{{ alert.title }}</strong><small>{{ alert.advice }}</small></span>
+        </a>
+        }
+      </div>
+      }
+    </section>
+    }
+
+    @if (day.laterEvents.length) {
+    <section class="later-section" aria-labelledby="later-heading">
+      <h2 id="later-heading">Depois</h2>
+      <div class="later-list">
+        @for (event of day.laterEvents; track event.id) {
+        <a class="later-row" [routerLink]="link(event.infoAction.route)">
+          <lib-twemoji class="later-emoji" [emoji]="event.emoji" aria-hidden="true" />
+          <span class="later-copy">
+            <strong>{{ event.name }}</strong>
+            <small>
+              {{ event.startDate | date: 'HH:mm' }}–{{ event.endDate | date: 'HH:mm' }}
+              @if (event.locationDescription) { · {{ event.locationDescription }} }
+            </small>
+          </span>
+          <mat-icon aria-hidden="true">chevron_right</mat-icon>
+        </a>
+        }
+      </div>
+    </section>
+    }
+
+    @if (!day.currentEvent && !day.nextEvent && day.laterEvents.length === 0 && visibleAttention().length === 0) {
+    <section class="empty-state" aria-live="polite">
+      <mat-icon aria-hidden="true">event_available</mat-icon>
+      <h2>Nada marcado para este dia</h2>
+      <p>Use o seletor acima para viajar pela sua agenda.</p>
+    </section>
+    }
+  }
+</main>

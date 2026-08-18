@@ -54,9 +54,7 @@ describe('AttendanceCollectionApiService', () => {
       },
     });
 
-    await expect(result).resolves.toEqual([
-      expect.objectContaining({ eventId: 'event-1', personId: 'person-1' }),
-    ]);
+    await expect(result).resolves.toEqual([expect.objectContaining({ eventId: 'event-1', personId: 'person-1' })]);
     http.verify();
   });
 });

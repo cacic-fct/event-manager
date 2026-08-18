@@ -16,6 +16,9 @@ import { CurrentUserOnlineAttendanceRealtimeService } from '../current-user/even
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
+import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
+import { EventPostCommitEffectsService } from './event-post-commit-effects.service';
+import { syncEventGroupMajorEvent } from './event-group-major-event';
 
 type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
 
@@ -126,7 +129,7 @@ const EVENT_DETAIL_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -175,7 +178,7 @@ const EVENT_AUDIT_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -218,6 +221,12 @@ export class EventDraftsService {
     private readonly auditLog: AuditLogService,
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
     private readonly typesenseSearch: TypesenseSearchService,
+    private readonly postCommitEffects: EventPostCommitEffectsService = {
+      upsertEvent: (event) => typesenseSearch.upsertEvent(event),
+    } as EventPostCommitEffectsService,
+    private readonly sportsBackingLifecycle: SportsBackingResourceLifecycleService = {
+      assertEventUpdateAllowed: async () => undefined,
+    } as unknown as SportsBackingResourceLifecycleService,
   ) {}
 
   async listEventDrafts(
@@ -344,6 +353,7 @@ export class EventDraftsService {
       if (!previousEvent) {
         throw new NotFoundException(`Event ${draft.sourceEventId} was not found.`);
       }
+      await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, draft.sourceEventId, payload);
 
       await tx.event.updateMany({
         where: { id: draft.sourceEventId, deletedAt: null },
@@ -367,7 +377,7 @@ export class EventDraftsService {
         where: { id: draft.sourceEventId, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
-      await this.disableGroupPerEventModeForMajorEvent(updated, tx);
+      await syncEventGroupMajorEvent(tx, [previousEvent.eventGroupId, updated.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -684,24 +694,8 @@ export class EventDraftsService {
   ): Promise<void> {
     const tasks: Array<{ name: string; run: () => Promise<unknown> }> = [
       {
-        name: 'Typesense event sync',
-        run: () =>
-          this.typesenseSearch.upsertEvent({
-            id: event.id,
-            name: event.name,
-            emoji: event.emoji,
-            type: event.type,
-            description: event.description,
-            shortDescription: event.shortDescription,
-            locationDescription: event.locationDescription,
-            majorEventId: event.majorEventId,
-            eventGroupId: event.eventGroupId,
-            shouldIssueCertificate: event.shouldIssueCertificate,
-            publiclyVisible: event.publiclyVisible,
-            publicationState: event.publicationState,
-            startDate: event.startDate,
-            endDate: event.endDate,
-          }),
+        name: 'event post-commit sync',
+        run: () => this.postCommitEffects.upsertEvent(event),
       },
     ];
 
@@ -862,26 +856,6 @@ export class EventDraftsService {
       ...draft,
       payloadJson: JSON.stringify(draft.payload),
     };
-  }
-
-  private async disableGroupPerEventModeForMajorEvent(
-    event: { eventGroupId?: string | null; majorEventId?: string | null },
-    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
-  ): Promise<void> {
-    if (!event.eventGroupId || !event.majorEventId) {
-      return;
-    }
-
-    await prisma.eventGroup.updateMany({
-      where: {
-        id: event.eventGroupId,
-        deletedAt: null,
-        shouldIssueCertificateForEachEvent: true,
-      },
-      data: {
-        shouldIssueCertificateForEachEvent: false,
-      },
-    });
   }
 
   private isEmptyAccessibleEventTargets(targets: {

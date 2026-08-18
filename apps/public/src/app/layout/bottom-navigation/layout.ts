@@ -7,6 +7,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { filter, map } from 'rxjs';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicFeatureFlagService } from '../../feature-flags/public-feature-flag.service';
+import { MyDayStore } from '../../my-day/my-day.store';
 
 @Component({
   imports: [BottomToolbarComponent, RouterOutlet],
@@ -36,10 +37,12 @@ export class ToolbarLayoutComponent {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly authService = inject(AuthService);
   private readonly featureFlags = inject(PublicFeatureFlagService);
+  private readonly myDay = inject(MyDayStore);
 
   readonly calendarTabEnabledOverride = input<boolean | null>(null);
   readonly majorEventTabEnabledOverride = input<boolean | null>(null);
   readonly notificationsTabEnabledOverride = input<boolean | null>(null);
+  readonly myDayTabEnabledOverride = input<boolean | null>(null);
 
   private getRouteData(key: string): boolean {
     if (!isPlatformBrowser(this.platformId)) {
@@ -74,6 +77,17 @@ export class ToolbarLayoutComponent {
         hidden: !this.isEnabled('majorEventTabEnabled', this.majorEventTabEnabledOverride()),
       },
       {
+        label: 'Meu dia',
+        shortLabel: 'Meu dia',
+        icon: 'auto_awesome',
+        route: '/my-day',
+        hidden:
+          !isAuthenticated ||
+          !this.isEnabled('myDayTabEnabled', this.myDayTabEnabledOverride()) ||
+          this.myDay.hasAvailableContent() === false,
+        pending: isAuthenticated && this.myDay.hasAvailableContent() === null,
+      },
+      {
         label: 'Notificações',
         shortLabel: 'Avisos',
         icon: 'notifications',
@@ -102,7 +116,7 @@ export class ToolbarLayoutComponent {
   );
 
   private isEnabled(
-    key: 'calendarTabEnabled' | 'majorEventTabEnabled' | 'notificationsTabEnabled',
+    key: 'calendarTabEnabled' | 'majorEventTabEnabled' | 'notificationsTabEnabled' | 'myDayTabEnabled',
     override: boolean | null,
   ): boolean {
     return override ?? this.featureFlags.booleanValue(key);
@@ -116,4 +130,5 @@ export interface ToolbarItem {
   icon: string;
   badge?: 'notifications';
   hidden: boolean;
+  pending?: boolean;
 }

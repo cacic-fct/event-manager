@@ -40,4 +40,23 @@ describe('DefaultRedirectApiService', () => {
 
     await expect(responsePromise).rejects.toThrow('Resposta GraphQL com rota de redirecionamento inválida.');
   });
+
+  it('loads the sports autoroute as an on-demand decision without polling', async () => {
+    const responsePromise = firstValueFrom(service.getCurrentUserSportsAutoroute());
+    const request = httpTesting.expectOne('/api/graphql');
+    expect(request.request.body.query).toContain('currentUserSportsAutoroute');
+    request.flush({
+      data: {
+        currentUserSportsAutoroute: {
+          matchId: 'match-1',
+          mode: 'OPERATE',
+        },
+      },
+    });
+
+    await expect(responsePromise).resolves.toEqual({
+      matchId: 'match-1',
+      mode: 'OPERATE',
+    });
+  });
 });

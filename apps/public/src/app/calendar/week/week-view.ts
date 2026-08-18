@@ -1,11 +1,10 @@
-import { DatePipe, formatDate } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
+import { MatIconModule } from '@angular/material/icon';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { isSameDay } from 'date-fns';
 import { CalendarEventListItem } from '../event-list/event-list-item';
+import { CalendarWeekDateSelector } from './week-date-selector';
 
 export interface CalendarWeekDay {
   label: string;
@@ -14,7 +13,7 @@ export interface CalendarWeekDay {
 
 @Component({
   selector: 'app-calendar-week-view',
-  imports: [CalendarEventListItem, DatePipe, MatButtonModule, MatIconModule, MatListModule],
+  imports: [CalendarEventListItem, CalendarWeekDateSelector, MatIconModule, MatListModule],
   templateUrl: './week-view.html',
   styleUrl: './week-view.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -30,12 +29,6 @@ export class CalendarWeekView {
   readonly nextWeek = output<void>();
   readonly today = output<void>();
   readonly selectDate = output<Date>();
-
-  readonly selectedDateLabel = computed(() => {
-    const formatted = formatDate(this.selectedDate(), "EEEE, dd 'de' MMMM 'de' yyyy", 'pt-BR');
-
-    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
-  });
 
   readonly selectedDateEvents = computed(() =>
     this.events().filter((event) => isSameDay(new Date(event.startDate), this.selectedDate())),

@@ -1,0 +1,1081 @@
+enum SportsTournamentStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  LIVE
+  FINISHED
+  CANCELED
+}
+
+enum SportsScoringMode {
+  PER_SPORT
+  OVERALL
+  BOTH
+}
+
+enum SportsCategoryStatus {
+  DRAFT
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  ACTIVE
+  FINISHED
+  CANCELED
+}
+
+enum SportsFormat {
+  SINGLE_ELIMINATION
+  ROUND_ROBIN
+  GROUP_STAGE_ELIMINATION
+  DOUBLE_ELIMINATION
+  SWISS
+  CUSTOM
+}
+
+enum SportsPreset {
+  SOCCER
+  FUTSAL
+  TENNIS
+  BASKETBALL
+  ESPORTS
+  CHESS
+  VOLLEYBALL
+  SWIMMING
+  TABLE_TENNIS
+  HANDBALL
+  OTHER
+}
+
+enum SportsAthleteIdentifierMode {
+  SHIRT_NUMBER
+  GAME_ACCOUNT
+}
+
+enum SportsTeamStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+  CHANGES_REQUESTED
+  REJECTED
+  SUSPENDED
+  WITHDRAWN
+}
+
+enum SportsParticipantStatus {
+  PENDING
+  APPROVED
+  WAITING_PAYMENT
+  ACTIVE
+  REJECTED
+  SUSPENDED
+  WITHDRAWN
+}
+
+enum SportsParticipantSource {
+  ADMIN
+  TEAM_ASSIGNMENT
+  SELF_SUBSCRIPTION
+}
+
+enum SportsPaymentStatus {
+  NOT_REQUIRED
+  NOT_AVAILABLE
+  WAITING_APPROVAL
+  WAITING_PAYMENT
+  UNDER_REVIEW
+  PAID
+  REJECTED
+}
+
+enum SportsTeamMemberStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+  SUSPENDED
+  WITHDRAWN
+}
+
+enum SportsRosterRole {
+  PLAYER
+  CAPTAIN
+  COACH
+}
+
+enum SportsEligibilityStatus {
+  PENDING
+  ELIGIBLE
+  CHANGES_REQUESTED
+  INELIGIBLE
+}
+
+enum SportsRegistrationStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+  WAITING_PAYMENT
+  ACTIVE
+  WITHDRAWN
+}
+
+enum SportsTeamChangeRequestStatus {
+  PENDING
+  CONFLICT
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+  SUPERSEDED
+}
+
+enum SportsTeamChangeRequestType {
+  TEAM_DETAILS
+  MEMBER_ADD
+  MEMBER_UPDATE
+  MEMBER_REMOVE
+  LOGO
+  REPRESENTATIVE
+  CATEGORY_ROLE
+  LINEUP
+}
+
+enum SportsIdentityType {
+  IDENTITY_DOCUMENT
+  PHONE
+  EMAIL
+}
+
+enum SportsIdentityClaimStatus {
+  PENDING
+  RESOLVED
+  NOT_FOUND
+  AMBIGUOUS
+  REJECTED
+}
+
+enum SportsOfficialRole {
+  REFEREE
+  INTERMEDIATOR
+  SCOREKEEPER
+}
+
+enum SportsMatchState {
+  SCHEDULED
+  CHECK_IN
+  LIVE
+  PAUSED
+  AWAITING_REVIEW
+  CANCELED
+  DRAW
+  FINISHED
+}
+
+enum SportsReviewStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+enum SportsMatchActionType {
+  CHECK_IN
+  START
+  PAUSE
+  RESUME
+  SCORE_DELTA
+  SCORE_CORRECTION
+  PERIOD_ROLL
+  TIMER_RECONCILE
+  OCCURRENCE
+  FINALIZE
+  CANCEL
+  RESCHEDULE
+  FORFEIT
+  RESET
+}
+
+enum SportsLivestreamProvider {
+  YOUTUBE
+  TWITCH
+  GENERAL
+}
+
+enum SportsLossReason {
+  SCORE
+  WALKOVER
+  FORFEIT
+  DISQUALIFICATION
+  INJURY
+  NO_SHOW
+  OTHER
+}
+
+enum SportsRosterStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  CONFLICT
+}
+
+enum SportsRosterEntryStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum SportsStageType {
+  GROUP
+  ELIMINATION
+  WINNERS_BRACKET
+  LOSERS_BRACKET
+  SWISS
+  FINAL
+}
+
+enum SportsBracketSide {
+  HOME
+  AWAY
+}
+
+enum SportsScoreEntrySource {
+  PLACEMENT
+  MATCH
+  MANUAL
+  PENALTY
+}
+
+enum SportsApplicationStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+  WAITING_PAYMENT
+  ACTIVE
+  WITHDRAWN
+}
+
+model SportsTournament {
+  id String @id @default(uuid(7))
+
+  majorEventId String
+  majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
+
+  status                          SportsTournamentStatus @default(DRAFT)
+  registrationStartDate           DateTime?
+  registrationEndDate             DateTime?
+  scoringMode                     SportsScoringMode      @default(PER_SPORT)
+  selfSubscriptionEnabled         Boolean                @default(false)
+  selfSubscriptionAllowNoTeam     Boolean                @default(false)
+  selfSubscriptionAllowNoCategory Boolean                @default(false)
+  allowPlayerMultipleTeams        Boolean                @default(false)
+  shouldIssueCertificate          Boolean                @default(false)
+  revision                        Int                    @default(1)
+  finishedAt                      DateTime?
+
+  categories         SportsCategory[]
+  teams              SportsTeam[]
+  venues             SportsVenue[]
+  participants       SportsTournamentParticipant[]
+  officials          SportsOfficialAssignment[]
+  playerApplications SportsPlayerApplication[]
+  scoreEntries       SportsTournamentScoreEntry[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([majorEventId], map: "sports_tournaments_active_majorEventId_key", where: { deletedAt: null })
+  @@index([status])
+  // PostgreSQL truncates the original 64-character generated identifier to this name.
+  @@index([registrationStartDate, registrationEndDate], map: "sports_tournaments_registrationStartDate_registrationEndDate_id")
+  @@index([finishedAt])
+  @@index([deletedAt])
+  @@map("sports_tournaments")
+}
+
+model SportsCategory {
+  id String @id @default(uuid(7))
+
+  tournamentId String
+  tournament   SportsTournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+
+  eventGroupId String
+  eventGroup   EventGroup @relation(fields: [eventGroupId], references: [id], onDelete: Restrict)
+
+  name            String
+  sport           SportsPreset
+  customSportName String?
+  division        String?
+  format          SportsFormat
+  status          SportsCategoryStatus @default(DRAFT)
+
+  registrationStartDate    DateTime?
+  registrationEndDate      DateTime?
+  minimumRosterSize        Int?
+  maximumRosterSize        Int?
+  maximumCaptains          Int?
+  maximumCoaches           Int?
+  allowPlayerMultipleTeams Boolean?
+  shouldIssueCertificate   Boolean?
+  athleteIdentifierMode    SportsAthleteIdentifierMode @default(SHIRT_NUMBER)
+  joiningInstructions      String?
+
+  periodsEnabled      Boolean @default(false)
+  maximumPeriods      Int?
+  periodLabel         String?
+  timerRules          Json    @default("{}")
+  scoreRules          Json
+  overallScoringRules Json    @default("{}")
+  rosterRules         Json
+  bracketRules        Json
+  standingsRules      Json
+  rulesText           String?
+
+  registrationFormId String?
+  registrationForm   EventForm? @relation("SportsCategoryRegistrationForm", fields: [registrationFormId], references: [id], onDelete: SetNull)
+
+  revision   Int       @default(1)
+  finishedAt DateTime?
+  deletedAt  DateTime?
+
+  registrations       SportsRegistration[]
+  memberAssignments   SportsRegistrationMember[]
+  stages              SportsStage[]
+  matches             SportsMatch[]
+  officialAssignments SportsOfficialAssignment[]
+  applicationChoices  SportsPlayerApplicationCategory[]
+  scoreEntries        SportsTournamentScoreEntry[]
+
+  createdAt                DateTime                  @default(now())
+  createdById              String?
+  updatedAt                DateTime                  @updatedAt
+  updatedById              String?
+  sportsCategoryPlacements SportsCategoryPlacement[]
+
+  @@unique([eventGroupId], map: "sports_categories_active_eventGroupId_key", where: { deletedAt: null })
+  @@index([tournamentId, status])
+  @@index([tournamentId, sport])
+  @@index([registrationStartDate, registrationEndDate])
+  @@index([registrationFormId])
+  @@index([finishedAt])
+  @@index([deletedAt])
+  @@map("sports_categories")
+}
+
+model SportsTeam {
+  id String @id @default(uuid(7))
+
+  tournamentId String
+  tournament   SportsTournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+
+  name        String
+  institution String?
+  status      SportsTeamStatus @default(DRAFT)
+
+  logoObjectKey String?
+  logoSha256    String?
+  logoMimeType  String?
+  logoSizeBytes Int?
+
+  revision       Int  @default(1)
+  fieldRevisions Json @default("{}")
+
+  members         SportsTeamMember[]
+  representatives SportsTeamRepresentative[]
+  registrations   SportsRegistration[]
+  changeRequests  SportsTeamChangeRequest[]
+  scoreEntries    SportsTournamentScoreEntry[]
+  applications    SportsPlayerApplication[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@index([tournamentId, status])
+  @@index([tournamentId, name])
+  @@index([deletedAt])
+  @@map("sports_teams")
+}
+
+model SportsTournamentParticipant {
+  id String @id @default(uuid(7))
+
+  // One active record per tournament/person is enforced by the partial unique
+  // index declared below and retained in the forward SQL migration.
+  // Team memberships and category assignments remain one-to-many below this row.
+  tournamentId String
+  tournament   SportsTournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+
+  personId String
+  person   People @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  source        SportsParticipantSource
+  status        SportsParticipantStatus @default(PENDING)
+  paymentStatus SportsPaymentStatus     @default(NOT_REQUIRED)
+
+  majorEventSubscriptionId String?
+  majorEventSubscription   MajorEventSubscription? @relation(fields: [majorEventSubscriptionId], references: [id], onDelete: SetNull)
+
+  approvedAt      DateTime?
+  approvedById    String?
+  rejectedAt      DateTime?
+  rejectedById    String?
+  rejectionReason String?
+
+  teamMemberships SportsTeamMember[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([tournamentId, personId], map: "sports_tournament_participants_active_person_key", where: raw("\"deletedAt\" IS NULL"))
+  @@index([tournamentId, personId])
+  @@index([majorEventSubscriptionId], map: "sports_tournament_participants_majorEventSubscriptionId_idx")
+  @@index([tournamentId, status])
+  @@index([personId])
+  @@index([paymentStatus])
+  @@index([deletedAt])
+  @@map("sports_tournament_participants")
+}
+
+model SportsTeamMember {
+  id String @id @default(uuid(7))
+
+  teamId String
+  team   SportsTeam @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  participantId String
+  participant   SportsTournamentParticipant @relation(fields: [participantId], references: [id], onDelete: Restrict)
+
+  status   SportsTeamMemberStatus @default(PENDING)
+  revision Int                    @default(1)
+
+  categoryAssignments SportsRegistrationMember[]
+
+  approvedAt      DateTime?
+  approvedById    String?
+  rejectedAt      DateTime?
+  rejectedById    String?
+  rejectionReason String?
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([teamId, participantId], map: "sports_team_members_active_team_participant_key", where: { deletedAt: null })
+  @@index([teamId, participantId])
+  @@index([teamId, status])
+  @@index([participantId])
+  @@index([deletedAt])
+  @@map("sports_team_members")
+}
+
+model SportsTeamRepresentative {
+  id String @id @default(uuid(7))
+
+  teamId String
+  team   SportsTeam @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  personId String
+  person   People @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  active       Boolean   @default(true)
+  assignedAt   DateTime  @default(now())
+  assignedById String
+  revokedAt    DateTime?
+  revokedById  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, personId])
+  @@index([personId, active])
+  @@map("sports_team_representatives")
+}
+
+model SportsRegistration {
+  id String @id @default(uuid(7))
+
+  teamId String
+  team   SportsTeam @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  categoryId String
+  category   SportsCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  status SportsRegistrationStatus @default(DRAFT)
+  seed   Int?
+
+  formAnswers        Json?
+  formSchemaSnapshot Json?
+  revision           Int   @default(1)
+
+  members            SportsRegistrationMember[]
+  homeMatches        SportsMatch[]              @relation("SportsMatchHomeRegistration")
+  awayMatches        SportsMatch[]              @relation("SportsMatchAwayRegistration")
+  wonMatches         SportsMatch[]              @relation("SportsMatchWinnerRegistration")
+  lostMatches        SportsMatch[]              @relation("SportsMatchLoserRegistration")
+  rosters            SportsMatchRoster[]
+  categoryPlacements SportsCategoryPlacement[]
+
+  approvedAt      DateTime?
+  approvedById    String?
+  rejectedAt      DateTime?
+  rejectedById    String?
+  rejectionReason String?
+
+  createdAt       DateTime         @default(now())
+  createdById     String?
+  updatedAt       DateTime         @updatedAt
+  updatedById     String?
+  deletedAt       DateTime?
+  sportsStandings SportsStanding[]
+
+  @@unique([teamId, categoryId], map: "sports_registrations_active_team_category_key", where: { deletedAt: null })
+  @@index([teamId, categoryId])
+  @@index([categoryId, status])
+  @@index([teamId])
+  @@index([seed])
+  @@index([deletedAt])
+  @@map("sports_registrations")
+}
+
+model SportsRegistrationMember {
+  id String @id @default(uuid(7))
+
+  registrationId String
+  registration   SportsRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  categoryId String
+  category   SportsCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  teamMemberId String
+  teamMember   SportsTeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Restrict)
+
+  role        SportsRosterRole
+  eligibility SportsEligibilityStatus @default(PENDING)
+
+  shirtNumber     String?
+  gameNickname    String?
+  gameAccountName String?
+  gameAccountUrl  String?
+
+  approvedAt      DateTime?
+  approvedById    String?
+  rejectionReason String?
+
+  rosterEntries SportsMatchRosterEntry[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([registrationId, teamMemberId], map: "sports_registration_members_active_registration_member_key", where: { deletedAt: null })
+  @@index([registrationId, teamMemberId])
+  @@index([categoryId, role, eligibility])
+  @@index([teamMemberId])
+  @@index([deletedAt])
+  @@map("sports_registration_members")
+}
+
+model SportsTeamChangeRequest {
+  id String @id @default(uuid(7))
+
+  teamId String
+  team   SportsTeam @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  submittedByPersonId String
+  submittedByPerson   People @relation(fields: [submittedByPersonId], references: [id], onDelete: Restrict)
+
+  type               SportsTeamChangeRequestType
+  status             SportsTeamChangeRequestStatus @default(PENDING)
+  requestRevision    Int                           @default(1)
+  baseRevision       Int
+  baseFieldRevisions Json
+  delta              Json
+  pendingKey         String?                       @unique
+
+  identityClaims SportsIdentityClaim[]
+
+  reviewedAt        DateTime?
+  reviewedById      String?
+  reviewMessage     String?
+  resolvedDelta     Json?
+  resultingRevision Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamId, status, createdAt])
+  @@index([submittedByPersonId, status])
+  @@map("sports_team_change_requests")
+}
+
+model SportsIdentityClaim {
+  id String @id @default(uuid(7))
+
+  requestId String
+  request   SportsTeamChangeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  clientKey      String
+  type           SportsIdentityType
+  lookupHash     String
+  encryptedValue String
+  displayHint    String
+  status         SportsIdentityClaimStatus @default(PENDING)
+
+  resolvedPersonId String?
+  resolvedPerson   People? @relation(fields: [resolvedPersonId], references: [id], onDelete: SetNull)
+
+  resolvedAt   DateTime?
+  resolvedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([requestId, clientKey])
+  @@index([requestId, status])
+  @@index([lookupHash])
+  @@index([resolvedPersonId])
+  @@map("sports_identity_claims")
+}
+
+model SportsVenue {
+  id String @id @default(uuid(7))
+
+  tournamentId String
+  tournament   SportsTournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+
+  placePresetId String
+  placePreset   PlacePreset @relation(fields: [placePresetId], references: [id], onDelete: Restrict)
+
+  name       String
+  courtLabel String?
+  capacity   Int?
+  notes      String?
+
+  parentVenueId String?
+  parentVenue   SportsVenue?  @relation("SportsVenueHierarchy", fields: [parentVenueId], references: [id], onDelete: Restrict)
+  childVenues   SportsVenue[] @relation("SportsVenueHierarchy")
+
+  matches SportsMatch[]
+
+  revision    Int       @default(1)
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@index([tournamentId, name])
+  @@index([placePresetId])
+  @@index([parentVenueId])
+  @@index([deletedAt])
+  @@map("sports_venues")
+}
+
+model SportsStage {
+  id String @id @default(uuid(7))
+
+  categoryId String
+  category   SportsCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  name               String
+  type               SportsStageType
+  displayOrder       Int
+  settings           Json
+  generationRevision Int             @default(1)
+
+  matches   SportsMatch[]
+  standings SportsStanding[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@index([categoryId, displayOrder])
+  @@index([categoryId, type])
+  @@index([deletedAt])
+  @@map("sports_stages")
+}
+
+model SportsMatch {
+  id String @id @default(uuid(7))
+
+  eventId String @unique
+  event   Event  @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  categoryId String
+  category   SportsCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  stageId String?
+  stage   SportsStage? @relation(fields: [stageId], references: [id], onDelete: SetNull)
+
+  venueId String?
+  venue   SportsVenue? @relation(fields: [venueId], references: [id], onDelete: SetNull)
+
+  homeRegistrationId String?
+  homeRegistration   SportsRegistration? @relation("SportsMatchHomeRegistration", fields: [homeRegistrationId], references: [id], onDelete: Restrict)
+
+  awayRegistrationId String?
+  awayRegistration   SportsRegistration? @relation("SportsMatchAwayRegistration", fields: [awayRegistrationId], references: [id], onDelete: Restrict)
+
+  state          SportsMatchState   @default(SCHEDULED)
+  canonicalState SportsMatchState   @default(SCHEDULED)
+  reviewStatus   SportsReviewStatus @default(NOT_REQUIRED)
+
+  scoreboard          Json @default("{}")
+  canonicalScoreboard Json @default("{}")
+
+  winnerRegistrationId String?
+  winnerRegistration   SportsRegistration? @relation("SportsMatchWinnerRegistration", fields: [winnerRegistrationId], references: [id], onDelete: Restrict)
+
+  loserRegistrationId String?
+  loserRegistration   SportsRegistration? @relation("SportsMatchLoserRegistration", fields: [loserRegistrationId], references: [id], onDelete: Restrict)
+
+  lossReason         SportsLossReason?
+  lossReasonDetail   String?
+  drawWillReschedule Boolean?
+  notes              String?
+  occurrences        Json              @default("[]")
+
+  livestreamProvider SportsLivestreamProvider?
+  livestreamUrl      String?
+
+  timerStartedAt       DateTime?
+  timerPausedAt        DateTime?
+  elapsedBeforePauseMs Int       @default(0)
+
+  roundNumber     Int?
+  bracketPosition Int?
+  groupKey        String?
+
+  winnerAdvancesToId   String?
+  winnerAdvancesTo     SportsMatch?       @relation("SportsMatchWinnerAdvancement", fields: [winnerAdvancesToId], references: [id], onDelete: SetNull)
+  winnerSources        SportsMatch[]      @relation("SportsMatchWinnerAdvancement")
+  winnerAdvancesToSide SportsBracketSide?
+
+  loserAdvancesToId   String?
+  loserAdvancesTo     SportsMatch?       @relation("SportsMatchLoserAdvancement", fields: [loserAdvancesToId], references: [id], onDelete: SetNull)
+  loserSources        SportsMatch[]      @relation("SportsMatchLoserAdvancement")
+  loserAdvancesToSide SportsBracketSide?
+
+  replayOfMatchId String?      @unique
+  replayOfMatch   SportsMatch? @relation("SportsMatchReplay", fields: [replayOfMatchId], references: [id], onDelete: SetNull)
+  replayMatch     SportsMatch? @relation("SportsMatchReplay")
+
+  revision          Int @default(1)
+  operationSequence Int @default(0)
+
+  rosters             SportsMatchRoster[]
+  actions             SportsMatchAction[]
+  officialAssignments SportsOfficialAssignment[]
+  sourceScoreEntries  SportsTournamentScoreEntry[]
+  categoryPlacements  SportsCategoryPlacement[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@index([categoryId, state])
+  @@index([stageId, roundNumber, bracketPosition])
+  @@index([venueId])
+  @@index([homeRegistrationId])
+  @@index([awayRegistrationId])
+  @@index([winnerAdvancesToId])
+  @@index([loserAdvancesToId])
+  @@index([replayOfMatchId])
+  @@index([reviewStatus])
+  @@index([deletedAt])
+  @@map("sports_matches")
+}
+
+model SportsMatchRoster {
+  id String @id @default(uuid(7))
+
+  matchId String
+  match   SportsMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  registrationId String
+  registration   SportsRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  status         SportsRosterStatus @default(DRAFT)
+  revision       Int                @default(1)
+  manuallyEdited Boolean            @default(false)
+
+  copiedFromRosterId String?
+  copiedFromRoster   SportsMatchRoster?  @relation("SportsRosterCopy", fields: [copiedFromRosterId], references: [id], onDelete: SetNull)
+  copiedToRosters    SportsMatchRoster[] @relation("SportsRosterCopy")
+
+  entries SportsMatchRosterEntry[]
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([matchId, registrationId], map: "sports_match_rosters_active_match_registration_key", where: { deletedAt: null })
+  @@index([matchId, registrationId])
+  @@index([registrationId])
+  @@index([copiedFromRosterId])
+  @@index([deletedAt])
+  @@map("sports_match_rosters")
+}
+
+model SportsMatchRosterEntry {
+  id String @id @default(uuid(7))
+
+  rosterId String
+  roster   SportsMatchRoster @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+
+  registrationMemberId String
+  registrationMember   SportsRegistrationMember @relation(fields: [registrationMemberId], references: [id], onDelete: Restrict)
+
+  status       SportsRosterEntryStatus @default(DRAFT)
+  role         SportsRosterRole        @default(PLAYER)
+  shirtNumber  String?
+  roleMetadata Json?
+
+  checkedInAt   DateTime?
+  checkedInById String?
+
+  scoredActions SportsMatchAction[] @relation("SportsMatchActionScorer")
+
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+
+  @@unique([rosterId, registrationMemberId], map: "sports_roster_entries_active_roster_member_key", where: { deletedAt: null })
+  @@index([rosterId, registrationMemberId])
+  @@index([registrationMemberId])
+  @@index([deletedAt])
+  @@map("sports_match_roster_entries")
+}
+
+model SportsOfficialAssignment {
+  id String @id @default(uuid(7))
+
+  tournamentId String
+  tournament   SportsTournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+
+  categoryId String?
+  category   SportsCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  matchId String?
+  match   SportsMatch? @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  personId String
+  person   People @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  role   SportsOfficialRole
+  active Boolean            @default(true)
+
+  assignedAt   DateTime  @default(now())
+  assignedById String
+  revokedAt    DateTime?
+  revokedById  String?
+
+  revision  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tournamentId, personId, role])
+  @@index([personId, active])
+  @@index([categoryId, role])
+  @@index([matchId, role])
+  @@map("sports_official_assignments")
+}
+
+model SportsMatchAction {
+  id String @id @default(uuid(7))
+
+  matchId String
+  match   SportsMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  clientId     String                @unique
+  payloadHash  String
+  baseRevision Int
+  sequence     Int
+  type         SportsMatchActionType
+  payload      Json
+  reviewStatus SportsReviewStatus    @default(PENDING)
+
+  scorerRosterEntryId String?
+  scorerRosterEntry   SportsMatchRosterEntry? @relation("SportsMatchActionScorer", fields: [scorerRosterEntryId], references: [id], onDelete: SetNull)
+
+  actorPersonId String?
+  actorPerson   People? @relation(fields: [actorPersonId], references: [id], onDelete: SetNull)
+  actorUserId   String?
+  actorRole     String?
+
+  authoredAt  DateTime
+  submittedAt DateTime @default(now())
+  offline     Boolean  @default(false)
+
+  reviewedAt    DateTime?
+  reviewedById  String?
+  reviewMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matchId, sequence])
+  @@index([matchId, reviewStatus, sequence])
+  @@index([actorPersonId])
+  @@index([authoredAt])
+  @@map("sports_match_actions")
+}
+
+model SportsStanding {
+  id String @id @default(uuid(7))
+
+  stageId String
+  stage   SportsStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  registrationId String
+  registration   SportsRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  played       Int   @default(0)
+  wins         Int   @default(0)
+  draws        Int   @default(0)
+  losses       Int   @default(0)
+  scoreFor     Float @default(0)
+  scoreAgainst Float @default(0)
+  points       Float @default(0)
+  rank         Int?
+  tiebreakData Json  @default("{}")
+  revision     Int   @default(1)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([stageId, registrationId])
+  @@index([stageId, rank])
+  @@map("sports_standings")
+}
+
+model SportsCategoryPlacement {
+  id String @id @default(uuid(7))
+
+  categoryId String
+  category   SportsCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  registrationId String
+  registration   SportsRegistration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  sourceMatchId String?
+  sourceMatch   SportsMatch? @relation(fields: [sourceMatchId], references: [id], onDelete: SetNull)
+
+  placement     Int
+  pointsAwarded Int?
+  confirmedAt   DateTime?
+  confirmedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([categoryId, registrationId])
+  @@index([categoryId, placement])
+  @@index([sourceMatchId])
+  @@map("sports_category_placements")
+}
+
+model SportsTournamentScoreEntry {
+  id String @id @default(uuid(7))
+
+  tournamentId String
+  tournament   SportsTournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  categoryId String?
+  category   SportsCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  teamId String
+  team   SportsTeam @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  sourceMatchId String?
+  sourceMatch   SportsMatch? @relation(fields: [sourceMatchId], references: [id], onDelete: SetNull)
+
+  source SportsScoreEntrySource
+  points Int
+  reason String
+
+  revision    Int       @default(1)
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+  deletedAt   DateTime?
+  deletedById String?
+
+  @@index([tournamentId, teamId, deletedAt])
+  @@index([categoryId])
+  @@index([sourceMatchId])
+  @@map("sports_tournament_score_entries")
+}
+
+model SportsPlayerApplication {
+  id String @id @default(uuid(7))
+
+  tournamentId String
+  tournament   SportsTournament @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+
+  applicantPersonId String
+  applicantPerson   People @relation(fields: [applicantPersonId], references: [id], onDelete: Restrict)
+
+  requestedTeamId String?
+  requestedTeam   SportsTeam? @relation(fields: [requestedTeamId], references: [id], onDelete: Restrict)
+
+  status                        SportsApplicationStatus @default(PENDING)
+  noticeAcceptedAt              DateTime
+  imageLicenseAgreementAccepted Boolean                 @default(false)
+  pendingKey                    String?                 @unique
+  paymentTier                   String?
+
+  categoryChoices SportsPlayerApplicationCategory[]
+
+  reviewedAt    DateTime?
+  reviewedById  String?
+  reviewMessage String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([tournamentId, status])
+  @@index([applicantPersonId, status])
+  @@index([requestedTeamId])
+  @@index([deletedAt])
+  @@map("sports_player_applications")
+}
+
+model SportsPlayerApplicationCategory {
+  applicationId String
+  application   SportsPlayerApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  categoryId String
+  category   SportsCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@id([applicationId, categoryId])
+  @@index([categoryId])
+  @@map("sports_player_application_categories")
+}

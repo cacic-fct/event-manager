@@ -1,10 +1,10 @@
 <mat-toolbar>
-  <span>{{ isPreview() ? 'Pré-Visualização' : 'Grandes eventos' }}</span>
+  <h1 class="global-toolbar-title">{{ isPreview() ? 'Pré-visualização' : 'Grandes eventos' }}</h1>
 </mat-toolbar>
 
 <main class="major-event-page">
   @let state = pageState(); @if (state.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando grandes eventos"></mat-progress-bar>
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">hourglass_top</mat-icon>
     <p>Carregando eventos...</p>
@@ -26,7 +26,8 @@
   </section>
   }
   <section class="event-grid" aria-label="Grandes eventos">
-    @for (majorEvent of majorEvents(); track majorEvent.id) { @let subscription = subscriptionFor(majorEvent.id);
+    @for (majorEvent of majorEvents(); track majorEvent.id) { @let subscription = subscriptionFor(majorEvent.id); @let subscriptionRoute =
+    subscriptionRouteFor(majorEvent);
     <mat-card appearance="outlined" class="event-card">
       <mat-card-header>
         <div mat-card-avatar class="emoji-frame">
@@ -38,7 +39,7 @@
 
       <mat-card-content>
         @if (majorEvent.description) {
-        <p class="description">{{ majorEvent.description }}</p>
+        <lib-markdown class="description" [content]="majorEvent.description" />
         } @if (majorEvent.subscriptionStartDate || majorEvent.subscriptionEndDate) {
         <p class="subscription-window">
           Inscrições: @if (majorEvent.subscriptionStartDate) { {{ majorEvent.subscriptionStartDate | date: 'dd/MM/yyyy
@@ -61,6 +62,7 @@
           } @if (subscription) {
           <mat-chip>
             <mat-icon matChipAvatar>assignment_turned_in</mat-icon>
+            @if (majorEvent.sportsTournament && majorEvent.hasEvents !== false) { Atividades: }
             {{ statusLabel(subscription.subscriptionStatus) }}
           </mat-chip>
           }
@@ -69,44 +71,45 @@
 
       @if (!isPreview()) {
       <mat-card-actions align="end">
-        @if (subscription?.subscriptionStatus === 'CONFIRMED') {
+        @if (majorEvent.sportsTournament) {
+        <a mat-stroked-button [routerLink]="['/tournament', majorEvent.sportsTournament.id]">
+          <mat-icon>sports</mat-icon>
+          Ver torneio
+        </a>
+        } @if (subscription && canEditSubscription(majorEvent, subscription)) {
+        <a
+          mat-stroked-button
+          [routerLink]="subscriptionRoute">
+          <mat-icon>edit</mat-icon>
+          {{ subscriptionActionLabel(majorEvent, 'edit') }}
+        </a>
+        } @else if (subscription?.subscriptionStatus === 'CONFIRMED') {
         <button mat-flat-button type="button" disabled>
           <mat-icon>check</mat-icon>
           Inscrito
         </button>
-        } @else if (subscription) { @if (canEditSubscription(subscription)) {
-        <a
-          mat-stroked-button
-          [routerLink]="[
-            '/major-event',
-            majorEvent.id,
-            majorEvent.rankedSubscriptionEnabled ? 'ranked-subscription' : 'subscription'
-          ]">
-          <mat-icon>edit</mat-icon>
-          Editar inscrição
-        </a>
-        } @if (canUploadReceipt(subscription)) {
+        } @else if (subscription) { @if (canUploadReceipt(subscription)) {
         <a mat-flat-button [routerLink]="['/major-event', majorEvent.id, 'payment']">
           <mat-icon>cloud_upload</mat-icon>
           Enviar comprovante
         </a>
-        } } @else if (!isAuthenticated()) {
+        } } @else if (!isAuthenticated() && subscriptionRoute) {
         <button mat-flat-button type="button" (click)="login()">
           <mat-icon>login</mat-icon>
-          Entrar para inscrever-se
+          {{ subscriptionActionLabel(majorEvent, 'login') }}
         </button>
-        } @else {
+        } @else if (subscriptionRoute) {
         <a
           mat-flat-button
-          [routerLink]="[
-            '/major-event',
-            majorEvent.id,
-            majorEvent.rankedSubscriptionEnabled ? 'ranked-subscription' : 'subscription'
-          ]"
-          [disabled]="!isSubscriptionOpen(majorEvent)"
-          [attr.aria-disabled]="!isSubscriptionOpen(majorEvent)">
+          [routerLink]="subscriptionRoute"
+          [disabled]="!isSubscriptionRouteOpen(majorEvent)"
+          [attr.aria-disabled]="!isSubscriptionRouteOpen(majorEvent)">
           <mat-icon>event_available</mat-icon>
-          @if (isSubscriptionOpen(majorEvent)) { Inscrever-se } @else { Inscrições encerradas }
+          @if (isSubscriptionRouteOpen(majorEvent)) {
+          {{ subscriptionActionLabel(majorEvent, 'create') }}
+          } @else {
+          {{ subscriptionActionLabel(majorEvent, 'closed') }}
+          }
         </a>
         } @if (majorEvent.buttonLink) {
         <a mat-button [href]="majorEvent.buttonLink" target="_blank" rel="noopener">

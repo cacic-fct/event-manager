@@ -1,0 +1,229 @@
+<div class="review-columns">
+  <section class="panel panel-stack">
+    <div>
+      <h3>Autoinscrições</h3>
+      <p>A aprovação cria o vínculo com a equipe; quando houver cobrança, a participação fica aguardando pagamento.</p>
+    </div>
+    @for (application of workspace.applications(); track application.id) {
+      <article class="review-item">
+        <div class="review-heading">
+          <div>
+            <strong>{{ application.applicant.name }}</strong
+            ><span>{{ application.requestedTeam?.name ?? 'Sem equipe' }}</span>
+          </div>
+          <span class="state-label">{{ workspace.statusLabel(application.status) }}</span>
+        </div>
+        <div class="application-interests">
+          <span>{{ application.createdAt | date: 'short' }}</span>
+          @for (category of application.categories; track category.id) {
+          <span>{{ categoryName(category.id) }}{{ category.division ? ' · ' + category.division : '' }}</span>
+          } @empty {
+          <span>Sem modalidade</span>
+          }
+        </div>
+        @if (application.paymentStatus) {
+          <small>Pagamento: {{ workspace.statusLabel(application.paymentStatus) }}</small>
+        }
+        <div class="application-review-details">
+          @if (application.paymentTier) {
+            <small>Faixa escolhida: {{ application.paymentTier }}</small>
+          }
+          <small>Aviso de escalação aceito em {{ application.noticeAcceptedAt | date: 'short' }}</small>
+          @if (workspace.tournamentRead()?.tournament?.majorEvent?.requiresImageLicenseAgreement) {
+            <small>
+              Licença de imagem: {{ application.imageLicenseAgreementAccepted ? 'aceita' : 'não aceita' }}
+            </small>
+          }
+        </div>
+        <div class="review-actions">
+          <button
+            mat-button
+            type="button"
+            [disabled]="workspace.loading()"
+            (click)="workspace.editApplication(application)">
+            Corrigir dados
+          </button>
+          <button
+            mat-button
+            type="button"
+            [disabled]="workspace.loading()"
+            (click)="workspace.reviewApplication(application, 'REJECTED')">
+            Negar
+          </button>
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="workspace.loading()"
+            (click)="workspace.reviewApplication(application, 'CHANGES_REQUESTED')">
+            Pedir ajuste
+          </button>
+          <button
+            mat-flat-button
+            type="button"
+            [disabled]="workspace.loading()"
+            (click)="workspace.reviewApplication(application, 'APPROVED')">
+            Aprovar
+          </button>
+        </div>
+      </article>
+    } @empty {
+      <div class="empty-state">
+        <mat-icon>task_alt</mat-icon><strong>Fila em dia</strong><span>Nenhuma autoinscrição aguarda análise.</span>
+      </div>
+    }
+  </section>
+
+  <section class="panel panel-stack">
+    <div>
+      <h3>Alterações de equipes</h3>
+      <p>Deltas concorrentes permanecem explícitos; conflitos nunca são aprovados silenciosamente.</p>
+    </div>
+    @if (workspace.teamRead(); as read) {
+      @for (
+        request of pendingTeamChangeRequests(read.changeRequests);
+        track request.id
+      ) {
+        <article class="review-item">
+          <div class="review-heading">
+            <strong>{{ changeTypeLabel(request.type) }}</strong
+            ><span class="state-label">{{ workspace.statusLabel(request.status) }}</span>
+          </div>
+          @if (request.pendingLogoUrl; as pendingLogoUrl) {
+            <div class="team-change-details">
+              <div class="team-change-logo-preview">
+                <lib-sports-team-logo [logoUrl]="pendingLogoUrl" [size]="72" />
+                <div>
+                  <strong>Prévia do novo escudo</strong>
+                  <small>Imagem recebida nesta solicitação.</small>
+                </div>
+              </div>
+              <div class="team-change-raw">
+                <span class="team-change-raw-label">Delta bruto</span>
+                <pre>{{ request.deltaJson }}</pre>
+              </div>
+            </div>
+          } @else {
+            <pre>{{ request.deltaJson }}</pre>
+          }
+          @if (request.identityClaims.length) {
+            <section class="identity-claim-list" aria-label="Identificações informadas pelo representante">
+              <strong>Identificações protegidas</strong>
+              @for (claim of request.identityClaims; track claim.id) {
+                <div class="identity-claim-row">
+                  <div>
+                    <span>{{ identityTypeLabel(claim.type) }}</span>
+                    <b>{{ claim.displayHint }}</b>
+                    @if (claim.resolvedPerson; as person) {
+                      <small>Vinculada a {{ person.name }}</small>
+                    }
+                  </div>
+                  <span class="state-label">{{ identityStatusLabel(claim.status) }}</span>
+                </div>
+              }
+              <small>O valor completo permanece protegido; a resolução ocorre no servidor durante a aprovação.</small>
+            </section>
+          }
+          <div class="review-actions">
+            <button
+              mat-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.reviewTeamChange(request, 'REJECTED')">
+              Negar
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.reviewTeamChange(request, 'CHANGES_REQUESTED')">
+              Pedir ajuste
+            </button>
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="workspace.loading() || request.status === 'CONFLICT'"
+              (click)="workspace.reviewTeamChange(request, 'APPROVED')">
+              Aprovar delta
+            </button>
+          </div>
+        </article>
+      } @empty {
+        <p class="empty-copy">Selecione uma equipe na área Equipes para revisar suas solicitações.</p>
+      }
+    } @else {
+      <p class="empty-copy">Selecione uma equipe na área Equipes para revisar suas solicitações.</p>
+    }
+  </section>
+
+  <section class="panel panel-stack span-all">
+    <div>
+      <h3>Ações de partida</h3>
+      <p>A fila reúne ações pendentes de todas as partidas autorizadas; negar remove a projeção pública.</p>
+    </div>
+    <div class="action-grid">
+      @for (item of workspace.pendingMatchActions(); track item.action.id) {
+        <article class="review-item">
+          <div class="review-heading">
+            <div>
+              <strong>{{ actionTypeLabel(item.action.type) }}</strong>
+              <span>{{ item.categoryName }} · {{ item.match.event?.name ?? 'Partida' }}</span>
+            </div>
+            <span class="state-label">{{ workspace.statusLabel(item.action.reviewStatus) }}</span>
+          </div>
+          <p>
+            {{ item.homeTeamName ?? 'A definir' }} × {{ item.awayTeamName ?? 'A definir' }} ·
+            {{ item.match.event?.startDate | date: 'short' }}
+          </p>
+          <small
+            >{{ item.action.authoredAt | date: 'short' }}{{ item.action.offline ? ' · enviado off-line' : '' }}</small
+          >
+          <pre>{{ item.action.payloadJson }}</pre>
+          <div class="review-actions">
+            <button
+              mat-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.openMatchFromReview(item)">
+              Abrir partida
+            </button>
+            <button
+              mat-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.reviewAction(item.action.id, 'REJECTED')">
+              Negar
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.reviewAction(item.action.id, 'CHANGES_REQUESTED')">
+              Pedir ajuste
+            </button>
+            @if (workspace.supportsActionCorrection(item)) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="workspace.loading()"
+                (click)="workspace.correctAction(item)">
+                Corrigir e aprovar
+              </button>
+            }
+            <button
+              mat-flat-button
+              type="button"
+              [disabled]="workspace.loading()"
+              (click)="workspace.reviewAction(item.action.id, 'APPROVED')">
+              Aprovar
+            </button>
+          </div>
+        </article>
+      } @empty {
+        <div class="empty-state">
+          <mat-icon>task_alt</mat-icon><strong>Nenhuma ação pendente</strong
+          ><span>Todas as ações de partida autorizadas foram revisadas.</span>
+        </div>
+      }
+    </div>
+  </section>
+</div>

@@ -20,6 +20,9 @@ describe('MajorEventsService', () => {
   let router: {
     navigate: ReturnType<typeof vi.fn>;
   };
+  let dialog: {
+    open: ReturnType<typeof vi.fn>;
+  };
   let api: {
     createMajorEvent: ReturnType<typeof vi.fn>;
     getMajorEvent: ReturnType<typeof vi.fn>;
@@ -55,6 +58,9 @@ describe('MajorEventsService', () => {
     router = {
       navigate: vi.fn(),
     };
+    dialog = {
+      open: vi.fn(() => ({ afterClosed: () => of(undefined) })),
+    };
 
     await TestBed.configureTestingModule({
       providers: [
@@ -62,7 +68,7 @@ describe('MajorEventsService', () => {
         { provide: MajorEventApiService, useValue: api },
         { provide: EventApiService, useValue: eventApi },
         { provide: PublicationApiService, useValue: publicationApi },
-        { provide: MatDialog, useValue: { open: vi.fn() } },
+        { provide: MatDialog, useValue: dialog },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         { provide: Router, useValue: router },
         { provide: PermissionsService, useValue: { hasAll: vi.fn(() => true) } },
@@ -111,9 +117,9 @@ describe('MajorEventsService', () => {
 
   it('posts tiered participant prices', async () => {
     service.majorEventForm.controls.priceType.setValue('TIERED');
-    service.priceTiers.at(0).setValue({ name: 'Aluno', value: '40' });
+    service.priceTiers.at(0).patchValue({ name: 'Aluno', value: '40' });
     service.addPriceTier();
-    service.priceTiers.at(1).setValue({ name: 'Professor', value: '60.50' });
+    service.priceTiers.at(1).patchValue({ name: 'Professor', value: '60.50' });
 
     await service.saveMajorEvent();
 
@@ -123,6 +129,22 @@ describe('MajorEventsService', () => {
         { name: 'Aluno', value: 4000 },
         { name: 'Professor', value: 6050 },
       ],
+    });
+  });
+
+  it('persists sports registration only for a price tier on a linked tournament', async () => {
+    const majorEvent = createAdminMajorEventFromInput({ id: 'major-event-1' });
+    majorEvent.sportsTournament = { id: 'tournament-1' };
+    service.selectedMajorEvent.set(majorEvent);
+    service.majorEventForm.controls.id.setValue(majorEvent.id);
+    service.priceTiers.at(0).controls.value.setValue('70');
+    service.priceTiers.at(0).controls.includesSportsRegistration.setValue(true);
+
+    await service.saveMajorEvent();
+
+    expect(lastPayload?.price).toEqual({
+      type: 'SINGLE',
+      tiers: [{ name: 'Preço único', value: 7000, includesSportsRegistration: true }],
     });
   });
 
@@ -178,6 +200,26 @@ describe('MajorEventsService', () => {
     expect(service.majorEventForm.controls.id.value).toBe('major-event-1');
   });
 
+  it('explains that sports tournaments use their dedicated clone workflow', async () => {
+    await service.cloneMajorEvent(createAdminMajorEventFromInput({ id: 'major-event-1', name: 'Jogos CACiC' }));
+
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          parts: expect.arrayContaining([
+            expect.objectContaining({
+              key: 'sportsTournament',
+              label: 'Torneio esportivo',
+              disabled: true,
+              disabledReason: expect.stringContaining('"Duplicar torneio" na gestão esportiva'),
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
   it('loads the stored single price into the edit form', async () => {
     api.getMajorEvent.mockReturnValue(
       of(
@@ -200,7 +242,11 @@ describe('MajorEventsService', () => {
 
     expect(service.majorEventForm.controls.priceType.value).toBe('SINGLE');
     expect(service.priceTiers.length).toBe(1);
-    expect(service.priceTiers.at(0).getRawValue()).toEqual({ name: 'Preço único', value: '30.00' });
+    expect(service.priceTiers.at(0).getRawValue()).toEqual({
+      name: 'Preço único',
+      value: '30.00',
+      includesSportsRegistration: false,
+    });
   });
 
   it('loads the stored tiered prices into the edit form', async () => {
@@ -228,8 +274,8 @@ describe('MajorEventsService', () => {
 
     expect(service.majorEventForm.controls.priceType.value).toBe('TIERED');
     expect(service.priceTiers.getRawValue()).toEqual([
-      { name: 'Aluno', value: '30.00' },
-      { name: 'Professor', value: '60.50' },
+      { name: 'Aluno', value: '30.00', includesSportsRegistration: false },
+      { name: 'Professor', value: '60.50', includesSportsRegistration: false },
     ]);
   });
 });

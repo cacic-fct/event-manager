@@ -1,53 +1,59 @@
 import { ForbiddenException } from '@nestjs/common';
-import { CertificateScope, EventManagerPermissionGrantScope } from '@prisma/client';
+import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
 import { EVENT_MANAGER_PERMISSION_CATALOG, EventManagerKeycloakRole, Permission } from '@cacic-fct/shared-permissions';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from './authorization-policy.service';
+import { findActiveRolePermissionScopes } from './effective-role-scopes';
+
+jest.mock('./effective-role-scopes', () => ({ findActiveRolePermissionScopes: jest.fn() }));
+const activeScopes = jest.mocked(findActiveRolePermissionScopes);
 
 describe('AuthorizationPolicyService', () => {
   let prisma: ReturnType<typeof createPrisma>;
   let service: AuthorizationPolicyService;
 
   beforeEach(() => {
+    activeScopes.mockReset();
+    activeScopes.mockResolvedValue([]);
     prisma = createPrisma();
     service = new AuthorizationPolicyService(prisma as never);
   });
 
   it('requires the Event Manager access Keycloak role before DB grants are considered', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
-      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionGrantScope.GLOBAL }),
+    activeScopes.mockResolvedValue([
+      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),
     ]);
 
     await expect(service.assertPermissions(user([]), [Permission.Event.Read])).rejects.toBeInstanceOf(
       ForbiddenException,
     );
-    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+    expect(activeScopes).not.toHaveBeenCalled();
   });
 
   it('lets the Event Manager super admin role bypass DB grants', async () => {
     await expect(
       service.assertPermissions(user([EventManagerKeycloakRole.SuperAdmin]), [Permission.Event.Delete]),
     ).resolves.toBeUndefined();
-    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+    expect(activeScopes).not.toHaveBeenCalled();
   });
 
   it('returns the full DB permission catalog for super admins without querying grants', async () => {
     await expect(service.grantedPermissionSet(user([EventManagerKeycloakRole.SuperAdmin]))).resolves.toEqual(
       new Set(EVENT_MANAGER_PERMISSION_CATALOG),
     );
-    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+    expect(activeScopes).not.toHaveBeenCalled();
   });
 
   it('evaluates every catalog permission as granted for super admins without querying grants', async () => {
     await expect(
       service.evaluatePermissions(user([EventManagerKeycloakRole.SuperAdmin]), EVENT_MANAGER_PERMISSION_CATALOG),
     ).resolves.toEqual(EVENT_MANAGER_PERMISSION_CATALOG);
-    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+    expect(activeScopes).not.toHaveBeenCalled();
   });
 
   it('authorizes global DB grants', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
-      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionGrantScope.GLOBAL }),
+    activeScopes.mockResolvedValue([
+      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),
     ]);
 
     await expect(
@@ -59,7 +65,7 @@ describe('AuthorizationPolicyService', () => {
     await expect(
       service.assertPermissions(user([EventManagerKeycloakRole.Access]), ['event#reed']),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+    expect(activeScopes).not.toHaveBeenCalled();
   });
 
   it('fails closed when guard context is built with invalid permission names', () => {
@@ -67,26 +73,19 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('only considers grants inside their validity window', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
-      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionGrantScope.GLOBAL }),
+    activeScopes.mockResolvedValue([
+      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.GLOBAL }),
     ]);
 
     await service.evaluatePermissions(user([EventManagerKeycloakRole.Access]), [Permission.Event.Read]);
 
-    expect(prisma.eventManagerPermissionGrant.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({
-          OR: [{ validFrom: null }, { validFrom: { lte: expect.any(Date) } }],
-          AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: expect.any(Date) } }] }],
-        }),
-      }),
-    );
+    expect(activeScopes).toHaveBeenCalledWith(prisma, 'user-1', [Permission.Event.Read]);
   });
 
   it('only returns global grants from global permission evaluation', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
-      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionGrantScope.EVENT, eventId: 'event-1' }),
-      grant({ permission: Permission.Receipt.Read, scope: EventManagerPermissionGrantScope.GLOBAL }),
+    activeScopes.mockResolvedValue([
+      grant({ permission: Permission.Event.Read, scope: EventManagerPermissionScope.EVENT, eventId: 'event-1' }),
+      grant({ permission: Permission.Receipt.Read, scope: EventManagerPermissionScope.GLOBAL }),
     ]);
 
     await expect(
@@ -98,15 +97,15 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('does not surface scoped grants for global-only permissions', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.PermissionGrant.Update,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
       grant({
         permission: Permission.PermissionGrant.Read,
-        scope: EventManagerPermissionGrantScope.GLOBAL,
+        scope: EventManagerPermissionScope.GLOBAL,
       }),
     ]);
 
@@ -119,24 +118,24 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('builds the effective permission set from active DB grants only', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.Event.Read,
-        scope: EventManagerPermissionGrantScope.EVENT,
+        scope: EventManagerPermissionScope.EVENT,
         eventId: 'event-1',
       }),
       grant({
         permission: Permission.PermissionGrant.Update,
-        scope: EventManagerPermissionGrantScope.EVENT,
+        scope: EventManagerPermissionScope.EVENT,
         eventId: 'event-1',
       }),
       grant({
         permission: Permission.PermissionGrant.Read,
-        scope: EventManagerPermissionGrantScope.GLOBAL,
+        scope: EventManagerPermissionScope.GLOBAL,
       }),
       {
         permission: 'unknown#permission',
-        scope: EventManagerPermissionGrantScope.GLOBAL,
+        scope: EventManagerPermissionScope.GLOBAL,
         eventId: null,
         majorEventId: null,
         eventGroupId: null,
@@ -149,10 +148,10 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('matches major-event scoped grants through an event context', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.Event.Update,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
     ]);
@@ -168,11 +167,31 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('does not authorize a tournament from one of its child event groups', async () => {
+    activeScopes.mockResolvedValue([
+      grant({
+        permission: Permission.SportsTournament.Read,
+        scope: EventManagerPermissionScope.EVENT_GROUP,
+        eventGroupId: 'group-1',
+      }),
+    ]);
+    prisma.sportsTournament.findUnique.mockResolvedValue({
+      majorEventId: 'major-1',
+      categories: [{ eventGroupId: 'group-1', matches: [] }],
+    });
+
+    await expect(
+      service.assertPermissions(user([EventManagerKeycloakRole.Access]), [Permission.SportsTournament.Read], {
+        sportsTournamentId: 'tournament-1',
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('denies scoped grants when the operation has no matching target', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.Event.Update,
-        scope: EventManagerPermissionGrantScope.EVENT,
+        scope: EventManagerPermissionScope.EVENT,
         eventId: 'event-2',
       }),
     ]);
@@ -189,10 +208,10 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('allows explicitly scoped collection reads without a concrete target', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.MajorEvent.Read,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
     ]);
@@ -205,20 +224,20 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('returns scoped major-event ids for resolver filtering', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.MajorEvent.Read,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
       grant({
         permission: Permission.MajorEvent.Read,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-2',
       }),
       grant({
         permission: Permission.MajorEvent.Read,
-        scope: EventManagerPermissionGrantScope.EVENT,
+        scope: EventManagerPermissionScope.EVENT,
         eventId: 'event-1',
       }),
     ]);
@@ -229,20 +248,20 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('returns scoped event targets for event resolver filtering', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.Event.Read,
-        scope: EventManagerPermissionGrantScope.EVENT,
+        scope: EventManagerPermissionScope.EVENT,
         eventId: 'event-1',
       }),
       grant({
         permission: Permission.Event.Read,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
       grant({
         permission: Permission.Event.Read,
-        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        scope: EventManagerPermissionScope.EVENT_GROUP,
         eventGroupId: 'group-1',
       }),
     ]);
@@ -257,15 +276,15 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('returns scoped event group ids for resolver filtering', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.EventGroup.Read,
-        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        scope: EventManagerPermissionScope.EVENT_GROUP,
         eventGroupId: 'group-1',
       }),
       grant({
         permission: Permission.EventGroup.Read,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
     ]);
@@ -275,21 +294,44 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toEqual(new Set(['group-1']));
   });
 
+  it('returns empty, unrestricted, and globally granted event-group scopes', async () => {
+    await expect(service.accessibleEventGroupIds(undefined, Permission.EventGroup.Read)).resolves.toEqual(new Set());
+    await expect(
+      service.accessibleEventGroupIds(user([EventManagerKeycloakRole.SuperAdmin]), Permission.EventGroup.Read),
+    ).resolves.toBeNull();
+
+    activeScopes.mockResolvedValue([
+      grant({ permission: Permission.EventGroup.Read, scope: EventManagerPermissionScope.GLOBAL }),
+    ]);
+    await expect(
+      service.accessibleEventGroupIds(user([EventManagerKeycloakRole.Access]), Permission.EventGroup.Read),
+    ).resolves.toBeNull();
+  });
+
+  it('checks frozen-resource overrides through normal permission evaluation', async () => {
+    await expect(service.canOverrideFrozenResource(undefined, Permission.Event.Update)).resolves.toBe(false);
+    await expect(
+      service.canOverrideFrozenResource(user([EventManagerKeycloakRole.SuperAdmin]), Permission.Event.Update, {
+        eventId: 'event-1',
+      }),
+    ).resolves.toBe(true);
+  });
+
   it('resolves generic subscription ids when subscription permissions are required with related resources', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.Subscription.Update,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
       grant({
         permission: Permission.Event.Read,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
       grant({
         permission: Permission.MajorEvent.Read,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
     ]);
@@ -318,10 +360,10 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('matches event-group scoped grants through an event-group subscription', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.Subscription.Read,
-        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        scope: EventManagerPermissionScope.EVENT_GROUP,
         eventGroupId: 'group-1',
       }),
     ]);
@@ -337,10 +379,10 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('does not authorize primary resource mutations from nested input target ids', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.Event.Update,
-        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        scope: EventManagerPermissionScope.EVENT_GROUP,
         eventGroupId: 'allowed-group',
       }),
     ]);
@@ -384,11 +426,95 @@ describe('AuthorizationPolicyService', () => {
     expect(context.eventId).toBe('event-1');
   });
 
+  it('collects explicit nested resource identifiers without overwriting earlier targets', () => {
+    const context = service.buildResourceContext(
+      {
+        eventId: 'event-1',
+        nested: {
+          eventId: 'event-ignored',
+          majorEventId: 'major-1',
+          eventGroupId: 'group-1',
+          folderId: 'folder-1',
+          subscriptionId: 'subscription-1',
+          receiptId: 'receipt-1',
+          certificateConfigId: 'config-1',
+          certificateId: 'certificate-1',
+          eventFormId: 'form-1',
+          eventFormLinkId: 'link-1',
+          eventFormResponseId: 'response-1',
+          receiptValidationActionId: 'validation-1',
+          sportsTournamentId: 'tournament-1',
+          sportsCategoryId: 'category-1',
+          sportsTeamId: 'team-1',
+          sportsRegistrationId: 'registration-1',
+          sportsMatchId: 'match-1',
+          sportsOfficialAssignmentId: 'official-1',
+          sportsTeamChangeRequestId: 'change-1',
+          sportsTeamRepresentativeId: 'representative-1',
+          sportsPlayerApplicationId: 'application-1',
+          sportsMatchActionId: 'action-1',
+          sportsMatchRosterId: 'roster-1',
+        },
+      },
+      [Permission.Event.Read],
+    );
+
+    expect(context).toEqual(
+      expect.objectContaining({
+        eventId: 'event-1',
+        majorEventId: 'major-1',
+        eventGroupId: 'group-1',
+        folderId: 'folder-1',
+        subscriptionId: 'subscription-1',
+        receiptId: 'receipt-1',
+        certificateConfigId: 'config-1',
+        certificateId: 'certificate-1',
+        eventFormId: 'form-1',
+        eventFormLinkId: 'link-1',
+        eventFormResponseId: 'response-1',
+        receiptValidationActionId: 'validation-1',
+        sportsTournamentId: 'tournament-1',
+        sportsCategoryId: 'category-1',
+        sportsTeamId: 'team-1',
+        sportsRegistrationId: 'registration-1',
+        sportsMatchId: 'match-1',
+        sportsOfficialAssignmentId: 'official-1',
+        sportsTeamChangeRequestId: 'change-1',
+        sportsTeamRepresentativeId: 'representative-1',
+        sportsPlayerApplicationId: 'application-1',
+        sportsMatchActionId: 'action-1',
+        sportsMatchRosterId: 'roster-1',
+      }),
+    );
+  });
+
+  it.each([
+    [Permission.SportsTournament.Update, { tournamentId: 'tournament-1' }, 'sportsTournamentId', 'tournament-1'],
+    [Permission.SportsCategory.Update, { categoryId: 'category-1' }, 'sportsCategoryId', 'category-1'],
+    [Permission.SportsTeam.Update, { teamId: 'team-1' }, 'sportsTeamId', 'team-1'],
+    [
+      Permission.SportsRegistration.Update,
+      { registrationId: 'registration-1' },
+      'sportsRegistrationId',
+      'registration-1',
+    ],
+    [Permission.SportsMatch.Update, { matchId: 'match-1' }, 'sportsMatchId', 'match-1'],
+    [
+      Permission.SportsOfficial.Update,
+      { officialAssignmentId: 'official-1' },
+      'sportsOfficialAssignmentId',
+      'official-1',
+    ],
+  ] as const)('maps generic sports aliases for %s', (permission, args, key, expected) => {
+    const context = service.buildResourceContext(args, [permission]);
+    expect(context[key]).toBe(expected);
+  });
+
   it('resolves certificate target ids for scoped certificate config grants', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.CertificateConfig.Read,
-        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        scope: EventManagerPermissionScope.EVENT_GROUP,
         eventGroupId: 'group-1',
       }),
     ]);
@@ -407,10 +533,10 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('resolves certificate config ids for scoped certificate grants', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.Certificate.Issue,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'major-1',
       }),
     ]);
@@ -434,10 +560,10 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('resolves certificate ids for scoped certificate grants', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.Certificate.Read,
-        scope: EventManagerPermissionGrantScope.EVENT,
+        scope: EventManagerPermissionScope.EVENT,
         eventId: 'event-1',
       }),
     ]);
@@ -467,15 +593,15 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('resolves event-form ownership and linked targets for scoped form grants', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.EventForm.Results,
-        scope: EventManagerPermissionGrantScope.EVENT,
+        scope: EventManagerPermissionScope.EVENT,
         eventId: 'owner-event',
       }),
       grant({
         permission: Permission.EventForm.Results,
-        scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+        scope: EventManagerPermissionScope.MAJOR_EVENT,
         majorEventId: 'linked-major',
       }),
     ]);
@@ -516,10 +642,10 @@ describe('AuthorizationPolicyService', () => {
   });
 
   it('resolves form-link and form-response targets before matching scoped form grants', async () => {
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.EventForm.Update,
-        scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+        scope: EventManagerPermissionScope.EVENT_GROUP,
         eventGroupId: 'group-1',
       }),
     ]);
@@ -563,7 +689,7 @@ describe('AuthorizationPolicyService', () => {
       startDate: new Date(Date.now() - 60_000),
       endDate: new Date(Date.now() + 60_000),
       deletedAt: null,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       shouldCollectAttendance: true,
     });
 
@@ -579,7 +705,7 @@ describe('AuthorizationPolicyService', () => {
       startDate: new Date(Date.now() - 60_000),
       endDate: new Date(Date.now() + 60_000),
       deletedAt: null,
-      publiclyVisible: false,
+      isPubliclyListed: false,
       shouldCollectAttendance: true,
     });
 
@@ -596,7 +722,7 @@ describe('AuthorizationPolicyService', () => {
       startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
       endDate: new Date(Date.now() - 12 * 60 * 60 * 1000),
       deletedAt: null,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       shouldCollectAttendance: true,
     });
 
@@ -613,17 +739,17 @@ describe('AuthorizationPolicyService', () => {
         startDate: new Date(Date.now() - 60_000),
         endDate: new Date(Date.now() + 60_000),
         deletedAt: null,
-        publiclyVisible: false,
+        isPubliclyListed: false,
         shouldCollectAttendance: true,
       })
       .mockResolvedValueOnce({
         majorEventId: null,
         eventGroupId: null,
       });
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValue([
+    activeScopes.mockResolvedValue([
       grant({
         permission: Permission.EventAttendance.Collect,
-        scope: EventManagerPermissionGrantScope.EVENT,
+        scope: EventManagerPermissionScope.EVENT,
         eventId: 'event-1',
       }),
     ]);
@@ -636,13 +762,75 @@ describe('AuthorizationPolicyService', () => {
     ).resolves.toBeUndefined();
   });
 
+  it('allows an active sports official to collect attendance for the assigned match', async () => {
+    prisma.event.findUnique.mockResolvedValue({
+      startDate: new Date(Date.now() - 60_000),
+      endDate: new Date(Date.now() + 60_000),
+      deletedAt: null,
+      isPubliclyListed: false,
+      shouldCollectAttendance: true,
+      sportsMatch: {
+        id: 'match-1',
+        categoryId: 'category-1',
+        category: { tournamentId: 'tournament-1' },
+      },
+    });
+    prisma.sportsOfficialAssignment.findFirst.mockResolvedValue({ id: 'official-1' });
+
+    await expect(
+      service.assertAttendanceCollectorForEvent('event-1', 'person-1', { enforceCollectionWindow: true }),
+    ).resolves.toBeUndefined();
+    expect(prisma.sportsOfficialAssignment.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          personId: 'person-1',
+          tournamentId: 'tournament-1',
+          OR: [
+            { matchId: 'match-1' },
+            { matchId: null, categoryId: 'category-1' },
+            { matchId: null, categoryId: null },
+          ],
+        }),
+      }),
+    );
+  });
+
+  it.each([
+    [null, 'missing event'],
+    [
+      {
+        startDate: new Date(Date.now() - 60_000),
+        endDate: new Date(Date.now() + 60_000),
+        deletedAt: new Date(),
+        isPubliclyListed: true,
+        shouldCollectAttendance: true,
+      },
+      'deleted event',
+    ],
+    [
+      {
+        startDate: new Date(Date.now() - 60_000),
+        endDate: new Date(Date.now() + 60_000),
+        deletedAt: null,
+        isPubliclyListed: true,
+        shouldCollectAttendance: false,
+      },
+      'disabled collection',
+    ],
+  ])('rejects attendance collection for a %s', async (event) => {
+    prisma.event.findUnique.mockResolvedValue(event);
+    await expect(service.assertAttendanceCollectorForEvent('event-1', 'person-1')).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+  });
+
   it('allows super-admins to collect without an explicit collector row or DB grant', async () => {
     prisma.eventAttendanceCollector.findUnique.mockResolvedValue(null);
     prisma.event.findUnique.mockResolvedValue({
       startDate: new Date(Date.now() - 60_000),
       endDate: new Date(Date.now() + 60_000),
       deletedAt: null,
-      publiclyVisible: false,
+      isPubliclyListed: false,
       shouldCollectAttendance: true,
     });
 
@@ -652,7 +840,7 @@ describe('AuthorizationPolicyService', () => {
         user: user([EventManagerKeycloakRole.SuperAdmin]),
       }),
     ).resolves.toBeUndefined();
-    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+    expect(activeScopes).not.toHaveBeenCalled();
   });
 
   it('keeps lecturer subscriber-list access domain-derived', () => {
@@ -683,6 +871,9 @@ function createPrisma() {
     },
     event: {
       findUnique: jest.fn().mockResolvedValue(null),
+    },
+    eventGroup: {
+      findMany: jest.fn().mockResolvedValue([]),
     },
     eventSubscription: {
       findUnique: jest.fn().mockResolvedValue(null),
@@ -717,6 +908,12 @@ function createPrisma() {
     eventFormResponse: {
       findUnique: jest.fn().mockResolvedValue(null),
     },
+    sportsTournament: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
+    sportsOfficialAssignment: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
   };
 }
 
@@ -741,7 +938,7 @@ function user(roles: string[]): AuthenticatedUser {
 
 function grant(input: {
   permission: Permission;
-  scope: EventManagerPermissionGrantScope;
+  scope: EventManagerPermissionScope;
   eventId?: string | null;
   majorEventId?: string | null;
   eventGroupId?: string | null;

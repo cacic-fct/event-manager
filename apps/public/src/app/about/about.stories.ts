@@ -4,7 +4,7 @@ import { About } from './about';
 
 const meta: Meta<About> = {
   component: About,
-  title: 'Public/About/About',
+  title: 'CACiC Eventos/About/Overview',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -33,7 +33,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   }
 };
 
-export const ServiceWorkerReady: Story = {
+export const Playground: Story = {
   args: {},
   globals: { theme: 'light', network: 'online', serviceWorker: 'enabled' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
@@ -47,6 +47,6 @@ export const OfflineInstalled: Story = {
 
 export const NoServiceWorker: Story = {
   args: {},
-  globals: { theme: 'light', network: 'online', serviceWorker: 'disabled' },
+  globals: { theme: 'dark', network: 'online', serviceWorker: 'disabled', motion: 'reduced' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

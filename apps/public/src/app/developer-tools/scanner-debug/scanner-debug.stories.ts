@@ -6,7 +6,7 @@ import { ScannerDebug } from './scanner-debug';
 
 const meta: Meta<ScannerDebug> = {
   component: ScannerDebug,
-  title: 'Public/Development Tools/Scanner Debug/Scanner Debug',
+  title: 'CACiC Eventos/Developer Tools/Scanner Debug',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -43,4 +43,17 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const MobileScannerControls: Story = {
+  ...Playground,
+  parameters: {
+    ...Playground.parameters,
+    viewport: { defaultViewport: 'mobile' },
+  },
+};
+
+export const OfflineDarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', network: 'offline', motion: 'reduced' },
 };

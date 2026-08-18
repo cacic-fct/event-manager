@@ -25,7 +25,7 @@ export class PublicationPreviewContentService {
         where: { id: input.targetId, deletedAt: null },
         select: {
           id: true,
-          publiclyVisible: true,
+          isPubliclyListed: true,
           publicationState: true,
           publishedAt: true,
           updatedAt: true,
@@ -41,7 +41,7 @@ export class PublicationPreviewContentService {
       });
       if (
         event?.publicationState === PrismaPublicationState.PUBLISHED &&
-        event.publiclyVisible &&
+        event.isPubliclyListed &&
         (!event.majorEvent ||
           (!event.majorEvent.deletedAt &&
             event.majorEvent.publicationState === PrismaPublicationState.PUBLISHED &&
@@ -62,7 +62,7 @@ export class PublicationPreviewContentService {
           publishedAt: true,
           updatedAt: true,
           events: {
-            where: { deletedAt: null, publiclyVisible: true },
+            where: { deletedAt: null, isPubliclyListed: true },
             select: {
               publicationState: true,
               publishedAt: true,
@@ -158,7 +158,7 @@ export class PublicationPreviewContentService {
         throw new NotFoundException(`Major event ${preview.targetId} was not found.`);
       }
       const events = await this.prisma.event.findMany({
-        where: { majorEventId: preview.targetId, deletedAt: null, publiclyVisible: true },
+        where: { majorEventId: preview.targetId, deletedAt: null, isPubliclyListed: true },
         select: PUBLIC_EVENT_SELECT,
         orderBy: { startDate: 'asc' },
       });
@@ -182,7 +182,7 @@ export class PublicationPreviewContentService {
       throw new NotFoundException(`Event group ${preview.targetId} was not found.`);
     }
     const events = await this.prisma.event.findMany({
-      where: { eventGroupId: preview.targetId, deletedAt: null, publiclyVisible: true },
+      where: { eventGroupId: preview.targetId, deletedAt: null, isPubliclyListed: true },
       select: PUBLIC_EVENT_SELECT,
       orderBy: { startDate: 'asc' },
     });

@@ -3,6 +3,7 @@ import { MajorEventsPageComponent } from './major-events-page.component';
 import {
   defaultPageStoryArgs,
   exercisePageStory,
+  pageStoryArgTypes,
   withPageStoryProviders,
   type PageStoryArgs,
 } from '../stories/page-story-support';
@@ -12,18 +13,7 @@ const meta: Meta<PageStoryArgs> = {
   title: 'CACiC Eventos/Workspace/Tabs/Major Events/Workspace Major Events Tab',
   tags: ['autodocs'],
   args: defaultPageStoryArgs,
-  argTypes: {
-    mode: {
-      control: 'select',
-      options: ['populated', 'empty', 'readonly', 'loading', 'drafts'],
-    },
-    itemCount: { control: { type: 'range', min: 0, max: 8, step: 1 } },
-    selectedIndex: { control: { type: 'range', min: 0, max: 7, step: 1 } },
-    publicationState: {
-      control: 'select',
-      options: ['DRAFT', 'PUBLISHED', 'SCHEDULED', 'UNPUBLISHED'],
-    },
-  },
+  argTypes: pageStoryArgTypes,
   decorators: [withPageStoryProviders],
   parameters: {
     layout: 'fullscreen',
@@ -48,7 +38,35 @@ export const ScheduledPaymentEvent: Story = {
   play: async ({ canvasElement }) => exercisePageStory(canvasElement),
 };
 
+export const DenseMixedCatalog: Story = {
+  args: { itemCount: 30, requiresPayment: true, sportsEvery: 2 },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const FreeCatalog: Story = {
+  args: { itemCount: 12, requiresPayment: false, sportsEvery: 0 },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const Loading: Story = {
+  args: { mode: 'loading' },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const FrozenSportsTournament: Story = {
+  args: { frozenSelected: true, sportsEvery: 1, selectedIndex: 2 },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
+export const LongContentTablet: Story = {
+  args: { longContent: true, itemCount: 12 },
+  parameters: { viewport: { defaultViewport: 'tablet' } },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => exercisePageStory(canvasElement),
+};
+
 export const EmptyReadonly: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'readonly',
     itemCount: 0,

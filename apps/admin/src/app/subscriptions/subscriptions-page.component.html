@@ -4,10 +4,24 @@
     (selectedIndexChange)="onSelectedTabIndexChange($event)"
     animationDuration="160ms"
     mat-stretch-tabs="false">
-    <mat-tab label="Eventos">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <span class="workspace-tab-label"><mat-icon>event</mat-icon>Eventos</span>
+      </ng-template>
       <app-workspace-event-subscriptions-subtab />
     </mat-tab>
-    <mat-tab label="Grandes eventos">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <span class="workspace-tab-label">
+          <mat-icon>festival</mat-icon>
+          Grandes eventos
+          @if (selectedMajorEventPendingReceiptsCount()) {
+            <span class="workspace-tab-count" aria-label="Comprovantes pendentes">
+              {{ selectedMajorEventPendingReceiptsCount() }}
+            </span>
+          }
+        </span>
+      </ng-template>
       <app-workspace-major-event-subscriptions-subtab
         [pendingReceiptsCount]="selectedMajorEventPendingReceiptsCount()" />
     </mat-tab>

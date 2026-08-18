@@ -2,7 +2,7 @@
   <button matIconButton type="button" (click)="back()" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
-  <span>Confirmar presença</span>
+  <h1 class="global-toolbar-title">Confirmar presença</h1>
   <span class="toolbar-spacer"></span>
   <button
     matIconButton
@@ -16,7 +16,7 @@
 
 <main class="attendance-page">
   @let currentState = state(); @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando evento"></mat-progress-bar>
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">event_busy</mat-icon>
@@ -30,7 +30,7 @@
     </div>
     <div>
       <p>{{ event.startDate | date: 'dd/MM HH:mm' }}</p>
-      <h1>{{ event.name }}</h1>
+      <h2>{{ event.name }}</h2>
       @if (event.majorEvent) {
       <p>{{ event.majorEvent.name }}</p>
       }

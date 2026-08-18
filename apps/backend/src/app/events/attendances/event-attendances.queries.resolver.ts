@@ -202,6 +202,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       select: {
         id: true,
         name: true,
+        emoji: true,
         startDate: true,
       },
       orderBy: {
@@ -292,6 +293,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
           return {
             eventId: event.id,
             eventName: event.name,
+            eventEmoji: event.emoji,
             eventStartDate: event.startDate,
             attended: attendance != null,
             attendedAt: attendance?.attendedAt,

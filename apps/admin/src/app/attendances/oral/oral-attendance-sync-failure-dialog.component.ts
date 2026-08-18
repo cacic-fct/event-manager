@@ -23,8 +23,7 @@ export interface OralAttendanceSyncFailureDialogData {
         </p>
       </div>
       <p>
-        Tire uma captura desta mensagem e envie à equipe responsável pelo sistema para que o problema seja
-        investigado.
+        Tire uma captura desta mensagem e envie à equipe responsável pelo sistema para que o problema seja investigado.
       </p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">

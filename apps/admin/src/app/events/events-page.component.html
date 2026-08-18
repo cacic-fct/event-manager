@@ -25,8 +25,11 @@
               workspace.selectedEvent()?.id === eventItem.id && !workspace.selectedEventDraft()
             ">
             <span matListItemTitle class="list-title">
-              <app-twemoji [emoji]="eventItem.emoji" />
+              <lib-twemoji [emoji]="eventItem.emoji" />
               <span>{{ eventItem.name }}</span>
+              @if (eventItem.isSportsMatch) {
+                <mat-icon matTooltip="Partida de torneio esportivo" aria-label="Partida de torneio esportivo">sports</mat-icon>
+              }
             </span>
             <span matListItemLine>
               {{ eventItem.startDate | date: 'short' }} · {{ describeEventType(eventItem.type) }} ·
@@ -69,7 +72,7 @@
               (click)="workspace.selectEventDraft(eventItem, draft)"
               [class.selected-list-item]="workspace.selectedEventDraft()?.id === draft.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="eventItem.emoji" />
+                <lib-twemoji [emoji]="eventItem.emoji" />
                 <span>{{ draft.name }}</span>
               </span>
               <span matListItemLine>
@@ -246,7 +249,7 @@
 
             <mat-form-field>
               <mat-label>Emoji</mat-label>
-              <app-twemoji matPrefix [emoji]="workspace.eventForm.controls.emoji.value" />
+              <lib-twemoji matPrefix [emoji]="workspace.eventForm.controls.emoji.value" />
               <input matInput formControlName="emoji" maxlength="16" />
             </mat-form-field>
 
@@ -267,6 +270,16 @@
             <mat-form-field class="span-2">
               <mat-label>Descrição</mat-label>
               <textarea matInput rows="3" formControlName="description"></textarea>
+              <mat-hint>Este campo aceita Markdown, inclusive fórmulas matemáticas.</mat-hint>
+              <button
+                mat-icon-button
+                matSuffix
+                type="button"
+                aria-label="Pré-visualizar descrição"
+                matTooltip="Pré-visualizar descrição"
+                (click)="previewDescription()">
+                <mat-icon>preview</mat-icon>
+              </button>
             </mat-form-field>
           </div>
         </section>
@@ -309,7 +322,7 @@
                 (click)="workspace.assignMajorEventToEvent(majorEvent)">
                 <span class="entity-choice-chip__content">
                   <mat-icon>add_link</mat-icon>
-                  <app-twemoji [emoji]="majorEvent.emoji" />
+                  <lib-twemoji [emoji]="majorEvent.emoji" />
                   <span class="entity-choice-chip__name">{{ majorEvent.name }}</span>
                   <span class="entity-choice-chip__meta">{{ majorEvent.startDate | date: 'dd/MM/yyyy' }}</span>
                 </span>
@@ -329,7 +342,7 @@
             <h4>Grande evento selecionado</h4>
             <span class="selected-entity">
               @if (majorEventEmojiById(workspace.eventForm.controls.majorEventId.value); as majorEventEmoji) {
-                <app-twemoji [emoji]="majorEventEmoji" />
+                <lib-twemoji [emoji]="majorEventEmoji" />
               }
               {{ workspace.majorEventNameById(workspace.eventForm.controls.majorEventId.value) }}
             </span>
@@ -368,7 +381,7 @@
                   (click)="workspace.assignEventGroupToEvent(eventGroup)">
                   <span class="entity-choice-chip__content">
                     <mat-icon>add_link</mat-icon>
-                    <app-twemoji [emoji]="eventGroup.emoji" />
+                    <lib-twemoji [emoji]="eventGroup.emoji" />
                     <span class="entity-choice-chip__name">{{ eventGroup.name }}</span>
                     <span class="entity-choice-chip__meta">
                       {{ eventGroup.createdAt | date: 'dd/MM/yyyy HH:mm' }}
@@ -385,7 +398,7 @@
             <h4>Grupo selecionado</h4>
             <span class="selected-entity">
               @if (eventGroupEmojiById(workspace.eventForm.controls.eventGroupId.value); as eventGroupEmoji) {
-                <app-twemoji [emoji]="eventGroupEmoji" />
+                <lib-twemoji [emoji]="eventGroupEmoji" />
               }
               {{ workspace.eventGroupNameById(workspace.eventForm.controls.eventGroupId.value) }}
             </span>
@@ -447,6 +460,11 @@
               <mat-label>Longitude</mat-label>
               <input matInput formControlName="longitude" />
             </mat-form-field>
+
+            <button mat-stroked-button type="button" class="span-2" (click)="openLocationPicker()">
+              <mat-icon>map</mat-icon>
+              Selecionar no mapa
+            </button>
             @if (
               workspace.eventForm.hasError('latitudeRequireslongitude') ||
               workspace.eventForm.hasError('buttonTextRequiresbuttonLink')
@@ -508,7 +526,7 @@
             <mat-checkbox formControlName="shouldProvideSubscriberListToLecturer">
               Disponibilizar lista de inscritos aos ministrantes
             </mat-checkbox>
-            <mat-checkbox formControlName="publiclyVisible"> Visível para usuários </mat-checkbox>
+            <mat-checkbox formControlName="isPubliclyListed"> Listar no site público </mat-checkbox>
           </div>
 
           <div class="field-grid">
@@ -582,18 +600,26 @@
         </div>
 
         <form [formGroup]="workspace.lecturerLookupForm" class="compact-form">
-          <mat-form-field>
-            <mat-label>Buscar pessoa</mat-label>
-            <input matInput formControlName="query" />
-          </mat-form-field>
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="!permissions.has(Permission.Person.Read)"
-            (click)="workspace.searchLecturerCandidates()">
-            <mat-icon>person_search</mat-icon>
-            Buscar
-          </button>
+          <app-person-search
+            label="Buscar ministrante"
+            [query]="workspace.lecturerLookupForm.controls.query.value"
+            [results]="workspace.lecturerSearchResults()"
+            [loading]="workspace.loading()"
+            [disabled]="
+              !permissions.has(Permission.Person.Read) ||
+              !canEditSelectedEventRelation(Permission.EventLecturer.Create)
+            "
+            [disabledReason]="
+              !permissions.has(Permission.Person.Read)
+                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                : 'Vincular ministrantes exige permissão para editar este evento.'
+            "
+            resultActionLabel="Adicionar ministrante"
+            (queryChange)="workspace.lecturerLookupForm.controls.query.setValue($event)"
+            (searchRequested)="
+              workspace.lecturerLookupForm.controls.query.setValue($event); workspace.searchLecturerCandidates()
+            "
+            (personSelected)="workspace.addLecturer($event)" />
           @if (
             canEditSelectedEventRelation(Permission.EventLecturer.Create) &&
             permissions.canEdit(Permission.Person.Create)
@@ -604,31 +630,6 @@
             </button>
           }
         </form>
-
-        <div class="inline-list">
-          @for (candidate of workspace.lecturerSearchResults(); track candidate.id) {
-            @if (canEditSelectedEventRelation(Permission.EventLecturer.Create)) {
-              <button mat-stroked-button type="button" (click)="workspace.addLecturer(candidate)">
-                <mat-icon>add</mat-icon>
-                <span class="person-choice">
-                  <span>Adicionar {{ candidate.name }}</span>
-                  <small>
-                    {{ candidate.identityDocument || 'Sem documento' }} ·
-                    {{ candidate.email || 'Sem e-mail principal' }}
-                  </small>
-                </span>
-              </button>
-            }
-          } @empty {
-            <span class="empty-note">
-              {{
-                permissions.has(Permission.Person.Read)
-                  ? 'Busque uma pessoa pelo nome, e-mail ou CPF.'
-                  : 'Buscar pessoas exige permissão de Pessoa - Visualizar.'
-              }}
-            </span>
-          }
-        </div>
 
         @if (workspace.eventForm.controls.eventGroupId.value && workspace.suggestedGroupLecturers().length > 0) {
           <div class="inline-list">
@@ -667,44 +668,28 @@
         </div>
 
         <form [formGroup]="workspace.attendanceCollectorLookupForm" class="compact-form">
-          <mat-form-field>
-            <mat-label>Buscar pessoa</mat-label>
-            <input matInput formControlName="query" />
-          </mat-form-field>
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="!permissions.has(Permission.Person.Read)"
-            (click)="workspace.searchAttendanceCollectorCandidates()">
-            <mat-icon>person_search</mat-icon>
-            Buscar
-          </button>
+          <app-person-search
+            label="Buscar coletor de presença"
+            [query]="workspace.attendanceCollectorLookupForm.controls.query.value"
+            [results]="workspace.attendanceCollectorSearchResults()"
+            [loading]="workspace.loading()"
+            [disabled]="
+              !permissions.has(Permission.Person.Read) ||
+              !canEditSelectedEventRelation(Permission.EventAttendanceCollector.Create)
+            "
+            [disabledReason]="
+              !permissions.has(Permission.Person.Read)
+                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                : 'Vincular coletores exige permissão para editar este evento.'
+            "
+            resultActionLabel="Adicionar coletor"
+            (queryChange)="workspace.attendanceCollectorLookupForm.controls.query.setValue($event)"
+            (searchRequested)="
+              workspace.attendanceCollectorLookupForm.controls.query.setValue($event);
+              workspace.searchAttendanceCollectorCandidates()
+            "
+            (personSelected)="workspace.addAttendanceCollector($event)" />
         </form>
-
-        <div class="inline-list">
-          @for (candidate of workspace.attendanceCollectorSearchResults(); track candidate.id) {
-            @if (canEditSelectedEventRelation(Permission.EventAttendanceCollector.Create)) {
-              <button mat-stroked-button type="button" (click)="workspace.addAttendanceCollector(candidate)">
-                <mat-icon>add</mat-icon>
-                <span class="person-choice">
-                  <span>Adicionar {{ candidate.name }}</span>
-                  <small>
-                    {{ candidate.identityDocument || 'Sem documento' }} ·
-                    {{ candidate.email || 'Sem e-mail principal' }}
-                  </small>
-                </span>
-              </button>
-            }
-          } @empty {
-            <span class="empty-note">
-              {{
-                permissions.has(Permission.Person.Read)
-                  ? 'Busque uma pessoa pelo nome, e-mail ou CPF.'
-                  : 'Buscar pessoas exige permissão de Pessoa - Visualizar.'
-              }}
-            </span>
-          }
-        </div>
 
         <div class="inline-list">
           @for (collector of workspace.eventAttendanceCollectors(); track collector.personId) {

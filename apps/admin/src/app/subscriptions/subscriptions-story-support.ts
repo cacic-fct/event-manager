@@ -1,6 +1,7 @@
 import { computed, signal } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
 import { of } from 'rxjs';
+import { fakerPT_BR as faker } from '@faker-js/faker';
 import {
   Event,
   MajorEvent,
@@ -15,16 +16,22 @@ import { WorkspacePermissionScope, PermissionsService } from '../permissions/per
 import { SubscriptionsService } from './subscriptions.service';
 import { createAdminEvent, createAdminMajorEvent, createAdminPerson } from '../testing/admin-entity-fixtures';
 
-interface StoryWorkspaceOptions {
+export interface StoryWorkspaceOptions {
   majorEventId?: string | null;
   selectedMajorEventSubscriptionId?: string | null;
   pendingReceiptsCount?: number;
   permissions?: WorkspacePermissionScope[];
+  majorEventCount?: number;
+  eventCount?: number;
+  majorSubscriptionCount?: number;
+  eventSubscriptionCount?: number;
+  longNames?: boolean;
+  sportsEvery?: number;
 }
 
 function createStoryPagination(total: number) {
   return {
-    label: () => `1–${total} de ${total}`,
+    label: () => `1-${total} de ${total}`,
     hasPreviousPage: () => false,
     hasNextPage: () => false,
   };
@@ -63,21 +70,58 @@ function createReceiptValidationStoryApi(pendingReceiptsCount: number) {
 
 function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions) {
   const selectedMajorEventId = options.majorEventId === undefined ? 'major-event-1' : options.majorEventId;
-  const majorEvents = signal<MajorEvent[]>([
-    buildMajorEvent('major-event-1', 'Semana da Computação', '💻'),
-    buildMajorEvent('major-event-2', 'Jornada de Dados', '📊'),
-  ]);
-  const eventResults = signal<Event[]>([buildEvent('event-1', 'Arquitetura Angular', '💻')]);
-  const selectedEvent = signal<Event | null>(eventResults()[0] ?? null);
-  const majorEventSubscriptions = signal<WorkspaceMajorEventSubscription[]>([
-    buildMajorEventSubscription(
-      'subscription-1',
-      selectedMajorEventId || 'major-event-1',
-      'Ada Lovelace',
-      'RECEIPT_UNDER_REVIEW',
+  const majorEventCount = clampStoryCount(options.majorEventCount ?? 4, 30);
+  const eventCount = clampStoryCount(options.eventCount ?? 8, 40);
+  const majorSubscriptionCount = clampStoryCount(options.majorSubscriptionCount ?? 12, 60);
+  const eventSubscriptionCount = clampStoryCount(options.eventSubscriptionCount ?? 10, 60);
+  faker.seed(20_260_822);
+  const majorEvents = signal<MajorEvent[]>(
+    Array.from({ length: majorEventCount }, (_, index) =>
+      buildMajorEvent(
+        `major-event-${index + 1}`,
+        options.longNames
+          ? `Grande evento interdisciplinar de tecnologia, ciência e extensão ${index + 1}`
+          : (['Semana da Computação', 'Jornada de Dados', 'Mostra de Extensão'][index % 3] ?? 'Grande evento'),
+        ['💻', '📊', '🌎'][index % 3] ?? '💻',
+      ),
     ),
-    buildMajorEventSubscription('subscription-2', selectedMajorEventId || 'major-event-1', 'Grace Hopper', 'CONFIRMED'),
-  ]);
+  );
+  const eventResults = signal<Event[]>(
+    Array.from({ length: eventCount }, (_, index) =>
+      ({
+        ...buildEvent(
+        `event-${index + 1}`,
+        options.longNames
+          ? `Atividade interdisciplinar de arquitetura, acessibilidade e dados ${index + 1}`
+          : (['Arquitetura Angular', 'GraphQL com NestJS', 'Acessibilidade digital'][index % 3] ?? 'Atividade'),
+        ['💻', '📡', '♿'][index % 3] ?? '💻',
+        ),
+        isSportsMatch: (options.sportsEvery ?? 3) > 0 && index % (options.sportsEvery ?? 3) === 0,
+      }),
+    ),
+  );
+  const selectedEvent = signal<Event | null>(eventResults()[0] ?? null);
+  const statuses: WorkspaceMajorEventSubscription['subscriptionStatus'][] = [
+    'RECEIPT_UNDER_REVIEW',
+    'CONFIRMED',
+    'WAITING_RECEIPT_UPLOAD',
+    'REJECTED_INVALID_RECEIPT',
+    'REJECTED_NO_SLOTS',
+    'REJECTED_SCHEDULE_CONFLICT',
+    'CANCELED',
+  ];
+  const majorEventSubscriptions = signal<WorkspaceMajorEventSubscription[]>(
+    Array.from({ length: majorSubscriptionCount }, (_, index) =>
+      buildMajorEventSubscription(
+        `subscription-${index + 1}`,
+        selectedMajorEventId || 'major-event-1',
+        options.longNames
+          ? `Maria Eduarda de ${faker.person.lastName()} ${faker.person.lastName()} — participante ${index + 1}`
+          : faker.person.fullName(),
+        statuses[index % statuses.length] ?? 'CONFIRMED',
+      ),
+    ),
+  );
   const selectedMajorEventSubscription = signal<WorkspaceMajorEventSubscription | null>(
     majorEventSubscriptions().find((subscription) => subscription.id === options.selectedMajorEventSubscriptionId) ??
       null,
@@ -94,18 +138,23 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     return [{ id: `selected-${selectedTier}`, name: selectedTier, value: 0 }, ...tiers];
   });
   const majorEventEvents = signal<WorkspaceMajorEventSubscriptionEvent[]>(majorEventSubscriptions()[0]?.events ?? []);
-  const eventSubscriptions = signal<WorkspaceEventSubscription[]>([
-    {
-      id: 'event-subscription-1',
-      eventId: 'event-1',
-      personId: 'person-1',
-      person: buildPerson('person-1', 'Ada Lovelace'),
-      isLecturerSubscription: false,
+  const eventSubscriptions = signal<WorkspaceEventSubscription[]>(
+    Array.from({ length: eventSubscriptionCount }, (_, index) => ({
+      id: `event-subscription-${index + 1}`,
+      eventId: eventResults()[index % Math.max(eventResults().length, 1)]?.id ?? 'event-1',
+      personId: `event-person-${index + 1}`,
+      person: buildPerson(
+        `event-person-${index + 1}`,
+        options.longNames
+          ? `Participante com nome extenso para validação responsiva ${index + 1}`
+          : faker.person.fullName(),
+      ),
+      isLecturerSubscription: index % 4 === 0,
       createdAt: '2026-05-20T12:00:00.000Z',
       createdById: 'storybook-user',
       createdByMethod: 'ADMIN_DASHBOARD',
-    },
-  ]);
+    })),
+  );
   const selectedEventIds = signal(
     new Set(
       selectedMajorEventSubscription()
@@ -159,6 +208,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     selectedMajorEvent: computed(
       () => majorEvents().find((majorEvent) => majorEvent.id === selectedMajorEventIdSignal()) ?? null,
     ),
+    majorEventSportsWorkspace: signal(null),
     filteredMajorEvents: computed(() => {
       const query = majorEventSearchQuery().trim().toLocaleLowerCase('pt-BR');
       if (!query) {
@@ -290,8 +340,13 @@ function buildMajorEvent(id: string, name: string, emoji: string): MajorEvent {
         id: `${id}-price`,
         type: 'TIERED',
         tiers: [
-          { id: `${id}-student-tier`, name: 'Estudante', value: 12000 },
-          { id: `${id}-regular-tier`, name: 'Comunidade externa', value: 18000 },
+          { id: `${id}-student-tier`, name: 'Estudante', value: 12000, includesSportsRegistration: false },
+          {
+            id: `${id}-regular-tier`,
+            name: 'Comunidade externa',
+            value: 18000,
+            includesSportsRegistration: false,
+          },
         ],
       },
     ],
@@ -315,7 +370,7 @@ function buildEvent(id: string, name: string, emoji: string): Event {
     allowSubscription: true,
     autoSubscribe: false,
     isOnlineAttendanceAllowed: false,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
     publishedAt: '2026-05-20T12:00:00.000Z',
@@ -373,4 +428,8 @@ function buildMajorEventSubscription(
       },
     ],
   };
+}
+
+function clampStoryCount(value: number, max: number): number {
+  return Math.min(Math.max(Math.trunc(value), 0), max);
 }

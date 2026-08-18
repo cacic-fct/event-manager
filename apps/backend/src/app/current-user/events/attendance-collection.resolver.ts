@@ -35,6 +35,11 @@ import {
   getRequiredAttendanceLocationData,
 } from './attendance-collection-records';
 import { getActorId, getAuthenticatedUser, parseUserAztecCode } from './attendance-collection-context';
+import {
+  notifySportsMatchAttendanceMutation,
+  startSportsMatchCheckInFromAthleteAttendance,
+} from '../../sports/operations/sports-match-attendance';
+import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
 
 @Resolver(() => CurrentUserAttendanceCollectionEvent)
 export class CurrentUserAttendanceCollectionResolver {
@@ -68,6 +73,9 @@ export class CurrentUserAttendanceCollectionResolver {
         email: user.email,
       }),
     } as unknown as NovuNotificationsService,
+    private readonly sportsMutationEvents: SportsMutationEventsService = {
+      publishAttendanceMutation: async () => undefined,
+    } as unknown as SportsMutationEventsService,
   ) {}
 
   @Query(() => [CurrentUserAttendanceCollectionEvent], {
@@ -148,6 +156,8 @@ export class CurrentUserAttendanceCollectionResolver {
           summary: 'Presença registrada pelo coletor via scanner.',
           prisma: tx,
         }),
+      afterCheckInStarted: (attendance) =>
+        notifySportsMatchAttendanceMutation(this.sportsMutationEvents, attendance),
     });
   }
 
@@ -184,6 +194,8 @@ export class CurrentUserAttendanceCollectionResolver {
           summary: 'Presença registrada pelo coletor manualmente.',
           prisma: tx,
         }),
+      afterCheckInStarted: (attendance) =>
+        notifySportsMatchAttendanceMutation(this.sportsMutationEvents, attendance),
     });
   }
 
@@ -216,6 +228,7 @@ export class CurrentUserAttendanceCollectionResolver {
       throw new BadRequestException('O coletor informado deve ser o usuário autenticado.');
     }
     const locationData = getRequiredAttendanceLocationData(input.location);
+    let checkInStarted = false;
     const attendance = await this.prisma.$transaction(async (tx) => {
       const before = await tx.eventAttendance.findUnique({
         where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
@@ -242,6 +255,15 @@ export class CurrentUserAttendanceCollectionResolver {
         },
       });
       await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
+      if (result.status === EventAttendanceStatus.PRESENT) {
+        checkInStarted =
+          (await startSportsMatchCheckInFromAthleteAttendance({
+            tx,
+            eventId: result.eventId,
+            personId: result.personId,
+            updatedById: actorId,
+          })) || checkInStarted;
+      }
       await recordAttendanceSet({
         auditLog: this.auditLog,
         currentUserContext: this.currentUserContext,
@@ -252,6 +274,9 @@ export class CurrentUserAttendanceCollectionResolver {
       });
       return result;
     });
+    if (checkInStarted) {
+      await notifySportsMatchAttendanceMutation(this.sportsMutationEvents, attendance);
+    }
     await this.dashboardInsights.invalidateCachedInsights();
     return attendance;
   }
@@ -294,6 +319,7 @@ export class CurrentUserAttendanceCollectionResolver {
     if (!actorId || inputs.some((input) => input.collectedByUserId !== actorId)) {
       throw new BadRequestException('Todas as decisões devem pertencer ao usuário autenticado.');
     }
+    let checkInStarted = false;
     const attendances = await this.prisma.$transaction(async (tx) => {
       const results = [];
       for (const input of inputs) {
@@ -315,6 +341,15 @@ export class CurrentUserAttendanceCollectionResolver {
           update: data,
         });
         await this.attendanceCategories.refreshForAttendance(input.personId, eventId, tx);
+        if (attendance.status === EventAttendanceStatus.PRESENT) {
+          checkInStarted =
+            (await startSportsMatchCheckInFromAthleteAttendance({
+              tx,
+              eventId,
+              personId: attendance.personId,
+              updatedById: actorId,
+            })) || checkInStarted;
+        }
         await recordAttendanceSet({
           auditLog: this.auditLog,
           currentUserContext: this.currentUserContext,
@@ -327,6 +362,9 @@ export class CurrentUserAttendanceCollectionResolver {
       }
       return results;
     });
+    if (checkInStarted) {
+      await notifySportsMatchAttendanceMutation(this.sportsMutationEvents, { eventId });
+    }
     await this.dashboardInsights.invalidateCachedInsights();
     return attendances;
   }
@@ -346,6 +384,7 @@ export class CurrentUserAttendanceCollectionResolver {
       auditLog: this.auditLog,
       dashboardInsights: this.dashboardInsights,
       notifications: this.notifications,
+      sportsMutationEvents: this.sportsMutationEvents,
     }).commitBatch(input, context);
   }
 

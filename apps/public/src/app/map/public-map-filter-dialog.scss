@@ -1,0 +1,46 @@
+mat-dialog-content {
+  display: grid;
+  gap: 24px;
+  min-width: min(420px, calc(100vw - 48px));
+}
+
+section {
+  display: grid;
+  gap: 8px;
+}
+
+h3 {
+  font: var(--mat-sys-title-medium);
+  margin: 0;
+}
+
+.filter-options {
+  display: grid;
+  gap: 2px;
+}
+
+.filter-options mat-radio-button {
+  min-height: 44px;
+}
+
+.supporting-text {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: flex;
+  font: var(--mat-sys-body-small);
+  gap: 6px;
+  margin: 0;
+}
+
+.supporting-text mat-icon {
+  font-size: 18px;
+  height: 18px;
+  width: 18px;
+}
+
+@media (max-width: 520px) {
+  mat-dialog-content {
+    min-width: 0;
+  }
+
+}

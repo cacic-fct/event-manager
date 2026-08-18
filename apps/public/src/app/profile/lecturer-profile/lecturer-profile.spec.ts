@@ -76,6 +76,15 @@ describe('LecturerProfileComponent', () => {
     expect(component.form.controls.displayName.value).toBe('Grace Hopper');
   });
 
+  it('uses a checkbox for the setting saved with the profile', () => {
+    component.edit();
+    fixture.detectChanges();
+
+    const element = fixture.nativeElement as HTMLElement;
+    expect(element.querySelector('mat-checkbox[formcontrolname="publishGoogleUserPicture"]')).not.toBeNull();
+    expect(element.querySelector('mat-slide-toggle[formcontrolname="publishGoogleUserPicture"]')).toBeNull();
+  });
+
   it('normalizes WhatsApp before saving', () => {
     component.edit();
     component.form.setValue({

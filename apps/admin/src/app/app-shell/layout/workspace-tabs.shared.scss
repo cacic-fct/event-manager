@@ -1,0 +1,22 @@
+.workspace-tab-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+
+.workspace-tab-label mat-icon {
+  flex: 0 0 auto;
+}
+
+.workspace-tab-count {
+  align-items: center;
+  background: var(--mat-sys-secondary-container);
+  border-radius: 999px;
+  color: var(--mat-sys-on-secondary-container);
+  display: inline-flex;
+  font: var(--mat-sys-label-small);
+  justify-content: center;
+  min-width: 1.35rem;
+  padding: 0.1rem 0.4rem;
+}

@@ -10,7 +10,8 @@ export type DashboardInsightAction =
   | 'OPEN_ATTENDANCE'
   | 'OPEN_CERTIFICATES'
   | 'OPEN_MERGE_CANDIDATES'
-  | 'OPEN_PUBLICATION';
+  | 'OPEN_PUBLICATION'
+  | 'OPEN_SPORTS';
 
 export type DashboardCertificateTargetType = 'EVENT' | 'EVENT_GROUP' | 'MAJOR_EVENT' | 'MAJOR_EVENT_LECTURERS';
 
@@ -25,17 +26,25 @@ export type DashboardInconsistencyType =
   | 'EVENT_SUBSCRIPTION_DATE_MISMATCH'
   | 'MAJOR_EVENT_SUBSCRIPTION_DATE_MISMATCH'
   | 'PLACE_DOUBLE_BOOKED'
+  | 'SPORTS_PLACE_DOUBLE_BOOKED'
   | 'LECTURER_DOUBLE_BOOKED'
   | 'LECTURER_SELF_SUBSCRIBED'
   | 'LECTURER_SELF_ATTENDED'
   | 'SUSPICIOUS_DURATION'
   | 'SUSPICIOUS_DATE'
   | 'PLACEHOLDER_EMOJI'
+  | 'SPORTS_MATCH_WITHOUT_PLACE'
+  | 'SPORTS_MATCH_PLACEHOLDER_EMOJI'
   | 'PUBLISHED_EVENT_HIDDEN_FROM_USERS'
   | 'DRAFT_EVENT_VISIBLE_TO_ADMINS'
+  | 'PUBLISHED_SPORTS_MATCH_HIDDEN_FROM_USERS'
+  | 'DRAFT_SPORTS_MATCH_VISIBLE_TO_ADMINS'
+  | 'SPORTS_MATCH_PUBLIC_VISIBILITY_MISMATCH'
   | 'PUBLISHED_EVENT_WITH_UNPUBLISHED_MAJOR_EVENT'
   | 'OVERDUE_SCHEDULED_PUBLICATION'
-  | 'PUBLISHED_MAJOR_EVENT_WITHOUT_VISIBLE_CHILDREN';
+  | 'OVERDUE_SCHEDULED_SPORTS_MATCH_PUBLICATION'
+  | 'PUBLISHED_MAJOR_EVENT_WITHOUT_VISIBLE_CHILDREN'
+  | 'SPORTS_TOURNAMENT_WITHOUT_PUBLIC_CONTENT';
 
 export interface DashboardActionLink {
   action: DashboardInsightAction;
@@ -104,6 +113,34 @@ export interface DashboardPendingOfflineAttendanceEvent {
   pendingCount: number;
 }
 
+export interface DashboardSportsTournament {
+  tournamentId: string;
+  majorEventId: string;
+  name: string;
+  emoji: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  categoryCount: number;
+  teamCount: number;
+  pendingApplicationCount: number;
+  pendingReviewCount: number;
+  activeMatchCount: number;
+}
+
+export interface DashboardSportsMatch {
+  matchId: string;
+  tournamentId: string;
+  categoryName: string;
+  eventName: string;
+  startDate: string;
+  state: string;
+  homeTeamName?: string | null;
+  awayTeamName?: string | null;
+  homeScore: number;
+  awayScore: number;
+}
+
 export interface DashboardInconsistency {
   type: DashboardInconsistencyType;
   action?: DashboardInsightAction | null;
@@ -138,6 +175,8 @@ export interface WorkspaceDashboardInsights {
   pendingReceiptMajorEvents: DashboardPendingReceiptMajorEvent[];
   pendingOfflineAttendancesCount: number;
   pendingOfflineAttendanceEvents: DashboardPendingOfflineAttendanceEvent[];
+  sportsTournaments: DashboardSportsTournament[];
+  sportsMatches: DashboardSportsMatch[];
   inconsistencies: DashboardInconsistency[];
   duplicatePeopleCount: number;
   permissions: DashboardPermissionGroup[];

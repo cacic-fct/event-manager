@@ -33,6 +33,12 @@ export interface PageStoryArgs {
   itemCount: number;
   selectedIndex: number;
   publicationState: Event['publicationState'];
+  longContent: boolean;
+  sportsEvery: number;
+  frozenSelected: boolean;
+  requiresPayment: boolean;
+  coordinates: boolean;
+  certificateMode: 'mixed' | 'all' | 'none';
 }
 
 export const defaultPageStoryArgs: PageStoryArgs = {
@@ -40,7 +46,26 @@ export const defaultPageStoryArgs: PageStoryArgs = {
   itemCount: 4,
   selectedIndex: 0,
   publicationState: 'PUBLISHED',
+  longContent: false,
+  sportsEvery: 3,
+  frozenSelected: false,
+  requiresPayment: true,
+  coordinates: true,
+  certificateMode: 'mixed',
 };
+
+export const pageStoryArgTypes = {
+  mode: { control: 'select', options: ['populated', 'empty', 'readonly', 'loading', 'drafts'] },
+  itemCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
+  selectedIndex: { control: { type: 'range', min: 0, max: 29, step: 1 } },
+  publicationState: { control: 'select', options: ['DRAFT', 'PUBLISHED', 'SCHEDULED', 'UNPUBLISHED'] },
+  longContent: { control: 'boolean' },
+  sportsEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+  frozenSelected: { control: 'boolean' },
+  requiresPayment: { control: 'boolean' },
+  coordinates: { control: 'boolean' },
+  certificateMode: { control: 'select', options: ['mixed', 'all', 'none'] },
+} as const;
 
 const storyNow = publicStoryFixtureDate;
 const permissions: PermissionScope[] = [
@@ -175,8 +200,12 @@ function createMajorEventsStoryService(formBuilder: FormBuilder, args: PageStory
     pixKey: [''],
     priceType: ['TIERED' as const],
     priceTiers: formBuilder.array([
-      formBuilder.nonNullable.group({ name: ['Estudante'], value: ['40'] }),
-      formBuilder.nonNullable.group({ name: ['Comunidade externa'], value: ['80'] }),
+      formBuilder.nonNullable.group({ name: ['Estudante'], value: ['40'], includesSportsRegistration: [false] }),
+      formBuilder.nonNullable.group({
+        name: ['Comunidade externa'],
+        value: ['80'],
+        includesSportsRegistration: [false],
+      }),
     ]),
   });
 
@@ -341,7 +370,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
     onlineAttendanceCode: [''],
     onlineAttendanceStartDate: [''],
     onlineAttendanceEndDate: [''],
-    publiclyVisible: [true],
+    isPubliclyListed: [true],
     displayLecturerProfile: [true],
     youtubeCode: [''],
     buttonText: [''],
@@ -381,7 +410,7 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
       onlineAttendanceCode: selectedEvent.onlineAttendanceCode ?? '',
       onlineAttendanceStartDate: localDateTime(selectedEvent.onlineAttendanceStartDate),
       onlineAttendanceEndDate: localDateTime(selectedEvent.onlineAttendanceEndDate),
-      publiclyVisible: selectedEvent.publiclyVisible,
+      isPubliclyListed: selectedEvent.isPubliclyListed,
       displayLecturerProfile: selectedEvent.displayLecturerProfile,
       youtubeCode: selectedEvent.youtubeCode ?? '',
       buttonText: selectedEvent.buttonText ?? '',
@@ -487,24 +516,66 @@ function createEventsStoryService(formBuilder: FormBuilder, args: PageStoryArgs)
 }
 
 function buildMajorEvents(args: PageStoryArgs): MajorEvent[] {
-  return createStoryPublicMajorEvents({ count: args.itemCount }).map((majorEvent) =>
-    adaptMajorEvent(majorEvent, args.publicationState),
-  );
+  return createStoryPublicMajorEvents({ count: args.itemCount }).map((majorEvent, index) => {
+    const adapted = adaptMajorEvent(majorEvent, args.publicationState);
+    return {
+      ...adapted,
+      name: args.longContent
+        ? `Grande evento interdisciplinar de tecnologia, ciência, cultura e extensão ${index + 1}`
+        : adapted.name,
+      description: args.longContent
+        ? 'Programação extensa criada para validar formulários administrativos com títulos e descrições longas em diferentes larguras.'
+        : adapted.description,
+      isPaymentRequired: args.requiresPayment && index % 2 === 0,
+      sportsTournament: args.sportsEvery > 0 && index % args.sportsEvery === 0 ? { id: `tournament-${index + 1}` } : null,
+      createdAt: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-150) : adapted.createdAt,
+      endDate: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-120) : adapted.endDate,
+    };
+  });
 }
 
 function buildEventGroups(args: PageStoryArgs): EventGroup[] {
-  return createStoryPublicEventGroups({ count: args.itemCount }).map(adaptEventGroup);
+  return createStoryPublicEventGroups({ count: args.itemCount }).map((group, index) => {
+    const adapted = adaptEventGroup(group);
+    const shouldIssueCertificate = args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
+    return {
+      ...adapted,
+      name: args.longContent
+        ? `Grupo interdisciplinar de atividades acadêmicas e comunitárias ${index + 1}`
+        : adapted.name,
+      shouldIssueCertificate,
+      shouldIssueCertificateForEachEvent: shouldIssueCertificate && index % 2 === 0,
+      shouldIssuePartialCertificate: shouldIssueCertificate && index % 3 === 0,
+      createdAt: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-150) : adapted.createdAt,
+    };
+  });
 }
 
 function buildEvents(args: PageStoryArgs, majorEvents: MajorEvent[], eventGroups: EventGroup[], offset = 0): Event[] {
-  return createStoryPublicEvents({ count: args.itemCount }).map((eventItem, index) =>
-    adaptEvent(
+  return createStoryPublicEvents({ count: args.itemCount }).map((eventItem, index) => {
+    const adapted = adaptEvent(
       { ...eventItem, id: `event-${offset + index + 1}` },
       args.publicationState,
       majorEvents.find((majorEvent) => majorEvent.id === eventItem.majorEventId) ?? null,
       eventGroups.find((eventGroup) => eventGroup.id === eventItem.eventGroupId) ?? null,
-    ),
-  );
+    );
+    const shouldIssueCertificate = args.certificateMode === 'all' || (args.certificateMode === 'mixed' && index % 2 === 0);
+    return {
+      ...adapted,
+      name: args.longContent
+        ? `Atividade interdisciplinar de tecnologia, ciência, extensão e acessibilidade ${offset + index + 1}`
+        : adapted.name,
+      description: args.longContent
+        ? 'Descrição longa de demonstração com objetivos, metodologia, público-alvo e informações operacionais para a equipe organizadora.'
+        : adapted.description,
+      isSportsMatch: args.sportsEvery > 0 && index % args.sportsEvery === 0,
+      latitude: args.coordinates ? -22.1211 + index * 0.0002 : null,
+      longitude: args.coordinates ? -51.4086 + index * 0.0002 : null,
+      shouldIssueCertificate,
+      createdAt: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-150) : adapted.createdAt,
+      endDate: args.frozenSelected && index === selectedIndex(args, args.itemCount) ? offsetDate(-120) : adapted.endDate,
+    };
+  });
 }
 
 function adaptMajorEvent(majorEvent: PublicMajorEvent, publicationState: Event['publicationState']): MajorEvent {
@@ -598,7 +669,7 @@ function adaptEvent(
     onlineAttendanceCode: eventItem.isOnlineAttendanceAllowed ? 'A7K9' : null,
     onlineAttendanceStartDate: eventItem.onlineAttendanceStartDate,
     onlineAttendanceEndDate: eventItem.onlineAttendanceEndDate,
-    publiclyVisible: Boolean(eventItem.publiclyVisible),
+    isPubliclyListed: Boolean(eventItem.isPubliclyListed),
     displayLecturerProfile: true,
     publicationState,
     scheduledPublishAt: publicationState === 'SCHEDULED' ? offsetDate(1) : null,

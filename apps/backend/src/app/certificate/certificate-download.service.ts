@@ -7,28 +7,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
-import { dirname, extname, isAbsolute, resolve } from 'node:path';
 import { chromium, type Browser } from 'playwright';
 import { toBuffer } from '@bwip-js/node';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
 import { createZipArchive, type ZipArchiveStream } from '../shared/zip-archive';
 
-type PlaywrightTemplateConfig = {
-  engine: 'playwright';
-  htmlTemplatePath: string;
-  cssTemplatePath?: string;
-  verificationUrlPattern?: string;
-};
-
 type JsonRecord = Record<string, Prisma.JsonValue>;
-
-type TemplateFile = {
-  content: string;
-  path: string;
-};
 
 type RenderedCertificate = {
   fileName: string;
@@ -101,7 +86,9 @@ export class CertificateDownloadService {
         },
         certificateTemplate: {
           select: {
-            template: true,
+            htmlTemplate: true,
+            cssTemplate: true,
+            certificateFields: true,
           },
         },
       },
@@ -110,20 +97,18 @@ export class CertificateDownloadService {
       throw new NotFoundException(`Certificate ${normalizedCertificateId} was not found.`);
     }
 
-    const templateConfig = this.parseTemplateConfig(certificate.certificateTemplate.template);
-    const verificationUrl = this.buildVerificationUrl(templateConfig.verificationUrlPattern, certificate.id);
+    const verificationUrl = this.buildVerificationUrl(certificate.id);
     const templateVariables = await this.buildTemplateVariables(
       certificate.renderedData,
+      certificate.certificateTemplate.certificateFields,
       certificate.config.certificateFields,
       verificationUrl,
       certificate.id,
     );
-    const htmlTemplate = await this.loadTemplateFile(templateConfig.htmlTemplatePath, 'htmlTemplatePath');
-    const cssTemplate = templateConfig.cssTemplatePath
-      ? await this.loadTemplateFile(templateConfig.cssTemplatePath, 'cssTemplatePath')
-      : undefined;
-    const cssContent = cssTemplate ? await this.inlineCssLocalAssets(cssTemplate.content, cssTemplate.path) : undefined;
-    const renderedHtml = this.renderTemplate(this.inlineCss(htmlTemplate.content, cssContent), templateVariables);
+    const renderedHtml = this.renderTemplate(
+      this.inlineCss(certificate.certificateTemplate.htmlTemplate, certificate.certificateTemplate.cssTemplate ?? undefined),
+      templateVariables,
+    );
     const pdf = await this.renderPdf(renderedHtml, browser);
 
     return {
@@ -178,32 +163,14 @@ export class CertificateDownloadService {
     }
   }
 
-  private parseTemplateConfig(template: Prisma.JsonValue): PlaywrightTemplateConfig {
-    const templateObject = this.asJsonRecord(template, 'Certificate template must be a JSON object.');
-    const engine = this.readRequiredString(templateObject, 'engine');
-    if (engine !== 'playwright') {
-      throw new BadRequestException(`Certificate template engine "${engine}" is not supported.`);
-    }
-
-    return {
-      engine: 'playwright',
-      htmlTemplatePath: this.readRequiredString(templateObject, 'htmlTemplatePath'),
-      cssTemplatePath: this.readOptionalString(templateObject, 'cssTemplatePath'),
-      verificationUrlPattern: this.readOptionalString(templateObject, 'verificationUrlPattern'),
-    };
-  }
-
-  private buildVerificationUrl(pattern: string | undefined, certificateId: string): string {
-    const sourcePattern = pattern?.trim() || 'eventos.cacic.com.br/app/validate/\n{certificateID}';
-    if (sourcePattern.includes('{certificateID}')) {
-      return sourcePattern.replace(/\{certificateID\}/g, certificateId);
-    }
-
-    return `${sourcePattern.replace(/\/+$/, '')}/${certificateId}`;
+  private buildVerificationUrl(certificateId: string): string {
+    const configuredOrigin = process.env.PUBLIC_APP_ORIGIN?.trim() || 'http://localhost:4200';
+    return new URL(`/app/validate/${encodeURIComponent(certificateId)}`, new URL(configuredOrigin).origin).toString();
   }
 
   private async buildTemplateVariables(
     renderedData: Prisma.JsonValue,
+    templateFields: Prisma.JsonValue | null,
     certificateFields: Prisma.JsonValue | null,
     verificationUrl: string,
     certificateId: string,
@@ -215,6 +182,14 @@ export class CertificateDownloadService {
       variables[key] = this.stringifyJsonValue(value);
     }
 
+    const templateFieldsObject = this.asOptionalJsonRecord(templateFields);
+    for (const [key, rawDefinition] of Object.entries(templateFieldsObject ?? {})) {
+      const definition = this.asOptionalJsonRecord(rawDefinition);
+      if (definition?.default !== undefined && definition.default !== null) {
+        variables[key] = this.stringifyJsonValue(definition.default);
+      }
+    }
+
     const certificateFieldsObject = this.asOptionalJsonRecord(certificateFields);
     for (const [key, value] of Object.entries(certificateFieldsObject ?? {})) {
       variables[key] = this.stringifyJsonValue(value);
@@ -222,6 +197,8 @@ export class CertificateDownloadService {
 
     variables.certificateID = certificateId;
     variables.verificationUrl = verificationUrl;
+    variables.qrcode = verificationUrl;
+    variables.url = verificationUrl;
 
     const qrCodePng = await toBuffer({
       bcid: 'qrcode',
@@ -233,95 +210,6 @@ export class CertificateDownloadService {
     variables.verificationQrCodeDataUrl = `data:image/png;base64,${qrCodePng.toString('base64')}`;
 
     return variables;
-  }
-
-  private async loadTemplateFile(
-    templatePath: string,
-    configField: 'htmlTemplatePath' | 'cssTemplatePath',
-  ): Promise<TemplateFile> {
-    const resolvedPath = this.resolveTemplatePath(templatePath);
-    try {
-      return {
-        content: await readFile(resolvedPath, 'utf8'),
-        path: resolvedPath,
-      };
-    } catch {
-      throw new NotFoundException(`Could not load ${configField} file "${templatePath}".`);
-    }
-  }
-
-  private resolveTemplatePath(templatePath: string): string {
-    const candidates = isAbsolute(templatePath)
-      ? [templatePath]
-      : [
-          resolve(process.cwd(), templatePath),
-          resolve(__dirname, '../../../../..', templatePath),
-          resolve(__dirname, '../../../../../..', templatePath),
-        ];
-    const existingPath = candidates.find((candidate) => existsSync(candidate));
-    if (!existingPath) {
-      throw new NotFoundException(`Template file "${templatePath}" was not found in expected paths.`);
-    }
-
-    return existingPath;
-  }
-
-  private async inlineCssLocalAssets(css: string, cssPath: string): Promise<string> {
-    const cssDirectory = dirname(cssPath);
-    const urlPattern = /url\(\s*(?:"([^"]+)"|'([^']+)'|([^'")]+))\s*\)/g;
-    let inlinedCss = '';
-    let lastIndex = 0;
-
-    for (const match of css.matchAll(urlPattern)) {
-      const assetUrl = match[1] ?? match[2] ?? match[3]?.trim();
-      const matchIndex = match.index;
-      if (!assetUrl || matchIndex === undefined) {
-        continue;
-      }
-
-      inlinedCss += css.slice(lastIndex, matchIndex);
-      inlinedCss += `url("${await this.resolveCssAssetUrl(assetUrl, cssDirectory)}")`;
-      lastIndex = matchIndex + match[0].length;
-    }
-
-    return inlinedCss + css.slice(lastIndex);
-  }
-
-  private async resolveCssAssetUrl(assetUrl: string, cssDirectory: string): Promise<string> {
-    if (/^(?:data:|https?:|file:|about:|#)/i.test(assetUrl)) {
-      return assetUrl;
-    }
-
-    const assetPath = isAbsolute(assetUrl) ? assetUrl : resolve(cssDirectory, assetUrl);
-    try {
-      const asset = await readFile(assetPath);
-      const mimeType = this.getAssetMimeType(assetPath);
-      return `data:${mimeType};base64,${asset.toString('base64')}`;
-    } catch {
-      throw new NotFoundException(`Could not load CSS asset "${assetUrl}" referenced by certificate template.`);
-    }
-  }
-
-  private getAssetMimeType(assetPath: string): string {
-    switch (extname(assetPath).toLowerCase()) {
-      case '.svg':
-        return 'image/svg+xml';
-      case '.png':
-        return 'image/png';
-      case '.jpg':
-      case '.jpeg':
-        return 'image/jpeg';
-      case '.webp':
-        return 'image/webp';
-      case '.gif':
-        return 'image/gif';
-      case '.woff':
-        return 'font/woff';
-      case '.woff2':
-        return 'font/woff2';
-      default:
-        return 'application/octet-stream';
-    }
   }
 
   private inlineCss(html: string, css?: string): string {
@@ -346,6 +234,7 @@ export class CertificateDownloadService {
     try {
       const page = await browser.newPage();
       await page.setContent(renderedHtml, { waitUntil: 'networkidle' });
+      await page.evaluate(() => document.fonts.ready);
       return await page.pdf({
         format: 'A4',
         printBackground: true,
@@ -407,29 +296,6 @@ export class CertificateDownloadService {
     }
 
     return value as JsonRecord;
-  }
-
-  private readRequiredString(record: JsonRecord, key: string): string {
-    const value = record[key];
-    if (typeof value !== 'string' || !value.trim()) {
-      throw new BadRequestException(`Template field "${key}" is required.`);
-    }
-
-    return value;
-  }
-
-  private readOptionalString(record: JsonRecord, key: string): string | undefined {
-    const value = record[key];
-    if (value == null) {
-      return undefined;
-    }
-
-    if (typeof value !== 'string') {
-      throw new BadRequestException(`Template field "${key}" must be a string.`);
-    }
-
-    const normalized = value.trim();
-    return normalized || undefined;
   }
 
   private escapeHtml(value: string): string {

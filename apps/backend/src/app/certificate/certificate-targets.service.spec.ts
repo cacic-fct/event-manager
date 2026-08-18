@@ -1,4 +1,4 @@
-import { CertificateScope } from '@cacic-fct/shared-data-types';
+import { CertificateIssuedTo, CertificateScope } from '@cacic-fct/shared-data-types';
 import { NotFoundException } from '@nestjs/common';
 import { CertificateTargetsService } from './certificate-targets.service';
 
@@ -260,6 +260,69 @@ describe('CertificateTargetsService', () => {
     );
   });
 
+  it('excludes tournament-backed sports events and groups from regular certificate target pickers', async () => {
+    const prisma = createPrisma();
+    const service = new CertificateTargetsService(prisma as never);
+
+    await service.listIssuableEvents(undefined, 0, 20);
+    await service.listIssuableEventGroups(undefined, 0, 20);
+    await service.listIssuableMajorEvents(undefined, 0, 20);
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          sportsMatch: { is: null },
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              eventGroupId: null,
+              majorEventId: null,
+            }),
+            expect.objectContaining({
+              eventGroup: expect.objectContaining({
+                sportsCategory: { is: null },
+              }),
+            }),
+          ]),
+        }),
+      }),
+    );
+    expect(prisma.eventGroup.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          sportsCategory: { is: null },
+          events: {
+            some: expect.objectContaining({
+              majorEventId: null,
+              sportsMatch: { is: null },
+            }),
+          },
+        }),
+      }),
+    );
+    expect(prisma.majorEvent.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              events: {
+                some: expect.objectContaining({
+                  sportsMatch: { is: null },
+                  OR: expect.arrayContaining([
+                    expect.objectContaining({
+                      eventGroup: expect.objectContaining({
+                        sportsCategory: { is: null },
+                      }),
+                    }),
+                  ]),
+                }),
+              },
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
   it('accepts issuable event, event group, and major event targets', async () => {
     const prisma = createPrisma();
     prisma.event.findFirst.mockResolvedValue({ id: 'event-1' });
@@ -294,6 +357,45 @@ describe('CertificateTargetsService', () => {
     );
   });
 
+  it('allows individual certificates for selected events in a major-event-owned group', async () => {
+    const prisma = createPrisma();
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1', majorEventId: 'major-1' });
+    const service = new CertificateTargetsService(prisma as never);
+
+    await expect(service.assertIssuableTarget(CertificateScope.EVENT, 'event-1')).resolves.toBeUndefined();
+
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'event-1',
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              eventGroup: expect.objectContaining({
+                shouldIssueCertificate: true,
+                shouldIssueCertificateForEachEvent: true,
+              }),
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it('keeps sports target validation available only for explicit sports certificate roles', async () => {
+    const prisma = createPrisma();
+    prisma.sportsCategory.findFirst.mockResolvedValue({ id: 'category-1' });
+    const service = new CertificateTargetsService(prisma as never);
+
+    await expect(
+      service.assertIssuableTarget(CertificateScope.EVENT_GROUP, 'group-1', CertificateIssuedTo.SPORTS_PLAYER),
+    ).resolves.toBeUndefined();
+
+    prisma.eventGroup.findFirst.mockResolvedValue(null);
+    await expect(service.assertIssuableTarget(CertificateScope.EVENT_GROUP, 'group-1')).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
   it('rejects non-issuable event, event group, and major event targets', async () => {
     const prisma = createPrisma();
     prisma.event.findFirst.mockResolvedValue(null);
@@ -325,6 +427,15 @@ function createPrisma() {
     },
     majorEvent: {
       findMany: jest.fn().mockResolvedValue([]),
+      findFirst: jest.fn(),
+    },
+    sportsCategory: {
+      findFirst: jest.fn(),
+    },
+    sportsMatch: {
+      findFirst: jest.fn(),
+    },
+    sportsTournament: {
       findFirst: jest.fn(),
     },
   };

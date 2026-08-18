@@ -74,6 +74,12 @@ export function createPrismaMock() {
     offlineEventAttendanceSubmission: {
       count: jest.fn(),
     },
+    sportsTournament: {
+      findMany: jest.fn(),
+    },
+    sportsMatch: {
+      findMany: jest.fn(),
+    },
   };
 }
 
@@ -94,6 +100,7 @@ export function insightEvent(overrides: Partial<InsightEvent> = {}): InsightEven
     majorEvent: null,
     eventGroupId: null,
     eventGroup: null,
+    sportsMatch: null,
     shouldCollectAttendance: true,
     shouldIssueCertificate: true,
     allowSubscription: false,

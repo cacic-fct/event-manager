@@ -4,6 +4,7 @@ import {
   attendanceCollectionListGuard,
   attendanceCollectionScannerGuard,
 } from './attendance/collection/access.service';
+import { myDayFeatureGuard } from './my-day/my-day.guard';
 
 export const appRoutes: Route[] = [
   {
@@ -32,6 +33,13 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./major-events/list/event-list-page').then((m) => m.MajorEvent),
         title: 'Grandes eventos',
         data: { reuseTab: true },
+      },
+      {
+        path: 'my-day',
+        loadComponent: () => import('./my-day/my-day.page').then((m) => m.MyDayPage),
+        title: 'Meu dia',
+        data: { reuseTab: true },
+        canActivate: [myDayFeatureGuard],
       },
       {
         path: 'notifications',
@@ -72,6 +80,41 @@ export const appRoutes: Route[] = [
     path: 'event/:eventId',
     loadComponent: () => import('./events/detail/event-page').then((m) => m.Event),
     title: 'Evento',
+  },
+  {
+    path: 'map',
+    loadComponent: () => import('./map/public-map-page').then((m) => m.PublicMapPage),
+    title: 'Mapa de eventos',
+  },
+  {
+    path: 'tournament/:tournamentId/subscribe',
+    loadComponent: () => import('./sports/operations/self-subscription-page').then((m) => m.SportsSelfSubscriptionPage),
+    title: 'Inscrição no torneio',
+  },
+  {
+    path: 'tournament/:tournamentId',
+    loadComponent: () => import('./sports/viewer/tournament-page').then((m) => m.SportsTournamentPage),
+    title: 'Torneio',
+  },
+  {
+    path: 'sports/match/:matchId',
+    loadComponent: () => import('./sports/viewer/match-page').then((m) => m.SportsMatchPage),
+    title: 'Partida',
+  },
+  {
+    path: 'sports/operate/:matchId',
+    loadComponent: () => import('./sports/operations/official-match-page').then((m) => m.OfficialSportsMatchPage),
+    title: 'Operar partida',
+  },
+  {
+    path: 'sports/team/:teamId',
+    loadComponent: () => import('./sports/operations/team-operations-page').then((m) => m.SportsTeamOperationsPage),
+    title: 'Gerenciar equipe',
+  },
+  {
+    path: 'sports',
+    loadComponent: () => import('./sports/operations/sports-autoroute-page').then((m) => m.SportsAutoroutePage),
+    title: 'Minha próxima partida',
   },
   {
     path: 'major-event/:majorEventId/subscription',
@@ -140,8 +183,7 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'attendance/collect/:eventId/method',
-    loadComponent: () =>
-      import('./attendance/collection/method/method-page').then((m) => m.AttendanceMethodPage),
+    loadComponent: () => import('./attendance/collection/method/method-page').then((m) => m.AttendanceMethodPage),
     title: 'Escolher forma de coleta',
     canActivate: [attendanceCollectionScannerGuard],
   },
@@ -183,12 +225,14 @@ export const appRoutes: Route[] = [
     loadComponent: () =>
       import('./certificates/validation/certificate-validation').then((m) => m.CertificateValidation),
     title: 'Validar certificado',
+    data: { reuseTab: true },
   },
   {
     path: 'validate/:certificateId',
     loadComponent: () =>
       import('./certificates/validation/certificate-validation').then((m) => m.CertificateValidation),
     title: 'Validar certificado',
+    data: { reuseTab: true },
   },
   {
     path: 'validar',

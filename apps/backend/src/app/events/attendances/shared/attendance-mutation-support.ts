@@ -1,24 +1,25 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
-import { AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
+import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { getBrazilianPhoneCandidates } from '../../../common/brazilian-phone';
+import { AttendanceCategoryService } from '../../attendance-category.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import {
+  notifySportsMatchAttendanceMutation,
+  startSportsMatchCheckInFromAthleteAttendance,
+  type SportsMatchAttendanceMutationPublisher,
+} from '../../../sports/operations/sports-match-attendance';
+import { createOrRestoreEventAttendance } from './event-attendance-writer';
 import { EventAttendancesScannerFeedSupport } from './scanner-feed-support';
 
-const ATTENDANCE_WRITE_SELECT = {
-  personId: true,
-  eventId: true,
-  attendedAt: true,
-  createdAt: true,
-  createdById: true,
-  committedById: true,
-  createdByMethod: true,
-  status: true,
-  category: true,
-  collectedLatitude: true,
-  collectedLongitude: true,
-  collectedAccuracyMeters: true,
-} satisfies Prisma.EventAttendanceSelect;
-
 export abstract class EventAttendancesMutationSupport extends EventAttendancesScannerFeedSupport {
+  constructor(
+    prisma: PrismaService,
+    attendanceCategories: AttendanceCategoryService,
+    protected readonly sportsMutationEvents?: SportsMatchAttendanceMutationPublisher,
+  ) {
+    super(prisma, attendanceCategories);
+  }
+
   protected async createAttendanceWithMetadata(
     input: {
       eventId: string;
@@ -31,80 +32,87 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
     },
     afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>,
   ) {
-    const locationData = input.location
-      ? {
-          collectedLatitude: input.location.latitude,
-          collectedLongitude: input.location.longitude,
-          collectedAccuracyMeters: input.location.accuracyMeters,
-        }
-      : {};
+    let checkInStarted = false;
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        const existing = await tx.eventAttendance.findUnique({
-          where: {
-            personId_eventId: {
-              personId: input.personId,
-              eventId: input.eventId,
-            },
+      const attendance = await this.prisma.$transaction((tx) =>
+        createOrRestoreEventAttendance({
+          tx,
+          attendanceCategories: this.attendanceCategories,
+          input,
+          afterWrite: async (attendance, transaction) => {
+            if (
+              await startSportsMatchCheckInFromAthleteAttendance({
+                tx: transaction,
+                eventId: attendance.eventId,
+                personId: attendance.personId,
+                updatedById: input.committedById ?? input.createdById,
+              })
+            ) {
+              checkInStarted = true;
+            }
+            await afterCreate?.(attendance, transaction);
           },
-          select: { status: true },
-        });
-        if (existing?.status === EventAttendanceStatus.ABSENT) {
-          const attendance = await tx.eventAttendance.update({
-            where: {
-              personId_eventId: {
-                personId: input.personId,
-                eventId: input.eventId,
-              },
-            },
-            data: {
-              status: EventAttendanceStatus.PRESENT,
-              attendedAt: input.attendedAt ?? new Date(),
-              createdById: input.createdById,
-              committedById: input.committedById,
-              createdByMethod: input.createdByMethod,
-              ...locationData,
-            },
-            select: ATTENDANCE_WRITE_SELECT,
-          });
-          await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-          await afterCreate?.(attendance, tx);
-          return attendance;
-        }
-        await tx.eventAttendance.create({
-          data: {
-            eventId: input.eventId,
-            personId: input.personId,
-            attendedAt: input.attendedAt,
-            createdById: input.createdById,
-            committedById: input.committedById,
-            createdByMethod: input.createdByMethod,
-            ...locationData,
-          },
-        });
-        await this.attendanceCategories.refreshForAttendance(input.personId, input.eventId, tx);
-        const attendance = await tx.eventAttendance.findUniqueOrThrow({
-          where: {
-            personId_eventId: {
-              personId: input.personId,
-              eventId: input.eventId,
-            },
-          },
-          select: ATTENDANCE_WRITE_SELECT,
-        });
-        await afterCreate?.(attendance, tx);
-        return attendance;
-      });
+        }),
+      );
+      if (checkInStarted) {
+        await notifySportsMatchAttendanceMutation(this.sportsMutationEvents, attendance);
+      }
+      return attendance;
     } catch (error: unknown) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        (error.code === 'P2002' || error.code === 'P2025')
-      ) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2002' || error.code === 'P2025')) {
+        if (error.code === 'P2002') {
+          await this.recordRepeatedAttendanceAttempt(input);
+        }
         throw new ConflictException('Presença já registrada para este evento.');
       }
 
       throw error;
     }
+  }
+
+  private async recordRepeatedAttendanceAttempt(input: {
+    eventId: string;
+    personId: string;
+    createdByMethod: AttendanceCreationMethod;
+    createdById?: string;
+    committedById?: string;
+  }): Promise<void> {
+    const now = new Date();
+    const fiveMinuteWindow = Math.floor(now.getTime() / (5 * 60_000));
+    const actorId = input.createdById ?? input.committedById;
+    const dedupeKey = `${input.eventId}:${input.personId}:${actorId ?? input.createdByMethod}:${fiveMinuteWindow}`;
+    const counter = await this.prisma.attendanceScanAttemptCounter.upsert({
+      where: { dedupeKey },
+      create: {
+        dedupeKey,
+        eventId: input.eventId,
+        personId: input.personId,
+        actorId,
+        method: input.createdByMethod,
+        windowStartedAt: new Date(fiveMinuteWindow * 5 * 60_000),
+      },
+      update: { count: { increment: 1 } },
+    });
+    if (counter.count < 3) return;
+
+    await this.prisma.attendanceReviewFlag.upsert({
+      where: { dedupeKey: `repeated-attempts:${dedupeKey}` },
+      create: {
+        eventId: input.eventId,
+        personId: input.personId,
+        actorId,
+        kind: 'REPEATED_SCAN_ATTEMPTS',
+        severity: 'INFO',
+        dedupeKey: `repeated-attempts:${dedupeKey}`,
+        title: 'Tentativas repetidas de leitura',
+        summary: `${counter.count} tentativas foram feitas para uma presença já registrada em até cinco minutos.`,
+        details: { count: counter.count, method: input.createdByMethod },
+      },
+      update: {
+        summary: `${counter.count} tentativas foram feitas para uma presença já registrada em até cinco minutos.`,
+        details: { count: counter.count, method: input.createdByMethod },
+      },
+    });
   }
 
   protected async findSinglePersonForManualInput(rawValue: string): Promise<{ id: string }> {

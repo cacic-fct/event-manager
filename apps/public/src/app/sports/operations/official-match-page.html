@@ -1,0 +1,457 @@
+<mat-toolbar class="match-toolbar">
+  <a mat-icon-button [routerLink]="backUrl" aria-label="Voltar"><mat-icon>arrow_back</mat-icon></a>
+  <h1 class="global-toolbar-title">
+    {{ match() ? teamName(displaySide('left')) + ' × ' + teamName(displaySide('right')) : 'Operação da partida' }}
+  </h1>
+  @if (pendingCount() > 0) {
+  <button mat-button type="button" (click)="offline.sync()">
+    <mat-icon>cloud_upload</mat-icon>{{ pendingCount() }} para enviar
+  </button>
+  } @if (retainedActionCount() > 0) {
+  <span class="retained-offline-items" aria-live="polite">
+    <mat-icon aria-hidden="true">inventory_2</mat-icon>
+    <strong>{{ retainedActionCount() }}</strong>
+    <span class="retained-offline-label">&nbsp;ações de outra pessoa mantidas neste dispositivo</span>
+  </span>
+  } @if (unverifiedAttendanceCount() > 0) {
+  <span class="retained-offline-items" aria-live="polite">
+    <mat-icon aria-hidden="true">no_accounts</mat-icon>
+    <strong>{{ unverifiedAttendanceCount() }}</strong>
+    <span class="retained-offline-label">&nbsp;presenças antigas sem credencial mantidas</span>
+  </span>
+  }
+</mat-toolbar>
+
+@if (loading()) {
+<main class="center-state">
+  <mat-spinner diameter="42" />
+  <p>Preparando a mesa de controle…</p>
+</main>
+} @else if (error()) {
+<main class="center-state">
+  <mat-icon>error_outline</mat-icon>
+  <h2>Não foi possível abrir a partida</h2>
+  <p>{{ error() }}</p>
+  <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
+</main>
+} @else if (match(); as currentMatch) {
+<main class="operation-shell">
+  <span class="score-announcement" aria-live="polite" aria-atomic="true">
+    Placar: {{ teamName(displaySide('left')) }} {{ scoreFor(displaySide('left')) }},
+    {{ teamName(displaySide('right')) }} {{ scoreFor(displaySide('right')) }}
+  </span>
+  <section class="scoreboard" aria-label="Placar da partida">
+    <div class="team">
+      <lib-sports-team-logo [logoUrl]="teamLogo(displaySide('left'))" [size]="52" />
+      <h2>{{ teamName(displaySide('left')) }}</h2>
+      <div class="score-controls">
+        <button
+          mat-icon-button
+          type="button"
+          [attr.aria-label]="'Diminuir placar de ' + teamName(displaySide('left'))"
+          [disabled]="busy() || !canEditScore() || scoreFor(displaySide('left')) === 0"
+          (click)="changeScore(displaySide('left'), -1)">
+          <mat-icon>remove</mat-icon>
+        </button>
+        <strong>{{ scoreFor(displaySide('left')) }}</strong>
+        <button
+          mat-fab
+          type="button"
+          [attr.aria-label]="'Aumentar placar de ' + teamName(displaySide('left'))"
+          [disabled]="busy() || !canEditScore()"
+          (click)="changeScore(displaySide('left'), 1)">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="match-clock">
+      <span class="state" [class.live]="currentMatch.state === 'LIVE'">
+        @if (currentMatch.state === 'LIVE') {
+        <lib-sports-live-dot />
+        } {{ stateLabel(currentMatch.state) }}
+      </span>
+      @if (currentMatch.overallTimerEnabled) {
+      <strong>{{ elapsedLabel() }}</strong>
+      }
+      <span
+        >{{ currentMatch.schedule.venueName || currentMatch.schedule.locationDescription || 'Local não informado'
+        }}</span
+      >
+      @if (currentMatch.schedule.courtLabel) { <span>{{ currentMatch.schedule.courtLabel }}</span> }
+      <button
+        mat-icon-button
+        type="button"
+        class="swap-sides"
+        aria-label="Trocar os lados das equipes no placar"
+        [disabled]="busy()"
+        (click)="swapSides()">
+        <mat-icon>swap_horiz</mat-icon>
+      </button>
+    </div>
+
+    <div class="team">
+      <lib-sports-team-logo [logoUrl]="teamLogo(displaySide('right'))" [size]="52" />
+      <h2>{{ teamName(displaySide('right')) }}</h2>
+      <div class="score-controls">
+        <button
+          mat-icon-button
+          type="button"
+          [attr.aria-label]="'Diminuir placar de ' + teamName(displaySide('right'))"
+          [disabled]="busy() || !canEditScore() || scoreFor(displaySide('right')) === 0"
+          (click)="changeScore(displaySide('right'), -1)">
+          <mat-icon>remove</mat-icon>
+        </button>
+        <strong>{{ scoreFor(displaySide('right')) }}</strong>
+        <button
+          mat-fab
+          type="button"
+          [attr.aria-label]="'Aumentar placar de ' + teamName(displaySide('right'))"
+          [disabled]="busy() || !canEditScore()"
+          (click)="changeScore(displaySide('right'), 1)">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="primary-actions" aria-label="Controles da partida">
+    @if (currentMatch.state === 'SCHEDULED' || currentMatch.state === 'CHECK_IN') {
+    <div class="start-action">
+      <button
+        class="hold-button"
+        mat-flat-button
+        type="button"
+        [class.holding]="holdingStart()"
+        [disabled]="busy()"
+        (pointerdown)="startHold($event)"
+        (pointerup)="cancelStartHold()"
+        (pointerleave)="cancelStartHold()"
+        (pointercancel)="cancelStartHold()"
+        (contextmenu)="$event.preventDefault()"
+        (keydown)="startKeyboardHold($event)"
+        (keyup)="cancelKeyboardHold($event)"
+        (blur)="cancelStartHold()">
+        <span class="hold-content">
+          <mat-icon>play_arrow</mat-icon>
+          <span class="hold-copy"
+            ><strong>{{ readinessIssues().length ? 'Segure para iniciar mesmo assim' : 'Segure para começar a partida' }}</strong
+            ><small>{{ readinessIssues().length ? 'O início manual ficará registrado' : 'Mantenha pressionado até a barra completar' }}</small></span
+          >
+        </span>
+        <span class="hold-progress" aria-hidden="true">
+          <span class="hold-content hold-progress-content">
+            <mat-icon>play_arrow</mat-icon>
+            <span class="hold-copy"
+              ><strong>{{ readinessIssues().length ? 'Segure para iniciar mesmo assim' : 'Segure para começar a partida' }}</strong
+              ><small>{{ readinessIssues().length ? 'O início manual ficará registrado' : 'Mantenha pressionado até a barra completar' }}</small></span
+            >
+          </span>
+        </span>
+      </button>
+      @if (readinessIssues().length) {
+      <div class="readiness-issues" role="status" aria-labelledby="readiness-title">
+        <div class="readiness-heading">
+          <mat-icon aria-hidden="true">warning_amber</mat-icon>
+          <strong id="readiness-title">Verifique antes de iniciar</strong>
+        </div>
+        <ul>
+          @for (issue of readinessIssues(); track issue.code + ':' + (issue.registrationId ?? '') + ':' + issue.message) {
+          <li>{{ issue.message }}</li>
+          }
+        </ul>
+      </div>
+      }
+    </div>
+    } @else if (currentMatch.state === 'LIVE' || currentMatch.state === 'PAUSED') {
+    <button mat-flat-button type="button" [disabled]="busy()" (click)="togglePause()">
+      <mat-icon>{{ currentMatch.state === 'PAUSED' ? 'play_arrow' : 'pause' }}</mat-icon>
+      {{ currentMatch.state === 'PAUSED' ? 'Retomar cronômetro' : 'Pausar cronômetro' }}
+    </button>
+    <button mat-stroked-button type="button" [disabled]="busy()" (click)="rollPeriod()">
+      <mat-icon>skip_next</mat-icon>Novo período/rodada
+    </button>
+    <button mat-button type="button" [disabled]="busy() || !canUndoPeriod()" (click)="undoPeriod()">
+      <mat-icon>undo</mat-icon>Desfazer novo período
+    </button>
+    <button mat-flat-button type="button" class="finish-button" [disabled]="busy()" (click)="openFinalize()">
+      <mat-icon>sports_score</mat-icon>Finalizar partida
+    </button>
+    }
+  </section>
+
+  @if (currentMatch.scoreboard.periods.length > 0) {
+  <section class="periods">
+    <h2>Períodos e rodadas</h2>
+    <div class="period-strip">
+      @for (period of currentMatch.scoreboard.periods; track period.number) {
+      <span [class.active]="period.number === currentMatch.scoreboard.activePeriod">
+        {{ period.label }} - {{ period.homeScore }}-{{ period.awayScore }} @if (currentMatch.periodTimerEnabled &&
+        periodElapsedLabel(period.number); as periodClock) {
+        <small>{{ periodClock }}</small>
+        }
+      </span>
+      }
+    </div>
+  </section>
+  }
+
+  <section class="match-notes" aria-labelledby="match-notes-title">
+    <div>
+      <h2 id="match-notes-title">Anotações da partida</h2>
+      <p>Registre substituições, atendimentos e ocorrências. As anotações também funcionam offline.</p>
+    </div>
+    @if (currentMatch.notes) {
+    <div class="official-guidance">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span><strong>Orientação da organização</strong>{{ currentMatch.notes }}</span>
+    </div>
+    } @if (canEditScore()) {
+    <form [formGroup]="occurrenceForm" class="occurrence-form" (ngSubmit)="saveOccurrence()">
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Tipo</mat-label>
+        <mat-select formControlName="kind">
+          <mat-option value="GENERAL">Anotação geral</mat-option>
+          <mat-option value="SUBSTITUTION">Substituição</mat-option>
+          <mat-option value="INJURY">Lesão ou atendimento</mat-option>
+          <mat-option value="DISCIPLINE">Ocorrência disciplinar</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>O que aconteceu?</mat-label>
+        <textarea
+          matInput
+          rows="2"
+          maxlength="1000"
+          formControlName="note"
+          placeholder="Ex.: camisa 7 saiu e camisa 12 entrou aos 18 minutos"></textarea>
+        <mat-hint align="end">{{ occurrenceForm.controls.note.value.length }}/1000</mat-hint>
+      </mat-form-field>
+      <button mat-flat-button type="submit" [disabled]="busy() || occurrenceForm.invalid">
+        <mat-icon>save</mat-icon>Salvar anotação
+      </button>
+    </form>
+    } @if (occurrences().length) {
+    <div class="occurrence-list" aria-label="Anotações registradas">
+      @for (occurrence of occurrences(); track occurrence.occurrenceId) {
+      <article>
+        <strong>{{ occurrenceKindLabel(occurrence.kind) }}</strong>
+        <p>{{ occurrence.note }}</p>
+      </article>
+      }
+    </div>
+    } @else if (!canEditScore()) {
+    <p class="quiet-note">Nenhuma anotação foi consolidada para esta partida.</p>
+    }
+  </section>
+
+  <section class="check-in">
+    <div class="check-in-heading">
+      <div>
+        <h2>Check-in dos atletas</h2>
+        @if (canEditCheckIn()) {
+        <p>Confirme cada atleta presente. A marcação é registrada imediatamente.</p>
+        } @else if (attendanceCollectionUnavailable()) {
+        <p role="status">Conecte este dispositivo antes da partida para preparar a coleta off-line de presenças.</p>
+        } @else {
+        <p>Check-in protegido após o início da partida para evitar alterações acidentais.</p>
+        }
+      </div>
+      <div class="check-in-actions">
+        @if (canEditCheckIn()) {
+        <button mat-flat-button type="button" [disabled]="busy()" (click)="openCheckInScanner()">
+          <mat-icon>qr_code_scanner</mat-icon>Escanear presença
+        </button>
+        } @if (canRequestCheckInCorrection()) { @if (checkInOverrideEnabled()) {
+        <button mat-stroked-button type="button" (click)="lockCheckIn()">
+          <mat-icon>lock</mat-icon>Proteger check-in
+        </button>
+        } @else {
+        <button mat-stroked-button type="button" (click)="requestCheckInEdit()">
+          <mat-icon>edit</mat-icon>Editar check-in
+        </button>
+        } }
+      </div>
+    </div>
+    @if (checkInEntries().length === 0 && officialCheckInEntries().length === 0) {
+    <div class="empty-inline">
+      <mat-icon>groups</mat-icon>
+      <span>A lista de atletas e da arbitragem ainda não está disponível para esta operação.</span>
+    </div>
+    } @else {
+    @if (checkInEntries().length > 0) {
+    <div class="check-in-grid">
+      <section class="check-in-team" [attr.aria-label]="'Atletas de ' + teamName('home')">
+        <h3>
+          <lib-sports-team-logo [logoUrl]="teamLogo('home')" [size]="32" />
+          <span>{{ teamName('home') }}</span>
+        </h3>
+        @for (entry of homeCheckInEntries(); track entry.id) {
+        <button
+          mat-stroked-button
+          type="button"
+          [class.checked-in]="entry.checkedIn"
+          [attr.aria-label]="(entry.checkedIn ? 'Remover presença de ' : 'Confirmar presença de ') + entry.name"
+          [disabled]="busy() || !canEditCheckIn()"
+          (click)="toggleCheckIn(entry)">
+          <mat-icon>{{ entry.checkedIn ? 'check_circle' : 'person' }}</mat-icon>
+          <span>{{ entry.name }}<small>{{ checkInDetail(entry) }}</small></span>
+        </button>
+        } @empty {
+        <p class="team-empty">Nenhum atleta nesta escalação.</p>
+        }
+      </section>
+      <section class="check-in-team" [attr.aria-label]="'Atletas de ' + teamName('away')">
+        <h3>
+          <lib-sports-team-logo [logoUrl]="teamLogo('away')" [size]="32" />
+          <span>{{ teamName('away') }}</span>
+        </h3>
+        @for (entry of awayCheckInEntries(); track entry.id) {
+        <button
+          mat-stroked-button
+          type="button"
+          [class.checked-in]="entry.checkedIn"
+          [attr.aria-label]="(entry.checkedIn ? 'Remover presença de ' : 'Confirmar presença de ') + entry.name"
+          [disabled]="busy() || !canEditCheckIn()"
+          (click)="toggleCheckIn(entry)">
+          <mat-icon>{{ entry.checkedIn ? 'check_circle' : 'person' }}</mat-icon>
+          <span>{{ entry.name }}<small>{{ checkInDetail(entry) }}</small></span>
+        </button>
+        } @empty {
+        <p class="team-empty">Nenhum atleta nesta escalação.</p>
+        }
+      </section>
+    </div>
+    }
+    @if (officialCheckInEntries().length > 0) {
+    <section class="check-in-officials" aria-labelledby="check-in-officials-title">
+      <h3 id="check-in-officials-title">
+        <mat-icon aria-hidden="true">gavel</mat-icon>
+        <span>Árbitros e apoio</span>
+      </h3>
+      <div class="check-in-official-grid">
+        @for (official of officialCheckInEntries(); track official.id) {
+        <button
+          mat-stroked-button
+          type="button"
+          [class.checked-in]="official.checkedIn"
+          [attr.aria-label]="
+            (official.checkedIn ? 'Remover presença de ' : 'Confirmar presença de ') + official.name
+          "
+          [disabled]="busy() || !canEditCheckIn()"
+          (click)="toggleOfficialCheckIn(official)">
+          <mat-icon>{{ official.checkedIn ? 'check_circle' : 'gavel' }}</mat-icon>
+          <span>{{ official.name }}<small>{{ officialRoleDetail(official) }}</small></span>
+        </button>
+        }
+      </div>
+    </section>
+    }
+    }
+  </section>
+
+  @if (finalizeOpen()) {
+  <section id="match-end" class="finalize-panel" aria-labelledby="finalize-title" tabindex="-1">
+    <div class="finalize-heading">
+      <div>
+        <h2 id="finalize-title">Você está finalizando {{ teamName('home') }} × {{ teamName('away') }}</h2>
+        <p>Nada será enviado sem a confirmação na última etapa.</p>
+      </div>
+      <button mat-icon-button type="button" aria-label="Fechar finalização" (click)="closeFinalize()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    <mat-stepper #finalizeStepper class="protected-stepper" linear orientation="vertical">
+      <mat-step [stepControl]="outcomeForm" [completed]="outcomeStepCompleted()" [editable]="false" label="Resultado">
+        <form [formGroup]="outcomeForm" class="step-form">
+          <mat-checkbox formControlName="draw">A partida terminou empatada</mat-checkbox>
+          @if (outcomeForm.controls.draw.value) {
+          <mat-checkbox formControlName="drawWillReschedule">O empate será remarcado</mat-checkbox>
+          } @else {
+          <p>Quem perdeu?</p>
+          <mat-radio-group formControlName="loserSide" class="team-choice">
+            <mat-radio-button value="home">{{ teamName('home') }}</mat-radio-button>
+            <mat-radio-button value="away">{{ teamName('away') }}</mat-radio-button>
+          </mat-radio-group>
+          }
+          <button mat-flat-button type="button" (click)="completeOutcomeStep(finalizeStepper)">Continuar</button>
+        </form>
+      </mat-step>
+      <mat-step [stepControl]="reasonForm" [completed]="reasonStepCompleted()" [editable]="false" label="Motivo">
+        <form [formGroup]="reasonForm" class="step-form">
+          @if (!outcomeForm.controls.draw.value) {
+          <mat-form-field>
+            <mat-label>Por que a equipe perdeu?</mat-label>
+            <mat-select formControlName="reason">
+              <mat-option value="SCORE">Resultado no placar</mat-option>
+              <mat-option value="WALKOVER">W.O. (walkover)</mat-option>
+              <mat-option value="FORFEIT">Desistência</mat-option>
+              <mat-option value="OTHER">Outro motivo</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>Observação opcional</mat-label>
+            <input matInput formControlName="detail" />
+          </mat-form-field>
+          } @else {
+          <p>Empate confirmado. Na próxima etapa, revise o placar.</p>
+          }
+          <div class="step-actions">
+            <button mat-button matStepperPrevious type="button">Voltar</button>
+            <button mat-flat-button type="button" (click)="completeReasonStep(finalizeStepper)">Continuar</button>
+          </div>
+        </form>
+      </mat-step>
+      <mat-step [stepControl]="finalScoreForm" [completed]="scoreStepCompleted()" [editable]="false" label="Placar">
+        <form [formGroup]="finalScoreForm" class="step-form">
+          <div class="score-inputs">
+            <mat-form-field>
+              <mat-label>{{ teamName('home') }}</mat-label>
+              <input matInput type="number" min="0" inputmode="numeric" formControlName="homeScore" />
+            </mat-form-field>
+            <mat-form-field>
+              <mat-label>{{ teamName('away') }}</mat-label>
+              <input matInput type="number" min="0" inputmode="numeric" formControlName="awayScore" />
+            </mat-form-field>
+          </div>
+          <div class="step-actions">
+            <button mat-button matStepperPrevious type="button">Voltar</button>
+            <button mat-flat-button type="button" (click)="completeScoreStep(finalizeStepper)">Revisar</button>
+          </div>
+        </form>
+      </mat-step>
+      <mat-step [editable]="false" label="Confirmar">
+        <div class="summary">
+          <strong
+            >{{ teamName('home') }} {{ finalScoreForm.controls.homeScore.value }} × {{
+            finalScoreForm.controls.awayScore.value }} {{ teamName('away') }}</strong
+          >
+          <p>
+            {{ outcomeForm.controls.draw.value ? 'Empate' : 'Perdedor selecionado: ' +
+            teamName(outcomeForm.controls.loserSide.value || 'home') }}
+          </p>
+          @if (!outcomeForm.controls.draw.value) {
+          <p>Motivo: {{ reasonLabel(reasonForm.controls.reason.value) }}</p>
+          }
+        </div>
+        <div class="step-actions">
+          <button mat-button matStepperPrevious type="button">Corrigir</button>
+          <button mat-flat-button type="button" [disabled]="busy()" (click)="finalize()">Confirmar e finalizar</button>
+        </div>
+      </mat-step>
+    </mat-stepper>
+  </section>
+  }
+
+  <mat-expansion-panel class="overlay-builder">
+    <mat-expansion-panel-header>
+      <mat-panel-title><mat-icon>live_tv</mat-icon>Overlay para transmissão</mat-panel-title>
+      <mat-panel-description>Link configurável para OBS</mat-panel-description>
+    </mat-expansion-panel-header>
+    <lib-sports-match-overlay-builder
+      [matchId]="currentMatchId()"
+      [homeTeamName]="teamName('home')"
+      [awayTeamName]="teamName('away')" />
+  </mat-expansion-panel>
+</main>
+}

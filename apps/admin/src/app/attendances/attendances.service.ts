@@ -9,19 +9,16 @@ import { parseCsv } from '@cacic-fct/shared-utils';
 import { AttendanceApiService } from '../graphql/attendance-api.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
-import { SubscriptionApiService } from '../graphql/subscription-api.service';
 import {
   AttendanceCategory,
   Event,
   EventAttendance,
   EventAttendanceScannerFeedItem,
   EventAttendanceCsvImportResolution,
-  MajorEventPriceTier,
   MajorEventUserAttendance,
   OfflineEventAttendanceSubmission,
   OfflineEventAttendanceResolutionIssue,
   Person,
-  SubscriptionStatus,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { AttendanceCsvColumnDialogComponent } from './dialogs/import/attendance-csv-column-dialog.component';
 import { AttendanceCsvImportResultDialogComponent } from './dialogs/import/attendance-csv-import-result-dialog.component';
@@ -32,10 +29,10 @@ import { AttendanceScannerDialogComponent } from './dialogs/scanning/attendance-
 import { OfflineAttendanceSubmissionEditDialogComponent } from './dialogs/offline/offline-attendance-submission-edit-dialog.component';
 import { OfflineAttendanceSubmissionDialogComponent } from './dialogs/offline/offline-attendance-submission-dialog.component';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-filters/event-list-filters';
 import { bindLiveSearch } from '../search/live-search';
-import { buildPeopleLookupFilters } from '../people/people-lookup';
+import { buildPeopleCandidateLookupFilters, buildPeopleLookupFilters } from '../people/people-lookup';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
@@ -82,7 +79,6 @@ type AttendanceCategoryGroup = {
 const ATTENDANCE_CATEGORY_ORDER: AttendanceCategory[] = ['REGULAR', 'NON_SUBSCRIBED', 'NON_PAYING', 'UNKNOWN'];
 const EXPORT_PAGE_SIZE = 1000;
 const OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE = 1000;
-const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
 
 const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; description: string }> = {
   NON_PAYING: {
@@ -130,11 +126,11 @@ function mapAttendanceListItem(attendance: EventAttendance): AttendanceListItem 
 })
 export class AttendancesService {
   private readonly api = inject(AttendanceApiService);
-  private readonly subscriptionApi = inject(SubscriptionApiService);
   private readonly eventApi = inject(EventApiService);
   private readonly peopleApi = inject(PeopleApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly majorEventsService = inject(MajorEventsService);
   private readonly router = inject(Router);
@@ -179,33 +175,6 @@ export class AttendancesService {
   });
   readonly majorEventUserAttendances = signal<MajorEventUserAttendance[]>([]);
   readonly majorEventUserAttendancesPagination = createWorkspaceListPagination();
-  readonly majorEventAttendanceEditMode = signal(false);
-  readonly majorEventAttendanceEditForm = this.formBuilder.group({
-    subscriptionStatus: this.formBuilder.nonNullable.control<SubscriptionStatus>(DEFAULT_SUBSCRIPTION_STATUS, [
-      Validators.required,
-    ]),
-    amountPaid: this.formBuilder.control<number | null>(null),
-    paymentDate: this.formBuilder.control<string | null>(null),
-    paymentTier: this.formBuilder.control<string | null>(null),
-  });
-  readonly majorEventAttendancePaymentTiers = computed<MajorEventPriceTier[]>(() => {
-    const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
-    const majorEvent = this.majorEvents().find((item) => item.id === majorEventId);
-    const tiers = majorEvent?.majorEventPrices[0]?.tiers ?? [];
-    const selectedTier = this.selectedMajorEventUserAttendance()?.paymentTier?.trim();
-    if (!selectedTier || tiers.some((tier) => tier.name === selectedTier)) {
-      return tiers;
-    }
-
-    return [
-      {
-        id: `selected-${selectedTier}`,
-        name: selectedTier,
-        value: 0,
-      },
-      ...tiers,
-    ];
-  });
   readonly majorEventUserAttendanceGroups = computed<AttendanceCategoryGroup[]>(() => {
     const groups = new Map<AttendanceCategory, MajorEventUserAttendance[]>(
       ATTENDANCE_CATEGORY_ORDER.map((category) => [category, []]),
@@ -222,7 +191,9 @@ export class AttendancesService {
     })).filter((group) => group.attendances.length > 0);
   });
   readonly selectedMajorEventUserAttendance = signal<MajorEventUserAttendance | null>(null);
-  readonly selectedMajorEventAttendanceEventIds = signal<Set<string>>(new Set());
+  readonly selectedMajorEventAttendances = computed(
+    () => this.selectedMajorEventUserAttendance()?.attendances.filter((attendance) => attendance.attended) ?? [],
+  );
   readonly isImportingCsv = signal(false);
 
   readonly attendanceForm = this.formBuilder.nonNullable.group({
@@ -309,12 +280,22 @@ export class AttendancesService {
       return;
     }
 
-    const filters = buildPeopleLookupFilters(
-      this.attendanceForm.controls.identifierType.value,
-      this.attendanceForm.controls.identifier.value,
-      { take: 10 },
-    );
-    const people = filters ? await firstValueFrom(this.peopleApi.listPeopleSummaries(filters)) : [];
+    const identifierType = this.attendanceForm.controls.identifierType.value;
+    const identifierValue = this.attendanceForm.controls.identifier.value;
+    let people: Person[] = [];
+    if (identifierType === 'query') {
+      const searches = buildPeopleCandidateLookupFilters(identifierValue, 10).map((filters) =>
+        firstValueFrom(this.peopleApi.listPeopleSummaries(filters)),
+      );
+      const peopleById = new Map<string, Person>();
+      for (const person of (await Promise.all(searches)).flat()) {
+        peopleById.set(person.id, person);
+      }
+      people = [...peopleById.values()].slice(0, 10);
+    } else {
+      const filters = buildPeopleLookupFilters(identifierType, identifierValue, { take: 10 });
+      people = filters ? await firstValueFrom(this.peopleApi.listPeopleSummaries(filters)) : [];
+    }
     this.attendancePersonMatches.set(people);
   }
 
@@ -372,9 +353,7 @@ export class AttendancesService {
         duration: 2500,
       });
     } catch (error: unknown) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível registrar a presença.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível registrar a presença.');
     }
   }
 
@@ -456,9 +435,7 @@ export class AttendancesService {
         data: result,
       });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível importar o CSV.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível importar o CSV.');
     } finally {
       this.isImportingCsv.set(false);
     }
@@ -797,94 +774,6 @@ export class AttendancesService {
 
   selectMajorEventUserAttendance(attendance: MajorEventUserAttendance | null): void {
     this.selectedMajorEventUserAttendance.set(attendance);
-    this.majorEventAttendanceEditMode.set(false);
-    this.resetMajorEventAttendanceDraft(attendance);
-  }
-
-  enableMajorEventAttendanceEdit(): void {
-    if (!this.selectedMajorEventUserAttendance()) {
-      return;
-    }
-    this.majorEventAttendanceEditMode.set(true);
-  }
-
-  cancelMajorEventAttendanceEdit(): void {
-    this.resetMajorEventAttendanceDraft(this.selectedMajorEventUserAttendance());
-    this.majorEventAttendanceEditMode.set(false);
-  }
-
-  toggleMajorEventAttendanceEvent(eventId: string): void {
-    if (!this.majorEventAttendanceEditMode()) {
-      return;
-    }
-
-    const selectedEventIds = new Set(this.selectedMajorEventAttendanceEventIds());
-    if (selectedEventIds.has(eventId)) {
-      selectedEventIds.delete(eventId);
-    } else {
-      selectedEventIds.add(eventId);
-    }
-    this.selectedMajorEventAttendanceEventIds.set(selectedEventIds);
-  }
-
-  setMajorEventAttendanceEvent(eventId: string, attended: boolean): void {
-    if (!this.majorEventAttendanceEditMode()) {
-      return;
-    }
-
-    const selectedEventIds = new Set(this.selectedMajorEventAttendanceEventIds());
-    if (attended) {
-      selectedEventIds.add(eventId);
-    } else {
-      selectedEventIds.delete(eventId);
-    }
-    this.selectedMajorEventAttendanceEventIds.set(selectedEventIds);
-  }
-
-  async saveMajorEventAttendanceEdit(): Promise<void> {
-    const selected = this.selectedMajorEventUserAttendance();
-    if (!selected) {
-      return;
-    }
-
-    const selectedEventIds = this.selectedMajorEventAttendanceEventIds();
-    const previousEventIds = new Set(
-      selected.attendances.filter((attendance) => attendance.attended).map((attendance) => attendance.eventId),
-    );
-    const formValue = this.majorEventAttendanceEditForm.getRawValue();
-
-    try {
-      if (selected.subscriptionId) {
-        await firstValueFrom(
-          this.subscriptionApi.updateMajorEventSubscription(selected.subscriptionId, {
-            subscriptionStatus: formValue.subscriptionStatus,
-            amountPaid: formValue.amountPaid,
-            paymentDate: formValue.paymentDate,
-            paymentTier: formValue.paymentTier,
-          }),
-        );
-      }
-
-      for (const eventId of selectedEventIds) {
-        if (!previousEventIds.has(eventId)) {
-          await firstValueFrom(this.api.createEventAttendance({ eventId, personId: selected.personId }));
-          this.invalidateExplicitAbsences(eventId);
-        }
-      }
-
-      for (const eventId of previousEventIds) {
-        if (!selectedEventIds.has(eventId)) {
-          await firstValueFrom(this.api.deleteEventAttendance({ eventId, personId: selected.personId }));
-          this.invalidateExplicitAbsences(eventId);
-        }
-      }
-
-      this.majorEventAttendanceEditMode.set(false);
-      await this.loadMajorEventUserAttendances();
-      this.snackbar.open('Presença atualizada.', 'Fechar', { duration: 2500 });
-    } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a presença.'), 'Fechar', { duration: 5000 });
-    }
   }
 
   getMajorEventUserAttendanceCategory(attendance: MajorEventUserAttendance): AttendanceCategory {
@@ -899,23 +788,6 @@ export class AttendancesService {
 
   getAttendanceCategoryLabel(category: AttendanceCategory): string {
     return ATTENDANCE_CATEGORY_LABELS[category].label;
-  }
-
-  private resetMajorEventAttendanceDraft(attendance: MajorEventUserAttendance | null): void {
-    this.majorEventAttendanceEditForm.reset({
-      subscriptionStatus:
-        (attendance?.subscriptionStatus as SubscriptionStatus | undefined) ?? DEFAULT_SUBSCRIPTION_STATUS,
-      amountPaid: attendance?.amountPaid ?? null,
-      paymentDate: attendance?.paymentDate?.slice(0, 10) ?? null,
-      paymentTier: attendance?.paymentTier ?? null,
-    });
-    this.selectedMajorEventAttendanceEventIds.set(
-      new Set(
-        attendance?.attendances
-          .filter((attendanceStatus) => attendanceStatus.attended)
-          .map((attendanceStatus) => attendanceStatus.eventId) ?? [],
-      ),
-    );
   }
 
   async exportEventAttendancesCsv(): Promise<void> {
@@ -955,25 +827,6 @@ export class AttendancesService {
     }
 
     this.downloadCsv(`presencas-${this.slugify(event.name)}.csv`, buildSubscriberCsv(attendances, options));
-  }
-
-  async exportMajorEventAttendancesCsv(): Promise<void> {
-    const majorEventId = this.majorEventAttendanceForm.controls.majorEventId.value;
-    if (!majorEventId) {
-      this.majorEventAttendanceForm.controls.majorEventId.markAsTouched();
-      this.snackbar.open('Selecione um grande evento antes de baixar o CSV.', 'Fechar', { duration: 3000 });
-      return;
-    }
-
-    const attendances = await this.fetchAllMajorEventUserAttendances(majorEventId);
-    this.majorEventUserAttendances.set(attendances);
-    const options = await this.openExportDialog('Baixar lista de presença do grande evento', attendances.length);
-    if (!options) {
-      return;
-    }
-
-    const majorEventName = this.majorEvents().find((item) => item.id === majorEventId)?.name ?? majorEventId;
-    this.downloadCsv(`presencas-${this.slugify(majorEventName)}.csv`, buildSubscriberCsv(attendances, options));
   }
 
   private async openExportDialog(title: string, recordCount: number) {
@@ -1025,19 +878,6 @@ export class AttendancesService {
   private clearExplicitAbsencesRequest(eventId: string, request: Promise<EventAttendance[]>): void {
     if (this.explicitAbsencesByEventId.get(eventId) === request) {
       this.explicitAbsencesByEventId.delete(eventId);
-    }
-  }
-
-  private async fetchAllMajorEventUserAttendances(majorEventId: string): Promise<MajorEventUserAttendance[]> {
-    const attendances: MajorEventUserAttendance[] = [];
-    for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
-      const page = await firstValueFrom(
-        this.api.listMajorEventUserAttendances(majorEventId, { skip, take: EXPORT_PAGE_SIZE }),
-      );
-      attendances.push(...page);
-      if (page.length < EXPORT_PAGE_SIZE) {
-        return attendances;
-      }
     }
   }
 

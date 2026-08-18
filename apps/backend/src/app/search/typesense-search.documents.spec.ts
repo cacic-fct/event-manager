@@ -55,14 +55,12 @@ describe('typesense generic document mappers', () => {
         id: 'template-1',
         name: 'Certificado',
         description: '  ',
-        version: 2,
         isActive: true,
       }),
     ).toEqual({
       id: 'template-1',
       name: 'Certificado',
       description: undefined,
-      version: 2,
       isActive: true,
     });
   });

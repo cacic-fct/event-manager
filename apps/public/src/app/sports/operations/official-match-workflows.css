@@ -1,0 +1,249 @@
+.check-in-team h3 lib-sports-team-logo {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+}
+.check-in-team h3 span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.check-in-team button {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  justify-content: start;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+}
+.check-in-team button.checked-in {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+.check-in-team button > span {
+  min-width: 0;
+}
+.check-in-grid button span {
+  display: grid;
+  min-width: 0;
+  text-align: left;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.check-in-grid small {
+  color: var(--mat-sys-on-surface-variant);
+}
+.check-in-officials {
+  display: grid;
+  gap: 0.6rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--mat-sys-outline-variant);
+}
+.check-in-officials h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0 0 0.2rem;
+}
+.check-in-official-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.6rem;
+}
+.check-in-official-grid button {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 60px;
+  justify-content: start;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+}
+.check-in-official-grid button.checked-in {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+}
+.check-in-official-grid button > span {
+  display: grid;
+  min-width: 0;
+  text-align: left;
+  line-height: 1.25;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.check-in-official-grid small {
+  color: var(--mat-sys-on-surface-variant);
+}
+.team-empty {
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: var(--mat-sys-surface-container);
+  color: var(--mat-sys-on-surface-variant);
+}
+.empty-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 1rem;
+  background: var(--mat-sys-surface-container);
+  border-radius: 12px;
+  color: var(--mat-sys-on-surface-variant);
+}
+.finalize-panel {
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+.finalize-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.finalize-heading p {
+  margin: 0;
+}
+.step-form {
+  display: grid;
+  gap: 1rem;
+  padding-block: 1rem;
+  max-width: 660px;
+}
+.team-choice {
+  display: grid;
+  gap: 0.5rem;
+}
+.score-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.step-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.summary {
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
+}
+.summary p {
+  color: inherit;
+  margin: 0.4rem 0 0;
+}
+.overlay-builder {
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+.overlay-builder mat-panel-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.center-state {
+  min-height: 70dvh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .match-toolbar span {
+    display: none;
+  }
+  .match-toolbar .retained-offline-items {
+    display: inline-flex;
+  }
+  .operation-shell {
+    padding: 0.75rem;
+  }
+  .scoreboard {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    padding: 1rem 0.65rem;
+  }
+  .match-clock {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .team h2 {
+    min-height: 2.7em;
+  }
+  .score-controls {
+    gap: 0.25rem;
+  }
+  .score-controls strong {
+    min-width: 0.9em;
+    font-size: 3rem;
+  }
+  .score-controls .mat-mdc-fab {
+    width: 44px;
+    height: 44px;
+  }
+  .score-controls .mat-mdc-icon-button {
+    width: 40px;
+    height: 40px;
+    padding: 8px;
+  }
+  .finish-button {
+    margin-inline-start: 0;
+  }
+  .primary-actions {
+    display: grid;
+  }
+  .primary-actions button {
+    width: 100%;
+  }
+  .score-inputs {
+    grid-template-columns: 1fr;
+  }
+  .occurrence-form {
+    grid-template-columns: 1fr;
+  }
+  .occurrence-form button {
+    width: 100%;
+  }
+  .check-in-heading {
+    display: grid;
+  }
+  .check-in-actions {
+    display: grid;
+    width: 100%;
+  }
+  .check-in-actions button {
+    width: 100%;
+  }
+  .check-in-grid {
+    gap: 0.6rem;
+  }
+  .check-in-team h3 {
+    align-items: start;
+    font-size: 0.95rem;
+  }
+  .check-in-team button {
+    min-height: 64px;
+    padding: 0.45rem;
+  }
+  .check-in-team button mat-icon {
+    display: none;
+  }
+  .check-in-official-grid button {
+    min-height: 64px;
+    padding: 0.45rem;
+  }
+  .check-in-official-grid button mat-icon {
+    display: none;
+  }
+  .overlay-builder mat-panel-description {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hold-button.holding .hold-progress {
+    transition-timing-function: steps(3, end);
+  }
+}

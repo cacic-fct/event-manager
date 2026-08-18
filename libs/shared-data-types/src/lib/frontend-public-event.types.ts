@@ -15,6 +15,7 @@ export interface PublicMajorEventPriceTier {
   id: string;
   name: string;
   value: number;
+  includesSportsRegistration: boolean;
 }
 
 export interface PublicMajorEventPrice {
@@ -100,7 +101,7 @@ export interface PublicEvent {
   isOnlineAttendanceAllowed?: boolean | null;
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
-  publiclyVisible?: boolean | null;
+  isPubliclyListed?: boolean | null;
   displayLecturerProfile?: boolean | null;
   youtubeCode?: string | null;
   buttonText?: string | null;

@@ -138,6 +138,7 @@ export const NoTargets: Story = {
 };
 
 export const TargetLoadError: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     targetsMode: 'loading-error',
   },

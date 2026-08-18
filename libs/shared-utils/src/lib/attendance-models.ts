@@ -30,6 +30,7 @@ export interface CurrentUserEventParticipation {
   isSubscribed: boolean;
   isLecturer: boolean;
   hasIssuedCertificate: boolean;
+  isSportsManager?: boolean;
 }
 
 export interface CurrentUserMajorEventFeedItem {
@@ -42,6 +43,7 @@ export interface CurrentUserMajorEventFeedItem {
   paymentTier?: string | null;
   selectedEvents?: PublicEvent[];
   notSubscribedEvents?: PublicEvent[];
+  sportsRepresentativeTeams?: Array<{ id: string; name: string }>;
   participation: CurrentUserEventParticipation;
 }
 
@@ -103,6 +105,7 @@ export interface MajorEventDetails {
   events?: PublicEvent[];
   hasIssuedCertificate?: boolean;
   isLecturer?: boolean;
+  sportsRepresentativeTeams?: Array<{ id: string; name: string }>;
   attendances: CurrentUserEventAttendance[];
 }
 
@@ -126,7 +129,6 @@ export interface EventGroupDetails {
 export interface CertificateTemplate {
   id: string;
   name: string;
-  version?: number | null;
 }
 
 export interface CertificateConfig {
@@ -180,6 +182,8 @@ export interface DetailViewModel {
   certificateTargets: CertificateTarget[];
   shouldIssueCertificate: boolean;
   canViewOrganizerInfo?: boolean;
+  sportsTournamentId?: string;
+  sportsRepresentativeTeams: Array<{ id: string; name: string }>;
   buttonText?: string | null;
   buttonLink?: string | null;
 }

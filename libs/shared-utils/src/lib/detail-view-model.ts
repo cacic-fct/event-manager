@@ -18,6 +18,7 @@ import {
   getEventGroupCertificateLabel,
   getEventTypeLabel,
   getSubscriptionStatusLabel,
+  getSubscriptionStatusSummaryLabel,
   isOnlineAttendanceRegistrationOpen,
   joinUnique,
 } from './attendance-formatters';
@@ -66,7 +67,6 @@ export function buildEventDetail(details: EventDetails): DetailViewModel | null 
 
   const isSubscribed = Boolean(subscription);
   const eventItem = buildEventItem(event, details.attendance, isSubscribed);
-  const statusLabel = details.isLecturer && !isSubscribed && !details.hasIssuedCertificate ? 'Ministrante' : undefined;
 
   return {
     targetType: 'event',
@@ -77,7 +77,7 @@ export function buildEventDetail(details: EventDetails): DetailViewModel | null 
     dateLine: eventItem.dateLine,
     description: event.description ?? event.shortDescription,
     location: event.locationDescription,
-    statusLabel: statusLabel ?? getDetailStatusLine(eventItem, details.hasIssuedCertificate),
+    statusLabel: getEventStatusLabel(details, isSubscribed),
     isSubscribed,
     infoRows: eventInfoRows(event, isSubscribed ? eventItem.statusLine : null),
     events: [eventItem],
@@ -86,6 +86,7 @@ export function buildEventDetail(details: EventDetails): DetailViewModel | null 
       event.shouldIssueCertificate || details.hasIssuedCertificate ? [{ scope: 'EVENT', targetId: event.id }] : [],
     shouldIssueCertificate: Boolean(event.shouldIssueCertificate || details.hasIssuedCertificate),
     canViewOrganizerInfo: Boolean(details.isLecturer),
+    sportsRepresentativeTeams: [],
     buttonText: event.buttonText,
     buttonLink: event.buttonLink,
   };
@@ -140,6 +141,7 @@ export function buildEventGroupDetail(details: EventGroupDetails): DetailViewMod
     certificateTargets,
     shouldIssueCertificate: certificateTargets.length > 0,
     canViewOrganizerInfo: Boolean(details.isLecturer),
+    sportsRepresentativeTeams: [],
   };
 }
 
@@ -172,7 +174,7 @@ export function buildMajorEventDetail(details: MajorEventDetails): DetailViewMod
     dateLine: formatDateRange(majorEvent.startDate, majorEvent.endDate),
     description: majorEvent.description,
     statusLabel: subscription
-      ? getSubscriptionStatusLabel(subscription.subscriptionStatus)
+      ? getSubscriptionStatusSummaryLabel(subscription.subscriptionStatus)
       : details.isLecturer
         ? 'Ministrante'
         : details.hasIssuedCertificate
@@ -189,6 +191,8 @@ export function buildMajorEventDetail(details: MajorEventDetails): DetailViewMod
         : [],
     shouldIssueCertificate: Boolean(majorEvent.shouldIssueCertificate || details.hasIssuedCertificate),
     canViewOrganizerInfo: Boolean(details.isLecturer),
+    sportsTournamentId: majorEvent.sportsTournament?.id,
+    sportsRepresentativeTeams: details.sportsRepresentativeTeams ?? [],
     buttonText: majorEvent.buttonText,
     buttonLink: majorEvent.buttonLink,
   };
@@ -238,10 +242,20 @@ export function getEventGroupCertificateTargets(group: PublicEventGroup, events:
   return targets;
 }
 
-function getDetailStatusLine(eventItem: DetailEventItem, hasIssuedCertificate: boolean | undefined): string {
-  return hasIssuedCertificate && eventItem.statusLine.includes('Não inscrito')
-    ? 'Certificado emitido'
-    : eventItem.statusLine;
+function getEventStatusLabel(details: EventDetails, isSubscribed: boolean): string {
+  if (details.hasIssuedCertificate) {
+    return 'Certificado emitido';
+  }
+
+  if (details.attendance) {
+    return 'Presença registrada';
+  }
+
+  if (details.isLecturer && !isSubscribed) {
+    return 'Ministrante';
+  }
+
+  return isSubscribed ? 'Inscrito' : 'Participação registrada';
 }
 
 function eventInfoRows(event: PublicEvent, statusLine: string | null): InfoRow[] {

@@ -1,4 +1,5 @@
 import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -12,7 +13,6 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrentUserMajorEventSubscription, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { toSVG } from '@bwip-js/browser';
-import { isBefore, parseISO } from 'date-fns';
 import { forkJoin } from 'rxjs';
 import { AnalyticsService } from '../../analytics/analytics.service';
 import { RateLimitError, createRateLimitCooldown } from '../../shared/rate-limit-error';
@@ -31,7 +31,8 @@ interface PixPayload {
 
 interface ConfirmReceiptDialogData {
   file: File;
-  previewUrl: string;
+  previewUrl?: string;
+  isPdf: boolean;
 }
 
 @Component({
@@ -154,7 +155,7 @@ export class PaymentInfo {
 
   canUpload(): boolean {
     const subscription = this.readySubscription();
-    if (!subscription || this.isUploading()) {
+    if (!subscription || this.isUploading() || !subscription.majorEvent.isPaymentRequired) {
       return false;
     }
 
@@ -162,8 +163,7 @@ export class PaymentInfo {
       return false;
     }
 
-    const subscriptionEndDate = subscription.majorEvent.subscriptionEndDate;
-    return !subscriptionEndDate || !isBefore(parseISO(subscriptionEndDate), new Date());
+    return true;
   }
 
   private loadPage(): void {
@@ -216,8 +216,9 @@ export class PaymentInfo {
       return;
     }
 
-    if (!file.type.startsWith('image/')) {
-      this.snackBar.open('Envie apenas arquivos de imagem.', 'OK', { duration: 4000 });
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!file.type.startsWith('image/') && !isPdf) {
+      this.snackBar.open('Envie uma imagem ou um arquivo PDF.', 'OK', { duration: 4000 });
       return;
     }
 
@@ -226,19 +227,22 @@ export class PaymentInfo {
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
+    const previewUrl = isPdf ? undefined : URL.createObjectURL(file);
     this.dialog
       .open<ConfirmReceiptDialog, ConfirmReceiptDialogData, boolean>(ConfirmReceiptDialog, {
         data: {
           file,
           previewUrl,
+          isPdf,
         },
         width: 'min(640px, calc(100vw - 32px))',
       })
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((confirmed) => {
-        URL.revokeObjectURL(previewUrl);
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl);
+        }
         if (confirmed) {
           this.uploadReceipt(file);
         }
@@ -284,7 +288,7 @@ export class PaymentInfo {
           if (error instanceof RateLimitError) {
             this.receiptUploadCooldown.start(error.retryAfterSeconds);
           }
-          this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível enviar o comprovante.', 'OK', {
+          this.snackBar.open(this.receiptUploadErrorMessage(error), 'OK', {
             duration: 5000,
           });
         },
@@ -294,6 +298,14 @@ export class PaymentInfo {
   private readySubscription(): CurrentUserMajorEventSubscription | null {
     const currentState = this.state();
     return currentState.status === 'ready' ? currentState.subscription : null;
+  }
+
+  private receiptUploadErrorMessage(error: unknown): string {
+    if (error instanceof HttpErrorResponse && typeof error.error?.message === 'string') {
+      return error.error.message;
+    }
+
+    return error instanceof Error ? error.message : 'Não foi possível enviar o comprovante.';
   }
 
   private async copyToClipboard(value: string, message: string): Promise<void> {
@@ -329,11 +341,7 @@ export class PaymentInfo {
     };
   }
 
-  private generatePixBrCode(input: {
-    pixKey: string;
-    merchantName: string;
-    amount?: string;
-  }): string | null {
+  private generatePixBrCode(input: { pixKey: string; merchantName: string; amount?: string }): string | null {
     const merchantName = this.normalizeBrCodeText(input.merchantName, 25);
     const pixKey = this.normalizePixKey(input.pixKey);
     const amount = input.amount;
@@ -367,9 +375,10 @@ export class PaymentInfo {
     const prices = subscription.majorEvent.majorEventPrices ?? [];
     const tiers = prices.flatMap((price) => price.tiers);
     const paymentTier = subscription.paymentTier?.trim().toLowerCase();
+    const storedAmount = subscription.amountPaid;
 
     if (paymentTier) {
-      return tiers.find((tier) => tier.name.trim().toLowerCase() === paymentTier)?.value ?? null;
+      return tiers.find((tier) => tier.name.trim().toLowerCase() === paymentTier)?.value ?? storedAmount ?? null;
     }
 
     const singlePrice = prices.find((price) => price.type === 'SINGLE');
@@ -377,7 +386,7 @@ export class PaymentInfo {
       return singlePrice.tiers[0].value;
     }
 
-    return tiers.length === 1 ? tiers[0].value : null;
+    return tiers.length === 1 ? tiers[0].value : storedAmount ?? null;
   }
 
   private normalizeBrCodeText(value: string, maxLength: number): string {
@@ -446,7 +455,14 @@ export class PaymentInfo {
   template: `
     <h2 mat-dialog-title>Confirmar comprovante</h2>
     <mat-dialog-content>
-      <img class="receipt-preview" [src]="data.previewUrl" alt="Pré-visualização do comprovante" />
+      @if (data.isPdf) {
+        <div class="pdf-preview" role="img" aria-label="Arquivo PDF selecionado">
+          <mat-icon>picture_as_pdf</mat-icon>
+          <span>Todas as páginas serão reunidas em uma imagem para validação.</span>
+        </div>
+      } @else if (data.previewUrl) {
+        <img class="receipt-preview" [src]="data.previewUrl" alt="Pré-visualização do comprovante" />
+      }
       <p>{{ data.file.name }} - {{ data.file.size / 1024 / 1024 | number: '1.1-1' }} MB</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
@@ -466,6 +482,26 @@ export class PaymentInfo {
         max-width: 100%;
         object-fit: contain;
         width: 100%;
+      }
+
+      .pdf-preview {
+        align-items: center;
+        background: var(--mat-sys-surface-container-highest);
+        color: var(--mat-sys-on-surface-variant);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        justify-content: center;
+        min-height: 220px;
+        padding: 24px;
+        text-align: center;
+      }
+
+      .pdf-preview mat-icon {
+        color: var(--mat-sys-error);
+        font-size: 48px;
+        height: 48px;
+        width: 48px;
       }
 
       p {

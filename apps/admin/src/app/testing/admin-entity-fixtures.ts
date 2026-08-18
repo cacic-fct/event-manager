@@ -28,6 +28,8 @@ import type {
   DashboardInconsistency,
   DashboardPendingOfflineAttendanceEvent,
   DashboardPendingReceiptMajorEvent,
+  DashboardSportsMatch,
+  DashboardSportsTournament,
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
 import { Permission, type Permission as PermissionScope } from '@cacic-fct/shared-permissions';
@@ -154,6 +156,42 @@ export function createAdminDashboardInconsistency(
   };
 }
 
+export function createAdminDashboardSportsTournament(
+  overrides: Partial<DashboardSportsTournament> = {},
+): DashboardSportsTournament {
+  return {
+    tournamentId: 'sports-tournament-1',
+    majorEventId: 'major-event-1',
+    name: 'Jogos Universitários',
+    emoji: '🏆',
+    startDate: adminFixtureDateFromNow(0, 8),
+    endDate: adminFixtureDateFromNow(3, 18),
+    status: 'LIVE',
+    categoryCount: 4,
+    teamCount: 16,
+    pendingApplicationCount: 2,
+    pendingReviewCount: 3,
+    activeMatchCount: 1,
+    ...overrides,
+  };
+}
+
+export function createAdminDashboardSportsMatch(overrides: Partial<DashboardSportsMatch> = {}): DashboardSportsMatch {
+  return {
+    matchId: 'sports-match-1',
+    tournamentId: 'sports-tournament-1',
+    categoryName: 'Futsal aberto',
+    eventName: 'Atlética FCT × Engenharia',
+    startDate: adminFixtureDateFromNow(0, 14),
+    state: 'LIVE',
+    homeTeamName: 'Atlética FCT',
+    awayTeamName: 'Engenharia',
+    homeScore: 2,
+    awayScore: 1,
+    ...overrides,
+  };
+}
+
 export function createAdminWorkspaceDashboardInsights(
   overrides: Partial<WorkspaceDashboardInsights> = {},
 ): WorkspaceDashboardInsights {
@@ -175,6 +213,11 @@ export function createAdminWorkspaceDashboardInsights(
         label: 'Novo grupo de eventos',
         targetId: null,
       },
+      {
+        action: 'OPEN_SPORTS',
+        label: 'Gerenciar esportes',
+        targetId: null,
+      },
     ],
     calendarEvents: [createAdminDashboardCalendarEvent()],
     weatherAlerts: [],
@@ -183,6 +226,8 @@ export function createAdminWorkspaceDashboardInsights(
     pendingReceiptMajorEvents: [createAdminDashboardPendingReceiptMajorEvent()],
     pendingOfflineAttendancesCount: 2,
     pendingOfflineAttendanceEvents: [createAdminDashboardPendingOfflineAttendanceEvent()],
+    sportsTournaments: [createAdminDashboardSportsTournament()],
+    sportsMatches: [createAdminDashboardSportsMatch()],
     inconsistencies: [
       createAdminDashboardInconsistency(),
       createAdminDashboardInconsistency({
@@ -295,6 +340,7 @@ export function createAdminMajorEventFromInput(input: MajorEventInput = {}): Maj
               id: tier.id ?? `${id}-price-tier-${index + 1}`,
               name: tier.name,
               value: tier.value,
+              includesSportsRegistration: tier.includesSportsRegistration ?? false,
             })),
           },
         ]
@@ -357,7 +403,7 @@ export function createAdminEvent(overrides: Partial<Event> = {}): Event {
     onlineAttendanceCode: null,
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     displayLecturerProfile: true,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
@@ -421,7 +467,7 @@ export function createAdminEventFromInput(input: EventInput = {}): Event {
     onlineAttendanceCode: input.onlineAttendanceCode,
     onlineAttendanceStartDate: input.onlineAttendanceStartDate,
     onlineAttendanceEndDate: input.onlineAttendanceEndDate,
-    publiclyVisible: input.publiclyVisible ?? true,
+    isPubliclyListed: input.isPubliclyListed ?? true,
     displayLecturerProfile: input.displayLecturerProfile ?? true,
     youtubeCode: input.youtubeCode,
     buttonText: input.buttonText,
@@ -815,7 +861,6 @@ export function createAdminCertificateTemplate(overrides: Partial<CertificateTem
     id: 'template-1',
     name: 'Template',
     description: null,
-    version: 1,
     isActive: true,
     certificateFieldsJson: null,
     createdAt: adminFixtureDate,

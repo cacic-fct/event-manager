@@ -103,7 +103,10 @@ export class OnlineAttendanceCoordinatorService implements InterruptionFlow {
                 queryParams: { returnUrl: context.currentUrl },
               });
         return {
-          id: 'online-attendance',
+          id: `online-attendance:${items
+            .map(({ eventId }) => eventId)
+            .sort()
+            .join(',')}`,
           priority: 'NORMAL',
           priorityOrder: INTERRUPTION_PRIORITY_ORDERS.ONLINE_ATTENDANCE,
           target,

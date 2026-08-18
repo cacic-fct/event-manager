@@ -1,24 +1,27 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { AttendanceOfflineQueueService } from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { AttendanceCollectionApiService, AttendanceCollectionEvent } from '../attendance-collection-api.service';
 
 @Component({
   selector: 'app-attendance-method',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink, MatButtonModule, MatIconModule],
+  imports: [RouterLink, MatButtonModule, MatIconModule, MatToolbarModule],
   template: `
+    <mat-toolbar>
+      <a matIconButton routerLink="/attendance/collect" aria-label="Voltar para eventos">
+        <mat-icon>arrow_back</mat-icon>
+      </a>
+      <h1 class="global-toolbar-title">{{ event()?.event?.name || 'Coletar presença' }}</h1>
+    </mat-toolbar>
     <main class="method-page">
       @if (event(); as selected) {
         <header>
           <span>{{ selected.event.emoji }}</span>
-          <div>
-            <p>Coleta de presença</p>
-            <h1>{{ selected.event.name }}</h1>
-          </div>
         </header>
         <section aria-labelledby="method-title">
           <h2 id="method-title">Como você quer coletar?</h2>
@@ -37,13 +40,29 @@ import { AttendanceCollectionApiService, AttendanceCollectionEvent } from '../at
     </main>
   `,
   styles: `
-    .method-page { max-width: 42rem; margin: 0 auto; padding: clamp(1rem, 4vw, 3rem); }
-    header { display: flex; gap: 1rem; align-items: center; margin-bottom: 3rem; }
-    header > span { font-size: 3rem; }
-    h1, p { margin: 0; }
-    header p { color: var(--mat-sys-on-surface-variant); }
-    section { display: grid; gap: 1rem; }
-    section a { min-height: 4.5rem; justify-content: flex-start; font-size: 1rem; }
+    .method-page {
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: clamp(1rem, 4vw, 3rem);
+    }
+    header {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      margin-bottom: 3rem;
+    }
+    header > span {
+      font-size: 3rem;
+    }
+    section {
+      display: grid;
+      gap: 1rem;
+    }
+    section a {
+      min-height: 4.5rem;
+      justify-content: flex-start;
+      font-size: 1rem;
+    }
   `,
 })
 export class AttendanceMethodPage implements OnInit {

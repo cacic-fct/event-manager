@@ -1,9 +1,10 @@
 import { BadRequestException, ForbiddenException, GoneException, NotFoundException } from '@nestjs/common';
-import { SubscriptionStatus } from '@prisma/client';
+import { SportsParticipantStatus, SportsPaymentStatus, SubscriptionStatus } from '@prisma/client';
 import sharp from 'sharp';
 import { Readable } from 'stream';
 import { RECEIPT_ADMIN_PERMISSION, RECEIPT_PROCESSING_ATTEMPTS } from '../receipt.types';
 import { ReceiptUploadService } from './receipt-upload.service';
+import * as receiptPdfProcessing from '../utils/receipt-pdf-processing.utils';
 
 let validPngBuffer: Buffer;
 
@@ -120,27 +121,80 @@ describe('ReceiptUploadService', () => {
     expect(s3.uploadFile).not.toHaveBeenCalled();
   });
 
-  it('uploads, records, queues, and maps a receipt', async () => {
+  it('returns the PDF page-limit feedback before storing the file', async () => {
+    const frozenResources = {
+      assertMajorEventMutable: jest.fn(),
+    };
+    service = new ReceiptUploadService(
+      prisma as never,
+      s3 as never,
+      currentUserContext as never,
+      attendanceCategories as never,
+      dashboardInsights as never,
+      authorizationPolicy as never,
+      receiptQueue as never,
+      frozenResources as never,
+    );
+    currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    prisma.majorEventSubscription.findFirst.mockResolvedValue({
+      id: 'subscription-1',
+      subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+      majorEvent: { isPaymentRequired: true },
+    });
+    jest
+      .spyOn(receiptPdfProcessing, 'assertReceiptPdfPageCountWithinLimit')
+      .mockRejectedValue(new receiptPdfProcessing.ReceiptPdfProcessingError('Envie um arquivo com no máximo 10 páginas.'));
+
+    await expect(service.uploadReceipt('major-1', createPdfFile(), user)).rejects.toThrow(
+      'Envie um arquivo com no máximo 10 páginas.',
+    );
+
+    expect(s3.uploadFile).not.toHaveBeenCalled();
+  });
+
+  it('uploads, records, queues, and maps a receipt after the subscription window closes', async () => {
     currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
     prisma.majorEventSubscription.findFirst.mockResolvedValue({
       id: 'subscription-1',
       subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
       majorEvent: {
         isPaymentRequired: true,
-        subscriptionEndDate: null,
+        subscriptionEndDate: new Date('2000-01-01T00:00:00.000Z'),
       },
     });
     prisma.majorEventReceipt.findFirst.mockResolvedValue(null);
     s3.uploadFile.mockResolvedValue({ key: 'object-key', size: 123 });
-    prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) =>
-      callback({
-        majorEventReceipt: {
-          create: jest.fn().mockResolvedValue(createReceipt()),
-        },
-        majorEventSubscription: {
-          updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        },
-      }),
+    const tx = {
+      majorEventReceipt: {
+        create: jest.fn().mockResolvedValue(createReceipt()),
+      },
+      majorEventSubscription: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        findUnique: jest.fn().mockResolvedValue({
+          subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
+          majorEvent: { isPaymentRequired: true },
+          sportsTournamentParticipants: [
+            {
+              id: 'participant-1',
+              tournamentId: 'tournament-1',
+              personId: 'person-1',
+              approvedAt: new Date(),
+            },
+          ],
+        }),
+      },
+      sportsTournamentParticipant: {
+        update: jest.fn(),
+      },
+      sportsRegistrationMember: {
+        updateMany: jest.fn(),
+      },
+      sportsPlayerApplication: {
+        updateMany: jest.fn(),
+      },
+    };
+    prisma.$transaction.mockImplementation(async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+      callback(tx),
     );
 
     await expect(service.uploadReceipt('major-1', createValidFile(), user)).resolves.toEqual(
@@ -169,6 +223,13 @@ describe('ReceiptUploadService', () => {
         attempts: RECEIPT_PROCESSING_ATTEMPTS,
       }),
     );
+    expect(tx.sportsTournamentParticipant.update).toHaveBeenCalledWith({
+      where: { id: 'participant-1' },
+      data: {
+        status: SportsParticipantStatus.WAITING_PAYMENT,
+        paymentStatus: SportsPaymentStatus.UNDER_REVIEW,
+      },
+    });
     expect(dashboardInsights.invalidateCachedInsights).toHaveBeenCalled();
   });
 
@@ -261,6 +322,15 @@ function createValidFile() {
 
 function createInvalidFile() {
   return createFile();
+}
+
+function createPdfFile() {
+  return {
+    buffer: Buffer.from('unverified PDF contents'),
+    mimetype: 'application/pdf',
+    originalname: 'receipt.pdf',
+    size: 23,
+  };
 }
 
 function createReceipt() {

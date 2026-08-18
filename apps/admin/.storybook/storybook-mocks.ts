@@ -4,7 +4,7 @@ import {
   Permission,
 } from '@cacic-fct/shared-permissions';
 import { fakerPT_BR as faker } from '@faker-js/faker';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 
 faker.seed(20260516);
 
@@ -119,8 +119,18 @@ function majorEvent(index = 0) {
         id: `price-${index + 1}`,
         type: 'TIERED',
         tiers: [
-          { id: `tier-${index + 1}-student`, name: 'Estudante', value: 2500 },
-          { id: `tier-${index + 1}-community`, name: 'Comunidade', value: 5000 },
+          {
+            id: `tier-${index + 1}-student`,
+            name: 'Estudante',
+            value: 2500,
+            includesSportsRegistration: false,
+          },
+          {
+            id: `tier-${index + 1}-community`,
+            name: 'Comunidade',
+            value: 5000,
+            includesSportsRegistration: false,
+          },
         ],
       },
     ],
@@ -137,6 +147,7 @@ function event(index = 0) {
 
   return {
     id: `event-${index + 1}`,
+    isSportsMatch: index === 1,
     name: faker.helpers.arrayElement([
       'Arquitetura Angular com Signals',
       'IA aplicada a eventos acadêmicos',
@@ -168,7 +179,7 @@ function event(index = 0) {
     subscriptionEndDate: isoDaysFromNow(index + 2, 22),
     slots: 40,
     autoSubscribe: false,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     shouldIssueCertificate: true,
     shouldIssueCertificateForNonPayingAttendees: false,
     shouldIssueCertificateForNonSubscribedAttendees: false,
@@ -264,7 +275,6 @@ const certificateTemplate = {
   id: 'template-1',
   name: 'Certificado padrao',
   description: 'Modelo com dados do participante e evento.',
-  version: 1,
   isActive: true,
   certificateFieldsJson: '{}',
   createdAt: isoDaysFromNow(-60),
@@ -965,3 +975,61 @@ export const cacicEventosHandlers = [
   http.post('/api/major-event-receipts/admin/actions/:actionId/undo', () => HttpResponse.json(receiptQueue().items[0])),
   http.all('/api/*', () => HttpResponse.json({ ok: true })),
 ];
+
+export const emptyCertificateTemplatesHandler = http.post('/api/graphql', async ({ request }) => {
+  const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+  const query = body.query ?? '';
+  const response = query.includes('ListCertificateTemplates')
+    ? { certificateTemplates: [] }
+    : graphqlData(query, body.variables ?? {});
+  return HttpResponse.json(isGraphqlMockError(response) ? response : { data: response });
+});
+
+export const failedCertificateTemplatesHandler = http.post('/api/graphql', async ({ request }) => {
+  const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+  const query = body.query ?? '';
+  if (query.includes('ListCertificateTemplates')) {
+    return HttpResponse.json({ errors: [{ message: 'Template registry unavailable' }] });
+  }
+  const response = graphqlData(query, body.variables ?? {});
+  return HttpResponse.json(isGraphqlMockError(response) ? response : { data: response });
+});
+
+export interface CertificateTemplatesStoryOptions {
+  state: 'ready' | 'empty' | 'loading' | 'error';
+  count: number;
+  latencyMs: number;
+  namePrefix: string;
+  inactiveEvery: number;
+}
+
+export function createCertificateTemplatesStoryHandler(getOptions: () => CertificateTemplatesStoryOptions) {
+  return http.post('/api/graphql', async ({ request }) => {
+    const options = getOptions();
+    const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
+    const query = body.query ?? '';
+
+    if (query.includes('ListCertificateTemplates')) {
+      if (options.state === 'loading') await delay('infinite');
+      if (options.latencyMs > 0) await delay(options.latencyMs);
+      if (options.state === 'error') {
+        return HttpResponse.json({ errors: [{ message: 'Template registry unavailable' }] });
+      }
+      const count = options.state === 'empty' ? 0 : Math.max(0, Math.min(30, Math.round(options.count)));
+      return HttpResponse.json({
+        data: {
+          certificateTemplates: Array.from({ length: count }, (_, index) => ({
+            ...certificateTemplate,
+            id: `template-story-${index + 1}`,
+            name: `${options.namePrefix.trim() ? `${options.namePrefix.trim()} ` : ''}${index + 1}`,
+            description: faker.lorem.sentence(),
+            isActive: !(options.inactiveEvery > 0 && (index + 1) % Math.round(options.inactiveEvery) === 0),
+          })),
+        },
+      });
+    }
+
+    const response = graphqlData(query, body.variables ?? {});
+    return HttpResponse.json(isGraphqlMockError(response) ? response : { data: response });
+  });
+}

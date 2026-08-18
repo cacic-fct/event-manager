@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { CertificateApiService } from '../graphql/certificate-api.service';
 import { EventApiService } from '../graphql/event-api.service';
 import { EventGroupApiService } from '../graphql/event-group-api.service';
@@ -164,16 +164,38 @@ describe('CertificatesService', () => {
     vi.useRealTimers();
   });
 
-  it('posts template defaults as stored certificate fields', async () => {
+  it('uses template defaults without materializing them as config overrides', async () => {
     await service.saveCertificateConfig();
 
     expect(lastPayload?.certificateTypeLabel).toBe('Participação');
-    expect(lastPayload?.certificateFieldsJson).toBe(
-      JSON.stringify({
-        'top-text': 'Certificamos a participação de',
-        'bottom-text': 'como organizador do evento',
-      }),
-    );
+    expect(lastPayload?.certificateFieldsJson).toBeNull();
+  });
+
+  it('blocks certificate mutations when no registered model is available', async () => {
+    api.listCertificateTemplates.mockReturnValueOnce(of([]));
+
+    await service.loadCertificateTemplates();
+    await service.saveCertificateConfig();
+
+    expect(service.certificateTemplatesLoadState()).toBe('empty');
+    expect(service.certificateOperationsEnabled()).toBe(false);
+    expect(api.createCertificateConfig).not.toHaveBeenCalled();
+  });
+
+  it('exposes a retryable model-loading error and recovers on retry', async () => {
+    api.listCertificateTemplates
+      .mockReturnValueOnce(throwError(() => new Error('registry unavailable')))
+      .mockReturnValueOnce(of([certificateTemplate]));
+
+    await service.loadCertificateTemplates();
+
+    expect(service.certificateTemplatesLoadState()).toBe('error');
+    expect(service.certificateOperationsEnabled()).toBe(false);
+
+    await service.loadCertificateTemplates();
+
+    expect(service.certificateTemplatesLoadState()).toBe('ready');
+    expect(service.certificateOperationsEnabled()).toBe(true);
   });
 
   it('searches certificate targets as the query changes', async () => {
@@ -269,17 +291,12 @@ describe('CertificatesService', () => {
     );
   });
 
-  it('uses template defaults in the form and sends them in the payload', async () => {
+  it('uses template defaults in the form without storing them as overrides', async () => {
     expect(service.certificateField('bottom-text')().value()).toBe('como organizador do evento');
 
     await service.saveCertificateConfig();
 
-    expect(lastPayload?.certificateFieldsJson).toBe(
-      JSON.stringify({
-        'top-text': 'Certificamos a participação de',
-        'bottom-text': 'como organizador do evento',
-      }),
-    );
+    expect(lastPayload?.certificateFieldsJson).toBeNull();
   });
 
   it('posts edited custom fields as stored overrides', async () => {
@@ -290,7 +307,6 @@ describe('CertificatesService', () => {
     expect(lastPayload?.certificateFieldsJson).toBe(
       JSON.stringify({
         'top-text': 'Certificamos a presença de',
-        'bottom-text': 'como organizador do evento',
       }),
     );
   });
@@ -302,7 +318,6 @@ describe('CertificatesService', () => {
 
     expect(lastPayload?.certificateFieldsJson).toBe(
       JSON.stringify({
-        'top-text': 'Certificamos a participação de',
         'bottom-text': 'como organizador do event',
       }),
     );

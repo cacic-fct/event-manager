@@ -1,13 +1,14 @@
+<mat-toolbar>
+  <a matIconButton routerLink="/attendance/collect" aria-label="Voltar para eventos">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="global-toolbar-title">{{ event()?.event?.name || 'Coletar presença' }}</h1>
+</mat-toolbar>
+
 <main class="scanner-page">
-  <header>
-    <a matIconButton routerLink="/attendance/collect" aria-label="Voltar para eventos">
-      <mat-icon>arrow_back</mat-icon>
-    </a>
-    <div>
-      <h1>{{ event()?.event?.name || 'Coletar presença' }}</h1>
-      <p>{{ event()?.event?.startDate | date: 'short' }}</p>
-    </div>
-  </header>
+  @if (event()?.event?.startDate; as startDate) {
+  <p class="event-date">{{ startDate | date: 'short' }}</p>
+  }
 
   <section class="location-state" [class.ready]="hasPreciseLocation()">
     <mat-icon>{{ hasPreciseLocation() ? 'my_location' : 'location_off' }}</mat-icon>

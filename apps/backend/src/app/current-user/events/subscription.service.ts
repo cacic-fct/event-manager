@@ -3,15 +3,13 @@ import {
   AuditLogEntityType,
   AuditLogOperation,
   EventFormTargetType,
-  Prisma,
-  PublicationState,
-  SubscriptionStatus,
 } from '@prisma/client';
 import { RequiredImageLicenseAgreementInterruption, SubmitEventFormResponseInput } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { compareAsc } from 'date-fns';
 import { AuthenticatedUser } from '../../auth/interfaces/authenticated-user.interface';
 import { AuditLogService } from '../../audit-log/audit-log.service';
+import { runSerializablePrismaTransaction } from '../../common/serializable-prisma-transaction';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import {
@@ -27,6 +25,7 @@ import { PUBLIC_EVENT_SELECT, PUBLIC_EVENT_WHERE, PublicEvent } from '../../publ
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
 import { EventFormsService } from '../../event-forms/event-forms.service';
+import { requiredMajorEventImageLicenseAgreementWhere } from './image-license-agreement';
 
 export type CurrentUserSubscribedItem =
   | {
@@ -103,9 +102,15 @@ export class CurrentUserEventSubscriptionService {
     }
   }
 
-  ensureImageLicenseAgreementAccepted(required: boolean, accepted: boolean | null | undefined, targetLabel: string): void {
+  ensureImageLicenseAgreementAccepted(
+    required: boolean,
+    accepted: boolean | null | undefined,
+    targetLabel: string,
+  ): void {
     if (required && accepted !== true) {
-      throw new BadRequestException(`Subscription to ${targetLabel} requires acceptance of the CACiC image-license agreement.`);
+      throw new BadRequestException(
+        `Subscription to ${targetLabel} requires acceptance of the CACiC image-license agreement.`,
+      );
     }
   }
 
@@ -115,18 +120,7 @@ export class CurrentUserEventSubscriptionService {
     const now = new Date();
     const [majorEventSubscriptions, eventSubscriptions, eventGroupSubscriptions] = await Promise.all([
       this.prisma.majorEventSubscription.findMany({
-        where: {
-          personId,
-          deletedAt: null,
-          imageLicenseAgreementAccepted: false,
-          subscriptionStatus: { not: SubscriptionStatus.CANCELED },
-          majorEvent: {
-            deletedAt: null,
-            publicationState: PublicationState.PUBLISHED,
-            endDate: { gt: now },
-            requiresImageLicenseAgreement: true,
-          },
-        },
+        where: requiredMajorEventImageLicenseAgreementWhere(personId, now),
         select: {
           majorEventId: true,
           majorEvent: {
@@ -283,15 +277,17 @@ export class CurrentUserEventSubscriptionService {
         const isAgreementUpdate =
           existingSubscription != null &&
           imageLicenseAgreementAccepted === true &&
-          Boolean(
-            targetEvent.requiresImageLicenseAgreement || targetEvent.eventGroup?.requiresImageLicenseAgreement,
-          );
+          Boolean(targetEvent.requiresImageLicenseAgreement || targetEvent.eventGroup?.requiresImageLicenseAgreement);
         if (!isAgreementUpdate) {
           this.ensureEventSubscriptionWindowOpen(targetEvent, now);
         }
       }
       this.ensureImageLicenseAgreementAccepted(
-        Boolean(targetEvent.eventGroupId ? targetEvent.eventGroup?.requiresImageLicenseAgreement : targetEvent.requiresImageLicenseAgreement),
+        Boolean(
+          targetEvent.eventGroupId
+            ? targetEvent.eventGroup?.requiresImageLicenseAgreement
+            : targetEvent.requiresImageLicenseAgreement,
+        ),
         imageLicenseAgreementAccepted,
         `event ${eventId}`,
       );
@@ -940,21 +936,6 @@ export class CurrentUserEventSubscriptionService {
   private async runSerializableSubscriptionTransaction<T>(
     operation: (tx: TransactionClient) => Promise<T>,
   ): Promise<T> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        return await this.prisma.$transaction(operation, {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        });
-      } catch (error) {
-        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
-          continue;
-        }
-
-        throw error;
-      }
-    }
-
-    throw new BadRequestException('Could not complete subscription.');
+    return runSerializablePrismaTransaction(this.prisma, operation);
   }
 }

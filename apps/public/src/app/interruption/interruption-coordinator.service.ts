@@ -2,7 +2,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Injectable, OnDestroy, PLATFORM_ID, effect, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { EMPTY, Subject, Subscription, catchError, filter, forkJoin, map, of, switchMap } from 'rxjs';
+import { Observable, Subject, Subscription, catchError, defer, filter, forkJoin, map, of, switchMap } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import {
   INTERRUPTION_FLOW,
@@ -12,7 +12,22 @@ import {
   InterruptionFlow,
 } from './interruption-flow';
 
-const NORMAL_INTERRUPTION_EXEMPTION_PATHS = ['/profile/forms/', '/attendance/collect/', '/attendance/register'];
+const NORMAL_INTERRUPTION_EXEMPTION_PATHS = [
+  '/profile/forms/',
+  '/attendance/collect/',
+  '/attendance/register',
+  '/sports/operate/',
+  '/sports/team/',
+];
+const NORMAL_INTERRUPTION_EXEMPTION_PATTERNS = [
+  /^\/major-event\/[^/]+\/(?:subscription|ranked-subscription|payment)(?:\/|\?|$)/,
+  /^\/tournament\/[^/]+\/subscribe(?:\/|\?|$)/,
+];
+
+type InterruptionResolution = {
+  interruption: Interruption | null;
+  isFallback: boolean;
+};
 
 export function selectNextInterruption(
   interruptions: readonly (Interruption | null)[],
@@ -34,7 +49,10 @@ function canApplyInterruption(interruption: Interruption, context: InterruptionC
     return true;
   }
 
-  return !NORMAL_INTERRUPTION_EXEMPTION_PATHS.some((path) => context.currentUrl.startsWith(path));
+  return !(
+    NORMAL_INTERRUPTION_EXEMPTION_PATHS.some((path) => context.currentUrl.startsWith(path)) ||
+    NORMAL_INTERRUPTION_EXEMPTION_PATTERNS.some((pattern) => pattern.test(context.currentUrl))
+  );
 }
 
 @Injectable({ providedIn: 'root' })
@@ -46,13 +64,20 @@ export class InterruptionCoordinatorService implements OnDestroy {
   private readonly router = inject(Router);
   private readonly checks = new Subject<void>();
   private readonly subscriptions = new Subscription();
+  private readonly handledNormalInterruptionIds = new Set<string>();
 
   private started = false;
   private navigating = false;
 
   constructor() {
     effect(() => {
-      if (this.auth.isAuthenticated() && this.featureFlags.booleanValue('interruptionsEnabled')) {
+      const authenticated = this.auth.isAuthenticated();
+      if (!authenticated) {
+        this.handledNormalInterruptionIds.clear();
+        return;
+      }
+
+      if (this.featureFlags.booleanValue('interruptionsEnabled')) {
         this.requestCheck();
       }
     });
@@ -82,13 +107,17 @@ export class InterruptionCoordinatorService implements OnDestroy {
           filter(() => this.auth.isAuthenticated() && !this.navigating),
           switchMap(() => this.resolveNextInterruption()),
         )
-        .subscribe((interruption) => {
+        .subscribe(({ interruption, isFallback }) => {
           if (
             !interruption ||
             !this.auth.isAuthenticated() ||
-            !this.featureFlags.booleanValue('interruptionsEnabled')
+            (!this.featureFlags.booleanValue('interruptionsEnabled') && !isFallback)
           ) {
             return;
+          }
+
+          if (interruption.priority === 'NORMAL') {
+            this.handledNormalInterruptionIds.add(interruption.id);
           }
 
           this.navigating = true;
@@ -111,16 +140,38 @@ export class InterruptionCoordinatorService implements OnDestroy {
   }
 
   private resolveNextInterruption() {
-    if (!this.featureFlags.booleanValue('interruptionsEnabled')) {
-      return of(null);
-    }
-
-    if (this.flows.length === 0) {
-      return EMPTY;
-    }
-
     const context: InterruptionContext = { currentUrl: this.router.url || '/menu' };
-    return forkJoin(this.flows.map((flow) => flow.resolve(context).pipe(catchError(() => of(null))))).pipe(
+    const fallbackFlows = this.flows.filter((flow) => flow.isFallback);
+    const interruptionFlows = this.featureFlags.booleanValue('interruptionsEnabled')
+      ? this.flows.filter((flow) => !flow.isFallback)
+      : [];
+    const fallbackResolution = this.resolveFlows(fallbackFlows, context).pipe(
+      map((interruption): InterruptionResolution => ({ interruption, isFallback: true })),
+    );
+
+    return this.resolveFlows(interruptionFlows, context).pipe(
+      switchMap((interruption): Observable<InterruptionResolution> =>
+        interruption
+          ? of({ interruption, isFallback: false })
+          : fallbackResolution,
+      ),
+    );
+  }
+
+  private resolveFlows(flows: readonly InterruptionFlow[], context: InterruptionContext) {
+    if (flows.length === 0) {
+      return of<Interruption | null>(null);
+    }
+
+    return defer(() =>
+      forkJoin(
+        flows.map((flow) =>
+          defer(() => flow.resolve(context)).pipe(
+            catchError(() => of(null)),
+          ),
+        ),
+      ),
+    ).pipe(
       map((interruptions) => this.selectNext(interruptions, context)),
     );
   }
@@ -129,6 +180,15 @@ export class InterruptionCoordinatorService implements OnDestroy {
     interruptions: readonly (Interruption | null)[],
     context: InterruptionContext,
   ): Interruption | null {
-    return selectNextInterruption(interruptions, context);
+    return selectNextInterruption(
+      interruptions.map((interruption) =>
+        interruption &&
+        interruption.priority === 'NORMAL' &&
+        this.handledNormalInterruptionIds.has(interruption.id)
+          ? null
+          : interruption,
+      ),
+      context,
+    );
   }
 }

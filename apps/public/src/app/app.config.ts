@@ -43,6 +43,9 @@ import { PUBLIC_FEATURE_FLAG_CONFIG, type PublicFeatureFlagConfig } from './feat
 import { TURNSTILE_TEST_SITE_KEY_ALWAYS_PASS } from '@cacic-fct/shared-utils';
 import { PageTitleStrategy } from './shared/page-title-strategy';
 import { DefaultRedirectOnTabEntryService } from './landing/default-redirect-on-tab-entry.service';
+import { SportsAutorouteInterruptionFlow } from './sports/operations/sports-autoroute-interruption.flow';
+import { publicMapCacheInvalidationInterceptor } from './map/public-map-cache.interceptor';
+import { MyDayStore } from './my-day/my-day.store';
 
 registerLocaleData(localePt);
 
@@ -127,8 +130,10 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
     { provide: TitleStrategy, useClass: PageTitleStrategy },
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([authInterceptor, publicMapCacheInvalidationInterceptor])),
+    provideInterruptionFlow(DefaultRedirectOnTabEntryService),
     provideInterruptionFlow(OnlineAttendanceCoordinatorService),
+    provideInterruptionFlow(SportsAutorouteInterruptionFlow),
     provideInterruptionFlow(ImageLicenseAgreementInterruptionFlow),
     provideInterruptionFlow(RequiredSubscriptionFormInterruptionFlow),
     provideCloudflareTurnstile({
@@ -188,6 +193,7 @@ export const appConfig: ApplicationConfig = {
       inject(AuthReconnectLoginService).start();
       inject(OfflineUserDataService).start();
       inject(TotpSeedSessionService).start();
+      inject(MyDayStore).start();
     }),
     provideAppInitializer(() => {
       inject(ServiceWorkerService).start();

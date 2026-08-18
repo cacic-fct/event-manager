@@ -11,6 +11,8 @@ import { applicationConfig } from '@storybook/angular';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { cacicEventosHandlers } from './storybook-mocks';
 
+const [cacicEventosGraphqlHandler, ...cacicEventosRestHandlers] = cacicEventosHandlers;
+
 initialize({
   onUnhandledRequest: 'bypass',
   serviceWorker: {
@@ -61,6 +63,15 @@ function ensureStorybookGlobalStyles(): void {
       white-space: nowrap;
       word-wrap: normal;
       direction: ltr;
+    }
+
+    html[data-storybook-motion='reduced'] *,
+    html[data-storybook-motion='reduced'] *::before,
+    html[data-storybook-motion='reduced'] *::after {
+      scroll-behavior: auto !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
     }
   `;
   document.head.append(style);
@@ -181,17 +192,24 @@ const preview: Preview = {
     (story, context) => {
       const theme = context.globals['theme'] === 'dark' ? 'dark' : 'light';
       const network = context.globals['network'] === 'offline' ? 'offline' : 'online';
+      const motion = context.globals['motion'] === 'reduced' ? 'reduced' : 'full';
       ensureStorybookGlobalStyles();
       applyBrowserGlobals(network);
       applyColorScheme(theme);
       document.documentElement.dataset['storybookTheme'] = theme;
       document.documentElement.dataset['storybookNetwork'] = network;
+      document.documentElement.dataset['storybookMotion'] = motion;
       return story();
     },
   ],
   loaders: [mswLoader],
   parameters: {
-    msw: { handlers: cacicEventosHandlers },
+    msw: {
+      handlers: {
+        graphql: cacicEventosGraphqlHandler,
+        rest: cacicEventosRestHandlers,
+      },
+    },
     backgrounds: {
       default: 'workspace',
       values: [
@@ -206,7 +224,21 @@ const preview: Preview = {
         desktop: { name: 'Desktop', styles: { width: '1280px', height: '900px' } },
       },
     },
-    controls: { expanded: true },
+    controls: {
+      expanded: true,
+      sort: 'requiredFirst',
+      matchers: {
+        color: /(background|color)$/i,
+        date: /Date$/i,
+      },
+    },
+    docs: { toc: true },
+    options: {
+      storySort: {
+        method: 'alphabetical',
+        order: ['CACiC Eventos', ['Workspace', 'Sports', 'Attendance', 'Calendar', 'Events', 'Profile', 'Shared']],
+      },
+    },
     a11y: { test: 'todo' },
   },
   globalTypes: {
@@ -229,6 +261,17 @@ const preview: Preview = {
         items: [
           { value: 'online', title: 'Online' },
           { value: 'offline', title: 'Offline' },
+        ],
+      },
+    },
+    motion: {
+      description: 'Motion preference',
+      defaultValue: 'full',
+      toolbar: {
+        icon: 'accessibility',
+        items: [
+          { value: 'full', title: 'Full motion' },
+          { value: 'reduced', title: 'Reduced motion' },
         ],
       },
     },

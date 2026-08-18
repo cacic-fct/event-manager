@@ -14,12 +14,13 @@ import {
   type EventType,
   type WorkspaceEventSubscription,
 } from '@cacic-fct/event-manager-admin-contracts';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { isFrozenEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
 import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.component';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
 
 @Component({
   selector: 'app-workspace-event-subscriptions-subtab',
@@ -36,6 +37,7 @@ import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.c
     MatTooltipModule,
     TwemojiComponent,
     EventFilterPanelComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './event-subscriptions.component.html',
   styleUrls: [

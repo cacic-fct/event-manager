@@ -1,7 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, fn, userEvent, within } from 'storybook/test';
 import { type FormElement, type FormResponseAnswer } from '@cacic-fct/form-contracts';
 import { EventFormRendererComponent } from './event-form-renderer.component';
+
+type EventFormRendererStoryArgs = {
+  elements: readonly FormElement[];
+  initialAnswers: readonly FormResponseAnswer[];
+  readOnly: boolean;
+  showSubmit: boolean;
+  submitLabel: string;
+  formSubmitted: ReturnType<typeof fn>;
+  answersChange: ReturnType<typeof fn>;
+};
 
 const elements: FormElement[] = [
   { id: 'section', type: 'section', title: 'Dados do participante', required: false, options: [] },
@@ -102,9 +112,9 @@ const answers: FormResponseAnswer[] = [
   { elementId: 'schedule', value: { slotId: 'window-1:09:00-09:30', invitees: [{ name: 'Ada' }] } },
 ];
 
-const meta: Meta<EventFormRendererComponent> = {
+const meta: Meta<EventFormRendererStoryArgs> = {
   component: EventFormRendererComponent,
-  title: 'Shared/Event Forms/Renderer',
+  title: 'CACiC Eventos/Shared/Event forms/Renderer',
   tags: ['autodocs'],
   args: {
     elements,
@@ -112,19 +122,44 @@ const meta: Meta<EventFormRendererComponent> = {
     readOnly: false,
     showSubmit: true,
     submitLabel: 'Salvar respostas',
+    formSubmitted: fn(),
+    answersChange: fn(),
   },
   argTypes: {
+    elements: {
+      control: 'object',
+      description: 'Itens que compõem o formulário apresentado ao participante.',
+    },
+    initialAnswers: {
+      control: 'object',
+      description: 'Respostas existentes usadas para edição ou consulta.',
+    },
     readOnly: { control: 'boolean' },
     showSubmit: { control: 'boolean' },
     submitLabel: { control: 'text' },
+    formSubmitted: { table: { disable: true } },
+    answersChange: { table: { disable: true } },
   },
+  render: (args) => ({
+    props: args,
+    template: `
+      <lib-event-form-renderer
+        [elements]="elements"
+        [initialAnswers]="initialAnswers"
+        [readOnly]="readOnly"
+        [showSubmit]="showSubmit"
+        [submitLabel]="submitLabel"
+        (formSubmitted)="formSubmitted($event)"
+        (answersChange)="answersChange($event)" />
+    `,
+  }),
 };
 
 export default meta;
 
-type Story = StoryObj<EventFormRendererComponent>;
+type Story = StoryObj<EventFormRendererStoryArgs>;
 
-export const Editable: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByText('Salvar respostas'));
@@ -137,5 +172,27 @@ export const ReadOnly: Story = {
     initialAnswers: answers,
     readOnly: true,
     showSubmit: false,
+    formSubmitted: fn(),
+    answersChange: fn(),
   },
+};
+
+export const Empty: Story = {
+  args: {
+    elements: [],
+    initialAnswers: [],
+    formSubmitted: fn(),
+    answersChange: fn(),
+  },
+};
+
+export const DarkReducedMotion: Story = {
+  args: {
+    initialAnswers: answers,
+    readOnly: true,
+    showSubmit: false,
+    formSubmitted: fn(),
+    answersChange: fn(),
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
 };

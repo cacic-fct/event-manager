@@ -10,11 +10,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
-import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TwemojiComponent } from '../emoji/twemoji.component';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PeopleService } from './people.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -30,11 +27,8 @@ import { PermissionsService } from '../permissions/permissions.service';
     MatIconModule,
     MatInputModule,
     MatListModule,
-    MatSelectModule,
-    MatSlideToggleModule,
     MatTabsModule,
     MatTooltipModule,
-    TwemojiComponent,
   ],
   templateUrl: './people-page.component.html',
   styleUrls: [
@@ -42,6 +36,7 @@ import { PermissionsService } from '../permissions/permissions.service';
     '../app-shell/layout/lists-layout.shared.scss',
     '../app-shell/layout/entity-permissions.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
+    '../app-shell/layout/workspace-tabs.shared.scss',
   ],
 })
 export class PeoplePageComponent {

@@ -20,6 +20,7 @@ const REQUIRED_IN_PRODUCTION = [
   'CALENDAR_FEED_KEY_PEPPER',
   'TURNSTILE_SECRET_KEY',
   'SSE_REPLAY_CURSOR_SECRET',
+  'SPORTS_IDENTITY_SECRET',
 ] as const;
 
 const S3_STORAGE_KEYS = ['S3_ENDPOINT', 'S3_ACCESS_KEY', 'S3_SECRET_KEY', 'S3_BUCKET_NAME'] as const;
@@ -33,6 +34,9 @@ export function validateBackendEnvironment(config: Environment): Environment {
 
   if (!isLocalDevelopment(config)) {
     requireKeys(config, REQUIRED_OUTSIDE_LOCAL_DEVELOPMENT, errors);
+    if (!production) {
+      requireKeys(config, ['SPORTS_IDENTITY_SECRET'], errors);
+    }
   }
 
   if (production) {

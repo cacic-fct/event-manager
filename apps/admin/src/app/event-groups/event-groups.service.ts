@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -11,7 +11,7 @@ import { EventGroupApiService } from '../graphql/event-group-api.service';
 import { PublicationApiService } from '../graphql/publishing-api.service';
 import { Event, EventGroup, EventGroupInput, EventSummary } from '@cacic-fct/event-manager-admin-contracts';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../events/dialogs/clone-asset-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
@@ -37,6 +37,7 @@ export class EventGroupsService {
   private readonly publicationApi = inject(PublicationApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly eventsService = inject(EventsService);
   private readonly permissions = inject(PermissionsService);
@@ -50,9 +51,6 @@ export class EventGroupsService {
   readonly eventGroupEvents = signal<Event[]>([]);
   readonly eventGroupEventSearchResults = signal<Event[]>([]);
   readonly savingEventGroup = signal(false);
-  readonly selectedEventGroupHasMajorEventEvents = computed(() =>
-    this.eventGroupEvents().some((eventItem) => eventItem.majorEventId),
-  );
   readonly sortedEventGroups = computed(() => {
     const groups = this.eventGroups();
     const firstEventsByGroup = this.firstEventsByGroupId();
@@ -114,10 +112,6 @@ export class EventGroupsService {
     this.eventGroupForm.controls.shouldIssueCertificate.valueChanges.subscribe(() =>
       this.syncCertificateRuleControls(),
     );
-    effect(() => {
-      this.selectedEventGroupHasMajorEventEvents();
-      this.syncCertificateRuleControls();
-    });
   }
 
   async loadEventGroups(): Promise<void> {
@@ -236,7 +230,7 @@ export class EventGroupsService {
         await this.loadEventsForGroup(selectedGroup.id);
       }
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grupo.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível salvar o grupo.');
     } finally {
       this.savingEventGroup.set(false);
     }
@@ -329,7 +323,7 @@ export class EventGroupsService {
       }
       await this.loadEventGroups();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o grupo.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível excluir o grupo.');
     }
   }
 
@@ -352,7 +346,7 @@ export class EventGroupsService {
       await this.loadEventGroups();
       await this.pickEventGroup(created);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar o grupo.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível duplicar o grupo.');
     }
   }
 
@@ -453,7 +447,6 @@ export class EventGroupsService {
         raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldIssueCertificateForEachEvent:
         raw.shouldIssueCertificate &&
-        !this.selectedEventGroupHasMajorEventEvents() &&
         raw.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: raw.shouldIssueCertificate && raw.shouldIssuePartialCertificate,
     };
@@ -485,12 +478,6 @@ export class EventGroupsService {
     nonPayingControl.enable({ emitEvent: false });
     nonSubscribedControl.enable({ emitEvent: false });
     partialControl.enable({ emitEvent: false });
-
-    if (this.selectedEventGroupHasMajorEventEvents()) {
-      forEachControl.setValue(false, { emitEvent: false });
-      forEachControl.disable({ emitEvent: false });
-      return;
-    }
 
     forEachControl.enable({ emitEvent: false });
   }

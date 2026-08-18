@@ -1,6 +1,6 @@
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { OfflineFeatureFlagCacheRecord, OfflinePublicDatabaseProvider } from '@cacic-fct/offline-public-data-access';
+import { FeatureFlagCacheRecord, PublicDatabaseProvider } from '@cacic-fct/public-indexed-db';
 import { PUBLIC_FEATURE_FLAG_CONFIG } from './public-feature-flag.config';
 import { PublicFeatureFlagService } from './public-feature-flag.service';
 import { PUBLIC_FEATURE_FLAGS } from './public-feature-flags';
@@ -28,17 +28,17 @@ vi.mock('unleash-proxy-client', () => ({
 }));
 
 class FeatureFlagCacheTableMock {
-  private readonly records = new Map<string, OfflineFeatureFlagCacheRecord>();
+  private readonly records = new Map<string, FeatureFlagCacheRecord>();
 
-  seed(record: OfflineFeatureFlagCacheRecord): void {
+  seed(record: FeatureFlagCacheRecord): void {
     this.records.set(record.key, record);
   }
 
-  get(key: string): Promise<OfflineFeatureFlagCacheRecord | undefined> {
+  get(key: string): Promise<FeatureFlagCacheRecord | undefined> {
     return Promise.resolve(this.records.get(key));
   }
 
-  put(record: OfflineFeatureFlagCacheRecord): Promise<string> {
+  put(record: FeatureFlagCacheRecord): Promise<string> {
     this.records.set(record.key, record);
     return Promise.resolve(record.key);
   }
@@ -70,7 +70,7 @@ describe('PublicFeatureFlagService', () => {
       providers: [
         { provide: PLATFORM_ID, useValue: 'browser' },
         {
-          provide: OfflinePublicDatabaseProvider,
+          provide: PublicDatabaseProvider,
           useValue: {
             getDatabase: () => ({
               featureFlagCache: cache,

@@ -1,7 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
 import { SubscriptionStatus } from '@prisma/client';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { CurrentUserMajorEventSubscriptionService } from './subscription.service';
-import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
+import { PUBLIC_REGULAR_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from '../../public-events/models';
 
 describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
   let service: CurrentUserMajorEventSubscriptionService;
@@ -263,7 +264,7 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
 
     expect(prisma.event.findMany).toHaveBeenCalledWith({
       where: {
-        AND: [PUBLIC_EVENT_WHERE, { majorEventId: 'major-1' }],
+        AND: [PUBLIC_REGULAR_EVENT_WHERE, { majorEventId: 'major-1' }],
         allowSubscription: true,
       },
       select: expect.objectContaining({
@@ -320,6 +321,9 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
           },
         ]),
       },
+      sportsTournament: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
     const mapper = {
       mapPublicMajorEvent: jest.fn((item) => ({
@@ -345,6 +349,7 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
         },
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: [],
         participation: {
           isSubscribed: false,
           isLecturer: false,
@@ -352,6 +357,75 @@ describe('CurrentUserMajorEventSubscriptionService ranked allocation', () => {
         },
       },
     ]);
+  });
+
+  it('adds published sports tournaments for representatives, officials, and active team members', async () => {
+    const majorEvent = {
+      id: 'sports-major',
+      name: 'Torneio de esportes',
+      emoji: '🏆',
+      startDate: new Date(publicFixtureDateFromNow(-1)),
+      endDate: new Date(publicFixtureDateFromNow(1, 20)),
+    };
+    const prisma = {
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventLecturer: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      certificate: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      eventAttendance: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      sportsTournament: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            majorEventId: majorEvent.id,
+            majorEvent,
+            teams: [{ id: 'team-1', name: 'Equipe Azul' }],
+          },
+        ]),
+      },
+    };
+    const mapper = {
+      mapPublicMajorEvent: jest.fn((item) => item),
+    };
+    service = new CurrentUserMajorEventSubscriptionService(prisma as never, mapper as never);
+
+    await expect(service.getCurrentUserMajorEventFeedItems('person-1', false)).resolves.toEqual([
+      {
+        id: majorEvent.id,
+        majorEventId: majorEvent.id,
+        majorEvent,
+        selectedEvents: [],
+        notSubscribedEvents: [],
+        sportsRepresentativeTeams: [{ id: 'team-1', name: 'Equipe Azul' }],
+        participation: {
+          isSubscribed: false,
+          isLecturer: false,
+          hasIssuedCertificate: false,
+          isSportsManager: true,
+        },
+      },
+    ]);
+
+    expect(prisma.sportsTournament.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          status: { not: 'DRAFT' },
+          majorEvent: PUBLIC_MAJOR_EVENT_WHERE,
+          OR: expect.arrayContaining([
+            expect.objectContaining({ teams: expect.any(Object) }),
+            expect.objectContaining({ officials: expect.any(Object) }),
+            expect.objectContaining({ participants: expect.any(Object) }),
+          ]),
+        }),
+      }),
+    );
   });
 });
 

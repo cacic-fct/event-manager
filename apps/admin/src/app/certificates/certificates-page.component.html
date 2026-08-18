@@ -77,7 +77,7 @@
               (click)="workspace.selectTarget(folder)"
               [class.selected-list-item]="workspace.selectedTarget()?.id === folder.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="folder.emoji" />
+                <lib-twemoji [emoji]="folder.emoji" />
                 <span>{{ folder.name }}</span>
               </span>
               <span matListItemLine>Certificados avulsos</span>
@@ -94,7 +94,7 @@
               (click)="workspace.selectTarget(eventItem)"
               [class.selected-list-item]="workspace.selectedTarget()?.id === eventItem.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="eventItem.emoji" />
+                <lib-twemoji [emoji]="eventItem.emoji" />
                 <span>{{ eventItem.name }}</span>
               </span>
               <span matListItemLine>
@@ -113,7 +113,7 @@
               (click)="workspace.selectTarget(group)"
               [class.selected-list-item]="workspace.selectedTarget()?.id === group.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="group.emoji" />
+                <lib-twemoji [emoji]="group.emoji" />
                 <span>{{ group.name }}</span>
               </span>
               <span matListItemLine>
@@ -136,7 +136,7 @@
               (click)="workspace.selectTarget(majorEvent)"
               [class.selected-list-item]="workspace.selectedTarget()?.id === majorEvent.id">
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="majorEvent.emoji" />
+                <lib-twemoji [emoji]="majorEvent.emoji" />
                 <span>{{ majorEvent.name }}</span>
               </span>
               <span matListItemLine>
@@ -285,7 +285,11 @@
               Limpar
             </button>
             @if (canEditSelectedTarget()) {
-              <button mat-stroked-button type="button" (click)="workspace.issueMissedCertificates()">
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="!workspace.certificateOperationsEnabled()"
+                (click)="workspace.issueMissedCertificates()">
                 <mat-icon>auto_awesome</mat-icon>
                 Lançar correções e Emitir pendentes
               </button>
@@ -297,13 +301,55 @@
                   </button>
                 }
               }
-              <button mat-flat-button type="button" (click)="workspace.saveCertificateConfig()">
+              <button
+                mat-flat-button
+                type="button"
+                [disabled]="!workspace.certificateOperationsEnabled()"
+                (click)="workspace.saveCertificateConfig()">
                 <mat-icon>save</mat-icon>
                 Salvar
               </button>
             }
           </div>
         </div>
+
+        @switch (workspace.certificateTemplatesLoadState()) {
+          @case ('loading') {
+            <p class="notice" role="status" aria-live="polite">
+              <mat-icon>hourglass_top</mat-icon>
+              <span>Carregando modelos de certificado…</span>
+            </p>
+          }
+          @case ('error') {
+            <div class="risk-summary" role="alert">
+              <mat-icon>error</mat-icon>
+              <div>
+                <strong>Não foi possível carregar os modelos de certificado.</strong>
+                <p>Verifique a conexão e tente novamente.</p>
+                <button mat-stroked-button type="button" (click)="workspace.loadCertificateTemplates()">
+                  Tentar novamente
+                </button>
+              </div>
+            </div>
+          }
+          @case ('empty') {
+            <p class="notice" role="alert">
+              <mat-icon>info</mat-icon>
+              <span>Nenhum modelo de certificado está disponível. Verifique o cadastro dos arquivos do ambiente.</span>
+            </p>
+          }
+        }
+
+        @if (
+          workspace.certificateTemplatesLoadState() === 'ready' &&
+          workspace.certificateConfigForm.certificateTemplateId().value() &&
+          !workspace.isCertificateTemplateAvailable(workspace.certificateConfigForm.certificateTemplateId().value())
+        ) {
+          <p class="risk-summary" role="alert">
+            <mat-icon>warning</mat-icon>
+            <span>Este modelo não está disponível neste ambiente. Selecione outro modelo.</span>
+          </p>
+        }
 
         <form class="surface field-group">
           <h4>Configuração</h4>
@@ -319,7 +365,9 @@
                 [formField]="workspace.certificateConfigForm.certificateTemplateId"
                 (selectionChange)="workspace.onCertificateTemplateChanged($event.value)">
                 @for (template of workspace.certificateTemplates(); track template.id) {
-                  <mat-option [value]="template.id"> {{ template.name }} (v{{ template.version }}) </mat-option>
+                  <mat-option [value]="template.id">{{ template.name }}</mat-option>
+                } @empty {
+                  <mat-option disabled>Nenhum template disponível</mat-option>
                 }
               </mat-select>
             </mat-form-field>
@@ -341,6 +389,12 @@
                   <mat-option value="LECTURER_PALESTRA">Palestrantes</mat-option>
                   <mat-option value="LECTURER_MINICURSO">Ministrantes</mat-option>
                   <mat-option value="LECTURER"> Outro palestrante/ministrante </mat-option>
+                  <mat-option value="SPORTS_PLAYER">Atletas</mat-option>
+                  <mat-option value="SPORTS_CAPTAIN">Capitães</mat-option>
+                  <mat-option value="SPORTS_COACH">Técnicos</mat-option>
+                  <mat-option value="SPORTS_REFEREE">Árbitros</mat-option>
+                  <mat-option value="SPORTS_INTERMEDIATOR">Intermediadores</mat-option>
+                  <mat-option value="SPORTS_SCOREKEEPER">Mesários</mat-option>
                   <mat-option value="OTHER">Manual</mat-option>
                 </mat-select>
               </mat-form-field>
@@ -410,7 +464,7 @@
                 <button
                   mat-stroked-button
                   type="button"
-                  [disabled]="workspace.isImportingPeopleCsv()"
+                  [disabled]="workspace.isImportingPeopleCsv() || !workspace.certificateOperationsEnabled()"
                   (click)="peopleCsvInput.click()">
                   <mat-icon>upload_file</mat-icon>
                   Importar CSV
@@ -420,45 +474,30 @@
           </div>
 
           <form [formGroup]="workspace.personLookupForm" class="compact-form">
-            <mat-form-field>
-              <mat-label>Pessoa (nome, e-mail ou documento)</mat-label>
-              <mat-icon matPrefix>person_search</mat-icon>
-              <input matInput formControlName="query" />
-            </mat-form-field>
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="!permissions.has(Permission.Person.Read)"
-              (click)="workspace.searchPeopleForManualIssue()">
-              <mat-icon>search</mat-icon>
-              Buscar
-            </button>
+            <app-person-search
+              label="Pessoa (nome, e-mail ou documento)"
+              [query]="workspace.personLookupForm.controls.query.value"
+              [results]="workspace.personSearchResults()"
+              [disabled]="
+                !permissions.has(Permission.Person.Read) ||
+                !canEditSelectedTarget() ||
+                !workspace.certificateOperationsEnabled()
+              "
+              [disabledReason]="
+                !permissions.has(Permission.Person.Read)
+                  ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                  : !canEditSelectedTarget()
+                    ? 'Emitir certificados exige permissão para editar este destino.'
+                    : 'Selecione um modelo de certificado disponível antes de emitir.'
+              "
+              resultActionIcon="workspace_premium"
+              resultActionLabel="Emitir certificado para"
+              (queryChange)="workspace.personLookupForm.controls.query.setValue($event)"
+              (searchRequested)="
+                workspace.personLookupForm.controls.query.setValue($event); workspace.searchPeopleForManualIssue()
+              "
+              (personSelected)="workspace.issueCertificateForPerson($event)" />
           </form>
-
-          <div class="inline-list">
-            @for (person of workspace.personSearchResults(); track person.id) {
-              @if (canEditSelectedTarget()) {
-                <button mat-stroked-button type="button" (click)="workspace.issueCertificateForPerson(person)">
-                  <mat-icon>workspace_premium</mat-icon>
-                  <span class="person-choice">
-                    <span>Emitir para {{ person.name }}</span>
-                    <small
-                      >{{ person.identityDocument || 'Sem documento' }} ·
-                      {{ person.email || 'Sem e-mail principal' }}</small
-                    >
-                  </span>
-                </button>
-              }
-            } @empty {
-              <span class="empty-note">
-                {{
-                  permissions.has(Permission.Person.Read)
-                    ? 'Busque uma pessoa para emitir.'
-                    : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
-                }}
-              </span>
-            }
-          </div>
         </section>
 
         <section class="surface field-group">

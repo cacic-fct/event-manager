@@ -44,9 +44,6 @@ export class CertificateTemplate {
   @Field(() => String, { nullable: true })
   description?: string | null;
 
-  @Field(() => Int)
-  version!: number;
-
   @Field(() => Boolean)
   isActive!: boolean;
 

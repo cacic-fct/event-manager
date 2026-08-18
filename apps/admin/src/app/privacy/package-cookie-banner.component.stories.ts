@@ -82,3 +82,8 @@ export const GuestUser: Story = {
     text: 'Este aviso também aparece antes da autenticação quando a política de cookies exigir consentimento.',
   },
 };
+
+export const DarkReducedMotion: Story = {
+  ...GuestUser,
+  globals: { theme: 'dark', motion: 'reduced' },
+};

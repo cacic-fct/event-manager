@@ -118,3 +118,8 @@ export const MissingTargetCoordinates: Story = {
     targetHasCoordinates: false,
   },
 };
+
+export const DarkReducedMotion: Story = {
+  ...MissingTargetCoordinates,
+  globals: { theme: 'dark', motion: 'reduced' },
+};

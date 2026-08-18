@@ -2,13 +2,13 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { CalendarListView } from './list-view';
 import {
-  CalendarStoryEventControls,
-  calendarStoryEventControlArgTypes,
-  calendarStoryEventDefaultControls,
+  CalendarStoryCollectionControls,
+  calendarStoryCollectionControlArgTypes,
+  calendarStoryCollectionDefaultControls,
   createCalendarStoryEvents,
 } from '../story-fixtures';
 
-type CalendarListViewStoryArgs = CalendarStoryEventControls & {
+type CalendarListViewStoryArgs = CalendarStoryCollectionControls & {
   canLoadOlder: boolean;
   isLoadingOlder: boolean;
   returnUrl: string;
@@ -16,16 +16,16 @@ type CalendarListViewStoryArgs = CalendarStoryEventControls & {
 
 const meta: Meta<CalendarListViewStoryArgs> = {
   component: CalendarListView,
-  title: 'Public/Tabs/Calendar/Calendar List View',
+  title: 'CACiC Eventos/Calendar/List View',
   tags: ['autodocs'],
   args: {
-    ...calendarStoryEventDefaultControls,
+    ...calendarStoryCollectionDefaultControls,
     canLoadOlder: true,
     isLoadingOlder: false,
     returnUrl: '/calendar',
   },
   argTypes: {
-    ...calendarStoryEventControlArgTypes,
+    ...calendarStoryCollectionControlArgTypes,
     canLoadOlder: { control: 'boolean' },
     isLoadingOlder: { control: 'boolean' },
     returnUrl: { control: 'text' },
@@ -55,7 +55,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await expect(await canvas.findByText('Acessibilidade em produtos digitais')).toBeVisible();
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -69,10 +69,25 @@ export const LoadingOlder: Story = {
   },
 };
 
+export const DenseList: Story = {
+  args: { eventCount: 30 },
+  play: async ({ canvasElement }) => {
+    const eventLinks = await within(canvasElement).findAllByRole('link');
+    await expect(eventLinks).toHaveLength(30);
+  },
+};
+
+export const Empty: Story = {
+  args: { eventCount: 0, canLoadOlder: false },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Nenhum evento encontrado.')).toBeVisible();
+  },
+};
+
 export const OfflineFallback: Story = {
   args: { canLoadOlder: false },
   render: (args) => renderCalendarListView(args, []),
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Nenhum evento encontrado.')).toBeVisible();

@@ -18,6 +18,12 @@
   <button mat-button type="button" (click)="logout()">Sair</button>
 </mat-toolbar>
 
+<div class="global-request-progress" [class.is-active]="requestActivity.loading()">
+  @if (requestActivity.loading()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Aguardando resposta do servidor" />
+  }
+</div>
+
 <mat-sidenav-container class="layout" [autosize]="!isMobile()">
   <mat-sidenav
     #sidenav
@@ -86,12 +92,6 @@
   <mat-sidenav-content>
     <main class="page">
       <div class="content-shell">
-        @if (shell.loading()) {
-          <div class="loading">
-            <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-          </div>
-        }
-
         @if (showPageHeader()) {
           <header class="page-header">
             <div>

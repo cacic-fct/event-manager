@@ -1,0 +1,773 @@
+import { computed, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import type { FormResponseAnswer } from '@cacic-fct/form-contracts';
+import { parseFormElementsJson, serializeFormAnswers } from '@cacic-fct/shared-angular';
+import type { SportsTeamMemberStatus } from '@cacic-fct/shared-data-types';
+import type { Person } from '@cacic-fct/event-manager-admin-contracts';
+import { firstValueFrom } from 'rxjs';
+import type {
+  SportsCategoryRead,
+  SportsCategorySummary,
+  SportsRegistrationSummary,
+  SportsTeamRead,
+  SportsTeamSummary,
+} from './sports.models';
+import { SportsWorkspaceCategoryService } from './sports-workspace-category.service';
+
+interface RegistrationOption {
+  category: SportsCategorySummary;
+  registration: SportsRegistrationSummary | null;
+  selected: boolean;
+  seed: number | null;
+}
+
+type SportsTeamCategoryAssignment = SportsTeamRead['members'][number]['categoryAssignments'][number];
+
+export abstract class SportsWorkspaceTeamService extends SportsWorkspaceCategoryService {
+  private readonly registrationDraft = signal<Record<string, { selected: boolean; seed: number | null }>>({});
+  private peopleSearchRevision = 0;
+  private readonly registrationCategoryId = toSignal(this.registrationForm.controls.categoryId.valueChanges, {
+    initialValue: this.registrationForm.controls.categoryId.value,
+  });
+  readonly registrationCategory = computed(() =>
+    this.tournamentRead()?.categories.find((category) => category.id === this.registrationCategoryId()),
+  );
+  readonly registrationEventForm = computed(() => {
+    const formId = this.registrationCategory()?.registrationFormId;
+    return formId ? (this.eventForms().find((form) => form.id === formId) ?? null) : null;
+  });
+  readonly registrationFormElements = computed(() => parseFormElementsJson(this.registrationEventForm()?.elementsJson));
+  readonly registrationOptions = computed<RegistrationOption[]>(() => {
+    const read = this.teamRead();
+    const drafts = this.registrationDraft();
+    return (this.tournamentRead()?.categories ?? []).map((category) => {
+      const registration = read?.registrations.find((item) => item.categoryId === category.id) ?? null;
+      const draft = drafts[category.id];
+      return {
+        category,
+        registration,
+        selected: draft?.selected ?? Boolean(registration),
+        seed: draft?.seed ?? registration?.seed ?? null,
+      };
+    });
+  });
+  readonly approvedTeamMemberCount = computed(
+    () => this.teamRead()?.members.filter((member) => member.status === 'APPROVED').length ?? 0,
+  );
+
+  readonly automaticTeamCategories = computed(() => {
+    const read = this.teamRead();
+    const categories = this.tournamentRead()?.categories ?? [];
+    if (!read) {
+      return [];
+    }
+    const registeredCategoryIds = new Set(read.registrations.map((registration) => registration.categoryId));
+    const approvedMemberCount = this.approvedTeamMemberCount();
+    return categories.filter((category) => {
+      const requiredMembers = Math.max(category.minimumRosterSize ?? 0, 1);
+      return (
+        !registeredCategoryIds.has(category.id) &&
+        !['FINISHED', 'CANCELED'].includes(category.status) &&
+        approvedMemberCount >= requiredMembers
+      );
+    });
+  });
+
+  async selectTeam(team: SportsTeamSummary, options: { navigate?: boolean } = {}): Promise<void> {
+    const selectionRevision = this.beginSelection();
+    await this.run('Não foi possível carregar a equipe.', async () => {
+      const read = await firstValueFrom(this.api.team(team.id));
+      if (selectionRevision !== this.selectionRevision) {
+        return;
+      }
+      if (!read?.team) {
+        throw new Error('A resposta da equipe não trouxe os dados esperados.');
+      }
+      this.teamRead.set(read);
+      this.selectedTeamId.set(team.id);
+      this.initializeRegistrationDraft(read);
+      this.teamForm.patchValue({
+        id: read.team.id,
+        name: read.team.name,
+        institution: read.team.institution ?? '',
+        status: read.team.status,
+      });
+      this.registrationForm.controls.teamId.setValue(team.id);
+      this.focusRegistrationCategory(read.registrations[0]?.categoryId ?? this.tournamentRead()?.categories[0]?.id ?? '');
+    }, true, true);
+    if (
+      selectionRevision === this.selectionRevision &&
+      options.navigate !== false &&
+      this.selectedTeamId() === team.id
+    ) {
+      this.navigateToArea(this.activeArea() === 'reviews' ? 'reviews' : 'teams', { teamId: team.id });
+    }
+  }
+
+  override newTeam(navigate = true): void {
+    this.invalidateSelection();
+    super.newTeam(navigate);
+    this.registrationDraft.set({});
+  }
+
+  private initializeRegistrationDraft(read: SportsTeamRead): void {
+    const registrations = new Map(read.registrations.map((registration) => [registration.categoryId, registration]));
+    const draft = Object.fromEntries(
+      (this.tournamentRead()?.categories ?? []).map((category) => {
+        const registration = registrations.get(category.id);
+        return [category.id, { selected: Boolean(registration), seed: registration?.seed ?? null }];
+      }),
+    );
+    this.registrationDraft.set(draft);
+  }
+
+  toggleRegistration(categoryId: string, selected: boolean): void {
+    if (!this.registrationOptions().some((option) => option.category.id === categoryId)) {
+      return;
+    }
+    this.registrationDraft.update((current) => ({
+      ...current,
+      [categoryId]: {
+        selected,
+        seed: this.registrationOptions().find((option) => option.category.id === categoryId)?.seed ?? null,
+      },
+    }));
+    if (selected) {
+      this.focusRegistrationCategory(categoryId);
+    }
+  }
+
+  setRegistrationSeed(categoryId: string, event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    if (!target || typeof target.value !== 'string') {
+      return;
+    }
+    const raw = target.value.trim();
+    const seed = raw === '' ? null : Number(raw);
+    if (seed !== null && (!Number.isInteger(seed) || seed < 0)) {
+      return;
+    }
+    this.registrationDraft.update((current) => ({
+      ...current,
+      [categoryId]: {
+        selected: current[categoryId]?.selected ?? true,
+        seed,
+      },
+    }));
+    if (this.registrationCategoryId() === categoryId) {
+      this.registrationForm.controls.seed.setValue(seed ?? 0);
+    }
+  }
+
+  focusRegistrationCategory(categoryId: string): void {
+    const option = this.registrationOptions().find((item) => item.category.id === categoryId);
+    const teamId = this.teamRead()?.team.id;
+    if (!option || !teamId) {
+      return;
+    }
+    this.registrationForm.patchValue({
+      teamId,
+      categoryId,
+      seed: option.seed ?? 0,
+      formAnswersJson: option.registration?.formAnswersJson ?? '[]',
+    });
+  }
+
+  async saveTeam(): Promise<void> {
+    if (this.teamForm.invalid || !this.tournamentId()) {
+      this.teamForm.markAllAsTouched();
+      return;
+    }
+    const raw = this.teamForm.getRawValue();
+    const existing = this.teamRead()?.team;
+    if (existing ? !this.canUpdateTeam() : !this.canCreateTeam()) {
+      return;
+    }
+    await this.run('Não foi possível salvar a equipe.', async () => {
+      const id = await firstValueFrom(
+        this.api.mutate<string>(
+          existing ? 'updateSportsTeam' : 'createSportsTeam',
+          existing ? 'SportsTeamUpdateInput' : 'SportsTeamCreateInput',
+          existing
+            ? {
+                id: existing.id,
+                expectedRevision: existing.revision,
+                name: raw.name,
+                institution: raw.institution || null,
+                status: raw.status,
+              }
+            : {
+                tournamentId: this.tournamentId(),
+                name: raw.name,
+                institution: raw.institution || null,
+                status: raw.status,
+              },
+        ),
+      );
+      await this.loadTournament();
+      const team = this.tournamentRead()?.teams.find((item) => item.id === id);
+      if (team) {
+        await this.selectTeam(team);
+      }
+      this.notify('Equipe salva.');
+    });
+  }
+
+  async deleteSelectedTeam(): Promise<void> {
+    const team = this.teamRead()?.team;
+    if (
+      !team ||
+      !this.canDeleteTeam() ||
+      !(await this.confirmAction(
+        `Excluir ${team.name}?`,
+        'Inscrições e escalações desta equipe serão removidas do torneio.',
+      ))
+    ) {
+      return;
+    }
+    await this.run('Não foi possível excluir a equipe.', async () => {
+      await firstValueFrom(this.api.deleteVersioned('deleteSportsTeam', team.id, team.revision));
+      this.newTeam();
+      await this.loadTournament();
+    });
+  }
+
+  async uploadTeamLogo(file: File): Promise<void> {
+    const team = this.teamRead()?.team;
+    if (!team || !this.canUpdateTeam()) {
+      return;
+    }
+    if (!['image/avif', 'image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      this.notify('Use uma imagem AVIF, SVG, PNG, JPEG ou WebP.', true);
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      this.notify('O escudo deve ter no máximo 15 MB.', true);
+      return;
+    }
+    await this.run('Não foi possível enviar o escudo.', async () => {
+      await firstValueFrom(this.api.uploadTeamLogo(team.id, team.revision, file));
+      await this.loadTournament();
+      const refreshed = this.tournamentRead()?.teams.find((item) => item.id === team.id);
+      if (refreshed) {
+        await this.selectTeam(refreshed);
+      }
+      this.notify('Escudo atualizado e armazenado sem expiração.');
+    });
+  }
+
+  async cloneSelectedTeam(): Promise<void> {
+    const team = this.teamRead()?.team;
+    if (!team || !this.canDuplicateTeam()) {
+      return;
+    }
+    const destinationTournamentId = await this.askText(
+      'Duplicar equipe',
+      'O escudo será preservado. Representantes e atletas não serão copiados.',
+      'ID do torneio de destino',
+      this.tournamentId(),
+    );
+    if (!destinationTournamentId) {
+      return;
+    }
+    await this.run('Não foi possível duplicar a equipe.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('cloneSportsTeam', 'SportsTeamCloneInput', {
+          sourceTeamId: team.id,
+          destinationTournamentId,
+          name: `${team.name} (cópia)`,
+          includeLogo: true,
+          includeRepresentatives: false,
+          includeMembers: false,
+        }),
+      );
+      if (destinationTournamentId === this.tournamentId()) {
+        await this.loadTournament();
+      }
+      this.notify('Equipe duplicada. Representantes e atletas não foram copiados.');
+    });
+  }
+
+  async searchPeople(query: string, target: 'representative' | 'official' | 'member'): Promise<void> {
+    this.clearPersonSelection(target);
+    const searchRevision = ++this.peopleSearchRevision;
+    const normalized = query.trim();
+    if (normalized.length < 2) {
+      this.people.set([]);
+      this.peopleTarget.set(null);
+      return;
+    }
+    this.peopleTarget.set(target);
+    await this.run(
+      'Não foi possível buscar pessoas.',
+      async () => {
+        const people = await firstValueFrom(this.peopleApi.listPeopleSummaries({ query: normalized, take: 10 }));
+        if (searchRevision === this.peopleSearchRevision) {
+          this.people.set(people);
+        }
+      },
+      false,
+    );
+  }
+
+  openRegistrationQuestionnaire(categoryId: string): void {
+    const option = this.registrationOptions().find((item) => item.category.id === categoryId);
+    if (!option) {
+      return;
+    }
+    this.registrationDraft.update((current) => ({
+      ...current,
+      [categoryId]: { selected: true, seed: option.seed },
+    }));
+    this.focusRegistrationCategory(categoryId);
+  }
+
+  pickPerson(person: Person, target: 'representative' | 'official' | 'member'): void {
+    const form =
+      target === 'representative'
+        ? this.representativeForm
+        : target === 'official'
+          ? this.officialForm
+          : this.memberForm;
+    form.patchValue({ personId: person.id, personQuery: person.name });
+    this.people.set([]);
+    this.peopleTarget.set(null);
+  }
+
+  async assignRepresentative(): Promise<void> {
+    const team = this.teamRead()?.team;
+    if (!team || !this.canAssignRepresentative() || this.representativeForm.invalid) {
+      return;
+    }
+    await this.run('Não foi possível atribuir o representante.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('assignSportsTeamRepresentative', 'SportsRepresentativeAssignInput', {
+          teamId: team.id,
+          personId: this.representativeForm.controls.personId.value,
+        }),
+      );
+      await this.selectTeam(team);
+      this.representativeForm.reset();
+      this.notify('Representante atribuído.');
+    });
+  }
+
+  async revokeRepresentative(representativeId: string): Promise<void> {
+    const team = this.teamRead()?.team;
+    if (!team || !this.canAssignRepresentative()) {
+      return;
+    }
+    await this.run('Não foi possível revogar o representante.', async () => {
+      await firstValueFrom(
+        this.api.mutate<boolean>('revokeSportsTeamRepresentative', 'SportsRepresentativeRevokeInput', {
+          representativeId,
+        }),
+      );
+      await this.selectTeam(team);
+    });
+  }
+
+  async addTeamMember(): Promise<void> {
+    const team = this.teamRead()?.team;
+    if (!team || !this.canUpdateTeam() || this.memberForm.invalid) {
+      return;
+    }
+    await this.run('Não foi possível adicionar o integrante.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('createSportsTeamMember', 'SportsTeamMemberCreateInput', {
+          teamId: team.id,
+          personId: this.memberForm.controls.personId.value,
+        }),
+      );
+      await this.selectTeam(team);
+      this.memberForm.reset();
+      this.notify('Integrante adicionado. A cobrança foi habilitada quando aplicável.');
+    });
+  }
+
+  async updateTeamMember(
+    member: NonNullable<SportsTeamRead['members']>[number],
+    status: SportsTeamMemberStatus,
+  ): Promise<void> {
+    const team = this.teamRead()?.team;
+    if (!team || !this.canUpdateTeam()) {
+      return;
+    }
+    await this.run('Não foi possível alterar o integrante.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('updateSportsTeamMember', 'SportsTeamMemberUpdateInput', {
+          id: member.id,
+          expectedRevision: member.revision,
+          status,
+        }),
+      );
+      await this.selectTeam(team);
+      this.notify('Status do integrante atualizado.');
+    });
+  }
+
+  async updateShirtNumber(assignment: SportsTeamCategoryAssignment, value: string): Promise<void> {
+    if (!this.canUpdateTeam()) {
+      return;
+    }
+    await this.updateAthleteProfile(assignment, { shirtNumber: this.normalizeProfileValue(value) });
+  }
+
+  async updateGameProfile(
+    assignment: SportsTeamCategoryAssignment,
+    gameNickname: string,
+    gameAccountName: string,
+    gameAccountUrl: string,
+  ): Promise<void> {
+    if (!this.canUpdateTeam()) {
+      return;
+    }
+    await this.updateAthleteProfile(assignment, {
+      gameNickname: this.normalizeProfileValue(gameNickname),
+      gameAccountName: this.normalizeProfileValue(gameAccountName),
+      gameAccountUrl: this.normalizeProfileValue(gameAccountUrl),
+    });
+  }
+
+  private async updateAthleteProfile(
+    assignment: SportsTeamCategoryAssignment,
+    profile: {
+      shirtNumber?: string | null;
+      gameNickname?: string | null;
+      gameAccountName?: string | null;
+      gameAccountUrl?: string | null;
+    },
+  ): Promise<void> {
+    const team = this.teamRead()?.team;
+    if (!team) {
+      return;
+    }
+    await this.run('Não foi possível salvar a identificação do atleta.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('updateSportsRegistrationMemberProfile', 'SportsRegistrationMemberProfileUpdateInput', {
+          registrationMemberId: assignment.registrationMemberId,
+          ...profile,
+        }),
+      );
+      await this.selectTeam(team);
+      this.notify('Identificação da modalidade atualizada.');
+    });
+  }
+
+  private normalizeProfileValue(value: string): string | null {
+    return value.trim() || null;
+  }
+
+  async createRegistration(answers?: readonly FormResponseAnswer[]): Promise<void> {
+    if (this.registrationForm.invalid) {
+      return;
+    }
+    const raw = this.registrationForm.getRawValue();
+    const formAnswersJson = answers ? serializeFormAnswers(answers) : raw.formAnswersJson;
+    const teamRead = this.teamRead();
+    const existing = teamRead?.registrations.find((registration) => registration.categoryId === raw.categoryId);
+    if (existing) {
+      if (!this.canUpdateRegistration()) {
+        return;
+      }
+      await this.run('Não foi possível atualizar o formulário da modalidade.', async () => {
+        await firstValueFrom(
+          this.api.mutate<string>('updateSportsRegistration', 'SportsRegistrationUpdateInput', {
+            id: existing.id,
+            expectedRevision: existing.revision,
+            formAnswersJson: formAnswersJson === '[]' ? null : formAnswersJson || null,
+          }),
+        );
+        await this.refreshSelectedTeamAfterRegistration(existing.teamId);
+        this.notify('Formulário da modalidade atualizado.');
+      });
+      return;
+    }
+    if (!this.canCreateAndPopulateRegistration()) {
+      return;
+    }
+    await this.run('Não foi possível inscrever a equipe.', async () => {
+      await this.createRegistrationAndAssignApprovedMembers(
+        {
+          teamId: raw.teamId,
+          categoryId: raw.categoryId,
+          seed: raw.seed || null,
+          formAnswersJson: formAnswersJson === '[]' ? null : formAnswersJson || null,
+        },
+        teamRead,
+      );
+      await this.refreshSelectedTeamAfterRegistration(teamRead?.team.id ?? raw.teamId);
+      this.notify('Inscrição criada. Atletas aprovados adicionados ao elenco da modalidade.');
+    });
+  }
+
+  async saveRegistrationSelections(): Promise<void> {
+    const teamRead = this.teamRead();
+    const options = this.registrationOptions();
+    if (!teamRead || !options.length || !this.canManageRegistrationSelections()) {
+      return;
+    }
+    const pendingQuestionnaires = options.filter(
+      (option) => option.selected && !option.registration && option.category.registrationFormId,
+    );
+    const removals = options.filter((option) => !option.selected && option.registration);
+    if (
+      removals.length &&
+      !(await this.confirmAction(
+        'Remover inscrições desmarcadas?',
+        'A equipe deixará as modalidades desmarcadas e suas escalações serão removidas.',
+      ))
+    ) {
+      return;
+    }
+
+    await this.run('Não foi possível salvar as inscrições em modalidades.', async () => {
+      for (const option of options) {
+        if (option.selected && !option.registration && !option.category.registrationFormId) {
+          await this.createRegistrationAndAssignApprovedMembers(
+            {
+              teamId: teamRead.team.id,
+              categoryId: option.category.id,
+              seed: option.seed,
+              formAnswersJson: null,
+            },
+            teamRead,
+          );
+        } else if (option.selected && option.registration && option.seed !== option.registration.seed) {
+          await firstValueFrom(
+            this.api.mutate<string>('updateSportsRegistration', 'SportsRegistrationUpdateInput', {
+              id: option.registration.id,
+              expectedRevision: option.registration.revision,
+              seed: option.seed,
+            }),
+          );
+        } else if (!option.selected && option.registration) {
+          await firstValueFrom(
+            this.api.deleteVersioned('deleteSportsRegistration', option.registration.id, option.registration.revision),
+          );
+        }
+      }
+      await this.refreshSelectedTeamAfterRegistration(teamRead.team.id);
+      if (pendingQuestionnaires.length) {
+        const firstQuestionnaire = pendingQuestionnaires[0];
+        if (firstQuestionnaire) {
+          this.registrationDraft.update((current) => ({
+            ...current,
+            [firstQuestionnaire.category.id]: {
+              selected: true,
+              seed: firstQuestionnaire.seed,
+            },
+          }));
+          this.focusRegistrationCategory(firstQuestionnaire.category.id);
+        }
+        this.notify('Responda o formulário da modalidade para concluir a inscrição.', true);
+      } else {
+        this.notify('Inscrições salvas. Novas modalidades ficam disponíveis imediatamente.');
+      }
+    });
+  }
+
+  async autoRegisterTeamInEligibleCategories(): Promise<void> {
+    const teamRead = this.teamRead();
+    const categories = this.automaticTeamCategories();
+    if (!this.canCreateAndPopulateRegistration()) {
+      return;
+    }
+    if (!teamRead || !categories.length) {
+      this.notify('Nenhuma modalidade nova atende ao mínimo de atletas aprovados.', true);
+      return;
+    }
+    await this.run('Não foi possível concluir as inscrições automáticas.', async () => {
+      for (const category of categories) {
+        await this.createRegistrationAndAssignApprovedMembers(
+          {
+            teamId: teamRead.team.id,
+            categoryId: category.id,
+            seed: null,
+            formAnswersJson: null,
+          },
+          this.teamRead() ?? teamRead,
+        );
+      }
+      await this.refreshSelectedTeamAfterRegistration(teamRead.team.id);
+      this.notify(
+        `${categories.length} modalidade${categories.length === 1 ? '' : 's'} inscrita${categories.length === 1 ? '' : 's'}.`,
+      );
+    });
+  }
+
+  private async createRegistrationAndAssignApprovedMembers(
+    input: {
+      teamId: string;
+      categoryId: string;
+      seed: number | null;
+      formAnswersJson: string | null;
+    },
+    teamRead: SportsTeamRead | null,
+  ): Promise<void> {
+    let registrationId: string;
+    try {
+      registrationId = await firstValueFrom(
+        this.api.mutate<string>('createSportsRegistration', 'SportsRegistrationCreateInput', input),
+      );
+    } catch (error) {
+      const recovered = await this.recoverRegistrationAfterFailure(input.teamId, input.categoryId).catch(() => null);
+      if (!recovered) {
+        throw error;
+      }
+      await this.assignApprovedMembersToRegistration(recovered.registration.id, recovered.teamRead);
+      return;
+    }
+
+    if (teamRead) {
+      await this.assignApprovedMembersWithRecovery(registrationId, input.teamId, input.categoryId, teamRead);
+    }
+  }
+
+  private async assignApprovedMembersWithRecovery(
+    registrationId: string,
+    teamId: string,
+    categoryId: string,
+    teamRead: SportsTeamRead,
+  ): Promise<void> {
+    try {
+      await this.assignApprovedMembersToRegistration(registrationId, teamRead);
+    } catch (error) {
+      const recovered = await this.recoverRegistrationAfterFailure(teamId, categoryId).catch(() => null);
+      if (!recovered) {
+        throw error;
+      }
+      await this.assignApprovedMembersToRegistration(recovered.registration.id, recovered.teamRead);
+    }
+  }
+
+  private async recoverRegistrationAfterFailure(
+    teamId: string,
+    categoryId: string,
+  ): Promise<{
+    registration: SportsTeamRead['registrations'][number];
+    teamRead: SportsTeamRead;
+  } | null> {
+    const refreshed = await firstValueFrom(this.api.team(teamId));
+    if (!refreshed) {
+      return null;
+    }
+    this.teamRead.set(refreshed);
+    const registration = refreshed.registrations.find((item) => item.categoryId === categoryId);
+    return registration ? { registration, teamRead: refreshed } : null;
+  }
+
+  async setRegistrationStatus(
+    registration: NonNullable<SportsCategoryRead['registrations']>[number],
+    status: 'APPROVED' | 'CHANGES_REQUESTED' | 'REJECTED' | 'ACTIVE',
+  ): Promise<void> {
+    const category = this.categoryRead()?.category;
+    if (!category || !this.canUpdateRegistration()) {
+      return;
+    }
+    await this.run('Não foi possível atualizar a inscrição.', async () => {
+      await firstValueFrom(
+        this.api.mutate<string>('updateSportsRegistration', 'SportsRegistrationUpdateInput', {
+          id: registration.id,
+          expectedRevision: registration.revision,
+          status,
+        }),
+      );
+      await this.selectCategory(category);
+      this.notify('Estado da inscrição atualizado.');
+    });
+  }
+
+  async deleteRegistration(registration: NonNullable<SportsCategoryRead['registrations']>[number]): Promise<void> {
+    const category = this.categoryRead()?.category;
+    if (
+      !category ||
+      !this.canDeleteRegistration() ||
+      !(await this.confirmAction(
+        'Excluir inscrição?',
+        'A equipe deixará esta modalidade e suas escalações serão removidas.',
+      ))
+    ) {
+      return;
+    }
+    await this.run('Não foi possível excluir a inscrição.', async () => {
+      await firstValueFrom(
+        this.api.deleteVersioned('deleteSportsRegistration', registration.id, registration.revision),
+      );
+      await this.selectCategory(category);
+    });
+  }
+
+  private async assignApprovedMembersToRegistration(registrationId: string, teamRead: SportsTeamRead): Promise<void> {
+    const approvedMembers = teamRead.members.filter((member) => member.status === 'APPROVED');
+    const results = await Promise.allSettled(
+      approvedMembers.map((member) =>
+        firstValueFrom(
+          this.api.mutate<string>('assignSportsCategoryRole', 'SportsRegistrationMemberUpsertInput', {
+            registrationId,
+            teamMemberId: member.id,
+            role: 'PLAYER',
+          }),
+        ),
+      ),
+    );
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') {
+      throw failure.reason;
+    }
+  }
+
+  private async refreshSelectedTeamAfterRegistration(teamId: string): Promise<void> {
+    await this.loadTournament();
+    const team = this.tournamentRead()?.teams.find((item) => item.id === teamId);
+    if (team) {
+      await this.selectTeam(team);
+    }
+  }
+
+  private clearPersonSelection(target: 'representative' | 'official' | 'member'): void {
+    const form =
+      target === 'representative'
+        ? this.representativeForm
+        : target === 'official'
+          ? this.officialForm
+          : this.memberForm;
+    form.controls.personId.setValue('');
+  }
+
+  newMatch(navigate = true): void {
+    this.cancelOfficialEdit();
+    this.invalidateSelection();
+    const categoryId = this.selectedCategoryId();
+    this.matchReview.set(null);
+    this.selectedMatchId.set('');
+    this.registrationReads.set({});
+    this.lineupSelections.set({});
+    this.lineupDetails.set({});
+    this.matchForm.reset({
+      id: '',
+      categoryId,
+      name: 'Partida',
+      startDate: '',
+      endDate: '',
+      stageId: '',
+      venueId: '',
+      homeRegistrationId: '',
+      awayRegistrationId: '',
+      roundNumber: 1,
+      bracketPosition: 1,
+      groupKey: '',
+      state: 'SCHEDULED',
+      notes: '',
+      livestreamProvider: '',
+      livestreamUrl: '',
+    });
+    if (navigate) {
+      this.navigateToArea('matches', { categoryId: categoryId || undefined });
+    }
+  }
+  protected abstract loadMatchRegistrations(
+    review: import('./sports.models').SportsMatchReview,
+    selectionRevision?: number,
+  ): Promise<void>;
+}

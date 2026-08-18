@@ -17,13 +17,20 @@ import type {
   DashboardInsightAction,
   DashboardPendingOfflineAttendanceEvent,
   DashboardPendingReceiptMajorEvent,
+  DashboardSportsMatch,
+  DashboardSportsTournament,
   DashboardWeatherAlert,
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
-import { Subscription, interval, startWith, switchMap } from 'rxjs';
+import type { AttendanceReviewEventSummary } from '@cacic-fct/event-manager-admin-contracts';
+import { Subscription, forkJoin, interval, of, startWith, switchMap } from 'rxjs';
 import { DashboardApiService } from '../graphql/dashboard-api.service';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { AttendanceApiService } from '../graphql/attendance-api.service';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { navigationLinkItems } from '../app-shell/navigation';
+import { PermissionsService } from '../permissions/permissions.service';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { timeAwareGreeting } from '@cacic-fct/shared-utils';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
@@ -49,6 +56,8 @@ type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissi
 export class Home implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly dashboardApi = inject(DashboardApiService);
+  private readonly attendanceApi = inject(AttendanceApiService);
+  private readonly permissions = inject(PermissionsService);
 
   private minuteTimeoutId?: ReturnType<typeof setTimeout>;
   private minuteIntervalId?: ReturnType<typeof setInterval>;
@@ -56,6 +65,7 @@ export class Home implements OnInit, OnDestroy {
 
   readonly currentDate = signal<Date>(new Date());
   readonly insights = signal<WorkspaceDashboardHomeInsights | null>(null);
+  readonly attendanceReviewEvents = signal<AttendanceReviewEventSummary[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
 
@@ -76,17 +86,29 @@ export class Home implements OnInit, OnDestroy {
   readonly followUpInconsistencies = computed(
     () => this.insights()?.inconsistencies.filter((issue) => issue.severity !== 'CRITICAL') ?? [],
   );
+  readonly sportsTournamentsNeedingReview = computed(
+    () =>
+      this.insights()?.sportsTournaments.filter(
+        (tournament) => tournament.pendingApplicationCount > 0 || tournament.pendingReviewCount > 0,
+      ) ?? [],
+  );
   readonly hasActionQueue = computed(() => {
     const dashboard = this.insights();
     return Boolean(
       dashboard &&
-        (dashboard.pendingOfflineAttendanceEvents.length > 0 ||
+        (this.attendanceReviewEvents().length > 0 ||
+          dashboard.pendingOfflineAttendanceEvents.length > 0 ||
           dashboard.pendingReceiptMajorEvents.length > 0 ||
+          this.sportsTournamentsNeedingReview().length > 0 ||
           this.criticalInconsistencies().length > 0),
     );
   });
   readonly hasMonitoring = computed(() => {
     return this.upcomingEvents().length > 0;
+  });
+  readonly hasSports = computed(() => {
+    const dashboard = this.insights();
+    return Boolean(dashboard && (dashboard.sportsTournaments.length > 0 || dashboard.sportsMatches.length > 0));
   });
   readonly hasSystemHealth = computed(() => {
     const dashboard = this.insights();
@@ -139,12 +161,18 @@ export class Home implements OnInit, OnDestroy {
         switchMap(() => {
           this.loading.set(true);
           this.error.set(null);
-          return this.dashboardApi.getWorkspaceDashboardInsights();
+          return forkJoin({
+            insights: this.dashboardApi.getWorkspaceDashboardInsights(),
+            attendanceReviewEvents: this.permissions.has(Permission.EventAttendance.Update)
+              ? this.attendanceApi.listAttendanceReviewEventSummaries()
+              : of([]),
+          });
         }),
       )
       .subscribe({
-        next: (insights) => {
+        next: ({ insights, attendanceReviewEvents }) => {
           this.insights.set(insights);
+          this.attendanceReviewEvents.set(attendanceReviewEvents);
           this.loading.set(false);
         },
         error: (error: unknown) => {
@@ -194,7 +222,8 @@ export class Home implements OnInit, OnDestroy {
       (action === 'OPEN_EVENT' ||
         action === 'OPEN_EVENT_GROUP' ||
         action === 'OPEN_MAJOR_EVENT' ||
-        action === 'OPEN_CERTIFICATES') &&
+        action === 'OPEN_CERTIFICATES' ||
+        action === 'OPEN_SPORTS') &&
       targetId
     ) {
       return [path, targetId];
@@ -227,12 +256,65 @@ export class Home implements OnInit, OnDestroy {
     return [this.navMap()['attendances']?.path ?? 'attendances', 'event', item.eventId];
   }
 
+  attendanceReviewLink(item: AttendanceReviewEventSummary): string[] {
+    return [this.navMap()['attendances']?.path ?? 'attendances', 'event', item.eventId, 'statistics'];
+  }
+
+  sportsTournamentLink(item: DashboardSportsTournament | DashboardSportsMatch): string[] {
+    return [this.navMap()['sports']?.path ?? 'sports', item.tournamentId];
+  }
+
   receiptMajorEventSummary(count: number): string {
     return `${count} ${count === 1 ? 'comprovante pendente' : 'comprovantes pendentes'}`;
   }
 
   offlineAttendanceSummary(count: number): string {
     return `${count} ${count === 1 ? 'presença pendente' : 'presenças pendentes'}`;
+  }
+
+  sportsTournamentStatus(status: string): string {
+    return (
+      {
+        DRAFT: 'Rascunho',
+        REGISTRATION_OPEN: 'Inscrições abertas',
+        REGISTRATION_CLOSED: 'Inscrições encerradas',
+        LIVE: 'Em andamento',
+        FINISHED: 'Finalizado',
+        CANCELED: 'Cancelado',
+      }[status] ?? status
+    );
+  }
+
+  sportsMatchState(state: string): string {
+    return (
+      {
+        SCHEDULED: 'Agendada',
+        CHECK_IN: 'Check-in',
+        LIVE: 'Ao vivo',
+        PAUSED: 'Pausada',
+        AWAITING_REVIEW: 'Em revisão',
+        CANCELED: 'Cancelada',
+        DRAW: 'Empate',
+        FINISHED: 'Finalizada',
+      }[state] ?? state
+    );
+  }
+
+  sportsTournamentSummary(item: DashboardSportsTournament): string {
+    const categories = `${item.categoryCount} ${item.categoryCount === 1 ? 'modalidade' : 'modalidades'}`;
+    const teams = `${item.teamCount} ${item.teamCount === 1 ? 'equipe' : 'equipes'}`;
+    return `${categories} · ${teams}`;
+  }
+
+  sportsReviewSummary(item: DashboardSportsTournament): string {
+    const pending = item.pendingApplicationCount + item.pendingReviewCount;
+    if (pending === 0) {
+      return item.activeMatchCount === 0
+        ? 'Sem pendências operacionais'
+        : `${item.activeMatchCount} ${item.activeMatchCount === 1 ? 'partida ativa' : 'partidas ativas'}`;
+    }
+
+    return `${pending} ${pending === 1 ? 'pendência para revisar' : 'pendências para revisar'}`;
   }
 
   eventSubscriptionSummary(event: DashboardCalendarEvent): string {
@@ -281,6 +363,8 @@ export class Home implements OnInit, OnDestroy {
         return this.navMap()['merge-candidates']?.path ?? 'merge-candidates';
       case 'OPEN_PUBLICATION':
         return this.navMap()['publication']?.path ?? 'publication';
+      case 'OPEN_SPORTS':
+        return this.navMap()['sports']?.path ?? 'sports';
     }
   }
 
@@ -296,11 +380,8 @@ export class Home implements OnInit, OnDestroy {
   }
 
   private getGreetings(): string {
-    const hour = this.currentDate().getHours();
     const name = this.authService.user()?.claims?.name;
-    const greeting = hour < 5 ? 'Boa madrugada' : hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
-
-    return name ? `${greeting}, ${name}!` : `${greeting}!`;
+    return timeAwareGreeting(this.currentDate(), typeof name === 'string' ? name : null);
   }
 
   isToday(event: DashboardCalendarEvent): boolean {

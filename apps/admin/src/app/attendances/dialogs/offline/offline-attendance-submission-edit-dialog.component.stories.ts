@@ -151,7 +151,7 @@ export default meta;
 
 type Story = StoryObj<EditDialogStoryArgs>;
 
-export const ManualTypo: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Corrigir presença off-line')).toBeVisible();
@@ -203,6 +203,7 @@ export const CandidateSearch: Story = {
 };
 
 export const NoCandidates: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     hasCandidates: false,
   },

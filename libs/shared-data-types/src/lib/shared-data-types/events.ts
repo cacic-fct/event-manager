@@ -8,6 +8,9 @@ import { MajorEvent } from './major-events';
 
 @ObjectType()
 export class Event {
+  @Field(() => Boolean)
+  isSportsMatch?: boolean;
+
   @Field(() => String)
   id!: string;
 
@@ -111,7 +114,7 @@ export class Event {
   onlineAttendanceEndDate?: Date | null;
 
   @Field(() => Boolean)
-  publiclyVisible!: boolean;
+  isPubliclyListed!: boolean;
 
   @Field(() => Boolean)
   displayLecturerProfile!: boolean;

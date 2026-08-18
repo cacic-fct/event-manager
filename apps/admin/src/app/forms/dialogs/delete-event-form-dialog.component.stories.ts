@@ -79,6 +79,7 @@ export const SingleResponse: Story = {
 };
 
 export const NoResponses: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     name: 'Rascunho sem respostas',
     responseCount: 0,

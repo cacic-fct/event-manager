@@ -30,7 +30,10 @@ jobs:
 
     if: >
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
+      (
+        github.event.workflow_run.event == 'push' ||
+        github.event.workflow_run.event == 'workflow_dispatch'
+      ) &&
       github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
 
@@ -87,7 +90,7 @@ jobs:
 
             CHANGED_FILES="$(git diff --name-only "$BASE" "$HEAD")"
             DEPLOYABLE_APPS_PATTERN='^(admin|backend|public)$'
-            GLOBAL_CHANGE_PATTERN='(^package\.json$|^bun\.lock$|^nx\.json$|^tsconfig\.base\.json$|^\.npmrc$|^bunfig\.toml$|^\.github/workflows/.*\.ya?ml$|^Dockerfile$|^apps/[^/]+/Dockerfile(\.dockerignore)?$)'
+            GLOBAL_CHANGE_PATTERN='(^package\.json$|^bun\.lock$|^nx\.json$|^tsconfig\.base\.json$|^\.npmrc$|^bunfig\.toml$|^\.github/workflows/.*\.ya?ml$|^Dockerfile$|^apps/[^/]+/Dockerfile(\.dockerignore)?$|^certificate-templates/|^tools/evcomp-import/)'
 
             if printf '%s\n' "$CHANGED_FILES" | grep -E "$GLOBAL_CHANGE_PATTERN"; then
               DEPLOYABLE="$DEPLOYABLE_APPS"

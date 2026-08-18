@@ -47,7 +47,7 @@ const defaultText = `Usamos cookies para ${faker.helpers.arrayElement([
 
 const meta: Meta<CookieBannerStoryArgs> = {
   component: CookieBannerStoryHostComponent,
-  title: 'Public/Privacy/Package Cookie Banner',
+  title: 'CACiC Eventos/Privacy/Cookie Banner',
   tags: ['autodocs'],
   args: {
     authenticated: true,
@@ -89,5 +89,17 @@ export const GuestUser: Story = {
     storageKey: 'storybook-cookie-banner-guest',
     buttonText: 'Continuar',
   },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const LongCopyDarkReducedMotion: Story = {
+  args: {
+    authenticated: true,
+    storageKey: 'storybook-cookie-banner-long-copy',
+    text: 'Usamos cookies essenciais para manter sua sessão segura, sincronizar preferências entre dispositivos compartilhados durante os eventos e respeitar as escolhas de privacidade registradas na sua conta.',
+    buttonText: 'Entendi e desejo continuar',
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

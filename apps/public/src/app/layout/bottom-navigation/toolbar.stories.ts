@@ -4,7 +4,7 @@ import { BottomToolbarComponent } from './toolbar';
 
 const meta: Meta<BottomToolbarComponent> = {
   component: BottomToolbarComponent,
-  title: 'Public/Tabs/Bottom Toolbar/Bottom Toolbar',
+  title: 'CACiC Eventos/Layout/Bottom Navigation/Toolbar',
   tags: ['autodocs'],
   argTypes: {
     items: { control: 'object', name: 'Itens de navegação' },
@@ -52,5 +52,31 @@ export const Playground: Story = {
       { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
     ],
   },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const LongLabelsDarkReducedMotion: Story = {
+  args: {
+    items: [
+      {
+        label: 'Calendário acadêmico e atividades complementares',
+        shortLabel: 'Calendário',
+        icon: 'calendar_month',
+        route: '/calendar',
+        hidden: false,
+      },
+      { label: 'Grandes eventos', shortLabel: 'Eventos', icon: 'event', route: '/major-event', hidden: false },
+      { label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false },
+    ],
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const MenuOnlyMobile: Story = {
+  args: {
+    items: [{ label: 'Menu', shortLabel: 'Menu', icon: 'menu', route: '/menu', hidden: false }],
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

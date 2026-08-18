@@ -120,6 +120,6 @@ test('attendance management loads event attendance and major event attendance de
   await expect(page.getByRole('tab', { name: 'Por grande evento' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByText('Ada Lovelace').first()).toBeVisible();
   await expect(page.getByText('Oficina de Angular')).toBeVisible();
-  await expect(page.getByText('Presente')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Editar' })).toBeVisible();
+  await expect(page.getByText(/Presença registrada em/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Abrir inscrição' })).toBeVisible();
 });

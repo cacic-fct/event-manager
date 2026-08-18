@@ -16,6 +16,7 @@ export const PUBLIC_MAJOR_EVENT_PRICE_FIELDS = `
     id
     name
     value
+    includesSportsRegistration
   }
 `;
 
@@ -33,6 +34,8 @@ export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
   emoji
   startDate
   endDate
+  hasEvents
+  regularSubscriptionOpen
   description
   subscriptionStartDate
   subscriptionEndDate
@@ -41,6 +44,11 @@ export const PUBLIC_MAJOR_EVENT_CARD_FIELDS = `
   buttonText
   buttonLink
   isPaymentRequired
+  sportsTournament {
+    id
+    selfSubscriptionEnabled
+    registrationOpen
+  }
 `;
 
 export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
@@ -65,6 +73,11 @@ export const PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
   majorEventPrices {
     ${PUBLIC_MAJOR_EVENT_PRICE_FIELDS}
   }
+  sportsTournament {
+    id
+    selfSubscriptionEnabled
+    registrationOpen
+  }
 `;
 
 export const PUBLIC_MAJOR_EVENT_PROFILE_FIELDS = `
@@ -85,6 +98,9 @@ export const PUBLIC_MAJOR_EVENT_PROFILE_FIELDS = `
   isPaymentRequired
   additionalPaymentInfo
   shouldIssueCertificate
+  sportsTournament {
+    id
+  }
   requiresImageLicenseAgreement
 `;
 
@@ -128,6 +144,24 @@ export const PUBLIC_CALENDAR_EVENT_FIELDS = `
   eventGroup {
     ${PUBLIC_NAMED_ENTITY_FIELDS}
   }
+  sportsMatch {
+    id
+    categoryId
+    category {
+      tournamentId
+    }
+  }
+`;
+
+export const PUBLIC_MAP_EVENT_FIELDS = `
+  id
+  name
+  startDate
+  endDate
+  emoji
+  latitude
+  longitude
+  locationDescription
 `;
 
 export const PUBLIC_EVENT_PAGE_FIELDS = `
@@ -156,7 +190,7 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   isOnlineAttendanceAllowed
   onlineAttendanceStartDate
   onlineAttendanceEndDate
-  publiclyVisible
+  isPubliclyListed
   youtubeCode
   buttonText
   buttonLink
@@ -166,6 +200,13 @@ export const PUBLIC_EVENT_PAGE_FIELDS = `
   eventGroup {
     ${PUBLIC_NAMED_ENTITY_FIELDS}
     requiresImageLicenseAgreement
+  }
+  sportsMatch {
+    id
+    categoryId
+    category {
+      tournamentId
+    }
   }
   lecturers {
     ${PUBLIC_LECTURER_PROFILE_FIELDS}
@@ -220,6 +261,13 @@ export const PUBLIC_ATTENDANCE_EVENT_FIELDS = `
   eventGroup {
     ${PUBLIC_EVENT_GROUP_DETAIL_FIELDS}
   }
+  sportsMatch {
+    id
+    categoryId
+    category {
+      tournamentId
+    }
+  }
   lecturers {
     ${PUBLIC_LECTURER_PROFILE_FIELDS}
   }
@@ -235,6 +283,7 @@ export const PUBLIC_EVENT_SUBSCRIPTION_SUMMARY_FIELDS = `
 export const PUBLIC_EVENT_WEATHER_FIELDS = `
   eventId
   temperature
+  uvIndex
   weatherCode
   summary
   materialIcon

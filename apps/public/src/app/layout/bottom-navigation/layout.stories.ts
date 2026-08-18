@@ -4,7 +4,7 @@ import { ToolbarLayoutComponent } from './layout';
 
 const meta: Meta<ToolbarLayoutComponent> = {
   component: ToolbarLayoutComponent,
-  title: 'Public/Tabs/Bottom Toolbar/Bottom Toolbar/Layout',
+  title: 'CACiC Eventos/Layout/Bottom Navigation/Layout',
   tags: ['autodocs'],
   argTypes: {
     calendarTabEnabledOverride: { control: 'boolean', name: 'Aba de calendário habilitada' },
@@ -44,5 +44,25 @@ export const Playground: Story = {
     majorEventTabEnabledOverride: true,
     notificationsTabEnabledOverride: true,
   },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const EssentialTabsDarkReducedMotion: Story = {
+  args: {
+    calendarTabEnabledOverride: true,
+    majorEventTabEnabledOverride: false,
+    notificationsTabEnabledOverride: false,
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const MenuOnlyMobile: Story = {
+  args: {
+    calendarTabEnabledOverride: false,
+    majorEventTabEnabledOverride: false,
+    notificationsTabEnabledOverride: false,
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };

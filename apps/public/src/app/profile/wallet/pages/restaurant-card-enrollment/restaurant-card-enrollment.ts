@@ -28,7 +28,7 @@ import { RestaurantCardService } from '../../services/restaurant-card.service';
       <a matIconButton routerLink="/profile/wallet/add-card" aria-label="Voltar para os cartões disponíveis">
         <mat-icon>arrow_back</mat-icon>
       </a>
-      <span>Cartão do R.U.</span>
+      <h1 class="global-toolbar-title">Cartão do R.U.</h1>
     </mat-toolbar>
 
     <main class="global-container restaurant-enrollment-page">
@@ -37,9 +37,9 @@ import { RestaurantCardService } from '../../services/restaurant-card.service';
           <mat-card-title>{{ existingCardNumber() ? 'Editar cartão do R.U.' : 'Cartão do R.U.' }}</mat-card-title>
           <mat-card-subtitle>
             @if (existingCardNumber()) {
-            Atualize o número do Cartão de Cliente obtido no SISRU.
+              Atualize o número do Cartão de Cliente obtido no SISRU.
             } @else {
-            Obtenha o número do Cartão de Cliente a partir do SISRU.
+              Obtenha o número do Cartão de Cliente a partir do SISRU.
             }
           </mat-card-subtitle>
         </mat-card-header>

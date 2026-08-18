@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   AztecScannerComponent,
@@ -19,7 +20,7 @@ import {
   AuthService,
   AuthenticatedUser,
 } from '@cacic-fct/shared-angular';
-import { AttendanceOfflineQueueService, OfflineAttendanceQueueItem } from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService, OfflineAttendanceQueueItem } from '@cacic-fct/public-indexed-db';
 import { formatUnespRole, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { firstValueFrom, of } from 'rxjs';
 import {
@@ -46,6 +47,7 @@ import { NetworkStatusService } from '../../../shared/network-status.service';
     MatIconModule,
     MatInputModule,
     MatListModule,
+    MatToolbarModule,
     AztecScannerComponent,
   ],
   templateUrl: './scanner-page.html',
@@ -113,7 +115,8 @@ export class AttendanceScanner implements OnInit {
       .watchFeed(eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (attendances) => this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
+        next: (attendances) =>
+          this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
         error: () =>
           this.snackbar.open('Não foi possível acompanhar as presenças em tempo real.', 'Fechar', { duration: 3500 }),
       });

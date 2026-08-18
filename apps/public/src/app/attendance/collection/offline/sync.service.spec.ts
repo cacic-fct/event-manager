@@ -2,10 +2,7 @@ import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import {
-  AttendanceOfflineQueueService,
-  OralAttendanceOfflineService,
-} from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService, OralAttendanceOfflineService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Subject, of } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';

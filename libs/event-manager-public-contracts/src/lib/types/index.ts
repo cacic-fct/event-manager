@@ -3,3 +3,4 @@ export * from './events';
 export * from './certificates';
 export * from './forms';
 export * from './platform-stats';
+export * from './my-day';

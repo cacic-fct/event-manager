@@ -23,9 +23,9 @@ model PeopleMergeOperation {
   sourcePersonId   String
   mergeCandidateId String?
 
-  targetPerson   People          @relation("MergeTargetOperations", fields: [targetPersonId], references: [id])
-  sourcePerson   People          @relation("MergeSourceOperations", fields: [sourcePersonId], references: [id])
-  mergeCandidate MergeCandidate? @relation(fields: [mergeCandidateId], references: [id])
+  targetPerson                   People                          @relation("MergeTargetOperations", fields: [targetPersonId], references: [id])
+  sourcePerson                   People                          @relation("MergeSourceOperations", fields: [sourcePersonId], references: [id])
+  mergeCandidate                 MergeCandidate?                 @relation(fields: [mergeCandidateId], references: [id])
   externalAccountMergeOperations ExternalAccountMergeOperation[]
 
   status PeopleMergeOperationStatus @default(APPLIED)

@@ -88,6 +88,7 @@ interface CurrentUserEventParticipation {
   isSubscribed: boolean;
   isLecturer: boolean;
   hasIssuedCertificate: boolean;
+  isSportsManager?: boolean;
 }
 
 export interface OrganizerEventInfo {
@@ -136,13 +137,11 @@ const CERTIFICATE_FIELDS = `
     certificateTemplate {
       id
       name
-      version
     }
   }
   certificateTemplate {
     id
     name
-    version
   }
 `;
 
@@ -177,6 +176,10 @@ export class AttendancesApiService {
             amountPaid
             paymentDate
             paymentTier
+            sportsRepresentativeTeams {
+              id
+              name
+            }
             majorEvent {
               id
               name
@@ -184,11 +187,15 @@ export class AttendancesApiService {
               startDate
               endDate
               description
+              sportsTournament {
+                id
+              }
             }
             participation {
               isSubscribed
               isLecturer
               hasIssuedCertificate
+              isSportsManager
             }
           }
 
@@ -353,6 +360,7 @@ export class AttendancesApiService {
           events: publicEvents,
           hasIssuedCertificate: feedItem?.participation.hasIssuedCertificate ?? false,
           isLecturer: Boolean(feedItem?.participation.isLecturer || organizerInfo),
+          sportsRepresentativeTeams: feedItem?.sportsRepresentativeTeams ?? [],
           attendances: details.currentUserEventAttendances.filter((attendance) =>
             targetEventIds.has(attendance.eventId),
           ),
@@ -625,6 +633,10 @@ export class AttendancesApiService {
             amountPaid
             paymentDate
             paymentTier
+            sportsRepresentativeTeams {
+              id
+              name
+            }
             majorEvent {
               ${PUBLIC_MAJOR_EVENT_PROFILE_FIELDS}
             }
@@ -632,6 +644,7 @@ export class AttendancesApiService {
               isSubscribed
               isLecturer
               hasIssuedCertificate
+              isSportsManager
             }
           }
         }

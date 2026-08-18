@@ -69,6 +69,16 @@ export const navigationItems = [
   },
   {
     kind: 'link',
+    id: 'sports',
+    path: 'sports',
+    label: 'Esportes',
+    description: 'Organize torneios, equipes, tabelas, partidas e revisões esportivas.',
+    icon: 'sports',
+    group: 'Estrutura do evento',
+    helpLink: undefined,
+  },
+  {
+    kind: 'link',
     id: 'publication',
     path: 'publication',
     label: 'Publicação',
@@ -187,7 +197,7 @@ export const navigationItems = [
     id: 'permissions',
     path: 'permissions',
     label: 'Permissões',
-    description: 'Consulte os acessos concedidos para este usuário.',
+    description: 'Consulte seus acessos e administre cargos, pessoas e grupos.',
     icon: 'admin_panel_settings',
     group: 'Administração',
     helpLink:

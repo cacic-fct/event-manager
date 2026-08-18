@@ -6,6 +6,12 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:ui"],
   "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "bunx vitest run --config libs/shared-angular/vitest.config.ts"
+      }
+    },
     "lint": {
       "inputs": [
         "default",

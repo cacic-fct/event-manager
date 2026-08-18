@@ -53,7 +53,7 @@ export class PublicationSearchSyncService {
           majorEventId: event.majorEventId,
           eventGroupId: event.eventGroupId,
           shouldIssueCertificate: event.shouldIssueCertificate,
-          publiclyVisible: event.publiclyVisible,
+          isPubliclyListed: event.isPubliclyListed,
           publicationState: event.publicationState,
           startDate: event.startDate,
           endDate: event.endDate,

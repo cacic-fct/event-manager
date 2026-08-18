@@ -9,7 +9,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService } from '@cacic-fct/shared-angular';
+import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { isAfter, isBefore, parseISO, subMonths, startOfDay } from 'date-fns';
@@ -46,6 +46,7 @@ const RECEIPT_UPLOAD_STATUSES = new Set([
     MatIconModule,
     MatProgressBarModule,
     MatToolbarModule,
+    MarkdownComponent,
     RouterLink,
   ],
   templateUrl: './event-list-page.html',
@@ -120,8 +121,67 @@ export class MajorEvent {
     );
   }
 
-  canEditSubscription(subscription: CurrentUserMajorEventSubscription): boolean {
-    return subscription.subscriptionStatus !== 'CONFIRMED' && subscription.subscriptionStatus !== 'CANCELED';
+  canEditSubscription(
+    majorEvent: PublicMajorEvent,
+    subscription: CurrentUserMajorEventSubscription,
+  ): boolean {
+    if (subscription.subscriptionStatus === 'CANCELED') {
+      return false;
+    }
+    if (subscription.subscriptionStatus !== 'CONFIRMED') {
+      return true;
+    }
+    return Boolean(
+      majorEvent.sportsTournament &&
+        majorEvent.hasEvents !== false &&
+        (subscription.selectedEvents?.length ?? 0) === 0
+    );
+  }
+
+  subscriptionRouteFor(majorEvent: PublicMajorEvent): string[] | null {
+    if (majorEvent.hasEvents !== false) {
+      return [
+        '/major-event',
+        majorEvent.id,
+        majorEvent.rankedSubscriptionEnabled ? 'ranked-subscription' : 'subscription',
+      ];
+    }
+
+    const tournament = majorEvent.sportsTournament;
+    if (tournament?.selfSubscriptionEnabled) {
+      return ['/tournament', tournament.id, 'subscribe'];
+    }
+
+    return null;
+  }
+
+  isSubscriptionRouteOpen(majorEvent: PublicMajorEvent): boolean {
+    return majorEvent.hasEvents === false
+      ? Boolean(majorEvent.sportsTournament?.selfSubscriptionEnabled && majorEvent.sportsTournament.registrationOpen)
+      : this.isSubscriptionOpen(majorEvent) && majorEvent.regularSubscriptionOpen !== false;
+  }
+
+  subscriptionActionLabel(
+    majorEvent: PublicMajorEvent,
+    action: 'login' | 'create' | 'edit' | 'closed',
+  ): string {
+    if (majorEvent.hasEvents === false) {
+      return action === 'login' ? 'Entrar para solicitar inscrição' : 'Solicitar inscrição no torneio';
+    }
+    if (!majorEvent.sportsTournament) {
+      return {
+        login: 'Entrar para inscrever-se',
+        create: 'Inscrever-se',
+        edit: 'Editar inscrição',
+        closed: 'Inscrições encerradas',
+      }[action];
+    }
+    return {
+      login: 'Entrar para inscrever-se nas atividades',
+      create: 'Inscrever-se nas atividades',
+      edit: 'Editar inscrição nas atividades',
+      closed: 'Inscrições nas atividades encerradas',
+    }[action];
   }
 
   statusLabel(status: string): string {

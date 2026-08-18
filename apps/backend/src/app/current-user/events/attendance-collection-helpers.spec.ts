@@ -1,6 +1,10 @@
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
-import { AttendanceCreationMethod, EventManagerPermissionGrantScope, UserRole } from '@prisma/client';
+import { AttendanceCreationMethod, UserRole } from '@prisma/client';
 import { Permission } from '@cacic-fct/shared-permissions';
+
+jest.mock('../../authorization/effective-role-scopes', () => ({
+  resolveRoleIdsForPermission: jest.fn().mockResolvedValue(['role-1']),
+}));
 import { recordAttendanceCreate } from './attendance-collection-audit';
 import {
   commitStatusForError,
@@ -172,6 +176,11 @@ describe('attendance collection helpers', () => {
       { id: 'reviewer-user', email: 'reviewer@example.com', name: 'Reviewer User' },
     ];
     const prisma = {
+      eventManagerRoleAssignment: {
+        findMany: jest.fn().mockResolvedValue([
+          { person: { userId: 'reviewer-user' }, group: null },
+        ]),
+      },
       user: {
         findMany: jest.fn().mockResolvedValue(users),
       },
@@ -202,32 +211,13 @@ describe('attendance collection helpers', () => {
       },
     });
 
+    expect(prisma.eventManagerRoleAssignment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ roleId: { in: ['role-1'] } }),
+      }),
+    );
     expect(prisma.user.findMany).toHaveBeenCalledWith({
-      where: {
-        OR: [
-          { role: UserRole.ADMIN },
-          {
-            eventManagerPermissionGrants: {
-              some: expect.objectContaining({
-                permission: Permission.EventAttendance.Update,
-                deletedAt: null,
-                OR: [{ validFrom: null }, { validFrom: { lte: new Date('2026-07-01T12:00:00.000Z') } }],
-                AND: [
-                  { OR: [{ validUntil: null }, { validUntil: { gt: new Date('2026-07-01T12:00:00.000Z') } }] },
-                  {
-                    OR: expect.arrayContaining([
-                      { scope: EventManagerPermissionGrantScope.GLOBAL },
-                      { scope: EventManagerPermissionGrantScope.EVENT, eventId: 'event-1' },
-                      { scope: EventManagerPermissionGrantScope.MAJOR_EVENT, majorEventId: 'major-1' },
-                      { scope: EventManagerPermissionGrantScope.EVENT_GROUP, eventGroupId: 'group-1' },
-                    ]),
-                  },
-                ],
-              }),
-            },
-          },
-        ],
-      },
+      where: { OR: [{ role: UserRole.ADMIN }, { id: { in: ['reviewer-user'] } }] },
       select: { id: true, email: true, name: true },
     });
     expect(notifications.notifyOfflineAttendanceReviewQueued).toHaveBeenCalledWith(

@@ -70,6 +70,23 @@
   background: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
 }
 
+.notification-item.contextual {
+  cursor: pointer;
+}
+
+.notification-item.contextual:hover {
+  background: color-mix(in srgb, var(--mat-sys-primary) 6%, transparent);
+}
+
+.notification-item.contextual.unread:hover {
+  background: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+}
+
+.notification-item.contextual:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: -2px;
+}
+
 .notification-title,
 .notification-body {
   white-space: normal;

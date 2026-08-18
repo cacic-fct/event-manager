@@ -33,7 +33,7 @@ export const PUBLICATION_EVENT_SELECT = {
     },
   },
   shouldIssueCertificate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: true,
   scheduledPublishAt: true,
   publishedAt: true,

@@ -9,3 +9,5 @@ export * from './subscription-inputs';
 export * from './lecturer-inputs';
 export * from './lecturer-profile-inputs';
 export * from './merge-candidate-inputs';
+export * from './sports-participation-inputs';
+export * from './sports-competition-inputs';

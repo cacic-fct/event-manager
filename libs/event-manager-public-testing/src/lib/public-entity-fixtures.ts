@@ -47,8 +47,8 @@ export function createPublicMajorEventPrice(overrides: Partial<PublicMajorEventP
     id: 'price-1',
     type: 'TIERED',
     tiers: [
-      { id: 'tier-student', name: 'Estudante', value: 2500 },
-      { id: 'tier-community', name: 'Comunidade', value: 5000 },
+      { id: 'tier-student', name: 'Estudante', value: 2500, includesSportsRegistration: false },
+      { id: 'tier-community', name: 'Comunidade', value: 5000, includesSportsRegistration: false },
     ],
     ...overrides,
   };
@@ -145,7 +145,7 @@ export function createPublicEvent(overrides: Partial<PublicEvent> = {}): PublicE
     isOnlineAttendanceAllowed: true,
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,
@@ -277,8 +277,18 @@ export function createStoryPublicMajorEvent(
           createPublicMajorEventPrice({
             id: `price-${index + 1}`,
             tiers: [
-              { id: `tier-${index + 1}-student`, name: 'Estudante', value: 2500 },
-              { id: `tier-${index + 1}-community`, name: 'Comunidade externa', value: 5000 },
+              {
+                id: `tier-${index + 1}-student`,
+                name: 'Estudante',
+                value: 2500,
+                includesSportsRegistration: false,
+              },
+              {
+                id: `tier-${index + 1}-community`,
+                name: 'Comunidade externa',
+                value: 5000,
+                includesSportsRegistration: false,
+              },
             ],
           }),
         ]
@@ -385,7 +395,7 @@ export function createStoryPublicEvent(
     isOnlineAttendanceAllowed: index % 2 === 0,
     onlineAttendanceStartDate: storyDate(index + 1, 12),
     onlineAttendanceEndDate: storyDate(index + 1, 17),
-    publiclyVisible: true,
+    isPubliclyListed: true,
     youtubeCode: index % 2 === 0 ? 'dQw4w9WgXcQ' : null,
     buttonText: index % 2 === 0 ? 'Material de apoio' : null,
     buttonLink: index % 2 === 0 ? 'https://cacic.dev/material' : null,

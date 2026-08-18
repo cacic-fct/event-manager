@@ -7,7 +7,7 @@
 [![Coverage](https://img.shields.io/codecov/c/github/cacic-fct/event-manager/main?logo=codecov)](https://codecov.io/gh/cacic-fct/event-manager)
 [![License](https://img.shields.io/badge/license-AGPL–3.0–only-red)](https://github.com/cacic-fct/event-manager/blob/main/License.txt)
 
-O gerenciador de eventos do CACiC (também conhecido como "FCT App") é um sistema para controle de inscrições, presenças e emissão de certificados de eventos.
+O gerenciador de eventos do CACiC (também conhecido popularmente como "CACiC Eventos" ou historicamente como "FCT App") é um sistema para controle de inscrições, presenças e emissão de certificados de eventos.
 
 
 ## Contribuindo
@@ -41,11 +41,15 @@ bun install
 
 #### Serviços locais
 
-O backend depende de PostgreSQL, Redis e Typesense. Para subir os serviços locais de desenvolvimento, use:
+O backend depende de PostgreSQL, Redis, Typesense e SeaweedFS. Para subir os serviços locais de desenvolvimento, use:
 
 ```bash
 docker compose -f docker/docker-compose.dev.yml up -d
 ```
+
+O SeaweedFS expõe a API S3 em `http://localhost:8333`. As credenciais de desenvolvimento
+(`xyz`/`xyz`) e o bucket `event-manager` já estão definidos em `apps/backend/.env.example`.
+Os dados enviados ficam em volumes Docker locais e não são rastreados pelo Git.
 
 Este projeto usa o [Nx](https://nx.dev) para gerenciar o monorepo.
 

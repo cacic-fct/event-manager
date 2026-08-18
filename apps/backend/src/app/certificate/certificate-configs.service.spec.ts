@@ -262,6 +262,16 @@ describe('CertificateConfigsService', () => {
     );
 
     expect(targetsService.assertIssuableTarget).not.toHaveBeenCalled();
+    expect(prisma.certificateTemplate.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'template-1',
+        deletedAt: null,
+        isActive: true,
+        contentChecksum: { not: 'pending-metadata' },
+        htmlTemplate: { not: '' },
+      },
+      select: { id: true },
+    });
     expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -461,7 +471,11 @@ describe('CertificateConfigsService', () => {
       }),
     );
 
-    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(CertificateScope.EVENT_GROUP, 'event-group-1');
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT_GROUP,
+      'event-group-1',
+      CertificateIssuedTo.ATTENDEE,
+    );
     expect(prisma.certificateConfig.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -609,7 +623,11 @@ describe('CertificateConfigsService', () => {
         }),
       }),
     );
-    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(CertificateScope.EVENT, 'event-1');
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT,
+      'event-1',
+      CertificateIssuedTo.LECTURER,
+    );
   });
 
   it('resets optional clone parts but keeps recipient data when copying issued people', async () => {
@@ -713,7 +731,11 @@ describe('CertificateConfigsService', () => {
       eventGroupId: 'event-group-2',
     });
 
-    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(CertificateScope.EVENT_GROUP, 'event-group-2');
+    expect(targetsService.assertIssuableTarget).toHaveBeenCalledWith(
+      CertificateScope.EVENT_GROUP,
+      'event-group-2',
+      CertificateIssuedTo.ATTENDEE,
+    );
     expect(prisma.certificateConfig.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -1021,7 +1043,6 @@ function baseTemplate() {
     id: 'template-1',
     name: 'Template',
     description: 'Descricao',
-    version: 1,
     isActive: true,
     certificateFields: null,
     createdAt: new Date('2026-06-01T12:00:00.000Z'),

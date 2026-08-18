@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     paths-ignore:
@@ -19,6 +20,25 @@ env:
   REDIS_URL: redis://localhost:6379
 
 jobs:
+  speedy-release:
+    name: Speedy release (tests skipped)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Require main branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Speedy release can only be triggered from main."
+          exit 1
+
+      - name: Confirm release handoff
+        run: echo "Speedy release accepted on main; CI checks are intentionally skipped."
+
   lint:
     name: Lint all projects
     runs-on: ubuntu-latest
@@ -66,13 +86,22 @@ jobs:
       - name: Lint all projects
         run: bunx nx run-many -t lint --all --parallel=3
 
+      - name: Validate import tools
+        run: |
+          bun run typecheck:data-import
+          bun run test:data-import
+          node --test tools/evcomp-import/*.test.mjs
+
+      - name: Audit Storybook stories
+        run: bun run storybook:quality
+
   unit-tests:
     name: Unit tests (${{ matrix.project }})
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:18
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -103,8 +132,11 @@ jobs:
         project:
           - admin
           - backend
-          - offline-public-data-access
+          - event-manager-public-testing
+          - public-indexed-db
           - public
+          - shared-angular
+          - shared-permissions
           - shared-seo-angular
           - shared-utils
 
@@ -156,8 +188,8 @@ jobs:
             backend)
               coverage_roots=(coverage/apps/backend)
               ;;
-            offline-public-data-access)
-              coverage_roots=(coverage/libs/offline-public-data-access)
+            public-indexed-db)
+              coverage_roots=(coverage/libs/public-indexed-db)
               ;;
             public)
               coverage_roots=(coverage/apps/public coverage/public)
@@ -272,6 +304,14 @@ jobs:
       - name: Run frontend e2e tests
         run: E2E_START_SERVER=true E2E_COVERAGE=true E2E_COVERAGE_OUTPUT_DIR=coverage/${{ matrix.project }} bunx nx e2e ${{ matrix.project }} -- --project=chromium
 
+      - name: Install Playwright service-worker browsers
+        if: matrix.project == 'public-e2e'
+        run: bunx playwright install --with-deps firefox webkit
+
+      - name: Run public service-worker e2e tests
+        if: matrix.project == 'public-e2e'
+        run: E2E_START_SERVER=true E2E_PUBLIC_STATIC_SERVER=true bunx nx e2e public-e2e -- --project=service-worker-chromium --project=service-worker-firefox --project=service-worker-webkit
+
       - name: Collect frontend e2e coverage reports
         id: coverage
         shell: bash
@@ -310,7 +350,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:18
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -371,6 +411,9 @@ jobs:
 
       - name: Apply database migrations
         run: bunx prisma migrate deploy --config apps/backend/prisma.config.ts
+
+      - name: Verify Prisma migration integrity
+        run: bun run test:prisma-migrations
 
       - name: Run backend auth e2e tests with fresh Keycloak
         run: bun run e2e:backend:keycloak -- --coverage
@@ -595,13 +638,22 @@ jobs:
       - name: Lint all projects
         run: bunx nx run-many -t lint --all --parallel=3
 
+      - name: Validate import tools
+        run: |
+          bun run typecheck:data-import
+          bun run test:data-import
+          node --test tools/evcomp-import/*.test.mjs
+
+      - name: Audit Storybook stories
+        run: bun run storybook:quality
+
   untrusted-pr-unit-tests:
     name: Untrusted PR unit tests
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:18
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -662,7 +714,7 @@ jobs:
         uses: nrwl/nx-set-shas@v5
 
       - name: Run unit tests with coverage
-        run: bunx nx run-many -t test -p admin,backend,offline-public-data-access,public,shared-seo-angular,shared-utils --parallel=3 --coverage
+        run: bunx nx run-many -t test -p admin,backend,event-manager-public-testing,public-indexed-db,public,shared-angular,shared-permissions,shared-seo-angular,shared-utils --parallel=3 --coverage
 
   untrusted-pr-frontend-e2e:
     name: Untrusted PR frontend E2E (${{ matrix.project }})
@@ -716,13 +768,21 @@ jobs:
       - name: Run frontend e2e tests
         run: E2E_START_SERVER=true bunx nx e2e ${{ matrix.project }} -- --project=chromium
 
+      - name: Install Playwright service-worker browsers
+        if: matrix.project == 'public-e2e'
+        run: bunx playwright install --with-deps firefox webkit
+
+      - name: Run public service-worker e2e tests
+        if: matrix.project == 'public-e2e'
+        run: E2E_START_SERVER=true E2E_PUBLIC_STATIC_SERVER=true bunx nx e2e public-e2e -- --project=service-worker-chromium --project=service-worker-firefox --project=service-worker-webkit
+
   untrusted-pr-backend-e2e:
     name: Untrusted PR backend E2E
     runs-on: ubuntu-latest
 
     services:
       postgres:
-        image: postgres:18
+        image: postgis/postgis:18-3.6-alpine
         env:
           POSTGRES_DB: fct_app_test
           POSTGRES_PASSWORD: postgres
@@ -781,6 +841,9 @@ jobs:
 
       - name: Apply database migrations
         run: bunx prisma migrate deploy --config apps/backend/prisma.config.ts
+
+      - name: Verify Prisma migration integrity
+        run: bun run test:prisma-migrations
 
       - name: Run backend auth e2e tests with fresh Keycloak
         run: bun run e2e:backend:keycloak

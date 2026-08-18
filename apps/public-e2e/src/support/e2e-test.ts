@@ -21,8 +21,20 @@ export const test = base.extend<CoverageFixtures>({
         return;
       }
 
-      const coverage = await page.coverage.stopJSCoverage();
-      await addCoverageReport(coverage, test.info());
+      // Some flows deliberately close the page before switching users. In that
+      // case there is no target left from which Chromium can return coverage.
+      if (page.isClosed()) {
+        return;
+      }
+
+      try {
+        const coverage = await page.coverage.stopJSCoverage();
+        await addCoverageReport(coverage, test.info());
+      } catch (error) {
+        if (!page.isClosed()) {
+          throw error;
+        }
+      }
     },
     {
       auto: true,

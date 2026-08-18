@@ -206,6 +206,12 @@ export class CurrentUserEventParticipation {
 
   @Field(() => Boolean)
   hasIssuedCertificate!: boolean;
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether the person has a sports role that grants access to manage the tournament.',
+  })
+  isSportsManager?: boolean;
 }
 
 @ObjectType()
@@ -358,8 +364,20 @@ export class CurrentUserMajorEventFeedItem {
   @Field(() => [PublicEvent])
   notSubscribedEvents!: PublicEvent[];
 
+  @Field(() => [CurrentUserSportsRepresentativeTeam])
+  sportsRepresentativeTeams!: CurrentUserSportsRepresentativeTeam[];
+
   @Field(() => CurrentUserEventParticipation)
   participation!: CurrentUserEventParticipation;
+}
+
+@ObjectType()
+export class CurrentUserSportsRepresentativeTeam {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
 }
 
 @InputType()

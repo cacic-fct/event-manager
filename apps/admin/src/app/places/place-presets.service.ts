@@ -10,7 +10,7 @@ import {
   PlacePresetMergeDialogComponent,
   PlacePresetMergeDialogResult,
 } from './dialogs/place-preset-merge-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { bindLiveSearch } from '../search/live-search';
 import {
   applyPagedResult,
@@ -28,6 +28,7 @@ export class PlacePresetsService {
   private readonly api = inject(PlacePresetApiService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
@@ -148,7 +149,7 @@ export class PlacePresetsService {
       await this.loadPlacePresets();
       this.startNewPlacePreset();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o local.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível salvar o local.');
     }
   }
 
@@ -161,7 +162,7 @@ export class PlacePresetsService {
       }
       await this.loadPlacePresets();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o local.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível excluir o local.');
     }
   }
 
@@ -201,7 +202,7 @@ export class PlacePresetsService {
       await this.loadPlacePresets();
       this.startNewPlacePreset();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível unificar os locais.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível unificar os locais.');
     }
   }
 

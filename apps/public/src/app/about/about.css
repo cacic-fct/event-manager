@@ -1,13 +1,3 @@
-.eyebrow {
-  color: var(--mat-sys-primary);
-  font: var(--mat-sys-label-large);
-  margin: 0 0 4px;
-}
-
-.page-header {
-  margin-bottom: 20px;
-}
-
 mat-toolbar {
   position: sticky;
   top: 0;

@@ -19,11 +19,22 @@
 }
 
 .emoji-frame {
+  appearance: none;
   align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: copy;
   display: inline-flex;
   height: 72px;
   justify-content: center;
+  padding: 0;
   width: 72px;
+}
+
+.emoji-frame:focus-visible {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
 }
 
 .twemoji {
@@ -36,7 +47,6 @@
   min-width: 0;
 }
 
-.eyebrow,
 .date-line,
 .subtitle,
 .status-line,
@@ -46,17 +56,12 @@
   color: var(--mat-sys-on-surface-variant);
 }
 
-.eyebrow,
 .date-line,
 .subtitle,
 .weather-temperature,
 .weather-text,
 .weather-attribution {
   margin: 0;
-}
-
-.eyebrow {
-  font: var(--mat-sys-label-large);
 }
 
 h1,

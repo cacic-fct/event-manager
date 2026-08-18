@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1
+    },
+    "key": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[/-][a-z0-9]+)*$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "html": {
+      "type": "string",
+      "minLength": 1
+    },
+    "css": {
+      "type": "string",
+      "minLength": 1
+    },
+    "font": {
+      "type": "string",
+      "enum": ["inter-variable"]
+    },
+    "isActive": {
+      "type": "boolean"
+    },
+    "certificateFields": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9_-]+$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "type": "string",
+            "enum": ["string", "number", "date"]
+          },
+          "required": {
+            "type": "boolean"
+          },
+          "default": {
+            "anyOf": [{ "type": "string" }, { "type": "number" }]
+          }
+        },
+        "required": ["label", "type", "required"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["key", "name", "html"],
+  "additionalProperties": false
+}

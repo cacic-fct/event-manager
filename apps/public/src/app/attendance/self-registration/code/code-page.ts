@@ -217,9 +217,14 @@ export class OnlineAttendanceCodeComponent {
           map((items): AttendanceCodeState => {
             const item = items.find(({ eventId }) => eventId === this.eventId());
             if (!item) {
+              if (this.openedFromNotification() && this.eventId()) {
+                void this.router.navigate(['/profile', 'attendances', 'event', this.eventId()]);
+              }
               return {
                 status: 'error',
-                message: 'Não há presença pendente para este evento.',
+                message: this.openedFromNotification()
+                  ? 'Esta presença não está mais pendente. Abrindo os detalhes da participação.'
+                  : 'Não há presença pendente para este evento.',
               };
             }
 

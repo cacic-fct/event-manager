@@ -108,11 +108,42 @@ describe('PublicationService', () => {
     expect(JSON.stringify(eventsCall[0].where)).toContain('event-1');
     expect(JSON.stringify(warningEventsCall[0].where)).toContain('event-1');
     expect(JSON.stringify(warningEventsCall[0].where)).toContain('SCHEDULED');
-    expect(JSON.stringify(warningEventsCall[0].where)).toContain('publiclyVisible');
+    expect(JSON.stringify(warningEventsCall[0].where)).toContain('isPubliclyListed');
+    expect(warningEventsCall[0].select).toEqual(
+      expect.objectContaining({
+        sportsMatch: {
+          select: {
+            id: true,
+            category: {
+              select: {
+                tournamentId: true,
+                status: true,
+                tournament: { select: { status: true } },
+              },
+            },
+          },
+        },
+      }),
+    );
     expect(JSON.stringify(warningMajorEventsCall[0].where)).toContain('major-1');
     expect(JSON.stringify(warningMajorEventsCall[0].where)).toContain('SCHEDULED');
     expect(JSON.stringify(warningMajorEventsCall[0].where)).toContain('events');
     expect(JSON.stringify(warningMajorEventsCall[0].select.events.where)).toContain('event-1');
+    expect(warningMajorEventsCall[0].select).toEqual(
+      expect.objectContaining({
+        sportsTournament: {
+          where: { deletedAt: null, status: { not: 'DRAFT' } },
+          select: {
+            id: true,
+            categories: {
+              where: { deletedAt: null, status: { not: 'DRAFT' } },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      }),
+    );
   });
 
   it('builds flat event-group items from the same tree children as the hierarchy', async () => {
@@ -131,7 +162,7 @@ describe('PublicationService', () => {
       {
         id: 'event-1',
         name: 'Evento publicado',
-        publiclyVisible: true,
+        isPubliclyListed: true,
         publicationState: PublicationState.PUBLISHED,
         scheduledPublishAt: null,
         publishedAt: new Date('2026-06-25T10:00:00.000Z'),
@@ -170,7 +201,7 @@ describe('PublicationService', () => {
     const event = {
       id: 'event-1',
       name: 'Angular avançado',
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: PublicationState.PUBLISHED,
       scheduledPublishAt: null,
       publishedAt: new Date('2026-06-25T10:00:00.000Z'),

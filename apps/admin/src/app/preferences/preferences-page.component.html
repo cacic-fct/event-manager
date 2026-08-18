@@ -27,10 +27,6 @@
         @let personalState = personalFeedState();
         @let superState = superAdminFeedState();
 
-        @if (personalState.status === 'loading' || superState.status === 'loading') {
-          <mat-progress-bar mode="indeterminate" />
-        }
-
         @if (personalState.status === 'error') {
           <mat-list>
             <mat-list-item>

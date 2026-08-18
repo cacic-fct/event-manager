@@ -131,7 +131,7 @@ describe('OnlineAttendanceNotificationJobsService', () => {
         }),
         select: expect.objectContaining({
           subscriptions: expect.objectContaining({
-            where: { deletedAt: null, subscriptionStatus: SubscriptionStatus.CONFIRMED },
+            where: { deletedAt: null },
           }),
           majorEvent: expect.objectContaining({
             select: expect.objectContaining({

@@ -97,10 +97,10 @@ export const Loading: Story = {
 };
 
 export const ErrorState: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     state: 'error',
   },
-  globals: { theme: 'light' },
   parameters: storyParameters(errorContext),
   render: (args) => renderStory(args, errorContext),
 };
@@ -128,7 +128,7 @@ function renderStory(args: PublicationStoryArgs, context: PublicationStoryContex
 function storyParameters(context: PublicationStoryContext) {
   return {
     msw: {
-      handlers: [createGraphqlHandler(context)],
+      handlers: { graphql: [createGraphqlHandler(context)] },
     },
   };
 }

@@ -8,6 +8,7 @@ import { PermissionsService } from '../permissions/permissions.service';
 import { ShellService } from './admin-shell.service';
 import { AdminShellComponent, NavigationMode } from './admin-shell.component';
 import { NavigationLinkId } from './navigation';
+import { RequestActivityService } from '../feedback/request-activity.service';
 
 type WorkspaceLayoutStoryArgs = {
   navMode: NavigationMode;
@@ -62,6 +63,12 @@ const meta: Meta<WorkspaceLayoutStoryArgs> = {
           useValue: {
             loading: shellLoading,
             loadInitialData: async () => undefined,
+          },
+        },
+        {
+          provide: RequestActivityService,
+          useValue: {
+            loading: shellLoading,
           },
         },
         {
@@ -135,7 +142,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await userEvent.click(await canvas.findByRole('button', { name: /navegação automática/i }));
 };
 
-export const AutoMode: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     await exerciseStory(canvasElement);
   },
@@ -182,6 +189,7 @@ export const FullModeWithPermissionWarnings: Story = {
 };
 
 export const IconsOnlyLoading: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     navMode: 'icons',
     loading: true,

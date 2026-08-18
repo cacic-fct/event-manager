@@ -2,8 +2,36 @@ import { RenderMode, ServerRoute } from '@angular/ssr';
 
 export const serverRoutes: ServerRoute[] = [
   {
+    path: 'map',
+    renderMode: RenderMode.Client,
+  },
+  {
     path: 'event/:eventId',
     renderMode: RenderMode.Server,
+  },
+  {
+    path: 'tournament/:tournamentId',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'sports/match/:matchId',
+    renderMode: RenderMode.Server,
+  },
+  {
+    path: 'tournament/:tournamentId/subscribe',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'sports/operate/:matchId',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'sports/team/:teamId',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'sports',
+    renderMode: RenderMode.Client,
   },
   {
     path: 'profile/attendances',
@@ -67,6 +95,10 @@ export const serverRoutes: ServerRoute[] = [
   },
   {
     path: 'major-event',
+    renderMode: RenderMode.Client,
+  },
+  {
+    path: 'my-day',
     renderMode: RenderMode.Client,
   },
   {

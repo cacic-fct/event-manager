@@ -24,15 +24,13 @@
         <mat-nav-list>
           <mat-list-item
             role="button"
-            mat-list-item
+            tabindex="0"
             (click)="authService.login()"
-            (keypress)="authService.login()"
-            tabindex="0">
+            (keydown.enter)="authService.login()"
+            (keydown.space)="authService.login(); $event.preventDefault()">
             <mat-icon matListItemIcon class="avatar-placeholder">account_circle</mat-icon>
             <span matListItemTitle>Entrar</span>
-            <button matIconButton aria-label="Entrar" (click)="authService.login()" matListItemMeta>
-              <mat-icon>login</mat-icon>
-            </button>
+            <mat-icon matListItemMeta aria-hidden="true">login</mat-icon>
           </mat-list-item>
         </mat-nav-list>
       }
@@ -57,6 +55,14 @@
           <span matListItemTitle>Participações</span>
           <span matListItemLine>Presenças e certificados</span>
         </a>
+
+        @if (hasSportsShortcut()) {
+          <a mat-list-item routerLink="/sports">
+            <mat-icon matListItemIcon>sports_score</mat-icon>
+            <span matListItemTitle>Minha próxima partida</span>
+            <span matListItemLine>Atleta, equipe e arbitragem</span>
+          </a>
+        }
       </mat-nav-list>
     }
 
@@ -80,6 +86,11 @@
 
     <mat-nav-list>
       <h3 matSubheader>Utilitários</h3>
+      <a mat-list-item routerLink="/map">
+        <mat-icon matListItemIcon>map</mat-icon>
+        <span matListItemTitle>Mapa</span>
+      </a>
+
       <a mat-list-item routerLink="/validate" (click)="$event.preventDefault()">
         <mat-icon matListItemIcon>license</mat-icon>
         <span matListItemTitle>Validar certificado</span>

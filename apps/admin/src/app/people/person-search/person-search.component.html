@@ -1,0 +1,50 @@
+<div class="person-search-control">
+  <mat-form-field subscriptSizing="dynamic">
+    <mat-label>{{ label() }}</mat-label>
+    <mat-icon matPrefix>person_search</mat-icon>
+    <input
+      matInput
+      type="search"
+      autocomplete="off"
+      [formControl]="queryControl"
+      [attr.aria-describedby]="disabled() ? disabledHintId : null"
+      (input)="onQueryInput(queryControl.value)"
+      (keydown.enter)="searchNow(); $event.preventDefault()" />
+  </mat-form-field>
+
+  <button
+    mat-stroked-button
+    type="button"
+    [disabled]="disabled() || loading() || queryControl.value.trim().length < minimumQueryLength()"
+    (click)="searchNow()">
+    <mat-icon>search</mat-icon>
+    Buscar
+  </button>
+</div>
+
+@if (disabled()) {
+  <p [id]="disabledHintId" class="person-search-hint">{{ disabledReason() }}</p>
+}
+
+@if (!disabled() && results().length) {
+  <div class="person-search-results" aria-label="Pessoas encontradas">
+    @for (person of results(); track person.id) {
+      <button
+        class="person-search-result"
+        type="button"
+        [attr.aria-label]="resultActionLabel() + ' ' + person.name"
+        (click)="selectPerson(person)">
+        <span>
+          <strong>{{ person.name }}</strong>
+          <small>{{ person.email || 'Sem e-mail principal' }}</small>
+          @if (showIdentitySummary()) { <small>{{ identitySummary(person) }}</small> }
+        </span>
+        <mat-icon aria-hidden="true">{{ resultActionIcon() }}</mat-icon>
+      </button>
+    }
+  </div>
+}
+
+@if (showNoResults()) {
+  <p class="person-search-hint">Nenhuma pessoa encontrada para esta busca.</p>
+}

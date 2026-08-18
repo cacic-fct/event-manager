@@ -38,15 +38,16 @@ model EventSubscription {
   eventGroupSubscriptionId String?
   eventGroupSubscription   EventGroupSubscription? @relation(fields: [eventGroupSubscriptionId], references: [id])
 
-  createdAt       DateTime                   @default(now())
-  imageLicenseAgreementAccepted Boolean @default(false)
-  createdById     String?
-  createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
+  createdAt                     DateTime                   @default(now())
+  imageLicenseAgreementAccepted Boolean                    @default(false)
+  createdById                   String?
+  createdByMethod               SubscriptionCreationMethod @default(UNKNOWN)
 
-  deletedAt              DateTime?
+  deletedAt             DateTime?
   lgpdDeletionRequestId String?
 
   @@unique([eventId, personId, deletedAt])
+  @@unique([eventId, personId], map: "event_subscription_unique_active", where: raw("\"deletedAt\" IS NULL"))
   @@index([eventId])
   @@index([personId, deletedAt, eventId])
   @@index([eventGroupSubscriptionId])
@@ -65,15 +66,16 @@ model EventGroupSubscription {
 
   eventSubscriptions EventSubscription[]
 
-  createdAt       DateTime                   @default(now())
-  imageLicenseAgreementAccepted Boolean @default(false)
-  createdById     String?
-  createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
+  createdAt                     DateTime                   @default(now())
+  imageLicenseAgreementAccepted Boolean                    @default(false)
+  createdById                   String?
+  createdByMethod               SubscriptionCreationMethod @default(UNKNOWN)
 
-  deletedAt              DateTime?
+  deletedAt             DateTime?
   lgpdDeletionRequestId String?
 
   @@unique([eventGroupId, personId, deletedAt])
+  @@unique([eventGroupId, personId], map: "event_group_subscription_unique_active", where: raw("\"deletedAt\" IS NULL"))
   @@index([eventGroupId])
   @@index([personId])
   @@index([lgpdDeletionRequestId])
@@ -93,31 +95,32 @@ model MajorEventSubscription {
   paymentDate DateTime?
   paymentTier String?
 
-  subscriptionStatus   SubscriptionStatus @default(WAITING_RECEIPT_UPLOAD)
-  subscriptionFlow     MajorEventSubscriptionFlow @default(REGULAR)
+  subscriptionStatus   SubscriptionStatus                     @default(WAITING_RECEIPT_UPLOAD)
+  subscriptionFlow     MajorEventSubscriptionFlow             @default(REGULAR)
   desiredCourses       Int?
   desiredLectures      Int?
   desiredUncategorized Int?
   selectedEvents       MajorEventSubscriptionEventSelection[]
   receipts             MajorEventReceipt[]
 
-  receiptRejectionReason String?
-  receiptValidatedAt     DateTime?
-  receiptValidatedBy     String?
-  validationActions      MajorEventReceiptValidationAction[]
+  receiptRejectionReason       String?
+  receiptValidatedAt           DateTime?
+  receiptValidatedBy           String?
+  validationActions            MajorEventReceiptValidationAction[]
+  sportsTournamentParticipants SportsTournamentParticipant[]
 
-  createdAt       DateTime                   @default(now())
-  imageLicenseAgreementAccepted Boolean @default(false)
-  createdById     String?
-  createdByMethod SubscriptionCreationMethod @default(UNKNOWN)
-  updatedAt       DateTime                   @updatedAt
+  createdAt                     DateTime                   @default(now())
+  imageLicenseAgreementAccepted Boolean                    @default(false)
+  createdById                   String?
+  createdByMethod               SubscriptionCreationMethod @default(UNKNOWN)
+  updatedAt                     DateTime                   @updatedAt
 
-  deletedAt              DateTime?
+  deletedAt             DateTime?
   lgpdDeletionRequestId String?
 
   @@unique([majorEventId, personId, deletedAt])
   @@index([majorEventId])
-  @@index([personId, deletedAt, subscriptionStatus, majorEventId])
+  @@index([personId, deletedAt, subscriptionStatus, majorEventId], map: "major_event_subscriptions_personId_deletedAt_subscriptionStatus")
   @@index([lgpdDeletionRequestId])
   @@map("major_event_subscriptions")
 }
@@ -133,14 +136,15 @@ model MajorEventSubscriptionEventSelection {
 
   preferenceOrder Int?
 
-  createdAt   DateTime @default(now())
-  createdById String?
+  createdAt             DateTime  @default(now())
+  createdById           String?
   deletedAt             DateTime?
   lgpdDeletionRequestId String?
 
+  @@unique([subscriptionId, eventId], map: "major_event_subscription_event_selections_active_key", where: raw("\"deletedAt\" IS NULL"))
   @@index([eventId])
   @@index([subscriptionId])
   @@index([subscriptionId, eventId])
-  @@index([lgpdDeletionRequestId])
+  @@index([lgpdDeletionRequestId], map: "major_event_subscription_event_selections_lgpdDeletionRequestId")
   @@map("major_event_subscription_event_selections")
 }

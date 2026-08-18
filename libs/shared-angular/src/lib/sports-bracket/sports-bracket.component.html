@@ -1,0 +1,136 @@
+<section class="competition-view" [attr.aria-label]="'Visualização: ' + formatLabel()">
+  <header class="competition-heading">
+    <div class="competition-title">
+      @if (emoji()) {
+        <lib-twemoji class="competition-emoji" [emoji]="emoji()" />
+      }
+      <div>
+        <h4>{{ formatLabel() }}</h4>
+        <p>Toque em uma partida para ver horário, local e detalhes.</p>
+      </div>
+    </div>
+  </header>
+
+  @if (orderedStandings().length > 0) {
+    <div class="standings-region" role="region" aria-label="Classificação">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Pos.</th>
+            <th scope="col">Equipe</th>
+            <th scope="col">J</th>
+            <th scope="col">V</th>
+            <th scope="col">E</th>
+            <th scope="col">D</th>
+            <th scope="col">Pts.</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (standing of orderedStandings(); track standing.team.id; let index = $index) {
+            <tr>
+              <td>{{ standing.rank ?? index + 1 }}</td>
+              <th scope="row">
+                <span class="standing-team">
+                  <lib-sports-team-logo [logoUrl]="standing.team.logoUrl" [size]="28" />
+                  <span class="team-name">{{ standing.team.name }}</span>
+                </span>
+              </th>
+              <td>{{ standing.played }}</td>
+              <td>{{ standing.wins }}</td>
+              <td>{{ standing.draws }}</td>
+              <td>{{ standing.losses }}</td>
+              <td>
+                <strong>{{ standing.points }}</strong>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+
+  @for (stage of stageLayouts(); track stage.id) {
+    <section class="stage" [attr.aria-labelledby]="'sports-stage-' + stage.id">
+      <header class="stage-heading">
+        <h5 [id]="'sports-stage-' + stage.id">{{ stage.name }}</h5>
+        <span>{{ stageLabel(stage.type) }}</span>
+      </header>
+
+      @if (stage.rounds.length > 0) {
+        <div
+          class="round-viewport"
+          role="region"
+          tabindex="0"
+          [attr.aria-label]="stage.name + '. Role horizontalmente para acompanhar as rodadas.'">
+          <div class="round-track" [attr.data-stage-id]="stage.id" [attr.data-stage-type]="stage.type">
+            @for (round of stage.rounds; track round.number) {
+              <section class="round-column" [attr.data-round-number]="round.number">
+                <h6>{{ round.label }}</h6>
+                <div class="round-matches">
+                  @for (match of round.matches; track match.id; let matchIndex = $index) {
+                    <div class="match-slot" [attr.data-bracket-position]="match.bracketPosition ?? matchIndex + 1">
+                      <button
+                        type="button"
+                        class="match-card"
+                        [class.editing]="match.id === editingMatchId()"
+                        [class.live]="match.state === 'LIVE'"
+                        [attr.aria-label]="
+                          teamName(match.homeTeam) + ' contra ' + teamName(match.awayTeam) + '. ' + stateLabel(match)
+                        "
+                        (click)="selectMatch(match.id)">
+                        <span class="team-row">
+                          <lib-sports-team-logo [logoUrl]="match.homeTeam?.logoUrl" [size]="28" />
+                          <span class="team-name">{{ teamName(match.homeTeam) }}</span>
+                          @if (showScore(match)) {
+                            <strong>{{ match.scoreboard.homeScore }}</strong>
+                          }
+                        </span>
+                        <span class="team-row">
+                          <lib-sports-team-logo [logoUrl]="match.awayTeam?.logoUrl" [size]="28" />
+                          <span class="team-name">{{ teamName(match.awayTeam) }}</span>
+                          @if (showScore(match)) {
+                            <strong>{{ match.scoreboard.awayScore }}</strong>
+                          }
+                        </span>
+                        <span class="match-state">
+                          @if (match.state === 'LIVE') {
+                            <lib-sports-live-dot />
+                          }
+                          {{ stateLabel(match) }}
+                          @if (match.groupKey) {
+                            <span class="match-group">Grupo {{ match.groupKey }}</span>
+                          }
+                        </span>
+                      </button>
+                    </div>
+                  }
+                </div>
+              </section>
+            }
+            @if (stage.elimination && connectorLayout(stage.id).paths.length > 0) {
+              <svg
+                class="bracket-connectors"
+                aria-hidden="true"
+                preserveAspectRatio="none"
+                [attr.viewBox]="'0 0 ' + connectorLayout(stage.id).width + ' ' + connectorLayout(stage.id).height">
+                @for (connector of connectorLayout(stage.id).paths; track connector.id) {
+                  <path [attr.d]="connector.d" />
+                }
+              </svg>
+            }
+          </div>
+        </div>
+      } @else {
+        <p class="stage-empty">Os confrontos desta fase ainda não foram publicados.</p>
+      }
+    </section>
+  }
+
+  @if (isEmpty()) {
+    <div class="empty-state">
+      <mat-icon aria-hidden="true">account_tree</mat-icon>
+      <strong>Estrutura ainda não publicada</strong>
+      <p>As equipes e os confrontos aparecerão aqui quando a organização concluir a montagem.</p>
+    </div>
+  }
+</section>

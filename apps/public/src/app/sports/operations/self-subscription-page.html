@@ -1,0 +1,198 @@
+<mat-toolbar class="subscription-toolbar">
+  <a mat-icon-button [routerLink]="['/tournament', tournamentId]" [replaceUrl]="true" aria-label="Voltar ao torneio">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="global-toolbar-title">Inscrição individual</h1>
+</mat-toolbar>
+
+@if (loading()) {
+<main class="state"><p>Carregando opções de inscrição…</p></main>
+} @else if (error()) {
+<main class="state">
+  <mat-icon>error_outline</mat-icon>
+  <h2>Inscrição indisponível</h2>
+  <p>{{ error() }}</p>
+  <button mat-flat-button type="button" (click)="load()">Tentar novamente</button>
+</main>
+} @else if (submitted()) {
+<main class="state success">
+  <mat-icon>check_circle</mat-icon>
+  <h2>{{ isEditing() ? 'Solicitação atualizada' : 'Solicitação enviada' }}</h2>
+  <p>
+    {{
+      isEditing()
+        ? 'Sua edição foi enviada para nova análise da organização.'
+        : 'A organização ainda precisa aprovar sua participação. Se houver cobrança, o pagamento será liberado depois da aprovação.'
+    }}
+  </p>
+  <a mat-flat-button [routerLink]="['/tournament', tournamentId]" [replaceUrl]="true">Voltar ao torneio</a>
+</main>
+} @else if (data(); as currentData) {
+<main class="subscription-shell">
+  <div class="heading">
+    <h2>
+      <lib-twemoji [emoji]="currentData.tournament.emoji" />
+      {{ currentData.tournament.name }}
+    </h2>
+  </div>
+
+  <section class="important-notice">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <div>
+      <strong>Inscrever-se não garante sua escalação</strong>
+      <p>
+        A solicitação será analisada pelo time escolhido. Mesmo após a aprovação, capitães e técnicos definem a
+        escalação de cada partida.
+      </p>
+    </div>
+  </section>
+
+  @if (isEditing()) {
+  <section class="important-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">edit</mat-icon>
+    <div>
+      <strong>Você pode editar sua solicitação</strong>
+      <p>Revise os dados abaixo. As alterações voltarão para análise da organização.</p>
+    </div>
+  </section>
+  } @else if (!application() && previousApplication(); as previous) {
+  <section class="important-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">history</mat-icon>
+    <div>
+      <strong>A solicitação anterior foi encerrada</strong>
+      <p>{{ previous.reviewMessage || 'Você pode revisar os dados e enviar uma nova solicitação.' }}</p>
+    </div>
+  </section>
+  } @else if (applicationIsReadOnly()) {
+  <section class="important-notice" aria-live="polite">
+    <mat-icon aria-hidden="true">lock</mat-icon>
+    <div>
+      <strong>Esta solicitação não pode mais ser editada</strong>
+      <p>Status: {{ applicationStatusLabel(application()!.status) }}.</p>
+      @if (application()!.paymentStatus; as paymentStatus) {
+      <p>Pagamento: {{ paymentStatusLabel(paymentStatus) }}.</p>
+      }
+      @if (application()!.reviewMessage; as reviewMessage) {
+      <p>{{ reviewMessage }}</p>
+      }
+    </div>
+  </section>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <mat-form-field>
+      <mat-label>Equipe desejada</mat-label>
+      <mat-select formControlName="requestedTeamId" (selectionChange)="teamSelectionChanged($event.value)">
+        <mat-select-trigger>
+          @if (selectedTeam(); as team) {
+          <span class="team-select-value">
+            <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="24" />
+            <span>{{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}</span>
+          </span>
+          } @else if (currentData.tournament.selfSubscriptionAllowNoTeam) {
+          <span class="team-select-value">Sem equipe específica</span>
+          } @else {
+          <span class="team-select-value">Selecione uma equipe</span>
+          }
+        </mat-select-trigger>
+        @if (currentData.tournament.selfSubscriptionAllowNoTeam) {
+        <mat-option value=""><span class="team-select-option">Sem equipe específica</span></mat-option>
+        } @for (team of currentData.tournament.teams; track team.id) {
+        <mat-option [value]="team.id">
+          <span class="team-select-option">
+            <lib-sports-team-logo [logoUrl]="team.logoUrl" [size]="24" />
+            <span class="team-option-name">{{ team.name }}{{ team.institution ? ' · ' + team.institution : '' }}</span>
+          </span>
+        </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @if (currentData.tournament.teams.length === 0) {
+    <div class="empty-options" role="status">
+      <mat-icon>groups</mat-icon>
+      <span>Nenhuma equipe está aceitando solicitações neste momento.</span>
+    </div>
+    }
+
+    <fieldset>
+      <legend>Modalidades</legend>
+      <p>
+        Você pode escolher mais de uma. A organização aplicará as regras de elegibilidade do torneio. @if
+        (currentData.tournament.selfSubscriptionAllowNoCategory) { Você também pode deixar todas desmarcadas para
+        participar sem competir, por exemplo, apenas para adquirir a camiseta. }
+      </p>
+      <div class="category-list">
+        @for (category of currentData.tournament.categories; track category.id) {
+        <mat-checkbox
+          [checked]="selectedCategories().has(category.id)"
+          (change)="toggleCategory(category.id, $event.checked)">
+          <span class="category-name">
+            <lib-twemoji [emoji]="category.emoji" />
+            {{ category.name }}
+          </span>
+          @if (category.division) { <small>{{ category.division }}</small> }
+        </mat-checkbox>
+        }
+      </div>
+      @if (currentData.tournament.categories.length === 0) {
+      <div class="empty-options" role="status">
+        <mat-icon>sports</mat-icon>
+        @if (form.controls.requestedTeamId.value) {
+        <span>Você pode solicitar entrada na equipe agora e escolher modalidades quando elas estiverem disponíveis.</span>
+        } @else {
+        <span>Nenhuma modalidade está disponível para autoinscrição.</span>
+        }
+      </div>
+      }
+    </fieldset>
+
+    @if (currentData.tournament.isPaymentRequired && currentData.tournament.paymentTiers.length) {
+    <mat-form-field>
+      <mat-label>Faixa de pagamento</mat-label>
+      <mat-select formControlName="paymentTier">
+        @for (tier of currentData.tournament.paymentTiers; track tier.id) {
+        <mat-option [value]="tier.name"> {{ tier.name }} · {{ tier.value / 100 | currency: 'BRL' }} </mat-option>
+        }
+      </mat-select>
+      <mat-hint>
+        @if (paymentTierLocked()) {
+          Esta faixa foi escolhida na inscrição das atividades.
+        } @else {
+          O pagamento só será liberado após a aprovação.
+        }
+      </mat-hint>
+    </mat-form-field>
+    } @else if (currentData.tournament.isPaymentRequired) {
+    <div class="empty-options" role="status">
+      <mat-icon>payments</mat-icon>
+      <span>Nenhuma faixa de pagamento inclui a inscrição neste torneio.</span>
+    </div>
+    }
+
+    <mat-checkbox formControlName="noticeAccepted">
+      Li e entendi que a inscrição não garante minha escalação.
+    </mat-checkbox>
+    @if (currentData.tournament.requiresImageLicenseAgreement) {
+    <section class="agreement-section" aria-labelledby="image-license-agreement-title">
+      <h2 id="image-license-agreement-title">Licença de uso de imagem</h2>
+      <mat-checkbox formControlName="imageLicenseAgreementAccepted">
+        Concordo com o
+        <a
+          href="https://cacic.com.br/kb/CACiC/Legal/Licen%C3%A7a%20de%20uso%20de%20imagem"
+          target="_blank"
+          rel="noopener noreferrer"
+          (click)="$event.stopPropagation()">
+          contrato de licença de uso de imagem do CACiC
+        </a>
+      </mat-checkbox>
+      @if (!form.controls.imageLicenseAgreementAccepted.value) {
+      <p class="validation">É necessário concordar com o contrato para continuar.</p>
+      }
+    </section>
+    }
+    <button mat-flat-button type="submit" [disabled]="!canSubmit()">
+      {{ submitButtonLabel() }}
+    </button>
+  </form>
+</main>
+}

@@ -5,6 +5,7 @@ import type {
   PublicLecturerProfile,
   PublicMajorEvent,
 } from '@cacic-fct/event-manager-public-contracts';
+import { fakerPT_BR as faker } from '@faker-js/faker';
 import { createStoryPublicLecturerProfile } from '@cacic-fct/event-manager-public-testing';
 import { createPublicEvent, createPublicEventGroup, createPublicMajorEvent } from './public-entity-fixtures';
 
@@ -42,6 +43,10 @@ export interface PublicEventStoryControls {
   durationHours: number;
   slotsAvailable: number;
   queueCount: number;
+}
+
+export interface PublicEventCollectionStoryControls extends PublicEventStoryControls {
+  eventCount: number;
 }
 
 export interface PublicLecturerProfileStoryControls {
@@ -91,6 +96,11 @@ export const publicEventStoryDefaultControls: PublicEventStoryControls = {
   queueCount: 3,
 };
 
+export const publicEventCollectionStoryDefaultControls: PublicEventCollectionStoryControls = {
+  ...publicEventStoryDefaultControls,
+  eventCount: 9,
+};
+
 export const publicLecturerProfileStoryDefaultControls: PublicLecturerProfileStoryControls = {
   lecturerDisplayName: 'Ana Clara Silva',
   lecturerBiography:
@@ -120,6 +130,14 @@ export const publicEventStoryControlArgTypes = {
   durationHours: { control: { type: 'range', min: 1, max: 8, step: 1 } },
   slotsAvailable: { control: { type: 'range', min: 0, max: 80, step: 1 } },
   queueCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
+} as const;
+
+export const publicEventCollectionStoryControlArgTypes = {
+  ...publicEventStoryControlArgTypes,
+  eventCount: {
+    control: { type: 'range', min: 0, max: 30, step: 1 },
+    description: 'Quantidade de eventos gerados deterministicamente para listas e calendários.',
+  },
 } as const;
 
 export const publicLecturerProfileStoryControlArgTypes = {
@@ -226,6 +244,29 @@ export function createPublicStoryEvent(options: PublicEventStoryOptions = {}): P
   });
 }
 
+export function createPublicStorySportsMatchEvent(overrides: Partial<PublicEvent> = {}): PublicEvent {
+  const event = createPublicStoryEvent({
+    id: 'sports-match-event-story',
+    name: 'Atlética FCT × Ciência da Computação',
+    emoji: '⚽',
+    type: 'OTHER',
+    context: 'short-description',
+    shortDescription: 'Futsal aberto · Semifinal',
+    locationDescription: 'Ginásio da FCT',
+    dayOffset: 1,
+    startHour: 19,
+    durationHours: 2,
+    sportsMatch: {
+      id: 'sports-match-story',
+      categoryId: 'futsal-open',
+      category: {
+        tournamentId: 'interfct-2026',
+      },
+    },
+  });
+  return { ...event, ...overrides };
+}
+
 export function createPublicStoryEventFromControls(
   controls: Partial<PublicEventStoryControls> = {},
   options: PublicEventStoryOptions = {},
@@ -292,8 +333,10 @@ export function createPublicStoryLecturerProfilesFromControls(
   );
 }
 
-export function createPublicStoryEvents(controls: Partial<PublicEventStoryControls> = {}): PublicEvent[] {
-  return [
+export function createPublicStoryEvents(controls: Partial<PublicEventCollectionStoryControls> = {}): PublicEvent[] {
+  const count = Math.min(Math.max(Math.trunc(controls.eventCount ?? 9), 0), 30);
+  faker.seed(20_260_817);
+  const featuredEvents = [
     createPublicStoryEventFromControls(controls, { index: 0 }),
     createPublicStoryEvent({
       index: 1,
@@ -312,6 +355,36 @@ export function createPublicStoryEvents(controls: Partial<PublicEventStoryContro
       queueCount: 0,
     }),
   ];
+
+  return Array.from({ length: count }, (_, index) => {
+    const featured = featuredEvents[index];
+    if (featured) {
+      return featured;
+    }
+
+    const names = [
+      'Robótica para a comunidade',
+      'Segurança aplicada',
+      'Oficina de interfaces inclusivas',
+      'Dados abertos e cidadania',
+      'Computação sustentável',
+      'Carreiras em tecnologia',
+    ];
+    return createPublicStoryEvent({
+      id: `public-story-event-${index + 1}`,
+      index,
+      name: `${names[index % names.length]} · ${faker.word.adjective()}`,
+      emoji: ['🤖', '🔐', '🎨', '📊', '🌱', '🧭'][index % 6],
+      context: index % 3 === 0 ? 'major-event' : index % 3 === 1 ? 'event-group' : 'short-description',
+      shortDescription: faker.company.catchPhrase(),
+      locationDescription: faker.location.streetAddress(),
+      dayOffset: (index % 16) - 4,
+      startHour: 8 + (index % 12),
+      durationHours: 1 + (index % 4),
+      slotsAvailable: index % 5 === 0 ? 0 : index % 7 === 0 ? null : 4 + index,
+      queueCount: index % 5 === 0 ? 2 + (index % 9) : 0,
+    });
+  });
 }
 
 function cleanStoryText(value: string | null | undefined): string | null {
@@ -322,6 +395,8 @@ function cleanStoryText(value: string | null | undefined): string | null {
 export {
   publicEventStoryControlArgTypes as calendarStoryEventControlArgTypes,
   publicEventStoryDefaultControls as calendarStoryEventDefaultControls,
+  publicEventCollectionStoryControlArgTypes as calendarStoryCollectionControlArgTypes,
+  publicEventCollectionStoryDefaultControls as calendarStoryCollectionDefaultControls,
   publicStoryDate as calendarStoryDate,
   publicStoryDateObject as calendarStoryDateObject,
   publicStoryWeekDays as calendarStoryWeekDays,
@@ -336,5 +411,6 @@ export {
 export type {
   PublicEventStoryContext as CalendarStoryContext,
   PublicEventStoryControls as CalendarStoryEventControls,
+  PublicEventCollectionStoryControls as CalendarStoryCollectionControls,
   PublicEventStoryOptions as CalendarStoryEventOptions,
 };

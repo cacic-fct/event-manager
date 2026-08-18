@@ -10,6 +10,8 @@ import type {
   PublicEventWeather,
   PublicMajorEvent,
   PublicMajorEventSubscriptionPage,
+  PublicMapEvent,
+  CurrentUserMyDay,
   PublicPlatformStats,
 } from '../types';
 import {
@@ -21,6 +23,7 @@ import {
   PUBLIC_EVENT_WEATHER_FIELDS,
   PUBLIC_MAJOR_EVENT_CARD_FIELDS,
   PUBLIC_MAJOR_EVENT_SUBSCRIPTION_FIELDS,
+  PUBLIC_MAP_EVENT_FIELDS,
   PUBLIC_SUBSCRIPTION_EVENT_FIELDS,
 } from './fragments';
 
@@ -91,6 +94,120 @@ export const PUBLIC_CALENDAR_EVENTS_QUERY = `
       startDateUntil: $startDateUntil
     ) {
       ${PUBLIC_CALENDAR_EVENT_FIELDS}
+    }
+  }
+`;
+
+export interface PublicMapEventsQuery {
+  publicMapEvents: PublicMapEvent[];
+}
+
+export const PUBLIC_MAP_EVENTS_QUERY = `
+  query PublicMapEvents {
+    publicMapEvents {
+      ${PUBLIC_MAP_EVENT_FIELDS}
+    }
+  }
+`;
+
+export interface CurrentUserMapEventIdsQuery {
+  currentUserMapEventIds: string[];
+}
+
+export const CURRENT_USER_MAP_EVENT_IDS_QUERY = `
+  query CurrentUserMapEventIds {
+    currentUserMapEventIds
+  }
+`;
+
+export interface CurrentUserMyDayQueryVariables {
+  date: string;
+}
+
+export interface CurrentUserMyDayQuery {
+  currentUserMyDay: CurrentUserMyDay;
+}
+
+export const CURRENT_USER_MY_DAY_QUERY = `
+  query CurrentUserMyDay($date: String!) {
+    currentUserMyDay(date: $date) {
+      generatedAt
+      selectedDate
+      minimumDate
+      hasContent
+      currentEvent {
+        ...CurrentUserMyDayEventFields
+      }
+      nextEvent {
+        ...CurrentUserMyDayEventFields
+      }
+      laterEvents {
+        ...CurrentUserMyDayEventFields
+      }
+      attention {
+        id
+        kind
+        title
+        description
+        materialIcon
+        route
+        priority
+        offlineCapable
+      }
+      weather {
+        id
+        kind
+        title
+        advice
+        materialIcon
+        eventId
+        eventName
+        forecastTime
+        temperature
+        uvIndex
+        route
+      }
+    }
+  }
+
+  fragment CurrentUserMyDayEventFields on CurrentUserMyDayEvent {
+    id
+    name
+    emoji
+    startDate
+    endDate
+    locationDescription
+    roles {
+      kind
+      label
+    }
+    attendanceAction {
+      kind
+      label
+      materialIcon
+      route
+      offlineCapable
+    }
+    sportsActions {
+      kind
+      label
+      materialIcon
+      route
+      offlineCapable
+    }
+    infoAction {
+      kind
+      label
+      materialIcon
+      route
+      offlineCapable
+    }
+    mapAction {
+      kind
+      label
+      materialIcon
+      route
+      offlineCapable
     }
   }
 `;

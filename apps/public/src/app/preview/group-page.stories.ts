@@ -30,7 +30,7 @@ interface GroupPreviewStoryContext {
 
 const meta: Meta<GroupPreviewStoryArgs> = {
   component: GroupPreviewComponent,
-  title: 'Public/Preview/Group Preview',
+  title: 'CACiC Eventos/Preview/Event Group',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -70,7 +70,7 @@ const noMajorEventContext = createStoryContext({ includeMajorEvent: false });
 const singleEventContext = createStoryContext({ eventCount: 1 });
 
 export const Playground: Story = {
-  globals: { theme: 'light' },
+  globals: { theme: 'dark', motion: 'reduced' },
   render: (args) => renderStory(args, playgroundContext),
   parameters: storyParameters(playgroundContext),
   play: async ({ canvasElement }) => {
@@ -112,7 +112,8 @@ function renderStory(args: GroupPreviewStoryArgs, context: GroupPreviewStoryCont
 function storyParameters(context: GroupPreviewStoryContext) {
   return {
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', () =>
           HttpResponse.json({
             data: {
@@ -120,7 +121,8 @@ function storyParameters(context: GroupPreviewStoryContext) {
             },
           }),
         ),
-      ],
+        ],
+      },
     },
   };
 }
@@ -176,7 +178,7 @@ function buildPreview(args: GroupPreviewStoryArgs) {
         isOnlineAttendanceAllowed: false,
         onlineAttendanceStartDate: null,
         onlineAttendanceEndDate: null,
-        publiclyVisible: true,
+        isPubliclyListed: true,
         youtubeCode: null,
         buttonText: null,
         buttonLink: null,

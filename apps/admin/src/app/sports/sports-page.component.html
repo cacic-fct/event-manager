@@ -1,0 +1,198 @@
+<section class="section workspace-tab-shell sports-workspace">
+  <header class="sports-header">
+    <div>
+      <h2>Gestão esportiva</h2>
+      <p>Organize modalidades, equipes, chaves e revisões.</p>
+    </div>
+  </header>
+
+  @if (workspace.error(); as error) {
+    <div class="feedback-banner feedback-banner--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error }}</span>
+    </div>
+  }
+
+  @if (!workspace.tournamentRead()) {
+    <section class="panel panel-stack sports-major-event-browser">
+      <div class="panel-heading">
+        <div>
+          <h3>Lista de grandes eventos</h3>
+          <p>Pesquise e filtre para abrir um torneio existente ou ativar o modo esportivo.</p>
+        </div>
+        <div class="panel-actions">
+          <button mat-flat-button type="button" (click)="workspace.applyMajorEventWorkspaceFilters()">
+            <mat-icon>tune</mat-icon>
+            Filtrar
+          </button>
+          <button mat-button type="button" (click)="workspace.resetMajorEventWorkspaceFilters()">Limpar</button>
+        </div>
+      </div>
+
+      <form
+        class="sports-major-event-filters"
+        [formGroup]="workspace.majorEventWorkspaceFilterForm"
+        (submit)="$event.preventDefault(); workspace.applyMajorEventWorkspaceFilters()">
+        <mat-form-field class="sports-major-event-query">
+          <mat-label>Buscar grande evento</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput formControlName="query" autocomplete="off" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Início a partir de</mat-label>
+          <input matInput type="date" formControlName="startDateFrom" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Início até</mat-label>
+          <input matInput type="date" formControlName="startDateUntil" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Modo esportivo</mat-label>
+          <mat-select formControlName="configuration">
+            <mat-option value="ALL">Todos</mat-option>
+            <mat-option value="CONFIGURED">Com torneio</mat-option>
+            <mat-option value="UNCONFIGURED">Sem torneio</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </form>
+
+      <mat-list class="result-list sports-major-event-list">
+        @for (item of workspace.visibleMajorEventWorkspaceItems(); track item.majorEvent.id) {
+          <mat-list-item (click)="openMajorEvent(item)">
+            <span matListItemTitle class="list-title">
+              <lib-twemoji [emoji]="item.majorEvent.emoji" />
+              {{ item.majorEvent.name }}
+            </span>
+            <span matListItemLine>
+              {{ item.majorEvent.startDate | date: 'shortDate' }} a {{ item.majorEvent.endDate | date: 'shortDate' }}
+            </span>
+            @if (item.tournament; as tournament) {
+              <span matListItemLine>
+                {{ tournament.categoryCount }} modalidades · {{ tournament.teamCount }} equipes ·
+                {{ workspace.statusLabel(tournament.tournament.status) }}
+              </span>
+            }
+            @if (!item.tournament) {
+              <span matListItemLine>Sem torneio esportivo configurado</span>
+            }
+            @if (item.tournament && item.tournament.pendingApplicationCount + item.tournament.pendingReviewCount > 0) {
+              <span matListItemMeta class="state-label">
+                {{ item.tournament.pendingApplicationCount + item.tournament.pendingReviewCount }} pendências
+              </span>
+            }
+            @if (item.tournament) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Abrir gestão esportiva"
+                (click)="$event.stopPropagation(); openMajorEvent(item)">
+                <mat-icon>arrow_forward</mat-icon>
+              </button>
+            }
+            @if (!item.tournament) {
+              <button
+                matIconButton
+                type="button"
+                aria-label="Criar torneio esportivo"
+                (click)="$event.stopPropagation(); openMajorEvent(item)">
+                <mat-icon>add</mat-icon>
+              </button>
+            }
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            @if (workspace.majorEventWorkspaceItems().length) {
+              <span matListItemTitle>Nenhum grande evento encontrado</span>
+            }
+            @if (workspace.majorEventWorkspaceItems().length) {
+              <span matListItemLine>Revise a busca ou os filtros e tente novamente.</span>
+            }
+            @if (!workspace.majorEventWorkspaceItems().length) {
+              <span matListItemTitle>Nenhum grande evento disponível</span>
+            }
+            @if (!workspace.majorEventWorkspaceItems().length) {
+              <span matListItemLine>Crie um grande evento antes de ativar o modo esportivo.</span>
+            }
+          </mat-list-item>
+        }
+      </mat-list>
+
+      <div class="list-pager" aria-label="Paginação de grandes eventos esportivos">
+        <span>Itens {{ workspace.majorEventWorkspacePaginationLabel() }}</span>
+        <div class="list-pager-actions">
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Página anterior de grandes eventos esportivos"
+            matTooltip="Anterior"
+            [disabled]="!workspace.majorEventWorkspacePagination.hasPreviousPage()"
+            (click)="workspace.previousMajorEventWorkspacePage()">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Próxima página de grandes eventos esportivos"
+            matTooltip="Próxima"
+            [disabled]="!workspace.majorEventWorkspaceHasNextPage()"
+            (click)="workspace.nextMajorEventWorkspacePage()">
+            <mat-icon>chevron_right</mat-icon>
+          </button>
+        </div>
+      </div>
+    </section>
+  } @else {
+    <mat-tab-group
+      class="area-nav"
+      animationDuration="160ms"
+      mat-stretch-tabs="false"
+      [selectedIndex]="activeAreaIndex()"
+      (selectedIndexChange)="onAreaTabChange($event)"
+      aria-label="Áreas da gestão esportiva">
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label"><mat-icon>tune</mat-icon>Visão geral</span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-overview-section /></ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label">
+            <mat-icon>sports</mat-icon>
+            Modalidades
+            <span class="workspace-tab-count">{{ workspace.tournamentRead()?.categories?.length ?? 0 }}</span>
+          </span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-categories-section /></ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label">
+            <mat-icon>groups</mat-icon>
+            Equipes
+            <span class="workspace-tab-count">{{ workspace.tournamentRead()?.teams?.length ?? 0 }}</span>
+          </span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-teams-section /></ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label"><mat-icon>scoreboard</mat-icon>Partidas e chaves</span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-matches-section /></ng-template>
+      </mat-tab>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span class="workspace-tab-label">
+            <mat-icon>fact_check</mat-icon>
+            Revisões
+            @if (workspace.pendingCount()) {
+              <span class="workspace-tab-count">{{ workspace.pendingCount() }}</span>
+            }
+          </span>
+        </ng-template>
+        <ng-template matTabContent><app-sports-reviews-section /></ng-template>
+      </mat-tab>
+    </mat-tab-group>
+  }
+</section>

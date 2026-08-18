@@ -216,4 +216,45 @@ describe('buildInconsistencies', () => {
 
     expect(result).toEqual([]);
   });
+
+  it('uses sports-aware content notices for sports match backing events', () => {
+    const result = buildInconsistencies({
+      now,
+      singleEventGroups: [],
+      mismatchingCertificateGroupEvents: [],
+      pastCertificateEventsWithoutAttendance: [],
+      pastCertificateEventsWithoutAttendanceCollection: [],
+      majorEventsWithSubscriptionDates: [],
+      events: [
+        insightEvent({
+          id: 'match-event',
+          name: 'Equipe A x Equipe B',
+          description: null,
+          shortDescription: null,
+          locationDescription: null,
+          emoji: '❔',
+          lecturers: [],
+          sportsMatch: { id: 'match-1', category: { tournamentId: 'tournament-1' } },
+        }),
+      ],
+    });
+
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'SPORTS_MATCH_WITHOUT_PLACE',
+          action: 'OPEN_SPORTS',
+          targetId: 'tournament-1',
+        }),
+        expect.objectContaining({
+          type: 'SPORTS_MATCH_PLACEHOLDER_EMOJI',
+          action: 'OPEN_SPORTS',
+          targetId: 'tournament-1',
+        }),
+      ]),
+    );
+    expect(result.map((item) => item.type)).not.toEqual(
+      expect.arrayContaining(['EVENT_WITHOUT_LECTURER', 'WEAK_EVENT_DESCRIPTION']),
+    );
+  });
 });

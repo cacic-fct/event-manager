@@ -6,6 +6,7 @@ import {
   createPublicMajorEvent,
   createPublicMajorEventPrice,
   createPublicPaymentInfo,
+  publicFixtureDateFromNow,
 } from '@cacic-fct/event-manager-public-testing';
 import type { PublicEvent, PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts/types';
 
@@ -22,12 +23,12 @@ test('opens a paid major event payment page and sends a receipt through the mock
   await page.goto('/app/major-event');
 
   await expect(page.getByText('SECOMPP Pago')).toBeVisible();
-  await page.getByRole('link', { name: 'Enviar comprovante' }).click();
+  await page.goto('/app/major-event/paid-major/payment');
 
   await expect(page.getByRole('heading', { name: 'SECOMPP Pago' })).toBeVisible();
   await expect(page.getByText('Aguardando envio de comprovante')).toBeVisible();
 
-  await page.locator('input[aria-label="Enviar imagem do comprovante de pagamento"]').setInputFiles({
+  await page.locator('input[aria-label="Enviar imagem ou PDF do comprovante de pagamento"]').setInputFiles({
     name: 'comprovante.png',
     mimeType: 'image/png',
     buffer: pngFixture(),
@@ -55,12 +56,31 @@ test('lists current-user subscriptions, standalone certificates, and downloads t
   await page.goto('/app/profile/attendances');
 
   await expect(page.getByRole('heading', { name: 'Minhas participações' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Participações', exact: true })).toBeVisible();
   await expect(page.getByText('SECOMPP Pago')).toBeVisible();
-  await expect(page.getByText('Aguardando envio de comprovante, Inscrito, Certificado emitido')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Comprovante pendente' })).toBeVisible();
   await expect(page.getByText('Oficina pública')).toBeVisible();
-  await expect(page.getByText('Presença registrada às 01/08/2027, 11:30, Inscrito, Certificado emitido')).toBeVisible();
+  await expect(page.getByText(/\d{1,2} [a-z]{3} \d{4}, \d{2}:\d{2}-\d{2}:\d{2}/)).toBeVisible();
+  await expect(page.getByText(/\d{1,2} a \d{1,2} [a-z]{3} \d{4}/)).toBeVisible();
+  await expect(page.getByText('Grande evento', { exact: true })).toBeVisible();
+  await expect(page.getByText('Minicurso', { exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Presença registrada' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Certificado emitido' })).toHaveCount(2);
   await expect(page.getByRole('heading', { name: 'Certificados avulsos' })).toBeVisible();
   await expect(page.getByText('Atividades complementares')).toBeVisible();
+  await expect(page.getByText(/\d+ participações/)).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Filtros' }).click();
+  const clearFiltersButton = page.getByRole('button', { name: 'Limpar filtros' });
+  await expect(clearFiltersButton).toBeDisabled();
+  await page.getByRole('button', { name: 'Eventos', exact: true }).click();
+  await page.getByRole('button', { name: 'Certificado emitido' }).click();
+  await expect(clearFiltersButton).toBeEnabled();
+  await expect(page.getByText('Oficina pública')).toBeVisible();
+  await expect(page.getByText('SECOMPP Pago')).toBeHidden();
+  await clearFiltersButton.click();
+  await expect(clearFiltersButton).toBeDisabled();
+  await expect(page.getByText('SECOMPP Pago')).toBeVisible();
 
   await page.getByRole('button', { name: /Atividades complementares/ }).click();
   await expect(page.getByRole('heading', { name: 'Certificados', exact: true })).toBeVisible();
@@ -93,6 +113,20 @@ test('opens a current-user event form and submits answers', async ({ page }) => 
       answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'M' }]),
     }),
   ]);
+});
+
+test('keeps an event form open when saving answers fails', async ({ page }) => {
+  const api = await mockPublicApi(page, { formSubmissionError: 'Não foi possível salvar as respostas.' });
+
+  await page.goto('/app/profile/forms/form-1?targetType=EVENT&targetId=standalone-event');
+
+  await expect(page.getByRole('heading', { name: 'Pesquisa de camiseta' })).toBeVisible();
+  await page.getByLabel('Resposta').fill('G');
+  await page.getByRole('button', { name: 'Salvar respostas' }).click();
+
+  await expect(page.getByText('Não foi possível salvar as respostas.')).toBeVisible();
+  await expect(page).toHaveURL(/\/app\/profile\/forms\/form-1/);
+  expect(api.formSubmissions()).toEqual([]);
 });
 
 test('confirms online attendance from the pending attendance list', async ({ page }) => {
@@ -152,7 +186,7 @@ async function mockStaticExternalAssets(page: Page): Promise<void> {
 
 async function mockPublicApi(
   page: Page,
-  options: { pendingOnlineAttendance?: boolean } = {},
+  options: { formSubmissionError?: string; pendingOnlineAttendance?: boolean } = {},
 ): Promise<{
   certificateArchiveDownloads: () => number;
   formSubmissions: () => Record<string, unknown>[];
@@ -228,6 +262,7 @@ async function mockPublicApi(
         setOnlineAttendanceConfirmed: (nextValue) => {
           onlineAttendanceConfirmed = nextValue;
         },
+        formSubmissionError: options.formSubmissionError,
         formSubmissions,
         hasPendingOnlineAttendance: () => options.pendingOnlineAttendance === true,
         onlineAttendanceConfirmations,
@@ -254,6 +289,7 @@ async function fulfillGraphql(
   state: {
     getOnlineAttendanceConfirmed: () => boolean;
     setOnlineAttendanceConfirmed: (nextValue: boolean) => void;
+    formSubmissionError?: string;
     formSubmissions: Record<string, unknown>[];
     hasPendingOnlineAttendance: () => boolean;
     onlineAttendanceConfirmations: Array<{ eventId: string; code: string }>;
@@ -315,6 +351,14 @@ async function fulfillGraphql(
   }
 
   if (query.includes('mutation SubmitCurrentUserEventFormResponse')) {
+    if (state.formSubmissionError) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ errors: [{ message: state.formSubmissionError }] }),
+      });
+      return;
+    }
     const input = isRecord(variables['input']) ? variables['input'] : {};
     state.formSubmissions.push(input);
     await fulfillGraphqlData(route, {
@@ -330,8 +374,8 @@ async function fulfillGraphql(
         respondentEmail: 'usuario.teste@example.edu',
         answersJson: typeof input['answersJson'] === 'string' ? input['answersJson'] : '[]',
         source: typeof input['source'] === 'string' ? input['source'] : 'PUBLIC_FORM',
-        submittedAt: '2026-06-26T12:10:00.000Z',
-        updatedAt: '2026-06-26T12:10:00.000Z',
+        submittedAt: publicFixtureDateFromNow(-1, 12),
+        updatedAt: publicFixtureDateFromNow(-1, 12),
       },
     });
     return;
@@ -360,8 +404,8 @@ async function fulfillGraphql(
     await fulfillGraphqlData(route, {
       confirmCurrentUserOnlineAttendance: {
         eventId,
-        attendedAt: '2026-06-26T12:10:00.000Z',
-        createdAt: '2026-06-26T12:10:00.000Z',
+        attendedAt: publicFixtureDateFromNow(-1, 12),
+        createdAt: publicFixtureDateFromNow(-1, 12),
       },
     });
     return;
@@ -416,11 +460,11 @@ function paidMajorEventFixture(): PublicMajorEvent {
     id: 'paid-major',
     name: 'SECOMPP Pago',
     emoji: '💳',
-    startDate: '2027-08-01T12:00:00.000Z',
-    endDate: '2027-08-03T21:00:00.000Z',
+    startDate: publicFixtureDateFromNow(30, 12),
+    endDate: publicFixtureDateFromNow(32, 21),
     description: 'Grande evento com comprovante obrigatório.',
-    subscriptionStartDate: '2026-01-01T00:00:00.000Z',
-    subscriptionEndDate: '2027-07-31T23:59:00.000Z',
+    subscriptionStartDate: publicFixtureDateFromNow(-30, 0),
+    subscriptionEndDate: publicFixtureDateFromNow(29, 23),
     isPaymentRequired: true,
     paymentInfo: createPublicPaymentInfo({
       id: 'payment-paid-major',
@@ -432,7 +476,7 @@ function paidMajorEventFixture(): PublicMajorEvent {
       createPublicMajorEventPrice({
         id: 'price-paid-major',
         type: 'SINGLE',
-        tiers: [{ id: 'tier-student', name: 'Estudante', value: 2500 }],
+        tiers: [{ id: 'tier-student', name: 'Estudante', value: 2500, includesSportsRegistration: false }],
       }),
     ],
     buttonText: null,
@@ -460,8 +504,8 @@ function receiptFixture(): Record<string, unknown> {
     fileName: 'comprovante.png',
     mimeType: 'image/png',
     sizeBytes: 128,
-    uploadedAt: '2026-06-26T12:00:00.000Z',
-    expiresAt: '2027-06-26T12:00:00.000Z',
+    uploadedAt: publicFixtureDateFromNow(-1, 12),
+    expiresAt: publicFixtureDateFromNow(365, 12),
     imageUrl: '/api/major-event-receipts/receipt-1/image',
     processingStatus: 'PENDING',
     amountMatched: null,
@@ -493,14 +537,14 @@ function subscriptionsFeedFixture(): Record<string, unknown> {
           type: 'SINGLE_EVENT',
           subscriptionId: 'event-subscription-1',
           eventId: 'standalone-event',
-          date: '2027-08-01T14:00:00.000Z',
-          createdAt: '2026-06-26T12:00:00.000Z',
+          date: publicFixtureDateFromNow(30, 14),
+          createdAt: publicFixtureDateFromNow(-1, 12),
           event: createPublicEvent({
             id: 'standalone-event',
             name: 'Oficina pública',
             emoji: '💻',
-            startDate: '2027-08-01T14:00:00.000Z',
-            endDate: '2027-08-01T16:00:00.000Z',
+            startDate: publicFixtureDateFromNow(30, 14),
+            endDate: publicFixtureDateFromNow(30, 16),
             majorEvent: null,
           }),
           participation: {
@@ -520,7 +564,7 @@ function subscriptionsFeedFixture(): Record<string, unknown> {
           {
             id: 'standalone-certificate-1',
             configId: 'standalone-config-1',
-            issuedAt: '2027-08-02T14:00:00.000Z',
+            issuedAt: publicFixtureDateFromNow(31, 14),
             config: {
               id: 'standalone-config-1',
               name: 'Certificado avulso',
@@ -544,7 +588,7 @@ function subscriptionsFeedFixture(): Record<string, unknown> {
     currentUserEventAttendances: [
       {
         eventId: 'standalone-event',
-        attendedAt: '2027-08-01T14:30:00.000Z',
+        attendedAt: publicFixtureDateFromNow(30, 14),
       },
     ],
   };
@@ -594,13 +638,13 @@ function publicEventFormFixture(): Record<string, unknown> {
         allowLecturerManualPublish: false,
         lastNotifiedAt: null,
         responseCount: 0,
-        createdAt: '2026-06-26T12:00:00.000Z',
-        updatedAt: '2026-06-26T12:00:00.000Z',
+        createdAt: publicFixtureDateFromNow(-1, 12),
+        updatedAt: publicFixtureDateFromNow(-1, 12),
       },
     ],
     responseCount: 0,
-    createdAt: '2026-06-26T12:00:00.000Z',
-    updatedAt: '2026-06-26T12:00:00.000Z',
+    createdAt: publicFixtureDateFromNow(-1, 12),
+    updatedAt: publicFixtureDateFromNow(-1, 12),
   };
 }
 
@@ -609,8 +653,8 @@ function onlineAttendanceEventFixture(): PublicEvent {
     id: 'online-event',
     name: 'Presença on-line',
     emoji: '✅',
-    startDate: '2027-08-01T14:00:00.000Z',
-    endDate: '2027-08-01T16:00:00.000Z',
+    startDate: publicFixtureDateFromNow(30, 14),
+    endDate: publicFixtureDateFromNow(30, 16),
     majorEvent: {
       id: 'paid-major',
       name: 'SECOMPP Pago',

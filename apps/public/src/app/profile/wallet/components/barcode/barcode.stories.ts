@@ -12,7 +12,7 @@ type WalletBarcodeStoryArgs = {
 
 const meta: Meta<WalletBarcodeStoryArgs> = {
   component: WalletBarcodeComponent,
-  title: 'Public/Profile/Wallet/Wallet Barcode',
+  title: 'CACiC Eventos/Profile/Wallet/Barcode',
   tags: ['autodocs'],
   args: {
     userId: 'user-storybook-123',
@@ -85,4 +85,5 @@ export const EmptyUser: Story = {
     userId: '',
     label: 'Código vazio',
   },
+  globals: { theme: 'dark', motion: 'reduced' },
 };

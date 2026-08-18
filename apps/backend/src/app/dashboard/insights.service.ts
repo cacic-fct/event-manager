@@ -20,6 +20,8 @@ import { buildPendingCertificates } from './insights/pending-certificates';
 import { buildSuggestions } from './insights/suggestions';
 import { buildWeatherAlerts } from './insights/weather-alerts';
 import { buildPublicationConsistencyWarnings } from '../publishing/publishing-consistency';
+import { normalizeSportsScoreboard } from '../sports/domain/sports-scoreboard';
+import { loadSportsDashboardRecords } from './insights/sports-dashboard-records';
 import { addDays, startOfDay, subDays } from 'date-fns';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
@@ -159,6 +161,16 @@ export class DashboardInsightsService {
       permissionSet.has(Permission.Receipt.Reject) ||
       permissionSet.has(Permission.Receipt.Undo);
     const canReviewOfflineAttendances = permissionSet.has(Permission.EventAttendance.Update);
+    const canReadSports = [
+      Permission.SportsTournament.Read,
+      Permission.SportsCategory.Read,
+      Permission.SportsTeam.Read,
+      Permission.SportsRegistration.Read,
+      Permission.SportsMatch.Read,
+      Permission.SportsMatch.Review,
+      Permission.SportsScore.Read,
+      Permission.SportsScore.Review,
+    ].some((permission) => permissionSet.has(permission));
     const shouldBuildEventInconsistencies = canManageEvents || canManageCertificates;
     const shouldBuildMajorEventInconsistencies = canManageMajorEvents;
     const shouldBuildInconsistencies = shouldBuildEventInconsistencies || shouldBuildMajorEventInconsistencies;
@@ -181,6 +193,7 @@ export class DashboardInsightsService {
       pastCertificateEventsWithoutAttendance,
       pastCertificateEventsWithoutAttendanceCollection,
       publicationMajorEvents,
+      sportsDashboard,
     ] = await Promise.all([
       canReadEvents ? this.prisma.event.count({ where: { deletedAt: null } }) : Promise.resolve(0),
       canReadEvents ? this.prisma.eventGroup.count({ where: { deletedAt: null } }) : Promise.resolve(0),
@@ -342,6 +355,7 @@ export class DashboardInsightsService {
         ? this.prisma.eventGroup.findMany({
             where: {
               deletedAt: null,
+              sportsCategory: { is: null },
               events: {
                 some: { deletedAt: null },
               },
@@ -363,6 +377,7 @@ export class DashboardInsightsService {
         ? this.prisma.event.findMany({
             where: {
               deletedAt: null,
+              sportsMatch: { is: null },
               eventGroup: {
                 deletedAt: null,
               },
@@ -387,6 +402,7 @@ export class DashboardInsightsService {
         ? this.prisma.event.findMany({
             where: {
               deletedAt: null,
+              sportsMatch: { is: null },
               endDate: { lt: now },
               shouldIssueCertificate: true,
               attendances: { none: { status: 'PRESENT' } },
@@ -439,6 +455,7 @@ export class DashboardInsightsService {
         ? this.prisma.event.findMany({
             where: {
               deletedAt: null,
+              sportsMatch: { is: null },
               endDate: { lt: now },
               shouldIssueCertificate: true,
               shouldCollectAttendance: false,
@@ -498,7 +515,7 @@ export class DashboardInsightsService {
                     none: {
                       deletedAt: null,
                       publicationState: 'PUBLISHED',
-                      publiclyVisible: true,
+                      isPubliclyListed: true,
                     },
                   },
                 },
@@ -506,6 +523,25 @@ export class DashboardInsightsService {
                   publicationState: 'SCHEDULED',
                   scheduledPublishAt: { lte: now },
                 },
+                ...(canReadSports
+                  ? [
+                      {
+                        publicationState: 'PUBLISHED' as const,
+                        sportsTournament: {
+                          is: {
+                            deletedAt: null,
+                            status: { not: 'DRAFT' as const },
+                            categories: {
+                              none: {
+                                deletedAt: null,
+                                status: { not: 'DRAFT' as const },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    ]
+                  : []),
               ],
             },
             select: {
@@ -517,8 +553,22 @@ export class DashboardInsightsService {
                 where: { deletedAt: null },
                 select: {
                   id: true,
-                  publiclyVisible: true,
+                  isPubliclyListed: true,
                   publicationState: true,
+                },
+              },
+              sportsTournament: {
+                where: {
+                  deletedAt: null,
+                  status: { not: 'DRAFT' },
+                },
+                select: {
+                  id: true,
+                  categories: {
+                    where: { deletedAt: null, status: { not: 'DRAFT' } },
+                    select: { id: true },
+                    take: 1,
+                  },
                 },
               },
             },
@@ -526,6 +576,7 @@ export class DashboardInsightsService {
             take: DASHBOARD_INCONSISTENCY_LIMIT,
           })
         : Promise.resolve([]),
+      loadSportsDashboardRecords(this.prisma, canReadSports),
     ]);
 
     return {
@@ -535,11 +586,14 @@ export class DashboardInsightsService {
         eventGroupsCount,
         majorEventsCount,
       },
-      suggestions: buildSuggestions({
-        upcomingActivitiesCount: calendarEvents.length + upcomingMajorEventsCount,
-        canManageEvents,
-        canManageMajorEvents,
-      }),
+      suggestions: [
+        ...buildSuggestions({
+          upcomingActivitiesCount: calendarEvents.length + upcomingMajorEventsCount,
+          canManageEvents,
+          canManageMajorEvents,
+        }),
+        ...(canReadSports ? [{ action: 'OPEN_SPORTS' as const, label: 'Gerenciar esportes' }] : []),
+      ],
       calendarEvents: calendarEvents.map((event) => mapCalendarEvent(event, now)),
       weatherAlerts: await buildWeatherAlerts(this.weatherService, calendarEvents),
       pendingCertificates: canManageCertificates ? await buildPendingCertificates(this.prisma, now) : [],
@@ -565,11 +619,45 @@ export class DashboardInsightsService {
             pendingCount: event._count.offlineAttendanceSubmissions,
           }))
         : [],
+      sportsTournaments: sportsDashboard.tournaments.map((tournament) => ({
+        tournamentId: tournament.id,
+        majorEventId: tournament.majorEventId,
+        name: tournament.majorEvent.name,
+        emoji: tournament.majorEvent.emoji,
+        startDate: tournament.majorEvent.startDate,
+        endDate: tournament.majorEvent.endDate,
+        status: tournament.status,
+        categoryCount: tournament._count.categories,
+        teamCount: tournament._count.teams,
+        pendingApplicationCount: tournament._count.playerApplications,
+        pendingReviewCount:
+          tournament.categories.reduce(
+            (total, category) => total + category._count.matches + category._count.registrations,
+            0,
+          ) + tournament.teams.reduce((total, team) => total + team._count.changeRequests, 0),
+        activeMatchCount: sportsDashboard.matches.filter((match) => match.category.tournamentId === tournament.id)
+          .length,
+      })),
+      sportsMatches: sportsDashboard.matches.slice(0, 12).map((match) => {
+        const scoreboard = this.safeSportsScoreboard(match.scoreboard);
+        return {
+          matchId: match.id,
+          tournamentId: match.category.tournamentId,
+          categoryName: match.category.name,
+          eventName: match.event.name,
+          startDate: match.event.startDate,
+          state: match.state,
+          homeTeamName: match.homeRegistration?.team.name ?? null,
+          awayTeamName: match.awayRegistration?.team.name ?? null,
+          homeScore: scoreboard.home,
+          awayScore: scoreboard.away,
+        };
+      }),
       inconsistencies: shouldBuildInconsistencies
         ? [
             ...buildInconsistencies({
               now,
-              events: consistencyEvents,
+              events: canReadSports ? consistencyEvents : consistencyEvents.filter((event) => !event.sportsMatch),
               majorEventsWithSubscriptionDates,
               singleEventGroups,
               mismatchingCertificateGroupEvents,
@@ -578,13 +666,24 @@ export class DashboardInsightsService {
             }),
             ...buildPublicationConsistencyWarnings({
               now,
-              events: consistencyEvents,
-              majorEvents: publicationMajorEvents,
+              events: canReadSports ? consistencyEvents : consistencyEvents.filter((event) => !event.sportsMatch),
+              majorEvents: canReadSports
+                ? publicationMajorEvents
+                : publicationMajorEvents.map((majorEvent) => ({ ...majorEvent, sportsTournament: null })),
             }),
           ].slice(0, DASHBOARD_INCONSISTENCY_LIMIT)
         : [],
       duplicatePeopleCount: canManageMergeCandidates ? duplicatePeopleCount : 0,
       permissions: formatPermissions(permissions),
     };
+  }
+
+  private safeSportsScoreboard(scoreboard: unknown): { home: number; away: number } {
+    try {
+      const normalized = normalizeSportsScoreboard(scoreboard);
+      return { home: normalized.home, away: normalized.away };
+    } catch {
+      return { home: 0, away: 0 };
+    }
   }
 }

@@ -15,12 +15,27 @@ export interface PublicMajorEventPriceTier {
   id: string;
   name: string;
   value: number;
+  includesSportsRegistration: boolean;
 }
 
 export interface PublicMajorEventPrice {
   id: string;
   type: 'SINGLE' | 'TIERED';
   tiers: PublicMajorEventPriceTier[];
+}
+
+export interface PublicSportsTournamentMarker {
+  id: string;
+  selfSubscriptionEnabled?: boolean | null;
+  registrationOpen?: boolean;
+}
+
+export interface PublicSportsMatchMarker {
+  id: string;
+  categoryId: string;
+  category: {
+    tournamentId: string;
+  };
 }
 
 export interface PublicMajorEvent {
@@ -48,6 +63,9 @@ export interface PublicMajorEvent {
   shouldIssueCertificate?: boolean | null;
   paymentInfo?: PublicPaymentInfo | null;
   majorEventPrices?: PublicMajorEventPrice[];
+  hasEvents?: boolean | null;
+  regularSubscriptionOpen?: boolean | null;
+  sportsTournament?: PublicSportsTournamentMarker | null;
 }
 
 export interface PublicEventGroup {
@@ -89,6 +107,7 @@ export interface PublicEvent {
   majorEvent?: PublicMajorEvent | null;
   eventGroupId?: string | null;
   eventGroup?: PublicEventGroup | null;
+  sportsMatch?: PublicSportsMatchMarker | null;
   allowSubscription?: boolean | null;
   requiresImageLicenseAgreement?: boolean | null;
   subscriptionStartDate?: DateTimeString | null;
@@ -105,11 +124,22 @@ export interface PublicEvent {
   isOnlineAttendanceAllowed?: boolean | null;
   onlineAttendanceStartDate?: DateTimeString | null;
   onlineAttendanceEndDate?: DateTimeString | null;
-  publiclyVisible?: boolean | null;
+  isPubliclyListed?: boolean | null;
   youtubeCode?: string | null;
   buttonText?: string | null;
   buttonLink?: string | null;
   lecturers?: PublicLecturerProfile[];
+}
+
+export interface PublicMapEvent {
+  id: string;
+  name: string;
+  startDate: DateTimeString;
+  endDate: DateTimeString;
+  emoji: string;
+  latitude: number;
+  longitude: number;
+  locationDescription?: string | null;
 }
 
 export interface PublicEventSubscriptionSummary {
@@ -128,6 +158,7 @@ export interface PublicMajorEventSubscriptionPage {
 export interface PublicEventWeather {
   eventId: string;
   temperature: number;
+  uvIndex?: number | null;
   weatherCode: number;
   summary: string;
   materialIcon: string;

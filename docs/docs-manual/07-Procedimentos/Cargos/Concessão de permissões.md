@@ -1,81 +1,86 @@
-# Concessão de permissões
+---
+title: Concessão de permissões
+---
 
-As permissões administrativas do Event Manager são concedidas pelo painel de pessoas. O Keycloak deve ser usado apenas para liberar o acesso base ao sistema ou para conceder o bypass de super administrador.
+Conceda uma responsabilidade por meio de um cargo. Evite montar permissões diferentes para cada pessoa quando várias pessoas exercem o mesmo trabalho.
+
+O Keycloak deve ser usado para acesso base ou para o bypass excepcional de super administrador. O conteúdo da responsabilidade fica no Event Manager.
 
 ## Antes de conceder
 
-Antes de liberar qualquer acesso:
+Defina:
 
-- Confirme que a pessoa possui uma conta vinculada no Event Manager;
-- Confirme que o usuário possui `access` no cliente Keycloak do Event Manager;
-- Escolha o menor escopo suficiente para a responsabilidade;
-- Defina uma data de fim quando o acesso for temporário;
-- Evite `super-admin`, exceto para manutenção, emergência ou pessoas com responsabilidade irrestrita pelo sistema.
+- Qual trabalho a pessoa precisa executar;
+- Em quais eventos ou grandes eventos;
+- Durante qual período;
+- Se a responsabilidade é individual ou pertence a uma equipe recorrente.
 
-Para visualizar e gerenciar concessões, o administrador também precisa das permissões de gestão de permissões no Event Manager:
+Escolha o menor alcance suficiente. Uma função temporária deve ter data de fim.
 
-- `permission-grant#read` e `person#read` para consultar concessões;
-- `permission-grant#create` para criar concessões;
-- `permission-grant#update` para alterar validade ou escopo;
-- `permission-grant#delete` para revogar concessões.
+## 1. Escolha entre pessoa e grupo
 
-## Concedendo permissões
+Use atribuição direta quando a responsabilidade é exclusiva daquela pessoa.
 
-1. Acesse a "Área Restrita".
-2. Abra a aba "Pessoas".
-3. Busque e selecione a pessoa que receberá o acesso.
-4. No painel de detalhes, localize "Permissões do Event Manager".
-5. Se a pessoa não possuir usuário vinculado, vincule ou crie a conta antes de continuar.
-6. Escolha um preset ou selecione uma categoria e permissões manualmente.
-7. Escolha o escopo da permissão.
-8. Quando o escopo não for global, selecione o evento, grupo de eventos ou grande evento correspondente.
-9. Preencha "Válida a partir de" e "Válida até" quando o acesso precisar ser agendado ou temporário.
-10. Clique em "Adicionar à revisão".
-11. Revise a lista de concessões que serão salvas.
-12. Clique em "Salvar permissões".
+Use um grupo de permissões quando várias pessoas compartilham o mesmo papel ou quando a equipe será reutilizada em outros períodos. Nesse caso, atribua o cargo ao grupo e gerencie os integrantes separadamente.
 
-As concessões aparecem com status "Ativa", "Agendada" ou "Expirada". Uma concessão expirada não autoriza novas operações.
+## 2. Escolha ou crie o cargo
 
-## Escolhendo o escopo
+Abra **Permissões > Gerenciamento de permissões > Cargos**.
 
-| Escopo | Quando usar |
-| --- | --- |
-| Global | Para responsabilidades que precisam valer no sistema inteiro ou para permissões que só podem ser globais, como gestão de pessoas, resolução de duplicidades e gestão de permissões. |
-| Grande evento | Para comissões que administram um grande evento e seus fluxos de inscrição, comprovantes, presenças ou certificados. |
-| Grupo de eventos | Para responsabilidades sobre um grupo independente de eventos. |
-| Evento | Para responsabilidades limitadas a um evento específico, como coleta de presença ou ajuste pontual. |
+Use um cargo existente quando ele representa exatamente a responsabilidade. Para uma nova responsabilidade, comece por um modelo ou por um cargo vazio e revise o conjunto antes de salvar.
 
-Algumas permissões são sempre globais. Quando uma permissão selecionada exigir escopo global, a interface limita a escolha automaticamente.
+Quando a interface indicar dependências, leia quais dados adicionais serão expostos. Aceite somente quando eles forem necessários para concluir o fluxo.
 
-## Usando presets
+Use herança quando um cargo realmente contém outro como base duradoura. Não use herança apenas para economizar alguns cliques em uma concessão isolada.
 
-Os presets são atalhos para conjuntos comuns de permissões. Antes de salvar, a interface mostra as permissões incluídas e os dados limitados que cada uma pode expor.
+## 3. Faça a atribuição
 
-Use presets quando a responsabilidade combinar com um destes casos:
+No cargo, adicione a pessoa ou o grupo responsável.
 
-- "Administrador de grande evento";
-- "Validador de comprovantes";
-- "Coordenador de presenças";
-- "Operador de certificados";
-- "Gestor de pessoas".
+A pessoa pode ser encontrada mesmo sem conta vinculada. Nesse caso, a atribuição fica preparada e passará a funcionar quando uma conta for associada ao cadastro e receber acesso base no Keycloak.
 
-Quando a responsabilidade for menor que o preset, selecione as permissões manualmente. O preset deve acelerar concessões recorrentes, não substituir a análise de necessidade.
+## 4. Limite o escopo
 
-## Alterando ou revogando
+Use escopo global apenas quando a responsabilidade não puder ser limitada a um evento, grupo de eventos ou grande evento.
 
-Para alterar uma concessão, clique no ícone de edição, ajuste escopo ou validade e salve.
+Adicione o menor alvo que cobre o trabalho. Não replique escopos filhos quando um escopo pai já os cobre.
 
-Para revogar, clique no ícone de remoção. A revogação remove a concessão ativa do usuário, mas preserva o histórico interno da operação.
+Se a mesma pessoa atua em alvos diferentes por períodos diferentes, use escopos separados em vez de ampliar toda a atribuição.
 
-Quando o acesso era temporário e já possui data de fim correta, não é necessário remover manualmente após a expiração.
+## 5. Defina a validade
 
-## Conferência
+A validade da atribuição controla o cargo como um todo.
 
-Depois de conceder, peça para a pessoa recarregar o painel administrativo. Se a tela ainda indicar permissão ausente, confira:
+A validade do escopo pode retirar apenas uma área de atuação antes do fim do cargo. Use esse recurso para responsabilidades sazonais ou por edição de evento.
 
-- Se `access` está presente no cliente Keycloak do Event Manager;
-- Se a concessão foi salva para o usuário correto;
-- Se a pessoa selecionada está vinculada ao mesmo usuário;
-- Se a validade já começou;
-- Se o alvo escolhido cobre o recurso acessado;
-- Se a tela precisa de permissões adicionais para dados relacionados.
+Evite acessos sem fim quando existe uma data previsível de encerramento.
+
+## 6. Revise e salve
+
+Confira a barra de alterações não salvas.
+
+Antes de salvar, valide pessoa ou grupo, cargo, escopos, datas e dependências. Não saia da página enquanto a revisão estiver pendente.
+
+## 7. Verifique o resultado
+
+Se é o primeiro acesso ao painel de administração e ele não aparece, solicite que a pessoa faça logout e login novamente.
+
+Peça para a pessoa recarregar o painel e abrir **Permissões > Minhas permissões** para conferir o resultado.
+
+Se o acesso continuar indisponível, confira o vínculo da conta e o papel `access` no Keycloak antes de ampliar o cargo.
+
+## Alterar ou encerrar acesso
+
+Para reduzir o alcance, remova o escopo desnecessário ou antecipe sua expiração.
+
+Para encerrar uma responsabilidade individual, remova a atribuição ou a participação no grupo.
+
+Arquive cargos e grupos somente quando eles não devem receber novas atribuições. O arquivamento preserva o histórico, mas não deve ser usado como forma implícita de revogar acessos ainda ativos.
+
+## Super administrador
+
+`super-admin` ignora cargos, escopos e validade.
+
+Use-o apenas para manutenção, emergência ou responsabilidade irrestrita e permanente sobre a plataforma. Não o conceda para resolver problemas pontuais.
+
+Leia [Permissões e recursos congelados](../../05-Interface%20administrativa/02-Permissões%20e%20recursos%20congelados.md).

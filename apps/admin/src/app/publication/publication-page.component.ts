@@ -18,7 +18,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { firstValueFrom } from 'rxjs';
@@ -35,6 +34,7 @@ import {
 } from '../graphql/publishing-api.service';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/event-manager-admin-contracts';
 import { bindLiveSearch } from '../search/live-search';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import {
   defaultScheduledPublicationDate,
   flattenPublicationListItems,
@@ -57,7 +57,6 @@ import {
     MatIconModule,
     MatInputModule,
     MatListModule,
-    MatProgressBarModule,
     MatTooltipModule,
   ],
   templateUrl: './publication-page.component.html',
@@ -78,6 +77,7 @@ export class PublicationPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly platformId = inject(PLATFORM_ID);
@@ -156,7 +156,7 @@ export class PublicationPageComponent {
         null;
       this.selectedNode.set(nextSelection ?? this.workspaceItems()[0] ?? null);
     } catch (error) {
-      this.snackbar.open(publicationErrorMessage(error), 'Fechar', { duration: 6000 });
+      this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       this.loading.set(false);
     }
@@ -262,7 +262,7 @@ export class PublicationPageComponent {
         window.open(result.url, '_blank', 'noopener');
       }
     } catch (error) {
-      this.snackbar.open(publicationErrorMessage(error), 'Fechar', { duration: 6000 });
+      this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       this.loading.set(false);
     }
@@ -296,7 +296,8 @@ export class PublicationPageComponent {
   }
 
   targetDescription(node: PublicationNode, level = 0): string {
-    const hiddenFromUsers = node.publiclyVisible === false && !node.statusLabel.toLowerCase().includes('oculto');
+    const omittedFromPublicListing =
+      node.isPubliclyListed === false && !node.statusLabel.toLowerCase().includes('não listado');
     const targetLabel =
       level > 0 && node.targetType === 'EVENT_GROUP' ? 'Conjunto' : publicationTargetLabel(node.targetType);
     const parentLabel = node.parentLabel
@@ -309,7 +310,7 @@ export class PublicationPageComponent {
       node.statusLabel,
       parentLabel,
       node.childCount > 0 ? publicationChildCountLabel(node.childCount) : null,
-      hiddenFromUsers ? 'Oculto dos usuários' : null,
+      omittedFromPublicListing ? 'Não listado no site público' : null,
     ]
       .filter((item): item is string => item != null)
       .join(' · ');
@@ -325,7 +326,7 @@ export class PublicationPageComponent {
   }
 
   isWarning(node: PublicationNode): boolean {
-    return node.publicationState !== 'PUBLISHED' || node.publiclyVisible === false;
+    return node.publicationState !== 'PUBLISHED' || node.isPubliclyListed === false;
   }
 
   private parseRequestedNode(
@@ -423,7 +424,7 @@ export class PublicationPageComponent {
       this.snackbar.open(result.message, 'Fechar', { duration: 4000 });
       await this.refresh();
     } catch (error) {
-      this.snackbar.open(publicationErrorMessage(error), 'Fechar', { duration: 6000 });
+      this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       this.loading.set(false);
     }
@@ -462,7 +463,7 @@ export class PublicationPageComponent {
       this.snackbar.open(result.message, 'Fechar', { duration: 4000 });
       await this.refresh();
     } catch (error) {
-      this.snackbar.open(publicationErrorMessage(error), 'Fechar', { duration: 6000 });
+      this.feedback.showErrorMessage(publicationErrorMessage(error));
     } finally {
       this.loading.set(false);
     }

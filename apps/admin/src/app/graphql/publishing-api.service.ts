@@ -16,7 +16,7 @@ export interface PublicationNode {
   scheduledPublishAt?: string | null;
   publishedAt?: string | null;
   unpublishedAt?: string | null;
-  publiclyVisible?: boolean | null;
+  isPubliclyListed?: boolean | null;
   parentLabel?: string | null;
   childCount: number;
   children?: PublicationNode[];
@@ -82,7 +82,7 @@ const PUBLIC_CONTENT_NODE_FIELDS = `
   label
   publicationState
   statusLabel
-  publiclyVisible
+  isPubliclyListed
   parentLabel
   childCount
 `;

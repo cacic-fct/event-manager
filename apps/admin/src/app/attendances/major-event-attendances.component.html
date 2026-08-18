@@ -2,8 +2,8 @@
   <aside class="panel major-selector">
     <div class="panel-heading">
       <div>
-        <h3>Grande evento</h3>
-        <p>Carregue inscrições e veja a presença em cada atividade vinculada.</p>
+        <h3>Presenças no grande evento</h3>
+        <p>Consulte as atividades frequentadas por cada pessoa inscrita.</p>
       </div>
     </div>
 
@@ -14,7 +14,7 @@
           @for (majorEvent of workspace.majorEvents(); track majorEvent.id) {
             <mat-option [value]="majorEvent.id">
               <span class="item-title">
-                <app-twemoji [emoji]="majorEvent.emoji" />
+                <lib-twemoji [emoji]="majorEvent.emoji" />
                 <span>{{ majorEvent.name }}</span>
               </span>
             </mat-option>
@@ -24,17 +24,9 @@
 
       <button mat-flat-button type="button" (click)="workspace.loadMajorEventUserAttendancesFromFirstPage()">
         <mat-icon>groups</mat-icon>
-        Carregar inscrições
+        Carregar pessoas
       </button>
 
-      <button
-        mat-button
-        type="button"
-        [disabled]="!workspace.majorEventAttendanceForm.controls.majorEventId.value"
-        (click)="workspace.exportMajorEventAttendancesCsv()">
-        <mat-icon>download</mat-icon>
-        Baixar CSV
-      </button>
     </form>
 
     <mat-list class="subscription-list categorized-list">
@@ -42,55 +34,28 @@
         <div
           class="category-heading"
           [class.category-NON_PAYING]="group.category === 'NON_PAYING'"
-          [class.category-NON_SUBSCRIBED]="group.category === 'NON_SUBSCRIBED'"
-          [class.category-REGULAR]="group.category === 'REGULAR'"
-          [class.category-UNKNOWN]="group.category === 'UNKNOWN'">
+          [class.category-NON_SUBSCRIBED]="group.category === 'NON_SUBSCRIBED'">
           <h4>{{ group.label }}</h4>
           <span>{{ group.description }}</span>
         </div>
 
-        @for (subscription of group.attendances; track subscription.subscriptionId ?? subscription.personId) {
+        @for (attendance of group.attendances; track attendance.subscriptionId ?? attendance.personId) {
           <mat-list-item
-            (click)="workspace.selectMajorEventUserAttendance(subscription)"
-            [class.selected-list-item]="
-              workspace.selectedMajorEventUserAttendance()?.personId === subscription.personId
-            "
-            [class.category-NON_PAYING]="group.category === 'NON_PAYING'"
-            [class.category-NON_SUBSCRIBED]="group.category === 'NON_SUBSCRIBED'"
-            [class.category-REGULAR]="group.category === 'REGULAR'"
-            [class.category-UNKNOWN]="group.category === 'UNKNOWN'">
+            (click)="workspace.selectMajorEventUserAttendance(attendance)"
+            [class.selected-list-item]="workspace.selectedMajorEventUserAttendance()?.personId === attendance.personId">
             <span matListItemTitle class="attendance-item-title">
-              {{ subscription.person?.name ?? subscription.personId }}
+              {{ attendance.person?.name ?? attendance.personId }}
             </span>
             <span matListItemLine class="attendance-item-line">
-              {{ statusLabel(subscription.subscriptionStatus) }} · {{ subscription.amountPaid ?? '-' }} ·
-              {{ subscription.paymentTier ?? '-' }}
+              {{ attendedEventCount(attendance) }}
+              {{ attendedEventCount(attendance) === 1 ? 'atividade frequentada' : 'atividades frequentadas' }}
             </span>
-            @if (subscription.subscriptionId) {
-              <div matListItemMeta class="item-actions">
-                <button
-                  mat-icon-button
-                  type="button"
-                  aria-label="Ver histórico da inscrição"
-                  matTooltip="Histórico"
-                  (click)="
-                    $event.stopPropagation();
-                    auditLog.openHistory(
-                      'MAJOR_EVENT_SUBSCRIPTION',
-                      subscription.subscriptionId,
-                      subscription.person?.name ?? subscription.personId
-                    )
-                  ">
-                  <mat-icon>history</mat-icon>
-                </button>
-              </div>
-            }
           </mat-list-item>
         }
       } @empty {
         <mat-list-item>
-          <span matListItemTitle>Nenhuma inscrição carregada</span>
-          <span matListItemLine>Escolha um grande evento para consultar.</span>
+          <span matListItemTitle>Nenhuma pessoa carregada</span>
+          <span matListItemLine>Escolha um grande evento para consultar as presenças.</span>
         </mat-list-item>
       }
     </mat-list>
@@ -121,129 +86,64 @@
   </aside>
 
   <section class="panel attendance-detail">
-    @if (workspace.selectedMajorEventUserAttendance()) {
+    @if (workspace.selectedMajorEventUserAttendance(); as selectedAttendance) {
       <div class="panel-heading">
         <div>
-          <h3>
-            {{ workspace.selectedMajorEventUserAttendance()?.person?.name ?? 'Pessoa' }}
-          </h3>
+          <h3>{{ selectedAttendance.person?.name ?? 'Pessoa' }}</h3>
           <p>
-            {{ statusLabel(workspace.selectedMajorEventUserAttendance()?.subscriptionStatus) }}
-            ·
-            {{ workspace.selectedMajorEventUserAttendance()?.paymentTier ?? '-' }}
+            {{ workspace.selectedMajorEventAttendances().length }}
+            {{ workspace.selectedMajorEventAttendances().length === 1 ? 'atividade frequentada' : 'atividades frequentadas' }}
           </p>
         </div>
-        <div class="panel-actions">
-          @if (workspace.selectedMajorEventUserAttendance()?.subscriptionId; as subscriptionId) {
-            <button
-              mat-stroked-button
-              type="button"
-              (click)="
-                auditLog.openHistory(
-                  'MAJOR_EVENT_SUBSCRIPTION',
-                  subscriptionId,
-                  workspace.selectedMajorEventUserAttendance()?.person?.name ??
-                    workspace.selectedMajorEventUserAttendance()?.personId
-                )
-              ">
-              <mat-icon>history</mat-icon>
-              Histórico
-            </button>
-          }
-          @if (workspace.majorEventAttendanceEditMode()) {
-            <button mat-button type="button" (click)="workspace.cancelMajorEventAttendanceEdit()">Cancelar</button>
-            @if (canEditSelectedMajorEventAttendances()) {
-              <button mat-flat-button type="button" (click)="workspace.saveMajorEventAttendanceEdit()">
-                <mat-icon>save</mat-icon>
-                Salvar
-              </button>
-            }
-          } @else {
-            @if (canEditSelectedMajorEventAttendances()) {
-              <button mat-button type="button" (click)="workspace.enableMajorEventAttendanceEdit()">
-                <mat-icon>edit</mat-icon>
-                Editar
-              </button>
-            }
-          }
-        </div>
+        @if (selectedAttendance.subscriptionId && permissions.has(Permission.Subscription.Read)) {
+          <a
+            mat-button
+            [routerLink]="[
+              '/subscriptions/major-event',
+              selectedAttendance.majorEventId,
+              'subscription',
+              selectedAttendance.subscriptionId,
+            ]">
+            <mat-icon>open_in_new</mat-icon>
+            Abrir inscrição
+          </a>
+        }
       </div>
 
-      <form [formGroup]="workspace.majorEventAttendanceEditForm" class="detail-form">
-        <mat-form-field>
-          <mat-label>Status</mat-label>
-          <mat-select formControlName="subscriptionStatus" [disabled]="!workspace.majorEventAttendanceEditMode()">
-            @for (status of statuses; track status) {
-              <mat-option [value]="status">{{ statusLabel(status) }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Valor pago</mat-label>
-          <input
-            matInput
-            type="number"
-            formControlName="amountPaid"
-            [readonly]="!workspace.majorEventAttendanceEditMode()" />
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Data do pagamento</mat-label>
-          <input
-            matInput
-            type="date"
-            formControlName="paymentDate"
-            [readonly]="!workspace.majorEventAttendanceEditMode()" />
-        </mat-form-field>
-
-        <mat-form-field>
-          <mat-label>Faixa de pagamento</mat-label>
-          <mat-select formControlName="paymentTier" [disabled]="!workspace.majorEventAttendanceEditMode()">
-            <mat-option [value]="null">Não informado</mat-option>
-            @for (tier of workspace.majorEventAttendancePaymentTiers(); track tier.id) {
-              <mat-option [value]="tier.name">{{ tier.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-      </form>
-
-      <mat-selection-list class="attendance-list" [multiple]="true">
-        @for (
-          attendanceStatus of workspace.selectedMajorEventUserAttendance()?.attendances ?? [];
-          track attendanceStatus.eventId
-        ) {
-          <mat-list-option
-            checkboxPosition="before"
-            [selected]="workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId)"
-            [disabled]="!workspace.majorEventAttendanceEditMode()"
-            [class.attended]="workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId)"
-            [class.missed]="!workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId)"
-            [class.editable-list-item]="workspace.majorEventAttendanceEditMode()"
-            (selectedChange)="workspace.setMajorEventAttendanceEvent(attendanceStatus.eventId, $event)">
-            <span matListItemTitle class="attendance-item-title">
-              {{ attendanceStatus.eventName }}
+      <mat-list class="attendance-list attended-event-list" aria-label="Atividades frequentadas">
+        @for (eventAttendance of workspace.selectedMajorEventAttendances(); track eventAttendance.eventId) {
+          <mat-list-item>
+            <span matListItemIcon class="event-twemoji" aria-hidden="true">
+              @if (eventAttendance.eventEmoji) {
+                <lib-twemoji [emoji]="eventAttendance.eventEmoji" />
+              } @else {
+                <mat-icon>event</mat-icon>
+              }
             </span>
+            <span matListItemTitle class="attendance-item-title">{{ eventAttendance.eventName }}</span>
             <span matListItemLine class="attendance-item-line">
-              {{
-                workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId) ? 'Presente' : 'Ausente'
-              }}
-              @if (attendanceStatus.attendedAt) {
-                · {{ attendanceStatus.attendedAt | date: 'short' }}
+              @if (eventAttendance.eventStartDate) {
+                {{ eventAttendance.eventStartDate | date: 'short' }}
               }
-              @if (workspace.selectedMajorEventAttendanceEventIds().has(attendanceStatus.eventId)) {
-                ·
-                {{ workspace.getAttendanceCategoryLabel(attendanceStatus.category) }}
+              @if (eventAttendance.attendedAt) {
+                · Presença registrada em {{ eventAttendance.attendedAt | date: 'short' }}
               }
+              · {{ workspace.getAttendanceCategoryLabel(eventAttendance.category) }}
             </span>
-          </mat-list-option>
+          </mat-list-item>
+        } @empty {
+          <mat-list-item>
+            <mat-icon matListItemIcon>event_busy</mat-icon>
+            <span matListItemTitle>Nenhuma presença registrada</span>
+            <span matListItemLine>Esta pessoa ainda não frequentou atividades deste grande evento.</span>
+          </mat-list-item>
         }
-      </mat-selection-list>
+      </mat-list>
     } @else {
       <div class="empty-state">
         <mat-icon>fact_check</mat-icon>
-        <h3>Selecione uma inscrição</h3>
-        <p>O detalhamento de presença por atividade aparece neste painel.</p>
+        <h3>Selecione uma pessoa</h3>
+        <p>As atividades frequentadas aparecerão aqui.</p>
       </div>
     }
   </section>

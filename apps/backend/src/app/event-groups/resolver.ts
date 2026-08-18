@@ -7,7 +7,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { AuditLogEntityType, AuditLogOperation, CertificateScope, Prisma } from '@prisma/client';
 import { AllowScopedCollectionPermissions } from '../auth/decorators/allow-scoped-collection-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -18,6 +18,9 @@ import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
+import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
+import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
+import { EventPostCommitEffectsService } from '../events/event-post-commit-effects.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -64,7 +67,28 @@ export class EventGroupsResolver {
     private readonly auditLog: AuditLogService = {
       record: async () => undefined,
     } as unknown as AuditLogService,
+    private readonly postCommitEffects: EventPostCommitEffectsService = {
+      upsertEventGroup: (eventGroup) => typesenseSearch.upsertEventGroup(eventGroup),
+      deleteEventGroup: (eventGroupId) => typesenseSearch.deleteEventGroup(eventGroupId),
+    } as EventPostCommitEffectsService,
+    private readonly sportsBackingLifecycle: SportsBackingResourceLifecycleService = {
+      synchronizeEventGroupUpdate: async () => undefined,
+      assertEventGroupDeleteAllowed: async () => undefined,
+    } as unknown as SportsBackingResourceLifecycleService,
+    private readonly sportsMutationEvents: SportsMutationEventsService = {
+      publishForBackingEventGroup: async () => undefined,
+    } as unknown as SportsMutationEventsService,
   ) {}
+
+  @ResolveField(() => Boolean)
+  async isSportsCategory(@Parent() group: { id: string }): Promise<boolean> {
+    return Boolean(
+      await this.prisma.sportsCategory.findFirst({
+        where: { eventGroupId: group.id, deletedAt: null },
+        select: { id: true },
+      }),
+    );
+  }
 
   @Query(() => [EventGroup], { name: 'eventGroups' })
   @AllowScopedCollectionPermissions()
@@ -187,7 +211,7 @@ export class EventGroupsResolver {
       );
       return created;
     });
-    await this.typesenseSearch.upsertEventGroup({
+    await this.postCommitEffects.upsertEventGroup({
       id: eventGroup.id,
       name: eventGroup.name,
     });
@@ -203,10 +227,15 @@ export class EventGroupsResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventGroupMutable(id, this.getUser(context), 'edit');
-    const normalizedInput = this.normalizeEventGroupCertificateInput(input, await this.hasMajorEventEvents(id));
+    const normalizedInput = this.normalizeEventGroupCertificateInput(input);
     const eventGroup = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
       if (!previous) throw new NotFoundException(`Event group ${id} was not found.`);
+      await this.sportsBackingLifecycle.synchronizeEventGroupUpdate(
+        tx,
+        id,
+        normalizedInput,
+      );
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: normalizedInput });
 
       if (normalizedInput.shouldIssueCertificate === false) {
@@ -253,10 +282,11 @@ export class EventGroupsResolver {
       return updated;
     });
     if (eventGroup) {
-      await this.typesenseSearch.upsertEventGroup({
+      await this.postCommitEffects.upsertEventGroup({
         id: eventGroup.id,
         name: eventGroup.name,
       });
+      await this.sportsMutationEvents.publishForBackingEventGroup(eventGroup.id);
     }
     return eventGroup;
   }
@@ -324,7 +354,7 @@ export class EventGroupsResolver {
       );
       return created;
     });
-    await this.typesenseSearch.upsertEventGroup({
+    await this.postCommitEffects.upsertEventGroup({
       id: eventGroup.id,
       name: eventGroup.name,
     });
@@ -339,6 +369,7 @@ export class EventGroupsResolver {
     await this.prisma.$transaction(async (tx) => {
       const eventGroup = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
       if (!eventGroup) throw new NotFoundException(`Event group ${id} was not found.`);
+      await this.sportsBackingLifecycle.assertEventGroupDeleteAllowed(tx, id);
       await tx.eventGroup.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {
@@ -356,7 +387,7 @@ export class EventGroupsResolver {
         tx,
       );
     });
-    await this.typesenseSearch.deleteEventGroup(id);
+    await this.postCommitEffects.deleteEventGroup(id);
     return {
       deleted: true,
       id,
@@ -365,7 +396,6 @@ export class EventGroupsResolver {
 
   private normalizeEventGroupCertificateInput<T extends EventGroupCreateInput | EventGroupUpdateInput>(
     input: T,
-    hasMajorEventEvents = false,
   ): T {
     if (input.shouldIssueCertificate === false) {
       return {
@@ -377,28 +407,7 @@ export class EventGroupsResolver {
       };
     }
 
-    if (hasMajorEventEvents) {
-      return {
-        ...input,
-        shouldIssueCertificateForEachEvent: false,
-      };
-    }
-
     return input;
-  }
-
-  private async hasMajorEventEvents(eventGroupId: string): Promise<boolean> {
-    const count = await this.prisma.event.count({
-      where: {
-        eventGroupId,
-        majorEventId: {
-          not: null,
-        },
-        deletedAt: null,
-      },
-    });
-
-    return count > 0;
   }
 
   private async cloneCertificateConfigsForEventGroup(

@@ -5,7 +5,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -21,6 +20,7 @@ import {
   ConfirmationDialogComponent,
   ConfirmationDialogData,
 } from '../../app-shell/dialogs/confirmation-dialog.component';
+import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 import { getErrorMessage } from '../../feedback/error-message';
 
 export interface PersonLinkedDataDialogData {
@@ -47,7 +47,6 @@ const LINKED_RESOURCE_PAGE_SIZE = 10;
     MatDialogModule,
     MatExpansionModule,
     MatIconModule,
-    MatProgressBarModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
   ],
@@ -59,6 +58,7 @@ export class PersonLinkedDataDialogComponent {
   private readonly dialog = inject(MatDialog);
   private readonly dialogRef = inject(MatDialogRef<PersonLinkedDataDialogComponent>);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   readonly data = inject<PersonLinkedDataDialogData>(MAT_DIALOG_DATA);
 
   readonly loading = signal(true);
@@ -207,11 +207,9 @@ export class PersonLinkedDataDialogComponent {
         this.dialogRef.close(true);
         return;
       }
-      this.snackbar.open('Não foi possível excluir a pessoa.', 'Fechar', { duration: 5000 });
+      this.feedback.showErrorMessage('Não foi possível excluir a pessoa.');
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir a pessoa.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível excluir a pessoa.');
       await this.load();
     } finally {
       this.deleting.set(false);

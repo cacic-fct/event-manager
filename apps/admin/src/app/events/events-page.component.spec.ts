@@ -1,7 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { MarkdownPreviewDialogComponent } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
+import { LocationCoordinatePickerDialogComponent } from '../app-shell/dialogs/location-coordinate-picker-dialog.component';
 import { createPageStoryProviders, defaultPageStoryArgs, type PageStoryMode } from '../stories/page-story-support';
 import { EventsPageComponent } from './events-page.component';
 
@@ -40,11 +43,61 @@ describe('EventsPageComponent', () => {
     await configureComponent('populated');
     const { element } = createComponent();
 
-    expect(button(element, 'Semana da Computação')?.querySelector('app-twemoji')).not.toBeNull();
-    expect(button(element, 'Grupo')?.querySelector('app-twemoji')).not.toBeNull();
+    expect(button(element, 'Semana da Computação')?.querySelector('lib-twemoji')).not.toBeNull();
+    expect(button(element, 'Grupo')?.querySelector('lib-twemoji')).not.toBeNull();
   });
 
-  async function configureComponent(mode: PageStoryMode): Promise<void> {
+  it('previews the current unsaved event description', async () => {
+    const dialog = { open: vi.fn() };
+    await configureComponent('populated', dialog);
+    const { element, fixture } = createComponent();
+    fixture.componentInstance.workspace.eventForm.controls.description.setValue('**Texto ainda não salvo**');
+    fixture.detectChanges();
+
+    element.querySelector<HTMLButtonElement>('button[aria-label="Pré-visualizar descrição"]')?.click();
+
+    expect(dialog.open).toHaveBeenCalledWith(MarkdownPreviewDialogComponent, {
+      data: {
+        content: '**Texto ainda não salvo**',
+        title: 'Pré-visualização da descrição do evento',
+      },
+      maxWidth: 'calc(100vw - 32px)',
+    });
+  });
+
+  it('copies coordinates confirmed in the map picker into the event form', async () => {
+    const dialog = {
+      open: vi.fn().mockReturnValue({
+        afterClosed: () => of({ latitude: -22.12103, longitude: -51.40775 }),
+      }),
+    };
+    await configureComponent('populated', dialog);
+    const { element, fixture } = createComponent();
+
+    button(element, 'Selecionar no mapa')?.click();
+
+    expect(dialog.open).toHaveBeenCalledWith(LocationCoordinatePickerDialogComponent, {
+      data: { coordinates: { latitude: -22.1211, longitude: -51.4086 } },
+      maxWidth: 'calc(100vw - 32px)',
+    });
+    expect(fixture.componentInstance.workspace.eventForm.controls.latitude.value).toBe('-22.12103');
+    expect(fixture.componentInstance.workspace.eventForm.controls.longitude.value).toBe('-51.40775');
+  });
+
+  it('disables publication while the event editor is invalid', async () => {
+    await configureComponent('populated');
+    const { element, fixture } = createComponent();
+    fixture.componentInstance.workspace.eventForm.controls.name.setValue('');
+    fixture.detectChanges();
+
+    const publishButton = [...element.querySelectorAll('button')].find((item) =>
+      item.textContent?.includes('Atualizar publicação'),
+    ) as HTMLButtonElement | undefined;
+
+    expect(publishButton?.disabled).toBe(true);
+  });
+
+  async function configureComponent(mode: PageStoryMode, dialog: Partial<MatDialog> = { open: vi.fn() }): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [EventsPageComponent],
       providers: [
@@ -60,7 +113,9 @@ describe('EventsPageComponent', () => {
           },
         },
       ],
-    }).compileComponents();
+    });
+    TestBed.overrideProvider(MatDialog, { useValue: dialog });
+    await TestBed.compileComponents();
   }
 
   function createComponent(): {

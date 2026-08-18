@@ -1,0 +1,238 @@
+<section class="command-center">
+  <header class="command-header">
+    <div class="command-title">
+      <a mat-icon-button routerLink="/attendances" aria-label="Voltar para presenças" matTooltip="Voltar">
+        <mat-icon>arrow_back</mat-icon>
+      </a>
+      <div>
+        <h1>{{ snapshot()?.eventName || 'Estatísticas de presença' }}</h1>
+        <p>
+          Produtividade, concentração e sinais operacionais da coleta.
+          @if (lastUpdatedLabel()) {
+            Atualizado às {{ lastUpdatedLabel() | date: 'shortTime' }}.
+          }
+        </p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button mat-stroked-button type="button" [disabled]="loading()" (click)="reload()">
+        <mat-icon>refresh</mat-icon>
+        Atualizar
+      </button>
+    </div>
+  </header>
+
+  @if (connectionError()) {
+    <div class="feedback feedback-error" role="alert">
+      <mat-icon>cloud_off</mat-icon>
+      <span>{{ connectionError() }} Use “Atualizar” para tentar novamente.</span>
+    </div>
+  }
+
+  @if (loading() && !snapshot()) {
+    <div class="loading-state"><mat-spinner diameter="36" /><span>Preparando a central de presença...</span></div>
+  } @else if (snapshot(); as data) {
+    <section class="status-strip" aria-label="Resumo geral de presença e destaque do período em foco">
+      <div>
+        <span>Presentes</span><strong>{{ data.presentCount }}</strong>
+      </div>
+      <div>
+        <span>Não compareceram</span><strong>{{ data.noShowCount }}</strong>
+      </div>
+      <div>
+        <span>Fila off-line</span><strong>{{ data.pendingOfflineCount }}</strong>
+      </div>
+      <div [class.needs-attention]="data.pendingReviewCount > 0">
+        <span>Revisões</span><strong>{{ data.pendingReviewCount }}</strong>
+      </div>
+      @if (topCollector(); as collector) {
+        <div class="top-collector">
+          <span>Maior produtividade</span><strong>{{ collector.name }}</strong
+          ><small>{{ collector.count }} coletas</small>
+        </div>
+      }
+    </section>
+
+    @if (data.reviewItems.length > 0) {
+      <section class="surface review-queue" id="revisoes" tabindex="-1">
+        <div class="section-heading">
+          <div>
+            <h2>Revisão humana</h2>
+            <p>
+              As presenças permanecem válidas enquanto estes sinais são analisados. Pendências off-line continuam na
+              fila de reconciliação.
+            </p>
+          </div>
+          <mat-chip>{{ data.reviewItems.length }} pendência(s)</mat-chip>
+        </div>
+
+        @if (actionError()) {
+          <p class="action-error" role="alert">{{ actionError() }}</p>
+        }
+        <mat-list class="review-list">
+          @for (item of data.reviewItems; track item.id) {
+            <mat-list-item [class.critical-review]="item.severity === 'CRITICAL'">
+              <mat-icon matListItemIcon>{{ reviewIcon(item) }}</mat-icon>
+              <span matListItemTitle class="review-title">
+                {{ item.title }}
+                <span class="review-kind">{{ reviewKindLabel(item.kind) }}</span>
+              </span>
+              <span matListItemLine>{{ item.summary }}</span>
+              <span matListItemLine
+                >{{ item.actorName || 'Origem automática' }} · {{ item.detectedAt | date: 'short' }}</span
+              >
+              <div matListItemMeta class="review-actions">
+                @if (item.deepLink) {
+                  <a mat-stroked-button [routerLink]="item.deepLink"><mat-icon>open_in_new</mat-icon>Revisar</a>
+                } @else if (permissions.has(Permission.EventAttendance.Update)) {
+                  <button
+                    mat-button
+                    type="button"
+                    [disabled]="reviewingFlagId() === item.id"
+                    (click)="review(item, 'DISMISSED')">
+                    Descartar sinal
+                  </button>
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="reviewingFlagId() === item.id"
+                    (click)="review(item, 'RESOLVED')">
+                    @if (reviewingFlagId() === item.id) {
+                      <mat-spinner diameter="18" />
+                    } @else {
+                      <mat-icon>done</mat-icon>
+                    }
+                    Concluir
+                  </button>
+                }
+              </div>
+            </mat-list-item>
+          }
+        </mat-list>
+      </section>
+    }
+
+    <section class="analytics-grid">
+      <article class="surface chart-panel chart-wide">
+        <div class="section-heading throughput-heading">
+          <div>
+            <h2>Ritmo de coleta</h2>
+            <p id="throughput-instructions">
+              Arraste sobre o gráfico para escolher o início e o fim do período analisado.
+            </p>
+          </div>
+          <div class="time-window-control" aria-live="polite">
+            <span class="time-window-label">
+              <mat-icon>date_range</mat-icon>
+              {{ selectedWindowLabel() }}
+            </span>
+            @if (loading() && snapshot()) {
+              <mat-spinner diameter="18" aria-label="Atualizando período" />
+            }
+            @if (selectedTimeWindow()) {
+              <button mat-button type="button" [disabled]="loading()" (click)="resetTimeWindow()">
+                <mat-icon>restart_alt</mat-icon>
+                Mostrar tudo
+              </button>
+            }
+          </div>
+        </div>
+        @if (data.scansPerMinute.length > 0) {
+          <div
+            #throughputChart
+            class="chart throughput-chart"
+            role="img"
+            aria-describedby="throughput-instructions"
+            [attr.aria-label]="
+              canSelectTimeWindow()
+                ? 'Gráfico interativo de presenças coletadas por minuto. Arraste horizontalmente para filtrar o período.'
+                : 'Gráfico de presenças coletadas por minuto.'
+            "></div>
+        } @else {
+          <p class="empty-chart">Nenhuma presença foi coletada neste período.</p>
+        }
+      </article>
+
+      <article class="surface chart-panel">
+        <div class="section-heading">
+          <div>
+            <h2>Concentração por hora</h2>
+            <p>Faixas de maior movimento da operação.</p>
+          </div>
+        </div>
+        @if (data.scansByHour.length > 0) {
+          <div #hoursChart class="chart" role="img" aria-label="Gráfico de concentração das coletas por hora"></div>
+        } @else {
+          <p class="empty-chart">Sem dados de horário neste período.</p>
+        }
+      </article>
+
+      <article class="surface chart-panel">
+        <div class="section-heading">
+          <div>
+            <h2>Métodos utilizados</h2>
+            <p>Leitor, entrada manual, chamada, importação e código on-line.</p>
+          </div>
+        </div>
+        @if (data.methods.length > 0) {
+          <div
+            #methodsChart
+            class="chart"
+            role="img"
+            aria-label="Gráfico dos métodos usados para registrar presenças"></div>
+        } @else {
+          <p class="empty-chart">Nenhum método registrado neste período.</p>
+        }
+      </article>
+
+      <article class="surface chart-panel chart-wide">
+        <div class="section-heading">
+          <div>
+            <h2>Produtividade por pessoa</h2>
+            <p>Comparação das pessoas coletoras no período em foco.</p>
+          </div>
+        </div>
+        @if (data.collectors.length > 0) {
+          <div
+            #collectorsChart
+            class="chart collectors-chart"
+            role="img"
+            aria-label="Gráfico de produtividade por pessoa coletora"></div>
+          <div class="collector-table" role="table" aria-label="Detalhes das pessoas coletoras">
+            <div class="collector-row collector-header" role="row">
+              <span>Coletor(a)</span><span>Primeira</span><span>Última</span><span>Métodos</span><span>Origem</span
+              ><span>Total</span>
+            </div>
+            @for (collector of data.collectors; track collector.actorId) {
+              <div class="collector-row" role="row">
+                <strong>{{ collector.name }}</strong>
+                <span>{{ collector.firstScanAt | date: 'shortTime' }}</span>
+                <span>{{ collector.lastScanAt | date: 'shortTime' }}</span>
+                <span>{{ methodSummary(collector.methods) }}</span>
+                <span>{{ collector.onlineCount }} on-line · {{ collector.offlineCount }} off-line</span>
+                <strong>{{ collector.count }}</strong>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="empty-chart">Nenhuma pessoa coletora aparece neste período.</p>
+        }
+      </article>
+    </section>
+
+    <section class="surface map-panel">
+      <div class="section-heading">
+        <div>
+          <h2>Distribuição das coletas</h2>
+          <p>Mapa de calor do período em foco, agregado em células aproximadas de 11 metros.</p>
+        </div>
+        <span>{{ data.heatmapPoints.length }} área(s)</span>
+      </div>
+      <app-attendance-heatmap
+        [points]="data.heatmapPoints"
+        [eventLatitude]="data.eventLatitude"
+        [eventLongitude]="data.eventLongitude" />
+    </section>
+  }
+</section>

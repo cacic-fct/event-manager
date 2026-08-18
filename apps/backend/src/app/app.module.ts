@@ -11,8 +11,8 @@ import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuditLogResolver } from './audit-log/audit-log.resolver';
 import { AuditLogService } from './audit-log/audit-log.service';
 import { AuthModule } from './auth/auth.module';
-import { PermissionGrantsResolver } from './authorization/permission-grants.resolver';
-import { PermissionGrantsService } from './authorization/permission-grants.service';
+import { PermissionManagementResolver } from './authorization/permission-management.resolver';
+import { PermissionManagementService } from './authorization/permission-management.service';
 import { KeycloakScopeGuard } from './auth/guards/keycloak-scope.guard';
 import { KeycloakAuthService } from './auth/keycloak-auth.service';
 import { createIntrospectionAuthPlugin } from './auth/introspection-auth.plugin';
@@ -28,7 +28,9 @@ import { CalendarService } from './calendar/calendar.service';
 import { CertificateConfigsService } from './certificate/certificate-configs.service';
 import { CertificateCsvImportResolver } from './certificate/certificate-csv-import.resolver';
 import { CertificateDownloadService } from './certificate/certificate-download.service';
+import { CertificateTemplateRegistryService } from './certificate/certificate-template-registry.service';
 import { CertificateEligibilityService } from './certificate/certificate-eligibility.service';
+import { CertificateSportsEligibility } from './certificate/certificate-sports-eligibility';
 import { CertificateIssuingService } from './certificate/certificate-issuing.service';
 import { CertificateNotificationJobsProcessor } from './certificate/certificate-notification-jobs.processor';
 import {
@@ -47,7 +49,10 @@ import { CertificatesResolver } from './certificate/certificates.resolver';
 import { PublicCertificateValidationService } from './certificate/public-certificate-validation.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { EventAttendancesController } from './events/attendances.controller';
+import { AttendanceAnalyticsController } from './events/attendance-analytics.controller';
 import {
+  AttendanceAnalyticsResolver,
+  AttendanceAnalyticsService,
   EventAttendanceCsvImportResolver,
   EventAttendancesMutationsResolver,
   EventAttendancesQueriesResolver,
@@ -62,6 +67,7 @@ import { SubscriptionBadgeExportController } from './events/subscription-badge-e
 import { SubscriptionBadgeExportService } from './events/subscription-badge-export.service';
 import { EventDraftsResolver } from './events/event-drafts.resolver';
 import { EventDraftsService } from './events/event-drafts.service';
+import { EventPostCommitEffectsService } from './events/event-post-commit-effects.service';
 import { EventFormsController } from './event-forms/event-forms.controller';
 import { EventFormEditorService } from './event-forms/event-form-editor.service';
 import { EventFormListingsService } from './event-forms/event-form-listings.service';
@@ -96,6 +102,8 @@ import { CurrentUserSubscriptionFeedService } from './current-user/subscription-
 import { CurrentUserSubscriptionFeedResolver } from './current-user/subscription-feed/resolver';
 import { CurrentUserDefaultRedirectService } from './current-user/default-redirect/current-user-default-redirect.service';
 import { CurrentUserDefaultRedirectResolver } from './current-user/default-redirect/resolver';
+import { CurrentUserMyDayResolver } from './current-user/my-day/resolver';
+import { CurrentUserMyDayService } from './current-user/my-day/service';
 import { DashboardInsightsProcessor } from './dashboard/insights.processor';
 import { DashboardInsightsResolver } from './dashboard/insights.resolver';
 import { DashboardInsightsSchedulerService } from './dashboard/insights-scheduler.service';
@@ -171,6 +179,55 @@ import { ServerVersionResolver } from './server-version/server-version.resolver'
 import { EventSitemapResolver } from './public-events/event-sitemap.resolver';
 import { EventSitemapService } from './public-events/event-sitemap.service';
 import { AccountManagerGrpcClient } from './grpc/account-manager-grpc.client';
+import { SportsPlayerApplicationService } from './sports/applications/sports-player-application.service';
+import {
+  SportsPlayerApplicationAdminReadResolver,
+  SportsPlayerApplicationCurrentUserReadResolver,
+} from './sports/applications/sports-player-application-read.resolver';
+import { SportsPlayerApplicationReadService } from './sports/applications/sports-player-application-read.service';
+import { SportsPlayerApplicationRealtimeController } from './sports/applications/sports-player-application-realtime.controller';
+import { SportsPlayerApplicationRealtimeService } from './sports/applications/sports-player-application-realtime.service';
+import { SportsBracketAdvancementService } from './sports/brackets/sports-bracket-advancement.service';
+import { SportsBracketService } from './sports/brackets/sports-bracket.service';
+import { SportsDuplicationService } from './sports/duplication/sports-duplication.service';
+import { SportsTeamDuplicationService } from './sports/duplication/sports-team-duplication.service';
+import {
+  PublicSportsTeamLogoController,
+  SportsTeamRepresentativeLogoController,
+  SportsTeamLogoController,
+} from './sports/logos/sports-team-logo.controller';
+import { SportsTeamLogoService } from './sports/logos/sports-team-logo.service';
+import { SportsMatchOperationService } from './sports/operations/sports-match-operation.service';
+import { SportsMatchOverlayController } from './sports/overlays/sports-match-overlay.controller';
+import { SportsMatchOverlayService } from './sports/overlays/sports-match-overlay.service';
+import {
+  SportsAdminReadResolver,
+  SportsCurrentUserReadResolver,
+  SportsPublicReadResolver,
+} from './sports/read/sports-read.resolver';
+import { SportsReadService } from './sports/read/sports-read.service';
+import { SportsRealtimeController } from './sports/realtime/sports-realtime.controller';
+import { SportsRealtimeService } from './sports/realtime/sports-realtime.service';
+import { SportsMutationEventsService } from './sports/realtime/sports-mutation-events.service';
+import { SportsBackingResourceLifecycleService } from './sports/sports-backing-resource-lifecycle.service';
+import { SportsMatchRosterService } from './sports/rosters/sports-match-roster.service';
+import { SportsAutoroutingResolver } from './sports/routing/sports-autorouting.resolver';
+import { SportsAutoroutingService } from './sports/routing/sports-autorouting.service';
+import { SportsStandingsService } from './sports/scoring/sports-standings.service';
+import { SportsAccessService } from './sports/security/sports-access.service';
+import { SportsIdentityProtectionService } from './sports/security/sports-identity-protection.service';
+import { SportsAdminService } from './sports/sports-admin.service';
+import {
+  SportsDuplicationMutationsResolver,
+  SportsLifecycleMutationsResolver,
+  SportsMatchAdminMutationsResolver,
+  SportsParticipantMutationsResolver,
+  SportsReviewMutationsResolver,
+  SportsTeamMutationsResolver,
+  SportsTournamentMutationsResolver,
+} from './sports/sports-mutations.resolver';
+import { SportsPaymentService } from './sports/sports-payment.service';
+import { SportsTeamChangeService } from './sports/teams/sports-team-change.service';
 
 const useInMemoryTestInfra = process.env.BACKEND_E2E_IN_MEMORY_INFRA === 'true';
 const backendQueueNames = [
@@ -289,6 +346,7 @@ const schedulerProviders = useInMemoryTestInfra
     CalendarController,
     AccountProfileUpdateController,
     EventAttendancesController,
+    AttendanceAnalyticsController,
     SubscriptionBadgeExportController,
     EventFormsController,
     MajorEventReceiptsController,
@@ -298,6 +356,12 @@ const schedulerProviders = useInMemoryTestInfra
     TotpController,
     VotingIntegrationController,
     CurrentUserCertificatesDownloadController,
+    SportsRealtimeController,
+    SportsPlayerApplicationRealtimeController,
+    SportsTeamLogoController,
+    PublicSportsTeamLogoController,
+    SportsTeamRepresentativeLogoController,
+    SportsMatchOverlayController,
   ],
   providers: [
     NovuNotificationsService,
@@ -312,6 +376,7 @@ const schedulerProviders = useInMemoryTestInfra
     EventsResolver,
     EventDraftsResolver,
     EventDraftsService,
+    EventPostCommitEffectsService,
     PublicEventsResolver,
     EventSitemapResolver,
     EventSitemapService,
@@ -320,8 +385,8 @@ const schedulerProviders = useInMemoryTestInfra
     UsersResolver,
     PeopleResolver,
     LecturerProfilesResolver,
-    PermissionGrantsResolver,
-    PermissionGrantsService,
+    PermissionManagementResolver,
+    PermissionManagementService,
     AuditLogResolver,
     AuditLogService,
     CalendarResolver,
@@ -342,6 +407,7 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserMajorEventSubscriptionService,
     CurrentUserSubscriptionFeedService,
     CurrentUserDefaultRedirectService,
+    CurrentUserMyDayService,
     CurrentUserCertificatesResolver,
     CurrentUserProfileResolver,
     CurrentUserMajorEventSubscriptionsResolver,
@@ -351,10 +417,48 @@ const schedulerProviders = useInMemoryTestInfra
     CurrentUserOnlineAttendanceRealtimeService,
     CurrentUserSubscriptionFeedResolver,
     CurrentUserDefaultRedirectResolver,
+    CurrentUserMyDayResolver,
+    SportsTournamentMutationsResolver,
+    SportsTeamMutationsResolver,
+    SportsMatchAdminMutationsResolver,
+    SportsLifecycleMutationsResolver,
+    SportsReviewMutationsResolver,
+    SportsDuplicationMutationsResolver,
+    SportsParticipantMutationsResolver,
+    SportsPlayerApplicationAdminReadResolver,
+    SportsPlayerApplicationCurrentUserReadResolver,
+    SportsAdminReadResolver,
+    SportsPublicReadResolver,
+    SportsCurrentUserReadResolver,
+    SportsAutoroutingResolver,
+    SportsAdminService,
+    SportsAccessService,
+    SportsIdentityProtectionService,
+    SportsPaymentService,
+    SportsPlayerApplicationService,
+    SportsPlayerApplicationReadService,
+    SportsPlayerApplicationRealtimeService,
+    SportsTeamChangeService,
+    SportsMatchRosterService,
+    SportsBracketAdvancementService,
+    SportsBracketService,
+    SportsStandingsService,
+    SportsMatchOperationService,
+    SportsRealtimeService,
+    SportsMutationEventsService,
+    SportsBackingResourceLifecycleService,
+    SportsAutoroutingService,
+    SportsDuplicationService,
+    SportsTeamDuplicationService,
+    SportsReadService,
+    SportsTeamLogoService,
+    SportsMatchOverlayService,
     DashboardInsightsResolver,
     DashboardInsightsService,
     PublicPlatformStatsService,
     AttendanceCategoryService,
+    AttendanceAnalyticsService,
+    AttendanceAnalyticsResolver,
     EventSubscriptionSyncService,
     EventSubscriptionCountersService,
     EventAttendanceCollectorsResolver,
@@ -397,7 +501,9 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateConfigsService,
     CertificateCsvImportResolver,
     CertificateDownloadService,
+    CertificateTemplateRegistryService,
     CertificateEligibilityService,
+    CertificateSportsEligibility,
     CertificateIssuingService,
     CertificateNotificationJobsService,
     PublicCertificateValidationService,

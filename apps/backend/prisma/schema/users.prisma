@@ -1,17 +1,16 @@
 model User {
-  id               String   @id
-  email            String   @unique
+  id               String    @id
+  email            String    @unique
   name             String
   identityDocument String?
   academicId       String?
-  unespRole        String[] @default([])
-  role             UserRole @default(USER)
+  unespRole        String[]  @default([])
+  role             UserRole  @default(USER)
   lastLoginAt      DateTime?
 
-  people People[]
-  eventManagerPermissionGrants EventManagerPermissionGrant[]
-  calendarFeedSettings UserCalendarFeedSettings?
-  adminCalendarFeedSettings UserAdminCalendarFeedSettings?
+  people                       People[]
+  calendarFeedSettings         UserCalendarFeedSettings?
+  adminCalendarFeedSettings    UserAdminCalendarFeedSettings?
 
   createdAt   DateTime @default(now())
   createdById String?
@@ -129,13 +128,13 @@ enum ExternalAccountMergeResult {
 model ExternalAccountMergeOperation {
   id String @id @default(uuid(7))
 
-  eventId    String @unique
+  eventId    String   @unique
   type       String
   oldUserId  String
   newUserId  String
   occurredAt DateTime
 
-  status ExternalAccountMergeStatus @default(APPLIED)
+  status ExternalAccountMergeStatus  @default(APPLIED)
   result ExternalAccountMergeResult?
 
   peopleMergeOperationId String?

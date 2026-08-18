@@ -21,6 +21,7 @@ import { initializeCacicAccountPrivacyBestEffort } from '@cacic-fct/shared-angul
 import { CacicAccountPrivacyService, provideCacicAccountPrivacy } from '@cacic-fct/account-manager-privacy';
 import { MatIconRegistry } from '@angular/material/icon';
 import { CookieBannerFeatureFlagService } from './feature-flags/cookie-banner-feature-flag.service';
+import { requestActivityInterceptor } from './feedback/request-activity.interceptor';
 
 registerLocaleData(localePt);
 
@@ -52,7 +53,7 @@ export const appConfig: ApplicationConfig = {
     { provide: LOCALE_ID, useValue: 'pt-BR' },
     provideClientHydration(),
     provideBrowserGlobalErrorListeners(),
-    provideHttpClient(withInterceptors([authInterceptor])),
+    provideHttpClient(withInterceptors([requestActivityInterceptor, authInterceptor])),
     provideRouter(appRoutes),
     provideCacicAccountPrivacy({
       ...CACIC_ACCOUNT_PRIVACY_OPT_OUT_CONFIG,

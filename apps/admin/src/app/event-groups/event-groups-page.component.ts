@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { EventGroup, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenEventGroup } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';

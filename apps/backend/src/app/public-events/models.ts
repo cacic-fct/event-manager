@@ -1,6 +1,7 @@
 import { ContactType, EventType } from '@cacic-fct/shared-data-types';
 import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
 import { Prisma } from '@prisma/client';
+import { PUBLIC_SPORTS_MATCH_RELATIONS_WHERE } from '../sports/security/sports-public-visibility';
 
 export const PUBLIC_MAJOR_EVENT_SELECT = {
   id: true,
@@ -26,6 +27,20 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
   scheduledPublishAt: true,
   publishedAt: true,
   unpublishedAt: true,
+  sportsTournament: {
+    where: {
+      deletedAt: null,
+      status: {
+        not: 'DRAFT',
+      },
+    },
+    select: {
+      id: true,
+      selfSubscriptionEnabled: true,
+      registrationStartDate: true,
+      registrationEndDate: true,
+    },
+  },
   certificateConfigs: {
     where: {
       deletedAt: null,
@@ -45,6 +60,7 @@ export const PUBLIC_MAJOR_EVENT_SELECT = {
           id: true,
           name: true,
           value: true,
+          includesSportsRegistration: true,
         },
       },
     },
@@ -96,7 +112,7 @@ export const PUBLIC_EVENT_SELECT = {
   isOnlineAttendanceAllowed: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -105,6 +121,43 @@ export const PUBLIC_EVENT_SELECT = {
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,
+  sportsMatch: {
+    where: {
+      deletedAt: null,
+      category: {
+        deletedAt: null,
+        status: { not: 'DRAFT' },
+        tournament: {
+          deletedAt: null,
+          status: { not: 'DRAFT' },
+          majorEvent: {
+            deletedAt: null,
+            publicationState: 'PUBLISHED',
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+      categoryId: true,
+      category: {
+        select: {
+          tournamentId: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.EventSelect;
+
+export const PUBLIC_MAP_EVENT_SELECT = {
+  id: true,
+  name: true,
+  startDate: true,
+  endDate: true,
+  emoji: true,
+  latitude: true,
+  longitude: true,
+  locationDescription: true,
 } satisfies Prisma.EventSelect;
 
 export const PUBLIC_MAJOR_EVENT_WHERE = {
@@ -114,18 +167,80 @@ export const PUBLIC_MAJOR_EVENT_WHERE = {
 
 export const PUBLIC_EVENT_WHERE = {
   deletedAt: null,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: 'PUBLISHED',
-  OR: [
-    { majorEventId: null },
+  AND: [
     {
-      majorEvent: {
-        deletedAt: null,
-        publicationState: 'PUBLISHED',
-      },
+      OR: [
+        { majorEventId: null },
+        {
+          majorEvent: {
+            deletedAt: null,
+            publicationState: 'PUBLISHED',
+          },
+        },
+      ],
+    },
+    {
+      OR: [
+        { sportsMatch: { is: null } },
+        {
+          sportsMatch: {
+            is: {
+              deletedAt: null,
+              category: PUBLIC_SPORTS_MATCH_RELATIONS_WHERE.category,
+            },
+          },
+        },
+      ],
     },
   ],
 } satisfies Prisma.EventWhereInput;
+
+export function publicMapEventWhere(now: Date): Prisma.EventWhereInput {
+  return {
+    AND: [
+      PUBLIC_EVENT_WHERE,
+      { endDate: { gte: now } },
+      { latitude: { gte: -90, lte: 90 } },
+      { longitude: { gte: -180, lte: 180 } },
+    ],
+  };
+}
+
+export const PUBLIC_REGULAR_EVENT_WHERE = {
+  AND: [PUBLIC_EVENT_WHERE, { sportsMatch: { is: null } }],
+} satisfies Prisma.EventWhereInput;
+
+export function publicRegularSubscriptionEventWhere(now: Date): Prisma.EventWhereInput {
+  return {
+    AND: [
+      PUBLIC_REGULAR_EVENT_WHERE,
+      {
+        allowSubscription: true,
+        OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }],
+      },
+    ],
+  };
+}
+
+export function publicMajorEventCardSelect(now: Date) {
+  return {
+    ...PUBLIC_MAJOR_EVENT_SELECT,
+    events: {
+      where: publicRegularSubscriptionEventWhere(now),
+      select: { id: true },
+      take: 1,
+    },
+    _count: {
+      select: {
+        events: {
+          where: PUBLIC_REGULAR_EVENT_WHERE,
+        },
+      },
+    },
+  } as const satisfies Prisma.MajorEventSelect;
+}
 
 export type PublicMajorEventRecord = Prisma.MajorEventGetPayload<{
   select: typeof PUBLIC_MAJOR_EVENT_SELECT;
@@ -134,6 +249,14 @@ export type PublicMajorEventRecord = Prisma.MajorEventGetPayload<{
 export type PublicEventRecord = Prisma.EventGetPayload<{
   select: typeof PUBLIC_EVENT_SELECT;
 }>;
+
+type PublicMajorEventMappable = Omit<PublicMajorEventRecord, 'sportsTournament'> & {
+  sportsTournament?: PublicMajorEventRecord['sportsTournament'];
+  _count?: {
+    events: number;
+  };
+  events?: { id: string }[];
+};
 
 export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
   select: {
@@ -148,7 +271,7 @@ export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
   };
 }>;
 
-export function mapPublicMajorEvent(majorEvent: PublicMajorEventRecord): PublicMajorEvent {
+export function mapPublicMajorEvent(majorEvent: PublicMajorEventMappable): PublicMajorEvent {
   const paymentInfo =
     'paymentInfo' in majorEvent && majorEvent.paymentInfo
       ? mapPublicPaymentInfo(majorEvent.paymentInfo as PublicPaymentInfoRecord)
@@ -183,8 +306,21 @@ export function mapPublicMajorEvent(majorEvent: PublicMajorEventRecord): PublicM
         id: tier.id,
         name: tier.name,
         value: tier.value,
+        includesSportsRegistration: tier.includesSportsRegistration,
       })),
     })),
+    hasEvents: majorEvent._count ? majorEvent._count.events > 0 : undefined,
+    regularSubscriptionOpen: majorEvent.events ? majorEvent.events.length > 0 : undefined,
+    sportsTournament: majorEvent.sportsTournament
+      ? {
+          id: majorEvent.sportsTournament.id,
+          selfSubscriptionEnabled: majorEvent.sportsTournament.selfSubscriptionEnabled,
+          registrationOpen: isRegistrationWindowOpen(
+            majorEvent.sportsTournament.registrationStartDate ?? majorEvent.subscriptionStartDate,
+            majorEvent.sportsTournament.registrationEndDate ?? majorEvent.subscriptionEndDate,
+          ),
+        }
+      : undefined,
   };
 }
 
@@ -266,6 +402,11 @@ export class PublicMajorEventPriceTier {
     description: 'Tier value in the smallest currency unit used by the application.',
   })
   value!: number;
+
+  @Field(() => Boolean, {
+    description: 'Whether choosing this tier continues into the linked sports tournament registration flow.',
+  })
+  includesSportsRegistration!: boolean;
 }
 
 @ObjectType({
@@ -287,6 +428,27 @@ export class PublicMajorEventPrice {
     description: 'Participant-selectable tiers configured inside this price group.',
   })
   tiers!: PublicMajorEventPriceTier[];
+}
+
+@ObjectType({
+  description: 'Marker identifying the sports tournament backed by a public major event.',
+})
+export class PublicSportsTournamentMarker {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether participants may request an individual subscription to this tournament.',
+  })
+  selfSubscriptionEnabled?: boolean | null;
+
+  @Field(() => Boolean)
+  registrationOpen?: boolean;
+}
+
+function isRegistrationWindowOpen(startDate: Date | null, endDate: Date | null, now = new Date()): boolean {
+  return (!startDate || now >= startDate) && (!endDate || now <= endDate);
 }
 
 @ObjectType({
@@ -322,7 +484,8 @@ export class PublicMajorEvent {
 
   @Field(() => Boolean, {
     nullable: true,
-    description: 'Whether the public major-event subscription requires acceptance of the CACiC image-license agreement.',
+    description:
+      'Whether the public major-event subscription requires acceptance of the CACiC image-license agreement.',
   })
   requiresImageLicenseAgreement?: boolean | null;
 
@@ -425,6 +588,25 @@ export class PublicMajorEvent {
     description: 'Configured public price groups and tiers used by the subscription/payment flow.',
   })
   majorEventPrices!: PublicMajorEventPrice[];
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether this major event has child events available to the public event experience.',
+  })
+  hasEvents?: boolean | null;
+
+  @Field(() => Boolean, {
+    nullable: true,
+    description: 'Whether at least one regular child event currently accepts subscriptions.',
+  })
+  regularSubscriptionOpen?: boolean | null;
+
+  @Field(() => PublicSportsTournamentMarker, {
+    nullable: true,
+    description:
+      'Present when this major event is also a sports tournament, allowing the client to route to the tournament detail experience.',
+  })
+  sportsTournament?: PublicSportsTournamentMarker | null;
 }
 
 @ObjectType({
@@ -448,7 +630,8 @@ export class PublicEventGroup {
 
   @Field(() => Boolean, {
     nullable: true,
-    description: 'Whether subscriptions through this event group require acceptance of the CACiC image-license agreement.',
+    description:
+      'Whether subscriptions through this event group require acceptance of the CACiC image-license agreement.',
   })
   requiresImageLicenseAgreement?: boolean | null;
 
@@ -516,6 +699,52 @@ export class PublicLecturerProfile {
 }
 
 @ObjectType({
+  description: 'A current or future publicly listed event with a valid map location.',
+})
+export class PublicMapEvent {
+  @Field(() => String, {
+    description: 'Event identifier used to navigate from the map marker to the public event page.',
+  })
+  id!: string;
+
+  @Field(() => String, {
+    description: 'Participant-facing event title displayed for the map marker.',
+  })
+  name!: string;
+
+  @Field(() => Date, {
+    description: 'Event start date used to order and filter map markers.',
+  })
+  startDate!: Date;
+
+  @Field(() => Date, {
+    description: 'Event end date used to retain ongoing events and exclude past events.',
+  })
+  endDate!: Date;
+
+  @Field(() => String, {
+    description: 'Visual marker associated with the event.',
+  })
+  emoji!: string;
+
+  @Field(() => Float, {
+    description: 'Validated event latitude in the inclusive range from -90 to 90.',
+  })
+  latitude!: number;
+
+  @Field(() => Float, {
+    description: 'Validated event longitude in the inclusive range from -180 to 180.',
+  })
+  longitude!: number;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Optional participant-facing description of the mapped location.',
+  })
+  locationDescription?: string | null;
+}
+
+@ObjectType({
   description:
     'Public event data used by the Angular event catalog, subscription flow, attendance prompts, and certificate-related UI.',
 })
@@ -549,7 +778,8 @@ export class PublicEvent {
 
   @Field(() => Boolean, {
     nullable: true,
-    description: 'Whether direct subscription to this standalone event requires acceptance of the CACiC image-license agreement.',
+    description:
+      'Whether direct subscription to this standalone event requires acceptance of the CACiC image-license agreement.',
   })
   requiresImageLicenseAgreement?: boolean | null;
 
@@ -616,6 +846,13 @@ export class PublicEvent {
     description: 'Public group context included when this event belongs to a grouped activity set.',
   })
   eventGroup?: PublicEventGroup | null;
+
+  @Field(() => PublicSportsMatchMarker, {
+    nullable: true,
+    description:
+      'Present when this event is backed by a sports match. Calendar clients keep events mixed while routing match details correctly.',
+  })
+  sportsMatch?: PublicSportsMatchMarker | null;
 
   @Field(() => Boolean, {
     nullable: true,
@@ -699,7 +936,7 @@ export class PublicEvent {
     nullable: true,
     description: 'Whether this event is currently intended to appear in public event surfaces.',
   })
-  publiclyVisible?: boolean | null;
+  isPubliclyListed?: boolean | null;
 
   displayLecturerProfile?: boolean | null;
 
@@ -725,6 +962,28 @@ export class PublicEvent {
     description: 'Public lecturers associated with this event.',
   })
   lecturers?: PublicLecturerProfile[];
+}
+
+@ObjectType({
+  description: 'Public tournament reference for a sports-match category.',
+})
+export class PublicSportsMatchCategoryMarker {
+  @Field(() => String)
+  tournamentId!: string;
+}
+
+@ObjectType({
+  description: 'Public routing context for an Event-backed sports match.',
+})
+export class PublicSportsMatchMarker {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  categoryId!: string;
+
+  @Field(() => PublicSportsMatchCategoryMarker)
+  category!: PublicSportsMatchCategoryMarker;
 }
 
 @ObjectType({

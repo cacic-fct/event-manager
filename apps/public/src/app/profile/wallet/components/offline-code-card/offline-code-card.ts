@@ -1,28 +1,11 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  PLATFORM_ID,
-  computed,
-  effect,
-  inject,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, PLATFORM_ID, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { OfflineTotpSeedRecord } from '@cacic-fct/offline-public-data-access';
-import { TOTP_PERIOD_SECONDS, formatTotpCode, generateTotpCode } from '@cacic-fct/account-manager-m2m-contracts';
-import { TotpSeedSessionService } from '../../../../shared/totp/totp-seed-session.service';
-
-const TOTP_PERIOD_MS = TOTP_PERIOD_SECONDS * 1000;
-
-type OfflineCodeState =
-  | { status: 'loading' }
-  | { status: 'ready'; seed: OfflineTotpSeedRecord }
-  | { status: 'error'; message: string };
+import { formatTotpCode } from '@cacic-fct/account-manager-m2m-contracts';
+import { OfflineCodeStateService } from './offline-code-state.service';
 
 @Component({
   selector: 'app-wallet-offline-code-card',
@@ -42,6 +25,10 @@ type OfflineCodeState =
             [value]="progressValue()"
             diameter="38"
             aria-label="Tempo restante do código"></mat-progress-spinner>
+        </section>
+        <section class="offline-card-email">
+          <span>E-mail vinculado ao código</span>
+          <strong>{{ primaryEmail() }}</strong>
         </section>
         <p>Use este código quando solicitado pela organização.</p>
         <button mat-stroked-button type="button" (click)="copyCode()" [disabled]="!code()">
@@ -90,6 +77,22 @@ type OfflineCodeState =
       line-height: 1;
       letter-spacing: 0;
     }
+    .offline-card-email {
+      display: grid;
+      gap: 0.25rem;
+    }
+    .offline-card-email span {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      line-height: 1.3;
+      opacity: 0.82;
+    }
+    .offline-card-email strong {
+      overflow-wrap: anywhere;
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1.4;
+    }
     .offline-card-error {
       display: grid;
       justify-items: start;
@@ -105,78 +108,31 @@ type OfflineCodeState =
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class WalletOfflineCodeCard {
-  private readonly session = inject(TotpSeedSessionService);
+  private readonly offlineCodeState = inject(OfflineCodeStateService);
   private readonly snackBar = inject(MatSnackBar);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly document = inject(DOCUMENT);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private codeRequest = 0;
-  private animationFrame: number | null = null;
 
-  readonly state = signal<OfflineCodeState>({ status: 'loading' });
-  readonly code = signal('');
-  readonly now = signal(Date.now());
-  readonly readySeed = computed(() => {
-    const state = this.state();
-    return state.status === 'ready' ? state.seed : null;
-  });
+  readonly state = this.offlineCodeState.state;
+  readonly code = this.offlineCodeState.code;
+  readonly progressValue = this.offlineCodeState.progressValue;
   readonly errorMessage = computed(() => {
     const state = this.state();
     return state.status === 'error' ? state.message : '';
   });
+  readonly primaryEmail = computed(() => {
+    const state = this.state();
+    return state.status === 'ready' ? state.seed.primaryEmail : '';
+  });
   readonly displayCode = computed(() => (this.code() ? formatTotpCode(this.code()) : '--- ---'));
-  readonly progressValue = computed(() => ((TOTP_PERIOD_MS - (this.now() % TOTP_PERIOD_MS)) / TOTP_PERIOD_MS) * 100);
-  readonly periodBucket = computed(() => Math.floor(this.now() / TOTP_PERIOD_MS));
 
   constructor() {
-    if (this.isBrowser) this.loadSeed();
-
-    if (this.isBrowser) {
-      const tick = () => {
-        this.now.set(Date.now());
-        this.animationFrame = window.requestAnimationFrame(tick);
-      };
-      this.animationFrame = window.requestAnimationFrame(tick);
-      this.destroyRef.onDestroy(() => {
-        if (this.animationFrame !== null) {
-          window.cancelAnimationFrame(this.animationFrame);
-        }
-      });
-    }
-
-    effect(() => {
-      const seed = this.readySeed();
-      if (!seed) {
-        this.code.set('');
-        return;
-      }
-      void this.updateCode(seed.seed, this.periodBucket() * TOTP_PERIOD_MS);
-    });
+    this.offlineCodeState.initialize();
   }
 
   loadSeed(): void {
-    if (!this.isBrowser) return;
-
-    this.state.set({ status: 'loading' });
-    this.session.getWalletSeed().then(
-      (seed) => {
-        this.state.set(
-          seed
-            ? { status: 'ready', seed }
-            : {
-                status: 'error',
-                message:
-                  'Abra esta tela com internet uma vez enquanto estiver logado para preparar o código neste dispositivo.',
-              },
-        );
-      },
-      () =>
-        this.state.set({
-          status: 'error',
-          message: 'Não foi possível preparar o código agora. Verifique sua conexão e tente novamente.',
-        }),
-    );
+    this.offlineCodeState.reload();
   }
 
   copyCode(): void {
@@ -186,16 +142,6 @@ export class WalletOfflineCodeCard {
       () => this.snackBar.open('Código copiado', 'Fechar', { duration: 2500 }),
       () => this.snackBar.open('Não foi possível copiar o código', 'Fechar', { duration: 5000 }),
     );
-  }
-
-  private async updateCode(seed: string, timestamp: number): Promise<void> {
-    const request = ++this.codeRequest;
-    try {
-      const code = await generateTotpCode({ seed, timestamp });
-      if (request === this.codeRequest) this.code.set(code);
-    } catch {
-      if (request === this.codeRequest) this.code.set('');
-    }
   }
 
   private async copyToClipboard(value: string): Promise<void> {

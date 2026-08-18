@@ -3,6 +3,26 @@ import { AuditLogEntityType, AuditLogOperation } from '@prisma/client';
 import { EventGroupsResolver } from './resolver';
 
 describe('EventGroupsResolver authorization', () => {
+  it('resolves sports category membership without exposing category data', async () => {
+    const prisma = {
+      sportsCategory: {
+        findFirst: jest.fn().mockResolvedValueOnce({ id: 'category-1' }).mockResolvedValueOnce(null),
+      },
+    };
+    const resolver = new EventGroupsResolver(prisma as never, {} as never, {} as never, {} as never);
+
+    await expect(resolver.isSportsCategory({ id: 'group-sports' })).resolves.toBe(true);
+    await expect(resolver.isSportsCategory({ id: 'group-regular' })).resolves.toBe(false);
+    expect(prisma.sportsCategory.findFirst).toHaveBeenNthCalledWith(1, {
+      where: { eventGroupId: 'group-sports', deletedAt: null },
+      select: { id: true },
+    });
+    expect(prisma.sportsCategory.findFirst).toHaveBeenNthCalledWith(2, {
+      where: { eventGroupId: 'group-regular', deletedAt: null },
+      select: { id: true },
+    });
+  });
+
   it('filters event group collections to scoped event group grants', async () => {
     const prisma = {
       eventGroup: {
@@ -292,12 +312,18 @@ describe('EventGroupsResolver authorization', () => {
     const auditLog = {
       record: jest.fn(),
     };
+    const sportsMutationEvents = {
+      publishForBackingEventGroup: jest.fn(),
+    };
     const resolver = new EventGroupsResolver(
       prisma as never,
       typesenseSearch as never,
       frozenResources as never,
       {} as never,
       auditLog as never,
+      undefined,
+      undefined,
+      sportsMutationEvents as never,
     );
 
     await expect(
@@ -343,6 +369,7 @@ describe('EventGroupsResolver authorization', () => {
       }),
       tx,
     );
+    expect(sportsMutationEvents.publishForBackingEventGroup).toHaveBeenCalledWith('group-1');
   });
 
   it('records event group deletion inside the transaction before removing the search document', async () => {

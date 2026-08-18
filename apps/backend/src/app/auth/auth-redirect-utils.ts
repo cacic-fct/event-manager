@@ -9,6 +9,9 @@ export function createAllowedCallbackRedirectOrigins(
 ): Set<string> {
   const origins = new Set<string>([
     'http://localhost:3000',
+    'https://localhost:4200',
+    'https://localhost:4201',
+
     'https://eventos.cacic.com.br',
     'https://secompp.cacic.com.br',
   ]);
@@ -25,6 +28,9 @@ export function createAllowedPostLogoutRedirectOrigins(
 ): Set<string> {
   const origins = new Set<string>([
     'http://localhost:4200',
+    'https://localhost:4200',
+    'https://localhost:4201',
+
     'https://eventos.cacic.com.br',
     'https://secompp.cacic.com.br',
   ]);

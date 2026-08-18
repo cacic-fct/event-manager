@@ -8,6 +8,7 @@ import {
   ReceiptImageProcessingLimitError,
   ReceiptImageProcessingTimeoutError,
 } from './utils/receipt-image-processing.utils';
+import * as receiptPdfProcessing from './utils/receipt-pdf-processing.utils';
 
 describe('MajorEventReceiptsProcessor expected amount resolution', () => {
   it('falls back to stored self-service amount when no configured tier matches legacy data', () => {
@@ -227,6 +228,42 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     );
   });
 
+  it('uses embedded PDF text for analysis and converts its composite preview without OCR', async () => {
+    const { analysis, prisma, processor, s3 } = createProcessor();
+    const receipt = receiptFixture({ mimeType: 'application/pdf', objectKey: 'receipts/receipt-1.pdf' });
+    const previewBuffer = Buffer.from('pdf-preview');
+    jest.spyOn(receiptPdfProcessing, 'processReceiptPdf').mockResolvedValue({
+      text: 'PIX Maria 42,00',
+      previewBuffer,
+    });
+    processor['recognizeReceiptText'] = jest.fn();
+    processor['convertReceiptToAvif'] = jest.fn().mockResolvedValue(undefined);
+    prisma.majorEventReceipt.findUnique.mockResolvedValue(receipt);
+    s3.downloadFile.mockResolvedValue({
+      contentLength: 12,
+      stream: Readable.from([Buffer.from('%PDF-1.7')]),
+    });
+    analysis.analyze.mockReturnValue({
+      expectedAmountCents: 4200,
+      matchedAmountCents: 4200,
+      amountMatched: true,
+      matchedAmountText: '42,00',
+      nameMatched: true,
+      matchedNameText: 'Maria',
+    });
+
+    await expect(processor.process({ data: { receiptId: receipt.id } } as never)).resolves.toBeUndefined();
+
+    expect(analysis.analyze).toHaveBeenCalledWith('PIX Maria 42,00', 'Maria Silva', 4200);
+    expect(processor['recognizeReceiptText']).not.toHaveBeenCalled();
+    expect(processor['convertReceiptToAvif']).toHaveBeenCalledWith(
+      receipt.id,
+      receipt.objectKey,
+      previewBuffer,
+      receipt.expiresAt,
+    );
+  });
+
   it('marks retryable receipt processing failures before rethrowing them', async () => {
     const { prisma, processor, s3 } = createProcessor();
     const receipt = receiptFixture();
@@ -304,6 +341,7 @@ function receiptFixture(overrides: Record<string, unknown> = {}) {
   return {
     id: 'receipt-1',
     objectKey: 'receipts/receipt-1.png',
+    mimeType: 'image/png',
     expiresAt: new Date('2026-12-31T23:59:59.000Z'),
     subscription: {
       amountPaid: null,

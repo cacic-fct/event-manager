@@ -1,8 +1,5 @@
 import { toBuffer } from '@bwip-js/node';
 import { NotFoundException } from '@nestjs/common';
-import { mkdtemp, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
 import { chromium } from 'playwright';
 import { CertificateDownloadService } from './certificate-download.service';
@@ -23,10 +20,21 @@ jest.mock('../shared/zip-archive', () => ({
 }));
 
 describe('CertificateDownloadService', () => {
+  const originalPublicAppOrigin = process.env.PUBLIC_APP_ORIGIN;
+
   beforeEach(() => {
+    process.env.PUBLIC_APP_ORIGIN = 'https://eventos.example.test/app';
     jest.mocked(toBuffer).mockReset();
     jest.mocked(chromium.launch).mockReset();
     jest.mocked(createZipArchive).mockReset();
+  });
+
+  afterAll(() => {
+    if (originalPublicAppOrigin === undefined) {
+      delete process.env.PUBLIC_APP_ORIGIN;
+    } else {
+      process.env.PUBLIC_APP_ORIGIN = originalPublicAppOrigin;
+    }
   });
 
   it('filters inactive or deleted configs from public downloads', async () => {
@@ -56,25 +64,16 @@ describe('CertificateDownloadService', () => {
     );
   });
 
-  it('renders configured certificates with template variables, inline CSS assets, and QR codes', async () => {
-    const templateDirectory = await mkdtemp(join(tmpdir(), 'certificate-template-'));
-    const htmlPath = join(templateDirectory, 'certificate.html');
-    const cssPath = join(templateDirectory, 'certificate.css');
-    const imagePath = join(templateDirectory, 'seal.png');
-    await writeFile(
-      htmlPath,
-      '<html><head></head><body>{{ personName }} {{ workload }} {{ active }} {{ missing }} <img src="{{ verificationQrCodeDataUrl }}"></body></html>',
-      'utf8',
-    );
-    await writeFile(cssPath, '.seal { background: url("./seal.png"); }', 'utf8');
-    await writeFile(imagePath, Buffer.from('seal'));
+  it('renders current database template defaults over stale issued data, with self-contained CSS and QR codes', async () => {
     const setContent = jest.fn().mockResolvedValue(undefined);
+    const evaluate = jest.fn().mockResolvedValue(undefined);
     const pdf = jest.fn().mockResolvedValue(Buffer.from('pdf-content'));
     const close = jest.fn().mockResolvedValue(undefined);
     jest.mocked(toBuffer).mockResolvedValue(Buffer.from('qr-code'));
     jest.mocked(chromium.launch).mockResolvedValue({
       newPage: jest.fn().mockResolvedValue({
         setContent,
+        evaluate,
         pdf,
       }),
       close,
@@ -92,6 +91,7 @@ describe('CertificateDownloadService', () => {
           },
           config: {
             certificateFields: {
+              workload: 20,
               extra: ['field'],
             },
           },
@@ -99,12 +99,17 @@ describe('CertificateDownloadService', () => {
             name: 'Maria João',
           },
           certificateTemplate: {
-            template: {
-              engine: 'playwright',
-              htmlTemplatePath: htmlPath,
-              cssTemplatePath: cssPath,
-              verificationUrlPattern: 'https://eventos.example.test/validar/{certificateID}',
+            certificateFields: {
+              personName: {
+                label: 'Nome',
+                type: 'string',
+                required: true,
+                default: '<Maria corrigida & Cia>',
+              },
             },
+            htmlTemplate:
+              '<html><head></head><body>{{ personName }} {{ workload }} {{ active }} {{ missing }} <img src="{{ verificationQrCodeDataUrl }}"></body></html>',
+            cssTemplate: '.seal { background: url("data:image/png;base64,c2VhbA=="); }',
           },
         }),
       },
@@ -123,11 +128,11 @@ describe('CertificateDownloadService', () => {
     });
     expect(toBuffer).toHaveBeenCalledWith({
       bcid: 'qrcode',
-      text: 'https://eventos.example.test/validar/certificate-1',
+      text: 'https://eventos.example.test/app/validate/certificate-1',
       scale: 3,
       includetext: false,
     });
-    expect(setContent).toHaveBeenCalledWith(expect.stringContaining('&lt;Maria &amp; João&gt; 12 true'), {
+    expect(setContent).toHaveBeenCalledWith(expect.stringContaining('&lt;Maria corrigida &amp; Cia&gt; 20 true'), {
       waitUntil: 'networkidle',
     });
     expect(setContent).toHaveBeenCalledWith(expect.stringContaining('data:image/png;base64,c2VhbA=='), {
@@ -140,19 +145,19 @@ describe('CertificateDownloadService', () => {
       format: 'A4',
       printBackground: true,
     });
+    expect(evaluate).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  it('renders public certificates without CSS and appends ids to custom verification URL bases', async () => {
-    const templateDirectory = await mkdtemp(join(tmpdir(), 'certificate-template-'));
-    const htmlPath = join(templateDirectory, 'certificate.html');
-    await writeFile(htmlPath, '<html><body>{{ verificationUrl }} {{ missing }}</body></html>', 'utf8');
+  it('renders public certificates without CSS using the configured public app origin', async () => {
     const setContent = jest.fn().mockResolvedValue(undefined);
+    const evaluate = jest.fn().mockResolvedValue(undefined);
     const close = jest.fn().mockResolvedValue(undefined);
     jest.mocked(toBuffer).mockResolvedValue(Buffer.from('qr-code'));
     jest.mocked(chromium.launch).mockResolvedValue({
       newPage: jest.fn().mockResolvedValue({
         setContent,
+        evaluate,
         pdf: jest.fn().mockResolvedValue(Buffer.from('public-pdf')),
       }),
       close,
@@ -171,11 +176,8 @@ describe('CertificateDownloadService', () => {
             name: '!!!',
           },
           certificateTemplate: {
-            template: {
-              engine: 'playwright',
-              htmlTemplatePath: htmlPath,
-              verificationUrlPattern: 'https://eventos.example.test/validar///',
-            },
+            htmlTemplate: '<html><body>{{ verificationUrl }} {{ missing }}</body></html>',
+            cssTemplate: null,
           },
         }),
       },
@@ -205,10 +207,10 @@ describe('CertificateDownloadService', () => {
       }),
     );
     expect(toBuffer).toHaveBeenCalledWith(
-      expect.objectContaining({ text: 'https://eventos.example.test/validar/certificate-2' }),
+      expect.objectContaining({ text: 'https://eventos.example.test/app/validate/certificate-2' }),
     );
     expect(setContent).toHaveBeenCalledWith(
-      '<html><body>https://eventos.example.test/validar/certificate-2 </body></html>',
+      '<html><body>https://eventos.example.test/app/validate/certificate-2 </body></html>',
       { waitUntil: 'networkidle' },
     );
     expect(close).toHaveBeenCalledTimes(1);

@@ -26,7 +26,7 @@ import {
   EventDraftSelectorResult,
 } from './dialogs/event-draft-selector-dialog.component';
 import { PersonCreateDialogComponent } from '../people/dialogs/person-create-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { buildEventListFilters, resetEventFiltersForm } from '../event-filters/event-list-filters';
 import {
   DEFAULT_DRAFT_EVENT_EMOJI,
@@ -80,6 +80,7 @@ export class EventsService {
   private readonly majorEventsApi = inject(MajorEventApiService);
   private readonly eventPeople = inject(EventPeopleService);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly formState = inject(EventFormStateService);
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
@@ -299,7 +300,7 @@ export class EventsService {
       onlineAttendanceCode: '',
       onlineAttendanceStartDate: '',
       onlineAttendanceEndDate: '',
-      publiclyVisible: true,
+      isPubliclyListed: true,
       displayLecturerProfile: true,
       youtubeCode: '',
       buttonText: '',
@@ -408,7 +409,7 @@ export class EventsService {
       }
       this.resetEventForm();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o evento.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível salvar o evento.');
     } finally {
       this.ui.loading.set(false);
     }
@@ -479,9 +480,7 @@ export class EventsService {
       this.snackbar.open('Rascunhos excluídos.', 'Fechar', { duration: 2500 });
       await this.loadEvents();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir os rascunhos.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível excluir os rascunhos.');
     } finally {
       this.ui.loading.set(false);
     }
@@ -517,7 +516,7 @@ export class EventsService {
       await this.loadEvents();
       await this.selectEventById(created.id);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar o evento.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível duplicar o evento.');
     } finally {
       this.ui.loading.set(false);
     }
@@ -819,7 +818,7 @@ export class EventsService {
       }
       await this.loadEvents();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o evento.'), 'Fechar', { duration: 5000 });
+      this.feedback.error(error, 'Não foi possível excluir o evento.');
     }
   }
 
@@ -978,7 +977,7 @@ export class EventsService {
         ? toOptionalIsoDateTime(raw.onlineAttendanceStartDate)
         : null,
       onlineAttendanceEndDate: isOnlineAttendanceAllowed ? toOptionalIsoDateTime(raw.onlineAttendanceEndDate) : null,
-      publiclyVisible: raw.publiclyVisible,
+      isPubliclyListed: raw.isPubliclyListed,
       displayLecturerProfile: raw.displayLecturerProfile,
       youtubeCode: raw.youtubeCode.trim() || null,
       buttonText: raw.buttonText.trim() || null,
@@ -1086,7 +1085,7 @@ export class EventsService {
         eventItem.onlineAttendanceStartDate != null ? fromIsoToLocalInput(eventItem.onlineAttendanceStartDate) : '',
       onlineAttendanceEndDate:
         eventItem.onlineAttendanceEndDate != null ? fromIsoToLocalInput(eventItem.onlineAttendanceEndDate) : '',
-      publiclyVisible: eventItem.publiclyVisible,
+      isPubliclyListed: eventItem.isPubliclyListed,
       displayLecturerProfile: eventItem.displayLecturerProfile ?? true,
       youtubeCode: eventItem.youtubeCode ?? '',
       buttonText: eventItem.buttonText ?? '',

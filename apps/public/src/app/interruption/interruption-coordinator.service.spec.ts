@@ -5,7 +5,7 @@ import { AuthService } from '@cacic-fct/shared-angular';
 import { Subject, of, throwError } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import type { Interruption } from './interruption-flow';
-import { INTERRUPTION_FLOW, InterruptionFlow } from './interruption-flow';
+import { INTERRUPTION_FLOW, INTERRUPTION_PRIORITY_ORDERS, InterruptionFlow } from './interruption-flow';
 import { InterruptionCoordinatorService, selectNextInterruption } from './interruption-coordinator.service';
 
 const attendance = interruption('online-attendance', 'NORMAL', 100);
@@ -21,13 +21,30 @@ describe('selectNextInterruption', () => {
     expect(selectNextInterruption([attendance, urgent, requiredForm], { currentUrl: '/menu' })).toBe(urgent);
   });
 
-  it('does not interrupt form completion, attendance registration, or scanner collection with normal flows', () => {
+  it('does not interrupt focused registration, payment, attendance, or sports operation workflows with normal flows', () => {
     expect(selectNextInterruption([attendance, requiredForm], { currentUrl: '/profile/forms/form-1' })).toBeNull();
     expect(
       selectNextInterruption([attendance, requiredForm], { currentUrl: '/attendance/register/event-1' }),
     ).toBeNull();
     expect(
       selectNextInterruption([attendance, requiredForm], { currentUrl: '/attendance/collect/event-1' }),
+    ).toBeNull();
+    expect(
+      selectNextInterruption([attendance, requiredForm], {
+        currentUrl: '/major-event/major-1/ranked-subscription?step=rank',
+      }),
+    ).toBeNull();
+    expect(
+      selectNextInterruption([attendance, requiredForm], { currentUrl: '/major-event/major-1/payment' }),
+    ).toBeNull();
+    expect(
+      selectNextInterruption([attendance, requiredForm], { currentUrl: '/tournament/tournament-1/subscribe' }),
+    ).toBeNull();
+    expect(
+      selectNextInterruption([attendance, requiredForm], { currentUrl: '/sports/operate/match-1?mode=CHECK_IN' }),
+    ).toBeNull();
+    expect(
+      selectNextInterruption([attendance, requiredForm], { currentUrl: '/sports/team/team-1' }),
     ).toBeNull();
   });
 
@@ -44,10 +61,39 @@ describe('InterruptionCoordinatorService', () => {
   it('starts checks, reacts to flow changes and navigation, and stops listening on cleanup', async () => {
     const changes = new Subject<void>();
     const flow = {
-      resolve: vi.fn(() => of(attendance)),
+      resolve: vi.fn(() => of(urgent)),
       changes: () => changes,
     } satisfies InterruptionFlow;
     const { events, router, service } = createService([flow]);
+
+    service.start();
+    expect(router.navigateByUrl).toHaveBeenCalledWith(urgent.target);
+
+    await settleNavigation();
+    router.navigateByUrl.mockClear();
+    changes.next();
+    expect(router.navigateByUrl).toHaveBeenCalledWith(urgent.target);
+
+    await settleNavigation();
+    router.navigateByUrl.mockClear();
+    events.next(new NavigationEnd(1, '/menu', '/menu'));
+    expect(router.navigateByUrl).toHaveBeenCalledWith(urgent.target);
+
+    service.ngOnDestroy();
+    await settleNavigation();
+    router.navigateByUrl.mockClear();
+    changes.next();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('does not repeat a normal interruption after its first trigger, but allows another normal interruption', async () => {
+    const changes = new Subject<void>();
+    let currentInterruption = attendance;
+    const flow = {
+      resolve: vi.fn(() => of(currentInterruption)),
+      changes: () => changes,
+    } satisfies InterruptionFlow;
+    const { router, service } = createService([flow]);
 
     service.start();
     expect(router.navigateByUrl).toHaveBeenCalledWith(attendance.target);
@@ -55,18 +101,36 @@ describe('InterruptionCoordinatorService', () => {
     await settleNavigation();
     router.navigateByUrl.mockClear();
     changes.next();
-    expect(router.navigateByUrl).toHaveBeenCalledWith(attendance.target);
-
-    await settleNavigation();
-    router.navigateByUrl.mockClear();
-    events.next(new NavigationEnd(1, '/menu', '/menu'));
-    expect(router.navigateByUrl).toHaveBeenCalledWith(attendance.target);
-
-    service.ngOnDestroy();
-    await settleNavigation();
-    router.navigateByUrl.mockClear();
-    changes.next();
     expect(router.navigateByUrl).not.toHaveBeenCalled();
+
+    currentInterruption = requiredForm;
+    changes.next();
+    expect(router.navigateByUrl).toHaveBeenCalledWith(requiredForm.target);
+  });
+
+  it('waits for a higher-priority interruption before allowing the default redirect candidate', () => {
+    const interruptionResolution = new Subject<Interruption | null>();
+    const defaultRedirect = interruption(
+      'default-redirect:/calendar',
+      'NORMAL',
+      INTERRUPTION_PRIORITY_ORDERS.DEFAULT_REDIRECT,
+    );
+    const defaultFlow = {
+      isFallback: true,
+      resolve: vi.fn(() => of(defaultRedirect)),
+    } satisfies InterruptionFlow;
+    const competingFlow = { resolve: vi.fn(() => interruptionResolution) } satisfies InterruptionFlow;
+    const { router, service } = createService([defaultFlow, competingFlow]);
+
+    service.start();
+
+    expect(defaultFlow.resolve).not.toHaveBeenCalled();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+    interruptionResolution.next(attendance);
+    interruptionResolution.complete();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith(attendance.target);
+    expect(defaultFlow.resolve).not.toHaveBeenCalled();
   });
 
   it('isolates a failed flow and still follows a valid interruption', () => {
@@ -115,6 +179,32 @@ describe('InterruptionCoordinatorService', () => {
     expect(flow.resolve).not.toHaveBeenCalled();
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
+
+  it('still allows the default redirect fallback when the interruption kill switch is disabled', () => {
+    const defaultRedirect = interruption(
+      'default-redirect:/calendar',
+      'NORMAL',
+      INTERRUPTION_PRIORITY_ORDERS.DEFAULT_REDIRECT,
+    );
+    const flow = { isFallback: true, resolve: vi.fn(() => of(defaultRedirect)) } satisfies InterruptionFlow;
+    const { router, service } = createService([flow], signal(true), signal(false));
+
+    service.start();
+
+    expect(flow.resolve).toHaveBeenCalled();
+    expect(router.navigateByUrl).toHaveBeenCalledWith(defaultRedirect.target);
+  });
+
+  it('keeps interruptions active when the noredirect query parameter is present', () => {
+    const flow = { resolve: vi.fn(() => of(attendance)) } satisfies InterruptionFlow;
+    const { router, service } = createService([flow]);
+    router.url = '/calendar?noredirect';
+
+    service.start();
+
+    expect(flow.resolve).toHaveBeenCalledWith({ currentUrl: '/calendar?noredirect' });
+    expect(router.navigateByUrl).toHaveBeenCalledWith(attendance.target);
+  });
 });
 
 function createService(
@@ -123,7 +213,7 @@ function createService(
   interruptionsEnabled = signal(true),
 ): {
   events: Subject<unknown>;
-  router: { navigateByUrl: ReturnType<typeof vi.fn> };
+  router: { navigateByUrl: ReturnType<typeof vi.fn>; url: string };
   service: InterruptionCoordinatorService;
 } {
   const events = new Subject<unknown>();

@@ -8,6 +8,7 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { MenuComponent } from './menu.component';
+import { DefaultRedirectApiService } from '../landing/default-redirect-api.service';
 
 describe('MenuComponent', () => {
   let component: MenuComponent;
@@ -57,6 +58,10 @@ describe('MenuComponent', () => {
             },
           },
         },
+        {
+          provide: DefaultRedirectApiService,
+          useValue: { getCurrentUserSportsAutoroute: () => of(null) },
+        },
       ],
     }).compileComponents();
 
@@ -85,6 +90,16 @@ describe('MenuComponent', () => {
     expect(text).not.toContain('Editar informações da conta');
     expect(text).not.toContain('Sair da conta');
     expect(fixture.nativeElement.querySelector('a[href="https://account.cacic.com.br/app/"]')).toBeNull();
+  });
+
+  it('shows the map first in the Utilities list', () => {
+    const utilityList = [...fixture.nativeElement.querySelectorAll('mat-nav-list')].find((list: Element) =>
+      list.textContent?.includes('Utilitários'),
+    );
+    const links = utilityList?.querySelectorAll('a');
+
+    expect(links?.[0]?.getAttribute('href')).toBe('/map');
+    expect(links?.[0]?.textContent).toContain('Mapa');
   });
 
   it('shows the admin panel link for users with workspace entry permissions', async () => {

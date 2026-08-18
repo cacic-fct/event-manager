@@ -39,12 +39,11 @@ describe('AccountManagerGrpcClient', () => {
     });
 
     await expect(client.getPrivacySettings('user-1')).resolves.toHaveLength(1);
-    expect(call).toHaveBeenCalledWith(
-      'GetPrivacySettings',
-      { userId: 'user-1' },
-      expect.anything(),
-      { idempotent: true, maxAttempts: 3, timeoutMs: 10_000 },
-    );
+    expect(call).toHaveBeenCalledWith('GetPrivacySettings', { userId: 'user-1' }, expect.anything(), {
+      idempotent: true,
+      maxAttempts: 3,
+      timeoutMs: 10_000,
+    });
     expect((call.mock.calls[0][2] as import('@grpc/grpc-js').Metadata).get('authorization')).toEqual([
       'Bearer access-token',
     ]);
@@ -64,23 +63,19 @@ describe('AccountManagerGrpcClient', () => {
     await expect(client.recordCookieConsent('user-1')).resolves.toBeUndefined();
     await expect(client.relayTotpSeed('user-1')).resolves.toMatchObject({ userId: 'user-1', seed: 'seed' });
 
-    expect(call).toHaveBeenNthCalledWith(
-      1,
-      'RecordCookieConsent',
-      { userId: 'user-1' },
-      expect.anything(),
-      { idempotent: true, maxAttempts: 3, timeoutMs: 10_000 },
-    );
+    expect(call).toHaveBeenNthCalledWith(1, 'RecordCookieConsent', { userId: 'user-1' }, expect.anything(), {
+      idempotent: true,
+      maxAttempts: 3,
+      timeoutMs: 10_000,
+    });
     expect((call.mock.calls[1][2] as import('@grpc/grpc-js').Metadata).get('authorization')).toEqual([
       'Bearer access-token',
     ]);
-    expect(call).toHaveBeenNthCalledWith(
-      2,
-      'EnsureTotpSeed',
-      { userId: 'user-1' },
-      expect.anything(),
-      { idempotent: true, maxAttempts: 3, timeoutMs: 10_000 },
-    );
+    expect(call).toHaveBeenNthCalledWith(2, 'EnsureTotpSeed', { userId: 'user-1' }, expect.anything(), {
+      idempotent: true,
+      maxAttempts: 3,
+      timeoutMs: 10_000,
+    });
   });
 
   it('rejects malformed privacy responses and maps gRPC failures to service unavailable', async () => {

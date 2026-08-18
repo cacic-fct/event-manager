@@ -1,0 +1,80 @@
+<div class="matches-workspace">
+  <header class="matches-surface-header">
+    <div class="matches-heading">
+      <div class="sport-mark" aria-hidden="true">
+        @if (selectedCategory(); as category) {
+          <lib-twemoji [emoji]="category.eventGroup?.emoji || sportEmoji(category.sport)" />
+        } @else {
+          <span>🏅</span>
+        }
+      </div>
+      <div>
+        <h3>Partidas e chaves</h3>
+        <p>Monte os confrontos, confira a agenda e edite cada partida no mesmo fluxo.</p>
+      </div>
+    </div>
+
+    <div class="matches-toolbar">
+      <mat-form-field class="category-picker" subscriptSizing="dynamic">
+        <mat-label>Modalidade em edição</mat-label>
+        <mat-select [value]="workspace.selectedCategoryId()" (selectionChange)="selectCategoryById($event.value)">
+          <mat-select-trigger>
+            @if (selectedCategory(); as category) {
+              <span class="category-trigger">
+                <lib-twemoji [emoji]="category.eventGroup?.emoji || sportEmoji(category.sport)" />
+                <span>{{ category.name }}</span>
+              </span>
+            } @else {
+              Escolha uma modalidade
+            }
+          </mat-select-trigger>
+          @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+            <mat-option [value]="category.id">
+              <span class="category-option">
+                <lib-twemoji [emoji]="category.eventGroup?.emoji || sportEmoji(category.sport)" />
+                <span>{{ category.name }}</span>
+              </span>
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button mat-flat-button type="button" (click)="workspace.newMatch()" [disabled]="!selectedCategory()">
+        <mat-icon>add</mat-icon>
+        Nova partida
+      </button>
+    </div>
+  </header>
+
+  @if (workspace.categoryRead(); as read) {
+    <div class="matches-context" aria-label="Resumo da modalidade">
+      <span class="matches-context-item">
+        <mat-icon aria-hidden="true">account_tree</mat-icon>
+        <strong>{{ formatLabel(read.category.format) }}</strong>
+      </span>
+      <span class="matches-context-item">
+        <mat-icon aria-hidden="true">groups</mat-icon>
+        {{ read.registrations.length }} {{ read.registrations.length === 1 ? 'equipe inscrita' : 'equipes inscritas' }}
+      </span>
+      <span class="matches-context-item">
+        <mat-icon aria-hidden="true">stadium</mat-icon>
+        {{ read.matches.length }} {{ read.matches.length === 1 ? 'partida' : 'partidas' }}
+      </span>
+      <span class="matches-context-item">
+        <mat-icon aria-hidden="true">flag</mat-icon>
+        {{ read.stages.length }} {{ read.stages.length === 1 ? 'fase' : 'fases' }}
+      </span>
+      <span class="state-label matches-context-status">{{ categoryStatusLabel(read.category.status) }}</span>
+    </div>
+
+    <div class="match-studio">
+      <app-sports-match-bracket-list [categoryRead]="read" />
+      <app-sports-match-editor [categoryRead]="read" />
+    </div>
+  } @else {
+    <section class="matches-empty panel" aria-live="polite">
+      <mat-icon aria-hidden="true">touch_app</mat-icon>
+      <h4>Escolha uma modalidade para começar</h4>
+      <p>A chave, a agenda e o editor de partidas aparecerão aqui quando você selecionar uma modalidade acima.</p>
+    </section>
+  }
+</div>

@@ -1,0 +1,33 @@
+<h2 mat-dialog-title>Filtrar eventos</h2>
+<mat-dialog-content>
+  <section aria-labelledby="map-audience-filter-title">
+    <h3 id="map-audience-filter-title">Participação</h3>
+    <mat-radio-group
+      class="filter-options"
+      aria-label="Filtrar por participação"
+      [value]="audience()"
+      (change)="audience.set($event.value)">
+      <mat-radio-button value="ALL">Todos os eventos</mat-radio-button>
+      <mat-radio-button value="MINE" [disabled]="!data.isAuthenticated">Meus eventos</mat-radio-button>
+    </mat-radio-group>
+    @if (!data.isAuthenticated) {
+      <p class="supporting-text"><mat-icon aria-hidden="true">lock</mat-icon> Entre para ver seus eventos.</p>
+    }
+  </section>
+
+  <section aria-labelledby="map-date-filter-title">
+    <h3 id="map-date-filter-title">Período</h3>
+    <mat-radio-group
+      class="filter-options"
+      aria-label="Filtrar por período"
+      [value]="date()"
+      (change)="date.set($event.value)">
+      <mat-radio-button value="ALL">Todos os eventos</mat-radio-button>
+      <mat-radio-button value="TODAY">Eventos de hoje</mat-radio-button>
+    </mat-radio-group>
+  </section>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="clear()">Limpar</button>
+  <button mat-flat-button type="button" (click)="apply()">Aplicar</button>
+</mat-dialog-actions>

@@ -12,12 +12,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { WorkspaceMajorEventSubscription } from '@cacic-fct/event-manager-admin-contracts';
 import { isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { SubscriptionsService } from './subscriptions.service';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
 
 @Component({
   selector: 'app-workspace-major-event-subscriptions-subtab',
@@ -35,6 +36,7 @@ import { SubscriptionsService } from './subscriptions.service';
     MatTooltipModule,
     RouterLink,
     TwemojiComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './major-event-subscriptions.component.html',
   styleUrls: [
@@ -82,7 +84,42 @@ export class MajorEventSubscriptionsComponent {
   }
 
   protected statusLabel(status: string): string {
-    return getSubscriptionStatusLabel(status);
+    return (
+      {
+        PENDING: 'Aguardando análise',
+        APPROVED: 'Aprovada',
+        CHANGES_REQUESTED: 'Ajustes solicitados',
+        WAITING_PAYMENT: 'Aguardando pagamento',
+        ACTIVE: 'Participação ativa',
+        REJECTED: 'Não aprovada',
+        SUSPENDED: 'Suspensa',
+        WITHDRAWN: 'Retirada',
+      }[status] ?? getSubscriptionStatusLabel(status)
+    );
+  }
+
+  protected sportsPaymentStatusLabel(status: string): string {
+    return (
+      {
+        NOT_REQUIRED: 'Pagamento não exigido',
+        NOT_AVAILABLE: 'Pagamento indisponível',
+        WAITING_APPROVAL: 'Aguardando aprovação',
+        WAITING_PAYMENT: 'Aguardando pagamento',
+        UNDER_REVIEW: 'Pagamento em análise',
+        PAID: 'Pagamento confirmado',
+        REJECTED: 'Pagamento rejeitado',
+      }[status] ?? status
+    );
+  }
+
+  protected sportsParticipantSourceLabel(source: string): string {
+    return (
+      {
+        ADMIN: 'Adicionada pela administração',
+        TEAM_ASSIGNMENT: 'Adicionada por equipe',
+        SELF_SUBSCRIPTION: 'Inscrição da própria pessoa',
+      }[source] ?? source
+    );
   }
 
   protected receiptValidationLink(): string[] {

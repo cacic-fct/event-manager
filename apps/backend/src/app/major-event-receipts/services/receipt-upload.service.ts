@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   GoneException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -21,6 +22,8 @@ import { AttendanceCategoryService } from '../../events/attendance-category.serv
 import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { S3Service } from '../../s3/s3.service';
+import { refreshSportsParticipantForSubscription } from '../../sports/sports-payment.service';
+import { SportsPlayerApplicationRealtimeService } from '../../sports/applications/sports-player-application-realtime.service';
 import { buildBullMqJobId } from '../../queues/bullmq-job-id';
 import { mapReceipt } from '../mappers/receipt-queue.mapper';
 import {
@@ -31,7 +34,11 @@ import {
   ReceiptProcessingJob,
   UploadedReceiptFile,
 } from '../receipt.types';
-import { assertValidReceiptUpload, buildReceiptObjectKey } from '../utils/receipt-file.utils';
+import { assertValidReceiptUpload, buildReceiptObjectKey, isPdfReceiptMimeType } from '../utils/receipt-file.utils';
+import {
+  assertReceiptPdfPageCountWithinLimit,
+  ReceiptPdfProcessingError,
+} from '../utils/receipt-pdf-processing.utils';
 import {
   assertReceiptBufferWithinProcessingLimits,
   isReceiptImageProcessingError,
@@ -51,6 +58,13 @@ export class ReceiptUploadService {
     private readonly frozenResources: FrozenResourceService = {
       assertMajorEventMutable: async () => undefined,
     } as unknown as FrozenResourceService,
+    @Inject(SportsPlayerApplicationRealtimeService)
+    private readonly sportsApplicationRealtime: Pick<
+      SportsPlayerApplicationRealtimeService,
+      'publishPaymentChanged'
+    > = {
+      publishPaymentChanged: async () => undefined,
+    },
   ) {}
 
   async getCurrentReceipt(
@@ -93,7 +107,6 @@ export class ReceiptUploadService {
           select: {
             id: true,
             isPaymentRequired: true,
-            subscriptionEndDate: true,
           },
         },
       },
@@ -107,10 +120,6 @@ export class ReceiptUploadService {
       throw new BadRequestException(`Major event ${majorEventId} does not require receipt upload.`);
     }
 
-    if (subscription.majorEvent.subscriptionEndDate && new Date() > subscription.majorEvent.subscriptionEndDate) {
-      throw new BadRequestException(`Receipt uploads for major event ${majorEventId} are closed.`);
-    }
-
     if (subscription.subscriptionStatus === SubscriptionStatus.CONFIRMED) {
       throw new BadRequestException(`Subscription for major event ${majorEventId} is already confirmed.`);
     }
@@ -119,7 +128,7 @@ export class ReceiptUploadService {
       throw new BadRequestException(`Subscription for major event ${majorEventId} is canceled.`);
     }
 
-    await this.assertReceiptImageCanBeProcessed(file.buffer);
+    await this.assertReceiptCanBeProcessed(file.buffer, file.mimetype);
 
     const receiptId = randomUUID();
     const uploadedAt = new Date();
@@ -174,10 +183,12 @@ export class ReceiptUploadService {
       if (updateResult.count !== 1) {
         throw new ConflictException(`Subscription for major event ${majorEventId} cannot receive a new receipt.`);
       }
+      await refreshSportsParticipantForSubscription(tx, subscription.id);
       await this.attendanceCategories.refreshForMajorEventPerson(majorEventId, person.id, tx);
 
       return createdReceipt;
     });
+    await this.sportsApplicationRealtime.publishPaymentChanged(subscription.id, 'RECEIPT_UPLOADED');
 
     await this.receiptQueue.add(
       'process',
@@ -239,7 +250,20 @@ export class ReceiptUploadService {
     };
   }
 
-  private async assertReceiptImageCanBeProcessed(buffer: Buffer): Promise<void> {
+  private async assertReceiptCanBeProcessed(buffer: Buffer, mimeType: string): Promise<void> {
+    if (isPdfReceiptMimeType(mimeType)) {
+      try {
+        await assertReceiptPdfPageCountWithinLimit(buffer);
+      } catch (error: unknown) {
+        if (error instanceof ReceiptPdfProcessingError) {
+          throw new BadRequestException(error.message);
+        }
+
+        throw error;
+      }
+      return;
+    }
+
     try {
       await assertReceiptBufferWithinProcessingLimits(buffer);
     } catch (error: unknown) {

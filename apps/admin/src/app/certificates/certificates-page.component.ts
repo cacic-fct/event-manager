@@ -13,7 +13,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { Certificate, CertificateConfig } from '@cacic-fct/event-manager-admin-contracts';
 import {
   isFrozenEvent,
@@ -23,6 +23,7 @@ import {
 } from '../resource-state/frozen-resource';
 import { CertificatesService } from './certificates.service';
 import { PermissionsService } from '../permissions/permissions.service';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
 
 @Component({
   selector: 'app-workspace-certificates-tab',
@@ -40,6 +41,7 @@ import { PermissionsService } from '../permissions/permissions.service';
     MatSelectModule,
     MatTooltipModule,
     TwemojiComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './certificates-page.component.html',
   styleUrls: [

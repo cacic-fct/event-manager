@@ -3,11 +3,12 @@ import {
   EVENT_MANAGER_PERMISSION_SET,
   EventManagerKeycloakRole,
   Permission,
+  isPermissionGrantScopeCompatible,
   parsePermission,
   requiresGlobalPermissionGrantScope,
 } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { CertificateScope, EventManagerPermissionGrantScope } from '@prisma/client';
+import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
 import { addHours, isFuture, isWithinInterval, subHours } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,6 +26,17 @@ export type AuthorizationResourceContext = {
   eventFormId?: string;
   eventFormLinkId?: string;
   eventFormResponseId?: string;
+  sportsTournamentId?: string;
+  sportsCategoryId?: string;
+  sportsTeamId?: string;
+  sportsRegistrationId?: string;
+  sportsMatchId?: string;
+  sportsOfficialAssignmentId?: string;
+  sportsTeamChangeRequestId?: string;
+  sportsTeamRepresentativeId?: string;
+  sportsPlayerApplicationId?: string;
+  sportsMatchActionId?: string;
+  sportsMatchRosterId?: string;
   scope?: string;
   targetId?: string;
   genericId?: string;
@@ -32,7 +44,7 @@ export type AuthorizationResourceContext = {
   allowScopedCollection?: boolean;
 };
 
-type ResolvedGrantTarget = {
+export type ResolvedGrantTarget = {
   eventIds: Set<string>;
   majorEventIds: Set<string>;
   eventGroupIds: Set<string>;
@@ -47,7 +59,7 @@ export type AccessibleEventGrantTargets = {
 
 type ActiveGrant = {
   permission: string;
-  scope: EventManagerPermissionGrantScope;
+  scope: EventManagerPermissionScope;
   eventId: string | null;
   majorEventId: string | null;
   eventGroupId: string | null;
@@ -59,9 +71,14 @@ const ATTENDANCE_COLLECTION_PERMISSIONS = [
   Permission.EventAttendance.Update,
 ] as const;
 
+import { SportsAuthorizationTargetService } from './sports-authorization-target.service';
+import { findActiveRolePermissionScopes } from './effective-role-scopes';
+
 @Injectable()
-export class AuthorizationPolicyService {
-  constructor(private readonly prisma: PrismaService) {}
+export class AuthorizationPolicyService extends SportsAuthorizationTargetService {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma);
+  }
 
   hasEventManagerAccess(user: AuthenticatedUser | undefined): boolean {
     return Boolean(user && (this.isSuperAdmin(user) || user.roleSet.has(EventManagerKeycloakRole.Access)));
@@ -116,7 +133,7 @@ export class AuthorizationPolicyService {
         .filter(
           (grant) =>
             !requiresGlobalPermissionGrantScope(grant.permission as Permission) ||
-            grant.scope === EventManagerPermissionGrantScope.GLOBAL,
+            grant.scope === EventManagerPermissionScope.GLOBAL,
         )
         .map((grant) => grant.permission),
     );
@@ -139,7 +156,7 @@ export class AuthorizationPolicyService {
     const grants = await this.findActiveGrants(user.sub, requirements);
     const grantedPermissions = new Set(
       grants
-        .filter((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)
+        .filter((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)
         .map((grant) => grant.permission),
     );
     return requirements.filter((permission) => grantedPermissions.has(permission));
@@ -159,7 +176,7 @@ export class AuthorizationPolicyService {
       .filter(
         (grant) =>
           !requiresGlobalPermissionGrantScope(grant.permission as Permission) ||
-          grant.scope === EventManagerPermissionGrantScope.GLOBAL,
+          grant.scope === EventManagerPermissionScope.GLOBAL,
       )
       .map((grant) => grant.permission)
       .filter((permission): permission is Permission => EVENT_MANAGER_PERMISSION_SET.has(permission as Permission));
@@ -180,13 +197,13 @@ export class AuthorizationPolicyService {
     }
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
-    if (grants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+    if (grants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)) {
       return null;
     }
 
     return new Set(
       grants
-        .filter((grant) => grant.scope === EventManagerPermissionGrantScope.MAJOR_EVENT && grant.majorEventId)
+        .filter((grant) => grant.scope === EventManagerPermissionScope.MAJOR_EVENT && grant.majorEventId)
         .map((grant) => grant.majorEventId as string),
     );
   }
@@ -210,18 +227,18 @@ export class AuthorizationPolicyService {
     }
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
-    if (grants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+    if (grants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)) {
       return null;
     }
 
     for (const grant of grants) {
-      if (grant.scope === EventManagerPermissionGrantScope.EVENT && grant.eventId) {
+      if (grant.scope === EventManagerPermissionScope.EVENT && grant.eventId) {
         target.eventIds.add(grant.eventId);
       }
-      if (grant.scope === EventManagerPermissionGrantScope.MAJOR_EVENT && grant.majorEventId) {
+      if (grant.scope === EventManagerPermissionScope.MAJOR_EVENT && grant.majorEventId) {
         target.majorEventIds.add(grant.majorEventId);
       }
-      if (grant.scope === EventManagerPermissionGrantScope.EVENT_GROUP && grant.eventGroupId) {
+      if (grant.scope === EventManagerPermissionScope.EVENT_GROUP && grant.eventGroupId) {
         target.eventGroupIds.add(grant.eventGroupId);
       }
     }
@@ -242,15 +259,24 @@ export class AuthorizationPolicyService {
     }
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
-    if (grants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+    if (grants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)) {
       return null;
     }
 
-    return new Set(
-      grants
-        .filter((grant) => grant.scope === EventManagerPermissionGrantScope.EVENT_GROUP && grant.eventGroupId)
-        .map((grant) => grant.eventGroupId as string),
-    );
+    const directGroupIds = grants
+      .filter((grant) => grant.scope === EventManagerPermissionScope.EVENT_GROUP && grant.eventGroupId)
+      .map((grant) => grant.eventGroupId as string);
+    const majorEventIds = grants
+      .filter((grant) => grant.scope === EventManagerPermissionScope.MAJOR_EVENT && grant.majorEventId)
+      .map((grant) => grant.majorEventId as string);
+    const descendantGroups = majorEventIds.length
+      ? await this.prisma.eventGroup.findMany({
+          where: { majorEventId: { in: majorEventIds }, deletedAt: null },
+          select: { id: true },
+        })
+      : [];
+
+    return new Set([...directGroupIds, ...descendantGroups.map((group) => group.id)]);
   }
 
   async canOverrideFrozenResource(
@@ -290,8 +316,19 @@ export class AuthorizationPolicyService {
           startDate: true,
           endDate: true,
           deletedAt: true,
-          publiclyVisible: true,
+          isPubliclyListed: true,
           shouldCollectAttendance: true,
+          sportsMatch: {
+            select: {
+              id: true,
+              categoryId: true,
+              category: {
+                select: {
+                  tournamentId: true,
+                },
+              },
+            },
+          },
         },
       }),
     ]);
@@ -304,8 +341,28 @@ export class AuthorizationPolicyService {
       throw new ForbiddenException('A coleta de presença não está aberta para este evento.');
     }
 
-    if (collector && event.publiclyVisible) {
+    if (collector && event.isPubliclyListed) {
       return;
+    }
+
+    if (event.sportsMatch) {
+      const assignment = await this.prisma.sportsOfficialAssignment.findFirst({
+        where: {
+          personId,
+          active: true,
+          revokedAt: null,
+          tournamentId: event.sportsMatch.category.tournamentId,
+          OR: [
+            { matchId: event.sportsMatch.id },
+            { matchId: null, categoryId: event.sportsMatch.categoryId },
+            { matchId: null, categoryId: null },
+          ],
+        },
+        select: { id: true },
+      });
+      if (assignment) {
+        return;
+      }
     }
 
     if (await this.hasAnyPermission(options.user, ATTENDANCE_COLLECTION_PERMISSIONS, { eventId })) {
@@ -337,8 +394,6 @@ export class AuthorizationPolicyService {
 
   buildResourceContext(raw: unknown, requiredPermissions: readonly string[] = []): AuthorizationResourceContext {
     const context: AuthorizationResourceContext = {};
-    this.collectResourceIds(raw, context);
-
     const resources = new Set(
       this.normalizePermissionRequirements(requiredPermissions).map(
         (permission) => parsePermission(permission).resource,
@@ -347,6 +402,7 @@ export class AuthorizationPolicyService {
     if (resources.size === 1) {
       context.primaryResource = [...resources][0];
     }
+    this.collectResourceIds(raw, context);
     if (context.genericId && resources.has('subscription')) {
       context.subscriptionId ??= context.genericId;
     }
@@ -364,7 +420,8 @@ export class AuthorizationPolicyService {
     }
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
-    if (grants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+    const compatibleGrants = grants.filter((grant) => isPermissionGrantScopeCompatible(permission, grant.scope));
+    if (compatibleGrants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)) {
       return true;
     }
 
@@ -374,9 +431,9 @@ export class AuthorizationPolicyService {
 
     const target = await this.resolveGrantTarget(permission, context);
     if (context.allowScopedCollection && this.isEmptyGrantTarget(target)) {
-      return grants.some((grant) => grant.scope !== EventManagerPermissionGrantScope.GLOBAL);
+      return compatibleGrants.some((grant) => grant.scope !== EventManagerPermissionScope.GLOBAL);
     }
-    return grants.some((grant) => this.matchesScopedGrant(grant, target));
+    return compatibleGrants.some((grant) => this.matchesScopedGrant(grant, target));
   }
 
   private async hasAnyPermission(
@@ -424,27 +481,7 @@ export class AuthorizationPolicyService {
     userId: string | undefined,
     permissions?: readonly Permission[],
   ): Promise<ActiveGrant[]> {
-    if (!userId) {
-      return [];
-    }
-
-    const now = new Date();
-    return this.prisma.eventManagerPermissionGrant.findMany({
-      where: {
-        userId,
-        deletedAt: null,
-        OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-        AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
-        ...(permissions?.length ? { permission: { in: [...permissions] } } : {}),
-      },
-      select: {
-        permission: true,
-        scope: true,
-        eventId: true,
-        majorEventId: true,
-        eventGroupId: true,
-      },
-    });
+    return findActiveRolePermissionScopes(this.prisma, userId, permissions);
   }
 
   private async resolveGrantTarget(
@@ -510,6 +547,50 @@ export class AuthorizationPolicyService {
       await this.addEventFormResponseTarget(target, context.eventFormResponseId);
     }
 
+    if (context.sportsTournamentId) {
+      await this.addSportsTournamentTarget(target, context.sportsTournamentId);
+    }
+
+    if (context.sportsCategoryId) {
+      await this.addSportsCategoryTarget(target, context.sportsCategoryId);
+    }
+
+    if (context.sportsTeamId) {
+      await this.addSportsTeamTarget(target, context.sportsTeamId);
+    }
+
+    if (context.sportsRegistrationId) {
+      await this.addSportsRegistrationTarget(target, context.sportsRegistrationId);
+    }
+
+    if (context.sportsMatchId) {
+      await this.addSportsMatchTarget(target, context.sportsMatchId);
+    }
+
+    if (context.sportsOfficialAssignmentId) {
+      await this.addSportsOfficialTarget(target, context.sportsOfficialAssignmentId);
+    }
+
+    if (context.sportsTeamChangeRequestId) {
+      await this.addSportsTeamChangeRequestTarget(target, context.sportsTeamChangeRequestId);
+    }
+
+    if (context.sportsTeamRepresentativeId) {
+      await this.addSportsTeamRepresentativeTarget(target, context.sportsTeamRepresentativeId);
+    }
+
+    if (context.sportsPlayerApplicationId) {
+      await this.addSportsPlayerApplicationTarget(target, context.sportsPlayerApplicationId);
+    }
+
+    if (context.sportsMatchActionId) {
+      await this.addSportsMatchActionTarget(target, context.sportsMatchActionId);
+    }
+
+    if (context.sportsMatchRosterId) {
+      await this.addSportsMatchRosterTarget(target, context.sportsMatchRosterId);
+    }
+
     if (context.scope && context.targetId) {
       await this.addCertificateScopeTarget(target, context.scope, context.targetId);
     }
@@ -560,12 +641,31 @@ export class AuthorizationPolicyService {
       case 'event-form':
         await this.addEventFormTarget(target, id);
         return true;
+      case 'sports-tournament':
+        await this.addSportsTournamentTarget(target, id);
+        return true;
+      case 'sports-category':
+        await this.addSportsCategoryTarget(target, id);
+        return true;
+      case 'sports-team':
+        await this.addSportsTeamTarget(target, id);
+        return true;
+      case 'sports-registration':
+        await this.addSportsRegistrationTarget(target, id);
+        return true;
+      case 'sports-match':
+      case 'sports-score':
+        await this.addSportsMatchTarget(target, id);
+        return true;
+      case 'sports-official':
+        await this.addSportsOfficialTarget(target, id);
+        return true;
       default:
         return false;
     }
   }
 
-  private async addEventTarget(target: ResolvedGrantTarget, eventId: string): Promise<void> {
+  protected async addEventTarget(target: ResolvedGrantTarget, eventId: string): Promise<void> {
     target.eventIds.add(eventId);
     const event = await this.prisma.event.findUnique({
       where: {
@@ -836,11 +936,11 @@ export class AuthorizationPolicyService {
 
   private matchesScopedGrant(grant: ActiveGrant, target: ResolvedGrantTarget): boolean {
     switch (grant.scope) {
-      case EventManagerPermissionGrantScope.EVENT:
+      case EventManagerPermissionScope.EVENT:
         return Boolean(grant.eventId && target.eventIds.has(grant.eventId));
-      case EventManagerPermissionGrantScope.MAJOR_EVENT:
+      case EventManagerPermissionScope.MAJOR_EVENT:
         return Boolean(grant.majorEventId && target.majorEventIds.has(grant.majorEventId));
-      case EventManagerPermissionGrantScope.EVENT_GROUP:
+      case EventManagerPermissionScope.EVENT_GROUP:
         return Boolean(grant.eventGroupId && target.eventGroupIds.has(grant.eventGroupId));
       default:
         return false;
@@ -923,6 +1023,89 @@ export class AuthorizationPolicyService {
           case 'actionId':
           case 'receiptValidationActionId':
             context.receiptValidationActionId ??= id;
+            break;
+          case 'sportsTournamentId':
+            context.sportsTournamentId ??= id;
+            break;
+          case 'tournamentId':
+            if (context.primaryResource === 'sports-tournament') {
+              context.sportsTournamentId ??= id;
+            }
+            break;
+          case 'sportsCategoryId':
+            context.sportsCategoryId ??= id;
+            break;
+          case 'categoryId':
+            if (context.primaryResource === 'sports-category') {
+              context.sportsCategoryId ??= id;
+            }
+            break;
+          case 'sportsTeamId':
+            context.sportsTeamId ??= id;
+            break;
+          case 'teamId':
+            if (context.primaryResource === 'sports-team') {
+              context.sportsTeamId ??= id;
+            }
+            break;
+          case 'sportsRegistrationId':
+            context.sportsRegistrationId ??= id;
+            break;
+          case 'registrationId':
+            if (context.primaryResource === 'sports-registration') {
+              context.sportsRegistrationId ??= id;
+            }
+            break;
+          case 'sportsMatchId':
+            context.sportsMatchId ??= id;
+            break;
+          case 'matchId':
+            if (context.primaryResource === 'sports-match') {
+              context.sportsMatchId ??= id;
+            }
+            break;
+          case 'sportsOfficialAssignmentId':
+            context.sportsOfficialAssignmentId ??= id;
+            break;
+          case 'officialAssignmentId':
+            if (context.primaryResource === 'sports-official') {
+              context.sportsOfficialAssignmentId ??= id;
+            }
+            break;
+          case 'sportsTeamChangeRequestId':
+            context.sportsTeamChangeRequestId ??= id;
+            break;
+          case 'changeRequestId':
+            if (context.primaryResource === 'sports-team') {
+              context.sportsTeamChangeRequestId ??= id;
+            }
+            break;
+          case 'sportsTeamRepresentativeId':
+            context.sportsTeamRepresentativeId ??= id;
+            break;
+          case 'representativeId':
+            if (context.primaryResource === 'sports-team') {
+              context.sportsTeamRepresentativeId ??= id;
+            }
+            break;
+          case 'sportsPlayerApplicationId':
+            context.sportsPlayerApplicationId ??= id;
+            break;
+          case 'applicationId':
+            if (context.primaryResource === 'sports-registration') {
+              context.sportsPlayerApplicationId ??= id;
+            }
+            break;
+          case 'sportsMatchActionId':
+            context.sportsMatchActionId ??= id;
+            break;
+          case 'sportsMatchRosterId':
+            context.sportsMatchRosterId ??= id;
+            break;
+          case 'rosterId':
+            if (context.primaryResource === 'sports-match') {
+              context.sportsMatchRosterId ??= id;
+            }
             break;
         }
         continue;

@@ -1,8 +1,12 @@
+@let currentState = eventState();
+
 <mat-toolbar>
   <button matIconButton type="button" (click)="goBack()" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
-  <span>{{ isPreview() ? 'Pré-Visualização' : 'Evento' }}</span>
+  <h1 class="global-toolbar-title">
+    {{ currentState.status === 'ready' ? currentState.data.event.name : isPreview() ? 'Pré-visualização' : 'Evento' }}
+  </h1>
   <span class="toolbar-spacer"></span>
   @if (calendarDownloadUrl(); as calendarUrl) {
   <a
@@ -20,8 +24,8 @@
 </mat-toolbar>
 
 <main class="event-page">
-  @let currentState = eventState(); @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando evento"></mat-progress-bar>
   <section class="event-skeleton" aria-hidden="true">
     <div class="emoji-placeholder"></div>
     <div class="line title-line"></div>
@@ -41,13 +45,15 @@
   }
 
   <header class="event-header">
-    <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus, @angular-eslint/template/click-events-have-key-events -->
-    <div class="emoji-frame" (click)="copyId(event.id)">
+    <button
+      class="emoji-frame"
+      type="button"
+      aria-label="Copiar identificador do evento"
+      matTooltip="Copiar identificador do evento"
+      (click)="copyId(event.id)">
       <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
-    </div>
+    </button>
     <div class="header-copy">
-      <p class="eyebrow">{{ eventTypeLabel(event) }}</p>
-      <h1>{{ event.name }}</h1>
       @if (event.shortDescription) {
       <p class="subtitle">{{ event.shortDescription }}</p>
       }
@@ -99,8 +105,7 @@
       <mat-icon>event_busy</mat-icon>
       Cancelar inscrição
     </button>
-    }
-    } @else if (hasStandaloneSubscription(event)) { @if (standaloneSubscriptionCooldownSeconds() > 0) {
+    } } @else if (hasStandaloneSubscription(event)) { @if (standaloneSubscriptionCooldownSeconds() > 0) {
     <p class="rate-limit-message">
       Aguarde {{ standaloneSubscriptionCooldownSeconds() }}s para alterar sua inscrição novamente.
     </p>
@@ -191,7 +196,7 @@
   @if (event.description) {
   <section class="detail-section">
     <h2>Sobre</h2>
-    <p class="description">{{ event.description }}</p>
+    <lib-markdown class="description" [content]="event.description" />
   </section>
   } @if (event.lecturers?.length) {
   <section class="detail-section">

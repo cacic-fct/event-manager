@@ -18,6 +18,7 @@ import {
   ConfirmationDialogData,
 } from '../../app-shell/dialogs/confirmation-dialog.component';
 import { auditLogOperationIcon, auditLogOperationLabel } from '../audit-log.utils';
+import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 
 export interface AuditLogDialogData {
   entityType: AuditLogEntityType;
@@ -345,6 +346,7 @@ export class AuditLogDialogComponent {
   private readonly api = inject(AuditLogApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
 
   protected readonly entries = signal<AuditLogEntry[]>([]);
   protected readonly loading = signal(true);
@@ -410,9 +412,7 @@ export class AuditLogDialogComponent {
       this.snackBar.open('Alteração desfeita e registrada no histórico.', 'OK', { duration: 5000 });
       await this.load();
     } catch (error) {
-      this.snackBar.open(error instanceof Error ? error.message : 'Não foi possível desfazer a alteração.', 'OK', {
-        duration: 7000,
-      });
+      this.feedback.error(error, 'Não foi possível desfazer a alteração.');
     } finally {
       this.revertingEntryId.set(null);
     }

@@ -10,6 +10,9 @@ test.use({
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     window.sessionStorage.setItem('cacic-eventos:silent-sso-attempted', 'true');
+    // Playwright Chromium can be classified as private by detectincognitojs.
+    // This flow tests oral attendance, not the separate privacy warning dialog.
+    window.sessionStorage.setItem('cacic-eventos:attendance-incognito-warning-shown', 'true');
     window.localStorage.setItem('cacic.cookieBanner.enabled', 'false');
   });
 });
@@ -27,9 +30,7 @@ test('chooses oral attendance, loads the full roster, and submits a decision wit
 
   await page.getByRole('button', { name: 'Marcar como presente' }).click();
 
-  await expect
-    .poll(() => submittedBatches.length)
-    .toBe(1);
+  await expect.poll(() => submittedBatches.length).toBe(1);
   expect(submittedBatches[0]).toEqual([
     expect.objectContaining({
       eventId: 'event-1',
@@ -46,9 +47,7 @@ test('chooses oral attendance, loads the full roster, and submits a decision wit
 });
 
 async function mockOralAttendanceApi(page: Page, submittedBatches: unknown[][]): Promise<void> {
-  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
-    route.fulfill({ status: 304, body: '' }),
-  );
+  await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) => route.fulfill({ status: 304, body: '' }));
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/auth/me') {

@@ -23,6 +23,7 @@ describe('ReceiptValidationService', () => {
   const sync = {
     syncConfirmedEventSubscriptions: jest.fn(),
     refreshEventSubscriptionCounters: jest.fn(),
+    refreshSportsParticipantPayment: jest.fn(),
   };
   let tx: ReturnType<typeof createTx>;
   let service: ReceiptValidationService;
@@ -66,6 +67,7 @@ describe('ReceiptValidationService', () => {
       SubscriptionStatus.CONFIRMED,
       'admin-1',
     );
+    expect(sync.refreshSportsParticipantPayment).toHaveBeenCalledWith(tx, 'subscription-1');
     expect(queue.notifySubscriptionChanged).toHaveBeenCalledWith(
       SubscriptionStatus.RECEIPT_UNDER_REVIEW,
       'subscription-1',
@@ -94,6 +96,7 @@ describe('ReceiptValidationService', () => {
         }),
       }),
     );
+    expect(sync.refreshSportsParticipantPayment).toHaveBeenCalledWith(tx, 'subscription-1');
   });
 
   it('undoes a validation action and restores the previous status', async () => {
@@ -132,6 +135,7 @@ describe('ReceiptValidationService', () => {
         }),
       }),
     );
+    expect(sync.refreshSportsParticipantPayment).toHaveBeenCalledWith(tx, 'subscription-1');
     expect(queue.notifySubscriptionChanged).toHaveBeenCalledWith(SubscriptionStatus.CONFIRMED, 'subscription-1');
   });
 

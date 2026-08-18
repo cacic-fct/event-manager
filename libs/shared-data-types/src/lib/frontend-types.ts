@@ -1,6 +1,8 @@
 export * from './dashboard.types';
 export * from './frontend-current-user.types';
 export * from './frontend-public-event.types';
+export * from './frontend-sports.types';
+export * from './shared-data-types/sports-overlay';
 
 export type EventType = 'MINICURSO' | 'PALESTRA' | 'OTHER';
 export type ContactType = 'EMAIL' | 'PHONE' | 'WHATSAPP' | 'OTHER';
@@ -97,7 +99,6 @@ export interface CertificateTemplate {
   id: string;
   name: string;
   description?: string | null;
-  version: number;
   isActive: boolean;
   certificateFieldsJson?: string | null;
   createdAt: string;
@@ -186,7 +187,7 @@ export interface Event {
   onlineAttendanceCode?: string | null;
   onlineAttendanceStartDate?: string | null;
   onlineAttendanceEndDate?: string | null;
-  publiclyVisible: boolean;
+  isPubliclyListed: boolean;
   displayLecturerProfile: boolean;
   youtubeCode?: string | null;
   buttonText?: string | null;
@@ -328,6 +329,7 @@ export interface WorkspaceMajorEventSubscription {
 export interface MajorEventEventAttendanceStatus {
   eventId: string;
   eventName: string;
+  eventEmoji?: string | null;
   eventStartDate?: string | null;
   attended: boolean;
   attendedAt?: string | null;

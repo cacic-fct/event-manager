@@ -5,9 +5,10 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { CertificateFileDownloadService } from '../../../shared/certificate-file-download.service';
 import { NetworkStatusService } from '../../../shared/network-status.service';
 import { AttendancesApiService } from '../attendances-api.service';
@@ -26,16 +27,79 @@ describe('Attendances', () => {
     expect(offlineData.replaceAttendanceFeed).toHaveBeenCalledWith('user-1', subscriptionsFeedFixture);
   });
 
+  it('renders ordered status icons with accessible labels and preserves detailed status text for assistive technology', async () => {
+    const { component, fixture } = await createFixture();
+
+    await settle(fixture);
+
+    const statusIcons = Array.from(fixture.nativeElement.querySelectorAll('.status-icon')) as HTMLElement[];
+    expect(statusIcons.map((statusIcon) => statusIcon.getAttribute('aria-label'))).toEqual([
+      'Certificado emitido',
+      'Presença registrada',
+      'Certificado emitido',
+    ]);
+    expect(statusIcons.map((statusIcon) => statusIcon.textContent?.trim())).toEqual([
+      'workspace_premium',
+      'how_to_reg',
+      'workspace_premium',
+    ]);
+    expect(component.statusItems('Presença registrada em 1 de 2 eventos, Palestrante, Certificado emitido')).toEqual([
+      { label: 'Presença registrada em 1 de 2 eventos', icon: 'how_to_reg' },
+      { label: 'Palestrante', icon: 'record_voice_over' },
+      { label: 'Certificado emitido', icon: 'workspace_premium' },
+    ]);
+  });
+
   it('uses absolute attendance detail routes', async () => {
     const { component } = await createFixture();
-    const majorEvent = subscriptionsFeedFixture.majorEventItems[0];
-    const event = subscriptionsFeedFixture.eventItems[0];
+    const majorEvent = component.visibleParticipations().find((item) => item.title === 'SECOMPP');
+    const event = component.visibleParticipations().find((item) => item.title === 'Oficina pública');
     if (!majorEvent || !event) {
       throw new Error('Expected attendance fixtures');
     }
 
-    expect(component.majorEventRoute(majorEvent)).toEqual(['/profile/attendances', 'major-event', 'major-1']);
-    expect(component.itemRoute(event)).toEqual(['/profile/attendances', 'event', 'event-1']);
+    expect(majorEvent.route).toEqual(['/profile/attendances', 'major-event', 'major-1']);
+    expect(event.route).toEqual(['/profile/attendances', 'event', 'event-1']);
+  });
+
+  it('keeps mixed major-event participation on the regular detail when regular events are selected', async () => {
+    const majorEvent = subscriptionsFeedFixture.majorEventItems[0];
+    if (!majorEvent) throw new Error('Expected a major-event fixture.');
+    const { component } = await createFixture({
+      onlineFeed: {
+        ...subscriptionsFeedFixture,
+        majorEventItems: [
+          {
+            ...majorEvent,
+            majorEvent: {
+              ...majorEvent.majorEvent,
+              sportsTournament: { id: 'tournament-1', selfSubscriptionEnabled: true, registrationOpen: true },
+            },
+            selectedEvents: [{ id: 'event-1' }] as never,
+          },
+        ],
+      },
+    });
+
+    expect(component.visibleParticipations().find((item) => item.title === 'SECOMPP')?.route).toEqual([
+      '/profile/attendances',
+      'major-event',
+      majorEvent.majorEvent.id,
+    ]);
+  });
+
+  it('keeps tournament-only participation on the major-event detail so subscription actions remain reachable', async () => {
+    const { component } = await createFixture({ onlineFeed: sportsManagerSubscriptionsFeedFixture });
+    const tournamentOnlyItem = component.visibleParticipations().find(
+      (item) => item.title === 'Torneio com gestão esportiva',
+    );
+    if (!tournamentOnlyItem) throw new Error('Expected a tournament fixture.');
+
+    expect(tournamentOnlyItem.route).toEqual([
+      '/profile/attendances',
+      'major-event',
+      'sports-major',
+    ]);
   });
 
   it('falls back to the last offline feed when the network request fails', async () => {
@@ -90,26 +154,54 @@ describe('Attendances', () => {
 
     expect(api.getSubscriptionsFeed).not.toHaveBeenCalled();
     expect(offlineData.purgeUserData).toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('Nenhuma participação em grande evento.');
-    expect(fixture.nativeElement.textContent).toContain('Nenhum evento avulso ou grupo registrado.');
+    expect(fixture.nativeElement.textContent).toContain('Nenhuma participação encontrada.');
   });
 
-  it('filters the feed by attended items without requiring subscriptions', async () => {
+  it('combines granular type and status filters while keeping attendance-only items', async () => {
     const { component, fixture } = await createFixture({ onlineFeed: filterableSubscriptionsFeedFixture });
 
     await settle(fixture);
 
-    component.updateFilters(['present']);
+    component.setStatusFilter('present', true);
     fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent;
-    expect(text).toContain('Grande evento com presença');
-    expect(text).toContain('Evento presente sem inscrição');
-    expect(text).toContain('Grupo presente sem inscrição');
-    expect(text).toContain('Grupo com evento filho presente');
-    expect(text).not.toContain('Grande evento apenas inscrito');
-    expect(text).not.toContain('Evento apenas inscrito');
-    expect(text).toContain('4 de 6 participações');
+    expect(component.visibleParticipations().map((item) => item.title)).toEqual(
+      expect.arrayContaining([
+        'Grande evento com presença',
+        'Evento presente sem inscrição',
+        'Grupo presente sem inscrição',
+        'Grupo com evento filho presente',
+      ]),
+    );
+
+    component.setTypeFilter('event', true);
+    fixture.detectChanges();
+
+    expect(component.visibleParticipations().map((item) => item.title)).toEqual(['Evento presente sem inscrição']);
+    expect(fixture.nativeElement.textContent).not.toContain('4 de 6 participações');
+  });
+
+  it('filters sports management tournaments alongside major events', async () => {
+    const { component, fixture } = await createFixture({ onlineFeed: sportsManagerSubscriptionsFeedFixture });
+
+    await settle(fixture);
+
+    component.setStatusFilter('sportsManager', true);
+    fixture.detectChanges();
+
+    const sportsManagerItem = component.visibleParticipations()[0];
+    if (!sportsManagerItem) {
+      throw new Error('Expected sports management attendance fixture');
+    }
+
+    expect(fixture.nativeElement.textContent).toContain('Torneio com gestão esportiva');
+    expect(fixture.nativeElement.textContent).not.toContain('Grande evento sem gestão esportiva');
+    expect(fixture.nativeElement.textContent).not.toContain('1 de 2 participações');
+    expect(sportsManagerItem.route).toEqual([
+      '/profile/attendances',
+      'major-event',
+      'sports-major',
+    ]);
   });
 
   it('merges standalone event-group children into one event-group item', async () => {
@@ -117,25 +209,58 @@ describe('Attendances', () => {
 
     await settle(fixture);
 
-    const eventItems = component.filteredFeed()?.eventItems;
-    expect(eventItems).toEqual([
+    expect(component.visibleParticipations()).toEqual([
       expect.objectContaining({
-        __typename: 'SubscribedEventGroupItem',
-        eventGroup: expect.objectContaining({
-          id: 'standalone-group',
-          name: 'Grupo de atividades',
-        }),
-        events: [expect.objectContaining({ id: 'group-event-1' }), expect.objectContaining({ id: 'group-event-2' })],
-        participation: {
-          isSubscribed: true,
-          isLecturer: false,
-          hasIssuedCertificate: true,
-        },
+        title: 'Grupo de atividades',
+        type: 'eventGroup',
+        typeLabel: 'Grupo de eventos',
+        route: ['/profile/attendances', 'event-group', 'standalone-group'],
+        statuses: ['subscribed', 'certificate'],
       }),
     ]);
     expect(fixture.nativeElement.textContent).toContain('Grupo de atividades');
     expect(fixture.nativeElement.textContent).not.toContain('Primeira atividade do grupo');
     expect(fixture.nativeElement.textContent).not.toContain('Segunda atividade do grupo');
+  });
+
+  it('sorts the unified feed by most recent start date and formats compact Portuguese date ranges', async () => {
+    const { component } = await createFixture();
+
+    expect(component.visibleParticipations().map((item) => item.title)).toEqual(['SECOMPP', 'Oficina pública']);
+    expect(component.participationDateLine('2024-04-26T18:00:00', '2024-04-26T22:00:00')).toBe(
+      '26 abr 2024, 18:00-22:00',
+    );
+    expect(component.participationDateLine('2024-04-26T09:00:00', '2024-04-28T18:00:00')).toBe(
+      '26 a 28 abr 2024',
+    );
+    expect(component.participationDateLine('2024-04-30T09:00:00', '2024-05-02T18:00:00')).toBe(
+      '30 abr a 2 mai 2024',
+    );
+  });
+
+  it('expands and clears the filter panel without participation counters', async () => {
+    const { component, fixture } = await createFixture();
+
+    component.toggleFilters();
+    fixture.detectChanges();
+    const clearFiltersButton = fixture.nativeElement.querySelector('.clear-filters') as HTMLButtonElement;
+    expect(clearFiltersButton.disabled).toBe(true);
+
+    component.setTypeFilter('majorEvent', true);
+    component.setStatusFilter('certificate', true);
+    fixture.detectChanges();
+
+    expect(component.filtersOpen()).toBe(true);
+    expect(component.activeFilterCount()).toBe(2);
+    expect(clearFiltersButton.disabled).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Tipo de participação');
+    expect(fixture.nativeElement.textContent).not.toContain('2 participações');
+    expect(fixture.nativeElement.querySelector('.mat-button-toggle-checkbox-wrapper')).toBeNull();
+
+    component.clearFilters();
+    fixture.detectChanges();
+    expect(component.activeFilterCount()).toBe(0);
+    expect(clearFiltersButton.disabled).toBe(true);
   });
 
   it('downloads all certificates through the shared browser file service', async () => {
@@ -145,6 +270,24 @@ describe('Attendances', () => {
 
     expect(fileDownload.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'certificados.zip');
     expect(snackBar.open).toHaveBeenCalledWith('Download dos certificados iniciado.', 'Fechar', { duration: 3000 });
+    expect(component.isDownloadingCertificates()).toBe(false);
+  });
+
+  it('shows indeterminate progress while the streamed certificate archive is being prepared', async () => {
+    const { api, component, fixture } = await createFixture();
+    const download = new Subject<{ blob: Blob; fileName: string }>();
+    api.downloadCurrentUserCertificatesArchive.mockReturnValue(download);
+
+    component.downloadCertificatesArchive();
+    fixture.detectChanges();
+
+    expect(component.isDownloadingCertificates()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.download-button mat-progress-spinner')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.download-button')?.textContent).toContain('Preparando certificados');
+
+    download.next({ blob: new Blob(['PK']), fileName: 'certificados.zip' });
+    download.complete();
+    fixture.detectChanges();
     expect(component.isDownloadingCertificates()).toBe(false);
   });
 
@@ -273,7 +416,7 @@ async function createFixture({
         },
       },
       {
-        provide: OfflinePublicDataAccessService,
+        provide: PublicDataAccessService,
         useValue: offlineData,
       },
       {
@@ -328,8 +471,8 @@ const subscriptionsFeedFixture: SubscriptionsFeed = {
         id: 'major-1',
         name: 'SECOMPP',
         emoji: '🎓',
-        startDate: '2026-07-01T12:00:00.000Z',
-        endDate: '2026-07-03T20:00:00.000Z',
+        startDate: publicFixtureDateFromNow(-1),
+        endDate: publicFixtureDateFromNow(1, 20),
         description: 'Grande evento.',
       },
       participation: {
@@ -381,13 +524,11 @@ const subscriptionsFeedFixture: SubscriptionsFeed = {
             certificateTemplate: {
               id: 'template-1',
               name: 'Modelo',
-              version: 1,
             },
           },
           certificateTemplate: {
             id: 'template-1',
             name: 'Modelo',
-            version: 1,
           },
         },
       ],
@@ -428,8 +569,8 @@ const filterableSubscriptionsFeedFixture = {
         id: 'major-attended',
         name: 'Grande evento com presença',
         emoji: '🎓',
-        startDate: '2026-07-01T12:00:00.000Z',
-        endDate: '2026-07-03T20:00:00.000Z',
+        startDate: publicFixtureDateFromNow(-1),
+        endDate: publicFixtureDateFromNow(1, 20),
         description: 'Grande evento.',
       },
       participation: {
@@ -577,6 +718,50 @@ const filterableSubscriptionsFeedFixture = {
       },
     },
   ],
+} satisfies SubscriptionsFeed;
+
+const sportsManagerSubscriptionsFeedFixture = {
+  majorEventItems: [
+    {
+      id: 'sports-major',
+      majorEventId: 'sports-major',
+      majorEvent: {
+        id: 'sports-major',
+        name: 'Torneio com gestão esportiva',
+        emoji: '🏆',
+        startDate: publicFixtureDateFromNow(-1),
+        endDate: publicFixtureDateFromNow(1, 20),
+        description: 'Torneio público.',
+        sportsTournament: { id: 'tournament-1', registrationOpen: true },
+      },
+      participation: {
+        isSubscribed: false,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+        isSportsManager: true,
+      },
+    },
+    {
+      id: 'regular-major',
+      majorEventId: 'regular-major',
+      majorEvent: {
+        id: 'regular-major',
+        name: 'Grande evento sem gestão esportiva',
+        emoji: '🎓',
+        startDate: publicFixtureDateFromNow(-1),
+        endDate: publicFixtureDateFromNow(1, 20),
+        description: 'Grande evento.',
+      },
+      participation: {
+        isSubscribed: true,
+        isLecturer: false,
+        hasIssuedCertificate: false,
+      },
+    },
+  ],
+  eventItems: [],
+  standaloneCertificateFolders: [],
+  attendances: [],
 } satisfies SubscriptionsFeed;
 
 const standaloneEventGroupChildrenFeedFixture = {

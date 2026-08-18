@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
-import { OfflineFeatureFlagCacheRecord, OfflinePublicDatabaseProvider } from '@cacic-fct/offline-public-data-access';
+import { FeatureFlagCacheRecord, PublicDatabaseProvider } from '@cacic-fct/public-indexed-db';
 import { UnleashClient, type IToggle, type IVariant, type IStorageProvider } from 'unleash-proxy-client';
 import { PUBLIC_FEATURE_FLAG_CONFIG } from './public-feature-flag.config';
 import {
@@ -18,7 +18,7 @@ const DEVELOPMENT_COOKIE_BANNER_ENABLED_STORAGE_KEY = 'cacic.cookieBanner.enable
 @Injectable({ providedIn: 'root' })
 export class PublicFeatureFlagService {
   private readonly platformId = inject(PLATFORM_ID);
-  private readonly databaseProvider = inject(OfflinePublicDatabaseProvider);
+  private readonly databaseProvider = inject(PublicDatabaseProvider);
   private readonly config = inject(PUBLIC_FEATURE_FLAG_CONFIG);
 
   private client: UnleashClient | null = null;
@@ -88,6 +88,7 @@ export class PublicFeatureFlagService {
       calendarTabEnabled: this.clientBooleanValue('calendarTabEnabled'),
       majorEventTabEnabled: this.clientBooleanValue('majorEventTabEnabled'),
       notificationsTabEnabled: this.clientBooleanValue('notificationsTabEnabled'),
+      myDayTabEnabled: this.clientBooleanValue('myDayTabEnabled'),
       defaultLoginRedirectPath: this.stringVariantValue(
         client.getVariant(PUBLIC_FEATURE_FLAGS.defaultLoginRedirectPath),
         PUBLIC_FEATURE_FLAG_DEFAULTS.defaultLoginRedirectPath,
@@ -131,6 +132,7 @@ export class PublicFeatureFlagService {
       calendarTabEnabled: enabled('calendarTabEnabled'),
       majorEventTabEnabled: enabled('majorEventTabEnabled'),
       notificationsTabEnabled: enabled('notificationsTabEnabled'),
+      myDayTabEnabled: enabled('myDayTabEnabled'),
       defaultLoginRedirectPath: this.stringVariantValue(
         defaultRedirect?.variant,
         PUBLIC_FEATURE_FLAG_DEFAULTS.defaultLoginRedirectPath,
@@ -250,7 +252,7 @@ export class PublicFeatureFlagService {
       .delete();
   }
 
-  private isExpired(record: OfflineFeatureFlagCacheRecord): boolean {
+  private isExpired(record: FeatureFlagCacheRecord): boolean {
     return record.key !== 'sessionId' && record.updatedAt < Date.now() - CACHE_TTL_MS;
   }
 

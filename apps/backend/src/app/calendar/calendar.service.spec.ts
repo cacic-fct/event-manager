@@ -1,8 +1,9 @@
 import { Permission } from '@cacic-fct/shared-permissions';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { EventManagerPermissionGrantScope } from '@prisma/client';
+import { EventManagerPermissionScope } from '@prisma/client';
 import { createHmac } from 'node:crypto';
 import { CalendarService } from './calendar.service';
+import { findActiveRolePermissionScopes } from '../authorization/effective-role-scopes';
 import { PUBLIC_EVENT_WHERE } from '../public-events/models';
 import {
   ADMIN_CALENDAR_FEED_DISABLED_NO_CURRENT_TARGETS,
@@ -12,10 +13,18 @@ import {
   SUPER_ADMIN_CALENDAR_FEED_ID,
 } from './calendar.models';
 
+jest.mock('../authorization/effective-role-scopes', () => ({
+  findActiveRolePermissionScopes: jest.fn((prisma: { eventManagerPermissionGrant?: { findMany: () => unknown } }) =>
+    prisma.eventManagerPermissionGrant?.findMany() ?? Promise.resolve([])),
+}));
+const activeScopes = jest.mocked(findActiveRolePermissionScopes);
+
 describe('CalendarService', () => {
   const now = new Date('2026-06-23T12:00:00.000Z');
+  const calendarFeedKeyPepper = 'development-calendar-feed-key-pepper';
+  const originalCalendarFeedKeyPepper = process.env.CALENDAR_FEED_KEY_PEPPER;
   const deriveFeedKey = (feedKeyNonce: string): string =>
-    createHmac('sha512', 'development-calendar-feed-key-pepper')
+    createHmac('sha512', calendarFeedKeyPepper)
       .update('calendar-feed-url-key', 'utf8')
       .update(feedKeyNonce, 'utf8')
       .digest('base64url');
@@ -61,10 +70,16 @@ describe('CalendarService', () => {
   };
 
   beforeEach(() => {
+    process.env.CALENDAR_FEED_KEY_PEPPER = calendarFeedKeyPepper;
     jest.useFakeTimers().setSystemTime(now);
   });
 
   afterEach(() => {
+    if (originalCalendarFeedKeyPepper === undefined) {
+      delete process.env.CALENDAR_FEED_KEY_PEPPER;
+    } else {
+      process.env.CALENDAR_FEED_KEY_PEPPER = originalCalendarFeedKeyPepper;
+    }
     jest.useRealTimers();
   });
 
@@ -705,7 +720,7 @@ describe('CalendarService', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             permission: Permission.Event.Read,
-            scope: EventManagerPermissionGrantScope.GLOBAL,
+            scope: EventManagerPermissionScope.GLOBAL,
             eventId: null,
             majorEventId: null,
             eventGroupId: null,
@@ -780,7 +795,7 @@ describe('CalendarService', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             permission: Permission.Event.Read,
-            scope: EventManagerPermissionGrantScope.GLOBAL,
+            scope: EventManagerPermissionScope.GLOBAL,
             eventId: null,
             majorEventId: null,
             eventGroupId: null,
@@ -856,21 +871,21 @@ describe('CalendarService', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             permission: Permission.Event.Read,
-            scope: EventManagerPermissionGrantScope.EVENT,
+            scope: EventManagerPermissionScope.EVENT,
             eventId: 'admin-event-1',
             majorEventId: null,
             eventGroupId: null,
           },
           {
             permission: Permission.EventGroup.Read,
-            scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+            scope: EventManagerPermissionScope.EVENT_GROUP,
             eventId: null,
             majorEventId: null,
             eventGroupId: 'group-1',
           },
           {
             permission: Permission.MajorEvent.Read,
-            scope: EventManagerPermissionGrantScope.MAJOR_EVENT,
+            scope: EventManagerPermissionScope.MAJOR_EVENT,
             eventId: null,
             majorEventId: 'major-1',
             eventGroupId: null,
@@ -891,21 +906,12 @@ describe('CalendarService', () => {
 
     const download = await service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.com.br');
 
-    expect(prisma.eventManagerPermissionGrant.findMany).toHaveBeenCalledWith({
-      where: {
-        userId: 'admin-user',
-        deletedAt: null,
-        permission: {
-          in: [Permission.Event.Read, Permission.EventGroup.Read, Permission.MajorEvent.Read],
-        },
-        OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-        AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
-      },
-      select: expect.objectContaining({
-        permission: true,
-        scope: true,
-      }),
-    });
+    expect(activeScopes).toHaveBeenCalledWith(
+      prisma,
+      'admin-user',
+      [Permission.Event.Read, Permission.EventGroup.Read, Permission.MajorEvent.Read],
+      expect.any(Date),
+    );
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
@@ -964,7 +970,7 @@ describe('CalendarService', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             permission: Permission.Event.Read,
-            scope: EventManagerPermissionGrantScope.EVENT_GROUP,
+            scope: EventManagerPermissionScope.EVENT_GROUP,
             eventId: null,
             majorEventId: null,
             eventGroupId: 'group-1',
@@ -1026,7 +1032,7 @@ describe('CalendarService', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             permission: Permission.Event.Read,
-            scope: EventManagerPermissionGrantScope.GLOBAL,
+            scope: EventManagerPermissionScope.GLOBAL,
             eventId: null,
             majorEventId: null,
             eventGroupId: null,
@@ -1055,6 +1061,7 @@ describe('CalendarService', () => {
   });
 
   it('disables private admin feeds when authenticated admin access was not checked recently', async () => {
+    activeScopes.mockClear();
     const prisma = createPrismaMock({
       userAdminCalendarFeedSettings: {
         findUnique: jest.fn().mockResolvedValue({
@@ -1079,7 +1086,7 @@ describe('CalendarService', () => {
       service.buildPrivateAdminCalendarFeed('admin-key', 'https://eventos.cacic.com.br'),
     ).rejects.toBeInstanceOf(NotFoundException);
 
-    expect(prisma.eventManagerPermissionGrant.findMany).not.toHaveBeenCalled();
+    expect(activeScopes).not.toHaveBeenCalled();
     expect(prisma.userAdminCalendarFeedSettings.updateMany).toHaveBeenCalledWith({
       where: {
         userId: 'admin-user',
@@ -1147,7 +1154,7 @@ describe('CalendarService', () => {
           .mockResolvedValueOnce([
             {
               permission: Permission.MajorEvent.Read,
-              scope: EventManagerPermissionGrantScope.GLOBAL,
+              scope: EventManagerPermissionScope.GLOBAL,
               eventId: null,
               majorEventId: null,
               eventGroupId: null,
@@ -1456,6 +1463,9 @@ function createPrismaMock(overrides: Record<string, unknown>) {
       findMany: jest.fn().mockResolvedValue([]),
     },
     majorEventSubscriptionEventSelection: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    sportsMatch: {
       findMany: jest.fn().mockResolvedValue([]),
     },
     eventLecturer: {

@@ -1,87 +1,117 @@
-import { ForbiddenException, MessageEvent } from '@nestjs/common';
 import { EventFormTargetType } from '@cacic-fct/shared-data-types';
-import { firstValueFrom, Observable, of } from 'rxjs';
-import { EventFormsService } from './event-forms.service';
+import { Permission } from '@cacic-fct/shared-permissions';
+import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
+import { firstValueFrom, of } from 'rxjs';
+import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventFormsController } from './event-forms.controller';
-import { SseReplayService } from '../realtime/sse-replay.service';
 
 describe('EventFormsController', () => {
-  const message = {
-    data: {
-      formId: 'form-1',
-      updatedAt: '2026-07-24T00:00:00.000Z',
-    },
-  } satisfies MessageEvent;
-  const request = { user: { sub: 'user-1' } };
-  const input = {
-    formId: 'form-1',
-    targetType: EventFormTargetType.EVENT,
-    eventId: 'event-1',
-    majorEventId: undefined,
+  const forms = {
+    watchResults: jest.fn(),
+    assertCurrentUserLiveResultsAccess: jest.fn(),
+    watchCurrentUserResults: jest.fn(),
+    exportAdminResultsCsv: jest.fn(),
+  };
+  const replay = {
+    scope: jest.fn(),
+    replay: jest.fn(),
   };
 
-  it('authorizes before replaying the shared form-result journal', async () => {
-    const forms = {
-      assertCurrentUserLiveResultsAccess: jest.fn().mockResolvedValue(undefined),
-      watchCurrentUserResults: jest.fn(() => of(message)),
+  beforeEach(() => {
+    jest.clearAllMocks();
+    replay.scope.mockReturnValue('form-scope');
+    replay.replay.mockImplementation((_scope, _cursor, source) => source);
+    forms.assertCurrentUserLiveResultsAccess.mockResolvedValue(undefined);
+  });
+
+  it('protects admin result streaming and export with distinct permissions', () => {
+    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, EventFormsController.prototype.streamResults)).toEqual([
+      Permission.EventForm.Results,
+    ]);
+    expect(Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, EventFormsController.prototype.exportResultsCsv)).toEqual([
+      Permission.EventForm.Export,
+    ]);
+    expect(
+      Reflect.getMetadata(REQUIRED_PERMISSIONS_KEY, EventFormsController.prototype.streamCurrentUserResults),
+    ).toBeUndefined();
+  });
+
+  it('replays administrator result deltas from the provided cursor', async () => {
+    const message = { data: { formId: 'form-1' } };
+    forms.watchResults.mockReturnValueOnce(of(message));
+
+    await expect(firstValueFrom(controller().streamResults('form-1', 'cursor-2'))).resolves.toEqual(message);
+    expect(replay.scope).toHaveBeenCalledWith('event-form-results', 'form-1');
+    expect(replay.replay).toHaveBeenCalledWith('form-scope', 'cursor-2', expect.anything());
+    expect(forms.watchResults).toHaveBeenCalledWith('form-1');
+  });
+
+  it('authorizes current-user live results before constructing the scoped stream', async () => {
+    const request = { user: { sub: 'user-1' } };
+    const input = {
+      formId: 'form-1',
+      targetType: EventFormTargetType.EVENT,
+      eventId: 'event-1',
+      majorEventId: undefined,
     };
-    const replay = {
-      scope: jest.fn(() => 'event-form-results:scope'),
-      replay: jest.fn((_scope: string, _lastEventId: string | undefined, source: Observable<MessageEvent>) => source),
-    };
-    const controller = new EventFormsController(
-      forms as unknown as EventFormsService,
-      replay as unknown as SseReplayService,
-    );
+    const message = { data: { formId: 'form-1', updatedAt: publicFixtureDateFromNow() } };
+    forms.watchCurrentUserResults.mockReturnValueOnce(of(message));
 
     await expect(
       firstValueFrom(
-        controller.streamCurrentUserResults(
-          input.formId,
-          input.targetType,
-          input.eventId,
-          input.majorEventId,
+        controller().streamCurrentUserResults(
+          'form-1',
+          EventFormTargetType.EVENT,
+          'event-1',
+          undefined,
           request as never,
-          'sse1.cursor',
+          'cursor-3',
         ),
       ),
     ).resolves.toEqual(message);
 
     expect(forms.assertCurrentUserLiveResultsAccess).toHaveBeenCalledWith({ req: request }, input);
-    expect(replay.scope).toHaveBeenCalledWith('event-form-results', input.formId);
-    expect(replay.replay).toHaveBeenCalledWith('event-form-results:scope', 'sse1.cursor', expect.anything());
     expect(forms.watchCurrentUserResults).toHaveBeenCalledWith({ req: request }, input);
+    expect(replay.replay).toHaveBeenCalledWith('form-scope', 'cursor-3', expect.anything());
   });
 
-  it('does not read replay events before current-user access is authorized', async () => {
-    const forms = {
-      assertCurrentUserLiveResultsAccess: jest.fn().mockRejectedValue(new ForbiddenException()),
-      watchCurrentUserResults: jest.fn(),
-    };
-    const replay = {
-      scope: jest.fn(),
-      replay: jest.fn(),
-    };
-    const controller = new EventFormsController(
-      forms as unknown as EventFormsService,
-      replay as unknown as SseReplayService,
-    );
+  it('does not subscribe to current-user results when access is rejected', async () => {
+    forms.assertCurrentUserLiveResultsAccess.mockRejectedValueOnce(new Error('Resultados indisponíveis.'));
 
     await expect(
       firstValueFrom(
-        controller.streamCurrentUserResults(
-          input.formId,
-          input.targetType,
-          input.eventId,
-          input.majorEventId,
-          request as never,
+        controller().streamCurrentUserResults(
+          'form-1',
+          EventFormTargetType.MAJOR_EVENT,
+          undefined,
+          'major-1',
+          { user: { sub: 'user-1' } } as never,
           undefined,
         ),
       ),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-
-    expect(replay.scope).not.toHaveBeenCalled();
-    expect(replay.replay).not.toHaveBeenCalled();
+    ).rejects.toThrow('Resultados indisponíveis.');
     expect(forms.watchCurrentUserResults).not.toHaveBeenCalled();
+    expect(replay.replay).not.toHaveBeenCalled();
   });
+
+  it('exports CSV with private download headers and the authenticated actor', async () => {
+    const user = { sub: 'admin-1' };
+    const response = { setHeader: jest.fn(), send: jest.fn() };
+    forms.exportAdminResultsCsv.mockResolvedValueOnce('Resposta\nSim');
+
+    await controller().exportResultsCsv('form-1', { user } as never, response as never);
+
+    expect(forms.exportAdminResultsCsv).toHaveBeenCalledWith(user, 'form-1');
+    expect(response.setHeader).toHaveBeenNthCalledWith(1, 'Content-Type', 'text/csv; charset=utf-8');
+    expect(response.setHeader).toHaveBeenNthCalledWith(
+      2,
+      'Content-Disposition',
+      'attachment; filename="form-results-form-1.csv"',
+    );
+    expect(response.send).toHaveBeenCalledWith('Resposta\nSim');
+  });
+
+  function controller(): EventFormsController {
+    return new EventFormsController(forms as never, replay as never);
+  }
 });

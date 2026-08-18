@@ -1,13 +1,13 @@
 import { Injectable, effect, inject } from '@angular/core';
 import { AuthService, AuthenticatedUser } from '@cacic-fct/shared-angular';
-import { OfflinePublicDataAccessService, OfflineUserSnapshot } from '@cacic-fct/offline-public-data-access';
+import { PublicDataAccessService, OfflineUserSnapshot } from '@cacic-fct/public-indexed-db';
 import { NetworkStatusService } from './network-status.service';
 
 @Injectable({ providedIn: 'root' })
 export class OfflineUserDataService {
   private readonly auth = inject(AuthService);
   private readonly networkStatus = inject(NetworkStatusService);
-  private readonly offlineData = inject(OfflinePublicDataAccessService);
+  private readonly offlineData = inject(PublicDataAccessService);
 
   start(): void {
     effect(() => {

@@ -20,8 +20,11 @@
           (click)="workspace.selectAttendanceEvent(eventItem)"
           [class.selected-list-item]="workspace.selectedAttendanceEvent()?.id === eventItem.id">
           <span matListItemTitle class="list-title">
-            <app-twemoji [emoji]="eventItem.emoji" />
+            <lib-twemoji [emoji]="eventItem.emoji" />
             <span>{{ eventItem.name }}</span>
+            @if (eventItem.isSportsMatch) {
+              <mat-icon matTooltip="Partida de torneio esportivo" aria-label="Partida de torneio esportivo">sports</mat-icon>
+            }
           </span>
           <span matListItemLine>
             {{ eventItem.startDate | date: 'short' }} ·
@@ -66,7 +69,7 @@
       <div>
         <h3>
           @if (workspace.selectedAttendanceEvent(); as selectedAttendanceEvent) {
-            <app-twemoji [emoji]="selectedAttendanceEvent.emoji" />
+            <lib-twemoji [emoji]="selectedAttendanceEvent.emoji" />
             {{ selectedAttendanceEvent.name }}
           } @else {
             Selecione um evento
@@ -88,6 +91,12 @@
         accept=".csv,text/csv"
         (change)="workspace.importAttendancesFromCsv($any($event.target).files?.[0] ?? null); csvInput.value = ''" />
       <div class="panel-actions">
+        @if (workspace.selectedAttendanceEvent(); as statisticsEvent) {
+          <a mat-stroked-button [routerLink]="['/attendances/event', statisticsEvent.id, 'statistics']">
+            <mat-icon>monitoring</mat-icon>
+            Ver estatísticas
+          </a>
+        }
         <button
           mat-stroked-button
           type="button"
@@ -113,9 +122,7 @@
             <mat-icon>qr_code_scanner</mat-icon>
             Escanear presenças
           </button>
-          <a
-            mat-flat-button
-            [routerLink]="['/attendances/event', workspace.selectedAttendanceEvent()?.id, 'oral']">
+          <a mat-flat-button [routerLink]="['/attendances/event', workspace.selectedAttendanceEvent()?.id, 'oral']">
             <mat-icon>record_voice_over</mat-icon>
             Chamada oral
           </a>
@@ -140,61 +147,30 @@
       <section class="surface manual-registration">
         <h4>Registro manual</h4>
         <form [formGroup]="workspace.attendanceForm" class="manual-form">
-          <fieldset class="form-fieldset" [disabled]="isSelectedAttendanceEventLocked()">
-            <mat-form-field>
-              <mat-label>Identificador</mat-label>
-              <mat-select formControlName="identifierType">
-                <mat-option value="query">Nome</mat-option>
-                <mat-option value="userId">ID de usuário</mat-option>
-                <mat-option value="identityDocument">Documento</mat-option>
-                <mat-option value="email">E-mail</mat-option>
-                <mat-option value="phone">Telefone</mat-option>
-              </mat-select>
-            </mat-form-field>
-
-            <mat-form-field>
-              <mat-label>Valor</mat-label>
-              <input matInput formControlName="identifier" />
-            </mat-form-field>
-
-            <button
-              mat-stroked-button
-              type="button"
-              [disabled]="
-                !workspace.selectedAttendanceEvent() ||
-                !permissions.has(Permission.Person.Read) ||
-                isSelectedAttendanceEventLocked()
-              "
-              (click)="workspace.findAttendancePerson()">
-              <mat-icon>person_search</mat-icon>
-              Buscar pessoa
-            </button>
-          </fieldset>
+          <app-person-search
+            label="Buscar pessoa para registrar"
+            [query]="workspace.attendanceForm.controls.identifier.value"
+            [results]="workspace.attendancePersonMatches()"
+            [disabled]="
+              !workspace.selectedAttendanceEvent() ||
+              !permissions.has(Permission.Person.Read) ||
+              !canEditSelectedEventAttendances() ||
+              isSelectedAttendanceEventLocked()
+            "
+            [disabledReason]="
+              !permissions.has(Permission.Person.Read)
+                ? 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
+                : 'Registrar presenças exige permissão para editar este evento.'
+            "
+            resultActionLabel="Registrar presença de"
+            (queryChange)="workspace.attendanceForm.controls.identifier.setValue($event)"
+            (searchRequested)="
+              workspace.attendanceForm.controls.identifierType.setValue('query');
+              workspace.attendanceForm.controls.identifier.setValue($event);
+              workspace.findAttendancePerson()
+            "
+            (personSelected)="workspace.registerAttendance($event)" />
         </form>
-
-        <div class="inline-list">
-          @for (person of workspace.attendancePersonMatches(); track person.id) {
-            @if (canEditSelectedEventAttendances()) {
-              <button mat-stroked-button type="button" (click)="workspace.registerAttendance(person)">
-                <span class="person-choice">
-                  <span>Registrar {{ person.name }}</span>
-                  <small
-                    >{{ person.identityDocument || 'Sem documento' }} ·
-                    {{ person.email || 'Sem e-mail principal' }}</small
-                  >
-                </span>
-              </button>
-            }
-          } @empty {
-            <span class="empty-note">
-              {{
-                permissions.has(Permission.Person.Read)
-                  ? 'Busque uma pessoa para registrar.'
-                  : 'Buscar pessoas exige permissão de Pessoa · Visualizar.'
-              }}
-            </span>
-          }
-        </div>
       </section>
 
       @if (workspace.offlineAttendanceSubmissions().length > 0) {

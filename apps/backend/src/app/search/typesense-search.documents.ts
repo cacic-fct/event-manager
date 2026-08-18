@@ -62,14 +62,12 @@ export function toCertificateTemplateSearchDocument(input: {
   id: string;
   name: string;
   description?: string | null;
-  version: number;
   isActive: boolean;
 }): CertificateTemplateSearchDocument {
   return {
     id: input.id,
     name: input.name,
     description: toOptionalString(input.description),
-    version: input.version,
     isActive: input.isActive,
   };
 }

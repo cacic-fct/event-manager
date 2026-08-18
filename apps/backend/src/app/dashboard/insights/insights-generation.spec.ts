@@ -270,9 +270,32 @@ describe('DashboardInsightsService generation', () => {
             expect.objectContaining({ publicationState: 'SCHEDULED' }),
           ]),
         }),
+        select: expect.objectContaining({
+          sportsTournament: {
+            where: { deletedAt: null, status: { not: 'DRAFT' } },
+            select: {
+              id: true,
+              categories: {
+                where: { deletedAt: null, status: { not: 'DRAFT' } },
+                select: { id: true },
+                take: 1,
+              },
+            },
+          },
+        }),
         take: 30,
       }),
     );
+    expect(
+      prisma.eventGroup.findMany.mock.calls.some(
+        ([query]) => query.where?.sportsCategory?.is === null,
+      ),
+    ).toBe(true);
+    expect(
+      prisma.event.findMany.mock.calls.filter(
+        ([query]) => query.where?.sportsMatch?.is === null,
+      ),
+    ).toHaveLength(3);
     expect(prisma.event.findMany.mock.calls[3]?.[0].where).not.toHaveProperty('shouldCollectAttendance');
     expect(result.permissions).toEqual(
       expect.arrayContaining([
@@ -291,7 +314,7 @@ describe('DashboardInsightsService generation', () => {
       ]),
     );
     expect(redis.set).toHaveBeenCalledWith(
-      'dashboard:workspace:v6:certificate#issue,event#update,event-attendance#update,major-event#update,merge-candidate#read,person#update,receipt#read',
+      'dashboard:workspace:v7:certificate#issue,event#update,event-attendance#update,major-event#update,merge-candidate#read,person#update,receipt#read',
       expect.stringContaining('"eventsCount":10'),
       'EX',
       300,
@@ -390,5 +413,63 @@ describe('DashboardInsightsService generation', () => {
     expect(result.pendingOfflineAttendancesCount).toBe(0);
     expect(prisma.event.findMany).not.toHaveBeenCalled();
     expect(weatherService.getPublicEventWeather).not.toHaveBeenCalled();
+  });
+
+  it('includes permission-gated sports operations, live scores, and review queues', async () => {
+    const { authorizationPolicy, prisma, service } = createInsightsServiceTestContext();
+    authorizationPolicy.evaluateGlobalPermissions.mockResolvedValue([
+      Permission.SportsTournament.Read,
+      Permission.SportsMatch.Read,
+    ]);
+    prisma.sportsTournament.findMany.mockResolvedValue([
+      {
+        id: 'tournament-1',
+        majorEventId: 'major-event-1',
+        status: 'LIVE',
+        majorEvent: {
+          name: 'Jogos Universitários',
+          emoji: '🏆',
+          startDate: new Date('2026-05-21T10:00:00.000Z'),
+          endDate: new Date('2026-05-24T22:00:00.000Z'),
+        },
+        _count: { categories: 2, teams: 6, playerApplications: 3 },
+        categories: [{ _count: { matches: 2, registrations: 1 } }, { _count: { matches: 0, registrations: 2 } }],
+        teams: [{ _count: { changeRequests: 1 } }],
+      },
+    ]);
+    prisma.sportsMatch.findMany.mockResolvedValue([
+      {
+        id: 'match-1',
+        state: 'LIVE',
+        scoreboard: { home: 2, away: 1 },
+        event: { name: 'Atlética FCT × Engenharia', startDate: new Date('2026-05-21T14:00:00.000Z') },
+        category: { name: 'Futsal aberto', tournamentId: 'tournament-1' },
+        homeRegistration: { team: { name: 'Atlética FCT' } },
+        awayRegistration: { team: { name: 'Engenharia' } },
+      },
+    ]);
+
+    const result = await service.getWorkspaceDashboardInsights({} as never);
+
+    expect(result.suggestions).toContainEqual({ action: 'OPEN_SPORTS', label: 'Gerenciar esportes' });
+    expect(result.sportsTournaments).toEqual([
+      expect.objectContaining({
+        tournamentId: 'tournament-1',
+        status: 'LIVE',
+        pendingApplicationCount: 3,
+        pendingReviewCount: 6,
+        activeMatchCount: 1,
+      }),
+    ]);
+    expect(result.sportsMatches).toEqual([
+      expect.objectContaining({
+        matchId: 'match-1',
+        state: 'LIVE',
+        homeTeamName: 'Atlética FCT',
+        awayTeamName: 'Engenharia',
+        homeScore: 2,
+        awayScore: 1,
+      }),
+    ]);
   });
 });

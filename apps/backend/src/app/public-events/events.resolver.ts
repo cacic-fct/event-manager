@@ -15,11 +15,15 @@ import {
   PUBLIC_MAJOR_EVENT_WHERE,
   PUBLIC_EVENT_SELECT,
   PUBLIC_EVENT_WHERE,
+  PUBLIC_MAP_EVENT_SELECT,
   PublicEvent,
+  PublicMapEvent,
   PublicLecturerProfile,
   PublicMajorEventSubscriptionPage,
   PublicEventSubscriptionSummary,
   mapPublicMajorEvent,
+  publicMapEventWhere,
+  publicRegularSubscriptionEventWhere,
 } from './models';
 
 const PUBLIC_EVENTS_MAX_TAKE = 100;
@@ -182,7 +186,7 @@ function buildPublicEventsTypesenseFilter(input: {
   startDateFrom?: Date;
   startDateUntil?: Date;
 }): string {
-  const filters = ['publiclyVisible:=true', 'publicationState:=PUBLISHED', 'majorEventPublicationState:=PUBLISHED'];
+  const filters = ['isPubliclyListed:=true', 'publicationState:=PUBLISHED', 'majorEventPublicationState:=PUBLISHED'];
 
   if (input.eventGroupId) {
     filters.push(`eventGroupId:=${escapeTypesenseFilterValue(input.eventGroupId)}`);
@@ -220,6 +224,33 @@ export class PublicEventsResolver {
     private readonly prisma: PrismaService,
     private readonly typesenseSearch: TypesenseSearchService,
   ) {}
+
+  @Query(() => [PublicMapEvent], {
+    name: 'publicMapEvents',
+    description:
+      'Lists ongoing and future publicly listed events with valid coordinates, ordered by start date. Rate limited to 60 requests per minute.',
+  })
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.publicEvents)
+  async publicMapEvents(): Promise<PublicMapEvent[]> {
+    const events = await this.prisma.event.findMany({
+      where: publicMapEventWhere(new Date()),
+      select: PUBLIC_MAP_EVENT_SELECT,
+      orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+    });
+
+    return events.flatMap((event) =>
+      event.latitude === null || event.longitude === null
+        ? []
+        : [
+            {
+              ...event,
+              latitude: event.latitude,
+              longitude: event.longitude,
+            },
+          ],
+    );
+  }
 
   @Query(() => [PublicEvent], {
     name: 'publicEvents',
@@ -574,13 +605,11 @@ export class PublicEventsResolver {
   private publicSlotSummaryEventWhere(now: Date): Prisma.EventWhereInput {
     return {
       AND: [
-        PUBLIC_EVENT_WHERE,
+        publicRegularSubscriptionEventWhere(now),
         {
-          allowSubscription: true,
           majorEventId: {
             not: null,
           },
-          OR: [{ subscriptionEndDate: null }, { subscriptionEndDate: { gte: now } }],
         },
       ],
     };

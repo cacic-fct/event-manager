@@ -150,14 +150,18 @@
     [disabled]="
       store.isSubmitting() ||
       store.effectiveSelectedEventIds().size === 0 ||
-      (store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' && !store.needsImageLicenseAgreement()) ||
+      (store.currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
+        !store.confirmedSportsOnlySubscription() &&
+        !store.needsImageLicenseAgreement()) ||
       store.subscriptionCooldownSeconds() > 0
     "
     (click)="submit()">
     <mat-icon>
-      {{ store.needsImageLicenseAgreement() ? 'verified_user' : store.currentUserSubscription() ? 'edit' : 'event_available' }}
+      {{ store.needsImageLicenseAgreement() ? 'verified_user' : store.currentUserSubscription() ? 'edit' :
+      'event_available' }}
     </mat-icon>
-    {{ store.needsImageLicenseAgreement() ? 'Aceitar contrato' : store.currentUserSubscription() ? 'Atualizar inscrição' : 'Inscrever-se' }}
+    {{ store.needsImageLicenseAgreement() ? 'Aceitar contrato' : store.currentUserSubscription() ? 'Atualizar inscrição'
+    : 'Inscrever-se' }}
   </button>
 </section>
 }

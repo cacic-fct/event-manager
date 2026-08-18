@@ -1,13 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { NovuNotificationsService } from '@cacic-fct/shared-notifications-angular';
 import type { DefaultRedirectRoute } from '@cacic-fct/event-manager-public-contracts';
 import { firstValueFrom } from 'rxjs';
 import { PublicFeatureFlagService } from '../feature-flags/public-feature-flag.service';
 import { NetworkStatusService } from '../shared/network-status.service';
-import { DEFAULT_REDIRECT_TIMEOUT_MS, DefaultRedirectApiService } from './default-redirect-api.service';
+import {
+  DEFAULT_REDIRECT_TIMEOUT_MS,
+  DefaultRedirectApiService,
+  type CurrentUserSportsAutoroute,
+} from './default-redirect-api.service';
 
 const APP_ROUTE_BY_REDIRECT: Record<DefaultRedirectRoute, string> = {
   MENU: '/menu',
@@ -23,7 +27,7 @@ export class DefaultRedirectService {
   private readonly featureFlags = inject(PublicFeatureFlagService);
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly notifications = inject(NovuNotificationsService);
-  private readonly offlineData = inject(OfflinePublicDataAccessService);
+  private readonly offlineData = inject(PublicDataAccessService);
 
   async resolve(): Promise<string> {
     const fallback = this.featureFlagFallback();
@@ -36,12 +40,20 @@ export class DefaultRedirectService {
     }
 
     try {
-      const [redirect, hasUnreadNotifications] = await this.withTimeout(
+      const [redirect, sportsRoute, hasUnreadNotifications] = await this.withTimeout(
         Promise.all([
           firstValueFrom(this.api.getCurrentUserDefaultRedirect()),
+          firstValueFrom(this.api.getCurrentUserSportsAutoroute()),
           this.notifications.hasUnreadNotifications(),
         ]),
       );
+
+      if (sportsRoute) {
+        const sportsTarget = sportsAutorouteUrl(sportsRoute);
+        if (sportsTarget) {
+          return sportsTarget;
+        }
+      }
 
       if (redirect === 'WALLET') {
         return APP_ROUTE_BY_REDIRECT.WALLET;
@@ -104,4 +116,20 @@ export class DefaultRedirectService {
       }
     }
   }
+}
+
+export function sportsAutorouteUrl(route: CurrentUserSportsAutoroute): string | null {
+  if (route.mode === 'WALLET' && route.matchId) {
+    return `/profile/wallet?sportsMatchId=${encodeURIComponent(route.matchId)}`;
+  }
+  if (route.mode === 'TEAM' && route.teamId) {
+    return `/sports/team/${encodeURIComponent(route.teamId)}`;
+  }
+  if (route.mode === 'MATCH_DETAIL' && route.matchId) {
+    return `/sports/match/${encodeURIComponent(route.matchId)}`;
+  }
+  if (route.matchId && (route.mode === 'CHECK_IN' || route.mode === 'OPERATE' || route.mode === 'FINALIZE')) {
+    return `/sports/operate/${encodeURIComponent(route.matchId)}?mode=${route.mode}`;
+  }
+  return null;
 }

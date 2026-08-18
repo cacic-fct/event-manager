@@ -23,7 +23,7 @@ const CERTIFICATE_VALIDATION_EVENT_SELECT = {
   endDate: true,
   creditMinutes: true,
   type: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: true,
   majorEventId: true,
   majorEvent: {
@@ -125,8 +125,8 @@ export class PublicCertificateValidationService {
     }
 
     const events = await this.resolveCertificateEvents(certificate);
-    const publiclyVisibleEvents = events.filter((event) => this.isCertificateEventPublic(event));
-    const sections = this.buildSections(certificate, publiclyVisibleEvents);
+    const publiclyListedEvents = events.filter((event) => this.isCertificateEventPublic(event));
+    const sections = this.buildSections(certificate, publiclyListedEvents);
 
     return {
       id: certificate.id,
@@ -148,10 +148,10 @@ export class PublicCertificateValidationService {
         certificate.config.shouldAutofillSecondPage,
       ),
       secondPageText: this.readRenderedNullableString(certificate, 'secondPageText', certificate.config.secondPageText),
-      targetName: this.getTargetName(certificate, publiclyVisibleEvents),
+      targetName: this.getTargetName(certificate, publiclyListedEvents),
       targetEmoji: this.getTargetEmoji(certificate),
       sections,
-      totalCreditMinutes: this.sumCreditMinutes(publiclyVisibleEvents),
+      totalCreditMinutes: this.sumCreditMinutes(publiclyListedEvents),
     };
   }
 
@@ -546,7 +546,7 @@ export class PublicCertificateValidationService {
 
   private getTargetName(
     certificate: PublicCertificateValidationRecord,
-    publiclyVisibleEvents: CertificateValidationEventRecord[],
+    publiclyListedEvents: CertificateValidationEventRecord[],
   ): string | undefined {
     if (
       certificate.config.scope === CertificateScope.EVENT &&
@@ -559,7 +559,7 @@ export class PublicCertificateValidationService {
       return undefined;
     }
 
-    if (certificate.config.scope === CertificateScope.EVENT_GROUP && publiclyVisibleEvents.length === 0) {
+    if (certificate.config.scope === CertificateScope.EVENT_GROUP && publiclyListedEvents.length === 0) {
       return undefined;
     }
 
@@ -599,7 +599,7 @@ export class PublicCertificateValidationService {
   ): event is CertificateValidationEventRecord {
     return Boolean(
       event &&
-        event.publiclyVisible &&
+        event.isPubliclyListed &&
         event.publicationState === 'PUBLISHED' &&
         (!event.majorEventId ||
           Boolean(

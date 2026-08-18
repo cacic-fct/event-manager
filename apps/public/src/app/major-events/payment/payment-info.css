@@ -17,12 +17,6 @@
   justify-content: space-between;
 }
 
-.eyebrow {
-  color: var(--mat-sys-primary);
-  font: var(--mat-sys-label-large);
-  margin: 0 0 6px;
-}
-
 h1,
 h2,
 p {
@@ -194,4 +188,21 @@ h2 {
     max-width: 260px;
     width: 100%;
   }
+}
+.receipt-pdf-processing {
+  align-items: center;
+  background: var(--mat-sys-surface-container-highest);
+  color: var(--mat-sys-on-surface-variant);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  min-height: 160px;
+  padding: 16px;
+  text-align: center;
+}
+
+.receipt-pdf-processing mat-icon {
+  color: var(--mat-sys-error);
 }

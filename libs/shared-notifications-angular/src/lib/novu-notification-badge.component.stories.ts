@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, within } from 'storybook/test';
+import { expect, userEvent, within } from 'storybook/test';
 import { NovuNotificationBadgeComponent } from './novu-notification-badge.component';
 import { NovuNotificationsService } from './novu-notifications.service';
 
@@ -50,7 +50,7 @@ class NovuNotificationBadgeStoryHostComponent {
 
 const meta: Meta<NovuNotificationBadgeStoryArgs> = {
   component: NovuNotificationBadgeStoryHostComponent,
-  title: 'Shared/Notifications/Novu Notification Badge',
+  title: 'CACiC Eventos/Shared/Notifications/Unread badge',
   tags: ['autodocs'],
   args: {
     unreadCount: 3,
@@ -58,9 +58,12 @@ const meta: Meta<NovuNotificationBadgeStoryArgs> = {
     icon: 'notifications',
   },
   argTypes: {
-    unreadCount: { control: { type: 'number', min: 0, max: 99, step: 1 } },
-    overlap: { control: 'boolean' },
-    icon: { control: 'text' },
+    unreadCount: {
+      control: { type: 'number', min: 0, max: 99, step: 1 },
+      description: 'Quantidade de notificações ainda não lidas.',
+    },
+    overlap: { control: 'boolean', description: 'Sobrepõe o selo ao conteúdo projetado.' },
+    icon: { control: 'text', description: 'Ícone Material usado pelo botão hospedeiro.' },
   },
   parameters: {
     layout: 'centered',
@@ -75,7 +78,10 @@ type Story = StoryObj<NovuNotificationBadgeStoryArgs>;
 export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByRole('button', { name: /notificações não lidas/i })).toBeVisible();
+    const notificationsButton = canvas.getByRole('button', { name: /notificações não lidas/i });
+    await expect(notificationsButton).toBeVisible();
+    await userEvent.click(notificationsButton);
+    await expect(notificationsButton).toHaveFocus();
   },
 };
 
@@ -90,4 +96,13 @@ export const HighCount: Story = {
     unreadCount: 42,
     overlap: false,
   },
+};
+
+export const DarkReducedMotion: Story = {
+  args: {
+    unreadCount: 7,
+    overlap: true,
+    icon: 'notifications_active',
+  },
+  globals: { theme: 'dark', motion: 'reduced' },
 };

@@ -145,7 +145,10 @@ describe('PreferencesPageComponent', () => {
 
     expect(api.setCurrentUserAdminEnabled).toHaveBeenCalledWith(true);
     expect(source.checked).toBe(false);
-    expect(snackBar.open).toHaveBeenCalledWith('Sem eventos atuais.', 'OK', { duration: 5000 });
+    expect(dialog.open).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ data: expect.objectContaining({ message: 'Sem eventos atuais.' }) }),
+    );
   });
 
   it('asks before re-enabling and keeps the current admin link when selected', async () => {

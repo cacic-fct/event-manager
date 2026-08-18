@@ -5,6 +5,8 @@ import {
   DashboardCertificatePendingItem,
   DashboardPendingOfflineAttendanceEvent,
   DashboardPendingReceiptMajorEvent,
+  DashboardSportsMatch,
+  DashboardSportsTournament,
   DashboardWeatherAlert,
   WorkspaceDashboardInsights,
 } from '../models';
@@ -36,6 +38,13 @@ type CachedDashboardInsights = Omit<WorkspaceDashboardInsights, 'generatedAt'> &
   pendingOfflineAttendanceEvents: (Omit<DashboardPendingOfflineAttendanceEvent, 'startDate' | 'endDate'> & {
     startDate: string;
     endDate: string;
+  })[];
+  sportsTournaments: (Omit<DashboardSportsTournament, 'startDate' | 'endDate'> & {
+    startDate: string;
+    endDate: string;
+  })[];
+  sportsMatches: (Omit<DashboardSportsMatch, 'startDate'> & {
+    startDate: string;
   })[];
 };
 
@@ -74,6 +83,15 @@ export async function getCachedInsights(redis: Redis, cacheKey: string): Promise
         ...item,
         startDate: new Date(item.startDate),
         endDate: new Date(item.endDate),
+      })),
+      sportsTournaments: (parsed.sportsTournaments ?? []).map((item) => ({
+        ...item,
+        startDate: new Date(item.startDate),
+        endDate: new Date(item.endDate),
+      })),
+      sportsMatches: (parsed.sportsMatches ?? []).map((item) => ({
+        ...item,
+        startDate: new Date(item.startDate),
       })),
     };
   } catch (error) {

@@ -1,6 +1,6 @@
 services:
   events-db:
-    image: postgres:18-alpine
+    image: postgis/postgis:18-3.6-alpine
     platform: linux/x86_64
     environment:
       POSTGRES_USER: postgres
@@ -11,6 +11,7 @@ services:
     volumes:
       - /Volumes/Mobile/cacic-events/db:/var/lib/postgresql
     restart: unless-stopped
+
   events-redis:
     image: redis:8-alpine
     ports:
@@ -28,3 +29,89 @@ services:
     volumes:
       - ./typesense-data:/data
     command: '--data-dir /data --api-key=xyz'
+
+  seaweedfs-master:
+    image: chrislusf/seaweedfs
+    restart: unless-stopped
+    volumes:
+      - seaweedfs-master-data:/data
+    command: >
+      master
+      -ip=seaweedfs-master
+      -ip.bind=0.0.0.0
+      -mdir=/data
+
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs
+    restart: unless-stopped
+    depends_on:
+      - seaweedfs-master
+    volumes:
+      - seaweedfs-volume-data:/data
+    command: >
+      volume
+      -mserver=seaweedfs-master:9333
+      -ip.bind=0.0.0.0
+      -port=8080
+      -dir=/data
+
+  seaweedfs-db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - seaweedfs-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -h 127.0.0.1 -p 5432']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs
+    restart: unless-stopped
+    depends_on:
+      seaweedfs-master:
+        condition: service_started
+      seaweedfs-volume:
+        condition: service_started
+      seaweedfs-db:
+        condition: service_healthy
+    volumes:
+      - seaweedfs-filer-data:/data
+      - ./seaweedfs/filer.toml:/etc/seaweed/filer.toml:ro
+    command: >
+      filer
+      -master=seaweedfs-master:9333
+      -ip.bind=0.0.0.0
+
+  seaweedfs-s3:
+    image: chrislusf/seaweedfs
+    restart: unless-stopped
+    depends_on:
+      seaweedfs-master:
+        condition: service_started
+      seaweedfs-volume:
+        condition: service_started
+      seaweedfs-filer:
+        condition: service_started
+    ports:
+      - '8333:8333'
+    volumes:
+      - ./seaweedfs/s3_config.json:/etc/seaweed/s3_config.json:ro
+    command: >
+      -v=4
+      s3
+      -filer=seaweedfs-filer:8888
+      -ip.bind=0.0.0.0
+      -port=8333
+      -config=/etc/seaweed/s3_config.json
+
+volumes:
+  seaweedfs-master-data:
+  seaweedfs-volume-data:
+  seaweedfs-filer-data:
+  seaweedfs-postgres-data:

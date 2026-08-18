@@ -20,6 +20,7 @@ interface EventComponentFixtureOptions {
   formsApi?: Partial<PublicEventFormApiService>;
   dialog?: Partial<MatDialog>;
   routeParams?: Params;
+  parentRoutePath?: string;
 }
 
 async function createEventComponentFixture(
@@ -44,6 +45,9 @@ async function createEventComponentFixture(
         useValue: {
           paramMap: of(convertToParamMap({ eventId: 'event-1', ...options.routeParams })),
           queryParamMap: of(convertToParamMap(queryParamMap)),
+          parent: options.parentRoutePath
+            ? { snapshot: { routeConfig: { path: options.parentRoutePath } } }
+            : null,
         },
       },
       {
@@ -74,6 +78,7 @@ async function createEventComponentFixture(
         provide: Router,
         useValue: {
           url: '/event/event-1',
+          navigate: vi.fn(),
           navigateByUrl: vi.fn(),
         },
       },
@@ -109,7 +114,7 @@ function defaultEventPageData(overrides: Partial<EventPageData> = {}): EventPage
     isOnlineAttendanceAllowed: false,
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,
@@ -210,6 +215,31 @@ describe('Event', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('uses the event name as the concise toolbar title', () => {
+    fixture.detectChanges();
+    const host = fixture.nativeElement as HTMLElement;
+
+    expect(host.querySelector('mat-toolbar h1')?.textContent?.trim()).toBe('Evento teste');
+    expect(host.querySelector('.event-header h1')).toBeNull();
+  });
+
+  it('renders formatted descriptions without creating unsafe HTML', async () => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData();
+    eventPageData.event = {
+      ...eventPageData.event,
+      description: '## Conteúdo\n\n**Importante** <img src=x onerror=alert(1)>',
+    };
+    const newFixture = await createEventComponentFixture({}, { eventPageData });
+    await newFixture.whenStable();
+
+    const description = (newFixture.nativeElement as HTMLElement).querySelector('lib-markdown');
+    expect(description?.querySelector('h2')?.textContent).toBe('Conteúdo');
+    expect(description?.querySelector('strong')?.textContent).toBe('Importante');
+    expect(description?.querySelector('img')).toBeNull();
+    expect(description?.textContent).toContain('<img src=x onerror=alert(1)>');
   });
 
   it('publishes complete metadata and structured data for public events', async () => {
@@ -313,6 +343,53 @@ describe('Event', () => {
     expect(component.backUrl()).toBe('/menu');
   });
 
+  it('redirects a standalone sports event to its match viewer', async () => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData();
+    eventPageData.event = { ...eventPageData.event, sportsMatch: sportsMatchMarker() };
+    const newFixture = await createEventComponentFixture({}, { eventPageData });
+    await newFixture.whenStable();
+
+    expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/sports/match', 'match-1'], {
+      queryParams: { returnUrl: '/menu' },
+      replaceUrl: true,
+    });
+  });
+
+  it.each([
+    'major-event/:majorEventId/subscription',
+    'major-event/:majorEventId/ranked-subscription',
+  ])('keeps sports event details inside the registration flow for %s', async (parentRoutePath) => {
+    TestBed.resetTestingModule();
+    const eventPageData = defaultEventPageData();
+    eventPageData.event = { ...eventPageData.event, sportsMatch: sportsMatchMarker() };
+    const newFixture = await createEventComponentFixture({}, { eventPageData, parentRoutePath });
+    await newFixture.whenStable();
+
+    expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
+  });
+
+  it.each(['https://evil.example/map', '//evil.example/map', '/\\evil.example/map', 'map']) (
+    'should reject unsafe back URL %s',
+    async (unsafeBackUrl) => {
+      TestBed.resetTestingModule();
+      const newFixture = await createEventComponentFixture({ back: unsafeBackUrl });
+      await newFixture.whenStable();
+
+      expect(newFixture.componentInstance.backUrl()).toBe('/menu');
+    },
+  );
+
+  it('should preserve a filtered map URL for back navigation', async () => {
+    TestBed.resetTestingModule();
+    const newFixture = await createEventComponentFixture({
+      back: '/map?participacao=meus&periodo=hoje',
+    });
+    await newFixture.whenStable();
+
+    expect(newFixture.componentInstance.backUrl()).toBe('/map?participacao=meus&periodo=hoje');
+  });
+
   it('renders lecturer profiles with contact links', async () => {
     fixture.detectChanges();
     await fixture.whenStable();
@@ -386,15 +463,19 @@ describe('Event', () => {
       subscriptionFlowOnly: true,
     });
     expect(open).toHaveBeenCalled();
-    expect(subscribeToEvent).toHaveBeenCalledWith('event-1', [
-      {
-        formId: 'form-1',
-        linkId: 'link-1',
-        targetType: 'EVENT',
-        eventId: 'event-1',
-        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
-      },
-    ], false);
+    expect(subscribeToEvent).toHaveBeenCalledWith(
+      'event-1',
+      [
+        {
+          formId: 'form-1',
+          linkId: 'link-1',
+          targetType: 'EVENT',
+          eventId: 'event-1',
+          answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+        },
+      ],
+      false,
+    );
   });
 
   it('keeps multiple-response subscription forms editable after an existing response', async () => {
@@ -692,14 +773,26 @@ describe('Event', () => {
         }),
       }),
     );
-    expect(subscribeToEvent).toHaveBeenCalledWith('event-1', [
-      {
-        formId: 'form-2',
-        linkId: 'link-2',
-        targetType: 'EVENT',
-        eventId: 'event-2',
-        answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
-      },
-    ], false);
+    expect(subscribeToEvent).toHaveBeenCalledWith(
+      'event-1',
+      [
+        {
+          formId: 'form-2',
+          linkId: 'link-2',
+          targetType: 'EVENT',
+          eventId: 'event-2',
+          answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
+        },
+      ],
+      false,
+    );
   });
 });
+
+function sportsMatchMarker() {
+  return {
+    id: 'match-1',
+    categoryId: 'category-1',
+    category: { tournamentId: 'tournament-1' },
+  };
+}

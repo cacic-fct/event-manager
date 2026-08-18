@@ -1,4 +1,5 @@
 import { applicationConfig, type Meta, type StoryObj } from '@storybook/angular';
+import { expect, within } from 'storybook/test';
 import { TotpSeedSessionService } from '../../../../shared/totp/totp-seed-session.service';
 import { WalletCard } from './wallet-card';
 import { type WalletCardKind, type WalletCardUser } from './wallet-card.types';
@@ -12,7 +13,7 @@ type WalletCardStoryArgs = {
 
 const meta: Meta<WalletCardStoryArgs> = {
   component: WalletCard,
-  title: 'Public/Profile/Wallet/Card',
+  title: 'CACiC Eventos/Profile/Wallet/Card',
   tags: ['autodocs'],
   parameters: {
     layout: 'centered',
@@ -45,8 +46,13 @@ export default meta;
 
 type Story = StoryObj<WalletCardStoryArgs>;
 
-export const Student: Story = {
+export const Playground: Story = {
   args: {},
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('CACiC Eventos')).toBeVisible();
+    await expect(canvas.getByText('Ana Clara Silva')).toBeVisible();
+  },
 };
 
 export const LongName: Story = {
@@ -58,16 +64,29 @@ export const LongName: Story = {
       enrollmentNumber: '',
     }),
   },
+  globals: { theme: 'dark', motion: 'reduced' },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText('Ana Carolina de Almeida e Souza')).toBeVisible();
+  },
 };
 
 export const OfflineCode: Story = {
   args: { kind: 'offline-code' },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText(/código off-line/i)).toBeVisible();
+  },
 };
 
 export const AcademicRecord: Story = {
   args: { kind: 'academic-record' },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText(/registro acadêmico/i)).toBeVisible();
+  },
 };
 
 export const Restaurant: Story = {
   args: { kind: 'restaurant' },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByText('000123456')).toBeVisible();
+  },
 };

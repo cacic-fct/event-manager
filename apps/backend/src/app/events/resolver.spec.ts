@@ -245,6 +245,9 @@ describe('EventsResolver', () => {
     const auditLog = {
       record: jest.fn(),
     };
+    const sportsMutationEvents = {
+      publishForBackingEvent: jest.fn(),
+    };
     const resolver = new EventsResolver(
       prisma as never,
       typesenseSearch as never,
@@ -252,6 +255,12 @@ describe('EventsResolver', () => {
       frozenResources as never,
       authorizationPolicy as never,
       auditLog as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      sportsMutationEvents as never,
     );
 
     await expect(
@@ -298,6 +307,7 @@ describe('EventsResolver', () => {
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('publishedAt');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('majorEvent');
     expect(auditLog.record.mock.calls[0][0].after).not.toHaveProperty('eventGroup');
+    expect(sportsMutationEvents.publishForBackingEvent).toHaveBeenCalledWith('event-1');
   });
 
   it('clones selected reusable event settings without copying the online attendance code', async () => {
@@ -330,7 +340,7 @@ describe('EventsResolver', () => {
       onlineAttendanceCode: 'ABCD',
       onlineAttendanceStartDate: new Date('2026-07-01T12:00:00.000Z'),
       onlineAttendanceEndDate: new Date('2026-07-01T14:00:00.000Z'),
-      publiclyVisible: false,
+      isPubliclyListed: false,
       displayLecturerProfile: false,
       youtubeCode: 'video',
       buttonText: 'Abrir',
@@ -371,6 +381,9 @@ describe('EventsResolver', () => {
     const tx = {
       event: {
         create: jest.fn().mockResolvedValue(created),
+        findFirst: jest.fn().mockResolvedValue({ majorEventId: 'major-1' }),
+        findMany: jest.fn().mockResolvedValue([]),
+        updateMany: jest.fn(),
       },
       eventGroup: {
         updateMany: jest.fn(),
@@ -448,7 +461,7 @@ describe('EventsResolver', () => {
           onlineAttendanceCode: null,
           onlineAttendanceStartDate: source.onlineAttendanceStartDate,
           onlineAttendanceEndDate: source.onlineAttendanceEndDate,
-          publiclyVisible: false,
+          isPubliclyListed: false,
           displayLecturerProfile: false,
           lecturers: {
             create: [

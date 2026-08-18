@@ -2,19 +2,18 @@ import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/cor
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { firstValueFrom } from 'rxjs';
 import { CertificateApiService } from '../graphql/certificate-api.service';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { PermissionsService } from '../permissions/permissions.service';
 
 @Component({
   selector: 'app-workspace-global-operations-tab',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, MatProgressBarModule],
+  imports: [MatButtonModule, MatIconModule],
   templateUrl: './global-operations-page.component.html',
   styleUrls: [
     '../app-shell/layout/page-layout.shared.scss',
@@ -27,6 +26,7 @@ export class GlobalOperationsPageComponent {
   private readonly certificatesApi = inject(CertificateApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   protected readonly permissions = inject(PermissionsService);
   protected readonly Permission = Permission;
 
@@ -64,9 +64,7 @@ export class GlobalOperationsPageComponent {
         { duration: 3500 },
       );
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível reemitir os certificados.'), 'Fechar', {
-        duration: 4500,
-      });
+      this.feedback.error(error, 'Não foi possível reemitir os certificados.');
     } finally {
       this.reissuingCertificates.set(false);
     }

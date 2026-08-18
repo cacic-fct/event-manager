@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { CurrentUserEventSubscriptionsResolver } from './subscriptions.resolver';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
+import { currentUserMapEventWhere } from './map-event-ids';
 
 describe('CurrentUserEventSubscriptionsResolver', () => {
   const frozenResources = {
@@ -12,7 +13,67 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     jest.clearAllMocks();
   });
 
-  it('lists standalone event subscriptions only through publicly visible events', async () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('returns chronologically ordered public map event IDs associated with the current person', async () => {
+    const now = new Date('2026-08-16T15:00:00.000Z');
+    jest.useFakeTimers().setSystemTime(now);
+    const prisma = {
+      event: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]),
+      },
+    };
+    const currentUserContext = {
+      getAuthenticatedUser: jest.fn().mockReturnValue({ sub: 'user-1' }),
+      resolveCurrentUserContext: jest.fn().mockResolvedValue({ person: { id: 'person-1' }, user: { id: 'user-1' } }),
+    };
+    const resolver = new CurrentUserEventSubscriptionsResolver(
+      prisma as never,
+      currentUserContext as never,
+      {} as never,
+      {} as never,
+      frozenResources as never,
+    );
+
+    await expect(
+      resolver.currentUserMapEventIds({ req: { user: { sub: 'user-1' } } } as never),
+    ).resolves.toEqual(['event-1', 'event-2']);
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith({
+      where: currentUserMapEventWhere('person-1', 'user-1', now),
+      select: { id: true },
+      orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+    });
+  });
+
+  it('returns no map event IDs when the authenticated account has no person', async () => {
+    const prisma = {
+      event: {
+        findMany: jest.fn(),
+      },
+    };
+    const currentUserContext = {
+      getAuthenticatedUser: jest.fn().mockReturnValue({ sub: 'user-1' }),
+      resolveCurrentUserContext: jest.fn().mockResolvedValue({ person: null }),
+    };
+    const resolver = new CurrentUserEventSubscriptionsResolver(
+      prisma as never,
+      currentUserContext as never,
+      {} as never,
+      {} as never,
+      frozenResources as never,
+    );
+
+    await expect(
+      resolver.currentUserMapEventIds({ req: { user: { sub: 'user-1' } } } as never),
+    ).resolves.toEqual([]);
+
+    expect(prisma.event.findMany).not.toHaveBeenCalled();
+  });
+
+  it('lists standalone event subscriptions only through publicly listed events', async () => {
     const subscription = {
       event: {
         id: 'event-1',
@@ -60,7 +121,7 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
     expect(mapper.mapPublicEvent).toHaveBeenCalledWith(subscription.event);
   });
 
-  it('looks up a current-user event subscription only through publicly visible events', async () => {
+  it('looks up a current-user event subscription only through publicly listed events', async () => {
     const prisma = {
       eventSubscription: {
         findFirst: jest.fn().mockResolvedValue(null),
@@ -205,6 +266,34 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
 
     expect(prisma.eventGroupSubscription.findMany).not.toHaveBeenCalled();
     expect(eventSubscriptions.getCurrentUserSubscribedItems).not.toHaveBeenCalled();
+  });
+
+  it('returns no required image-license interruptions when the current user has no person', async () => {
+    const { currentUserContext, eventSubscriptions, resolver } = createResolver();
+    currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: null });
+
+    await expect(
+      resolver.currentUserRequiredImageLicenseAgreementInterruptions(context()),
+    ).resolves.toEqual([]);
+    expect(eventSubscriptions.listRequiredImageLicenseAgreementInterruptions).not.toHaveBeenCalled();
+  });
+
+  it('loads required image-license interruptions only for the resolved current person', async () => {
+    const { currentUserContext, eventSubscriptions, resolver } = createResolver();
+    const interruptions = [
+      {
+        targetType: 'EVENT',
+        targetId: 'event-1',
+        targetName: 'Evento',
+      },
+    ];
+    currentUserContext.resolveCurrentUserContext.mockResolvedValue({ person: { id: 'person-1' } });
+    eventSubscriptions.listRequiredImageLicenseAgreementInterruptions.mockResolvedValue(interruptions);
+
+    await expect(
+      resolver.currentUserRequiredImageLicenseAgreementInterruptions(context()),
+    ).resolves.toBe(interruptions);
+    expect(eventSubscriptions.listRequiredImageLicenseAgreementInterruptions).toHaveBeenCalledWith('person-1');
   });
 
   it('maps current-user event and group subscriptions when records exist', async () => {
@@ -379,6 +468,7 @@ function createResolver() {
   const eventSubscriptions = {
     getCurrentUserSubscribedItems: jest.fn(),
     getSubscribedEventsByEventGroupSubscription: jest.fn(),
+    listRequiredImageLicenseAgreementInterruptions: jest.fn(),
     subscribeCurrentUserEventGroup: jest.fn(),
     subscribeCurrentUserEvent: jest.fn(),
     unsubscribeCurrentUserEvent: jest.fn(),

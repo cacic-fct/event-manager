@@ -7,7 +7,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { firstValueFrom, Observable } from 'rxjs';
 import {
@@ -16,7 +15,7 @@ import {
   CertificateConfigClonePartsInput,
 } from '@cacic-fct/event-manager-admin-contracts';
 import { CertificateApiService } from '../../graphql/certificate-api.service';
-import { TwemojiComponent } from '../../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 
 type CertificateCloneTargetOption = {
   id: string;
@@ -51,7 +50,6 @@ export type CertificateConfigCloneDialogResult = {
     MatIconModule,
     MatInputModule,
     MatListModule,
-    MatProgressBarModule,
     MatSelectModule,
     TwemojiComponent,
   ],
@@ -81,10 +79,6 @@ export type CertificateConfigCloneDialogResult = {
           <span>{{ targets().length }} itens</span>
         </header>
 
-        @if (loading()) {
-          <mat-progress-bar mode="indeterminate" />
-        }
-
         <mat-list class="target-list">
           @for (target of targets(); track target.id) {
             <mat-list-item
@@ -92,7 +86,7 @@ export type CertificateConfigCloneDialogResult = {
               [class.selected-target]="selectedTargetId() === target.id"
               (click)="selectTarget(target.id)">
               <span matListItemIcon>
-                <app-twemoji [emoji]="target.emoji" />
+                <lib-twemoji [emoji]="target.emoji" />
               </span>
               <span matListItemTitle>{{ target.name }}</span>
               <span matListItemLine>{{ target.dateLabel }}</span>

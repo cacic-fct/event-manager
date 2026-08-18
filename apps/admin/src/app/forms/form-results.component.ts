@@ -16,6 +16,7 @@ import { isPlatformBrowser } from '@angular/common';
 import * as echarts from 'echarts';
 import type { ECharts } from 'echarts';
 import { EventFormResults } from '@cacic-fct/event-manager-admin-contracts';
+import { observeEChartsTheme, readEChartsThemeColor } from '../shared/echarts-theme-colors';
 
 type FormResultSummary = {
   questions: Array<{
@@ -185,6 +186,7 @@ export class FormResultsComponent implements AfterViewInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly charts = new Map<string, ECharts>();
   private readonly resizeObservers = new Map<string, { element: HTMLElement; observer: ResizeObserver }>();
+  private stopObservingTheme?: () => void;
 
   constructor() {
     effect(() => {
@@ -199,6 +201,7 @@ export class FormResultsComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopObservingTheme?.();
     for (const chart of this.charts.values()) {
       chart.dispose();
     }
@@ -252,15 +255,15 @@ export class FormResultsComponent implements AfterViewInit, OnDestroy {
         existingChart.dispose();
         this.charts.delete(question.elementId);
       }
-      const chart = this.charts.get(question.elementId) ?? echarts.init(element);
-      const styles = getComputedStyle(element);
-      const textColor = styles.getPropertyValue('--mat-sys-on-surface').trim();
-      const mutedColor = styles.getPropertyValue('--mat-sys-on-surface-variant').trim();
-      const outlineColor = styles.getPropertyValue('--mat-sys-outline-variant').trim();
-      const primaryColor = styles.getPropertyValue('--mat-sys-primary').trim();
+      const chart = this.charts.get(question.elementId) ?? echarts.init(element, undefined, { renderer: 'canvas' });
+      this.stopObservingTheme ??= observeEChartsTheme(element, () => this.renderCharts());
+      const textColor = readEChartsThemeColor(element, '--mat-sys-on-surface', '#1b1b1f');
+      const mutedColor = readEChartsThemeColor(element, '--mat-sys-on-surface-variant', '#45464f');
+      const outlineColor = readEChartsThemeColor(element, '--mat-sys-outline-variant', '#c5c6d0');
+      const primaryColor = readEChartsThemeColor(element, '--mat-sys-primary', '#415f91');
       this.charts.set(question.elementId, chart);
       chart.setOption({
-        color: primaryColor ? [primaryColor] : undefined,
+        color: [primaryColor],
         tooltip: {
           trigger: 'axis',
           axisPointer: { type: 'shadow' },
@@ -291,7 +294,7 @@ export class FormResultsComponent implements AfterViewInit, OnDestroy {
             data: question.buckets.map((bucket) => bucket.value),
             itemStyle: {
               borderRadius: [0, 4, 4, 0],
-              color: primaryColor || undefined,
+              color: primaryColor,
             },
           },
         ],

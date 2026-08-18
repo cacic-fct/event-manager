@@ -75,7 +75,7 @@ const withOrganizerInfoProviders: Decorator<OrganizerInfoStoryArgs> = (story, co
 
 const meta: Meta<OrganizerInfoStoryArgs> = {
   component: OrganizerInfoComponent,
-  title: 'Public/Profile/Attendances/Organizer Info',
+  title: 'CACiC Eventos/Profile/Attendance/Organizer Info',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -188,6 +188,7 @@ export const RequestError: Story = {
   args: {
     state: 'error',
   },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Não foi possível carregar as informações do organizador.')).toBeVisible();

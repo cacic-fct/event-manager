@@ -1,5 +1,11 @@
 import { BadRequestException } from '@nestjs/common';
-import { SubscriptionStatus } from '@prisma/client';
+import {
+  SportsApplicationStatus,
+  SportsEligibilityStatus,
+  SportsParticipantStatus,
+  SportsPaymentStatus,
+  SubscriptionStatus,
+} from '@prisma/client';
 import { EventSubscriptionSyncService } from '../../events/event-subscription-sync.service';
 import { ReceiptSubscriptionSyncService } from './receipt-subscription-sync.service';
 
@@ -146,5 +152,67 @@ describe('ReceiptSubscriptionSyncService', () => {
     await service.refreshEventSubscriptionCounters(tx as never, ['event-1', 'event-1', 'event-2']);
 
     expect(counters.refresh).toHaveBeenCalledWith(tx, ['event-1', 'event-1', 'event-2']);
+  });
+
+  it('refreshes sports payment effectiveness through the shared subscription state', async () => {
+    const counters = {
+      refresh: jest.fn(),
+    };
+    const eventSubscriptions = {
+      syncMajorEventConfirmedSubscriptions: jest.fn(),
+    };
+    const service = new ReceiptSubscriptionSyncService(counters as never, eventSubscriptions as never);
+    const tx = {
+      majorEventSubscription: {
+        findUnique: jest.fn().mockResolvedValue({
+          subscriptionStatus: SubscriptionStatus.CONFIRMED,
+          majorEvent: { isPaymentRequired: true },
+          sportsTournamentParticipants: [
+            {
+              id: 'participant-1',
+              tournamentId: 'tournament-1',
+              personId: 'person-1',
+              approvedAt: new Date(),
+            },
+          ],
+        }),
+      },
+      sportsTournamentParticipant: {
+        update: jest.fn(),
+      },
+      sportsRegistrationMember: {
+        updateMany: jest.fn(),
+      },
+      sportsPlayerApplication: {
+        updateMany: jest.fn(),
+      },
+    };
+
+    await service.refreshSportsParticipantPayment(tx as never, 'subscription-1');
+
+    expect(tx.sportsTournamentParticipant.update).toHaveBeenCalledWith({
+      where: { id: 'participant-1' },
+      data: {
+        status: SportsParticipantStatus.ACTIVE,
+        paymentStatus: SportsPaymentStatus.PAID,
+      },
+    });
+    expect(tx.sportsRegistrationMember.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          eligibility: SportsEligibilityStatus.PENDING,
+        }),
+        data: {
+          eligibility: SportsEligibilityStatus.ELIGIBLE,
+        },
+      }),
+    );
+    expect(tx.sportsPlayerApplication.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          status: SportsApplicationStatus.ACTIVE,
+        },
+      }),
+    );
   });
 });

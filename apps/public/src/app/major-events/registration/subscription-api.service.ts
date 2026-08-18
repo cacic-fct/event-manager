@@ -127,6 +127,9 @@ export class MajorEventSubscriptionApiService {
             paymentDate
             paymentTier
             imageLicenseAgreementAccepted
+            selectedEvents {
+              id
+            }
             majorEvent {
               id
               isPaymentRequired

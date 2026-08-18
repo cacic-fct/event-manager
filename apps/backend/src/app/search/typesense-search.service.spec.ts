@@ -164,7 +164,7 @@ describe('TypesenseSearchService', () => {
 
     await expect(
       service.searchEvents('aula', {
-        filterBy: 'publiclyVisible:=true',
+        filterBy: 'isPubliclyListed:=true',
         limit: 253,
         offset: 250,
       }),
@@ -179,7 +179,7 @@ describe('TypesenseSearchService', () => {
       per_page: 250,
       limit_hits: 503,
       offset: 250,
-      filter_by: 'publiclyVisible:=true',
+      filter_by: 'isPubliclyListed:=true',
     });
     expect(client.documents.search).toHaveBeenNthCalledWith(2, {
       q: 'aula',
@@ -187,7 +187,7 @@ describe('TypesenseSearchService', () => {
       per_page: 3,
       limit_hits: 503,
       offset: 500,
-      filter_by: 'publiclyVisible:=true',
+      filter_by: 'isPubliclyListed:=true',
     });
   });
 
@@ -259,7 +259,7 @@ describe('TypesenseSearchService', () => {
       majorEventId: 'major-1',
       eventGroupId: 'group-1',
       shouldIssueCertificate: true,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: 'PUBLISHED',
       startDate,
       endDate,
@@ -291,7 +291,7 @@ describe('TypesenseSearchService', () => {
       eventGroupName: 'Minicursos',
       startDate: Math.floor(startDate.getTime() / 1000),
       endDate: Math.floor(endDate.getTime() / 1000),
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: 'PUBLISHED',
       majorEventPublicationState: 'PUBLISHED',
       isIssuableCertificateEvent: false,
@@ -333,7 +333,7 @@ describe('TypesenseSearchService', () => {
       startDate: new Date('2026-06-22T12:00:00.000Z'),
       endDate: new Date('2026-06-22T13:00:00.000Z'),
       shouldIssueCertificate: true,
-      publiclyVisible: true,
+      isPubliclyListed: true,
     };
     const prisma = createPrismaMock({
       event: [reindexedEvent],
@@ -374,7 +374,6 @@ describe('TypesenseSearchService', () => {
       id: 'template-1',
       name: 'Certificado',
       description: null,
-      version: 2,
       isActive: true,
     });
     await service.deleteCertificateTemplate('template-1');
@@ -505,7 +504,7 @@ describe('TypesenseSearchService', () => {
           startDate: new Date('2026-06-22T12:00:00.000Z'),
           endDate: new Date('2026-06-22T13:00:00.000Z'),
           shouldIssueCertificate: true,
-          publiclyVisible: true,
+          isPubliclyListed: true,
         },
       ],
       majorEvent: [
@@ -536,7 +535,6 @@ describe('TypesenseSearchService', () => {
           id: 'template-1',
           name: 'Certificado',
           description: null,
-          version: 2,
           isActive: true,
         },
       ],
@@ -577,7 +575,7 @@ describe('TypesenseSearchService', () => {
           majorEventName: 'Grande evento',
           eventGroupName: undefined,
           startDate: Math.floor(new Date('2026-06-22T12:00:00.000Z').getTime() / 1000),
-          publiclyVisible: true,
+          isPubliclyListed: true,
           isIssuableCertificateEvent: false,
         }),
       ],

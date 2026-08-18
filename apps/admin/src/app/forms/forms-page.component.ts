@@ -50,6 +50,7 @@ import { FormResultsComponent } from './form-results.component';
     '../app-shell/layout/lists-layout.shared.scss',
     '../app-shell/layout/entity-permissions.shared.scss',
     '../app-shell/layout/forms-feedback.shared.scss',
+    '../app-shell/layout/workspace-tabs.shared.scss',
     './forms-page.component.scss',
   ],
 })

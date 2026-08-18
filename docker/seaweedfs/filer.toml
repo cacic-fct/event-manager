@@ -1,0 +1,11 @@
+[leveldb2]
+enabled = false
+
+[postgres]
+enabled = true
+hostname = "seaweedfs-db"
+port = 5432
+username = "postgres"
+password = "postgres"
+database = "postgres"
+sslmode = "disable"

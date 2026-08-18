@@ -5,8 +5,7 @@ import {
   formatDateRange,
   formatDateTime,
   getAttendanceByEventId,
-  getEventAttendanceStatusLabel,
-  getSubscriptionStatusLabel,
+  getSubscriptionStatusSummaryLabel,
 } from './attendance-formatters';
 import {
   CurrentUserEventAttendance,
@@ -75,33 +74,32 @@ export function getSubscribedItemDateLine(item: SubscribedItem): string {
 }
 
 export function getSubscribedItemStatusLine(item: SubscribedItem, attendances: CurrentUserEventAttendance[]): string {
-  const participationLabels = getParticipationStatusLabels(item.participation);
   const attendanceByEventId = getAttendanceByEventId(attendances);
 
   if (item.__typename === 'SubscribedSingleEventItem') {
     const attendance = attendanceByEventId.get(item.event.id);
     return formatStatusLine([
-      attendance ? getEventAttendanceStatusLabel(attendance) : undefined,
-      ...participationLabels,
+      attendance ? 'Presença registrada' : undefined,
+      ...getFeedParticipationStatusLabels(item.participation, Boolean(attendance)),
     ]);
   }
 
   const attendedCount = item.events.filter((event) => attendanceByEventId.has(event.id)).length;
-
-  if (
-    item.events.length === 0 &&
-    attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id)
-  ) {
-    return formatStatusLine(['Presença registrada', ...participationLabels]);
-  }
+  const hasAttendance =
+    attendedCount > 0 ||
+    (item.events.length === 0 &&
+      attendances.some((attendance) => attendance.event?.eventGroupId === item.eventGroup.id));
 
   if (attendedCount === 0) {
-    return formatStatusLine(participationLabels);
+    return formatStatusLine([
+      hasAttendance ? 'Presença registrada' : undefined,
+      ...getFeedParticipationStatusLabels(item.participation, hasAttendance),
+    ]);
   }
 
   return formatStatusLine([
     `Presença registrada em ${attendedCount} de ${item.events.length} eventos`,
-    ...participationLabels,
+    ...getFeedParticipationStatusLabels(item.participation, hasAttendance),
   ]);
 }
 
@@ -114,13 +112,16 @@ export function getMajorEventStatusLine(
   attendances: CurrentUserEventAttendance[] = [],
 ): string {
   const hasAttendance = attendances.some((attendance) => attendance.event?.majorEventId === subscription.majorEventId);
+  const hasPendingSubscriptionStatus = Boolean(
+    subscription.subscriptionStatus && subscription.subscriptionStatus !== 'CONFIRMED',
+  );
 
   return formatStatusLine([
     hasAttendance ? 'Presença registrada' : undefined,
-    subscription.subscriptionStatus && subscription.subscriptionStatus !== 'CONFIRMED'
-      ? getSubscriptionStatusLabel(subscription.subscriptionStatus)
+    hasPendingSubscriptionStatus
+      ? getSubscriptionStatusSummaryLabel(subscription.subscriptionStatus ?? '')
       : undefined,
-    ...getParticipationStatusLabels(subscription.participation),
+    ...getFeedParticipationStatusLabels(subscription.participation, hasAttendance, !hasPendingSubscriptionStatus),
   ]);
 }
 
@@ -132,6 +133,33 @@ export function getParticipationStatusLabels(participation: CurrentUserEventPart
   return [
     participation.isSubscribed ? 'Inscrito' : undefined,
     participation.isLecturer ? 'Palestrante' : undefined,
+    participation.isSportsManager ? 'Gestão esportiva' : undefined,
     participation.hasIssuedCertificate ? 'Certificado emitido' : undefined,
   ].filter((label): label is string => !!label);
+}
+
+function getFeedParticipationStatusLabels(
+  participation: CurrentUserEventParticipation,
+  hasAttendance: boolean,
+  includeSubscriptionLabel = true,
+): string[] {
+  const labels = [
+    participation.hasIssuedCertificate ? 'Certificado emitido' : undefined,
+    participation.isLecturer ? 'Palestrante' : undefined,
+    participation.isSportsManager ? 'Gestão esportiva' : undefined,
+  ].filter((label): label is string => !!label);
+
+  if (labels.length > 0) {
+    return labels;
+  }
+
+  if (!hasAttendance && participation.isSubscribed && includeSubscriptionLabel) {
+    return ['Inscrito'];
+  }
+
+  if (hasAttendance) {
+    return [];
+  }
+
+  return ['Sem inscrição'];
 }

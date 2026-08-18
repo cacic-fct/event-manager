@@ -73,13 +73,11 @@ const currentUserCertificates = events.slice(0, 2).map((event, index) => ({
     certificateTemplate: {
       id: 'template-1',
       name: 'Modelo CACiC',
-      version: 1,
     },
   },
   certificateTemplate: {
     id: 'template-1',
     name: 'Modelo CACiC',
-    version: 1,
   },
 }));
 
@@ -96,13 +94,11 @@ const standaloneCertificates = [
       certificateTemplate: {
         id: 'template-1',
         name: 'Modelo CACiC',
-        version: 1,
       },
     },
     certificateTemplate: {
       id: 'template-1',
       name: 'Modelo CACiC',
-      version: 1,
     },
   },
 ];

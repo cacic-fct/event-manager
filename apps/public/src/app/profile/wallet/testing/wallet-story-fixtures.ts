@@ -1,4 +1,4 @@
-import { OfflineTotpSeedRecord } from '@cacic-fct/offline-public-data-access';
+import { OfflineTotpSeedRecord } from '@cacic-fct/public-indexed-db';
 import { WalletCardUser } from '../components/card/wallet-card.types';
 
 export const walletStoryUser: WalletCardUser = {

@@ -15,7 +15,19 @@ module.exports = {
       compiler: 'tsc',
       main: './src/main.ts',
       tsConfig: './tsconfig.app.json',
-      assets: ['./src/assets'],
+      assets: [
+        './src/assets',
+        {
+          glob: 'sports-match-overlay.css',
+          input: './src/app/sports/overlays',
+          output: '.',
+        },
+        {
+          glob: '**/*',
+          input: '../../certificate-templates',
+          output: 'certificate-templates',
+        },
+      ],
       optimization: false,
       outputHashing: 'none',
       generatePackageJson: true,

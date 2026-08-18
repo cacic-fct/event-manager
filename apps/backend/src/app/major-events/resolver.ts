@@ -30,6 +30,7 @@ import { TypesenseSearchService } from '../search/typesense-search.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
+import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 
 const PAYMENT_INFO_SELECT = {
   id: true,
@@ -50,6 +51,7 @@ const MAJOR_EVENT_PRICE_SELECT = {
       id: true,
       name: true,
       value: true,
+      includesSportsRegistration: true,
     },
     orderBy: {
       value: 'asc',
@@ -79,6 +81,10 @@ const MAJOR_EVENT_SELECT = {
   shouldIssueCertificateForNonPayingAttendees: true,
   shouldIssueCertificateForNonSubscribedAttendees: true,
   additionalPaymentInfo: true,
+  sportsTournament: {
+    where: { deletedAt: null },
+    select: { id: true },
+  },
   majorEventPrices: {
     select: MAJOR_EVENT_PRICE_SELECT,
   },
@@ -142,6 +148,10 @@ export class MajorEventsResolver {
     private readonly sitemap: EventSitemapService = {
       refresh: async () => [],
     } as unknown as EventSitemapService,
+    private readonly sportsBackingLifecycle: SportsBackingResourceLifecycleService = {
+      assertMajorEventUpdateAllowed: async () => undefined,
+      assertMajorEventDeleteAllowed: async () => undefined,
+    } as unknown as SportsBackingResourceLifecycleService,
   ) {}
 
   @Query(() => [MajorEvent], { name: 'majorEvents' })
@@ -340,6 +350,7 @@ export class MajorEventsResolver {
     };
 
     const updatedMajorEvent = await this.prisma.$transaction(async (tx) => {
+      await this.sportsBackingLifecycle.assertMajorEventUpdateAllowed(tx, id, input);
       const persisted = await tx.majorEvent.update({
         where: {
           id,
@@ -470,6 +481,7 @@ export class MajorEventsResolver {
                   tiers: sourcePrice.tiers.map((tier) => ({
                     name: tier.name,
                     value: tier.value,
+                    includesSportsRegistration: false,
                   })),
                 }
               : undefined,
@@ -525,6 +537,7 @@ export class MajorEventsResolver {
         select: this.getMajorEventSelect(paymentInfoTableExists),
       });
       if (!majorEvent) throw new NotFoundException(`Major event ${id} was not found.`);
+      await this.sportsBackingLifecycle.assertMajorEventDeleteAllowed(tx, id);
       await tx.majorEvent.update({ where: { id, deletedAt: null }, data: { deletedAt } });
       await this.auditLog.record(
         {
@@ -831,6 +844,12 @@ export class MajorEventsResolver {
 
     const tiers = this.buildPriceTierPayloads(input);
 
+    if (tiers.some((tier) => tier.includesSportsRegistration)) {
+      throw new BadRequestException(
+        'Sports registration can only be included after a tournament is linked to the major event.',
+      );
+    }
+
     if (tiers.length === 0) {
       return undefined;
     }
@@ -862,6 +881,18 @@ export class MajorEventsResolver {
     }
 
     const tiers = this.buildPriceTierPayloads(input);
+
+    if (tiers.some((tier) => tier.includesSportsRegistration)) {
+      const tournament = await tx.sportsTournament.findFirst({
+        where: { majorEventId, deletedAt: null },
+        select: { id: true },
+      });
+      if (!tournament) {
+        throw new BadRequestException(
+          'Sports registration can only be included when the major event has a linked tournament.',
+        );
+      }
+    }
 
     if (tiers.length === 0) {
       await this.deleteMajorEventPrice(tx, majorEventId);
@@ -916,6 +947,7 @@ export class MajorEventsResolver {
     const tiers = input.tiers.map((tier) => ({
       name: tier.name?.trim() ?? '',
       value: Math.round(tier.value),
+      ...(tier.includesSportsRegistration === true ? { includesSportsRegistration: true } : {}),
     }));
 
     if (tiers.some((tier) => tier.name.length === 0)) {

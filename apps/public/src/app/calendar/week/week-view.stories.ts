@@ -2,31 +2,31 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, userEvent, within } from 'storybook/test';
 import { CalendarWeekView } from './week-view';
 import {
-  CalendarStoryEventControls,
+  CalendarStoryCollectionControls,
   calendarStoryDateObject,
   calendarStoryWeekDays,
-  calendarStoryEventControlArgTypes,
-  calendarStoryEventDefaultControls,
+  calendarStoryCollectionControlArgTypes,
+  calendarStoryCollectionDefaultControls,
   createCalendarStoryEvents,
   startOfCalendarStoryWeek,
 } from '../story-fixtures';
 
-type CalendarWeekViewStoryArgs = CalendarStoryEventControls & {
+type CalendarWeekViewStoryArgs = CalendarStoryCollectionControls & {
   canGoPrevious: boolean;
   returnUrl: string;
 };
 
 const meta: Meta<CalendarWeekViewStoryArgs> = {
   component: CalendarWeekView,
-  title: 'Public/Tabs/Calendar/Calendar Week View',
+  title: 'CACiC Eventos/Calendar/Week View',
   tags: ['autodocs'],
   args: {
-    ...calendarStoryEventDefaultControls,
+    ...calendarStoryCollectionDefaultControls,
     canGoPrevious: true,
     returnUrl: '/calendar',
   },
   argTypes: {
-    ...calendarStoryEventControlArgTypes,
+    ...calendarStoryCollectionControlArgTypes,
     canGoPrevious: { control: 'boolean' },
     returnUrl: { control: 'text' },
   },
@@ -48,7 +48,7 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
   await expect(await canvas.findByText('Arquitetura Angular com Signals')).toBeVisible();
 };
 
-export const Online: Story = {
+export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
 };
@@ -62,9 +62,24 @@ export const PreviousWeekLocked: Story = {
   },
 };
 
+export const DenseWeek: Story = {
+  args: { eventCount: 30, dayOffset: 0 },
+  play: async ({ canvasElement }) => {
+    const eventLinks = await within(canvasElement).findAllByRole('link');
+    await expect(eventLinks.length).toBeGreaterThan(10);
+  },
+};
+
+export const EmptyWeek: Story = {
+  args: { eventCount: 0 },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Nenhum evento nesta data.')).toBeVisible();
+  },
+};
+
 export const OfflineFallback: Story = {
   render: (args) => renderCalendarWeekView(args, []),
-  globals: { theme: 'light', network: 'offline' },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Nenhum evento nesta data.')).toBeVisible();

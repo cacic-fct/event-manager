@@ -68,7 +68,7 @@ export class NovuNotificationsService {
       return;
     }
 
-    const actionUrl = `/profile/attendances/major-event/${input.majorEventId}`;
+    const action = this.subscriptionAction(input.majorEventId, input.nextStatus);
     const statusLabel = this.statusLabel(input.nextStatus);
     const title = `Inscrição em ${input.majorEventName}`;
     const body = this.statusBody(input.majorEventName, input.nextStatus);
@@ -90,15 +90,15 @@ export class NovuNotificationsService {
         isPositive: this.isPositiveStatus(input.nextStatus),
         isNegative: this.isNegativeStatus(input.nextStatus),
         rejectionReason: input.rejectionReason ?? null,
-        actionLabel: 'Ver inscrição',
-        actionUrl,
-        redirectUrl: actionUrl,
+        actionLabel: action.label,
+        actionUrl: action.url,
+        redirectUrl: action.url,
         subscriberId: input.recipient.subscriberId,
       },
       overrides: {
         fcm: {
           data: {
-            url: actionUrl,
+            url: action.url,
             majorEventId: input.majorEventId,
             subscriptionId: input.subscriptionId,
             subscriberId: input.recipient.subscriberId,
@@ -106,7 +106,7 @@ export class NovuNotificationsService {
         },
         webPush: {
           data: {
-            url: actionUrl,
+            url: action.url,
             majorEventId: input.majorEventId,
             subscriptionId: input.subscriptionId,
             subscriberId: input.recipient.subscriberId,
@@ -184,7 +184,7 @@ export class NovuNotificationsService {
       return false;
     }
 
-    const actionUrl = '/profile/attendances';
+    const actionUrl = `/validate/${encodeURIComponent(input.certificateId)}`;
     const title = 'Certificado disponível';
     const targetLabel = input.targetName?.trim() || input.certificateName;
     const body = `Seu certificado de ${targetLabel} está disponível.`;
@@ -202,7 +202,7 @@ export class NovuNotificationsService {
         certificateName: input.certificateName,
         targetName: input.targetName ?? null,
         issuedAt: input.issuedAt.toISOString(),
-        actionLabel: 'Ver certificados',
+        actionLabel: 'Ver certificado',
         actionUrl,
         redirectUrl: actionUrl,
         subscriberId: input.recipient.subscriberId,
@@ -365,6 +365,38 @@ export class NovuNotificationsService {
         return 'Conflito de horário';
       case SubscriptionStatus.REJECTED_GENERIC:
         return 'Inscrição recusada';
+    }
+  }
+
+  private subscriptionAction(
+    majorEventId: string,
+    status: SubscriptionStatus,
+  ): { label: string; url: string } {
+    const encodedMajorEventId = encodeURIComponent(majorEventId);
+
+    switch (status) {
+      case SubscriptionStatus.WAITING_RECEIPT_UPLOAD:
+      case SubscriptionStatus.REJECTED_INVALID_RECEIPT:
+        return {
+          label: 'Enviar comprovante',
+          url: `/major-event/${encodedMajorEventId}/payment`,
+        };
+      case SubscriptionStatus.RECEIPT_UNDER_REVIEW:
+        return {
+          label: 'Ver comprovante',
+          url: `/major-event/${encodedMajorEventId}/payment`,
+        };
+      case SubscriptionStatus.REJECTED_NO_SLOTS:
+      case SubscriptionStatus.REJECTED_SCHEDULE_CONFLICT:
+        return {
+          label: 'Revisar inscrição',
+          url: `/major-event/${encodedMajorEventId}/subscription`,
+        };
+      default:
+        return {
+          label: 'Ver inscrição',
+          url: `/profile/attendances/major-event/${encodedMajorEventId}`,
+        };
     }
   }
 

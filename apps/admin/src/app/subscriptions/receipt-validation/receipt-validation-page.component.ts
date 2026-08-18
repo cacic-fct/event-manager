@@ -27,6 +27,7 @@ import {
   ReceiptValidationQueueItem,
 } from '../../graphql/receipt-validation-api.service';
 import { getErrorMessage } from '../../feedback/error-message';
+import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 import { isFrozenMajorEvent } from '../../resource-state/frozen-resource';
 import { PermissionsService } from '../../permissions/permissions.service';
 
@@ -76,6 +77,7 @@ export class ReceiptValidationPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly formBuilder = inject(FormBuilder);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   protected readonly permissions = inject(PermissionsService);
   private readonly majorEventId = this.route.snapshot.paramMap.get('majorEventId') ?? undefined;
 
@@ -337,6 +339,6 @@ export class ReceiptValidationPageComponent {
   private showError(error: unknown, fallback: string): void {
     const message = getErrorMessage(error, fallback);
     this.error.set(message);
-    this.snackbar.open(message, 'Fechar', { duration: 4500 });
+    this.feedback.showErrorMessage(message);
   }
 }

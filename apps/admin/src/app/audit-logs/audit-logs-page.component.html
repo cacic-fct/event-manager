@@ -77,10 +77,6 @@
       </div>
     </form>
 
-    @if (loading()) {
-      <mat-progress-bar mode="indeterminate" />
-    }
-
     @if (error()) {
       <section class="surface empty-state" role="alert">
         <mat-icon>error</mat-icon>

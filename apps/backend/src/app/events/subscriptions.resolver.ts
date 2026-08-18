@@ -14,6 +14,7 @@ import { RequirePermissions } from '../auth/decorators/require-permissions.decor
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { FrozenResourceService } from '../common/frozen-resource.service';
 import { resolvePagination } from '../common/pagination';
+import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   MajorEventSubscriptionNotificationRecord,
@@ -22,6 +23,7 @@ import {
 import { AttendanceCategoryService } from './attendance-category.service';
 import { EventSubscriptionSyncService } from './event-subscription-sync.service';
 import { EventSubscriptionCountersService } from './subscription-counters.service';
+import { refreshSportsParticipantForSubscription } from '../sports/sports-payment.service';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -135,7 +137,7 @@ const EVENT_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -405,6 +407,7 @@ export class EventSubscriptionsResolver {
     const createdById = this.getActorId(context);
     const selectedEventIds = this.normalizeEventIds(input.selectedEventIds);
     const status = this.normalizeStatus(input.subscriptionStatus);
+    await this.ensureMajorEventSubscriptionHasTarget(null, input.majorEventId, selectedEventIds);
     await this.ensurePersonExists(input.personId);
     await this.ensureMajorEventExists(input.majorEventId);
     await this.ensureSelectedEventsBelongToMajorEvent(input.majorEventId, selectedEventIds);
@@ -569,6 +572,8 @@ export class EventSubscriptionsResolver {
           })
         ).map((selection) => selection.eventId);
 
+      await this.ensureMajorEventSubscriptionHasTarget(id, existing.majorEventId, effectiveSelectedEventIds, tx);
+
       await this.syncMajorEventEventSubscriptions(
         tx,
         id,
@@ -577,6 +582,9 @@ export class EventSubscriptionsResolver {
         effectiveSelectedEventIds,
         updated.subscriptionStatus,
       );
+      if (previousRecord.subscriptionStatus !== updated.subscriptionStatus) {
+        await refreshSportsParticipantForSubscription(tx, id);
+      }
 
       await this.attendanceCategories.refreshForMajorEventPerson(existing.majorEventId, existing.personId, tx);
       await this.refreshEventSubscriptionCounters(tx, effectiveSelectedEventIds);
@@ -689,6 +697,8 @@ export class EventSubscriptionsResolver {
       where: {
         majorEventId,
         deletedAt: null,
+        allowSubscription: true,
+        sportsMatch: { is: null },
       },
       select: {
         id: true,
@@ -815,22 +825,7 @@ export class EventSubscriptionsResolver {
   private async runSerializableSubscriptionTransaction<T>(
     operation: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
-    const maxAttempts = 3;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      try {
-        return await this.prisma.$transaction(operation, {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-        });
-      } catch (error) {
-        if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
-          continue;
-        }
-
-        throw error;
-      }
-    }
-
-    throw new BadRequestException('Could not complete subscription.');
+    return runSerializablePrismaTransaction(this.prisma, operation);
   }
 
   private async ensurePersonExists(personId: string): Promise<void> {
@@ -890,6 +885,8 @@ export class EventSubscriptionsResolver {
         },
         majorEventId,
         deletedAt: null,
+        allowSubscription: true,
+        sportsMatch: { is: null },
       },
       select: {
         id: true,
@@ -902,6 +899,40 @@ export class EventSubscriptionsResolver {
         `Some selected events do not belong to major event ${majorEventId}: ${missingIds.join(', ')}.`,
       );
     }
+  }
+
+  private async ensureMajorEventSubscriptionHasTarget(
+    subscriptionId: string | null,
+    majorEventId: string,
+    selectedEventIds: string[],
+    prisma: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<void> {
+    if (selectedEventIds.length > 0) {
+      return;
+    }
+
+    if (
+      subscriptionId &&
+      (await prisma.sportsTournamentParticipant.findFirst({
+        where: {
+          majorEventSubscriptionId: subscriptionId,
+          deletedAt: null,
+          tournament: {
+            majorEventId,
+            deletedAt: null,
+          },
+        },
+        select: {
+          id: true,
+        },
+      }))
+    ) {
+      return;
+    }
+
+    throw new BadRequestException(
+      `Major-event subscription ${subscriptionId ?? 'new'} must include at least one event or sports participation.`,
+    );
   }
 
   private async ensurePersonIsNotLecturer(personId: string, eventIds: string[]): Promise<void> {

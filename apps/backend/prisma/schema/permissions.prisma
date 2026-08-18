@@ -1,49 +1,199 @@
-enum EventManagerPermissionGrantScope {
+enum EventManagerPermissionScope {
   GLOBAL
   EVENT
   MAJOR_EVENT
   EVENT_GROUP
 }
 
-model EventManagerPermissionGrant {
+enum EventManagerPermissionArchiveReason {
+  MANUAL
+  EXPIRED
+  MIGRATED
+  ROLE_ARCHIVED
+  GROUP_ARCHIVED
+  PERSON_MERGED
+}
+
+model EventManagerRole {
+  id          String  @id @default(uuid(7))
+  systemKey   String? @unique
+  name        String
+  description String
+  emoji       String  @default("🔐")
+  position    Int     @default(0)
+  isSystem    Boolean @default(false)
+  version     Int     @default(1)
+
+  permissions EventManagerRolePermission[]
+  assignments EventManagerRoleAssignment[]
+  parentLinks EventManagerRoleInheritance[] @relation("RoleInheritanceChild")
+  childLinks  EventManagerRoleInheritance[] @relation("RoleInheritanceParent")
+
+  archivedAt DateTime?
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+
+  @@index([name])
+  @@index([position])
+  @@index([isSystem])
+  @@index([archivedAt])
+  @@map("event_manager_roles")
+}
+
+model EventManagerRolePermission {
+  role       EventManagerRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId     String
+  permission String
+
+  createdAt   DateTime @default(now())
+  createdById String?
+
+  @@id([roleId, permission])
+  @@index([permission])
+  @@map("event_manager_role_permissions")
+}
+
+model EventManagerRoleInheritance {
   id String @id @default(uuid(7))
 
-  user   User   @relation(fields: [userId], references: [id])
-  userId String
+  childRole   EventManagerRole @relation("RoleInheritanceChild", fields: [childRoleId], references: [id], onDelete: Cascade)
+  childRoleId String
+  parentRole   EventManagerRole @relation("RoleInheritanceParent", fields: [parentRoleId], references: [id], onDelete: Restrict)
+  parentRoleId String
 
-  person   People? @relation(fields: [personId], references: [id])
+  createdAt   DateTime @default(now())
+  createdById String?
+  archivedAt  DateTime?
+
+  @@unique([childRoleId, parentRoleId], map: "event_manager_role_inheritances_active_key", where: raw("\"archivedAt\" IS NULL"))
+  @@index([childRoleId])
+  @@index([parentRoleId])
+  @@index([archivedAt])
+  @@map("event_manager_role_inheritances")
+}
+
+model EventManagerRoleAssignment {
+  id String @id @default(uuid(7))
+
+  role   EventManagerRole @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  roleId String
+
+  person   People? @relation(fields: [personId], references: [id], onDelete: Restrict)
   personId String?
+  group    EventManagerPermissionGroup? @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  groupId  String?
 
-  permission String
-  scope      EventManagerPermissionGrantScope @default(GLOBAL)
-
-  event   Event?  @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  eventId String?
-
-  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
-  majorEventId String?
-
-  eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id], onDelete: Restrict)
-  eventGroupId String?
+  scopes EventManagerRoleAssignmentScope[]
 
   validFrom  DateTime?
   validUntil DateTime?
+  unlimited  Boolean @default(false)
+  archivedAt DateTime?
+  archivedReason EventManagerPermissionArchiveReason?
 
   createdAt   DateTime @default(now())
   createdById String?
   updatedAt   DateTime @updatedAt
   updatedById String?
-  deletedAt   DateTime?
 
-  @@index([userId])
+  @@unique([roleId, personId], map: "event_manager_role_assignments_person_active_key", where: raw("\"archivedAt\" IS NULL AND \"personId\" IS NOT NULL"))
+  @@unique([roleId, groupId], map: "event_manager_role_assignments_group_active_key", where: raw("\"archivedAt\" IS NULL AND \"groupId\" IS NOT NULL"))
+  @@index([roleId])
   @@index([personId])
-  @@index([permission])
+  @@index([groupId])
+  @@index([validFrom])
+  @@index([validUntil])
+  @@index([archivedAt])
+  @@map("event_manager_role_assignments")
+}
+
+model EventManagerRoleAssignmentScope {
+  id String @id @default(uuid(7))
+
+  assignment   EventManagerRoleAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId String
+  scope        EventManagerPermissionScope
+
+  event   Event? @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  eventId String?
+  majorEvent   MajorEvent? @relation(fields: [majorEventId], references: [id], onDelete: Restrict)
+  majorEventId String?
+  eventGroup   EventGroup? @relation(fields: [eventGroupId], references: [id], onDelete: Restrict)
+  eventGroupId String?
+
+  validFrom  DateTime?
+  validUntil DateTime?
+  unlimited  Boolean @default(false)
+  archivedAt DateTime?
+  archivedReason EventManagerPermissionArchiveReason?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@unique([assignmentId], map: "event_manager_role_assignment_scopes_global_active_key", where: raw("\"archivedAt\" IS NULL AND \"scope\" = 'GLOBAL'"))
+  @@unique([assignmentId, eventId], map: "event_manager_role_assignment_scopes_event_active_key", where: raw("\"archivedAt\" IS NULL AND \"scope\" = 'EVENT'"))
+  @@unique([assignmentId, majorEventId], map: "event_manager_role_assignment_scopes_major_event_active_key", where: raw("\"archivedAt\" IS NULL AND \"scope\" = 'MAJOR_EVENT'"))
+  @@unique([assignmentId, eventGroupId], map: "event_manager_role_assignment_scopes_event_group_active_key", where: raw("\"archivedAt\" IS NULL AND \"scope\" = 'EVENT_GROUP'"))
+  @@index([assignmentId])
   @@index([scope])
   @@index([eventId])
   @@index([majorEventId])
   @@index([eventGroupId])
   @@index([validFrom])
   @@index([validUntil])
-  @@index([deletedAt])
-  @@map("event_manager_permission_grants")
+  @@index([archivedAt])
+  @@map("event_manager_role_assignment_scopes")
+}
+
+model EventManagerPermissionGroup {
+  id          String @id @default(uuid(7))
+  name        String
+  description String
+  emoji       String @default("👥")
+  version     Int    @default(1)
+
+  members     EventManagerPermissionGroupMember[]
+  assignments EventManagerRoleAssignment[]
+
+  archivedAt DateTime?
+  createdAt   DateTime  @default(now())
+  createdById String?
+  updatedAt   DateTime  @updatedAt
+  updatedById String?
+
+  @@index([name])
+  @@index([archivedAt])
+  @@map("event_manager_permission_groups")
+}
+
+model EventManagerPermissionGroupMember {
+  id String @id @default(uuid(7))
+
+  group   EventManagerPermissionGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  groupId String
+  person   People @relation(fields: [personId], references: [id], onDelete: Restrict)
+  personId String
+
+  validFrom  DateTime?
+  validUntil DateTime?
+  unlimited  Boolean @default(false)
+  archivedAt DateTime?
+  archivedReason EventManagerPermissionArchiveReason?
+
+  createdAt   DateTime @default(now())
+  createdById String?
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@unique([groupId, personId], map: "event_manager_permission_group_members_active_key", where: raw("\"archivedAt\" IS NULL"))
+  @@index([groupId])
+  @@index([personId])
+  @@index([validFrom])
+  @@index([validUntil])
+  @@index([archivedAt])
+  @@map("event_manager_permission_group_members")
 }

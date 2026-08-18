@@ -6,7 +6,7 @@ import { RestaurantCardEnrollment } from '../restaurant-card-enrollment/restaura
 
 const meta: Meta<WalletAddCard> = {
   component: WalletAddCard,
-  title: 'Public/Profile/Wallet/Add Card',
+  title: 'CACiC Eventos/Profile/Wallet/Add Card',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({ providers: [provideRouter([{ path: 'restaurant', component: RestaurantCardEnrollment }])] }),
@@ -18,12 +18,27 @@ export default meta;
 
 type Story = StoryObj<WalletAddCard>;
 
-export const Default: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const restaurantLink = await canvas.findByRole('link', { name: /Cartão do R\.U\./i });
     await expect(restaurantLink).toBeVisible();
     await userEvent.click(restaurantLink);
     await expect(window.location.pathname).toBe('/restaurant');
+  },
+};
+
+export const DarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+};
+
+export const KeyboardNavigation: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.tab();
+    await userEvent.tab();
+    await expect(await canvas.findByRole('link', { name: /Cartão do R\.U\./i })).toHaveFocus();
   },
 };

@@ -35,6 +35,11 @@ self.addEventListener('message', (event) => {
 
   if (event.data?.type === 'CACHE_ATTENDANCE_SCANNER') {
     event.waitUntil(cacheAttendanceScannerUrlsForClient(event));
+    return;
+  }
+
+  if (event.data?.type === 'CACHE_MAP_TILES') {
+    event.waitUntil(cacheMapTileUrlsForClient(event));
   }
 });
 
@@ -42,6 +47,14 @@ async function cacheAttendanceScannerUrlsForClient(event) {
   const ok = await cacheAttendanceScannerUrls(event.data.urls);
   event.ports?.[0]?.postMessage({
     type: 'CACHE_ATTENDANCE_SCANNER_RESULT',
+    ok,
+  });
+}
+
+async function cacheMapTileUrlsForClient(event) {
+  const ok = await cacheMapTileUrls(event.data.urls);
+  event.ports?.[0]?.postMessage({
+    type: 'CACHE_MAP_TILES_RESULT',
     ok,
   });
 }
@@ -81,6 +94,8 @@ const isGoogleProfilePictureUrl = (url) =>
 const isTwemojiSvgUrl = (url) =>
   url.origin === 'https://cdn.jsdelivr.net' &&
   /^\/gh\/twitter\/twemoji@latest\/assets\/svg\/[^/]+\.svg$/.test(url.pathname);
+const isOpenStreetMapTileUrl = (url) =>
+  url.origin === 'https://tile.openstreetmap.org' && /^\/\d+\/\d+\/\d+\.png$/.test(url.pathname);
 const hasPrivateCacheControl = (response) => {
   const cacheControl = response.headers.get('Cache-Control')?.toLowerCase() ?? '';
   return cacheControl.includes('no-store') || cacheControl.includes('private');
@@ -89,6 +104,11 @@ const zxingWasmCacheName = 'zxing-wasm';
 const zxingWasmExpirationConfig = {
   maxEntries: 4,
   maxAgeSeconds: 60 * 60 * 24 * 30,
+};
+const openStreetMapTileCacheName = 'openstreetmap-tiles';
+const openStreetMapTileExpirationConfig = {
+  maxEntries: 200,
+  maxAgeSeconds: 60 * 60 * 24 * 7,
 };
 
 const networkOnly = new workbox.strategies.NetworkOnly();
@@ -221,6 +241,64 @@ workbox.routing.registerRoute(
     ],
   }),
 );
+
+workbox.routing.registerRoute(
+  ({ request, url }) => request.method === 'GET' && request.destination === 'image' && isOpenStreetMapTileUrl(url),
+  new workbox.strategies.StaleWhileRevalidate({
+    cacheName: openStreetMapTileCacheName,
+    plugins: [
+      new workbox.cacheableResponse.CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+      new workbox.expiration.ExpirationPlugin({
+        ...openStreetMapTileExpirationConfig,
+        purgeOnQuotaError: true,
+      }),
+    ],
+  }),
+);
+
+async function cacheMapTileUrls(urls) {
+  if (!Array.isArray(urls) || urls.length === 0 || urls.length > 20) {
+    return false;
+  }
+
+  const uniqueUrls = [...new Set(urls)];
+  if (uniqueUrls.some((url) => !isMapTileWarmupUrl(url))) {
+    return false;
+  }
+
+  const results = await Promise.allSettled(uniqueUrls.map((url) => cacheMapTileUrl(url)));
+  return results.every((result) => result.status === 'fulfilled' && result.value);
+}
+
+function isMapTileWarmupUrl(rawUrl) {
+  if (typeof rawUrl !== 'string') {
+    return false;
+  }
+  try {
+    return isOpenStreetMapTileUrl(new URL(rawUrl));
+  } catch {
+    return false;
+  }
+}
+
+async function cacheMapTileUrl(url) {
+  const request = new Request(url, { credentials: 'omit', mode: 'cors' });
+  const response = await fetch(request);
+  if (!response || ![0, 200].includes(response.status) || hasPrivateCacheControl(response)) {
+    return false;
+  }
+
+  const cache = await caches.open(openStreetMapTileCacheName);
+  await cache.put(request, response);
+  const expiration = new workbox.expiration.CacheExpiration(
+    openStreetMapTileCacheName,
+    openStreetMapTileExpirationConfig,
+  );
+  await expiration.updateTimestamp(request.url);
+  return true;
+}
 
 workbox.routing.registerRoute(
   ({ request, url }) => request.method === 'GET' && isZxingWasmUrl(url),

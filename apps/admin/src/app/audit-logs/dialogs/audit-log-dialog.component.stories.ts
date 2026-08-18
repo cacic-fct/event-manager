@@ -129,7 +129,8 @@ const meta: Meta<AuditLogDialogStoryArgs> = {
     layout: 'fullscreen',
     a11y: { test: 'error' },
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async ({ request }) => {
           const body = (await request.json()) as GraphqlBody;
           await delay(activeArgs.responseDelay);
@@ -153,7 +154,8 @@ const meta: Meta<AuditLogDialogStoryArgs> = {
             },
           });
         }),
-      ],
+        ],
+      },
     },
   },
 };
@@ -238,6 +240,7 @@ export const RevertConfirmation: Story = {
 };
 
 export const RequestError: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     requestState: 'error',
     responseDelay: 0,

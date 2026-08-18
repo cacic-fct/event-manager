@@ -4,6 +4,7 @@ import { Permission } from '@cacic-fct/shared-permissions';
 import { EventFormResponseMode, EventFormTargetType, Prisma, PublicationState } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
+import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   eventFormInclude,
@@ -240,21 +241,7 @@ export async function runSerializableFormTransaction<T>(
   prisma: PrismaService,
   operation: (tx: Prisma.TransactionClient) => Promise<T>,
 ): Promise<T> {
-  const maxAttempts = 3;
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      return await prisma.$transaction(operation, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      });
-    } catch (error) {
-      if (attempt < maxAttempts && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') {
-        continue;
-      }
-      throw error;
-    }
-  }
-
-  throw new BadRequestException('Não foi possível salvar a resposta do formulário.');
+  return runSerializablePrismaTransaction(prisma, operation);
 }
 
 export function normalizeFormName(value: string | null | undefined, fallback: string): string {

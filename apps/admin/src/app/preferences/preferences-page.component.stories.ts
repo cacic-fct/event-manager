@@ -159,7 +159,8 @@ const meta: Meta<WorkspacePreferencesStoryArgs> = {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async ({ request }) => {
           const body = (await request.json()) as GraphqlBody;
           const query = body.query ?? '';
@@ -221,7 +222,8 @@ const meta: Meta<WorkspacePreferencesStoryArgs> = {
 
           return HttpResponse.json({ data: {} });
         }),
-      ],
+        ],
+      },
     },
   },
 };
@@ -273,6 +275,7 @@ export const LinkUnavailable: Story = {
 };
 
 export const RequestError: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     requestState: 'error',
     responseDelay: 0,

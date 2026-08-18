@@ -102,7 +102,7 @@ export default meta;
 
 type Story = StoryObj<PersonLinkedDataDialogStoryArgs>;
 
-export const LinkedData: Story = {
+export const Playground: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Vínculos da pessoa')).toBeVisible();
@@ -132,6 +132,7 @@ export const Loading: Story = {
 };
 
 export const ErrorState: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     mode: 'error',
   },

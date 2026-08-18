@@ -1,4 +1,5 @@
-import { Field, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
+import { Field, Float, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
+import { SportsMatchState, SportsTournamentStatus } from '@cacic-fct/shared-data-types';
 
 export const DashboardInsightSeverity = {
   INFO: 'INFO',
@@ -21,6 +22,7 @@ export const DashboardInsightAction = {
   OPEN_CERTIFICATES: 'OPEN_CERTIFICATES',
   OPEN_MERGE_CANDIDATES: 'OPEN_MERGE_CANDIDATES',
   OPEN_PUBLICATION: 'OPEN_PUBLICATION',
+  OPEN_SPORTS: 'OPEN_SPORTS',
 } as const;
 export type DashboardInsightAction = (typeof DashboardInsightAction)[keyof typeof DashboardInsightAction];
 registerEnumType(DashboardInsightAction, {
@@ -50,17 +52,25 @@ export const DashboardInconsistencyType = {
   EVENT_SUBSCRIPTION_DATE_MISMATCH: 'EVENT_SUBSCRIPTION_DATE_MISMATCH',
   MAJOR_EVENT_SUBSCRIPTION_DATE_MISMATCH: 'MAJOR_EVENT_SUBSCRIPTION_DATE_MISMATCH',
   PLACE_DOUBLE_BOOKED: 'PLACE_DOUBLE_BOOKED',
+  SPORTS_PLACE_DOUBLE_BOOKED: 'SPORTS_PLACE_DOUBLE_BOOKED',
   LECTURER_DOUBLE_BOOKED: 'LECTURER_DOUBLE_BOOKED',
   LECTURER_SELF_SUBSCRIBED: 'LECTURER_SELF_SUBSCRIBED',
   LECTURER_SELF_ATTENDED: 'LECTURER_SELF_ATTENDED',
   SUSPICIOUS_DURATION: 'SUSPICIOUS_DURATION',
   SUSPICIOUS_DATE: 'SUSPICIOUS_DATE',
   PLACEHOLDER_EMOJI: 'PLACEHOLDER_EMOJI',
+  SPORTS_MATCH_WITHOUT_PLACE: 'SPORTS_MATCH_WITHOUT_PLACE',
+  SPORTS_MATCH_PLACEHOLDER_EMOJI: 'SPORTS_MATCH_PLACEHOLDER_EMOJI',
   PUBLISHED_EVENT_HIDDEN_FROM_USERS: 'PUBLISHED_EVENT_HIDDEN_FROM_USERS',
   DRAFT_EVENT_VISIBLE_TO_ADMINS: 'DRAFT_EVENT_VISIBLE_TO_ADMINS',
+  PUBLISHED_SPORTS_MATCH_HIDDEN_FROM_USERS: 'PUBLISHED_SPORTS_MATCH_HIDDEN_FROM_USERS',
+  DRAFT_SPORTS_MATCH_VISIBLE_TO_ADMINS: 'DRAFT_SPORTS_MATCH_VISIBLE_TO_ADMINS',
+  SPORTS_MATCH_PUBLIC_VISIBILITY_MISMATCH: 'SPORTS_MATCH_PUBLIC_VISIBILITY_MISMATCH',
   PUBLISHED_EVENT_WITH_UNPUBLISHED_MAJOR_EVENT: 'PUBLISHED_EVENT_WITH_UNPUBLISHED_MAJOR_EVENT',
   OVERDUE_SCHEDULED_PUBLICATION: 'OVERDUE_SCHEDULED_PUBLICATION',
+  OVERDUE_SCHEDULED_SPORTS_MATCH_PUBLICATION: 'OVERDUE_SCHEDULED_SPORTS_MATCH_PUBLICATION',
   PUBLISHED_MAJOR_EVENT_WITHOUT_VISIBLE_CHILDREN: 'PUBLISHED_MAJOR_EVENT_WITHOUT_VISIBLE_CHILDREN',
+  SPORTS_TOURNAMENT_WITHOUT_PUBLIC_CONTENT: 'SPORTS_TOURNAMENT_WITHOUT_PUBLIC_CONTENT',
 } as const;
 export type DashboardInconsistencyType = (typeof DashboardInconsistencyType)[keyof typeof DashboardInconsistencyType];
 registerEnumType(DashboardInconsistencyType, {
@@ -227,6 +237,78 @@ export class DashboardPendingOfflineAttendanceEvent {
 }
 
 @ObjectType()
+export class DashboardSportsTournament {
+  @Field(() => String)
+  tournamentId!: string;
+
+  @Field(() => String)
+  majorEventId!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String)
+  emoji!: string;
+
+  @Field(() => Date)
+  startDate!: Date;
+
+  @Field(() => Date)
+  endDate!: Date;
+
+  @Field(() => SportsTournamentStatus)
+  status!: SportsTournamentStatus;
+
+  @Field(() => Int)
+  categoryCount!: number;
+
+  @Field(() => Int)
+  teamCount!: number;
+
+  @Field(() => Int)
+  pendingApplicationCount!: number;
+
+  @Field(() => Int)
+  pendingReviewCount!: number;
+
+  @Field(() => Int)
+  activeMatchCount!: number;
+}
+
+@ObjectType()
+export class DashboardSportsMatch {
+  @Field(() => String)
+  matchId!: string;
+
+  @Field(() => String)
+  tournamentId!: string;
+
+  @Field(() => String)
+  categoryName!: string;
+
+  @Field(() => String)
+  eventName!: string;
+
+  @Field(() => Date)
+  startDate!: Date;
+
+  @Field(() => SportsMatchState)
+  state!: SportsMatchState;
+
+  @Field(() => String, { nullable: true })
+  homeTeamName?: string | null;
+
+  @Field(() => String, { nullable: true })
+  awayTeamName?: string | null;
+
+  @Field(() => Float)
+  homeScore!: number;
+
+  @Field(() => Float)
+  awayScore!: number;
+}
+
+@ObjectType()
 export class DashboardInconsistency {
   @Field(() => DashboardInconsistencyType)
   type!: DashboardInconsistencyType;
@@ -314,6 +396,12 @@ export class WorkspaceDashboardInsights {
 
   @Field(() => [DashboardPendingOfflineAttendanceEvent])
   pendingOfflineAttendanceEvents!: DashboardPendingOfflineAttendanceEvent[];
+
+  @Field(() => [DashboardSportsTournament])
+  sportsTournaments!: DashboardSportsTournament[];
+
+  @Field(() => [DashboardSportsMatch])
+  sportsMatches!: DashboardSportsMatch[];
 
   @Field(() => [DashboardInconsistency])
   inconsistencies!: DashboardInconsistency[];

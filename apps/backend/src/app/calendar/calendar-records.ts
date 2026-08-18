@@ -117,14 +117,6 @@ export function buildAdminEventGroupSelect() {
   } satisfies Prisma.EventGroupSelect;
 }
 
-export const ADMIN_CALENDAR_GRANT_SELECT = {
-  permission: true,
-  scope: true,
-  eventId: true,
-  majorEventId: true,
-  eventGroupId: true,
-} satisfies Prisma.EventManagerPermissionGrantSelect;
-
 export type CalendarEventRecord = Prisma.EventGetPayload<{ select: typeof CALENDAR_EVENT_SELECT }>;
 export type PublicEventCalendarRecord = Prisma.EventGetPayload<{ select: typeof PUBLIC_EVENT_CALENDAR_SELECT }>;
 export type CalendarFeedSettingsRecord = Prisma.UserCalendarFeedSettingsGetPayload<{
@@ -140,9 +132,13 @@ export type AdminMajorEventRecord = Prisma.MajorEventGetPayload<{ select: typeof
 export type AdminEventGroupRecord = Prisma.EventGroupGetPayload<{
   select: ReturnType<typeof buildAdminEventGroupSelect>;
 }>;
-export type AdminCalendarGrantRecord = Prisma.EventManagerPermissionGrantGetPayload<{
-  select: typeof ADMIN_CALENDAR_GRANT_SELECT;
-}>;
+export type AdminCalendarGrantRecord = {
+  permission: string;
+  scope: 'GLOBAL' | 'EVENT' | 'MAJOR_EVENT' | 'EVENT_GROUP';
+  eventId: string | null;
+  majorEventId: string | null;
+  eventGroupId: string | null;
+};
 
 export type CalendarEntry = {
   id: string;

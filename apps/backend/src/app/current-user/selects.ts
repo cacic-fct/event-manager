@@ -77,6 +77,13 @@ export const MAJOR_EVENT_BASE_SELECT = {
   scheduledPublishAt: true,
   publishedAt: true,
   unpublishedAt: true,
+  sportsTournament: {
+    select: {
+      id: true,
+      deletedAt: true,
+      status: true,
+    },
+  },
   certificateConfigs: {
     where: {
       deletedAt: null,
@@ -96,6 +103,7 @@ export const MAJOR_EVENT_BASE_SELECT = {
           id: true,
           name: true,
           value: true,
+          includesSportsRegistration: true,
         },
       },
     },
@@ -211,7 +219,7 @@ export const EVENT_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: true,
   scheduledPublishAt: true,
   publishedAt: true,
@@ -219,6 +227,20 @@ export const EVENT_SELECT = {
   youtubeCode: true,
   buttonText: true,
   buttonLink: true,
+  sportsMatch: {
+    where: {
+      deletedAt: null,
+    },
+    select: {
+      id: true,
+      categoryId: true,
+      category: {
+        select: {
+          tournamentId: true,
+        },
+      },
+    },
+  },
   deletedAt: true,
   createdAt: true,
   createdById: true,

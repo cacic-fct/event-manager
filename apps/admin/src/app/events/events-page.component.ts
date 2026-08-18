@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -13,13 +14,18 @@ import { MatListModule } from '@angular/material/list';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { MarkdownPreviewDialogComponent, TwemojiComponent } from '@cacic-fct/shared-angular';
 import { Event, EventType, MajorEvent, PublicationState } from '@cacic-fct/event-manager-admin-contracts';
 import { EventsService } from './events.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { isFrozenEvent, isFrozenMajorEvent } from '../resource-state/frozen-resource';
 import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.component';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
+import {
+  LocationCoordinatePickerDialogComponent,
+  type LocationCoordinates,
+} from '../app-shell/dialogs/location-coordinate-picker-dialog.component';
 
 @Component({
   selector: 'app-workspace-events-tab',
@@ -29,6 +35,7 @@ import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.c
     ReactiveFormsModule,
     MatAutocompleteModule,
     MatButtonModule,
+    MatDialogModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatIconModule,
@@ -38,6 +45,7 @@ import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.c
     MatTooltipModule,
     TwemojiComponent,
     EventFilterPanelComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './events-page.component.html',
   styleUrls: [
@@ -51,6 +59,7 @@ export class EventsPageComponent {
   @ViewChild(EventFilterPanelComponent)
   private eventFilterPanel?: EventFilterPanelComponent;
   readonly workspace = inject(EventsService);
+  private readonly dialog = inject(MatDialog);
   private readonly route = inject(ActivatedRoute);
   protected readonly auditLog = inject(AuditLogService);
   protected readonly permissions = inject(PermissionsService);
@@ -72,6 +81,32 @@ export class EventsPageComponent {
 
   focusQuickSearch(): void {
     this.eventFilterPanel?.focusQuickSearch();
+  }
+
+  protected previewDescription(): void {
+    this.dialog.open(MarkdownPreviewDialogComponent, {
+      data: {
+        content: this.workspace.eventForm.controls.description.value,
+        title: 'Pré-visualização da descrição do evento',
+      },
+      maxWidth: 'calc(100vw - 32px)',
+    });
+  }
+
+  protected openLocationPicker(): void {
+    const latitude = Number(this.workspace.eventForm.controls.latitude.value);
+    const longitude = Number(this.workspace.eventForm.controls.longitude.value);
+    const coordinates = Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : null;
+    this.dialog
+      .open(LocationCoordinatePickerDialogComponent, { data: { coordinates }, maxWidth: 'calc(100vw - 32px)' })
+      .afterClosed()
+      .subscribe((result: LocationCoordinates | undefined) => {
+        if (!result) return;
+        this.workspace.eventForm.patchValue({
+          latitude: result.latitude.toString(),
+          longitude: result.longitude.toString(),
+        });
+      });
   }
 
   protected describeEventType(type: EventType | null | undefined): string {

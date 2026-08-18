@@ -8,7 +8,7 @@ import { fakerPT_BR as faker } from '@faker-js/faker';
 import type { Meta, StoryObj } from '@storybook/angular';
 import { applicationConfig } from '@storybook/angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
-import { HttpResponse, http } from 'msw';
+import { HttpResponse, delay, http } from 'msw';
 import { NEVER } from 'rxjs';
 import { expect, screen, userEvent, within } from 'storybook/test';
 import {
@@ -25,10 +25,64 @@ import { MajorEventSubscriptionRealtimeService } from '../realtime.service';
 
 const now = new Date();
 
-const meta: Meta<RankedMajorEventSubscription> = {
+type StoryScenario = 'default' | 'payment' | 'auto-only' | 'existing';
+type RankedApiState = 'ready' | 'loading' | 'error';
+
+interface RankedStoryArgs {
+  apiState: RankedApiState;
+  scenario: StoryScenario;
+  eventCount: number;
+  latencyMs: number;
+  maxCourses: number;
+  maxLectures: number;
+  maxOther: number;
+  availableSlots: number;
+  soldOutEvery: number;
+  autoSubscribeEvery: number;
+  queueBase: number;
+  eventNamePrefix: string;
+}
+
+const defaultArgs: RankedStoryArgs = {
+  apiState: 'ready',
+  scenario: 'default',
+  eventCount: 8,
+  latencyMs: 120,
+  maxCourses: 2,
+  maxLectures: 3,
+  maxOther: 1,
+  availableSlots: 12,
+  soldOutEvery: 5,
+  autoSubscribeEvery: 0,
+  queueBase: 0,
+  eventNamePrefix: '',
+};
+
+let activeArgs = defaultArgs;
+
+const meta: Meta<RankedStoryArgs> = {
   component: RankedMajorEventSubscription,
-  title: 'Public/Major Event/Subscription/Ranked Subscription',
+  title: 'CACiC Eventos/Major Events/Registration/Ranked',
   tags: ['autodocs'],
+  args: defaultArgs,
+  argTypes: {
+    apiState: { control: 'select', options: ['ready', 'loading', 'error'] },
+    scenario: { control: 'select', options: ['default', 'payment', 'auto-only', 'existing'] },
+    eventCount: { control: { type: 'range', min: 0, max: 30, step: 1 } },
+    latencyMs: { control: { type: 'range', min: 0, max: 2_000, step: 100 } },
+    maxCourses: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    maxLectures: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    maxOther: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    availableSlots: { control: { type: 'range', min: 0, max: 100, step: 1 } },
+    soldOutEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    autoSubscribeEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
+    queueBase: { control: { type: 'range', min: 0, max: 100, step: 1 } },
+    eventNamePrefix: { control: 'text' },
+  },
+  render: (args) => {
+    activeArgs = { ...defaultArgs, ...args };
+    return { props: {} };
+  },
   decorators: [
     applicationConfig({
       providers: [
@@ -42,14 +96,13 @@ const meta: Meta<RankedMajorEventSubscription> = {
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
-    msw: { inheritHandlers: true },
+    msw: { handlers: { graphql: [rankedHandler()] } },
   },
 };
 
 export default meta;
 
-type Story = StoryObj<RankedMajorEventSubscription>;
-type StoryScenario = 'default' | 'payment' | 'auto-only' | 'existing';
+type Story = StoryObj<RankedStoryArgs>;
 
 interface RankedStoryData {
   majorEvent: PublicMajorEvent;
@@ -65,7 +118,7 @@ const isoDaysFromNow = (days: number, hour: number): string => {
   return date.toISOString();
 };
 
-function createMajorEvent(scenario: StoryScenario): PublicMajorEvent {
+function createMajorEvent(scenario: StoryScenario, args: RankedStoryArgs): PublicMajorEvent {
   return createPublicMajorEvent({
     id: 'major-1',
     name: scenario === 'payment' ? 'SECOMPP Preferencial' : 'CACiC Preferencial',
@@ -75,9 +128,9 @@ function createMajorEvent(scenario: StoryScenario): PublicMajorEvent {
     description: faker.lorem.paragraphs(2),
     subscriptionStartDate: isoDaysFromNow(-5, 8),
     subscriptionEndDate: isoDaysFromNow(6, 23),
-    maxCoursesPerAttendee: scenario === 'auto-only' ? 1 : 2,
-    maxLecturesPerAttendee: scenario === 'auto-only' ? 1 : 3,
-    maxUncategorizedPerAttendee: scenario === 'auto-only' ? 1 : 1,
+    maxCoursesPerAttendee: scenario === 'auto-only' ? 1 : args.maxCourses,
+    maxLecturesPerAttendee: scenario === 'auto-only' ? 1 : args.maxLectures,
+    maxUncategorizedPerAttendee: scenario === 'auto-only' ? 1 : args.maxOther,
     rankedSubscriptionEnabled: true,
     buttonText: 'Site oficial',
     buttonLink: 'https://cacic.dev',
@@ -103,8 +156,8 @@ function createMajorEvent(scenario: StoryScenario): PublicMajorEvent {
         id: 'price-1',
         type: 'TIERED',
         tiers: [
-          { id: 'tier-student', name: 'Estudante', value: 2500 },
-          { id: 'tier-community', name: 'Comunidade', value: 5000 },
+          { id: 'tier-student', name: 'Estudante', value: 2500, includesSportsRegistration: false },
+          { id: 'tier-community', name: 'Comunidade', value: 5000, includesSportsRegistration: false },
         ],
       }),
     ],
@@ -121,6 +174,9 @@ function createEvent(
     eventGroupEmoji?: string;
     type?: EventType;
     hasAvailableSlots?: boolean;
+    availableSlots?: number;
+    queueCount?: number;
+    namePrefix?: string;
   } = {},
 ): PublicEvent {
   const eventGroupId = options.eventGroupId === undefined ? `group-${(index % 2) + 1}` : options.eventGroupId;
@@ -137,14 +193,14 @@ function createEvent(
   const type = options.type ?? faker.helpers.arrayElement<EventType>(['MINICURSO', 'PALESTRA', 'OTHER']);
   return createPublicEvent({
     id: `event-${index + 1}`,
-    name: faker.helpers.arrayElement([
+    name: `${options.namePrefix?.trim() ? `${options.namePrefix.trim()} ` : ''}${faker.helpers.arrayElement([
       'Arquitetura Angular com Signals',
       'OCR aplicado a eventos acadêmicos',
       'Observabilidade para APIs GraphQL',
       'Acessibilidade em produtos digitais',
       'Design systems para produtos públicos',
       'Segurança prática em APIs',
-    ]),
+    ])}`,
     creditMinutes: faker.helpers.arrayElement([60, 90, 120, 180]),
     startDate: isoDaysFromNow(index + 10, 9 + (index % 4) * 2),
     endDate: isoDaysFromNow(index + 10, 11 + (index % 4) * 2),
@@ -163,82 +219,48 @@ function createEvent(
     subscriptionStartDate: isoDaysFromNow(-3, 8),
     subscriptionEndDate: isoDaysFromNow(index + 9, 23),
     slots: 40,
-    slotsAvailable: options.hasAvailableSlots === false ? 0 : 12,
-    queueCount: index,
+    slotsAvailable: options.hasAvailableSlots === false ? 0 : (options.availableSlots ?? 12),
+    queueCount: (options.queueCount ?? 0) + index,
     autoSubscribe: options.autoSubscribe ?? false,
     shouldIssueCertificate: true,
     shouldCollectAttendance: true,
     isOnlineAttendanceAllowed: index % 2 === 0,
     onlineAttendanceStartDate: isoDaysFromNow(index + 10, 8),
     onlineAttendanceEndDate: isoDaysFromNow(index + 10, 18),
-    publiclyVisible: true,
+    isPubliclyListed: true,
     youtubeCode: null,
     buttonText: null,
     buttonLink: null,
   });
 }
 
-function createStoryData(scenario: StoryScenario): RankedStoryData {
+function createStoryData(scenario: StoryScenario, args: RankedStoryArgs = activeArgs): RankedStoryData {
   faker.seed(20260520 + scenario.length);
-  const majorEvent = createMajorEvent(scenario);
+  const majorEvent = createMajorEvent(scenario, args);
   const allAuto = scenario === 'auto-only';
-  const events = [
-    createEvent(0, majorEvent, { autoSubscribe: true, eventGroupId: null, type: 'OTHER' }),
-    createEvent(1, majorEvent, {
-      autoSubscribe: allAuto,
-      eventGroupId: 'group-web',
-      eventGroupName: 'Trilha Web',
-      eventGroupEmoji: '🌐',
-      type: 'MINICURSO',
-    }),
-    createEvent(2, majorEvent, {
-      autoSubscribe: allAuto,
-      eventGroupId: 'group-web',
-      eventGroupName: 'Trilha Web',
-      eventGroupEmoji: '🌐',
-      type: 'MINICURSO',
-    }),
-    createEvent(3, majorEvent, {
-      autoSubscribe: allAuto,
-      eventGroupId: 'group-data',
-      eventGroupName: 'Trilha Dados',
-      eventGroupEmoji: '📊',
-      type: 'PALESTRA',
-    }),
-    createEvent(4, majorEvent, {
-      autoSubscribe: allAuto,
-      eventGroupId: null,
-      type: 'OTHER',
-      hasAvailableSlots: scenario !== 'default',
-    }),
-  ];
+  const eventCount = Math.max(0, Math.min(30, Math.round(args.eventCount)));
+  const events = Array.from({ length: eventCount }, (_, index) => {
+    const eventGroupId = index % 5 === 0 ? null : index % 2 === 0 ? 'group-data' : 'group-web';
+    const autoSubscribe =
+      index === 0 ||
+      allAuto ||
+      (args.autoSubscribeEvery > 0 && (index + 1) % Math.round(args.autoSubscribeEvery) === 0);
+    const soldOut = args.soldOutEvery > 0 && (index + 1) % Math.round(args.soldOutEvery) === 0;
+    return createEvent(index, majorEvent, {
+      autoSubscribe,
+      eventGroupId,
+      eventGroupName: eventGroupId === 'group-web' ? 'Trilha Web' : 'Trilha Dados',
+      eventGroupEmoji: eventGroupId === 'group-web' ? '🌐' : '📊',
+      type: index % 3 === 0 ? 'OTHER' : index % 3 === 1 ? 'MINICURSO' : 'PALESTRA',
+      hasAvailableSlots: !soldOut,
+      availableSlots: Math.max(0, Math.round(args.availableSlots)),
+      queueCount: Math.max(0, Math.round(args.queueBase)),
+      namePrefix: args.eventNamePrefix,
+    });
+  });
   const selectedEvents = scenario === 'existing' ? events.slice(0, 4) : [];
-  return {
-    majorEvent,
-    events,
-    forms: [
-      createPublicEventForm({
-        id: 'ranked-form-major-shirt',
-        name: 'Camiseta do evento',
-        responseMode: 'SINGLE_PER_FORM',
-        links: [
-          createPublicEventFormLink({
-            id: 'ranked-link-major-shirt',
-            formId: 'ranked-form-major-shirt',
-            targetType: 'MAJOR_EVENT',
-            eventId: null,
-            majorEventId: majorEvent.id,
-            target: {
-              type: 'MAJOR_EVENT',
-              id: majorEvent.id,
-              name: majorEvent.name,
-              emoji: majorEvent.emoji,
-            },
-            displayOrder: 0,
-          }),
-        ],
-      }),
-      createPublicEventForm({
+  const eventForm = events[1]
+    ? createPublicEventForm({
         id: 'ranked-form-event-accessibility',
         name: 'Preferência da atividade',
         responseMode: 'ONE_PER_TARGET',
@@ -270,7 +292,34 @@ function createStoryData(scenario: StoryScenario): RankedStoryData {
             displayOrder: 1,
           }),
         ],
+      })
+    : null;
+  return {
+    majorEvent,
+    events,
+    forms: [
+      createPublicEventForm({
+        id: 'ranked-form-major-shirt',
+        name: 'Camiseta do evento',
+        responseMode: 'SINGLE_PER_FORM',
+        links: [
+          createPublicEventFormLink({
+            id: 'ranked-link-major-shirt',
+            formId: 'ranked-form-major-shirt',
+            targetType: 'MAJOR_EVENT',
+            eventId: null,
+            majorEventId: majorEvent.id,
+            target: {
+              type: 'MAJOR_EVENT',
+              id: majorEvent.id,
+              name: majorEvent.name,
+              emoji: majorEvent.emoji,
+            },
+            displayOrder: 0,
+          }),
+        ],
       }),
+      ...(eventForm ? [eventForm] : []),
     ],
     subscription:
       scenario === 'existing'
@@ -289,10 +338,19 @@ function createStoryData(scenario: StoryScenario): RankedStoryData {
   };
 }
 
-function rankedHandlers(scenario: StoryScenario) {
-  const storyData = createStoryData(scenario);
-  return [
-    http.post('/api/graphql', async ({ request }) => {
+function rankedHandler() {
+  return http.post('/api/graphql', async ({ request }) => {
+      const args = activeArgs;
+      if (args.apiState === 'loading') {
+        await delay('infinite');
+      }
+      if (args.latencyMs > 0) {
+        await delay(args.latencyMs);
+      }
+      if (args.apiState === 'error') {
+        return HttpResponse.json({ errors: [{ message: 'Não foi possível carregar a inscrição preferencial.' }] });
+      }
+      const storyData = createStoryData(args.scenario, args);
       const body = (await request.json()) as { query?: string; variables?: Record<string, unknown> };
       const query = body.query ?? '';
       const selectedEventIds = Array.isArray(body.variables?.['selectedEventIds'])
@@ -384,8 +442,7 @@ function rankedHandlers(scenario: StoryScenario) {
       }
 
       return HttpResponse.json({ data: {} });
-    }),
-  ];
+    });
 }
 
 const expectSelectionStep = async (canvasElement: HTMLElement) => {
@@ -407,26 +464,17 @@ const goToRankingStep = async (canvasElement: HTMLElement) => {
   await expect(await canvas.findByText('Não quero')).toBeVisible();
 };
 
-export const Selection: Story = {
-  parameters: {
-    msw: { handlers: rankedHandlers('default') },
-  },
-  globals: { theme: 'light', network: 'online' },
+export const Playground: Story = {
+  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
   play: async ({ canvasElement }) => expectSelectionStep(canvasElement),
 };
 
 export const Ranking: Story = {
-  parameters: {
-    msw: { handlers: rankedHandlers('default') },
-  },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => goToRankingStep(canvasElement),
 };
 
 export const RankingWithFormsFlow: Story = {
-  parameters: {
-    msw: { handlers: rankedHandlers('default') },
-  },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     await goToRankingStep(canvasElement);
@@ -443,9 +491,7 @@ export const RankingWithFormsFlow: Story = {
 };
 
 export const PaymentRanking: Story = {
-  parameters: {
-    msw: { handlers: rankedHandlers('payment') },
-  },
+  args: { scenario: 'payment' },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     await goToRankingStep(canvasElement);
@@ -456,9 +502,7 @@ export const PaymentRanking: Story = {
 };
 
 export const AutomaticOnly: Story = {
-  parameters: {
-    msw: { handlers: rankedHandlers('auto-only') },
-  },
+  args: { scenario: 'auto-only' },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -470,9 +514,7 @@ export const AutomaticOnly: Story = {
 };
 
 export const ExistingSubscription: Story = {
-  parameters: {
-    msw: { handlers: rankedHandlers('existing') },
-  },
+  args: { scenario: 'existing' },
   globals: { theme: 'light', network: 'online' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -480,4 +522,56 @@ export const ExistingSubscription: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: /ordenar preferências/i }));
     await expect(await canvas.findByText('Atualizar inscrição')).toBeVisible();
   },
+};
+
+export const DenseCatalog: Story = {
+  args: {
+    eventCount: 30,
+    maxCourses: 8,
+    maxLectures: 8,
+    maxOther: 6,
+    soldOutEvery: 4,
+    autoSubscribeEvery: 7,
+    queueBase: 18,
+  },
+  globals: { theme: 'light', network: 'online', viewport: { value: 'responsive' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Voto preferencial')).toBeVisible();
+    await expect(await canvas.findAllByRole('checkbox')).toHaveLength(30);
+  },
+};
+
+export const EmptyCatalog: Story = {
+  args: { eventCount: 0, maxCourses: 0, maxLectures: 0, maxOther: 0 },
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Voto preferencial')).toBeVisible();
+    await expect(canvas.queryAllByRole('checkbox')).toHaveLength(0);
+  },
+};
+
+export const Loading: Story = {
+  args: { apiState: 'loading', latencyMs: 0 },
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Carregando inscrição...')).toBeVisible();
+  },
+};
+
+export const LoadError: Story = {
+  args: { apiState: 'error', latencyMs: 0 },
+  globals: { theme: 'light', network: 'online' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText(/não foi possível carregar a inscrição preferencial/i)).toBeVisible();
+  },
+};
+
+export const LongContent: Story = {
+  args: {
+    eventCount: 14,
+    eventNamePrefix: 'Atividade interdisciplinar avançada com práticas inclusivas, observabilidade e segurança',
+  },
+  globals: { theme: 'light', network: 'online', viewport: { value: 'mobile1' } },
 };

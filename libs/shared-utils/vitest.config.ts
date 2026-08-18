@@ -6,6 +6,7 @@ const workspaceRoot = fileURLToPath(new URL('../..', import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      '@cacic-fct/event-manager-public-testing': `${workspaceRoot}/libs/event-manager-public-testing/src/index.ts`,
       '@cacic-fct/event-manager-public-contracts': `${workspaceRoot}/libs/event-manager-public-contracts/src/index.ts`,
     },
   },

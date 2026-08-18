@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { DestroyRef, Injectable, Injector, PLATFORM_ID, effect, inject } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { OfflineTotpSeedRecord, TotpSeedCacheService } from '@cacic-fct/offline-public-data-access';
+import { OfflineTotpSeedRecord, TotpSeedCacheService } from '@cacic-fct/public-indexed-db';
 import { firstValueFrom } from 'rxjs';
 import { NetworkStatusService } from '../network-status.service';
 import { TotpApiService } from './totp-api.service';

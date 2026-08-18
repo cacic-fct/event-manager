@@ -131,7 +131,7 @@ export class OnlineAttendanceNotificationJobsService {
         id: input.eventId,
         deletedAt: null,
         endDate: { gte: now },
-        publiclyVisible: true,
+        isPubliclyListed: true,
         publicationState: PublicationState.PUBLISHED,
         shouldCollectAttendance: true,
         isOnlineAttendanceAllowed: true,
@@ -149,7 +149,6 @@ export class OnlineAttendanceNotificationJobsService {
         subscriptions: {
           where: {
             deletedAt: null,
-            subscriptionStatus: SubscriptionStatus.CONFIRMED,
           },
           select: { person: { select: PERSON_SELECT } },
         },

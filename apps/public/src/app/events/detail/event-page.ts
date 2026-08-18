@@ -20,7 +20,7 @@ import type {
   PublicLecturerProfile,
   SubmitPublicEventFormResponseInput,
 } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, MailtoService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
+import { AuthService, MailtoService, MarkdownComponent, parseFormAnswersJson } from '@cacic-fct/shared-angular';
 import { DocumentSeoService } from '@cacic-fct/shared-seo-angular';
 import { formatDateRange, getEventTypeLabel, isOnlineAttendanceRegistrationOpen } from '@cacic-fct/shared-utils';
 import { MatButtonModule } from '@angular/material/button';
@@ -49,6 +49,7 @@ import {
   type SubscriptionFormAnswer,
   type SubscriptionFormContext,
 } from '../../major-events/registration/standard/confirm-dialog';
+import { resolveInternalReturnUrl } from '../../shared/internal-return-url';
 
 type EventPageState =
   | { status: 'loading' }
@@ -108,6 +109,7 @@ type EventStructuredData = {
     MatDialogModule,
     MatIconModule,
     MatListModule,
+    MarkdownComponent,
     MatProgressBarModule,
     MatSnackBarModule,
     MatToolbarModule,
@@ -136,6 +138,10 @@ export class Event {
   private readonly standaloneSubscriptionCooldown = createRateLimitCooldown(this.destroyRef);
 
   private readonly isBrowser = isPlatformBrowser(this.platformId);
+  private readonly isRegistrationEventDetail = [
+    'major-event/:majorEventId/subscription',
+    'major-event/:majorEventId/ranked-subscription',
+  ].includes(this.route.parent?.snapshot.routeConfig?.path ?? '');
 
   readonly emoji = inject(EmojiService);
   readonly isAuthenticated = this.authService.isAuthenticated;
@@ -155,7 +161,9 @@ export class Event {
   private readonly imageLicenseAgreementDialogOpened = signal(false);
 
   private readonly returnUrl = toSignal(
-    this.route.queryParamMap.pipe(map((params) => params.get('back') || params.get('returnUrl') || '/menu')),
+    this.route.queryParamMap.pipe(
+      map((params) => resolveInternalReturnUrl(params.get('back') || params.get('returnUrl'), '/menu')),
+    ),
     { initialValue: '/menu' },
   );
   private readonly previewToken = toSignal(
@@ -191,6 +199,21 @@ export class Event {
         subscription &&
         subscription.imageLicenseAgreementAccepted !== true,
     );
+  });
+
+  private readonly sportsMatchRedirect = effect(() => {
+    const currentState = this.eventState();
+    if (currentState.status !== 'ready' || currentState.data.preview || this.isRegistrationEventDetail) {
+      return;
+    }
+
+    const sportsMatchId = currentState.data.event.sportsMatch?.id;
+    if (sportsMatchId) {
+      void this.router.navigate(['/sports/match', sportsMatchId], {
+        queryParams: { returnUrl: this.backUrl() },
+        replaceUrl: true,
+      });
+    }
   });
 
   private readonly seoWatcher = effect((onCleanup) => {

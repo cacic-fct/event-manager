@@ -4,7 +4,7 @@ import { DoodlesComponent } from './doodles';
 
 const meta: Meta<DoodlesComponent> = {
   component: DoodlesComponent,
-  title: 'Public/Landing/Components/Doodles',
+  title: 'CACiC Eventos/Landing/Doodles',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -36,4 +36,21 @@ const exerciseStory = async (canvasElement: HTMLElement) => {
 export const Playground: Story = {
   args: {},
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const MobileArtwork: Story = {
+  ...Playground,
+  parameters: {
+    ...Playground.parameters,
+    viewport: { defaultViewport: 'mobile' },
+  },
+};
+
+export const DarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
+  parameters: {
+    ...Playground.parameters,
+    viewport: { defaultViewport: 'tablet' },
+  },
 };

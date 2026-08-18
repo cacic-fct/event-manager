@@ -4,7 +4,7 @@ import { App } from './app';
 
 const meta: Meta<App> = {
   component: App,
-  title: 'Public/App',
+  title: 'CACiC Eventos/App/Shell',
   tags: ['autodocs'],
   argTypes: {
     cookieBannerEnabledOverride: { control: 'boolean', name: 'Banner de cookies habilitado' },
@@ -41,4 +41,20 @@ export const Playground: Story = {
     cookieBannerEnabledOverride: true,
   },
   play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const CookieBannerDisabled: Story = {
+  args: {
+    cookieBannerEnabledOverride: false,
+  },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+};
+
+export const MobileBannerDarkReducedMotion: Story = {
+  ...Playground,
+  globals: { ...Playground.globals, theme: 'dark', motion: 'reduced' },
+  parameters: {
+    ...Playground.parameters,
+    viewport: { defaultViewport: 'mobile' },
+  },
 };

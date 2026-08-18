@@ -67,5 +67,4 @@ describe('LgpdService receipt cleanup', () => {
     expect(tx.eventDraft.update).not.toHaveBeenCalled();
     expect(tx.offlineEventAttendanceSubmission.update).not.toHaveBeenCalled();
   });
-
 });

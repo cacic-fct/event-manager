@@ -17,7 +17,7 @@ describe('typesense reindex helpers', () => {
           startDate: new Date('2026-06-25T12:00:00.000Z'),
           endDate: new Date('2026-06-25T13:00:00.000Z'),
           shouldIssueCertificate: false,
-          publiclyVisible: true,
+          isPubliclyListed: true,
           publicationState: 'PUBLISHED',
         },
       ],
@@ -33,7 +33,7 @@ describe('typesense reindex helpers', () => {
       eventGroup: [{ id: 'group-1', name: 'Grupo' }],
       people: [{ id: 'person-1', name: 'Ana', secondaryEmails: [] }],
       placePreset: [{ id: 'place-1', name: 'Lab' }],
-      certificateTemplate: [{ id: 'template-1', name: 'Certificado', version: 1, isActive: true }],
+      certificateTemplate: [{ id: 'template-1', name: 'Certificado', isActive: true }],
     });
 
     await reindexAllSearchDocuments({
@@ -53,7 +53,7 @@ describe('typesense reindex helpers', () => {
       expect.objectContaining({ name: expect.stringMatching(/^cacic_event_manager_audit_logs_reindex_/) }),
     );
     expect(client.documents.import).toHaveBeenCalledWith(
-      [expect.objectContaining({ id: 'event-1', publiclyVisible: true })],
+      [expect.objectContaining({ id: 'event-1', isPubliclyListed: true })],
       { action: 'upsert' },
     );
   });
@@ -70,7 +70,7 @@ describe('typesense reindex helpers', () => {
           startDate: new Date('2026-06-25T12:00:00.000Z'),
           endDate: new Date('2026-06-25T13:00:00.000Z'),
           shouldIssueCertificate: true,
-          publiclyVisible: false,
+          isPubliclyListed: false,
           publicationState: 'DRAFT',
         },
       ],

@@ -209,7 +209,8 @@ export class AttendanceScannerDialogComponent implements OnInit {
       .watchEventAttendanceScannerFeed(this.data.eventId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (attendances) => this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
+        next: (attendances) =>
+          this.attendances.set(attendances.filter((attendance) => attendance.status === 'PRESENT')),
       });
   }
 

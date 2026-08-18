@@ -1,5 +1,6 @@
 import { MergeCandidateMergeInput } from '@cacic-fct/shared-data-types';
 import { ConflictException, Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { EventManagerPermissionArchiveReason } from '@prisma/client';
 import { CertificateIssuingService } from '../../certificate/certificate-issuing.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { stalePendingMergeCandidateWhere } from './merge-candidate-filters';
@@ -370,6 +371,76 @@ export class MergeCandidateOperationsService {
           })),
           skipDuplicates: true,
         });
+      }
+
+      if (movedRelations.roleAssignmentSnapshots.length > 0) {
+        for (const snapshot of movedRelations.roleAssignmentSnapshots) {
+          await tx.eventManagerRoleAssignment.update({
+            where: { id: snapshot.id },
+            data: {
+              personId: snapshot.personId,
+              validFrom: snapshot.validFrom ? new Date(snapshot.validFrom) : null,
+              validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
+              unlimited: snapshot.unlimited,
+              archivedAt: snapshot.archivedAt ? new Date(snapshot.archivedAt) : null,
+              archivedReason: snapshot.archivedReason as EventManagerPermissionArchiveReason | null,
+            },
+          });
+        }
+        for (const snapshot of movedRelations.roleAssignmentScopeSnapshots) {
+          await tx.eventManagerRoleAssignmentScope.update({
+            where: { id: snapshot.id },
+            data: {
+              assignmentId: snapshot.assignmentId,
+              validFrom: snapshot.validFrom ? new Date(snapshot.validFrom) : null,
+              validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
+              unlimited: snapshot.unlimited,
+              archivedAt: snapshot.archivedAt ? new Date(snapshot.archivedAt) : null,
+              archivedReason: snapshot.archivedReason as EventManagerPermissionArchiveReason | null,
+            },
+          });
+        }
+      } else {
+        if (movedRelations.movedRoleAssignmentIds.length > 0) {
+          await tx.eventManagerRoleAssignment.updateMany({
+            where: { id: { in: movedRelations.movedRoleAssignmentIds } },
+            data: { personId: sourcePerson.id },
+          });
+        }
+        if (movedRelations.archivedRoleAssignmentIds.length > 0) {
+          await tx.eventManagerRoleAssignment.updateMany({
+            where: { id: { in: movedRelations.archivedRoleAssignmentIds } },
+            data: { archivedAt: null, archivedReason: null },
+          });
+        }
+      }
+      if (movedRelations.permissionGroupMembershipSnapshots.length > 0) {
+        for (const snapshot of movedRelations.permissionGroupMembershipSnapshots) {
+          await tx.eventManagerPermissionGroupMember.update({
+            where: { id: snapshot.id },
+            data: {
+              personId: snapshot.personId,
+              validFrom: snapshot.validFrom ? new Date(snapshot.validFrom) : null,
+              validUntil: snapshot.validUntil ? new Date(snapshot.validUntil) : null,
+              unlimited: snapshot.unlimited,
+              archivedAt: snapshot.archivedAt ? new Date(snapshot.archivedAt) : null,
+              archivedReason: snapshot.archivedReason as EventManagerPermissionArchiveReason | null,
+            },
+          });
+        }
+      } else {
+        if (movedRelations.movedPermissionGroupMembershipIds.length > 0) {
+          await tx.eventManagerPermissionGroupMember.updateMany({
+            where: { id: { in: movedRelations.movedPermissionGroupMembershipIds } },
+            data: { personId: sourcePerson.id },
+          });
+        }
+        if (movedRelations.archivedPermissionGroupMembershipIds.length > 0) {
+          await tx.eventManagerPermissionGroupMember.updateMany({
+            where: { id: { in: movedRelations.archivedPermissionGroupMembershipIds } },
+            data: { archivedAt: null, archivedReason: null },
+          });
+        }
       }
 
       await tx.people.update({

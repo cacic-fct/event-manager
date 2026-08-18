@@ -282,6 +282,69 @@
   min-height: 4.5rem;
 }
 
+.sports-subscriptions {
+  margin-bottom: 1rem;
+}
+
+.sports-subscriptions .surface-heading > div,
+.sports-subscription-card,
+.sports-interest-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.participant-team-editor {
+  display: grid;
+  gap: 0.75rem;
+  align-items: center;
+  grid-template-columns: minmax(12rem, 1fr) auto;
+
+  small {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .participant-team-editor {
+    grid-template-columns: 1fr;
+
+    small {
+      grid-column: auto;
+    }
+  }
+}
+
+.sports-subscription-card {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+}
+
+.sports-subscription-card > div:first-child,
+.sports-interest-list,
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sports-subscription-card > div:first-child {
+  justify-content: space-between;
+}
+
+.sports-subscription-card p {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.sports-interest-list span {
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--mat-sys-corner-full);
+  background: var(--mat-sys-surface-container-high);
+}
+
 .editable-list-item {
   cursor: pointer;
 }

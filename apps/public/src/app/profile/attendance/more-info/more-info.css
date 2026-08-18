@@ -13,6 +13,22 @@
   margin-bottom: 16px;
 }
 
+.status-summary {
+  align-items: center;
+  color: var(--mat-sys-on-surface-variant);
+  display: flex;
+  font: var(--mat-sys-title-small);
+  gap: 8px;
+  margin: 0 0 24px;
+}
+
+.status-summary mat-icon {
+  color: var(--mat-sys-primary);
+  font-size: 20px;
+  height: 20px;
+  width: 20px;
+}
+
 .emoji-frame,
 .small-emoji-frame {
   align-items: center;
@@ -46,14 +62,9 @@
   min-width: 0;
 }
 
-.eyebrow,
 .date-line {
   color: var(--mat-sys-on-surface-variant);
   margin: 0;
-}
-
-.eyebrow {
-  font: var(--mat-sys-label-large);
 }
 
 h1,

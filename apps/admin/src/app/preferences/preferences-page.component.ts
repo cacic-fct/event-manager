@@ -7,7 +7,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -24,6 +23,7 @@ import {
   SuperAdminCalendarFeedSettings,
 } from '../graphql/admin-calendar-feed-settings-api.service';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { getErrorMessage } from '../feedback/error-message';
 
 type PersonalFeedState =
@@ -51,7 +51,6 @@ const STALE_ADMIN_ACCESS_DISABLED_REASON = 'STALE_ADMIN_ACCESS';
     MatIconModule,
     MatInputModule,
     MatListModule,
-    MatProgressBarModule,
     MatSlideToggleModule,
     MatSnackBarModule,
     MatTooltipModule,
@@ -73,6 +72,7 @@ export class PreferencesPageComponent {
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly reloadCounter = signal(0);
   private readonly personalFeedSettingsOverride = signal<CurrentUserAdminCalendarFeedSettings | null>(null);
   private readonly superAdminFeedSettingsOverride = signal<SuperAdminCalendarFeedSettings | null>(null);
@@ -219,7 +219,7 @@ export class PreferencesPageComponent {
       await navigator.clipboard.writeText(url);
       this.snackBar.open('Link do calendário copiado.', 'OK', { duration: 3000 });
     } catch {
-      this.snackBar.open('Não foi possível copiar o link do calendário.', 'OK', { duration: 5000 });
+      this.feedback.showErrorMessage('Não foi possível copiar o link do calendário.');
     }
   }
 
@@ -347,6 +347,6 @@ export class PreferencesPageComponent {
   }
 
   private showError(error: unknown, fallback: string): void {
-    this.snackBar.open(getErrorMessage(error, fallback), 'OK', { duration: 5000 });
+    this.feedback.error(error, fallback);
   }
 }

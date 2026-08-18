@@ -49,6 +49,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     baseURL,
+    ignoreHTTPSErrors: baseURL.startsWith('https://localhost'),
     serviceWorkers: 'block',
     timezoneId: 'America/Sao_Paulo',
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
@@ -59,6 +60,7 @@ export default defineConfig({
         webServer: {
           command: startStaticServer ? 'bunx nx run public:serve-static' : 'bunx nx run public:serve',
           url: baseURL,
+          timeout: 180_000,
           reuseExistingServer: true,
           cwd: workspaceRoot,
         },
@@ -88,6 +90,24 @@ export default defineConfig({
       testMatch: serviceWorkerTestMatch,
       use: {
         ...devices['Desktop Chrome'],
+        serviceWorkers: 'allow',
+      },
+    },
+
+    {
+      name: 'service-worker-firefox',
+      testMatch: serviceWorkerTestMatch,
+      use: {
+        ...devices['Desktop Firefox'],
+        serviceWorkers: 'allow',
+      },
+    },
+
+    {
+      name: 'service-worker-webkit',
+      testMatch: serviceWorkerTestMatch,
+      use: {
+        ...devices['Desktop Safari'],
         serviceWorkers: 'allow',
       },
     },

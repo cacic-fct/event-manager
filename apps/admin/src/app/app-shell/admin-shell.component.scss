@@ -11,6 +11,19 @@
   border-bottom: 1px solid var(--mat-sys-outline-variant);
 }
 
+.global-request-progress {
+  position: fixed;
+  z-index: 11;
+  inset: 64px 0 auto;
+  block-size: 4px;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.global-request-progress.is-active {
+  visibility: visible;
+}
+
 .layout {
   height: calc(100dvh - 64px);
   background: var(--mat-sys-surface);
@@ -58,12 +71,6 @@
   opacity: 0.8;
   margin-right: 1rem;
   font-size: 1rem;
-}
-
-.loading {
-  display: grid;
-  place-items: center;
-  min-height: 8rem;
 }
 
 .internal-badge {

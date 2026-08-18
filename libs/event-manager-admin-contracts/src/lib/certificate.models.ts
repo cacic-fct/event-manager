@@ -3,13 +3,22 @@ import type { Event, EventGroup, MajorEvent } from './event.models';
 import type { Person } from './people.models';
 
 export type CertificateScope = 'MAJOR_EVENT' | 'EVENT_GROUP' | 'EVENT' | 'OTHER';
-export type CertificateIssuedTo = 'ATTENDEE' | 'LECTURER' | 'OTHER';
+export type CertificateIssuedTo =
+  | 'ATTENDEE'
+  | 'LECTURER'
+  | 'SPORTS_PLAYER'
+  | 'SPORTS_CAPTAIN'
+  | 'SPORTS_COACH'
+  | 'SPORTS_REFEREE'
+  | 'SPORTS_INTERMEDIATOR'
+  | 'SPORTS_SCOREKEEPER'
+  | 'SPORTS_ORGANIZER'
+  | 'OTHER';
 
 export interface CertificateTemplate {
   id: string;
   name: string;
   description?: string | null;
-  version: number;
   isActive: boolean;
   certificateFieldsJson?: string | null;
   createdAt: string;

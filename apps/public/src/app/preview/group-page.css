@@ -38,13 +38,6 @@ mat-card-content p {
   margin: 0;
 }
 
-.eyebrow {
-  color: var(--mat-sys-tertiary);
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
 .event-grid {
   display: grid;
   gap: 16px;

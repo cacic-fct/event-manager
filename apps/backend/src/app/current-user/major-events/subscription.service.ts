@@ -1,17 +1,25 @@
 import { EventType } from '@cacic-fct/shared-data-types';
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { CertificateScope, Prisma, SubscriptionStatus } from '@prisma/client';
+import {
+  CertificateScope,
+  Prisma,
+  SportsParticipantStatus,
+  SportsTeamMemberStatus,
+  SportsTournamentStatus,
+  SubscriptionStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MAJOR_EVENT_BASE_SELECT, EventRecord } from '../selects';
 import {
   PUBLIC_EVENT_SELECT,
-  PUBLIC_EVENT_WHERE,
+  PUBLIC_REGULAR_EVENT_WHERE,
   PUBLIC_MAJOR_EVENT_WHERE,
   PublicEvent,
 } from '../../public-events/models';
 import { CurrentUserMajorEventFeedItem } from '../models';
 import { CurrentUserEventMapperService } from '../mapper.service';
 import { EventSubscriptionCountersService } from '../../events/subscription-counters.service';
+import { normalizeMajorEventPaymentTier, resolveMajorEventSelfServicePayment } from './major-event-payment-selection';
 
 type RankedCategory = 'course' | 'lecture' | 'uncategorized';
 
@@ -62,20 +70,7 @@ export class CurrentUserMajorEventSubscriptionService {
   }
 
   normalizePaymentTier(paymentTier?: string | null): string | null | undefined {
-    if (paymentTier === undefined) {
-      return undefined;
-    }
-
-    if (paymentTier === null) {
-      return null;
-    }
-
-    const normalizedPaymentTier = paymentTier.trim();
-    if (normalizedPaymentTier.length === 0) {
-      return null;
-    }
-
-    return normalizedPaymentTier;
+    return normalizeMajorEventPaymentTier(paymentTier);
   }
 
   resolveSelfServicePayment(
@@ -85,43 +80,7 @@ export class CurrentUserMajorEventSubscriptionService {
     amountPaid: number | null;
     paymentTier: string | null;
   } {
-    if (!majorEvent.isPaymentRequired) {
-      return {
-        amountPaid: null,
-        paymentTier: null,
-      };
-    }
-
-    const tiers = majorEvent.majorEventPrices.flatMap((price) => price.tiers);
-    if (tiers.length === 0) {
-      return {
-        amountPaid: null,
-        paymentTier: null,
-      };
-    }
-
-    if (tiers.length === 1) {
-      const [tier] = tiers;
-      return {
-        amountPaid: tier.value,
-        paymentTier: tier.name,
-      };
-    }
-
-    const normalizedPaymentTier = this.normalizePaymentTier(paymentTierInput);
-    if (!normalizedPaymentTier) {
-      throw new BadRequestException('paymentTier is required for this major event.');
-    }
-
-    const selectedTier = tiers.find((tier) => tier.name.trim().toLowerCase() === normalizedPaymentTier.toLowerCase());
-    if (!selectedTier) {
-      throw new BadRequestException('paymentTier is not valid for this major event.');
-    }
-
-    return {
-      amountPaid: selectedTier.value,
-      paymentTier: selectedTier.name,
-    };
+    return resolveMajorEventSelfServicePayment(majorEvent, paymentTierInput);
   }
 
   normalizeDesiredCount(value: number | null | undefined, fallback: number): number {
@@ -337,7 +296,7 @@ export class CurrentUserMajorEventSubscriptionService {
           },
         },
         event: {
-          AND: [PUBLIC_EVENT_WHERE],
+          AND: [PUBLIC_REGULAR_EVENT_WHERE],
         },
       },
       select: {
@@ -378,7 +337,7 @@ export class CurrentUserMajorEventSubscriptionService {
         personId,
         deletedAt: null,
         event: {
-          AND: [PUBLIC_EVENT_WHERE, { majorEventId: { in: majorEventIds } }],
+          AND: [PUBLIC_REGULAR_EVENT_WHERE, { majorEventId: { in: majorEventIds } }],
         },
       },
       select: {
@@ -418,7 +377,7 @@ export class CurrentUserMajorEventSubscriptionService {
           deletedAt: null,
         },
         event: {
-          AND: [PUBLIC_EVENT_WHERE],
+          AND: [PUBLIC_REGULAR_EVENT_WHERE],
         },
       },
       select: {
@@ -445,7 +404,7 @@ export class CurrentUserMajorEventSubscriptionService {
   }> {
     const events = await this.prisma.event.findMany({
       where: {
-        AND: [PUBLIC_EVENT_WHERE, { majorEventId }],
+        AND: [PUBLIC_REGULAR_EVENT_WHERE, { majorEventId }],
         allowSubscription: true,
       },
       select: {
@@ -492,7 +451,7 @@ export class CurrentUserMajorEventSubscriptionService {
     personId: string,
     paymentInfoTableExists: boolean,
   ): Promise<CurrentUserMajorEventFeedItem[]> {
-    const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents] = await Promise.all([
+    const [subscriptions, lecturerMajorEvents, certificates, attendanceMajorEvents, sportsMajorEvents] = await Promise.all([
       this.prisma.majorEventSubscription.findMany({
         where: {
           personId,
@@ -583,6 +542,80 @@ export class CurrentUserMajorEventSubscriptionService {
           attendedAt: 'desc',
         },
       }),
+      this.prisma.sportsTournament.findMany({
+        where: {
+          deletedAt: null,
+          status: { not: SportsTournamentStatus.DRAFT },
+          majorEvent: {
+            ...PUBLIC_MAJOR_EVENT_WHERE,
+          },
+          OR: [
+            {
+              teams: {
+                some: {
+                  deletedAt: null,
+                  representatives: {
+                    some: {
+                      personId,
+                      active: true,
+                      revokedAt: null,
+                    },
+                  },
+                },
+              },
+            },
+            {
+              officials: {
+                some: {
+                  personId,
+                  active: true,
+                  revokedAt: null,
+                },
+              },
+            },
+            {
+              participants: {
+                some: {
+                  personId,
+                  deletedAt: null,
+                  status: SportsParticipantStatus.ACTIVE,
+                  teamMemberships: {
+                    some: {
+                      deletedAt: null,
+                      status: SportsTeamMemberStatus.APPROVED,
+                      team: {
+                        deletedAt: null,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          ],
+        },
+        select: {
+          majorEventId: true,
+          majorEvent: {
+            select: MAJOR_EVENT_BASE_SELECT,
+          },
+          teams: {
+            where: {
+              deletedAt: null,
+              representatives: {
+                some: {
+                  personId,
+                  active: true,
+                  revokedAt: null,
+                },
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      }),
     ]);
 
     const subscribedMajorEventIds = new Set(subscriptions.map((subscription) => subscription.majorEventId));
@@ -595,6 +628,12 @@ export class CurrentUserMajorEventSubscriptionService {
       certificates
         .map(({ config }) => config.majorEventId)
         .filter((majorEventId): majorEventId is string => !!majorEventId),
+    );
+    const sportsMajorEventIds = new Set(sportsMajorEvents.map(({ majorEventId }) => majorEventId));
+    const representativeTeamsByMajorEventId = new Map(
+      sportsMajorEvents
+        .filter(({ teams }) => teams.length > 0)
+        .map(({ majorEventId, teams }) => [majorEventId, teams] as const),
     );
     const selectedEventsByMajorEventId = await this.getSelectedEventsByMajorEvent(personId, [
       ...subscribedMajorEventIds,
@@ -612,10 +651,12 @@ export class CurrentUserMajorEventSubscriptionService {
         paymentTier: subscription.paymentTier ?? undefined,
         selectedEvents: selectedEventsByMajorEventId.get(subscription.majorEventId) ?? [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(subscription.majorEventId) ?? [],
         participation: {
           isSubscribed: true,
           isLecturer: lecturerMajorEventIds.has(subscription.majorEventId),
           hasIssuedCertificate: certificateMajorEventIds.has(subscription.majorEventId),
+          ...(sportsMajorEventIds.has(subscription.majorEventId) ? { isSportsManager: true } : {}),
         },
       });
     }
@@ -631,10 +672,12 @@ export class CurrentUserMajorEventSubscriptionService {
         majorEvent: this.mapper.mapPublicMajorEvent(event.majorEvent),
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(event.majorEventId) ?? [],
         participation: {
           isSubscribed: false,
           isLecturer: true,
           hasIssuedCertificate: certificateMajorEventIds.has(event.majorEventId),
+          ...(sportsMajorEventIds.has(event.majorEventId) ? { isSportsManager: true } : {}),
         },
       });
     }
@@ -650,10 +693,12 @@ export class CurrentUserMajorEventSubscriptionService {
         majorEvent: this.mapper.mapPublicMajorEvent(config.majorEvent),
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(config.majorEventId) ?? [],
         participation: {
           isSubscribed: false,
           isLecturer: lecturerMajorEventIds.has(config.majorEventId),
           hasIssuedCertificate: true,
+          ...(sportsMajorEventIds.has(config.majorEventId) ? { isSportsManager: true } : {}),
         },
       });
     }
@@ -669,10 +714,33 @@ export class CurrentUserMajorEventSubscriptionService {
         majorEvent: this.mapper.mapPublicMajorEvent(event.majorEvent),
         selectedEvents: [],
         notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(event.majorEventId) ?? [],
         participation: {
           isSubscribed: false,
           isLecturer: lecturerMajorEventIds.has(event.majorEventId),
           hasIssuedCertificate: certificateMajorEventIds.has(event.majorEventId),
+          ...(sportsMajorEventIds.has(event.majorEventId) ? { isSportsManager: true } : {}),
+        },
+      });
+    }
+
+    for (const { majorEventId, majorEvent } of sportsMajorEvents) {
+      if (!majorEventId || !majorEvent || itemsByMajorEventId.has(majorEventId)) {
+        continue;
+      }
+
+      itemsByMajorEventId.set(majorEventId, {
+        id: majorEventId,
+        majorEventId,
+        majorEvent: this.mapper.mapPublicMajorEvent(majorEvent),
+        selectedEvents: [],
+        notSubscribedEvents: [],
+        sportsRepresentativeTeams: representativeTeamsByMajorEventId.get(majorEventId) ?? [],
+        participation: {
+          isSubscribed: false,
+          isLecturer: lecturerMajorEventIds.has(majorEventId),
+          hasIssuedCertificate: certificateMajorEventIds.has(majorEventId),
+          isSportsManager: true,
         },
       });
     }

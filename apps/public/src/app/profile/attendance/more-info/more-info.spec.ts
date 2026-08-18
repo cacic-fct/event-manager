@@ -4,7 +4,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
-import { OfflinePublicDatabaseProvider } from '@cacic-fct/offline-public-data-access';
+import { PublicDatabaseProvider } from '@cacic-fct/public-indexed-db';
+import type { DetailViewModel } from '@cacic-fct/shared-utils';
 import { MoreInfo } from './more-info';
 
 describe('MoreInfo', () => {
@@ -32,7 +33,7 @@ describe('MoreInfo', () => {
           },
         },
         {
-          provide: OfflinePublicDatabaseProvider,
+          provide: PublicDatabaseProvider,
           useValue: { getDatabase: () => null },
         },
       ],
@@ -46,7 +47,7 @@ describe('MoreInfo', () => {
   afterEach(() => {
     try {
       httpTesting.verify();
-    } catch (_e) {
+    } catch {
       // Ignore verification errors if no requests match
     }
   });
@@ -92,7 +93,7 @@ describe('MoreInfo', () => {
               isOnlineAttendanceAllowed: false,
               onlineAttendanceStartDate: null,
               onlineAttendanceEndDate: null,
-              publiclyVisible: true,
+              isPubliclyListed: true,
               youtubeCode: null,
               buttonText: null,
               buttonLink: null,
@@ -123,7 +124,7 @@ describe('MoreInfo', () => {
             isOnlineAttendanceAllowed: false,
             onlineAttendanceStartDate: null,
             onlineAttendanceEndDate: null,
-            publiclyVisible: true,
+            isPubliclyListed: true,
             youtubeCode: null,
             buttonText: null,
             buttonLink: null,
@@ -140,5 +141,31 @@ describe('MoreInfo', () => {
     }
     await fixture.whenStable();
     expect(component).toBeTruthy();
+  });
+
+  it('builds direct sports and representative-area routes', () => {
+    expect(
+      component.sportsPanelRoute({ sportsTournamentId: 'tournament-1' } as Parameters<MoreInfo['sportsPanelRoute']>[0]),
+    ).toEqual(['/tournament', 'tournament-1']);
+    expect(component.representativeTeamRoute('team-1')).toEqual(['/sports', 'team', 'team-1']);
+  });
+
+  it('uses one contextual icon for the concise status summary', () => {
+    const attendanceDetail = {
+      targetType: 'event',
+      statusLabel: 'Presença registrada',
+      subscriptionStatus: undefined,
+    } as DetailViewModel;
+
+    expect(component.statusIcon(attendanceDetail)).toBe('how_to_reg');
+    expect(component.statusIcon({ ...attendanceDetail, statusLabel: 'Certificado emitido' })).toBe('workspace_premium');
+    expect(
+      component.statusIcon({
+        ...attendanceDetail,
+        targetType: 'major-event',
+        statusLabel: 'Comprovante pendente',
+        subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+      }),
+    ).toBe('receipt_long');
   });
 });

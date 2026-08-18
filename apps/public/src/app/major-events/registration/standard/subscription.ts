@@ -16,7 +16,7 @@ import type {
   PublicEventForm,
   PublicEventFormLink,
 } from '@cacic-fct/event-manager-public-contracts';
-import { AuthService, parseFormAnswersJson } from '@cacic-fct/shared-angular';
+import { AuthService, MarkdownComponent, parseFormAnswersJson } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 import { compareIsoDateAsc, formatDateRange, getSubscriptionStatusLabel } from '@cacic-fct/shared-utils';
 import { areIntervalsOverlapping, isBefore, parseISO } from 'date-fns';
@@ -35,6 +35,7 @@ import { MajorEventSubscriptionApiService, type PublicMajorEventSubscriptionPage
 import { SubscriptionEventList } from './event-list';
 import { MajorEventSubscriptionRealtimeDelta, MajorEventSubscriptionRealtimeService } from '../realtime.service';
 import { PublicEventFormApiService } from '../../../forms/event-form-api.service';
+import { subscriptionSuccessRoute } from '../subscription-success-route';
 
 type SubscriptionPageState =
   | { status: 'loading' }
@@ -53,6 +54,7 @@ type SubscriptionPageState =
     MatRadioModule,
     MatSnackBarModule,
     MatToolbarModule,
+    MarkdownComponent,
     RouterLink,
     RouterOutlet,
     SubscriptionEventList,
@@ -80,6 +82,10 @@ export class MajorEventSubscription {
   readonly subscriptionCooldownSeconds = this.subscriptionCooldown.seconds;
   readonly pageState = signal<SubscriptionPageState>({ status: 'loading' });
   readonly currentUserSubscription = signal<CurrentUserMajorEventSubscription | null | undefined>(undefined);
+  readonly confirmedSportsOnlySubscription = computed(() => {
+    const subscription = this.currentUserSubscription();
+    return subscription?.subscriptionStatus === 'CONFIRMED' && subscription.selectedEvents?.length === 0;
+  });
   readonly selectedEventIds = signal<Set<string>>(new Set());
   readonly selectedPriceTierName = signal<string | null>(null);
   readonly needsImageLicenseAgreement = computed(() => {
@@ -506,8 +512,9 @@ export class MajorEventSubscription {
               replaceUrl: true,
             });
           }
-          if (data.majorEvent.isPaymentRequired) {
-            void this.router.navigate(['/major-event', data.majorEvent.id, 'payment']);
+          const successRoute = subscriptionSuccessRoute(data.majorEvent, this.selectedPriceTier());
+          if (successRoute) {
+            void this.router.navigate(successRoute.commands, { queryParams: successRoute.queryParams });
           }
         },
         error: (error: unknown) => {

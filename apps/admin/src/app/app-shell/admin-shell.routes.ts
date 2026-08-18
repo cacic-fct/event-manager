@@ -1,11 +1,13 @@
-import { Route } from '@angular/router';
+import { Route, type UrlMatcher } from '@angular/router';
 import { canValidateReceiptsGuard, canReadFeatureGuard, superAdminGuard } from './access.guard';
 import { NavigationLinkId, NavigationLinkItem, navigationLinkItems } from './navigation';
+import { sportsWorkspaceMatcher } from '../sports/sports-workspace-routes';
 
 const eventsData = getFeatureRouteData('events');
 const placesData = getFeatureRouteData('places');
 const groupsData = getFeatureRouteData('groups');
 const majorEventsData = getFeatureRouteData('major-events');
+const sportsData = getFeatureRouteData('sports');
 const publicationData = getFeatureRouteData('publication');
 const peopleData = getFeatureRouteData('people');
 const mergeCandidatesData = getFeatureRouteData('merge-candidates');
@@ -37,6 +39,26 @@ function guardedFeatureRoute(path: string, data: NavigationLinkItem, loadCompone
     },
     {
       path,
+      data,
+      loadComponent: () => import('./permission-denied.component').then((m) => m.PermissionDeniedComponent),
+    },
+  ];
+}
+
+function guardedFeatureMatcher(
+  matcher: UrlMatcher,
+  data: NavigationLinkItem,
+  loadComponent: Route['loadComponent'],
+): Route[] {
+  return [
+    {
+      matcher,
+      data,
+      canMatch: [canReadFeatureGuard],
+      loadComponent,
+    },
+    {
+      matcher,
       data,
       loadComponent: () => import('./permission-denied.component').then((m) => m.PermissionDeniedComponent),
     },
@@ -79,6 +101,10 @@ export const routes: Route[] = [
       ),
       ...guardedFeatureRoute(`${majorEventsData.path}/:majorEventId`, majorEventsData, () =>
         import('../major-events/major-events-page.component').then((m) => m.MajorEventsPageComponent),
+      ),
+
+      ...guardedFeatureMatcher(sportsWorkspaceMatcher, sportsData, () =>
+        import('../sports/sports-page.component').then((m) => m.SportsPageComponent),
       ),
 
       ...guardedFeatureRoute(publicationData.path, publicationData, () =>
@@ -125,8 +151,11 @@ export const routes: Route[] = [
         import('../attendances/attendances-page.component').then((m) => m.AttendancesPageComponent),
       ),
       ...guardedFeatureRoute(`${attendancesData.path}/event/:eventId/oral`, attendancesData, () =>
-        import('../attendances/oral/oral-attendance-page.component').then(
-          (m) => m.AdminOralAttendancePageComponent,
+        import('../attendances/oral/oral-attendance-page.component').then((m) => m.AdminOralAttendancePageComponent),
+      ),
+      ...guardedFeatureRoute(`${attendancesData.path}/event/:eventId/statistics`, attendancesData, () =>
+        import('../attendances/statistics/attendance-statistics-page.component').then(
+          (m) => m.AttendanceStatisticsPageComponent,
         ),
       ),
       ...guardedFeatureRoute(`${attendancesData.path}/event/:eventId`, attendancesData, () =>
@@ -164,9 +193,17 @@ export const routes: Route[] = [
       ...guardedFeatureRoute(`${subscriptionsData.path}/major-event/:majorEventId`, subscriptionsData, () =>
         import('../subscriptions/subscriptions-page.component').then((m) => m.SubscriptionsPageComponent),
       ),
-      ...guardedFeatureRoute(permissionsData.path, permissionsData, () =>
-        import('../permissions/permissions-page.component').then((m) => m.PermissionsPageComponent),
-      ),
+      {
+        path: permissionsData.path,
+        data: permissionsData,
+        canMatch: [canReadFeatureGuard],
+        loadChildren: () => import('../permissions/permissions.routes').then((m) => m.routes),
+      },
+      {
+        path: permissionsData.path,
+        data: permissionsData,
+        loadComponent: () => import('./permission-denied.component').then((m) => m.PermissionDeniedComponent),
+      },
       ...guardedFeatureRoute(globalOperationsData.path, globalOperationsData, () =>
         import('../global-operations/global-operations-page.component').then((m) => m.GlobalOperationsPageComponent),
       ),

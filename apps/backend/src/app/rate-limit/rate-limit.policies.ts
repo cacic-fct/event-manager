@@ -63,4 +63,12 @@ export const RATE_LIMIT_POLICIES = {
     maxCooldownMs: minute,
     maxAttempts: 60,
   },
+  currentUserMyDay: {
+    name: 'current-user-my-day',
+    windowMs: 5 * minute,
+    freeAttempts: 30,
+    baseCooldownMs: 5_000,
+    maxCooldownMs: minute,
+    maxAttempts: 60,
+  },
 } as const satisfies Record<string, RateLimitPolicy>;

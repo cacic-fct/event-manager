@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject, isDevMode, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, InjectionToken, PLATFORM_ID, inject, isDevMode, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -9,6 +9,11 @@ import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular/auth';
 import { CacicLogoComponent } from '@cacic-fct/shared-angular/cacic-logo';
+
+export const LOGIN_DEVELOPMENT_MODE = new InjectionToken<boolean>('LOGIN_DEVELOPMENT_MODE', {
+  providedIn: 'root',
+  factory: () => isDevMode(),
+});
 
 @Component({
   selector: 'app-login-page',
@@ -139,7 +144,7 @@ export class LoginPageComponent {
   private readonly router = inject(Router);
   private readonly platformId = inject(PLATFORM_ID);
 
-  protected readonly isDevelopment = isDevMode();
+  protected readonly isDevelopment = inject(LOGIN_DEVELOPMENT_MODE);
   protected readonly hidePassword = signal(true);
   protected readonly isSubmitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);

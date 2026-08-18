@@ -1415,6 +1415,10 @@ describe('EventFormsService', () => {
         }),
       }),
     );
+    const linkQuery = prisma.eventFormLink.findMany.mock.calls[0]?.[0];
+    const eventSubscriptionWhere = linkQuery?.where?.OR?.[0]?.event?.subscriptions?.some;
+    expect(eventSubscriptionWhere).not.toHaveProperty('subscriptionStatus');
+    expect(eventSubscriptionWhere).not.toHaveProperty('selectedEvents');
   });
 
   it('does not interrupt a subscriber who already answered a required form', async () => {

@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, LOCALE_ID, input, signal } from '@a
 import {
   CalendarDefaultItemViewPreference,
   CalendarPreferencesStorageService,
-} from '@cacic-fct/offline-public-data-access';
+} from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { fakerPT_BR as faker } from '@faker-js/faker';
 import { HttpResponse, delay, http } from 'msw';
@@ -70,7 +70,7 @@ class CalendarPreferencesStoryHostComponent {
 
 const meta: Meta<CalendarPreferencesStoryArgs> = {
   component: CalendarPreferencesStoryHostComponent,
-  title: 'Public/Preferences/Calendar Preferences',
+  title: 'CACiC Eventos/Preferences/Calendar',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({
@@ -152,7 +152,8 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async ({ request }) => {
           const body = (await request.json()) as GraphqlBody;
           const query = body.query ?? '';
@@ -197,7 +198,8 @@ const meta: Meta<CalendarPreferencesStoryArgs> = {
 
           return HttpResponse.json({ data: {} });
         }),
-      ],
+        ],
+      },
     },
   },
 };
@@ -257,6 +259,7 @@ export const RequestError: Story = {
     requestState: 'error',
     responseDelay: 0,
   },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     await expect(
       await within(canvasElement).findByText('Não foi possível carregar as preferências de calendário simuladas.'),

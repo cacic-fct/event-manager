@@ -58,6 +58,25 @@ describe('detail view model', () => {
     expect(detail?.certificateTargets).toEqual([]);
   });
 
+  it('keeps the sports panel and every representative team reachable from major-event details', () => {
+    const detail = buildMajorEventDetail({
+      subscription: null,
+      majorEvent: majorEvent({ sportsTournament: { id: 'tournament-1' } }),
+      attendances: [],
+      isLecturer: true,
+      sportsRepresentativeTeams: [
+        { id: 'team-1', name: 'Equipe Azul' },
+        { id: 'team-2', name: 'Equipe Verde' },
+      ],
+    });
+
+    expect(detail?.sportsTournamentId).toBe('tournament-1');
+    expect(detail?.sportsRepresentativeTeams).toEqual([
+      { id: 'team-1', name: 'Equipe Azul' },
+      { id: 'team-2', name: 'Equipe Verde' },
+    ]);
+  });
+
   it('returns attendance-only standalone event details without requiring a subscription', () => {
     const detail = buildEventDetail({
       subscription: null,
@@ -65,7 +84,7 @@ describe('detail view model', () => {
       attendance: { eventId: 'attended-event', attendedAt: '2026-06-26T10:00:00' },
     });
 
-    expect(detail?.statusLabel).toBe('Presença registrada às 26/06/2026, 10:00, Não inscrito');
+    expect(detail?.statusLabel).toBe('Presença registrada');
     expect(detail?.isSubscribed).toBe(false);
   });
 
@@ -95,6 +114,20 @@ describe('detail view model', () => {
     expect(detail?.isSubscribed).toBe(false);
     expect(detail?.events.map((item) => item.event.id)).toEqual(['attended-event']);
     expect(detail?.notSubscribedEvents).toEqual([]);
+  });
+
+  it('uses a concise subscription status in the major-event summary', () => {
+    const detail = buildMajorEventDetail({
+      subscription: {
+        id: 'subscription-1',
+        majorEventId: 'major-1',
+        majorEvent: majorEvent(),
+        subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+      },
+      attendances: [],
+    });
+
+    expect(detail?.statusLabel).toBe('Comprovante pendente');
   });
 
   it('falls back to a group certificate when per-event targets are disabled', () => {

@@ -4,7 +4,7 @@ import { Developer } from './developer';
 
 const meta: Meta<Developer> = {
   component: Developer,
-  title: 'Public/Landing/Components/Developer',
+  title: 'CACiC Eventos/Landing/Developer',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',
@@ -28,5 +28,12 @@ export const Playground: Story = {
 };
 
 export const Dark: Story = {
-  globals: { theme: 'dark' },
+  globals: { theme: 'dark', motion: 'reduced' },
+};
+
+export const MobileCodeSample: Story = {
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).getByRole('button', { name: 'Copiar exemplo em curl' })).toBeVisible();
+  },
 };

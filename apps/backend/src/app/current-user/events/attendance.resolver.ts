@@ -21,6 +21,11 @@ import { AuthorizationPolicyService } from '../../authorization/authorization-po
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
+import {
+  notifySportsMatchAttendanceMutation,
+  startSportsMatchCheckInFromAthleteAttendance,
+} from '../../sports/operations/sports-match-attendance';
+import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
 
 const CSV_FORMULA_PREFIX_PATTERN = /^[=+\-@\t\r\n]/;
 
@@ -34,6 +39,9 @@ export class CurrentUserEventAttendanceResolver {
     private readonly attendanceRealtime: CurrentUserOnlineAttendanceRealtimeService,
     private readonly frozenResources: FrozenResourceService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
+    private readonly sportsMutationEvents: SportsMutationEventsService = {
+      publishAttendanceMutation: async () => undefined,
+    } as unknown as SportsMutationEventsService,
   ) {}
 
   @Query(() => [CurrentUserEventAttendance], {
@@ -165,6 +173,7 @@ export class CurrentUserEventAttendanceResolver {
 
     await this.assertCurrentPersonCanConfirmOnlineAttendance(person.id, event);
 
+    let checkInStarted = false;
     const createdAttendance = await (async () => {
       try {
         return await this.prisma.$transaction(async (tx) => {
@@ -196,6 +205,12 @@ export class CurrentUserEventAttendanceResolver {
             });
           }
           await this.attendanceCategories.refreshForAttendance(person.id, event.id, tx);
+          checkInStarted = await startSportsMatchCheckInFromAthleteAttendance({
+            tx,
+            eventId: event.id,
+            personId: person.id,
+            updatedById: authenticatedUser.sub,
+          });
           return tx.eventAttendance.findUniqueOrThrow({
             where: {
               personId_eventId: {
@@ -213,6 +228,10 @@ export class CurrentUserEventAttendanceResolver {
         throw error;
       }
     })();
+
+    if (checkInStarted) {
+      await notifySportsMatchAttendanceMutation(this.sportsMutationEvents, createdAttendance);
+    }
 
     await this.attendanceRealtime.notifyPerson(person.id);
 

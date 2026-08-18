@@ -23,6 +23,7 @@ import { FrozenResourceService } from '../../common/frozen-resource.service';
 import { RateLimit } from '../../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../../rate-limit/rate-limit.guard';
 import { RATE_LIMIT_POLICIES } from '../../rate-limit/rate-limit.policies';
+import { currentUserMapEventWhere } from './map-event-ids';
 
 export const SubscribedItemUnion = createUnionType({
   name: 'SubscribedItem',
@@ -49,6 +50,29 @@ export class CurrentUserEventSubscriptionsResolver {
     private readonly eventSubscriptions: CurrentUserEventSubscriptionService,
     private readonly frozenResources: FrozenResourceService,
   ) {}
+
+  @Query(() => [String], {
+    name: 'currentUserMapEventIds',
+    description:
+      'Lists ongoing and future public map event IDs associated with the current person through subscriptions, event roles, scoped management grants, or active sports match roles.',
+  })
+  async currentUserMapEventIds(@Context() context: GraphqlContext): Promise<string[]> {
+    const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
+    const { person, user } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
+    if (!person) {
+      return [];
+    }
+
+    const events = await this.prisma.event.findMany({
+      where: currentUserMapEventWhere(person.id, user?.id ?? authenticatedUser.sub, new Date()),
+      select: {
+        id: true,
+      },
+      orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+    });
+
+    return events.map((event) => event.id);
+  }
 
   @Query(() => [PublicEvent], {
     name: 'currentUserStandaloneEventSubscriptions',
@@ -178,12 +202,7 @@ export class CurrentUserEventSubscriptionsResolver {
     await this.frozenResources.assertEventMutable(eventId, authenticatedUser, 'edit');
     const person = await this.currentUserContext.requireCurrentPerson(context);
     return imageLicenseAgreementAccepted === undefined
-      ? this.eventSubscriptions.subscribeCurrentUserEvent(
-          person.id,
-          eventId,
-          authenticatedUser,
-          formResponses,
-        )
+      ? this.eventSubscriptions.subscribeCurrentUserEvent(person.id, eventId, authenticatedUser, formResponses)
       : this.eventSubscriptions.subscribeCurrentUserEvent(
           person.id,
           eventId,

@@ -58,7 +58,7 @@ const withLecturerProfileProviders: Decorator<LecturerProfileStoryArgs> = (story
 
 const meta: Meta<LecturerProfileStoryArgs> = {
   component: LecturerProfileComponent,
-  title: 'Public/Profile/Attendances/Lecturer Profile',
+  title: 'CACiC Eventos/Profile/Lecturer Profile',
   tags: ['autodocs'],
   args: defaultArgs,
   argTypes: {
@@ -89,6 +89,8 @@ export const Playground: Story = {
     await expect(await canvas.findByText('Seu perfil público')).toBeVisible();
     await userEvent.click(await canvas.findByRole('button', { name: /editar perfil/i }));
     await expect(await canvas.findByRole('button', { name: /salvar/i })).toBeVisible();
+    await expect(await canvas.findByRole('checkbox', { name: /publicar foto do usuário Google/i })).toBeVisible();
+    expect(canvas.queryByRole('switch', { name: /publicar foto do usuário Google/i })).toBeNull();
   },
 };
 
@@ -144,6 +146,7 @@ export const SaveError: Story = {
   args: {
     saveOutcome: 'error',
   },
+  globals: { theme: 'dark', motion: 'reduced' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole('button', { name: /editar perfil/i }));

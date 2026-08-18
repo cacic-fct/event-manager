@@ -14,6 +14,10 @@ import {
   OfflineEventAttendanceSubmission,
   SubscriptionStatus,
   EventAttendanceStatus,
+  AttendanceReviewEventSummary,
+  AttendanceReviewItem,
+  AttendanceReviewStatus,
+  EventAttendanceAnalyticsSnapshot,
 } from '@cacic-fct/event-manager-admin-contracts';
 import {
   EVENT_ATTENDANCE_SCANNER_FEED_FIELDS,
@@ -25,6 +29,11 @@ import {
   PERSON_EXPORT_FIELDS,
   PERSON_SEARCH_FIELDS,
 } from './graphql-query-fragments';
+
+export interface AttendanceAnalyticsTimeWindow {
+  start: string;
+  end: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class AttendanceApiService {
@@ -126,10 +135,7 @@ export class AttendanceApiService {
       .pipe(map((data) => data.importMajorEventSubscriptionsFromCsv));
   }
 
-  listEventAttendances(
-    eventId?: string,
-    filters?: { skip?: number; take?: number; status?: EventAttendanceStatus },
-  ) {
+  listEventAttendances(eventId?: string, filters?: { skip?: number; take?: number; status?: EventAttendanceStatus }) {
     return this.graphqlHttp
       .request<{ eventAttendances: EventAttendance[] }>(
         `query ListEventAttendances(
@@ -344,6 +350,109 @@ export class AttendanceApiService {
         errorMessage: 'Não foi possível acompanhar as presenças em tempo real.',
       },
     );
+  }
+
+  getEventAttendanceAnalytics(eventId: string, window: AttendanceAnalyticsTimeWindow | null = null) {
+    return this.graphqlHttp
+      .request<{ eventAttendanceAnalytics: EventAttendanceAnalyticsSnapshot }>(
+        `query EventAttendanceAnalytics($eventId: String!, $windowStart: DateTime, $windowEnd: DateTime) {
+          eventAttendanceAnalytics(eventId: $eventId, windowStart: $windowStart, windowEnd: $windowEnd) {
+            eventId
+            eventName
+            emoji
+            generatedAt
+            windowMinutes
+            windowStart
+            windowEnd
+            presentCount
+            noShowCount
+            pendingReviewCount
+            pendingOfflineCount
+            eventLatitude
+            eventLongitude
+            scansPerMinute { start count }
+            scansByHour { start count }
+            collectors {
+              actorId
+              name
+              count
+              firstScanAt
+              lastScanAt
+              onlineCount
+              offlineCount
+              methods { method count }
+            }
+            methods { method count }
+            heatmapPoints { latitude longitude count averageAccuracyMeters }
+            reviewItems {
+              id
+              eventId
+              kind
+              severity
+              status
+              title
+              summary
+              detectedAt
+              personId
+              actorId
+              actorName
+              deepLink
+            }
+          }
+        }`,
+        { eventId, windowStart: window?.start ?? null, windowEnd: window?.end ?? null },
+      )
+      .pipe(map((data) => data.eventAttendanceAnalytics));
+  }
+
+  watchEventAttendanceAnalytics(
+    eventId: string,
+    window: AttendanceAnalyticsTimeWindow | null = null,
+  ): Observable<EventAttendanceAnalyticsSnapshot> {
+    const query = window
+      ? `?windowStart=${encodeURIComponent(window.start)}&windowEnd=${encodeURIComponent(window.end)}`
+      : '';
+    return watchReplayableEventSource(
+      `/api/event-attendances/events/${encodeURIComponent(eventId)}/analytics/events${query}`,
+      {
+        decode: (event) => {
+          const parsed = JSON.parse(event.data) as {
+            type: string;
+            snapshot?: EventAttendanceAnalyticsSnapshot;
+          };
+          return parsed.type === 'event-attendance-analytics' && parsed.snapshot ? parsed.snapshot : null;
+        },
+        errorMessage: 'Não foi possível acompanhar as estatísticas de presença em tempo real.',
+      },
+    );
+  }
+
+  listAttendanceReviewEventSummaries() {
+    return this.graphqlHttp
+      .request<{ attendanceReviewEventSummaries: AttendanceReviewEventSummary[] }>(
+        `query AttendanceReviewEventSummaries {
+          attendanceReviewEventSummaries { eventId eventName emoji pendingCount startDate }
+        }`,
+      )
+      .pipe(map((data) => data.attendanceReviewEventSummaries));
+  }
+
+  reviewAttendanceFlag(
+    flagId: string,
+    eventId: string,
+    status: Exclude<AttendanceReviewStatus, 'PENDING'>,
+    note?: string,
+  ) {
+    return this.graphqlHttp
+      .request<{ reviewAttendanceFlag: AttendanceReviewItem }>(
+        `mutation ReviewAttendanceFlag($flagId: String!, $eventId: String!, $status: String!, $note: String) {
+          reviewAttendanceFlag(flagId: $flagId, eventId: $eventId, status: $status, note: $note) {
+            id eventId kind severity status title summary detectedAt personId actorId actorName deepLink
+          }
+        }`,
+        { flagId, eventId, status, note },
+      )
+      .pipe(map((data) => data.reviewAttendanceFlag));
   }
 
   createEventAttendanceFromScannerCode(input: { eventId: string; code: string }) {

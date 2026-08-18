@@ -1,46 +1,87 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, within } from 'storybook/test';
+import {
+  OnlineAttendanceStoryControls,
+  createOnlineAttendanceStoryContext,
+  onlineAttendanceStoryControlArgTypes,
+  onlineAttendanceStoryDefaultControls,
+  onlineAttendanceStoryHandlers,
+  renderOnlineAttendanceStory,
+} from '../online-attendance-story-fixtures';
 import { OnlineAttendanceListComponent } from './event-list-page';
 
-const meta: Meta<OnlineAttendanceListComponent> = {
+const storyContext = createOnlineAttendanceStoryContext();
+
+const meta: Meta<OnlineAttendanceStoryControls> = {
   component: OnlineAttendanceListComponent,
-  title: 'Public/Attendance/Online Attendance List',
+  title: 'CACiC Eventos/Attendance/Self-registration/Event List',
   tags: ['autodocs'],
+  args: onlineAttendanceStoryDefaultControls,
+  argTypes: onlineAttendanceStoryControlArgTypes,
+  render: (args) => renderOnlineAttendanceStory(args, storyContext),
   parameters: {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
+    msw: { handlers: { graphql: onlineAttendanceStoryHandlers(storyContext) } },
   },
 };
 
 export default meta;
+type Story = StoryObj<OnlineAttendanceStoryControls>;
 
-type Story = StoryObj<OnlineAttendanceListComponent>;
-
-const exerciseStory = async (canvasElement: HTMLElement) => {
+const exerciseStory = async (canvasElement: HTMLElement, expectedCount: number) => {
   const canvas = within(canvasElement);
-  await userEvent.tab();
-  const buttons = canvas.queryAllByRole('button');
-  const enabledButton = buttons.find(
-    (button) => !button.hasAttribute('disabled') && button.getAttribute('aria-disabled') !== 'true',
-  );
-  if (enabledButton) {
-    await userEvent.hover(enabledButton);
-    await expect(enabledButton).toBeVisible();
-  }
-  const links = canvas.queryAllByRole('link');
-  if (links[0]) {
-    await expect(links[0]).toBeVisible();
-  }
+  const links = await canvas.findAllByRole('link', { name: /Confirmar presença em/i });
+  await expect(links).toHaveLength(expectedCount);
+  await expect(links[0]).toHaveAttribute('href', expect.stringContaining('/attendance/register/event-1'));
 };
 
-export const Online: Story = {
-  args: {},
+export const Playground: Story = {
   globals: { theme: 'light', network: 'online' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  play: async ({ args, canvasElement }) => exerciseStory(canvasElement, args.eventCount),
+};
+
+export const DenseList: Story = {
+  args: { eventCount: 12, latencyMs: 0 },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement, 12),
+};
+
+export const LongContentMobile: Story = {
+  args: {
+    eventCount: 6,
+    name: 'Encontro interdisciplinar de tecnologia, ciência, cultura e acessibilidade',
+    majorEventName: 'Grande evento universitário de inovação e extensão para toda a comunidade',
+  },
+  parameters: { viewport: { defaultViewport: 'mobile' } },
+  globals: { theme: 'dark', network: 'online', motion: 'reduced' },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement, 6),
+};
+
+export const Empty: Story = {
+  args: { state: 'empty', eventCount: 0 },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByText('Nenhuma presença pendente.')).toBeVisible();
+  },
+};
+
+export const Loading: Story = {
+  args: { state: 'loading' },
+  play: async ({ canvasElement }) => {
+    await expect(await within(canvasElement).findByLabelText('Carregando presenças pendentes')).toBeVisible();
+  },
+};
+
+export const ApiError: Story = {
+  args: { state: 'error' },
+  play: async ({ canvasElement }) => {
+    await expect(
+      await within(canvasElement).findByText('Não foi possível carregar as presenças pendentes.'),
+    ).toBeVisible();
+  },
 };
 
 export const OfflineFallback: Story = {
-  args: {},
-  globals: { theme: 'light', network: 'offline' },
-  play: async ({ canvasElement }) => exerciseStory(canvasElement),
+  args: { eventCount: 4 },
+  globals: { theme: 'dark', network: 'offline', motion: 'reduced' },
+  play: async ({ canvasElement }) => exerciseStory(canvasElement, 4),
 };

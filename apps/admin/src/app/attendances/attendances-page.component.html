@@ -4,10 +4,16 @@
     mat-stretch-tabs="false"
     [selectedIndex]="selectedTabIndex()"
     (selectedIndexChange)="onSelectedTabIndexChange($event)">
-    <mat-tab label="Por evento">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <span class="workspace-tab-label"><mat-icon>event_available</mat-icon>Por evento</span>
+      </ng-template>
       <app-workspace-event-attendances-subtab />
     </mat-tab>
-    <mat-tab label="Por grande evento">
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <span class="workspace-tab-label"><mat-icon>festival</mat-icon>Por grande evento</span>
+      </ng-template>
       <app-workspace-major-event-attendances-subtab />
     </mat-tab>
   </mat-tab-group>

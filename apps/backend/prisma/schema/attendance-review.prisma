@@ -1,0 +1,67 @@
+model AttendanceReviewFlag {
+  id String @id @default(uuid(7))
+
+  eventId  String
+  personId String?
+  actorId  String?
+
+  kind     AttendanceReviewFlagKind
+  severity AttendanceReviewFlagSeverity @default(WARNING)
+  status   AttendanceReviewFlagStatus   @default(PENDING)
+
+  dedupeKey String @unique
+  title     String
+  summary   String
+  details   Json?
+
+  detectedAt   DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewNote   String?
+
+  @@index([status, detectedAt])
+  @@index([eventId, status, detectedAt])
+  @@index([personId])
+  @@index([actorId])
+  @@map("attendance_review_flags")
+}
+
+enum AttendanceReviewFlagKind {
+  UNUSUAL_VOLUME
+  REPEATED_SCAN_ATTEMPTS
+  OFFLINE_BACKLOG
+  ATTENDANCE_REMOVAL
+  DISTANT_LOCATION
+}
+
+enum AttendanceReviewFlagSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AttendanceReviewFlagStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+model AttendanceScanAttemptCounter {
+  id String @id @default(uuid(7))
+
+  dedupeKey String                   @unique
+  eventId   String
+  personId  String
+  actorId   String?
+  method    AttendanceCreationMethod
+  count     Int                      @default(1)
+
+  windowStartedAt DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([eventId, updatedAt])
+  @@index([personId])
+  @@map("attendance_scan_attempt_counters")
+}

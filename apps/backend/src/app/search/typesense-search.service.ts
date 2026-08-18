@@ -160,7 +160,7 @@ export class TypesenseSearchService implements OnModuleInit {
     majorEventId?: string | null;
     eventGroupId?: string | null;
     shouldIssueCertificate?: boolean | null;
-    publiclyVisible?: boolean | null;
+    isPubliclyListed?: boolean | null;
     publicationState?: string | null;
     startDate: Date;
     endDate: Date;
@@ -264,7 +264,6 @@ export class TypesenseSearchService implements OnModuleInit {
     id: string;
     name: string;
     description?: string | null;
-    version: number;
     isActive: boolean;
   }): Promise<void> {
     await this.upsertDocument<CertificateTemplateSearchDocument>(

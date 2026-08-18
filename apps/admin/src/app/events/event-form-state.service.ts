@@ -52,7 +52,7 @@ export class EventFormStateService {
         onlineAttendanceCode: [''],
         onlineAttendanceStartDate: [''],
         onlineAttendanceEndDate: [''],
-        publiclyVisible: [true],
+        isPubliclyListed: [true],
         displayLecturerProfile: [true],
         youtubeCode: [''],
         buttonText: [''],

@@ -22,6 +22,8 @@ type AdminE2EEventFormFixture = AdminE2ENamedFixture & {
 type AdminE2EGraphqlState = {
   offlineEventAttendanceSubmission: Record<string, unknown> | null;
   permissionGrants: Record<string, unknown>[];
+  permissionRoles: Record<string, unknown>[];
+  permissionGroups: Record<string, unknown>[];
 };
 
 const relativeIsoDate = (daysFromNow: number, hours = 12, minutes = 0): string => {
@@ -30,6 +32,63 @@ const relativeIsoDate = (daysFromNow: number, hours = 12, minutes = 0): string =
   date.setHours(hours, minutes, 0, 0);
   return date.toISOString();
 };
+
+export function adminSportsTournamentListFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    tournament: {
+      id: 'tournament-1',
+      majorEventId: 'major-event-1',
+      status: 'PUBLISHED',
+      scoringMode: 'BY_CATEGORY',
+      selfSubscriptionEnabled: true,
+      selfSubscriptionAllowNoTeam: false,
+      selfSubscriptionAllowNoCategory: false,
+      allowPlayerMultipleTeams: false,
+      revision: 3,
+      finishedAt: null,
+    },
+    majorEvent: {
+      id: 'major-event-1',
+      name: 'Jogos Universitários',
+      emoji: '🏆',
+      startDate: relativeIsoDate(1),
+      endDate: relativeIsoDate(7, 22),
+      isPaymentRequired: false,
+    },
+    categoryCount: 2,
+    teamCount: 8,
+    pendingApplicationCount: 2,
+    pendingReviewCount: 1,
+    ...overrides,
+  };
+}
+
+export function adminSportsTournamentReadFixture(overrides: Record<string, unknown> = {}) {
+  const summary = adminSportsTournamentListFixture();
+  return {
+    tournament: {
+      ...summary.tournament,
+      registrationStartDate: null,
+      registrationEndDate: null,
+      allowPlayerMultipleTeams: false,
+      shouldIssueCertificate: true,
+      majorEvent: {
+        ...summary.majorEvent,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        requiresImageLicenseAgreement: false,
+        majorEventPrices: [],
+      },
+    },
+    categories: [],
+    teams: [],
+    scoreEntries: [],
+    venues: [],
+    officials: [],
+    teamSummaries: [],
+    ...overrides,
+  };
+}
 
 export const adminE2EReadPermissions = [
   'event#read',
@@ -98,6 +157,8 @@ export async function mockAdminApi(
   const graphqlState: AdminE2EGraphqlState = {
     offlineEventAttendanceSubmission: createAdminE2EOfflineEventAttendanceSubmission(),
     permissionGrants: [createAdminE2EPermissionGrant()],
+    permissionRoles: [createAdminE2EPermissionRole()],
+    permissionGroups: [],
   };
 
   await page.route('https://unleash.cacic.com.br/api/frontend/**', (route) =>
@@ -322,6 +383,8 @@ export function createAdminE2EDashboardInsights(
         pendingCount: 2,
       },
     ],
+    sportsTournaments: [],
+    sportsMatches: [],
     inconsistencies: [
       {
         type: 'EVENT_WITHOUT_PLACE',
@@ -440,7 +503,7 @@ export function createAdminE2EEvent(overrides: Record<string, unknown> = {}): Ad
     onlineAttendanceCode: 'A8C2',
     onlineAttendanceStartDate: null,
     onlineAttendanceEndDate: null,
-    publiclyVisible: true,
+    isPubliclyListed: true,
     publicationState: 'PUBLISHED',
     scheduledPublishAt: null,
     publishedAt: relativeIsoDate(-7, 12),
@@ -510,6 +573,55 @@ export function createAdminE2EPermissionGrant(overrides: Record<string, unknown>
     createdById: 'admin-1',
     updatedAt: '2026-05-20T12:00:00.000Z',
     updatedById: 'admin-1',
+    ...overrides,
+  };
+}
+
+export function createAdminE2EPermissionRole(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'role-1',
+    systemKey: null,
+    name: 'Operação de credenciamento',
+    description: 'Gerencia inscrições e presenças no evento.',
+    emoji: '🎟️',
+    isSystem: false,
+    isExternal: false,
+    assignable: true,
+    version: 1,
+    permissions: ['event#read'],
+    inheritedPermissions: [],
+    parentRoleIds: [],
+    directPeopleCount: 1,
+    groupPeopleCount: 0,
+    archivedAt: null,
+    updatedAt: relativeIsoDate(-90, 12),
+    assignments: [
+      {
+        id: 'assignment-1',
+        personId: 'person-1',
+        groupId: null,
+        subjectName: 'Ada Lovelace',
+        subjectHasLinkedUser: true,
+        validFrom: null,
+        validUntil: null,
+        unlimited: true,
+        archivedAt: null,
+        scopes: [
+          {
+            id: 'scope-1',
+            scope: 'MAJOR_EVENT',
+            eventId: null,
+            majorEventId: 'major-event-1',
+            eventGroupId: null,
+            targetLabel: 'Semana da Computação',
+            validFrom: null,
+            validUntil: null,
+            unlimited: true,
+            archivedAt: null,
+          },
+        ],
+      },
+    ],
     ...overrides,
   };
 }
@@ -823,6 +935,32 @@ function graphqlData(
     return { person: linkedPerson };
   }
 
+  if (query.includes('query PermissionRoles')) {
+    return { permissionRoles: state.permissionRoles };
+  }
+
+  if (query.includes('query PermissionGroups')) {
+    return { permissionGroups: state.permissionGroups };
+  }
+
+  if (query.includes('query PermissionScopeTargets')) {
+    return {
+      permissionScopeTargets: permissionManagementTargets(String(variables['scope'] ?? ''), {
+        event,
+        eventGroup,
+        majorEvent,
+      }),
+    };
+  }
+
+  if (query.includes('query PermissionPerson')) {
+    return { person: linkedPerson };
+  }
+
+  if (query.includes('query PermissionPeople')) {
+    return { people: [linkedPerson] };
+  }
+
   if (query.includes('query EventManagerPermissionGrants')) {
     return {
       eventManagerPermissionGrants: state.permissionGrants.filter((grant) => grant['userId'] === variables['userId']),
@@ -1076,6 +1214,53 @@ function permissionGrantTargets(
         emoji: records.eventGroup['emoji'],
         startDate: null,
         endDate: null,
+      },
+    ];
+  }
+
+  return [];
+}
+
+function permissionManagementTargets(
+  scope: string,
+  records: {
+    event: Record<string, unknown>;
+    eventGroup: Record<string, unknown>;
+    majorEvent: Record<string, unknown>;
+  },
+): Record<string, unknown>[] {
+  if (scope === 'EVENT') {
+    return [
+      {
+        id: records.event['id'],
+        label: records.event['name'],
+        description: records.event['locationDescription'],
+        emoji: records.event['emoji'],
+        parentId: records.event['eventGroupId'] ?? records.event['majorEventId'],
+      },
+    ];
+  }
+
+  if (scope === 'MAJOR_EVENT') {
+    return [
+      {
+        id: records.majorEvent['id'],
+        label: records.majorEvent['name'],
+        description: records.majorEvent['description'],
+        emoji: records.majorEvent['emoji'],
+        parentId: null,
+      },
+    ];
+  }
+
+  if (scope === 'EVENT_GROUP') {
+    return [
+      {
+        id: records.eventGroup['id'],
+        label: records.eventGroup['name'],
+        description: null,
+        emoji: records.eventGroup['emoji'],
+        parentId: records.eventGroup['majorEventId'] ?? records.majorEvent['id'],
       },
     ];
   }

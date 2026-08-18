@@ -1,0 +1,501 @@
+<div class="master-detail">
+  <aside class="panel">
+    <div class="panel-heading">
+      <div>
+        <h3>Modalidades</h3>
+        <p>Esporte, divisão e formato competitivo.</p>
+      </div>
+      @if (workspace.canCreateCategory()) {
+        <button mat-stroked-button type="button" (click)="workspace.newCategory()"><mat-icon>add</mat-icon>Novo</button>
+      }
+    </div>
+    <mat-list class="result-list">
+      @for (category of workspace.tournamentRead()?.categories ?? []; track category.id) {
+        <mat-list-item
+          [class.selected-list-item]="workspace.selectedCategoryId() === category.id"
+          (click)="workspace.selectCategory(category)">
+          <span matListItemTitle>
+            <lib-twemoji [emoji]="category.eventGroup?.emoji || sportEmoji(category.sport)" />
+            {{ category.name }}
+          </span>
+          <span matListItemLine>{{ category.division || 'Sem divisão' }} · {{ formatLabel(category.format) }}</span>
+          <span matListItemMeta class="state-label category-state-label">{{
+            categoryStatusLabel(category.status)
+          }}</span>
+        </mat-list-item>
+      } @empty {
+        <mat-list-item>
+          <span matListItemTitle>Nenhuma modalidade</span>
+          <span matListItemLine>Comece por um preset e ajuste somente o necessário.</span>
+        </mat-list-item>
+      }
+    </mat-list>
+  </aside>
+
+  <section class="panel panel-stack">
+    <div class="panel-heading">
+      <div>
+        <h3>{{ workspace.categoryRead() ? 'Editar modalidade' : 'Nova modalidade' }}</h3>
+        <p>Presets fornecem um ponto seguro, mas todas as regras continuam flexíveis.</p>
+      </div>
+      <div class="panel-actions">
+        @if (workspace.categoryRead(); as read) {
+          @if (workspace.canDuplicateCategory()) {
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Duplicar modalidade"
+              aria-label="Duplicar modalidade"
+              (click)="workspace.cloneSelectedCategory()">
+              <mat-icon>content_copy</mat-icon>
+            </button>
+          }
+          @if (workspace.canDeleteCategory()) {
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Excluir modalidade"
+              aria-label="Excluir modalidade"
+              (click)="workspace.deleteCategory(read.category)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          }
+        }
+        @if (
+          (workspace.categoryRead() && workspace.canUpdateCategory()) ||
+          (!workspace.categoryRead() && workspace.canCreateCategory())
+        ) {
+          <button
+            mat-flat-button
+            type="button"
+            (click)="workspace.saveCategory()"
+            [disabled]="workspace.loading() || workspace.categoryForm.invalid">
+            <mat-icon>save</mat-icon>Salvar
+          </button>
+        }
+      </div>
+    </div>
+    <form [formGroup]="workspace.categoryForm" class="form-grid">
+      <mat-form-field>
+        <mat-label>Nome</mat-label>
+        <input matInput formControlName="name" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Esporte</mat-label>
+        <mat-select
+          formControlName="sport"
+          placeholder="Selecione um esporte"
+          (selectionChange)="workspace.applySportPreset($event.value)">
+          @for (sport of sports; track sport[0]) {
+            <mat-option [value]="sport[0]"> <lib-twemoji [emoji]="sportEmoji(sport[0])" /> {{ sport[1] }} </mat-option>
+          }
+        </mat-select>
+        <mat-hint> Trocar o preset pode substituir dados já preenchidos. </mat-hint>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Emoji da modalidade</mat-label>
+        <lib-twemoji matPrefix [emoji]="workspace.categoryForm.controls.emoji.value" />
+        <input matInput maxlength="16" formControlName="emoji" />
+        <mat-hint>Usado no calendário e nas listas públicas.</mat-hint>
+      </mat-form-field>
+      @if (workspace.categoryForm.controls.sport.value === 'OTHER') {
+        <mat-form-field>
+          <mat-label>Nome do esporte</mat-label>
+          <input matInput formControlName="customSportName" />
+          @if (workspace.categoryForm.hasError('customSportNameRequired')) {
+            <mat-error>Informe o nome do esporte personalizado.</mat-error>
+          }
+        </mat-form-field>
+      }
+      <mat-form-field>
+        <mat-label>Divisão</mat-label>
+        <input matInput formControlName="division" placeholder="Ex.: feminino, série A" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Formato</mat-label>
+        <mat-select formControlName="format">
+          @for (format of formats; track format.value) {
+            <mat-option [value]="format.value">{{ format.label }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>{{ formatLabel(workspace.categoryForm.controls.format.value) }}</mat-hint>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Estado</mat-label>
+        <mat-select formControlName="status">
+          @for (status of categoryStatuses; track status[0]) {
+            <mat-option [value]="status[0]">{{ status[1] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Certificados esportivos</mat-label>
+        <mat-select formControlName="certificatePolicy">
+          <mat-option value="INHERIT">Herdar do torneio</mat-option>
+          <mat-option value="ENABLED">Emitir nesta modalidade</mat-option>
+          <mat-option value="DISABLED">Não emitir nesta modalidade</mat-option>
+        </mat-select>
+        <mat-hint>A exceção desta modalidade prevalece sobre a regra do torneio.</mat-hint>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Início das inscrições</mat-label>
+        <input matInput type="datetime-local" formControlName="registrationStartDate" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Fim das inscrições</mat-label>
+        <input matInput type="datetime-local" formControlName="registrationEndDate" />
+        @if (workspace.categoryForm.hasError('incompleteDateRange')) {
+          <mat-error>Informe o início e o fim das inscrições.</mat-error>
+        } @else if (workspace.categoryForm.hasError('invalidDateRange')) {
+          <mat-error>O fim precisa ser posterior ao início.</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field class="span-2">
+        <mat-label>Formulário complementar da inscrição</mat-label>
+        <mat-select formControlName="registrationFormId">
+          <mat-option value="">Sem formulário complementar</mat-option>
+          @for (eventForm of workspace.eventForms(); track eventForm.id) {
+            <mat-option [value]="eventForm.id">{{ eventForm.name }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>Reutiliza um formulário do grande evento na inscrição desta modalidade.</mat-hint>
+      </mat-form-field>
+
+      <div class="subsection-title span-2">
+        <h4>Identificação dos atletas</h4>
+        <p>Defina o dado usado para reconhecer cada atleta e o que ele precisa saber antes de jogar.</p>
+      </div>
+      <mat-form-field class="span-2">
+        <mat-label>Como identificar atletas nesta modalidade?</mat-label>
+        <mat-select formControlName="athleteIdentifierMode">
+          <mat-option value="SHIRT_NUMBER">Número da camisa</mat-option>
+          <mat-option value="GAME_ACCOUNT">Nickname e conta do jogo</mat-option>
+        </mat-select>
+        <mat-hint>
+          @if (workspace.categoryForm.controls.athleteIdentifierMode.value === 'GAME_ACCOUNT') {
+            Cada atleta poderá informar o nickname exibido e a conta usada para entrar na partida.
+          } @else {
+            O número continua sendo definido pelo representante ao montar a escalação.
+          }
+        </mat-hint>
+      </mat-form-field>
+      <mat-form-field class="span-2">
+        <mat-label>Instruções para entrar na partida</mat-label>
+        <textarea
+          matInput
+          rows="5"
+          maxlength="4000"
+          formControlName="joiningInstructions"
+          placeholder="Ex.: entre no lobby 15 minutos antes e adicione a conta da organização."></textarea>
+        <mat-hint align="start">Visível aos atletas inscritos nesta modalidade.</mat-hint>
+        <mat-hint align="end">{{ workspace.categoryForm.controls.joiningInstructions.value.length }}/4000</mat-hint>
+      </mat-form-field>
+
+      <app-sports-format-guide
+        class="span-2"
+        [currentFormat]="workspace.categoryForm.controls.format.value"
+        (formatSelected)="workspace.categoryForm.controls.format.setValue($event)" />
+
+      <div class="subsection-title span-2">
+        <h4>Pontuação no placar geral</h4>
+        <p>Escolha quando esta modalidade soma pontos ao placar geral e defina os valores.</p>
+      </div>
+      <mat-form-field class="span-2">
+        <mat-label>Como pontuar automaticamente?</mat-label>
+        <mat-select formControlName="overallScoringMode">
+          <mat-option value="NONE">Não pontuar automaticamente</mat-option>
+          <mat-option value="MATCH_RESULT">Resultado de cada partida</mat-option>
+          <mat-option value="FINAL_PLACEMENT">Colocação final</mat-option>
+          <mat-option value="MATCH_RESULT_AND_FINAL_PLACEMENT">Resultado e colocação final</mat-option>
+        </mat-select>
+        <mat-hint>
+          Os lançamentos são feitos quando o resultado é aprovado; o torneio precisa usar placar geral ou ambos.
+        </mat-hint>
+      </mat-form-field>
+      @if (
+        workspace.categoryForm.controls.overallScoringMode.value === 'MATCH_RESULT' ||
+        workspace.categoryForm.controls.overallScoringMode.value === 'MATCH_RESULT_AND_FINAL_PLACEMENT'
+      ) {
+        <mat-form-field>
+          <mat-label>Vitória</mat-label>
+          <input matInput type="number" min="0" max="1000000" formControlName="overallMatchWinPoints" />
+          <mat-hint>pontos</mat-hint>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Empate</mat-label>
+          <input matInput type="number" min="0" max="1000000" formControlName="overallMatchDrawPoints" />
+          <mat-hint>pontos</mat-hint>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Derrota</mat-label>
+          <input matInput type="number" min="0" max="1000000" formControlName="overallMatchLossPoints" />
+          <mat-hint>pontos</mat-hint>
+        </mat-form-field>
+      }
+      @if (
+        workspace.categoryForm.controls.overallScoringMode.value === 'FINAL_PLACEMENT' ||
+        workspace.categoryForm.controls.overallScoringMode.value === 'MATCH_RESULT_AND_FINAL_PLACEMENT'
+      ) {
+        <div class="span-2 placement-editor">
+          <div class="placement-heading">
+            <div>
+              <p class="field-label">Pontos por colocação final</p>
+              <small>Adicione somente as colocações que pontuam.</small>
+            </div>
+            <button
+              mat-stroked-button
+              type="button"
+              [disabled]="workspace.categoryForm.controls.overallPlacementPoints.length >= 100"
+              (click)="workspace.addPlacementPoint()">
+              <mat-icon>add</mat-icon>
+              Colocação
+            </button>
+          </div>
+          <div class="placement-list" formArrayName="overallPlacementPoints">
+            @for (
+              placement of workspace.categoryForm.controls.overallPlacementPoints.controls;
+              track placement;
+              let index = $index
+            ) {
+              <div class="placement-row" [formGroupName]="index">
+                <mat-form-field>
+                  <mat-label>Colocação</mat-label>
+                  <input matInput type="number" min="1" max="100" step="1" formControlName="position" />
+                  @if (placement.controls.position.invalid) {
+                    <mat-error>Use uma posição entre 1 e 100.</mat-error>
+                  }
+                </mat-form-field>
+                <mat-form-field>
+                  <mat-label>Pontos</mat-label>
+                  <input matInput type="number" min="0" max="1000000" step="1" formControlName="points" />
+                  @if (placement.controls.points.invalid) {
+                    <mat-error>Use um valor entre 0 e 1.000.000.</mat-error>
+                  }
+                </mat-form-field>
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Remover colocação"
+                  [attr.aria-label]="'Remover ' + placement.controls.position.value + 'ª colocação'"
+                  (click)="workspace.removePlacementPoint(index)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            } @empty {
+              <p class="empty-copy">Nenhuma colocação pontua automaticamente.</p>
+            }
+            @if (workspace.categoryForm.controls.overallPlacementPoints.hasError('duplicatePlacement')) {
+              <p class="validation-copy">Cada colocação pode aparecer somente uma vez.</p>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="subsection-title span-2">
+        <h4>Resultado da partida</h4>
+        <p>Defina como o placar determina o vencedor e quais valores são aceitos.</p>
+      </div>
+      <mat-form-field>
+        <mat-label>Vence a equipe com</mat-label>
+        <mat-select formControlName="scoreHigherWins">
+          <mat-option [value]="true">Maior pontuação</mat-option>
+          <mat-option [value]="false">Menor pontuação</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Incremento do placar</mat-label>
+        <input matInput type="number" min="0.000001" step="any" formControlName="scorePointStep" />
+        <mat-hint>Ex.: 1 para gols, 0,5 para notas fracionadas.</mat-hint>
+      </mat-form-field>
+      <mat-checkbox formControlName="scoreAllowDraw">Permitir resultado empatado</mat-checkbox>
+
+      <div class="subsection-title span-2">
+        <h4>Classificação</h4>
+        <p>Pontos usados na tabela da modalidade.</p>
+      </div>
+      <mat-form-field>
+        <mat-label>Vitória</mat-label>
+        <input matInput type="number" formControlName="standingsWinPoints" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Empate</mat-label>
+        <input matInput type="number" formControlName="standingsDrawPoints" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Derrota</mat-label>
+        <input matInput type="number" formControlName="standingsLossPoints" />
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Pontos por folga (sem partida)</mat-label>
+        <input matInput type="number" formControlName="standingsByePoints" />
+        <mat-hint>Pontos atribuídos à equipe que não joga na rodada.</mat-hint>
+      </mat-form-field>
+      @if (
+        workspace.categoryForm.controls.format.value === 'ROUND_ROBIN' ||
+        workspace.categoryForm.controls.format.value === 'GROUP_STAGE_ELIMINATION'
+      ) {
+        <mat-checkbox class="span-2" formControlName="doubleRoundRobin">
+          Turno e returno — cada equipe enfrenta as demais duas vezes
+        </mat-checkbox>
+      }
+      @if (workspace.categoryForm.controls.format.value === 'GROUP_STAGE_ELIMINATION') {
+        <mat-form-field>
+          <mat-label>Quantidade de grupos</mat-label>
+          <input matInput type="number" min="2" max="128" step="1" formControlName="groupCount" />
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Classificados por grupo</mat-label>
+          <input matInput type="number" min="1" max="128" formControlName="qualifiersPerGroup" />
+        </mat-form-field>
+      }
+      @if (workspace.categoryForm.controls.format.value === 'SWISS') {
+        <mat-form-field class="span-2">
+          <mat-label>Máximo de rodadas suíças</mat-label>
+          <input matInput type="number" min="1" max="128" formControlName="swissMaximumRounds" />
+          <mat-hint>A geração encerra ao atingir este limite.</mat-hint>
+        </mat-form-field>
+      }
+
+      <div class="subsection-title span-2">
+        <h4>Elenco por modalidade</h4>
+        <p>Zero significa sem limite definido.</p>
+      </div>
+      <mat-form-field
+        ><mat-label>Mínimo</mat-label><input matInput type="number" min="0" formControlName="minimumRosterSize"
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Máximo</mat-label><input matInput type="number" min="0" formControlName="maximumRosterSize"
+        />
+        @if (workspace.categoryForm.hasError('invalidRosterRange')) {
+          <mat-error>O máximo precisa ser maior que o mínimo.</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field
+        ><mat-label>Capitães</mat-label><input matInput type="number" min="0" formControlName="maximumCaptains"
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>Técnicos</mat-label><input matInput type="number" min="0" formControlName="maximumCoaches"
+      /></mat-form-field>
+      <mat-checkbox formControlName="allowPlayerMultipleTeams"
+        >Permitir um mesmo atleta em múltiplas equipes nesta modalidade</mat-checkbox
+      >
+      <mat-checkbox formControlName="periodsEnabled">Registrar tempos, sets ou rodadas</mat-checkbox>
+      @if (workspace.categoryForm.controls.periodsEnabled.value) {
+        <mat-form-field>
+          <mat-label>Quantidade máxima de tempos, sets ou rodadas</mat-label>
+          <input matInput type="number" min="0" formControlName="maximumPeriods" />
+          <mat-hint>Zero significa sem limite definido.</mat-hint>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Nome do período/tempo/round</mat-label>
+          <input matInput formControlName="periodLabel" />
+        </mat-form-field>
+      }
+      <div class="subsection-title span-2">
+        <h4>Cronômetros</h4>
+        <p>
+          Configure o tempo geral e o tempo de cada período. Durante a partida, o servidor mantém todos os dispositivos
+          sincronizados.
+        </p>
+      </div>
+      <mat-form-field>
+        <mat-label>Preset de tempo</mat-label>
+        <mat-select formControlName="timerPreset" (selectionChange)="workspace.applyTimerPreset($event.value)">
+          @for (preset of timerPresets; track preset.key) {
+            <mat-option [value]="preset.key">{{ preset.label }}</mat-option>
+          }
+          <mat-option value="CUSTOM">Configuração manual</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field>
+        <mat-label>Duração prevista do período (minutos)</mat-label>
+        <input matInput type="number" min="0" max="1440" formControlName="timerPeriodDurationMinutes" />
+        <mat-hint>Zero significa duração livre.</mat-hint>
+      </mat-form-field>
+      <mat-form-field class="span-2">
+        <mat-label>Início previsto de cada período (minutos)</mat-label>
+        <input matInput formControlName="timerPeriodStartOffsetsMinutes" placeholder="0, 45" />
+        <mat-hint>
+          Separe por vírgulas. Ex.: 0, 45 faz o segundo tempo começar em 45:00 mesmo com acréscimos.
+        </mat-hint>
+        @if (workspace.categoryForm.controls.timerPeriodStartOffsetsMinutes.invalid) {
+          <mat-error>Use somente minutos positivos separados por vírgulas.</mat-error>
+        }
+      </mat-form-field>
+      <mat-checkbox formControlName="timerOverallEnabled">Exibir cronômetro geral</mat-checkbox>
+      <mat-checkbox formControlName="timerPeriodEnabled">Exibir cronômetro por período</mat-checkbox>
+      <mat-checkbox formControlName="timerAllowOvertime">Permitir acréscimos além do limite</mat-checkbox>
+      <mat-form-field class="span-2">
+        <mat-label>Regras públicas</mat-label>
+        <textarea matInput rows="4" formControlName="rulesText"></textarea>
+      </mat-form-field>
+    </form>
+
+    @if (workspace.categoryRead(); as read) {
+      <mat-divider />
+      <div class="subsection-title">
+        <h4>Equipes inscritas</h4>
+        <p>
+          Aprove a inscrição primeiro. Quando todas as condições estiverem concluídas, libere a equipe para competir.
+        </p>
+      </div>
+      <div class="registration-list">
+        @for (registration of read.registrations; track registration.id) {
+          <div>
+            <span>
+              <strong>{{ workspace.teamNameForRegistration(registration.id) }}</strong>
+              <small
+                >Seed {{ registration.seed || 'não definido' }} ·
+                {{ workspace.statusLabel(registration.status) }}</small
+              >
+            </span>
+            <div class="review-actions">
+              @if (workspace.canDeleteRegistration()) {
+                <button
+                  mat-icon-button
+                  type="button"
+                  matTooltip="Excluir inscrição"
+                  [attr.aria-label]="'Excluir inscrição de ' + workspace.teamNameForRegistration(registration.id)"
+                  (click)="workspace.deleteRegistration(registration)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              }
+              @if (workspace.canUpdateRegistration()) {
+                <button
+                  mat-button
+                  type="button"
+                  (click)="workspace.setRegistrationStatus(registration, 'CHANGES_REQUESTED')">
+                  Pedir ajuste
+                </button>
+              }
+              @if (
+                workspace.canUpdateRegistration() &&
+                registration.status !== 'APPROVED' &&
+                registration.status !== 'ACTIVE'
+              ) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="workspace.setRegistrationStatus(registration, 'APPROVED')">
+                  Aprovar inscrição
+                </button>
+              }
+              @if (workspace.canUpdateRegistration() && registration.status === 'APPROVED') {
+                <button mat-flat-button type="button" (click)="workspace.setRegistrationStatus(registration, 'ACTIVE')">
+                  Liberar para competir
+                </button>
+              }
+              @if (registration.status === 'ACTIVE') {
+                <span class="registration-ready"
+                  ><mat-icon aria-hidden="true">check_circle</mat-icon>Pronta para competir</span
+                >
+              }
+            </div>
+          </div>
+        } @empty {
+          <p class="empty-copy">Nenhuma equipe inscrita nesta modalidade.</p>
+        }
+      </div>
+    }
+  </section>
+</div>

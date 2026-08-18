@@ -5,7 +5,12 @@ import {
   RequiredSubscriptionFormInterruption,
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { EventFormAudience, EventFormTargetType, Prisma, PublicationState } from '@prisma/client';
+import {
+  EventFormAudience,
+  EventFormTargetType,
+  Prisma,
+  PublicationState,
+} from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';

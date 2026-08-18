@@ -1,0 +1,137 @@
+<div class="bracket-panel-heading">
+  <div>
+    <h4 id="bracket-panel-title">Chave da modalidade</h4>
+    <p>Selecione um confronto para abrir os detalhes da partida ao lado.</p>
+  </div>
+</div>
+
+<form [formGroup]="workspace.bracketForm" class="bracket-generation-form" (ngSubmit)="workspace.generateBracket()">
+  <div class="bracket-generation-main">
+    <div class="generation-copy">
+      <mat-icon aria-hidden="true">auto_awesome_motion</mat-icon>
+      <div>
+        <strong>{{ hasGeneratedBracket() ? 'Chave já gerada' : 'Gerar chave' }}</strong>
+        <span>
+          {{
+            hasGeneratedBracket()
+              ? 'Abra as opções para liberar a substituição de um rascunho.'
+              : 'Use as inscrições aprovadas e revise horários antes de publicar.'
+          }}
+        </span>
+      </div>
+    </div>
+    <button
+      mat-flat-button
+      type="submit"
+      [disabled]="workspace.loading() || !canGenerateBracket()"
+      [attr.aria-describedby]="hasGeneratedBracket() ? 'bracket-generation-note' : null">
+      <mat-icon>{{ hasGeneratedBracket() ? 'sync' : 'account_tree' }}</mat-icon>
+      {{ hasGeneratedBracket() ? 'Substituir rascunho' : 'Gerar chave' }}
+    </button>
+  </div>
+
+  <mat-expansion-panel class="generation-options">
+    <mat-expansion-panel-header>
+      <mat-panel-title>Opções de geração</mat-panel-title>
+      <mat-panel-description>Ordenação e substituição de rascunho</mat-panel-description>
+    </mat-expansion-panel-header>
+    <div class="generation-options-grid">
+      <mat-checkbox formControlName="randomizeUnseeded">Sortear equipes sem seed</mat-checkbox>
+      <mat-checkbox formControlName="replaceExistingDraft">Substituir chave em rascunho</mat-checkbox>
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>Semente reproduzível</mat-label>
+        <input matInput formControlName="randomSeed" autocomplete="off" />
+        <mat-hint>Opcional: repete a mesma ordem quando usado novamente.</mat-hint>
+      </mat-form-field>
+    </div>
+  </mat-expansion-panel>
+</form>
+
+<p class="safety-note">
+  <mat-icon aria-hidden="true">info</mat-icon>
+  <span>Byes avançam automaticamente. A geração nunca substitui resultados finalizados.</span>
+</p>
+@if (hasGeneratedBracket()) {
+  <p id="bracket-generation-note" class="generation-lock-note" role="status">
+    <mat-icon aria-hidden="true">lock</mat-icon>
+    <span>Esta chave já existe. Marque “Substituir chave em rascunho” nas opções para liberar a ação.</span>
+  </p>
+}
+
+<div class="bracket-surface">
+  @if (bracketPreviewActive()) {
+    <div class="bracket-preview-note" role="status">
+      <mat-icon aria-hidden="true">visibility</mat-icon>
+      <span>
+        <strong>Pré-visualização</strong>
+        {{ bracketPreviewSummary() }}
+      </span>
+    </div>
+  }
+  <lib-sports-bracket
+    [format]="categoryRead().category.format"
+    [emoji]="categoryRead().category.eventGroup?.emoji || sportEmoji(categoryRead().category.sport)"
+    [stages]="bracketStagesForDisplay()"
+    [standings]="bracketStandings()"
+    [editingMatchId]="workspace.selectedMatchId() || null"
+    (matchSelected)="selectBracketMatch(categoryRead(), $event)" />
+</div>
+
+<section class="match-list-section" aria-labelledby="match-list-title">
+  <div class="section-heading-inline">
+    <div>
+      <h4 id="match-list-title">Partidas da modalidade</h4>
+    </div>
+  </div>
+
+  <div class="match-list">
+    @for (match of categoryRead().matches; track match.id) {
+      <button
+        type="button"
+        class="match-list-item"
+        [class.is-selected]="workspace.selectedMatchId() === match.id"
+        [class.is-live]="match.state === 'LIVE'"
+        [attr.aria-pressed]="workspace.selectedMatchId() === match.id"
+        [attr.aria-label]="
+          workspace.teamNameForRegistration(match.homeRegistrationId) +
+          ' contra ' +
+          workspace.teamNameForRegistration(match.awayRegistrationId) +
+          '. ' +
+          workspace.matchStatusLabel(match.state)
+        "
+        (click)="workspace.selectMatch(match)">
+        <span class="match-list-time">
+          @if (match.event?.startDate; as startDate) {
+            <strong>{{ startDate | date: 'dd/MM' }}</strong>
+            <span>{{ startDate | date: 'HH:mm' }}</span>
+          } @else {
+            <strong>—</strong>
+            <span>Sem horário</span>
+          }
+        </span>
+        <span class="match-list-teams">
+          <span class="match-list-team">
+            <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(match.homeRegistrationId)" [size]="28" />
+            <strong>{{ workspace.teamNameForRegistration(match.homeRegistrationId) }}</strong>
+          </span>
+          <span class="match-list-vs" aria-hidden="true">×</span>
+          <span class="match-list-team">
+            <lib-sports-team-logo [logoUrl]="teamLogoForRegistration(match.awayRegistrationId)" [size]="28" />
+            <strong>{{ workspace.teamNameForRegistration(match.awayRegistrationId) }}</strong>
+          </span>
+        </span>
+        <span class="match-list-result">
+          <strong>{{ match.scoreboard.homeScore }}-{{ match.scoreboard.awayScore }}</strong>
+          <span class="match-list-status">{{ workspace.matchStatusLabel(match.state) }}</span>
+        </span>
+        <mat-icon aria-hidden="true">chevron_right</mat-icon>
+      </button>
+    } @empty {
+      <div class="matches-empty matches-empty--compact">
+        <mat-icon aria-hidden="true">event_note</mat-icon>
+        <strong>Chave ainda não gerada</strong>
+        <span>Inscreva pelo menos duas equipes e gere os confrontos.</span>
+      </div>
+    }
+  </div>
+</section>

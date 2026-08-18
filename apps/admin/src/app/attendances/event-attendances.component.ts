@@ -11,12 +11,13 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { EventType } from '@cacic-fct/event-manager-admin-contracts';
-import { TwemojiComponent } from '../emoji/twemoji.component';
+import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { isFrozenEvent } from '../resource-state/frozen-resource';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { AttendancesService } from './attendances.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.component';
+import { PersonSearchComponent } from '../people/person-search/person-search.component';
 
 @Component({
   selector: 'app-workspace-event-attendances-subtab',
@@ -34,6 +35,7 @@ import { EventFilterPanelComponent } from '../event-filters/event-filter-panel.c
     MatTooltipModule,
     TwemojiComponent,
     EventFilterPanelComponent,
+    PersonSearchComponent,
   ],
   templateUrl: './event-attendances.component.html',
   styleUrls: [

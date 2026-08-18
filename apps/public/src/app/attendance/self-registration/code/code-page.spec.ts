@@ -129,6 +129,15 @@ describe('OnlineAttendanceCodeComponent', () => {
       queryParams: { returnUrl: '/menu' },
     });
   });
+
+  it('opens the participation details when notification attendance is no longer pending', async () => {
+    const { router } = await createFixture({
+      queryParams: { fromNotification: 'true' },
+      pendingEvents: [],
+    });
+
+    expect(router.navigate).toHaveBeenCalledWith(['/profile', 'attendances', 'event', 'event-1']);
+  });
 });
 
 async function createFixture({

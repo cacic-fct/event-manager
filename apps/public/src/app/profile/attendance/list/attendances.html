@@ -2,123 +2,169 @@
   <a matIconButton routerLink="/menu" aria-label="Voltar para o menu">
     <mat-icon>arrow_back</mat-icon>
   </a>
+  <h1 class="global-toolbar-title">Minhas participações</h1>
 </mat-toolbar>
 
 <main class="attendances-page">
-  <header class="page-header">
-    <p class="eyebrow">Perfil</p>
-    <h1>Minhas participações</h1>
-  </header>
-
   @let currentState = feedState(); @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando participações"></mat-progress-bar>
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ currentState.message }}</p>
   </section>
-  } @else { @let visibleFeed = filteredFeed(); @if (visibleFeed) {
-  <section class="filter-section" aria-label="Filtros de participação">
-    <mat-form-field appearance="outline" class="filter-field">
-      <mat-label>Filtrar resultados</mat-label>
-      <mat-select multiple [value]="selectedFilters()" (selectionChange)="updateFilters($event.value)">
-        <mat-select-trigger>{{ filterTriggerLabel() }}</mat-select-trigger>
-        <mat-option value="none">Sem filtro</mat-option>
-        @for (option of filterOptions; track option.value) {
-        <mat-option [value]="option.value">{{ option.label }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-    <p>{{ filteredResultSummary() }}</p>
-  </section>
-
-  <section class="feed-section">
-    <div class="section-heading">
-      <h2>Grandes eventos</h2>
-    </div>
-
-    @if (visibleFeed.majorEventItems.length === 0) {
-    <p class="empty-text">{{ majorEventsEmptyText(currentState.data.majorEventItems.length) }}</p>
-    } @else {
-    <mat-action-list class="wrapping-list">
-      @for ( subscription of visibleFeed.majorEventItems; track subscription.id ) {
-      <a
-        mat-list-item
-        [routerLink]="majorEventRoute(subscription)"
-        [attr.aria-label]="'Abrir detalhes de ' + subscription.majorEvent.name">
-        <div matListItemIcon class="emoji-frame">
-          <img
-            class="twemoji"
-            [src]="emoji.getTwemojiUrl(subscription.majorEvent.emoji)"
-            [alt]="subscription.majorEvent.emoji" />
-        </div>
-        <div matListItemTitle>{{ subscription.majorEvent.name }}</div>
-        <div matListItemLine>{{ majorEventDateLine(subscription) }}</div>
-        <div matListItemLine>{{ majorEventStatusLine(subscription, currentState.data.attendances) }}</div>
-      </a>
-      }
-    </mat-action-list>
-    }
-  </section>
-
-  <section class="feed-section">
-    <div class="section-heading">
-      <h2>Eventos</h2>
-    </div>
-
-    @if (visibleFeed.eventItems.length === 0) {
-    <p class="empty-text">{{ eventItemsEmptyText(currentState.data.eventItems.length) }}</p>
-    } @else {
-    <mat-action-list class="wrapping-list">
-      @for (item of visibleFeed.eventItems; track item.id) {
-      <a mat-list-item [routerLink]="itemRoute(item)" [attr.aria-label]="'Abrir detalhes de ' + itemTitle(item)">
-        <div matListItemIcon class="emoji-frame">
-          <img class="twemoji" [src]="emoji.getTwemojiUrl(itemEmoji(item))" [alt]="itemEmoji(item)" />
-        </div>
-        <div matListItemTitle>{{ itemTitle(item) }}</div>
-        <div matListItemLine>{{ itemDateLine(item) }}</div>
-        <div matListItemLine>{{ itemStatusLine(item, currentState.data.attendances) }}</div>
-      </a>
-      }
-    </mat-action-list>
-    }
-  </section>
-
-  <section class="feed-section">
-    <div class="section-heading">
-      <h2>Certificados avulsos</h2>
-    </div>
-
-    @if (currentState.data.standaloneCertificateFolders.length === 0) {
-    <p class="empty-text">Nenhum certificado avulso disponível.</p>
-    } @else {
-    <mat-action-list class="wrapping-list">
-      @for (folder of currentState.data.standaloneCertificateFolders; track folder.id) {
-      <button
-        mat-list-item
-        type="button"
-        (click)="openStandaloneCertificates(folder)"
-        [attr.aria-label]="'Abrir certificados avulsos de ' + folder.name">
-        <div matListItemIcon class="emoji-frame">
-          <img class="twemoji" [src]="emoji.getTwemojiUrl(folder.emoji)" [alt]="folder.emoji" />
-        </div>
-        <div matListItemTitle>{{ folder.name }}</div>
-        <div matListItemLine>{{ standaloneCertificateLine(folder) }}</div>
-      </button>
-      }
-    </mat-action-list>
-    }
-  </section>
-
-  <section class="certificate-download-section">
+  } @else {
+  <div class="page-actions">
     <button
-      mat-flat-button
+      matButton="outlined"
       type="button"
+      class="filters-trigger"
+      [attr.aria-expanded]="filtersOpen()"
+      aria-controls="participation-filter-panel"
+      (click)="toggleFilters()">
+      <mat-icon aria-hidden="true">filter_list</mat-icon>
+      <span>Filtros</span>
+      @if (activeFilterCount() > 0) {
+      <span class="active-filter-count" [attr.aria-label]="activeFilterCount() + ' filtros ativos'">
+        {{ activeFilterCount() }}
+      </span>
+      }
+    </button>
+
+    <button
+      matButton="filled"
+      type="button"
+      class="download-button"
       [disabled]="isDownloadingCertificates()"
+      [attr.aria-busy]="isDownloadingCertificates()"
       (click)="downloadCertificatesArchive()">
-      <mat-icon aria-hidden="true">download</mat-icon>
-      {{ isDownloadingCertificates() ? 'Preparando certificados' : 'Baixar todos os certificados' }}
+      <span class="download-button-content">
+        @if (isDownloadingCertificates()) {
+        <mat-progress-spinner mode="indeterminate" [diameter]="18" aria-hidden="true" />
+        } @else {
+        <mat-icon aria-hidden="true">download</mat-icon>
+        }
+        <span>{{ isDownloadingCertificates() ? 'Preparando certificados' : 'Baixar todos os certificados' }}</span>
+      </span>
+    </button>
+  </div>
+
+  @if (filtersOpen()) {
+  <section id="participation-filter-panel" class="filter-panel" aria-label="Opções de filtro">
+    <div class="filter-group">
+      <h2>Tipo de participação</h2>
+      <div class="filter-options" role="group" aria-label="Filtrar por tipo de participação">
+        @for (option of typeFilterOptions; track option.value) {
+        <button
+          matButton="outlined"
+          type="button"
+          class="filter-option"
+          [class.filter-option--selected]="selectedTypeFilters().includes(option.value)"
+          [attr.aria-pressed]="selectedTypeFilters().includes(option.value)"
+          (click)="setTypeFilter(option.value, !selectedTypeFilters().includes(option.value))">
+          <span>{{ option.label }}</span>
+          @if (selectedTypeFilters().includes(option.value)) {
+          <mat-icon class="filter-selected-icon" aria-hidden="true">check</mat-icon>
+          }
+        </button>
+        }
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <h2>Situação</h2>
+      <div class="filter-options" role="group" aria-label="Filtrar por situação da participação">
+        @for (option of statusFilterOptions; track option.value) {
+        <button
+          matButton="outlined"
+          type="button"
+          class="filter-option"
+          [class.filter-option--selected]="selectedStatusFilters().includes(option.value)"
+          [attr.aria-pressed]="selectedStatusFilters().includes(option.value)"
+          (click)="setStatusFilter(option.value, !selectedStatusFilters().includes(option.value))">
+          <mat-icon class="filter-option-icon" aria-hidden="true">{{ option.icon }}</mat-icon>
+          <span>{{ option.label }}</span>
+          @if (selectedStatusFilters().includes(option.value)) {
+          <mat-icon class="filter-selected-icon" aria-hidden="true">check</mat-icon>
+          }
+        </button>
+        }
+      </div>
+    </div>
+
+    <button
+      matButton="text"
+      type="button"
+      class="clear-filters"
+      [disabled]="!hasActiveFilters()"
+      (click)="clearFilters()">
+      <mat-icon aria-hidden="true">filter_list_off</mat-icon>
+      Limpar filtros
     </button>
   </section>
-  } }
+  }
+
+  <div class="content-layout">
+    <section class="feed-section" aria-labelledby="recent-participations-heading">
+      <div class="section-heading">
+        <h2 id="recent-participations-heading">Participações</h2>
+      </div>
+
+      @let participations = visibleParticipations(); @if (participations.length === 0) {
+      <p class="empty-text">{{ emptyFeedText() }}</p>
+      } @else {
+      <div class="participation-list">
+        @for (item of participations; track item.id) {
+        <a class="participation-item" role="link" [routerLink]="item.route" [attr.aria-label]="itemAriaLabel(item)">
+          <div class="emoji-frame">
+            <img class="twemoji" [src]="emoji.getTwemojiUrl(item.emoji)" alt="" />
+          </div>
+          <div class="item-content">
+            <div class="participation-title">{{ item.title }}</div>
+            <div class="participation-date">{{ item.dateLine }}</div>
+            <div class="participation-type">{{ item.typeLabel }}</div>
+            <div class="status-icons">
+              @for (status of statusItems(item.statusLine); track status.label) {
+              <span class="status-icon" role="img" [attr.aria-label]="status.label" [matTooltip]="status.label">
+                <mat-icon aria-hidden="true">{{ status.icon }}</mat-icon>
+              </span>
+              }
+            </div>
+          </div>
+        </a>
+        }
+      </div>
+      }
+    </section>
+
+    <section class="certificate-section" aria-labelledby="standalone-certificates-heading">
+      <div class="section-heading">
+        <h2 id="standalone-certificates-heading">Certificados avulsos</h2>
+      </div>
+
+      @if (currentState.data.standaloneCertificateFolders.length === 0) {
+      <p class="empty-text">Nenhum certificado avulso disponível.</p>
+      } @else {
+      <div class="certificate-list">
+        @for (folder of currentState.data.standaloneCertificateFolders; track folder.id) {
+        <button
+          class="certificate-item"
+          role="button"
+          type="button"
+          (click)="openStandaloneCertificates(folder)"
+          [attr.aria-label]="'Abrir certificados avulsos de ' + folder.name">
+          <div class="emoji-frame">
+            <img class="twemoji" [src]="emoji.getTwemojiUrl(folder.emoji)" alt="" />
+          </div>
+          <div class="item-content">
+            <div class="participation-title">{{ folder.name }}</div>
+            <div class="certificate-supporting-text">Certificados disponíveis</div>
+          </div>
+        </button>
+        }
+      </div>
+      }
+    </section>
+  </div>
+  }
 </main>

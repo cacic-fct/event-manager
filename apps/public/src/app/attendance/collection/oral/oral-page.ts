@@ -1,11 +1,17 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  OnInit,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, Router } from '@angular/router';
-import {
-  AttendanceOfflineQueueService,
-  OralAttendanceOfflineService,
-} from '@cacic-fct/offline-public-data-access';
+import { AttendanceOfflineQueueService, OralAttendanceOfflineService } from '@cacic-fct/public-indexed-db';
 import {
   AuthService,
   OralAttendanceComponent,
@@ -41,7 +47,12 @@ import { AttendanceOfflineSyncService } from '../offline/sync.service';
     }
   `,
   styles: `
-    .loading-state { display: grid; min-height: 60vh; place-items: center; color: var(--mat-sys-on-surface-variant); }
+    .loading-state {
+      display: grid;
+      min-height: 60vh;
+      place-items: center;
+      color: var(--mat-sys-on-surface-variant);
+    }
   `,
 })
 export class OralAttendancePage implements OnInit {
@@ -108,10 +119,7 @@ export class OralAttendancePage implements OnInit {
     void this.router.navigate(eventId ? ['/attendance/collect', eventId, 'method'] : ['/attendance/collect']);
   }
 
-  protected async registerDecision(
-    person: OralAttendancePerson,
-    decision: OralAttendanceDecision,
-  ): Promise<void> {
+  protected async registerDecision(person: OralAttendancePerson, decision: OralAttendanceDecision): Promise<void> {
     const eventId = this.event()?.eventId;
     const userId = this.auth.user()?.sub;
     if (!eventId || !userId) {
@@ -121,9 +129,13 @@ export class OralAttendancePage implements OnInit {
     try {
       location = await this.access.getPreciseLocation();
     } catch {
-      this.snackbar.open('Não foi possível obter sua localização. Tente novamente para registrar a chamada.', 'Fechar', {
-        duration: 5000,
-      });
+      this.snackbar.open(
+        'Não foi possível obter sua localização. Tente novamente para registrar a chamada.',
+        'Fechar',
+        {
+          duration: 5000,
+        },
+      );
       return;
     }
     const collectedAt = new Date().toISOString();
@@ -150,9 +162,13 @@ export class OralAttendancePage implements OnInit {
     try {
       location = await this.access.getPreciseLocation();
     } catch {
-      this.snackbar.open('Não foi possível obter sua localização. Tente novamente para registrar a presença.', 'Fechar', {
-        duration: 5000,
-      });
+      this.snackbar.open(
+        'Não foi possível obter sua localização. Tente novamente para registrar a presença.',
+        'Fechar',
+        {
+          duration: 5000,
+        },
+      );
       return;
     }
     await this.manualQueue.enqueue({
@@ -186,11 +202,7 @@ export class OralAttendancePage implements OnInit {
     });
   }
 
-  private async applyRoster(
-    items: AttendanceScannerFeedItem[],
-    userId: string,
-    eventId: string,
-  ): Promise<void> {
+  private async applyRoster(items: AttendanceScannerFeedItem[], userId: string, eventId: string): Promise<void> {
     const people = items.map((item) => ({
       personId: item.personId,
       fullName: item.fullName || 'Nome não informado',
@@ -203,9 +215,7 @@ export class OralAttendancePage implements OnInit {
         .map((item) => [item.personId, item.status]),
     );
     const savedDecisions = await this.offline.listAll(userId, eventId);
-    savedDecisions
-      .filter((item) => !item.syncedAt)
-      .forEach((item) => decisions.set(item.personId, item.status));
+    savedDecisions.filter((item) => !item.syncedAt).forEach((item) => decisions.set(item.personId, item.status));
     this.people.set(people);
     this.decisions.set(decisions);
     await this.offline.cacheRoster(userId, eventId, people);
@@ -225,5 +235,4 @@ export class OralAttendancePage implements OnInit {
     this.people.set(people);
     this.decisions.set(new Map(savedDecisions.map((item) => [item.personId, item.status])));
   }
-
 }

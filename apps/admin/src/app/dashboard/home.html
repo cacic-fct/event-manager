@@ -49,6 +49,11 @@
         <mat-icon>{{ navMap()['major-events']?.icon }}</mat-icon>
         Novo grande evento
       </a>
+      } @if (hasSuggestion(dashboard.suggestions, 'OPEN_SPORTS')) {
+      <a matButton="outlined" [routerLink]="navMap()['sports']?.path">
+        <mat-icon>{{ navMap()['sports']?.icon }}</mat-icon>
+        Gerenciar esportes
+      </a>
       }
     </div>
     }
@@ -79,6 +84,37 @@
     </div>
 
     <section class="dashboard-grid">
+      @if (attendanceReviewEvents().length > 0) {
+      <mat-card appearance="outlined">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>rule</mat-icon>
+          <mat-card-title>Sinais de presença para revisar</mat-card-title>
+          <mat-card-subtitle>Alertas operacionais válidos aguardando avaliação humana.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-list class="compact-list embedded-list">
+            @for (item of attendanceReviewEvents(); track item.eventId) {
+            <mat-list-item>
+              <span matListItemTitle class="list-title">
+                <lib-twemoji [emoji]="item.emoji" />
+                <span>{{ item.eventName }}</span>
+              </span>
+              <span matListItemLine>{{ item.pendingCount }} sinal(is) · {{ item.startDate | date: 'shortDate' }}</span>
+              <a
+                matIconButton
+                matListItemMeta
+                aria-label="Revisar sinais de presença"
+                matTooltip="Revisar sinais de presença"
+                [routerLink]="attendanceReviewLink(item)"
+                fragment="revisoes">
+                <mat-icon>arrow_forward</mat-icon>
+              </a>
+            </mat-list-item>
+            }
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+      }
       @if (dashboard.pendingOfflineAttendanceEvents.length > 0) {
       <mat-card appearance="outlined">
         <mat-card-header>
@@ -93,7 +129,7 @@
             @for (item of dashboard.pendingOfflineAttendanceEvents; track item.eventId) {
             <mat-list-item>
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="item.emoji" />
+                <lib-twemoji [emoji]="item.emoji" />
                 <span>{{ item.name }}</span>
               </span>
               <span matListItemLine>
@@ -126,7 +162,7 @@
             @for (item of dashboard.pendingReceiptMajorEvents; track item.majorEventId) {
             <mat-list-item>
               <span matListItemTitle class="list-title">
-                <app-twemoji [emoji]="item.emoji" />
+                <lib-twemoji [emoji]="item.emoji" />
                 <span>{{ item.name }}</span>
               </span>
               <span matListItemLine>
@@ -166,6 +202,109 @@
                 aria-label="Abrir correção"
                 matTooltip="Abrir correção"
                 [routerLink]="routerLinkForInconsistency(issue)">
+                <mat-icon>arrow_forward</mat-icon>
+              </a>
+            </mat-list-item>
+            }
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+      } @if (sportsTournamentsNeedingReview().length > 0) {
+      <mat-card appearance="outlined">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>sports_score</mat-icon>
+          <mat-card-title>Revisões esportivas pendentes</mat-card-title>
+          <mat-card-subtitle>Inscrições, alterações de equipe e resultados que precisam de decisão.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-list class="compact-list embedded-list">
+            @for (item of sportsTournamentsNeedingReview(); track item.tournamentId) {
+            <mat-list-item>
+              <span matListItemTitle class="list-title">
+                <lib-twemoji [emoji]="item.emoji" />
+                <span>{{ item.name }}</span>
+              </span>
+              <span matListItemLine>{{ sportsReviewSummary(item) }}</span>
+              <a
+                matIconButton
+                matListItemMeta
+                aria-label="Abrir revisões esportivas"
+                matTooltip="Abrir revisões esportivas"
+                [routerLink]="sportsTournamentLink(item)">
+                <mat-icon>arrow_forward</mat-icon>
+              </a>
+            </mat-list-item>
+            }
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+      }
+    </section>
+  </section>
+  } @if (hasSports()) {
+  <section class="dashboard-section">
+    <div class="section-title">
+      <div>
+        <h2>Esportes</h2>
+        <p>Torneios, partidas em operação e sinais que exigem acompanhamento.</p>
+      </div>
+    </div>
+
+    <section class="dashboard-grid">
+      @if (dashboard.sportsMatches.length > 0) {
+      <mat-card appearance="outlined">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>scoreboard</mat-icon>
+          <mat-card-title>Partidas em operação</mat-card-title>
+          <mat-card-subtitle>Atualizado com o último placar registrado.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-list class="compact-list embedded-list">
+            @for (match of dashboard.sportsMatches; track match.matchId) {
+            <mat-list-item>
+              <span matListItemTitle>{{ match.eventName }}</span>
+              <span matListItemLine>
+                {{ match.categoryName }} · {{ sportsMatchState(match.state) }} · {{ match.homeTeamName ?? 'A definir' }}
+                {{ match.homeScore }} × {{ match.awayScore }} {{ match.awayTeamName ?? 'A definir' }}
+              </span>
+              <a
+                matIconButton
+                matListItemMeta
+                aria-label="Abrir torneio esportivo"
+                matTooltip="Abrir torneio esportivo"
+                [routerLink]="sportsTournamentLink(match)">
+                <mat-icon>arrow_forward</mat-icon>
+              </a>
+            </mat-list-item>
+            }
+          </mat-list>
+        </mat-card-content>
+      </mat-card>
+      } @if (dashboard.sportsTournaments.length > 0) {
+      <mat-card appearance="outlined">
+        <mat-card-header>
+          <mat-icon mat-card-avatar>sports</mat-icon>
+          <mat-card-title>Torneios em acompanhamento</mat-card-title>
+          <mat-card-subtitle>Status, modalidades, equipes e pendências do evento esportivo.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <mat-list class="compact-list embedded-list">
+            @for (item of dashboard.sportsTournaments; track item.tournamentId) {
+            <mat-list-item>
+              <span matListItemTitle class="list-title">
+                <lib-twemoji [emoji]="item.emoji" />
+                <span>{{ item.name }}</span>
+              </span>
+              <span matListItemLine>
+                {{ sportsTournamentStatus(item.status) }} · {{ sportsTournamentSummary(item) }} · {{
+                sportsReviewSummary(item) }}
+              </span>
+              <a
+                matIconButton
+                matListItemMeta
+                aria-label="Abrir torneio esportivo"
+                matTooltip="Abrir torneio esportivo"
+                [routerLink]="sportsTournamentLink(item)">
                 <mat-icon>arrow_forward</mat-icon>
               </a>
             </mat-list-item>
@@ -275,7 +414,7 @@
       }
     </section>
   </section>
-  } @if (!hasActionQueue() && !hasMonitoring() && !hasSystemHealth() && todayEvents().length === 0) {
+  } @if (!hasActionQueue() && !hasSports() && !hasMonitoring() && !hasSystemHealth() && todayEvents().length === 0) {
   <section class="empty-state">
     <mat-icon>sentiment_calm</mat-icon>
     <h3>Nada exige atenção no momento</h3>
@@ -289,7 +428,7 @@
     <div class="event-item-content">
       <div class="event-item-main">
         <span matListItemTitle class="list-title">
-          <app-twemoji [emoji]="event.emoji" />
+          <lib-twemoji [emoji]="event.emoji" />
           <span>{{ event.name }}</span>
         </span>
         <span matListItemLine>

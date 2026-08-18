@@ -21,8 +21,22 @@ import { isPlatformBrowser } from '@angular/common';
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" [mat-dialog-close]="false">Cancelar</button>
-      <button mat-flat-button type="button" color="warn" [mat-dialog-close]="true">Cancelar registro</button>
+      <button mat-flat-button class="destructive-action" type="button" [mat-dialog-close]="true">
+        Cancelar registro
+      </button>
     </mat-dialog-actions>
+  `,
+  styles: `
+    .destructive-action {
+      --mat-button-filled-container-color: var(--mat-sys-error);
+      --mat-button-filled-label-text-color: var(--mat-sys-on-error);
+      --mat-button-filled-ripple-color: color-mix(
+        in srgb,
+        var(--mat-sys-on-error) calc(var(--mat-sys-pressed-state-layer-opacity) * 100%),
+        transparent
+      );
+      --mat-button-filled-state-layer-color: var(--mat-sys-on-error);
+    }
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

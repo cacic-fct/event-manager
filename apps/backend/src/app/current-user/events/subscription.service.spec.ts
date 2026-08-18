@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AuditLogEntityType } from '@prisma/client';
 import { CurrentUserEventSubscriptionService } from './subscription.service';
 import { PUBLIC_EVENT_WHERE } from '../../public-events/models';
+import { requiredMajorEventImageLicenseAgreementWhere } from './image-license-agreement';
 
 describe('CurrentUserEventSubscriptionService', () => {
   it('requires explicit image-license acceptance when a target enables it', () => {
@@ -10,9 +11,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     expect(() => service.ensureImageLicenseAgreementAccepted(true, false, 'event event-1')).toThrow(
       BadRequestException,
     );
-    expect(() => service.ensureImageLicenseAgreementAccepted(true, null, 'event event-1')).toThrow(
-      BadRequestException,
-    );
+    expect(() => service.ensureImageLicenseAgreementAccepted(true, null, 'event event-1')).toThrow(BadRequestException);
     expect(() => service.ensureImageLicenseAgreementAccepted(true, true, 'event event-1')).not.toThrow();
     expect(() => service.ensureImageLicenseAgreementAccepted(false, false, 'event event-1')).not.toThrow();
   });
@@ -74,6 +73,12 @@ describe('CurrentUserEventSubscriptionService', () => {
         displayOrder: 2,
       },
     ]);
+
+    expect(prisma.majorEventSubscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: requiredMajorEventImageLicenseAgreementWhere('person-1', expect.any(Date)),
+      }),
+    );
   });
 
   it('records group subscriptions with their own audit entity type', async () => {
@@ -136,7 +141,7 @@ describe('CurrentUserEventSubscriptionService', () => {
     );
   });
 
-  it('requires standalone event subscriptions to target publicly visible events', async () => {
+  it('requires standalone event subscriptions to target publicly listed events', async () => {
     const tx = {
       event: {
         findFirst: jest.fn().mockResolvedValue(null),
@@ -157,6 +162,65 @@ describe('CurrentUserEventSubscriptionService', () => {
       },
       select: expect.any(Object),
     });
+  });
+
+  it('allows an existing user to accept an image-license agreement after a standalone event has started', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-16T12:00:00.000Z'));
+
+    try {
+      const event = {
+        id: 'event-1',
+        eventGroupId: null,
+        majorEventId: null,
+        allowSubscription: true,
+        subscriptionStartDate: null,
+        subscriptionEndDate: null,
+        startDate: new Date(Date.now() - 60_000),
+        slots: null,
+        requiresImageLicenseAgreement: true,
+        eventGroup: null,
+      };
+      const existingSubscription = {
+        id: 'subscription-1',
+        imageLicenseAgreementAccepted: false,
+      };
+      const tx = {
+        event: { findFirst: jest.fn().mockResolvedValue(event) },
+        eventSubscription: {
+          findFirst: jest.fn().mockResolvedValue(existingSubscription),
+          update: jest.fn(),
+        },
+      };
+      const prisma = {
+        $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+      };
+      const mapper = { mapPublicEvent: jest.fn().mockReturnValue({ id: 'event-1' }) };
+      const eventForms = {
+        submitSubscriptionFlowResponses: jest.fn().mockResolvedValue([]),
+        emitResultsDeltas: jest.fn(),
+      };
+      const service = new CurrentUserEventSubscriptionService(
+        prisma as never,
+        mapper as never,
+        {} as never,
+        {} as never,
+        {} as never,
+        eventForms as never,
+      );
+
+      await expect(
+        service.subscribeCurrentUserEvent('person-1', 'event-1', undefined, undefined, true),
+      ).resolves.toEqual({ id: 'event-1' });
+
+      expect(tx.eventSubscription.update).toHaveBeenCalledWith({
+        where: { id: 'subscription-1' },
+        data: { imageLicenseAgreementAccepted: true },
+      });
+      expect(tx.eventSubscription.findFirst).toHaveBeenCalled();
+      expect(eventForms.emitResultsDeltas).toHaveBeenCalledWith([]);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('requires standalone event unsubscriptions to target existing non-deleted events', async () => {

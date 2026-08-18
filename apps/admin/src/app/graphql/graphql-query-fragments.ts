@@ -1,5 +1,6 @@
 export const EVENT_LIST_FIELDS = `
   id
+  isSportsMatch
   name
   startDate
   endDate
@@ -23,6 +24,7 @@ export const EVENT_LIST_FIELDS = `
 
 export const EVENT_DETAIL_FIELDS = `
   id
+  isSportsMatch
   name
   creditMinutes
   startDate
@@ -52,7 +54,7 @@ export const EVENT_DETAIL_FIELDS = `
   onlineAttendanceCode
   onlineAttendanceStartDate
   onlineAttendanceEndDate
-  publiclyVisible
+  isPubliclyListed
   displayLecturerProfile
   publicationState
   scheduledPublishAt
@@ -122,7 +124,12 @@ export const MAJOR_EVENT_LIST_FIELDS = `
   emoji
   startDate
   endDate
+  subscriptionStartDate
+  subscriptionEndDate
   isPaymentRequired
+  sportsTournament {
+    id
+  }
   publicationState
   scheduledPublishAt
   publishedAt
@@ -135,6 +142,7 @@ export const MAJOR_EVENT_LIST_FIELDS = `
       id
       name
       value
+      includesSportsRegistration
     }
   }
 `;
@@ -161,6 +169,9 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
   shouldIssueCertificateForNonPayingAttendees
   shouldIssueCertificateForNonSubscribedAttendees
   additionalPaymentInfo
+  sportsTournament {
+    id
+  }
   publicationState
   scheduledPublishAt
   publishedAt
@@ -182,6 +193,7 @@ export const MAJOR_EVENT_DETAIL_FIELDS = `
       id
       name
       value
+      includesSportsRegistration
     }
   }
   deletedAt
@@ -202,6 +214,7 @@ export const MAJOR_EVENT_CERTIFICATE_TARGET_FIELDS = `
 
 export const EVENT_GROUP_FIELDS = `
   id
+  isSportsCategory
   name
   emoji
   requiresImageLicenseAgreement
@@ -271,6 +284,7 @@ export const MAJOR_EVENT_USER_ATTENDANCE_FIELDS = `
   attendances {
     eventId
     eventName
+    eventEmoji
     eventStartDate
     attended
     attendedAt
@@ -420,7 +434,6 @@ export const CERTIFICATE_TEMPLATE_FIELDS = `
   id
   name
   description
-  version
   isActive
   certificateFieldsJson
   createdAt
@@ -487,7 +500,6 @@ export const CERTIFICATE_CONFIG_FIELDS = `
   certificateTemplate {
     id
     name
-    version
   }
 `;
 
@@ -527,7 +539,6 @@ export const CERTIFICATE_FIELDS = `
   certificateTemplate {
     id
     name
-    version
   }
 `;
 

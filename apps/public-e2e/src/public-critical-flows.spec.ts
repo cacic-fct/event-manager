@@ -14,6 +14,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('displays a public standalone event and lets the user subscribe and unsubscribe', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
   const api = await mockPublicCriticalFlowApi(page);
 
   await page.goto('/app/');
@@ -23,6 +25,9 @@ test('displays a public standalone event and lets the user subscribe and unsubsc
   });
 
   await expect(page.getByRole('heading', { name: 'Oficina pública de TypeScript' })).toBeVisible();
+  const description = page.locator('lib-markdown').filter({ hasText: 'Atividade aberta para a comunidade.' });
+  await expect(description.locator('strong')).toHaveText('Atividade aberta');
+  await expect(description.locator('img, script')).toHaveCount(0);
   await expect(page.getByText('Inscrições abertas.')).toBeVisible();
   await page.getByRole('button', { name: 'Inscrever-se' }).click();
 
@@ -35,6 +40,7 @@ test('displays a public standalone event and lets the user subscribe and unsubsc
   await expect(page.getByText('Inscrição cancelada.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Inscrever-se' })).toBeVisible();
   expect(api.standaloneUnsubscribeCalls()).toBe(1);
+  expect(pageErrors).toEqual([]);
 });
 
 test('opens standard major-event subscription from the public list and subscribes to grouped events', async ({
@@ -416,7 +422,7 @@ function standaloneEventFixture(): PublicEvent {
     startDate: '2027-08-10T18:00:00.000Z',
     endDate: '2027-08-10T20:00:00.000Z',
     emoji: '💻',
-    description: 'Atividade aberta para a comunidade.',
+    description: '**Atividade aberta** para a comunidade. <img src=x onerror=alert(1)>',
     shortDescription: 'Fluxo crítico de evento público.',
     latitude: null,
     longitude: null,

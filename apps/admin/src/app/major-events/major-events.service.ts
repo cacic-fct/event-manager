@@ -12,7 +12,7 @@ import { Event, MajorEvent, MajorEventInput, PriceType } from '@cacic-fct/event-
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { addDays, format, parseISO, subDays } from 'date-fns';
 import { CloneAssetDialogComponent, CloneAssetDialogResult } from '../events/dialogs/clone-asset-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import {
   applyPagedResult,
   createWorkspaceListPagination,
@@ -38,6 +38,7 @@ export class MajorEventsService {
   private readonly publicationApi = inject(PublicationApiService);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly permissions = inject(PermissionsService);
   private readonly router = inject(Router);
@@ -81,7 +82,7 @@ export class MajorEventsService {
       paymentDocument: [''],
       pixKey: [''],
       priceType: ['SINGLE' as PriceType],
-      priceTiers: this.formBuilder.array([this.createPriceTierGroup('Preço único', '')]),
+      priceTiers: this.formBuilder.array([this.createPriceTierGroup('Preço único', '', false)]),
     },
     {
       validators: [
@@ -113,7 +114,7 @@ export class MajorEventsService {
   }
 
   addPriceTier(): void {
-    this.priceTiers.push(this.createPriceTierGroup('', ''));
+    this.priceTiers.push(this.createPriceTierGroup('', '', false));
     this.syncPriceTierControls(this.majorEventForm.controls.priceType.value);
   }
 
@@ -205,9 +206,7 @@ export class MajorEventsService {
         this.resetMajorEventForm();
       }
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar o grande evento.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível salvar o grande evento.');
     } finally {
       this.ui.loading.set(false);
     }
@@ -272,7 +271,7 @@ export class MajorEventsService {
       pixKey: '',
       priceType: 'SINGLE',
     });
-    this.resetPriceTiers([this.createPriceTierGroup('Preço único', '')]);
+    this.resetPriceTiers([this.createPriceTierGroup('Preço único', '', false)]);
     this.syncCertificateExceptionControls();
   }
 
@@ -337,8 +336,14 @@ export class MajorEventsService {
     });
     this.resetPriceTiers(
       price?.tiers.length
-        ? price.tiers.map((tier) => this.createPriceTierGroup(tier.name, this.fromCentsToCurrencyInput(tier.value)))
-        : [this.createPriceTierGroup('Preço único', '')],
+        ? price.tiers.map((tier) =>
+            this.createPriceTierGroup(
+              tier.name,
+              this.fromCentsToCurrencyInput(tier.value),
+              Boolean(majorEvent.sportsTournament && tier.includesSportsRegistration),
+            ),
+          )
+        : [this.createPriceTierGroup('Preço único', '', false)],
     );
     this.syncCertificateExceptionControls();
     void this.loadEventsForMajorEvent(majorEvent.id);
@@ -355,9 +360,7 @@ export class MajorEventsService {
       }
       await this.loadMajorEvents();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o grande evento.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível excluir o grande evento.');
     }
   }
 
@@ -382,9 +385,7 @@ export class MajorEventsService {
       await this.loadMajorEvents();
       await this.pickMajorEvent(created);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar o grande evento.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível duplicar o grande evento.');
     }
   }
 
@@ -451,9 +452,14 @@ export class MajorEventsService {
       .map((tier) => ({
         name: tier.name.trim(),
         value: this.toCents(tier.value),
+        ...(Boolean(this.selectedMajorEvent()?.sportsTournament) && tier.includesSportsRegistration
+          ? { includesSportsRegistration: true }
+          : {}),
       }))
       .filter((tier) => tier.name.length > 0 || tier.value !== null);
-    const validPriceTiers = priceTiers.filter((tier): tier is { name: string; value: number } => tier.value !== null);
+    const validPriceTiers = priceTiers.filter(
+      (tier): tier is { name: string; value: number; includesSportsRegistration?: true } => tier.value !== null,
+    );
 
     return {
       name: raw.name.trim() || (options.allowIncompleteDraft ? DEFAULT_DRAFT_MAJOR_EVENT_NAME : ''),
@@ -565,10 +571,11 @@ export class MajorEventsService {
     return (value / 100).toFixed(2);
   }
 
-  private createPriceTierGroup(name: string, value: string) {
+  private createPriceTierGroup(name: string, value: string, includesSportsRegistration: boolean) {
     return this.formBuilder.nonNullable.group({
       name: [name],
       value: [value],
+      includesSportsRegistration: [includesSportsRegistration],
     });
   }
 
@@ -684,6 +691,14 @@ export class MajorEventsService {
             label: 'Pagamento',
             description: 'Copia cobrança, dados bancários, Pix, informações adicionais e preços.',
             defaultSelected: true,
+          },
+          {
+            key: 'sportsTournament',
+            label: 'Torneio esportivo',
+            description: '',
+            disabled: true,
+            disabledReason:
+              'Não é copiado por este fluxo. Depois, use "Duplicar torneio" na gestão esportiva e escolha o novo grande evento como destino.',
           },
         ],
       },

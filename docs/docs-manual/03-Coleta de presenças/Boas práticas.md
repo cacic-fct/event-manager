@@ -1,30 +1,77 @@
-# Boas práticas
+---
+title: Boas práticas
+---
 
+A coleta deve produzir um registro confiável e não deve gerar filas desnecessárias.
 
-Colete a presença oportunamente, como no início ou no final do evento, para evitar esquecimentos e para garantir a precisão dos dados.
+## Prepare-se antes da atividade
 
-Se um participante alegar que esteve presente, mas não tiver a presença registrada, verifique as evidências, como fotos ou testemunhas, para confirmar a presença antes de lançar a presença no sistema.
+Abra o evento na interface pública enquanto ainda houver conexão com a internet. Confirme:
 
+- A conta do coletor;
+- A autorização para aquele evento;
+- O acesso à câmera e à localização, quando solicitado;
+- O método que será usado;
+- A disponibilidade da lista ou dos dados necessários para trabalhar off-line.
 
-:::warning[Aviso]
+## Durante a coleta
 
-**Não** colete a presença de palestrantes ou de ministrantes.
+Colete a presença no momento definido pela organização, como no início ou no encerramento da atividade.
 
-Sim, colete a presença de pessoas que aleguem não ter se inscrevido ou não ter pagado, desde que elas possuam cadastro no sistema, para controle de público.
+Confira a identidade da pessoa antes de usar a entrada manual.  
+Um e-mail, telefone ou documento digitado incorretamente pode registrar a presença para outra pessoa ou criar uma pendência de revisão.
+
+:::warning[Cuidado!]
+
+NÃO registre palestrantes ou ministrantes como participantes comuns da própria atividade.
+
+SIM, registre a presença de pessoas que não estão inscritas ou que não pagaram.
 
 :::
 
-:::danger[Perigo]
+A emissão de certificado é decidida pelas regras do evento, não pela exclusão da presença.
 
-Só recorra a colher presenças em papel para lançamento posterior no sistema em casos extremos, como falta de internet ou falha no sistema.  
-Coletar presenças em papel pode levar a erros de transcrição e perda de dados, além de ser mais trabalhoso para os participantes e para os organizadores.
+## Escolha o método adequado
+
+A leitura do crachá é melhor quando há um fluxo grande e contínuo de pessoas, com possível formação de fila.
+
+A chamada oral é melhor quando o número de participantes é pequeno e quando todos já estão reunidos.
+
+A confirmação on-line pelo próprio participante é útil quando a organização consegue divulgar o código apenas no momento correto e quando ela aceita o risco do compartilhamento dele entre os participantes.
+
+A entrada manual é uma alternativa de emergência, não um método principal.
+
+Leia [Tipos de coleta de presença](Tipos%20de%20coleta%20de%20presença.md).
+
+## Trabalho off-line
+
+Uma presença salva no dispositivo ainda não é necessariamente uma presença confirmada no servidor.
+
+Observe a área de sincronização. Antes de encerrar o trabalho:
+
+1. Reconecte o dispositivo;
+2. Envie as pendências;
+3. Trate os itens que falharam;
+4. Aguarde a indicação de que tudo foi sincronizado.
+
+:::warning[Dispositivo e usuário]
+
+Não troque de usuário no mesmo navegador enquanto houver alterações pendentes. 
 
 :::
 
-## Coletar usando Admin ou App público?
+:::danger[Navegação privada]
 
-O painel de administração não é otimizado para celulares, nem para dados limitados (consome muitos dados!), o que pode torná-lo inviável para uso em campo. 
+Uma guia anônima pode apagar as presenças off-line quando for fechada. Não a use para coleta sem conexão.
 
-O app público, por outro lado, é projetado para ser leve e fácil de usar em dispositivos móveis, tornando-o a melhor opção para coletar presenças durante o evento.
+:::
 
-A coleta de presenças na interface pública só é liberada se o coletor for manualmente adicionado à seção "Coletores de presença com permissões limitadas", mesmo que o usuário possua permissão de "Gerenciar presenças" no painel de administração.
+## Correções posteriores
+
+Quando alguém alegar presença não registrada, procure evidências compatíveis com a atividade antes de lançar uma correção.
+
+Use a interface administrativa para revisar pendências, corrigir a pessoa identificada ou registrar manualmente um caso confirmado. Preserve o motivo da decisão quando ele for relevante para a auditoria.
+
+Evite papel. Ele só deve ser usado quando nenhum fluxo digital estiver disponível, pois aumenta o risco de perda, duplicidade e erro de transcrição.
+
+Leia [Presenças no painel administrativo](../05-Interface%20administrativa/04-Presenças.md).

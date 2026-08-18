@@ -56,9 +56,7 @@ export async function recordAttendanceSet(params: {
       entityType: AuditLogEntityType.EVENT_ATTENDANCE,
       entityId: params.auditLog.buildCompositeEntityId([params.attendance.personId, params.attendance.eventId]),
       entityLabel: params.attendance.personId,
-      operation: params.before
-        ? AuditLogOperation.UPDATE
-        : (params.createOperation ?? AuditLogOperation.USER_CREATE),
+      operation: params.before ? AuditLogOperation.UPDATE : (params.createOperation ?? AuditLogOperation.USER_CREATE),
       actor: getAuthenticatedUser(params.currentUserContext, params.context),
       before: params.before,
       after: params.attendance,

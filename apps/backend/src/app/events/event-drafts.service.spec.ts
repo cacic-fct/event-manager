@@ -220,7 +220,7 @@ describe('EventDraftsService', () => {
       shortDescription: null,
       locationDescription: null,
       shouldIssueCertificate: false,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       startDate: new Date('2026-07-01T12:00:00.000Z'),
       endDate: new Date('2026-07-01T13:00:00.000Z'),
     };
@@ -284,7 +284,7 @@ describe('EventDraftsService', () => {
       shortDescription: null,
       locationDescription: null,
       shouldIssueCertificate: false,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       startDate: new Date('2026-07-01T12:00:00.000Z'),
       endDate: new Date('2026-07-01T13:00:00.000Z'),
     };
@@ -297,7 +297,7 @@ describe('EventDraftsService', () => {
     await expect(service.applyEventDraft('draft-1', user as never)).resolves.toEqual(updatedEvent);
 
     expect(loggerWarnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Typesense event sync failed after applying event draft draft-1'),
+      expect.stringContaining('event post-commit sync failed after applying event draft draft-1'),
     );
   });
 

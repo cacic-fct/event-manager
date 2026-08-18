@@ -85,10 +85,7 @@ export function eventFromDraft(eventItem: Event, draft: EventDraft): Event {
       eventItem.shouldIssueCertificateForNonSubscribedAttendees,
     ),
     shouldCollectAttendance: booleanValue(payload.shouldCollectAttendance, eventItem.shouldCollectAttendance),
-    shouldAllowOralAttendance: booleanValue(
-      payload.shouldAllowOralAttendance,
-      eventItem.shouldAllowOralAttendance,
-    ),
+    shouldAllowOralAttendance: booleanValue(payload.shouldAllowOralAttendance, eventItem.shouldAllowOralAttendance),
     isOnlineAttendanceAllowed: booleanValue(payload.isOnlineAttendanceAllowed, eventItem.isOnlineAttendanceAllowed),
     shouldProvideSubscriberListToLecturer: booleanValue(
       payload.shouldProvideSubscriberListToLecturer,
@@ -103,7 +100,7 @@ export function eventFromDraft(eventItem: Event, draft: EventDraft): Event {
       payload.onlineAttendanceEndDate,
       eventItem.onlineAttendanceEndDate ?? null,
     ),
-    publiclyVisible: booleanValue(payload.publiclyVisible, eventItem.publiclyVisible),
+    isPubliclyListed: booleanValue(payload.isPubliclyListed, eventItem.isPubliclyListed),
     displayLecturerProfile: booleanValue(payload.displayLecturerProfile, eventItem.displayLecturerProfile ?? true),
     youtubeCode: nullableStringValue(payload.youtubeCode, eventItem.youtubeCode ?? null),
     buttonText: nullableStringValue(payload.buttonText, eventItem.buttonText ?? null),

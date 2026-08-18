@@ -1,10 +1,49 @@
 import { PublicEventsResolver } from './events.resolver';
-import { PUBLIC_EVENT_WHERE, PUBLIC_MAJOR_EVENT_WHERE } from './models';
+import {
+  PUBLIC_EVENT_WHERE,
+  PUBLIC_MAJOR_EVENT_WHERE,
+  PUBLIC_MAP_EVENT_SELECT,
+  PUBLIC_REGULAR_EVENT_WHERE,
+  publicMapEventWhere,
+} from './models';
 import { createPublicMajorEventRecord } from './testing/public-event-record.fixtures';
 
 describe('PublicEventsResolver lecturer profiles', () => {
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it('lists ongoing and future public map events with valid coordinates in chronological order', async () => {
+    const now = new Date('2026-08-16T15:00:00.000Z');
+    jest.useFakeTimers().setSystemTime(now);
+    const events = [
+      {
+        id: 'event-1',
+        startDate: new Date('2026-08-16T16:00:00.000Z'),
+        latitude: -22.12103,
+        longitude: -51.40775,
+      },
+      {
+        id: 'event-without-coordinates',
+        startDate: new Date('2026-08-16T17:00:00.000Z'),
+        latitude: null,
+        longitude: null,
+      },
+    ];
+    const prisma = {
+      event: {
+        findMany: jest.fn().mockResolvedValue(events),
+      },
+    };
+    const resolver = new PublicEventsResolver(prisma as never, { isEnabled: () => false } as never);
+
+    await expect(resolver.publicMapEvents()).resolves.toEqual([events[0]]);
+
+    expect(prisma.event.findMany).toHaveBeenCalledWith({
+      where: publicMapEventWhere(now),
+      select: PUBLIC_MAP_EVENT_SELECT,
+      orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
+    });
   });
 
   it('uses Typesense rank for public event searches before applying pagination', async () => {
@@ -24,7 +63,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
     ).resolves.toEqual([{ id: 'event-b' }]);
 
     expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', {
-      filterBy: 'publiclyVisible:=true && publicationState:=PUBLISHED && majorEventPublicationState:=PUBLISHED',
+      filterBy: 'isPubliclyListed:=true && publicationState:=PUBLISHED && majorEventPublicationState:=PUBLISHED',
       limit: 100,
       offset: 250,
     });
@@ -216,7 +255,7 @@ describe('PublicEventsResolver lecturer profiles', () => {
 
     expect(typesenseSearch.searchEvents).toHaveBeenCalledWith('aula', {
       filterBy:
-        'publiclyVisible:=true && publicationState:=PUBLISHED && majorEventPublicationState:=PUBLISHED && startDate:>=1782172800',
+        'isPubliclyListed:=true && publicationState:=PUBLISHED && majorEventPublicationState:=PUBLISHED && startDate:>=1782172800',
       limit: 500,
     });
     expect(prisma.event.findMany).toHaveBeenCalledWith(
@@ -288,32 +327,33 @@ describe('PublicEventsResolver lecturer profiles', () => {
       },
       select: expect.any(Object),
     });
-    expect(prisma.event.findMany).toHaveBeenCalledWith({
-      where: {
-        AND: [
-          {
-            AND: [
-              PUBLIC_EVENT_WHERE,
-              {
-                allowSubscription: true,
-                majorEventId: {
-                  not: null,
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          AND: [
+            {
+              AND: [
+                {
+                  AND: [
+                    PUBLIC_REGULAR_EVENT_WHERE,
+                    {
+                      allowSubscription: true,
+                      OR: [
+                        { subscriptionEndDate: null },
+                        { subscriptionEndDate: { gte: new Date('2026-06-23T12:00:00.000Z') } },
+                      ],
+                    },
+                  ],
                 },
-                OR: [
-                  { subscriptionEndDate: null },
-                  { subscriptionEndDate: { gte: new Date('2026-06-23T12:00:00.000Z') } },
-                ],
-              },
-            ],
-          },
-          { majorEventId: 'major-1' },
-        ],
-      },
-      select: expect.any(Object),
-      orderBy: {
-        startDate: 'asc',
-      },
-    });
+                { majorEventId: { not: null } },
+              ],
+            },
+            { majorEventId: 'major-1' },
+          ],
+        },
+        orderBy: { startDate: 'asc' },
+      }),
+    );
   });
 
   it('does not query subscription counts for an empty major-event subscription page', async () => {

@@ -2,15 +2,14 @@ import type { EventFormTargetType, EventTargetType, PublicEventForm } from '@cac
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
-import { AuthService } from '@cacic-fct/shared-angular';
-import { OfflineAttendanceDetail, OfflinePublicDataAccessService } from '@cacic-fct/offline-public-data-access';
+import { AuthService, MarkdownComponent } from '@cacic-fct/shared-angular';
+import { OfflineAttendanceDetail, PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 import { DetailViewModel, buildDetailViewModel, parseEventTargetType } from '@cacic-fct/shared-utils';
 import { Observable, catchError, forkJoin, from, map, of, startWith, switchMap } from 'rxjs';
 import { NetworkStatusService } from '../../../shared/network-status.service';
@@ -38,12 +37,12 @@ type DetailState =
   selector: 'app-more-info',
   imports: [
     MatButtonModule,
-    MatChipsModule,
     MatDialogModule,
     MatIconModule,
     MatListModule,
     MatProgressBarModule,
     MatToolbarModule,
+    MarkdownComponent,
     RouterLink,
   ],
   templateUrl: './more-info.html',
@@ -56,7 +55,7 @@ export class MoreInfo {
   private readonly api = inject(AttendancesApiService);
   private readonly auth = inject(AuthService);
   private readonly networkStatus = inject(NetworkStatusService);
-  private readonly offlineData = inject(OfflinePublicDataAccessService);
+  private readonly offlineData = inject(PublicDataAccessService);
   private readonly dialog = inject(MatDialog);
   private readonly formsApi = inject(PublicEventFormApiService);
   readonly emoji = inject(EmojiService);
@@ -95,8 +94,36 @@ export class MoreInfo {
     return ['/major-event', detail.targetId, 'payment'];
   }
 
+  sportsPanelRoute(detail: DetailViewModel): string[] {
+    return ['/tournament', detail.sportsTournamentId ?? ''];
+  }
+
+  representativeTeamRoute(teamId: string): string[] {
+    return ['/sports', 'team', teamId];
+  }
+
   organizerInfoRoute(detail: DetailViewModel): string[] {
     return ['/profile', 'attendances', detail.targetType, detail.targetId, 'organizer'];
+  }
+
+  statusIcon(detail: DetailViewModel): string {
+    if (detail.statusLabel === 'Certificado emitido') {
+      return 'workspace_premium';
+    }
+
+    if (detail.statusLabel === 'Presença registrada' || detail.statusLabel?.startsWith('Presente')) {
+      return 'how_to_reg';
+    }
+
+    if (detail.targetType === 'major-event' && detail.subscriptionStatus && detail.subscriptionStatus !== 'CONFIRMED') {
+      return 'receipt_long';
+    }
+
+    if (detail.statusLabel === 'Ministrante') {
+      return 'record_voice_over';
+    }
+
+    return 'event_available';
   }
 
   formRoute(link: DetailFormLink): string[] {

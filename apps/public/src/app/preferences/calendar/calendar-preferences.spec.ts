@@ -4,7 +4,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { provideRouter } from '@angular/router';
-import { CalendarPreferencesStorageService } from '@cacic-fct/offline-public-data-access';
+import { CalendarPreferencesStorageService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { of } from 'rxjs';
 import { CalendarPreferencesApiService, CurrentUserCalendarFeedSettings } from './calendar-preferences-api.service';

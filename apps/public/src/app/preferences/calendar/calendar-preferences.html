@@ -2,12 +2,12 @@
   <a matIconButton routerLink="/preferences" aria-label="Voltar para preferências">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <span>Calendário</span>
+  <h1 class="global-toolbar-title">Calendário</h1>
 </mat-toolbar>
 
 <main class="global-container calendar-preferences">
   @if (isAuthenticated()) {
-  <app-explanation-card title="Calendário" icon="calendar_month">
+  <app-explanation-card title="Sincronização" icon="calendar_month">
     O feed do calendário permite que você adicione sua programação do CACiC Eventos a aplicativos de calendário, como o
     Google Agenda, Apple Calendar e Microsoft Outlook.
     <br />
@@ -37,7 +37,7 @@
   </section>
 
   @if (isAuthenticated()) { @let state = settingsState(); @if (state.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  <mat-progress-bar mode="indeterminate" aria-label="Atualizando calendário"></mat-progress-bar>
   } @else if (state.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>

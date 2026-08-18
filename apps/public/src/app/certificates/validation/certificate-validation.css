@@ -6,8 +6,8 @@
   padding: 20px 16px 44px;
 }
 
-.page-header {
-  margin-bottom: 20px;
+.certificate-validation-toolbar {
+  gap: 8px;
 }
 
 .certificate-name {
@@ -15,8 +15,9 @@
   margin: 0;
 }
 
-.eyebrow {
+.certificate-status {
   font: var(--mat-sys-label-large);
+  margin: 0;
 }
 
 h1,
@@ -204,6 +205,10 @@ lib-cacic-logo {
   margin-top: 0.5rem;
   cursor: pointer;
   aspect-ratio: 427.97 / 248.98;
+}
+
+.certificate-validation-toolbar-logo {
+  transform: translateY(-4px);
 }
 
 .button-container {

@@ -72,7 +72,7 @@ describe('PublicationPreviewContentService', () => {
     const publishedAt = new Date('2026-06-25T10:00:00.000Z');
     prisma.event.findFirst.mockResolvedValue({
       id: 'event-1',
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: PublicationState.PUBLISHED,
       publishedAt,
       updatedAt: new Date('2026-06-25T09:00:00.000Z'),
@@ -102,7 +102,7 @@ describe('PublicationPreviewContentService', () => {
     const publishedAt = new Date('2026-06-25T10:00:00.000Z');
     prisma.event.findFirst.mockResolvedValue({
       id: 'event-1',
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: PublicationState.PUBLISHED,
       publishedAt,
       updatedAt: new Date('2026-06-25T09:00:00.000Z'),
@@ -207,7 +207,7 @@ describe('PublicationPreviewContentService', () => {
     });
 
     expect(prisma.event.findMany).toHaveBeenCalledWith({
-      where: { majorEventId: 'major-1', deletedAt: null, publiclyVisible: true },
+      where: { majorEventId: 'major-1', deletedAt: null, isPubliclyListed: true },
       select: expect.any(Object),
       orderBy: { startDate: 'asc' },
     });

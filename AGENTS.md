@@ -132,6 +132,7 @@ We aim for high test coverage, but we prioritize meaningful tests over achieving
 Project has unit, integration, and end-to-end tests to ensure the quality and reliability of our codebase.
 
 Use shared fixtures and test utilities to reduce duplication and improve maintainability of tests.
+We don't hardcode dates in tests, instead we use relative dates or mock the current date to ensure tests are not dependent on the actual date and time.
 
 When creating or editing code, ensure that tests are updated accordingly to reflect the changes made. This includes updating existing tests, adding new tests for new functionality, and removing tests for deprecated or removed features.
 

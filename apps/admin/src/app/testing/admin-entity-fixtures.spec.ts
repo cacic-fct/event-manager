@@ -62,7 +62,7 @@ describe('admin entity fixtures', () => {
       allowSubscription: false,
       shouldIssueCertificate: false,
       shouldCollectAttendance: false,
-      publiclyVisible: false,
+      isPubliclyListed: false,
       slots: null,
     });
 
@@ -74,7 +74,7 @@ describe('admin entity fixtures', () => {
         allowSubscription: false,
         shouldIssueCertificate: false,
         shouldCollectAttendance: false,
-        publiclyVisible: false,
+        isPubliclyListed: false,
         slots: null,
       }),
     );

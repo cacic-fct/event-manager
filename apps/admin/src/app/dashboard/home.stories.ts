@@ -22,6 +22,7 @@ import type {
   WorkspaceDashboardInsights,
 } from '@cacic-fct/shared-frontend-types';
 import { Home } from './home';
+import { buildSportsMatches, buildSportsTournaments } from './home-sports-story.fixtures';
 
 registerLocaleData(localePt);
 faker.seed(20260724);
@@ -30,6 +31,7 @@ type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissi
 
 type DashboardStoryState = 'loaded' | 'empty' | 'loading' | 'error';
 type FutureRegistrationMode = 'mixed' | 'with-slots' | 'unlimited' | 'disabled';
+type SportsDashboardMode = 'none' | 'registration-open' | 'live' | 'review' | 'live-and-review';
 
 interface HomeStoryArgs {
   state: DashboardStoryState;
@@ -42,6 +44,7 @@ interface HomeStoryArgs {
   upcomingEvents: number;
   attendanceActions: boolean;
   futureRegistrationMode: FutureRegistrationMode;
+  sportsMode: SportsDashboardMode;
   suggestions: DashboardInsightAction[];
   weatherAlerts: number;
   pendingCertificates: number;
@@ -51,7 +54,6 @@ interface HomeStoryArgs {
   inconsistencies: number;
   criticalInconsistencies: boolean;
 }
-
 const now = new Date();
 now.setHours(10, 30, 0, 0);
 let activeArgs: HomeStoryArgs;
@@ -67,7 +69,8 @@ const defaultArgs: HomeStoryArgs = {
   upcomingEvents: 3,
   attendanceActions: true,
   futureRegistrationMode: 'mixed',
-  suggestions: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT'],
+  sportsMode: 'live-and-review',
+  suggestions: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT', 'OPEN_SPORTS'],
   weatherAlerts: 1,
   pendingCertificates: 2,
   pendingOfflineAttendancesCount: 5,
@@ -123,9 +126,13 @@ const meta: Meta<HomeStoryArgs> = {
       control: 'select',
       options: ['mixed', 'with-slots', 'unlimited', 'disabled'],
     },
+    sportsMode: {
+      control: 'select',
+      options: ['none', 'registration-open', 'live', 'review', 'live-and-review'],
+    },
     suggestions: {
       control: 'check',
-      options: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT'],
+      options: ['CREATE_EVENT_GROUP', 'CREATE_EVENT', 'CREATE_MAJOR_EVENT', 'OPEN_SPORTS'],
     },
     weatherAlerts: { control: { type: 'range', min: 0, max: 5, step: 1 } },
     pendingCertificates: { control: { type: 'range', min: 0, max: 6, step: 1 } },
@@ -152,7 +159,8 @@ const meta: Meta<HomeStoryArgs> = {
     layout: 'fullscreen',
     a11y: { test: 'todo' },
     msw: {
-      handlers: [
+      handlers: {
+        graphql: [
         http.post('/api/graphql', async () => {
           const args = activeArgs ?? defaultArgs;
           if (args.state === 'loading') {
@@ -171,7 +179,8 @@ const meta: Meta<HomeStoryArgs> = {
             },
           });
         }),
-      ],
+        ],
+      },
     },
   },
 };
@@ -237,6 +246,7 @@ export const UpcomingEventsWithRegistration: Story = {
     todayEvents: 0,
     upcomingEvents: 4,
     futureRegistrationMode: 'mixed',
+    sportsMode: 'none',
     weatherAlerts: 0,
     pendingCertificates: 0,
     pendingOfflineAttendancesCount: 0,
@@ -266,6 +276,7 @@ export const UpcomingEventsWithoutRegistration: Story = {
     todayEvents: 0,
     upcomingEvents: 3,
     futureRegistrationMode: 'disabled',
+    sportsMode: 'none',
     weatherAlerts: 0,
     pendingCertificates: 0,
     pendingOfflineAttendancesCount: 0,
@@ -291,6 +302,7 @@ export const WeatherAlertsInEventRows: Story = {
     upcomingEvents: 2,
     attendanceActions: false,
     futureRegistrationMode: 'mixed',
+    sportsMode: 'none',
     weatherAlerts: 2,
     pendingCertificates: 0,
     pendingOfflineAttendancesCount: 0,
@@ -309,6 +321,80 @@ export const WeatherAlertsInEventRows: Story = {
   },
 };
 
+export const SportsLiveOperations: Story = {
+  args: {
+    showTodayEvents: false,
+    showActionQueue: false,
+    showMonitoring: false,
+    showSystemHealth: false,
+    todayEvents: 0,
+    upcomingEvents: 0,
+    sportsMode: 'live',
+    weatherAlerts: 0,
+    pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    duplicatePeopleCount: 0,
+    inconsistencies: 0,
+  },
+  globals: { theme: 'dark' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Partidas em operação')).toBeVisible();
+    await expect(await canvas.findByText('Atlética FCT × Engenharia')).toBeVisible();
+    await expect(canvas.queryByText('Revisões esportivas pendentes')).not.toBeInTheDocument();
+  },
+};
+
+export const SportsReviewQueue: Story = {
+  args: {
+    showTodayEvents: false,
+    showActionQueue: true,
+    showMonitoring: false,
+    showSystemHealth: false,
+    todayEvents: 0,
+    upcomingEvents: 0,
+    sportsMode: 'review',
+    weatherAlerts: 0,
+    pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    duplicatePeopleCount: 0,
+    inconsistencies: 0,
+  },
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Revisões esportivas pendentes')).toBeVisible();
+    await expect(await canvas.findByText('5 pendências para revisar')).toBeVisible();
+    await expect(await canvas.findByText('Torneios em acompanhamento')).toBeVisible();
+  },
+};
+
+export const SportsRegistrationOpen: Story = {
+  args: {
+    showTodayEvents: false,
+    showActionQueue: false,
+    showMonitoring: false,
+    showSystemHealth: false,
+    todayEvents: 0,
+    upcomingEvents: 0,
+    sportsMode: 'registration-open',
+    weatherAlerts: 0,
+    pendingCertificates: 0,
+    pendingOfflineAttendancesCount: 0,
+    pendingReceiptValidationsCount: 0,
+    duplicatePeopleCount: 0,
+    inconsistencies: 0,
+  },
+  globals: { theme: 'light' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(await canvas.findByText('Inscrições abertas')).toBeVisible();
+    await expect(await canvas.findByText('Sem pendências operacionais')).toBeVisible();
+  },
+};
+
 export const Loading: Story = {
   args: {
     state: 'loading',
@@ -317,10 +403,10 @@ export const Loading: Story = {
 };
 
 export const ErrorState: Story = {
+  globals: { theme: 'dark', motion: 'reduced' },
   args: {
     state: 'error',
   },
-  globals: { theme: 'light' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findByText('Não foi possível carregar o painel')).toBeVisible();
@@ -363,6 +449,8 @@ function buildDashboardInsights(args: HomeStoryArgs): WorkspaceDashboardHomeInsi
     pendingOfflineAttendanceEvents: buildPendingOfflineAttendanceEvents(pendingOfflineAttendancesCount),
     pendingReceiptValidationsCount,
     pendingReceiptMajorEvents: buildPendingReceiptMajorEvents(pendingReceiptValidationsCount),
+    sportsTournaments: buildSportsTournaments(args, empty, dateFromNow),
+    sportsMatches: buildSportsMatches(args, empty, dateFromNow),
     inconsistencies: buildInconsistencies(args),
     duplicatePeopleCount,
   };

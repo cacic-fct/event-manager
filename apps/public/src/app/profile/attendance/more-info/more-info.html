@@ -1,13 +1,17 @@
+@let currentState = detailState();
+
 <mat-toolbar>
   <a matIconButton routerLink="/profile/attendances" aria-label="Voltar para inscrições">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <span>Detalhes</span>
+  <h1 class="global-toolbar-title">
+    {{ currentState.status === 'ready' ? currentState.detail.title : 'Detalhes' }}
+  </h1>
 </mat-toolbar>
 
 <main class="detail-page">
-  @let currentState = detailState(); @if (currentState.status === 'loading') {
-  <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  @if (currentState.status === 'loading') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando detalhes da participação"></mat-progress-bar>
   } @else if (currentState.status === 'error') {
   <section class="empty-section" aria-live="polite">
     <mat-icon aria-hidden="true">error</mat-icon>
@@ -20,19 +24,29 @@
       <img class="twemoji" [src]="emoji.getTwemojiUrl(detail.emoji)" [alt]="detail.emoji" />
     </div>
     <div class="header-copy">
-      <p class="eyebrow">{{ detail.typeLabel }}</p>
-      <h1>{{ detail.title }}</h1>
       <p class="date-line">{{ detail.dateLine }}</p>
     </div>
   </header>
 
-  <mat-chip-set aria-label="Resumo da inscrição">
-    @if (detail.statusLabel) {
-    <mat-chip>{{ detail.statusLabel }}</mat-chip>
-    }
-  </mat-chip-set>
+  @if (detail.statusLabel; as statusLabel) {
+  <p class="status-summary" role="status">
+    <mat-icon aria-hidden="true">{{ statusIcon(detail) }}</mat-icon>
+    <span>{{ statusLabel }}</span>
+  </p>
+  }
 
   <div class="actions">
+    @if (detail.sportsTournamentId) {
+    <a mat-flat-button [routerLink]="sportsPanelRoute(detail)">
+      <mat-icon>sports</mat-icon>
+      Abrir painel esportivo
+    </a>
+    } @for (team of detail.sportsRepresentativeTeams; track team.id) {
+    <a mat-stroked-button [routerLink]="representativeTeamRoute(team.id)">
+      <mat-icon>groups</mat-icon>
+      Área de representantes e escalação — {{ team.name }}
+    </a>
+    }
     @if (detail.isSubscribed && detail.targetType === 'major-event') {
     <a mat-flat-button [routerLink]="paymentRoute(detail)">
       <mat-icon>payments</mat-icon>
@@ -78,7 +92,7 @@
   } @if (detail.description) {
   <section class="detail-section">
     <h2>Sobre</h2>
-    <p class="description">{{ detail.description }}</p>
+    <lib-markdown class="description" [content]="detail.description" />
   </section>
   }
 

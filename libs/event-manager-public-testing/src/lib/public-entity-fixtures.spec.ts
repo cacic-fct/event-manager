@@ -27,7 +27,7 @@ describe('public entity fixtures', () => {
     expect(event.majorEvent).toBe(majorEvent);
     expect(event.eventGroupId).toBe('group-test');
     expect(event.eventGroup).toBe(eventGroup);
-    expect(event.publiclyVisible).toBe(true);
+    expect(event.isPubliclyListed).toBe(true);
   });
 
   it('generates fixture dates relative to the current run', () => {
@@ -47,7 +47,7 @@ describe('public entity fixtures', () => {
     const paymentInfo = createPublicPaymentInfo({ pixKey: 'financeiro@example.com' });
     const price = createPublicMajorEventPrice({
       type: 'SINGLE',
-      tiers: [{ id: 'tier-1', name: 'Comunidade', value: 5000 }],
+      tiers: [{ id: 'tier-1', name: 'Comunidade', value: 5000, includesSportsRegistration: false }],
     });
     const majorEvent = createPublicMajorEvent({
       isPaymentRequired: true,
@@ -61,6 +61,7 @@ describe('public entity fixtures', () => {
       id: 'tier-1',
       name: 'Comunidade',
       value: 5000,
+      includesSportsRegistration: false,
     });
   });
 

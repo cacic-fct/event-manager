@@ -1,0 +1,455 @@
+.person-list,
+.member-grid,
+.registration-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.team-modality-icon {
+  display: inline-grid;
+  margin-inline-end: 0.2rem;
+  place-items: center;
+  vertical-align: middle;
+}
+
+.logo-control {
+  align-items: center;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 14px;
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: 3.5rem 1fr auto;
+  padding: 0.8rem;
+}
+
+.logo-control > lib-sports-team-logo {
+  border-radius: 10px;
+  height: 3.5rem;
+  object-fit: contain;
+  width: 3.5rem;
+}
+
+.logo-control > div {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.logo-control span {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8rem;
+}
+
+.material-upload {
+  align-items: center;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 999px;
+  color: var(--mat-sys-primary);
+  cursor: pointer;
+  display: flex;
+  font-weight: 600;
+  gap: 0.4rem;
+  padding: 0.55rem 0.8rem;
+}
+
+.material-upload input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.danger-zone {
+  align-items: center;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  display: flex;
+  justify-content: space-between;
+  padding-block-start: 0.8rem;
+}
+
+.danger-zone > span {
+  display: grid;
+  font-size: 0.84rem;
+}
+
+.person-list > div,
+.member-grid > div,
+.registration-list > div {
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+}
+
+.official-assignment {
+  align-items: flex-start;
+}
+
+.official-assignment-copy {
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.official-assignment-copy strong,
+.official-assignment-copy small {
+  overflow-wrap: anywhere;
+}
+
+.official-assignment-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.1rem;
+}
+
+.automatic-registration {
+  align-items: center;
+  background: var(--mat-sys-primary-container);
+  border-radius: 12px;
+  color: var(--mat-sys-on-primary-container);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.8rem;
+}
+
+.automatic-registration-copy,
+.member-modality {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.automatic-registration-copy > mat-icon {
+  flex: 0 0 auto;
+}
+
+.automatic-registration-copy > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.automatic-registration-copy span {
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.manual-registration-title {
+  margin-block-start: 0.5rem;
+}
+
+.registration-options {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.registration-option {
+  align-items: center;
+  background: var(--mat-sys-surface-container-low);
+  border-radius: 12px;
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 0.8fr) auto;
+  padding: 0.45rem 0.7rem;
+}
+
+.registration-option-selected {
+  background: var(--mat-sys-surface-container);
+}
+
+.registration-option-copy {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.registration-option-copy > span {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.registration-option-copy small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.registration-seed {
+  min-width: 0;
+}
+
+.registration-form-button {
+  white-space: nowrap;
+}
+
+.registration-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-block-start: 0.65rem;
+}
+
+.registration-list > div > span {
+  display: grid;
+}
+
+.registration-list small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.registration-ready {
+  align-items: center;
+  color: var(--sports-ok);
+  display: inline-flex;
+  font-size: 0.8rem;
+  font-weight: 700;
+  gap: 0.35rem;
+}
+
+.registration-ready mat-icon {
+  font-size: 1.1rem;
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
+.person-list > div > span,
+.member-grid > div > span {
+  display: grid;
+  flex: 1;
+}
+
+.member-card {
+  align-items: stretch;
+  display: grid;
+  gap: 0.75rem;
+  justify-content: stretch;
+}
+
+.member-card-heading {
+  align-items: start;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: auto minmax(0, 1fr) minmax(8rem, auto);
+}
+
+.member-card-heading > mat-icon {
+  margin-block-start: 0.25rem;
+}
+
+.member-card-heading > mat-form-field {
+  min-width: 8rem;
+}
+
+.person-list small,
+.member-grid small {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.member-copy {
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.member-modalities {
+  display: grid;
+  gap: 0.15rem;
+  margin-block-start: 0.25rem;
+}
+
+.member-modality {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.member-no-modality {
+  font-style: italic;
+}
+
+.member-profile-list {
+  border-block-start: 1px solid var(--mat-sys-outline-variant);
+  display: grid;
+  gap: 0.55rem;
+  margin-inline-start: 2rem;
+  padding-block-start: 0.65rem;
+}
+
+.member-profile-editor {
+  align-items: end;
+  background: var(--mat-sys-surface-container);
+  border-radius: 10px;
+  display: grid;
+  gap: 0.45rem 0.65rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.65rem 0.75rem;
+}
+
+.member-profile-heading,
+.member-profile-fields {
+  grid-column: 1 / -1;
+}
+
+.member-profile-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.member-profile-heading > lib-twemoji {
+  flex: 0 0 auto;
+}
+
+.member-profile-heading > span {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.member-profile-heading small {
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.member-profile-fields {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.member-profile-fields-single {
+  grid-template-columns: minmax(12rem, 20rem);
+}
+
+.member-profile-fields > mat-form-field {
+  min-width: 0;
+}
+
+.member-profile-editor > button {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+.person-search,
+.official-form {
+  grid-template-columns: minmax(15rem, 1fr) auto;
+}
+
+.team-heading {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.team-heading lib-sports-team-logo {
+  border-radius: 6px;
+  height: 2rem;
+  object-fit: contain;
+  width: 2rem;
+}
+
+.lineup-member {
+  align-items: center;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 0.65fr) minmax(5rem, 0.35fr);
+  padding-block: 0.35rem;
+}
+
+.official-form {
+  grid-template-columns: minmax(13rem, 1.5fr) minmax(10rem, 1fr) minmax(11rem, 1fr) auto;
+}
+
+.search-results {
+  background: var(--mat-sys-surface-container-high);
+  border-radius: 12px;
+  display: grid;
+  margin-block-start: -0.75rem;
+  padding: 0.35rem;
+}
+
+.search-results button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 0.75rem;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 0.65rem;
+  text-align: start;
+}
+
+.person-search-result-copy {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.person-search-result-copy strong,
+.person-search-result-copy small {
+  overflow-wrap: anywhere;
+}
+
+.person-search-result-copy small {
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.3;
+}
+
+.person-search-result > mat-icon {
+  color: var(--mat-sys-primary);
+  flex: 0 0 auto;
+}
+
+.search-results button:hover,
+.search-results button:focus-visible {
+  background: var(--mat-sys-surface);
+}
+
+@media (max-width: 760px) {
+  .automatic-registration {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .automatic-registration > button {
+    white-space: normal;
+  }
+
+  .registration-option {
+    align-items: stretch;
+    grid-template-columns: 1fr;
+  }
+
+  .registration-form-button {
+    justify-self: start;
+  }
+
+  .member-card-heading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .member-card-heading > mat-form-field {
+    grid-column: 2;
+  }
+
+  .member-profile-list {
+    margin-inline-start: 0;
+  }
+
+  .member-profile-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .member-profile-editor > button {
+    justify-self: start;
+  }
+
+  .member-profile-fields,
+  .member-profile-fields-single {
+    grid-template-columns: 1fr;
+  }
+}

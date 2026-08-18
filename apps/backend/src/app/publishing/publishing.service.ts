@@ -70,7 +70,7 @@ const PUBLICATION_WORKSPACE_EVENT_GROUP_SELECT = {
 const PUBLICATION_WORKSPACE_EVENT_SELECT = {
   id: true,
   name: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: true,
   scheduledPublishAt: true,
   publishedAt: true,
@@ -95,7 +95,7 @@ const PUBLICATION_WORKSPACE_EVENT_SELECT = {
 const PUBLICATION_WARNING_EVENT_SELECT = {
   id: true,
   name: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   publicationState: true,
   scheduledPublishAt: true,
   majorEventId: true,
@@ -104,6 +104,18 @@ const PUBLICATION_WARNING_EVENT_SELECT = {
       id: true,
       name: true,
       publicationState: true,
+    },
+  },
+  sportsMatch: {
+    select: {
+      id: true,
+      category: {
+        select: {
+          tournamentId: true,
+          status: true,
+          tournament: { select: { status: true } },
+        },
+      },
     },
   },
 } satisfies Prisma.EventSelect;
@@ -119,8 +131,25 @@ const PUBLICATION_WARNING_MAJOR_EVENT_SELECT = {
     },
     select: {
       id: true,
-      publiclyVisible: true,
+      isPubliclyListed: true,
       publicationState: true,
+    },
+  },
+  sportsTournament: {
+    where: {
+      deletedAt: null,
+      status: { not: 'DRAFT' },
+    },
+    select: {
+      id: true,
+      categories: {
+        where: {
+          deletedAt: null,
+          status: { not: 'DRAFT' },
+        },
+        select: { id: true },
+        take: 1,
+      },
     },
   },
 } satisfies Prisma.MajorEventSelect;
@@ -518,8 +547,8 @@ export class PublicationService {
   private buildWarningEventWhere(where: Prisma.EventWhereInput, now: Date): Prisma.EventWhereInput {
     return this.andWhere(where, {
       OR: [
-        { publicationState: 'PUBLISHED', publiclyVisible: false },
-        { publicationState: { not: 'PUBLISHED' }, publiclyVisible: true },
+        { publicationState: 'PUBLISHED', isPubliclyListed: false },
+        { publicationState: { not: 'PUBLISHED' }, isPubliclyListed: true },
         {
           publicationState: 'PUBLISHED',
           majorEvent: {
@@ -559,7 +588,7 @@ export class PublicationService {
   private buildVisiblePublishedEventWhere(eventWhere: Prisma.EventWhereInput): Prisma.EventWhereInput {
     return this.andWhere(eventWhere, {
       publicationState: 'PUBLISHED',
-      publiclyVisible: true,
+      isPubliclyListed: true,
     });
   }
 
@@ -661,7 +690,7 @@ export class PublicationService {
       scheduledPublishAt: majorEvent.scheduledPublishAt,
       publishedAt: majorEvent.publishedAt,
       unpublishedAt: majorEvent.unpublishedAt,
-      publiclyVisible: null,
+      isPubliclyListed: null,
       parentLabel: null,
       childCount: childNodes.length || majorEvent._count.events,
       children: childNodes,
@@ -687,7 +716,7 @@ export class PublicationService {
       scheduledPublishAt,
       publishedAt: null,
       unpublishedAt: null,
-      publiclyVisible: null,
+      isPubliclyListed: null,
       parentLabel: null,
       childCount: eventGroup._count.events,
       children: children.map((event) => this.mapEventNode(event, eventGroup.name)),
@@ -709,7 +738,7 @@ export class PublicationService {
       scheduledPublishAt,
       publishedAt: null,
       unpublishedAt: null,
-      publiclyVisible: null,
+      isPubliclyListed: null,
       parentLabel,
       childCount: events.length,
       children: events.map((event) => this.mapEventNode(event, label)),
@@ -729,7 +758,7 @@ export class PublicationService {
       scheduledPublishAt: event.scheduledPublishAt,
       publishedAt: event.publishedAt,
       unpublishedAt: event.unpublishedAt,
-      publiclyVisible: event.publiclyVisible,
+      isPubliclyListed: event.isPubliclyListed,
       parentLabel,
       childCount: 0,
       children: [],

@@ -29,7 +29,7 @@ import {
 } from '@cacic-fct/event-manager-admin-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { ConfirmationDialogComponent } from '../app-shell/dialogs/confirmation-dialog.component';
-import { getErrorMessage } from '../feedback/error-message';
+import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { bindLiveSearch } from '../search/live-search';
 import {
   applyPagedResult,
@@ -39,7 +39,7 @@ import {
   pageVariables,
   resetPagination,
 } from '../pagination/list-pagination';
-import { buildPeopleSearchFilters } from '../people/people-lookup';
+import { buildPeopleCandidateLookupFilters } from '../people/people-lookup';
 import {
   CertificateConfigCloneDialogComponent,
   CertificateConfigCloneDialogResult,
@@ -73,6 +73,7 @@ type CertificateFieldDefinition = {
   required: boolean;
   defaultValue: string;
 };
+type CertificateTemplatesLoadState = 'loading' | 'ready' | 'empty' | 'error';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 
@@ -88,6 +89,7 @@ export class CertificatesService {
   private readonly formBuilder = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly snackbar = inject(MatSnackBar);
+  private readonly feedback = inject(AdminFeedbackService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly permissions = inject(PermissionsService);
@@ -99,6 +101,7 @@ export class CertificatesService {
   readonly targetsPagination = createWorkspaceListPagination();
   readonly selectedTarget = signal<{ id: string; name: string } | null>(null);
   readonly certificateTemplates = signal<CertificateTemplate[]>([]);
+  readonly certificateTemplatesLoadState = signal<CertificateTemplatesLoadState>('loading');
   readonly certificateConfigs = signal<CertificateConfig[]>([]);
   readonly certificateConfigsPagination = createWorkspaceListPagination();
   readonly selectedCertificateConfig = signal<CertificateConfig | null>(null);
@@ -112,6 +115,11 @@ export class CertificatesService {
     this.requiresCustomCertificateTypeLabel(this.certificateConfigModel().issuedTo),
   );
   readonly isManualCertificateIssue = computed(() => this.certificateConfigModel().issuedTo === 'OTHER');
+  readonly certificateOperationsEnabled = computed(
+    () =>
+      this.certificateTemplatesLoadState() === 'ready' &&
+      this.isCertificateTemplateAvailable(this.certificateConfigModel().certificateTemplateId),
+  );
   private certificateFieldValuesJson: string | null | undefined;
 
   private selectedCertificateTemplate(
@@ -167,14 +175,21 @@ export class CertificatesService {
   }
 
   async loadCertificateTemplates(): Promise<void> {
-    this.certificateTemplates.set(
-      await firstValueFrom(
+    this.certificateTemplatesLoadState.set('loading');
+    try {
+      const templates = await firstValueFrom(
         this.api.listCertificateTemplates({
           take: 200,
           includeInactive: false,
         }),
-      ),
-    );
+      );
+      this.certificateTemplates.set(templates);
+      this.certificateTemplatesLoadState.set(templates.length > 0 ? 'ready' : 'empty');
+    } catch {
+      this.certificateTemplates.set([]);
+      this.certificateTemplatesLoadState.set('error');
+    }
+
     const selectedTemplateId = this.certificateConfigModel().certificateTemplateId;
     if (!selectedTemplateId && this.certificateTemplates().length > 0) {
       this.certificateConfigForm().reset({
@@ -186,6 +201,10 @@ export class CertificatesService {
     }
 
     this.syncCertificateFieldsForm(this.certificateFieldValuesJson, selectedTemplateId);
+  }
+
+  isCertificateTemplateAvailable(templateId: string): boolean {
+    return this.certificateTemplates().some((template) => template.id === templateId);
   }
 
   async searchTargets(): Promise<void> {
@@ -451,9 +470,7 @@ export class CertificatesService {
       this.selectCertificateConfig(created);
       await this.loadCertificates();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível duplicar a configuração de certificado.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível duplicar a configuração de certificado.');
     }
   }
 
@@ -517,13 +534,18 @@ export class CertificatesService {
       void this.router.navigate(['/certificates', 'folder', savedFolder.id]);
       await this.applyTargetSelection(savedFolder);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível salvar a pasta.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível salvar a pasta.');
     }
   }
 
   private async persistCertificateConfig(options?: { showSnackbar?: boolean }): Promise<CertificateConfig | null> {
+    if (!this.certificateOperationsEnabled()) {
+      this.snackbar.open('Selecione um modelo de certificado disponível antes de continuar.', 'Fechar', {
+        duration: 3500,
+      });
+      return null;
+    }
+
     let savedConfig: CertificateConfig | null = null;
 
     const success = await submit(this.certificateConfigForm, async (field) => {
@@ -584,9 +606,14 @@ export class CertificatesService {
       return;
     }
 
-    this.personSearchResults.set(
-      await firstValueFrom(this.peopleApi.listPeopleSummaries(buildPeopleSearchFilters(query, { take: 20 }))),
+    const searches = buildPeopleCandidateLookupFilters(query, 20).map((filters) =>
+      firstValueFrom(this.peopleApi.listPeopleSummaries(filters)),
     );
+    const peopleById = new Map<string, Person>();
+    for (const person of (await Promise.all(searches)).flat()) {
+      peopleById.set(person.id, person);
+    }
+    this.personSearchResults.set([...peopleById.values()].slice(0, 20));
   }
 
   async issueCertificateForPerson(person: Person): Promise<void> {
@@ -604,9 +631,7 @@ export class CertificatesService {
       });
       await this.loadCertificates();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível emitir o certificado.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível emitir o certificado.');
     }
   }
 
@@ -700,9 +725,7 @@ export class CertificatesService {
         },
       });
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível importar o CSV.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível importar o CSV.');
     } finally {
       this.isImportingPeopleCsv.set(false);
     }
@@ -723,9 +746,7 @@ export class CertificatesService {
       });
       await this.loadCertificates();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível emitir os certificados.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível emitir os certificados.');
     }
   }
 
@@ -750,9 +771,7 @@ export class CertificatesService {
       }
       await Promise.all([this.loadCertificateConfigs(), this.loadCertificates()]);
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir a configuração de certificado.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível excluir a configuração de certificado.');
     }
   }
 
@@ -773,9 +792,7 @@ export class CertificatesService {
       this.snackbar.open('Certificado excluído.', 'Fechar', { duration: 2500 });
       await this.loadCertificates();
     } catch (error) {
-      this.snackbar.open(getErrorMessage(error, 'Não foi possível excluir o certificado.'), 'Fechar', {
-        duration: 5000,
-      });
+      this.feedback.error(error, 'Não foi possível excluir o certificado.');
     }
   }
 
@@ -1065,7 +1082,7 @@ export class CertificatesService {
     for (const definition of this.certificateFieldDefinitions()) {
       const value = this.normalizeCertificateFieldValue(values[definition.key]);
 
-      if (value) {
+      if (value && value !== definition.defaultValue) {
         certificateFields[definition.key] = value;
       }
     }
@@ -1206,6 +1223,18 @@ export class CertificatesService {
 
     if (issuedTo === 'LECTURER_MINICURSO') {
       return 'Ministrante';
+    }
+
+    const sportsLabels: Partial<Record<CertificateIssuedTo, string>> = {
+      SPORTS_PLAYER: 'Atleta',
+      SPORTS_CAPTAIN: 'Capitão',
+      SPORTS_COACH: 'Técnico',
+      SPORTS_REFEREE: 'Árbitro',
+      SPORTS_INTERMEDIATOR: 'Intermediador',
+      SPORTS_SCOREKEEPER: 'Mesário',
+    };
+    if (issuedTo in sportsLabels) {
+      return sportsLabels[issuedTo as CertificateIssuedTo] ?? null;
     }
 
     return customLabel?.trim() || null;

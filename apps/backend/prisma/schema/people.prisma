@@ -11,16 +11,24 @@ model People {
   user   User?   @relation(fields: [userId], references: [id])
   userId String?
 
-  attendances                   EventAttendance[]
-  lectures                      EventLecturer[]
-  attendanceCollectorFor        EventAttendanceCollector[]
-  offlineAttendanceSubmissions  OfflineEventAttendanceSubmission[]
-  eventSubscriptions      EventSubscription[]
-  eventGroupSubscriptions EventGroupSubscription[]
-  majorEventSubscriptions MajorEventSubscription[]
-  eventFormResponses       EventFormResponse[]
-  lecturerProfile         LecturerProfile?
-  eventManagerPermissionGrants EventManagerPermissionGrant[]
+  attendances                  EventAttendance[]
+  lectures                     EventLecturer[]
+  attendanceCollectorFor       EventAttendanceCollector[]
+  offlineAttendanceSubmissions OfflineEventAttendanceSubmission[]
+  eventSubscriptions           EventSubscription[]
+  eventGroupSubscriptions      EventGroupSubscription[]
+  majorEventSubscriptions      MajorEventSubscription[]
+  eventFormResponses           EventFormResponse[]
+  lecturerProfile              LecturerProfile?
+  eventManagerRoleAssignments  EventManagerRoleAssignment[]
+  eventManagerGroupMemberships EventManagerPermissionGroupMember[]
+  sportsTournamentParticipants SportsTournamentParticipant[]
+  sportsTeamRepresentatives    SportsTeamRepresentative[]
+  sportsSubmittedTeamChanges   SportsTeamChangeRequest[]
+  sportsResolvedIdentityClaims SportsIdentityClaim[]
+  sportsOfficialAssignments    SportsOfficialAssignment[]
+  sportsMatchActions           SportsMatchAction[]
+  sportsPlayerApplications     SportsPlayerApplication[]
 
   // Merge tracking
   mergedIntoId String?
@@ -36,8 +44,8 @@ model People {
 
   externalRef String? @unique // external system reference (optional)
 
-  deletedAt               DateTime?
-  lgpdDeletionRequestId  String?
+  deletedAt             DateTime?
+  lgpdDeletionRequestId String?
 
   createdAt   DateTime @default(now())
   createdById String?

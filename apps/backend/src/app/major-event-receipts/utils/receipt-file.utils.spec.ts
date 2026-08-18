@@ -10,13 +10,13 @@ import {
 const PNG_BYTES = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
 
 describe('receipt-file utils', () => {
-  it('rejects missing, non-image, and oversized uploads', () => {
+  it('rejects missing, unsupported, and oversized uploads', () => {
     expect(() => assertValidReceiptUpload(undefined)).toThrow(BadRequestException);
     expect(() =>
       assertValidReceiptUpload({
         buffer: Buffer.from('file'),
-        mimetype: 'application/pdf',
-        originalname: 'receipt.pdf',
+        mimetype: 'application/msword',
+        originalname: 'receipt.doc',
         size: 1,
       }),
     ).toThrow(BadRequestException);
@@ -50,9 +50,23 @@ describe('receipt-file utils', () => {
     expect(file.mimetype).toBe('image/png');
   });
 
+  it('accepts PDFs by their declared type without requiring a signature', () => {
+    const file = {
+      buffer: Buffer.from('not-a-signature'),
+      mimetype: 'application/pdf',
+      originalname: 'receipt.pdf',
+      size: 15,
+    };
+
+    expect(() => assertValidReceiptUpload(file)).not.toThrow();
+    expect(file.mimetype).toBe('application/pdf');
+  });
+
   it('accepts allowed raster MIME types at upload filter time', () => {
     expect(isAllowedReceiptMimeType('image/png')).toBe(true);
     expect(isAllowedReceiptMimeType('image/jpeg')).toBe(true);
+    expect(isAllowedReceiptMimeType('application/pdf')).toBe(true);
+    expect(isAllowedReceiptMimeType('application/octet-stream', 'receipt.pdf')).toBe(true);
     expect(isAllowedReceiptMimeType('image/svg+xml')).toBe(false);
     expect(isAllowedReceiptMimeType('application/xml')).toBe(false);
   });
@@ -82,7 +96,7 @@ describe('receipt-file utils', () => {
 
   it('normalizes known mime types and file extensions', () => {
     expect(extensionForMimeType('IMAGE/JPEG')).toBe('jpg');
-    expect(extensionForMimeType('application/pdf')).toBeUndefined();
+    expect(extensionForMimeType('application/pdf')).toBe('pdf');
     expect(extensionForMimeType('image/svg+xml')).toBeUndefined();
     expect(normalizeExtension('. PNG ')).toBe('png');
     expect(normalizeExtension('')).toBeUndefined();

@@ -7,7 +7,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { NotFoundException } from '@nestjs/common';
-import { Args, Context, Int, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Int, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql';
 import { addHours, subHours } from 'date-fns';
 import {
   AuditLogEntityType,
@@ -32,6 +32,10 @@ import { AttendanceCategoryService } from './attendance-category.service';
 import { resolvePublicationActorId } from '../publishing/publishing-auth';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { EventSitemapService } from '../public-events/event-sitemap.service';
+import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
+import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
+import { EventPostCommitEffectsService } from './event-post-commit-effects.service';
+import { syncEventGroupMajorEvent } from './event-group-major-event';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -103,6 +107,7 @@ const EVENT_BASE_SELECT = {
   eventGroup: {
     select: EVENT_GROUP_SELECT,
   },
+  sportsMatch: { select: { id: true } },
   allowSubscription: true,
   requiresImageLicenseAgreement: true,
   subscriptionStartDate: true,
@@ -119,7 +124,7 @@ const EVENT_BASE_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -166,7 +171,7 @@ const EVENT_AUDIT_SELECT = {
   onlineAttendanceCode: true,
   onlineAttendanceStartDate: true,
   onlineAttendanceEndDate: true,
-  publiclyVisible: true,
+  isPubliclyListed: true,
   displayLecturerProfile: true,
   publicationState: true,
   scheduledPublishAt: true,
@@ -241,7 +246,26 @@ export class EventsResolver {
     private readonly sitemap: EventSitemapService = {
       refresh: async () => [],
     } as unknown as EventSitemapService,
+    private readonly postCommitEffects: EventPostCommitEffectsService = new EventPostCommitEffectsService(
+      prisma,
+      typesenseSearch,
+      sitemap,
+      onlineAttendanceNotifications,
+    ),
+    private readonly sportsBackingLifecycle: SportsBackingResourceLifecycleService = {
+      assertEventCreateAllowed: async () => undefined,
+      assertEventUpdateAllowed: async () => undefined,
+      assertEventDeleteAllowed: async () => undefined,
+    } as unknown as SportsBackingResourceLifecycleService,
+    private readonly sportsMutationEvents: SportsMutationEventsService = {
+      publishForBackingEvent: async () => undefined,
+    } as unknown as SportsMutationEventsService,
   ) {}
+
+  @ResolveField(() => Boolean)
+  isSportsMatch(@Parent() event: { sportsMatch?: { id: string } | null }): boolean {
+    return Boolean(event.sportsMatch);
+  }
 
   @Query(() => [Event], { name: 'events' })
   @AllowScopedCollectionPermissions()
@@ -387,6 +411,7 @@ export class EventsResolver {
     const uniqueLecturerPersonIds = [...new Set(lecturerPersonIds ?? [])];
     const uniqueAttendanceCollectorPersonIds = [...new Set(attendanceCollectorPersonIds ?? [])];
     const event = await this.prisma.$transaction(async (tx) => {
+      await this.sportsBackingLifecycle.assertEventCreateAllowed(tx, eventInput.eventGroupId);
       const createdEvent = await tx.event.create({
         data: {
           ...eventInput,
@@ -419,7 +444,7 @@ export class EventsResolver {
         },
         select: EVENT_DETAIL_SELECT,
       });
-      await this.disableGroupPerEventModeForMajorEvent(createdEvent, tx);
+      await syncEventGroupMajorEvent(tx, [createdEvent.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -440,24 +465,7 @@ export class EventsResolver {
       );
       return createdEvent;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertEvent({
-      id: event.id,
-      name: event.name,
-      emoji: event.emoji,
-      type: event.type,
-      description: event.description,
-      shortDescription: event.shortDescription,
-      locationDescription: event.locationDescription,
-      majorEventId: event.majorEventId,
-      eventGroupId: event.eventGroupId,
-      shouldIssueCertificate: event.shouldIssueCertificate,
-      publiclyVisible: event.publiclyVisible,
-      publicationState: event.publicationState,
-      startDate: event.startDate,
-      endDate: event.endDate,
-    });
-    await this.onlineAttendanceNotifications.scheduleEvent(event);
+    await this.postCommitEffects.upsertEvent(event);
     return event;
   }
 
@@ -479,6 +487,10 @@ export class EventsResolver {
         select: EVENT_AUDIT_SELECT,
       });
       if (!previousEvent) throw new NotFoundException(`Event ${id} was not found.`);
+      await this.sportsBackingLifecycle.assertEventUpdateAllowed(tx, id, {
+        ...normalizedInput,
+        publishAfterUpdate,
+      });
       const updatedCount = await tx.event.updateMany({
         where: { id, deletedAt: null },
         data: {
@@ -494,7 +506,7 @@ export class EventsResolver {
         where: { id, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
-      await this.disableGroupPerEventModeForMajorEvent(updated, tx);
+      await syncEventGroupMajorEvent(tx, [previousEvent.eventGroupId, updated.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -517,27 +529,11 @@ export class EventsResolver {
       return updated;
     });
     if (event) {
-      await this.sitemap.refresh();
-      await this.typesenseSearch.upsertEvent({
-        id: event.id,
-        name: event.name,
-        emoji: event.emoji,
-        type: event.type,
-        description: event.description,
-        shortDescription: event.shortDescription,
-        locationDescription: event.locationDescription,
-        majorEventId: event.majorEventId,
-        eventGroupId: event.eventGroupId,
-        shouldIssueCertificate: event.shouldIssueCertificate,
-        publiclyVisible: event.publiclyVisible,
-        publicationState: event.publicationState,
-        startDate: event.startDate,
-        endDate: event.endDate,
-      });
+      await this.postCommitEffects.upsertEvent(event);
+      await this.sportsMutationEvents.publishForBackingEvent(event.id);
       if (this.didChangeOnlineAttendanceWindow(input)) {
         await this.attendanceRealtime.notifyAllConnectedPeople();
       }
-      await this.onlineAttendanceNotifications.scheduleEvent(event);
     }
     return event;
   }
@@ -641,7 +637,7 @@ export class EventsResolver {
         : {}),
       ...(parts?.visibility
         ? {
-            publiclyVisible: source.publiclyVisible,
+            isPubliclyListed: source.isPubliclyListed,
             displayLecturerProfile: source.displayLecturerProfile,
           }
         : {}),
@@ -683,6 +679,7 @@ export class EventsResolver {
     const actorId = context.req?.user?.sub ?? context.request?.user?.sub;
     const uniqueLecturerPersonIds = [...new Set(lecturerPersonIds ?? [])];
     const event = await this.prisma.$transaction(async (tx) => {
+      await this.sportsBackingLifecycle.assertEventCreateAllowed(tx, source.eventGroupId);
       const createdEvent = await tx.event.create({
         data: {
           ...eventInput,
@@ -715,7 +712,7 @@ export class EventsResolver {
         actorId,
       );
 
-      await this.disableGroupPerEventModeForMajorEvent(createdEvent, tx);
+      await syncEventGroupMajorEvent(tx, [createdEvent.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -745,23 +742,7 @@ export class EventsResolver {
       );
       return createdEvent;
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.upsertEvent({
-      id: event.id,
-      name: event.name,
-      emoji: event.emoji,
-      type: event.type,
-      description: event.description,
-      shortDescription: event.shortDescription,
-      locationDescription: event.locationDescription,
-      majorEventId: event.majorEventId,
-      eventGroupId: event.eventGroupId,
-      shouldIssueCertificate: event.shouldIssueCertificate,
-      publiclyVisible: event.publiclyVisible,
-      publicationState: event.publicationState,
-      startDate: event.startDate,
-      endDate: event.endDate,
-    });
+    await this.postCommitEffects.upsertEvent(event);
     return event;
   }
 
@@ -773,10 +754,12 @@ export class EventsResolver {
     await this.prisma.$transaction(async (tx) => {
       const event = await tx.event.findFirst({ where: { id, deletedAt: null }, select: EVENT_DETAIL_SELECT });
       if (!event) throw new NotFoundException(`Event ${id} was not found.`);
+      await this.sportsBackingLifecycle.assertEventDeleteAllowed(tx, id);
       const deleted = await tx.event.updateMany({ where: { id, deletedAt: null }, data: { deletedAt } });
       if (deleted.count !== 1) {
         throw new NotFoundException(`Event ${id} was not found.`);
       }
+      await syncEventGroupMajorEvent(tx, [event.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -798,8 +781,7 @@ export class EventsResolver {
         tx,
       );
     });
-    await this.sitemap.refresh();
-    await this.typesenseSearch.deleteEvent(id);
+    await this.postCommitEffects.deleteEvent(id);
     return {
       deleted: true,
       id,
@@ -995,29 +977,6 @@ export class EventsResolver {
     }
 
     return new Date();
-  }
-
-  private async disableGroupPerEventModeForMajorEvent(
-    event: {
-      eventGroupId?: string | null;
-      majorEventId?: string | null;
-    },
-    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
-  ): Promise<void> {
-    if (!event.eventGroupId || !event.majorEventId) {
-      return;
-    }
-
-    await prisma.eventGroup.updateMany({
-      where: {
-        id: event.eventGroupId,
-        deletedAt: null,
-        shouldIssueCertificateForEachEvent: true,
-      },
-      data: {
-        shouldIssueCertificateForEachEvent: false,
-      },
-    });
   }
 
   private didChangeOnlineAttendanceWindow(input: EventUpdateInput): boolean {

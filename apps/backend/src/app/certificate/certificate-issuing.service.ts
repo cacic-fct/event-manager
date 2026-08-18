@@ -25,6 +25,7 @@ import { notifyCertificateAvailable } from './certificate-issuance-notifications
 import { CertificateNotificationJobsService } from './certificate-notification-jobs.service';
 import { CertificateIssuanceRefresh } from './certificate-issuance-refresh';
 import { CertificateIssuanceRecipients } from './certificate-issuance-recipients';
+import { isManualCertificateIssuedTo } from './certificate-sports-roles';
 import { buildCertificateRenderedData, hasSameJson } from './certificate-rendered-data';
 import { CertificateValidationService } from './certificate-validation.service';
 
@@ -105,7 +106,7 @@ export class CertificateIssuingService {
   async issueManualForPeople(configId: string, personIds: string[], issuedById?: string): Promise<Certificate[]> {
     const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     const config = await this.eligibilityService.getConfigById(normalizedConfigId);
-    if (config.issuedTo !== CertificateIssuedTo.OTHER) {
+    if (!isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
       throw new BadRequestException('CSV imports are available only for manual certificate configurations.');
     }
 
@@ -238,7 +239,10 @@ export class CertificateIssuingService {
     if (!sourceConfig || !targetConfig) {
       throw new NotFoundException('Certificate config was not found while copying manual recipients.');
     }
-    if (sourceConfig.issuedTo !== CertificateIssuedTo.OTHER || targetConfig.issuedTo !== CertificateIssuedTo.OTHER) {
+    if (
+      !isManualCertificateIssuedTo(sourceConfig.issuedTo as CertificateIssuedTo) ||
+      !isManualCertificateIssuedTo(targetConfig.issuedTo as CertificateIssuedTo)
+    ) {
       throw new BadRequestException('Manual recipients can only be copied between manual certificate configurations.');
     }
 

@@ -2,30 +2,25 @@
 title: Visão geral
 ---
 
-A interface pública é a área usada por participantes, ministrantes e coletores de presença.
+A interface pública é a área usada por participantes, ministrantes, coletores de presença, representantes de equipe e oficiais de partidas.
 
-Ela deve concentrar os fluxos que não exigem acesso administrativo: consulta de programação, inscrição, pagamento, confirmação de presença, crachá, certificados e informações do próprio perfil.
+Ela reúne consulta pública e ações pessoais sem exigir acesso amplo ao painel administrativo.
 
-## Login
+## Áreas principais
 
-Alguns recursos podem ser consultados sem login, como a programação e a validação de certificados.
+O calendário e o mapa ajudam a encontrar atividades.
 
-Recursos associados à pessoa exigem autenticação, como inscrição, pagamento, crachá, participações, notificações e confirmação de presença.
+Grandes eventos concentram inscrição, seleção de atividades e pagamento.
 
-## Uso durante eventos
+[**Meu dia**](Abas/Meu%20dia.md) organiza compromissos, avisos e ações da pessoa conforme a data e seus papéis.
 
-Durante o evento, prefira a interface pública para:
+A [carteira](Carteira.mdx) apresenta os tíquetes disponíveis naquele dispositivo.
 
-- Exibir o crachá;
-- Coletar presença;
-- Confirmar presença on-line;
-- Consultar atividades inscritas;
-- Baixar informações disponibilizadas ao ministrante.
+[Participações](Perfil/Participações.md) reúne a situação de inscrições, presenças, [formulários](Formulários.md) e certificados.
 
-O painel administrativo deve ficar reservado para conferência, correções e operações com maior impacto.
+A [área de esportes](Esportes/00-Visão%20geral.md) mostra torneios e partidas e encaminha atletas, representantes e oficiais para suas tarefas.
 
-## Dados off-line
+A [caixa de notificações](../Notificações/index.md) reúne avisos transacionais e as preferências deles.
 
-Algumas informações podem ficar disponíveis off-line depois de carregadas, como crachá, calendário e participações.
+A lista de abas pode mudar conforme autenticação, contexto e recursos habilitados. Não trate a posição de uma aba como parte fixa do fluxo.
 
-Mesmo quando a página abre sem internet, ações que alteram dados, como inscrição, pagamento ou confirmação de presença, podem exigir conexão.

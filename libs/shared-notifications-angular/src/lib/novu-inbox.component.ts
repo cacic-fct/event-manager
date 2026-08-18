@@ -230,28 +230,72 @@ export class NovuInboxComponent {
   }
 
   protected async runPrimaryAction(notification: Notification): Promise<void> {
-    await this.notifications.completePrimary(notification);
-    this.openRedirect(notification, notification.primaryAction?.redirect?.url);
-    await this.reload();
+    this.openRedirect(
+      notification,
+      notification.primaryAction?.redirect?.url,
+      notification.primaryAction?.redirect?.target,
+    );
+    try {
+      await this.notifications.completePrimary(notification);
+    } catch {
+      this.error.set('A notificação foi aberta, mas não foi possível registrar a ação.');
+    }
   }
 
   protected async runSecondaryAction(notification: Notification): Promise<void> {
-    await this.notifications.completeSecondary(notification);
-    this.openRedirect(notification, notification.secondaryAction?.redirect?.url);
-    await this.reload();
+    this.openRedirect(
+      notification,
+      notification.secondaryAction?.redirect?.url,
+      notification.secondaryAction?.redirect?.target,
+    );
+    try {
+      await this.notifications.completeSecondary(notification);
+    } catch {
+      this.error.set('A notificação foi aberta, mas não foi possível registrar a ação.');
+    }
   }
 
-  protected openRedirect(notification: Notification, fallbackUrl = notification.redirect?.url): void {
+  protected activateNotification(event: Event, notification: Notification): void {
+    const target = event.target;
+    if (target instanceof Element && target.closest('button, a, input, select, textarea, [role="button"]')) {
+      return;
+    }
+
+    this.openRedirect(notification);
+  }
+
+  protected notificationRedirect(notification: Notification): string | undefined {
+    return (
+      notification.primaryAction?.redirect?.url ??
+      notification.redirect?.url ??
+      notification.secondaryAction?.redirect?.url
+    );
+  }
+
+  protected openRedirect(
+    notification: Notification,
+    fallbackUrl = this.notificationRedirect(notification),
+    fallbackTarget = notification.redirect?.target,
+  ): void {
     if (!fallbackUrl) {
       return;
     }
 
-    if (fallbackUrl.startsWith('/')) {
+    if (fallbackUrl.startsWith('/') && !fallbackUrl.startsWith('//')) {
       void this.router.navigateByUrl(fallbackUrl);
       return;
     }
 
-    window.open(fallbackUrl, notification.redirect?.target ?? '_self');
+    try {
+      const url = new URL(fallbackUrl);
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        window.open(url.toString(), fallbackTarget ?? '_self', 'noopener,noreferrer');
+        return;
+      }
+      this.error.set('O link desta notificação é inválido.');
+    } catch {
+      this.error.set('O link desta notificação é inválido.');
+    }
   }
 
   private async fetchCurrentTab(): Promise<{ notifications: Notification[]; hasMore: boolean }> {
