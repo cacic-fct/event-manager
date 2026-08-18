@@ -4,9 +4,7 @@
   <button matIconButton type="button" (click)="goBack()" aria-label="Voltar">
     <mat-icon>arrow_back</mat-icon>
   </button>
-  <h1 class="global-toolbar-title">
-    {{ currentState.status === 'ready' ? currentState.data.event.name : isPreview() ? 'Pré-visualização' : 'Evento' }}
-  </h1>
+  <span>{{ isPreview() ? 'Pré-Visualização' : 'Evento' }}</span>
   <span class="toolbar-spacer"></span>
   @if (calendarDownloadUrl(); as calendarUrl) {
   <a
@@ -49,11 +47,12 @@
       class="emoji-frame"
       type="button"
       aria-label="Copiar identificador do evento"
-      matTooltip="Copiar identificador do evento"
       (click)="copyId(event.id)">
       <img class="twemoji" [src]="emoji.getTwemojiUrl(event.emoji)" [alt]="event.emoji" />
     </button>
     <div class="header-copy">
+      <p class="eyebrow">{{ eventTypeLabel(event) }}</p>
+      <h1>{{ event.name }}</h1>
       @if (event.shortDescription) {
       <p class="subtitle">{{ event.shortDescription }}</p>
       }

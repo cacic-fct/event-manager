@@ -217,12 +217,14 @@ describe('Event', () => {
     expect(component).toBeTruthy();
   });
 
-  it('uses the event name as the concise toolbar title', () => {
+  it('uses a concise toolbar label and renders the event name in the page body', () => {
     fixture.detectChanges();
     const host = fixture.nativeElement as HTMLElement;
 
-    expect(host.querySelector('mat-toolbar h1')?.textContent?.trim()).toBe('Evento teste');
-    expect(host.querySelector('.event-header h1')).toBeNull();
+    expect(host.querySelector('mat-toolbar > span:not(.toolbar-spacer)')?.textContent?.trim()).toBe('Evento');
+    expect(host.querySelector('mat-toolbar h1')).toBeNull();
+    expect(host.querySelector('.event-header h1')?.textContent?.trim()).toBe('Evento teste');
+    expect(host.querySelector('.emoji-frame')?.hasAttribute('mattooltip')).toBe(false);
   });
 
   it('renders formatted descriptions without creating unsafe HTML', async () => {
