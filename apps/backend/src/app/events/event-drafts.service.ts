@@ -18,6 +18,7 @@ import { TypesenseSearchService } from '../search/typesense-search.service';
 import { omitPublicationAuditFields } from '../publishing/publishing-audit';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { EventPostCommitEffectsService } from './event-post-commit-effects.service';
+import { syncEventGroupMajorEvent } from './event-group-major-event';
 
 type AuditPrismaClient = PrismaService | Prisma.TransactionClient;
 
@@ -376,7 +377,7 @@ export class EventDraftsService {
         where: { id: draft.sourceEventId, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
-      await this.disableGroupPerEventModeForMajorEvent(updated, tx);
+      await syncEventGroupMajorEvent(tx, [previousEvent.eventGroupId, updated.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -855,26 +856,6 @@ export class EventDraftsService {
       ...draft,
       payloadJson: JSON.stringify(draft.payload),
     };
-  }
-
-  private async disableGroupPerEventModeForMajorEvent(
-    event: { eventGroupId?: string | null; majorEventId?: string | null },
-    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
-  ): Promise<void> {
-    if (!event.eventGroupId || !event.majorEventId) {
-      return;
-    }
-
-    await prisma.eventGroup.updateMany({
-      where: {
-        id: event.eventGroupId,
-        deletedAt: null,
-        shouldIssueCertificateForEachEvent: true,
-      },
-      data: {
-        shouldIssueCertificateForEachEvent: false,
-      },
-    });
   }
 
   private isEmptyAccessibleEventTargets(targets: {

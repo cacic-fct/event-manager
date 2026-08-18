@@ -10,10 +10,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatListModule } from '@angular/material/list';
-import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TwemojiComponent } from '@cacic-fct/shared-angular';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PeopleService } from './people.service';
 import { PermissionsService } from '../permissions/permissions.service';
@@ -29,10 +27,8 @@ import { PermissionsService } from '../permissions/permissions.service';
     MatIconModule,
     MatInputModule,
     MatListModule,
-    MatSelectModule,
     MatTabsModule,
     MatTooltipModule,
-    TwemojiComponent,
   ],
   templateUrl: './people-page.component.html',
   styleUrls: [

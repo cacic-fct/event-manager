@@ -3,6 +3,8 @@ import {
   EVENT_MANAGER_PERMISSION_CATALOG,
   EVENT_MANAGER_GLOBAL_ONLY_GRANT_PERMISSIONS,
   EVENT_MANAGER_PERMISSION_PRESETS,
+  EVENT_MANAGER_ROLE_TEMPLATES,
+  EVENT_MANAGER_SYSTEM_ROLES,
   EVENT_MANAGER_PERMISSION_SCOPE_COMPATIBILITY,
   EVENT_MANAGER_PERMISSION_SET,
   EventManagerPermissionGrantScope,
@@ -22,6 +24,9 @@ import {
   isPermissionGrantScopeCompatible,
   parsePermission,
   requiresGlobalPermissionGrantScope,
+  expandHardPermissionDependencies,
+  getMissingContextPermissionDependencies,
+  removePermissionAndDependents,
 } from './shared-permissions';
 
 const permissionScopeExpectations = [
@@ -61,6 +66,7 @@ const permissionResourceExpectations = [
   ['major-event', 'Grande evento', 'festival'],
   ['merge-candidate', 'Pessoa duplicada', 'merge_type'],
   ['person', 'Pessoa', 'person'],
+  ['related-person', 'Pessoa relacionada ao escopo', 'group'],
   ['permission-grant', 'Permissão do Event Manager', 'admin_panel_settings'],
   ['place-preset', 'Local', 'place'],
   ['receipt', 'Comprovante', 'receipt_long'],
@@ -348,7 +354,7 @@ describe('shared permissions contract', () => {
 
     expect(permissionsTab).toEqual(
       expect.objectContaining({
-        read: [Permission.PermissionGrant.Read, Permission.Person.Read],
+        read: [],
         edit: expect.arrayContaining([Permission.PermissionGrant.Create, Permission.PermissionGrant.Delete]),
       }),
     );
@@ -398,6 +404,46 @@ describe('shared permissions contract', () => {
         Permission.SportsMatch.Operate,
         Permission.SportsScore.Review,
       ]),
+    );
+  });
+
+  it('applies deterministic permission implications in both directions', () => {
+    expect(expandHardPermissionDependencies([Permission.EventForm.Export])).toEqual(
+      new Set([Permission.EventForm.Export, Permission.EventForm.Results, Permission.EventForm.Read]),
+    );
+    expect(
+      removePermissionAndDependents(
+        [Permission.EventForm.Read, Permission.EventForm.Results, Permission.EventForm.Export],
+        Permission.EventForm.Read,
+      ),
+    ).toEqual(new Set());
+    expect(expandHardPermissionDependencies([Permission.RelatedPerson.Update])).toEqual(
+      new Set([Permission.RelatedPerson.Update, Permission.RelatedPerson.Read]),
+    );
+  });
+
+  it('keeps cross-resource dependencies explicit and role templates type-safe', () => {
+    expect(getMissingContextPermissionDependencies([Permission.EventLecturer.Create, Permission.EventLecturer.Read]))
+      .toEqual([
+        expect.objectContaining({
+          permission: Permission.EventLecturer.Create,
+          requires: [Permission.RelatedPerson.Read],
+        }),
+      ]);
+    const templateIds = new Set(EVENT_MANAGER_ROLE_TEMPLATES.map((template) => template.id));
+    expect(templateIds.size).toBe(EVENT_MANAGER_ROLE_TEMPLATES.length);
+    expect(
+      EVENT_MANAGER_ROLE_TEMPLATES.every((template) =>
+        template.permissions.every((permission) => EVENT_MANAGER_PERMISSION_SET.has(permission)),
+      ),
+    ).toBe(true);
+    expect(
+      EVENT_MANAGER_ROLE_TEMPLATES.every(
+        (template) => getMissingContextPermissionDependencies(expandHardPermissionDependencies(template.permissions)).length === 0,
+      ),
+    ).toBe(true);
+    expect(EVENT_MANAGER_SYSTEM_ROLES[0]).toEqual(
+      expect.objectContaining({ key: 'super-admin', assignable: false, external: true }),
     );
   });
 });

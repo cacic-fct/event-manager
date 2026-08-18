@@ -234,16 +234,12 @@ describe('people linked resources', () => {
         subscription: { majorEventId: 'major-1' },
       },
     ]);
-    prisma.eventManagerPermissionGrant.count.mockResolvedValueOnce(1);
-    prisma.eventManagerPermissionGrant.findMany.mockResolvedValueOnce([
+    prisma.eventManagerRoleAssignment.findMany.mockResolvedValueOnce([
       {
-        id: 'grant-1',
-        permission: 'EVENT_MANAGER',
-        scope: 'EVENT',
+        id: 'assignment-1',
         createdAt: occurredAt,
-        event: { id: 'event-1', name: 'Credenciamento' },
-        eventGroup: null,
-        majorEvent: null,
+        role: { name: 'Operação do credenciamento' },
+        scopes: [{ event: { name: 'Credenciamento' }, eventGroup: null, majorEvent: null }],
       },
     ]);
 
@@ -293,11 +289,11 @@ describe('people linked resources', () => {
         total: 1,
         items: [
           expect.objectContaining({
-            id: 'grant-1',
-            label: 'EVENT_MANAGER',
+            id: 'assignment-1',
+            label: 'Operação do credenciamento',
             description: 'Credenciamento',
-            route: '/people/person-1',
-            status: 'EVENT',
+            route: '/permissions/manage/people/person-1',
+            status: 'Cargo direto',
           }),
         ],
       }),
@@ -536,7 +532,8 @@ describe('people linked resources', () => {
     prisma.eventLecturer.count.mockResolvedValueOnce(6);
     prisma.eventAttendanceCollector.count.mockResolvedValueOnce(7);
     prisma.offlineEventAttendanceSubmission.count.mockResolvedValueOnce(8);
-    prisma.eventManagerPermissionGrant.count.mockResolvedValueOnce(9);
+    prisma.eventManagerRoleAssignment.count.mockResolvedValueOnce(6);
+    prisma.eventManagerPermissionGroupMember.count.mockResolvedValueOnce(3);
     prisma.lecturerProfile.findUnique.mockResolvedValueOnce({ id: 'lecturer-profile-1' });
     prisma.people.count.mockResolvedValueOnce(10);
     prisma.mergeCandidate.count.mockResolvedValueOnce(11);
@@ -627,7 +624,8 @@ function createPrisma() {
     eventLecturer: linkedModel(),
     eventAttendanceCollector: linkedModel(),
     offlineEventAttendanceSubmission: linkedModel(),
-    eventManagerPermissionGrant: linkedModel(),
+    eventManagerRoleAssignment: linkedModel(),
+    eventManagerPermissionGroupMember: linkedModel(),
     lecturerProfile: {
       findUnique: jest.fn().mockResolvedValue(null),
     },

@@ -10,7 +10,9 @@ describe('getAuditLogRevertConfig', () => {
     [AuditLogEntityType.MAJOR_EVENT, Permission.MajorEvent.Read, true],
     [AuditLogEntityType.EVENT_GROUP, Permission.EventGroup.Read, true],
     [AuditLogEntityType.PLACE_PRESET, Permission.PlacePreset.Read, true],
-    [AuditLogEntityType.PERMISSION_GRANT, Permission.PermissionGrant.Read, true],
+    [AuditLogEntityType.PERMISSION_GRANT, Permission.PermissionGrant.Read, false],
+    [AuditLogEntityType.PERMISSION_ROLE, Permission.PermissionGrant.Read, false],
+    [AuditLogEntityType.PERMISSION_GROUP, Permission.PermissionGrant.Read, false],
     [AuditLogEntityType.EVENT_SUBSCRIPTION, Permission.Subscription.Read, true],
     [AuditLogEntityType.EVENT_GROUP_SUBSCRIPTION, Permission.Subscription.Read, true],
     [AuditLogEntityType.MAJOR_EVENT_SUBSCRIPTION, Permission.Subscription.Read, true],
@@ -45,15 +47,10 @@ describe('getAuditLogRevertConfig', () => {
     });
 
     expect(getAuditLogRevertConfig(AuditLogEntityType.PERMISSION_GRANT)).toMatchObject({
-      updatePermission: Permission.PermissionGrant.Update,
-      deletePermission: Permission.PermissionGrant.Delete,
-      mutableFields: expect.arrayContaining(['permission', 'scope', 'validUntil', 'deletedAt']),
-      select: expect.objectContaining({
-        permission: true,
-        scope: true,
-        validUntil: true,
-        deletedAt: true,
-      }),
+      readPermission: Permission.PermissionGrant.Read,
+      supportsSoftDelete: false,
+      mutableFields: [],
+      select: {},
     });
   });
 

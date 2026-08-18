@@ -229,7 +229,12 @@ function createTransactionMock() {
     peopleMergeOperation: deleteManyDelegate(),
     mergeCandidate: deleteManyDelegate(),
     accountUserMerge: deleteManyDelegate(),
-    eventManagerPermissionGrant: deleteManyDelegate(2),
+    eventManagerRoleAssignment: {
+      findMany: jest.fn().mockResolvedValue([{ id: 'assignment-1' }, { id: 'assignment-2' }]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 2 }),
+    },
+    eventManagerRoleAssignmentScope: deleteManyDelegate(),
+    eventManagerPermissionGroupMember: deleteManyDelegate(),
     people: writeManyDelegate(2),
     user: deleteManyDelegate(2),
   };

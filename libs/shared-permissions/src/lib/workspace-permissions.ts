@@ -242,7 +242,7 @@ export const WORKSPACE_TAB_PERMISSIONS = [
   {
     id: WorkspacePermissionTab.Permissions,
     label: 'Permissões',
-    read: [Permission.PermissionGrant.Read, Permission.Person.Read],
+    read: [],
     edit: [
       Permission.PermissionGrant.Create,
       Permission.PermissionGrant.Update,

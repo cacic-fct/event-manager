@@ -17,11 +17,7 @@
     type="button"
     [disabled]="disabled() || loading() || queryControl.value.trim().length < minimumQueryLength()"
     (click)="searchNow()">
-    @if (loading()) {
-      <mat-spinner diameter="18" aria-label="Buscando pessoas" />
-    } @else {
-      <mat-icon>search</mat-icon>
-    }
+    <mat-icon>search</mat-icon>
     Buscar
   </button>
 </div>
@@ -41,10 +37,14 @@
         <span>
           <strong>{{ person.name }}</strong>
           <small>{{ person.email || 'Sem e-mail principal' }}</small>
-          <small>{{ identitySummary(person) }}</small>
+          @if (showIdentitySummary()) { <small>{{ identitySummary(person) }}</small> }
         </span>
         <mat-icon aria-hidden="true">{{ resultActionIcon() }}</mat-icon>
       </button>
     }
   </div>
+}
+
+@if (showNoResults()) {
+  <p class="person-search-hint">Nenhuma pessoa encontrada para esta busca.</p>
 }

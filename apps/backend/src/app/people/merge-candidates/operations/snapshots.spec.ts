@@ -114,6 +114,13 @@ describe('merge candidate snapshot helpers', () => {
       movedEventSubscriptionIds: ['subscription-1'],
       movedEventGroupSubscriptionIds: [],
       movedMajorEventSubscriptionIds: ['major-subscription-1'],
+      movedRoleAssignmentIds: [],
+      archivedRoleAssignmentIds: [],
+      movedPermissionGroupMembershipIds: [],
+      archivedPermissionGroupMembershipIds: [],
+      roleAssignmentSnapshots: [],
+      roleAssignmentScopeSnapshots: [],
+      permissionGroupMembershipSnapshots: [],
     });
   });
 

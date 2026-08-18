@@ -5,7 +5,6 @@ import {
   getCertificateRoute,
   getCertificateTargetLabel,
   getLinkedResourceGroupDefinition,
-  getPermissionGrantTargetLabel,
   PERSON_LINKED_RESOURCE_GROUPS,
   PersonLinkedResourcePrisma,
 } from './people-linked-resource-definitions';
@@ -335,30 +334,62 @@ async function buildRequestedLinkedResourcePage(
       };
     }
     case 'PERMISSION_GRANT': {
-      const [total, grants] = await Promise.all([
-        prisma.eventManagerPermissionGrant.count({ where: { personId, deletedAt: null } }),
-        prisma.eventManagerPermissionGrant.findMany({
-          where: { personId, deletedAt: null },
-          include: {
-            event: { select: { id: true, name: true } },
-            eventGroup: { select: { id: true, name: true } },
-            majorEvent: { select: { id: true, name: true } },
+      const [assignments, memberships] = await Promise.all([
+        prisma.eventManagerRoleAssignment.findMany({
+          where: { personId, archivedAt: null },
+          select: {
+            id: true,
+            createdAt: true,
+            role: { select: { name: true } },
+            scopes: {
+              where: { archivedAt: null },
+              select: {
+                event: { select: { name: true } },
+                eventGroup: { select: { name: true } },
+                majorEvent: { select: { name: true } },
+              },
+            },
           },
           orderBy: { createdAt: 'desc' },
-          skip,
-          take,
+        }),
+        prisma.eventManagerPermissionGroupMember.findMany({
+          where: { personId, archivedAt: null },
+          select: {
+            id: true,
+            createdAt: true,
+            group: {
+              select: {
+                name: true,
+                assignments: { where: { archivedAt: null }, select: { role: { select: { name: true } } } },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
         }),
       ]);
-      return {
-        total,
-        items: grants.map((grant) => ({
-          id: grant.id,
-          label: grant.permission,
-          description: getPermissionGrantTargetLabel(grant),
-          route: `/people/${person.id}`,
-          status: grant.scope,
-          occurredAt: grant.createdAt,
+      const items = [
+        ...assignments.map((assignment) => ({
+          id: assignment.id,
+          label: assignment.role.name,
+          description: assignment.scopes
+            .map((scope) => scope.event?.name ?? scope.eventGroup?.name ?? scope.majorEvent?.name ?? 'Toda a plataforma')
+            .join(', '),
+          route: `/permissions/manage/people/${personId}`,
+          status: 'Cargo direto',
+          occurredAt: assignment.createdAt,
         })),
+        ...memberships.map((membership) => ({
+          id: membership.id,
+          label: membership.group.name,
+          description: membership.group.assignments.map((assignment) => assignment.role.name).join(', ') || 'Sem cargos ativos',
+          route: `/permissions/manage/people/${personId}`,
+          status: 'Grupo',
+          occurredAt: membership.createdAt,
+        })),
+      ].sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime());
+      return {
+        total: items.length,
+        items: items.slice(skip, skip + take),
       };
     }
     case 'MERGE':

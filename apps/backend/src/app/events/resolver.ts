@@ -35,6 +35,7 @@ import { EventSitemapService } from '../public-events/event-sitemap.service';
 import { SportsBackingResourceLifecycleService } from '../sports/sports-backing-resource-lifecycle.service';
 import { SportsMutationEventsService } from '../sports/realtime/sports-mutation-events.service';
 import { EventPostCommitEffectsService } from './event-post-commit-effects.service';
+import { syncEventGroupMajorEvent } from './event-group-major-event';
 
 type GraphqlContext = {
   req?: { user?: AuthenticatedUser };
@@ -443,7 +444,7 @@ export class EventsResolver {
         },
         select: EVENT_DETAIL_SELECT,
       });
-      await this.disableGroupPerEventModeForMajorEvent(createdEvent, tx);
+      await syncEventGroupMajorEvent(tx, [createdEvent.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -505,7 +506,7 @@ export class EventsResolver {
         where: { id, deletedAt: null },
         select: EVENT_AUDIT_SELECT,
       });
-      await this.disableGroupPerEventModeForMajorEvent(updated, tx);
+      await syncEventGroupMajorEvent(tx, [previousEvent.eventGroupId, updated.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -711,7 +712,7 @@ export class EventsResolver {
         actorId,
       );
 
-      await this.disableGroupPerEventModeForMajorEvent(createdEvent, tx);
+      await syncEventGroupMajorEvent(tx, [createdEvent.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -758,6 +759,7 @@ export class EventsResolver {
       if (deleted.count !== 1) {
         throw new NotFoundException(`Event ${id} was not found.`);
       }
+      await syncEventGroupMajorEvent(tx, [event.eventGroupId]);
       await this.auditLog.record(
         {
           entityType: AuditLogEntityType.EVENT,
@@ -975,29 +977,6 @@ export class EventsResolver {
     }
 
     return new Date();
-  }
-
-  private async disableGroupPerEventModeForMajorEvent(
-    event: {
-      eventGroupId?: string | null;
-      majorEventId?: string | null;
-    },
-    prisma: PrismaService | Prisma.TransactionClient = this.prisma,
-  ): Promise<void> {
-    if (!event.eventGroupId || !event.majorEventId) {
-      return;
-    }
-
-    await prisma.eventGroup.updateMany({
-      where: {
-        id: event.eventGroupId,
-        deletedAt: null,
-        shouldIssueCertificateForEachEvent: true,
-      },
-      data: {
-        shouldIssueCertificateForEachEvent: false,
-      },
-    });
   }
 
   private didChangeOnlineAttendanceWindow(input: EventUpdateInput): boolean {

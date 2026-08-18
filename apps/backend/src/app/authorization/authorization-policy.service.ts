@@ -8,7 +8,7 @@ import {
   requiresGlobalPermissionGrantScope,
 } from '@cacic-fct/shared-permissions';
 import { ForbiddenException, Injectable } from '@nestjs/common';
-import { CertificateScope, EventManagerPermissionGrantScope } from '@prisma/client';
+import { CertificateScope, EventManagerPermissionScope } from '@prisma/client';
 import { addHours, isFuture, isWithinInterval, subHours } from 'date-fns';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { PrismaService } from '../prisma/prisma.service';
@@ -59,7 +59,7 @@ export type AccessibleEventGrantTargets = {
 
 type ActiveGrant = {
   permission: string;
-  scope: EventManagerPermissionGrantScope;
+  scope: EventManagerPermissionScope;
   eventId: string | null;
   majorEventId: string | null;
   eventGroupId: string | null;
@@ -72,6 +72,7 @@ const ATTENDANCE_COLLECTION_PERMISSIONS = [
 ] as const;
 
 import { SportsAuthorizationTargetService } from './sports-authorization-target.service';
+import { findActiveRolePermissionScopes } from './effective-role-scopes';
 
 @Injectable()
 export class AuthorizationPolicyService extends SportsAuthorizationTargetService {
@@ -132,7 +133,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
         .filter(
           (grant) =>
             !requiresGlobalPermissionGrantScope(grant.permission as Permission) ||
-            grant.scope === EventManagerPermissionGrantScope.GLOBAL,
+            grant.scope === EventManagerPermissionScope.GLOBAL,
         )
         .map((grant) => grant.permission),
     );
@@ -155,7 +156,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     const grants = await this.findActiveGrants(user.sub, requirements);
     const grantedPermissions = new Set(
       grants
-        .filter((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)
+        .filter((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)
         .map((grant) => grant.permission),
     );
     return requirements.filter((permission) => grantedPermissions.has(permission));
@@ -175,7 +176,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
       .filter(
         (grant) =>
           !requiresGlobalPermissionGrantScope(grant.permission as Permission) ||
-          grant.scope === EventManagerPermissionGrantScope.GLOBAL,
+          grant.scope === EventManagerPermissionScope.GLOBAL,
       )
       .map((grant) => grant.permission)
       .filter((permission): permission is Permission => EVENT_MANAGER_PERMISSION_SET.has(permission as Permission));
@@ -196,13 +197,13 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
-    if (grants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+    if (grants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)) {
       return null;
     }
 
     return new Set(
       grants
-        .filter((grant) => grant.scope === EventManagerPermissionGrantScope.MAJOR_EVENT && grant.majorEventId)
+        .filter((grant) => grant.scope === EventManagerPermissionScope.MAJOR_EVENT && grant.majorEventId)
         .map((grant) => grant.majorEventId as string),
     );
   }
@@ -226,18 +227,18 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
-    if (grants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+    if (grants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)) {
       return null;
     }
 
     for (const grant of grants) {
-      if (grant.scope === EventManagerPermissionGrantScope.EVENT && grant.eventId) {
+      if (grant.scope === EventManagerPermissionScope.EVENT && grant.eventId) {
         target.eventIds.add(grant.eventId);
       }
-      if (grant.scope === EventManagerPermissionGrantScope.MAJOR_EVENT && grant.majorEventId) {
+      if (grant.scope === EventManagerPermissionScope.MAJOR_EVENT && grant.majorEventId) {
         target.majorEventIds.add(grant.majorEventId);
       }
-      if (grant.scope === EventManagerPermissionGrantScope.EVENT_GROUP && grant.eventGroupId) {
+      if (grant.scope === EventManagerPermissionScope.EVENT_GROUP && grant.eventGroupId) {
         target.eventGroupIds.add(grant.eventGroupId);
       }
     }
@@ -258,15 +259,24 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     }
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
-    if (grants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+    if (grants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)) {
       return null;
     }
 
-    return new Set(
-      grants
-        .filter((grant) => grant.scope === EventManagerPermissionGrantScope.EVENT_GROUP && grant.eventGroupId)
-        .map((grant) => grant.eventGroupId as string),
-    );
+    const directGroupIds = grants
+      .filter((grant) => grant.scope === EventManagerPermissionScope.EVENT_GROUP && grant.eventGroupId)
+      .map((grant) => grant.eventGroupId as string);
+    const majorEventIds = grants
+      .filter((grant) => grant.scope === EventManagerPermissionScope.MAJOR_EVENT && grant.majorEventId)
+      .map((grant) => grant.majorEventId as string);
+    const descendantGroups = majorEventIds.length
+      ? await this.prisma.eventGroup.findMany({
+          where: { majorEventId: { in: majorEventIds }, deletedAt: null },
+          select: { id: true },
+        })
+      : [];
+
+    return new Set([...directGroupIds, ...descendantGroups.map((group) => group.id)]);
   }
 
   async canOverrideFrozenResource(
@@ -411,7 +421,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
 
     const grants = await this.findActiveGrants(user.sub, [permission]);
     const compatibleGrants = grants.filter((grant) => isPermissionGrantScopeCompatible(permission, grant.scope));
-    if (compatibleGrants.some((grant) => grant.scope === EventManagerPermissionGrantScope.GLOBAL)) {
+    if (compatibleGrants.some((grant) => grant.scope === EventManagerPermissionScope.GLOBAL)) {
       return true;
     }
 
@@ -421,7 +431,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
 
     const target = await this.resolveGrantTarget(permission, context);
     if (context.allowScopedCollection && this.isEmptyGrantTarget(target)) {
-      return compatibleGrants.some((grant) => grant.scope !== EventManagerPermissionGrantScope.GLOBAL);
+      return compatibleGrants.some((grant) => grant.scope !== EventManagerPermissionScope.GLOBAL);
     }
     return compatibleGrants.some((grant) => this.matchesScopedGrant(grant, target));
   }
@@ -471,27 +481,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
     userId: string | undefined,
     permissions?: readonly Permission[],
   ): Promise<ActiveGrant[]> {
-    if (!userId) {
-      return [];
-    }
-
-    const now = new Date();
-    return this.prisma.eventManagerPermissionGrant.findMany({
-      where: {
-        userId,
-        deletedAt: null,
-        OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-        AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
-        ...(permissions?.length ? { permission: { in: [...permissions] } } : {}),
-      },
-      select: {
-        permission: true,
-        scope: true,
-        eventId: true,
-        majorEventId: true,
-        eventGroupId: true,
-      },
-    });
+    return findActiveRolePermissionScopes(this.prisma, userId, permissions);
   }
 
   private async resolveGrantTarget(
@@ -946,11 +936,11 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
 
   private matchesScopedGrant(grant: ActiveGrant, target: ResolvedGrantTarget): boolean {
     switch (grant.scope) {
-      case EventManagerPermissionGrantScope.EVENT:
+      case EventManagerPermissionScope.EVENT:
         return Boolean(grant.eventId && target.eventIds.has(grant.eventId));
-      case EventManagerPermissionGrantScope.MAJOR_EVENT:
+      case EventManagerPermissionScope.MAJOR_EVENT:
         return Boolean(grant.majorEventId && target.majorEventIds.has(grant.majorEventId));
-      case EventManagerPermissionGrantScope.EVENT_GROUP:
+      case EventManagerPermissionScope.EVENT_GROUP:
         return Boolean(grant.eventGroupId && target.eventGroupIds.has(grant.eventGroupId));
       default:
         return false;

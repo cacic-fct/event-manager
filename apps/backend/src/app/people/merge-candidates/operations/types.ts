@@ -42,6 +42,36 @@ export type LectureSnapshot = {
   createdById: string | null;
 };
 
+export type RoleAssignmentSnapshot = {
+  id: string;
+  personId: string | null;
+  validFrom: string | null;
+  validUntil: string | null;
+  unlimited: boolean;
+  archivedAt: string | null;
+  archivedReason: string | null;
+};
+
+export type RoleAssignmentScopeSnapshot = {
+  id: string;
+  assignmentId: string;
+  validFrom: string | null;
+  validUntil: string | null;
+  unlimited: boolean;
+  archivedAt: string | null;
+  archivedReason: string | null;
+};
+
+export type PermissionGroupMembershipSnapshot = {
+  id: string;
+  personId: string;
+  validFrom: string | null;
+  validUntil: string | null;
+  unlimited: boolean;
+  archivedAt: string | null;
+  archivedReason: string | null;
+};
+
 export type MovedRelationsSnapshot = {
   sourceAttendances: AttendanceSnapshot[];
   sourceLectures: LectureSnapshot[];
@@ -50,4 +80,11 @@ export type MovedRelationsSnapshot = {
   movedEventSubscriptionIds: string[];
   movedEventGroupSubscriptionIds: string[];
   movedMajorEventSubscriptionIds: string[];
+  movedRoleAssignmentIds: string[];
+  archivedRoleAssignmentIds: string[];
+  movedPermissionGroupMembershipIds: string[];
+  archivedPermissionGroupMembershipIds: string[];
+  roleAssignmentSnapshots: RoleAssignmentSnapshot[];
+  roleAssignmentScopeSnapshots: RoleAssignmentScopeSnapshot[];
+  permissionGroupMembershipSnapshots: PermissionGroupMembershipSnapshot[];
 };

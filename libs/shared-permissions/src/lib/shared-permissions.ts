@@ -4,3 +4,5 @@ export * from './workspace-permissions';
 export * from './permission-included-data';
 export * from './permission-presets';
 export * from './permission-formatting';
+export * from './permission-role-policy';
+export * from './permission-role-templates';

@@ -1,5 +1,5 @@
 import {
-  EventManagerPermissionGrantScope,
+  EventManagerPermissionScope,
   Prisma,
   SportsEligibilityStatus,
   SportsParticipantStatus,
@@ -80,21 +80,21 @@ function currentUserManagerEventWhere(userId: string | undefined, now: Date): Pr
 
   return [
     {
-      eventManagerPermissionGrants: {
-        some: activeScopedManagerGrantWhere(userId, EventManagerPermissionGrantScope.EVENT, now),
+      eventManagerRoleAssignmentScopes: {
+        some: activeScopedManagerGrantWhere(userId, EventManagerPermissionScope.EVENT, now),
       },
     },
     {
       eventGroup: {
-        eventManagerPermissionGrants: {
-          some: activeScopedManagerGrantWhere(userId, EventManagerPermissionGrantScope.EVENT_GROUP, now),
+        eventManagerRoleAssignmentScopes: {
+          some: activeScopedManagerGrantWhere(userId, EventManagerPermissionScope.EVENT_GROUP, now),
         },
       },
     },
     {
       majorEvent: {
-        eventManagerPermissionGrants: {
-          some: activeScopedManagerGrantWhere(userId, EventManagerPermissionGrantScope.MAJOR_EVENT, now),
+        eventManagerRoleAssignmentScopes: {
+          some: activeScopedManagerGrantWhere(userId, EventManagerPermissionScope.MAJOR_EVENT, now),
         },
       },
     },
@@ -103,15 +103,42 @@ function currentUserManagerEventWhere(userId: string | undefined, now: Date): Pr
 
 export function activeScopedManagerGrantWhere(
   userId: string,
-  scope: Exclude<EventManagerPermissionGrantScope, 'GLOBAL'>,
+  scope: Exclude<EventManagerPermissionScope, 'GLOBAL'>,
   now: Date,
-): Prisma.EventManagerPermissionGrantWhereInput {
+): Prisma.EventManagerRoleAssignmentScopeWhereInput {
   return {
-    userId,
     scope,
-    deletedAt: null,
+    archivedAt: null,
     OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-    AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
+    AND: [
+      { OR: [{ validUntil: null }, { validUntil: { gt: now } }] },
+      {
+        assignment: {
+          archivedAt: null,
+          role: { archivedAt: null },
+          OR: [
+            { person: { userId, deletedAt: null } },
+            {
+              group: {
+                archivedAt: null,
+                members: {
+                  some: {
+                    archivedAt: null,
+                    person: { userId, deletedAt: null },
+                    OR: [{ validFrom: null }, { validFrom: { lte: now } }],
+                    AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
+                  },
+                },
+              },
+            },
+          ],
+          AND: [
+            { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+            { OR: [{ validUntil: null }, { validUntil: { gt: now } }] },
+          ],
+        },
+      },
+    ],
   };
 }
 

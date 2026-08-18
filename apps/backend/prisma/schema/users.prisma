@@ -9,7 +9,6 @@ model User {
   lastLoginAt      DateTime?
 
   people                       People[]
-  eventManagerPermissionGrants EventManagerPermissionGrant[]
   calendarFeedSettings         UserCalendarFeedSettings?
   adminCalendarFeedSettings    UserAdminCalendarFeedSettings?
 

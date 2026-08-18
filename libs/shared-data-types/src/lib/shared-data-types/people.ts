@@ -66,6 +66,27 @@ export class Person {
   updatedById?: string | null;
 }
 
+@ObjectType('RelatedPerson')
+export class RelatedPerson {
+  @Field(() => String)
+  id!: string;
+
+  @Field(() => String)
+  name!: string;
+
+  @Field(() => String, { nullable: true })
+  email?: string | null;
+
+  @Field(() => String, { nullable: true })
+  phone?: string | null;
+
+  @Field(() => String, { nullable: true })
+  maskedIdentityDocument?: string | null;
+
+  @Field(() => Boolean)
+  hasLinkedUser!: boolean;
+}
+
 @ObjectType()
 export class PersonLinkedResource {
   @Field(() => String)

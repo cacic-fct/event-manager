@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
-import { PeoplePermissionGrantPersistence } from './people-permission-grant-persistence';
+import { PeopleRecords } from './people-records';
 
 @Injectable({
   providedIn: 'root',
 })
-export class PeopleService extends PeoplePermissionGrantPersistence {}
+export class PeopleService extends PeopleRecords {}

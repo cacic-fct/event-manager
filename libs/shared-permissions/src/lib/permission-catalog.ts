@@ -53,6 +53,8 @@ export const EVENT_MANAGER_PERMISSION_CATALOG = [
   Permission.Person.Create,
   Permission.Person.Update,
   Permission.Person.Delete,
+  Permission.RelatedPerson.Read,
+  Permission.RelatedPerson.Update,
   Permission.PermissionGrant.Read,
   Permission.PermissionGrant.Create,
   Permission.PermissionGrant.Update,

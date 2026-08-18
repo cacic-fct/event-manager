@@ -30,25 +30,17 @@ describe('PeopleResolver', () => {
             {
               OR: [
                 {
-                  eventManagerPermissionGrants: {
+                  eventManagerRoleAssignments: {
                     some: expect.objectContaining({
-                      deletedAt: null,
+                      archivedAt: null,
                       OR: [{ validFrom: null }, { validFrom: { lte: expect.any(Date) } }],
                       AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: expect.any(Date) } }] }],
                     }),
                   },
                 },
                 {
-                  user: {
-                    is: {
-                      eventManagerPermissionGrants: {
-                        some: expect.objectContaining({
-                          deletedAt: null,
-                          OR: [{ validFrom: null }, { validFrom: { lte: expect.any(Date) } }],
-                          AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: expect.any(Date) } }] }],
-                        }),
-                      },
-                    },
+                  eventManagerGroupMemberships: {
+                    some: expect.objectContaining({ archivedAt: null }),
                   },
                 },
               ],
@@ -72,21 +64,16 @@ describe('PeopleResolver', () => {
             {
               OR: [
                 {
-                  eventManagerPermissionGrants: {
+                  eventManagerRoleAssignments: {
                     some: {
-                      deletedAt: null,
+                      archivedAt: null,
+                      role: { archivedAt: null },
                     },
                   },
                 },
                 {
-                  user: {
-                    is: {
-                      eventManagerPermissionGrants: {
-                        some: {
-                          deletedAt: null,
-                        },
-                      },
-                    },
+                  eventManagerGroupMemberships: {
+                    some: expect.objectContaining({ archivedAt: null }),
                   },
                 },
               ],
@@ -634,7 +621,8 @@ function createPrisma() {
     eventLecturer: linkedModel(),
     eventAttendanceCollector: linkedModel(),
     offlineEventAttendanceSubmission: linkedModel(),
-    eventManagerPermissionGrant: linkedModel(),
+    eventManagerRoleAssignment: linkedModel(),
+    eventManagerPermissionGroupMember: linkedModel(),
     lecturerProfile: { findUnique: jest.fn().mockResolvedValue(null) },
     mergeCandidate: linkedModel(),
     peopleMergeOperation: linkedModel(),

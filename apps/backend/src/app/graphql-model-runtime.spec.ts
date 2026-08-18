@@ -1,12 +1,15 @@
 import { LazyMetadataStorage } from '@nestjs/graphql/dist/schema-builder/storages/lazy-metadata.storage';
 import { TypeMetadataStorage } from '@nestjs/graphql/dist/schema-builder/storages/type-metadata.storage';
-import { EventManagerPermissionGrantScope } from '@prisma/client';
+import { EventManagerPermissionScope } from '@prisma/client';
 import {
-  EventManagerPermissionGrant,
-  EventManagerPermissionGrantCreateInput,
-  EventManagerPermissionGrantTarget,
-  EventManagerPermissionGrantUpdateInput,
-} from './authorization/permission-grants.models';
+  PermissionGroup,
+  PermissionGroupSaveInput,
+  PermissionRole,
+  PermissionRoleAssignment,
+  PermissionRoleSaveInput,
+  PermissionRoleScope,
+  PermissionScopeTarget,
+} from './authorization/permission-management.models';
 import {
   CurrentUserAdminCalendarFeedSettings,
   CurrentUserCalendarFeedSettings,
@@ -144,28 +147,31 @@ function describeGraphqlType(type: unknown): string {
 }
 
 describe('GraphQL model runtime metadata', () => {
-  it('resolves authorization permission grant model field types', () => {
+  it('resolves role-based permission management model field types', () => {
     const fields = resolveGraphqlFieldTypes([
-      EventManagerPermissionGrant,
-      EventManagerPermissionGrantTarget,
-      EventManagerPermissionGrantCreateInput,
-      EventManagerPermissionGrantUpdateInput,
+      PermissionRole,
+      PermissionRoleAssignment,
+      PermissionRoleScope,
+      PermissionGroup,
+      PermissionScopeTarget,
+      PermissionRoleSaveInput,
+      PermissionGroupSaveInput,
     ]);
 
-    expect(fields).toHaveLength(37);
     expect(fields).toEqual(
       expect.arrayContaining([
-        { field: 'id', model: 'EventManagerPermissionGrant', nullable: undefined, type: 'String' },
+        { field: 'id', model: 'PermissionRole', nullable: undefined, type: 'String' },
         {
           field: 'scope',
-          model: 'EventManagerPermissionGrant',
+          model: 'PermissionRoleScope',
           nullable: undefined,
-          type: 'EventManagerPermissionGrantScope',
+          type: 'EventManagerPermissionScope',
         },
-        { field: 'validUntil', model: 'EventManagerPermissionGrantUpdateInput', nullable: true, type: 'Date' },
+        { field: 'assignments', model: 'PermissionRole', nullable: undefined, type: '[PermissionRoleAssignment]' },
+        { field: 'members', model: 'PermissionGroup', nullable: undefined, type: '[PermissionGroupMember]' },
       ]),
     );
-    expect(EventManagerPermissionGrantScope.EVENT).toBe('EVENT');
+    expect(EventManagerPermissionScope.EVENT).toBe('EVENT');
   });
 
   it('resolves private calendar feed setting model field types', () => {

@@ -249,11 +249,11 @@ export class CertificateEligibilityService {
       where: {
         id: eventId,
         deletedAt: null,
-        majorEventId: null,
         shouldIssueCertificate: true,
         OR: [
           {
             eventGroupId: null,
+            majorEventId: null,
           },
           {
             eventGroup: {

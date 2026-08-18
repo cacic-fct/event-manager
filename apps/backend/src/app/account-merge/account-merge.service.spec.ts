@@ -82,6 +82,75 @@ describe('AccountMergeService', () => {
     expect(prisma.majorEventSubscription.count).not.toHaveBeenCalled();
   });
 
+  it('coalesces duplicate role assignments without widening their scoped access windows', async () => {
+    const tx = createTransactionMock();
+    tx.eventManagerRoleAssignment.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'source-assignment',
+          roleId: 'role-1',
+          validFrom: new Date('2026-06-15T00:00:00.000Z'),
+          validUntil: new Date('2026-07-01T00:00:00.000Z'),
+          unlimited: false,
+          scopes: [
+            {
+              id: 'source-scope',
+              scope: 'EVENT',
+              eventId: 'event-source',
+              majorEventId: null,
+              eventGroupId: null,
+              validFrom: null,
+              validUntil: null,
+              unlimited: true,
+            },
+          ],
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'target-assignment',
+          roleId: 'role-1',
+          validFrom: new Date('2026-05-01T00:00:00.000Z'),
+          validUntil: new Date('2026-06-01T00:00:00.000Z'),
+          unlimited: false,
+          scopes: [
+            {
+              id: 'target-scope',
+              scope: 'EVENT',
+              eventId: 'event-target',
+              majorEventId: null,
+              eventGroupId: null,
+              validFrom: new Date('2026-04-01T00:00:00.000Z'),
+              validUntil: null,
+              unlimited: true,
+            },
+          ],
+        },
+      ]);
+
+    await (service as unknown as {
+      movePermissionRelations: (transaction: unknown, targetId: string, sourceId: string) => Promise<unknown>;
+    }).movePermissionRelations(tx, 'target-person', 'source-person');
+
+    expect(tx.eventManagerRoleAssignmentScope.update).toHaveBeenCalledWith({
+      where: { id: 'target-scope' },
+      data: {
+        validFrom: new Date('2026-05-01T00:00:00.000Z'),
+        validUntil: new Date('2026-06-01T00:00:00.000Z'),
+        unlimited: false,
+      },
+    });
+    expect(tx.eventManagerRoleAssignmentScope.update).toHaveBeenCalledWith({
+      where: { id: 'source-scope' },
+      data: {
+        assignmentId: 'target-assignment',
+        validFrom: new Date('2026-06-15T00:00:00.000Z'),
+        validUntil: new Date('2026-07-01T00:00:00.000Z'),
+        unlimited: false,
+      },
+    });
+  });
+
   it('resolves final user ids through merge chains and stops on cycles', async () => {
     prisma.accountUserMerge.findUnique
       .mockResolvedValueOnce({ oldUserId: 'user-a', newUserId: 'user-b' })
@@ -453,6 +522,9 @@ function createTransactionMock() {
     eventGroupSubscription: delegate(),
     majorEventSubscription: delegate(),
     eventFormResponse: delegate(),
+    eventManagerRoleAssignment: delegate(),
+    eventManagerRoleAssignmentScope: delegate(),
+    eventManagerPermissionGroupMember: delegate(),
     peopleMergeOperation: {
       create: jest.fn(),
     },

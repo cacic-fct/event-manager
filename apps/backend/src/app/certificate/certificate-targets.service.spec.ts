@@ -271,9 +271,12 @@ describe('CertificateTargetsService', () => {
     expect(prisma.event.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          majorEventId: null,
           sportsMatch: { is: null },
           OR: expect.arrayContaining([
+            expect.objectContaining({
+              eventGroupId: null,
+              majorEventId: null,
+            }),
             expect.objectContaining({
               eventGroup: expect.objectContaining({
                 sportsCategory: { is: null },
@@ -349,6 +352,30 @@ describe('CertificateTargetsService', () => {
       expect.objectContaining({
         where: expect.objectContaining({
           id: 'major-1',
+        }),
+      }),
+    );
+  });
+
+  it('allows individual certificates for selected events in a major-event-owned group', async () => {
+    const prisma = createPrisma();
+    prisma.event.findFirst.mockResolvedValue({ id: 'event-1', majorEventId: 'major-1' });
+    const service = new CertificateTargetsService(prisma as never);
+
+    await expect(service.assertIssuableTarget(CertificateScope.EVENT, 'event-1')).resolves.toBeUndefined();
+
+    expect(prisma.event.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'event-1',
+          OR: expect.arrayContaining([
+            expect.objectContaining({
+              eventGroup: expect.objectContaining({
+                shouldIssueCertificate: true,
+                shouldIssueCertificateForEachEvent: true,
+              }),
+            }),
+          ]),
         }),
       }),
     );

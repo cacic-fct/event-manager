@@ -1,4 +1,5 @@
-import { EventManagerPermissionGrantScope, Prisma } from '@prisma/client';
+import { EventManagerPermissionScope, Prisma } from '@prisma/client';
+import { findActiveRolePermissionScopes } from '../authorization/effective-role-scopes';
 import {
   ADMIN_CALENDAR_EVENT_GROUP_PERMISSION_SET,
   ADMIN_CALENDAR_EVENT_PERMISSION_SET,
@@ -8,7 +9,6 @@ import {
 } from './calendar-feed.constants';
 import {
   buildAdminEventGroupSelect,
-  ADMIN_CALENDAR_GRANT_SELECT,
   ADMIN_MAJOR_EVENT_SELECT,
   CALENDAR_EVENT_SELECT,
   AdminCalendarGrantRecord,
@@ -248,18 +248,7 @@ async function findActiveAdminCalendarGrants(
   userId: string,
   now: Date,
 ): Promise<AdminCalendarGrantRecord[]> {
-  return prisma.eventManagerPermissionGrant.findMany({
-    where: {
-      userId,
-      deletedAt: null,
-      permission: {
-        in: [...ADMIN_CALENDAR_FEED_PERMISSIONS],
-      },
-      OR: [{ validFrom: null }, { validFrom: { lte: now } }],
-      AND: [{ OR: [{ validUntil: null }, { validUntil: { gt: now } }] }],
-    },
-    select: ADMIN_CALENDAR_GRANT_SELECT,
-  });
+  return findActiveRolePermissionScopes(prisma, userId, ADMIN_CALENDAR_FEED_PERMISSIONS, now);
 }
 
 function buildAdminFeedTargetPlan(grants: AdminCalendarGrantRecord[]): AdminFeedTargetPlan {
@@ -279,19 +268,19 @@ function buildAdminFeedTargetPlan(grants: AdminCalendarGrantRecord[]): AdminFeed
     const grantsEventGroups = ADMIN_CALENDAR_EVENT_GROUP_PERMISSION_SET.has(grant.permission);
     const grantsMajorEvents = ADMIN_CALENDAR_MAJOR_EVENT_PERMISSION_SET.has(grant.permission);
 
-    if (grant.scope === EventManagerPermissionGrantScope.GLOBAL) {
+    if (grant.scope === EventManagerPermissionScope.GLOBAL) {
       targetPlan.globalEvents ||= grantsEvents;
       targetPlan.globalEventGroups ||= grantsEventGroups;
       targetPlan.globalMajorEvents ||= grantsMajorEvents;
       continue;
     }
 
-    if (grant.scope === EventManagerPermissionGrantScope.EVENT && grant.eventId && grantsEvents) {
+    if (grant.scope === EventManagerPermissionScope.EVENT && grant.eventId && grantsEvents) {
       targetPlan.eventIds.add(grant.eventId);
       continue;
     }
 
-    if (grant.scope === EventManagerPermissionGrantScope.EVENT_GROUP && grant.eventGroupId) {
+    if (grant.scope === EventManagerPermissionScope.EVENT_GROUP && grant.eventGroupId) {
       if (grantsEvents) {
         targetPlan.eventGroupIdsForEvents.add(grant.eventGroupId);
       }
@@ -301,7 +290,7 @@ function buildAdminFeedTargetPlan(grants: AdminCalendarGrantRecord[]): AdminFeed
       continue;
     }
 
-    if (grant.scope === EventManagerPermissionGrantScope.MAJOR_EVENT && grant.majorEventId) {
+    if (grant.scope === EventManagerPermissionScope.MAJOR_EVENT && grant.majorEventId) {
       if (grantsEvents) {
         targetPlan.eventMajorEventIds.add(grant.majorEventId);
       }

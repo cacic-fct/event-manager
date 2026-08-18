@@ -28,12 +28,12 @@ export class CertificateTargetsService {
     const normalizedQuery = query?.trim();
     const where: Prisma.EventWhereInput = {
       deletedAt: null,
-      majorEventId: null,
       sportsMatch: { is: null },
       shouldIssueCertificate: true,
       OR: [
         {
           eventGroupId: null,
+          majorEventId: null,
         },
         {
           eventGroup: {
@@ -256,12 +256,12 @@ export class CertificateTargetsService {
         where: {
           id: targetId,
           deletedAt: null,
-          majorEventId: null,
           sportsMatch: { is: null },
           shouldIssueCertificate: true,
           OR: [
             {
               eventGroupId: null,
+              majorEventId: null,
             },
             {
               eventGroup: {

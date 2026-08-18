@@ -227,7 +227,7 @@ export class EventGroupsResolver {
     @Context() context: GraphqlContext,
   ) {
     await this.frozenResources.assertEventGroupMutable(id, this.getUser(context), 'edit');
-    const normalizedInput = this.normalizeEventGroupCertificateInput(input, await this.hasMajorEventEvents(id));
+    const normalizedInput = this.normalizeEventGroupCertificateInput(input);
     const eventGroup = await this.prisma.$transaction(async (tx) => {
       const previous = await tx.eventGroup.findFirst({ where: { id, deletedAt: null } });
       if (!previous) throw new NotFoundException(`Event group ${id} was not found.`);
@@ -396,7 +396,6 @@ export class EventGroupsResolver {
 
   private normalizeEventGroupCertificateInput<T extends EventGroupCreateInput | EventGroupUpdateInput>(
     input: T,
-    hasMajorEventEvents = false,
   ): T {
     if (input.shouldIssueCertificate === false) {
       return {
@@ -408,28 +407,7 @@ export class EventGroupsResolver {
       };
     }
 
-    if (hasMajorEventEvents) {
-      return {
-        ...input,
-        shouldIssueCertificateForEachEvent: false,
-      };
-    }
-
     return input;
-  }
-
-  private async hasMajorEventEvents(eventGroupId: string): Promise<boolean> {
-    const count = await this.prisma.event.count({
-      where: {
-        eventGroupId,
-        majorEventId: {
-          not: null,
-        },
-        deletedAt: null,
-      },
-    });
-
-    return count > 0;
   }
 
   private async cloneCertificateConfigsForEventGroup(
