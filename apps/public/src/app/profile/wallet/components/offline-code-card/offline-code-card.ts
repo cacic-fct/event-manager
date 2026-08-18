@@ -27,7 +27,7 @@ import { OfflineCodeStateService } from './offline-code-state.service';
             aria-label="Tempo restante do código"></mat-progress-spinner>
         </section>
         <section class="offline-card-email">
-          <span>E-mail vinculado ao código</span>
+          <span>E-mail principal</span>
           <strong>{{ primaryEmail() }}</strong>
         </section>
         <p>Use este código quando solicitado pela organização.</p>
@@ -62,7 +62,6 @@ import { OfflineCodeStateService } from './offline-code-state.service';
     .offline-card-loading,
     .offline-card-code,
     .offline-card-error {
-      min-height: 5.5rem;
       display: flex;
       align-items: center;
       justify-content: center;
