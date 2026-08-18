@@ -4,9 +4,7 @@
   <a matIconButton routerLink="/profile/attendances" aria-label="Voltar para inscrições">
     <mat-icon>arrow_back</mat-icon>
   </a>
-  <h1 class="global-toolbar-title">
-    {{ currentState.status === 'ready' ? currentState.detail.title : 'Detalhes' }}
-  </h1>
+  <span>Detalhes</span>
 </mat-toolbar>
 
 <main class="detail-page">
@@ -24,6 +22,8 @@
       <img class="twemoji" [src]="emoji.getTwemojiUrl(detail.emoji)" [alt]="detail.emoji" />
     </div>
     <div class="header-copy">
+      <p class="eyebrow">{{ detail.typeLabel }}</p>
+      <h1>{{ detail.title }}</h1>
       <p class="date-line">{{ detail.dateLine }}</p>
     </div>
   </header>

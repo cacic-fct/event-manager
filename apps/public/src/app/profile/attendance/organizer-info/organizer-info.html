@@ -10,9 +10,7 @@
     <mat-icon>arrow_back</mat-icon>
   </a>
   }
-  <h1 class="global-toolbar-title">
-    {{ currentState.status === 'ready' ? currentState.info.title : 'Organização' }}
-  </h1>
+  <span>Informações do organizador</span>
 </mat-toolbar>
 
 <main class="organizer-page">
@@ -24,6 +22,10 @@
     <p>{{ currentState.message }}</p>
   </section>
   } @else {
+  <header class="organizer-header">
+    <h1>{{ currentState.info.title }}</h1>
+  </header>
+
   <div class="button-container">
     <a mat-stroked-button routerLink="/profile/lecturer-profile">
       <mat-icon>badge</mat-icon>
