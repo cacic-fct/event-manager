@@ -28,6 +28,6 @@ SELECT
 WHERE NOT EXISTS (
   SELECT 1
   FROM "certificate_templates"
-  WHERE "name" = 'Example'
-    AND "deletedAt" IS NULL
+  WHERE "id" = '01964110-9af3-7091-9f0c-3f9d5964a201'
+     OR ("name" = 'Example' AND "deletedAt" IS NULL)
 );

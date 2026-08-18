@@ -13,6 +13,7 @@
     "publish:packages": "bun run publish:event-manager-m2m-contracts && bun run publish:event-manager-public-contracts",
     "storybook:quality": "node tools/storybook-quality-audit.mjs",
     "test:data-import": "node --test tools/data-import/*.test.mts tools/data-import/lib/*.test.mts",
+    "test:prisma-migrations": "PRISMA_MIGRATION_INTEGRATION_TEST=1 bun tools/prisma-migration-integrity.test.mts",
     "typecheck:data-import": "bunx tsc -p tools/data-import/tsconfig.json"
   },
   "nx": {

@@ -392,6 +392,9 @@ jobs:
       - name: Apply database migrations
         run: bunx prisma migrate deploy --config apps/backend/prisma.config.ts
 
+      - name: Verify Prisma migration integrity
+        run: bun run test:prisma-migrations
+
       - name: Run backend auth e2e tests with fresh Keycloak
         run: bun run e2e:backend:keycloak -- --coverage
 
@@ -818,6 +821,9 @@ jobs:
 
       - name: Apply database migrations
         run: bunx prisma migrate deploy --config apps/backend/prisma.config.ts
+
+      - name: Verify Prisma migration integrity
+        run: bun run test:prisma-migrations
 
       - name: Run backend auth e2e tests with fresh Keycloak
         run: bun run e2e:backend:keycloak
