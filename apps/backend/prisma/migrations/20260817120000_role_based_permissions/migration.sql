@@ -21,12 +21,19 @@ SET "majorEventId" = candidate."majorEventId"
 FROM (
   SELECT "eventGroupId", MIN("majorEventId") AS "majorEventId"
   FROM "events"
-  WHERE "deletedAt" IS NULL AND "eventGroupId" IS NOT NULL
+  WHERE "deletedAt" IS NULL
+    AND "eventGroupId" IS NOT NULL
+    AND "majorEventId" IS NOT NULL
   GROUP BY "eventGroupId"
-  HAVING COUNT(*) FILTER (WHERE "majorEventId" IS NULL) = 0
-     AND COUNT(DISTINCT "majorEventId") = 1
 ) AS candidate
 WHERE event_group."id" = candidate."eventGroupId";
+
+UPDATE "events" AS event
+SET "majorEventId" = event_group."majorEventId"
+FROM "event_groups" AS event_group
+WHERE event."eventGroupId" = event_group."id"
+  AND event."deletedAt" IS NULL
+  AND event."majorEventId" IS DISTINCT FROM event_group."majorEventId";
 
 CREATE INDEX "event_groups_majorEventId_idx" ON "event_groups"("majorEventId");
 ALTER TABLE "event_groups"

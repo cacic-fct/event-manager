@@ -17,6 +17,12 @@ import { differenceInDays, isValid, parseISO } from 'date-fns';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  intersectPermissionRelationValidity,
+  normalizePermissionRelationValidity,
+  permissionRelationScopeKey,
+  unionPermissionRelationValidity,
+} from '../people/permission-relation-validity';
+import {
   AccountMergeAcknowledgementDto,
   AccountMergeNotificationDto,
   AccountMergeScoreRequestDto,
@@ -518,30 +524,121 @@ export class AccountMergeService {
     const archivedRoleAssignmentIds: string[] = [];
     const assignments = await tx.eventManagerRoleAssignment.findMany({
       where: { personId: sourcePersonId, archivedAt: null },
-      select: { id: true, roleId: true, validFrom: true, validUntil: true, unlimited: true },
+      select: {
+        id: true,
+        roleId: true,
+        validFrom: true,
+        validUntil: true,
+        unlimited: true,
+        scopes: {
+          where: { archivedAt: null },
+          select: {
+            id: true,
+            scope: true,
+            eventId: true,
+            majorEventId: true,
+            eventGroupId: true,
+            validFrom: true,
+            validUntil: true,
+            unlimited: true,
+          },
+        },
+      },
     });
     const conflictsByRoleId = new Map((await tx.eventManagerRoleAssignment.findMany({
       where: { personId: targetPersonId, roleId: { in: assignments.map((assignment) => assignment.roleId) }, archivedAt: null },
-      select: { id: true, roleId: true, validFrom: true, validUntil: true, unlimited: true },
+      select: {
+        id: true,
+        roleId: true,
+        validFrom: true,
+        validUntil: true,
+        unlimited: true,
+        scopes: {
+          where: { archivedAt: null },
+          select: {
+            id: true,
+            scope: true,
+            eventId: true,
+            majorEventId: true,
+            eventGroupId: true,
+            validFrom: true,
+            validUntil: true,
+            unlimited: true,
+          },
+        },
+      },
     })).map((assignment) => [assignment.roleId, assignment] as const));
     for (const assignment of assignments) {
       const conflict = conflictsByRoleId.get(assignment.roleId);
       if (conflict) {
-        await tx.eventManagerRoleAssignmentScope.updateMany({
-          where: { assignmentId: assignment.id, archivedAt: null },
-          data: { assignmentId: conflict.id },
-        });
+        const sourceValidity = normalizePermissionRelationValidity(assignment);
+        const targetValidity = normalizePermissionRelationValidity(conflict);
+        const archivedAt = new Date();
+        const targetScopes = new Map<
+          string,
+          { id: string; validity: ReturnType<typeof normalizePermissionRelationValidity> }
+        >();
+
+        for (const scope of conflict.scopes ?? []) {
+          const effectiveValidity = intersectPermissionRelationValidity(
+            normalizePermissionRelationValidity(scope),
+            targetValidity,
+          );
+          if (!effectiveValidity) {
+            await tx.eventManagerRoleAssignmentScope.update({
+              where: { id: scope.id },
+              data: { archivedAt, archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
+            });
+            continue;
+          }
+          await tx.eventManagerRoleAssignmentScope.update({ where: { id: scope.id }, data: effectiveValidity });
+          targetScopes.set(permissionRelationScopeKey(scope), { id: scope.id, validity: effectiveValidity });
+        }
+
+        for (const scope of assignment.scopes ?? []) {
+          const effectiveValidity = intersectPermissionRelationValidity(
+            normalizePermissionRelationValidity(scope),
+            sourceValidity,
+          );
+          if (!effectiveValidity) {
+            await tx.eventManagerRoleAssignmentScope.update({
+              where: { id: scope.id },
+              data: { archivedAt, archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
+            });
+            continue;
+          }
+
+          const scopeKey = permissionRelationScopeKey(scope);
+          const existingScope = targetScopes.get(scopeKey);
+          if (existingScope) {
+            await tx.eventManagerRoleAssignmentScope.update({
+              where: { id: existingScope.id },
+              data: unionPermissionRelationValidity(existingScope.validity, effectiveValidity),
+            });
+            await tx.eventManagerRoleAssignmentScope.update({
+              where: { id: scope.id },
+              data: { archivedAt, archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
+            });
+            continue;
+          }
+
+          await tx.eventManagerRoleAssignmentScope.update({
+            where: { id: scope.id },
+            data: { assignmentId: conflict.id, ...effectiveValidity },
+          });
+          targetScopes.set(scopeKey, { id: scope.id, validity: effectiveValidity });
+        }
+
+        const mergedValidity = unionPermissionRelationValidity(sourceValidity, targetValidity);
         await tx.eventManagerRoleAssignment.update({
           where: { id: conflict.id },
           data: {
-            validFrom: assignment.validFrom && conflict.validFrom ? new Date(Math.min(+assignment.validFrom, +conflict.validFrom)) : null,
-            validUntil: assignment.unlimited || conflict.unlimited ? null : new Date(Math.max(+(assignment.validUntil ?? new Date(0)), +(conflict.validUntil ?? new Date(0)))),
-            unlimited: assignment.unlimited || conflict.unlimited,
+            ...mergedValidity,
           },
         });
         await tx.eventManagerRoleAssignment.update({
           where: { id: assignment.id },
-          data: { archivedAt: new Date(), archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
+          data: { archivedAt, archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
         });
         archivedRoleAssignmentIds.push(assignment.id);
       } else {
@@ -563,17 +660,18 @@ export class AccountMergeService {
     for (const membership of memberships) {
       const conflict = conflictsByGroupId.get(membership.groupId);
       if (conflict) {
+        const mergedValidity = unionPermissionRelationValidity(
+          normalizePermissionRelationValidity(membership),
+          normalizePermissionRelationValidity(conflict),
+        );
         await tx.eventManagerPermissionGroupMember.update({
           where: { id: conflict.id },
-          data: {
-            validFrom: membership.validFrom && conflict.validFrom ? new Date(Math.min(+membership.validFrom, +conflict.validFrom)) : null,
-            validUntil: membership.unlimited || conflict.unlimited ? null : new Date(Math.max(+(membership.validUntil ?? new Date(0)), +(conflict.validUntil ?? new Date(0)))),
-            unlimited: membership.unlimited || conflict.unlimited,
-          },
+          data: mergedValidity,
         });
+        const archivedAt = new Date();
         await tx.eventManagerPermissionGroupMember.update({
           where: { id: membership.id },
-          data: { archivedAt: new Date(), archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
+          data: { archivedAt, archivedReason: EventManagerPermissionArchiveReason.PERSON_MERGED },
         });
         archivedPermissionGroupMembershipIds.push(membership.id);
       } else {

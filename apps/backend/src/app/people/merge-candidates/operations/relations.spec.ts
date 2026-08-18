@@ -64,6 +64,9 @@ describe('merge candidate relation movement', () => {
       archivedRoleAssignmentIds: [],
       movedPermissionGroupMembershipIds: [],
       archivedPermissionGroupMembershipIds: [],
+      roleAssignmentSnapshots: [],
+      roleAssignmentScopeSnapshots: [],
+      permissionGroupMembershipSnapshots: [],
     });
 
     expect(tx.eventAttendance.createMany).toHaveBeenCalledWith({
@@ -112,6 +115,9 @@ describe('merge candidate relation movement', () => {
       archivedRoleAssignmentIds: [],
       movedPermissionGroupMembershipIds: [],
       archivedPermissionGroupMembershipIds: [],
+      roleAssignmentSnapshots: [],
+      roleAssignmentScopeSnapshots: [],
+      permissionGroupMembershipSnapshots: [],
     });
 
     expect(tx.eventAttendance.createMany).not.toHaveBeenCalled();
@@ -155,6 +161,77 @@ describe('merge candidate relation movement', () => {
       }),
     );
   });
+
+  it('preserves each assignment window when coalescing role scopes', async () => {
+    const tx = createTransaction();
+    const targetAssignment = {
+      id: 'target-assignment',
+      validFrom: new Date('2026-05-01T00:00:00.000Z'),
+      validUntil: new Date('2026-06-01T00:00:00.000Z'),
+      unlimited: false,
+      scopes: [
+        {
+          id: 'target-scope',
+          scope: 'EVENT',
+          eventId: 'event-target',
+          majorEventId: null,
+          eventGroupId: null,
+          validFrom: new Date('2026-04-01T00:00:00.000Z'),
+          validUntil: null,
+          unlimited: true,
+        },
+      ],
+    };
+    const sourceAssignment = {
+      id: 'source-assignment',
+      roleId: 'role-1',
+      validFrom: new Date('2026-06-15T00:00:00.000Z'),
+      validUntil: new Date('2026-07-01T00:00:00.000Z'),
+      unlimited: false,
+      scopes: [
+        {
+          id: 'source-scope',
+          scope: 'EVENT',
+          eventId: 'event-source',
+          majorEventId: null,
+          eventGroupId: null,
+          validFrom: null,
+          validUntil: null,
+          unlimited: true,
+        },
+      ],
+    };
+    tx.eventManagerRoleAssignment.findMany.mockResolvedValue([sourceAssignment]);
+    tx.eventManagerRoleAssignment.findFirst.mockResolvedValue({ ...targetAssignment, roleId: 'role-1' });
+
+    await moveRelations(tx as never, 'target-person', 'source-person');
+
+    expect(tx.eventManagerRoleAssignmentScope.update).toHaveBeenCalledWith({
+      where: { id: 'target-scope' },
+      data: {
+        validFrom: new Date('2026-05-01T00:00:00.000Z'),
+        validUntil: new Date('2026-06-01T00:00:00.000Z'),
+        unlimited: false,
+      },
+    });
+    expect(tx.eventManagerRoleAssignmentScope.update).toHaveBeenCalledWith({
+      where: { id: 'source-scope' },
+      data: {
+        assignmentId: 'target-assignment',
+        validFrom: new Date('2026-06-15T00:00:00.000Z'),
+        validUntil: new Date('2026-07-01T00:00:00.000Z'),
+        unlimited: false,
+      },
+    });
+    expect(tx.eventManagerRoleAssignment.update).toHaveBeenCalledWith({
+      where: { id: 'target-assignment' },
+      data: {
+        validFrom: new Date('2026-05-01T00:00:00.000Z'),
+        validUntil: new Date('2026-07-01T00:00:00.000Z'),
+        unlimited: false,
+      },
+    });
+  });
 });
 
 function createTransaction() {
@@ -184,6 +261,12 @@ function createTransaction() {
     eventManagerRoleAssignment: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
+    },
+    eventManagerRoleAssignmentScope: {
+      update: jest.fn(),
+    },
+    eventManagerRoleAssignmentScope: {
       update: jest.fn(),
     },
     eventManagerPermissionGroupMember: {

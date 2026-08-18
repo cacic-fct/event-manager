@@ -118,6 +118,9 @@ describe('merge candidate snapshot helpers', () => {
       archivedRoleAssignmentIds: [],
       movedPermissionGroupMembershipIds: [],
       archivedPermissionGroupMembershipIds: [],
+      roleAssignmentSnapshots: [],
+      roleAssignmentScopeSnapshots: [],
+      permissionGroupMembershipSnapshots: [],
     });
   });
 

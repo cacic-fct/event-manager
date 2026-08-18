@@ -206,6 +206,39 @@ describe('MergeCandidateOperationsService', () => {
         movedEventSubscriptionIds: ['event-subscription-1'],
         movedEventGroupSubscriptionIds: ['group-subscription-1'],
         movedMajorEventSubscriptionIds: ['major-subscription-1'],
+        roleAssignmentSnapshots: [
+          {
+            id: 'role-assignment-1',
+            personId: 'source-person',
+            validFrom: '2026-05-01T00:00:00.000Z',
+            validUntil: '2026-06-01T00:00:00.000Z',
+            unlimited: false,
+            archivedAt: null,
+            archivedReason: null,
+          },
+        ],
+        roleAssignmentScopeSnapshots: [
+          {
+            id: 'role-scope-1',
+            assignmentId: 'role-assignment-1',
+            validFrom: null,
+            validUntil: null,
+            unlimited: true,
+            archivedAt: null,
+            archivedReason: null,
+          },
+        ],
+        permissionGroupMembershipSnapshots: [
+          {
+            id: 'group-membership-1',
+            personId: 'source-person',
+            validFrom: null,
+            validUntil: null,
+            unlimited: true,
+            archivedAt: null,
+            archivedReason: null,
+          },
+        ],
       },
     };
     const updatedCandidate = candidate({ status: 'PENDING' });
@@ -243,6 +276,39 @@ describe('MergeCandidateOperationsService', () => {
         },
       ],
       skipDuplicates: true,
+    });
+    expect(tx.eventManagerRoleAssignment.update).toHaveBeenCalledWith({
+      where: { id: 'role-assignment-1' },
+      data: {
+        personId: 'source-person',
+        validFrom: new Date('2026-05-01T00:00:00.000Z'),
+        validUntil: new Date('2026-06-01T00:00:00.000Z'),
+        unlimited: false,
+        archivedAt: null,
+        archivedReason: null,
+      },
+    });
+    expect(tx.eventManagerRoleAssignmentScope.update).toHaveBeenCalledWith({
+      where: { id: 'role-scope-1' },
+      data: {
+        assignmentId: 'role-assignment-1',
+        validFrom: null,
+        validUntil: null,
+        unlimited: true,
+        archivedAt: null,
+        archivedReason: null,
+      },
+    });
+    expect(tx.eventManagerPermissionGroupMember.update).toHaveBeenCalledWith({
+      where: { id: 'group-membership-1' },
+      data: {
+        personId: 'source-person',
+        validFrom: null,
+        validUntil: null,
+        unlimited: true,
+        archivedAt: null,
+        archivedReason: null,
+      },
     });
     expect(tx.people.update).toHaveBeenCalledWith({
       where: { id: target.id },
@@ -348,6 +414,10 @@ function createTransaction() {
     eventManagerRoleAssignment: {
       findMany: jest.fn().mockResolvedValue([]),
       findFirst: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
+    eventManagerRoleAssignmentScope: {
       update: jest.fn(),
       updateMany: jest.fn(),
     },

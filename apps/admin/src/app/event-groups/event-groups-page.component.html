@@ -233,9 +233,7 @@
           <mat-checkbox formControlName="shouldIssueCertificateForNonSubscribedAttendees">
             Emitir certificados para presentes não inscritos?
           </mat-checkbox>
-          <mat-checkbox
-            formControlName="shouldIssueCertificateForEachEvent"
-            [disabled]="workspace.selectedEventGroupHasMajorEventEvents()">
+          <mat-checkbox formControlName="shouldIssueCertificateForEachEvent">
             Um certificado por evento
           </mat-checkbox>
           <mat-checkbox formControlName="shouldIssuePartialCertificate"> Permitir certificado parcial </mat-checkbox>

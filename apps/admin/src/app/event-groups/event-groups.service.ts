@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -51,9 +51,6 @@ export class EventGroupsService {
   readonly eventGroupEvents = signal<Event[]>([]);
   readonly eventGroupEventSearchResults = signal<Event[]>([]);
   readonly savingEventGroup = signal(false);
-  readonly selectedEventGroupHasMajorEventEvents = computed(() =>
-    this.eventGroupEvents().some((eventItem) => eventItem.majorEventId),
-  );
   readonly sortedEventGroups = computed(() => {
     const groups = this.eventGroups();
     const firstEventsByGroup = this.firstEventsByGroupId();
@@ -115,10 +112,6 @@ export class EventGroupsService {
     this.eventGroupForm.controls.shouldIssueCertificate.valueChanges.subscribe(() =>
       this.syncCertificateRuleControls(),
     );
-    effect(() => {
-      this.selectedEventGroupHasMajorEventEvents();
-      this.syncCertificateRuleControls();
-    });
   }
 
   async loadEventGroups(): Promise<void> {
@@ -454,7 +447,6 @@ export class EventGroupsService {
         raw.shouldIssueCertificate && raw.shouldIssueCertificateForNonSubscribedAttendees,
       shouldIssueCertificateForEachEvent:
         raw.shouldIssueCertificate &&
-        !this.selectedEventGroupHasMajorEventEvents() &&
         raw.shouldIssueCertificateForEachEvent,
       shouldIssuePartialCertificate: raw.shouldIssueCertificate && raw.shouldIssuePartialCertificate,
     };
@@ -486,12 +478,6 @@ export class EventGroupsService {
     nonPayingControl.enable({ emitEvent: false });
     nonSubscribedControl.enable({ emitEvent: false });
     partialControl.enable({ emitEvent: false });
-
-    if (this.selectedEventGroupHasMajorEventEvents()) {
-      forEachControl.setValue(false, { emitEvent: false });
-      forEachControl.disable({ emitEvent: false });
-      return;
-    }
 
     forEachControl.enable({ emitEvent: false });
   }
