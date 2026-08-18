@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
   push:
     paths-ignore:
@@ -19,6 +20,25 @@ env:
   REDIS_URL: redis://localhost:6379
 
 jobs:
+  speedy-release:
+    name: Speedy release (tests skipped)
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Require main branch
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Speedy release can only be triggered from main."
+          exit 1
+
+      - name: Confirm release handoff
+        run: echo "Speedy release accepted on main; CI checks are intentionally skipped."
+
   lint:
     name: Lint all projects
     runs-on: ubuntu-latest
