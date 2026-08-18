@@ -15,11 +15,15 @@ export class AttendanceAnalyticsResolver {
   @RequirePermissions(Permission.EventAttendance.Read)
   eventAttendanceAnalytics(
     @Args('eventId', { type: () => String }) eventId: string,
-    @Args('windowMinutes', { type: () => Int, nullable: true }) windowMinutes?: number,
-    @Args('windowStart', { type: () => Date, nullable: true }) windowStart?: Date,
-    @Args('windowEnd', { type: () => Date, nullable: true }) windowEnd?: Date,
+    @Args('windowMinutes', { type: () => Int, nullable: true }) windowMinutes?: number | null,
+    @Args('windowStart', { type: () => Date, nullable: true }) windowStart?: Date | null,
+    @Args('windowEnd', { type: () => Date, nullable: true }) windowEnd?: Date | null,
   ): Promise<EventAttendanceAnalyticsSnapshot> {
-    return this.analytics.snapshot(eventId, { windowMinutes, start: windowStart, end: windowEnd });
+    return this.analytics.snapshot(eventId, {
+      windowMinutes: windowMinutes ?? undefined,
+      start: windowStart ?? undefined,
+      end: windowEnd ?? undefined,
+    });
   }
 
   @Query(() => [AttendanceReviewEventSummary], { name: 'attendanceReviewEventSummaries' })

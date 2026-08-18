@@ -48,6 +48,18 @@ describe('AttendanceAnalyticsResolver', () => {
     });
   });
 
+  it('treats nullable omitted window arguments as the default unbounded window', async () => {
+    analytics.snapshot.mockResolvedValueOnce({ eventId: 'event-1' });
+
+    await resolver().eventAttendanceAnalytics('event-1', null, null, null);
+
+    expect(analytics.snapshot).toHaveBeenCalledWith('event-1', {
+      windowMinutes: undefined,
+      start: undefined,
+      end: undefined,
+    });
+  });
+
   it.each([AttendanceReviewFlagStatus.RESOLVED, AttendanceReviewFlagStatus.DISMISSED])(
     'accepts review status %s and attributes the request actor',
     async (status) => {
