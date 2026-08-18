@@ -1124,3 +1124,49 @@ ALTER TABLE "sports_player_applications"
 -- AlterTable
 ALTER TABLE "sports_player_applications"
   ADD COLUMN "imageLicenseAgreementAccepted" BOOLEAN NOT NULL DEFAULT false;
+
+-- Squashed follow-up fields for the final sports contract.
+ALTER TABLE "sports_categories"
+  ADD COLUMN "overallScoringRules" JSONB NOT NULL DEFAULT '{}';
+
+CREATE TYPE "SportsAthleteIdentifierMode" AS ENUM ('SHIRT_NUMBER', 'GAME_ACCOUNT');
+
+ALTER TABLE "sports_categories"
+  ADD COLUMN "athleteIdentifierMode" "SportsAthleteIdentifierMode" NOT NULL DEFAULT 'SHIRT_NUMBER',
+  ADD COLUMN "joiningInstructions" TEXT;
+
+ALTER TABLE "sports_registration_members"
+  ADD COLUMN "gameNickname" TEXT,
+  ADD COLUMN "gameAccountName" TEXT,
+  ADD COLUMN "gameAccountUrl" TEXT,
+  ADD COLUMN "shirtNumber" TEXT;
+
+ALTER TABLE "sports_tournaments"
+  ADD COLUMN "registrationStartDate" TIMESTAMP(3),
+  ADD COLUMN "registrationEndDate" TIMESTAMP(3);
+
+CREATE INDEX "sports_tournaments_registrationStartDate_registrationEndDate_id"
+ON "sports_tournaments"("registrationStartDate", "registrationEndDate");
+
+ALTER TABLE "sports_tournaments"
+  ADD COLUMN "shouldIssueCertificate" BOOLEAN NOT NULL DEFAULT false;
+
+ALTER TABLE "sports_categories"
+  ADD COLUMN "shouldIssueCertificate" BOOLEAN;
+
+UPDATE "event_groups" AS event_group
+SET "name" = CONCAT_WS(
+  ' — ',
+  major_event."name",
+  category."name",
+  NULLIF(BTRIM(category."division"), '')
+)
+FROM "sports_categories" AS category
+JOIN "sports_tournaments" AS tournament ON tournament."id" = category."tournamentId"
+JOIN "major_events" AS major_event ON major_event."id" = tournament."majorEventId"
+WHERE event_group."id" = category."eventGroupId"
+  AND category."deletedAt" IS NULL
+  AND tournament."deletedAt" IS NULL;
+
+ALTER TABLE "price_tiers"
+  ADD COLUMN "includesSportsRegistration" BOOLEAN NOT NULL DEFAULT false;

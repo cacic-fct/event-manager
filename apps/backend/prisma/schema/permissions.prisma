@@ -165,7 +165,6 @@ model EventManagerPermissionGroup {
   updatedAt   DateTime  @updatedAt
   updatedById String?
 
-  @@unique([name], map: "event_manager_permission_groups_name_active_key", where: raw("\"archivedAt\" IS NULL"))
   @@index([name])
   @@index([archivedAt])
   @@map("event_manager_permission_groups")

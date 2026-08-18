@@ -1,5 +1,3 @@
--- This forward-only migration replaces legacy per-user permission grants with person-first role assignments.
--- It intentionally leaves historical audit entries intact while removing the legacy grant table and enum.
 
 CREATE TYPE "EventManagerPermissionScope" AS ENUM ('GLOBAL', 'EVENT', 'MAJOR_EVENT', 'EVENT_GROUP');
 CREATE TYPE "EventManagerPermissionArchiveReason" AS ENUM (

@@ -1,3 +1,64 @@
+INSERT INTO "certificate_templates" (
+  "id",
+  "name",
+  "description",
+  "version",
+  "template",
+  "isActive",
+  "createdAt",
+  "updatedAt"
+)
+SELECT
+  '01964110-9af3-7091-9f0c-3f9d5964a201',
+  'Example',
+  'Playwright certificate template example',
+  1,
+  $template$
+  {
+    "engine": "playwright",
+    "templateName": "Example",
+    "htmlTemplatePath": "apps/backend/src/app/certificate/templates/example/example.template.html",
+    "cssTemplatePath": "apps/backend/src/app/certificate/templates/example/example.template.css",
+    "verificationUrlPattern": "eventos.cacic.dev.br/app/validate/{certificateID}"
+  }
+  $template$::jsonb,
+  true,
+  NOW(),
+  NOW()
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM "certificate_templates"
+  WHERE "id" = '01964110-9af3-7091-9f0c-3f9d5964a201'
+     OR ("name" = 'Example' AND "deletedAt" IS NULL)
+);
+
+-- Normalize known CACiC paths before retaining the old JSON as recovery data.
+UPDATE "certificate_templates"
+SET "template" = jsonb_set(
+  "template",
+  '{htmlTemplatePath}',
+  to_jsonb('certificate-templates/cacic-unesp/attendee/cacic-unesp-attendee.template.html'::text)
+),
+"updatedAt" = NOW()
+WHERE "id" = '01964110-9af3-7091-9f0c-3f9d5964a201'
+  AND "template"->>'htmlTemplatePath' IN (
+    'apps/events-backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.html',
+    'apps/backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.html'
+  );
+
+UPDATE "certificate_templates"
+SET "template" = jsonb_set(
+  "template",
+  '{cssTemplatePath}',
+  to_jsonb('certificate-templates/cacic-unesp/attendee/cacic-unesp-attendee.template.css'::text)
+),
+"updatedAt" = NOW()
+WHERE "id" = '01964110-9af3-7091-9f0c-3f9d5964a201'
+  AND "template"->>'cssTemplatePath' IN (
+    'apps/events-backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.css',
+    'apps/backend/src/app/certificate/templates/cacic-unesp/cacic-unesp.template.css'
+  );
+
 -- Certificate templates are now synchronized from metadata files into
 -- self-contained database snapshots. Existing relations keep their template
 -- row, so previously issued certificates and configurations move to the new
@@ -135,3 +196,7 @@ DROP COLUMN "version";
 
 CREATE UNIQUE INDEX "certificate_templates_registryKey_key"
 ON "certificate_templates"("registryKey");
+
+-- Legacy JSON is retained for recovery but is optional for new registry rows.
+ALTER TABLE "certificate_templates"
+ALTER COLUMN "legacyTemplate" DROP NOT NULL;

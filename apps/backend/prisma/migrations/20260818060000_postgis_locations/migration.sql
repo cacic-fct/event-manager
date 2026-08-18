@@ -1,9 +1,5 @@
--- PostGIS is installed by the postgis/postgis container image. Enabling it here
--- also makes the schema self-contained for any compatible managed PostgreSQL host.
 CREATE EXTENSION IF NOT EXISTS postgis;
 
--- A geography point requires a complete, valid WGS 84 coordinate pair. Refuse
--- to silently discard malformed legacy values so they can be corrected first.
 DO $$
 DECLARE
   invalid_coordinates record;

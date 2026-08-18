@@ -47,6 +47,7 @@ model EventSubscription {
   lgpdDeletionRequestId String?
 
   @@unique([eventId, personId, deletedAt])
+  @@unique([eventId, personId], map: "event_subscription_unique_active", where: raw("\"deletedAt\" IS NULL"))
   @@index([eventId])
   @@index([personId, deletedAt, eventId])
   @@index([eventGroupSubscriptionId])
@@ -74,6 +75,7 @@ model EventGroupSubscription {
   lgpdDeletionRequestId String?
 
   @@unique([eventGroupId, personId, deletedAt])
+  @@unique([eventGroupId, personId], map: "event_group_subscription_unique_active", where: raw("\"deletedAt\" IS NULL"))
   @@index([eventGroupId])
   @@index([personId])
   @@index([lgpdDeletionRequestId])
