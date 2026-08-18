@@ -60,6 +60,7 @@ export default defineConfig({
         webServer: {
           command: startStaticServer ? 'bunx nx run public:serve-static' : 'bunx nx run public:serve',
           url: baseURL,
+          timeout: 180_000,
           reuseExistingServer: true,
           cwd: workspaceRoot,
         },

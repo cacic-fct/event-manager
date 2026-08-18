@@ -20,7 +20,7 @@ test('permission management loads a linked person and their role assignment', as
   await expect(page).toHaveURL(/\/admin\/permissions\/manage\/people\/person-1$/);
   await expect(page.getByRole('tab', { name: 'Pessoas' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('heading', { name: 'Acessos por pessoa' })).toBeVisible();
-  await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ada Lovelace' })).toBeVisible();
   const directRole = page.getByRole('button', { name: /Operação de credenciamento/ });
   await expect(directRole).toBeVisible();
 
