@@ -89,7 +89,17 @@ test('keeps the selected tournament workspace state on a deep link', async ({ pa
 
   await expect(page).toHaveURL(/\/admin\/sports\/tournament-1$/);
   await expect(page.getByRole('heading', { name: 'Gestão esportiva' })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /Partidas e chaves/ })).toBeVisible();
+  const matchesTab = page.getByRole('tab', { name: /Partidas e chaves/ });
+  await expect(matchesTab).toBeVisible();
+
+  await matchesTab.click();
+  await expect(page).toHaveURL(/\/admin\/sports\/tournament-1\/matches$/);
+  await expect(matchesTab).toHaveAttribute('aria-selected', 'true');
+
+  const categoriesTab = page.getByRole('tab', { name: /Modalidades/ });
+  await categoriesTab.click();
+  await expect(page).toHaveURL(/\/admin\/sports\/tournament-1\/categories$/);
+  await expect(categoriesTab).toHaveAttribute('aria-selected', 'true');
 });
 
 test('shows the unified empty state when no sports event is available', async ({ page }) => {
