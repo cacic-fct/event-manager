@@ -74,10 +74,27 @@ jobs:
             public
           )"
 
-          BASE="$(git rev-parse "${HEAD}^" 2>/dev/null || true)"
+          git fetch --tags origin
+
+          LAST_RELEASE_TAG="$(
+            git describe \
+              --tags \
+              --abbrev=0 \
+              --first-parent \
+              --match='????-??-??-[0-9]*' \
+              "$HEAD" \
+              2>/dev/null || true
+          )"
+
+          if [ -n "$LAST_RELEASE_TAG" ]; then
+            BASE="$(git rev-parse "${LAST_RELEASE_TAG}^{commit}")"
+            echo "Last release tag: $LAST_RELEASE_TAG"
+          else
+            BASE=""
+          fi
 
           if [ -z "$BASE" ]; then
-            echo "No parent commit found."
+            echo "No previous release tag found."
             echo "Publishing all deployable apps."
 
             DEPLOYABLE="$DEPLOYABLE_APPS"
