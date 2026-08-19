@@ -4,8 +4,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDatabaseProvider } from '@cacic-fct/public-indexed-db';
 import type { DetailViewModel } from '@cacic-fct/shared-utils';
+import { NetworkStatusService } from '../../../shared/network-status.service';
 import { MoreInfo } from './more-info';
 
 describe('MoreInfo', () => {
@@ -20,6 +22,18 @@ describe('MoreInfo', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            user: () => ({ sub: 'user-1' }),
+          },
+        },
+        {
+          provide: NetworkStatusService,
+          useValue: {
+            isOnline: () => true,
+          },
+        },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -153,6 +167,7 @@ describe('MoreInfo', () => {
         publicEvent: null,
       },
     });
+    await new Promise((resolve) => setTimeout(resolve, 0));
     const formsRequest = httpTesting.match((request) =>
       String(request.body.query).includes('CurrentUserEventForms'),
     )[0];
