@@ -21,6 +21,11 @@ describe('getPrivateFeedEvents', () => {
         }),
       }),
     );
+
+    const lecturerQuery = prisma.eventLecturer.findMany.mock.calls[0]?.[0] as
+      | { where?: Record<string, unknown> }
+      | undefined;
+    expect(lecturerQuery?.where).not.toHaveProperty('status');
   });
 
   it('includes matches only through approved player rosters', async () => {
