@@ -153,6 +153,14 @@ describe('MoreInfo', () => {
         publicEvent: null,
       },
     });
+    const formsRequest = httpTesting.match((request) =>
+      String(request.body.query).includes('CurrentUserEventForms'),
+    )[0];
+    formsRequest?.flush({
+      data: {
+        currentUserEventForms: [],
+      },
+    });
     await fixture.whenStable();
     fixture.detectChanges();
 
