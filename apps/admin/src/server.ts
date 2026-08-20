@@ -19,7 +19,6 @@ const angularApp = new AngularNodeAppEngine({
   trustProxyHeaders: [
     'x-forwarded-host',
     'x-forwarded-proto',
-    'cf-connecting-ip',
     'x-forwarded-server',
     'x-forwarded-for',
     'x-forwarded-port',
