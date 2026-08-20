@@ -1,9 +1,11 @@
 {
   "recommendations": [
     "Angular.ng-template",
-    "dineug.vuerd-vscode",
-    "Ionic.ionic",
     "esbenp.prettier-vscode",
-    "dbaeumer.vscode-eslint"
+    "dbaeumer.vscode-eslint",
+    "nrwl.angular-console",
+    "Gruntfuggly.todo-tree",
+    "treetsidesoftware.code-spell-checker",
+    "streetsidesoftware.code-spell-checker-portuguese-brazilian"
   ]
 }
