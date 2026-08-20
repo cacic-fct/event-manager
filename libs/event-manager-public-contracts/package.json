@@ -1,6 +1,6 @@
 {
   "name": "@cacic-fct/event-manager-public-contracts",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic CACiC Event Manager public GraphQL contracts.",
   "license": "AGPL-3.0-only",
   "type": "commonjs",
