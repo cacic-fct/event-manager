@@ -140,6 +140,15 @@
   margin: 0;
 }
 
+.value-proposition-stats-loading-message {
+  block-size: 1px;
+  clip-path: inset(50%);
+  inline-size: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+}
+
 .value-proposition-stats-loading {
   display: grid;
   gap: 1.5rem;

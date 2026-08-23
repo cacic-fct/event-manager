@@ -80,7 +80,13 @@ export const VeryLargeStatistics: Story = {
 export const Loading: Story = {
   args: { statsState: 'loading' },
   play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText(/Carregando estatísticas/i)).toBeVisible();
+    await expect(
+      await within(canvasElement).findByRole('status', { name: 'Carregando estatísticas da plataforma' }),
+    ).toBeInTheDocument();
+    await expect(canvasElement.querySelector('.value-proposition-stats-loading')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
   },
 };
 
