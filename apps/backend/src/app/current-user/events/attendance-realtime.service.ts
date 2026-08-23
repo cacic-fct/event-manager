@@ -542,27 +542,35 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   }
 
   private async resolvePersonId(request: Request): Promise<string | null> {
-    const bearerToken = this.readBearerToken(request);
-    if (bearerToken) {
-      try {
-        const user = await this.auth.authenticateAccessToken(bearerToken);
-        const { person } = await this.currentUserContext.resolveCurrentUserContext(user);
-        return person?.id ?? null;
-      } catch {
-        // A cookie session may still authenticate this public stream. Fall
-        // through so a stale bearer token does not hide a valid session.
-      }
+    const bearerPersonId = await this.resolveBearerPersonId(request);
+    if (bearerPersonId) {
+      return bearerPersonId;
     }
 
-    const sessionId = this.readCookie(request, AUTH_SESSION_COOKIE_NAME);
+    return await this.resolveSessionPersonId(request);
+  }
 
+  private async resolveBearerPersonId(request: Request): Promise<string | null> {
+    try {
+      const user = await this.auth.authenticateAccessToken(this.readBearerToken(request) ?? '');
+      if (!user) {
+        return null;
+      }
+      const { person } = await this.currentUserContext.resolveCurrentUserContext(user);
+      return person?.id ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async resolveSessionPersonId(request: Request): Promise<string | null> {
+    const sessionId = this.readCookie(request, AUTH_SESSION_COOKIE_NAME);
     if (!sessionId) {
       return null;
     }
 
     const user = await this.auth.authenticateSession(sessionId);
     const { person } = await this.currentUserContext.resolveCurrentUserContext(user);
-
     return person?.id ?? null;
   }
 
@@ -572,8 +580,13 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
       return null;
     }
 
-    const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-    return match?.[1]?.trim() || null;
+    const normalized = header.trim();
+    const separator = normalized.indexOf(' ');
+    if (separator < 0 || normalized.slice(0, separator).toLowerCase() !== 'bearer') {
+      return null;
+    }
+
+    return normalized.slice(separator + 1).trim() || null;
   }
 
   private readCookie(request: Request, name: string): string | null {

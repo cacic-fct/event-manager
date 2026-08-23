@@ -16,7 +16,9 @@ interface RouteParamReader {
   get(name: string): string | null;
 }
 
-export const sportsWorkspaceMatcher: UrlMatcher = (segments) => {
+export const sportsWorkspaceMatcher: UrlMatcher = (segments) => matchSportsWorkspaceSegments(segments);
+
+export function matchSportsWorkspaceSegments(segments: UrlSegment[]) {
   if (segments.length < 1 || segments.length > 5 || segments[0]?.path !== 'sports') {
     return null;
   }
@@ -37,7 +39,7 @@ export const sportsWorkspaceMatcher: UrlMatcher = (segments) => {
   }
 
   return { consumed: segments, posParams };
-};
+}
 
 export function parseSportsWorkspaceRoute(params: RouteParamReader): SportsWorkspaceRouteState {
   const tournamentId = params.get('tournamentId');

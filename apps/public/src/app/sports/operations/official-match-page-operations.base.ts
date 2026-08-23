@@ -335,6 +335,7 @@ export abstract class OfficialMatchPageOperations extends OfficialMatchPageContr
             overall: conflict.device.overall,
             periods: conflict.device.periods,
             activePeriodNumber: conflict.device.activePeriod,
+            state: conflict.device.state,
           }),
           authoredAt: new Date().toISOString(),
           offline: false,

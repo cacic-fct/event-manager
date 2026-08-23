@@ -296,6 +296,7 @@ export class AttendanceOfflineSyncService {
             this.queue.applyCommitResults(
               ownerUserId,
               results.filter((result) => ownerClientIds.includes(result.clientId)),
+              userId,
             ),
         );
         successfulResults.push(...results.filter((result) => this.isDurableResult(result)));
@@ -470,11 +471,12 @@ export class AttendanceOfflineSyncService {
   }
 
   private rerunForLatestUser(userId: string, generation: number): void {
-    if (this.activeUserId !== userId || this.authGeneration === generation) {
+    const activeUserId = this.activeUserId;
+    if (!activeUserId || (activeUserId === userId && this.authGeneration === generation)) {
       return;
     }
 
-    void this.syncPending(this.activeUserId ?? undefined, this.authGeneration).catch(() => undefined);
+    void this.syncPending(activeUserId, this.authGeneration).catch(() => undefined);
   }
 
   private async forEachAttendanceOwner(

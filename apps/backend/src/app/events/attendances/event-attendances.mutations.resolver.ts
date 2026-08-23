@@ -514,7 +514,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           submissionId,
           success: false,
           error: errorMessage(error),
-          submission: await this.getOfflineSubmissionForResponseSafely(submissionId),
         });
       }
     }
@@ -678,7 +677,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
           submissionId,
           success: false,
           error: errorMessage(error),
-          submission: await this.getOfflineSubmissionForResponseSafely(submissionId),
         });
       }
     }
@@ -833,16 +831,6 @@ export class EventAttendancesMutationsResolver extends EventAttendancesResolverB
     }
 
     return normalizedIds;
-  }
-
-  private async getOfflineSubmissionForResponseSafely(
-    submissionId: string,
-  ): Promise<OfflineEventAttendanceSubmission | undefined> {
-    try {
-      return await this.getOfflineSubmissionForResponse(submissionId);
-    } catch {
-      return undefined;
-    }
   }
 
   @Mutation(() => EventAttendance, { name: 'updateEventAttendance' })

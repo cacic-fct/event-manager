@@ -7,7 +7,6 @@ import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
 import { createDocsAuthGate } from '../auth/docs-auth.middleware';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { AppModule } from '../app.module';
-import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
 import { requestContextMiddleware } from './request-context';
 
 const globalPrefix = 'api';
@@ -41,7 +40,6 @@ export function configureBackendHttpApp(app: INestApplication): void {
       },
     }),
   );
-  app.useGlobalPipes(REST_VALIDATION_PIPE);
   app.use((_request: unknown, response: { setHeader: (name: string, value: string) => void }, next: () => void) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('X-Frame-Options', 'DENY');

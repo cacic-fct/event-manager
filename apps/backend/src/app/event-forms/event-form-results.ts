@@ -60,7 +60,7 @@ export class FormResultSummaryAccumulator {
         if (values.length < 1_000) {
           values.push(value);
         }
-      } else {
+      } else if (!['date', 'time', 'scheduling'].includes(element.type)) {
         this.addBuckets(element, value);
       }
     }

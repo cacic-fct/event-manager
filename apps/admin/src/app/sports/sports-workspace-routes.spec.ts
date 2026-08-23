@@ -1,18 +1,16 @@
-import { Route, UrlSegment, UrlSegmentGroup, convertToParamMap } from '@angular/router';
+import { UrlSegment, convertToParamMap } from '@angular/router';
 import {
   parseSportsWorkspaceRoute,
-  sportsWorkspaceMatcher,
+  matchSportsWorkspaceSegments,
   sportsWorkspaceRoute,
 } from './sports-workspace-routes';
 
 function matchWorkspaceUrl(url: string) {
-  const result = sportsWorkspaceMatcher(
+  const result = matchSportsWorkspaceSegments(
     url
       .split('/')
       .filter(Boolean)
       .map((segment) => new UrlSegment(segment, {})),
-    new UrlSegmentGroup([], {}),
-    {} as Route,
   );
   return result && {
     consumed: result.consumed.map((segment) => segment.path),

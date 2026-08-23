@@ -306,6 +306,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
 
   protected timerSnapshot(source: SportsOperationalMatch | null = this.match()): SportsTimerSnapshot {
     return {
+      state: source?.state === 'PAUSED' ? 'PAUSED' : 'LIVE',
       overall: {
         startedAtUnixMs:
           source?.timerStartedAtUnixMs ?? (source?.timerStartedAt ? new Date(source.timerStartedAt).getTime() : null),

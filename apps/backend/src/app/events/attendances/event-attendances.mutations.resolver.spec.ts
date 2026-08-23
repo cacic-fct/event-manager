@@ -566,6 +566,30 @@ describe('EventAttendancesMutationsResolver', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('does not return submission details when a batch review permission check fails', async () => {
+    const { resolver: resolverWithDeps, authorizationPolicy } = createResolverWithDependencies(
+      prisma,
+      attendanceCategories,
+    );
+    prisma.offlineEventAttendanceSubmission.findUnique.mockResolvedValue(
+      offlineSubmissionFixture({ id: 'submission-secret' }),
+    );
+    authorizationPolicy.assertPermissions.mockRejectedValue(new Error('Sem permissão.'));
+
+    await expect(
+      resolverWithDeps.approveOfflineEventAttendanceSubmissions(['submission-secret'], {
+        req: { user: { sub: 'unauthorized-user' } },
+      } as never),
+    ).resolves.toEqual([
+      {
+        submissionId: 'submission-secret',
+        success: false,
+        error: 'Sem permissão.',
+      },
+    ]);
+    expect(prisma.offlineEventAttendanceSubmission.findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+
   it('rejects pending offline submissions with trimmed reasons and audit entries', async () => {
     const {
       resolver: resolverWithDeps,

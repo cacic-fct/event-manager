@@ -52,7 +52,7 @@ export class KeycloakM2mTokenService {
 
     const inFlight = this.inFlightTokens.get(cacheKey);
     if (inFlight) {
-      return inFlight;
+      return await inFlight;
     }
 
     const request = this.requestClientCredentialsToken(cacheKey, clientId, clientSecret, options);

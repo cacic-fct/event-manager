@@ -382,6 +382,45 @@ export class LgpdService {
       const permissionGroupMemberships = await tx.eventManagerPermissionGroupMember.deleteMany({
         where: { personId: { in: personIds } },
       });
+      const sportsParticipants = await tx.sportsTournamentParticipant.findMany({
+        where: { personId: { in: personIds } },
+        select: { id: true },
+      });
+      const sportsTeamMembers = await tx.sportsTeamMember.findMany({
+        where: { participantId: { in: sportsParticipants.map((participant) => participant.id) } },
+        select: { id: true },
+      });
+      const sportsRegistrationMembers = await tx.sportsRegistrationMember.findMany({
+        where: { teamMemberId: { in: sportsTeamMembers.map((member) => member.id) } },
+        select: { id: true },
+      });
+      const sportsRosterEntries = await tx.sportsMatchRosterEntry.deleteMany({
+        where: { registrationMemberId: { in: sportsRegistrationMembers.map((member) => member.id) } },
+      });
+      const deletedSportsRegistrationMembers = await tx.sportsRegistrationMember.deleteMany({
+        where: { id: { in: sportsRegistrationMembers.map((member) => member.id) } },
+      });
+      const deletedSportsTeamMembers = await tx.sportsTeamMember.deleteMany({
+        where: { id: { in: sportsTeamMembers.map((member) => member.id) } },
+      });
+      const deletedSportsParticipants = await tx.sportsTournamentParticipant.deleteMany({
+        where: { id: { in: sportsParticipants.map((participant) => participant.id) } },
+      });
+      const sportsRepresentatives = await tx.sportsTeamRepresentative.deleteMany({
+        where: { personId: { in: personIds } },
+      });
+      const sportsOfficials = await tx.sportsOfficialAssignment.deleteMany({
+        where: { personId: { in: personIds } },
+      });
+      const sportsTeamChangeRequests = await tx.sportsTeamChangeRequest.deleteMany({
+        where: { submittedByPersonId: { in: personIds } },
+      });
+      const sportsPlayerApplicationCategories = await tx.sportsPlayerApplicationCategory.deleteMany({
+        where: { application: { applicantPersonId: { in: personIds } } },
+      });
+      const sportsPlayerApplications = await tx.sportsPlayerApplication.deleteMany({
+        where: { applicantPersonId: { in: personIds } },
+      });
       const people = await tx.people.deleteMany({ where: { id: { in: personIds } } });
       const users = await tx.user.deleteMany({ where: { id: { in: userIds } } });
 
@@ -402,6 +441,15 @@ export class LgpdService {
           roleAssignmentScopes.count +
           roleAssignments.count +
           permissionGroupMemberships.count +
+          sportsRosterEntries.count +
+          deletedSportsRegistrationMembers.count +
+          deletedSportsTeamMembers.count +
+          deletedSportsParticipants.count +
+          sportsRepresentatives.count +
+          sportsOfficials.count +
+          sportsTeamChangeRequests.count +
+          sportsPlayerApplicationCategories.count +
+          sportsPlayerApplications.count +
           offlineAttendanceSubmissions +
           eventDrafts,
       };

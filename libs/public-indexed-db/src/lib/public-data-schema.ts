@@ -254,6 +254,7 @@ export interface OfflineSportsMatchPeriodTimer {
 }
 
 export interface OfflineSportsTimerSnapshot {
+  state: 'LIVE' | 'PAUSED';
   overall: {
     startedAtUnixMs: number | null;
     pausedAtUnixMs: number | null;

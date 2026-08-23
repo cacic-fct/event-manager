@@ -487,6 +487,29 @@ describe('offline public data access integration', () => {
     );
   });
 
+  it('keeps another collector\'s item retryable when the current uploader is forbidden', async () => {
+    const service = injectService(AttendanceOfflineQueueService);
+    await database.attendanceQueue.put(
+      queueItem('shared-device', 'SYNCING', {
+        queuedByUserId: 'collector-user',
+        collectorCredential: 'signed-collector-proof',
+      }),
+    );
+
+    await service.applyCommitResults(
+      'collector-user',
+      [{ clientId: 'shared-device', status: 'FORBIDDEN' }],
+      'uploader-user',
+    );
+
+    await expect(database.attendanceQueue.get('shared-device')).resolves.toEqual(
+      expect.objectContaining({ status: 'FAILED', queuedByUserId: 'collector-user' }),
+    );
+    await expect(service.listPending('collector-user')).resolves.toEqual([
+      expect.objectContaining({ clientId: 'shared-device', status: 'FAILED' }),
+    ]);
+  });
+
   it('marks, retries, removes, and records failures only for the current user queue', async () => {
     const service = injectService(AttendanceOfflineQueueService);
     await database.attendanceQueue.bulkPut([
@@ -640,6 +663,9 @@ describe('offline public data access integration', () => {
       }),
     );
     await expect(service.getLatestUserSnapshot('user-2')).resolves.toEqual(
+      expect.objectContaining({ userId: 'user-2', name: 'Bruno' }),
+    );
+    await expect(service.getLatestUserSnapshot()).resolves.toEqual(
       expect.objectContaining({ userId: 'user-2', name: 'Bruno' }),
     );
     await expect(service.getAttendanceFeed('user-1')).resolves.toEqual(feed);

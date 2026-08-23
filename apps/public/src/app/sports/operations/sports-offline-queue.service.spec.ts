@@ -306,6 +306,7 @@ describe('SportsOfflineQueueService', () => {
       offline: true,
     });
     await queue.attachTimerSnapshot('timer-1', {
+      state: 'PAUSED',
       overall: { startedAtUnixMs: null, pausedAtUnixMs: 1_754_049_900_000, elapsedBeforePauseMs: 300_000 },
       periods: [],
       activePeriod: 1,

@@ -98,8 +98,8 @@ model EventManagerRoleAssignment {
   updatedAt   DateTime @updatedAt
   updatedById String?
 
-  @@unique([roleId, personId], map: "event_manager_role_assignments_person_active_key", where: raw("\"archivedAt\" IS NULL AND \"personId\" IS NOT NULL"))
-  @@unique([roleId, groupId], map: "event_manager_role_assignments_group_active_key", where: raw("\"archivedAt\" IS NULL AND \"groupId\" IS NOT NULL"))
+  // Exact active validity windows are kept unique by expression indexes in the
+  // migration so disjoint historical/future grants can coexist without filling gaps.
   @@index([roleId])
   @@index([personId])
   @@index([groupId])
@@ -134,10 +134,7 @@ model EventManagerRoleAssignmentScope {
   updatedAt   DateTime @updatedAt
   updatedById String?
 
-  @@unique([assignmentId], map: "event_manager_role_assignment_scopes_global_active_key", where: raw("\"archivedAt\" IS NULL AND \"scope\" = 'GLOBAL'"))
-  @@unique([assignmentId, eventId], map: "event_manager_role_assignment_scopes_event_active_key", where: raw("\"archivedAt\" IS NULL AND \"scope\" = 'EVENT'"))
-  @@unique([assignmentId, majorEventId], map: "event_manager_role_assignment_scopes_major_event_active_key", where: raw("\"archivedAt\" IS NULL AND \"scope\" = 'MAJOR_EVENT'"))
-  @@unique([assignmentId, eventGroupId], map: "event_manager_role_assignment_scopes_event_group_active_key", where: raw("\"archivedAt\" IS NULL AND \"scope\" = 'EVENT_GROUP'"))
+  // Exact active validity windows are kept unique by expression indexes in the migration.
   @@index([assignmentId])
   @@index([scope])
   @@index([eventId])
@@ -189,7 +186,7 @@ model EventManagerPermissionGroupMember {
   updatedAt   DateTime @updatedAt
   updatedById String?
 
-  @@unique([groupId, personId], map: "event_manager_permission_group_members_active_key", where: raw("\"archivedAt\" IS NULL"))
+  // Exact active validity windows are kept unique by an expression index in the migration.
   @@index([groupId])
   @@index([personId])
   @@index([validFrom])

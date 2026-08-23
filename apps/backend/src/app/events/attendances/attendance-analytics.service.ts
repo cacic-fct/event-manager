@@ -130,7 +130,6 @@ export class AttendanceAnalyticsService {
       this.prisma.eventAttendance.findMany({
         where: { eventId, status: 'PRESENT' },
         select: { personId: true },
-        take: MAX_ANALYTICS_ATTENDANCES,
       }),
       this.prisma.offlineEventAttendanceSubmission.findMany({
         where: { eventId, status: 'PENDING' },
@@ -280,7 +279,6 @@ export class AttendanceAnalyticsService {
       ? await this.prisma.eventSubscription.findMany({
           where: { eventId: event.id, deletedAt: null },
           select: { personId: true },
-          take: MAX_ANALYTICS_ATTENDANCES,
         })
       : [];
     const major = event.majorEventId
@@ -292,7 +290,6 @@ export class AttendanceAnalyticsService {
             ...(event.autoSubscribe ? {} : { selectedEvents: { some: { eventId: event.id, deletedAt: null } } }),
           },
           select: { personId: true },
-          take: MAX_ANALYTICS_ATTENDANCES,
         })
       : [];
     return new Set([...standalone, ...major].map((subscription) => subscription.personId));
@@ -604,7 +601,7 @@ export function countMethods(attendances: AnalyticsAttendance[]): AttendanceMeth
 
 export function buildHeatmapPoints(attendances: AnalyticsAttendance[]): AttendanceHeatmapPoint[] {
   const cells = new Map<string, { latitude: number; longitude: number; count: number; accuracyTotal: number; accuracyCount: number }>();
-  for (const attendance of attendances) {
+  for (const attendance of attendances.filter((item) => item.status === 'PRESENT')) {
     if (attendance.collectedLatitude === null || attendance.collectedLongitude === null) continue;
     const latitude = Number(attendance.collectedLatitude.toFixed(4));
     const longitude = Number(attendance.collectedLongitude.toFixed(4));

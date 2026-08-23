@@ -19,11 +19,15 @@ export class UserOfflineDataService {
 
   async getLatestUserSnapshot(userId?: string): Promise<OfflineUserSnapshot | null> {
     const database = this.databaseProvider.getDatabase();
-    if (!database || !userId) {
+    if (!database) {
       return null;
     }
 
-    return (await database.userSnapshots.get(userId)) ?? null;
+    if (userId) {
+      return (await database.userSnapshots.get(userId)) ?? null;
+    }
+
+    return (await database.userSnapshots.orderBy('updatedAt').last()) ?? null;
   }
 
   async replaceRestaurantCard(card: OfflineRestaurantCard): Promise<void> {

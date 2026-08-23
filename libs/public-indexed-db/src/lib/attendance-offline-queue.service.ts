@@ -270,7 +270,11 @@ export class AttendanceOfflineQueueService {
     });
   }
 
-  async applyCommitResults(userId: string, results: readonly OfflineAttendanceCommitResultLike[]): Promise<void> {
+  async applyCommitResults(
+    userId: string,
+    results: readonly OfflineAttendanceCommitResultLike[],
+    uploaderUserId = userId,
+  ): Promise<void> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return;
@@ -289,7 +293,10 @@ export class AttendanceOfflineQueueService {
           continue;
         }
 
-        const nextStatus = this.queueStatusForCommitStatus(result.status);
+        const nextStatus =
+          result.status === 'FORBIDDEN' && item.queuedByUserId !== uploaderUserId
+            ? 'FAILED'
+            : this.queueStatusForCommitStatus(result.status);
         await database.attendanceQueue.update(result.clientId, {
           status: nextStatus,
           attempts: item.attempts + 1,

@@ -235,6 +235,7 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
       .subscribe({ error: (error) => errors.push(error) });
 
     await flushPromises();
+    await flushPromises();
     expect(errors).toHaveLength(1);
     expect((service as unknown as { clients: Set<unknown> }).clients.size).toBe(0);
     subscription.unsubscribe();

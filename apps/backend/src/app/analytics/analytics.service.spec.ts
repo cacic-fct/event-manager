@@ -31,6 +31,9 @@ describe('AnalyticsService', () => {
       service.forwardEnvelope('unknown-project', createRequest(validEnvelope())),
     ).rejects.toThrow('Unknown monitoring project');
     await expect(
+      service.forwardEnvelope(['admin', 'public'] as never, createRequest(validEnvelope())),
+    ).rejects.toThrow('Unknown monitoring project');
+    await expect(
       service.forwardEnvelope('admin', createRequest(Buffer.alloc(1_024 * 1_024 + 1))),
     ).rejects.toThrow('too large');
 

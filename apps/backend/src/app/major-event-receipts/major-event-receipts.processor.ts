@@ -170,7 +170,7 @@ export class MajorEventReceiptsProcessor extends WorkerHost implements OnModuleI
       const originalBuffer = await this.streamToBuffer(storedFile.stream, MAX_RECEIPT_FILE_SIZE_BYTES);
       const processedPdf = isPdfReceiptMimeType(receipt.mimeType) ? await processReceiptPdf(originalBuffer) : undefined;
       const receiptImageBuffer = processedPdf?.previewBuffer ?? originalBuffer;
-      const receiptText = processedPdf
+      const receiptText = processedPdf?.text.trim()
         ? processedPdf.text
         : await this.recognizeRasterReceiptText(receiptImageBuffer);
       const expectedAmountCents = this.resolveExpectedAmountCents(receipt.subscription);

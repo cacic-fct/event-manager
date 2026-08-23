@@ -20,6 +20,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   intersectPermissionRelationValidity,
   normalizePermissionRelationValidity,
+  permissionRelationValiditiesOverlapOrTouch,
   permissionRelationScopeKey,
   unionPermissionRelationValidity,
 } from '../people/permission-relation-validity';
@@ -553,7 +554,8 @@ export class AccountMergeService {
         },
       },
     });
-    const conflictsByRoleId = new Map((await tx.eventManagerRoleAssignment.findMany({
+    const conflictsByRoleId = new Map<string, typeof assignments>();
+    for (const conflict of await tx.eventManagerRoleAssignment.findMany({
       where: { personId: targetPersonId, roleId: { in: assignments.map((assignment) => assignment.roleId) }, archivedAt: null },
       select: {
         id: true,
@@ -575,16 +577,27 @@ export class AccountMergeService {
           },
         },
       },
-    })).map((assignment) => [assignment.roleId, assignment] as const));
+    })) {
+      const roleConflicts = conflictsByRoleId.get(conflict.roleId) ?? [];
+      roleConflicts.push(conflict);
+      conflictsByRoleId.set(conflict.roleId, roleConflicts);
+    }
     for (const assignment of assignments) {
-      const conflict = conflictsByRoleId.get(assignment.roleId);
+      const sourceValidity = normalizePermissionRelationValidity(assignment);
+      const conflict = conflictsByRoleId
+        .get(assignment.roleId)
+        ?.find((candidate) =>
+          permissionRelationValiditiesOverlapOrTouch(
+            sourceValidity,
+            normalizePermissionRelationValidity(candidate),
+          ),
+        );
       if (conflict) {
-        const sourceValidity = normalizePermissionRelationValidity(assignment);
         const targetValidity = normalizePermissionRelationValidity(conflict);
         const archivedAt = new Date();
         const targetScopes = new Map<
           string,
-          { id: string; validity: ReturnType<typeof normalizePermissionRelationValidity> }
+          Array<{ id: string; validity: ReturnType<typeof normalizePermissionRelationValidity> }>
         >();
 
         for (const scope of conflict.scopes ?? []) {
@@ -600,7 +613,8 @@ export class AccountMergeService {
             continue;
           }
           await tx.eventManagerRoleAssignmentScope.update({ where: { id: scope.id }, data: effectiveValidity });
-          targetScopes.set(permissionRelationScopeKey(scope), { id: scope.id, validity: effectiveValidity });
+          const scopeKey = permissionRelationScopeKey(scope);
+          targetScopes.set(scopeKey, [...(targetScopes.get(scopeKey) ?? []), { id: scope.id, validity: effectiveValidity }]);
         }
 
         for (const scope of assignment.scopes ?? []) {
@@ -617,7 +631,9 @@ export class AccountMergeService {
           }
 
           const scopeKey = permissionRelationScopeKey(scope);
-          const existingScope = targetScopes.get(scopeKey);
+          const existingScope = targetScopes
+            .get(scopeKey)
+            ?.find((candidate) => permissionRelationValiditiesOverlapOrTouch(candidate.validity, effectiveValidity));
           if (existingScope) {
             await tx.eventManagerRoleAssignmentScope.update({
               where: { id: existingScope.id },
@@ -634,7 +650,7 @@ export class AccountMergeService {
             where: { id: scope.id },
             data: { assignmentId: conflict.id, ...effectiveValidity },
           });
-          targetScopes.set(scopeKey, { id: scope.id, validity: effectiveValidity });
+          targetScopes.set(scopeKey, [...(targetScopes.get(scopeKey) ?? []), { id: scope.id, validity: effectiveValidity }]);
         }
 
         const mergedValidity = unionPermissionRelationValidity(sourceValidity, targetValidity);
@@ -661,15 +677,28 @@ export class AccountMergeService {
       where: { personId: sourcePersonId, archivedAt: null },
       select: { id: true, groupId: true, validFrom: true, validUntil: true, unlimited: true },
     });
-    const conflictsByGroupId = new Map((await tx.eventManagerPermissionGroupMember.findMany({
+    const conflictsByGroupId = new Map<string, typeof memberships>();
+    for (const conflict of await tx.eventManagerPermissionGroupMember.findMany({
       where: { personId: targetPersonId, groupId: { in: memberships.map((membership) => membership.groupId) }, archivedAt: null },
       select: { id: true, groupId: true, validFrom: true, validUntil: true, unlimited: true },
-    })).map((membership) => [membership.groupId, membership] as const));
+    })) {
+      const groupConflicts = conflictsByGroupId.get(conflict.groupId) ?? [];
+      groupConflicts.push(conflict);
+      conflictsByGroupId.set(conflict.groupId, groupConflicts);
+    }
     for (const membership of memberships) {
-      const conflict = conflictsByGroupId.get(membership.groupId);
+      const membershipValidity = normalizePermissionRelationValidity(membership);
+      const conflict = conflictsByGroupId
+        .get(membership.groupId)
+        ?.find((candidate) =>
+          permissionRelationValiditiesOverlapOrTouch(
+            membershipValidity,
+            normalizePermissionRelationValidity(candidate),
+          ),
+        );
       if (conflict) {
         const mergedValidity = unionPermissionRelationValidity(
-          normalizePermissionRelationValidity(membership),
+          membershipValidity,
           normalizePermissionRelationValidity(conflict),
         );
         await tx.eventManagerPermissionGroupMember.update({

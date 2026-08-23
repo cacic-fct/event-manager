@@ -339,6 +339,30 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     );
   });
 
+  it('runs OCR on the PDF preview when the document has no embedded text', async () => {
+    const { analysis, prisma, processor, s3 } = createProcessor();
+    const receipt = receiptFixture({ mimeType: 'application/pdf', objectKey: 'receipts/scanned.pdf' });
+    const previewBuffer = Buffer.from('scanned-preview');
+    jest.spyOn(receiptPdfProcessing, 'processReceiptPdf').mockResolvedValue({ text: '   ', previewBuffer });
+    processor['recognizeRasterReceiptText'] = jest.fn().mockResolvedValue('PIX Maria 42,00');
+    processor['convertReceiptToAvif'] = jest.fn().mockResolvedValue(undefined);
+    prisma.majorEventReceipt.findUnique.mockResolvedValue(receipt);
+    s3.downloadFile.mockResolvedValue({ contentLength: 12, stream: Readable.from([Buffer.from('%PDF-1.7')]) });
+    analysis.analyze.mockReturnValue({
+      expectedAmountCents: 4200,
+      matchedAmountCents: 4200,
+      amountMatched: true,
+      matchedAmountText: '42,00',
+      nameMatched: true,
+      matchedNameText: 'Maria',
+    });
+
+    await processor.process({ name: 'process', data: { receiptId: receipt.id } } as never);
+
+    expect(processor['recognizeRasterReceiptText']).toHaveBeenCalledWith(previewBuffer);
+    expect(analysis.analyze).toHaveBeenCalledWith('PIX Maria 42,00', 'Maria Silva', 4200);
+  });
+
   it('marks retryable receipt processing failures before rethrowing them', async () => {
     const { prisma, processor, s3 } = createProcessor();
     const receipt = receiptFixture();

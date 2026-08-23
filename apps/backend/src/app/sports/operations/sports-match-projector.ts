@@ -244,6 +244,7 @@ function stopTimer(current: SportsProjectedOutcome, at: Date): SportsProjectedOu
     timerStartedAt: null,
     timerPausedAt:
       current.state === SportsMatchState.LIVE || current.state === SportsMatchState.PAUSED ? at : current.timerPausedAt,
+    periodTimers: pauseActivePeriod(current.periodTimers, at),
   };
 }
 
@@ -327,8 +328,13 @@ function applyTimerReconciliation(
     payload['activePeriodNumber'] == null
       ? null
       : requirePositiveInteger(payload['activePeriodNumber'], 'activePeriodNumber');
+  const state = payload['state'];
+  if (state !== SportsMatchState.LIVE && state !== SportsMatchState.PAUSED) {
+    throw new TypeError('Timer reconciliation state must be LIVE or PAUSED.');
+  }
   return {
     ...current,
+    state,
     scoreboard: reconcileScoreboardActivePeriod(current.scoreboard, activePeriodNumber, options),
     timerStartedAt:
       readUnixMs(overall['startedAtUnixMs']) === null
@@ -383,6 +389,7 @@ export function restoreSportsStopwatch(
       overall: stopwatch['overall'],
       periods: stopwatch['periods'],
       activePeriodNumber: scoreboard.activePeriodNumber,
+      state,
     },
     options,
   );

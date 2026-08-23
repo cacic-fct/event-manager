@@ -244,6 +244,24 @@ function createTransactionMock() {
     },
     eventManagerRoleAssignmentScope: deleteManyDelegate(),
     eventManagerPermissionGroupMember: deleteManyDelegate(),
+    sportsTournamentParticipant: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    sportsTeamMember: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    sportsRegistrationMember: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    sportsMatchRosterEntry: deleteManyDelegate(),
+    sportsTeamRepresentative: deleteManyDelegate(),
+    sportsOfficialAssignment: deleteManyDelegate(),
+    sportsTeamChangeRequest: deleteManyDelegate(),
+    sportsPlayerApplicationCategory: deleteManyDelegate(),
+    sportsPlayerApplication: deleteManyDelegate(),
     people: writeManyDelegate(2),
     user: deleteManyDelegate(2),
   };

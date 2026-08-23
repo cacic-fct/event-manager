@@ -1028,9 +1028,7 @@ export class AuthorizationPolicyService extends SportsAuthorizationTargetService
             context.sportsTournamentId ??= id;
             break;
           case 'tournamentId':
-            if (context.primaryResource === 'sports-tournament') {
-              context.sportsTournamentId ??= id;
-            }
+            context.sportsTournamentId ??= id;
             break;
           case 'sportsCategoryId':
             context.sportsCategoryId ??= id;

@@ -19,7 +19,14 @@ export class AnalyticsService {
       throw new BadRequestException('Monitoring envelope is too large.');
     }
 
-    const target = SENTRY_TUNNEL_TARGETS[project as SentryTunnelProject];
+    if (typeof project !== 'string') {
+      throw new BadRequestException('Unknown monitoring project.');
+    }
+
+    const normalizedProject = project.trim();
+    const target = Object.prototype.hasOwnProperty.call(SENTRY_TUNNEL_TARGETS, normalizedProject)
+      ? SENTRY_TUNNEL_TARGETS[normalizedProject as SentryTunnelProject]
+      : undefined;
 
     if (!target) {
       throw new BadRequestException('Unknown monitoring project.');

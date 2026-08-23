@@ -133,11 +133,61 @@ export class SportsRealtimeController {
     @Req() request: RequestWithUser,
   ): Observable<MessageEvent> {
     const scope = this.realtime.scope('admin-tournament', tournamentId);
-    return defer(() =>
-      this.policy.assertPermissions(request.user, [Permission.SportsTournament.Read], {
-        sportsTournamentId: tournamentId,
-      }),
-    ).pipe(switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))));
+    return defer(() => this.assertAdminTournamentReadable(request.user, tournamentId)).pipe(
+      switchMap(() => this.replay.replay(scope, lastEventId, this.realtime.watch(scope))),
+    );
+  }
+
+  private async assertAdminTournamentReadable(
+    user: AuthenticatedUser | undefined,
+    tournamentId: string,
+  ): Promise<void> {
+    const targets = await this.policy.accessibleEventTargets(user, Permission.SportsTournament.Read);
+    if (targets === null) {
+      return;
+    }
+
+    const scopes = [
+      ...(targets.majorEventIds.size > 0
+        ? [{ majorEventId: { in: [...targets.majorEventIds] } }]
+        : []),
+      ...(targets.eventGroupIds.size > 0 || targets.eventIds.size > 0
+        ? [
+            {
+              categories: {
+                some: {
+                  deletedAt: null,
+                  OR: [
+                    ...(targets.eventGroupIds.size > 0
+                      ? [{ eventGroupId: { in: [...targets.eventGroupIds] } }]
+                      : []),
+                    ...(targets.eventIds.size > 0
+                      ? [
+                          {
+                            matches: {
+                              some: { deletedAt: null, eventId: { in: [...targets.eventIds] } },
+                            },
+                          },
+                        ]
+                      : []),
+                  ],
+                },
+              },
+            },
+          ]
+        : []),
+    ];
+    const tournament = await this.prisma.sportsTournament.findFirst({
+      where: {
+        id: tournamentId,
+        deletedAt: null,
+        OR: scopes,
+      },
+      select: { id: true },
+    });
+    if (!tournament) {
+      throw new NotFoundException(`Sports tournament ${tournamentId} was not found.`);
+    }
   }
 
   private async assertPublicMatch(matchId: string): Promise<void> {

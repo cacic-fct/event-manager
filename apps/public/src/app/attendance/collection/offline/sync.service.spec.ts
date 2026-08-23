@@ -204,7 +204,7 @@ describe('AttendanceOfflineSyncService', () => {
     expect(queue.markSyncing).toHaveBeenCalledWith('collector-user', ['retained-1']);
     expect(queue.applyCommitResults).toHaveBeenCalledWith('collector-user', [
       { clientId: 'retained-1', eventId: 'event-1', status: 'CREATED' },
-    ]);
+    ], 'uploader-user');
     expect(commitOfflineAttendances).toHaveBeenCalledWith([
       expect.objectContaining({
         clientId: 'retained-1',
@@ -212,6 +212,37 @@ describe('AttendanceOfflineSyncService', () => {
         collectorCredential: 'signed-collector-proof',
       }),
     ]);
+  });
+
+  it('hands synchronization off to the latest account after an older run finishes', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        AttendanceOfflineSyncService,
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: AttendanceCollectionApiService, useValue: {} },
+        { provide: AuthService, useValue: { user: () => ({ sub: 'user-b' }) } },
+        { provide: AttendanceOfflineQueueService, useValue: {} },
+        { provide: OralAttendanceOfflineService, useValue: {} },
+        { provide: NetworkStatusService, useValue: { isOnline: () => true } },
+        { provide: AttendanceScannerCacheService, useValue: {} },
+        { provide: AttendanceIncognitoWarningService, useValue: {} },
+        { provide: MatDialog, useValue: {} },
+        { provide: MatSnackBar, useValue: {} },
+      ],
+    });
+    const service = TestBed.inject(AttendanceOfflineSyncService);
+    const syncPending = vi.spyOn(service, 'syncPending').mockResolvedValue(undefined);
+    const internals = service as unknown as {
+      activeUserId: string | null;
+      authGeneration: number;
+      rerunForLatestUser: (userId: string, generation: number) => void;
+    };
+    internals.activeUserId = 'user-b';
+    internals.authGeneration = 2;
+
+    internals.rerunForLatestUser('user-a', 1);
+
+    expect(syncPending).toHaveBeenCalledWith('user-b', 2);
   });
 });
 

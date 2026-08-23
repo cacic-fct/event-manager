@@ -89,7 +89,7 @@ describe('AccountMergeService', () => {
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 
-  it('coalesces duplicate role assignments without widening their scoped access windows', async () => {
+  it('moves a disjoint role assignment without widening the gap between validity windows', async () => {
     const tx = createTransactionMock();
     tx.eventManagerRoleAssignment.findMany
       .mockResolvedValueOnce([
@@ -139,23 +139,11 @@ describe('AccountMergeService', () => {
       movePermissionRelations: (transaction: unknown, targetId: string, sourceId: string) => Promise<unknown>;
     }).movePermissionRelations(tx, 'target-person', 'source-person');
 
-    expect(tx.eventManagerRoleAssignmentScope.update).toHaveBeenCalledWith({
-      where: { id: 'target-scope' },
-      data: {
-        validFrom: new Date('2026-05-01T00:00:00.000Z'),
-        validUntil: new Date('2026-06-01T00:00:00.000Z'),
-        unlimited: false,
-      },
+    expect(tx.eventManagerRoleAssignment.update).toHaveBeenCalledWith({
+      where: { id: 'source-assignment' },
+      data: { personId: 'target-person' },
     });
-    expect(tx.eventManagerRoleAssignmentScope.update).toHaveBeenCalledWith({
-      where: { id: 'source-scope' },
-      data: {
-        assignmentId: 'target-assignment',
-        validFrom: new Date('2026-06-15T00:00:00.000Z'),
-        validUntil: new Date('2026-07-01T00:00:00.000Z'),
-        unlimited: false,
-      },
-    });
+    expect(tx.eventManagerRoleAssignmentScope.update).not.toHaveBeenCalled();
   });
 
   it('resolves final user ids through merge chains and rejects cycles', async () => {
