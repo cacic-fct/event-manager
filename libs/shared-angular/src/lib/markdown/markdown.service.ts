@@ -34,6 +34,10 @@ import xml from 'highlight.js/lib/languages/xml';
 import yaml from 'highlight.js/lib/languages/yaml';
 import MarkdownIt from 'markdown-it';
 
+const markdownItKatexPluginModule = markdownItKatex as unknown as { default: typeof markdownItKatex };
+const markdownItKatexPlugin =
+  (typeof markdownItKatex === 'function' ? markdownItKatex : markdownItKatexPluginModule.default) as typeof markdownItKatex;
+
 const highlighter = hljs.newInstance();
 
 const highlightLanguages: Record<string, LanguageFn> = {
@@ -98,7 +102,7 @@ const markdown = new MarkdownIt({
   html: false,
   linkify: true,
   typographer: true,
-}).use(markdownItKatex, {
+}).use(markdownItKatexPlugin, {
   enableFencedBlocks: true,
   throwOnError: false,
 });

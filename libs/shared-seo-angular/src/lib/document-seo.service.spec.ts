@@ -54,11 +54,13 @@ describe('DocumentSeoService', () => {
     expect(document.getElementById('test-structured-data')).toBeNull();
   });
 
-  it('writes JSON-LD with an SSR-compatible script element', () => {
-    const script = { id: '', type: '', textContent: '' } as unknown as HTMLScriptElement;
+  it('writes JSON-LD with a Trusted Types-safe script element', () => {
+    const script = { id: '', type: '', replaceChildren: vi.fn() } as unknown as HTMLScriptElement;
+    const textNode = {} as Text;
     const serverDocument = {
       getElementById: vi.fn(() => null),
       createElement: vi.fn(() => script),
+      createTextNode: vi.fn(() => textNode),
       head: { appendChild: vi.fn() },
     } as unknown as Document;
 
@@ -72,6 +74,7 @@ describe('DocumentSeoService', () => {
 
     expect(script.id).toBe('test-structured-data');
     expect(script.type).toBe('application/ld+json');
-    expect(script.textContent).toBe('{"@type":"Event"}');
+    expect(serverDocument.createTextNode).toHaveBeenCalledWith('{"@type":"Event"}');
+    expect(script.replaceChildren).toHaveBeenCalledWith(textNode);
   });
 });
