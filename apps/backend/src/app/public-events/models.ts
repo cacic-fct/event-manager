@@ -267,6 +267,7 @@ export type PublicPaymentInfoRecord = Prisma.PaymentInfoGetPayload<{
     holder: true;
     document: true;
     pixKey: true;
+    pixCity: true;
     majorEventId: true;
   };
 }>;
@@ -333,6 +334,7 @@ export function mapPublicPaymentInfo(paymentInfo: PublicPaymentInfoRecord): Publ
     holder: paymentInfo.holder,
     document: paymentInfo.document,
     pixKey: paymentInfo.pixKey ?? undefined,
+    pixCity: paymentInfo.pixCity ?? undefined,
     majorEventId: paymentInfo.majorEventId,
   };
 }
@@ -376,6 +378,12 @@ export class PublicPaymentInfo {
     description: 'Pix key when the major event accepts Pix-based manual payment.',
   })
   pixKey?: string | null;
+
+  @Field(() => String, {
+    nullable: true,
+    description: 'Pix city metadata used to generate BRCode',
+  })
+  pixCity?: string | null;
 
   @Field(() => String, {
     description: 'Major event that owns these payment instructions.',

@@ -8,6 +8,7 @@ export interface PublicPaymentInfo {
   holder: string;
   document: string;
   pixKey?: string | null;
+  pixCity?: string | null;
   majorEventId: string;
 }
 

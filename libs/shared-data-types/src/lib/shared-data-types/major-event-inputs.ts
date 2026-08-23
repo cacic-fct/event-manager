@@ -21,6 +21,9 @@ export class PaymentInfoInput {
 
   @Field(() => String, { nullable: true })
   pixKey?: string;
+
+  @Field(() => String, { nullable: true })
+  pixCity?: string;
 }
 
 @InputType()

@@ -329,6 +329,7 @@ export class PaymentInfo {
     const brCode = this.generatePixBrCode({
       pixKey: paymentInfo.pixKey,
       merchantName: paymentInfo.holder,
+      merchantCity: paymentInfo.pixCity,
       amount,
     });
     if (!brCode) {
@@ -341,8 +342,14 @@ export class PaymentInfo {
     };
   }
 
-  private generatePixBrCode(input: { pixKey: string; merchantName: string; amount?: string }): string | null {
+  private generatePixBrCode(input: {
+    pixKey: string;
+    merchantName: string;
+    merchantCity?: string | null;
+    amount?: string;
+  }): string | null {
     const merchantName = this.normalizeBrCodeText(input.merchantName, 25);
+    const merchantCity = this.normalizeBrCodeText(input.merchantCity || 'NAO INFORMADO', 15);
     const pixKey = this.normalizePixKey(input.pixKey);
     const amount = input.amount;
 
@@ -364,6 +371,7 @@ export class PaymentInfo {
       amount ? this.tlv('54', amount) : '',
       this.tlv('58', 'BR'),
       this.tlv('59', merchantName),
+      this.tlv('60', merchantCity),
       this.tlv('62', this.tlv('05', '***')),
       '6304',
     ].join('');

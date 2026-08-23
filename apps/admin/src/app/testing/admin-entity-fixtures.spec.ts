@@ -24,6 +24,7 @@ describe('admin entity fixtures', () => {
         holder: 'CACiC',
         document: '12.345.678/0001-90',
         pixKey: 'pix@cacic.com.br',
+        pixCity: 'PRESIDENTE PRUDENTE',
       },
       price: {
         type: 'TIERED',

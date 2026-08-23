@@ -4,6 +4,12 @@ import { PaymentInfo } from './payment-info';
 
 describe('PaymentInfo', () => {
   const component = Object.create(PaymentInfo.prototype) as {
+    generatePixBrCode(input: {
+      pixKey: string;
+      merchantName: string;
+      merchantCity?: string | null;
+      amount?: string;
+    }): string | null;
     normalizePixKey(value: string): string;
     resolveApplicablePrice(subscription: CurrentUserMajorEventSubscription): number | null;
     readySubscription(): CurrentUserMajorEventSubscription | null;
@@ -18,6 +24,27 @@ describe('PaymentInfo', () => {
 
   it('keeps existing numeric CNPJ Pix key normalization', () => {
     expect(component.normalizePixKey('12.345.678/0001-95')).toBe('12345678000195');
+  });
+
+  it('includes the configured merchant city in generated Pix BR Codes', () => {
+    const brCode = component.generatePixBrCode({
+      pixKey: 'pix@example.com',
+      merchantName: 'Evento de teste',
+      merchantCity: 'São Paulo',
+      amount: '25.00',
+    });
+
+    expect(brCode).toContain('6009SAO PAULO');
+  });
+
+  it('falls back to a valid merchant city for legacy payment information', () => {
+    const brCode = component.generatePixBrCode({
+      pixKey: 'pix@example.com',
+      merchantName: 'Evento de teste',
+      amount: '25.00',
+    });
+
+    expect(brCode).toContain('6013NAO INFORMADO');
   });
 
   it('uses the stored amount when no configured price tier is available', () => {

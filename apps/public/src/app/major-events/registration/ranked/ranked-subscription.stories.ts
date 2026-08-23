@@ -149,6 +149,7 @@ function createMajorEvent(scenario: StoryScenario, args: RankedStoryArgs): Publi
       holder: 'CACiC FCT',
       document: '12.345.678/0001-90',
       pixKey: 'pagamentos@example.com',
+      pixCity: 'PRESIDENTE PRUDENTE',
       majorEventId: 'major-1',
     }),
     majorEventPrices: [

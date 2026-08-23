@@ -72,6 +72,7 @@ model PaymentInfo {
   holder   String
   document String
   pixKey   String?
+  pixCity  String?
 
   majorEvent   MajorEvent @relation(fields: [majorEventId], references: [id])
   majorEventId String     @unique

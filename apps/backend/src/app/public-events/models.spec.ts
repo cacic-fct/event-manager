@@ -47,6 +47,7 @@ describe('public event models', () => {
         holder: 'CACIC',
         document: '123',
         pixKey: undefined,
+        pixCity: 'Presidente Prudente',
         majorEventId: 'major-event-1',
       },
       majorEventPrices: [
@@ -74,6 +75,7 @@ describe('public event models', () => {
       holder: 'CACIC',
       document: '123',
       pixKey: undefined,
+      pixCity: 'Presidente Prudente',
       majorEventId: 'major-event-1',
     });
   });
@@ -189,6 +191,7 @@ function paymentInfoFixture() {
     holder: 'CACIC',
     document: '123',
     pixKey: null,
+    pixCity: 'Presidente Prudente',
     majorEventId: 'major-event-1',
   };
 }

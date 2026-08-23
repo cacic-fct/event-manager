@@ -25,6 +25,9 @@ export class PaymentInfo {
   @Field(() => String, { nullable: true })
   pixKey?: string | null;
 
+  @Field(() => String, { nullable: true })
+  pixCity?: string | null;
+
   @Field(() => String)
   majorEventId!: string;
 }

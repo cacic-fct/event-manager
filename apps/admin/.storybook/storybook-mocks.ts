@@ -112,6 +112,7 @@ function majorEvent(index = 0) {
       holder: 'CACiC FCT',
       document: '12.345.678/0001-90',
       pixKey: 'pagamentos@example.com',
+      pixCity: 'PRESIDENTE PRUDENTE',
       majorEventId: `major-${index + 1}`,
     },
     majorEventPrices: [

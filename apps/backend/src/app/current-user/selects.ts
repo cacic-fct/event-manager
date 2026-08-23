@@ -48,6 +48,7 @@ export const PAYMENT_INFO_SELECT = {
   holder: true,
   document: true,
   pixKey: true,
+  pixCity: true,
   majorEventId: true,
 } satisfies Prisma.PaymentInfoSelect;
 
