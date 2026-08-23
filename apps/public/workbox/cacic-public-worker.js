@@ -84,6 +84,7 @@ const sameOrigin = (url) => url.origin === self.location.origin;
 const isApiPath = (url) => url.pathname.startsWith('/api/');
 const isAuthPath = (url) =>
   url.pathname.startsWith('/api/auth/') ||
+  url.pathname.endsWith('/silent-check-sso.html') ||
   url.pathname.includes('/login') ||
   url.pathname.includes('/logout') ||
   url.pathname.includes('/callback');

@@ -424,7 +424,7 @@ function publicCspPolicy(nonce: string): string {
     "font-src 'self' data:",
     "connect-src 'self' https://a.cacic.com.br https://account.cacic.com.br https://cdn.jsdelivr.net https://fastly.jsdelivr.net https://glitchtip.cacic.com.br https://notifications.cacic.com.br wss://notifications.cacic.com.br https://unleash.cacic.com.br https://cloudflareinsights.com",
     'report-uri https://glitchtip.cacic.com.br/api/1/security/?glitchtip_key=44b2480fd6cd4402b61590135a093fd6',
-    "frame-src 'self' https://challenges.cloudflare.com https://www.youtube-nocookie.com",
+    "frame-src 'self' https://sso.cacic.com.br https://challenges.cloudflare.com https://www.youtube-nocookie.com",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "media-src 'self' blob:",

@@ -20,6 +20,7 @@ import { AuthOnlineStatusService } from './auth-online-status.service';
 import { AuthenticatedUser, AuthRefreshResult, PasswordLoginResult } from './auth.types';
 import type { LoginOptions } from './auth.types';
 import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforcement.token';
+import { SilentSsoService } from './silent-sso.service';
 
 @Service()
 export class AuthService {
@@ -36,6 +37,7 @@ export class AuthService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly onlineStatus = inject(AuthOnlineStatusService);
   private readonly isOnboardingEnforcementEnabled = inject(AUTH_ONBOARDING_ENFORCEMENT_ENABLED);
+  private readonly silentSso = inject(SilentSsoService);
 
   private refreshRequest$: Observable<AuthRefreshResult> | null = null;
   private refreshTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -58,7 +60,7 @@ export class AuthService {
       }
 
       if (this.onlineStatus.isOnline()) {
-        this.loginWithExistingSsoSession();
+        await this.checkExistingSsoSession();
       }
     } catch (error) {
       this.logUnexpectedAuthError('Auth initialization failed', error);
@@ -120,6 +122,25 @@ export class AuthService {
         prompt: 'none',
       }),
     );
+  }
+
+  private async checkExistingSsoSession(): Promise<void> {
+    if (this.hasSilentSsoFailureMarker() || this.getSessionStorageItem(this.silentSsoAttemptStorageKey)) {
+      return;
+    }
+
+    this.setSessionStorageItem(this.silentSsoAttemptStorageKey, 'true');
+
+    try {
+      const result = await this.silentSso.check();
+      if (result === 'authenticated' && (await this.loadCurrentUser())) {
+        await this.redirectToOnboardingIfNeeded();
+      }
+    } catch (error) {
+      this.logUnexpectedAuthError('Silent SSO check failed; falling back to redirect', error);
+      this.removeSessionStorageItem(this.silentSsoAttemptStorageKey);
+      this.loginWithExistingSsoSession();
+    }
   }
 
   async logout(): Promise<void> {

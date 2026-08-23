@@ -116,7 +116,7 @@ function adminCspPolicy(nonce: string): string {
     "font-src 'self' data:",
     "connect-src 'self' https://a.cacic.com.br https://account.cacic.com.br https://cdn.jsdelivr.net https://fastly.jsdelivr.net https://glitchtip.cacic.com.br https://nominatim.openstreetmap.org https://notifications.cacic.com.br wss://notifications.cacic.com.br https://unleash.cacic.com.br https://cloudflareinsights.com",
     'report-uri https://glitchtip.cacic.com.br/api/2/security/?glitchtip_key=b787190b5ac546eb867e793b84d2b4b2',
-    "frame-src 'self'",
+    "frame-src 'self' https://sso.cacic.com.br",
     "worker-src 'self' blob:",
     "manifest-src 'self'",
     "media-src 'self' blob:",
