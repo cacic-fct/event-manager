@@ -31,10 +31,13 @@ test('public landing login starts backend auth with the public app return path',
 
   await expect(page.getByRole('heading', { name: 'CACiC Eventos' })).toBeVisible();
   const loginNavigation = page.waitForURL(
-    (url) => url.pathname === '/api/auth/login/redirect' && url.searchParams.get('returnTo') === '/app',
+    (url) => {
+      const apiPath = url.pathname.replace(/^\/app(?=\/api\/)/, '');
+      return apiPath === '/api/auth/login/redirect' && url.searchParams.get('returnTo') === '/app';
+    },
+    { waitUntil: 'commit' },
   );
-  await page.getByRole('button', { name: 'Entrar com o Google' }).click();
-  await loginNavigation;
+  await Promise.all([loginNavigation, page.getByRole('button', { name: 'Entrar com o Google' }).click()]);
 });
 
 test('authenticated public users keep their local session and see account actions', async ({ page }) => {

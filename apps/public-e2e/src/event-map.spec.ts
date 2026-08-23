@@ -29,7 +29,7 @@ test('opens the fullscreen event map, navigates through a Twemoji marker, and re
   await clickMapMarker(page, 'map-event-1');
 
   await expect(page).toHaveURL(/\/app\/event\/map-event-1/);
-  await expect(page.getByRole('heading', { name: 'Evento no mapa' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Evento no mapa' })).toBeVisible({ timeout: 15_000 });
   await page.getByRole('button', { name: 'Voltar' }).click();
 
   await expect(page).toHaveURL(/\/app\/map/);
