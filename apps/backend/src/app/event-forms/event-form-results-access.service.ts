@@ -1,8 +1,9 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Readable } from 'node:stream';
 import { EventFormResults } from '@cacic-fct/shared-data-types';
-import { type FormElement } from '@cacic-fct/form-contracts';
+import { isFormAnswerElementType, type FormElement } from '@cacic-fct/form-contracts';
 import { Permission } from '@cacic-fct/shared-permissions';
-import { EventFormSigilo, EventFormTargetType } from '@prisma/client';
+import { EventFormSigilo, EventFormTargetType, Prisma } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../current-user/context.service';
@@ -17,9 +18,22 @@ import {
   toPublicEventFormModel,
   toResponseModel,
 } from './event-form-model.mapper';
-import { buildFormResultSummary, eventFormResultsToCsv } from './event-form-results';
+import {
+  FormResultSummaryAccumulator,
+  csvCell,
+  eventFormCsvHeader,
+  eventFormCsvRow,
+  eventFormResultsToCsv,
+} from './event-form-results';
 import { arePublicResultsReleasedForLink } from './event-form-results-visibility';
-import { EventFormRecord, NormalizedTarget, responseInclude, ResultViewer, TargetInput } from './event-form-records';
+import {
+  EventFormRecord,
+  EventFormResponseRecord,
+  NormalizedTarget,
+  responseInclude,
+  ResultViewer,
+  TargetInput,
+} from './event-form-records';
 import {
   canAdminViewEventFormResults,
   requireEventForm,
@@ -133,24 +147,43 @@ export class EventFormResultsAccessService {
   ): Promise<EventFormResults> {
     const form = await requireEventForm(this.prisma, formId);
     const responseWhere = resultResponseWhere(form, options);
-    const responses = await this.prisma.eventFormResponse.findMany({
-      where: responseWhere,
-      include: responseInclude,
-      orderBy: {
-        submittedAt: 'desc',
-      },
-    });
     const elements = form.elements as unknown as FormElement[];
     const answersReleased = canShowIndividualAnswers(form.sigilo, viewer);
     const identitiesReleased = canShowIdentity(form.sigilo, viewer);
-    const summary = buildFormResultSummary(elements, responses, answersReleased);
+    const summaryAccumulator = new FormResultSummaryAccumulator(elements);
+    const responses: EventFormResponseRecord[] = [];
+    const responseCount = await this.prisma.eventFormResponse.count({ where: responseWhere });
+    let cursor: string | undefined;
+    let loadedCount = 0;
+    for (;;) {
+      const batch = await this.prisma.eventFormResponse.findMany({
+        where: responseWhere,
+        include: responseInclude,
+        orderBy: [{ submittedAt: 'desc' }, { id: 'desc' }],
+        take: 500,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+      if (batch.length === 0) {
+        break;
+      }
+      loadedCount += batch.length;
+      batch.forEach((response) => summaryAccumulator.add(response));
+      if (responses.length < 1_000 && (answersReleased || identitiesReleased)) {
+        responses.push(...batch.slice(0, 1_000 - responses.length));
+      }
+      if (batch.length < 500) {
+        break;
+      }
+      cursor = batch.at(-1)?.id;
+    }
+    const summary = summaryAccumulator.toSummary(answersReleased);
 
     return {
       form:
         viewer === 'public' && options.target
           ? toPublicEventFormModel(toEventFormModel(form), options.target)
           : toEventFormModel(form),
-      responseCount: responses.length,
+      responseCount: typeof responseCount === 'number' ? responseCount : loadedCount,
       anonymous: form.sigilo === EventFormSigilo.ANONYMOUS,
       answersReleased,
       summaryJson: JSON.stringify(summary),
@@ -192,5 +225,48 @@ export class EventFormResultsAccessService {
   async exportAdminResultsCsv(user: AuthenticatedUser | undefined, formId: string): Promise<string> {
     const results = await this.getAdminExportResults(user, formId);
     return eventFormResultsToCsv(results);
+  }
+
+  async streamAdminResultsCsv(user: AuthenticatedUser | undefined, formId: string): Promise<Readable> {
+    const accessibleTargets = await this.authorizationPolicy.accessibleEventTargets(user, Permission.EventForm.Export);
+    if (accessibleTargets && isEmptyAccessibleTargets(accessibleTargets)) {
+      throw new NotFoundException('Resultados do formulário não disponíveis.');
+    }
+
+    const form = await requireEventForm(this.prisma, formId);
+    const responseWhere = resultResponseWhere(form, { accessibleTargets: accessibleTargets ?? undefined });
+    const elements = (form.elements as unknown as FormElement[]).filter((element) => isFormAnswerElementType(element.type));
+
+    return Readable.from(this.streamCsvRows(form, responseWhere, elements));
+  }
+
+  private async *streamCsvRows(
+    form: EventFormRecord,
+    responseWhere: Prisma.EventFormResponseWhereInput,
+    elements: readonly FormElement[],
+  ): AsyncGenerator<string> {
+    yield `${eventFormCsvHeader(elements).map((cell) => csvCell(cell)).join(',')}\r\n`;
+    let cursor: string | undefined;
+    for (;;) {
+      const responses = await this.prisma.eventFormResponse.findMany({
+        where: responseWhere,
+        include: responseInclude,
+        orderBy: [{ submittedAt: 'desc' }, { id: 'desc' }],
+        take: 500,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
+      if (responses.length === 0) {
+        return;
+      }
+
+      for (const response of responses) {
+        const model = toResponseModel(response, form.sigilo, 'admin', { includeAnswers: true });
+        yield `${eventFormCsvRow(elements, model).map((cell) => csvCell(cell)).join(',')}\r\n`;
+      }
+      if (responses.length < 500) {
+        return;
+      }
+      cursor = responses.at(-1)?.id;
+    }
   }
 }

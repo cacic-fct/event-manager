@@ -50,6 +50,62 @@ describe('Attendances', () => {
     ]);
   });
 
+  it('shows actionable pendencies as short text and warning icons with matching accessible labels', async () => {
+    const majorEvent = subscriptionsFeedFixture.majorEventItems[0];
+    if (!majorEvent) throw new Error('Expected a major-event fixture.');
+    const pendingReceipt = { ...majorEvent, id: 'receipt-item', subscriptionStatus: 'WAITING_RECEIPT_UPLOAD' };
+    const scheduleConflict = {
+      ...majorEvent,
+      id: 'schedule-item',
+      majorEventId: 'major-2',
+      majorEvent: { ...majorEvent.majorEvent, id: 'major-2', name: 'Evento para revisar' },
+      subscriptionStatus: 'REJECTED_SCHEDULE_CONFLICT',
+    };
+    const { component, fixture } = await createFixture({
+      onlineFeed: { ...subscriptionsFeedFixture, majorEventItems: [pendingReceipt, scheduleConflict] },
+    });
+
+    await settle(fixture);
+
+    const warningMessages = Array.from(fixture.nativeElement.querySelectorAll('.warning-messages')) as HTMLElement[];
+    const warningIcons = Array.from(fixture.nativeElement.querySelectorAll('.warning-icon')) as HTMLElement[];
+    expect(warningMessages.map(({ textContent }) => textContent?.trim())).toEqual([
+      'Envie o comprovante de pagamento.',
+      'Revise os eventos escolhidos.',
+    ]);
+    expect(warningIcons.map(({ textContent }) => textContent?.trim())).toEqual(['payments', 'rate_review']);
+    expect(warningIcons.map((icon) => icon.getAttribute('aria-label'))).toEqual([
+      'Envie o comprovante de pagamento.',
+      'Revise os eventos escolhidos.',
+    ]);
+    expect(component.visibleParticipations().map((item) => component.itemAriaLabel(item))).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Pendências: Envie o comprovante de pagamento.'),
+        expect.stringContaining('Pendências: Revise os eventos escolhidos.'),
+      ]),
+    );
+  });
+
+  it('uses the generic warning icon and copy for an unknown actionable subscription status', async () => {
+    const majorEvent = subscriptionsFeedFixture.majorEventItems[0];
+    if (!majorEvent) throw new Error('Expected a major-event fixture.');
+    const { fixture } = await createFixture({
+      onlineFeed: {
+        ...subscriptionsFeedFixture,
+        majorEventItems: [{ ...majorEvent, subscriptionStatus: 'ACTION_REQUIRED' }],
+      },
+    });
+
+    await settle(fixture);
+
+    const warningIcon = fixture.nativeElement.querySelector('.warning-icon') as HTMLElement;
+    expect(warningIcon.textContent?.trim()).toBe('warning');
+    expect(warningIcon.getAttribute('aria-label')).toBe('Há uma pendência nesta inscrição.');
+    expect(fixture.nativeElement.querySelector('.warning-messages')?.textContent).toContain(
+      'Há uma pendência nesta inscrição.',
+    );
+  });
+
   it('uses absolute attendance detail routes', async () => {
     const { component } = await createFixture();
     const majorEvent = component.visibleParticipations().find((item) => item.title === 'SECOMPP');

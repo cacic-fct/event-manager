@@ -12,6 +12,7 @@ import {
   input,
   viewChild,
 } from '@angular/core';
+import { OPENSTREETMAP_TILE_REFERRER_POLICY } from '@cacic-fct/shared-utils';
 
 type MapInstance = {
   setTarget(target: HTMLElement | undefined): void;
@@ -185,7 +186,7 @@ export class AttendanceLocationMapComponent implements OnDestroy {
       target,
       layers: [
         new TileLayer({
-          source: new OSM(),
+          source: new OSM({ referrerPolicy: OPENSTREETMAP_TILE_REFERRER_POLICY }),
         }),
         new VectorLayer({
           source: new VectorSource({

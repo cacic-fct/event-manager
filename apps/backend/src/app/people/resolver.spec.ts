@@ -290,6 +290,19 @@ describe('PeopleResolver', () => {
     );
   });
 
+  it('returns the committed person when Typesense is unavailable after the transaction', async () => {
+    const prisma = createPrisma();
+    const typesenseSearch = createTypesenseSearch();
+    typesenseSearch.upsertPerson.mockRejectedValue(new Error('Typesense unavailable'));
+    const resolver = createResolver(prisma, createAuthorizationPolicy(), { typesenseSearch });
+    const created = person({ id: 'created-person' });
+    prisma.people.create.mockResolvedValueOnce(created);
+    prisma.people.findUniqueOrThrow.mockResolvedValueOnce(created);
+
+    await expect(resolver.createPerson({ name: 'Ana Clara' }, userContext())).resolves.toEqual(created);
+    expect(typesenseSearch.upsertPerson).toHaveBeenCalledWith(expect.objectContaining({ id: 'created-person' }));
+  });
+
   it('requires at least one identity field, allows namesakes, and rejects duplicate identifiers', async () => {
     const prisma = createPrisma();
     const resolver = createResolver(prisma);

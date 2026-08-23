@@ -5,17 +5,36 @@ import { SseReplayService } from '../realtime/sse-replay.service';
 @Injectable()
 export class EventFormResultEventsService {
   private readonly logger = new Logger(EventFormResultEventsService.name);
-  private readonly resultSubjects = new Map<string, Subject<MessageEvent>>();
+  private readonly resultSubjects = new Map<
+    string,
+    { subject: Subject<MessageEvent>; subscriberCount: number }
+  >();
 
   constructor(private readonly replay: SseReplayService) {}
 
   watchResults(formId: string): Observable<MessageEvent> {
-    let subject = this.resultSubjects.get(formId);
-    if (!subject) {
-      subject = new Subject<MessageEvent>();
-      this.resultSubjects.set(formId, subject);
-    }
-    return subject.asObservable();
+    return new Observable<MessageEvent>((subscriber) => {
+      let entry = this.resultSubjects.get(formId);
+      if (!entry) {
+        entry = { subject: new Subject<MessageEvent>(), subscriberCount: 0 };
+        this.resultSubjects.set(formId, entry);
+      }
+      entry.subscriberCount += 1;
+      const subscription = entry.subject.subscribe(subscriber);
+
+      return () => {
+        subscription.unsubscribe();
+        const currentEntry = this.resultSubjects.get(formId);
+        if (currentEntry !== entry) {
+          return;
+        }
+        currentEntry.subscriberCount -= 1;
+        if (currentEntry.subscriberCount === 0) {
+          currentEntry.subject.complete();
+          this.resultSubjects.delete(formId);
+        }
+      };
+    });
   }
 
   async emitResultsDeltas(formIds: readonly string[]): Promise<void> {
@@ -25,7 +44,7 @@ export class EventFormResultEventsService {
   }
 
   async emitResultsDelta(formId: string): Promise<void> {
-    const subject = this.resultSubjects.get(formId);
+    const entry = this.resultSubjects.get(formId);
     const event = {
       type: 'message',
       data: {
@@ -34,7 +53,7 @@ export class EventFormResultEventsService {
       },
     } satisfies MessageEvent;
 
-    subject?.next(event);
+    entry?.subject.next(event);
 
     try {
       await this.replay.record(this.replay.scope('event-form-results', formId), event);

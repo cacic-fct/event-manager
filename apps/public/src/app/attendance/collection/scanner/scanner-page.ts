@@ -395,6 +395,7 @@ export class AttendanceScanner implements OnInit {
       authorUserId: user.sub,
       authorName: this.userClaim(user, 'name') ?? user.preferredUsername ?? null,
       authorEmail: user.email ?? this.userClaim(user, 'email'),
+      collectorCredential: event.offlineCollectorCredential,
       status: 'PENDING',
       attempts: 0,
       lastError: null,

@@ -1,8 +1,14 @@
+import { isIP } from 'node:net';
+
 type Environment = Record<string, unknown>;
 
 const REQUIRED_ALWAYS = ['DATABASE_URL'] as const;
 
-const REQUIRED_OUTSIDE_LOCAL_DEVELOPMENT = ['PUBLIC_APP_ORIGIN', 'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET'] as const;
+const REQUIRED_OUTSIDE_LOCAL_DEVELOPMENT = [
+  'PUBLIC_APP_ORIGIN',
+  'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET',
+  'OFFLINE_ATTENDANCE_COLLECTOR_SECRET',
+] as const;
 
 const REQUIRED_IN_PRODUCTION = [
   'KEYCLOAK_REALM_URL',
@@ -22,17 +28,30 @@ const REQUIRED_IN_PRODUCTION = [
   'SSE_REPLAY_CURSOR_SECRET',
   'SPORTS_IDENTITY_SECRET',
 ] as const;
+const NODE_ENV_VALUES = ['development', 'test', 'staging', 'production'] as const;
 
 const S3_STORAGE_KEYS = ['S3_ENDPOINT', 'S3_ACCESS_KEY', 'S3_SECRET_KEY', 'S3_BUCKET_NAME'] as const;
 const KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHODS = ['client_secret_basic', 'client_secret_post'] as const;
 
 export function validateBackendEnvironment(config: Environment): Environment {
   const errors: string[] = [];
-  const production = readString(config, 'NODE_ENV') === 'production';
+  const nodeEnv = readString(config, 'NODE_ENV');
+  const localDevelopmentEnabled = isEnabled(config, 'ALLOW_LOCAL_DEVELOPMENT');
+  const effectiveNodeEnv = nodeEnv ?? (localDevelopmentEnabled ? 'development' : undefined);
+
+  if (!effectiveNodeEnv) {
+    errors.push('NODE_ENV is required unless ALLOW_LOCAL_DEVELOPMENT=true.');
+  } else if (!(NODE_ENV_VALUES as readonly string[]).includes(effectiveNodeEnv)) {
+    errors.push(`NODE_ENV must be one of: ${NODE_ENV_VALUES.join(', ')}.`);
+  } else if (effectiveNodeEnv === 'development' && !localDevelopmentEnabled) {
+    errors.push('ALLOW_LOCAL_DEVELOPMENT must be true for development mode.');
+  }
+
+  const production = effectiveNodeEnv === 'production';
 
   requireKeys(config, REQUIRED_ALWAYS, errors);
 
-  if (!isLocalDevelopment(config)) {
+  if (!isLocalDevelopment(effectiveNodeEnv)) {
     requireKeys(config, REQUIRED_OUTSIDE_LOCAL_DEVELOPMENT, errors);
     if (!production) {
       requireKeys(config, ['SPORTS_IDENTITY_SECRET'], errors);
@@ -149,8 +168,8 @@ function requireGrpcTarget(config: Environment, key: string, errors: string[]): 
     return;
   }
 
-  const match = /^([a-zA-Z0-9._-]+):(\d{1,5})$/.exec(value);
-  if (!match || Number(match[2]) > 65_535) {
+  const match = /^(?:\[([0-9a-fA-F:.]+)\]|([a-zA-Z0-9._-]+)):(\d{1,5})$/.exec(value);
+  if (!match || Number(match[3]) > 65_535 || (match[1] !== undefined && isIP(match[1]) !== 6)) {
     errors.push(`${key} must use the host:port format without a URL scheme or path.`);
   }
 }
@@ -168,9 +187,8 @@ function isEnabled(config: Environment, key: string): boolean {
   return readString(config, key)?.toLowerCase() === 'true';
 }
 
-function isLocalDevelopment(config: Environment): boolean {
-  const nodeEnv = readString(config, 'NODE_ENV');
-  return !nodeEnv || nodeEnv === 'development' || nodeEnv === 'test';
+function isLocalDevelopment(nodeEnv: string | undefined): boolean {
+  return nodeEnv === 'development' || nodeEnv === 'test';
 }
 
 function readString(config: Environment, key: string): string | undefined {

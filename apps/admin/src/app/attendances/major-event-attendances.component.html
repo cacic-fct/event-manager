@@ -50,6 +50,20 @@
               {{ attendedEventCount(attendance) }}
               {{ attendedEventCount(attendance) === 1 ? 'atividade frequentada' : 'atividades frequentadas' }}
             </span>
+            @if (workspace.getAttendanceCategoryHistoricalExplanation(group.category); as historicalExplanation) {
+              <span matListItemLine class="attendance-item-line">
+                Classificação histórica: {{ historicalExplanation }}
+              </span>
+            }
+            @if (workspace.getMajorEventCurrentAssessmentLabel(attendance); as currentAssessment) {
+              <span matListItemLine class="attendance-item-line">
+                Situação atual: {{ currentAssessment }}
+              </span>
+            } @else if (group.category === 'UNKNOWN') {
+              <span matListItemLine class="attendance-item-line">
+                Situação atual: varia entre as atividades frequentadas.
+              </span>
+            }
           </mat-list-item>
         }
       } @empty {
@@ -130,6 +144,16 @@
               }
               · {{ workspace.getAttendanceCategoryLabel(eventAttendance.category) }}
             </span>
+            @if (workspace.getAttendanceCategoryHistoricalExplanation(eventAttendance.category); as historicalExplanation) {
+              <span matListItemLine class="attendance-item-line">
+                Classificação histórica: {{ historicalExplanation }}
+              </span>
+            }
+            @if (workspace.getAttendanceCurrentAssessmentLabel(eventAttendance.currentAssessment); as currentAssessment) {
+              <span matListItemLine class="attendance-item-line">
+                Situação atual: {{ currentAssessment }}
+              </span>
+            }
           </mat-list-item>
         } @empty {
           <mat-list-item>

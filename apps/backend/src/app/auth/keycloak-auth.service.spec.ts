@@ -550,6 +550,20 @@ describe('KeycloakAuthService', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('coalesces unknown-key JWKS refreshes and cools down repeated key ids', async () => {
+    const invalidTokens = Array.from({ length: 100 }, (_, index) =>
+      jwt({ sub: `unknown-${index}` }, { kid: `random-kid-${index}` }),
+    );
+
+    const results = await Promise.allSettled(invalidTokens.map((token) => service.authenticateAccessToken(token)));
+    expect(results.every((result) => result.status === 'rejected')).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    const repeated = jwt({ sub: 'repeated-unknown' }, { kid: 'random-kid-0' });
+    await expect(service.authenticateAccessToken(repeated)).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('rejects access tokens from clients outside the allowed list', async () => {
     await expect(
       service.authenticateAccessToken(

@@ -11,6 +11,34 @@ import { AttendanceOfflineSyncService } from '../offline/sync.service';
 import { OralAttendancePage } from './oral-page';
 
 describe('OralAttendancePage', () => {
+  it('does not show an offline decision when durable storage is unavailable', async () => {
+    const enqueue = vi.fn().mockRejectedValue(new Error('IndexedDB unavailable'));
+    const snackbar = { open: vi.fn() };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: { get: () => 'event-1' } } } },
+        { provide: Router, useValue: { navigate: vi.fn() } },
+        { provide: AuthService, useValue: { user: () => ({ sub: 'collector-1' }) } },
+        { provide: AttendanceOfflineQueueService, useValue: { enqueue } },
+        { provide: OralAttendanceOfflineService, useValue: { enqueue, watchPending: () => of([]) } },
+        { provide: AttendanceCollectionApiService, useValue: {} },
+        { provide: AttendanceCollectionAccessService, useValue: { getPreciseLocation: vi.fn().mockResolvedValue({ latitude: 0, longitude: 0, accuracyMeters: 1 }) } },
+        { provide: AttendanceOfflineSyncService, useValue: { syncPending: vi.fn() } },
+        { provide: NetworkStatusService, useValue: { isOnline: () => false } },
+        { provide: MatSnackBar, useValue: snackbar },
+      ],
+    });
+    const page = TestBed.runInInjectionContext(() => new OralAttendancePage());
+    (page as unknown as { event: { set: (value: { eventId: string }) => void } }).event.set({ eventId: 'event-1' });
+    await (page as unknown as { registerDecision: (person: { personId: string }, decision: 'PRESENT') => Promise<void> }).registerDecision(
+      { personId: 'person-1' },
+      'PRESENT',
+    );
+
+    expect(enqueue).toHaveBeenCalled();
+    expect(snackbar.open).toHaveBeenCalledWith(expect.stringContaining('Não foi possível salvar'), 'Fechar', expect.any(Object));
+  });
+
   it.each([null, false])(
     'returns to attendance collection when the cached event is missing or disabled',
     async (shouldAllowOralAttendance) => {

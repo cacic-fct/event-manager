@@ -70,8 +70,8 @@ export class PublicDataAccessService {
     await this.userData.replaceUserSnapshot(snapshot);
   }
 
-  async getLatestUserSnapshot(): Promise<OfflineUserSnapshot | null> {
-    return this.userData.getLatestUserSnapshot();
+  async getLatestUserSnapshot(userId?: string): Promise<OfflineUserSnapshot | null> {
+    return this.userData.getLatestUserSnapshot(userId);
   }
 
   async replaceRestaurantCard(card: OfflineRestaurantCard): Promise<void> {

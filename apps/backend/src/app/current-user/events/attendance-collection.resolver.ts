@@ -9,7 +9,7 @@ import {
 } from '@cacic-fct/shared-data-types';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
-import { AttendanceCreationMethod, EventAttendanceStatus } from '@prisma/client';
+import { AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
 import { CurrentUserAttendanceCollectionEvent } from '../models';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
@@ -39,6 +39,10 @@ import {
   notifySportsMatchAttendanceMutation,
   startSportsMatchCheckInFromAthleteAttendance,
 } from '../../sports/operations/sports-match-attendance';
+import { issueOfflineAttendanceCollectorCredential } from './offline-attendance-collector-credential';
+import { verifyOfflineAttendanceCollectorCredential } from './offline-attendance-collector-credential';
+import { buildOfflineOralAttendanceReceiptMarker } from './offline-attendance-receipt';
+import { lockOfflineCommand } from './offline-command-lock';
 import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
 
 @Resolver(() => CurrentUserAttendanceCollectionEvent)
@@ -84,7 +88,29 @@ export class CurrentUserAttendanceCollectionResolver {
   async currentUserAttendanceCollectionEvents(
     @Context() context: GraphqlContext,
   ): Promise<CurrentUserAttendanceCollectionEvent[]> {
-    return findCurrentUserAttendanceCollectionEvents(this.collectionDeps, context);
+    const events = await findCurrentUserAttendanceCollectionEvents(this.collectionDeps, context);
+    const person = await this.currentUserContext.requireCurrentPerson(context);
+    const user = getAuthenticatedUser(this.currentUserContext, context);
+    const collectorUserId = user?.sub;
+    if (!collectorUserId) {
+      return events;
+    }
+    return events.map((event) => {
+      const result = { ...event } as CurrentUserAttendanceCollectionEvent;
+      Object.defineProperty(
+        result,
+        'offlineCollectorCredential',
+        {
+          value: issueOfflineAttendanceCollectorCredential({
+            eventId: event.eventId,
+            collectorPersonId: person.id,
+            collectorUserId,
+          }),
+          enumerable: false,
+        },
+      );
+      return result;
+    });
   }
 
   @Query(() => [EventAttendanceScannerFeedItem], { name: 'currentUserAttendanceCollectionFeed' })
@@ -224,12 +250,40 @@ export class CurrentUserAttendanceCollectionResolver {
     }
 
     const actorId = getActorId(context) ?? collector.userId ?? undefined;
-    if (!actorId || input.collectedByUserId !== actorId) {
-      throw new BadRequestException('O coletor informado deve ser o usuário autenticado.');
+    const existingReceipt = await this.findOralReceipt(input, actorId);
+    if (existingReceipt?.status === 'COMMITTED') {
+      if (existingReceipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)) {
+        throw new BadRequestException('O identificador da decisão off-line foi reutilizado para outro conteúdo.');
+      }
+      const existing = await this.prisma.eventAttendance.findUnique({
+        where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
+      });
+      if (existing) {
+        return existing;
+      }
     }
+    this.assertOralCollectorProvenance(input, actorId);
     const locationData = getRequiredAttendanceLocationData(input.location);
     let checkInStarted = false;
     const attendance = await this.prisma.$transaction(async (tx) => {
+      await lockOfflineCommand(tx, input.clientId);
+      if (input.clientId && tx.offlineEventAttendanceSubmission) {
+        const receipt = await tx.offlineEventAttendanceSubmission.findUnique({
+          where: { clientId: input.clientId },
+          select: { status: true, rejectionReason: true },
+        });
+        if (receipt?.status === 'COMMITTED') {
+          if (receipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)) {
+            throw new BadRequestException('O identificador da decisão off-line foi reutilizado para outro conteúdo.');
+          }
+          const existing = await tx.eventAttendance.findUnique({
+            where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
+          });
+          if (existing) {
+            return existing;
+          }
+        }
+      }
       const before = await tx.eventAttendance.findUnique({
         where: { personId_eventId: { personId: input.personId, eventId: input.eventId } },
       });
@@ -272,6 +326,7 @@ export class CurrentUserAttendanceCollectionResolver {
         before,
         prisma: tx,
       });
+      await this.persistOralReceipt(tx, input, actorId);
       return result;
     });
     if (checkInStarted) {
@@ -316,13 +371,46 @@ export class CurrentUserAttendanceCollectionResolver {
       throw new NotFoundException('Uma ou mais pessoas não estão inscritas neste evento.');
     }
     const actorId = getActorId(context) ?? collector.userId ?? undefined;
-    if (!actorId || inputs.some((input) => input.collectedByUserId !== actorId)) {
-      throw new BadRequestException('Todas as decisões devem pertencer ao usuário autenticado.');
+    const idempotentClientIds = new Set<string>();
+    for (const input of inputs) {
+      const receipt = await this.findOralReceipt(input, actorId);
+      if (receipt?.status === 'COMMITTED' && receipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)) {
+        throw new BadRequestException('O identificador da decisão off-line foi reutilizado para outro conteúdo.');
+      }
+      if (receipt?.status === 'COMMITTED' && input.clientId) {
+        idempotentClientIds.add(input.clientId);
+      }
     }
+    inputs.forEach((input) => {
+      if (!input.clientId || !idempotentClientIds.has(input.clientId)) {
+        this.assertOralCollectorProvenance(input, actorId);
+      }
+    });
     let checkInStarted = false;
     const attendances = await this.prisma.$transaction(async (tx) => {
       const results = [];
+      for (const clientId of [...new Set(inputs.map((input) => input.clientId).filter(Boolean))].sort()) {
+        await lockOfflineCommand(tx, clientId);
+      }
       for (const input of inputs) {
+        if (input.clientId && tx.offlineEventAttendanceSubmission) {
+          const receipt = await tx.offlineEventAttendanceSubmission.findUnique({
+            where: { clientId: input.clientId },
+            select: { status: true, rejectionReason: true },
+          });
+          if (receipt?.status === 'COMMITTED' && receipt.rejectionReason !== buildOfflineOralAttendanceReceiptMarker(input)) {
+            throw new BadRequestException('O identificador da decisão off-line foi reutilizado para outro conteúdo.');
+          }
+          if (receipt?.status === 'COMMITTED' && receipt.rejectionReason === buildOfflineOralAttendanceReceiptMarker(input)) {
+            const existing = await tx.eventAttendance.findUnique({
+              where: { personId_eventId: { personId: input.personId, eventId } },
+            });
+            if (existing) {
+              results.push(existing);
+              continue;
+            }
+          }
+        }
         const locationData = getRequiredAttendanceLocationData(input.location);
         const data = {
           status: input.status as EventAttendanceStatus,
@@ -358,6 +446,7 @@ export class CurrentUserAttendanceCollectionResolver {
           before,
           prisma: tx,
         });
+        await this.persistOralReceipt(tx, input, actorId);
         results.push(attendance);
       }
       return results;
@@ -399,4 +488,78 @@ export class CurrentUserAttendanceCollectionResolver {
   private async requireCollector(eventId: string, context: GraphqlContext, enforceCollectionWindow: boolean) {
     return requireAttendanceCollector(this.collectionDeps, eventId, context, enforceCollectionWindow);
   }
+
+  private assertOralCollectorProvenance(
+    input: EventOralAttendanceInput,
+    actorId: string | undefined,
+  ): void {
+    if (!actorId) {
+      throw new BadRequestException('O coletor informado deve ser o usuário autenticado.');
+    }
+    if (input.collectedByUserId === actorId) {
+      return;
+    }
+    try {
+      const credential = input.collectorCredential
+        ? verifyOfflineAttendanceCollectorCredential(input.collectorCredential, input.collectedAt)
+        : null;
+      if (
+        !credential ||
+        credential.eventId !== input.eventId ||
+        credential.collectorUserId !== input.collectedByUserId
+      ) {
+        throw new BadRequestException('A credencial assinada do coletor off-line não corresponde à decisão.');
+      }
+    } catch (error: unknown) {
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new BadRequestException('A credencial assinada do coletor off-line é inválida ou expirou.');
+    }
+  }
+
+  private async findOralReceipt(input: EventOralAttendanceInput, submittedById: string | undefined) {
+    if (!input.clientId || !submittedById || !this.prisma.offlineEventAttendanceSubmission) {
+      return null;
+    }
+    const receipt = await this.prisma.offlineEventAttendanceSubmission.findUnique({
+      where: { clientId: input.clientId },
+      select: { id: true, status: true, rejectionReason: true },
+    });
+    return receipt;
+  }
+
+  private async persistOralReceipt(
+    tx: Prisma.TransactionClient,
+    input: EventOralAttendanceInput,
+    submittedById: string | undefined,
+  ): Promise<void> {
+    if (!input.clientId || !submittedById || !tx.offlineEventAttendanceSubmission) {
+      return;
+    }
+    await tx.offlineEventAttendanceSubmission.upsert({
+      where: { clientId: input.clientId },
+      create: {
+        clientId: input.clientId,
+        eventId: input.eventId,
+        personId: input.personId,
+        createdByMethod: AttendanceCreationMethod.ORAL_CALL,
+        collectedAt: input.collectedAt,
+        authorUserId: input.collectedByUserId,
+        submittedById,
+        status: 'COMMITTED',
+        committedAt: new Date(),
+        committedById: submittedById,
+        collectedLatitude: input.location?.latitude,
+        collectedLongitude: input.location?.longitude,
+        collectedAccuracyMeters: input.location?.accuracyMeters,
+        rejectionReason: buildOfflineOralAttendanceReceiptMarker(input),
+      },
+      update: {
+        status: 'COMMITTED',
+        rejectionReason: buildOfflineOralAttendanceReceiptMarker(input),
+      },
+    });
+  }
+
 }

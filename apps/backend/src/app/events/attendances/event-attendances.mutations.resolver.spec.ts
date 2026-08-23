@@ -1,6 +1,15 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { EventAttendancesMutationsResolver } from './event-attendances.mutations.resolver';
+import { issueOfflineAttendanceCollectorCredential } from '../../current-user/events/offline-attendance-collector-credential';
+
+const originalCollectorCredential = issueOfflineAttendanceCollectorCredential({
+  eventId: 'event-1',
+  collectorPersonId: 'collector-person-1',
+  collectorUserId: 'original-collector',
+  issuedAt: new Date('2026-05-20T00:00:00.000Z'),
+  expiresAt: new Date('2027-01-01T00:00:00.000Z'),
+});
 
 describe('EventAttendancesMutationsResolver', () => {
   let prisma: ReturnType<typeof createFullPrisma>;
@@ -34,6 +43,7 @@ describe('EventAttendancesMutationsResolver', () => {
             status: 'PRESENT',
             collectedAt,
             collectedByUserId: 'original-collector',
+            collectorCredential: originalCollectorCredential,
           },
           {
             eventId: 'event-1',
@@ -41,6 +51,7 @@ describe('EventAttendancesMutationsResolver', () => {
             status: 'ABSENT',
             collectedAt,
             collectedByUserId: 'original-collector',
+            collectorCredential: originalCollectorCredential,
           },
         ],
         { req: { user: { sub: 'collector-1' } } } as never,
@@ -60,7 +71,7 @@ describe('EventAttendancesMutationsResolver', () => {
           status: 'PRESENT',
           attendedAt: collectedAt,
           createdByMethod: AttendanceCreationMethod.ORAL_CALL,
-          createdById: 'collector-1',
+          createdById: 'original-collector',
           committedById: 'collector-1',
         }),
       }),
@@ -127,6 +138,7 @@ describe('EventAttendancesMutationsResolver', () => {
       status: 'PRESENT' as const,
       collectedAt: new Date('2026-07-29T12:30:00.000Z'),
       collectedByUserId: 'original-collector',
+      collectorCredential: originalCollectorCredential,
     }));
 
     await expect(
@@ -531,8 +543,8 @@ describe('EventAttendancesMutationsResolver', () => {
         req: { user: { sub: 'admin-user' } },
       } as never),
     ).resolves.toEqual([
-      expect.objectContaining({ id: 'submission-1', status: 'COMMITTED' }),
-      expect.objectContaining({ id: 'submission-2', status: 'COMMITTED' }),
+      expect.objectContaining({ submissionId: 'submission-1', success: true, submission: expect.objectContaining({ status: 'COMMITTED' }) }),
+      expect.objectContaining({ submissionId: 'submission-2', success: true, submission: expect.objectContaining({ status: 'COMMITTED' }) }),
     ]);
 
     expect(authorizationPolicy.assertPermissions).toHaveBeenCalledTimes(2);

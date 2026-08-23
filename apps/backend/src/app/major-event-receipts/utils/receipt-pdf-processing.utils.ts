@@ -1,4 +1,5 @@
 import { execFile as execFileCallback } from 'child_process';
+import { Logger } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -13,6 +14,7 @@ import {
 import { assertReceiptBufferWithinProcessingLimits } from './receipt-image-processing.utils';
 
 const execFile = promisify(execFileCallback);
+const logger = new Logger('ReceiptPdfProcessing');
 
 export class ReceiptPdfProcessingError extends Error {
   constructor(message: string) {
@@ -80,7 +82,17 @@ async function withReceiptPdf<T>(buffer: Buffer, operation: (inputPath: string, 
 
     throw new ReceiptPdfProcessingError('Não foi possível processar o PDF do comprovante.');
   } finally {
-    await fs.rm(directory, { recursive: true, force: true });
+    try {
+      await fs.rm(directory, { recursive: true, force: true });
+    } catch (error: unknown) {
+      // Temporary-file cleanup is best effort. Never replace a successful
+      // conversion or the primary processing error with an rm failure.
+      logger.warn(
+        `Could not clean up temporary receipt PDF directory ${directory}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 }
 

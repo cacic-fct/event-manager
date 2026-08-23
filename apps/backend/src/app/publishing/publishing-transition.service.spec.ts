@@ -419,4 +419,15 @@ describe('PublicationTransitionService', () => {
       majorEventIds: ['major-1', 'major-2'],
     });
   });
+
+  it('returns committed publication state when derived search synchronization fails', async () => {
+    const { searchSync, service, stateWriter } = createService();
+    const sync = { eventIds: ['event-1'], majorEventIds: [] };
+    stateWriter.updateEventPublicationState.mockResolvedValue(sync);
+    searchSync.syncSearch.mockRejectedValue(new Error('Typesense unavailable'));
+
+    await expect(
+      service.setEventPublicationState('event-1', PublicationState.PUBLISHED, createUser()),
+    ).resolves.toEqual(sync);
+  });
 });

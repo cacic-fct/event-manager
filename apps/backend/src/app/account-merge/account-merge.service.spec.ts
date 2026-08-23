@@ -1,4 +1,4 @@
-import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { EventFormResponseMode, EventFormTargetType } from '@prisma/client';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -82,6 +82,13 @@ describe('AccountMergeService', () => {
     expect(prisma.majorEventSubscription.count).not.toHaveBeenCalled();
   });
 
+  it('rejects an unbounded candidate set before any scoring query', async () => {
+    const candidates = Array.from({ length: 101 }, (_, index) => `candidate-${index}`);
+
+    await expect(service.scoreAccountMergeCandidates({ userIds: candidates })).rejects.toThrow('no máximo 100');
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
   it('coalesces duplicate role assignments without widening their scoped access windows', async () => {
     const tx = createTransactionMock();
     tx.eventManagerRoleAssignment.findMany
@@ -151,7 +158,7 @@ describe('AccountMergeService', () => {
     });
   });
 
-  it('resolves final user ids through merge chains and stops on cycles', async () => {
+  it('resolves final user ids through merge chains and rejects cycles', async () => {
     prisma.accountUserMerge.findUnique
       .mockResolvedValueOnce({ oldUserId: 'user-a', newUserId: 'user-b' })
       .mockResolvedValueOnce({ oldUserId: 'user-b', newUserId: 'user-c' })
@@ -164,7 +171,7 @@ describe('AccountMergeService', () => {
       .mockResolvedValueOnce({ oldUserId: 'cycle-a', newUserId: 'cycle-b' })
       .mockResolvedValueOnce({ oldUserId: 'cycle-b', newUserId: 'cycle-a' });
 
-    await expect(service.resolveFinalUserId('cycle-a')).resolves.toBe('cycle-a');
+    await expect(service.resolveFinalUserId('cycle-a')).rejects.toBeInstanceOf(InternalServerErrorException);
   });
 
   it('acknowledges an already applied matching event idempotently', async () => {
@@ -199,9 +206,7 @@ describe('AccountMergeService', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
     prisma.externalAccountMergeOperation.findUnique.mockResolvedValue({ status: 'FAILED' });
 
-    await expect(service.acknowledgeAccountMerge(notification(), 'actor-1')).rejects.toBeInstanceOf(
-      InternalServerErrorException,
-    );
+    await expect(service.acknowledgeAccountMerge(notification(), 'actor-1')).rejects.toBeInstanceOf(ConflictException);
 
     expect(prisma.externalAccountMergeOperation.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -295,9 +300,42 @@ describe('AccountMergeService', () => {
         },
       ])
       .mockResolvedValueOnce([]);
-    tx.eventSubscription.findMany.mockResolvedValue([{ id: 'event-subscription-1' }]);
+    tx.eventSubscription.findMany.mockImplementation(({ where }: { where: { personId: string } }) =>
+      Promise.resolve(
+        where.personId === 'source-person'
+          ? [
+              {
+                id: 'event-subscription-1',
+                eventId: 'event-1',
+                deletedAt: null,
+                imageLicenseAgreementAccepted: false,
+              },
+            ]
+          : [],
+      ),
+    );
     tx.eventGroupSubscription.findMany.mockResolvedValue([]);
-    tx.majorEventSubscription.findMany.mockResolvedValue([{ id: 'major-subscription-1' }]);
+    tx.majorEventSubscription.findMany.mockImplementation(({ where }: { where: { personId: string } }) =>
+      Promise.resolve(
+        where.personId === 'source-person'
+          ? [
+              {
+                id: 'major-subscription-1',
+                majorEventId: 'major-1',
+                deletedAt: null,
+                amountPaid: null,
+                paymentDate: null,
+                paymentTier: null,
+                desiredCourses: null,
+                desiredLectures: null,
+                desiredUncategorized: null,
+                imageLicenseAgreementAccepted: false,
+                subscriptionStatus: 'CONFIRMED',
+              },
+            ]
+          : [],
+      ),
+    );
     tx.eventFormResponse.findMany.mockResolvedValue([
       {
         id: 'form-response-1',
@@ -325,8 +363,8 @@ describe('AccountMergeService', () => {
         skipDuplicates: true,
       }),
     );
-    expect(tx.eventSubscription.updateMany).toHaveBeenCalledWith({
-      where: { id: { in: ['event-subscription-1'] } },
+    expect(tx.eventSubscription.update).toHaveBeenCalledWith({
+      where: { id: 'event-subscription-1' },
       data: { personId: 'target-person' },
     });
     expect(tx.eventFormResponse.updateMany).toHaveBeenCalledWith({
@@ -390,6 +428,124 @@ describe('AccountMergeService', () => {
     );
   });
 
+  it('coalesces overlapping event and major-event subscriptions without moving duplicates', async () => {
+    const tx = createTransactionMock();
+    tx.eventGroupSubscription.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'source-group-subscription',
+          eventGroupId: 'group-1',
+          deletedAt: null,
+          imageLicenseAgreementAccepted: false,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'target-group-subscription',
+          eventGroupId: 'group-1',
+          deletedAt: null,
+          imageLicenseAgreementAccepted: true,
+        },
+      ]);
+    tx.eventSubscription.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'source-event-subscription',
+          eventId: 'event-1',
+          deletedAt: null,
+          imageLicenseAgreementAccepted: false,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'target-event-subscription',
+          eventId: 'event-1',
+          deletedAt: null,
+          imageLicenseAgreementAccepted: true,
+        },
+      ]);
+    tx.majorEventSubscription.findMany
+      .mockResolvedValueOnce([
+        {
+          id: 'source-major-subscription',
+          majorEventId: 'major-1',
+          deletedAt: null,
+          amountPaid: 100,
+          paymentDate: null,
+          paymentTier: null,
+          desiredCourses: null,
+          desiredLectures: null,
+          desiredUncategorized: null,
+          imageLicenseAgreementAccepted: false,
+          subscriptionStatus: 'CONFIRMED',
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'target-major-subscription',
+          majorEventId: 'major-1',
+          deletedAt: null,
+          amountPaid: null,
+          paymentDate: null,
+          paymentTier: null,
+          desiredCourses: 2,
+          desiredLectures: null,
+          desiredUncategorized: null,
+          imageLicenseAgreementAccepted: true,
+          subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+        },
+      ]);
+    tx.majorEventSubscriptionEventSelection.findMany
+      .mockResolvedValueOnce([
+        { id: 'source-selection-new', eventId: 'event-2', deletedAt: null },
+        { id: 'source-selection-overlap', eventId: 'event-3', deletedAt: null },
+      ])
+      .mockResolvedValueOnce([{ eventId: 'event-3' }]);
+
+    await expect(
+      service['coalesceEventGroupSubscriptions'](tx as never, 'target-person', 'source-person'),
+    ).resolves.toEqual([]);
+    await expect(service['coalesceEventSubscriptions'](tx as never, 'target-person', 'source-person')).resolves.toEqual([]);
+    await expect(
+      service['coalesceMajorEventSubscriptions'](tx as never, 'target-person', 'source-person'),
+    ).resolves.toEqual([]);
+
+    expect(tx.eventSubscription.update).toHaveBeenCalledWith({
+      where: { id: 'source-event-subscription' },
+      data: { deletedAt: expect.any(Date) },
+    });
+    expect(tx.eventSubscription.updateMany).toHaveBeenCalledWith({
+      where: { eventGroupSubscriptionId: 'source-group-subscription' },
+      data: { eventGroupSubscriptionId: 'target-group-subscription' },
+    });
+    expect(tx.majorEventSubscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'target-major-subscription' },
+        data: expect.objectContaining({ amountPaid: 100, subscriptionStatus: 'CONFIRMED' }),
+      }),
+    );
+    expect(tx.majorEventSubscriptionEventSelection.update).toHaveBeenCalledWith({
+      where: { id: 'source-selection-new' },
+      data: { subscriptionId: 'target-major-subscription' },
+    });
+    expect(tx.majorEventSubscriptionEventSelection.update).toHaveBeenCalledWith({
+      where: { id: 'source-selection-overlap' },
+      data: { deletedAt: expect.any(Date) },
+    });
+    expect(tx.majorEventReceipt.updateMany).toHaveBeenCalledWith({
+      where: { subscriptionId: 'source-major-subscription' },
+      data: { subscriptionId: 'target-major-subscription', personId: 'target-person' },
+    });
+    expect(tx.majorEventReceiptValidationAction.updateMany).toHaveBeenCalledWith({
+      where: { subscriptionId: 'source-major-subscription' },
+      data: { subscriptionId: 'target-major-subscription' },
+    });
+    expect(tx.sportsTournamentParticipant.updateMany).toHaveBeenCalledWith({
+      where: { majorEventSubscriptionId: 'source-major-subscription' },
+      data: { majorEventSubscriptionId: 'target-major-subscription' },
+    });
+  });
+
   it('does not record form responses that changed ownership during account merge', async () => {
     const tx = createTransactionMock();
     tx.eventFormResponse.findMany.mockResolvedValue([
@@ -427,9 +583,7 @@ describe('AccountMergeService', () => {
     prisma.$transaction.mockImplementation(async (callback) => callback(tx));
     prisma.externalAccountMergeOperation.findUnique.mockResolvedValue(null);
 
-    await expect(service.acknowledgeAccountMerge(notification(), null)).rejects.toBeInstanceOf(
-      InternalServerErrorException,
-    );
+    await expect(service.acknowledgeAccountMerge(notification(), null)).rejects.toBeInstanceOf(ConflictException);
 
     expect(prisma.externalAccountMergeOperation.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -521,6 +675,10 @@ function createTransactionMock() {
     eventSubscription: delegate(),
     eventGroupSubscription: delegate(),
     majorEventSubscription: delegate(),
+    majorEventSubscriptionEventSelection: delegate(),
+    majorEventReceipt: delegate(),
+    majorEventReceiptValidationAction: delegate(),
+    sportsTournamentParticipant: delegate(),
     eventFormResponse: delegate(),
     eventManagerRoleAssignment: delegate(),
     eventManagerRoleAssignmentScope: delegate(),

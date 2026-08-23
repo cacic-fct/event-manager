@@ -1,12 +1,14 @@
 import { Readable } from 'stream';
-import { S3Service } from './s3.service';
+import { S3Service, S3ServiceError } from './s3.service';
 
 const sendMock = jest.fn();
 const uploadDoneMock = jest.fn();
+const destroyMock = jest.fn();
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({
     send: sendMock,
+    destroy: destroyMock,
   })),
   GetObjectCommand: jest.fn().mockImplementation((input) => ({ kind: 'GetObjectCommand', input })),
   DeleteObjectCommand: jest.fn().mockImplementation((input) => ({ kind: 'DeleteObjectCommand', input })),
@@ -71,19 +73,26 @@ describe('S3Service', () => {
       ),
     ).resolves.toEqual({
       key: 'receipts/file.png',
-      size: 42,
+      size: Buffer.from('receipt').length,
     });
 
     expect(uploadDoneMock).toHaveBeenCalledTimes(1);
-    expect(sendMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        kind: 'HeadObjectCommand',
-        input: {
-          Bucket: 'bucket',
-          Key: 'receipts/file.png',
-        },
-      }),
-    );
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it('does not classify a successful buffer write as failed when metadata verification is unavailable', async () => {
+    const service = new S3Service(configServiceMock() as never);
+    uploadDoneMock.mockResolvedValue(undefined);
+
+    await expect(service.uploadFile('key', Buffer.from('file'))).resolves.toEqual({ key: 'key', size: 4 });
+  });
+
+  it('destroys the S3 client during application shutdown', () => {
+    const service = new S3Service(configServiceMock() as never);
+
+    service.onModuleDestroy();
+
+    expect(destroyMock).toHaveBeenCalledTimes(1);
   });
 
   it('wraps upload failures with a storage-specific message', async () => {
@@ -92,6 +101,23 @@ describe('S3Service', () => {
     uploadDoneMock.mockRejectedValue(new Error('network down'));
 
     await expect(service.uploadFile('key', Buffer.from('file'))).rejects.toThrow('Failed to upload file: network down');
+  });
+
+  it('preserves AWS error cause and retry metadata', async () => {
+    const service = new S3Service(configServiceMock() as never);
+    const awsError = Object.assign(new Error('temporarily unavailable'), {
+      name: 'ServiceUnavailable',
+      $metadata: { httpStatusCode: 503, requestId: 'request-1' },
+    });
+    uploadDoneMock.mockRejectedValue(awsError);
+
+    await expect(service.uploadFile('key', Buffer.from('file'))).rejects.toMatchObject({
+      name: 'S3ServiceError',
+      code: 'ServiceUnavailable',
+      statusCode: 503,
+      requestId: 'request-1',
+      cause: awsError,
+    } satisfies Partial<S3ServiceError>);
   });
 
   it('downloads object streams and metadata', async () => {

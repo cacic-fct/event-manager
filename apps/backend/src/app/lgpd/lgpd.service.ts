@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TypesenseSearchService } from '../search/typesense-search.service';
 import { S3Service } from '../s3/s3.service';
@@ -11,7 +11,8 @@ import { resolveDataSubject } from './lgpd-data-subject';
 import { anonymizeEventDrafts, buildEventDraftSubjectWhere } from './lgpd-event-drafts';
 import { mapOfflineSubmissionForExport, mapPersonForExport, selectManyForExport } from './lgpd-export-mappers';
 import { anonymizeOfflineAttendanceSubmissions, buildOfflineSubmissionSubjectWhere } from './lgpd-offline-submissions';
-import { deleteReceiptObjects, findReceiptObjectKeys } from './lgpd-receipts';
+import { findReceiptObjectKeys } from './lgpd-receipts';
+import { LgpdStorageCleanupService } from './lgpd-storage-cleanup.service';
 import {
   LGPD_ACCOUNT_USER_MERGE_SELECT,
   LGPD_ACCOUNT_USER_SELECT,
@@ -39,6 +40,7 @@ export class LgpdService {
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
     private readonly typesenseSearch: TypesenseSearchService,
+    @Optional() private readonly storageCleanup?: LgpdStorageCleanupService,
   ) {}
 
   async collectUserData(input: { userId: string; email?: string }): Promise<Record<string, LgpdCategoryData>> {
@@ -319,9 +321,8 @@ export class LgpdService {
     }
 
     const receiptObjectKeys = await findReceiptObjectKeys(this.prisma, personIds);
-    await deleteReceiptObjects(this.s3, this.logger, receiptObjectKeys);
-
     const { anonymizedAuditEntryIds, ...result } = await this.prisma.$transaction(async (tx) => {
+      await this.storageCleanup?.enqueueInTransaction(tx, input.requestId, receiptObjectKeys);
       const anonymizedSubjectId = buildAnonymizedAuditSubjectId(input.requestId);
       const anonymizedAuditEntryIds = await anonymizeAuditEntries(
         tx,
@@ -407,6 +408,15 @@ export class LgpdService {
     });
 
     await synchronizeAnonymizedAuditEntries(this.prisma, this.typesenseSearch, this.logger, anonymizedAuditEntryIds);
+    try {
+      await this.storageCleanup?.reconcile();
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Could not enqueue LGPD storage cleanup request=${input.requestId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
 
     this.logger.log(
       `Hard-deleted LGPD data request=${input.requestId}, user=${input.userId}, people=${result.peopleDeleted}, users=${result.usersDeleted}, related=${result.recordsDeleted}.`,

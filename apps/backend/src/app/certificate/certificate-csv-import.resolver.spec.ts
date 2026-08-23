@@ -24,7 +24,10 @@ describe('CertificateCsvImportResolver', () => {
       },
     };
     const issuingService = {
-      issueManualForPeople: jest.fn().mockResolvedValue([{ id: 'certificate-1' }]),
+      issueManualForPeopleWithResults: jest.fn().mockResolvedValue({
+        certificates: [{ id: 'certificate-1' }],
+        failedPersonIds: [],
+      }),
     };
     const frozenResources = {
       assertCertificateConfigMutable: jest.fn().mockResolvedValue(undefined),
@@ -61,7 +64,11 @@ describe('CertificateCsvImportResolver', () => {
     });
 
     expect(frozenResources.assertCertificateConfigMutable).toHaveBeenCalledWith('config-1', user, 'edit');
-    expect(issuingService.issueManualForPeople).toHaveBeenCalledWith('config-1', ['person-1'], 'issuer-1');
+    expect(issuingService.issueManualForPeopleWithResults).toHaveBeenCalledWith(
+      'config-1',
+      ['person-1'],
+      'issuer-1',
+    );
   });
 
   it('returns ambiguous people for explicit resolution before issuing certificates', async () => {
@@ -100,6 +107,38 @@ describe('CertificateCsvImportResolver', () => {
       ],
     });
 
-    expect(issuingService.issueManualForPeople).not.toHaveBeenCalled();
+    expect(issuingService.issueManualForPeopleWithResults).not.toHaveBeenCalled();
+  });
+
+  it('reports row failures after earlier certificates commit so retries can skip successes', async () => {
+    const { issuingService, resolver } = createResolver();
+    issuingService.issueManualForPeopleWithResults.mockResolvedValue({
+      certificates: [{ id: 'certificate-1' }],
+      failedPersonIds: ['person-1'],
+    });
+
+    await expect(
+      resolver.issueManualCertificatesFromCsv(
+        {
+          configId: 'config-1',
+          csvContent: 'E-mail\nana@example.com',
+          selectedHeader: 'E-mail',
+        },
+        {},
+      ),
+    ).resolves.toEqual(expect.objectContaining({ createdCount: 1, failedCount: 1, failedValues: ['ana@example.com'] }));
+  });
+
+  it('detects delimiters outside quoted commas and preserves multiline fields', () => {
+    const { resolver } = createResolver();
+    const parsed = (resolver as unknown as { parseCsv: (content: string) => { headers: string[]; rows: Record<string, string>[] } }).parseCsv(
+      'Nome;E-mail\n"Last, First";ana@example.com\n"Linha\nquebrada";bruna@example.com',
+    );
+
+    expect(parsed.headers).toEqual(['Nome', 'E-mail']);
+    expect(parsed.rows).toEqual([
+      { Nome: 'Last, First', 'E-mail': 'ana@example.com' },
+      { Nome: 'Linha\nquebrada', 'E-mail': 'bruna@example.com' },
+    ]);
   });
 });

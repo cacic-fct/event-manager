@@ -1,4 +1,3 @@
-import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { PublicPlatformStatsResolver } from './public-platform-stats.resolver';
@@ -18,20 +17,25 @@ describe('PublicPlatformStatsService', () => {
       get: jest.fn().mockResolvedValue(null),
       set: jest.fn().mockResolvedValue('OK'),
     };
-    const queue = { add: jest.fn().mockResolvedValue({ id: 'job-1' }) };
     const service = new PublicPlatformStatsService(
       prisma as unknown as PrismaService,
       redis as unknown as Redis,
-      queue as unknown as Queue,
     );
 
-    return { prisma, redis, queue, service };
+    return { prisma, redis, service };
   };
 
   it('returns cached aggregate stats without querying the database', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-17T12:00:00.000Z'));
     const { prisma, redis, service } = createContext();
     redis.get.mockResolvedValue(
-      JSON.stringify({ peopleCount: 11, eventsCount: 12, majorEventsCount: 13, certificatesCount: 14 }),
+      JSON.stringify({
+        peopleCount: 11,
+        eventsCount: 12,
+        majorEventsCount: 13,
+        certificatesCount: 14,
+        generatedAt: '2026-07-17T03:00:00.000Z',
+      }),
     );
 
     await expect(service.getPublicPlatformStats()).resolves.toEqual({
@@ -68,26 +72,33 @@ describe('PublicPlatformStatsService', () => {
     expect(prisma.majorEvent.count).toHaveBeenCalledWith({ where: delayedCountWhere });
     expect(prisma.certificate.count).toHaveBeenCalledWith({ where: delayedCountWhere });
     expect(redis.set).toHaveBeenCalledWith(
-      'public:platform-stats:v2',
-      JSON.stringify({ peopleCount: 10, eventsCount: 20, majorEventsCount: 3, certificatesCount: 40 }),
+      'public:platform-stats:v3',
+      JSON.stringify({
+        peopleCount: 10,
+        eventsCount: 20,
+        majorEventsCount: 3,
+        certificatesCount: 40,
+        generatedAt: '2026-07-17T12:00:00.000Z',
+      }),
       'EX',
       172800,
     );
   });
 
-  it('schedules a nightly refresh and exposes stats through GraphQL', async () => {
-    const { queue, service } = createContext();
+  it('refreshes stale prior-day stats on demand and exposes the result through GraphQL', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-17T12:00:00.000Z'));
+    const { prisma, redis, service } = createContext();
     const resolver = new PublicPlatformStatsResolver(service);
     const stats = { peopleCount: 1, eventsCount: 2, majorEventsCount: 3, certificatesCount: 4 };
-    jest.spyOn(service, 'getPublicPlatformStats').mockResolvedValue(stats);
-
-    await service.scheduleRefreshJob();
-
-    expect(queue.add).toHaveBeenCalledWith(
-      'refresh-public-platform-stats',
-      {},
-      expect.objectContaining({ jobId: 'public-platform-stats-nightly', repeat: { pattern: '0 3 * * *' } }),
+    redis.get.mockResolvedValue(
+      JSON.stringify({ ...stats, generatedAt: '2026-07-16T12:00:00.000Z' }),
     );
+    prisma.people.count.mockResolvedValue(1);
+    prisma.event.count.mockResolvedValue(2);
+    prisma.majorEvent.count.mockResolvedValue(3);
+    prisma.certificate.count.mockResolvedValue(4);
+
     await expect(resolver.publicPlatformStats()).resolves.toEqual(stats);
+    expect(prisma.people.count).toHaveBeenCalledTimes(1);
   });
 });

@@ -3,6 +3,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
@@ -64,6 +65,8 @@ type ActionableReceiptSubscription = Prisma.MajorEventSubscriptionGetPayload<{
 
 @Injectable()
 export class ReceiptValidationService {
+  private readonly logger = new Logger(ReceiptValidationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly attendanceCategories: AttendanceCategoryService,
@@ -163,7 +166,7 @@ export class ReceiptValidationService {
       throw new NotFoundException(`Subscription ${subscriptionId} was not found after receipt approval ${result.id}.`);
     }
     await this.queue.notifySubscriptionChanged(SubscriptionStatus.RECEIPT_UNDER_REVIEW, subscriptionId);
-    await this.dashboardInsights.invalidateCachedInsights();
+    await this.invalidateDashboardInsights();
     return {
       actionId: result.id,
       item,
@@ -242,7 +245,7 @@ export class ReceiptValidationService {
       throw new NotFoundException(`Subscription ${subscriptionId} was not found after receipt rejection.`);
     }
     await this.queue.notifySubscriptionChanged(SubscriptionStatus.RECEIPT_UNDER_REVIEW, subscriptionId);
-    await this.dashboardInsights.invalidateCachedInsights();
+    await this.invalidateDashboardInsights();
     return {
       actionId: action.id,
       item,
@@ -364,7 +367,7 @@ export class ReceiptValidationService {
       throw new NotFoundException(`Subscription ${action.subscriptionId} was not found after undo.`);
     }
     await this.queue.notifySubscriptionChanged(action.nextStatus, action.subscriptionId);
-    await this.dashboardInsights.invalidateCachedInsights();
+    await this.invalidateDashboardInsights();
     return item;
   }
 
@@ -539,5 +542,17 @@ export class ReceiptValidationService {
     }
 
     return subscription;
+  }
+
+  private async invalidateDashboardInsights(): Promise<void> {
+    try {
+      await this.dashboardInsights.invalidateCachedInsights();
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Dashboard cache invalidation failed after receipt validation commit: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 }

@@ -10,7 +10,7 @@
           mat-flat-button
           type="button"
           (click)="workspace.saveTournament()"
-          [disabled]="workspace.loading() || workspace.tournamentForm.invalid">
+          [disabled]="workspace.loading()">
           <mat-icon>save</mat-icon>
           Salvar
         </button>
@@ -48,8 +48,21 @@
         </mat-form-field>
         <mat-form-field>
           <mat-label>Fim das inscrições</mat-label>
-          <input matInput type="datetime-local" formControlName="registrationEndDate" />
+          <input
+            matInput
+            type="datetime-local"
+            formControlName="registrationEndDate"
+            aria-describedby="tournament-registration-date-range-error" />
         </mat-form-field>
+        @if (workspace.tournamentForm.hasError('incompleteRegistrationWindow')) {
+          <mat-error class="span-2" id="tournament-registration-date-range-error" aria-live="polite">
+            Informe o início e o fim das inscrições do torneio.
+          </mat-error>
+        } @else if (workspace.tournamentForm.hasError('invalidRegistrationWindow')) {
+          <mat-error class="span-2" id="tournament-registration-date-range-error" aria-live="polite">
+            O fim das inscrições do torneio deve ser posterior ao início.
+          </mat-error>
+        }
       }
       <mat-form-field>
         <mat-label>Classificação geral</mat-label>

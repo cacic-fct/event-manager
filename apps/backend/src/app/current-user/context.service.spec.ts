@@ -111,6 +111,8 @@ describe('CurrentUserContextService', () => {
       userId: 'keycloak-sub',
       email: 'student@example.edu',
       fullname: 'Student Name',
+      identityDocument: '123.456.789-00',
+      academicId: '20240001',
       isOnboarded: false,
     });
 
@@ -122,6 +124,8 @@ describe('CurrentUserContextService', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           userId: 'keycloak-sub',
+          identityDocument: '123.456.789-00',
+          academicId: '20240001',
         }),
       }),
     );

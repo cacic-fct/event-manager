@@ -6,15 +6,18 @@ describe('SportsTeamLogoService representative queue', () => {
   const prisma = {
     sportsTeam: {
       findFirst: jest.fn(),
+      updateMany: jest.fn(),
     },
     sportsTeamChangeRequest: {
       findFirst: jest.fn(),
     },
+    $transaction: jest.fn(),
   };
   const s3 = {
     uploadFile: jest.fn(),
     deleteFile: jest.fn(),
     downloadFile: jest.fn(),
+    fileExists: jest.fn(),
   };
   const teamChanges = {
     submit: jest.fn(),
@@ -36,7 +39,13 @@ describe('SportsTeamLogoService representative queue', () => {
   });
 
   function createService(): SportsTeamLogoService {
-    return new SportsTeamLogoService(prisma as never, s3 as never, {} as never, {} as never, teamChanges as never);
+    return new SportsTeamLogoService(
+      prisma as never,
+      s3 as never,
+      { assertMajorEventMutable: jest.fn().mockResolvedValue(undefined) } as never,
+      {} as never,
+      teamChanges as never,
+    );
   }
 
   it('converts a representative raster upload to AVIF and queues it under a private key', async () => {
@@ -273,5 +282,40 @@ describe('SportsTeamLogoService representative queue', () => {
       'Pending sports team logo review request-1 was not found.',
     );
     expect(s3.downloadFile).not.toHaveBeenCalled();
+  });
+
+  it('does not delete a logo object that a concurrent winner committed', async () => {
+    const png = await sharp({
+      create: { width: 32, height: 32, channels: 4, background: '#1565c0' },
+    }).png().toBuffer();
+    prisma.sportsTeam.findFirst
+      .mockResolvedValueOnce({
+        id: 'team-1',
+        name: 'Team',
+        tournamentId: 'tournament-1',
+        revision: 4,
+        fieldRevisions: {},
+        logoObjectKey: null,
+        logoSha256: null,
+        logoMimeType: null,
+        logoSizeBytes: null,
+        tournament: { majorEventId: 'major-1', deletedAt: null },
+      })
+      .mockResolvedValueOnce({ id: 'team-1' });
+    s3.fileExists.mockResolvedValue(false);
+    s3.uploadFile.mockResolvedValue({ key: 'final-object', size: png.length });
+    prisma.$transaction.mockImplementation(async () => {
+      throw new Error('revision conflict');
+    });
+
+    await expect(
+      createService().upload(
+        'team-1',
+        4,
+        { buffer: png, mimetype: 'image/png', originalname: 'team.png', size: png.length },
+        { sub: 'admin-1' } as never,
+      ),
+    ).rejects.toThrow('revision conflict');
+    expect(s3.deleteFile).not.toHaveBeenCalledWith(expect.any(String));
   });
 });

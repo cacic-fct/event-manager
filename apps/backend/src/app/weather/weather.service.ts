@@ -22,12 +22,16 @@ interface OpenMeteoResponse {
   };
 }
 
-const WEATHER_QUEUE = 'weather';
+export const WEATHER_QUEUE = 'weather';
 const TIME_ZONE = 'America/Sao_Paulo';
 const ATTRIBUTION = 'Open-Meteo.com';
+const OPEN_METEO_TIMEOUT_MS = 8_000;
 
 @Injectable()
 export class WeatherService {
+  private readonly publicRequestFlights = new Map<string, Promise<PublicEventWeather | null>>();
+  private readonly refreshFlights = new Map<string, Promise<PublicEventWeather | null>>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: Redis,
@@ -35,6 +39,19 @@ export class WeatherService {
   ) {}
 
   async getPublicEventWeather(eventId: string): Promise<PublicEventWeather | null> {
+    const running = this.publicRequestFlights.get(eventId);
+    if (running) {
+      return running;
+    }
+
+    const request = this.getPublicEventWeatherUncached(eventId).finally(() => {
+      this.publicRequestFlights.delete(eventId);
+    });
+    this.publicRequestFlights.set(eventId, request);
+    return request;
+  }
+
+  private async getPublicEventWeatherUncached(eventId: string): Promise<PublicEventWeather | null> {
     if (!(await this.publicWeatherEventExists(eventId))) {
       throw new NotFoundException(`Event ${eventId} was not found.`);
     }
@@ -90,17 +107,19 @@ export class WeatherService {
   }
 
   async scheduleUpcomingEventRefreshScan(): Promise<void> {
-    await this.weatherQueue.add(
-      'schedule-upcoming-event-weather',
-      {},
+    await this.weatherQueue.upsertJobScheduler(
+      buildBullMqJobId('weather', 'schedule-upcoming-events'),
       {
-        jobId: buildBullMqJobId('weather', 'schedule-upcoming-events'),
-        repeat: {
-          pattern: '5 0 * * *',
-          tz: TIME_ZONE,
+        pattern: '5 0 * * *',
+        tz: TIME_ZONE,
+      },
+      {
+        name: 'schedule-upcoming-event-weather',
+        data: {},
+        opts: {
+          removeOnComplete: true,
+          removeOnFail: 50,
         },
-        removeOnComplete: true,
-        removeOnFail: 50,
       },
     );
   }
@@ -116,39 +135,26 @@ export class WeatherService {
     }
 
     const endDate = event.startDate;
-    const repeatJobId = buildBullMqJobId('weather', event.id, category);
+    const schedulerId = buildBullMqJobId('weather', event.id, 'refresh');
     const repeatPattern = this.getRepeatPattern(category);
 
-    await this.weatherQueue.add(
-      'refresh-event-weather',
-      { eventId: event.id },
+    await this.weatherQueue.upsertJobScheduler(
+      schedulerId,
       {
-        jobId: repeatJobId,
-        repeat: {
-          pattern: repeatPattern,
-          tz: TIME_ZONE,
-          endDate,
+        pattern: repeatPattern,
+        tz: TIME_ZONE,
+        endDate,
+      },
+      {
+        name: 'refresh-event-weather',
+        data: { eventId: event.id },
+        opts: {
+          removeOnComplete: true,
+          removeOnFail: 50,
         },
-        removeOnComplete: true,
-        removeOnFail: 50,
       },
     );
 
-    if (category === 'today') {
-      const delay = event.startDate.getTime() - Date.now();
-      if (delay > 0) {
-        await this.weatherQueue.add(
-          'refresh-event-weather',
-          { eventId: event.id },
-          {
-            jobId: buildBullMqJobId('weather', event.id, 'event-time'),
-            delay,
-            removeOnComplete: true,
-            removeOnFail: 50,
-          },
-        );
-      }
-    }
   }
 
   private async getWeatherEvent(eventId: string): Promise<WeatherEvent | null> {
@@ -171,6 +177,19 @@ export class WeatherService {
   }
 
   private async refreshEventWeather(event: WeatherEvent): Promise<PublicEventWeather | null> {
+    const running = this.refreshFlights.get(event.id);
+    if (running) {
+      return running;
+    }
+
+    const refresh = this.refreshEventWeatherUncached(event).finally(() => {
+      this.refreshFlights.delete(event.id);
+    });
+    this.refreshFlights.set(event.id, refresh);
+    return refresh;
+  }
+
+  private async refreshEventWeatherUncached(event: WeatherEvent): Promise<PublicEventWeather | null> {
     if (!this.canFetchWeather(event)) {
       return null;
     }
@@ -210,7 +229,14 @@ export class WeatherService {
     url.searchParams.set('start_date', eventDate);
     url.searchParams.set('end_date', eventDate);
 
-    const response = await fetch(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), OPEN_METEO_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(url, { signal: controller.signal });
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!response.ok) {
       throw new Error(`Open-Meteo returned ${response.status}.`);
     }

@@ -215,14 +215,18 @@ export class SportsTeamLogoService {
     }
 
     const objectKey = this.buildObjectKey(team.tournamentId, team.id, sha256, image.extension);
+    let uploadedObject = false;
     if (!(await this.s3.fileExists(objectKey))) {
       await this.s3.uploadFile(objectKey, image.buffer, image.mimeType, {
         sha256,
         immutable: 'true',
       });
+      uploadedObject = true;
     }
 
-    const updated = await runSerializableSportsTransaction(this.prisma, async (tx) => {
+    let updated;
+    try {
+      updated = await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const nextRevision = team.revision + 1;
       const update = await tx.sportsTeam.updateMany({
         where: {
@@ -283,7 +287,39 @@ export class SportsTeamLogoService {
         tx,
       );
       return result;
-    });
+      });
+    } catch (error: unknown) {
+      if (uploadedObject) {
+        let stillUnreferenced = false;
+        try {
+          const committedReference = await this.prisma.sportsTeam.findFirst({
+            where: {
+              id: team.id,
+              deletedAt: null,
+              logoObjectKey: objectKey,
+            },
+            select: { id: true },
+          });
+          stillUnreferenced = !committedReference;
+        } catch (referenceError: unknown) {
+          this.logger.warn(
+            `Could not verify sports team logo ownership before cleanup ${objectKey}: ${
+              referenceError instanceof Error ? referenceError.message : String(referenceError)
+            }`,
+          );
+        }
+        if (stillUnreferenced) {
+          await this.s3.deleteFile(objectKey).catch((cleanupError: unknown) => {
+            this.logger.warn(
+              `Could not clean up uncommitted sports team logo ${objectKey}: ${
+                cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+              }`,
+            );
+          });
+        }
+      }
+      throw error;
+    }
 
     return this.toRecord(updated, image.width, image.height);
   }

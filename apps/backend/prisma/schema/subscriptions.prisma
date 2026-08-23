@@ -119,6 +119,7 @@ model MajorEventSubscription {
   lgpdDeletionRequestId String?
 
   @@unique([majorEventId, personId, deletedAt])
+  @@unique([majorEventId, personId], map: "major_event_subscription_unique_active", where: raw("\"deletedAt\" IS NULL"))
   @@index([majorEventId])
   @@index([personId, deletedAt, subscriptionStatus, majorEventId], map: "major_event_subscriptions_personId_deletedAt_subscriptionStatus")
   @@index([lgpdDeletionRequestId])

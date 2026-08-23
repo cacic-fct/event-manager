@@ -34,6 +34,8 @@ export class SportsOfflineQueueService implements OnDestroy {
   private readonly subscriptions = new Subscription();
   private syncing = false;
   private started = false;
+  private authGeneration = 0;
+  private activeUserScope: string | null = null;
   private pendingLoadRevision = 0;
   private readonly requestedCollectorMatches = new Set<string>();
   private readonly collectorPreparations = new Map<string, Promise<boolean>>();
@@ -45,6 +47,8 @@ export class SportsOfflineQueueService implements OnDestroy {
   readonly timerConflict = this.timerConflictState.asReadonly();
   private readonly userScopeEffect = effect(() => {
     const userScope = this.auth.user()?.sub;
+    this.authGeneration += 1;
+    this.activeUserScope = userScope ?? null;
     if (!userScope) {
       this.pendingState.set([]);
       return;
@@ -277,12 +281,22 @@ export class SportsOfflineQueueService implements OnDestroy {
     if (!userScope) {
       return;
     }
+    if (this.authGeneration === 0) {
+      this.authGeneration = 1;
+      this.activeUserScope = userScope;
+    }
+    const generation = this.authGeneration;
 
     this.syncing = true;
     try {
       const pendingAtStart = await this.storage.listUploadable(userScope);
       const conflictedMatches = new Set<string>();
       for (const item of pendingAtStart) {
+        const currentUserScope = this.auth.user()?.sub;
+        const currentUserChanged = currentUserScope !== userScope || this.authGeneration !== generation;
+        if (item.kind === 'ACTION' && currentUserChanged) {
+          continue;
+        }
         if (item.kind === 'ACTION' && conflictedMatches.has(item.action.matchId)) {
           continue;
         }
@@ -290,6 +304,9 @@ export class SportsOfflineQueueService implements OnDestroy {
         let accepted = false;
         let lastError: unknown;
         for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_SYNC; attempt++) {
+          if (item.kind === 'ACTION' && (this.auth.user()?.sub !== userScope || this.authGeneration !== generation)) {
+            break;
+          }
           try {
             if (item.kind === 'ACTION') {
               await firstValueFrom(this.api.commit([{ ...item.action, offline: true }]));
@@ -341,11 +358,15 @@ export class SportsOfflineQueueService implements OnDestroy {
           item.userScope,
           item.id,
           lastError instanceof Error ? lastError.message : 'Não foi possível sincronizar.',
+          { permanent: this.isPermanentFailure(lastError) },
         );
       }
     } finally {
       this.syncing = false;
       await this.refreshPending();
+      if (this.activeUserScope && this.activeUserScope !== userScope) {
+        void this.sync();
+      }
     }
   }
 
@@ -453,6 +474,18 @@ export class SportsOfflineQueueService implements OnDestroy {
       return true;
     }
     return /network|offline|fetch|connection|status 0/i.test(error.message);
+  }
+
+  private isPermanentFailure(error: unknown): boolean {
+    if (this.isConnectionFailure(error)) {
+      return false;
+    }
+
+    if (error instanceof HttpErrorResponse) {
+      return [400, 401, 403, 404, 409, 422].includes(error.status);
+    }
+
+    return error instanceof Error && /invalid|forbidden|not found|permission|conflict|revision/i.test(error.message);
   }
 
   private isUploadableBy(item: QueuedSportsOperation, userScope: string): boolean {

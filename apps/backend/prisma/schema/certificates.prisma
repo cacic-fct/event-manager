@@ -146,6 +146,8 @@ model Certificate {
   certificateTemplate   CertificateTemplate @relation(fields: [certificateTemplateId], references: [id])
   certificateTemplateId String
 
+  notificationOutbox CertificateNotificationOutbox[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -157,4 +159,31 @@ model Certificate {
   @@index([configId])
   @@index([lgpdDeletionRequestId])
   @@map("certificates")
+}
+
+enum CertificateNotificationOutboxStatus {
+  PENDING
+  PROCESSING
+  DELIVERED
+  SUPERSEDED
+}
+
+model CertificateNotificationOutbox {
+  id String @id @default(uuid(7))
+
+  certificateId String
+  certificate   Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+  issuedAt     DateTime
+
+  status        CertificateNotificationOutboxStatus @default(PENDING)
+  attempts      Int @default(0)
+  nextAttemptAt DateTime @default(now())
+  lastError     String?
+  deliveredAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([certificateId, issuedAt], map: "certificate_notification_outbox_certificate_issued_key")
+  @@index([status, nextAttemptAt], map: "certificate_notification_outbox_pending_idx")
+  @@map("certificate_notification_outbox")
 }

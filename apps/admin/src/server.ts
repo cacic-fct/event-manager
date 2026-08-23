@@ -4,7 +4,10 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
-import { applyCspToHtmlResponse } from '@cacic-fct/shared-utils';
+import {
+  applyCspToHtmlResponse,
+  OPENSTREETMAP_TILE_REFERRER_POLICY,
+} from '@cacic-fct/shared-utils';
 import express from 'express';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -12,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 
 const serverDistFolder = dirname(fileURLToPath(import.meta.url));
 const browserDistFolder = resolve(serverDistFolder, '../browser');
+const adminReferrerPolicy = OPENSTREETMAP_TILE_REFERRER_POLICY;
 
 const app = express();
 const angularApp = new AngularNodeAppEngine({
@@ -23,6 +27,11 @@ const angularApp = new AngularNodeAppEngine({
     'x-forwarded-for',
     'x-forwarded-port',
   ],
+});
+
+app.use((_req, res, next) => {
+  res.setHeader('Referrer-Policy', adminReferrerPolicy);
+  next();
 });
 
 /**

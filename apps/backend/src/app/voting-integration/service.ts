@@ -8,8 +8,8 @@ import type {
   EventManagerVotingPeopleLookupResponse,
   EventManagerVotingPerson,
 } from '@cacic-fct/event-manager-m2m-contracts';
-import { startOfDay } from 'date-fns';
 import { AccountMergeService } from '../account-merge/account-merge.service';
+import { getBrazilianPhoneCandidates } from '../common/brazilian-phone';
 import { PrismaService } from '../prisma/prisma.service';
 
 const VOTING_EVENT_SELECT = {
@@ -33,6 +33,8 @@ const VOTING_PERSON_SELECT = {
   identityDocument: true,
 } satisfies Prisma.PeopleSelect;
 
+const VOTING_TIME_ZONE = 'America/Sao_Paulo';
+
 type VotingPersonRecord = Prisma.PeopleGetPayload<{
   select: typeof VOTING_PERSON_SELECT;
 }>;
@@ -45,7 +47,7 @@ export class VotingIntegrationService {
   ) {}
 
   async listLinkableEvents(referenceDate = new Date()): Promise<EventManagerVotingEvent[]> {
-    const todayStart = startOfDay(referenceDate);
+    const todayStart = startOfSaoPauloDay(referenceDate);
     const events = await this.prisma.event.findMany({
       where: {
         deletedAt: null,
@@ -268,13 +270,13 @@ export class VotingIntegrationService {
         case 'cpf':
           return {
             identityDocument: {
-              in: this.identifierValueVariants(identifier.identifierValue),
+              in: this.identifierValueVariants('cpf', identifier.identifierValue),
             },
           };
         case 'phone':
           return {
             phone: {
-              in: this.identifierValueVariants(identifier.identifierValue),
+              in: this.identifierValueVariants('phone', identifier.identifierValue),
             },
           };
         case 'email':
@@ -320,8 +322,22 @@ export class VotingIntegrationService {
     }
   }
 
-  private identifierValueVariants(value: string): string[] {
-    return [...new Set([value, this.onlyDigits(value)].filter(Boolean))];
+  private identifierValueVariants(type: 'cpf' | 'phone', value: string): string[] {
+    if (type === 'phone') {
+      return getBrazilianPhoneCandidates(value);
+    }
+
+    const digits = this.onlyDigits(value);
+    if (digits.length !== 11) {
+      return [value].filter(Boolean);
+    }
+
+    return [
+      ...new Set([
+        digits,
+        `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`,
+      ]),
+    ];
   }
 
   private normalizeEnrollmentNumber(value?: string | null): string | null {
@@ -341,4 +357,14 @@ export class VotingIntegrationService {
   private toKeycloakExternalRef(userId: string): string {
     return `kc:${userId}`;
   }
+}
+
+export function startOfSaoPauloDay(referenceDate: Date): Date {
+  const date = new Intl.DateTimeFormat('en-CA', {
+    timeZone: VOTING_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(referenceDate);
+  return new Date(`${date}T00:00:00.000-03:00`);
 }

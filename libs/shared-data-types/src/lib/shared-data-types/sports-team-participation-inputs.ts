@@ -1,4 +1,5 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
+import { ArrayMaxSize, MaxLength } from 'class-validator';
 
 import {
   SportsApplicationStatus,
@@ -20,9 +21,11 @@ export class SportsTeamCreateInput {
   tournamentId!: string;
 
   @Field(() => String)
+  @MaxLength(200)
   name!: string;
 
   @Field(() => String, { nullable: true })
+  @MaxLength(200)
   institution?: string | null;
 
   @Field(() => SportsTeamStatus, { nullable: true })
@@ -71,12 +74,14 @@ export class SportsTeamCloneInput {
 @InputType()
 export class SportsIdentityClaimInput {
   @Field(() => String)
+  @MaxLength(100)
   clientKey!: string;
 
   @Field(() => SportsIdentityType)
   type!: SportsIdentityType;
 
   @Field(() => String)
+  @MaxLength(500)
   value!: string;
 }
 
@@ -140,6 +145,7 @@ export class SportsRegistrationCreateInput {
   seed?: number | null;
 
   @Field(() => String, { nullable: true })
+  @MaxLength(1_000_000)
   formAnswersJson?: string | null;
 }
 
@@ -158,6 +164,7 @@ export class SportsRegistrationUpdateInput {
   seed?: number | null;
 
   @Field(() => String, { nullable: true })
+  @MaxLength(1_000_000)
   formAnswersJson?: string | null;
 }
 
@@ -248,6 +255,7 @@ export class SportsTeamChangeRequestInput {
   pendingKey?: string;
 
   @Field(() => [SportsIdentityClaimInput], { nullable: true })
+  @ArrayMaxSize(100)
   identityClaims?: SportsIdentityClaimInput[];
 }
 
@@ -287,6 +295,8 @@ export class SportsPlayerApplicationCreateInput {
   requestedTeamId?: string | null;
 
   @Field(() => [String])
+  @ArrayMaxSize(100)
+  @MaxLength(200, { each: true })
   categoryIds!: string[];
 
   @Field(() => Boolean)

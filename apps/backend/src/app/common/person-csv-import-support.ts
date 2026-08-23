@@ -120,13 +120,36 @@ export abstract class PersonCsvImportSupport {
   }
 
   protected detectCsvDelimiter(csvContent: string): string {
-    const firstLine = csvContent.split(/\r?\n/, 1)[0] ?? '';
     const candidates = [',', ';', '\t'];
     return candidates.reduce((bestDelimiter, delimiter) => {
-      const bestCount = firstLine.split(bestDelimiter).length;
-      const candidateCount = firstLine.split(delimiter).length;
+      const bestCount = this.countCsvDelimiterOutsideQuotes(csvContent, bestDelimiter);
+      const candidateCount = this.countCsvDelimiterOutsideQuotes(csvContent, delimiter);
       return candidateCount > bestCount ? delimiter : bestDelimiter;
     }, ',');
+  }
+
+  private countCsvDelimiterOutsideQuotes(csvContent: string, delimiter: string): number {
+    let count = 0;
+    let inQuotes = false;
+    for (let index = 0; index < csvContent.length; index += 1) {
+      const char = csvContent[index];
+      const nextChar = csvContent[index + 1];
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          index += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+      if (!inQuotes && (char === '\n' || char === '\r')) {
+        break;
+      }
+      if (!inQuotes && char === delimiter) {
+        count += 1;
+      }
+    }
+    return count;
   }
 
   protected inferMatchType(values: string[]): AttendanceImportMatchType {

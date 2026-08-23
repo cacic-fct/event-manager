@@ -23,6 +23,7 @@ describe('ReceiptUploadService', () => {
   const s3 = {
     uploadFile: jest.fn(),
     downloadFile: jest.fn(),
+    deleteFile: jest.fn(),
   };
   const currentUserContext = {
     requireCurrentPerson: jest.fn(),
@@ -57,6 +58,7 @@ describe('ReceiptUploadService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    s3.deleteFile.mockResolvedValue(undefined);
     service = new ReceiptUploadService(
       prisma as never,
       s3 as never,
@@ -256,6 +258,20 @@ describe('ReceiptUploadService', () => {
     });
   });
 
+  it('compensates the uploaded object when the receipt transaction rolls back', async () => {
+    currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    prisma.majorEventSubscription.findFirst.mockResolvedValue({
+      id: 'subscription-1',
+      subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+      majorEvent: { isPaymentRequired: true },
+    });
+    s3.uploadFile.mockResolvedValue({ key: 'orphaned-object', size: validPngBuffer.length });
+    prisma.$transaction.mockRejectedValue(new Error('database unavailable'));
+
+    await expect(service.uploadReceipt('major-1', createValidFile(), user)).rejects.toThrow('database unavailable');
+    expect(s3.deleteFile).toHaveBeenCalledWith('orphaned-object');
+  });
+
   it('rejects image reads for missing, expired, and unauthorized receipts', async () => {
     prisma.majorEventReceipt.findUnique.mockResolvedValue(null);
     await expect(service.getReceiptImage('receipt-1', user)).rejects.toThrow(NotFoundException);
@@ -326,10 +342,10 @@ function createInvalidFile() {
 
 function createPdfFile() {
   return {
-    buffer: Buffer.from('unverified PDF contents'),
+    buffer: Buffer.from('%PDF-1.7\nunverified PDF contents'),
     mimetype: 'application/pdf',
     originalname: 'receipt.pdf',
-    size: 23,
+    size: 32,
   };
 }
 

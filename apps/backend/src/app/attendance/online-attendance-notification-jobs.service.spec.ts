@@ -30,7 +30,6 @@ describe('OnlineAttendanceNotificationJobsService', () => {
       expect.objectContaining({
         delay: 3_600_000,
         jobId: `online-attendance-available-event-1-${startDate.getTime()}`,
-        removeOnComplete: false,
       }),
     );
   });
@@ -72,7 +71,7 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     expect(queue.add).toHaveBeenCalledWith(
       ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB,
       expect.objectContaining({ onlineAttendanceStartDate: startDate.toISOString() }),
-      expect.objectContaining({ delay: 0, removeOnComplete: false, removeOnFail: true }),
+      expect.objectContaining({ delay: 0, removeOnFail: true }),
     );
   });
 
@@ -86,6 +85,31 @@ describe('OnlineAttendanceNotificationJobsService', () => {
     expect(logError).toHaveBeenCalledWith(
       'Could not schedule the online attendance notification for event event-1.',
       expect.stringContaining('Redis unavailable'),
+    );
+  });
+
+  it('pages pending events and bounds scheduling concurrency', async () => {
+    const { prisma, service } = createService();
+    const events = Array.from({ length: 101 }, (_, index) =>
+      onlineAttendanceEvent({ id: `event-${String(index).padStart(3, '0')}` }),
+    );
+    prisma.event.findMany.mockResolvedValueOnce(events.slice(0, 100)).mockResolvedValueOnce(events.slice(100));
+    let active = 0;
+    let peak = 0;
+    const schedule = jest.spyOn(service, 'scheduleEvent').mockImplementation(async () => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await Promise.resolve();
+      active -= 1;
+    });
+
+    await service.schedulePendingEvents();
+
+    expect(schedule).toHaveBeenCalledTimes(101);
+    expect(peak).toBeLessThanOrEqual(10);
+    expect(prisma.event.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ cursor: { id: 'event-099' }, skip: 1, take: 100 }),
     );
   });
 

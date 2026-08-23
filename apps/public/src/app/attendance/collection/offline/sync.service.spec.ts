@@ -16,7 +16,7 @@ describe('AttendanceOfflineSyncService', () => {
     const registerOralBatch = vi.fn(() => of([]));
     const markSynced = vi.fn().mockResolvedValue(undefined);
     const oralQueue = {
-      listPending: vi.fn().mockResolvedValue([
+      listUploadable: vi.fn().mockResolvedValue([
         {
           clientId: 'oral-1',
           queuedByUserId: 'user-1',
@@ -37,7 +37,7 @@ describe('AttendanceOfflineSyncService', () => {
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: AttendanceCollectionApiService, useValue: { registerOralBatch } },
         { provide: AuthService, useValue: { user: () => ({ sub: 'user-1' }) } },
-        { provide: AttendanceOfflineQueueService, useValue: { listPending: vi.fn().mockResolvedValue([]) } },
+        { provide: AttendanceOfflineQueueService, useValue: { listUploadable: vi.fn().mockResolvedValue([]) } },
         { provide: OralAttendanceOfflineService, useValue: oralQueue },
         { provide: NetworkStatusService, useValue: { isOnline: () => true } },
         { provide: AttendanceScannerCacheService, useValue: {} },
@@ -56,12 +56,14 @@ describe('AttendanceOfflineSyncService', () => {
 
     expect(registerOralBatch).toHaveBeenCalledWith([
       {
+        clientId: 'oral-1',
         eventId: 'event-1',
         personId: 'person-1',
         status: 'PRESENT',
         collectedAt: '2026-07-29T12:00:00.000Z',
         collectedByUserId: 'user-1',
         location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 12 },
+        collectorCredential: undefined,
       },
     ]);
     expect(markSynced).toHaveBeenCalledWith(['oral-1']);
@@ -73,7 +75,7 @@ describe('AttendanceOfflineSyncService', () => {
     const registerOralBatch = vi.fn(() => syncResult.asObservable());
     const item = oralItem();
     const oralQueue = {
-      listPending: vi.fn(
+      listUploadable: vi.fn(
         () =>
           new Promise<OralItem[]>((resolve) => {
             pendingResolvers.push(resolve);
@@ -89,7 +91,7 @@ describe('AttendanceOfflineSyncService', () => {
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: AttendanceCollectionApiService, useValue: { registerOralBatch } },
         { provide: AuthService, useValue: { user: () => ({ sub: 'user-1' }) } },
-        { provide: AttendanceOfflineQueueService, useValue: { listPending: vi.fn().mockResolvedValue([]) } },
+        { provide: AttendanceOfflineQueueService, useValue: { listUploadable: vi.fn().mockResolvedValue([]) } },
         { provide: OralAttendanceOfflineService, useValue: oralQueue },
         { provide: NetworkStatusService, useValue: { isOnline: () => true } },
         { provide: AttendanceScannerCacheService, useValue: {} },
@@ -105,14 +107,111 @@ describe('AttendanceOfflineSyncService', () => {
     pendingResolvers[0]([item]);
     await Promise.resolve();
     await Promise.resolve();
-    pendingResolvers[1]([item]);
-    await Promise.resolve();
-
     expect(registerOralBatch).toHaveBeenCalledTimes(1);
 
     syncResult.next([]);
     syncResult.complete();
     await Promise.all([firstSync, secondSync]);
+  });
+
+  it('serializes attendance queue reads before the first await', async () => {
+    let release!: (items: unknown[]) => void;
+    const listUploadable = vi.fn(
+      () =>
+        new Promise<unknown[]>((resolve) => {
+          release = resolve;
+        }),
+    );
+    const queue = {
+      listUploadable,
+      markSyncing: vi.fn().mockResolvedValue(undefined),
+      applyCommitResults: vi.fn().mockResolvedValue(undefined),
+      recordSyncFailure: vi.fn().mockResolvedValue(undefined),
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        AttendanceOfflineSyncService,
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: AttendanceCollectionApiService, useValue: { commitOfflineAttendances: vi.fn(() => of([])) } },
+        { provide: AuthService, useValue: { user: () => ({ sub: 'user-1' }) } },
+        { provide: AttendanceOfflineQueueService, useValue: queue },
+        { provide: OralAttendanceOfflineService, useValue: { listUploadable: vi.fn().mockResolvedValue([]) } },
+        { provide: NetworkStatusService, useValue: { isOnline: () => true } },
+        { provide: AttendanceScannerCacheService, useValue: {} },
+        { provide: AttendanceIncognitoWarningService, useValue: {} },
+        { provide: MatDialog, useValue: { open: vi.fn() } },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      ],
+    });
+    const service = TestBed.inject(AttendanceOfflineSyncService);
+    const first = service.syncPending();
+    const second = service.syncPending();
+    await Promise.resolve();
+    expect(listUploadable).toHaveBeenCalledOnce();
+    release([]);
+    await Promise.all([first, second]);
+  });
+
+  it('uploads a proven attendance retained from another shared-device user', async () => {
+    const retainedItem = {
+      clientId: 'retained-1',
+      queuedByUserId: 'collector-user',
+      eventId: 'event-1',
+      eventName: 'Evento',
+      createdByMethod: 'SCANNER',
+      code: 'user:person-1',
+      location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 12 },
+      collectedAt: '2026-07-29T12:00:00.000Z',
+      queuedAt: 1,
+      updatedAt: 1,
+      authorUserId: 'collector-user',
+      authorName: 'Coletor',
+      authorEmail: null,
+      collectorCredential: 'signed-collector-proof',
+      status: 'PENDING',
+      attempts: 0,
+      lastError: null,
+    } as const;
+    const queue = {
+      listUploadable: vi.fn().mockResolvedValue([retainedItem]),
+      markSyncing: vi.fn().mockResolvedValue(undefined),
+      applyCommitResults: vi.fn().mockResolvedValue(undefined),
+      recordSyncFailure: vi.fn().mockResolvedValue(undefined),
+    };
+    const commitOfflineAttendances = vi.fn(() =>
+      of([{ clientId: 'retained-1', eventId: 'event-1', status: 'CREATED' as const }]),
+    );
+
+    TestBed.configureTestingModule({
+      providers: [
+        AttendanceOfflineSyncService,
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        { provide: AttendanceCollectionApiService, useValue: { commitOfflineAttendances } },
+        { provide: AuthService, useValue: { user: () => ({ sub: 'uploader-user' }) } },
+        { provide: AttendanceOfflineQueueService, useValue: queue },
+        { provide: OralAttendanceOfflineService, useValue: { listUploadable: vi.fn().mockResolvedValue([]) } },
+        { provide: NetworkStatusService, useValue: { isOnline: () => true } },
+        { provide: AttendanceScannerCacheService, useValue: {} },
+        { provide: AttendanceIncognitoWarningService, useValue: {} },
+        { provide: MatDialog, useValue: { open: vi.fn() } },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      ],
+    });
+
+    await TestBed.inject(AttendanceOfflineSyncService).syncPending();
+
+    expect(queue.listUploadable).toHaveBeenCalledWith('uploader-user');
+    expect(queue.markSyncing).toHaveBeenCalledWith('collector-user', ['retained-1']);
+    expect(queue.applyCommitResults).toHaveBeenCalledWith('collector-user', [
+      { clientId: 'retained-1', eventId: 'event-1', status: 'CREATED' },
+    ]);
+    expect(commitOfflineAttendances).toHaveBeenCalledWith([
+      expect.objectContaining({
+        clientId: 'retained-1',
+        authorUserId: 'collector-user',
+        collectorCredential: 'signed-collector-proof',
+      }),
+    ]);
   });
 });
 

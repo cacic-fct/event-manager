@@ -22,10 +22,12 @@ import { EventFormResultEventsService } from './event-form-result-events.service
 import { requireEventForm, runSerializableFormTransaction } from './event-form-service-support';
 import {
   assertSubscriptionFlowTargetAllowed,
+  findLinkRecordForTarget,
   normalizeTarget,
   responseLookupWhere,
   responseTargetWhere,
 } from './event-form-targets';
+import { canPersonAnswerLink } from './event-form-eligibility';
 
 @Injectable()
 export class EventFormResponsesService {
@@ -105,8 +107,15 @@ export class EventFormResponsesService {
     const person = await this.currentUserContext.requireCurrentPerson(context);
     const target = normalizeTarget(input);
     const form = await requireEventForm(this.prisma, input.formId);
+    const link = findLinkRecordForTarget(form, target);
+    if (!link || !(await canPersonAnswerLink(this.prisma, person.id, link))) {
+      return null;
+    }
     const response = await this.prisma.eventFormResponse.findFirst({
-      where: responseLookupWhere(form, person.id, target) ?? responseTargetWhere(form.id, person.id, target),
+      where: {
+        ...(responseLookupWhere(form, person.id, target) ?? responseTargetWhere(form.id, person.id, target)),
+        deletedAt: null,
+      },
       include: responseInclude,
       orderBy: {
         submittedAt: 'desc',

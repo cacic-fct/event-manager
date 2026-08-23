@@ -69,12 +69,14 @@ describe('CertificateDownloadService', () => {
     const evaluate = jest.fn().mockResolvedValue(undefined);
     const pdf = jest.fn().mockResolvedValue(Buffer.from('pdf-content'));
     const close = jest.fn().mockResolvedValue(undefined);
+    const pageClose = jest.fn().mockResolvedValue(undefined);
     jest.mocked(toBuffer).mockResolvedValue(Buffer.from('qr-code'));
     jest.mocked(chromium.launch).mockResolvedValue({
       newPage: jest.fn().mockResolvedValue({
         setContent,
         evaluate,
         pdf,
+        close: pageClose,
       }),
       close,
     } as never);
@@ -147,18 +149,21 @@ describe('CertificateDownloadService', () => {
     });
     expect(evaluate).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(1);
+    expect(pageClose).toHaveBeenCalledTimes(1);
   });
 
   it('renders public certificates without CSS using the configured public app origin', async () => {
     const setContent = jest.fn().mockResolvedValue(undefined);
     const evaluate = jest.fn().mockResolvedValue(undefined);
     const close = jest.fn().mockResolvedValue(undefined);
+    const pageClose = jest.fn().mockResolvedValue(undefined);
     jest.mocked(toBuffer).mockResolvedValue(Buffer.from('qr-code'));
     jest.mocked(chromium.launch).mockResolvedValue({
       newPage: jest.fn().mockResolvedValue({
         setContent,
         evaluate,
         pdf: jest.fn().mockResolvedValue(Buffer.from('public-pdf')),
+        close: pageClose,
       }),
       close,
     } as never);
@@ -214,6 +219,7 @@ describe('CertificateDownloadService', () => {
       { waitUntil: 'networkidle' },
     );
     expect(close).toHaveBeenCalledTimes(1);
+    expect(pageClose).toHaveBeenCalledTimes(1);
   });
 
   it('builds certificate archives with normalized filenames and metadata', async () => {
@@ -283,6 +289,54 @@ describe('CertificateDownloadService', () => {
 
     expect(archiveStream.destroyed).toBe(true);
     expect(archiveStream.finalize).not.toHaveBeenCalled();
+  });
+
+  it('closes every page rendered with a shared archive browser, including failed renders', async () => {
+    const service = new CertificateDownloadService({} as never, {} as never);
+    const successfulPage = {
+      setContent: jest.fn().mockResolvedValue(undefined),
+      evaluate: jest.fn().mockResolvedValue(undefined),
+      pdf: jest.fn().mockResolvedValue(Buffer.from('pdf')),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    const failingPage = {
+      setContent: jest.fn().mockRejectedValue(new Error('page failed')),
+      evaluate: jest.fn(),
+      pdf: jest.fn(),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    const sharedBrowser = {
+      newPage: jest.fn().mockResolvedValueOnce(successfulPage).mockResolvedValueOnce(failingPage),
+      close: jest.fn(),
+    };
+
+    await expect(service['renderPdf']('<html></html>', sharedBrowser as never)).resolves.toEqual(Buffer.from('pdf'));
+    await expect(service['renderPdf']('<html></html>', sharedBrowser as never)).rejects.toThrow(
+      'Failed to render certificate PDF.',
+    );
+
+    expect(successfulPage.close).toHaveBeenCalledTimes(1);
+    expect(failingPage.close).toHaveBeenCalledTimes(1);
+    expect(sharedBrowser.close).not.toHaveBeenCalled();
+  });
+
+  it('contains archive browser cleanup failures in the detached task', async () => {
+    const archiveStream = createArchive();
+    const service = new CertificateDownloadService({} as never, {} as never);
+    jest.spyOn(service['logger'], 'error').mockImplementation(() => undefined);
+    jest.mocked(createZipArchive).mockResolvedValue(archiveStream as never);
+    jest.mocked(chromium.launch).mockResolvedValue({ close: jest.fn().mockRejectedValue(new Error('close failed')) } as never);
+    jest.spyOn(service as never, 'renderCertificateFile').mockResolvedValue({
+      fileName: 'certificado.pdf',
+      content: Buffer.from('pdf'),
+    });
+
+    const closed = new Promise<void>((resolve) => archiveStream.once('close', resolve));
+    await service.createCertificatesArchive('Ana', ['certificate-1'], {});
+    await archiveStream.completed;
+    await closed;
+
+    expect(archiveStream.destroyed).toBe(true);
   });
 });
 

@@ -4,6 +4,7 @@ export * from './lib/csv-parser';
 export * from './lib/detail-view-model';
 export * from './lib/feed-view-model';
 export * from './lib/map-defaults';
+export * from './lib/openstreetmap';
 export * from './lib/cpf';
 export * from './lib/csp-nonce';
 export * from './lib/subscriber-csv';

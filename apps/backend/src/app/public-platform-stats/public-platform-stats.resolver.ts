@@ -15,7 +15,7 @@ export class PublicPlatformStatsResolver {
   @Query(() => PublicPlatformStats, {
     name: 'publicPlatformStats',
     description:
-      'Returns cached all-time aggregate platform counts with a two-week delay. Values exclude soft-deleted records and may be refreshed nightly.',
+      'Returns cached all-time aggregate platform counts with a two-week delay. Values exclude soft-deleted records and refresh on the first request of each day.',
   })
   @UseGuards(RateLimitGuard)
   @RateLimit(RATE_LIMIT_POLICIES.publicEvents)

@@ -10,6 +10,7 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
+import { pipeline } from 'node:stream/promises';
 import { defer, Observable, switchMap } from 'rxjs';
 import { EventFormTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
@@ -168,9 +169,9 @@ export class EventFormsController {
     @Req() request: RequestWithUser,
     @Res() response: Response,
   ): Promise<void> {
-    const csv = await this.forms.exportAdminResultsCsv(request.user, formId);
+    const csv = await this.forms.streamAdminResultsCsv(request.user, formId);
     response.setHeader('Content-Type', 'text/csv; charset=utf-8');
     response.setHeader('Content-Disposition', `attachment; filename="form-results-${formId}.csv"`);
-    response.send(csv);
+    await pipeline(csv, response);
   }
 }

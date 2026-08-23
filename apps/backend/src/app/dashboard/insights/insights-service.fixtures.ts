@@ -1,4 +1,3 @@
-import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { AuthorizationPolicyService } from '../../authorization/authorization-policy.service';
 import { CurrentUserContextService } from '../../current-user/context.service';
@@ -28,16 +27,12 @@ export function createInsightsServiceTestContext() {
     del: jest.fn().mockResolvedValue(1),
     scanStream: jest.fn(),
   };
-  const queue = {
-    add: jest.fn().mockResolvedValue({ id: 'job-1' }),
-  };
   const service = new DashboardInsightsService(
     prisma as unknown as PrismaService,
     currentUserContext as unknown as CurrentUserContextService,
     authorizationPolicy as unknown as AuthorizationPolicyService,
     weatherService as unknown as WeatherService,
     redis as unknown as Redis,
-    queue as unknown as Queue,
   );
 
   return {
@@ -46,7 +41,6 @@ export function createInsightsServiceTestContext() {
     authorizationPolicy,
     weatherService,
     redis,
-    queue,
     service,
   };
 }

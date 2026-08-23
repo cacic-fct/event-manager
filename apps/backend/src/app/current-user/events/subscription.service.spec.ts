@@ -349,6 +349,88 @@ describe('CurrentUserEventSubscriptionService', () => {
     });
   });
 
+  it('archives a group subscription when its last child event is removed', async () => {
+    const event = {
+      id: 'event-1',
+      eventGroupId: 'group-1',
+      majorEventId: null,
+      allowSubscription: true,
+      subscriptionStartDate: null,
+      subscriptionEndDate: null,
+      startDate: new Date('2099-01-01T12:00:00.000Z'),
+      slots: null,
+    };
+    const subscription = {
+      id: 'subscription-1',
+      eventId: 'event-1',
+      personId: 'person-1',
+      eventGroupSubscriptionId: 'group-subscription-1',
+      createdAt: new Date('2026-07-06T12:00:00.000Z'),
+      createdById: null,
+      createdByMethod: 'SELF_SUBSCRIPTION',
+      deletedAt: null,
+    };
+    const groupSubscription = {
+      id: 'group-subscription-1',
+      eventGroupId: 'group-1',
+      createdAt: new Date('2026-07-06T12:00:00.000Z'),
+      imageLicenseAgreementAccepted: false,
+      eventGroup: {},
+    };
+    const tx = {
+      event: { findFirst: jest.fn().mockResolvedValue(event) },
+      eventSubscription: {
+        findFirst: jest.fn().mockResolvedValue(subscription),
+        findMany: jest.fn().mockResolvedValueOnce([{ eventId: 'event-1' }]).mockResolvedValueOnce([]),
+        update: jest.fn(),
+      },
+      eventGroupSubscription: {
+        findUnique: jest.fn().mockResolvedValue(groupSubscription),
+        update: jest.fn(),
+      },
+    };
+    const prisma = {
+      $transaction: jest.fn((operation: (transaction: typeof tx) => Promise<unknown>) => operation(tx)),
+    };
+    const auditLog = { record: jest.fn() };
+    const eventForms = {
+      archiveResponsesForSubscriptionScope: jest.fn().mockResolvedValue([]),
+      emitResultsDeltas: jest.fn(),
+    };
+    const service = new CurrentUserEventSubscriptionService(
+      prisma as never,
+      { mapPublicEvent: jest.fn().mockReturnValue({ id: 'event-1' }) } as never,
+      {} as never,
+      { refresh: jest.fn() } as never,
+      auditLog as never,
+      eventForms as never,
+    );
+
+    await service.unsubscribeCurrentUserEvent('person-1', 'event-1');
+
+    expect(tx.eventGroupSubscription.update).toHaveBeenCalledWith({
+      where: { id: 'group-subscription-1' },
+      data: { deletedAt: expect.any(Date) },
+    });
+    expect(auditLog.record).toHaveBeenCalledWith(
+      expect.objectContaining({ entityId: 'group-subscription-1', operation: 'DELETE' }),
+      tx,
+    );
+  });
+
+  it('keeps grouped child subscriptions out of the standalone projection', async () => {
+    const prisma = {
+      eventSubscription: { findMany: jest.fn().mockResolvedValue([]) },
+      eventGroupSubscription: { findMany: jest.fn().mockResolvedValue([]) },
+    };
+    const service = new CurrentUserEventSubscriptionService(prisma as never, {} as never, {} as never, {} as never);
+
+    await expect(service.getCurrentUserSubscribedItems('person-1')).resolves.toEqual([]);
+    expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ eventGroupSubscriptionId: null }) }),
+    );
+  });
+
   it('subscribes to event groups using publicly visible child events while preserving active child subscriptions', async () => {
     const tx = {
       event: {

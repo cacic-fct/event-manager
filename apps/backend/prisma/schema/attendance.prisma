@@ -87,6 +87,9 @@ model OfflineEventAttendanceSubmission {
   rejectionReason String?
 
   @@unique([submittedById, clientId])
+  // Offline device command IDs are globally unique so a later authorized
+  // uploader cannot replay the same command as a fresh submission.
+  @@unique([clientId], map: "offline_event_attendance_submissions_client_id_key")
   @@index([eventId, status])
   @@index([personId])
   @@index([submittedById])

@@ -28,6 +28,7 @@ import { ConfirmationDialogComponent } from '@cacic-fct/shared-angular';
 import { PermissionManagementApiService } from '../permission-management-api.service';
 import { PendingPermissionChangesService } from './pending-permission-changes.service';
 import { PermissionDependencyDialogComponent } from './permission-dependency-dialog.component';
+import { isDateAfter } from '../../shared/date-range-validator';
 
 export type RoleDraft = {
   id: string | null;
@@ -298,6 +299,15 @@ export class PermissionManagementStore {
     return null;
   }
 
+  assignmentValidityIssue(assignmentIndex: number): string | null {
+    const assignment = this.roleDraft()?.assignments[assignmentIndex];
+    if (!assignment || assignment.unlimited || !isDateAfter(assignment.validFrom, assignment.validUntil)) {
+      return null;
+    }
+
+    return 'A expiração da atribuição deve ser igual ou posterior ao início.';
+  }
+
   toggleParentRole(parentRoleId: string, checked: boolean): void {
     const draft = this.roleDraft();
     if (!draft || draft.isSystem) return;
@@ -511,6 +521,8 @@ export class PermissionManagementStore {
     if (!draft.name.trim()) { this.snackbar.open('Informe o nome do cargo.', 'Fechar', { duration: 3000 }); return; }
     const scopeProblem = draft.assignments.map((_, index) => this.scopeIssue(index)).find(Boolean);
     if (scopeProblem) { this.snackbar.open(scopeProblem, 'Fechar', { duration: 4000 }); return; }
+    const validityProblem = draft.assignments.map((_, index) => this.assignmentValidityIssue(index)).find(Boolean);
+    if (validityProblem) { this.snackbar.open(validityProblem, 'Fechar', { duration: 4000 }); return; }
     this.saving.set(true);
     try {
       const saved = await firstValueFrom(this.api.saveRole({

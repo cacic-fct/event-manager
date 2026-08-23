@@ -288,6 +288,7 @@ describe('offline public data access integration', () => {
       status: 'PRESENT',
       collectedAt: fixtureDate(-1, 15),
       location,
+      collectorCredential: 'signed-user-2-proof',
     });
 
     await service.markSynced([older.clientId]);
@@ -296,6 +297,11 @@ describe('offline public data access integration', () => {
     await expect(service.listPending('user-1')).resolves.toEqual([
       expect.objectContaining({ clientId: newer.clientId, attempts: 1, lastError: 'Sem conexão.' }),
       expect.objectContaining({ clientId: otherEvent.clientId }),
+    ]);
+    await expect(service.listUploadable('user-1')).resolves.toEqual([
+      expect.objectContaining({ clientId: newer.clientId }),
+      expect.objectContaining({ clientId: otherEvent.clientId }),
+      expect.objectContaining({ clientId: otherUser.clientId, queuedByUserId: 'user-2' }),
     ]);
     await expect(service.listAll('user-1', 'event-1')).resolves.toEqual([
       expect.objectContaining({ clientId: older.clientId, syncedAt: expect.any(Number) }),
@@ -422,6 +428,11 @@ describe('offline public data access integration', () => {
       queueItem('failed-older', 'FAILED', { queuedAt: 100 }),
       queueItem('syncing', 'SYNCING', { queuedAt: 200 }),
       queueItem('other-user', 'PENDING', { queuedByUserId: 'user-2', queuedAt: 50 }),
+      queueItem('handoff', 'PENDING', {
+        queuedByUserId: 'user-2',
+        collectorCredential: 'signed-user-2-proof',
+        queuedAt: 25,
+      }),
     ]);
 
     await expect(service.listPending('user-1')).resolves.toEqual([
@@ -435,6 +446,13 @@ describe('offline public data access integration', () => {
     ]);
     await expect(service.countPending('user-1')).resolves.toBe(3);
     await expect(service.countUnresolved('user-1')).resolves.toBe(3);
+    await expect(service.listUploadable('user-1')).resolves.toEqual([
+      expect.objectContaining({ clientId: 'handoff', queuedByUserId: 'user-2' }),
+      expect.objectContaining({ clientId: 'failed-older' }),
+      expect.objectContaining({ clientId: 'syncing' }),
+      expect.objectContaining({ clientId: 'pending-newer' }),
+    ]);
+    await expect(service.countUploadable('user-1')).resolves.toBe(4);
   });
 
   it('applies commit results without mutating queue items from another user', async () => {
@@ -615,11 +633,14 @@ describe('offline public data access integration', () => {
     await service.replaceAttendanceFeed('user-1', feed);
     await service.replaceAttendanceDetail('user-1', 'event-1', detail);
 
-    await expect(service.getLatestUserSnapshot()).resolves.toEqual(
+    await expect(service.getLatestUserSnapshot('user-1')).resolves.toEqual(
       expect.objectContaining({
-        userId: 'user-2',
-        name: 'Bruno',
+        userId: 'user-1',
+        name: 'Ana',
       }),
+    );
+    await expect(service.getLatestUserSnapshot('user-2')).resolves.toEqual(
+      expect.objectContaining({ userId: 'user-2', name: 'Bruno' }),
     );
     await expect(service.getAttendanceFeed('user-1')).resolves.toEqual(feed);
     await expect(service.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toEqual(detail);
@@ -632,7 +653,7 @@ describe('offline public data access integration', () => {
 
     await service.purgeUserData();
 
-    await expect(service.getLatestUserSnapshot()).resolves.toBeNull();
+    await expect(service.getLatestUserSnapshot('user-1')).resolves.toBeNull();
     await expect(service.getAttendanceFeed('user-1')).resolves.toBeNull();
     await expect(service.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toBeNull();
     await expect(service.getRestaurantCard('user-1')).resolves.toBeNull();
@@ -678,7 +699,9 @@ describe('offline public data access integration', () => {
       await expect(attendanceQueue.getCollectionEvents('user-1')).resolves.toEqual([]);
       await expect(attendanceQueue.getCollectionEvent('user-1', 'event-1')).resolves.toBeNull();
       await expect(attendanceQueue.listPending('user-1')).resolves.toEqual([]);
+      await expect(attendanceQueue.listUploadable('user-1')).resolves.toEqual([]);
       await expect(attendanceQueue.countPending('user-1')).resolves.toBe(0);
+      await expect(attendanceQueue.countUploadable('user-1')).resolves.toBe(0);
       await expect(attendanceQueue.countUnresolved('user-1')).resolves.toBe(0);
       await expect(firstValueFrom(attendanceQueue.watchEventItems('user-1', 'event-1'))).resolves.toEqual([]);
       await expect(firstValueFrom(attendanceQueue.watchUnresolvedItems('user-1'))).resolves.toEqual([]);
@@ -690,7 +713,7 @@ describe('offline public data access integration', () => {
       await expect(attendanceQueue.applyCommitResults('user-1', [])).resolves.toBeUndefined();
       await expect(attendanceQueue.remove('user-1', 'offline')).resolves.toBeUndefined();
       await expect(attendanceQueue.retry('user-1', 'offline')).resolves.toBeUndefined();
-      await expect(userData.getLatestUserSnapshot()).resolves.toBeNull();
+    await expect(userData.getLatestUserSnapshot('user-1')).resolves.toBeNull();
       await expect(userData.getAttendanceFeed('user-1')).resolves.toBeNull();
       await expect(userData.getAttendanceDetail('user-1', 'event', 'event-1')).resolves.toBeNull();
       await expect(userData.purgeUserData()).resolves.toBeUndefined();
@@ -703,6 +726,7 @@ describe('offline public data access integration', () => {
       await expect(oralAttendance.cacheRoster('user-1', 'event-1', [])).resolves.toBeUndefined();
       await expect(oralAttendance.getRoster('user-1', 'event-1')).resolves.toEqual([]);
       await expect(oralAttendance.listPending('user-1', 'event-1')).resolves.toEqual([]);
+      await expect(oralAttendance.listUploadable('user-1')).resolves.toEqual([]);
       await expect(oralAttendance.listAll('user-1', 'event-1')).resolves.toEqual([]);
       await expect(firstValueFrom(oralAttendance.watchPending('user-1', 'event-1'))).resolves.toEqual([]);
       await expect(oralAttendance.remove(['offline'])).resolves.toBeUndefined();

@@ -104,8 +104,8 @@ describe('DashboardInsightsService cache and jobs', () => {
     expect(redis.set).toHaveBeenCalledTimes(1);
   });
 
-  it('schedules refresh jobs and invalidates cached dashboard keys', async () => {
-    const { queue, redis, service } = createInsightsServiceTestContext();
+  it('invalidates cached dashboard keys after a committed mutation', async () => {
+    const { redis, service } = createInsightsServiceTestContext();
     redis.scanStream.mockReturnValue(
       (async function* scan() {
         yield ['dashboard:workspace:v6:event#update', 'dashboard:workspace:v6:none'];
@@ -114,25 +114,8 @@ describe('DashboardInsightsService cache and jobs', () => {
       })(),
     );
 
-    await service.scheduleRefreshJobs();
     await service.invalidateCachedInsights();
 
-    expect(queue.add).toHaveBeenCalledWith(
-      'refresh-realtime-dashboard-insights',
-      { scope: 'realtime' },
-      expect.objectContaining({
-        jobId: 'dashboard-insights-realtime',
-        repeat: { pattern: '*/5 * * * *' },
-      }),
-    );
-    expect(queue.add).toHaveBeenCalledWith(
-      'refresh-operational-dashboard-insights',
-      { scope: 'operational' },
-      expect.objectContaining({
-        jobId: 'dashboard-insights-operational',
-        repeat: { pattern: '*/30 * * * *' },
-      }),
-    );
     expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v6:event#update', 'dashboard:workspace:v6:none');
     expect(redis.del).toHaveBeenCalledWith('dashboard:workspace:v6:certificate#issue');
   });

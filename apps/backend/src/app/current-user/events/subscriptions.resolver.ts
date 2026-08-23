@@ -88,6 +88,7 @@ export class CurrentUserEventSubscriptionsResolver {
       where: {
         personId: person.id,
         deletedAt: null,
+        eventGroupSubscriptionId: null,
         event: {
           AND: [PUBLIC_EVENT_WHERE, { majorEventId: null }],
         },
@@ -244,6 +245,12 @@ export class CurrentUserEventSubscriptionsResolver {
         eventGroup: {
           deletedAt: null,
         },
+        eventSubscriptions: {
+          some: {
+            deletedAt: null,
+            event: { deletedAt: null },
+          },
+        },
       },
       select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
       orderBy: {
@@ -324,10 +331,14 @@ export class CurrentUserEventSubscriptionsResolver {
       person.id,
       [subscription.id],
     );
+    const events = eventsBySubscriptionId.get(subscription.id) ?? [];
+    if (events.length === 0) {
+      return null;
+    }
 
     return this.mapper.mapCurrentUserEventGroupSubscription(
       subscription,
-      eventsBySubscriptionId.get(subscription.id) ?? [],
+      events,
     );
   }
 

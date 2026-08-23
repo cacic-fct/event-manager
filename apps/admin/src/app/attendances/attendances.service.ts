@@ -11,6 +11,7 @@ import { EventApiService } from '../graphql/event-api.service';
 import { PeopleApiService } from '../graphql/people-api.service';
 import {
   AttendanceCategory,
+  AttendanceCurrentAssessment,
   Event,
   EventAttendance,
   EventAttendanceScannerFeedItem,
@@ -60,6 +61,7 @@ type AttendanceListItem = {
   collectedLongitude?: number | null;
   collectedAccuracyMeters?: number | null;
   category: AttendanceCategory;
+  currentAssessment?: AttendanceCurrentAssessment | null;
   status: EventAttendance['status'];
   person?: Person | null;
 };
@@ -95,7 +97,7 @@ const ATTENDANCE_CATEGORY_LABELS: Record<AttendanceCategory, { label: string; de
   },
   UNKNOWN: {
     label: 'Indefinidas',
-    description: 'Registros antigos ou sem dados suficientes para classificar.',
+    description: 'Registros anteriores à classificação automática. A situação atual aparece em cada presença.',
   },
 };
 
@@ -116,6 +118,7 @@ function mapAttendanceListItem(attendance: EventAttendance): AttendanceListItem 
     collectedLongitude: attendance.collectedLongitude,
     collectedAccuracyMeters: attendance.collectedAccuracyMeters,
     category: attendance.category,
+    currentAssessment: attendance.currentAssessment,
     status: attendance.status,
     person: attendance.person,
   };
@@ -704,10 +707,21 @@ export class AttendancesService {
 
   private async reviewOfflineAttendanceSubmissionBatches(
     submissionIds: readonly string[],
-    reviewBatch: (submissionIds: string[]) => Promise<unknown>,
+    reviewBatch: (submissionIds: string[]) => Promise<
+      Array<{ submissionId: string; success: boolean; error?: string | null }>
+    >,
   ): Promise<void> {
+    const failures: Array<{ submissionId: string; error?: string | null }> = [];
     for (let index = 0; index < submissionIds.length; index += OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE) {
-      await reviewBatch(submissionIds.slice(index, index + OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE));
+      const results = await reviewBatch(submissionIds.slice(index, index + OFFLINE_ATTENDANCE_REVIEW_BATCH_SIZE));
+      failures.push(...results.filter((result) => !result.success));
+    }
+    if (failures.length > 0) {
+      this.snackbar.open(
+        `${failures.length} presença(s) não foram processadas. Tente novamente apenas os itens informados.`,
+        'Fechar',
+        { duration: 6000 },
+      );
     }
   }
 
@@ -788,6 +802,45 @@ export class AttendancesService {
     return ATTENDANCE_CATEGORY_LABELS[category].label;
   }
 
+  getAttendanceCategoryHistoricalExplanation(category: AttendanceCategory): string | null {
+    if (category !== 'UNKNOWN') {
+      return null;
+    }
+
+    return 'Registro anterior à classificação automática.';
+  }
+
+  getAttendanceCurrentAssessmentLabel(assessment: AttendanceCurrentAssessment | null | undefined): string | null {
+    switch (assessment) {
+      case 'ACTIVITY_SUBSCRIPTION_MISSING':
+        return 'Sem inscrição ativa na atividade.';
+      case 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT':
+        return 'Pagamento do grande evento aguardando comprovante.';
+      case 'MAJOR_EVENT_PAYMENT_UNDER_REVIEW':
+        return 'Comprovante de pagamento do grande evento em análise.';
+      case 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED':
+        return 'Pagamento do grande evento não confirmado.';
+      case 'REQUIREMENTS_CURRENTLY_MET':
+        return 'Requisitos atuais atendidos.';
+      case null:
+      case undefined:
+        return null;
+    }
+  }
+
+  getMajorEventCurrentAssessmentLabel(attendance: MajorEventUserAttendance): string | null {
+    const assessments = [
+      ...new Set(
+        attendance.attendances
+          .filter((eventAttendance) => eventAttendance.attended && eventAttendance.category === 'UNKNOWN')
+          .map((eventAttendance) => eventAttendance.currentAssessment)
+          .filter((assessment): assessment is AttendanceCurrentAssessment => Boolean(assessment)),
+      ),
+    ];
+
+    return assessments.length === 1 ? this.getAttendanceCurrentAssessmentLabel(assessments[0]) : null;
+  }
+
   async exportEventAttendancesCsv(): Promise<void> {
     const event = this.selectedAttendanceEvent();
     const eventId = this.attendanceForm.controls.eventId.value;
@@ -814,6 +867,7 @@ export class AttendancesService {
         collectedLongitude: attendance.collectedLongitude,
         collectedAccuracyMeters: attendance.collectedAccuracyMeters,
         category: attendance.category,
+        currentAssessment: attendance.currentAssessment,
         status: attendance.status,
         person: attendance.person,
       })),

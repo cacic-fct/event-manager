@@ -365,6 +365,9 @@
                         @if (store.scopeIssue(assignmentIndex); as issue) {
                           <p class="scope-error"><mat-icon>error</mat-icon>{{ issue }}</p>
                         }
+                        @if (store.assignmentValidityIssue(assignmentIndex); as issue) {
+                          <p class="scope-error" role="alert"><mat-icon>error</mat-icon>{{ issue }}</p>
+                        }
                         <div class="scope-list">
                           @for (scope of assignment.scopes; track $index; let scopeIndex = $index) {
                             <div class="scope-row">

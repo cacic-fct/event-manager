@@ -12,10 +12,10 @@ describe('WeatherResolver', () => {
     expect(getPublicEventWeather).toHaveBeenCalledWith('event-1');
   });
 
-  it('returns the nullable public contract when the provider cannot resolve a forecast', async () => {
+  it('propagates provider failures instead of reporting them as an absent forecast', async () => {
     const getPublicEventWeather = jest.fn().mockRejectedValue(new Error('provider unavailable'));
     const resolver = new WeatherResolver({ getPublicEventWeather } as never);
 
-    await expect(resolver.publicEventWeather('event-1')).resolves.toBeNull();
+    await expect(resolver.publicEventWeather('event-1')).rejects.toThrow('provider unavailable');
   });
 });

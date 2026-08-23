@@ -415,8 +415,17 @@
 
             <mat-form-field>
               <mat-label>Fim</mat-label>
-              <input matInput type="datetime-local" formControlName="endDate" />
+              <input
+                matInput
+                type="datetime-local"
+                formControlName="endDate"
+                aria-describedby="event-date-range-error" />
             </mat-form-field>
+            @if (workspace.eventForm.hasError('eventDateRange')) {
+              <mat-error class="span-2" id="event-date-range-error" aria-live="polite">
+                O fim do evento deve ser igual ou posterior ao início.
+              </mat-error>
+            }
 
             <mat-form-field>
               <mat-label>Formato do crédito</mat-label>
@@ -537,8 +546,17 @@
 
             <mat-form-field>
               <mat-label>Fim das inscrições</mat-label>
-              <input matInput type="datetime-local" formControlName="subscriptionEndDate" />
+              <input
+                matInput
+                type="datetime-local"
+                formControlName="subscriptionEndDate"
+                aria-describedby="event-subscription-date-range-error" />
             </mat-form-field>
+            @if (workspace.eventForm.hasError('subscriptionDateRange')) {
+              <mat-error class="span-2" id="event-subscription-date-range-error" aria-live="polite">
+                O fim das inscrições deve ser igual ou posterior ao início.
+              </mat-error>
+            }
 
             <mat-form-field>
               <mat-label>Vagas</mat-label>
@@ -577,8 +595,17 @@
 
             <mat-form-field>
               <mat-label>Fim da presença on-line</mat-label>
-              <input matInput type="datetime-local" formControlName="onlineAttendanceEndDate" />
+              <input
+                matInput
+                type="datetime-local"
+                formControlName="onlineAttendanceEndDate"
+                aria-describedby="online-attendance-date-range-error" />
             </mat-form-field>
+            @if (workspace.eventForm.hasError('onlineAttendanceDateRange')) {
+              <mat-error class="span-2" id="online-attendance-date-range-error" aria-live="polite">
+                O fim da presença on-line deve ser igual ou posterior ao início.
+              </mat-error>
+            }
           </div>
 
           <p>É possível coletar presenças mesmo que "Permitir inscrição" esteja desmarcado.</p>

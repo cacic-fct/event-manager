@@ -134,6 +134,36 @@ describe('event form answer normalization', () => {
     expect(() => parseAnswersJson('{')).toThrow('JSON das respostas inválido.');
   });
 
+  it('rejects duplicate identifiers and oversized form structures', () => {
+    expect(() =>
+      parseElementsJson(
+        JSON.stringify([
+          { id: 'question', type: 'shortText' },
+          { id: 'question', type: 'longText' },
+        ]),
+      ),
+    ).toThrow('identificadores de itens devem ser únicos');
+    expect(() =>
+      parseElementsJson(
+        JSON.stringify([
+          {
+            id: 'choice',
+            type: 'singleChoice',
+            options: [
+              { id: 'option', label: 'A' },
+              { id: 'option', label: 'B' },
+            ],
+          },
+        ]),
+      ),
+    ).toThrow('identificadores de opções do item 1 devem ser únicos');
+    expect(() =>
+      parseElementsJson(
+        JSON.stringify(Array.from({ length: 101 }, (_, index) => ({ id: `item-${index}`, type: 'shortText' }))),
+      ),
+    ).toThrow('no máximo 100 itens');
+  });
+
   it('normalizes optional empty values to null without enforcing required answers', () => {
     const elements: FormElement[] = [
       textElement('name', 'shortText'),

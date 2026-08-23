@@ -23,18 +23,22 @@ describe('AnalyticsService', () => {
     }
   });
 
-  it('does not forward empty envelopes or unknown projects', async () => {
-    await expect(service.forwardEnvelope('admin', createRequest())).resolves.toBeUndefined();
-    await expect(service.forwardEnvelope('admin', createRequest(Buffer.alloc(0)))).resolves.toBeUndefined();
+  it('rejects empty, malformed, oversized, and unknown envelopes', async () => {
+    await expect(service.forwardEnvelope('admin', createRequest())).rejects.toThrow('required');
+    await expect(service.forwardEnvelope('admin', createRequest(Buffer.alloc(0)))).rejects.toThrow('required');
+    await expect(service.forwardEnvelope('admin', createRequest(Buffer.from('envelope')))).rejects.toThrow('Malformed');
     await expect(
-      service.forwardEnvelope('unknown-project', createRequest(Buffer.from('envelope'))),
-    ).resolves.toBeUndefined();
+      service.forwardEnvelope('unknown-project', createRequest(validEnvelope())),
+    ).rejects.toThrow('Unknown monitoring project');
+    await expect(
+      service.forwardEnvelope('admin', createRequest(Buffer.alloc(1_024 * 1_024 + 1))),
+    ).rejects.toThrow('too large');
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('forwards the raw envelope to the configured GlitchTip target', async () => {
-    const envelope = Buffer.from('{"event_id":"event-1"}\n{"type":"event"}\n{"message":"boom"}');
+    const envelope = validEnvelope();
 
     await service.forwardEnvelope('admin', createRequest(envelope, ['text/plain', 'application/json']));
 
@@ -44,11 +48,23 @@ describe('AnalyticsService', () => {
         'Content-Type': 'text/plain',
       },
       body: new Uint8Array(envelope),
+      signal: expect.any(AbortSignal),
     });
   });
 
+  it('accepts the Buffer body produced by the route-specific raw parser', async () => {
+    const envelope = validEnvelope();
+
+    await service.forwardEnvelope('public', { body: envelope, headers: {} } as unknown as RawBodyRequest<Request>);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      SENTRY_TUNNEL_TARGETS.public.envelopeUrl,
+      expect.objectContaining({ body: new Uint8Array(envelope) }),
+    );
+  });
+
   it('uses the Sentry envelope content type when the request omits one', async () => {
-    const envelope = Buffer.from('envelope');
+    const envelope = validEnvelope();
 
     await service.forwardEnvelope('public', createRequest(envelope));
 
@@ -68,7 +84,7 @@ describe('AnalyticsService', () => {
       createFetchResponse(503, 'Service Unavailable', 'upstream unavailable'),
     );
 
-    await expect(service.forwardEnvelope('admin', createRequest(Buffer.from('envelope')))).rejects.toBeInstanceOf(
+    await expect(service.forwardEnvelope('admin', createRequest(validEnvelope()))).rejects.toBeInstanceOf(
       BadGatewayException,
     );
     expect(warn).toHaveBeenCalledWith(
@@ -86,10 +102,18 @@ describe('AnalyticsService', () => {
       text: jest.fn().mockRejectedValue(new Error('unreadable')),
     } as unknown as Response);
 
-    await expect(service.forwardEnvelope('public', createRequest(Buffer.from('envelope')))).rejects.toBeInstanceOf(
+    await expect(service.forwardEnvelope('public', createRequest(validEnvelope()))).rejects.toBeInstanceOf(
       BadGatewayException,
     );
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('Status: 502 Bad Gateway. Body: '));
+  });
+
+  it('maps an upstream abort to a bounded gateway failure', async () => {
+    fetchMock.mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+
+    await expect(service.forwardEnvelope('public', createRequest(validEnvelope()))).rejects.toThrow(
+      'Monitoring provider timed out',
+    );
   });
 
   function createRequest(rawBody?: Buffer, contentType?: string | string[]): RawBodyRequest<Request> {
@@ -111,5 +135,9 @@ describe('AnalyticsService', () => {
       statusText,
       text: jest.fn().mockResolvedValue(body),
     } as unknown as Response;
+  }
+
+  function validEnvelope(): Buffer {
+    return Buffer.from('{"event_id":"event-1"}\n{"type":"event"}\n{"message":"boom"}');
   }
 });

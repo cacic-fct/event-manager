@@ -10,8 +10,8 @@ import {
   input,
   viewChild,
 } from '@angular/core';
+import { OPENSTREETMAP_TILE_REFERRER_POLICY } from '@cacic-fct/shared-utils';
 import { PublicMapTileCacheWarmupService } from '../../shared/map/public-map-tile-cache-warmup.service';
-import { OPENSTREETMAP_TILE_REFERRER_POLICY } from '../../shared/map/public-map-tile.constants';
 
 @Component({
   selector: 'app-event-location-map',

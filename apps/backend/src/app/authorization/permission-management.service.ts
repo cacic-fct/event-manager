@@ -21,6 +21,7 @@ import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interfa
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthorizationPolicyService } from './authorization-policy.service';
+import { runSerializablePrismaTransaction } from '../common/serializable-prisma-transaction';
 import {
   PermissionGroup,
   PermissionGroupSaveInput,
@@ -226,7 +227,8 @@ export class PermissionManagementService {
     if (existing) await this.assertDescendantDelegation(actor, roleId, effectivePermissions);
 
     const actorId = actor.sub;
-    const savedId = await this.prisma.$transaction(async (tx) => {
+    const savedId = await this.runPermissionGraphTransaction(async (tx) => {
+      await this.assertRoleWriteStillValid(tx, roleId, existing, actor, normalized);
       const before = existing;
       const saved = existing
         ? await tx.eventManagerRole.update({
@@ -362,7 +364,8 @@ export class PermissionManagementService {
 
     const groupId = existing?.id ?? crypto.randomUUID();
     const actorId = actor.sub;
-    await this.prisma.$transaction(async (tx) => {
+    await this.runPermissionGraphTransaction(async (tx) => {
+      await this.assertGroupWriteStillValid(tx, groupId, existing, actor, members);
       if (existing) {
         await tx.eventManagerPermissionGroup.update({
           where: { id: groupId, version: existing.version },
@@ -409,7 +412,7 @@ export class PermissionManagementService {
     if (!role) throw new NotFoundException('Cargo não encontrado.');
     if (role.isSystem) throw new ForbiddenException('Cargos predefinidos não podem ser arquivados.');
     const now = new Date();
-    await this.prisma.$transaction(async (tx) => {
+    await this.runPermissionGraphTransaction(async (tx) => {
       await tx.eventManagerRole.update({ where: { id }, data: { archivedAt: now, updatedById: actor.sub } });
       await tx.eventManagerRoleAssignment.updateMany({
         where: { roleId: id, archivedAt: null },
@@ -432,7 +435,7 @@ export class PermissionManagementService {
     const group = await this.prisma.eventManagerPermissionGroup.findFirst({ where: { id, archivedAt: null }, select: groupSelect });
     if (!group) throw new NotFoundException('Grupo não encontrado.');
     const now = new Date();
-    await this.prisma.$transaction(async (tx) => {
+    await this.runPermissionGraphTransaction(async (tx) => {
       await tx.eventManagerPermissionGroup.update({ where: { id }, data: { archivedAt: now, updatedById: actor.sub } });
       await tx.eventManagerPermissionGroupMember.updateMany({
         where: { groupId: id, archivedAt: null },
@@ -449,20 +452,21 @@ export class PermissionManagementService {
 
   private async archiveExpiredAccess(): Promise<void> {
     const now = new Date();
-    const [scopes, assignments, members] = await this.prisma.$transaction([
-      this.prisma.eventManagerRoleAssignmentScope.updateMany({
+    const [scopes, assignments, members] = await this.runPermissionGraphTransaction(async (tx) =>
+      Promise.all([
+      tx.eventManagerRoleAssignmentScope.updateMany({
         where: { archivedAt: null, unlimited: false, validUntil: { lte: now } },
         data: { archivedAt: now, archivedReason: EventManagerPermissionArchiveReason.EXPIRED },
       }),
-      this.prisma.eventManagerRoleAssignment.updateMany({
+      tx.eventManagerRoleAssignment.updateMany({
         where: { archivedAt: null, unlimited: false, validUntil: { lte: now } },
         data: { archivedAt: now, archivedReason: EventManagerPermissionArchiveReason.EXPIRED },
       }),
-      this.prisma.eventManagerPermissionGroupMember.updateMany({
+      tx.eventManagerPermissionGroupMember.updateMany({
         where: { archivedAt: null, unlimited: false, validUntil: { lte: now } },
         data: { archivedAt: now, archivedReason: EventManagerPermissionArchiveReason.EXPIRED },
       }),
-    ]);
+    ]));
     const expiredCount = scopes.count + assignments.count + members.count;
     if (expiredCount > 0) {
       await this.auditLog.record({
@@ -530,9 +534,12 @@ export class PermissionManagementService {
     });
   }
 
-  private async assertGroupMembers(members: ReturnType<PermissionManagementService['normalizeMembers']>): Promise<void> {
+  private async assertGroupMembers(
+    members: ReturnType<PermissionManagementService['normalizeMembers']>,
+    prisma: PrismaService = this.prisma,
+  ): Promise<void> {
     const activePeopleCount = members.length
-      ? await this.prisma.people.count({ where: { id: { in: members.map((member) => member.personId) }, deletedAt: null } })
+      ? await prisma.people.count({ where: { id: { in: members.map((member) => member.personId) }, deletedAt: null } })
       : 0;
     if (activePeopleCount !== members.length) {
       throw new BadRequestException('Uma pessoa do grupo não existe mais ou foi excluída.');
@@ -594,8 +601,12 @@ export class PermissionManagementService {
     return normalized;
   }
 
-  private async resolveInputEffectivePermissions(direct: Permission[], parentRoleIds: string[]): Promise<Permission[]> {
-    const roles = await this.prisma.eventManagerRole.findMany({
+  private async resolveInputEffectivePermissions(
+    direct: Permission[],
+    parentRoleIds: string[],
+    prisma: PrismaService = this.prisma,
+  ): Promise<Permission[]> {
+    const roles = await prisma.eventManagerRole.findMany({
       where: { archivedAt: null },
       select: { id: true, systemKey: true, permissions: { select: { permission: true } }, parentLinks: { where: { archivedAt: null }, select: { parentRoleId: true } } },
     });
@@ -624,9 +635,13 @@ export class PermissionManagementService {
     }
   }
 
-  private async assertRoleInheritance(roleId: string, parents: string[]): Promise<void> {
+  private async assertRoleInheritance(
+    roleId: string,
+    parents: string[],
+    prisma: PrismaService = this.prisma,
+  ): Promise<void> {
     if (parents.includes(roleId)) throw new BadRequestException('Um cargo não pode herdar de si mesmo.');
-    const links = await this.prisma.eventManagerRoleInheritance.findMany({
+    const links = await prisma.eventManagerRoleInheritance.findMany({
       where: { archivedAt: null, childRoleId: { not: roleId } },
       select: { childRoleId: true, parentRoleId: true },
     });
@@ -643,12 +658,16 @@ export class PermissionManagementService {
     visit(roleId, new Set(), new Set());
   }
 
-  private async assertAssignments(assignments: ReturnType<PermissionManagementService['normalizeAssignments']>, permissions: Permission[]) {
+  private async assertAssignments(
+    assignments: ReturnType<PermissionManagementService['normalizeAssignments']>,
+    permissions: Permission[],
+    prisma: PrismaService = this.prisma,
+  ) {
     const personIds = assignments.flatMap((assignment) => assignment.personId ? [assignment.personId] : []);
     const groupIds = assignments.flatMap((assignment) => assignment.groupId ? [assignment.groupId] : []);
     const [peopleCount, groupCount] = await Promise.all([
-      personIds.length ? this.prisma.people.count({ where: { id: { in: personIds }, deletedAt: null } }) : 0,
-      groupIds.length ? this.prisma.eventManagerPermissionGroup.count({ where: { id: { in: groupIds }, archivedAt: null } }) : 0,
+      personIds.length ? prisma.people.count({ where: { id: { in: personIds }, deletedAt: null } }) : 0,
+      groupIds.length ? prisma.eventManagerPermissionGroup.count({ where: { id: { in: groupIds }, archivedAt: null } }) : 0,
     ]);
     if (peopleCount !== personIds.length || groupCount !== groupIds.length) throw new BadRequestException('Uma pessoa ou grupo atribuído não existe mais.');
 
@@ -656,9 +675,9 @@ export class PermissionManagementService {
     const majorEventIds = [...new Set(assignments.flatMap((assignment) => assignment.scopes.flatMap((scope) => scope.majorEventId ? [scope.majorEventId] : [])))];
     const eventGroupIds = [...new Set(assignments.flatMap((assignment) => assignment.scopes.flatMap((scope) => scope.eventGroupId ? [scope.eventGroupId] : [])))];
     const [eventCount, majorEventCount, eventGroupCount] = await Promise.all([
-      eventIds.length ? this.prisma.event.count({ where: { id: { in: eventIds }, deletedAt: null } }) : 0,
-      majorEventIds.length ? this.prisma.majorEvent.count({ where: { id: { in: majorEventIds }, deletedAt: null } }) : 0,
-      eventGroupIds.length ? this.prisma.eventGroup.count({ where: { id: { in: eventGroupIds }, deletedAt: null } }) : 0,
+      eventIds.length ? prisma.event.count({ where: { id: { in: eventIds }, deletedAt: null } }) : 0,
+      majorEventIds.length ? prisma.majorEvent.count({ where: { id: { in: majorEventIds }, deletedAt: null } }) : 0,
+      eventGroupIds.length ? prisma.eventGroup.count({ where: { id: { in: eventGroupIds }, deletedAt: null } }) : 0,
     ]);
     if (eventCount !== eventIds.length || majorEventCount !== majorEventIds.length || eventGroupCount !== eventGroupIds.length) {
       throw new BadRequestException('Um alvo de escopo não existe mais ou foi excluído.');
@@ -669,17 +688,20 @@ export class PermissionManagementService {
         const incompatible = permissions.filter((permission) => !isPermissionGrantScopeCompatible(permission, scope.scope));
         if (incompatible.length) throw new BadRequestException(`O escopo ${scope.scope} não é compatível com: ${incompatible.join(', ')}.`);
       }
-      await this.assertNoRedundantScopes(assignment);
+      await this.assertNoRedundantScopes(assignment, prisma);
     }
   }
 
-  private async assertNoRedundantScopes(assignment: ReturnType<PermissionManagementService['normalizeAssignments']>[number]) {
+  private async assertNoRedundantScopes(
+    assignment: ReturnType<PermissionManagementService['normalizeAssignments']>[number],
+    prisma: PrismaService = this.prisma,
+  ) {
     const scopes = assignment.scopes;
-    const events = await this.prisma.event.findMany({
+    const events = await prisma.event.findMany({
       where: { id: { in: scopes.flatMap((scope) => scope.eventId ? [scope.eventId] : []) }, deletedAt: null },
       select: { id: true, majorEventId: true, eventGroupId: true },
     });
-    const groups = await this.prisma.eventGroup.findMany({
+    const groups = await prisma.eventGroup.findMany({
       where: { id: { in: scopes.flatMap((scope) => scope.eventGroupId ? [scope.eventGroupId] : []) }, deletedAt: null },
       select: { id: true, majorEventId: true },
     });
@@ -770,6 +792,69 @@ export class PermissionManagementService {
           eventGroupId: scope.eventGroupId ?? undefined,
         });
       }
+    }
+  }
+
+  private async runPermissionGraphTransaction<T>(
+    operation: (tx: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
+    return runSerializablePrismaTransaction(this.prisma, async (tx) => {
+      await tx.$executeRaw(
+        Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended('event-manager-permission-graph', 0))`,
+      );
+      return operation(tx);
+    });
+  }
+
+  private async assertRoleWriteStillValid(
+    tx: Prisma.TransactionClient,
+    roleId: string,
+    existing: RoleRecord | null,
+    actor: AuthenticatedUser,
+    normalized: ReturnType<PermissionManagementService['normalizeRoleInput']>,
+  ): Promise<void> {
+    const transactionPrisma = tx as unknown as PrismaService;
+    const current = existing
+      ? await tx.eventManagerRole.findFirst({ where: { id: roleId, archivedAt: null }, select: roleSelect })
+      : null;
+    if (existing && (!current || current.version !== existing.version)) {
+      throw new ConflictException('Este cargo foi alterado por outra pessoa. Recarregue antes de salvar.');
+    }
+
+    await this.authorization.assertPermissions(actor, [existing ? Permission.PermissionGrant.Update : Permission.PermissionGrant.Create]);
+    await this.assertRoleInheritance(roleId, normalized.parentRoleIds, transactionPrisma);
+    const effectivePermissions = await this.resolveInputEffectivePermissions(
+      normalized.permissions,
+      normalized.parentRoleIds,
+      transactionPrisma,
+    );
+    this.assertContextDependencies(effectivePermissions);
+    await this.assertAssignments(normalized.assignments, effectivePermissions, transactionPrisma);
+    await this.assertDelegation(actor, effectivePermissions, normalized.assignments);
+    if (existing) {
+      await this.assertDescendantDelegation(actor, roleId, effectivePermissions);
+    }
+  }
+
+  private async assertGroupWriteStillValid(
+    tx: Prisma.TransactionClient,
+    groupId: string,
+    existing: GroupRecord | null,
+    actor: AuthenticatedUser,
+    members: ReturnType<PermissionManagementService['normalizeMembers']>,
+  ): Promise<void> {
+    const transactionPrisma = tx as unknown as PrismaService;
+    const current = existing
+      ? await tx.eventManagerPermissionGroup.findFirst({ where: { id: groupId, archivedAt: null }, select: groupSelect })
+      : null;
+    if (existing && (!current || current.version !== existing.version)) {
+      throw new ConflictException('Este grupo foi alterado por outra pessoa. Recarregue antes de salvar.');
+    }
+
+    await this.authorization.assertPermissions(actor, [existing ? Permission.PermissionGrant.Update : Permission.PermissionGrant.Create]);
+    await this.assertGroupMembers(members, transactionPrisma);
+    if (current) {
+      await this.assertGroupDelegation(actor, current);
     }
   }
 

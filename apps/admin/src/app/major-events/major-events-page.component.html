@@ -167,7 +167,7 @@
                 type="button"
                 [matTooltip]="publishMajorEventActionTooltip()"
                 (click)="workspace.saveMajorEvent('PUBLISH')"
-                [disabled]="workspace.loading() || workspace.majorEventForm.invalid">
+                [disabled]="workspace.loading()">
                 <mat-icon>{{ publishMajorEventActionIcon() }}</mat-icon>
                 {{ publishMajorEventActionLabel() }}
               </button>
@@ -198,8 +198,17 @@
 
             <mat-form-field>
               <mat-label>Fim</mat-label>
-              <input matInput type="datetime-local" formControlName="endDate" />
+              <input
+                matInput
+                type="datetime-local"
+                formControlName="endDate"
+                aria-describedby="major-event-date-range-error" />
             </mat-form-field>
+            @if (workspace.majorEventForm.hasError('majorEventDateRange')) {
+              <mat-error class="span-2" id="major-event-date-range-error" aria-live="polite">
+                O fim do grande evento deve ser igual ou posterior ao início.
+              </mat-error>
+            }
 
             <mat-form-field class="span-2">
               <mat-label>Descrição</mat-label>
@@ -241,8 +250,17 @@
 
             <mat-form-field>
               <mat-label>Fim das inscrições</mat-label>
-              <input matInput type="datetime-local" formControlName="subscriptionEndDate" />
+              <input
+                matInput
+                type="datetime-local"
+                formControlName="subscriptionEndDate"
+                aria-describedby="major-event-subscription-date-range-error" />
             </mat-form-field>
+            @if (workspace.majorEventForm.hasError('subscriptionDateRange')) {
+              <mat-error class="span-2" id="major-event-subscription-date-range-error" aria-live="polite">
+                O fim das inscrições deve ser igual ou posterior ao início.
+              </mat-error>
+            }
 
             <mat-form-field>
               <mat-label>Máximo de minicursos por pessoa</mat-label>

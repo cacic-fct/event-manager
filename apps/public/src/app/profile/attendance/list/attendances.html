@@ -123,7 +123,19 @@
             <div class="participation-title">{{ item.title }}</div>
             <div class="participation-date">{{ item.dateLine }}</div>
             <div class="participation-type">{{ item.typeLabel }}</div>
+            @if (item.warnings.length > 0) {
+            <div class="warning-messages" aria-live="polite">
+              @for (warning of item.warnings; track warning.text) {
+              <div>{{ warning.text }}</div>
+              }
+            </div>
+            }
             <div class="status-icons">
+              @for (warning of item.warnings; track warning.text) {
+              <span class="warning-icon" role="img" [attr.aria-label]="warning.text" [matTooltip]="warning.text">
+                <mat-icon aria-hidden="true">{{ warning.icon }}</mat-icon>
+              </span>
+              }
               @for (status of statusItems(item.statusLine); track status.label) {
               <span class="status-icon" role="img" [attr.aria-label]="status.label" [matTooltip]="status.label">
                 <mat-icon aria-hidden="true">{{ status.icon }}</mat-icon>

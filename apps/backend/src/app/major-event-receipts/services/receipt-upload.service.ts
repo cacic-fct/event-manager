@@ -5,6 +5,7 @@ import {
   GoneException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -46,6 +47,8 @@ import {
 
 @Injectable()
 export class ReceiptUploadService {
+  private readonly logger = new Logger(ReceiptUploadService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
@@ -149,66 +152,94 @@ export class ReceiptUploadService {
       expiresAt,
     );
 
-    const receipt = await this.prisma.$transaction(async (tx) => {
-      const createdReceipt = await tx.majorEventReceipt.create({
-        data: {
-          id: receiptId,
-          subscriptionId: subscription.id,
-          majorEventId,
-          personId: person.id,
-          objectKey: uploadResult.key,
-          fileName: file.originalname || 'comprovante',
-          mimeType: file.mimetype,
-          sizeBytes: uploadResult.size,
-          expiresAt,
-          uploadedAt,
-          uploadedBy: authenticatedUser.sub,
-        },
-      });
-
-      const updateResult = await tx.majorEventSubscription.updateMany({
-        where: {
-          id: subscription.id,
-          subscriptionStatus: {
-            notIn: [SubscriptionStatus.CONFIRMED, SubscriptionStatus.CANCELED],
+    let receipt: MajorEventReceipt;
+    try {
+      receipt = await this.prisma.$transaction(async (tx) => {
+        const createdReceipt = await tx.majorEventReceipt.create({
+          data: {
+            id: receiptId,
+            subscriptionId: subscription.id,
+            majorEventId,
+            personId: person.id,
+            objectKey: uploadResult.key,
+            fileName: file.originalname || 'comprovante',
+            mimeType: file.mimetype,
+            sizeBytes: uploadResult.size,
+            expiresAt,
+            uploadedAt,
+            uploadedBy: authenticatedUser.sub,
           },
-        },
-        data: {
-          subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
-          receiptRejectionReason: null,
-          receiptValidatedAt: null,
-          receiptValidatedBy: null,
-        },
+        });
+
+        const updateResult = await tx.majorEventSubscription.updateMany({
+          where: {
+            id: subscription.id,
+            subscriptionStatus: {
+              notIn: [SubscriptionStatus.CONFIRMED, SubscriptionStatus.CANCELED],
+            },
+          },
+          data: {
+            subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
+            receiptRejectionReason: null,
+            receiptValidatedAt: null,
+            receiptValidatedBy: null,
+          },
+        });
+        if (updateResult.count !== 1) {
+          throw new ConflictException(`Subscription for major event ${majorEventId} cannot receive a new receipt.`);
+        }
+        await refreshSportsParticipantForSubscription(tx, subscription.id);
+        await this.attendanceCategories.refreshForMajorEventPerson(majorEventId, person.id, tx);
+
+        return createdReceipt;
       });
-      if (updateResult.count !== 1) {
-        throw new ConflictException(`Subscription for major event ${majorEventId} cannot receive a new receipt.`);
-      }
-      await refreshSportsParticipantForSubscription(tx, subscription.id);
-      await this.attendanceCategories.refreshForMajorEventPerson(majorEventId, person.id, tx);
+    } catch (error: unknown) {
+      // The database row is the authority. Remove the PII object when the
+      // transaction did not commit so a retry cannot accumulate orphans.
+      await this.s3.deleteFile(uploadResult.key).catch((cleanupError: unknown) => {
+        this.logger.error(
+          `Could not clean up receipt object ${uploadResult.key} after transaction failure.`,
+          cleanupError instanceof Error ? cleanupError.stack : String(cleanupError),
+        );
+      });
+      throw error;
+    }
 
-      return createdReceipt;
-    });
-    await this.sportsApplicationRealtime.publishPaymentChanged(subscription.id, 'RECEIPT_UPLOADED');
-
-    await this.receiptQueue.add(
-      'process',
-      { receiptId: receipt.id },
-      {
-        jobId: buildBullMqJobId('receipt-processing', receipt.id),
-        attempts: RECEIPT_PROCESSING_ATTEMPTS,
-        backoff: {
-          type: 'exponential',
-          delay: 30_000,
-        },
-        removeOnComplete: {
-          age: 365 * 24 * 60 * 60,
-        },
-        removeOnFail: false,
-      },
+    await this.runPostCommitEffect('receipt realtime publication', () =>
+      this.sportsApplicationRealtime.publishPaymentChanged(subscription.id, 'RECEIPT_UPLOADED'),
     );
 
-    await this.dashboardInsights.invalidateCachedInsights();
+    await this.runPostCommitEffect('receipt processing queue insertion', () =>
+      this.receiptQueue.add(
+        'process',
+        { receiptId: receipt.id },
+        {
+          jobId: buildBullMqJobId('receipt-processing', receipt.id),
+          attempts: RECEIPT_PROCESSING_ATTEMPTS,
+          backoff: {
+            type: 'exponential',
+            delay: 30_000,
+          },
+          removeOnComplete: {
+            age: 365 * 24 * 60 * 60,
+          },
+          removeOnFail: false,
+        },
+      ),
+    );
+
+    await this.runPostCommitEffect('dashboard cache invalidation', () =>
+      this.dashboardInsights.invalidateCachedInsights(),
+    );
     return mapReceipt(receipt as MajorEventReceipt);
+  }
+
+  private async runPostCommitEffect(label: string, effect: () => Promise<unknown>): Promise<void> {
+    try {
+      await effect();
+    } catch (error: unknown) {
+      this.logger.warn(`${label} failed after the receipt commit: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async getReceiptImage(

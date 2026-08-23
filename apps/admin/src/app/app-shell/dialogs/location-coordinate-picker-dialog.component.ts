@@ -16,7 +16,12 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, MAX_MAP_ZOOM } from '@cacic-fct/shared-utils';
+import {
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+  MAX_MAP_ZOOM,
+  OPENSTREETMAP_TILE_REFERRER_POLICY,
+} from '@cacic-fct/shared-utils';
 
 export type LocationCoordinates = Readonly<{
   latitude: number;
@@ -193,7 +198,10 @@ export class LocationCoordinatePickerDialogComponent implements OnDestroy {
     });
     const map = new Map({
       target,
-      layers: [new TileLayer({ source: new OSM() }), new VectorLayer({ source: markerSource })],
+      layers: [
+        new TileLayer({ source: new OSM({ referrerPolicy: OPENSTREETMAP_TILE_REFERRER_POLICY }) }),
+        new VectorLayer({ source: markerSource }),
+      ],
       view,
     });
     map.on('singleclick', (event) => {

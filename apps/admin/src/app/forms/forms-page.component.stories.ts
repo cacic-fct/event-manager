@@ -25,6 +25,7 @@ import {
 } from '../testing/admin-entity-fixtures';
 import { PermissionsService } from '../permissions/permissions.service';
 import { AuditLogService } from '../audit-logs/audit-log.service';
+import { isDateAfter } from '../shared/date-range-validator';
 import { EventFormLinkDraft, FormsService } from './forms.service';
 import { FormsPageComponent } from './forms-page.component';
 
@@ -318,6 +319,11 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
         current.map((link) => (link.localId === localId ? { ...link, [key]: value || null } : link)),
       );
     },
+    hasInvalidLinkDateRange: (localId?: string) =>
+      links().some(
+        (link) =>
+          (localId === undefined || link.localId === localId) && isDateAfter(link.availableFrom, link.availableUntil),
+      ),
     save: async () => undefined,
     saveDraft: async () => undefined,
     publishNow: async () => undefined,

@@ -25,6 +25,7 @@ import { EventFormApiService } from '../graphql/event-form-api.service';
 import { MajorEventApiService } from '../graphql/major-event-api.service';
 import { AdminFeedbackService } from '../feedback/admin-feedback.service';
 import { ShellUiService } from '../app-shell/ui.service';
+import { isDateAfter } from '../shared/date-range-validator';
 
 type FormOwnerType = EventFormTargetType;
 
@@ -286,8 +287,15 @@ export class FormsService {
     this.updateLink(localId, { [key]: value || null });
   }
 
+  hasInvalidLinkDateRange(localId?: string): boolean {
+    return this.links().some(
+      (link) =>
+        (localId === undefined || link.localId === localId) && isDateAfter(link.availableFrom, link.availableUntil),
+    );
+  }
+
   async save(): Promise<void> {
-    if (this.form.invalid) {
+    if (this.form.invalid || this.hasInvalidLinkDateRange()) {
       this.form.markAllAsTouched();
       return;
     }
@@ -306,6 +314,11 @@ export class FormsService {
   }
 
   async saveDraft(): Promise<void> {
+    if (this.form.invalid || this.hasInvalidLinkDateRange()) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
     const selected = this.selectedForm();
     if (!selected) {
       await this.save();

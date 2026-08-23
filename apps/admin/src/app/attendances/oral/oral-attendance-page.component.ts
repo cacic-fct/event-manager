@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  OnDestroy,
   OnInit,
   PLATFORM_ID,
   computed,
@@ -29,12 +30,14 @@ import { OralAttendanceSyncFailureDialogComponent } from './oral-attendance-sync
 import { AdminFeedbackService } from '../../feedback/admin-feedback.service';
 
 interface PendingAdminDecision {
+  clientId: string;
   eventId: string;
   personId: string;
   status: EventAttendanceStatus;
   collectedAt: string;
   queuedByUserId: string;
   queuedByLabel: string;
+  collectorCredential?: string | null;
 }
 
 type SyncOutcome = 'synced' | 'failed' | 'retry';
@@ -58,7 +61,7 @@ const SYNC_RETRY_MAX_DELAY_MS = 30_000;
       (manualSubmitted)="registerManual($event)" />
   `,
 })
-export class AdminOralAttendancePageComponent implements OnInit {
+export class AdminOralAttendancePageComponent implements OnInit, OnDestroy {
   private readonly api = inject(AttendanceApiService);
   private readonly attendancesService = inject(AttendancesService);
   private readonly auth = inject(AuthService);
@@ -74,6 +77,8 @@ export class AdminOralAttendancePageComponent implements OnInit {
   private eventId = '';
   private syncTimer: ReturnType<typeof setTimeout> | null = null;
   private syncRetryAttempt = 0;
+  private destroyed = false;
+  private collectorCredential: string | null = null;
 
   protected readonly people = signal<OralAttendancePerson[]>([]);
   protected readonly eventName = signal('Chamada oral');
@@ -94,14 +99,48 @@ export class AdminOralAttendancePageComponent implements OnInit {
       return;
     }
     this.restorePending();
-    this.eventApi.getEvent(this.eventId).subscribe((event) => this.eventName.set(event.name));
+    this.api
+      .createAdminOfflineAttendanceCollectorCredential(this.eventId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (credential) => (this.collectorCredential = credential),
+        error: () =>
+          this.snackbar.open(
+            'A credencial off-line não ficou disponível; decisões serão enviadas pela conta atual.',
+            'Fechar',
+            { duration: 5000 },
+          ),
+      });
+    this.eventApi
+      .getEvent(this.eventId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (!this.destroyed) {
+          this.eventName.set(event.name);
+        }
+      });
     if (this.isBrowser) {
       fromEvent(window, 'online')
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe(() => this.scheduleSync());
     }
-    this.api.listEventAttendanceOralRoster(this.eventId).subscribe((items) => this.applyRoster(items));
+    this.api
+      .listEventAttendanceOralRoster(this.eventId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((items) => {
+        if (!this.destroyed) {
+          this.applyRoster(items);
+        }
+      });
     this.scheduleSync();
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
+    if (this.syncTimer) {
+      clearTimeout(this.syncTimer);
+      this.syncTimer = null;
+    }
   }
 
   protected goBack(): void {
@@ -115,12 +154,14 @@ export class AdminOralAttendancePageComponent implements OnInit {
       return;
     }
     const item: PendingAdminDecision = {
+      clientId: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       eventId: this.eventId,
       personId: person.personId,
       status: decision,
       collectedAt: new Date().toISOString(),
       queuedByUserId: user.sub,
       queuedByLabel: user.preferredUsername ?? user.email ?? user.sub,
+      collectorCredential: this.collectorCredential,
     };
     this.decisions.update((current) => new Map(current).set(person.personId, decision));
     this.pending.update((current) => new Map(current).set(person.personId, item));
@@ -136,7 +177,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
   }
 
   private scheduleSync(delayMs = this.syncRetryAttempt ? this.syncRetryDelay() : INITIAL_SYNC_DELAY_MS): void {
-    if (!this.pending().size || this.syncTimer || (this.isBrowser && !navigator.onLine)) {
+    if (this.destroyed || !this.pending().size || this.syncTimer || (this.isBrowser && !navigator.onLine)) {
       return;
     }
     this.syncTimer = setTimeout(() => {
@@ -164,7 +205,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
   }
 
   private async syncPending(): Promise<void> {
-    if (this.syncing() || !this.pending().size || (this.isBrowser && !navigator.onLine)) {
+    if (this.destroyed || this.syncing() || !this.pending().size || (this.isBrowser && !navigator.onLine)) {
       return;
     }
     const items = [...this.pending().values()];
@@ -174,6 +215,9 @@ export class AdminOralAttendancePageComponent implements OnInit {
     const permanentFailureItems: PendingAdminDecision[] = [];
     try {
       for (const item of items) {
+        if (this.destroyed) {
+          return;
+        }
         const outcome = await this.syncItem(item);
         if (outcome !== 'synced') {
           failedItems.push(item);
@@ -224,20 +268,27 @@ export class AdminOralAttendancePageComponent implements OnInit {
   }
 
   private async syncItem(item: PendingAdminDecision): Promise<SyncOutcome> {
+    if (this.destroyed) {
+      return 'retry';
+    }
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         await firstValueFrom(
           this.api.setEventOralAttendances([
             {
+              clientId: item.clientId,
               eventId: item.eventId,
               personId: item.personId,
               status: item.status,
               collectedAt: item.collectedAt,
               collectedByUserId: item.queuedByUserId,
+              collectorCredential: item.collectorCredential,
             },
           ]),
         );
-        this.attendancesService.invalidateExplicitAbsences(item.eventId);
+        if (!this.destroyed) {
+          this.attendancesService.invalidateExplicitAbsences(item.eventId);
+        }
         return 'synced';
       } catch (error: unknown) {
         if (!isRetryableSyncError(error)) {
@@ -245,6 +296,9 @@ export class AdminOralAttendancePageComponent implements OnInit {
         }
         if (attempt < 2) {
           await new Promise((resolve) => setTimeout(resolve, 700 * 2 ** attempt));
+          if (this.destroyed) {
+            return 'retry';
+          }
         }
       }
     }
@@ -266,14 +320,11 @@ export class AdminOralAttendancePageComponent implements OnInit {
         : [];
       const currentUserId = this.auth.user()?.sub;
       const recoveredFromAnotherUser = items.filter((item) => item.queuedByUserId !== currentUserId);
-      const currentUserLabel = this.auth.user()?.preferredUsername ?? this.auth.user()?.email ?? currentUserId;
       this.pending.set(
         new Map(
           items.map((item) => [
             item.personId,
-            item.queuedByUserId === currentUserId || !currentUserId || !currentUserLabel
-              ? item
-              : { ...item, queuedByUserId: currentUserId, queuedByLabel: currentUserLabel },
+            item,
           ]),
         ),
       );
@@ -304,6 +355,7 @@ export class AdminOralAttendancePageComponent implements OnInit {
     return (
       item.eventId === this.eventId &&
       typeof item.personId === 'string' &&
+      typeof item.clientId === 'string' &&
       (item.status === 'PRESENT' || item.status === 'ABSENT') &&
       typeof item.collectedAt === 'string' &&
       typeof item.queuedByUserId === 'string' &&

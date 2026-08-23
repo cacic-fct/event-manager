@@ -7,10 +7,15 @@ import { EventAttendancesQueriesResolver } from './event-attendances.queries.res
 describe('EventAttendancesQueriesResolver', () => {
   let prisma: ReturnType<typeof createFullPrisma>;
   let resolver: EventAttendancesQueriesResolver;
+  let resolveCurrentAssessments: jest.Mock;
 
   beforeEach(() => {
     prisma = createFullPrisma();
-    resolver = new EventAttendancesQueriesResolver(prisma as never, {} as never);
+    resolveCurrentAssessments = jest.fn().mockResolvedValue(new Map());
+    resolver = new EventAttendancesQueriesResolver(
+      prisma as never,
+      { resolveCurrentAssessments } as never,
+    );
   });
 
   it('allows read-only attendance users to list offline submissions', () => {
@@ -59,6 +64,29 @@ describe('EventAttendancesQueriesResolver', () => {
     expect(prisma.eventAttendance.count).toHaveBeenCalledWith({
       where: { eventId: 'event-1', status: 'PRESENT' },
     });
+  });
+
+  it('returns the derived current assessment without changing an undefined category', async () => {
+    prisma.eventAttendance.findMany.mockResolvedValue([
+      {
+        personId: 'person-1',
+        eventId: 'event-1',
+        category: AttendanceCategory.UNKNOWN,
+        attendedAt: new Date('2026-05-21T12:00:00.000Z'),
+        person: { id: 'person-1' },
+        event: { id: 'event-1' },
+      },
+    ]);
+    resolveCurrentAssessments.mockResolvedValue(
+      new Map([['person-1:event-1', 'ACTIVITY_SUBSCRIPTION_MISSING']]),
+    );
+
+    await expect(resolver.eventAttendances(undefined, 'event-1')).resolves.toEqual([
+      expect.objectContaining({
+        category: AttendanceCategory.UNKNOWN,
+        currentAssessment: 'ACTIVITY_SUBSCRIPTION_MISSING',
+      }),
+    ]);
   });
 
   it('builds major event attendance rows from paginated subscriptions', async () => {

@@ -2,6 +2,7 @@ import { EventFormTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { firstValueFrom, of } from 'rxjs';
+import { PassThrough, Readable } from 'node:stream';
 import { REQUIRED_PERMISSIONS_KEY } from '../auth/auth.constants';
 import { EventFormsController } from './event-forms.controller';
 
@@ -10,7 +11,7 @@ describe('EventFormsController', () => {
     watchResults: jest.fn(),
     assertCurrentUserLiveResultsAccess: jest.fn(),
     watchCurrentUserResults: jest.fn(),
-    exportAdminResultsCsv: jest.fn(),
+    streamAdminResultsCsv: jest.fn(),
   };
   const replay = {
     scope: jest.fn(),
@@ -96,19 +97,35 @@ describe('EventFormsController', () => {
 
   it('exports CSV with private download headers and the authenticated actor', async () => {
     const user = { sub: 'admin-1' };
-    const response = { setHeader: jest.fn(), send: jest.fn() };
-    forms.exportAdminResultsCsv.mockResolvedValueOnce('Resposta\nSim');
+    const response = Object.assign(new PassThrough(), { setHeader: jest.fn() });
+    const stream = Readable.from(['Resposta\r\n']);
+    forms.streamAdminResultsCsv.mockResolvedValueOnce(stream);
 
     await controller().exportResultsCsv('form-1', { user } as never, response as never);
 
-    expect(forms.exportAdminResultsCsv).toHaveBeenCalledWith(user, 'form-1');
+    expect(forms.streamAdminResultsCsv).toHaveBeenCalledWith(user, 'form-1');
     expect(response.setHeader).toHaveBeenNthCalledWith(1, 'Content-Type', 'text/csv; charset=utf-8');
     expect(response.setHeader).toHaveBeenNthCalledWith(
       2,
       'Content-Disposition',
       'attachment; filename="form-results-form-1.csv"',
     );
-    expect(response.send).toHaveBeenCalledWith('Resposta\nSim');
+    expect(response.read()?.toString()).toBe('Resposta\r\n');
+  });
+
+  it('propagates a CSV generator failure through the request promise', async () => {
+    const response = Object.assign(new PassThrough(), { setHeader: jest.fn() });
+    const stream = Readable.from(
+      (async function* rows() {
+        yield 'Resposta\r\n';
+        throw new Error('database unavailable');
+      })(),
+    );
+    forms.streamAdminResultsCsv.mockResolvedValueOnce(stream);
+
+    await expect(
+      controller().exportResultsCsv('form-1', { user: { sub: 'admin-1' } } as never, response as never),
+    ).rejects.toThrow('database unavailable');
   });
 
   function controller(): EventFormsController {

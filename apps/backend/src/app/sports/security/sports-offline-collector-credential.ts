@@ -1,33 +1,45 @@
 import { BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-const CREDENTIAL_VERSION = 'v1';
+const CREDENTIAL_VERSION = 'v2';
+const PAYLOAD_VERSION = 2;
 const LOCAL_DEVELOPMENT_SECRET = 'local-development-sports-offline-collector-secret';
+const DEFAULT_CREDENTIAL_TTL_MS = 48 * 60 * 60_000;
+const CREDENTIAL_CLOCK_SKEW_MS = 5 * 60_000;
 
 export type SportsOfflineCollectorKind = 'ADMIN' | 'OFFICIAL';
 
 export interface SportsOfflineCollectorCredentialPayload {
-  version: 1;
+  version: 2;
+  keyVersion: string;
   matchId: string;
   collectorPersonId: string;
   collectorUserId: string;
   collectorRole: string;
   collectorKind: SportsOfflineCollectorKind;
   issuedAt: string;
+  expiresAt: string;
 }
 
 export function issueSportsOfflineCollectorCredential(
-  input: Omit<SportsOfflineCollectorCredentialPayload, 'version' | 'issuedAt'> & { issuedAt?: Date },
-): { credential: string; collectorPersonId: string; issuedAt: Date } {
+  input: Omit<SportsOfflineCollectorCredentialPayload, 'version' | 'issuedAt' | 'expiresAt' | 'keyVersion'> & {
+    issuedAt?: Date;
+    expiresAt?: Date;
+  },
+): { credential: string; collectorPersonId: string; issuedAt: Date; expiresAt: Date } {
   const issuedAt = input.issuedAt ?? new Date();
+  const requestedExpiresAt = input.expiresAt ?? new Date(issuedAt.getTime() + credentialTtlMs());
+  const expiresAt = new Date(Math.min(requestedExpiresAt.getTime(), issuedAt.getTime() + credentialTtlMs()));
   const payload = validatePayload({
-    version: 1,
+    version: PAYLOAD_VERSION,
+    keyVersion: credentialKeyVersion(),
     matchId: input.matchId,
     collectorPersonId: input.collectorPersonId,
     collectorUserId: input.collectorUserId,
     collectorRole: input.collectorRole,
     collectorKind: input.collectorKind,
     issuedAt: issuedAt.toISOString(),
+    expiresAt: expiresAt.toISOString(),
   });
   const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
   const signature = sign(encodedPayload);
@@ -35,6 +47,7 @@ export function issueSportsOfflineCollectorCredential(
     credential: `${CREDENTIAL_VERSION}.${encodedPayload}.${signature}`,
     collectorPersonId: payload.collectorPersonId,
     issuedAt,
+    expiresAt,
   };
 }
 
@@ -55,7 +68,14 @@ export function verifySportsOfflineCollectorCredential(credential: string): Spor
   }
 
   try {
-    return validatePayload(JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')));
+    const payload = validatePayload(JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')));
+    const now = Date.now();
+    const issuedAt = new Date(payload.issuedAt).getTime();
+    const expiresAt = new Date(payload.expiresAt).getTime();
+    if (payload.keyVersion !== credentialKeyVersion() || issuedAt > now + CREDENTIAL_CLOCK_SKEW_MS || expiresAt < now - CREDENTIAL_CLOCK_SKEW_MS) {
+      throw invalidCredential();
+    }
+    return payload;
   } catch (error: unknown) {
     if (error instanceof BadRequestException) {
       throw error;
@@ -70,26 +90,46 @@ function validatePayload(value: unknown): SportsOfflineCollectorCredentialPayloa
   }
   const record = value as Record<string, unknown>;
   if (
-    record['version'] !== 1 ||
+    record['version'] !== PAYLOAD_VERSION ||
+    !validKeyVersion(record['keyVersion']) ||
     !validIdentifier(record['matchId']) ||
     !validIdentifier(record['collectorPersonId']) ||
     !validIdentifier(record['collectorUserId']) ||
     !validRole(record['collectorRole']) ||
     (record['collectorKind'] !== 'ADMIN' && record['collectorKind'] !== 'OFFICIAL') ||
     typeof record['issuedAt'] !== 'string' ||
-    !Number.isFinite(new Date(record['issuedAt']).getTime())
+    !Number.isFinite(new Date(record['issuedAt']).getTime()) ||
+    typeof record['expiresAt'] !== 'string' ||
+    !Number.isFinite(new Date(record['expiresAt']).getTime()) ||
+    new Date(record['expiresAt']).getTime() <= new Date(record['issuedAt']).getTime()
   ) {
     throw invalidCredential();
   }
   return {
-    version: 1,
+    version: PAYLOAD_VERSION,
+    keyVersion: record['keyVersion'],
     matchId: record['matchId'],
     collectorPersonId: record['collectorPersonId'],
     collectorUserId: record['collectorUserId'],
     collectorRole: record['collectorRole'],
     collectorKind: record['collectorKind'],
     issuedAt: new Date(record['issuedAt']).toISOString(),
+    expiresAt: new Date(record['expiresAt']).toISOString(),
   };
+}
+
+function validKeyVersion(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z0-9._-]{1,32}$/.test(value);
+}
+
+function credentialKeyVersion(): string {
+  const configured = process.env.SPORTS_OFFLINE_COLLECTOR_KEY_VERSION?.trim();
+  return validKeyVersion(configured) ? configured : '1';
+}
+
+function credentialTtlMs(): number {
+  const configured = Number.parseInt(process.env.SPORTS_OFFLINE_COLLECTOR_CREDENTIAL_TTL_MS ?? '', 10);
+  return Number.isSafeInteger(configured) && configured > 0 ? Math.min(configured, 7 * 24 * 60 * 60_000) : DEFAULT_CREDENTIAL_TTL_MS;
 }
 
 function validIdentifier(value: unknown): value is string {

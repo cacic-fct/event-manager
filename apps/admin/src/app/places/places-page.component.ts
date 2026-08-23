@@ -19,6 +19,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { Permission } from '@cacic-fct/shared-permissions';
+import { OPENSTREETMAP_TILE_REFERRER_POLICY } from '@cacic-fct/shared-utils';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { PlacePresetsService } from './place-presets.service';
@@ -177,7 +178,7 @@ export class PlacesPageComponent implements OnDestroy {
       target,
       layers: [
         new TileLayer({
-          source: new OSM(),
+          source: new OSM({ referrerPolicy: OPENSTREETMAP_TILE_REFERRER_POLICY }),
         }),
         new VectorLayer({
           source: new VectorSource({

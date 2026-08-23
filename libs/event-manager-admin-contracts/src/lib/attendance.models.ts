@@ -11,6 +11,12 @@ export type AttendanceCreationMethod =
   | 'UNKNOWN';
 export type AttendanceImportMatchType = 'IDENTITY_DOCUMENT' | 'EMAIL' | 'FULL_NAME';
 export type AttendanceCategory = 'NON_PAYING' | 'NON_SUBSCRIBED' | 'REGULAR' | 'UNKNOWN';
+export type AttendanceCurrentAssessment =
+  | 'ACTIVITY_SUBSCRIPTION_MISSING'
+  | 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT'
+  | 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED'
+  | 'MAJOR_EVENT_PAYMENT_UNDER_REVIEW'
+  | 'REQUIREMENTS_CURRENTLY_MET';
 export type EventAttendanceStatus = 'PRESENT' | 'ABSENT';
 export type SubscriptionStatus =
   | 'WAITING_RECEIPT_UPLOAD'
@@ -29,6 +35,7 @@ export interface EventAttendance {
   person?: Person | null;
   event?: Event | null;
   category: AttendanceCategory;
+  currentAssessment?: AttendanceCurrentAssessment | null;
   status: EventAttendanceStatus;
   attendedAt: string;
   createdAt: string;
@@ -89,6 +96,13 @@ export interface OfflineEventAttendanceSubmission {
   rejectionReason?: string | null;
 }
 
+export interface OfflineEventAttendanceReviewResult {
+  submissionId: string;
+  success: boolean;
+  error?: string | null;
+  submission?: OfflineEventAttendanceSubmission | null;
+}
+
 export interface EventAttendanceCollector {
   eventId: string;
   personId: string;
@@ -119,6 +133,7 @@ export interface MajorEventEventAttendanceStatus {
   attended: boolean;
   attendedAt?: string | null;
   category: AttendanceCategory;
+  currentAssessment?: AttendanceCurrentAssessment | null;
 }
 
 export interface MajorEventUserAttendance {

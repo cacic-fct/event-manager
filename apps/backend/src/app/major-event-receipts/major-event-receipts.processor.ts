@@ -1,7 +1,7 @@
-import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ReceiptProcessingStatus } from '@prisma/client';
-import { Job, UnrecoverableError } from 'bullmq';
+import { Job, Queue, UnrecoverableError } from 'bullmq';
 import sharp from 'sharp';
 import { createWorker } from 'tesseract.js';
 import { Readable } from 'stream';
@@ -15,6 +15,7 @@ import {
   RECEIPT_IMAGE_CONVERSION_TIMEOUT_SECONDS,
   RECEIPT_OCR_TIMEOUT_MS,
   ReceiptProcessingJob,
+  RECEIPT_PROCESSING_ATTEMPTS,
 } from './receipt.types';
 import {
   ReceiptImageProcessingLimitError,
@@ -28,6 +29,9 @@ import {
 } from './utils/receipt-image-processing.utils';
 import { processReceiptPdf, ReceiptPdfProcessingError } from './utils/receipt-pdf-processing.utils';
 import { isPdfReceiptMimeType } from './utils/receipt-file.utils';
+import { buildBullMqJobId } from '../queues/bullmq-job-id';
+
+const RECONCILE_PENDING_RECEIPTS_JOB = 'reconcile-pending-receipts';
 
 sharp.cache({ files: 0, items: 0, memory: 32 });
 sharp.concurrency(1);
@@ -35,19 +39,102 @@ sharp.concurrency(1);
 @Processor(MAJOR_EVENT_RECEIPTS_QUEUE, {
   concurrency: 1,
 })
-export class MajorEventReceiptsProcessor extends WorkerHost {
+@Injectable()
+export class MajorEventReceiptsProcessor extends WorkerHost implements OnModuleInit {
   private readonly logger = new Logger(MajorEventReceiptsProcessor.name);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly s3: S3Service,
     private readonly analysis: ReceiptAnalysisService,
+    @InjectQueue(MAJOR_EVENT_RECEIPTS_QUEUE)
+    private readonly receiptQueue: Queue = { add: async () => undefined } as unknown as Queue,
   ) {
     super();
   }
 
-  async process(job: Job<ReceiptProcessingJob>): Promise<void> {
-    await this.processReceipt(job.data.receiptId);
+  async onModuleInit(): Promise<void> {
+    await this.receiptQueue.upsertJobScheduler(
+      buildBullMqJobId('receipt-processing', 'reconcile-pending'),
+      { pattern: '* * * * *' },
+      {
+        name: RECONCILE_PENDING_RECEIPTS_JOB,
+        data: {},
+        opts: {
+          removeOnComplete: true,
+          removeOnFail: 50,
+        },
+      },
+    );
+  }
+
+  async process(job: Job<ReceiptProcessingJob | Record<string, never>>): Promise<void> {
+    if (job.name === RECONCILE_PENDING_RECEIPTS_JOB) {
+      await this.reconcilePendingReceipts();
+      return;
+    }
+    const receiptJob = job.data as Partial<ReceiptProcessingJob>;
+    if (job.name !== 'process' || typeof receiptJob.receiptId !== 'string' || !receiptJob.receiptId.trim()) {
+      throw new UnrecoverableError(`Unsupported or malformed receipt job: ${job.name}.`);
+    }
+    await this.processReceipt(receiptJob.receiptId);
+  }
+
+  private async reconcilePendingReceipts(): Promise<void> {
+    const receipts = await this.prisma.majorEventReceipt.findMany({
+      where: {
+        processingStatus: ReceiptProcessingStatus.PENDING,
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
+      orderBy: { uploadedAt: 'asc' },
+      take: 100,
+    });
+    const results = await Promise.allSettled(
+      receipts.map((receipt) => this.enqueuePendingReceipt(receipt.id)),
+    );
+    results.forEach((result, index) => {
+      if (result.status === 'rejected') {
+        this.logger.warn(
+          `Could not requeue pending receipt ${receipts[index]?.id ?? 'unknown'}: ${this.formatErrorMessage(result.reason)}`,
+        );
+      }
+    });
+  }
+
+  private async enqueuePendingReceipt(receiptId: string): Promise<void> {
+    const jobId = buildBullMqJobId('receipt-processing', receiptId);
+    const queue = this.receiptQueue as Queue & {
+      getJob?: (id: string) => Promise<{ getState: () => Promise<string>; remove: () => Promise<void>; retry: (state: 'failed') => Promise<void> } | undefined>;
+    };
+    const existing = await queue.getJob?.(jobId);
+    if (existing) {
+      const state = await existing.getState();
+      if (state === 'failed') {
+        try {
+          await existing.remove();
+        } catch {
+          await existing.retry('failed');
+          return;
+        }
+      } else if (state !== 'completed') {
+        return;
+      } else {
+        await existing.remove();
+      }
+    }
+
+    await this.receiptQueue.add(
+      'process',
+      { receiptId },
+      {
+        jobId,
+        attempts: RECEIPT_PROCESSING_ATTEMPTS,
+        backoff: { type: 'exponential', delay: 30_000 },
+        removeOnComplete: { age: 365 * 24 * 60 * 60 },
+        removeOnFail: 50,
+      },
+    );
   }
 
   private async processReceipt(receiptId: string): Promise<void> {
@@ -111,16 +198,23 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
     } catch (error: unknown) {
       const processingErrorMessage = error instanceof Error ? error.message : 'Unknown receipt processing error.';
       this.logger.error(`Failed to process receipt ${receiptId}`, error);
-      await this.prisma.majorEventReceipt.update({
-        where: {
-          id: receiptId,
-        },
-        data: {
-          processingStatus: ReceiptProcessingStatus.FAILED,
-          processingError: processingErrorMessage,
-          processedAt: new Date(),
-        },
-      });
+      try {
+        await this.prisma.majorEventReceipt.update({
+          where: {
+            id: receiptId,
+          },
+          data: {
+            processingStatus: ReceiptProcessingStatus.FAILED,
+            processingError: processingErrorMessage,
+            processedAt: new Date(),
+          },
+        });
+      } catch (bookkeepingError: unknown) {
+        this.logger.error(
+          `Failed to persist FAILED status for receipt ${receiptId}; preserving the processing error.`,
+          bookkeepingError instanceof Error ? bookkeepingError.stack : String(bookkeepingError),
+        );
+      }
       throw this.toBullProcessingError(error, processingErrorMessage);
     }
   }
@@ -182,22 +276,41 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
       expiresAt,
     );
 
-    await this.prisma.majorEventReceipt.update({
-      where: {
-        id: receiptId,
-      },
-      data: {
-        objectKey: uploadResult.key,
-        mimeType: 'image/avif',
-        sizeBytes: uploadResult.size,
-        processingStatus: ReceiptProcessingStatus.CONVERTED,
-        processingError: null,
-        processedAt: new Date(),
-      },
-    });
+    try {
+      await this.prisma.majorEventReceipt.update({
+        where: {
+          id: receiptId,
+        },
+        data: {
+          objectKey: uploadResult.key,
+          mimeType: 'image/avif',
+          sizeBytes: uploadResult.size,
+          processingStatus: ReceiptProcessingStatus.CONVERTED,
+          processingError: null,
+          processedAt: new Date(),
+        },
+      });
+    } catch (error: unknown) {
+      // The derivative is not authoritative until the row points at it.
+      // Compensate the newly uploaded object when that database step fails.
+      if (uploadResult.key !== previousObjectKey) {
+        await this.s3.deleteFile(uploadResult.key).catch((cleanupError: unknown) => {
+          this.logger.warn(
+            `Could not clean up orphaned receipt derivative ${uploadResult.key}: ${this.formatErrorMessage(cleanupError)}`,
+          );
+        });
+      }
+      throw error;
+    }
 
     if (uploadResult.key !== previousObjectKey) {
-      await this.s3.deleteFile(previousObjectKey);
+      // Old-object deletion is derived cleanup. A failure here must not
+      // rewrite a successfully converted receipt as FAILED.
+      await this.s3.deleteFile(previousObjectKey).catch((error: unknown) => {
+        this.logger.warn(
+          `Could not delete superseded receipt object ${previousObjectKey}: ${this.formatErrorMessage(error)}`,
+        );
+      });
     }
   }
 
@@ -282,7 +395,9 @@ export class MajorEventReceiptsProcessor extends WorkerHost {
 
   private toBullProcessingError(error: unknown, message: string): Error {
     if (isReceiptImageProcessingError(error) || error instanceof ReceiptPdfProcessingError) {
-      return new UnrecoverableError(message);
+      const unrecoverable = new UnrecoverableError(message);
+      Object.defineProperty(unrecoverable, 'cause', { value: error, configurable: true });
+      return unrecoverable;
     }
 
     return error instanceof Error ? error : new Error(message);

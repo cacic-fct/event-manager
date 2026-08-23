@@ -313,6 +313,11 @@ export class EventsService {
   }
 
   async saveEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
+    if (this.hasInvalidDateRange()) {
+      this.eventForm.markAllAsTouched();
+      return;
+    }
+
     if (action === 'PUBLISH' && this.eventForm.invalid) {
       this.eventForm.markAllAsTouched();
       return;
@@ -988,6 +993,14 @@ export class EventsService {
     }
 
     return payload;
+  }
+
+  private hasInvalidDateRange(): boolean {
+    return (
+      this.eventForm.hasError('eventDateRange') ||
+      this.eventForm.hasError('subscriptionDateRange') ||
+      this.eventForm.hasError('onlineAttendanceDateRange')
+    );
   }
 
   private buildManualPlacePresetPayload(): PlacePresetInput | null {

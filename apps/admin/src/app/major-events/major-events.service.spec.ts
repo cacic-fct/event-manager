@@ -89,6 +89,18 @@ describe('MajorEventsService', () => {
     vi.useRealTimers();
   });
 
+  it('keeps a reversed major-event range in the browser instead of sending it to the API', async () => {
+    service.majorEventForm.patchValue({
+      startDate: '2026-05-20T00:00',
+      endDate: '2026-05-15T00:00',
+    });
+
+    await service.saveMajorEvent('DRAFT');
+
+    expect(service.majorEventForm.hasError('majorEventDateRange')).toBe(true);
+    expect(api.createMajorEvent).not.toHaveBeenCalled();
+  });
+
   it('posts a single price entered as a number input value', async () => {
     service.priceTiers.at(0).controls.value.setValue(40 as unknown as string);
 

@@ -2,6 +2,7 @@ import { EventAttendance } from '@cacic-fct/shared-data-types';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, EventAttendanceStatus, Prisma } from '@prisma/client';
 import { getBrazilianPhoneCandidates } from '../../common/brazilian-phone';
+import { findPeopleByCanonicalIdentityDocument, identityDocumentWhere } from '../../common/person-identity';
 import { AttendanceCategoryService } from '../../events/attendance-category.service';
 import { createOrRestoreEventAttendance } from '../../events/attendances/shared/event-attendance-writer';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -30,6 +31,8 @@ export async function createAttendance(params: {
   prisma: PrismaService;
   attendanceCategories: AttendanceCategoryService;
   input: CreateAttendanceInput;
+  idempotencyKey?: string;
+  afterIdempotencyLock?: (tx: Prisma.TransactionClient) => Promise<void>;
   afterCreate?: (attendance: { personId: string; eventId: string }, tx: Prisma.TransactionClient) => Promise<void>;
   afterCheckInStarted?: (attendance: { personId: string; eventId: string }) => Promise<void>;
 }) {
@@ -37,11 +40,16 @@ export async function createAttendance(params: {
   let checkInStarted = false;
   try {
     const attendance = await params.prisma.$transaction((tx) =>
-      createOrRestoreEventAttendance({
-        tx,
-        attendanceCategories: params.attendanceCategories,
-        input: params.input,
-        afterWrite: async (attendance, transaction) => {
+      (async () => {
+        if (params.idempotencyKey && typeof tx.$executeRaw === 'function') {
+          await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${params.idempotencyKey}))`);
+        }
+        await params.afterIdempotencyLock?.(tx);
+        return createOrRestoreEventAttendance({
+          tx,
+          attendanceCategories: params.attendanceCategories,
+          input: params.input,
+          afterWrite: async (attendance, transaction) => {
           if ((params.input.status ?? EventAttendanceStatus.PRESENT) === EventAttendanceStatus.PRESENT) {
             checkInStarted =
               (await startSportsMatchCheckInFromAthleteAttendance({
@@ -52,8 +60,9 @@ export async function createAttendance(params: {
               })) || checkInStarted;
           }
           await params.afterCreate?.(attendance, transaction);
-        },
-      }),
+          },
+        });
+      })(),
     );
     if (checkInStarted) {
       await params.afterCheckInStarted?.(attendance);
@@ -94,11 +103,7 @@ export async function findSinglePersonForManualInput(prisma: PrismaService, rawV
   ];
 
   if (digits) {
-    where.push({
-      identityDocument: {
-        in: [value, digits],
-      },
-    });
+    where.push(identityDocumentWhere(value));
   }
 
   if (phoneCandidates.length > 0) {
@@ -119,8 +124,11 @@ export async function findSinglePersonForManualInput(prisma: PrismaService, rawV
       mergedIntoId: true,
     },
   });
+  const canonicalIdentityPeople = digits ? await findPeopleByCanonicalIdentityDocument(prisma, value) : [];
 
-  const resolvedPersonIds = new Set(people.map((person) => person.mergedIntoId ?? person.id));
+  const resolvedPersonIds = new Set(
+    [...people, ...canonicalIdentityPeople].map((person) => person.mergedIntoId ?? person.id),
+  );
   if (resolvedPersonIds.size > 1) {
     throw new ConflictException(
       `Pessoa tem registros duplicados no banco de dados com o dado ${value}. Tire uma captura dessa tela e envie para o administrador do sistema, para correção.`,

@@ -1,4 +1,4 @@
-import { isPlatformBrowser } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { Directive, OnDestroy, OnInit, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -18,6 +18,16 @@ import {
 } from './sports-operations.types';
 import { CheckInEntry, MatchOccurrence, sortOfficialCheckInEntries } from './official-match-page.utils';
 
+interface ScreenWakeLockSentinel extends EventTarget {
+  release(): Promise<void>;
+}
+
+interface ScreenWakeLockNavigator {
+  wakeLock?: {
+    request(type: 'screen'): Promise<ScreenWakeLockSentinel>;
+  };
+}
+
 @Directive()
 export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   protected readonly api = inject(SportsOperationsApiService);
@@ -27,6 +37,7 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   protected readonly realtime = inject(SportsViewerRealtimeService);
   protected readonly scannerFeedback = inject(ScannerFeedbackService);
   protected readonly snackbar = inject(MatSnackBar);
+  private readonly document = inject(DOCUMENT);
   protected readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   readonly match = signal<SportsOperationalMatch | null>(null);
   readonly loading = signal(true);
@@ -115,6 +126,25 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   protected readonly subscriptions = new Subscription();
   protected handlingTimerConflict: string | null = null;
   private loadRequestId = 0;
+  private keepScreenAwake = false;
+  private wakeLock: ScreenWakeLockSentinel | null = null;
+  private wakeLockRequestId = 0;
+  private readonly handleWakeLockRelease = (): void => {
+    this.wakeLock = null;
+    if (this.keepScreenAwake && this.document.visibilityState === 'visible') {
+      void this.requestWakeLock();
+    }
+  };
+  private readonly handleVisibilityChange = (): void => {
+    if (!this.keepScreenAwake) {
+      return;
+    }
+    if (this.document.visibilityState === 'visible') {
+      void this.requestWakeLock();
+      return;
+    }
+    void this.releaseWakeLock();
+  };
   protected readonly conflictEffect = effect(() => {
     const conflict = this.offline.timerConflict();
     if (conflict && conflict.matchId === this.currentMatchId() && this.handlingTimerConflict !== conflict.matchId) {
@@ -126,6 +156,11 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.matchId = this.route.snapshot.paramMap.get('matchId') ?? '';
     this.currentMatchId.set(this.matchId);
+    this.keepScreenAwake = true;
+    if (this.isBrowser) {
+      this.document.addEventListener('visibilitychange', this.handleVisibilityChange);
+      void this.requestWakeLock();
+    }
     this.offline.start();
     this.timer = setInterval(() => this.now.set(Date.now()), 1000);
     this.load();
@@ -133,11 +168,68 @@ export abstract class OfficialMatchPageState implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.keepScreenAwake = false;
+    this.wakeLockRequestId += 1;
+    if (this.isBrowser) {
+      this.document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+      void this.releaseWakeLock();
+    }
     if (this.timer) {
       clearInterval(this.timer);
     }
     this.cancelStartHold();
     this.subscriptions.unsubscribe();
+  }
+
+  private async requestWakeLock(): Promise<void> {
+    if (!this.keepScreenAwake || !this.isBrowser || this.document.visibilityState !== 'visible' || this.wakeLock) {
+      return;
+    }
+
+    const wakeLock = (navigator as unknown as ScreenWakeLockNavigator).wakeLock;
+    if (!wakeLock) {
+      return;
+    }
+
+    const requestId = ++this.wakeLockRequestId;
+    try {
+      const wakeLockSentinel = await wakeLock.request('screen');
+      if (
+        !this.keepScreenAwake ||
+        this.document.visibilityState !== 'visible' ||
+        requestId !== this.wakeLockRequestId
+      ) {
+        await this.releaseWakeLockSentinel(wakeLockSentinel);
+        return;
+      }
+
+      this.wakeLock = wakeLockSentinel;
+      this.wakeLock.addEventListener('release', this.handleWakeLockRelease);
+    } catch {
+      if (requestId === this.wakeLockRequestId) {
+        this.wakeLock = null;
+      }
+    }
+  }
+
+  private async releaseWakeLock(): Promise<void> {
+    this.wakeLockRequestId += 1;
+    const wakeLock = this.wakeLock;
+    if (!wakeLock) {
+      return;
+    }
+
+    this.wakeLock = null;
+    wakeLock.removeEventListener('release', this.handleWakeLockRelease);
+    await this.releaseWakeLockSentinel(wakeLock);
+  }
+
+  private async releaseWakeLockSentinel(wakeLock: ScreenWakeLockSentinel): Promise<void> {
+    try {
+      await wakeLock.release();
+    } catch {
+      // Wake Lock is best-effort and must not block operation-page teardown.
+    }
   }
 
   load(): void {

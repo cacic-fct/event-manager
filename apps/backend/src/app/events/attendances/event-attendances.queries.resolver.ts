@@ -13,7 +13,7 @@ import { Prisma } from '@prisma/client';
 import { RequirePermissions } from '../../auth/decorators/require-permissions.decorator';
 import { resolvePagination } from '../../common/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
-import { AttendanceCategoryService } from '../attendance-category.service';
+import { attendanceAssessmentKey, AttendanceCategoryService } from '../attendance-category.service';
 import {
   getAttendanceOralRoster,
   getAttendanceScannerFeed,
@@ -105,9 +105,15 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         })
       : [];
     const collectorNameById = new Map(collectors.map((collector) => [collector.id, collector.name]));
+    const currentAssessments = await this.attendanceCategories.resolveCurrentAssessments(attendances);
 
     return attendances.map((attendance) => ({
       ...attendance,
+      ...(currentAssessments.get(attendanceAssessmentKey(attendance.personId, attendance.eventId))
+        ? {
+            currentAssessment: currentAssessments.get(attendanceAssessmentKey(attendance.personId, attendance.eventId)),
+          }
+        : {}),
       collectedByFullName: attendance.createdById
         ? (collectorNameById.get(attendance.createdById) ?? undefined)
         : undefined,
@@ -187,6 +193,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
       },
       select: {
         id: true,
+        isPaymentRequired: true,
       },
     });
 
@@ -204,6 +211,7 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
         name: true,
         emoji: true,
         startDate: true,
+        allowSubscription: true,
       },
       orderBy: {
         startDate: 'asc',
@@ -266,6 +274,16 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
     const attendanceByKey = new Map(
       attendances.map((attendance) => [`${attendance.personId}:${attendance.eventId}`, attendance]),
     );
+    const currentAssessments = await this.attendanceCategories.resolveCurrentAssessments(
+      attendances.map((attendance) => ({
+        ...attendance,
+        event: {
+          allowSubscription: events.find((event) => event.id === attendance.eventId)?.allowSubscription ?? false,
+          majorEventId,
+          majorEvent,
+        },
+      })),
+    );
 
     const majorSubscriptionByPerson = new Map<string, (typeof subscriptions)[number]>();
     for (const subscription of subscriptions) {
@@ -298,6 +316,11 @@ export class EventAttendancesQueriesResolver extends EventAttendancesResolverBas
             attended: attendance != null,
             attendedAt: attendance?.attendedAt,
             category: attendance?.category ?? 'UNKNOWN',
+            ...(attendance && currentAssessments.get(attendanceAssessmentKey(resolvedPersonId, event.id))
+              ? {
+                  currentAssessment: currentAssessments.get(attendanceAssessmentKey(resolvedPersonId, event.id)),
+                }
+              : {}),
           };
         }),
       };

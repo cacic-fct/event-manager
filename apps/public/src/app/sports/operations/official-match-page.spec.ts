@@ -24,6 +24,12 @@ describe('OfficialSportsMatchPage', () => {
   let unverifiedAttendances: WritableSignal<number>;
   let attendanceAvailable: WritableSignal<boolean>;
   let dispatchFailure: Error | null;
+  let wakeLockRequest: ReturnType<typeof vi.fn>;
+  let wakeLockRelease: ReturnType<typeof vi.fn>;
+  let wakeLockRemoveListener: ReturnType<typeof vi.fn>;
+  let originalWakeLockDescriptor: PropertyDescriptor | undefined;
+  let originalVisibilityStateDescriptor: PropertyDescriptor | undefined;
+  let visibilityState: DocumentVisibilityState;
 
   beforeEach(async () => {
     actions = [];
@@ -35,6 +41,24 @@ describe('OfficialSportsMatchPage', () => {
     unverifiedAttendances = signal(0);
     attendanceAvailable = signal(true);
     dispatchFailure = null;
+    originalWakeLockDescriptor = Object.getOwnPropertyDescriptor(navigator, 'wakeLock');
+    originalVisibilityStateDescriptor = Object.getOwnPropertyDescriptor(document, 'visibilityState');
+    visibilityState = 'visible';
+    wakeLockRelease = vi.fn().mockResolvedValue(undefined);
+    wakeLockRemoveListener = vi.fn();
+    wakeLockRequest = vi.fn().mockResolvedValue({
+      release: wakeLockRelease,
+      addEventListener: vi.fn(),
+      removeEventListener: wakeLockRemoveListener,
+    });
+    Object.defineProperty(navigator, 'wakeLock', {
+      configurable: true,
+      value: { request: wakeLockRequest },
+    });
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => visibilityState,
+    });
     TestBed.configureTestingModule({
       imports: [OfficialSportsMatchPage],
       providers: [
@@ -103,7 +127,40 @@ describe('OfficialSportsMatchPage', () => {
     await fixture.whenStable();
   });
 
-  afterEach(() => fixture.destroy());
+  afterEach(() => {
+    fixture.destroy();
+    if (originalWakeLockDescriptor) {
+      Object.defineProperty(navigator, 'wakeLock', originalWakeLockDescriptor);
+    } else {
+      Reflect.deleteProperty(navigator, 'wakeLock');
+    }
+    if (originalVisibilityStateDescriptor) {
+      Object.defineProperty(document, 'visibilityState', originalVisibilityStateDescriptor);
+    } else {
+      Reflect.deleteProperty(document, 'visibilityState');
+    }
+  });
+
+  it('keeps the screen awake while the official operation page is open', async () => {
+    await vi.waitFor(() => expect(wakeLockRequest).toHaveBeenCalledWith('screen'));
+
+    fixture.destroy();
+
+    expect(wakeLockRemoveListener).toHaveBeenCalled();
+    expect(wakeLockRelease).toHaveBeenCalled();
+  });
+
+  it('releases the wake lock while hidden and reacquires it when visible again', async () => {
+    await vi.waitFor(() => expect(wakeLockRequest).toHaveBeenCalledTimes(1));
+
+    visibilityState = 'hidden';
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(wakeLockRelease).toHaveBeenCalledTimes(1);
+
+    visibilityState = 'visible';
+    document.dispatchEvent(new Event('visibilitychange'));
+    await vi.waitFor(() => expect(wakeLockRequest).toHaveBeenCalledTimes(2));
+  });
 
   it('swaps visual sides while preserving canonical score action sides', async () => {
     expect(component.displaySide('left')).toBe('home');

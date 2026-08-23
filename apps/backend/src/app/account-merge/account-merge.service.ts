@@ -12,6 +12,7 @@ import {
   ExternalAccountMergeResult,
   People,
   Prisma,
+  SubscriptionStatus,
 } from '@prisma/client';
 import { differenceInDays, isValid, parseISO } from 'date-fns';
 import { CertificateIssuingService } from '../certificate/certificate-issuing.service';
@@ -80,6 +81,9 @@ type MovedRelationsSnapshot = {
   archivedPermissionGroupMembershipIds: string[];
 };
 
+const MAX_ACCOUNT_MERGE_SCORE_CANDIDATES = 100;
+const ACCOUNT_MERGE_SCORE_CONCURRENCY = 8;
+
 @Injectable()
 export class AccountMergeService {
   private readonly logger = new Logger(AccountMergeService.name);
@@ -94,9 +98,14 @@ export class AccountMergeService {
     const userIds = this.normalizeUserIds(body.userIds);
     const scores: Record<string, number> = {};
 
+    let nextIndex = 0;
+    const workerCount = Math.min(ACCOUNT_MERGE_SCORE_CONCURRENCY, userIds.length);
     await Promise.all(
-      userIds.map(async (userId) => {
-        scores[userId] = await this.scoreUserId(userId);
+      Array.from({ length: workerCount }, async () => {
+        while (nextIndex < userIds.length) {
+          const userId = userIds[nextIndex++];
+          scores[userId] = await this.scoreUserId(userId);
+        }
       }),
     );
 
@@ -169,6 +178,9 @@ export class AccountMergeService {
         `Failed to process account merge event=${input.eventId}, oldUser=${input.oldUserId}, newUser=${input.newUserId}.`,
         error instanceof Error ? error.stack : String(error),
       );
+      if (error instanceof ConflictException || error instanceof BadRequestException) {
+        throw error;
+      }
       throw new InternalServerErrorException('Account merge notification was registered but could not be applied.');
     }
   }
@@ -196,7 +208,7 @@ export class AccountMergeService {
     }
 
     this.logger.error(`Detected account merge cycle while resolving user ${initialUserId}.`);
-    return currentUserId;
+    throw new InternalServerErrorException(`Account merge mapping cycle detected for user ${initialUserId}.`);
   }
 
   private async scoreUserId(userId: string): Promise<number> {
@@ -471,14 +483,10 @@ export class AccountMergeService {
     const insertedLectureRows = await this.copyMissingLectures(tx, targetPersonId, sourceLectures);
     await tx.eventLecturer.deleteMany({ where: { personId: sourcePersonId } });
 
-    const movedEventSubscriptionIds = await this.moveById(tx.eventSubscription, targetPersonId, sourcePersonId);
-    const movedEventGroupSubscriptionIds = await this.moveById(
-      tx.eventGroupSubscription,
-      targetPersonId,
-      sourcePersonId,
-    );
-    const movedMajorEventSubscriptionIds = await this.moveById(
-      tx.majorEventSubscription,
+    const movedEventGroupSubscriptionIds = await this.coalesceEventGroupSubscriptions(tx, targetPersonId, sourcePersonId);
+    const movedEventSubscriptionIds = await this.coalesceEventSubscriptions(tx, targetPersonId, sourcePersonId);
+    const movedMajorEventSubscriptionIds = await this.coalesceMajorEventSubscriptions(
+      tx,
       targetPersonId,
       sourcePersonId,
     );
@@ -841,28 +849,172 @@ export class AccountMergeService {
     return inserted;
   }
 
-  private async moveById(
-    delegate: {
-      findMany: (args: { where: { personId: string }; select: { id: true } }) => Promise<Array<{ id: string }>>;
-      updateMany: (args: { where: { id: { in: string[] } }; data: { personId: string } }) => Promise<unknown>;
-    },
+  private async coalesceEventGroupSubscriptions(
+    tx: Prisma.TransactionClient,
     targetPersonId: string,
     sourcePersonId: string,
   ): Promise<string[]> {
-    const rows = await delegate.findMany({
-      where: { personId: sourcePersonId },
-      select: { id: true },
-    });
-    const ids = rows.map((row) => row.id);
+    const source = await tx.eventGroupSubscription.findMany({ where: { personId: sourcePersonId } });
+    const target = await tx.eventGroupSubscription.findMany({ where: { personId: targetPersonId } });
+    const activeTargetByGroup = new Map(
+      target.filter((row) => row.deletedAt === null).map((row) => [row.eventGroupId, row] as const),
+    );
+    const moved: string[] = [];
+    for (const row of source) {
+      const conflict = row.deletedAt === null ? activeTargetByGroup.get(row.eventGroupId) : undefined;
+      if (conflict) {
+        await tx.eventGroupSubscription.update({
+          where: { id: conflict.id },
+          data: {
+            imageLicenseAgreementAccepted:
+              conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
+          },
+        });
+        await tx.eventSubscription.updateMany({
+          where: { eventGroupSubscriptionId: row.id },
+          data: { eventGroupSubscriptionId: conflict.id },
+        });
+        await tx.eventGroupSubscription.update({ where: { id: row.id }, data: { deletedAt: new Date() } });
+      } else {
+        await tx.eventGroupSubscription.update({ where: { id: row.id }, data: { personId: targetPersonId } });
+        moved.push(row.id);
+      }
+    }
+    return moved;
+  }
 
-    if (ids.length > 0) {
-      await delegate.updateMany({
-        where: { id: { in: ids } },
-        data: { personId: targetPersonId },
+  private async coalesceEventSubscriptions(
+    tx: Prisma.TransactionClient,
+    targetPersonId: string,
+    sourcePersonId: string,
+  ): Promise<string[]> {
+    const source = await tx.eventSubscription.findMany({ where: { personId: sourcePersonId } });
+    const target = await tx.eventSubscription.findMany({ where: { personId: targetPersonId } });
+    const activeTargetByEvent = new Map(
+      target.filter((row) => row.deletedAt === null).map((row) => [row.eventId, row] as const),
+    );
+    const moved: string[] = [];
+    for (const row of source) {
+      const conflict = row.deletedAt === null ? activeTargetByEvent.get(row.eventId) : undefined;
+      if (conflict) {
+        await tx.eventSubscription.update({
+          where: { id: conflict.id },
+          data: {
+            imageLicenseAgreementAccepted:
+              conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
+          },
+        });
+        await tx.eventSubscription.update({ where: { id: row.id }, data: { deletedAt: new Date() } });
+      } else {
+        await tx.eventSubscription.update({ where: { id: row.id }, data: { personId: targetPersonId } });
+        moved.push(row.id);
+      }
+    }
+    return moved;
+  }
+
+  private async coalesceMajorEventSubscriptions(
+    tx: Prisma.TransactionClient,
+    targetPersonId: string,
+    sourcePersonId: string,
+  ): Promise<string[]> {
+    const source = await tx.majorEventSubscription.findMany({ where: { personId: sourcePersonId } });
+    const target = await tx.majorEventSubscription.findMany({ where: { personId: targetPersonId } });
+    const activeTargetByMajorEvent = new Map(
+      target.filter((row) => row.deletedAt === null).map((row) => [row.majorEventId, row] as const),
+    );
+    const moved: string[] = [];
+    for (const row of source) {
+      const conflict = row.deletedAt === null ? activeTargetByMajorEvent.get(row.majorEventId) : undefined;
+      if (conflict) {
+        await tx.majorEventSubscription.update({
+          where: { id: conflict.id },
+          data: {
+            amountPaid: conflict.amountPaid ?? row.amountPaid,
+            paymentDate: conflict.paymentDate ?? row.paymentDate,
+            paymentTier: conflict.paymentTier ?? row.paymentTier,
+            desiredCourses: conflict.desiredCourses ?? row.desiredCourses,
+            desiredLectures: conflict.desiredLectures ?? row.desiredLectures,
+            desiredUncategorized: conflict.desiredUncategorized ?? row.desiredUncategorized,
+            imageLicenseAgreementAccepted:
+              conflict.imageLicenseAgreementAccepted || row.imageLicenseAgreementAccepted,
+            subscriptionStatus: this.mergeSubscriptionStatus(conflict.subscriptionStatus, row.subscriptionStatus),
+          },
+        });
+        await this.mergeMajorEventSubscriptionChildren(
+          tx,
+          conflict.id,
+          row.id,
+          targetPersonId,
+        );
+        await tx.majorEventSubscription.update({ where: { id: row.id }, data: { deletedAt: new Date() } });
+      } else {
+        await tx.majorEventSubscription.update({ where: { id: row.id }, data: { personId: targetPersonId } });
+        moved.push(row.id);
+      }
+    }
+    return moved;
+  }
+
+  private async mergeMajorEventSubscriptionChildren(
+    tx: Prisma.TransactionClient,
+    targetSubscriptionId: string,
+    sourceSubscriptionId: string,
+    targetPersonId: string,
+  ): Promise<void> {
+    const [sourceSelections, targetSelections] = await Promise.all([
+      tx.majorEventSubscriptionEventSelection.findMany({
+        where: { subscriptionId: sourceSubscriptionId },
+      }),
+      tx.majorEventSubscriptionEventSelection.findMany({
+        where: { subscriptionId: targetSubscriptionId, deletedAt: null },
+        select: { eventId: true },
+      }),
+    ]);
+    const activeTargetEventIds = new Set(targetSelections.map((selection) => selection.eventId));
+    const archivedAt = new Date();
+    for (const selection of sourceSelections) {
+      if (selection.deletedAt === null && activeTargetEventIds.has(selection.eventId)) {
+        await tx.majorEventSubscriptionEventSelection.update({
+          where: { id: selection.id },
+          data: { deletedAt: archivedAt },
+        });
+        continue;
+      }
+      await tx.majorEventSubscriptionEventSelection.update({
+        where: { id: selection.id },
+        data: { subscriptionId: targetSubscriptionId },
       });
     }
 
-    return ids;
+    await Promise.all([
+      tx.majorEventReceipt.updateMany({
+        where: { subscriptionId: sourceSubscriptionId },
+        data: { subscriptionId: targetSubscriptionId, personId: targetPersonId },
+      }),
+      tx.majorEventReceiptValidationAction.updateMany({
+        where: { subscriptionId: sourceSubscriptionId },
+        data: { subscriptionId: targetSubscriptionId },
+      }),
+      tx.sportsTournamentParticipant.updateMany({
+        where: { majorEventSubscriptionId: sourceSubscriptionId },
+        data: { majorEventSubscriptionId: targetSubscriptionId },
+      }),
+    ]);
+  }
+
+  private mergeSubscriptionStatus(left: SubscriptionStatus, right: SubscriptionStatus): SubscriptionStatus {
+    const rank: Record<SubscriptionStatus, number> = {
+      WAITING_RECEIPT_UPLOAD: 1,
+      RECEIPT_UNDER_REVIEW: 2,
+      REJECTED_INVALID_RECEIPT: 0,
+      REJECTED_NO_SLOTS: 0,
+      REJECTED_SCHEDULE_CONFLICT: 0,
+      REJECTED_GENERIC: 0,
+      CONFIRMED: 3,
+      CANCELED: 0,
+    };
+    return rank[left] >= rank[right] ? left : right;
   }
 
   private async recordFailure(
@@ -871,6 +1023,14 @@ export class AccountMergeService {
     error: unknown,
   ): Promise<void> {
     const errorMessage = error instanceof Error ? error.message : 'Unknown account merge error.';
+
+    const existing = await this.prisma.externalAccountMergeOperation.findUnique({
+      where: { eventId: input.eventId },
+      select: { status: true },
+    });
+    if (existing?.status === 'APPLIED') {
+      return;
+    }
 
     await this.prisma.externalAccountMergeOperation.upsert({
       where: { eventId: input.eventId },
@@ -1017,6 +1177,11 @@ export class AccountMergeService {
   private normalizeUserIds(rawUserIds: unknown): string[] {
     if (!Array.isArray(rawUserIds)) {
       throw new BadRequestException('userIds must be an array.');
+    }
+    if (rawUserIds.length > MAX_ACCOUNT_MERGE_SCORE_CANDIDATES) {
+      throw new BadRequestException(
+        `Envie no máximo ${MAX_ACCOUNT_MERGE_SCORE_CANDIDATES} candidatos para pontuação de contas.`,
+      );
     }
 
     const userIds = new Set<string>();

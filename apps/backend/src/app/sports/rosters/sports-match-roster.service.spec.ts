@@ -11,7 +11,7 @@ describe('SportsMatchRosterService check-in idempotency', () => {
     collectorUserId: 'collector-user-1',
     collectorRole: 'REFEREE',
     collectorKind: 'OFFICIAL',
-    issuedAt: new Date('2026-08-01T12:00:00.000Z'),
+    issuedAt: new Date(Date.now() - 60 * 60_000),
   }).credential;
   const collectorInput = {
     collectorPersonId: 'collector-person-1',

@@ -1,5 +1,6 @@
 import { Service, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
+import { dateRangeValidator } from '../shared/date-range-validator';
 
 @Service()
 export class EventFormStateService {
@@ -60,6 +61,14 @@ export class EventFormStateService {
         validators: [
           this.requireBothOrNeither('latitude', 'longitude'),
           this.requireBothOrNeither('buttonText', 'buttonLink'),
+          dateRangeValidator('startDate', 'endDate', 'eventDateRange'),
+          dateRangeValidator('subscriptionStartDate', 'subscriptionEndDate', 'subscriptionDateRange'),
+          dateRangeValidator(
+            'onlineAttendanceStartDate',
+            'onlineAttendanceEndDate',
+            'onlineAttendanceDateRange',
+            (control) => control.get('isOnlineAttendanceAllowed')?.value === true,
+          ),
         ],
       },
     );

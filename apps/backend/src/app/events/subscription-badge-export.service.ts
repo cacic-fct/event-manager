@@ -55,6 +55,12 @@ type BadgeCodePathContext = {
   duplicateFullNameStems: ReadonlySet<string>;
 };
 
+type ExportPage = {
+  people: ExportPerson[];
+  lastCreatedAt: Date;
+  lastId: string;
+};
+
 @Injectable()
 export class SubscriptionBadgeExportService {
   constructor(private readonly prisma: PrismaService) {}
@@ -193,21 +199,25 @@ export class SubscriptionBadgeExportService {
   }
 
   private async *peoplePages(target: ExportTarget): AsyncGenerator<ExportPerson[]> {
-    for (let skip = 0; ; skip += EXPORT_PAGE_SIZE) {
-      const people = await this.findPeoplePage(target, skip);
-      if (people.length === 0) {
+    let cursor: { createdAt: Date; id: string } | undefined;
+    for (;;) {
+      const page = await this.findPeoplePage(target, cursor);
+      if (page.people.length === 0) {
         return;
       }
 
-      yield people;
-      if (people.length < EXPORT_PAGE_SIZE) {
+      yield page.people;
+      if (page.people.length < EXPORT_PAGE_SIZE) {
         return;
       }
+      cursor = { createdAt: page.lastCreatedAt, id: page.lastId };
     }
   }
 
-  private findPeoplePage(target: ExportTarget, skip: number): Promise<ExportPerson[]> {
+  private findPeoplePage(target: ExportTarget, cursor?: { createdAt: Date; id: string }): Promise<ExportPage> {
     const eventSubscriptionSelect = {
+      id: true,
+      createdAt: true,
       person: {
         select: {
           id: true,
@@ -228,17 +238,33 @@ export class SubscriptionBadgeExportService {
 
     if (target.kind === 'event') {
       return this.prisma.eventSubscription
-        .findMany({
-          where: { eventId: target.eventId, deletedAt: null },
+      .findMany({
+          where: {
+            eventId: target.eventId,
+            deletedAt: null,
+            ...(cursor
+              ? {
+                  OR: [
+                    { createdAt: { lt: cursor.createdAt } },
+                    { createdAt: cursor.createdAt, id: { gt: cursor.id } },
+                  ],
+                }
+              : {}),
+          },
           select: eventSubscriptionSelect,
           orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-          skip,
           take: EXPORT_PAGE_SIZE,
         })
-        .then((subscriptions) => subscriptions.map((subscription) => subscription.person));
+        .then((subscriptions) => ({
+          people: subscriptions.map((subscription) => subscription.person),
+          lastCreatedAt: subscriptions.at(-1)?.createdAt ?? new Date(0),
+          lastId: subscriptions.at(-1)?.id ?? '',
+        }));
     }
 
     const majorEventSubscriptionSelect = {
+      id: true,
+      createdAt: true,
       person: {
         select: {
           id: true,
@@ -259,13 +285,27 @@ export class SubscriptionBadgeExportService {
 
     return this.prisma.majorEventSubscription
       .findMany({
-        where: { majorEventId: target.majorEventId, deletedAt: null },
+        where: {
+          majorEventId: target.majorEventId,
+          deletedAt: null,
+          ...(cursor
+            ? {
+                OR: [
+                  { createdAt: { lt: cursor.createdAt } },
+                  { createdAt: cursor.createdAt, id: { gt: cursor.id } },
+                ],
+              }
+            : {}),
+        },
         select: majorEventSubscriptionSelect,
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-        skip,
         take: EXPORT_PAGE_SIZE,
       })
-      .then((subscriptions) => subscriptions.map((subscription) => subscription.person));
+      .then((subscriptions) => ({
+        people: subscriptions.map((subscription) => subscription.person),
+        lastCreatedAt: subscriptions.at(-1)?.createdAt ?? new Date(0),
+        lastId: subscriptions.at(-1)?.id ?? '',
+      }));
   }
 
   private async renderBadgeCode(value: string, input: SubscriberBadgeExportInput): Promise<Buffer | string> {

@@ -1,7 +1,5 @@
 import { Permission } from '@cacic-fct/shared-permissions';
-import { InjectQueue } from '@nestjs/bullmq';
-import { ForbiddenException, Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import { CurrentUserContextService } from '../current-user/context.service';
 import { GraphqlContext } from '../current-user/selects';
@@ -23,13 +21,13 @@ import { buildPublicationConsistencyWarnings } from '../publishing/publishing-co
 import { normalizeSportsScoreboard } from '../sports/domain/sports-scoreboard';
 import { loadSportsDashboardRecords } from './insights/sports-dashboard-records';
 import { addDays, startOfDay, subDays } from 'date-fns';
-import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 export const DASHBOARD_INSIGHTS_QUEUE = 'dashboard-insights';
 const DASHBOARD_INCONSISTENCY_LIMIT = 30;
 
 @Injectable()
 export class DashboardInsightsService {
+  private readonly logger = new Logger(DashboardInsightsService.name);
   private readonly inFlightInsights = new Map<string, Promise<WorkspaceDashboardInsights>>();
 
   constructor(
@@ -38,8 +36,6 @@ export class DashboardInsightsService {
     private readonly authorizationPolicy: AuthorizationPolicyService,
     private readonly weatherService: WeatherService,
     private readonly redis: Redis,
-    @InjectQueue(DASHBOARD_INSIGHTS_QUEUE)
-    private readonly insightsQueue: Queue,
   ) {}
 
   async getWorkspaceDashboardInsights(context: GraphqlContext): Promise<WorkspaceDashboardInsights> {
@@ -73,44 +69,29 @@ export class DashboardInsightsService {
     }
   }
 
-  async scheduleRefreshJobs(): Promise<void> {
-    await this.insightsQueue.add(
-      'refresh-realtime-dashboard-insights',
-      { scope: 'realtime' },
-      {
-        jobId: buildBullMqJobId('dashboard-insights', 'realtime'),
-        repeat: { pattern: '*/5 * * * *' },
-        removeOnComplete: true,
-        removeOnFail: 50,
-      },
-    );
-    await this.insightsQueue.add(
-      'refresh-operational-dashboard-insights',
-      { scope: 'operational' },
-      {
-        jobId: buildBullMqJobId('dashboard-insights', 'operational'),
-        repeat: { pattern: '*/30 * * * *' },
-        removeOnComplete: true,
-        removeOnFail: 50,
-      },
-    );
-  }
-
   async invalidateCachedInsights(): Promise<void> {
-    const stream = this.redis.scanStream({
-      match: 'dashboard:workspace:*',
-      count: 100,
-    });
-    const batches: Promise<number>[] = [];
+    try {
+      const stream = this.redis.scanStream({
+        match: 'dashboard:workspace:*',
+        count: 100,
+      });
+      const batches: Promise<number>[] = [];
 
-    for await (const keys of stream) {
-      const cacheKeys = keys as string[];
-      if (cacheKeys.length > 0) {
-        batches.push(this.redis.del(...cacheKeys));
+      for await (const keys of stream) {
+        const cacheKeys = keys as string[];
+        if (cacheKeys.length > 0) {
+          batches.push(this.redis.del(...cacheKeys));
+        }
       }
-    }
 
-    await Promise.all(batches);
+      await Promise.all(batches);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Dashboard insight cache invalidation failed after a committed mutation: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   private async generateAndCacheInsights(cacheKey: string, permissions: string[]): Promise<WorkspaceDashboardInsights> {

@@ -471,17 +471,33 @@ export class CurrentUserEventSubscriptionService {
       await this.refreshEventSubscriptionCounters(tx, [targetEvent.id]);
       if (groupSubscription) {
         const currentGroupEventIds = await this.getEventGroupSubscriptionEventIds(tx, personId, groupSubscription.id);
+        const groupWasArchived = currentGroupEventIds.length === 0;
+        if (groupWasArchived) {
+          await tx.eventGroupSubscription.update({
+            where: { id: groupSubscription.id },
+            data: { deletedAt: now },
+          });
+        }
         await this.auditLog.record(
           {
             entityType: AuditLogEntityType.EVENT_GROUP_SUBSCRIPTION,
             entityId: groupSubscription.id,
             entityLabel: personId,
-            operation: AuditLogOperation.UPDATE,
+            operation: groupWasArchived ? AuditLogOperation.DELETE : AuditLogOperation.UPDATE,
             actor,
             before: this.buildEventGroupSubscriptionAuditSnapshot(groupSubscription, previousGroupEventIds),
-            after: this.buildEventGroupSubscriptionAuditSnapshot(groupSubscription, currentGroupEventIds),
-            scope: { permission: Permission.Subscription.Update, eventGroupId: groupSubscription.eventGroupId },
-            summary: 'Inscrição em grupo de eventos atualizada pelo usuário.',
+            after: {
+              ...this.buildEventGroupSubscriptionAuditSnapshot(groupSubscription, currentGroupEventIds),
+              ...(groupWasArchived ? { deletedAt: now } : {}),
+            },
+            scope: {
+              permission: groupWasArchived ? Permission.Subscription.Delete : Permission.Subscription.Update,
+              eventGroupId: groupSubscription.eventGroupId,
+            },
+            summary: groupWasArchived
+              ? 'Inscrição em grupo de eventos arquivada após cancelar o último evento.'
+              : 'Inscrição em grupo de eventos atualizada pelo usuário.',
+            ...(groupWasArchived ? { force: true } : {}),
           },
           tx,
         );
@@ -572,6 +588,7 @@ export class CurrentUserEventSubscriptionService {
         where: {
           personId,
           deletedAt: null,
+          eventGroupSubscriptionId: null,
           event: {
             deletedAt: null,
             majorEventId: null,
@@ -590,6 +607,12 @@ export class CurrentUserEventSubscriptionService {
           deletedAt: null,
           eventGroup: {
             deletedAt: null,
+          },
+          eventSubscriptions: {
+            some: {
+              deletedAt: null,
+              event: { deletedAt: null },
+            },
           },
         },
         select: CURRENT_USER_EVENT_GROUP_SUBSCRIPTION_SELECT,
@@ -614,7 +637,10 @@ export class CurrentUserEventSubscriptionService {
 
     for (const subscription of groupSubscriptions) {
       const events = eventsBySubscriptionId.get(subscription.id) ?? [];
-      const startDate = events.length > 0 ? this.mapper.getEarliestEventStartDate(events) : new Date();
+      if (events.length === 0) {
+        continue;
+      }
+      const startDate = this.mapper.getEarliestEventStartDate(events);
 
       items.push({
         type: 'group',

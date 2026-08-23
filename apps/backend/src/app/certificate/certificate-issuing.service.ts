@@ -132,6 +132,58 @@ export class CertificateIssuingService {
     return certificates.map(mapCertificate);
   }
 
+  async issueManualForPeopleWithResults(
+    configId: string,
+    personIds: string[],
+    issuedById?: string,
+  ): Promise<{ certificates: Certificate[]; failedPersonIds: string[] }> {
+    const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
+    const config = await this.eligibilityService.getConfigById(normalizedConfigId);
+    if (!isManualCertificateIssuedTo(config.issuedTo as CertificateIssuedTo)) {
+      throw new BadRequestException('CSV imports are available only for manual certificate configurations.');
+    }
+
+    const uniquePersonIds = [
+      ...new Set(personIds.map((personId) => this.validation.normalizeRequiredId('personId', personId))),
+    ];
+    const certificates: CertificateRecord[] = [];
+    const failedPersonIds: string[] = [];
+    for (
+      let index = 0;
+      index < uniquePersonIds.length;
+      index += CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE
+    ) {
+      const batch = uniquePersonIds.slice(index, index + CertificateIssuingService.CERTIFICATE_ISSUING_BATCH_SIZE);
+      const results = await Promise.all(
+        batch.map(async (personId) => {
+          try {
+            const recipient = await this.resolveRecipientForConfig(config, normalizedConfigId, personId);
+            return { personId, certificate: await this.upsertCertificateForRecipient(config, recipient, issuedById) };
+          } catch (error: unknown) {
+            this.logger.warn(
+              `Certificate CSV row for person ${personId} failed after previous rows may have committed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+            return { personId, certificate: null };
+          }
+        }),
+      );
+      for (const result of results) {
+        if (result.certificate) {
+          certificates.push(result.certificate);
+        } else {
+          failedPersonIds.push(result.personId);
+        }
+      }
+    }
+
+    return {
+      certificates: certificates.map(mapCertificate),
+      failedPersonIds,
+    };
+  }
+
   async issueMissedCertificates(configId: string, issuedById?: string): Promise<Certificate[]> {
     const normalizedConfigId = this.validation.normalizeRequiredId('configId', configId);
     const config = await this.eligibilityService.getConfigById(normalizedConfigId);
@@ -456,6 +508,7 @@ export class CertificateIssuingService {
           client,
           options.auditActor,
         );
+        await this.notificationJobs?.createPendingOutbox(certificate, client);
         return certificate;
       };
       const certificate =
@@ -463,7 +516,7 @@ export class CertificateIssuingService {
           ? await createCertificate(options.prisma)
           : await this.prisma.$transaction((tx) => createCertificate(tx));
       if (shouldNotifyNow) {
-        await this.notifyCertificateAvailable(certificate);
+        await this.notifyCertificateAvailableBestEffort(certificate);
       }
       return { certificate, shouldNotify: true };
     }
@@ -492,6 +545,7 @@ export class CertificateIssuingService {
         client,
         options.auditActor,
       );
+      await this.notificationJobs?.createPendingOutbox(certificate, client);
       return certificate;
     };
     const certificate =
@@ -499,7 +553,7 @@ export class CertificateIssuingService {
         ? await updateCertificate(options.prisma)
         : await this.prisma.$transaction((tx) => updateCertificate(tx));
     if (shouldNotifyNow) {
-      await this.notifyCertificateAvailable(certificate);
+      await this.notifyCertificateAvailableBestEffort(certificate);
     }
     return { certificate, shouldNotify: true };
   }
@@ -521,6 +575,18 @@ export class CertificateIssuingService {
       return;
     }
     return notifyCertificateAvailable(this.notifications, certificate);
+  }
+
+  private async notifyCertificateAvailableBestEffort(certificate: CertificateRecord): Promise<void> {
+    try {
+      await this.notifyCertificateAvailable(certificate);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Certificate ${certificate.id} committed but availability notification enqueue failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   private buildRenderedData(

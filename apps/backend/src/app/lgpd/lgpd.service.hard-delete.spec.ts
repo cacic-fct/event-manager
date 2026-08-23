@@ -1,4 +1,3 @@
-import { Logger } from '@nestjs/common';
 import {
   createLgpdServiceTestContext,
   LgpdServiceTestContext,
@@ -342,7 +341,13 @@ describe('LgpdService hard delete', () => {
         entityLabel: 'Edited by Source Person',
       }),
     });
-    expect(s3.deleteFile).toHaveBeenCalledWith('receipts/old.png');
+    expect(s3.deleteFile).not.toHaveBeenCalled();
+    expect(context.storageCleanup.enqueueInTransaction).toHaveBeenCalledWith(
+      tx,
+      'erase-1',
+      ['receipts/old.png'],
+    );
+    expect(context.storageCleanup.reconcile).toHaveBeenCalledTimes(1);
     expect(tx.majorEventReceiptValidationAction.deleteMany).toHaveBeenCalledWith({
       where: { subscription: { personId: { in: ['source-person', 'target-person'] } } },
     });
@@ -370,40 +375,31 @@ describe('LgpdService hard delete', () => {
         submittedById: anonymizedAuditSubjectId,
       }),
     });
-    expect(s3.deleteFile.mock.invocationCallOrder[0]).toBeLessThan(
-      tx.majorEventReceiptValidationAction.deleteMany.mock.invocationCallOrder[0],
-    );
   });
 
-  it('fails before deleting database rows when hard-delete receipt storage cleanup fails', async () => {
+  it('does not delete storage when the authoritative deletion transaction fails', async () => {
     const { prisma, s3, tx, typesenseSearch, service } = context;
-    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
-
-    prisma.majorEventReceipt.findMany.mockResolvedValueOnce([
-      { objectKey: 'receipts/old.png' },
-      { objectKey: 'receipts/broken.png' },
-      { objectKey: 'receipts/new.png' },
-    ]);
-    s3.deleteFile
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new Error('s3 unavailable'))
-      .mockResolvedValueOnce(undefined);
+    prisma.$transaction.mockImplementationOnce(async () => {
+      throw new Error('database unavailable');
+    });
 
     await expect(
-      service.hardDelete({
-        userId: 'old-user',
-        email: 'old@example.com',
-        requestId: 'erase-1',
-      }),
-    ).rejects.toThrow('Failed to delete LGPD receipt object(s): receipts/broken.png');
+      service.hardDelete({ userId: 'old-user', email: 'old@example.com', requestId: 'erase-1' }),
+    ).rejects.toThrow('database unavailable');
 
-    expect(s3.deleteFile).toHaveBeenNthCalledWith(1, 'receipts/old.png');
-    expect(s3.deleteFile).toHaveBeenNthCalledWith(2, 'receipts/broken.png');
-    expect(s3.deleteFile).toHaveBeenNthCalledWith(3, 'receipts/new.png');
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('receipts/broken.png'));
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(s3.deleteFile).not.toHaveBeenCalled();
+    expect(context.storageCleanup.enqueueInTransaction).not.toHaveBeenCalled();
     expect(tx.people.deleteMany).not.toHaveBeenCalled();
     expect(tx.user.deleteMany).not.toHaveBeenCalled();
     expect(typesenseSearch.upsertAuditLogEntry).not.toHaveBeenCalled();
+  });
+
+  it('returns success when post-commit queue reconciliation is temporarily unavailable', async () => {
+    const { service, storageCleanup } = context;
+    storageCleanup.reconcile.mockRejectedValueOnce(new Error('Redis unavailable'));
+
+    await expect(
+      service.hardDelete({ userId: 'old-user', email: 'old@example.com', requestId: 'erase-1' }),
+    ).resolves.toEqual(expect.objectContaining({ success: true }));
   });
 });

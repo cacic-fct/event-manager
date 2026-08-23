@@ -58,7 +58,9 @@ export function createAttendancesStoryFeed(controls: AttendancesStoryControls): 
       id: `attendance-major-item-${index + 1}`,
       majorEventId: majorEvent.id,
       majorEvent,
-      subscriptionStatus: index % 4 === 0 ? 'RECEIPT_UNDER_REVIEW' : 'CONFIRMED',
+      subscriptionStatus: ['WAITING_RECEIPT_UPLOAD', 'REJECTED_SCHEDULE_CONFLICT', 'RECEIPT_UNDER_REVIEW', 'CONFIRMED'][
+        index % 4
+      ],
       amountPaid: index % 4 === 0 ? null : 2_500,
       participation: participation(controls, index),
     };

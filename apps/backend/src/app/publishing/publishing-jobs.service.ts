@@ -16,6 +16,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { EventDraftsService } from '../events/event-drafts.service';
 import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
+const RECONCILE_PAGE_SIZE = 100;
+const RECONCILE_CONCURRENCY = 8;
+
 @Injectable()
 export class PublicationJobsService {
   private readonly logger = new Logger(PublicationJobsService.name);
@@ -31,30 +34,34 @@ export class PublicationJobsService {
 
   async schedulePublicationJobs(): Promise<void> {
     await Promise.all([
-      this.publicationQueue.add(
-        RECONCILE_PUBLICATION_STATES_JOB,
-        {},
+      this.publicationQueue.upsertJobScheduler(
+        buildBullMqJobId('publication', RECONCILE_PUBLICATION_STATES_JOB),
         {
-          jobId: buildBullMqJobId('publication', RECONCILE_PUBLICATION_STATES_JOB),
-          repeat: {
-            pattern: '*/5 * * * *',
-            tz: 'America/Sao_Paulo',
+          pattern: '*/5 * * * *',
+          tz: 'America/Sao_Paulo',
+        },
+        {
+          name: RECONCILE_PUBLICATION_STATES_JOB,
+          data: {},
+          opts: {
+            removeOnComplete: true,
+            removeOnFail: 50,
           },
-          removeOnComplete: true,
-          removeOnFail: 50,
         },
       ),
-      this.publicationQueue.add(
-        CLEANUP_STALE_EVENT_DRAFTS_JOB,
-        {},
+      this.publicationQueue.upsertJobScheduler(
+        buildBullMqJobId('publication', CLEANUP_STALE_EVENT_DRAFTS_JOB),
         {
-          jobId: buildBullMqJobId('publication', CLEANUP_STALE_EVENT_DRAFTS_JOB),
-          repeat: {
-            pattern: '17 3 * * *',
-            tz: 'America/Sao_Paulo',
+          pattern: '17 3 * * *',
+          tz: 'America/Sao_Paulo',
+        },
+        {
+          name: CLEANUP_STALE_EVENT_DRAFTS_JOB,
+          data: {},
+          opts: {
+            removeOnComplete: true,
+            removeOnFail: 50,
           },
-          removeOnComplete: true,
-          removeOnFail: 50,
         },
       ),
     ]);
@@ -114,47 +121,70 @@ export class PublicationJobsService {
   }
 
   async reconcileScheduledPublications(): Promise<void> {
-    const now = new Date();
-    const [events, majorEvents] = await Promise.all([
-      this.prisma.event.findMany({
-        where: {
-          deletedAt: null,
-          publicationState: PrismaPublicationState.SCHEDULED,
-          scheduledPublishAt: { lte: now },
-        },
-        select: { id: true },
-      }),
-      this.prisma.majorEvent.findMany({
-        where: {
-          deletedAt: null,
-          publicationState: PrismaPublicationState.SCHEDULED,
-          scheduledPublishAt: { lte: now },
-        },
-        select: { id: true },
-      }),
-    ]);
+    const allSyncs: TargetSync[] = [];
+    const attemptedEventIds = new Set<string>();
+    const attemptedMajorEventIds = new Set<string>();
+    let processedPage = 0;
+    while (true) {
+      const now = new Date();
+      const [events, majorEvents] = await Promise.all([
+        this.prisma.event.findMany({
+          where: {
+            deletedAt: null,
+            publicationState: PrismaPublicationState.SCHEDULED,
+            scheduledPublishAt: { lte: now },
+            ...(attemptedEventIds.size > 0 ? { id: { notIn: [...attemptedEventIds] } } : {}),
+          },
+          select: { id: true },
+          take: RECONCILE_PAGE_SIZE,
+        }),
+        this.prisma.majorEvent.findMany({
+          where: {
+            deletedAt: null,
+            publicationState: PrismaPublicationState.SCHEDULED,
+            scheduledPublishAt: { lte: now },
+            ...(attemptedMajorEventIds.size > 0 ? { id: { notIn: [...attemptedMajorEventIds] } } : {}),
+          },
+          select: { id: true },
+          take: RECONCILE_PAGE_SIZE,
+        }),
+      ]);
+      if (events.length === 0 && majorEvents.length === 0) {
+        break;
+      }
 
-    const eventResults = await Promise.allSettled(
-      events.map((event) => this.transitions.publishEventById(event.id, null)),
-    );
-    const majorResults = await Promise.allSettled(
-      majorEvents.map((majorEvent) => this.transitions.publishMajorEventById(majorEvent.id, null)),
-    );
-    this.reportPublicationFailures('EVENT', events, eventResults);
-    this.reportPublicationFailures('MAJOR_EVENT', majorEvents, majorResults);
-    const eventSync = eventResults
-      .filter((result): result is PromiseFulfilledResult<TargetSync> => result.status === 'fulfilled')
-      .map((result) => result.value);
-    const majorSync = majorResults
-      .filter((result): result is PromiseFulfilledResult<TargetSync> => result.status === 'fulfilled')
-      .map((result) => result.value);
+      processedPage += 1;
+      events.forEach((event) => attemptedEventIds.add(event.id));
+      majorEvents.forEach((majorEvent) => attemptedMajorEventIds.add(majorEvent.id));
+      const eventResults = await mapWithConcurrency(events, RECONCILE_CONCURRENCY, (event) =>
+        this.transitions.publishEventById(event.id, null, { skipSitemap: true }),
+      );
+      const majorResults = await mapWithConcurrency(majorEvents, RECONCILE_CONCURRENCY, (majorEvent) =>
+        this.transitions.publishMajorEventById(majorEvent.id, null, { skipSitemap: true }),
+      );
+      this.reportPublicationFailures('EVENT', events, eventResults);
+      this.reportPublicationFailures('MAJOR_EVENT', majorEvents, majorResults);
+      allSyncs.push(
+        ...eventResults
+          .filter((result): result is PromiseFulfilledResult<TargetSync> => result.status === 'fulfilled')
+          .map((result) => result.value),
+        ...majorResults
+          .filter((result): result is PromiseFulfilledResult<TargetSync> => result.status === 'fulfilled')
+          .map((result) => result.value),
+      );
+    }
 
-    await Promise.all([
-      this.searchSync.syncSearch(this.transitions.mergeSync([...eventSync, ...majorSync])),
-      this.prisma.publicationPreview.deleteMany({
-        where: { trimAfter: { lte: now } },
-      }),
-    ]);
+    if (processedPage > 0) {
+      await this.transitions.refreshSitemapBestEffort();
+      try {
+        await this.searchSync.syncSearch(this.transitions.mergeSync(allSyncs));
+      } catch (error: unknown) {
+        this.logger.warn(`Publication reconciliation search sync failed: ${formatFailure(error)}`);
+      }
+    }
+    await this.prisma.publicationPreview.deleteMany({
+      where: { trimAfter: { lte: new Date() } },
+    });
   }
 
   async cleanupStaleEventDrafts(): Promise<void> {
@@ -232,4 +262,32 @@ export class PublicationJobsService {
   ): string {
     return buildBullMqJobId('publication', targetType, targetId, 'publish', scheduledPublishAt.getTime());
   }
+}
+
+async function mapWithConcurrency<T, R>(
+  values: readonly T[],
+  concurrency: number,
+  operation: (value: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(values.length);
+  let nextIndex = 0;
+  const worker = async () => {
+    while (true) {
+      const index = nextIndex++;
+      if (index >= values.length) {
+        return;
+      }
+      try {
+        results[index] = { status: 'fulfilled', value: await operation(values[index]) };
+      } catch (reason: unknown) {
+        results[index] = { status: 'rejected', reason };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, () => worker()));
+  return results;
+}
+
+function formatFailure(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

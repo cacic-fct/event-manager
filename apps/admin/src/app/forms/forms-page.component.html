@@ -136,7 +136,7 @@
               <button
                 mat-flat-button
                 type="button"
-                [disabled]="!canEditSelected() || workspace.loading() || workspace.form.invalid"
+                [disabled]="!canEditSelected() || workspace.loading()"
                 (click)="workspace.save()">
                 <mat-icon>save</mat-icon>
                 Salvar
@@ -375,8 +375,17 @@
                       matInput
                       type="datetime-local"
                       [value]="link.availableUntil ?? ''"
+                      [attr.aria-describedby]="'form-link-date-range-' + link.localId"
                       (input)="updateLinkDate(link.localId, 'availableUntil', $event)" />
                   </mat-form-field>
+                  @if (workspace.hasInvalidLinkDateRange(link.localId)) {
+                    <mat-error
+                      class="span-2"
+                      [id]="'form-link-date-range-' + link.localId"
+                      aria-live="polite">
+                      O encerramento das respostas deve ser igual ou posterior ao início.
+                    </mat-error>
+                  }
 
                   <mat-checkbox
                     [checked]="link.insertInSubscriptionFlow ?? false"

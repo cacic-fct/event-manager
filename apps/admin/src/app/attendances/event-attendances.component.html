@@ -288,6 +288,16 @@
                   {{ attendance.attendedAt | date: 'short' }} · por
                   {{ attendance.createdByMethod }}
                 </span>
+                @if (workspace.getAttendanceCategoryHistoricalExplanation(attendance.category); as historicalExplanation) {
+                  <span matListItemLine class="attendance-item-line">
+                    Classificação histórica: {{ historicalExplanation }}
+                  </span>
+                }
+                @if (workspace.getAttendanceCurrentAssessmentLabel(attendance.currentAssessment); as currentAssessment) {
+                  <span matListItemLine class="attendance-item-line">
+                    Situação atual: {{ currentAssessment }}
+                  </span>
+                }
                 <div matListItemMeta class="attendance-item-actions">
                   <button
                     mat-icon-button

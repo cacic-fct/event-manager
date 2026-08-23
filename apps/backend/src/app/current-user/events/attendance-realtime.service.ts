@@ -1,7 +1,10 @@
 import {
+  BadRequestException,
   Controller,
   forwardRef,
   Headers,
+  HttpException,
+  HttpStatus,
   Inject,
   Injectable,
   Logger,
@@ -26,6 +29,7 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { AUTH_SESSION_COOKIE_NAME } from '../../auth/auth.constants';
+import { readAuthCookie } from '../../auth/auth-cookie-utils';
 import { Public } from '../../auth/decorators/public.decorator';
 import { KeycloakAuthService } from '../../auth/keycloak-auth.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -39,12 +43,13 @@ import { SseReplayService } from '../../realtime/sse-replay.service';
 const ONLINE_ATTENDANCE_CHANNEL = 'current-user.online-attendance';
 const MAJOR_EVENT_SUBSCRIPTION_CHANNEL = 'public.major-event-subscription';
 const EVENT_SUBSCRIPTION_CHANNEL = 'current-user.event-subscription';
-
-type RequestWithCookies = Request & {
-  cookies?: Record<string, unknown>;
-};
+const MAX_REALTIME_IDS = 50;
+const MAX_REALTIME_ID_LENGTH = 128;
+const MAX_REALTIME_QUERY_LENGTH = 4_096;
+const MAX_REALTIME_CONNECTIONS_PER_IDENTITY = 10;
 
 interface RealtimeClient {
+  connectionIdentity: string;
   personId?: string;
   events: Subject<RealtimeServerMessage>;
   majorEventSubscriptionIds: Set<string>;
@@ -90,6 +95,7 @@ type RealtimeServerMessage =
 export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestroy {
   private readonly logger = new Logger(CurrentUserOnlineAttendanceRealtimeService.name);
   private readonly clients = new Set<RealtimeClient>();
+  private readonly connectionsByIdentity = new Map<string, number>();
   private readonly destroy$ = new Subject<void>();
   private readonly majorEventSubscriptionSnapshots = new Map<string, string>();
   private readonly eventSubscriptionSnapshots = new Map<string, string>();
@@ -104,6 +110,7 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   );
 
   private majorEventSubscriptionInterval: ReturnType<typeof setInterval> | null = null;
+  private pollingInFlight = false;
 
   constructor(
     private readonly auth: KeycloakAuthService,
@@ -122,11 +129,15 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
       clearInterval(this.majorEventSubscriptionInterval);
       this.majorEventSubscriptionInterval = null;
     }
+    this.pollingInFlight = false;
 
     for (const client of this.clients) {
       client.events.complete();
     }
     this.clients.clear();
+    this.connectionsByIdentity.clear();
+    this.majorEventSubscriptionSnapshots.clear();
+    this.eventSubscriptionSnapshots.clear();
   }
 
   stream(
@@ -134,24 +145,44 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
     majorEventSubscriptionIds: string[],
     eventSubscriptionIds: string[],
   ): Observable<MessageEvent> {
-    this.ensureMajorEventSubscriptionPolling();
+    this.assertSubscriptionIds(majorEventSubscriptionIds);
+    this.assertSubscriptionIds(eventSubscriptionIds);
+    const connectionIdentity = this.connectionIdentity(request);
+    const activeConnections = this.connectionsByIdentity.get(connectionIdentity) ?? 0;
+    if (activeConnections >= MAX_REALTIME_CONNECTIONS_PER_IDENTITY) {
+      throw new HttpException('Limite de conexões SSE atingido.', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    this.connectionsByIdentity.set(connectionIdentity, activeConnections + 1);
 
     const events = new Subject<RealtimeServerMessage>();
     const client: RealtimeClient = {
+      connectionIdentity,
       events,
       majorEventSubscriptionIds: new Set(majorEventSubscriptionIds),
       eventSubscriptionIds: new Set(eventSubscriptionIds),
     };
 
     this.clients.add(client);
+    if (client.majorEventSubscriptionIds.size > 0 || client.eventSubscriptionIds.size > 0) {
+      this.ensureMajorEventSubscriptionPolling();
+    }
 
-    void this.resolvePersonId(request).then((personId) => {
-      client.personId = personId ?? undefined;
+    void this.resolvePersonId(request)
+      .then((personId) => {
+        client.personId = personId ?? undefined;
 
-      if (personId) {
-        void this.notifyPerson(personId);
-      }
-    });
+        if (personId) {
+          void this.notifyPerson(personId).catch((error: unknown) => {
+            this.logger.warn(error instanceof Error ? error.message : 'Could not publish current-user attendance.');
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Realtime identity resolution failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        events.error(new Error('Realtime identity resolution failed.'));
+      });
 
     for (const majorEventId of client.majorEventSubscriptionIds) {
       void this.notifyMajorEvent(client, majorEventId);
@@ -170,18 +201,87 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
       return () => {
         subscription.unsubscribe();
         events.complete();
-        this.clients.delete(client);
+        if (!this.clients.delete(client)) {
+          return;
+        }
+
+        this.releaseConnection(client.connectionIdentity);
+        this.cleanupSnapshots();
+        if (
+          [...this.clients].some(
+            (connected) => connected.majorEventSubscriptionIds.size > 0 || connected.eventSubscriptionIds.size > 0,
+          )
+        ) {
+          return;
+        }
+
+        if (this.majorEventSubscriptionInterval) {
+          clearInterval(this.majorEventSubscriptionInterval);
+          this.majorEventSubscriptionInterval = null;
+        }
+        this.majorEventSubscriptionSnapshots.clear();
+        this.eventSubscriptionSnapshots.clear();
       };
     });
   }
 
+  private releaseConnection(identity: string): void {
+    const current = this.connectionsByIdentity.get(identity) ?? 0;
+    if (current <= 1) {
+      this.connectionsByIdentity.delete(identity);
+      return;
+    }
+    this.connectionsByIdentity.set(identity, current - 1);
+  }
+
+  private cleanupSnapshots(): void {
+    const majorIds = new Set([...this.clients].flatMap((client) => [...client.majorEventSubscriptionIds]));
+    const eventIds = new Set([...this.clients].flatMap((client) => [...client.eventSubscriptionIds]));
+    for (const id of this.majorEventSubscriptionSnapshots.keys()) {
+      if (!majorIds.has(id)) {
+        this.majorEventSubscriptionSnapshots.delete(id);
+      }
+    }
+    for (const id of this.eventSubscriptionSnapshots.keys()) {
+      if (!eventIds.has(id)) {
+        this.eventSubscriptionSnapshots.delete(id);
+      }
+    }
+  }
+
+  private assertSubscriptionIds(ids: readonly string[]): void {
+    if (ids.length > MAX_REALTIME_IDS) {
+      throw new BadRequestException(`Informe no máximo ${MAX_REALTIME_IDS} identificadores por lista.`);
+    }
+    if (ids.some((id) => !/^[A-Za-z0-9_-]{1,128}$/.test(id) || id.length > MAX_REALTIME_ID_LENGTH)) {
+      throw new BadRequestException('Identificador SSE inválido.');
+    }
+    if (ids.join(',').length > MAX_REALTIME_QUERY_LENGTH) {
+      throw new BadRequestException('Filtros SSE muito longos.');
+    }
+  }
+
+  private connectionIdentity(request: Request): string {
+    return (
+      readAuthCookie(request, AUTH_SESSION_COOKIE_NAME) ??
+      `ip:${request.ip ?? request.socket?.remoteAddress ?? 'unknown'}`
+    );
+  }
+
   private ensureMajorEventSubscriptionPolling(): void {
-    if (this.majorEventSubscriptionInterval) {
+    if (
+      this.majorEventSubscriptionInterval ||
+      ![...this.clients].some(
+        (client) => client.majorEventSubscriptionIds.size > 0 || client.eventSubscriptionIds.size > 0,
+      )
+    ) {
       return;
     }
 
     this.majorEventSubscriptionInterval = setInterval(() => {
-      void this.notifySubscribedMajorEvents();
+      void this.notifySubscribedMajorEvents().catch((error: unknown) => {
+        this.logger.warn(error instanceof Error ? error.message : 'Could not poll subscription updates.');
+      });
     }, 3_000);
   }
 
@@ -289,14 +389,23 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   }
 
   private async notifySubscribedMajorEvents(): Promise<void> {
+    if (this.pollingInFlight || this.clients.size === 0) {
+      return;
+    }
+
+    this.pollingInFlight = true;
     const majorEventIds = new Set([...this.clients].flatMap((client) => [...client.majorEventSubscriptionIds]));
 
     const eventIds = new Set([...this.clients].flatMap((client) => [...client.eventSubscriptionIds]));
 
-    await Promise.all([
-      ...[...majorEventIds].map((majorEventId) => this.notifyMajorEventSubscribers(majorEventId)),
-      ...[...eventIds].map((eventId) => this.notifyEventSubscriptionSubscribers(eventId)),
-    ]);
+    try {
+      await Promise.all([
+        ...[...majorEventIds].map((majorEventId) => this.notifyMajorEventSubscribers(majorEventId)),
+        ...[...eventIds].map((eventId) => this.notifyEventSubscriptionSubscribers(eventId)),
+      ]);
+    } finally {
+      this.pollingInFlight = false;
+    }
   }
 
   private async notifyMajorEventSubscribers(majorEventId: string) {
@@ -433,6 +542,18 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
   }
 
   private async resolvePersonId(request: Request): Promise<string | null> {
+    const bearerToken = this.readBearerToken(request);
+    if (bearerToken) {
+      try {
+        const user = await this.auth.authenticateAccessToken(bearerToken);
+        const { person } = await this.currentUserContext.resolveCurrentUserContext(user);
+        return person?.id ?? null;
+      } catch {
+        // A cookie session may still authenticate this public stream. Fall
+        // through so a stale bearer token does not hide a valid session.
+      }
+    }
+
     const sessionId = this.readCookie(request, AUTH_SESSION_COOKIE_NAME);
 
     if (!sessionId) {
@@ -445,28 +566,18 @@ export class CurrentUserOnlineAttendanceRealtimeService implements OnModuleDestr
     return person?.id ?? null;
   }
 
-  private readCookie(request: Request, name: string): string | null {
-    const parsedCookie = (request as RequestWithCookies).cookies?.[name];
-
-    if (typeof parsedCookie === 'string') {
-      return parsedCookie;
-    }
-
-    const cookieHeader = request.headers.cookie;
-
-    if (!cookieHeader) {
+  private readBearerToken(request: Request): string | null {
+    const header = request.headers.authorization;
+    if (typeof header !== 'string') {
       return null;
     }
 
-    for (const cookie of cookieHeader.split(';')) {
-      const [cookieName, ...rest] = cookie.trim().split('=');
+    const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+    return match?.[1]?.trim() || null;
+  }
 
-      if (cookieName === name && rest.length > 0) {
-        return decodeURIComponent(rest.join('='));
-      }
-    }
-
-    return null;
+  private readCookie(request: Request, name: string): string | null {
+    return readAuthCookie(request, name);
   }
 }
 
@@ -854,8 +965,7 @@ export class CurrentUserRealtimeEventsController {
 
   private parseIds(value?: string | string[]): string[] {
     const values = Array.isArray(value) ? value : [value ?? ''];
-
-    return [
+    const ids = [
       ...new Set(
         values
           .flatMap((item) => item.split(','))
@@ -863,30 +973,19 @@ export class CurrentUserRealtimeEventsController {
           .filter(Boolean),
       ),
     ];
+    if (ids.length > MAX_REALTIME_IDS) {
+      throw new BadRequestException(`Informe no máximo ${MAX_REALTIME_IDS} identificadores por lista.`);
+    }
+    if (ids.some((id) => !/^[A-Za-z0-9_-]{1,128}$/.test(id))) {
+      throw new BadRequestException('Identificador SSE inválido.');
+    }
+    if (ids.join(',').length > MAX_REALTIME_QUERY_LENGTH) {
+      throw new BadRequestException('Filtros SSE muito longos.');
+    }
+    return ids;
   }
 
   private readCookie(request: Request, name: string): string | null {
-    const parsedCookie = (request as RequestWithCookies).cookies?.[name];
-    if (typeof parsedCookie === 'string') {
-      return parsedCookie;
-    }
-
-    const cookieHeader = request.headers.cookie;
-    if (!cookieHeader) {
-      return null;
-    }
-
-    for (const cookie of cookieHeader.split(';')) {
-      const [cookieName, ...rest] = cookie.trim().split('=');
-      if (cookieName === name && rest.length > 0) {
-        try {
-          return decodeURIComponent(rest.join('='));
-        } catch {
-          return null;
-        }
-      }
-    }
-
-    return null;
+    return readAuthCookie(request, name);
   }
 }

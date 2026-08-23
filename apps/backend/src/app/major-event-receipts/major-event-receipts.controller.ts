@@ -4,6 +4,7 @@ import {
   Get,
   Header,
   Headers,
+  Logger,
   MessageEvent,
   Param,
   Post,
@@ -33,7 +34,8 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { Observable, interval, map, startWith, switchMap } from 'rxjs';
+import { pipeline } from 'node:stream/promises';
+import { Observable, defer, exhaustMap, finalize, interval, map, shareReplay, startWith } from 'rxjs';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
@@ -475,6 +477,9 @@ class ReceiptValidationQueueMessageDto {
 @ApiBearerAuth()
 @Controller('major-event-receipts')
 export class MajorEventReceiptsController {
+  private readonly logger = new Logger(MajorEventReceiptsController.name);
+  private readonly sharedQueueSnapshots = new Map<string, Observable<MessageEvent>>();
+
   constructor(
     private readonly receipts: MajorEventReceiptsService,
     private readonly replay: SseReplayService,
@@ -571,19 +576,11 @@ export class MajorEventReceiptsController {
   ): Observable<MessageEvent> {
     const normalizedMajorEventId = majorEventId?.trim() || undefined;
 
-    const snapshots = interval(3_000).pipe(
-      startWith(0),
-      switchMap(() => this.receipts.listPendingValidationQueue(normalizedMajorEventId)),
-      map((queue) => ({
-        data: {
-          type: 'receipt-validation-queue',
-          queue,
-        },
-      })),
-    );
+    const scope = this.replay.scope('receipt-validation-queue', normalizedMajorEventId);
+    const snapshots = this.sharedQueueSnapshots.get(scope) ?? this.createSharedQueueSnapshot(scope, normalizedMajorEventId);
 
     return this.replay.replay(
-      this.replay.scope('receipt-validation-queue', normalizedMajorEventId),
+      scope,
       lastEventId,
       snapshots,
     );
@@ -647,7 +644,49 @@ export class MajorEventReceiptsController {
       response.setHeader('Content-Length', image.contentLength.toString());
     }
 
-    image.stream.pipe(response);
+    let disconnected = false;
+    const onClose = () => {
+      if (!response.writableEnded) {
+        disconnected = true;
+        image.stream.destroy(new Error('Receipt download client disconnected.'));
+      }
+    };
+    response.once('close', onClose);
+    try {
+      await pipeline(image.stream, response);
+    } catch (error: unknown) {
+      if (!disconnected) {
+        this.logger.warn(
+          `Receipt download failed after response start: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    } finally {
+      response.off('close', onClose);
+    }
+  }
+
+  private createSharedQueueSnapshot(scope: string, majorEventId: string | undefined): Observable<MessageEvent> {
+    const source = defer(() =>
+      interval(3_000).pipe(
+        startWith(0),
+        exhaustMap(() => this.receipts.listPendingValidationQueue(majorEventId)),
+        map((queue) => ({
+          data: {
+            type: 'receipt-validation-queue',
+            queue,
+          },
+        })),
+      ),
+    ).pipe(
+      finalize(() => {
+        if (this.sharedQueueSnapshots.get(scope) === snapshots) {
+          this.sharedQueueSnapshots.delete(scope);
+        }
+      }),
+    );
+    const snapshots = source.pipe(shareReplay({ bufferSize: 1, refCount: true }));
+    this.sharedQueueSnapshots.set(scope, snapshots);
+    return snapshots;
   }
 
   private requireAuthenticatedUser(request: RequestWithUser): AuthenticatedUser {

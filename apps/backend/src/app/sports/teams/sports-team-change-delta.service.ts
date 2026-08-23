@@ -241,9 +241,9 @@ export abstract class SportsTeamChangeDeltaService extends SportsTeamChangeSuppo
     sha256: string;
     mimeType: string;
     sizeBytes: number;
-  }): Promise<void> {
+  }): Promise<boolean> {
     if (await this.s3.fileExists(logo.objectKey)) {
-      return;
+      return false;
     }
     const object = await this.s3.downloadFile(logo.queuedObjectKey);
     const chunks: Buffer[] = [];
@@ -266,5 +266,6 @@ export abstract class SportsTeamChangeDeltaService extends SportsTeamChangeSuppo
       immutable: 'true',
       approved: 'true',
     });
+    return true;
   }
 }

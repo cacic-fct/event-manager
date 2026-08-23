@@ -2,6 +2,7 @@ import { Field, Float, InputType, Int, ObjectType } from '@nestjs/graphql';
 
 import {
   AttendanceCategory,
+  AttendanceCurrentAssessment,
   AttendanceCreationMethod,
   EventAttendanceStatus,
   AttendanceImportMatchType,
@@ -29,6 +30,9 @@ export class EventAttendance {
 
   @Field(() => AttendanceCategory)
   category!: AttendanceCategory;
+
+  @Field(() => AttendanceCurrentAssessment, { nullable: true })
+  currentAssessment?: AttendanceCurrentAssessment;
 
   @Field(() => EventAttendanceStatus)
   status!: EventAttendanceStatus;
@@ -214,6 +218,21 @@ export class OfflineEventAttendanceCommitResult {
   stagedSubmission?: OfflineEventAttendanceSubmission;
 }
 
+@ObjectType()
+export class OfflineEventAttendanceReviewResult {
+  @Field(() => String)
+  submissionId!: string;
+
+  @Field(() => Boolean)
+  success!: boolean;
+
+  @Field(() => String, { nullable: true })
+  error?: string;
+
+  @Field(() => OfflineEventAttendanceSubmission, { nullable: true })
+  submission?: OfflineEventAttendanceSubmission;
+}
+
 @InputType()
 export class AttendanceCollectionLocationInput {
   @Field(() => Float)
@@ -248,6 +267,9 @@ export class MajorEventEventAttendanceStatus {
 
   @Field(() => AttendanceCategory)
   category!: AttendanceCategory;
+
+  @Field(() => AttendanceCurrentAssessment, { nullable: true })
+  currentAssessment?: AttendanceCurrentAssessment;
 }
 
 @ObjectType()

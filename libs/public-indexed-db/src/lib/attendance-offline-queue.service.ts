@@ -20,10 +20,11 @@ export interface OfflineAttendanceCommitResultLike {
 export class AttendanceOfflineQueueService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
   private readonly startupSyncingResetByUserId = new Map<string, Promise<void>>();
+  private readonly startupUploadableResetByUserId = new Map<string, Promise<void>>();
 
   async replaceCollectionEvents(
     userId: string,
-    events: readonly { eventId: string; event: PublicEvent }[],
+    events: readonly { eventId: string; event: PublicEvent; offlineCollectorCredential?: string | null }[],
   ): Promise<void> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
@@ -45,13 +46,16 @@ export class AttendanceOfflineQueueService {
             eventId: item.eventId,
             cachedAt,
             event: item.event,
+            offlineCollectorCredential: item.offlineCollectorCredential,
           }),
         ),
       );
     });
   }
 
-  async getCollectionEvents(userId: string): Promise<Array<{ eventId: string; event: PublicEvent }>> {
+  async getCollectionEvents(
+    userId: string,
+  ): Promise<Array<{ eventId: string; event: PublicEvent; offlineCollectorCredential?: string | null }>> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return [];
@@ -60,11 +64,18 @@ export class AttendanceOfflineQueueService {
     const records = await database.attendanceCollectionEvents.where('userId').equals(userId).toArray();
 
     return records
-      .map((record) => ({ eventId: record.eventId, event: record.event }))
+      .map((record) => ({
+        eventId: record.eventId,
+        event: record.event,
+        offlineCollectorCredential: record.offlineCollectorCredential,
+      }))
       .sort((left, right) => compareIsoDateAsc(left.event.startDate, right.event.startDate));
   }
 
-  async getCollectionEvent(userId: string, eventId: string): Promise<{ eventId: string; event: PublicEvent } | null> {
+  async getCollectionEvent(
+    userId: string,
+    eventId: string,
+  ): Promise<{ eventId: string; event: PublicEvent; offlineCollectorCredential?: string | null } | null> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return null;
@@ -72,7 +83,13 @@ export class AttendanceOfflineQueueService {
 
     const record = await database.attendanceCollectionEvents.get(this.collectionEventKey(userId, eventId));
 
-    return record ? { eventId: record.eventId, event: record.event } : null;
+    return record
+      ? {
+          eventId: record.eventId,
+          event: record.event,
+          offlineCollectorCredential: record.offlineCollectorCredential,
+        }
+      : null;
   }
 
   async enqueue(item: OfflineAttendanceQueueItem): Promise<void> {
@@ -136,6 +153,23 @@ export class AttendanceOfflineQueueService {
     return this.sortOldestFirst(items).slice(0, limit);
   }
 
+  async listUploadable(uploaderUserId: string, limit = 80): Promise<OfflineAttendanceQueueItem[]> {
+    await this.ensureStartupUploadableReset(uploaderUserId);
+    const database = this.databaseProvider.getDatabase();
+    if (!database) {
+      return [];
+    }
+
+    const items = await database.attendanceQueue
+      .filter(
+        (item) =>
+          (item.status === 'PENDING' || item.status === 'FAILED') &&
+          this.isUploadableBy(item, uploaderUserId),
+      )
+      .toArray();
+    return this.sortOldestFirst(items).slice(0, limit);
+  }
+
   async countPending(userId: string): Promise<number> {
     await this.ensureStartupSyncingReset(userId);
     const database = this.databaseProvider.getDatabase();
@@ -147,6 +181,22 @@ export class AttendanceOfflineQueueService {
       .where('queuedByUserId')
       .equals(userId)
       .filter((item) => item.status === 'PENDING' || item.status === 'FAILED')
+      .count();
+  }
+
+  async countUploadable(uploaderUserId: string): Promise<number> {
+    await this.ensureStartupUploadableReset(uploaderUserId);
+    const database = this.databaseProvider.getDatabase();
+    if (!database) {
+      return 0;
+    }
+
+    return database.attendanceQueue
+      .filter(
+        (item) =>
+          (item.status === 'PENDING' || item.status === 'FAILED') &&
+          this.isUploadableBy(item, uploaderUserId),
+      )
       .count();
   }
 
@@ -339,6 +389,10 @@ export class AttendanceOfflineQueueService {
     return `${userId}:${eventId}`;
   }
 
+  private isUploadableBy(item: OfflineAttendanceQueueItem, uploaderUserId: string): boolean {
+    return item.queuedByUserId === uploaderUserId || Boolean(item.collectorCredential?.trim());
+  }
+
   private async ensureStartupSyncingReset(userId: string): Promise<void> {
     let reset = this.startupSyncingResetByUserId.get(userId);
     if (!reset) {
@@ -347,5 +401,37 @@ export class AttendanceOfflineQueueService {
     }
 
     await reset;
+  }
+
+  private async ensureStartupUploadableReset(uploaderUserId: string): Promise<void> {
+    let reset = this.startupUploadableResetByUserId.get(uploaderUserId);
+    if (!reset) {
+      reset = this.resetUploadableSyncing(uploaderUserId);
+      this.startupUploadableResetByUserId.set(uploaderUserId, reset);
+    }
+    await reset;
+  }
+
+  private async resetUploadableSyncing(uploaderUserId: string): Promise<void> {
+    const database = this.databaseProvider.getDatabase();
+    if (!database) {
+      return;
+    }
+
+    const syncing = await database.attendanceQueue
+      .filter((item) => item.status === 'SYNCING' && this.isUploadableBy(item, uploaderUserId))
+      .toArray();
+    const updatedAt = Date.now();
+    await database.transaction('rw', database.attendanceQueue, async () => {
+      await Promise.all(
+        syncing.map((item) =>
+          database.attendanceQueue.update(item.clientId, {
+            status: 'FAILED',
+            updatedAt,
+            lastError: 'Sincronização interrompida. Tente enviar novamente.',
+          }),
+        ),
+      );
+    });
   }
 }

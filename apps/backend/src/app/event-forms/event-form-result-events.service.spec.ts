@@ -54,4 +54,23 @@ describe('EventFormResultEventsService', () => {
     expect(events).toHaveLength(1);
     subscription.unsubscribe();
   });
+
+  it('evicts each form channel after its final subscriber disconnects', () => {
+    const replay = {
+      scope: jest.fn(),
+      record: jest.fn(),
+    };
+    const service = new EventFormResultEventsService(replay as never);
+    const first = service.watchResults('form-1').subscribe();
+    const second = service.watchResults('form-1').subscribe();
+    const other = service.watchResults('form-2').subscribe();
+
+    expect(service['resultSubjects'].size).toBe(2);
+    first.unsubscribe();
+    expect(service['resultSubjects'].size).toBe(2);
+    second.unsubscribe();
+    expect(service['resultSubjects'].has('form-1')).toBe(false);
+    other.unsubscribe();
+    expect(service['resultSubjects'].size).toBe(0);
+  });
 });
