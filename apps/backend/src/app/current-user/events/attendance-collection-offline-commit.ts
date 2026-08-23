@@ -1,6 +1,7 @@
 import { CommitOfflineEventAttendancesInput, OfflineEventAttendanceCommitResult } from '@cacic-fct/shared-data-types';
 import { BadRequestException, ForbiddenException, HttpException } from '@nestjs/common';
-import { AttendanceCreationMethod } from '@prisma/client';
+import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { createHash } from 'node:crypto';
 import { CurrentUserContextService } from '../context.service';
 import { GraphqlContext } from '../selects';
 import { AuditLogService } from '../../audit-log/audit-log.service';
@@ -22,9 +23,13 @@ import {
   normalizeOptionalString,
 } from './attendance-collection-context';
 import { createAttendance, toEventAttendance } from './attendance-collection-records';
-import { OfflineAttendanceSubmissions } from './attendance-collection-offline-submissions';
+import {
+  OfflineAttendanceSubmissions,
+  parseCommitReceiptMarker,
+} from './attendance-collection-offline-submissions';
 import { notifySportsMatchAttendanceMutation } from '../../sports/operations/sports-match-attendance';
 import { SportsMutationEventsService } from '../../sports/realtime/sports-mutation-events.service';
+import { verifyOfflineAttendanceCollectorCredential } from './offline-attendance-collector-credential';
 
 const MAX_OFFLINE_ATTENDANCE_COMMIT_BATCH_SIZE = 150;
 
@@ -40,6 +45,13 @@ type OfflineAttendanceCommitterDeps = {
   sportsMutationEvents?: SportsMutationEventsService;
 };
 type OfflineAttendanceItem = CommitOfflineEventAttendancesInput['attendances'][number];
+type ExistingCommitReceipt = NonNullable<Awaited<ReturnType<OfflineAttendanceSubmissions['findCommitReceipt']>>>;
+
+class ExistingOfflineCommitResult extends Error {
+  constructor(readonly result: OfflineEventAttendanceCommitResult) {
+    super('Offline attendance command was already processed.');
+  }
+}
 
 export class OfflineAttendanceCommitter {
   private readonly submissions: OfflineAttendanceSubmissions;
@@ -81,6 +93,33 @@ export class OfflineAttendanceCommitter {
     if (!submittedById) {
       throw new BadRequestException('Usuário autenticado sem identificador de conta.');
     }
+    const payloadHash = this.payloadHash(item);
+    const existingReceipt = await this.submissions.findCommitReceipt(item.clientId);
+    if (existingReceipt && existingReceipt.status !== 'PENDING') {
+      return this.resultForExistingReceipt(item, payloadHash, existingReceipt);
+    }
+    if (item.authorUserId !== submittedById) {
+      try {
+        const credential = item.collectorCredential
+          ? verifyOfflineAttendanceCollectorCredential(item.collectorCredential, item.collectedAt)
+          : null;
+        if (!credential || credential.eventId !== item.eventId || credential.collectorUserId !== item.authorUserId) {
+          return {
+            clientId: item.clientId,
+            eventId: item.eventId,
+            status: 'FORBIDDEN',
+            message: 'A credencial assinada do coletor off-line não corresponde a esta presença.',
+          };
+        }
+      } catch {
+        return {
+          clientId: item.clientId,
+          eventId: item.eventId,
+          status: 'FORBIDDEN',
+          message: 'A credencial assinada do coletor off-line é inválida ou expirou.',
+        };
+      }
+    }
     const createdById = item.authorUserId;
     const canCommitWithPermission = await this.canCommitWithPermission(item.eventId, context);
 
@@ -98,6 +137,23 @@ export class OfflineAttendanceCommitter {
       const attendance = await createAttendance({
         prisma: this.deps.prisma,
         attendanceCategories: this.deps.attendanceCategories,
+        idempotencyKey: item.clientId,
+        afterIdempotencyLock: async (tx) => {
+          const receipt = await tx.offlineEventAttendanceSubmission.findUnique({
+            where: { clientId: item.clientId },
+            include: { event: true, person: true },
+          });
+          if (receipt?.status === 'PENDING' && !this.submissions.matchesPendingReceipt(item, receipt)) {
+            throw new ExistingOfflineCommitResult(
+              await this.resultForExistingReceipt(item, payloadHash, receipt, tx),
+            );
+          }
+          if (receipt && receipt.status !== 'PENDING') {
+            throw new ExistingOfflineCommitResult(
+              await this.resultForExistingReceipt(item, payloadHash, receipt, tx),
+            );
+          }
+        },
         input: {
           eventId: item.eventId,
           personId: person.id,
@@ -107,8 +163,8 @@ export class OfflineAttendanceCommitter {
           attendedAt: item.collectedAt,
           location: item.location,
         },
-        afterCreate: (attendance, tx) =>
-          recordAttendanceCreate({
+        afterCreate: async (attendance, tx) => {
+          await recordAttendanceCreate({
             auditLog: this.deps.auditLog,
             currentUserContext: this.deps.currentUserContext,
             context,
@@ -125,11 +181,20 @@ export class OfflineAttendanceCommitter {
               submittedById,
               committedById: submittedById,
             },
-          }),
+          });
+          await this.submissions.recordCommitReceipt(
+            item,
+            submittedById,
+            submittedById,
+            person.id,
+            'CREATED',
+            payloadHash,
+            tx,
+          );
+        },
         afterCheckInStarted: (attendance) =>
           notifySportsMatchAttendanceMutation(this.deps.sportsMutationEvents, attendance),
       });
-
       return {
         clientId: item.clientId,
         eventId: item.eventId,
@@ -137,6 +202,9 @@ export class OfflineAttendanceCommitter {
         attendance: toEventAttendance(attendance),
       };
     } catch (error: unknown) {
+      if (error instanceof ExistingOfflineCommitResult) {
+        return error.result;
+      }
       if (await this.shouldStage(item.eventId, sender.id, error, context, canCommitWithPermission)) {
         try {
           const stagedSubmission = await this.submissions.stage(item, context, {
@@ -164,6 +232,33 @@ export class OfflineAttendanceCommitter {
 
           throw stageError;
         }
+      }
+
+      if (commitStatusForError(error) === 'DUPLICATE') {
+        const person = await this.submissions.resolvePerson(item);
+        try {
+          await this.submissions.recordCommitReceipt(
+            item,
+            submittedById,
+            submittedById,
+            person.id,
+            'DUPLICATE',
+            payloadHash,
+          );
+        } catch {
+          // The duplicate result is still authoritative even if the receipt
+          // repair itself is temporarily unavailable.
+        }
+        const attendance = await this.deps.prisma.eventAttendance.findUnique({
+          where: { personId_eventId: { personId: person.id, eventId: item.eventId } },
+        });
+        return {
+          clientId: item.clientId,
+          eventId: item.eventId,
+          status: 'DUPLICATE',
+          attendance: attendance ? toEventAttendance(attendance) : undefined,
+          message: errorMessage(error),
+        };
       }
 
       return {
@@ -202,6 +297,68 @@ export class OfflineAttendanceCommitter {
 
       throw error;
     }
+  }
+
+  private payloadHash(item: OfflineAttendanceItem): string {
+    return createHash('sha256')
+      .update(
+        JSON.stringify({
+          clientId: item.clientId,
+          eventId: item.eventId,
+          createdByMethod: item.createdByMethod,
+          code: item.code ?? null,
+          value: item.value ?? null,
+          location: item.location,
+          collectedAt: item.collectedAt.toISOString(),
+          authorUserId: item.authorUserId,
+          authorName: item.authorName ?? null,
+          authorEmail: item.authorEmail ?? null,
+        }),
+      )
+      .digest('hex');
+  }
+
+  private async resultForExistingReceipt(
+    item: OfflineAttendanceItem,
+    payloadHash: string,
+    receipt: ExistingCommitReceipt,
+    prisma: Prisma.TransactionClient | PrismaService = this.deps.prisma,
+  ): Promise<OfflineEventAttendanceCommitResult> {
+    const marker = parseCommitReceiptMarker(receipt.rejectionReason);
+    if (receipt.status === 'COMMITTED' && !marker) {
+      return {
+        clientId: item.clientId,
+        eventId: item.eventId,
+        status: 'STAGED',
+        message: 'Presença off-line enviada para revisão administrativa.',
+        stagedSubmission: this.submissions.toResponse(receipt),
+      };
+    }
+    if (receipt.status !== 'COMMITTED' || !marker || marker.payloadHash !== payloadHash) {
+      return {
+        clientId: item.clientId,
+        eventId: item.eventId,
+        status: 'CONFLICT',
+        message: 'O mesmo identificador off-line foi reutilizado para outra presença.',
+      };
+    }
+
+    const attendance = receipt.personId
+      ? await prisma.eventAttendance.findUnique({
+          where: {
+            personId_eventId: {
+              personId: receipt.personId,
+              eventId: receipt.eventId,
+            },
+          },
+        })
+      : null;
+    return {
+      clientId: item.clientId,
+      eventId: item.eventId,
+      status: marker.status,
+      attendance: attendance ? toEventAttendance(attendance) : undefined,
+    };
   }
 
   private async shouldStage(

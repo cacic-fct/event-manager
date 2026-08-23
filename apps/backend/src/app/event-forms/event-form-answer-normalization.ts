@@ -11,6 +11,13 @@ import {
   type FormSchedulingAnswer,
 } from '@cacic-fct/form-contracts';
 
+const MAX_FORM_ELEMENTS = 100;
+const MAX_FORM_OPTIONS_PER_ELEMENT = 100;
+const MAX_FORM_ID_LENGTH = 128;
+const MAX_FORM_TITLE_LENGTH = 500;
+const MAX_FORM_DESCRIPTION_LENGTH = 5_000;
+const MAX_FORM_OPTION_LABEL_LENGTH = 500;
+
 export function parseElementsJson(value: string): FormElement[] {
   let parsed: unknown;
   try {
@@ -22,8 +29,13 @@ export function parseElementsJson(value: string): FormElement[] {
   if (!Array.isArray(parsed)) {
     throw new BadRequestException('Itens do formulário devem ser uma lista.');
   }
+  if (parsed.length > MAX_FORM_ELEMENTS) {
+    throw new BadRequestException(`Um formulário pode ter no máximo ${MAX_FORM_ELEMENTS} itens.`);
+  }
 
-  return parsed.map((item, index) => normalizeElement(item, index));
+  const elements = parsed.map((item, index) => normalizeElement(item, index));
+  assertUniqueIds(elements.map((element) => element.id), 'itens');
+  return elements;
 }
 
 export function normalizeAnswers(
@@ -137,12 +149,29 @@ function normalizeElement(value: unknown, index: number): FormElement {
   const options = Array.isArray(value['options'])
     ? value['options'].map((option, optionIndex) => normalizeOption(option, optionIndex))
     : [];
+  if (options.length > MAX_FORM_OPTIONS_PER_ELEMENT) {
+    throw new BadRequestException(
+      `O item ${index + 1} pode ter no máximo ${MAX_FORM_OPTIONS_PER_ELEMENT} opções.`,
+    );
+  }
+  assertUniqueIds(options.map((option) => option.id), `opções do item ${index + 1}`);
+
+  if (id.length > MAX_FORM_ID_LENGTH) {
+    throw new BadRequestException(`O identificador do item ${index + 1} é muito longo.`);
+  }
+  if (title.length > MAX_FORM_TITLE_LENGTH) {
+    throw new BadRequestException(`O título do item ${index + 1} é muito longo.`);
+  }
+  const description = stringValue(value['description']);
+  if (description.length > MAX_FORM_DESCRIPTION_LENGTH) {
+    throw new BadRequestException(`A descrição do item ${index + 1} é muito longa.`);
+  }
 
   return {
     id,
     type,
     title,
-    description: stringValue(value['description']) || undefined,
+    description: description || undefined,
     descriptionImages: [],
     required: Boolean(value['required']),
     options,
@@ -157,11 +186,26 @@ function normalizeOption(value: unknown, index: number): FormChoiceOption {
       label: `Opção ${index + 1}`,
     };
   }
+  const id = stringValue(value['id']) || `option-${index + 1}`;
+  const label = stringValue(value['label']) || `Opção ${index + 1}`;
+  const description = stringValue(value['description']);
+  if (id.length > MAX_FORM_ID_LENGTH || label.length > MAX_FORM_OPTION_LABEL_LENGTH) {
+    throw new BadRequestException(`A opção ${index + 1} possui texto ou identificador muito longo.`);
+  }
+  if (description.length > MAX_FORM_DESCRIPTION_LENGTH) {
+    throw new BadRequestException(`A descrição da opção ${index + 1} é muito longa.`);
+  }
   return {
-    id: stringValue(value['id']) || `option-${index + 1}`,
-    label: stringValue(value['label']) || `Opção ${index + 1}`,
-    description: stringValue(value['description']) || undefined,
+    id,
+    label,
+    description: description || undefined,
   };
+}
+
+function assertUniqueIds(ids: readonly string[], label: string): void {
+  if (new Set(ids).size !== ids.length) {
+    throw new BadRequestException(`Os identificadores de ${label} devem ser únicos.`);
+  }
 }
 
 function normalizeAnswerValue(element: FormElement, value: FormAnswerValue): FormAnswerValue {

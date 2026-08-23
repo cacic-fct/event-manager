@@ -249,10 +249,13 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
       throw new BadRequestException('O usuário administrador não possui identificador.');
     }
     const queuedLogo = await this.readQueuedLogo(requestId);
+    let promotedLogo = false;
     if (decision === 'APPROVE' && queuedLogo) {
-      await this.promoteQueuedLogo(queuedLogo);
+      promotedLogo = await this.promoteQueuedLogo(queuedLogo);
     }
-    const outcome = await runSerializableSportsTransaction(this.prisma, async (tx) => {
+    let outcome;
+    try {
+      outcome = await runSerializableSportsTransaction(this.prisma, async (tx) => {
       const request = await tx.sportsTeamChangeRequest.findUnique({
         where: { id: requestId },
         include: {
@@ -393,7 +396,19 @@ export class SportsTeamChangeService extends SportsTeamChangeMemberService {
       });
       await this.recordReviewAudit(tx, request, actor, SportsTeamChangeRequestStatus.APPROVED);
       return { kind: 'SUCCESS' as const, value: approved };
-    });
+      });
+    } catch (error: unknown) {
+      if (promotedLogo && queuedLogo) {
+        await this.s3.deleteFile(queuedLogo.objectKey).catch((cleanupError: unknown) => {
+          this.logger.warn(
+            `Could not clean up uncommitted approved sports team logo ${queuedLogo.objectKey}: ${
+              cleanupError instanceof Error ? cleanupError.message : String(cleanupError)
+            }`,
+          );
+        });
+      }
+      throw error;
+    }
     if (outcome.kind === 'CONFLICT') {
       throw new ConflictException({
         message: 'A equipe mudou desde o envio da solicitação.',

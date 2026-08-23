@@ -1,7 +1,9 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { PLATFORM_ID } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   hasOfflineSportsAttendanceCollectorProof,
+  OFFLINE_SPORTS_PERMANENT_FAILURE_PREFIX,
   OfflineSportsCollectorCredential,
   OfflineSportsOperationQueueItem,
   SportsOperationOfflineQueueService,
@@ -15,6 +17,7 @@ import { SportsMatchAction, SportsTimerSnapshot } from './sports-operations.type
 
 describe('SportsOfflineQueueService', () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
     TestBed.resetTestingModule();
   });
@@ -46,6 +49,27 @@ describe('SportsOfflineQueueService', () => {
     );
     expect(queue.pending()).toEqual([]);
     expect(storage.get('official-1', 'offline-1')).toBeUndefined();
+  });
+
+  it('quarantines permanent validation failures instead of retrying them forever', async () => {
+    const storage = new InMemorySportsQueueStorage();
+    const checkIn = vi.fn(() => throwError(() => new HttpErrorResponse({ status: 400, error: 'invalid input' })));
+    const queue = createQueue(storage, { checkIn });
+    await queue.enqueueCheckIn({
+      clientId: 'permanent-1',
+      matchId: 'match-1',
+      rosterEntryId: 'roster-1',
+      checkedInAt: '2026-08-01T12:00:00.000Z',
+      offline: true,
+    });
+
+    await queue.sync();
+    await queue.sync();
+
+    expect(checkIn).toHaveBeenCalledTimes(1);
+    expect(storage.get('official-1', 'permanent-1')).toEqual(
+      expect.objectContaining({ lastError: expect.stringContaining('Falha permanente') }),
+    );
   });
 
   it('replays an offline check-in with the same idempotency key', async () => {
@@ -101,6 +125,8 @@ describe('SportsOfflineQueueService', () => {
   });
 
   it('hands a prior user scanner check-in to the current uploader without changing the raw payload', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-08-01T12:06:00.000Z'));
     const storage = new InMemorySportsQueueStorage();
     const online = { value: true };
     const checkInFromScanner = vi
@@ -137,6 +163,7 @@ describe('SportsOfflineQueueService', () => {
       }),
     );
 
+    vi.advanceTimersByTime(1_000);
     await queue.sync();
 
     expect(checkInFromScanner).toHaveBeenLastCalledWith(scannerCheckIn);
@@ -279,6 +306,7 @@ describe('SportsOfflineQueueService', () => {
       offline: true,
     });
     await queue.attachTimerSnapshot('timer-1', {
+      state: 'PAUSED',
       overall: { startedAtUnixMs: null, pausedAtUnixMs: 1_754_049_900_000, elapsedBeforePauseMs: 300_000 },
       periods: [],
       activePeriod: 1,
@@ -416,9 +444,11 @@ class InMemorySportsQueueStorage {
   }
 
   async listUploadable(userScope: string): Promise<OfflineSportsOperationQueueItem[]> {
-    return (await this.listAll()).filter((item) =>
-      item.kind === 'ACTION' ? item.userScope === userScope : hasOfflineSportsAttendanceCollectorProof(item),
-    );
+    return (await this.listAll()).filter((item) => {
+      if (item.lastError?.startsWith(OFFLINE_SPORTS_PERMANENT_FAILURE_PREFIX)) return false;
+      if (item.nextAttemptAt && item.nextAttemptAt > Date.now()) return false;
+      return item.kind === 'ACTION' ? item.userScope === userScope : hasOfflineSportsAttendanceCollectorProof(item);
+    });
   }
 
   async saveCollectorCredential(credential: OfflineSportsCollectorCredential): Promise<void> {
@@ -436,13 +466,14 @@ class InMemorySportsQueueStorage {
     }
   }
 
-  async recordFailure(userScope: string, clientId: string, message: string): Promise<void> {
+  async recordFailure(userScope: string, clientId: string, message: string, options: { permanent?: boolean } = {}): Promise<void> {
     const item = this.get(userScope, clientId);
     if (item) {
       this.records.set(this.key(userScope, clientId), {
         ...item,
         attempts: item.attempts + 1,
-        lastError: message,
+        lastError: options.permanent ? `Falha permanente: ${message}` : message,
+        nextAttemptAt: options.permanent ? undefined : Date.now() + 1_000,
       });
     }
   }

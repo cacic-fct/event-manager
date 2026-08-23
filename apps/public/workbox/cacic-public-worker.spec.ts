@@ -420,7 +420,7 @@ describe('cacic-public-worker', () => {
     });
   });
 
-  it('caches only viewed OpenStreetMap tiles with bounded background revalidation', () => {
+  it('caches only viewed OpenStreetMap tiles with bounded background revalidation', async () => {
     const harness = createWorkerHarness();
 
     const tileRoute = harness.routes.find((route) =>

@@ -47,6 +47,7 @@ describe('KeycloakM2mTokenService', () => {
         headers: {
           'content-type': 'application/x-www-form-urlencoded',
         },
+        timeout: 5_000,
       }),
     );
 
@@ -150,6 +151,24 @@ describe('KeycloakM2mTokenService', () => {
 
     await expect(service.getClientCredentialsToken({ scope: 'profile' })).resolves.toBe('refreshed-token');
     expect(mockedAxios.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('coalesces concurrent token refreshes for the same client, audience, and scope', async () => {
+    let resolveRequest!: (value: { data: { access_token: string; expires_in: number } }) => void;
+    mockedAxios.post.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      }),
+    );
+    const service = new KeycloakM2mTokenService(createConfigService({}));
+
+    const requests = Array.from({ length: 50 }, () =>
+      service.getClientCredentialsToken({ audience: 'accounts', scope: 'privacy:write' }),
+    );
+    expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+    resolveRequest({ data: { access_token: 'shared-token', expires_in: 120 } });
+
+    await expect(Promise.all(requests)).resolves.toEqual(Array.from({ length: 50 }, () => 'shared-token'));
   });
 
   it('rejects token responses without a usable access token', async () => {

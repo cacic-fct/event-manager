@@ -32,6 +32,18 @@ export function unionPermissionRelationValidity(
   };
 }
 
+export function permissionRelationValiditiesOverlapOrTouch(
+  left: PermissionRelationValidity,
+  right: PermissionRelationValidity,
+): boolean {
+  const leftStartsBeforeRightEnds =
+    left.validFrom === null || right.validUntil === null || left.validFrom <= right.validUntil;
+  const rightStartsBeforeLeftEnds =
+    right.validFrom === null || left.validUntil === null || right.validFrom <= left.validUntil;
+
+  return leftStartsBeforeRightEnds && rightStartsBeforeLeftEnds;
+}
+
 export function intersectPermissionRelationValidity(
   value: PermissionRelationValidity,
   container: PermissionRelationValidity,

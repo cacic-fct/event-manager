@@ -211,6 +211,13 @@ h2 {
   font: var(--mat-sys-label-large);
 }
 
+.warning-messages {
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-small);
+  margin-block-start: 0.25rem;
+  overflow-wrap: anywhere;
+}
+
 .emoji-frame {
   align-items: center;
   display: inline-flex;
@@ -245,7 +252,17 @@ h2 {
   padding: 0.125rem;
 }
 
-.status-icon mat-icon {
+.warning-icon {
+  align-items: center;
+  color: var(--mat-sys-error);
+  cursor: help;
+  display: inline-flex;
+  justify-content: center;
+  padding: 0.125rem;
+}
+
+.status-icon mat-icon,
+.warning-icon mat-icon {
   font-size: 1.25rem;
   height: 1.25rem;
   width: 1.25rem;

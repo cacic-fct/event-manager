@@ -1,4 +1,13 @@
-import { BadRequestException, Controller, HttpCode, Param, Post, RawBodyRequest, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  HttpCode,
+  Param,
+  Post,
+  RawBodyRequest,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -13,6 +22,9 @@ import type { Request } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { SENTRY_TUNNEL_TARGETS } from './analytics.config';
 import { Public } from '../auth/decorators/public.decorator';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 
 @ApiTags('Analytics')
 @Controller('a')
@@ -21,6 +33,8 @@ export class AnalyticsController {
 
   @Post('glitchtip/:project')
   @Public()
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.publicAnalytics, [{ source: 'params', path: 'project' }])
   @HttpCode(200)
   @ApiOperation({
     summary: 'Forward Sentry envelope events',

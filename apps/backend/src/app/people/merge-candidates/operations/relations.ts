@@ -2,6 +2,7 @@ import { EventManagerPermissionArchiveReason, Prisma } from '@prisma/client';
 import {
   intersectPermissionRelationValidity,
   normalizePermissionRelationValidity,
+  permissionRelationValiditiesOverlapOrTouch,
   permissionRelationScopeKey,
   unionPermissionRelationValidity,
 } from '../../permission-relation-validity';
@@ -270,8 +271,14 @@ export async function moveRelations(
     for (const scope of assignment.scopes ?? []) {
       roleAssignmentScopeSnapshots.push(toRoleAssignmentScopeSnapshot(scope, assignment.id));
     }
+    const sourceValidity = normalizePermissionRelationValidity(assignment);
     const conflict = await tx.eventManagerRoleAssignment.findFirst({
-      where: { roleId: assignment.roleId, personId: targetPersonId, archivedAt: null },
+      where: {
+        roleId: assignment.roleId,
+        personId: targetPersonId,
+        archivedAt: null,
+        ...overlappingValidityWhere(sourceValidity),
+      },
       select: {
         id: true,
         validFrom: true,
@@ -297,12 +304,11 @@ export async function moveRelations(
       for (const scope of conflict.scopes ?? []) {
         roleAssignmentScopeSnapshots.push(toRoleAssignmentScopeSnapshot(scope, conflict.id));
       }
-      const sourceValidity = normalizePermissionRelationValidity(assignment);
       const targetValidity = normalizePermissionRelationValidity(conflict);
       const archivedAt = new Date();
       const targetScopes = new Map<
         string,
-        { id: string; validity: ReturnType<typeof normalizePermissionRelationValidity> }
+        Array<{ id: string; validity: ReturnType<typeof normalizePermissionRelationValidity> }>
       >();
 
       for (const scope of conflict.scopes ?? []) {
@@ -318,7 +324,8 @@ export async function moveRelations(
           continue;
         }
         await tx.eventManagerRoleAssignmentScope.update({ where: { id: scope.id }, data: effectiveValidity });
-        targetScopes.set(permissionRelationScopeKey(scope), { id: scope.id, validity: effectiveValidity });
+        const scopeKey = permissionRelationScopeKey(scope);
+        targetScopes.set(scopeKey, [...(targetScopes.get(scopeKey) ?? []), { id: scope.id, validity: effectiveValidity }]);
       }
 
       for (const scope of assignment.scopes ?? []) {
@@ -335,7 +342,9 @@ export async function moveRelations(
         }
 
         const scopeKey = permissionRelationScopeKey(scope);
-        const existingScope = targetScopes.get(scopeKey);
+        const existingScope = targetScopes
+          .get(scopeKey)
+          ?.find((candidate) => permissionRelationValiditiesOverlapOrTouch(candidate.validity, effectiveValidity));
         if (existingScope) {
           await tx.eventManagerRoleAssignmentScope.update({
             where: { id: existingScope.id },
@@ -352,7 +361,7 @@ export async function moveRelations(
           where: { id: scope.id },
           data: { assignmentId: conflict.id, ...effectiveValidity },
         });
-        targetScopes.set(scopeKey, { id: scope.id, validity: effectiveValidity });
+        targetScopes.set(scopeKey, [...(targetScopes.get(scopeKey) ?? []), { id: scope.id, validity: effectiveValidity }]);
       }
 
       await tx.eventManagerRoleAssignment.update({
@@ -379,8 +388,14 @@ export async function moveRelations(
   });
   for (const membership of sourceMemberships) {
     permissionGroupMembershipSnapshots.push(toPermissionGroupMembershipSnapshot(membership, sourcePersonId));
+    const membershipValidity = normalizePermissionRelationValidity(membership);
     const conflict = await tx.eventManagerPermissionGroupMember.findFirst({
-      where: { groupId: membership.groupId, personId: targetPersonId, archivedAt: null },
+      where: {
+        groupId: membership.groupId,
+        personId: targetPersonId,
+        archivedAt: null,
+        ...overlappingValidityWhere(membershipValidity),
+      },
       select: { id: true, validFrom: true, validUntil: true, unlimited: true },
     });
     if (conflict) {
@@ -389,7 +404,7 @@ export async function moveRelations(
       await tx.eventManagerPermissionGroupMember.update({
         where: { id: conflict.id },
         data: unionPermissionRelationValidity(
-          normalizePermissionRelationValidity(membership),
+          membershipValidity,
           normalizePermissionRelationValidity(conflict),
         ),
       });
@@ -429,6 +444,19 @@ export async function moveRelations(
     roleAssignmentSnapshots,
     roleAssignmentScopeSnapshots,
     permissionGroupMembershipSnapshots,
+  };
+}
+
+function overlappingValidityWhere(validity: ReturnType<typeof normalizePermissionRelationValidity>) {
+  return {
+    AND: [
+      ...(validity.validUntil
+        ? [{ OR: [{ validFrom: null }, { validFrom: { lte: validity.validUntil } }] }]
+        : []),
+      ...(validity.validFrom
+        ? [{ OR: [{ validUntil: null }, { validUntil: { gte: validity.validFrom } }] }]
+        : []),
+    ],
   };
 }
 

@@ -11,6 +11,7 @@ describe('validateBackendEnvironment', () => {
         'DATABASE_URL is required.',
         'PUBLIC_APP_ORIGIN is required.',
         'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required.',
+        'OFFLINE_ATTENDANCE_COLLECTOR_SECRET is required.',
         'KEYCLOAK_REALM_URL is required.',
         'KEYCLOAK_CLIENT_ID is required.',
         'KEYCLOAK_CLIENT_SECRET is required.',
@@ -37,12 +38,15 @@ describe('validateBackendEnvironment', () => {
         NODE_ENV: 'staging',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
       }),
-    ).toThrow(['PUBLIC_APP_ORIGIN is required.', 'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required.'].join('\n- '));
+    ).toThrow(
+      ['PUBLIC_APP_ORIGIN is required.', 'PUBLIC_CONTENT_PREVIEW_TOKEN_SECRET is required.', 'OFFLINE_ATTENDANCE_COLLECTOR_SECRET is required.'].join('\n- '),
+    );
   });
 
   it('requires feature-specific settings only when the feature is enabled', () => {
     expect(() =>
       validateBackendEnvironment({
+        NODE_ENV: 'test',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         TYPESENSE_ENABLED: 'true',
         TYPESENSE_URL: 'postgresql://typesense.example.com',
@@ -63,6 +67,7 @@ describe('validateBackendEnvironment', () => {
   it('rejects partial Novu configuration when secure mode is not enabled', () => {
     expect(() =>
       validateBackendEnvironment({
+        NODE_ENV: 'test',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         NOVU_SECRET_KEY: 'secret',
       }),
@@ -70,6 +75,7 @@ describe('validateBackendEnvironment', () => {
 
     expect(() =>
       validateBackendEnvironment({
+        NODE_ENV: 'test',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         NOVU_APPLICATION_IDENTIFIER: 'app-1',
       }),
@@ -79,6 +85,7 @@ describe('validateBackendEnvironment', () => {
   it('requires all S3 storage values when any S3 storage value is set', () => {
     expect(() =>
       validateBackendEnvironment({
+        NODE_ENV: 'test',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         S3_ENDPOINT: 'http://localhost:8333',
       }),
@@ -88,6 +95,7 @@ describe('validateBackendEnvironment', () => {
   it('requires the Keycloak callback URI to match the backend callback route', () => {
     expect(() =>
       validateBackendEnvironment({
+        NODE_ENV: 'test',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.com.br/api/auth/callback?extra=1',
       }),
@@ -95,6 +103,7 @@ describe('validateBackendEnvironment', () => {
 
     expect(() =>
       validateBackendEnvironment({
+        NODE_ENV: 'test',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.com.br/api/auth/other',
       }),
@@ -102,6 +111,7 @@ describe('validateBackendEnvironment', () => {
 
     expect(() =>
       validateBackendEnvironment({
+        NODE_ENV: 'test',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.com.br/api/auth/callback#fragment',
       }),
@@ -109,12 +119,14 @@ describe('validateBackendEnvironment', () => {
 
     expect(() =>
       validateBackendEnvironment({
+        NODE_ENV: 'test',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         KEYCLOAK_REDIRECT_URI: 'not a url',
       }),
     ).toThrow('KEYCLOAK_REDIRECT_URI must be a valid URL.');
 
     const config = {
+      NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
       KEYCLOAK_REDIRECT_URI: 'https://eventos.cacic.com.br/api/auth/callback',
     };
@@ -125,12 +137,14 @@ describe('validateBackendEnvironment', () => {
   it('requires the Keycloak token endpoint auth method to be supported when set', () => {
     expect(() =>
       validateBackendEnvironment({
+        NODE_ENV: 'test',
         DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
         KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD: 'client_secret_jwt',
       }),
     ).toThrow('KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD must be one of: client_secret_basic, client_secret_post.');
 
     const config = {
+      NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
       KEYCLOAK_TOKEN_ENDPOINT_AUTH_METHOD: 'client_secret_post',
     };
@@ -140,12 +154,23 @@ describe('validateBackendEnvironment', () => {
 
   it('validates gRPC targets as host:port values with valid ports', () => {
     const config = {
+      NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
       ACCOUNT_MANAGER_GRPC_URL: 'account-manager:50051',
       EVENT_MANAGER_GRPC_BIND_URL: '0.0.0.0:65535',
     };
 
     expect(validateBackendEnvironment(config)).toBe(config);
+
+    expect(
+      validateBackendEnvironment({
+        NODE_ENV: 'test',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+        ACCOUNT_MANAGER_GRPC_URL: '[::1]:50051',
+      }),
+    ).toEqual(
+      expect.objectContaining({ ACCOUNT_MANAGER_GRPC_URL: '[::1]:50051' }),
+    );
 
     expect(() =>
       validateBackendEnvironment({
@@ -162,8 +187,21 @@ describe('validateBackendEnvironment', () => {
     ).toThrow('EVENT_MANAGER_GRPC_BIND_URL must use the host:port format without a URL scheme or path.');
   });
 
+  it('fails closed for missing and unknown runtime modes', () => {
+    expect(() =>
+      validateBackendEnvironment({ DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres' }),
+    ).toThrow('NODE_ENV is required');
+    expect(() =>
+      validateBackendEnvironment({
+        NODE_ENV: 'prod',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
+      }),
+    ).toThrow('NODE_ENV must be one of');
+  });
+
   it('accepts the minimal development configuration', () => {
     const config = {
+      NODE_ENV: 'test',
       DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/postgres',
     };
 

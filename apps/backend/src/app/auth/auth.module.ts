@@ -8,6 +8,8 @@ import { KeycloakM2mTokenService } from './keycloak-m2m-token.service';
 import { AuthenticatedUserSyncService } from './authenticated-user-sync.service';
 import { AuthorizationPolicyService } from '../authorization/authorization-policy.service';
 import { redisProvider } from '../redis/redis.provider';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RateLimitService } from '../rate-limit/rate-limit.service';
 
 @Module({
   controllers: [AuthController],
@@ -20,6 +22,8 @@ import { redisProvider } from '../redis/redis.provider';
     AuthorizationStateService,
     AuthResolver,
     redisProvider,
+    RateLimitGuard,
+    RateLimitService,
   ],
   exports: [KeycloakAuthService, KeycloakM2mTokenService, AuthenticatedUserSyncService, AuthorizationPolicyService],
 })

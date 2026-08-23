@@ -18,6 +18,7 @@ export type EventAttendanceStatus = 'PRESENT' | 'ABSENT';
 export interface AttendanceCollectionEvent {
   eventId: string;
   event: PublicEvent;
+  offlineCollectorCredential?: string | null;
 }
 
 export interface AttendanceCollectionLocation {
@@ -60,6 +61,7 @@ export interface OfflineAttendanceCommitPayload {
   authorUserId: string;
   authorName?: string | null;
   authorEmail?: string | null;
+  collectorCredential?: string | null;
 }
 
 export interface OfflineAttendanceCommitResult {
@@ -115,6 +117,7 @@ export class AttendanceCollectionApiService {
         query CurrentUserAttendanceCollectionEvents {
           currentUserAttendanceCollectionEvents {
             eventId
+            offlineCollectorCredential
             event {
               ${PUBLIC_EVENT_FIELDS}
             }
@@ -224,12 +227,14 @@ export class AttendanceCollectionApiService {
 
   registerOralBatch(
     inputs: readonly {
+      clientId?: string;
       eventId: string;
       personId: string;
       status: EventAttendanceStatus;
       collectedAt: string;
       collectedByUserId: string;
       location: AttendanceCollectionLocation;
+      collectorCredential?: string | null;
     }[],
   ): Observable<AttendanceRegistrationResult[]> {
     return this.query<{ collectCurrentUserOralAttendances: AttendanceRegistrationResult[] }>(

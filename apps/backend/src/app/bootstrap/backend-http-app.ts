@@ -2,10 +2,12 @@ import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import express from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from '../auth/auth.constants';
 import { createDocsAuthGate } from '../auth/docs-auth.middleware';
 import { KeycloakAuthService } from '../auth/keycloak-auth.service';
 import { AppModule } from '../app.module';
+import { requestContextMiddleware } from './request-context';
 
 const globalPrefix = 'api';
 
@@ -20,8 +22,34 @@ export async function createBackendHttpApp(): Promise<INestApplication> {
 export function configureBackendHttpApp(app: INestApplication): void {
   const production = process.env.NODE_ENV === 'production';
 
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  const trustedProxyIps = (process.env.TRUSTED_PROXY_IPS ?? 'loopback,linklocal,uniquelocal')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  app.getHttpAdapter().getInstance().set('trust proxy', trustedProxyIps);
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
   app.use(cookieParser());
+  app.use(requestContextMiddleware);
+  app.use(
+    '/api/a/glitchtip',
+    express.raw({
+      type: ['application/x-sentry-envelope', 'text/plain'],
+      limit: '1mb',
+      verify: (request, _response, buffer) => {
+        (request as typeof request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+      },
+    }),
+  );
+  app.use((_request: unknown, response: { setHeader: (name: string, value: string) => void }, next: () => void) => {
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    response.setHeader('X-Frame-Options', 'DENY');
+    response.setHeader('Referrer-Policy', 'no-referrer');
+    response.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=()');
+    if (production) {
+      response.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
+    next();
+  });
   app.setGlobalPrefix(globalPrefix);
   app.use(
     createDocsAuthGate({

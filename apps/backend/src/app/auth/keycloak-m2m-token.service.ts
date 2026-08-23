@@ -21,8 +21,10 @@ export class KeycloakM2mTokenService {
   private readonly logger = new Logger(KeycloakM2mTokenService.name);
   private readonly tokenRefreshSkewMs = 30_000;
   private readonly keycloakFailureLogSuppressionMs = 60_000;
+  private readonly requestTimeoutMs = 5_000;
   private readonly keycloakFailureLogs = new Map<string, { loggedAt: number; suppressed: number }>();
   private readonly cachedTokens = new Map<string, { token: string; expiresAt: number }>();
+  private readonly inFlightTokens = new Map<string, Promise<string>>();
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -48,6 +50,28 @@ export class KeycloakM2mTokenService {
       return cached.token;
     }
 
+    const inFlight = this.inFlightTokens.get(cacheKey);
+    if (inFlight) {
+      return await inFlight;
+    }
+
+    const request = this.requestClientCredentialsToken(cacheKey, clientId, clientSecret, options);
+    this.inFlightTokens.set(cacheKey, request);
+    try {
+      return await request;
+    } finally {
+      if (this.inFlightTokens.get(cacheKey) === request) {
+        this.inFlightTokens.delete(cacheKey);
+      }
+    }
+  }
+
+  private async requestClientCredentialsToken(
+    cacheKey: string,
+    clientId: string,
+    clientSecret: string,
+    options: ClientCredentialsTokenOptions,
+  ): Promise<string> {
     const payload = new URLSearchParams();
     payload.set('grant_type', 'client_credentials');
     payload.set('client_id', clientId);
@@ -69,6 +93,7 @@ export class KeycloakM2mTokenService {
           headers: {
             'content-type': 'application/x-www-form-urlencoded',
           },
+          timeout: this.requestTimeoutMs,
         },
       );
 
@@ -79,7 +104,7 @@ export class KeycloakM2mTokenService {
       const expiresInSeconds = typeof data.expires_in === 'number' && data.expires_in > 0 ? data.expires_in : 300;
       this.cachedTokens.set(cacheKey, {
         token: data.access_token,
-        expiresAt: now + expiresInSeconds * 1000,
+        expiresAt: Date.now() + expiresInSeconds * 1000,
       });
 
       return data.access_token;

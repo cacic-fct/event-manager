@@ -18,6 +18,7 @@ describe('WeatherService', () => {
   };
   let queue: {
     add: jest.Mock;
+    upsertJobScheduler: jest.Mock;
   };
   let service: WeatherService;
 
@@ -46,6 +47,7 @@ describe('WeatherService', () => {
     };
     queue = {
       add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+      upsertJobScheduler: jest.fn().mockResolvedValue({ id: 'scheduler-1' }),
     };
     service = new WeatherService(prisma as never, redis as never, queue as never);
   });
@@ -111,12 +113,12 @@ describe('WeatherService', () => {
       }),
     );
 
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.objectContaining({
-        href: expect.stringContaining('https://api.open-meteo.com/v1/forecast'),
-      }),
-    );
-    expect((global.fetch as jest.Mock).mock.calls[0][0].searchParams.get('hourly')).toBe(
+    const forecastRequest = (global.fetch as jest.Mock).mock.calls[0] as [unknown, RequestInit];
+    const forecastUrl = String(forecastRequest[0]);
+    const forecastOptions = forecastRequest[1];
+    expect(forecastUrl).toContain('https://api.open-meteo.com/v1/forecast');
+    expect(forecastOptions.signal).toBeDefined();
+    expect(new URL(forecastUrl).searchParams.get('hourly')).toBe(
       'temperature_2m,weather_code,uv_index',
     );
     expect(redis.set).toHaveBeenCalledWith(
@@ -125,14 +127,55 @@ describe('WeatherService', () => {
       'EX',
       43_200,
     );
-    expect(queue.add).toHaveBeenCalledWith(
-      'refresh-event-weather',
-      { eventId: 'event-1' },
-      expect.objectContaining({
-        jobId: 'weather-event-1-tomorrow',
-        repeat: expect.objectContaining({ pattern: '0 6,18 * * *' }),
-      }),
+    expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
+      'weather-event-1-refresh',
+      expect.objectContaining({ pattern: '0 6,18 * * *' }),
+      expect.objectContaining({ name: 'refresh-event-weather', data: { eventId: 'event-1' } }),
     );
+  });
+
+  it('coalesces concurrent cold-cache requests for one event', async () => {
+    prisma.event.findFirst.mockResolvedValue(weatherEventFixture());
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        hourly: {
+          time: ['2026-05-22T09:00'],
+          temperature_2m: [21.6],
+          weather_code: [61],
+          uv_index: [4.26],
+        },
+      }),
+    } as unknown as Response);
+
+    const requests = Promise.all(
+      Array.from({ length: 100 }, () => service.getPublicEventWeather('event-1')),
+    );
+    await requests;
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(queue.upsertJobScheduler).toHaveBeenCalledTimes(1);
+  });
+
+  it('updates one stable event scheduler as the forecast refresh cadence changes', async () => {
+    const event = weatherEventFixture({ startDate: new Date('2026-05-22T12:00:00.000Z') });
+
+    await service.scheduleRefreshForEvent(event);
+    jest.setSystemTime(new Date('2026-05-22T03:00:00.000Z'));
+    await service.scheduleRefreshForEvent(event);
+
+    expect(queue.upsertJobScheduler).toHaveBeenNthCalledWith(
+      1,
+      'weather-event-1-refresh',
+      expect.objectContaining({ pattern: '0 6,18 * * *' }),
+      expect.any(Object),
+    );
+    expect(queue.upsertJobScheduler).toHaveBeenNthCalledWith(
+      2,
+      'weather-event-1-refresh',
+      expect.objectContaining({ pattern: '0 */2 * * *' }),
+      expect.any(Object),
+    );
+    expect(queue.add).not.toHaveBeenCalled();
   });
 
   it('returns null and does not fetch weather for past or locationless events', async () => {
@@ -167,18 +210,15 @@ describe('WeatherService', () => {
         orderBy: { startDate: 'asc' },
       }),
     );
-    expect(queue.add).toHaveBeenCalledWith(
-      'refresh-event-weather',
-      { eventId: 'event-1' },
-      expect.objectContaining({ jobId: 'weather-event-1-upcoming' }),
+    expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
+      'weather-event-1-refresh',
+      expect.objectContaining({ pattern: '0 7 * * *' }),
+      expect.objectContaining({ name: 'refresh-event-weather', data: { eventId: 'event-1' } }),
     );
-    expect(queue.add).toHaveBeenCalledWith(
-      'schedule-upcoming-event-weather',
-      {},
-      expect.objectContaining({
-        jobId: 'weather-schedule-upcoming-events',
-        repeat: { pattern: '5 0 * * *', tz: 'America/Sao_Paulo' },
-      }),
+    expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
+      'weather-schedule-upcoming-events',
+      { pattern: '5 0 * * *', tz: 'America/Sao_Paulo' },
+      expect.objectContaining({ name: 'schedule-upcoming-event-weather', data: {} }),
     );
   });
 });

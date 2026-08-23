@@ -344,6 +344,27 @@ describe('AttendancesService', () => {
     await service.refreshMajorEventUserAttendancesFor('other-major');
     expect(api.listMajorEventUserAttendances).toHaveBeenCalledTimes(calls);
     expect(service.getAttendanceCategoryLabel('NON_PAYING')).toBe('Sem pagamento');
+    expect(service.getAttendanceCategoryHistoricalExplanation('UNKNOWN')).toBe(
+      'Registro anterior à classificação automática.',
+    );
+    expect(service.getAttendanceCategoryHistoricalExplanation('REGULAR')).toBeNull();
+    expect(service.getAttendanceCurrentAssessmentLabel('ACTIVITY_SUBSCRIPTION_MISSING')).toBe(
+      'Sem inscrição ativa na atividade.',
+    );
+    expect(
+      service.getMajorEventCurrentAssessmentLabel({
+        ...createAdminMajorEventUserAttendance({ majorEventId: majorEvent.id }, person, majorEvent),
+        attendances: [
+          {
+            eventId: 'event-1',
+            eventName: 'Evento 1',
+            attended: true,
+            category: 'UNKNOWN',
+            currentAssessment: 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT',
+          },
+        ],
+      }),
+    ).toBe('Pagamento do grande evento aguardando comprovante.');
   });
 
   it('validates event CSV exports before opening download flows and maps export dialog cancellation', async () => {

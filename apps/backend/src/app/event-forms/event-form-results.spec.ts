@@ -1,5 +1,5 @@
 import { type FormElement } from '@cacic-fct/form-contracts';
-import { buildFormResultSummary, eventFormResultsToCsv } from './event-form-results';
+import { buildFormResultSummary, eventFormResultsToCsv, FormResultSummaryAccumulator } from './event-form-results';
 import { eventFormModel, responseRecord } from './event-form.spec-support';
 
 describe('event form results helpers', () => {
@@ -85,5 +85,23 @@ describe('event form results helpers', () => {
     expect(csv).toContain('"Angular"');
     expect(csv).toContain('"NestJS"');
     expect(csv).toContain('"\'=IMPORTXML(""https://example.com"")"');
+  });
+
+  it('does not create chart buckets for incremental date, time, or scheduling answers', () => {
+    const elements = ['date', 'time', 'scheduling'].map(
+      (type, index) =>
+        ({ id: `element-${index}`, type, title: type, required: false, options: [] }) as FormElement,
+    );
+    const accumulator = new FormResultSummaryAccumulator(elements);
+
+    accumulator.add({
+      answers: elements.map((element, index) => ({ elementId: element.id, value: `value-${index}` })),
+    } as never);
+
+    expect(accumulator.toSummary(false).questions).toEqual(
+      elements.map((element) =>
+        expect.objectContaining({ elementId: element.id, answeredCount: 1, buckets: [] }),
+      ),
+    );
   });
 });

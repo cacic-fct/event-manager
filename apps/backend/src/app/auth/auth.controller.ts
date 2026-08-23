@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   ForbiddenException,
   Get,
@@ -9,6 +10,7 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
   UsePipes,
 } from '@nestjs/common';
 import {
@@ -25,6 +27,9 @@ import {
 import { Request, Response } from 'express';
 import { AUTH_SESSION_COOKIE_NAME } from './auth.constants';
 import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { RATE_LIMIT_POLICIES } from '../rate-limit/rate-limit.policies';
 import { AllowNonOnboarded } from './decorators/allow-non-onboarded.decorator';
 import { Public } from './decorators/public.decorator';
 import { LogoutDto } from './dto/logout.dto';
@@ -60,6 +65,15 @@ import {
 import { AuthenticatedRequest, PermissionEvaluationBody } from './auth-controller.types';
 
 const INVALID_AUTHORIZATION_STATE_MESSAGE = 'Invalid authorization state.';
+const AUTH_QUERY_LIMITS = {
+  redirectUri: 2_048,
+  returnTo: 2_048,
+  state: 512,
+  scope: 512,
+  prompt: 64,
+  code: 4_096,
+  error: 256,
+} as const;
 
 @ApiTags('Authentication')
 @UsePipes(REST_VALIDATION_PIPE)
@@ -76,6 +90,8 @@ export class AuthController {
 
   @Get('login')
   @Public()
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.authCallback)
   @ApiOperation({
     summary: 'Create a Keycloak authorization URL',
     description:
@@ -125,6 +141,7 @@ export class AuthController {
     @Query('scope') scope?: string,
     @Query('prompt') prompt?: string,
   ): Promise<{ authorizationUrl: string }> {
+    assertAuthQueryBounds({ redirectUri, returnTo, state, scope, prompt });
     const callbackRedirectUri = resolveCallbackRedirectUri(request, redirectUri, this.allowedCallbackRedirectOrigins);
     const authorization = await this.keycloakAuthService.buildAuthorizationUrl({
       redirectUri: callbackRedirectUri,
@@ -142,6 +159,8 @@ export class AuthController {
 
   @Get('login/redirect')
   @Public()
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.authCallback)
   @ApiOperation({
     summary: 'Redirect the browser to Keycloak',
     description:
@@ -191,6 +210,7 @@ export class AuthController {
     @Query('scope') scope?: string,
     @Query('prompt') prompt?: string,
   ): Promise<void> {
+    assertAuthQueryBounds({ redirectUri, returnTo, state, scope, prompt });
     const callbackRedirectUri = resolveCallbackRedirectUri(request, redirectUri, this.allowedCallbackRedirectOrigins);
     const authorization = await this.keycloakAuthService.buildAuthorizationUrl({
       redirectUri: callbackRedirectUri,
@@ -206,6 +226,8 @@ export class AuthController {
 
   @Get('callback')
   @Public()
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.authCallback)
   @ApiOperation({
     summary: 'Complete the authorization-code callback',
     description:
@@ -251,6 +273,7 @@ export class AuthController {
     @Query('redirectUri') redirectUri?: string,
     @Query('state') state?: string,
   ): Promise<void> {
+    assertAuthQueryBounds({ code, error, redirectUri, state });
     const authorizationState = await consumeAuthorizationState(this.keycloakAuthService, request, response, state);
     if (!authorizationState) {
       response.redirect(
@@ -306,6 +329,8 @@ export class AuthController {
 
   @Post('password-login')
   @Public()
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.authPasswordLogin, [{ source: 'body', path: 'email' }])
   @ApiOperation({
     summary: 'Development password login',
     description:
@@ -361,6 +386,8 @@ export class AuthController {
 
   @Post('logout')
   @Public()
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.authLogout)
   @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
   @ApiOperation({
     summary: 'Clear the local session and prepare Keycloak logout',
@@ -411,6 +438,8 @@ export class AuthController {
 
   @Post('refresh')
   @Public()
+  @UseGuards(RateLimitGuard)
+  @RateLimit(RATE_LIMIT_POLICIES.authRefresh)
   @ApiCookieAuth(AUTH_SESSION_COOKIE_NAME)
   @ApiOperation({
     summary: 'Refresh the session tokens',
@@ -498,5 +527,14 @@ export class AuthController {
     const grantedPermissions = await this.authorizationPolicy.evaluatePermissions(request.user, permissions);
 
     return { permissions: grantedPermissions };
+  }
+}
+
+function assertAuthQueryBounds(values: Partial<Record<keyof typeof AUTH_QUERY_LIMITS, string | undefined>>): void {
+  for (const [key, value] of Object.entries(values)) {
+    const limit = AUTH_QUERY_LIMITS[key as keyof typeof AUTH_QUERY_LIMITS];
+    if (value !== undefined && value.length > limit) {
+      throw new BadRequestException(`${key} is too long.`);
+    }
   }
 }

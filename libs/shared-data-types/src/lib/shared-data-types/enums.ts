@@ -296,3 +296,16 @@ export type AttendanceCategory = (typeof AttendanceCategory)[keyof typeof Attend
 registerEnumType(AttendanceCategory, {
   name: 'AttendanceCategory',
 });
+
+export const AttendanceCurrentAssessment = {
+  ACTIVITY_SUBSCRIPTION_MISSING: 'ACTIVITY_SUBSCRIPTION_MISSING',
+  MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT: 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT',
+  MAJOR_EVENT_PAYMENT_NOT_CONFIRMED: 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED',
+  MAJOR_EVENT_PAYMENT_UNDER_REVIEW: 'MAJOR_EVENT_PAYMENT_UNDER_REVIEW',
+  REQUIREMENTS_CURRENTLY_MET: 'REQUIREMENTS_CURRENTLY_MET',
+} as const;
+export type AttendanceCurrentAssessment =
+  (typeof AttendanceCurrentAssessment)[keyof typeof AttendanceCurrentAssessment];
+registerEnumType(AttendanceCurrentAssessment, {
+  name: 'AttendanceCurrentAssessment',
+});

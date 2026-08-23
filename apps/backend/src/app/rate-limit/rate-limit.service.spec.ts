@@ -425,7 +425,7 @@ describe('RateLimitService', () => {
     );
   });
 
-  it('keys anonymous requests by preferred Cloudflare IP header', async () => {
+  it('keys anonymous requests by the trusted Express request IP', async () => {
     const redis = {
       eval: jest.fn().mockResolvedValue([1, 1, 3, 0, 120, 0]),
     };
@@ -434,6 +434,7 @@ describe('RateLimitService', () => {
     await service.consume({
       policy,
       request: {
+        ip: '2001:db8::1',
         headers: {
           'cf-connecting-ipv6': '2001:db8::1',
           'cf-connecting-ip': '203.0.113.10',
@@ -444,7 +445,7 @@ describe('RateLimitService', () => {
     });
 
     const expectedHash = createHash('sha256').update(`${policy.name}|ip:2001:db8::1|event-1`).digest('hex');
-    expect(redis.eval).toHaveBeenCalledWith(
+    expect(redis.eval).toHaveBeenLastCalledWith(
       expect.any(String),
       1,
       `cacic:rate-limit:${policy.name}:${expectedHash}`,
@@ -457,7 +458,7 @@ describe('RateLimitService', () => {
     );
   });
 
-  it('keys anonymous requests by forwarded, real, socket, and unknown IP fallbacks', async () => {
+  it('ignores spoofable forwarding headers and uses trusted request/socket fallbacks', async () => {
     const redis = {
       eval: jest.fn().mockResolvedValue([1, 1, 3, 0, 120, 0]),
     };
@@ -466,6 +467,7 @@ describe('RateLimitService', () => {
     await service.consume({
       policy,
       request: {
+        ip: '198.51.100.20',
         headers: {
           'x-forwarded-for': ' 198.51.100.10, 198.51.100.11 ',
         },
@@ -474,7 +476,7 @@ describe('RateLimitService', () => {
     expect(redis.eval).toHaveBeenLastCalledWith(
       expect.any(String),
       1,
-      expectedKey('ip:198.51.100.10', ''),
+      expectedKey('ip:198.51.100.20', ''),
       expect.any(String),
       policy.windowMs.toString(),
       policy.freeAttempts.toString(),
@@ -491,12 +493,13 @@ describe('RateLimitService', () => {
           'cf-connecting-ip': ['   '],
           'x-real-ip': [' 198.51.100.12 '],
         },
+        socket: { remoteAddress: '198.51.100.21' },
       } as never,
     });
     expect(redis.eval).toHaveBeenLastCalledWith(
       expect.any(String),
       1,
-      expectedKey('ip:198.51.100.12', ''),
+      expectedKey('ip:198.51.100.21', ''),
       expect.any(String),
       policy.windowMs.toString(),
       policy.freeAttempts.toString(),
@@ -559,6 +562,52 @@ describe('RateLimitService', () => {
       policy.baseCooldownMs.toString(),
       policy.maxCooldownMs.toString(),
     );
+  });
+
+  it('consumes a global identity bucket in addition to each resource bucket', async () => {
+    const redis = {
+      eval: jest.fn().mockResolvedValue([1, 1, 3, 0, 120, 0]),
+    };
+    const service = new RateLimitService(redis as unknown as Redis, configService('production') as never);
+
+    await service.consume({
+      policy,
+      request: { ip: '198.51.100.22', headers: {} } as never,
+      resourceParts: ['event-a'],
+    });
+    await service.consume({
+      policy,
+      request: { ip: '198.51.100.22', headers: {} } as never,
+      resourceParts: ['event-b'],
+    });
+
+    expect(redis.eval).toHaveBeenCalledTimes(4);
+    expect(redis.eval.mock.calls.map((call) => call[2])).toEqual([
+      expectedKey('ip:198.51.100.22', ''),
+      expectedKey('ip:198.51.100.22', 'event-a'),
+      expectedKey('ip:198.51.100.22', ''),
+      expectedKey('ip:198.51.100.22', 'event-b'),
+    ]);
+  });
+
+  it('normalizes account resource keys across case and Unicode whitespace', async () => {
+    const redis = {
+      eval: jest.fn().mockResolvedValue([1, 1, 3, 0, 120, 0]),
+    };
+    const service = new RateLimitService(redis as unknown as Redis, configService('production') as never);
+
+    await service.consume({
+      policy,
+      request: { ip: '198.51.100.23', headers: {} } as never,
+      resourceParts: [' User@Example.com '],
+    });
+    await service.consume({
+      policy,
+      request: { ip: '198.51.100.23', headers: {} } as never,
+      resourceParts: ['USER@EXAMPLE.COM'],
+    });
+
+    expect(redis.eval.mock.calls[1][2]).toBe(redis.eval.mock.calls[3][2]);
   });
 });
 

@@ -57,6 +57,11 @@ interface AttendanceStatusIcon {
   icon: string;
 }
 
+interface AttendanceWarning {
+  text: string;
+  icon: string;
+}
+
 interface ParticipationFeedItem {
   id: string;
   emoji: string;
@@ -68,6 +73,7 @@ interface ParticipationFeedItem {
   route: string[];
   statusLine: string;
   statuses: AttendanceStatusFilter[];
+  warnings: AttendanceWarning[];
 }
 
 const EMPTY_SUBSCRIPTIONS_FEED = {
@@ -190,7 +196,8 @@ export class Attendances {
   }
 
   itemAriaLabel(item: ParticipationFeedItem): string {
-    return `Abrir detalhes de ${item.title}. ${item.typeLabel}. ${item.dateLine}. Status: ${item.statusLine}`;
+    const warnings = item.warnings.length > 0 ? `. Pendências: ${item.warnings.map(({ text }) => text).join(' ')}` : '';
+    return `Abrir detalhes de ${item.title}. ${item.typeLabel}. ${item.dateLine}. Status: ${item.statusLine}${warnings}`;
   }
 
   statusItems(statusLine: string): AttendanceStatusIcon[] {
@@ -380,6 +387,7 @@ export class Attendances {
       route: ['/profile/attendances', 'major-event', item.majorEvent.id],
       statusLine,
       statuses: this.participationStatuses(item.participation, isPresent),
+      warnings: this.majorEventWarnings(item.subscriptionStatus),
     };
   }
 
@@ -408,6 +416,7 @@ export class Attendances {
         : ['/profile/attendances', 'event-group', item.eventGroup.id],
       statusLine,
       statuses: this.participationStatuses(item.participation, isPresent),
+      warnings: [],
     };
   }
 
@@ -447,6 +456,29 @@ export class Attendances {
       participation.isLecturer ? 'lecturer' : undefined,
       participation.isSportsManager ? 'sportsManager' : undefined,
     ].filter((status): status is AttendanceStatusFilter => status !== undefined);
+  }
+
+  private majorEventWarnings(subscriptionStatus?: string | null): AttendanceWarning[] {
+    switch (subscriptionStatus) {
+      case undefined:
+      case null:
+      case 'CONFIRMED':
+      case 'RECEIPT_UNDER_REVIEW':
+      case 'CANCELED':
+        return [];
+      case 'WAITING_RECEIPT_UPLOAD':
+        return [{ text: 'Envie o comprovante de pagamento.', icon: 'payments' }];
+      case 'REJECTED_INVALID_RECEIPT':
+        return [{ text: 'Envie um novo comprovante de pagamento.', icon: 'receipt_long' }];
+      case 'REJECTED_SCHEDULE_CONFLICT':
+        return [{ text: 'Revise os eventos escolhidos.', icon: 'rate_review' }];
+      case 'REJECTED_NO_SLOTS':
+        return [{ text: 'Revise sua inscrição: não há vagas disponíveis.', icon: 'event_busy' }];
+      case 'REJECTED_GENERIC':
+        return [{ text: 'Revise sua inscrição para resolver a pendência.', icon: 'warning' }];
+      default:
+        return [{ text: 'Há uma pendência nesta inscrição.', icon: 'warning' }];
+    }
   }
 
   private matchesFilters(item: ParticipationFeedItem): boolean {

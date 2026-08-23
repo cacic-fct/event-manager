@@ -83,7 +83,8 @@ export class MyDayStore {
     const requestKey = `${userId}:${date}`;
     const existing = this.inFlight.get(requestKey);
     if (existing && !force) {
-      return existing;
+      await existing;
+      return;
     }
 
     const request = this.loadDate(userId, date, force);

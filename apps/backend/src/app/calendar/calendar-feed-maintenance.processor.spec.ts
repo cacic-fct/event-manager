@@ -13,13 +13,15 @@ describe('CalendarFeedMaintenanceProcessor', () => {
     expect(calendars.runAdminCalendarFeedMaintenance).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores unrelated jobs on the same queue', async () => {
+  it('rejects unrelated jobs on the same queue', async () => {
     const calendars = {
       runAdminCalendarFeedMaintenance: jest.fn(),
     };
     const processor = new CalendarFeedMaintenanceProcessor(calendars as never);
 
-    await processor.process({ name: 'unknown-job' } as never);
+    await expect(processor.process({ name: 'unknown-job' } as never)).rejects.toThrow(
+      'Unsupported calendar feed maintenance job',
+    );
 
     expect(calendars.runAdminCalendarFeedMaintenance).not.toHaveBeenCalled();
   });

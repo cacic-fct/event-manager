@@ -1,6 +1,8 @@
 import { MAX_RECEIPT_PDF_PAGES } from '../receipt.types';
+import { promises as fs } from 'fs';
 import {
   assertReceiptPdfPageCount,
+  assertReceiptPdfPageCountWithinLimit,
   parseReceiptPdfPageCount,
   ReceiptPdfProcessingError,
 } from './receipt-pdf-processing.utils';
@@ -18,5 +20,16 @@ describe('receipt PDF processing utils', () => {
     expect(() => assertReceiptPdfPageCount(MAX_RECEIPT_PDF_PAGES + 1)).toThrow(
       `no máximo ${MAX_RECEIPT_PDF_PAGES} páginas`,
     );
+  });
+
+  it('preserves the processing result when temporary-directory cleanup fails', async () => {
+    const cleanup = jest.spyOn(fs, 'rm').mockRejectedValue(new Error('cleanup unavailable'));
+    try {
+      await expect(assertReceiptPdfPageCountWithinLimit(Buffer.from('%PDF-1.7\nnot-a-real-pdf'))).rejects.toBeInstanceOf(
+        ReceiptPdfProcessingError,
+      );
+    } finally {
+      cleanup.mockRestore();
+    }
   });
 });

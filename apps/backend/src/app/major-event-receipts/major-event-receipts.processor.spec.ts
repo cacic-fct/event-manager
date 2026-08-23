@@ -9,8 +9,33 @@ import {
   ReceiptImageProcessingTimeoutError,
 } from './utils/receipt-image-processing.utils';
 import * as receiptPdfProcessing from './utils/receipt-pdf-processing.utils';
+import sharp from 'sharp';
 
 describe('MajorEventReceiptsProcessor expected amount resolution', () => {
+  it('upserts the pending receipt reconciliation scheduler', async () => {
+    const queue = { upsertJobScheduler: jest.fn().mockResolvedValue({ id: 'scheduler-1' }) };
+    const processor = new MajorEventReceiptsProcessor({} as never, {} as never, {} as never, queue as never);
+
+    await processor.onModuleInit();
+
+    expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
+      'receipt-processing-reconcile-pending',
+      { pattern: '* * * * *' },
+      expect.objectContaining({ name: 'reconcile-pending-receipts', data: {} }),
+    );
+  });
+
+  it('rejects unsupported and malformed jobs instead of processing an undefined receipt', async () => {
+    const processor = new MajorEventReceiptsProcessor({} as never, {} as never, {} as never);
+
+    await expect(processor.process({ name: 'unknown', data: {} } as never)).rejects.toThrow(
+      'Unsupported or malformed receipt job',
+    );
+    await expect(processor.process({ name: 'process', data: {} } as never)).rejects.toThrow(
+      'Unsupported or malformed receipt job',
+    );
+  });
+
   it('falls back to stored self-service amount when no configured tier matches legacy data', () => {
     const processor = new MajorEventReceiptsProcessor({} as never, {} as never, {} as never);
     const resolveExpectedAmountCents = processor['resolveExpectedAmountCents'].bind(processor);
@@ -169,14 +194,64 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     expect(toBullProcessingError('unknown failure', 'unknown failure')).toEqual(new Error('unknown failure'));
   });
 
+  it('preserves the processing error when FAILED bookkeeping also fails', async () => {
+    const { prisma, processor, s3 } = createProcessor();
+    const processingError = new Error('temporary storage failure');
+    prisma.majorEventReceipt.findUnique.mockResolvedValue(receiptFixture());
+    s3.downloadFile.mockRejectedValue(processingError);
+    prisma.majorEventReceipt.update.mockRejectedValue(new Error('database unavailable'));
+
+    await expect(processor.process({ name: 'process', data: { receiptId: 'receipt-1' } } as never)).rejects.toBe(
+      processingError,
+    );
+  });
+
+  it('compensates a derivative when its receipt row update fails', async () => {
+    const { prisma, processor, s3 } = createProcessor();
+    const png = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#fff' } }).png().toBuffer();
+    processor['runReceiptImageOperation'] = jest.fn().mockResolvedValue(Buffer.from('avif'));
+    s3.uploadFile.mockResolvedValue({ key: 'receipts/receipt-1.avif', size: 4 });
+    prisma.majorEventReceipt.update.mockRejectedValue(new Error('database unavailable'));
+
+    await expect(
+      processor['convertReceiptToAvif'](
+        'receipt-1',
+        'receipts/receipt-1.png',
+        png,
+        new Date('2026-12-31T23:59:59.000Z'),
+      ),
+    ).rejects.toThrow('database unavailable');
+    expect(s3.deleteFile).toHaveBeenCalledWith('receipts/receipt-1.avif');
+  });
+
+  it('keeps a converted receipt successful when old-object cleanup fails', async () => {
+    const { prisma, processor, s3 } = createProcessor();
+    const png = await sharp({ create: { width: 1, height: 1, channels: 3, background: '#fff' } }).png().toBuffer();
+    processor['runReceiptImageOperation'] = jest.fn().mockResolvedValue(Buffer.from('avif'));
+    s3.uploadFile.mockResolvedValue({ key: 'receipts/receipt-1.avif', size: 4 });
+    s3.deleteFile.mockRejectedValue(new Error('cleanup unavailable'));
+
+    await expect(
+      processor['convertReceiptToAvif'](
+        'receipt-1',
+        'receipts/receipt-1.png',
+        png,
+        new Date('2026-12-31T23:59:59.000Z'),
+      ),
+    ).resolves.toBeUndefined();
+    expect(prisma.majorEventReceipt.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ processingStatus: ReceiptProcessingStatus.CONVERTED }) }),
+    );
+  });
+
   it('ignores missing and expired receipts before downloading files', async () => {
     const { prisma, processor, s3 } = createProcessor();
 
     prisma.majorEventReceipt.findUnique.mockResolvedValueOnce(null);
-    await expect(processor.process({ data: { receiptId: 'missing-receipt' } } as never)).resolves.toBeUndefined();
+    await expect(processor.process({ name: 'process', data: { receiptId: 'missing-receipt' } } as never)).resolves.toBeUndefined();
 
     prisma.majorEventReceipt.findUnique.mockResolvedValueOnce(receiptFixture({ expiresAt: new Date('2026-01-01') }));
-    await expect(processor.process({ data: { receiptId: 'expired-receipt' } } as never)).resolves.toBeUndefined();
+    await expect(processor.process({ name: 'process', data: { receiptId: 'expired-receipt' } } as never)).resolves.toBeUndefined();
 
     expect(s3.downloadFile).not.toHaveBeenCalled();
     expect(prisma.majorEventReceipt.update).not.toHaveBeenCalled();
@@ -203,7 +278,7 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
       matchedNameText: 'Maria',
     });
 
-    await expect(processor.process({ data: { receiptId: receipt.id } } as never)).resolves.toBeUndefined();
+    await expect(processor.process({ name: 'process', data: { receiptId: receipt.id } } as never)).resolves.toBeUndefined();
 
     expect(analysis.analyze).toHaveBeenCalledWith('PIX Maria 42,00', 'Maria Silva', 4200);
     expect(prisma.majorEventReceipt.update).toHaveBeenCalledWith({
@@ -252,7 +327,7 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
       matchedNameText: 'Maria',
     });
 
-    await expect(processor.process({ data: { receiptId: receipt.id } } as never)).resolves.toBeUndefined();
+    await expect(processor.process({ name: 'process', data: { receiptId: receipt.id } } as never)).resolves.toBeUndefined();
 
     expect(analysis.analyze).toHaveBeenCalledWith('PIX Maria 42,00', 'Maria Silva', 4200);
     expect(processor['recognizeReceiptText']).not.toHaveBeenCalled();
@@ -264,6 +339,30 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     );
   });
 
+  it('runs OCR on the PDF preview when the document has no embedded text', async () => {
+    const { analysis, prisma, processor, s3 } = createProcessor();
+    const receipt = receiptFixture({ mimeType: 'application/pdf', objectKey: 'receipts/scanned.pdf' });
+    const previewBuffer = Buffer.from('scanned-preview');
+    jest.spyOn(receiptPdfProcessing, 'processReceiptPdf').mockResolvedValue({ text: '   ', previewBuffer });
+    processor['recognizeRasterReceiptText'] = jest.fn().mockResolvedValue('PIX Maria 42,00');
+    processor['convertReceiptToAvif'] = jest.fn().mockResolvedValue(undefined);
+    prisma.majorEventReceipt.findUnique.mockResolvedValue(receipt);
+    s3.downloadFile.mockResolvedValue({ contentLength: 12, stream: Readable.from([Buffer.from('%PDF-1.7')]) });
+    analysis.analyze.mockReturnValue({
+      expectedAmountCents: 4200,
+      matchedAmountCents: 4200,
+      amountMatched: true,
+      matchedAmountText: '42,00',
+      nameMatched: true,
+      matchedNameText: 'Maria',
+    });
+
+    await processor.process({ name: 'process', data: { receiptId: receipt.id } } as never);
+
+    expect(processor['recognizeRasterReceiptText']).toHaveBeenCalledWith(previewBuffer);
+    expect(analysis.analyze).toHaveBeenCalledWith('PIX Maria 42,00', 'Maria Silva', 4200);
+  });
+
   it('marks retryable receipt processing failures before rethrowing them', async () => {
     const { prisma, processor, s3 } = createProcessor();
     const receipt = receiptFixture();
@@ -271,7 +370,7 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
     prisma.majorEventReceipt.findUnique.mockResolvedValue(receipt);
     s3.downloadFile.mockRejectedValue(error);
 
-    await expect(processor.process({ data: { receiptId: receipt.id } } as never)).rejects.toBe(error);
+    await expect(processor.process({ name: 'process', data: { receiptId: receipt.id } } as never)).rejects.toBe(error);
 
     expect(prisma.majorEventReceipt.update).toHaveBeenCalledWith({
       where: {
@@ -297,7 +396,7 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
       stream: Readable.from([Buffer.from('receipt')]),
     });
 
-    await expect(processor.process({ data: { receiptId: receipt.id } } as never)).rejects.toBeInstanceOf(
+    await expect(processor.process({ name: 'process', data: { receiptId: receipt.id } } as never)).rejects.toBeInstanceOf(
       UnrecoverableError,
     );
 
@@ -311,28 +410,61 @@ describe('MajorEventReceiptsProcessor expected amount resolution', () => {
       }),
     });
   });
+
+  it('removes an exhausted failed BullMQ job before requeueing a pending receipt', async () => {
+    const { prisma, processor, receiptQueue } = createProcessor();
+    prisma.majorEventReceipt.findMany.mockResolvedValue([{ id: 'receipt-1' }]);
+    const failedJob = {
+      getState: jest.fn().mockResolvedValue('failed'),
+      remove: jest.fn().mockResolvedValue(undefined),
+      retry: jest.fn(),
+    };
+    receiptQueue.getJob.mockResolvedValue(failedJob);
+
+    await processor['reconcilePendingReceipts']();
+
+    expect(failedJob.remove).toHaveBeenCalledTimes(1);
+    expect(receiptQueue.add).toHaveBeenCalledWith(
+      'process',
+      { receiptId: 'receipt-1' },
+      expect.objectContaining({ jobId: expect.stringContaining('receipt-1') }),
+    );
+  });
 });
 
 function createProcessor() {
   const prisma = {
     majorEventReceipt: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       update: jest.fn().mockResolvedValue({}),
     },
   };
   const s3 = {
     downloadFile: jest.fn(),
+    uploadFile: jest.fn(),
+    deleteFile: jest.fn().mockResolvedValue(undefined),
   };
   const analysis = {
     analyze: jest.fn(),
   };
-  const processor = new MajorEventReceiptsProcessor(prisma as never, s3 as never, analysis as never);
+  const receiptQueue = {
+    add: jest.fn().mockResolvedValue(undefined),
+    getJob: jest.fn().mockResolvedValue(undefined),
+  };
+  const processor = new MajorEventReceiptsProcessor(
+    prisma as never,
+    s3 as never,
+    analysis as never,
+    receiptQueue as never,
+  );
   processor['logger'].error = jest.fn();
 
   return {
     analysis,
     prisma,
     processor,
+    receiptQueue,
     s3,
   };
 }

@@ -510,6 +510,15 @@ describe('AuthorizationPolicyService', () => {
     expect(context[key]).toBe(expected);
   });
 
+  it.each([Permission.SportsCategory.Create, Permission.SportsTeam.Create])(
+    'resolves the parent tournament for delegated %s requests',
+    (permission) => {
+      expect(service.buildResourceContext({ tournamentId: 'tournament-1' }, [permission])).toEqual(
+        expect.objectContaining({ sportsTournamentId: 'tournament-1' }),
+      );
+    },
+  );
+
   it('resolves certificate target ids for scoped certificate config grants', async () => {
     activeScopes.mockResolvedValue([
       grant({

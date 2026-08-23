@@ -16,6 +16,10 @@ describe('createNoopQueueProviders', () => {
       id: 'noop-refresh-event-weather',
       name: 'refresh-event-weather',
     });
+    await expect(queue.upsertJobScheduler('weather-refresh')).resolves.toEqual({
+      id: 'noop-weather-refresh',
+      name: 'weather-refresh',
+    });
     await expect(queue.close()).resolves.toBeUndefined();
   });
 });

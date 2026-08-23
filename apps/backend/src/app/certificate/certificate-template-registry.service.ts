@@ -61,7 +61,7 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
       await transaction.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext('certificate-template-registry'))`);
       const synchronized: TemplateSearchDocument[] = [];
       for (const template of discoveredTemplates) {
-        synchronized.push(await this.synchronizeTemplate(template, transaction));
+        synchronized.push(...(await this.synchronizeTemplate(template, transaction)));
       }
       synchronized.push(
         ...(await this.deactivateMissingTemplates(
@@ -82,7 +82,7 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
   private async synchronizeTemplate(
     template: DiscoveredCertificateTemplate,
     prisma: Prisma.TransactionClient,
-  ): Promise<TemplateSearchDocument> {
+  ): Promise<TemplateSearchDocument[]> {
     const existing = await prisma.certificateTemplate.findUnique({
       where: { registryKey: template.key },
       select: {
@@ -109,10 +109,6 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
       certificateFields: template.certificateFields as Prisma.InputJsonObject,
     } satisfies Prisma.CertificateTemplateUncheckedCreateInput;
 
-    if (existing) {
-      await this.removeMaterializedTemplateDefaults(existing.id, existing.certificateFields, prisma);
-    }
-
     if (
       existing &&
       existing.registryKey === template.key &&
@@ -120,7 +116,39 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
       existing.isActive === template.isActive &&
       existing.deletedAt === null
     ) {
-      return existing;
+      return [existing];
+    }
+
+    if (existing && existing.contentChecksum !== template.contentChecksum) {
+      await this.removeMaterializedTemplateDefaults(existing.id, existing.certificateFields, prisma);
+      const archived = await prisma.certificateTemplate.update({
+        where: { id: existing.id },
+        data: {
+          registryKey: `${template.key}@${existing.contentChecksum}:${existing.id}`,
+          isActive: false,
+          deletedAt: new Date(),
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+        },
+      });
+      const registered = await prisma.certificateTemplate.create({
+        data,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          isActive: true,
+        },
+      });
+      await prisma.certificateConfig.updateMany({
+        where: { certificateTemplateId: existing.id },
+        data: { certificateTemplateId: registered.id },
+      });
+      return [archived, registered];
     }
 
     const registered = existing
@@ -144,7 +172,7 @@ export class CertificateTemplateRegistryService implements OnApplicationBootstra
           },
         });
 
-    return registered;
+    return [registered];
   }
 
   private async removeMaterializedTemplateDefaults(

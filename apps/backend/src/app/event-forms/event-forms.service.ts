@@ -10,6 +10,7 @@ import {
   SubmitEventFormResponseInput,
 } from '@cacic-fct/shared-data-types';
 import { Prisma } from '@prisma/client';
+import { Readable } from 'node:stream';
 import { defer, Observable, switchMap } from 'rxjs';
 import { AuditRecordOptions } from '../audit-log/audit-log.types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -203,6 +204,10 @@ export class EventFormsService {
 
   async exportAdminResultsCsv(user: AuthenticatedUser | undefined, formId: string): Promise<string> {
     return this.results.exportAdminResultsCsv(user, formId);
+  }
+
+  async streamAdminResultsCsv(user: AuthenticatedUser | undefined, formId: string): Promise<Readable> {
+    return this.results.streamAdminResultsCsv(user, formId);
   }
 
   async publishDueScheduledForms(): Promise<number> {

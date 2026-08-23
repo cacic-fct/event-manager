@@ -424,7 +424,7 @@ export class PeopleResolver {
       );
       return created;
     });
-    await this.typesenseSearch.upsertPerson({
+    await this.safeSyncPersonInSearch({
       id: person.id,
       name: person.name,
       email: person.email,
@@ -483,7 +483,7 @@ export class PeopleResolver {
       );
       return updated;
     });
-    await this.typesenseSearch.upsertPerson({
+    await this.safeSyncPersonInSearch({
       id: person.id,
       name: person.name,
       email: person.email,
@@ -539,7 +539,7 @@ export class PeopleResolver {
         tx,
       );
     });
-    await this.typesenseSearch.deletePerson(id);
+    await this.safeDeletePersonFromSearch(id);
     return {
       deleted: true,
       id,
@@ -588,6 +588,30 @@ export class PeopleResolver {
 
     if (duplicate) {
       throw new ConflictException(`Person ${duplicate.id} already exists with matching identity document or email.`);
+    }
+  }
+
+  private async safeSyncPersonInSearch(person: Parameters<TypesenseSearchService['upsertPerson']>[0]): Promise<void> {
+    try {
+      await this.typesenseSearch.upsertPerson(person);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Person ${person.id} committed in PostgreSQL but Typesense synchronization failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
+
+  private async safeDeletePersonFromSearch(id: string): Promise<void> {
+    try {
+      await this.typesenseSearch.deletePerson(id);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Person ${id} was deleted in PostgreSQL but Typesense deletion failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
 

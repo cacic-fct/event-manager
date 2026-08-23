@@ -11,6 +11,7 @@ import {
   REQUIRED_PERMISSIONS_KEY,
   REQUIRED_ROLES_KEY,
 } from '../auth.constants';
+import { readAuthCookie } from '../auth-cookie-utils';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { KeycloakAuthService } from '../keycloak-auth.service';
 
@@ -183,26 +184,6 @@ export class KeycloakScopeGuard implements CanActivate {
   }
 
   private extractCookieValue(request: RequestWithUser, key: string): string | null {
-    const parsedCookie = request.cookies?.[key];
-    if (typeof parsedCookie === 'string') {
-      return parsedCookie;
-    }
-
-    const header = Array.isArray(request.headers.cookie) ? request.headers.cookie[0] : request.headers.cookie;
-    if (!header) {
-      return null;
-    }
-
-    const cookies = header.split(';');
-    for (const cookie of cookies) {
-      const [name, ...value] = cookie.trim().split('=');
-      if (name !== key || value.length === 0) {
-        continue;
-      }
-
-      return decodeURIComponent(value.join('='));
-    }
-
-    return null;
+    return readAuthCookie(request, key);
   }
 }

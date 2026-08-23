@@ -76,27 +76,23 @@ describe('PublicationJobsService', () => {
 
     await service.schedulePublicationJobs();
 
-    expect(publicationQueue.add).toHaveBeenCalledWith(
-      RECONCILE_PUBLICATION_STATES_JOB,
-      {},
-      expect.objectContaining({
-        jobId: `publication-${RECONCILE_PUBLICATION_STATES_JOB}`,
-        repeat: expect.objectContaining({
-          pattern: '*/5 * * * *',
-          tz: 'America/Sao_Paulo',
-        }),
-      }),
+    expect(publicationQueue.upsertJobScheduler).toHaveBeenCalledWith(
+      `publication-${RECONCILE_PUBLICATION_STATES_JOB}`,
+      { pattern: '*/5 * * * *', tz: 'America/Sao_Paulo' },
+      {
+        name: RECONCILE_PUBLICATION_STATES_JOB,
+        data: {},
+        opts: { removeOnComplete: true, removeOnFail: 50 },
+      },
     );
-    expect(publicationQueue.add).toHaveBeenCalledWith(
-      CLEANUP_STALE_EVENT_DRAFTS_JOB,
-      {},
-      expect.objectContaining({
-        jobId: `publication-${CLEANUP_STALE_EVENT_DRAFTS_JOB}`,
-        repeat: expect.objectContaining({
-          pattern: '17 3 * * *',
-          tz: 'America/Sao_Paulo',
-        }),
-      }),
+    expect(publicationQueue.upsertJobScheduler).toHaveBeenCalledWith(
+      `publication-${CLEANUP_STALE_EVENT_DRAFTS_JOB}`,
+      { pattern: '17 3 * * *', tz: 'America/Sao_Paulo' },
+      {
+        name: CLEANUP_STALE_EVENT_DRAFTS_JOB,
+        data: {},
+        opts: { removeOnComplete: true, removeOnFail: 50 },
+      },
     );
     expect(publicationQueue.add).toHaveBeenCalledWith(
       PUBLISH_SCHEDULED_CONTENT_JOB,
@@ -158,17 +154,17 @@ describe('PublicationJobsService', () => {
     const majorEventSync = { eventIds: ['event-3'], majorEventIds: ['major-1'] };
     const mergedSync = { eventIds: ['event-1', 'event-3'], majorEventIds: ['major-1'] };
     const loggerError = jest.spyOn(service['logger'], 'error').mockImplementation();
-    prisma.event.findMany.mockResolvedValue([{ id: 'event-1' }, { id: 'event-2' }]);
-    prisma.majorEvent.findMany.mockResolvedValue([{ id: 'major-1' }]);
+    prisma.event.findMany.mockResolvedValueOnce([{ id: 'event-1' }, { id: 'event-2' }]).mockResolvedValueOnce([]);
+    prisma.majorEvent.findMany.mockResolvedValueOnce([{ id: 'major-1' }]).mockResolvedValueOnce([]);
     transitions.publishEventById.mockResolvedValueOnce(eventSync).mockRejectedValueOnce(failure);
     transitions.publishMajorEventById.mockResolvedValue(majorEventSync);
     transitions.mergeSync.mockReturnValue(mergedSync);
 
     await service.reconcileScheduledPublications();
 
-    expect(transitions.publishEventById).toHaveBeenCalledWith('event-1', null);
-    expect(transitions.publishEventById).toHaveBeenCalledWith('event-2', null);
-    expect(transitions.publishMajorEventById).toHaveBeenCalledWith('major-1', null);
+    expect(transitions.publishEventById).toHaveBeenCalledWith('event-1', null, { skipSitemap: true });
+    expect(transitions.publishEventById).toHaveBeenCalledWith('event-2', null, { skipSitemap: true });
+    expect(transitions.publishMajorEventById).toHaveBeenCalledWith('major-1', null, { skipSitemap: true });
     expect(loggerError).toHaveBeenCalledWith('Failed to publish scheduled EVENT event-2.', failure.stack);
     expect(transitions.mergeSync).toHaveBeenCalledWith([eventSync, majorEventSync]);
     expect(searchSync.syncSearch).toHaveBeenCalledWith(mergedSync);
@@ -186,6 +182,28 @@ describe('PublicationJobsService', () => {
 
     expect(eventDrafts.cleanupStaleDrafts).toHaveBeenCalledWith();
     expect(loggerLog).toHaveBeenCalledWith('Deleted 3 stale event draft(s).');
+  });
+
+  it('bounds reconciliation concurrency and coalesces derived refreshes', async () => {
+    const { prisma, searchSync, service, transitions } = createService();
+    const events = Array.from({ length: 100 }, (_, index) => ({ id: `event-${index}` }));
+    prisma.event.findMany.mockResolvedValueOnce(events).mockResolvedValueOnce([]);
+    prisma.majorEvent.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    let active = 0;
+    let maximum = 0;
+    transitions.publishEventById.mockImplementation(async (id: string) => {
+      active += 1;
+      maximum = Math.max(maximum, active);
+      await Promise.resolve();
+      active -= 1;
+      return { eventIds: [id], majorEventIds: [] };
+    });
+
+    await service.reconcileScheduledPublications();
+
+    expect(maximum).toBeLessThanOrEqual(8);
+    expect(transitions.refreshSitemapBestEffort).toHaveBeenCalledTimes(1);
+    expect(searchSync.syncSearch).toHaveBeenCalledTimes(1);
   });
 
   it('does not log stale event draft cleanup when nothing was deleted', async () => {
@@ -217,6 +235,7 @@ function createService() {
     publishEventById: jest.fn(),
     publishMajorEventById: jest.fn(),
     mergeSync: jest.fn().mockReturnValue({ eventIds: [], majorEventIds: [] }),
+    refreshSitemapBestEffort: jest.fn().mockResolvedValue(undefined),
   };
   const searchSync = {
     syncSearch: jest.fn().mockResolvedValue(undefined),
@@ -226,6 +245,7 @@ function createService() {
   };
   const publicationQueue = {
     add: jest.fn().mockResolvedValue({ id: 'job-1' }),
+    upsertJobScheduler: jest.fn().mockResolvedValue({ id: 'scheduler-1' }),
   };
   const service = new PublicationJobsService(
     prisma as never,

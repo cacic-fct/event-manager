@@ -76,6 +76,9 @@ export class CurrentUserAttendanceCollectionEvent {
 
   @Field(() => PublicEvent)
   event!: PublicEvent;
+
+  @Field(() => String, { nullable: true })
+  offlineCollectorCredential?: string;
 }
 
 @ObjectType()

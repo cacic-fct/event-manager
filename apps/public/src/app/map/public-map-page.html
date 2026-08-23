@@ -8,6 +8,16 @@
     @if (filterCount() > 0) {
       <span class="filter-summary" aria-label="Filtros ativos">{{ filterCount() }}</span>
     }
+    @if (isOffline()) {
+      <button
+        matIconButton
+        type="button"
+        aria-label="Você está off-line"
+        matTooltip="Você está off-line"
+        (click)="showOfflineInfo()">
+        <mat-icon>cloud_off</mat-icon>
+      </button>
+    }
   </mat-toolbar>
 
   <div class="map-stage">
@@ -26,26 +36,12 @@
     </a>
 
     @let currentState = state();
-    @if (currentState.status === 'ready' && isUsingSavedData()) {
-      <p class="offline-notice" role="status">
-        <mat-icon aria-hidden="true">offline_bolt</mat-icon>
-        Mapa salvo. As informações podem estar desatualizadas.
-      </p>
-    }
     @if (currentState.status === 'loading') {
       <mat-progress-bar class="loading-bar" mode="indeterminate" aria-label="Carregando eventos no mapa" />
     } @else if (currentState.status === 'error') {
       <section class="map-message" role="alert">
         <mat-icon aria-hidden="true">error</mat-icon>
         <p>{{ currentState.message }}</p>
-      </section>
-    } @else if (filteredEvents().length === 0) {
-      <section class="map-message" aria-live="polite">
-        <mat-icon aria-hidden="true">event_busy</mat-icon>
-        <p>{{ filterCount() ? 'Nenhum evento corresponde aos filtros.' : 'Nenhum evento com localização disponível.' }}</p>
-        @if (filterCount()) {
-          <button mat-stroked-button type="button" (click)="openFilters()">Revisar filtros</button>
-        }
       </section>
     }
 

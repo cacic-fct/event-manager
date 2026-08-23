@@ -626,6 +626,10 @@ export abstract class SportsWorkspaceBaseService implements OnDestroy {
     if (!read || !this.canUpdateTournament()) {
       return;
     }
+    if (this.tournamentForm.invalid) {
+      this.tournamentForm.markAllAsTouched();
+      return;
+    }
     const {
       registrationScheduleMode,
       registrationStartDate,

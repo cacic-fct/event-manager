@@ -1,6 +1,7 @@
 import { AttendanceCreationMethod } from '@prisma/client';
 import {
   AttendanceAnalyticsService,
+  buildHeatmapPoints,
   findInconsistentLocationPatterns,
   haversineMeters,
   resolveAttendanceAnalyticsWindow,
@@ -67,6 +68,14 @@ describe('AttendanceAnalyticsService snapshot filtering', () => {
     expect(prisma.eventAttendance.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({
       where: { eventId: 'event-1', attendedAt: { gte: start, lte: end } },
     }));
+    expect(prisma.eventAttendance.findMany).toHaveBeenNthCalledWith(3, {
+      where: { eventId: 'event-1', status: 'PRESENT' },
+      select: { personId: true },
+    });
+    expect(prisma.eventSubscription.findMany).toHaveBeenCalledWith({
+      where: { eventId: 'event-1', deletedAt: null },
+      select: { personId: true },
+    });
     expect(result).toMatchObject({
       windowStart: start,
       windowEnd: end,
@@ -80,6 +89,17 @@ describe('AttendanceAnalyticsService snapshot filtering', () => {
       reviewItems: [expect.objectContaining({ id: 'review-1', summary: 'Revisão global' })],
     });
     expect(result.scansPerMinute).toHaveLength(2);
+  });
+});
+
+describe('attendance analytics heatmap', () => {
+  it('excludes absent records even when old collection coordinates remain stored', () => {
+    const present = attendance({ minute: 1, latitude: -22.121, longitude: -51.408 });
+    const absent = { ...attendance({ minute: 2, latitude: -22.2, longitude: -51.5 }), status: 'ABSENT' as const };
+
+    expect(buildHeatmapPoints([present, absent])).toEqual([
+      expect.objectContaining({ latitude: -22.121, longitude: -51.408, count: 1 }),
+    ]);
   });
 });
 

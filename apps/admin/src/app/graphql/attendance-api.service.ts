@@ -12,6 +12,7 @@ import {
   MajorEventSubscriptionCsvImportResult,
   MajorEventUserAttendance,
   OfflineEventAttendanceSubmission,
+  OfflineEventAttendanceReviewResult,
   SubscriptionStatus,
   EventAttendanceStatus,
   AttendanceReviewEventSummary,
@@ -152,6 +153,7 @@ export class AttendanceApiService {
             createdById
             committedById
             category
+            currentAssessment
             status
             createdByMethod
             collectedByFullName
@@ -237,10 +239,15 @@ export class AttendanceApiService {
 
   approveOfflineEventAttendanceSubmissions(submissionIds: string[]) {
     return this.graphqlHttp
-      .request<{ approveOfflineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(
+      .request<{ approveOfflineEventAttendanceSubmissions: OfflineEventAttendanceReviewResult[] }>(
         `mutation ApproveOfflineEventAttendanceSubmissions($submissionIds: [String!]!) {
           approveOfflineEventAttendanceSubmissions(submissionIds: $submissionIds) {
-            ${OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS}
+            submissionId
+            success
+            error
+            submission {
+              ${OFFLINE_EVENT_ATTENDANCE_APPROVAL_FIELDS}
+            }
           }
         }`,
         { submissionIds },
@@ -263,10 +270,15 @@ export class AttendanceApiService {
 
   rejectOfflineEventAttendanceSubmissions(submissionIds: string[], reason?: string | null) {
     return this.graphqlHttp
-      .request<{ rejectOfflineEventAttendanceSubmissions: OfflineEventAttendanceSubmission[] }>(
+      .request<{ rejectOfflineEventAttendanceSubmissions: OfflineEventAttendanceReviewResult[] }>(
         `mutation RejectOfflineEventAttendanceSubmissions($submissionIds: [String!]!, $reason: String) {
           rejectOfflineEventAttendanceSubmissions(submissionIds: $submissionIds, reason: $reason) {
-            ${OFFLINE_EVENT_ATTENDANCE_REJECTION_FIELDS}
+            submissionId
+            success
+            error
+            submission {
+              ${OFFLINE_EVENT_ATTENDANCE_REJECTION_FIELDS}
+            }
           }
         }`,
         { submissionIds, reason },
@@ -317,16 +329,18 @@ export class AttendanceApiService {
 
   setEventOralAttendances(
     inputs: readonly {
+      clientId?: string;
       eventId: string;
       personId: string;
       status: EventAttendanceStatus;
       collectedAt: string;
-      collectedByUserId: string;
+      collectedByUserId?: string;
+      collectorCredential?: string | null;
     }[],
   ) {
     return this.graphqlHttp
       .request<{ setEventOralAttendances: EventAttendance[] }>(
-        `mutation SetEventOralAttendances($inputs: [EventOralAttendanceInput!]!) {
+        `mutation SetEventOralAttendances($inputs: [AdminEventOralAttendanceInput!]!) {
           setEventOralAttendances(inputs: $inputs) {
             ${EVENT_ATTENDANCE_WRITE_FIELDS}
           }
@@ -334,6 +348,17 @@ export class AttendanceApiService {
         { inputs },
       )
       .pipe(map((data) => data.setEventOralAttendances));
+  }
+
+  createAdminOfflineAttendanceCollectorCredential(eventId: string) {
+    return this.graphqlHttp
+      .request<{ createAdminOfflineAttendanceCollectorCredential: string }>(
+        `mutation CreateAdminOfflineAttendanceCollectorCredential($eventId: String!) {
+          createAdminOfflineAttendanceCollectorCredential(eventId: $eventId)
+        }`,
+        { eventId },
+      )
+      .pipe(map((data) => data.createAdminOfflineAttendanceCollectorCredential));
   }
 
   watchEventAttendanceScannerFeed(eventId: string): Observable<EventAttendanceScannerFeedItem[]> {

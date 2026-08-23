@@ -122,7 +122,12 @@ export class RateLimitService {
     const disabled = this.isDisabled();
 
     try {
-      const rawResult = await this.consumeRedis(input);
+      const resourceParts = this.normalizeResourceParts(input.resourceParts);
+      const globalResult = await this.consumeRedis({ ...input, resourceParts: [] });
+      const resourceResult = resourceParts.length
+        ? await this.consumeRedis({ ...input, resourceParts })
+        : undefined;
+      const rawResult = this.combineDecisions(globalResult, resourceResult);
       const wouldBlock = !rawResult.allowed;
       if (disabled && wouldBlock) {
         this.logger.warn(
@@ -219,12 +224,28 @@ export class RateLimitService {
     };
   }
 
+  private combineDecisions(
+    globalResult: Omit<RateLimitDecision, 'disabled' | 'wouldBlock'>,
+    resourceResult?: Omit<RateLimitDecision, 'disabled' | 'wouldBlock'>,
+  ): Omit<RateLimitDecision, 'disabled' | 'wouldBlock'> {
+    if (!resourceResult) {
+      return globalResult;
+    }
+
+    return {
+      ...resourceResult,
+      allowed: globalResult.allowed && resourceResult.allowed,
+      attempts: Math.max(globalResult.attempts, resourceResult.attempts),
+      remaining: Math.min(globalResult.remaining, resourceResult.remaining),
+      retryAfterSeconds: Math.max(globalResult.retryAfterSeconds, resourceResult.retryAfterSeconds),
+      resetSeconds: Math.max(globalResult.resetSeconds, resourceResult.resetSeconds),
+      cooldownSeconds: Math.max(globalResult.cooldownSeconds, resourceResult.cooldownSeconds),
+    };
+  }
+
   private key(input: RateLimitConsumeInput): string {
     const identity = this.identity(input.request, input.authenticatedUser);
-    const resource = (input.resourceParts ?? [])
-      .map((part) => part.trim())
-      .filter(Boolean)
-      .join('|');
+    const resource = this.normalizeResourceParts(input.resourceParts).join('|');
     const material = `${input.policy.name}|${identity}|${resource}`;
     const hash = createHash('sha256').update(material).digest('hex');
     return `cacic:rate-limit:${input.policy.name}:${hash}`;
@@ -249,24 +270,17 @@ export class RateLimitService {
       return null;
     }
 
-    return (
-      this.singleHeaderValue(request.headers['cf-connecting-ipv6']) ??
-      this.singleHeaderValue(request.headers['cf-connecting-ip']) ??
-      this.singleHeaderValue(request.headers['cf-pseudo-ipv4']) ??
-      this.singleHeaderValue(request.headers['x-forwarded-for'])?.split(',')[0]?.trim() ??
-      this.singleHeaderValue(request.headers['x-real-ip']) ??
-      request.ip ??
-      request.socket?.remoteAddress ??
-      null
-    );
+    // Express has already applied the configured trusted-proxy policy to `ip`.
+    // Never consume forwarding headers directly: an untrusted caller can set all
+    // of them and otherwise create a fresh anonymous bucket for every request.
+    return request.ip ?? request.socket?.remoteAddress ?? null;
   }
 
-  private singleHeaderValue(value: string | string[] | undefined): string | undefined {
-    if (Array.isArray(value)) {
-      return value[0]?.trim() || undefined;
-    }
-
-    return value?.trim() || undefined;
+  private normalizeResourceParts(resourceParts: readonly string[] | undefined): string[] {
+    return (resourceParts ?? [])
+      .slice(0, 8)
+      .map((part) => part.trim().normalize('NFKC').toLocaleLowerCase('en-US').slice(0, 128))
+      .filter(Boolean);
   }
 
   private setHeaders(response: Response | undefined, decision: RateLimitDecision): void {
@@ -326,7 +340,8 @@ export class RateLimitService {
   }
 
   private isDisabled(): boolean {
-    return this.config.get<string>('NODE_ENV') !== 'production' && process.env.NODE_ENV !== 'production';
+    const nodeEnv = this.config.get<string>('NODE_ENV') ?? process.env.NODE_ENV;
+    return nodeEnv === 'development' || nodeEnv === 'test';
   }
 
   private numberAt(values: unknown[], index: number): number {

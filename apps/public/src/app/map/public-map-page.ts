@@ -22,7 +22,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 import type { PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
-import { DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, MAX_MAP_ZOOM } from '@cacic-fct/shared-utils';
+import {
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+  MAX_MAP_ZOOM,
+  OPENSTREETMAP_TILE_REFERRER_POLICY,
+} from '@cacic-fct/shared-utils';
 import type Feature from 'ol/Feature';
 import type OlMap from 'ol/Map';
 import type Point from 'ol/geom/Point';
@@ -34,8 +39,8 @@ import { catchError, forkJoin, of } from 'rxjs';
 import { EmojiService } from '../shared/emoji.service';
 import { PublicMapGeolocationService } from '../shared/map/public-map-geolocation.service';
 import { PublicUserLocationLayerService } from '../shared/map/public-user-location-layer.service';
-import { OPENSTREETMAP_TILE_REFERRER_POLICY } from '../shared/map/public-map-tile.constants';
 import { PublicMapTileCacheWarmupService } from '../shared/map/public-map-tile-cache-warmup.service';
+import { NetworkStatusService } from '../shared/network-status.service';
 import { PublicMapApiService } from './public-map-api.service';
 import {
   PublicMapFilterDialog,
@@ -82,6 +87,7 @@ export class PublicMapPage implements AfterViewInit {
   private readonly emoji = inject(EmojiService);
   private readonly geolocation = inject(PublicMapGeolocationService);
   private readonly locationLayer = inject(PublicUserLocationLayerService);
+  private readonly networkStatus = inject(NetworkStatusService);
   private readonly tileCacheWarmup = inject(PublicMapTileCacheWarmupService);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly route = inject(ActivatedRoute);
@@ -101,6 +107,7 @@ export class PublicMapPage implements AfterViewInit {
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly locationPermission = this.geolocation.permission;
   readonly isLocating = this.geolocation.isRequesting;
+  readonly isOffline = computed(() => !this.networkStatus.isOnline());
   readonly filteredEvents = computed(() =>
     filterPublicMapEvents(this.events(), this.filters(), this.currentUserEventIds()),
   );
@@ -128,6 +135,19 @@ export class PublicMapPage implements AfterViewInit {
   private utilityMenuShowPending = false;
   private utilityMenuAnimationFrame: number | null = null;
   private mapRenderRevision = 0;
+  private lastMapNotice: string | null = null;
+
+  private readonly mapNotice = effect(() => {
+    const notice = this.getMapNotice();
+    if (notice === this.lastMapNotice) {
+      return;
+    }
+
+    this.lastMapNotice = notice;
+    if (notice) {
+      this.showSnackBar(notice, 6000);
+    }
+  });
 
   private readonly dataLoader = effect((onCleanup) => {
     const authenticated = this.auth.isAuthenticated();
@@ -143,9 +163,7 @@ export class PublicMapPage implements AfterViewInit {
         authenticated && userId
           ? this.api.getCurrentUserEventIds(userId).pipe(
               catchError(() => {
-                this.snackBar.open('Não foi possível carregar seus eventos. Mostrando todos os eventos.', 'OK', {
-                  duration: 5000,
-                });
+                this.showSnackBar('Não foi possível carregar seus eventos. Mostrando todos os eventos.', 5000);
                 this.filters.update((filters) => ({ ...filters, audience: 'ALL' }));
                 this.updateFilterQueryParams();
                 return of(new Set<string>());
@@ -193,6 +211,10 @@ export class PublicMapPage implements AfterViewInit {
 
   goBack(): void {
     void this.router.navigateByUrl('/menu');
+  }
+
+  showOfflineInfo(): void {
+    this.showSnackBar('Você está off-line. Os dados exibidos no mapa podem estar desatualizados.', 5000);
   }
 
   toggleUtilityMenu(): void {
@@ -275,13 +297,11 @@ export class PublicMapPage implements AfterViewInit {
     this.closeUtilityMenu();
     const permission = this.locationPermission();
     if (permission === 'denied') {
-      this.snackBar.open('A localização está bloqueada. Libere a permissão nas configurações do navegador.', 'OK', {
-        duration: 6000,
-      });
+      this.showSnackBar('A localização está bloqueada. Libere a permissão nas configurações do navegador.', 6000);
       return;
     }
     if (permission === 'unsupported') {
-      this.snackBar.open('Este navegador não oferece localização para o mapa.', 'OK', { duration: 5000 });
+      this.showSnackBar('Este navegador não oferece localização para o mapa.', 5000);
       return;
     }
     if (!this.map) {
@@ -290,7 +310,7 @@ export class PublicMapPage implements AfterViewInit {
 
     const result = await this.locationLayer.startAndCenter(this.map, DEFAULT_MAP_ZOOM);
     if (!result.success) {
-      this.snackBar.open(result.error, 'OK', { duration: 6000 });
+      this.showSnackBar(result.error, 6000);
     }
   }
 
@@ -304,6 +324,37 @@ export class PublicMapPage implements AfterViewInit {
       audience: this.route.snapshot.queryParamMap.get('participacao') === 'meus' ? 'MINE' : stored.audience,
       date: this.route.snapshot.queryParamMap.get('periodo') === 'hoje' ? 'TODAY' : stored.date,
     };
+  }
+
+  private getMapNotice(): string | null {
+    if (this.state().status !== 'ready') {
+      return null;
+    }
+
+    const emptyMessage = this.filterCount()
+      ? 'Nenhum evento corresponde aos filtros.'
+      : 'Nenhum evento com localização disponível.';
+    const isEmpty = this.filteredEvents().length === 0;
+
+    if (this.isUsingSavedData()) {
+      const savedDataMessage = this.isOffline()
+        ? 'Você está off-line. Os dados exibidos no mapa podem estar desatualizados.'
+        : 'Não foi possível atualizar o mapa. Os dados exibidos podem estar desatualizados.';
+      return isEmpty ? `${savedDataMessage} ${emptyMessage}` : savedDataMessage;
+    }
+
+    return isEmpty ? emptyMessage : null;
+  }
+
+  private showSnackBar(message: string, duration: number): void {
+    // A map state can change while another map action is reporting feedback.
+    // Replacing the current snackbar keeps the map viewport unobstructed.
+    this.snackBar.dismiss();
+    this.snackBar.open(message, 'Fechar', {
+      duration,
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom',
+    });
   }
 
   private cancelUtilityMenuShow(): void {

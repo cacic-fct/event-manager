@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsDateString, IsString } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsDateString, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class AccountMergeScoreRequestDto {
   @ApiProperty({
@@ -8,6 +8,9 @@ export class AccountMergeScoreRequestDto {
   })
   @IsArray()
   @IsString({ each: true })
+  @ArrayMaxSize(100)
+  @MinLength(1, { each: true })
+  @MaxLength(200, { each: true })
   userIds!: string[];
 }
 
@@ -24,18 +27,26 @@ export class AccountMergeScoreResponseDto {
 export class AccountMergeNotificationDto {
   @ApiProperty({ example: '018f1111-2222-7333-8444-555555555555' })
   @IsString()
+  @MinLength(1)
+  @MaxLength(200)
   eventId!: string;
 
   @ApiProperty({ example: 'account.merged' })
   @IsString()
+  @MinLength(1)
+  @MaxLength(100)
   type!: string;
 
   @ApiProperty({ example: 'old-keycloak-user-id' })
   @IsString()
+  @MinLength(1)
+  @MaxLength(200)
   oldUserId!: string;
 
   @ApiProperty({ example: 'new-keycloak-user-id' })
   @IsString()
+  @MinLength(1)
+  @MaxLength(200)
   newUserId!: string;
 
   @ApiProperty({ example: '2026-05-08T12:00:00.000Z' })

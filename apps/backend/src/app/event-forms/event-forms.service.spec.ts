@@ -731,7 +731,7 @@ describe('EventFormsService', () => {
     );
   });
 
-  it('returns archived current-user responses for subscription-flow autofill without restoring them', async () => {
+  it('hides archived current-user responses from the normal response endpoint', async () => {
     const archivedAt = new Date('2026-07-06T12:00:00.000Z');
     prisma.eventForm.findFirst.mockResolvedValue(formRecord());
     prisma.eventFormResponse.findFirst.mockResolvedValue(
@@ -747,21 +747,8 @@ describe('EventFormsService', () => {
       eventId: 'event-1',
     });
 
-    expect(response).toMatchObject({
-      id: 'response-1',
-      answersJson: JSON.stringify([{ elementId: 'shirt-size', value: 'm' }]),
-    });
-    expect(prisma.eventFormResponse.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          formId: 'form-1',
-          personId: 'person-1',
-          targetType: EventFormTargetType.EVENT,
-          eventId: 'event-1',
-          majorEventId: null,
-        },
-      }),
-    );
+    expect(response).toBeNull();
+    expect(prisma.eventFormResponse.findFirst).not.toHaveBeenCalled();
     expect(prisma.eventFormResponse.updateMany).not.toHaveBeenCalled();
     expect(prisma.eventFormResponse.update).not.toHaveBeenCalled();
   });
@@ -1600,14 +1587,15 @@ describe('EventFormsService', () => {
     ]);
     prisma.eventAttendance.findMany.mockResolvedValue([]);
     prisma.eventFormLink.updateMany.mockResolvedValue({ count: 0 });
+    notifications.notifyEventFormAvailable.mockResolvedValue(true);
 
     const notifiedCount = await formNotifications.notifyEligiblePeople(form);
 
     expect(notifiedCount).toBe(0);
-    expect(notifications.notifyEventFormAvailable).not.toHaveBeenCalled();
+    expect(notifications.notifyEventFormAvailable).toHaveBeenCalledTimes(1);
   });
 
-  it('rolls back claimed form notifications when the provider throws', async () => {
+  it('leaves the notification claim unset when the provider rejects', async () => {
     const form = formRecord({
       links: [
         linkRecord({
@@ -1629,17 +1617,7 @@ describe('EventFormsService', () => {
     const notifiedCount = await formNotifications.notifyEligiblePeople(form);
 
     expect(notifiedCount).toBe(0);
-    expect(prisma.eventFormLink.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: {
-          id: 'link-1',
-          lastNotifiedAt: expect.any(Date),
-        },
-        data: {
-          lastNotifiedAt: null,
-        },
-      }),
-    );
+    expect(prisma.eventFormLink.updateMany).not.toHaveBeenCalled();
   });
 
   it('neutralizes spreadsheet formulas in exported CSV cells', async () => {

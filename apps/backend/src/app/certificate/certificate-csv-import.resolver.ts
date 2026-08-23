@@ -102,6 +102,7 @@ export class CertificateCsvImportResolver extends PersonCsvImportSupport {
     });
     const existingPersonIds = new Set(existingCertificates.map((certificate) => certificate.personId));
     const personIdsToIssue = new Set<string>();
+    const rawValuesByPersonId = new Map<string, string[]>();
     const failedValues: string[] = [];
     let duplicateCount = 0;
 
@@ -119,15 +120,25 @@ export class CertificateCsvImportResolver extends PersonCsvImportSupport {
         continue;
       }
       personIdsToIssue.add(person.id);
+      const personValues = rawValuesByPersonId.get(person.id) ?? [];
+      personValues.push(rawValue);
+      rawValuesByPersonId.set(person.id, personValues);
     }
 
-    const issuedCertificates = await this.issuingService.issueManualForPeople(
+    const issuance = await this.issuingService.issueManualForPeopleWithResults(
       input.configId,
       [...personIdsToIssue],
       this.getIssuedById(context),
     );
+    for (const failedPersonId of issuance.failedPersonIds) {
+      for (const rawValue of rawValuesByPersonId.get(failedPersonId) ?? []) {
+        if (!failedValues.includes(rawValue)) {
+          failedValues.push(rawValue);
+        }
+      }
+    }
     return {
-      createdCount: issuedCertificates.length,
+      createdCount: issuance.certificates.length,
       duplicateCount,
       failedCount: failedValues.length,
       failedValues,

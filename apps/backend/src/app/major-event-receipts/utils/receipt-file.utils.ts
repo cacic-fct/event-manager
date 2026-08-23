@@ -23,9 +23,7 @@ export function assertValidReceiptUpload(file: UploadedReceiptFile | undefined):
     throw new BadRequestException('Receipt must be at most 15 MB.');
   }
 
-  const detectedMimeType = isPdfReceiptUpload(file.mimetype, file.originalname)
-    ? 'application/pdf'
-    : detectReceiptMimeType(file.buffer);
+  const detectedMimeType = detectReceiptMimeType(file.buffer);
   if (!detectedMimeType || !ALLOWED_RECEIPT_MIME_TYPES.has(detectedMimeType)) {
     throw new BadRequestException('Receipt must be a supported image or PDF.');
   }
@@ -54,6 +52,7 @@ export function extensionForMimeType(mimeType: string): string | undefined {
     'image/tiff': 'tiff',
     'image/webp': 'webp',
     'application/pdf': 'pdf',
+    'image/heic': 'heic',
   };
 
   return extensions[mimeType.toLowerCase()];
@@ -85,7 +84,9 @@ function detectReceiptMimeType(buffer: Buffer): string | undefined {
     return 'image/png';
   }
 
-  if (buffer.subarray(0, 1_024).includes(Buffer.from('%PDF-'))) {
+  // A PDF signature is only valid at byte zero. Searching a prefix permits
+  // ZIP/polyglot payloads to reach native PDF processing tools.
+  if (buffer.subarray(0, 5).equals(Buffer.from('%PDF-'))) {
     return 'application/pdf';
   }
 
@@ -116,6 +117,9 @@ function detectReceiptMimeType(buffer: Buffer): string | undefined {
     const brand = buffer.subarray(8, 12).toString('ascii');
     if (brand === 'avif' || brand === 'avis') {
       return 'image/avif';
+    }
+    if (['heic', 'heix', 'hevc', 'hevx', 'mif1', 'msf1'].includes(brand)) {
+      return 'image/heic';
     }
   }
 

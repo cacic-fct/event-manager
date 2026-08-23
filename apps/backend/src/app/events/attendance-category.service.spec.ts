@@ -1,4 +1,5 @@
 import { AttendanceCategory } from '@prisma/client';
+import { AttendanceCurrentAssessment } from '@cacic-fct/shared-data-types';
 import { AttendanceCategoryService } from './attendance-category.service';
 
 describe('AttendanceCategoryService', () => {
@@ -122,6 +123,58 @@ describe('AttendanceCategoryService', () => {
         },
       }),
     );
+  });
+
+  it('derives current assessments for legacy undefined attendances without changing their stored category', async () => {
+    const tx = {
+      eventSubscription: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+      majorEventSubscription: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            personId: 'person-1',
+            majorEventId: 'major-event',
+            subscriptionStatus: 'WAITING_RECEIPT_UPLOAD',
+          },
+        ]),
+      },
+    };
+
+    const assessments = await service.resolveCurrentAssessments(
+      [
+        {
+          personId: 'person-1',
+          eventId: 'event-1',
+          category: AttendanceCategory.UNKNOWN,
+          event: {
+            allowSubscription: true,
+            majorEventId: 'major-event',
+            majorEvent: { isPaymentRequired: true },
+          },
+        },
+        {
+          personId: 'person-2',
+          eventId: 'event-2',
+          category: AttendanceCategory.UNKNOWN,
+          event: {
+            allowSubscription: true,
+            majorEventId: null,
+            majorEvent: null,
+          },
+        },
+      ],
+      tx as never,
+    );
+
+    expect(assessments).toEqual(
+      new Map([
+        ['person-1:event-1', AttendanceCurrentAssessment.MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT],
+        ['person-2:event-2', AttendanceCurrentAssessment.ACTIVITY_SUBSCRIPTION_MISSING],
+      ]),
+    );
+    expect(tx.eventSubscription.findMany).toHaveBeenCalledTimes(1);
+    expect(tx.majorEventSubscription.findMany).toHaveBeenCalledTimes(1);
   });
 
   it('does not update when the attendance no longer exists', async () => {

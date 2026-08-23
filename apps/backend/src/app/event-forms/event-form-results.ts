@@ -25,6 +25,92 @@ type FormResultSummary = {
   }>;
 };
 
+export class FormResultSummaryAccumulator {
+  private readonly valuesByElementId = new Map<string, FormAnswerValue[]>();
+  private readonly answeredByElementId = new Map<string, number>();
+  private readonly bucketsByElementId = new Map<string, Map<string, number>>();
+  private readonly elements: readonly FormElement[];
+
+  constructor(elements: readonly FormElement[]) {
+    this.elements = elements.filter((element) => isFormAnswerElementType(element.type));
+    this.elements.forEach((element) => {
+      this.valuesByElementId.set(element.id, []);
+      this.bucketsByElementId.set(element.id, new Map());
+    });
+  }
+
+  add(response: Pick<EventFormResponseRecord, 'answers'>): void {
+    let answers: FormResponseAnswer[];
+    try {
+      answers = parseAnswersValue(response.answers);
+    } catch {
+      answers = [];
+    }
+
+    for (const element of this.elements) {
+      const value = valueForElement(answers, element.id);
+      if (isEmptyAnswer(value)) {
+        continue;
+      }
+      this.answeredByElementId.set(element.id, (this.answeredByElementId.get(element.id) ?? 0) + 1);
+      const values = this.valuesByElementId.get(element.id);
+      if (values && (element.type === 'shortText' || element.type === 'longText')) {
+        // Text answers are the only unbounded summary payload. Keep enough
+        // examples for the UI while bounding memory for pathological forms.
+        if (values.length < 1_000) {
+          values.push(value);
+        }
+      } else if (!['date', 'time', 'scheduling'].includes(element.type)) {
+        this.addBuckets(element, value);
+      }
+    }
+  }
+
+  toSummary(includeTextAnswers: boolean): FormResultSummary {
+    return {
+      questions: this.elements.map((element) => {
+        const values = this.valuesByElementId.get(element.id) ?? [];
+        return {
+          elementId: element.id,
+          title: element.title,
+          type: element.type,
+          answeredCount: this.answeredByElementId.get(element.id) ?? 0,
+          buckets: [...(this.bucketsByElementId.get(element.id) ?? new Map())].map(([label, value]) => ({
+            label,
+            value,
+          })),
+          textAnswers: includeTextAnswers ? buildTextAnswers(element, values) : [],
+        };
+      }),
+    };
+  }
+
+  private addBuckets(element: FormElement, value: FormAnswerValue): void {
+    const buckets = this.bucketsByElementId.get(element.id);
+    if (!buckets) {
+      return;
+    }
+    const optionLabels = new Map(element.options.map((option) => [option.id, option.label]));
+    const add = (key: string | number) => {
+      const label = optionLabels.get(String(key)) ?? String(key);
+      buckets.set(label, (buckets.get(label) ?? 0) + 1);
+    };
+    if (typeof value === 'string' || typeof value === 'number') {
+      add(value);
+    } else if (Array.isArray(value)) {
+      value.forEach((item) => add(String(item)));
+    } else if (isRecord(value)) {
+      Object.values(value).forEach((entry) => {
+        if (typeof entry === 'string' || typeof entry === 'number') {
+          add(entry);
+        } else if (Array.isArray(entry)) {
+          entry.forEach((item) => add(String(item)));
+        }
+      });
+    }
+  }
+}
+
 export function buildFormResultSummary(
   elements: readonly FormElement[],
   responses: readonly EventFormResponseRecord[],
@@ -61,21 +147,32 @@ export function eventFormResultsToCsv(results: EventFormResults): string {
   const elements = parseElementsJson(results.form.elementsJson).filter((element) =>
     isFormAnswerElementType(element.type),
   );
-  const rows = [['Resposta', 'Pessoa', 'E-mail', 'Enviado em', ...elements.map((element) => element.title)]];
+  const rows = [eventFormCsvHeader(elements)];
 
   for (const response of results.responses) {
-    const answers = parseAnswersJson(response.answersJson);
-    const answersByElementId = new Map(answers.map((answer) => [answer.elementId, answer.value]));
-    rows.push([
-      response.id,
-      response.respondentName ?? '',
-      response.respondentEmail ?? '',
-      response.submittedAt ? response.submittedAt.toISOString() : '',
-      ...elements.map((element) => answerToCsvCell(element, answersByElementId.get(element.id) ?? null)),
-    ]);
+    rows.push(eventFormCsvRow(elements, response));
   }
 
   return rows.map((row) => row.map((cell) => csvCell(cell)).join(',')).join('\n');
+}
+
+export function eventFormCsvHeader(elements: readonly FormElement[]): string[] {
+  return ['Resposta', 'Pessoa', 'E-mail', 'Enviado em', ...elements.map((element) => element.title)];
+}
+
+export function eventFormCsvRow(
+  elements: readonly FormElement[],
+  response: Pick<EventFormResults['responses'][number], 'id' | 'respondentName' | 'respondentEmail' | 'submittedAt' | 'answersJson'>,
+): string[] {
+  const answers = parseAnswersJson(response.answersJson);
+  const answersByElementId = new Map(answers.map((answer) => [answer.elementId, answer.value]));
+  return [
+    response.id,
+    response.respondentName ?? '',
+    response.respondentEmail ?? '',
+    response.submittedAt ? response.submittedAt.toISOString() : '',
+    ...elements.map((element) => answerToCsvCell(element, answersByElementId.get(element.id) ?? null)),
+  ];
 }
 
 function buildBuckets(

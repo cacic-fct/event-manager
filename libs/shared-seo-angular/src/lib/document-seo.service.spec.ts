@@ -1,4 +1,5 @@
 import '@angular/compiler';
+import { DOCUMENT } from '@angular/common';
 import { TestBed } from '@angular/core/testing';
 import { DocumentSeoService } from './document-seo.service';
 
@@ -51,5 +52,26 @@ describe('DocumentSeoService', () => {
     service.removeJsonLd('test-structured-data');
     expect(document.querySelector('link[rel="canonical"]')).toBeNull();
     expect(document.getElementById('test-structured-data')).toBeNull();
+  });
+
+  it('writes JSON-LD with an SSR-compatible script element', () => {
+    const script = { id: '', type: '', textContent: '' } as unknown as HTMLScriptElement;
+    const serverDocument = {
+      getElementById: vi.fn(() => null),
+      createElement: vi.fn(() => script),
+      head: { appendChild: vi.fn() },
+    } as unknown as Document;
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [DocumentSeoService, { provide: DOCUMENT, useValue: serverDocument }],
+    });
+    const serverService = TestBed.inject(DocumentSeoService);
+
+    serverService.setJsonLd('test-structured-data', { '@type': 'Event' });
+
+    expect(script.id).toBe('test-structured-data');
+    expect(script.type).toBe('application/ld+json');
+    expect(script.textContent).toBe('{"@type":"Event"}');
   });
 });

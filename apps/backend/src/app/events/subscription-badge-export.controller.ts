@@ -1,4 +1,4 @@
-import { Body, Controller, Header, Param, Post, Res } from '@nestjs/common';
+import { Body, Controller, Header, Param, Post, Res, UsePipes } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBadRequestResponse,
@@ -23,6 +23,7 @@ import {
 } from 'class-validator';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { REST_VALIDATION_PIPE } from '../common/rest-validation.pipe';
 import {
   type SubscriberBadgeCodeFileName,
   type SubscriberBadgeCodeFormat,
@@ -80,6 +81,7 @@ export class SubscriberBadgeExportInput {
 @ApiTags('subscription-exports')
 @ApiBearerAuth()
 @Controller('subscription-exports')
+@UsePipes(REST_VALIDATION_PIPE)
 export class SubscriptionBadgeExportController {
   constructor(private readonly exports: SubscriptionBadgeExportService) {}
 

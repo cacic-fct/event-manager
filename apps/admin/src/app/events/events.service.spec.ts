@@ -131,6 +131,19 @@ describe('EventsService', () => {
     vi.useRealTimers();
   });
 
+  it('keeps a reversed event range in the browser instead of sending it to the API', async () => {
+    service.eventForm.patchValue({
+      startDate: '2026-05-21T16:00',
+      endDate: '2026-05-21T14:00',
+    });
+
+    await service.saveEvent('DRAFT');
+
+    expect(service.eventForm.hasError('eventDateRange')).toBe(true);
+    expect(api.createEvent).not.toHaveBeenCalled();
+    expect(api.saveEventDraft).not.toHaveBeenCalled();
+  });
+
   it('keeps online attendance fields disabled until the event allows online attendance', () => {
     const code = service.eventForm.controls.onlineAttendanceCode;
     const startsAt = service.eventForm.controls.onlineAttendanceStartDate;

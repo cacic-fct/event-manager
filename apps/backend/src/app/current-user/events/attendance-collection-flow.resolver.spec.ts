@@ -1,6 +1,12 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
+import { createHash } from 'node:crypto';
 import { CurrentUserAttendanceCollectionResolver } from './attendance-collection.resolver';
+import { issueOfflineAttendanceCollectorCredential } from './offline-attendance-collector-credential';
+import {
+  commitReceiptMarker,
+  parseCommitReceiptMarker,
+} from './attendance-collection-offline-submissions';
 import {
   buildOfflineSubmissionRecord,
   collectorPerson,
@@ -14,6 +20,19 @@ import {
 
 describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
   const context = { req: { user: { sub: 'collector-user' } } };
+  const offlineCollectorCredential = issueOfflineAttendanceCollectorCredential({
+  eventId: 'event-1',
+  collectorPersonId: 'collector-person',
+  collectorUserId: 'offline-user',
+  issuedAt: new Date('2026-05-20T00:00:00.000Z'),
+  expiresAt: new Date('2027-01-01T00:00:00.000Z'),
+});
+
+  it('round-trips committed offline receipt markers', () => {
+    const marker = commitReceiptMarker('CREATED', 'payload-hash');
+
+    expect(parseCommitReceiptMarker(marker)).toEqual({ status: 'CREATED', payloadHash: 'payload-hash' });
+  });
 
   it('lists visible collection events for the current collector using the expected time window', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-05-23T15:30:00.000Z'));
@@ -313,6 +332,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
 
     const tx = prisma.$transaction.mock.calls[0][0] as (tx: TxMock) => Promise<unknown>;
     const txMock = createTxMock(attendance);
+    txMock.offlineEventAttendanceSubmission = prisma.offlineEventAttendanceSubmission as never;
     await tx(txMock);
     expect(txMock.eventAttendance.create).toHaveBeenCalledWith({
       data: {
@@ -373,6 +393,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               location: preciseLocation(),
               collectedAt: new Date('2026-05-23T14:00:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
               authorName: 'Offline Collector',
               authorEmail: 'offline@example.com',
             },
@@ -391,6 +412,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
 
     const tx = prisma.$transaction.mock.calls[0][0] as (tx: TxMock) => Promise<unknown>;
     const txMock = createTxMock(attendance);
+    txMock.offlineEventAttendanceSubmission = prisma.offlineEventAttendanceSubmission as never;
     await tx(txMock);
     expect(txMock.eventAttendance.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -401,6 +423,70 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         attendedAt: new Date('2026-05-23T14:00:00.000Z'),
       }),
     });
+  });
+
+  it('rechecks a committed command after acquiring the lock instead of writing a second attendance', async () => {
+    const item = {
+      clientId: 'queue-race',
+      eventId: 'event-1',
+      createdByMethod: AttendanceCreationMethod.SCANNER,
+      code: 'user:user-1',
+      location: preciseLocation(),
+      collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+      authorUserId: 'offline-user',
+      collectorCredential: offlineCollectorCredential,
+      authorName: 'Offline Collector',
+      authorEmail: 'offline@example.com',
+    };
+    const payloadHash = createHash('sha256')
+      .update(
+        JSON.stringify({
+          clientId: item.clientId,
+          eventId: item.eventId,
+          createdByMethod: item.createdByMethod,
+          code: item.code,
+          value: null,
+          location: item.location,
+          collectedAt: item.collectedAt.toISOString(),
+          authorUserId: item.authorUserId,
+          authorName: item.authorName,
+          authorEmail: item.authorEmail,
+        }),
+      )
+      .digest('hex');
+    const receipt = buildOfflineSubmissionRecord(
+      {
+        clientId: item.clientId,
+        eventId: item.eventId,
+        personId: 'person-1',
+        createdByMethod: AttendanceCreationMethod.SCANNER,
+        scannerCode: 'user-1',
+        collectedAt: item.collectedAt,
+        authorUserId: item.authorUserId,
+        submittedById: 'collector-user',
+      },
+      {
+        status: 'COMMITTED',
+        rejectionReason: commitReceiptMarker('CREATED', payloadHash),
+      },
+    );
+    const { resolver, prisma } = createCollectionResolver({
+      collector: collectorPerson(),
+      people: [{ id: 'person-1' }],
+    });
+    const tx = createTxMock({ personId: 'person-1', eventId: 'event-1' });
+    tx.offlineEventAttendanceSubmission = prisma.offlineEventAttendanceSubmission as never;
+    prisma.offlineEventAttendanceSubmission.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(receipt);
+    prisma.$transaction.mockImplementation((callback) => callback(tx));
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances({ attendances: [item] }, context as never),
+    ).resolves.toEqual([
+      expect.objectContaining({ clientId: 'queue-race', status: 'CREATED' }),
+    ]);
+    expect(tx.eventAttendance.create).not.toHaveBeenCalled();
   });
 
   it('stages offline attendances when send-time collection authorization has expired', async () => {
@@ -433,6 +519,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               location: preciseLocation(),
               collectedAt: new Date('2026-05-20T12:30:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
               authorName: 'Offline Collector',
               authorEmail: 'offline@example.com',
             },
@@ -480,6 +567,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         entityId: 'person-1:event-1',
         entityLabel: 'submission-1',
       }),
+      expect.anything(),
     );
     expect(notifications.notifyOfflineAttendanceReviewQueued).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -499,6 +587,39 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       }),
     );
     jest.useRealTimers();
+  });
+
+  it('rejects forged cross-user offline provenance without a signed credential', async () => {
+    const { resolver, authorizationPolicy } = createCollectionResolver({
+      collector: null,
+      people: [{ id: 'person-1' }],
+      grantsAttendancePermission: true,
+    });
+
+    await expect(
+      resolver.commitCurrentUserOfflineAttendances(
+        {
+          attendances: [
+            {
+              clientId: 'forged-author',
+              eventId: 'event-1',
+              createdByMethod: AttendanceCreationMethod.SCANNER,
+              code: 'user:user-1',
+              location: preciseLocation(),
+              collectedAt: new Date('2026-05-23T14:00:00.000Z'),
+              authorUserId: 'victim-user',
+            },
+          ],
+        },
+        context as never,
+      ),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        clientId: 'forged-author',
+        status: 'FORBIDDEN',
+      }),
+    ]);
+    expect(authorizationPolicy.assertPermissions).not.toHaveBeenCalled();
   });
 
   it('does not notify reviewers again when an offline retry updates an already pending submission', async () => {
@@ -548,6 +669,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               location: preciseLocation(),
               collectedAt: new Date('2026-05-20T12:30:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
             },
           ],
         },
@@ -623,6 +745,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               location: preciseLocation(),
               collectedAt: new Date('2026-05-20T12:30:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
             },
           ],
         },
@@ -668,6 +791,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               },
               collectedAt: new Date('2026-05-23T14:00:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
             },
           ],
         },
@@ -703,6 +827,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               location: preciseLocation(),
               collectedAt: new Date('2026-05-23T14:00:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
             },
           ],
         },
@@ -768,6 +893,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               location: preciseLocation(),
               collectedAt: new Date('2026-05-20T12:30:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
             },
           ],
         },
@@ -786,7 +912,9 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
       eventId: 'event-1',
     });
     expect(authorizationPolicy.assertAttendanceCollectorForEvent).not.toHaveBeenCalled();
-    expect(prisma.offlineEventAttendanceSubmission.create).not.toHaveBeenCalled();
+    expect(prisma.offlineEventAttendanceSubmission.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'COMMITTED' }) }),
+    );
     jest.useRealTimers();
   });
 
@@ -838,6 +966,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               location: preciseLocation(),
               collectedAt: new Date('2026-05-23T14:00:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
             },
           ],
         },
@@ -851,7 +980,9 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
         message: 'Presença já registrada para este evento.',
       },
     ]);
-    expect(prisma.offlineEventAttendanceSubmission.create).not.toHaveBeenCalled();
+    expect(prisma.offlineEventAttendanceSubmission.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'COMMITTED' }) }),
+    );
   });
 
   it('stages duplicate-person offline manual inputs for admin correction', async () => {
@@ -875,6 +1006,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               location: preciseLocation(),
               collectedAt: new Date('2026-05-23T14:00:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
             },
           ],
         },
@@ -926,6 +1058,7 @@ describe('CurrentUserAttendanceCollectionResolver collection flow', () => {
               location: preciseLocation(),
               collectedAt: new Date('2026-05-23T14:00:00.000Z'),
               authorUserId: 'offline-user',
+              collectorCredential: offlineCollectorCredential,
             },
           ],
         },

@@ -75,11 +75,16 @@ export function createLgpdServiceTestContext() {
   const prisma = createPrismaMock();
   const s3 = createS3Mock();
   const typesenseSearch = createTypesenseSearchMock();
+  const storageCleanup = {
+    enqueueInTransaction: jest.fn().mockResolvedValue(undefined),
+    reconcile: jest.fn().mockResolvedValue(undefined),
+  };
   const tx = createTransactionMock();
   const service = new LgpdService(
     prisma as unknown as PrismaService,
     s3 as unknown as S3Service,
     typesenseSearch as unknown as TypesenseSearchService,
+    storageCleanup as never,
   );
 
   prisma.user.findMany.mockImplementation(async (args: UserFindManyArgs) => findUsers(args));
@@ -97,6 +102,7 @@ export function createLgpdServiceTestContext() {
     prisma,
     s3,
     typesenseSearch,
+    storageCleanup,
     tx,
     service,
   };
@@ -215,7 +221,10 @@ function createTransactionMock() {
     certificate: writeManyDelegate(),
     majorEventSubscriptionEventSelection: writeManyDelegate(1),
     majorEventReceiptValidationAction: deleteManyDelegate(),
-    majorEventReceipt: deleteManyDelegate(),
+    majorEventReceipt: {
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
     eventSubscription: writeManyDelegate(1),
     eventGroupSubscription: writeManyDelegate(),
     majorEventSubscription: writeManyDelegate(),
@@ -235,6 +244,24 @@ function createTransactionMock() {
     },
     eventManagerRoleAssignmentScope: deleteManyDelegate(),
     eventManagerPermissionGroupMember: deleteManyDelegate(),
+    sportsTournamentParticipant: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    sportsTeamMember: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    sportsRegistrationMember: {
+      findMany: jest.fn().mockResolvedValue([]),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    sportsMatchRosterEntry: deleteManyDelegate(),
+    sportsTeamRepresentative: deleteManyDelegate(),
+    sportsOfficialAssignment: deleteManyDelegate(),
+    sportsTeamChangeRequest: deleteManyDelegate(),
+    sportsPlayerApplicationCategory: deleteManyDelegate(),
+    sportsPlayerApplication: deleteManyDelegate(),
     people: writeManyDelegate(2),
     user: deleteManyDelegate(2),
   };

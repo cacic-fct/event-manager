@@ -139,16 +139,27 @@ export class OralAttendancePage implements OnInit {
       return;
     }
     const collectedAt = new Date().toISOString();
+    try {
+      await this.offline.enqueue({
+        queuedByUserId: userId,
+        eventId,
+        personId: person.personId,
+        status: decision,
+        location,
+        collectedAt,
+        collectorCredential: this.event()?.offlineCollectorCredential,
+        lastError: null,
+      });
+    } catch {
+      this.snackbar.open(
+        'Não foi possível salvar esta decisão off-line. Libere espaço ou tente novamente antes de sair desta página.',
+        'Fechar',
+        { duration: 7000 },
+      );
+      return;
+    }
+
     this.decisions.update((current) => new Map(current).set(person.personId, decision));
-    await this.offline.enqueue({
-      queuedByUserId: userId,
-      eventId,
-      personId: person.personId,
-      status: decision,
-      location,
-      collectedAt,
-      lastError: null,
-    });
     void this.offlineSync.syncPending();
   }
 
@@ -185,6 +196,7 @@ export class OralAttendancePage implements OnInit {
       authorUserId: user.sub,
       authorName: user.preferredUsername ?? null,
       authorEmail: user.email ?? null,
+      collectorCredential: selected.offlineCollectorCredential,
       status: 'PENDING',
       attempts: 0,
       lastError: null,

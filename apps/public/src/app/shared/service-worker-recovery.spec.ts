@@ -87,11 +87,29 @@ describe('ServiceWorkerService recovery', () => {
     expect(unregister).toHaveBeenCalledOnce();
     expect(register).toHaveBeenCalledTimes(2);
   });
+
+  it('unregisters only the application scope and reloads once', async () => {
+    const appRegistration = createRegistration(unregister);
+    const otherUnregister = vi.fn().mockResolvedValue(true);
+    const otherRegistration = createRegistration(otherUnregister, `${location.origin}/other/`);
+    getRegistrations.mockResolvedValue([appRegistration, otherRegistration]);
+    const reload = vi.spyOn(service as unknown as { reload: () => void }, 'reload').mockImplementation(() => undefined);
+
+    await service.unregisterServiceWorker();
+
+    expect(unregister).toHaveBeenCalledTimes(1);
+    expect(otherUnregister).not.toHaveBeenCalled();
+    expect(reload).toHaveBeenCalledTimes(1);
+    reload.mockRestore();
+  });
 });
 
-function createRegistration(unregister: ReturnType<typeof vi.fn>): ServiceWorkerRegistration {
+function createRegistration(
+  unregister: ReturnType<typeof vi.fn>,
+  scope = `${location.origin}/app/`,
+): ServiceWorkerRegistration {
   return {
-    scope: `${location.origin}/app/`,
+    scope,
     update: vi.fn(),
     unregister,
     addEventListener: vi.fn(),

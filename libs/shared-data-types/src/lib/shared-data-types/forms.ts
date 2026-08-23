@@ -1,4 +1,5 @@
 import { Field, InputType, Int, ObjectType } from '@nestjs/graphql';
+import { ArrayMaxSize, MaxLength } from 'class-validator';
 import {
   EventFormAudience,
   EventFormResponseMode,
@@ -344,12 +345,15 @@ export class EventFormLinkInput {
 @InputType()
 export class EventFormInput {
   @Field(() => String, { nullable: true })
+  @MaxLength(200)
   id?: string | null;
 
   @Field(() => String, { nullable: true })
+  @MaxLength(200)
   name?: string | null;
 
   @Field(() => String, { nullable: true })
+  @MaxLength(5_000)
   description?: string | null;
 
   @Field(() => String, { nullable: true })
@@ -359,6 +363,7 @@ export class EventFormInput {
   ownerMajorEventId?: string | null;
 
   @Field(() => String, { nullable: true })
+  @MaxLength(1_000_000)
   elementsJson?: string | null;
 
   @Field(() => EventFormSigilo, { nullable: true })
@@ -377,6 +382,7 @@ export class EventFormInput {
   allowResponseEdits?: boolean | null;
 
   @Field(() => [EventFormLinkInput], { nullable: true })
+  @ArrayMaxSize(100)
   links?: EventFormLinkInput[] | null;
 }
 
@@ -401,6 +407,7 @@ export class EventFormPreviousSubscriberCountInput {
 @InputType()
 export class EventFormDraftSaveInput {
   @Field(() => String)
+  @MaxLength(200)
   sourceFormId!: string;
 
   @Field(() => String, { nullable: true })
@@ -413,6 +420,7 @@ export class EventFormDraftSaveInput {
 @InputType()
 export class SubmitEventFormResponseInput {
   @Field(() => String)
+  @MaxLength(200)
   formId!: string;
 
   @Field(() => String, { nullable: true })
@@ -428,12 +436,14 @@ export class SubmitEventFormResponseInput {
   majorEventId?: string | null;
 
   @Field(() => String)
+  @MaxLength(1_000_000)
   answersJson!: string;
 }
 
 @InputType()
 export class PublishEventFormInput {
   @Field(() => String)
+  @MaxLength(200)
   formId!: string;
 
   @Field(() => Date, { nullable: true })

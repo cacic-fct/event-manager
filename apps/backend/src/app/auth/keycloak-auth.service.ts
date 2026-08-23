@@ -42,6 +42,8 @@ export class KeycloakAuthService {
   private readonly logger = new Logger(KeycloakAuthService.name);
   private readonly userCache = new Map<string, CachedUser>();
   private jwksCache?: { keys: Map<string, KeyObject>; expiresAt: number };
+  private jwksRefreshPromise?: Promise<Map<string, KeyObject>>;
+  private readonly unknownJwksKids = new Map<string, number>();
   private readonly keycloakFailureLogs = new Map<string, { loggedAt: number; suppressed: number }>();
   private readonly accessTokenRefreshSkewMs = 30_000;
   private readonly keycloakFailureLogSuppressionMs = 60_000;
@@ -66,6 +68,14 @@ export class KeycloakAuthService {
     10_000,
   );
   private readonly jwksCacheTtlMs = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_JWKS_CACHE_TTL_MS, 600_000);
+  private readonly jwksFetchTimeoutMs = this.parsePositiveIntegerEnv(
+    process.env.KEYCLOAK_JWKS_FETCH_TIMEOUT_MS,
+    5_000,
+  );
+  private readonly jwksUnknownKidCooldownMs = this.parsePositiveIntegerEnv(
+    process.env.KEYCLOAK_JWKS_UNKNOWN_KID_COOLDOWN_MS,
+    5_000,
+  );
   private readonly jwtClockSkewSeconds = this.parsePositiveIntegerEnv(process.env.KEYCLOAK_JWT_CLOCK_SKEW_SECONDS, 30);
 
   constructor(
@@ -636,17 +646,24 @@ export class KeycloakAuthService {
     const keys = await this.getJwksKeys(forceRefresh);
     const key = keys.get(kid);
     if (key) {
+      this.unknownJwksKids.delete(kid);
       return key;
     }
 
     if (!forceRefresh) {
+      const negativeUntil = this.unknownJwksKids.get(kid);
+      if (negativeUntil && negativeUntil > Date.now()) {
+        throw new UnauthorizedException('Unable to verify token signature.');
+      }
       const refreshedKeys = await this.getJwksKeys(true);
       const refreshedKey = refreshedKeys.get(kid);
       if (refreshedKey) {
+        this.unknownJwksKids.delete(kid);
         return refreshedKey;
       }
     }
 
+    this.unknownJwksKids.set(kid, Date.now() + this.jwksUnknownKidCooldownMs);
     throw new UnauthorizedException('Unable to verify token signature.');
   }
 
@@ -656,13 +673,30 @@ export class KeycloakAuthService {
       return this.jwksCache.keys;
     }
 
+    if (this.jwksRefreshPromise) {
+      return this.jwksRefreshPromise;
+    }
+
+    this.jwksRefreshPromise = this.fetchJwksKeys();
+    try {
+      return await this.jwksRefreshPromise;
+    } finally {
+      this.jwksRefreshPromise = undefined;
+    }
+  }
+
+  private async fetchJwksKeys(): Promise<Map<string, KeyObject>> {
+    const previousKeys = this.jwksCache?.keys;
     const jwksUrl = `${this.realmUrl}/protocol/openid-connect/certs`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), this.jwksFetchTimeoutMs);
 
     try {
       const response = await fetch(jwksUrl, {
         headers: {
           accept: 'application/json',
         },
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -679,11 +713,15 @@ export class KeycloakAuthService {
 
       this.jwksCache = {
         keys,
-        expiresAt: now + this.jwksCacheTtlMs,
+        expiresAt: Date.now() + this.jwksCacheTtlMs,
       };
 
       return keys;
     } catch (error) {
+      if (previousKeys) {
+        this.logger.warn('Using the last known Keycloak JWKS set after a refresh failure.');
+        return previousKeys;
+      }
       if (error instanceof UnauthorizedException) {
         throw error;
       }
@@ -692,6 +730,8 @@ export class KeycloakAuthService {
         `Keycloak JWKS lookup failed. ${error instanceof Error ? `message=${error.message}.` : 'unknown error.'}`,
       );
       throw new UnauthorizedException('Unable to load Keycloak signing keys.');
+    } finally {
+      clearTimeout(timeout);
     }
   }
 

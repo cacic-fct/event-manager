@@ -16,10 +16,12 @@ describe('WeatherProcessor', () => {
     expect(refreshEventWeatherById).toHaveBeenCalledWith('event-1');
   });
 
-  it('does not refresh weather when the event identifier is missing', async () => {
+  it('rejects a refresh job when the event identifier is missing', async () => {
     const processor = createProcessor();
 
-    await processor.process({ name: 'refresh-event-weather', data: {} } as never);
+    await expect(processor.process({ name: 'refresh-event-weather', data: {} } as never)).rejects.toThrow(
+      'requires a non-empty eventId',
+    );
 
     expect(refreshEventWeatherById).not.toHaveBeenCalled();
   });
@@ -32,10 +34,12 @@ describe('WeatherProcessor', () => {
     expect(scheduleUpcomingEventRefreshes).toHaveBeenCalledTimes(1);
   });
 
-  it('ignores unrelated queue jobs', async () => {
+  it('rejects unrelated queue jobs', async () => {
     const processor = createProcessor();
 
-    await processor.process({ name: 'unknown', data: {} } as never);
+    await expect(processor.process({ name: 'unknown', data: {} } as never)).rejects.toThrow(
+      'Unsupported weather job',
+    );
 
     expect(refreshEventWeatherById).not.toHaveBeenCalled();
     expect(scheduleUpcomingEventRefreshes).not.toHaveBeenCalled();

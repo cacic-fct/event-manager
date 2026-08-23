@@ -289,6 +289,7 @@ export const MAJOR_EVENT_USER_ATTENDANCE_FIELDS = `
     attended
     attendedAt
     category
+    currentAssessment
   }
 `;
 

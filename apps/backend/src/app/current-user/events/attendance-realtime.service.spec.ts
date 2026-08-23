@@ -21,13 +21,64 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
 
     const subscription = service.stream({ headers: {} } as Request, [], []).subscribe({ complete });
 
-    expect(jest.getTimerCount()).toBeGreaterThanOrEqual(2);
+    expect(jest.getTimerCount()).toBeGreaterThanOrEqual(1);
 
     service.onModuleDestroy();
 
     expect(complete).toHaveBeenCalledTimes(1);
     expect(jest.getTimerCount()).toBe(0);
 
+    subscription.unsubscribe();
+  });
+
+  it('stops polling when the final stream subscriber disconnects', () => {
+    const { service } = createService();
+    const subscription = service.stream({ headers: {} } as Request, ['major-1'], []).subscribe();
+
+    expect(jest.getTimerCount()).toBeGreaterThanOrEqual(1);
+    subscription.unsubscribe();
+
+    expect(jest.getTimerCount()).toBe(0);
+  });
+
+  it('rejects oversized filter lists and caps connections per identity', () => {
+    const { service } = createService();
+    expect(() => service.stream({ headers: {} } as Request, Array.from({ length: 51 }, (_, i) => `event-${i}`), [])).toThrow(
+      'no máximo 50',
+    );
+
+    const subscriptions = Array.from({ length: 10 }, () =>
+      service.stream({ ip: '198.51.100.10', headers: {} } as Request, [], ['event-1']).subscribe(),
+    );
+    expect(() =>
+      service.stream({ ip: '198.51.100.10', headers: {} } as Request, [], ['event-1']),
+    ).toThrow('Limite de conexões SSE');
+    subscriptions.forEach((subscription) => subscription.unsubscribe());
+  });
+
+  it('does not overlap a slow subscription poll', async () => {
+    const { publicEvents, service } = createService();
+    const release = jest.fn();
+    let resolvePayload!: () => void;
+    publicEvents.getPublicEventSubscriptionPagePayload.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePayload = () => {
+          release();
+          resolve({ subscriptionSummaries: [] });
+        };
+      }),
+    );
+    const subscription = service.stream({ headers: {} } as Request, ['major-1'], []).subscribe();
+    publicEvents.getPublicEventSubscriptionPagePayload.mockClear();
+    const internals = service as unknown as {
+      notifySubscribedMajorEvents: () => Promise<void>;
+    };
+    const first = internals.notifySubscribedMajorEvents();
+    const second = internals.notifySubscribedMajorEvents();
+    expect(publicEvents.getPublicEventSubscriptionPagePayload).toHaveBeenCalledTimes(1);
+    resolvePayload();
+    await Promise.all([first, second]);
+    expect(release).toHaveBeenCalledTimes(1);
     subscription.unsubscribe();
   });
 
@@ -149,6 +200,45 @@ describe('CurrentUserOnlineAttendanceRealtimeService', () => {
 
     subscription.unsubscribe();
     service.onModuleDestroy();
+  });
+
+  it('resolves the current person from a bearer-only stream request', async () => {
+    const { auth, currentUserContext, mapper, prisma, service } = createService();
+    auth.authenticateAccessToken = jest.fn().mockResolvedValue({ sub: 'bearer-user' });
+    currentUserContext.resolveCurrentUserContext.mockResolvedValueOnce({ person: { id: 'person-1' } });
+    prisma.event.findMany.mockResolvedValueOnce([{ id: 'event-1' }]);
+    mapper.mapPublicEvent.mockReturnValueOnce({ id: 'event-1' });
+
+    const stream = service.stream(
+      { headers: { authorization: 'Bearer access-token' } } as Request,
+      [],
+      [],
+    );
+
+    await expect(firstValueFrom(stream.pipe(take(1)))).resolves.toEqual(
+      expect.objectContaining({ data: expect.objectContaining({ event: 'pendingOnlineAttendancesChanged' }) }),
+    );
+    expect(auth.authenticateAccessToken).toHaveBeenCalledWith('access-token');
+    service.onModuleDestroy();
+  });
+
+  it('terminates a stream cleanly when identity resolution rejects', async () => {
+    const { auth, service } = createService();
+    auth.authenticateSession.mockRejectedValueOnce(new Error('session store unavailable'));
+    const errors: unknown[] = [];
+    const subscription = service
+      .stream(
+        { headers: { cookie: `${AUTH_SESSION_COOKIE_NAME}=session-1` } } as Request,
+        [],
+        [],
+      )
+      .subscribe({ error: (error) => errors.push(error) });
+
+    await flushPromises();
+    await flushPromises();
+    expect(errors).toHaveLength(1);
+    expect((service as unknown as { clients: Set<unknown> }).clients.size).toBe(0);
+    subscription.unsubscribe();
   });
 
   it('emits major-event and event subscription snapshots and suppresses unchanged repeats', async () => {
@@ -321,6 +411,7 @@ function createService() {
   const dependencies = {
     auth: {
       authenticateSession: jest.fn(),
+      authenticateAccessToken: jest.fn(),
     },
     currentUserContext: {
       resolveCurrentUserContext: jest.fn(),

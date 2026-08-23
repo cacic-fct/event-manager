@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { PublicAuthenticatedUser } from './public-authenticated-user';
 
@@ -30,11 +30,13 @@ export class RefreshSessionResponseDto {
 export class PasswordLoginRequestDto {
   @ApiProperty({ description: 'User email address.', example: 'aluno@unesp.br' })
   @IsEmail()
+  @MaxLength(320)
   email!: string;
 
   @ApiProperty({ description: 'User password.', example: '1', minLength: 1 })
   @IsString()
   @MinLength(1)
+  @MaxLength(1_024)
   password!: string;
 
   @ApiPropertyOptional({
@@ -43,6 +45,7 @@ export class PasswordLoginRequestDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(2_048)
   returnTo?: string;
 }
 

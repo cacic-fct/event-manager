@@ -1,4 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { BadRequestException } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { WeatherService } from './weather.service';
 
@@ -13,15 +14,20 @@ export class WeatherProcessor extends WorkerHost {
   }
 
   async process(job: Job<RefreshEventWeatherJob>): Promise<void> {
-    if (job.name !== 'refresh-event-weather') {
-      if (job.name === 'schedule-upcoming-event-weather') {
+    switch (job.name) {
+      case 'schedule-upcoming-event-weather':
         await this.weather.scheduleUpcomingEventRefreshes();
+        return;
+      case 'refresh-event-weather': {
+        const eventId = job.data?.eventId?.trim();
+        if (!eventId) {
+          throw new BadRequestException('Weather refresh job requires a non-empty eventId.');
+        }
+        await this.weather.refreshEventWeatherById(eventId);
+        return;
       }
-      return;
-    }
-
-    if (job.data.eventId) {
-      await this.weather.refreshEventWeatherById(job.data.eventId);
+      default:
+        throw new BadRequestException(`Unsupported weather job: ${job.name}.`);
     }
   }
 }

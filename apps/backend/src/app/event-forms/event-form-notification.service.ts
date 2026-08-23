@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EventFormAudience, EventFormResponseMode, EventFormTargetType, Prisma } from '@prisma/client';
 import { isPast } from 'date-fns';
 import { BackendFeatureFlagService } from '../feature-flags/backend-feature-flags';
@@ -32,6 +32,8 @@ type EventFormNotificationRecord = {
 
 @Injectable()
 export class EventFormNotificationService {
+  private readonly logger = new Logger(EventFormNotificationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NovuNotificationsService,
@@ -79,21 +81,6 @@ export class EventFormNotificationService {
         continue;
       }
 
-      const claimedAt = new Date();
-      const claimed = await this.prisma.eventFormLink.updateMany({
-        where: {
-          id: link.id,
-          deletedAt: null,
-          lastNotifiedAt: null,
-        },
-        data: {
-          lastNotifiedAt: claimedAt,
-        },
-      });
-      if (claimed.count !== 1) {
-        continue;
-      }
-
       let notified = false;
       try {
         notified = await this.notifications.notifyEventFormAvailable({
@@ -106,22 +93,32 @@ export class EventFormNotificationService {
           recipients,
           requiredSubscriptionForm: requiresExistingSubscriberResponse,
         });
-      } catch {
+      } catch (error: unknown) {
+        this.logger.warn(
+          `Event-form notification failed form=${form.id} link=${link.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
         notified = false;
       }
       if (!notified) {
-        await this.prisma.eventFormLink.updateMany({
-          where: {
-            id: link.id,
-            lastNotifiedAt: claimedAt,
-          },
-          data: {
-            lastNotifiedAt: null,
-          },
-        });
         continue;
       }
-      notifiedLinks += 1;
+
+      // Mark delivery only after the provider acknowledges it. The provider
+      // receives a deterministic transaction id, so a retry after a process
+      // crash is idempotent and cannot strand the link in a claimed state.
+      const marked = await this.prisma.eventFormLink.updateMany({
+        where: {
+          id: link.id,
+          deletedAt: null,
+          lastNotifiedAt: null,
+        },
+        data: {
+          lastNotifiedAt: new Date(),
+        },
+      });
+      notifiedLinks += marked.count === 1 ? 1 : 0;
     }
     return notifiedLinks;
   }

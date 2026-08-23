@@ -4,7 +4,10 @@ import {
   isMainModule,
   writeResponseToNodeResponse,
 } from '@angular/ssr/node';
-import { applyCspToHtmlResponse } from '@cacic-fct/shared-utils';
+import {
+  applyCspToHtmlResponse,
+  OPENSTREETMAP_TILE_REFERRER_POLICY,
+} from '@cacic-fct/shared-utils';
 import express, { type NextFunction, type Request, type Response as ExpressResponse } from 'express';
 import { readFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
@@ -20,11 +23,13 @@ const turnstileSiteKeyMetaName = 'cacic-turnstile-site-key';
 const turnstileSiteKey = process.env['TURNSTILE_SITE_KEY']?.trim() ?? '';
 const publicAppVersion = 'APP_VERSION_PLACEHOLDER';
 const publicAppOrigin = 'https://eventos.cacic.com.br';
-const publicReferrerPolicy = 'strict-origin-when-cross-origin';
+const publicReferrerPolicy = OPENSTREETMAP_TILE_REFERRER_POLICY;
 const sitemapGraphqlUrl =
   process.env['SITEMAP_API_URL']?.trim() ||
   (process.env['NODE_ENV'] === 'production' ? 'http://backend:3000/api/graphql' : 'http://localhost:3000/api/graphql');
 const sitemapRequestTimeoutMs = 10_000;
+
+validateServerEnvironment();
 
 type PublicEventSitemapEntry = {
   id: string;
@@ -218,7 +223,6 @@ app.use((error: unknown, req: Request, res: ExpressResponse, next: NextFunction)
  * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
  */
 if (isMainModule(import.meta.url) || process.env['pm_id']) {
-  validateServerEnvironment();
   const port = process.env['PORT'] || 4000;
   app.listen(port, () => {
     console.log(`Node Express server listening on http://localhost:${port}`);
@@ -256,22 +260,72 @@ async function getPublicEventSitemapPage(page: number): Promise<PublicEventSitem
     throw new Error(`Unable to load public event sitemap: API returned ${response.status}.`);
   }
 
-  const payload = (await response.json()) as {
-    data?: { publicEventSitemap?: PublicEventSitemapPage };
-    errors?: { message?: string }[];
-  };
-  const sitemap = payload.data?.publicEventSitemap;
-  if (
-    !sitemap ||
-    !Number.isSafeInteger(sitemap.pageCount) ||
-    sitemap.pageCount < 0 ||
-    !Array.isArray(sitemap.entries)
-  ) {
-    const message = payload.errors?.[0]?.message ?? 'API returned an invalid sitemap payload.';
+  const payload = (await response.json()) as unknown;
+  const sitemap = parsePublicEventSitemapPayload(payload);
+  if (!sitemap) {
+    const message = getSitemapErrorMessage(payload);
     throw new Error(`Unable to load public event sitemap: ${message}`);
   }
 
   return sitemap;
+}
+
+export function parsePublicEventSitemapPayload(payload: unknown): PublicEventSitemapPage | null {
+  if (!isRecord(payload) || !isRecord(payload['data']) || !isRecord(payload['data']['publicEventSitemap'])) {
+    return null;
+  }
+
+  const sitemap = payload['data']['publicEventSitemap'];
+  const pageCount = sitemap['pageCount'];
+  if (
+    typeof pageCount !== 'number' ||
+    !Number.isSafeInteger(pageCount) ||
+    pageCount < 0 ||
+    !Array.isArray(sitemap['entries'])
+  ) {
+    return null;
+  }
+
+  const entries: PublicEventSitemapEntry[] = [];
+  for (const entry of sitemap['entries']) {
+    if (!isRecord(entry) || typeof entry['id'] !== 'string' || !isSafeSitemapId(entry['id'])) {
+      return null;
+    }
+    if (typeof entry['updatedAt'] !== 'string' || !Number.isFinite(new Date(entry['updatedAt']).getTime())) {
+      return null;
+    }
+    entries.push({ id: entry['id'], updatedAt: entry['updatedAt'] });
+  }
+
+  return { pageCount, entries };
+}
+
+function getSitemapErrorMessage(payload: unknown): string {
+  if (isRecord(payload) && Array.isArray(payload['errors'])) {
+    const message = payload['errors'].find(isRecord)?.['message'];
+    if (typeof message === 'string' && message.trim()) {
+      return message;
+    }
+  }
+
+  return 'API returned an invalid sitemap payload.';
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isSafeSitemapId(value: string): boolean {
+  if (value.length === 0 || value.length > 200 || value !== value.trim()) {
+    return false;
+  }
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 0x1f || code === 0x7f || '/\\<>'.includes(character)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function buildSitemapIndex(paths: readonly string[]): string {

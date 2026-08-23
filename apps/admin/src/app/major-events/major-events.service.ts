@@ -23,6 +23,7 @@ import {
 import { bindLiveSearch } from '../search/live-search';
 import { PermissionsService } from '../permissions/permissions.service';
 import { ShellUiService } from '../app-shell/ui.service';
+import { dateRangeValidator } from '../shared/date-range-validator';
 
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 const DEFAULT_DRAFT_MAJOR_EVENT_NAME = 'Grande evento sem título';
@@ -85,6 +86,8 @@ export class MajorEventsService {
     {
       validators: [
         this.requireBothOrNeither('buttonText', 'buttonLink'),
+        dateRangeValidator('startDate', 'endDate', 'majorEventDateRange'),
+        dateRangeValidator('subscriptionStartDate', 'subscriptionEndDate', 'subscriptionDateRange'),
         this.validatePaymentInfo(),
         this.rejectDraftPlaceholders(),
       ],
@@ -146,6 +149,11 @@ export class MajorEventsService {
   }
 
   async saveMajorEvent(action: CreationPublicationAction = 'DRAFT'): Promise<void> {
+    if (this.hasInvalidDateRange()) {
+      this.majorEventForm.markAllAsTouched();
+      return;
+    }
+
     if (action === 'PUBLISH' && this.majorEventForm.invalid) {
       this.majorEventForm.markAllAsTouched();
       return;
@@ -208,6 +216,10 @@ export class MajorEventsService {
     } finally {
       this.ui.loading.set(false);
     }
+  }
+
+  private hasInvalidDateRange(): boolean {
+    return this.majorEventForm.hasError('majorEventDateRange') || this.majorEventForm.hasError('subscriptionDateRange');
   }
 
   openMajorEventPublication(): void {

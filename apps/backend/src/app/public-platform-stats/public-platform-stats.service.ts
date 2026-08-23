@@ -1,15 +1,17 @@
-import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
-import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { PublicPlatformStats } from './models';
-import { buildBullMqJobId } from '../queues/bullmq-job-id';
 
 export const PUBLIC_PLATFORM_STATS_QUEUE = 'public-platform-stats';
-const CACHE_KEY = 'public:platform-stats:v2';
+const CACHE_KEY = 'public:platform-stats:v3';
 const CACHE_TTL_SECONDS = 48 * 60 * 60;
 const PUBLIC_STATS_DELAY_DAYS = 14;
+const TIME_ZONE = 'America/Sao_Paulo';
+
+type CachedPublicPlatformStats = PublicPlatformStats & {
+  generatedAt: string;
+};
 
 @Injectable()
 export class PublicPlatformStatsService {
@@ -18,8 +20,6 @@ export class PublicPlatformStatsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: Redis,
-    @InjectQueue(PUBLIC_PLATFORM_STATS_QUEUE)
-    private readonly queue: Queue,
   ) {}
 
   async getPublicPlatformStats(): Promise<PublicPlatformStats> {
@@ -46,19 +46,6 @@ export class PublicPlatformStatsService {
     }
   }
 
-  async scheduleRefreshJob(): Promise<void> {
-    await this.queue.add(
-      'refresh-public-platform-stats',
-      {},
-      {
-        jobId: buildBullMqJobId('public-platform-stats', 'nightly'),
-        repeat: { pattern: '0 3 * * *' },
-        removeOnComplete: true,
-        removeOnFail: 50,
-      },
-    );
-  }
-
   private async getCachedStats(): Promise<PublicPlatformStats | null> {
     const cached = await this.redis.get(CACHE_KEY);
     if (!cached) {
@@ -66,12 +53,14 @@ export class PublicPlatformStatsService {
     }
 
     try {
-      const parsed = JSON.parse(cached) as Partial<PublicPlatformStats>;
+      const parsed = JSON.parse(cached) as Partial<CachedPublicPlatformStats>;
       if (
         !isCount(parsed.peopleCount) ||
         !isCount(parsed.eventsCount) ||
         !isCount(parsed.majorEventsCount) ||
-        !isCount(parsed.certificatesCount)
+        !isCount(parsed.certificatesCount) ||
+        typeof parsed.generatedAt !== 'string' ||
+        !isCurrentSaoPauloDay(parsed.generatedAt)
       ) {
         return null;
       }
@@ -88,7 +77,8 @@ export class PublicPlatformStatsService {
   }
 
   private async generateAndCacheStats(): Promise<PublicPlatformStats> {
-    const delayedUntil = new Date(Date.now() - PUBLIC_STATS_DELAY_DAYS * 24 * 60 * 60 * 1000);
+    const generatedAt = new Date();
+    const delayedUntil = new Date(generatedAt.getTime() - PUBLIC_STATS_DELAY_DAYS * 24 * 60 * 60 * 1000);
     const countWhere = {
       deletedAt: null,
       createdAt: { lte: delayedUntil },
@@ -101,11 +91,25 @@ export class PublicPlatformStatsService {
     ]);
     const stats = { peopleCount, eventsCount, majorEventsCount, certificatesCount };
 
-    await this.redis.set(CACHE_KEY, JSON.stringify(stats), 'EX', CACHE_TTL_SECONDS);
+    await this.redis.set(CACHE_KEY, JSON.stringify({ ...stats, generatedAt: generatedAt.toISOString() }), 'EX', CACHE_TTL_SECONDS);
     return stats;
   }
 }
 
 function isCount(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isCurrentSaoPauloDay(value: string): boolean {
+  const generatedAt = new Date(value);
+  return Number.isFinite(generatedAt.getTime()) && formatSaoPauloDate(generatedAt) === formatSaoPauloDate(new Date());
+}
+
+function formatSaoPauloDate(value: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(value);
 }

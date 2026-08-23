@@ -10,6 +10,9 @@ import { buildBullMqJobId } from '../queues/bullmq-job-id';
 export const ONLINE_ATTENDANCE_NOTIFICATION_QUEUE = 'online-attendance-notifications';
 export const ONLINE_ATTENDANCE_AVAILABLE_NOTIFICATION_JOB = 'notify-online-attendance-available';
 
+const PENDING_EVENT_PAGE_SIZE = 100;
+const SCHEDULING_CONCURRENCY = 10;
+
 export interface OnlineAttendanceAvailableNotificationJob {
   eventId: string;
   onlineAttendanceStartDate: string;
@@ -82,7 +85,6 @@ export class OnlineAttendanceNotificationJobsService {
           backoff: { type: 'exponential', delay: 1_000 },
           delay: Math.max(startDate.getTime() - Date.now(), 0),
           jobId: buildBullMqJobId('online-attendance-available', event.id, startDate.getTime()),
-          removeOnComplete: false,
           removeOnFail: true,
         },
       );
@@ -96,27 +98,37 @@ export class OnlineAttendanceNotificationJobsService {
   }
 
   async schedulePendingEvents(): Promise<void> {
-    const events = await this.prisma.event.findMany({
-      where: {
-        deletedAt: null,
-        shouldCollectAttendance: true,
-        isOnlineAttendanceAllowed: true,
-        onlineAttendanceCode: { not: null },
-        onlineAttendanceStartDate: { not: null },
-        onlineAttendanceEndDate: { gte: new Date() },
-      },
-      select: {
-        id: true,
-        endDate: true,
-        shouldCollectAttendance: true,
-        isOnlineAttendanceAllowed: true,
-        onlineAttendanceCode: true,
-        onlineAttendanceStartDate: true,
-        onlineAttendanceEndDate: true,
-      },
-    });
+    let cursor: string | undefined;
+    do {
+      const events = await this.prisma.event.findMany({
+        where: {
+          deletedAt: null,
+          shouldCollectAttendance: true,
+          isOnlineAttendanceAllowed: true,
+          onlineAttendanceCode: { not: null },
+          onlineAttendanceStartDate: { not: null },
+          onlineAttendanceEndDate: { gte: new Date() },
+        },
+        select: {
+          id: true,
+          endDate: true,
+          shouldCollectAttendance: true,
+          isOnlineAttendanceAllowed: true,
+          onlineAttendanceCode: true,
+          onlineAttendanceStartDate: true,
+          onlineAttendanceEndDate: true,
+        },
+        orderBy: { id: 'asc' },
+        take: PENDING_EVENT_PAGE_SIZE,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      });
 
-    await Promise.all(events.map((event) => this.scheduleEvent(event)));
+      for (let index = 0; index < events.length; index += SCHEDULING_CONCURRENCY) {
+        await Promise.all(events.slice(index, index + SCHEDULING_CONCURRENCY).map((event) => this.scheduleEvent(event)));
+      }
+
+      cursor = events.length === PENDING_EVENT_PAGE_SIZE ? events.at(-1)?.id : undefined;
+    } while (cursor);
   }
 
   async deliver(input: OnlineAttendanceAvailableNotificationJob): Promise<void> {

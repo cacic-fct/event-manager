@@ -14,17 +14,19 @@ export class CalendarFeedMaintenanceScheduler implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.calendarFeedMaintenanceQueue.add(
-      DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB,
-      {},
+    await this.calendarFeedMaintenanceQueue.upsertJobScheduler(
+      buildBullMqJobId('calendar', DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB),
       {
-        jobId: buildBullMqJobId('calendar', DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB),
-        repeat: {
-          pattern: '0 3 * * 0',
-          tz: TIME_ZONE,
+        pattern: '0 3 * * 0',
+        tz: TIME_ZONE,
+      },
+      {
+        name: DISABLE_STALE_ADMIN_CALENDAR_FEEDS_JOB,
+        data: {},
+        opts: {
+          removeOnComplete: true,
+          removeOnFail: 50,
         },
-        removeOnComplete: true,
-        removeOnFail: 50,
       },
     );
   }

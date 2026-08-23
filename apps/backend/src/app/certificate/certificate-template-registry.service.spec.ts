@@ -97,7 +97,7 @@ describe('CertificateTemplateRegistryService', () => {
     expect(typesense.upsertCertificateTemplate).toHaveBeenCalledTimes(4);
   });
 
-  it('keeps one mutable template row and removes config values that only materialized old defaults', async () => {
+  it('creates an immutable template revision and moves configs off the issued snapshot', async () => {
     const root = await createTemplateRoot();
     const templateDirectory = join(root, 'registered');
     await mkdir(templateDirectory, { recursive: true });
@@ -112,6 +112,8 @@ describe('CertificateTemplateRegistryService', () => {
     });
     process.env.CERTIFICATE_TEMPLATES_ROOT = root;
     const updateConfig = jest.fn();
+    const updateConfigs = jest.fn();
+    const createTemplate = jest.fn().mockImplementation(({ data }) => ({ id: 'template-2', ...data }));
     const updateTemplate = jest.fn().mockImplementation(({ data }) => ({ id: 'template-1', ...data }));
     const prisma = createPrismaMock({
       findUnique: jest.fn().mockResolvedValue({
@@ -133,6 +135,8 @@ describe('CertificateTemplateRegistryService', () => {
         },
       ]),
       configUpdate: updateConfig,
+      configUpdateMany: updateConfigs,
+      create: createTemplate,
       update: updateTemplate,
     });
     const service = new CertificateTemplateRegistryService(prisma as never, {
@@ -149,13 +153,18 @@ describe('CertificateTemplateRegistryService', () => {
       expect.objectContaining({
         where: { id: 'template-1' },
         data: expect.objectContaining({
-          name: 'Modelo corrigido',
-          certificateFields: expect.objectContaining({
-            'top-text': expect.objectContaining({ default: 'Texto novo' }),
-          }),
+          registryKey: expect.stringContaining('registered@old-checksum:'),
+          isActive: false,
         }),
       }),
     );
+    expect(createTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ registryKey: 'registered', name: 'Modelo corrigido' }) }),
+    );
+    expect(updateConfigs).toHaveBeenCalledWith({
+      where: { certificateTemplateId: 'template-1' },
+      data: { certificateTemplateId: 'template-2' },
+    });
   });
 
   it('fails startup when a referenced legacy template has no repository metadata', async () => {
@@ -262,6 +271,7 @@ function createPrismaMock(overrides: {
   update?: jest.Mock;
   configFindMany?: jest.Mock;
   configUpdate?: jest.Mock;
+  configUpdateMany?: jest.Mock;
 } = {}) {
   const certificateTemplate = {
     findUnique: overrides.findUnique ?? jest.fn().mockResolvedValue(null),
@@ -275,6 +285,7 @@ function createPrismaMock(overrides: {
     certificateConfig: {
       findMany: overrides.configFindMany ?? jest.fn().mockResolvedValue([]),
       update: overrides.configUpdate ?? jest.fn(),
+      updateMany: overrides.configUpdateMany ?? jest.fn(),
     },
     $executeRaw: jest.fn(),
   };

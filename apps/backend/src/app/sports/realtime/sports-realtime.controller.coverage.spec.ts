@@ -7,9 +7,9 @@ import { SportsRealtimeController } from './sports-realtime.controller';
 describe('SportsRealtimeController uncovered authenticated streams', () => {
   let prisma: {
     sportsMatch: { findFirst: jest.Mock };
-    sportsTournament: { findFirstOrThrow: jest.Mock };
+    sportsTournament: { findFirst: jest.Mock; findFirstOrThrow: jest.Mock };
   };
-  let policy: { assertPermissions: jest.Mock };
+  let policy: { assertPermissions: jest.Mock; accessibleEventTargets: jest.Mock };
   let currentUser: { requireCurrentPerson: jest.Mock };
   let replay: { replay: jest.Mock };
   let realtime: { scope: jest.Mock; watch: jest.Mock };
@@ -18,10 +18,11 @@ describe('SportsRealtimeController uncovered authenticated streams', () => {
   beforeEach(() => {
     prisma = {
       sportsMatch: { findFirst: jest.fn() },
-      sportsTournament: { findFirstOrThrow: jest.fn() },
+      sportsTournament: { findFirst: jest.fn(), findFirstOrThrow: jest.fn() },
     };
     policy = {
       assertPermissions: jest.fn().mockResolvedValue(undefined),
+      accessibleEventTargets: jest.fn().mockResolvedValue(null),
     };
     currentUser = {
       requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'person-1' }),
@@ -96,11 +97,7 @@ describe('SportsRealtimeController uncovered authenticated streams', () => {
       ),
     ).resolves.toEqual({ id: 'cursor-new', data: { revision: 4 } });
 
-    expect(policy.assertPermissions).toHaveBeenCalledWith(
-      user,
-      [Permission.SportsTournament.Read],
-      { sportsTournamentId: 'tournament-1' },
-    );
+    expect(policy.accessibleEventTargets).toHaveBeenCalledWith(user, Permission.SportsTournament.Read);
     expect(realtime.scope).toHaveBeenCalledWith('admin-tournament', 'tournament-1');
     expect(realtime.watch).toHaveBeenCalledWith('admin-tournament:tournament-1');
     expect(replay.replay).toHaveBeenCalledWith(
@@ -112,7 +109,7 @@ describe('SportsRealtimeController uncovered authenticated streams', () => {
 
   it('does not replay tournament review events when scoped permission is denied', async () => {
     const failure = new ForbiddenException('Tournament read permission required.');
-    policy.assertPermissions.mockRejectedValue(failure);
+    policy.accessibleEventTargets.mockRejectedValue(failure);
 
     await expect(
       firstValueFrom(
@@ -123,5 +120,39 @@ describe('SportsRealtimeController uncovered authenticated streams', () => {
     ).rejects.toBe(failure);
 
     expect(replay.replay).not.toHaveBeenCalled();
+  });
+
+  it('authorizes a tournament review stream through an event-scoped read grant', async () => {
+    policy.accessibleEventTargets.mockResolvedValue({
+      eventIds: new Set(['event-1']),
+      eventGroupIds: new Set(),
+      majorEventIds: new Set(),
+    });
+    prisma.sportsTournament.findFirst.mockResolvedValue({ id: 'tournament-1' });
+
+    await expect(
+      firstValueFrom(
+        controller.streamTournamentReview('tournament-1', undefined, { user: { sub: 'admin-1' } } as never).pipe(
+          take(1),
+        ),
+      ),
+    ).resolves.toEqual({ id: 'cursor-new', data: { revision: 4 } });
+
+    expect(prisma.sportsTournament.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: 'tournament-1',
+          OR: [
+            {
+              categories: {
+                some: expect.objectContaining({
+                  OR: [{ matches: { some: { deletedAt: null, eventId: { in: ['event-1'] } } } }],
+                }),
+              },
+            },
+          ],
+        }),
+      }),
+    );
   });
 });

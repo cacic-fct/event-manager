@@ -1,5 +1,5 @@
 import { EventForm as EventFormModel } from '@cacic-fct/shared-data-types';
-import { NotFoundException } from '@nestjs/common';
+import { Logger, NotFoundException } from '@nestjs/common';
 import { AuditLogOperation, PublicationState } from '@prisma/client';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { AuditRecordOptions } from '../audit-log/audit-log.types';
@@ -164,7 +164,18 @@ async function publishEventFormNowIfClaimed(
   if (!published) {
     return null;
   }
-  await notifyEligiblePeople(formNotifications, published);
+  try {
+    await notifyEligiblePeople(formNotifications, published);
+  } catch (error: unknown) {
+    // Publication is authoritative database state. Notification delivery is
+    // retried by the available-link sweep and must not turn a committed
+    // publication into a reported mutation failure.
+    new Logger('EventFormPublication').warn(
+      `Could not notify people about published form ${published.id}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
   return published;
 }
 

@@ -39,9 +39,11 @@ export class AttendanceOfflineSyncService {
   private readonly isBrowser = isPlatformBrowser(this.platformId);
 
   private initializedUserId: string | null = null;
-  private initializationRunning = false;
-  private oralSyncRunning = false;
-  private syncRunning = false;
+  private initializationPromise: Promise<void> | null = null;
+  private attendanceSyncPromise: Promise<void> | null = null;
+  private oralSyncPromise: Promise<void> | null = null;
+  private authGeneration = 0;
+  private activeUserId: string | null = null;
   private reminderTimer: ReturnType<typeof setInterval> | null = null;
   private lastReminderAt = 0;
 
@@ -53,66 +55,95 @@ export class AttendanceOfflineSyncService {
     effect(() => {
       const user = this.auth.user();
       const isOnline = this.network.isOnline();
+      const userId = user?.sub ?? null;
+      if (this.activeUserId !== userId) {
+        this.initializedUserId = null;
+      }
+      this.activeUserId = userId;
+      const generation = ++this.authGeneration;
       if (!user?.sub || !isOnline) {
         return;
       }
 
-      void this.initializeForUser(user.sub);
-      void this.syncPending();
+      void this.initializeForUser(user.sub, generation).catch(() => undefined);
+      void this.syncPending(user.sub, generation).catch(() => undefined);
     });
 
-    this.reminderTimer ??= setInterval(() => void this.remindPending(), HOURLY_REMINDER_MS);
-    void this.remindPending();
+    this.reminderTimer ??= setInterval(() => void this.remindPending().catch(() => undefined), HOURLY_REMINDER_MS);
+    void this.remindPending().catch(() => undefined);
   }
 
-  async syncPending(): Promise<void> {
+  async syncPending(expectedUserId?: string, expectedGeneration?: number): Promise<void> {
     if (!this.isBrowser || !this.network.isOnline()) {
       return;
     }
 
-    const userId = this.auth.user()?.sub;
+    const userId = expectedUserId ?? this.auth.user()?.sub;
     if (!userId) {
       return;
     }
 
-    await Promise.all([this.syncAttendanceQueue(userId), this.syncOralQueue(userId)]);
-  }
-
-  private async syncAttendanceQueue(userId: string): Promise<void> {
-    if (this.syncRunning) {
+    if (this.authGeneration === 0) {
+      this.authGeneration = 1;
+      this.activeUserId = userId;
+    }
+    const generation = expectedGeneration ?? this.authGeneration;
+    if (!this.isCurrentRun(userId, generation)) {
       return;
     }
 
-    const items = await this.queue.listPending(userId);
-    if (items.length === 0) {
-      return;
-    }
-
-    this.syncRunning = true;
     try {
-      await this.syncWithRetries(userId, items);
-    } finally {
-      this.syncRunning = false;
+      await Promise.all([this.syncAttendanceQueue(userId, generation), this.syncOralQueue(userId, generation)]);
+    } catch {
+      // IndexedDB/network failures are surfaced on the next online/manual
+      // attempt; callers commonly invoke this method from fire-and-forget
+      // reactive effects, so never leak an unhandled rejection.
     }
   }
 
-  private async syncOralQueue(userId: string): Promise<void> {
-    if (this.oralSyncRunning) {
-      return;
+  private syncAttendanceQueue(userId: string, generation: number): Promise<void> {
+    if (this.attendanceSyncPromise) {
+      return this.attendanceSyncPromise;
     }
 
-    const items = await this.oralQueue.listPending(userId);
-    if (this.oralSyncRunning) {
-      return;
-    }
+    const run = this.runAttendanceQueue(userId, generation);
+    this.attendanceSyncPromise = run.finally(() => {
+      this.attendanceSyncPromise = null;
+      this.rerunForLatestUser(userId, generation);
+    });
+    return this.attendanceSyncPromise;
+  }
+
+  private async runAttendanceQueue(userId: string, generation: number): Promise<void> {
+    const items = await this.queue.listUploadable(userId);
     if (items.length === 0) {
       return;
     }
 
-    this.oralSyncRunning = true;
+    await this.syncWithRetries(userId, items, generation);
+  }
+
+  private syncOralQueue(userId: string, generation: number): Promise<void> {
+    if (this.oralSyncPromise) {
+      return this.oralSyncPromise;
+    }
+
+    const run = this.runOralQueue(userId, generation);
+    this.oralSyncPromise = run.finally(() => {
+      this.oralSyncPromise = null;
+      this.rerunForLatestUser(userId, generation);
+    });
+    return this.oralSyncPromise;
+  }
+
+  private async runOralQueue(userId: string, generation: number): Promise<void> {
+    const items = await this.oralQueue.listUploadable(userId);
+    if (items.length === 0) {
+      return;
+    }
+
     let failedCount = 0;
-    try {
-      const itemsByEvent = new Map<string, typeof items>();
+    const itemsByEvent = new Map<string, typeof items>();
       for (const item of items) {
         const eventItems = itemsByEvent.get(item.eventId) ?? [];
         eventItems.push(item);
@@ -129,12 +160,14 @@ export class AttendanceOfflineSyncService {
               await firstValueFrom(
                 this.api.registerOralBatch(
                   batch.map((item) => ({
+                    clientId: item.clientId,
                     eventId: item.eventId,
                     personId: item.personId,
                     status: item.status,
                     collectedAt: item.collectedAt,
                     collectedByUserId: item.queuedByUserId,
                     location: item.location,
+                    collectorCredential: item.collectorCredential,
                   })),
                 ),
               );
@@ -158,12 +191,9 @@ export class AttendanceOfflineSyncService {
             );
           }
         }
-      }
-    } finally {
-      this.oralSyncRunning = false;
     }
 
-    if (failedCount > 0) {
+    if (failedCount > 0 && this.isCurrentRun(userId, generation)) {
       this.snackbar.open(
         `${failedCount} decisão(ões) da chamada oral continuam salvas e serão tentadas novamente.`,
         'Fechar',
@@ -176,14 +206,34 @@ export class AttendanceOfflineSyncService {
     await this.remindPending(true);
   }
 
-  private async initializeForUser(userId: string): Promise<void> {
-    if (this.initializationRunning || this.initializedUserId === userId) {
+  private initializeForUser(userId: string, generation: number): Promise<void> {
+    if (this.initializedUserId === userId) {
+      return Promise.resolve();
+    }
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    const run = this.runInitialization(userId, generation);
+    this.initializationPromise = run.finally(() => {
+      this.initializationPromise = null;
+      if (this.activeUserId && (this.activeUserId !== userId || this.authGeneration !== generation)) {
+        void this.initializeForUser(this.activeUserId, this.authGeneration).catch(() => undefined);
+      }
+    });
+    return this.initializationPromise;
+  }
+
+  private async runInitialization(userId: string, generation: number): Promise<void> {
+    if (!this.isCurrentRun(userId, generation)) {
       return;
     }
 
-    this.initializationRunning = true;
     try {
       const events = await firstValueFrom(this.api.listCollectionEvents());
+      if (!this.isCurrentRun(userId, generation)) {
+        return;
+      }
       await this.queue.replaceCollectionEvents(userId, events);
       if (events.length === 0) {
         this.initializedUserId = userId;
@@ -194,11 +244,11 @@ export class AttendanceOfflineSyncService {
         this.cache.cacheAttendanceCollection(events),
         this.incognitoWarning.warnIfPrivateBrowsing(),
       ]);
-      this.initializedUserId = userId;
+      if (this.isCurrentRun(userId, generation)) {
+        this.initializedUserId = userId;
+      }
     } catch {
       return;
-    } finally {
-      this.initializationRunning = false;
     }
   }
 
@@ -214,32 +264,54 @@ export class AttendanceOfflineSyncService {
       authorUserId: item.authorUserId,
       authorName: item.authorName,
       authorEmail: item.authorEmail,
+      collectorCredential: item.collectorCredential,
     };
   }
 
-  private async syncWithRetries(userId: string, items: readonly OfflineAttendanceQueueItem[]): Promise<void> {
+  private async syncWithRetries(
+    userId: string,
+    items: readonly OfflineAttendanceQueueItem[],
+    generation: number,
+  ): Promise<void> {
     let remaining = [...items];
     const successfulResults: OfflineAttendanceCommitResult[] = [];
     const finalFailures = new Map<string, { item: OfflineAttendanceQueueItem; message: string }>();
 
     for (let attempt = 1; attempt <= MAX_SYNC_ATTEMPTS && remaining.length > 0; attempt++) {
-      const clientIds = remaining.map((item) => item.clientId);
-      await this.queue.markSyncing(userId, clientIds);
+      await this.forEachAttendanceOwner(remaining, (ownerUserId, ownerClientIds) =>
+        this.queue.markSyncing(ownerUserId, ownerClientIds),
+      );
 
       try {
         const results = await firstValueFrom(
           this.api.commitOfflineAttendances(remaining.map((item) => this.toPayload(item))),
         );
-        await this.queue.applyCommitResults(userId, results);
+        const attemptedByClientId = new Map(remaining.map((item) => [item.clientId, item]));
+        await this.forEachAttendanceOwner(
+          results.flatMap((result) => {
+            const item = attemptedByClientId.get(result.clientId);
+            return item ? [item] : [];
+          }),
+          (ownerUserId, ownerClientIds) =>
+            this.queue.applyCommitResults(
+              ownerUserId,
+              results.filter((result) => ownerClientIds.includes(result.clientId)),
+              userId,
+            ),
+        );
         successfulResults.push(...results.filter((result) => this.isDurableResult(result)));
 
         const resultByClientId = new Map(results.map((result) => [result.clientId, result]));
         const missingAcknowledgements = remaining.filter((item) => !resultByClientId.has(item.clientId));
         if (missingAcknowledgements.length > 0) {
-          await this.queue.recordSyncFailure(
-            userId,
-            missingAcknowledgements.map((item) => item.clientId),
-            'O servidor não confirmou o recebimento desta presença.',
+          await this.forEachAttendanceOwner(
+            missingAcknowledgements,
+            (ownerUserId, ownerClientIds) =>
+              this.queue.recordSyncFailure(
+                ownerUserId,
+                ownerClientIds,
+                'O servidor não confirmou o recebimento desta presença.',
+              ),
           );
         }
 
@@ -282,7 +354,9 @@ export class AttendanceOfflineSyncService {
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Falha de sincronização.';
-        await this.queue.recordSyncFailure(userId, clientIds, message);
+        await this.forEachAttendanceOwner(remaining, (ownerUserId, ownerClientIds) =>
+          this.queue.recordSyncFailure(ownerUserId, ownerClientIds, message),
+        );
         remaining.forEach((item) =>
           finalFailures.set(item.clientId, {
             item,
@@ -296,7 +370,9 @@ export class AttendanceOfflineSyncService {
       }
     }
 
-    this.showSyncResultDialog(successfulResults, [...finalFailures.values()]);
+    if (this.isCurrentRun(userId, generation)) {
+      this.showSyncResultDialog(successfulResults, [...finalFailures.values()]);
+    }
   }
 
   private isDurableResult(result: OfflineAttendanceCommitResult): boolean {
@@ -341,7 +417,7 @@ export class AttendanceOfflineSyncService {
       return;
     }
 
-    const count = await this.queue.countPending(userId);
+    const count = await this.queue.countUploadable(userId);
     if (count === 0) {
       return;
     }
@@ -361,7 +437,7 @@ export class AttendanceOfflineSyncService {
       .open(message, 'Sincronizar', { duration: 8000 })
       .onAction()
       .subscribe(() => {
-        void this.syncPending();
+        void this.syncPending().catch(() => undefined);
       });
   }
 
@@ -370,14 +446,51 @@ export class AttendanceOfflineSyncService {
       return false;
     }
 
-    const registration = await navigator.serviceWorker.ready;
-    await registration.showNotification('Presenças off-line pendentes', {
-      body: message,
-      tag: 'offline-attendance-reminder',
-      data: {
-        url: new URL('attendance/collect', document.baseURI).toString(),
-      },
-    });
-    return true;
+    try {
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Service Worker indisponível.')), 2_000);
+        }),
+      ]);
+      await registration.showNotification('Presenças off-line pendentes', {
+        body: message,
+        tag: 'offline-attendance-reminder',
+        data: {
+          url: new URL('attendance/collect', document.baseURI).toString(),
+        },
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private isCurrentRun(userId: string, generation: number): boolean {
+    return this.activeUserId === userId && this.authGeneration === generation && this.auth.user()?.sub === userId;
+  }
+
+  private rerunForLatestUser(userId: string, generation: number): void {
+    const activeUserId = this.activeUserId;
+    if (!activeUserId || (activeUserId === userId && this.authGeneration === generation)) {
+      return;
+    }
+
+    void this.syncPending(activeUserId, this.authGeneration).catch(() => undefined);
+  }
+
+  private async forEachAttendanceOwner(
+    items: readonly OfflineAttendanceQueueItem[],
+    operation: (ownerUserId: string, clientIds: string[]) => Promise<unknown>,
+  ): Promise<void> {
+    const clientIdsByOwner = new Map<string, string[]>();
+    for (const item of items) {
+      const clientIds = clientIdsByOwner.get(item.queuedByUserId) ?? [];
+      clientIds.push(item.clientId);
+      clientIdsByOwner.set(item.queuedByUserId, clientIds);
+    }
+    await Promise.all(
+      [...clientIdsByOwner].map(([ownerUserId, clientIds]) => operation(ownerUserId, clientIds)),
+    );
   }
 }

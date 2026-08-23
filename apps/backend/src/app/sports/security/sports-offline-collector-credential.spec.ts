@@ -13,13 +13,15 @@ describe('sports offline collector credentials', () => {
     collectorUserId: 'user-1',
     collectorRole: 'REFEREE',
     collectorKind: 'OFFICIAL' as const,
-    issuedAt: new Date('2024-01-01T00:00:00.000Z'),
+    issuedAt: new Date(Date.now() - 60 * 60_000),
   };
 
   beforeEach(() => {
     process.env = { ...originalEnvironment, NODE_ENV: 'test' };
     delete process.env.SPORTS_OFFLINE_COLLECTOR_SECRET;
     delete process.env.SPORTS_IDENTITY_SECRET;
+    process.env.SPORTS_OFFLINE_COLLECTOR_KEY_VERSION = '1';
+    process.env.SPORTS_OFFLINE_COLLECTOR_CREDENTIAL_TTL_MS = String(48 * 60 * 60_000);
   });
 
   afterAll(() => {
@@ -34,13 +36,15 @@ describe('sports offline collector credentials', () => {
       issuedAt: input.issuedAt,
     });
     expect(verifySportsOfflineCollectorCredential(issued.credential)).toEqual({
-      version: 1,
+      version: 2,
+      keyVersion: '1',
       matchId: 'match-1',
       collectorPersonId: 'person-1',
       collectorUserId: 'user-1',
       collectorRole: 'REFEREE',
       collectorKind: 'OFFICIAL',
-      issuedAt: '2024-01-01T00:00:00.000Z',
+      issuedAt: input.issuedAt.toISOString(),
+      expiresAt: new Date(input.issuedAt.getTime() + 48 * 60 * 60_000).toISOString(),
     });
   });
 
@@ -77,10 +81,10 @@ describe('sports offline collector credentials', () => {
   it('rejects signed content that is not JSON', () => {
     const encodedPayload = Buffer.from('{', 'utf8').toString('base64url');
     const signature = createHmac('sha256', 'local-development-sports-offline-collector-secret')
-      .update(`v1.${encodedPayload}`, 'utf8')
+      .update(`v2.${encodedPayload}`, 'utf8')
       .digest('base64url');
 
-    expect(() => verifySportsOfflineCollectorCredential(`v1.${encodedPayload}.${signature}`)).toThrow(
+    expect(() => verifySportsOfflineCollectorCredential(`v2.${encodedPayload}.${signature}`)).toThrow(
       BadRequestException,
     );
   });
@@ -88,13 +92,13 @@ describe('sports offline collector credentials', () => {
   it.each([
     null,
     [],
-    { ...input, version: 2, issuedAt: input.issuedAt.toISOString() },
-    { ...input, version: 1, matchId: '', issuedAt: input.issuedAt.toISOString() },
-    { ...input, version: 1, collectorPersonId: ' person-1', issuedAt: input.issuedAt.toISOString() },
-    { ...input, version: 1, collectorUserId: 'x'.repeat(201), issuedAt: input.issuedAt.toISOString() },
-    { ...input, version: 1, collectorRole: 'invalid-role', issuedAt: input.issuedAt.toISOString() },
-    { ...input, version: 1, collectorKind: 'COACH', issuedAt: input.issuedAt.toISOString() },
-    { ...input, version: 1, issuedAt: 'not-a-date' },
+    { ...input, version: 1, keyVersion: '1', issuedAt: input.issuedAt.toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString() },
+    { ...input, version: 2, keyVersion: '1', matchId: '', issuedAt: input.issuedAt.toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString() },
+    { ...input, version: 2, keyVersion: '1', collectorPersonId: ' person-1', issuedAt: input.issuedAt.toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString() },
+    { ...input, version: 2, keyVersion: '1', collectorUserId: 'x'.repeat(201), issuedAt: input.issuedAt.toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString() },
+    { ...input, version: 2, keyVersion: '1', collectorRole: 'invalid-role', issuedAt: input.issuedAt.toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString() },
+    { ...input, version: 2, keyVersion: '1', collectorKind: 'COACH', issuedAt: input.issuedAt.toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString() },
+    { ...input, version: 2, keyVersion: '1', issuedAt: 'not-a-date', expiresAt: new Date(Date.now() + 60_000).toISOString() },
   ])('rejects an invalid signed payload', (payload) => {
     expect(() => verifySportsOfflineCollectorCredential(signPayload(payload))).toThrow(BadRequestException);
   });
@@ -103,16 +107,18 @@ describe('sports offline collector credentials', () => {
     expect(
       verifySportsOfflineCollectorCredential(
         signPayload({
-          version: 1,
+          version: 2,
+          keyVersion: '1',
           matchId: 'match-1',
           collectorPersonId: 'person-1',
           collectorUserId: 'user-1',
           collectorRole: 'ADMIN',
           collectorKind: 'ADMIN',
-          issuedAt: '2024-01-01T00:00:00Z',
+          issuedAt: input.issuedAt.toISOString(),
+          expiresAt: new Date(Date.now() + 60_000).toISOString(),
         }),
       ).issuedAt,
-    ).toBe('2024-01-01T00:00:00.000Z');
+    ).toBe(input.issuedAt.toISOString());
   });
 
   it('uses the identity secret as a fallback', () => {
@@ -122,6 +128,19 @@ describe('sports offline collector credentials', () => {
 
     expect(issued.issuedAt).toBeInstanceOf(Date);
     expect(verifySportsOfflineCollectorCredential(issued.credential).matchId).toBe('match-1');
+  });
+
+  it('rejects expired credentials and credentials signed with an old key version', () => {
+    const expired = issueSportsOfflineCollectorCredential({
+      ...input,
+      issuedAt: new Date(Date.now() - 3 * 24 * 60 * 60_000),
+      expiresAt: new Date(Date.now() - 10 * 60_000),
+    });
+    expect(() => verifySportsOfflineCollectorCredential(expired.credential)).toThrow(BadRequestException);
+
+    const oldVersion = issueSportsOfflineCollectorCredential(input).credential;
+    process.env.SPORTS_OFFLINE_COLLECTOR_KEY_VERSION = '2';
+    expect(() => verifySportsOfflineCollectorCredential(oldVersion)).toThrow(BadRequestException);
   });
 
   it('requires an explicit secret outside development and test', () => {
@@ -134,7 +153,7 @@ describe('sports offline collector credentials', () => {
 function signPayload(payload: unknown): string {
   const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
   const signature = createHmac('sha256', 'local-development-sports-offline-collector-secret')
-    .update(`v1.${encodedPayload}`, 'utf8')
+    .update(`v2.${encodedPayload}`, 'utf8')
     .digest('base64url');
-  return `v1.${encodedPayload}.${signature}`;
+  return `v2.${encodedPayload}.${signature}`;
 }

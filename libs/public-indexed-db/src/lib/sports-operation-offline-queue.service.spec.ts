@@ -104,6 +104,7 @@ describe('SportsOperationOfflineQueueService', () => {
       attempts: 1,
       queuedAt: '2026-08-11T12:05:01.000Z',
       lastError: 'Sem conexão.',
+      nextAttemptAt: expect.any(Number),
     });
 
     await service.remove('user-1', rawScannerPayload.clientId);

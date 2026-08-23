@@ -1,6 +1,7 @@
 import { Service, inject } from '@angular/core';
 import {
   hasOfflineSportsAttendanceCollectorProof,
+  OFFLINE_SPORTS_PERMANENT_FAILURE_PREFIX,
   type OfflineSportsCollectorCredential,
   type OfflineSportsOperationQueueItem,
   type OfflineSportsTimerSnapshot,
@@ -47,9 +48,16 @@ export class SportsOperationOfflineQueueService {
   }
 
   async listUploadable(userScope: string): Promise<OfflineSportsOperationQueueItem[]> {
-    return (await this.listAll()).filter((item) =>
-      item.kind === 'ACTION' ? item.userScope === userScope : hasOfflineSportsAttendanceCollectorProof(item),
-    );
+    const now = Date.now();
+    return (await this.listAll()).filter((item) => {
+      if (item.lastError?.startsWith(OFFLINE_SPORTS_PERMANENT_FAILURE_PREFIX)) {
+        return false;
+      }
+      if (item.nextAttemptAt && item.nextAttemptAt > now) {
+        return false;
+      }
+      return item.kind === 'ACTION' ? item.userScope === userScope : hasOfflineSportsAttendanceCollectorProof(item);
+    });
   }
 
   async saveCollectorCredential(credential: OfflineSportsCollectorCredential): Promise<void> {
@@ -80,7 +88,12 @@ export class SportsOperationOfflineQueueService {
     }
   }
 
-  async recordFailure(userScope: string, clientId: string, message: string): Promise<void> {
+  async recordFailure(
+    userScope: string,
+    clientId: string,
+    message: string,
+    options: { permanent?: boolean } = {},
+  ): Promise<void> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
       return;
@@ -90,7 +103,8 @@ export class SportsOperationOfflineQueueService {
     if (item) {
       await database.sportsOperationQueue.update(key, {
         attempts: item.attempts + 1,
-        lastError: message,
+        lastError: options.permanent ? `${OFFLINE_SPORTS_PERMANENT_FAILURE_PREFIX}${message}` : message,
+        nextAttemptAt: options.permanent ? undefined : Date.now() + retryDelayMs(item.attempts + 1),
       });
     }
   }
@@ -140,4 +154,8 @@ export class SportsOperationOfflineQueueService {
   private sort(items: OfflineSportsOperationQueueItem[]): OfflineSportsOperationQueueItem[] {
     return items.sort((left, right) => left.queuedAt.localeCompare(right.queuedAt) || left.id.localeCompare(right.id));
   }
+}
+
+function retryDelayMs(attempt: number): number {
+  return Math.min(30_000, 1_000 * 2 ** Math.min(Math.max(attempt - 1, 0), 5));
 }

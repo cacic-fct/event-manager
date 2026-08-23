@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PublicationState as PrismaPublicationState } from '@prisma/client';
 import { PublicationState, PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { AuthenticatedUser } from '../auth/interfaces/authenticated-user.interface';
@@ -12,6 +12,8 @@ import { EventSitemapService } from '../public-events/event-sitemap.service';
 
 @Injectable()
 export class PublicationTransitionService {
+  private readonly logger = new Logger(PublicationTransitionService.name);
+
   constructor(
     private readonly searchSync: PublicationSearchSyncService,
     private readonly stateWriter: PublicationStateWriterService,
@@ -36,8 +38,7 @@ export class PublicationTransitionService {
       scheduledPublishAt: input.scheduledPublishAt ?? null,
       user,
     });
-    await this.sitemap.refresh();
-    await this.searchSync.syncSearch(sync);
+    await this.finish(sync);
 
     return {
       result: {
@@ -78,8 +79,7 @@ export class PublicationTransitionService {
           ? await this.scheduleBundle(input, user)
           : await this.unpublishBundle(input, user);
 
-    await this.sitemap.refresh();
-    await this.searchSync.syncSearch(sync);
+    await this.finish(sync);
 
     return {
       result: {
@@ -96,25 +96,37 @@ export class PublicationTransitionService {
     };
   }
 
-  async publishEventById(eventId: string, user: AuthenticatedUser | null): Promise<TargetSync> {
+  async publishEventById(
+    eventId: string,
+    user: AuthenticatedUser | null,
+    options: { skipSitemap?: boolean } = {},
+  ): Promise<TargetSync> {
     const sync = await this.stateWriter.updateEventPublicationState(
       eventId,
       PrismaPublicationState.PUBLISHED,
       null,
       user ?? undefined,
     );
-    await this.sitemap.refresh();
+    if (!options.skipSitemap) {
+      await this.refreshSitemapBestEffort();
+    }
     return sync;
   }
 
-  async publishMajorEventById(majorEventId: string, user: AuthenticatedUser | null): Promise<TargetSync> {
+  async publishMajorEventById(
+    majorEventId: string,
+    user: AuthenticatedUser | null,
+    options: { skipSitemap?: boolean } = {},
+  ): Promise<TargetSync> {
     const sync = await this.stateWriter.updateMajorEventPublicationState(
       majorEventId,
       PrismaPublicationState.PUBLISHED,
       null,
       user ?? undefined,
     );
-    await this.sitemap.refresh();
+    if (!options.skipSitemap) {
+      await this.refreshSitemapBestEffort();
+    }
     return sync;
   }
 
@@ -162,8 +174,24 @@ export class PublicationTransitionService {
   }
 
   private async finish(sync: TargetSync): Promise<void> {
-    await this.sitemap.refresh();
-    await this.searchSync.syncSearch(sync);
+    const [sitemapResult, searchResult] = await Promise.allSettled([
+      this.sitemap.refresh(),
+      this.searchSync.syncSearch(sync),
+    ]);
+    if (sitemapResult.status === 'rejected') {
+      this.logger.warn(`Publication committed but sitemap refresh failed: ${formatFailure(sitemapResult.reason)}`);
+    }
+    if (searchResult.status === 'rejected') {
+      this.logger.warn(`Publication committed but search synchronization failed: ${formatFailure(searchResult.reason)}`);
+    }
+  }
+
+  async refreshSitemapBestEffort(): Promise<void> {
+    try {
+      await this.sitemap.refresh();
+    } catch (error: unknown) {
+      this.logger.warn(`Publication committed but sitemap refresh failed: ${formatFailure(error)}`);
+    }
   }
 
   private async publishMissingChildren(
@@ -210,4 +238,8 @@ export class PublicationTransitionService {
       user,
     });
   }
+}
+
+function formatFailure(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

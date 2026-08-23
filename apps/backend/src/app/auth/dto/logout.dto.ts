@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class LogoutDto {
   @ApiPropertyOptional({
@@ -8,6 +8,7 @@ export class LogoutDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(4_096)
   refreshToken?: string;
 
   @ApiPropertyOptional({
@@ -16,6 +17,7 @@ export class LogoutDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(4_096)
   idTokenHint?: string;
 
   @ApiPropertyOptional({
@@ -24,5 +26,6 @@ export class LogoutDto {
   })
   @IsOptional()
   @IsString()
+  @MaxLength(2_048)
   postLogoutRedirectUri?: string;
 }

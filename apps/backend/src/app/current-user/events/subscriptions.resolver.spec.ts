@@ -107,6 +107,7 @@ describe('CurrentUserEventSubscriptionsResolver', () => {
       where: {
         personId: 'person-1',
         deletedAt: null,
+        eventGroupSubscriptionId: null,
         event: {
           AND: [PUBLIC_EVENT_WHERE, { majorEventId: null }],
         },

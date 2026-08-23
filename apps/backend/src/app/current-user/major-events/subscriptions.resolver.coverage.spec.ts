@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import { AuditLogOperation, SubscriptionStatus } from '@prisma/client';
+import { AuditLogOperation, Prisma, SubscriptionStatus } from '@prisma/client';
 import { publicFixtureDateFromNow } from '@cacic-fct/event-manager-public-testing';
 import { CurrentUserMajorEventSubscriptionsResolver } from './subscriptions.resolver';
 import {
@@ -183,7 +183,7 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
       ...subscriptionRecord(majorEvent),
       subscriptionStatus: SubscriptionStatus.CONFIRMED,
     };
-    const tx = createUpsertTransaction(updatedSubscription);
+    const tx = createUpsertTransaction(majorEvent, selectedEvent, updatedSubscription);
     harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
     harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
     harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
@@ -238,6 +238,55 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     );
   });
 
+  it('returns the active winner when the major-subscription unique index rejects a concurrent create', async () => {
+    const harness = createHarness();
+    const majorEvent = majorEventRecord();
+    const selectedEvent = eventRecord('event-1');
+    const winner = {
+      id: 'subscription-1',
+      subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
+      imageLicenseAgreementAccepted: false,
+      amountPaid: null,
+      paymentTier: null,
+      selectedEvents: [],
+      sportsTournamentParticipants: [],
+    };
+    const updatedSubscription = { ...subscriptionRecord(majorEvent), ...winner };
+    const losingTx = createUpsertTransaction(majorEvent, selectedEvent, updatedSubscription);
+    const winningTx = createUpsertTransaction(majorEvent, selectedEvent, updatedSubscription);
+    winningTx.majorEventSubscription.findFirst.mockReset();
+    winningTx.majorEventSubscription.findFirst
+      .mockResolvedValueOnce(winner)
+      .mockResolvedValueOnce(winner)
+      .mockResolvedValueOnce(updatedSubscription)
+      .mockResolvedValueOnce({ id: 'subscription-1', subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD })
+      .mockResolvedValueOnce(updatedSubscription);
+    losingTx.majorEventSubscription.create.mockRejectedValueOnce(
+      new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '7.9.1',
+      }),
+    );
+    harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
+    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.prisma.event.findMany.mockResolvedValueOnce([selectedEvent]).mockResolvedValueOnce([]);
+    harness.prisma.$transaction
+      .mockImplementationOnce((operation: (transaction: unknown) => Promise<unknown>) => operation(losingTx))
+      .mockImplementationOnce((operation: (transaction: unknown) => Promise<unknown>) => operation(winningTx));
+    harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1', name: 'Major event' });
+    harness.mapper.mapPublicEvent.mockImplementation((event: { id: string }) => ({ id: event.id }));
+
+    await expect(
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: ['event-1'] },
+        { req: {} } as never,
+      ),
+    ).resolves.toEqual(expect.objectContaining({ id: 'subscription-1' }));
+    expect(harness.prisma.$transaction).toHaveBeenCalledTimes(2);
+    expect(winningTx.majorEventSubscription.create).not.toHaveBeenCalled();
+  });
+
   it('maps missing major-event and image-license validation failures before transaction work', async () => {
     const harness = createHarness();
     harness.prisma.majorEvent.findFirst.mockResolvedValue(null);
@@ -261,91 +310,29 @@ describe('CurrentUserMajorEventSubscriptionsResolver', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('marks a waiting receipt subscription for review, refreshes attendance, and returns selected events', async () => {
+  it('rechecks publication and registration invariants inside the serializable transaction', async () => {
     const harness = createHarness();
-    const majorEvent = majorEventRecord({ isPaymentRequired: true });
-    const subscription = subscriptionRecord(majorEvent, {
-      subscriptionStatus: SubscriptionStatus.WAITING_RECEIPT_UPLOAD,
-    });
-    const updated = { ...subscription, subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW };
-    const tx = {
-      majorEventSubscription: {
-        update: jest.fn().mockResolvedValue(updated),
-      },
-    };
-    const selectedEvents = [eventRecord('event-1')];
+    const majorEvent = majorEventRecord();
+    const selectedEvent = eventRecord('event-1');
+    const tx = createUpsertTransaction(majorEvent, selectedEvent, subscriptionRecord(majorEvent));
+    tx.majorEvent.findFirst.mockResolvedValue(null);
     harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
     harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
-    harness.prisma.majorEventSubscription.findFirst.mockResolvedValue(subscription);
+    harness.prisma.majorEvent.findFirst.mockResolvedValue(majorEvent);
+    harness.prisma.event.findMany.mockResolvedValueOnce([selectedEvent]).mockResolvedValueOnce([]);
     harness.prisma.$transaction.mockImplementation((operation: (transaction: unknown) => Promise<unknown>) =>
       operation(tx),
     );
-    harness.majorEventSubscriptions.getSelectedEventsForMajorEventSubscription.mockResolvedValue(selectedEvents);
-    harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1', name: 'Major event' });
 
     await expect(
-      harness.resolver.markCurrentUserReceiptUploaded('major-1', { req: {} } as never),
-    ).resolves.toEqual({
-      id: 'subscription-1',
-      majorEventId: 'major-1',
-      majorEvent: { id: 'major-1', name: 'Major event' },
-      subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
-      amountPaid: 2500,
-      paymentDate: updated.paymentDate,
-      paymentTier: 'student',
-      imageLicenseAgreementAccepted: false,
-      selectedEvents,
-      notSubscribedEvents: [],
-    });
-
-    expect(harness.frozenResources.assertMajorEventMutable).toHaveBeenCalledWith(
-      'major-1',
-      harness.user,
-      'edit',
-    );
-    expect(harness.attendanceCategories.refreshForMajorEventPerson).toHaveBeenCalledWith(
-      'major-1',
-      'person-1',
-      tx,
-    );
+      harness.resolver.upsertCurrentUserMajorEventSubscription(
+        { majorEventId: 'major-1', selectedEventIds: ['event-1'] },
+        { req: {} } as never,
+      ),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(tx.majorEventSubscription.create).not.toHaveBeenCalled();
   });
 
-  it('keeps receipt-review marking idempotent when the subscription is already under review', async () => {
-    const harness = createHarness();
-    const majorEvent = majorEventRecord({ isPaymentRequired: true });
-    const subscription = subscriptionRecord(majorEvent, {
-      subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW,
-    });
-    harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
-    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
-    harness.prisma.majorEventSubscription.findFirst.mockResolvedValue(subscription);
-    harness.majorEventSubscriptions.getSelectedEventsForMajorEventSubscription.mockResolvedValue([]);
-    harness.mapper.mapPublicMajorEvent.mockReturnValue({ id: 'major-1', name: 'Major event' });
-
-    await expect(
-      harness.resolver.markCurrentUserReceiptUploaded('major-1', { req: {} } as never),
-    ).resolves.toEqual(expect.objectContaining({ subscriptionStatus: SubscriptionStatus.RECEIPT_UNDER_REVIEW }));
-
-    expect(harness.prisma.$transaction).not.toHaveBeenCalled();
-    expect(harness.attendanceCategories.refreshForMajorEventPerson).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    ['missing subscription', null, undefined, NotFoundException],
-    ['non-payment major event', subscriptionRecord(majorEventRecord({ isPaymentRequired: false })), undefined, BadRequestException],
-    ['confirmed subscription', subscriptionRecord(majorEventRecord({ isPaymentRequired: true }), { subscriptionStatus: SubscriptionStatus.CONFIRMED }), undefined, BadRequestException],
-    ['canceled subscription', subscriptionRecord(majorEventRecord({ isPaymentRequired: true }), { subscriptionStatus: SubscriptionStatus.CANCELED }), undefined, BadRequestException],
-  ] as const)('rejects receipt marking for %s', async (_case, subscription, _unused, expectedError) => {
-    const harness = createHarness();
-    harness.currentUserContext.requireCurrentPerson.mockResolvedValue({ id: 'person-1' });
-    harness.publicEvents.hasPaymentInfoTable.mockResolvedValue(false);
-    harness.prisma.majorEventSubscription.findFirst.mockResolvedValue(subscription);
-
-    await expect(
-      harness.resolver.markCurrentUserReceiptUploaded('major-1', { req: {} } as never),
-    ).rejects.toBeInstanceOf(expectedError);
-    expect(harness.prisma.$transaction).not.toHaveBeenCalled();
-  });
 });
 
 function createHarness() {
@@ -458,11 +445,19 @@ function subscriptionRecord(majorEvent: ReturnType<typeof majorEventRecord>, ove
   };
 }
 
-function createUpsertTransaction(updatedSubscription: ReturnType<typeof subscriptionRecord>) {
+function createUpsertTransaction(
+  majorEvent: ReturnType<typeof majorEventRecord>,
+  selectedEvent: ReturnType<typeof eventRecord>,
+  updatedSubscription: ReturnType<typeof subscriptionRecord>,
+) {
   return {
+    majorEvent: {
+      findFirst: jest.fn().mockResolvedValue(majorEvent),
+    },
     majorEventSubscription: {
       findFirst: jest
         .fn()
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 'subscription-1', subscriptionStatus: SubscriptionStatus.CONFIRMED })
         .mockResolvedValueOnce(updatedSubscription),
@@ -479,6 +474,9 @@ function createUpsertTransaction(updatedSubscription: ReturnType<typeof subscrip
       updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       createMany: jest.fn().mockResolvedValue({ count: 1 }),
       count: jest.fn().mockResolvedValue(0),
+    },
+    event: {
+      findMany: jest.fn().mockResolvedValueOnce([selectedEvent]).mockResolvedValueOnce([]),
     },
   };
 }

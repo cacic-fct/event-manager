@@ -50,7 +50,7 @@ describe('receipt-file utils', () => {
     expect(file.mimetype).toBe('image/png');
   });
 
-  it('accepts PDFs by their declared type without requiring a signature', () => {
+  it('requires a PDF signature instead of trusting the declared type', () => {
     const file = {
       buffer: Buffer.from('not-a-signature'),
       mimetype: 'application/pdf',
@@ -58,8 +58,11 @@ describe('receipt-file utils', () => {
       size: 15,
     };
 
-    expect(() => assertValidReceiptUpload(file)).not.toThrow();
-    expect(file.mimetype).toBe('application/pdf');
+    expect(() => assertValidReceiptUpload(file)).toThrow(BadRequestException);
+
+    const validPdf = { ...file, buffer: Buffer.from('%PDF-1.7\n'), size: 9 };
+    expect(() => assertValidReceiptUpload(validPdf)).not.toThrow();
+    expect(validPdf.mimetype).toBe('application/pdf');
   });
 
   it('accepts allowed raster MIME types at upload filter time', () => {
@@ -78,6 +81,25 @@ describe('receipt-file utils', () => {
         mimetype: 'image/png',
         originalname: 'receipt.png',
         size: 1024,
+      }),
+    ).toThrow(BadRequestException);
+  });
+
+  it('detects HEIC brands and rejects prefixed PDF markers', () => {
+    const heic = Buffer.alloc(24);
+    heic.writeUInt32BE(16, 0);
+    heic.write('ftyp', 4, 'ascii');
+    heic.write('heic', 8, 'ascii');
+    const file = { buffer: heic, mimetype: 'application/octet-stream', originalname: 'receipt.heic', size: heic.length };
+    expect(() => assertValidReceiptUpload(file)).not.toThrow();
+    expect(file.mimetype).toBe('image/heic');
+
+    expect(() =>
+      assertValidReceiptUpload({
+        buffer: Buffer.from('prefix%PDF-1.7'),
+        mimetype: 'application/pdf',
+        originalname: 'receipt.pdf',
+        size: 14,
       }),
     ).toThrow(BadRequestException);
   });

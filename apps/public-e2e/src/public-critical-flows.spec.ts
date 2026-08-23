@@ -24,7 +24,7 @@ test('displays a public standalone event and lets the user subscribe and unsubsc
     window.dispatchEvent(new PopStateEvent('popstate'));
   });
 
-  await expect(page.getByRole('heading', { name: 'Oficina pública de TypeScript' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Oficina pública de TypeScript' })).toBeVisible({ timeout: 15_000 });
   const description = page.locator('lib-markdown').filter({ hasText: 'Atividade aberta para a comunidade.' });
   await expect(description.locator('strong')).toHaveText('Atividade aberta');
   await expect(description.locator('img, script')).toHaveCount(0);

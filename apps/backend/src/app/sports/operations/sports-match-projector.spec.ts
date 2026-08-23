@@ -105,6 +105,42 @@ describe('sports match projection', () => {
     ]);
   });
 
+  it('stops the active period timer when a live match is finalized', () => {
+    const start = new Date('2026-08-01T14:00:00.000Z');
+    const finalizedAt = new Date(start.getTime() + 20 * 60_000);
+    const projection = projectSportsMatch(
+      [
+        {
+          type: SportsMatchActionType.START,
+          payload: {},
+          authoredAt: start,
+          reviewStatus: SportsReviewStatus.APPROVED,
+        },
+        {
+          type: SportsMatchActionType.FINALIZE,
+          payload: { draw: true },
+          authoredAt: finalizedAt,
+          reviewStatus: SportsReviewStatus.PENDING,
+        },
+      ],
+      {
+        approvedOnly: false,
+        hasCheckedInPlayers: true,
+        maximumPeriods: 2,
+        periodLabel: 'Tempo',
+      },
+    );
+
+    expect(projection.state).toBe(SportsMatchState.DRAW);
+    expect(projection.periodTimers.at(-1)).toEqual(
+      expect.objectContaining({
+        startedAtUnixMs: null,
+        pausedAtUnixMs: finalizedAt.getTime(),
+        elapsedBeforePauseMs: 20 * 60_000,
+      }),
+    );
+  });
+
   it('keeps the overall and new period timers paused when rolling from a paused match', () => {
     const start = new Date('2026-08-01T14:00:00.000Z');
     const pause = new Date(start.getTime() + 10 * 60_000);
@@ -248,6 +284,7 @@ describe('sports match projection', () => {
           reviewStatus: SportsReviewStatus.PENDING,
           payload: {
             resolution: 'DEVICE',
+            state: SportsMatchState.LIVE,
             overall: { startedAtUnixMs: 1_786_000_000_000, pausedAtUnixMs: null, elapsedBeforePauseMs: 120_000 },
             periods: [
               {
@@ -331,6 +368,7 @@ describe('sports match projection', () => {
           reviewStatus: SportsReviewStatus.PENDING,
           payload: {
             resolution: 'DEVICE',
+            state: SportsMatchState.LIVE,
             activePeriodNumber: 2,
             overall: {
               startedAtUnixMs: start.getTime() + 46 * 60_000,

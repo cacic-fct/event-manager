@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -18,11 +18,28 @@ export interface S3Config {
   region: string;
 }
 
+export class S3ServiceError extends Error {
+  readonly code?: string;
+  readonly statusCode?: number;
+  readonly requestId?: string;
+
+  constructor(message: string, cause: unknown) {
+    super(message);
+    Object.defineProperty(this, 'cause', { value: cause, configurable: true });
+    this.name = 'S3ServiceError';
+    const metadata = readAwsMetadata(cause);
+    this.code = metadata.code;
+    this.statusCode = metadata.statusCode;
+    this.requestId = metadata.requestId;
+  }
+}
+
 @Injectable()
-export class S3Service {
+export class S3Service implements OnModuleDestroy {
   private readonly logger = new Logger(S3Service.name);
   private readonly s3Client?: S3Client;
   private readonly bucketName?: string;
+  private destroyed = false;
 
   constructor(private readonly configService: ConfigService) {
     const endpoint = this.configService.get<string>('S3_ENDPOINT');
@@ -54,6 +71,12 @@ export class S3Service {
     this.logger.log(`S3Service initialized with endpoint: ${endpoint}, bucket: ${bucketName}`);
   }
 
+  onModuleDestroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.s3Client?.destroy();
+  }
+
   /**
    * Upload a file to S3-compatible storage
    */
@@ -81,22 +104,31 @@ export class S3Service {
 
       await upload.done();
 
-      // Get file size
-      const headResult = await s3Client.send(
-        new HeadObjectCommand({
-          Bucket: bucketName,
-          Key: key,
-        }),
-      );
+      // Buffer uploads already know their size. A post-upload HEAD request
+      // must not turn a successful write into a retryable failure.
+      let size = body instanceof Buffer ? body.length : 0;
+      if (!(body instanceof Buffer)) {
+        try {
+          const headResult = await s3Client.send(
+            new HeadObjectCommand({
+              Bucket: bucketName,
+              Key: key,
+            }),
+          );
+          size = headResult.ContentLength || 0;
+        } catch (error: unknown) {
+          this.logger.warn(`Uploaded file ${key}, but metadata verification failed: ${formatAwsError(error)}`);
+        }
+      }
 
       this.logger.log(`File uploaded successfully: ${key}`);
       return {
         key,
-        size: headResult.ContentLength || 0,
+        size,
       };
     } catch (error: unknown) {
       this.logger.error(`Failed to upload file ${key}:`, error);
-      throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new S3ServiceError(`Failed to upload file: ${formatAwsError(error)}`, error);
     }
   }
 
@@ -130,7 +162,7 @@ export class S3Service {
       };
     } catch (error: unknown) {
       this.logger.error(`Failed to download file ${key}:`, error);
-      throw new Error(`Failed to download file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new S3ServiceError(`Failed to download file: ${formatAwsError(error)}`, error);
     }
   }
 
@@ -150,7 +182,7 @@ export class S3Service {
       this.logger.log(`File deleted successfully: ${key}`);
     } catch (error: unknown) {
       this.logger.error(`Failed to delete file ${key}:`, error);
-      throw new Error(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new S3ServiceError(`Failed to delete file: ${formatAwsError(error)}`, error);
     }
   }
 
@@ -212,7 +244,7 @@ export class S3Service {
       };
     } catch (error: unknown) {
       this.logger.error(`Failed to get metadata for file ${key}:`, error);
-      throw new Error(`Failed to get file metadata: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new S3ServiceError(`Failed to get file metadata: ${formatAwsError(error)}`, error);
     }
   }
 
@@ -236,13 +268,13 @@ export class S3Service {
       const response = await s3Client.send(command);
 
       return (response.Contents || []).map((obj) => ({
-        key: obj.Key!,
+        key: obj.Key ?? '',
         size: obj.Size || 0,
         lastModified: obj.LastModified,
       }));
     } catch (error: unknown) {
       this.logger.error(`Failed to list files with prefix ${prefix}:`, error);
-      throw new Error(`Failed to list files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new S3ServiceError(`Failed to list files: ${formatAwsError(error)}`, error);
     }
   }
 
@@ -273,4 +305,40 @@ export class S3Service {
       bucketName: this.bucketName,
     };
   }
+}
+
+function formatAwsError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return 'Unknown error';
+}
+
+function readAwsMetadata(error: unknown): {
+  code?: string;
+  statusCode?: number;
+  requestId?: string;
+} {
+  if (!error || typeof error !== 'object') {
+    return {};
+  }
+
+  const record = error as Record<string, unknown>;
+  const metadata = record['$metadata'];
+  const metadataRecord = metadata && typeof metadata === 'object' ? (metadata as Record<string, unknown>) : undefined;
+  return {
+    code:
+      typeof record['Code'] === 'string'
+        ? record['Code']
+        : typeof record['code'] === 'string'
+          ? record['code']
+          : typeof record['name'] === 'string'
+            ? record['name']
+            : undefined,
+    statusCode:
+      typeof metadataRecord?.['httpStatusCode'] === 'number' ? metadataRecord['httpStatusCode'] : undefined,
+    requestId:
+      typeof metadataRecord?.['requestId'] === 'string' ? metadataRecord['requestId'] : undefined,
+  };
 }

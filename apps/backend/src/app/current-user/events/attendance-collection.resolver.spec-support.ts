@@ -65,7 +65,7 @@ export type CollectorRecord = {
 export type TxMock = ReturnType<typeof createTxMock>;
 
 type OfflineSubmissionFindUniqueArgs = {
-  where: OfflineSubmissionWhere;
+  where: OfflineSubmissionWhere | { clientId: string };
 };
 
 type OfflineSubmissionWhere = {
@@ -179,11 +179,18 @@ export function createPrisma(input: {
     },
     offlineEventAttendanceSubmission: {
       findUnique: jest.fn(
-        async (args: OfflineSubmissionFindUniqueArgs) =>
-          offlineSubmissions.get(offlineSubmissionKeyFromWhere(args.where)) ?? null,
+        async (args: OfflineSubmissionFindUniqueArgs) => {
+          if ('clientId' in args.where) {
+            return [...offlineSubmissions.values()].find((submission) => submission.clientId === args.where.clientId) ?? null;
+          }
+          return offlineSubmissions.get(offlineSubmissionKeyFromWhere(args.where)) ?? null;
+        },
       ),
       findUniqueOrThrow: jest.fn(async (args: OfflineSubmissionFindUniqueArgs) => {
-        const submission = offlineSubmissions.get(offlineSubmissionKeyFromWhere(args.where));
+        const submission =
+          'clientId' in args.where
+            ? [...offlineSubmissions.values()].find((item) => item.clientId === args.where.clientId)
+            : offlineSubmissions.get(offlineSubmissionKeyFromWhere(args.where));
         if (!submission) {
           throw new Error('Offline submission not found.');
         }
@@ -256,7 +263,10 @@ export function createCollectionResolver(input: {
     if (input.transactionError) {
       throw input.transactionError;
     }
-    return callback(createTxMock(input.transactionResult ?? { id: 'attendance-1' }));
+    const tx = createTxMock(input.transactionResult ?? { id: 'attendance-1' });
+    (tx as unknown as { offlineEventAttendanceSubmission: typeof prisma.offlineEventAttendanceSubmission }).offlineEventAttendanceSubmission =
+      prisma.offlineEventAttendanceSubmission;
+    return callback(tx);
   });
   const currentUserContext = {
     requireCurrentPerson: jest.fn().mockResolvedValue({ id: 'collector-person' }),
@@ -347,12 +357,14 @@ export function createNotificationsMock() {
 
 export function createTxMock(attendance: unknown) {
   return {
+    $executeRaw: jest.fn().mockResolvedValue(0),
     eventAttendance: {
       create: jest.fn().mockResolvedValue(undefined),
       findUnique: jest.fn().mockResolvedValue(null),
       findUniqueOrThrow: jest.fn().mockResolvedValue(attendance),
       update: jest.fn().mockResolvedValue(attendance),
     },
+    offlineEventAttendanceSubmission: undefined as never,
   };
 }
 

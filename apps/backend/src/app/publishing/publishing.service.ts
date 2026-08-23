@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PublicationTargetType } from '@cacic-fct/shared-data-types';
 import { Permission } from '@cacic-fct/shared-permissions';
 import { Prisma } from '@prisma/client';
@@ -23,6 +23,7 @@ import {
 import { PublicationPreviewService } from './publishing-preview.service';
 import { PublicationTransitionService } from './publishing-transition.service';
 import { publicationStateLabel } from './publishing-labels';
+import { PublicationTransitionOutcome } from './publishing.types';
 
 const PUBLICATION_WORKSPACE_MAX_TAKE = 100;
 const PUBLICATION_WORKSPACE_WARNING_TAKE = 500;
@@ -176,6 +177,8 @@ type PublicationTreeChildren = {
 
 @Injectable()
 export class PublicationService {
+  private readonly logger = new Logger(PublicationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationPolicy: AuthorizationPolicyService,
@@ -309,7 +312,7 @@ export class PublicationService {
     });
 
     const outcome = await this.transitions.setPublicationState(input, user);
-    await this.jobs.enqueueScheduledJobs(outcome.scheduledState, outcome.scheduledPublishAt, outcome.sync);
+    await this.enqueueScheduledJobsBestEffort(outcome);
     return outcome.result;
   }
 
@@ -320,8 +323,18 @@ export class PublicationService {
     });
 
     const outcome = await this.transitions.runBulkOperation(input, user);
-    await this.jobs.enqueueScheduledJobs(outcome.scheduledState, outcome.scheduledPublishAt, outcome.sync);
+    await this.enqueueScheduledJobsBestEffort(outcome);
     return outcome.result;
+  }
+
+  private async enqueueScheduledJobsBestEffort(outcome: PublicationTransitionOutcome): Promise<void> {
+    try {
+      await this.jobs.enqueueScheduledJobs(outcome.scheduledState, outcome.scheduledPublishAt, outcome.sync);
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Publication state committed but scheduled-job enqueue failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   createPreview(input: PublicationPreviewInput, context: GraphqlContext): Promise<PublicationPreviewResult> {

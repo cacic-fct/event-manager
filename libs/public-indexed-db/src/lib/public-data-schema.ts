@@ -114,6 +114,7 @@ export interface OfflineAttendanceCollectionEventRecord {
   eventId: string;
   cachedAt: number;
   event: PublicEvent;
+  offlineCollectorCredential?: string | null;
 }
 
 export type OfflineAttendanceQueueStatus = 'PENDING' | 'SYNCING' | 'DUPLICATE' | 'CONFLICT' | 'FORBIDDEN' | 'FAILED';
@@ -139,6 +140,7 @@ export interface OfflineAttendanceQueueItem {
   authorUserId: string;
   authorName: string | null;
   authorEmail: string | null;
+  collectorCredential?: string | null;
   status: OfflineAttendanceQueueStatus;
   attempts: number;
   syncedAt?: number | null;
@@ -178,6 +180,7 @@ export interface OfflineOralAttendanceDecision {
   personId: string;
   status: 'PRESENT' | 'ABSENT';
   location: OfflineAttendanceQueueLocation;
+  collectorCredential?: string | null;
   collectedAt: string;
   queuedAt: number;
   attempts: number;
@@ -251,6 +254,7 @@ export interface OfflineSportsMatchPeriodTimer {
 }
 
 export interface OfflineSportsTimerSnapshot {
+  state: 'LIVE' | 'PAUSED';
   overall: {
     startedAtUnixMs: number | null;
     pausedAtUnixMs: number | null;
@@ -266,6 +270,7 @@ interface OfflineSportsOperationQueueItemBase {
   attempts: number;
   queuedAt: string;
   lastError?: string;
+  nextAttemptAt?: number;
 }
 
 export type OfflineSportsOperationQueueItem =
@@ -279,6 +284,7 @@ export type OfflineSportsOperationQueueItem =
 
 export const OFFLINE_SPORTS_COLLECTOR_PROOF_MISSING =
   'Esta presença foi salva sem a credencial original do coletor e não pode ser enviada automaticamente.';
+export const OFFLINE_SPORTS_PERMANENT_FAILURE_PREFIX = 'Falha permanente: ';
 
 export type OfflineSportsProvenAttendanceQueueItem =
   | (Extract<OfflineSportsOperationQueueItem, { kind: 'CHECK_IN' }> & {

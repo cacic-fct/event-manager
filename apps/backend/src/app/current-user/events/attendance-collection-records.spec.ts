@@ -78,4 +78,37 @@ describe('createAttendance', () => {
       }),
     ).rejects.toEqual(new ConflictException(message));
   });
+
+  it('runs the idempotency guard after acquiring the command lock and before attendance writes', async () => {
+    const attendance = { personId: 'person-1', eventId: 'event-1', status: 'PRESENT' };
+    const tx = {
+      $executeRaw: jest.fn().mockResolvedValue(0),
+      eventAttendance: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(undefined),
+        findUniqueOrThrow: jest.fn().mockResolvedValue(attendance),
+      },
+    };
+    const prisma = { $transaction: jest.fn((callback) => callback(tx)) };
+    const afterIdempotencyLock = jest.fn().mockResolvedValue(undefined);
+
+    await createAttendance({
+      prisma: prisma as never,
+      attendanceCategories: { refreshForAttendance: jest.fn() } as never,
+      idempotencyKey: 'client-1',
+      afterIdempotencyLock,
+      input: {
+        eventId: 'event-1',
+        personId: 'person-1',
+        createdByMethod: AttendanceCreationMethod.SCANNER,
+        location: { latitude: -22.12, longitude: -51.4, accuracyMeters: 10 },
+      },
+    });
+
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$executeRaw.mock.invocationCallOrder[0]).toBeLessThan(afterIdempotencyLock.mock.invocationCallOrder[0]);
+    expect(afterIdempotencyLock.mock.invocationCallOrder[0]).toBeLessThan(
+      tx.eventAttendance.create.mock.invocationCallOrder[0],
+    );
+  });
 });

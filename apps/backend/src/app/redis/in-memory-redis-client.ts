@@ -7,6 +7,10 @@ export class InMemoryRedisClient implements OnModuleDestroy {
   private readonly lists = new Map<string, string[]>();
   private readonly expirations = new Map<string, number>();
 
+  async ping(): Promise<'PONG'> {
+    return 'PONG';
+  }
+
   async get(key: string): Promise<string | null> {
     this.deleteIfExpired(key);
     if (this.hashes.has(key) || this.lists.has(key)) {

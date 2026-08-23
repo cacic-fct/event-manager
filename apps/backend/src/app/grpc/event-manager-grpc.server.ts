@@ -72,8 +72,8 @@ export function createEventManagerGrpcHandlers(
   dependencies: EventManagerGrpcDependencies,
 ): UntypedServiceImplementation {
   return {
-    listVotingEvents: unary(async (call) => {
-      await authorize(call.metadata, dependencies.auth, ['voting-integration:read']);
+    listVotingEvents: unary(async (call, signal) => {
+      await authorize(call.metadata, dependencies.auth, ['voting-integration:read'], signal);
       const events = await dependencies.voting.listLinkableEvents();
       return {
         events: events.map((event) => ({
@@ -83,8 +83,8 @@ export function createEventManagerGrpcHandlers(
         })),
       };
     }),
-    checkVotingAttendance: unary(async (call) => {
-      await authorize(call.metadata, dependencies.auth, ['voting-integration:read']);
+    checkVotingAttendance: unary(async (call, signal) => {
+      await authorize(call.metadata, dependencies.auth, ['voting-integration:read'], signal);
       const eventId = requiredString(call.request, 'eventId');
       const userId = requiredString(call.request, 'userId');
       const result = await dependencies.voting.checkAttendance(eventId, userId);
@@ -93,8 +93,8 @@ export function createEventManagerGrpcHandlers(
         attendedAt: result.attendedAt ? toDateTime(result.attendedAt) : undefined,
       };
     }),
-    syncAccountProfile: unary(async (call) => {
-      await authorize(call.metadata, dependencies.auth, ['account-profile:write']);
+    syncAccountProfile: unary(async (call, signal) => {
+      await authorize(call.metadata, dependencies.auth, ['account-profile:write'], signal);
       const { user, person } = await dependencies.currentUserContext.syncProfileUpdate({
         userId: requiredString(call.request, 'userId'),
         ...optionalStringFields(call.request, ['email', 'name', 'fullname', 'phone', 'identityDocument', 'academicId']),
@@ -107,8 +107,8 @@ export function createEventManagerGrpcHandlers(
         personId: person?.id,
       };
     }),
-    scoreAccountMerge: unary(async (call) => {
-      await authorize(call.metadata, dependencies.auth, ['account-merge:score']);
+    scoreAccountMerge: unary(async (call, signal) => {
+      await authorize(call.metadata, dependencies.auth, ['account-merge:score'], signal);
       const response = await dependencies.accountMerge.scoreAccountMergeCandidates({
         userIds: stringArray(call.request, 'userIds'),
       });
@@ -119,8 +119,8 @@ export function createEventManagerGrpcHandlers(
         })),
       };
     }),
-    applyAccountMerge: unary(async (call) => {
-      const principal = await authorize(call.metadata, dependencies.auth, ['account-merge:write']);
+    applyAccountMerge: unary(async (call, signal) => {
+      const principal = await authorize(call.metadata, dependencies.auth, ['account-merge:write'], signal);
       const type = requiredString(call.request, 'type');
       if (type !== 'account.merged') {
         throw new BadRequestException('type must be account.merged.');
@@ -138,26 +138,26 @@ export function createEventManagerGrpcHandlers(
         )),
       };
     }),
-    collectLgpdUserData: unary(async (call) => {
-      await authorize(call.metadata, dependencies.auth, ['lgpd:read']);
+    collectLgpdUserData: unary(async (call, signal) => {
+      await authorize(call.metadata, dependencies.auth, ['lgpd:read'], signal);
       const response = await dependencies.lgpd.collectUserData({
         userId: requiredString(call.request, 'userId'),
         ...optionalStringFields(call.request, ['email']),
       });
       return { json: JSON.stringify(response) };
     }),
-    scheduleLgpdDeletion: unary(async (call) => {
-      await authorize(call.metadata, dependencies.auth, ['lgpd:delete']);
+    scheduleLgpdDeletion: unary(async (call, signal) => {
+      await authorize(call.metadata, dependencies.auth, ['lgpd:delete'], signal);
       const response = await dependencies.lgpd.scheduleDeletion(lgpdDeletionInput(call.request));
       return { json: JSON.stringify(response) };
     }),
-    cancelLgpdDeletion: unary(async (call) => {
-      await authorize(call.metadata, dependencies.auth, ['lgpd:delete']);
+    cancelLgpdDeletion: unary(async (call, signal) => {
+      await authorize(call.metadata, dependencies.auth, ['lgpd:delete'], signal);
       const response = await dependencies.lgpd.cancelDeletion(lgpdDeletionInput(call.request));
       return { json: JSON.stringify(response) };
     }),
-    deleteLgpdData: unary(async (call) => {
-      await authorize(call.metadata, dependencies.auth, ['lgpd:delete']);
+    deleteLgpdData: unary(async (call, signal) => {
+      await authorize(call.metadata, dependencies.auth, ['lgpd:delete'], signal);
       const response = await dependencies.lgpd.hardDelete(lgpdDeletionInput(call.request));
       return { json: JSON.stringify(response) };
     }),
@@ -165,17 +165,59 @@ export function createEventManagerGrpcHandlers(
 }
 
 function unary(
-  handler: (call: ServerUnaryCall<GrpcRequest, GrpcResponse>) => Promise<GrpcResponse>,
+  handler: (call: ServerUnaryCall<GrpcRequest, GrpcResponse>, signal: AbortSignal) => Promise<GrpcResponse>,
 ): handleUnaryCall<GrpcRequest, GrpcResponse> {
   return (call: ServerUnaryCall<GrpcRequest, GrpcResponse>, callback: sendUnaryData<GrpcResponse>) => {
-    void handler(call).then(
-      (response) => callback(null, response),
-      (error: unknown) => callback(toServiceError(error), null),
-    );
+    const abortController = new AbortController();
+    const cancellableCall = call as ServerUnaryCall<GrpcRequest, GrpcResponse> & {
+      getDeadline?: () => Date | number;
+      off?: (event: 'cancelled', listener: () => void) => void;
+      on?: (event: 'cancelled', listener: () => void) => void;
+    };
+    const abort = (code: status, details: string) => {
+      if (!abortController.signal.aborted) {
+        abortController.abort(new GrpcCallTerminatedError(code, details));
+      }
+    };
+    const onCancelled = () => abort(status.CANCELLED, 'gRPC request was cancelled.');
+    cancellableCall.on?.('cancelled', onCancelled);
+    if (call.cancelled) {
+      onCancelled();
+    }
+
+    const deadline = cancellableCall.getDeadline?.();
+    const deadlineAt = deadline instanceof Date ? deadline.getTime() : deadline;
+    const deadlineDelay = typeof deadlineAt === 'number' && Number.isFinite(deadlineAt) ? deadlineAt - Date.now() : null;
+    if (deadlineDelay != null && deadlineDelay <= 0) {
+      abort(status.DEADLINE_EXCEEDED, 'gRPC request deadline exceeded.');
+    }
+    const deadlineTimer =
+      deadlineDelay == null || deadlineDelay <= 0
+        ? undefined
+        : setTimeout(() => abort(status.DEADLINE_EXCEEDED, 'gRPC request deadline exceeded.'), deadlineDelay);
+    deadlineTimer?.unref();
+
+    void Promise.race([handler(call, abortController.signal), rejectionOnAbort(abortController.signal)])
+      .then(
+        (response) => callback(null, response),
+        (error: unknown) => callback(toServiceError(error), null),
+      )
+      .finally(() => {
+        if (deadlineTimer) {
+          clearTimeout(deadlineTimer);
+        }
+        cancellableCall.off?.('cancelled', onCancelled);
+      });
   };
 }
 
-async function authorize(metadata: Metadata, auth: KeycloakAuthService, roles: string[]): Promise<AuthenticatedUser> {
+async function authorize(
+  metadata: Metadata,
+  auth: KeycloakAuthService,
+  roles: string[],
+  signal: AbortSignal,
+): Promise<AuthenticatedUser> {
+  throwIfCallTerminated(signal);
   const authorization = metadata.get('authorization')[0];
   const header = Buffer.isBuffer(authorization) ? authorization.toString('utf8') : authorization;
   if (typeof header !== 'string' || !header.startsWith('Bearer ')) {
@@ -183,7 +225,32 @@ async function authorize(metadata: Metadata, auth: KeycloakAuthService, roles: s
   }
 
   const principal = await auth.authenticateAccessToken(header.slice('Bearer '.length));
+  throwIfCallTerminated(signal);
   return auth.assertMachineToMachinePrincipal(principal, { requiredRoles: roles });
+}
+
+class GrpcCallTerminatedError extends Error {
+  constructor(
+    readonly code: status,
+    readonly details: string,
+  ) {
+    super(details);
+  }
+}
+
+function rejectionOnAbort(signal: AbortSignal): Promise<never> {
+  if (signal.aborted) {
+    return Promise.reject(signal.reason);
+  }
+  return new Promise((_, reject) => {
+    signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+  });
+}
+
+function throwIfCallTerminated(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw signal.reason;
+  }
 }
 
 function lgpdDeletionInput(request: GrpcRequest): { requestId: string; userId: string; email?: string } {
@@ -235,8 +302,18 @@ function toDateTime(value: string | Date): string {
 }
 
 export function toServiceError(error: unknown): ServiceError {
-  const code = error instanceof HttpException ? grpcStatusForHttpStatus(error.getStatus()) : status.INTERNAL;
-  const details = error instanceof HttpException ? error.message : 'Internal gRPC service error.';
+  const code =
+    error instanceof GrpcCallTerminatedError
+      ? error.code
+      : error instanceof HttpException
+        ? grpcStatusForHttpStatus(error.getStatus())
+        : status.INTERNAL;
+  const details =
+    error instanceof GrpcCallTerminatedError
+      ? error.details
+      : error instanceof HttpException
+        ? error.message
+        : 'Internal gRPC service error.';
 
   return Object.assign(new Error(details), {
     code,

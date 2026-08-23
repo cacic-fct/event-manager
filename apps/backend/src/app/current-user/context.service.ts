@@ -450,8 +450,8 @@ export class CurrentUserContextService {
       name: input.name ?? input.fullname,
       set_fullname: input.fullname,
       phone: input.phone,
-      identityDocument: input.identityDocument,
-      enrollmentNumber: input.academicId,
+      identity_document: input.identityDocument,
+      enrollment_number: input.academicId,
       unesp_role: input.unespRole ?? [],
       is_onboarded: input.isOnboarded,
     };

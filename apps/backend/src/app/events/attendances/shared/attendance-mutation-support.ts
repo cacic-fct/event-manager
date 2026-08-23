@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { AttendanceCreationMethod, Prisma } from '@prisma/client';
 import { getBrazilianPhoneCandidates } from '../../../common/brazilian-phone';
+import { findPeopleByCanonicalIdentityDocument, identityDocumentWhere } from '../../../common/person-identity';
 import { AttendanceCategoryService } from '../../attendance-category.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import {
@@ -138,11 +139,7 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
     ];
 
     if (digits) {
-      where.push({
-        identityDocument: {
-          in: [value, digits],
-        },
-      });
+      where.push(identityDocumentWhere(value));
     }
 
     if (phoneCandidates.length > 0) {
@@ -164,8 +161,13 @@ export abstract class EventAttendancesMutationSupport extends EventAttendancesSc
       },
       take: 3,
     });
+    const canonicalIdentityPeople = digits
+      ? await findPeopleByCanonicalIdentityDocument(this.prisma, value)
+      : [];
 
-    const resolvedPersonIds = new Set(people.map((person) => person.mergedIntoId ?? person.id));
+    const resolvedPersonIds = new Set(
+      [...people, ...canonicalIdentityPeople].map((person) => person.mergedIntoId ?? person.id),
+    );
     if (resolvedPersonIds.size > 1) {
       throw new ConflictException(
         `Pessoa tem registros duplicados no banco de dados com o dado ${value}. Tire uma captura dessa tela e envie para o administrador do sistema, para correção.`,

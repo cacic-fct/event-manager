@@ -11,6 +11,7 @@ import { EmojiService } from '../shared/emoji.service';
 import { PublicMapGeolocationService } from '../shared/map/public-map-geolocation.service';
 import { PublicUserLocationLayerService } from '../shared/map/public-user-location-layer.service';
 import { PublicMapTileCacheWarmupService } from '../shared/map/public-map-tile-cache-warmup.service';
+import { NetworkStatusService } from '../shared/network-status.service';
 import { PublicMapApiService } from './public-map-api.service';
 import { PublicMapPage } from './public-map-page';
 import { PublicMapStateService, StoredPublicMapState } from './public-map-state.service';
@@ -26,7 +27,7 @@ describe('PublicMapPage', () => {
   let user: ReturnType<typeof signal<{ sub: string } | null>>;
   let dialog: { open: ReturnType<typeof vi.fn> };
   let router: { navigate: ReturnType<typeof vi.fn>; navigateByUrl: ReturnType<typeof vi.fn> };
-  let snackBar: { open: ReturnType<typeof vi.fn> };
+  let snackBar: { dismiss: ReturnType<typeof vi.fn>; open: ReturnType<typeof vi.fn> };
   let permission: ReturnType<typeof signal<'prompt' | 'granted' | 'denied' | 'unsupported'>>;
   let locationLayer: {
     addToMap: ReturnType<typeof vi.fn>;
@@ -54,7 +55,11 @@ describe('PublicMapPage', () => {
     await refresh();
 
     expect(component.state()).toEqual({ status: 'ready' });
-    expect(fixture.nativeElement.textContent).toContain('Nenhum evento com localização disponível.');
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'Nenhum evento com localização disponível.',
+      'Fechar',
+      expect.objectContaining({ duration: 6000 }),
+    );
 
     fixture.destroy();
     TestBed.resetTestingModule();
@@ -68,13 +73,29 @@ describe('PublicMapPage', () => {
     expect(fixture.nativeElement.querySelector('[role="alert"]')?.textContent).toContain('Não foi possível');
   });
 
-  it('discloses when the map is using saved data that may be outdated', async () => {
-    await createPage();
-    api.isUsingSavedData.set(true);
+  it('replaces simultaneous saved-data and empty-map notices with one clear snackbar', async () => {
+    await createPage({ eventsResponse: of([]), isUsingSavedData: true, isOnline: false });
     await refresh();
 
-    expect(fixture.nativeElement.querySelector('[role="status"]')?.textContent).toContain(
-      'Mapa salvo. As informações podem estar desatualizadas.',
+    expect(snackBar.dismiss).toHaveBeenCalledOnce();
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'Você está off-line. Os dados exibidos no mapa podem estar desatualizados. Nenhum evento com localização disponível.',
+      'Fechar',
+      expect.objectContaining({ duration: 6000 }),
+    );
+  });
+
+  it('shows an offline toolbar control with a more detailed message on click', async () => {
+    await createPage({ isOnline: false });
+    const button = fixture.nativeElement.querySelector('[aria-label="Você está off-line"]') as HTMLButtonElement;
+
+    expect(button.querySelector('mat-icon')?.textContent).toContain('cloud_off');
+    button.click();
+
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'Você está off-line. Os dados exibidos no mapa podem estar desatualizados.',
+      'Fechar',
+      expect.objectContaining({ duration: 5000 }),
     );
   });
 
@@ -112,8 +133,8 @@ describe('PublicMapPage', () => {
     expect(component.filteredEvents()).toHaveLength(2);
     expect(snackBar.open).toHaveBeenCalledWith(
       'Não foi possível carregar seus eventos. Mostrando todos os eventos.',
-      'OK',
-      { duration: 5000 },
+      'Fechar',
+      expect.objectContaining({ duration: 5000 }),
     );
     expect(router.navigate).toHaveBeenCalledWith([], expect.objectContaining({
       queryParams: expect.objectContaining({ participacao: null }),
@@ -142,8 +163,11 @@ describe('PublicMapPage', () => {
       queryParams: { participacao: 'meus', periodo: 'hoje', evento: null },
       replaceUrl: true,
     }));
-    expect(fixture.nativeElement.textContent).toContain('Nenhum evento corresponde aos filtros.');
-    expect(fixture.nativeElement.textContent).toContain('Revisar filtros');
+    expect(snackBar.open).toHaveBeenCalledWith(
+      'Nenhum evento corresponde aos filtros.',
+      'Fechar',
+      expect.objectContaining({ duration: 6000 }),
+    );
   });
 
   it('keeps filters unchanged when the dialog is dismissed', async () => {
@@ -179,7 +203,7 @@ describe('PublicMapPage', () => {
     await refresh();
 
     expect(locationLayer.startAndCenter).not.toHaveBeenCalled();
-    expect(snackBar.open).toHaveBeenCalledWith(message, 'OK', { duration });
+    expect(snackBar.open).toHaveBeenCalledWith(message, 'Fechar', expect.objectContaining({ duration }));
     expect(component.locationIcon()).toBe('location_disabled');
   });
 
@@ -192,7 +216,7 @@ describe('PublicMapPage', () => {
     await component.locate();
 
     expect(locationLayer.startAndCenter).toHaveBeenCalledWith(expect.objectContaining(map), 18);
-    expect(snackBar.open).toHaveBeenCalledWith('Sinal indisponível.', 'OK', { duration: 6000 });
+    expect(snackBar.open).toHaveBeenCalledWith('Sinal indisponível.', 'Fechar', expect.objectContaining({ duration: 6000 }));
   });
 
   it('clamps zoom controls and navigates back to the menu', async () => {
@@ -264,6 +288,8 @@ describe('PublicMapPage', () => {
     isAuthenticated?: boolean;
     eventsResponse?: Observable<PublicMapEvent[]>;
     mineResponse?: Observable<Set<string>>;
+    isUsingSavedData?: boolean;
+    isOnline?: boolean;
     storedState?: StoredPublicMapState | null;
     dialogResult?: { audience: 'ALL' | 'MINE'; date: 'ALL' | 'TODAY' };
     permission?: 'prompt' | 'granted' | 'denied' | 'unsupported';
@@ -274,11 +300,11 @@ describe('PublicMapPage', () => {
     api = {
       getEvents: vi.fn(() => options.eventsResponse ?? of(eventFixtures())),
       getCurrentUserEventIds: vi.fn(() => options.mineResponse ?? of(new Set<string>())),
-      isUsingSavedData: signal(false),
+      isUsingSavedData: signal(options.isUsingSavedData ?? false),
     };
     dialog = { open: vi.fn(() => ({ afterClosed: () => of(options.dialogResult) })) };
     router = { navigate: vi.fn(() => Promise.resolve(true)), navigateByUrl: vi.fn(() => Promise.resolve(true)) };
-    snackBar = { open: vi.fn() };
+    snackBar = { dismiss: vi.fn(), open: vi.fn() };
     permission = signal(options.permission ?? 'prompt');
     locationLayer = {
       addToMap: vi.fn(),
@@ -311,6 +337,7 @@ describe('PublicMapPage', () => {
         { provide: PublicUserLocationLayerService, useValue: locationLayer },
         { provide: PublicMapTileCacheWarmupService, useValue: tileCacheWarmup },
         { provide: PublicMapStateService, useValue: stateStorage },
+        { provide: NetworkStatusService, useValue: { isOnline: signal(options.isOnline ?? true) } },
       ],
     })
       .overrideProvider(MatDialog, { useValue: dialog })

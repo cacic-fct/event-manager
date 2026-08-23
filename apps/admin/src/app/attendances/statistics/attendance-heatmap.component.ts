@@ -13,6 +13,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { AttendanceHeatmapPoint } from '@cacic-fct/event-manager-admin-contracts';
+import { OPENSTREETMAP_TILE_REFERRER_POLICY } from '@cacic-fct/shared-utils';
 import Feature from 'ol/Feature';
 import Map from 'ol/Map';
 import View from 'ol/View';
@@ -122,7 +123,7 @@ export class AttendanceHeatmapComponent implements OnDestroy {
       : null;
     const center = eventCenter ?? projectedPoints[0];
     const layers: BaseLayer[] = [
-      new TileLayer({ source: new OSM() }),
+      new TileLayer({ source: new OSM({ referrerPolicy: OPENSTREETMAP_TILE_REFERRER_POLICY }) }),
       new Heatmap({
         source: new VectorSource({ features: heatFeatures }),
         blur: 24,

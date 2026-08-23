@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { chromium, type Browser } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 import { toBuffer } from '@bwip-js/node';
 import { PrismaService } from '../prisma/prisma.service';
 import { CertificateValidationService } from './certificate-validation.service';
@@ -126,7 +126,13 @@ export class CertificateDownloadService {
     const stream = await createZipArchive();
     stream.on('warning', (error) => this.logger.warn(error.message, error.stack));
     stream.on('error', (error) => this.logger.error(error.message, error.stack));
-    void this.appendCertificatesToArchive(stream, safeName, certificateIds, metadata);
+    void this.appendCertificatesToArchive(stream, safeName, certificateIds, metadata).catch((error: unknown) => {
+      const archiveError = error instanceof Error ? error : new Error('Failed to create certificate archive.');
+      this.logger.error('Detached certificate archive generation failed.', archiveError.stack);
+      if (!stream.destroyed) {
+        stream.destroy(archiveError);
+      }
+    });
 
     return {
       fileName: `certificados-${new Date().toISOString().slice(0, 10)}-${safeName}.zip`,
@@ -159,7 +165,21 @@ export class CertificateDownloadService {
     } catch (error) {
       archive.destroy(error instanceof Error ? error : new Error('Failed to create certificate archive.'));
     } finally {
-      await browser?.close();
+      if (browser) {
+        try {
+          await browser.close();
+        } catch (error: unknown) {
+          this.logger.error(
+            'Could not close the certificate archive browser.',
+            error instanceof Error ? error.stack : String(error),
+          );
+          if (!archive.destroyed) {
+            const cleanupError = new Error('Certificate archive browser cleanup failed.');
+            Object.defineProperty(cleanupError, 'cause', { value: error, configurable: true });
+            archive.destroy(cleanupError);
+          }
+        }
+      }
     }
   }
 
@@ -231,8 +251,9 @@ export class CertificateDownloadService {
 
   private async renderPdf(renderedHtml: string, sharedBrowser?: Browser): Promise<Buffer> {
     const browser = sharedBrowser ?? (await chromium.launch({ headless: true }));
+    let page: Page | undefined;
     try {
-      const page = await browser.newPage();
+      page = await browser.newPage();
       await page.setContent(renderedHtml, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.fonts.ready);
       return await page.pdf({
@@ -242,8 +263,25 @@ export class CertificateDownloadService {
     } catch {
       throw new InternalServerErrorException('Failed to render certificate PDF.');
     } finally {
+      if (page) {
+        try {
+          await page.close();
+        } catch (error: unknown) {
+          this.logger.warn(
+            'Could not close a certificate rendering page.',
+            error instanceof Error ? error.stack : String(error),
+          );
+        }
+      }
       if (!sharedBrowser) {
-        await browser.close();
+        try {
+          await browser.close();
+        } catch (error: unknown) {
+          this.logger.warn(
+            'Could not close the certificate rendering browser.',
+            error instanceof Error ? error.stack : String(error),
+          );
+        }
       }
     }
   }

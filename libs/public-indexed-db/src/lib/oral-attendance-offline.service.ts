@@ -29,13 +29,7 @@ export class OralAttendanceOfflineService {
   ): Promise<OfflineOralAttendanceDecision> {
     const database = this.databaseProvider.getDatabase();
     if (!database) {
-      return {
-        ...decision,
-        clientId: this.createClientId(),
-        queuedAt: Date.now(),
-        attempts: 0,
-        syncedAt: null,
-      };
+      throw new Error('Armazenamento off-line indisponível neste navegador.');
     }
 
     let item!: OfflineOralAttendanceDecision;
@@ -69,6 +63,21 @@ export class OralAttendanceOfflineService {
       ? database.oralAttendanceDecisions.where('[queuedByUserId+eventId]').equals([userId, eventId])
       : database.oralAttendanceDecisions.where('queuedByUserId').equals(userId);
     return collection.filter((item) => !item.syncedAt).sortBy('queuedAt');
+  }
+
+  async listUploadable(uploaderUserId: string): Promise<OfflineOralAttendanceDecision[]> {
+    const database = this.databaseProvider.getDatabase();
+    if (!database) {
+      return [];
+    }
+
+    return database.oralAttendanceDecisions
+      .filter(
+        (item) =>
+          !item.syncedAt &&
+          (item.queuedByUserId === uploaderUserId || Boolean(item.collectorCredential?.trim())),
+      )
+      .sortBy('queuedAt');
   }
 
   listAll(userId: string, eventId: string): Promise<OfflineOralAttendanceDecision[]> {

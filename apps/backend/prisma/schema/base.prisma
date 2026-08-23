@@ -13,3 +13,27 @@ generator erd {
 datasource db {
   provider = "postgresql"
 }
+
+enum LgpdStorageCleanupStatus {
+  PENDING
+  PROCESSING
+  DELETED
+}
+
+model LgpdStorageCleanupOutbox {
+  id            String                   @id @default(uuid(7))
+  requestId     String
+  objectKey     String
+  status        LgpdStorageCleanupStatus @default(PENDING)
+  attempts      Int                      @default(0)
+  nextAttemptAt DateTime                 @default(now())
+  leaseUntil    DateTime?
+  lastError     String?
+  deletedAt     DateTime?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@unique([requestId, objectKey], map: "lgpd_storage_cleanup_outbox_request_object_key")
+  @@index([status, nextAttemptAt], map: "lgpd_storage_cleanup_outbox_pending_idx")
+  @@map("lgpd_storage_cleanup_outbox")
+}

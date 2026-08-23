@@ -92,6 +92,7 @@ describe('SportsMatchOperationCommandValidation', () => {
         SportsMatchActionType.TIMER_RECONCILE,
         {
           resolution: 'DEVICE',
+          state: SportsMatchState.LIVE,
           overall: { startedAtUnixMs, pausedAtUnixMs: null, elapsedBeforePauseMs: 60_000 },
           periods: [],
         },

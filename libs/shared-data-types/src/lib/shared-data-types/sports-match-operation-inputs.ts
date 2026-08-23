@@ -199,6 +199,9 @@ export class SportsOfflineCollectorCredential {
 
   @Field(() => Date)
   issuedAt!: Date;
+
+  @Field(() => Date)
+  expiresAt!: Date;
 }
 
 @InputType()

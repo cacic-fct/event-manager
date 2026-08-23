@@ -6,6 +6,8 @@ import { ConfigModule } from '@nestjs/config';
 import { GraphQLModule } from '@nestjs/graphql';
 import type { Request, Response } from 'express';
 import { AppController } from './app.controller';
+import { HealthController } from './health/health.controller';
+import { HealthService } from './health/health.service';
 import { AccountMergeController } from './account-merge/account-merge.controller';
 import { AccountMergeService } from './account-merge/account-merge.service';
 import { AuditLogResolver } from './audit-log/audit-log.resolver';
@@ -18,10 +20,16 @@ import { KeycloakAuthService } from './auth/keycloak-auth.service';
 import { createIntrospectionAuthPlugin } from './auth/introspection-auth.plugin';
 import { LgpdController } from './lgpd/lgpd.controller';
 import { LgpdService } from './lgpd/lgpd.service';
+import {
+  LGPD_STORAGE_CLEANUP_QUEUE,
+  LgpdStorageCleanupService,
+} from './lgpd/lgpd-storage-cleanup.service';
+import { LgpdStorageCleanupProcessor } from './lgpd/lgpd-storage-cleanup.processor';
 import { FrozenResourceService } from './common/frozen-resource.service';
 import { CalendarController } from './calendar/calendar.controller';
 import { CalendarFeedMaintenanceProcessor } from './calendar/calendar-feed-maintenance.processor';
 import { CalendarFeedMaintenanceScheduler } from './calendar/calendar-feed-maintenance.scheduler';
+import { LegacyRepeatableJobsMigrationService } from './queues/legacy-repeatable-jobs-migration.service';
 import { CalendarResolver } from './calendar/calendar.resolver';
 import { CALENDAR_FEED_MAINTENANCE_QUEUE } from './calendar/calendar.models';
 import { CalendarService } from './calendar/calendar.service';
@@ -104,13 +112,9 @@ import { CurrentUserDefaultRedirectService } from './current-user/default-redire
 import { CurrentUserDefaultRedirectResolver } from './current-user/default-redirect/resolver';
 import { CurrentUserMyDayResolver } from './current-user/my-day/resolver';
 import { CurrentUserMyDayService } from './current-user/my-day/service';
-import { DashboardInsightsProcessor } from './dashboard/insights.processor';
 import { DashboardInsightsResolver } from './dashboard/insights.resolver';
-import { DashboardInsightsSchedulerService } from './dashboard/insights-scheduler.service';
 import { DASHBOARD_INSIGHTS_QUEUE, DashboardInsightsService } from './dashboard/insights.service';
-import { PublicPlatformStatsProcessor } from './public-platform-stats/public-platform-stats.processor';
 import { PublicPlatformStatsResolver } from './public-platform-stats/public-platform-stats.resolver';
-import { PublicPlatformStatsScheduler } from './public-platform-stats/public-platform-stats.scheduler';
 import {
   PUBLIC_PLATFORM_STATS_QUEUE,
   PublicPlatformStatsService,
@@ -165,6 +169,7 @@ import { WeatherResolver } from './weather/weather.resolver';
 import { WeatherSchedulerService } from './weather/weather-scheduler.service';
 import { WeatherService } from './weather/weather.service';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
+import { createGraphqlResourceLimitsPlugin } from './graphql-resource-limits.plugin';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { VotingIntegrationController } from './voting-integration/controller';
 import { VotingIntegrationService } from './voting-integration/service';
@@ -239,6 +244,7 @@ const backendQueueNames = [
   PUBLICATION_QUEUE,
   CERTIFICATE_NOTIFICATION_QUEUE,
   ONLINE_ATTENDANCE_NOTIFICATION_QUEUE,
+  LGPD_STORAGE_CLEANUP_QUEUE,
 ];
 const queueImports = useInMemoryTestInfra
   ? []
@@ -270,6 +276,9 @@ const queueImports = useInMemoryTestInfra
       BullModule.registerQueue({
         name: ONLINE_ATTENDANCE_NOTIFICATION_QUEUE,
       }),
+      BullModule.registerQueue({
+        name: LGPD_STORAGE_CLEANUP_QUEUE,
+      }),
     ];
 const queueProviders = useInMemoryTestInfra ? createNoopQueueProviders(backendQueueNames) : [];
 const queueProcessorProviders = useInMemoryTestInfra
@@ -277,20 +286,17 @@ const queueProcessorProviders = useInMemoryTestInfra
   : [
       CalendarFeedMaintenanceProcessor,
       PublicationProcessor,
-      DashboardInsightsProcessor,
-      PublicPlatformStatsProcessor,
       MajorEventReceiptsProcessor,
       WeatherProcessor,
       CertificateNotificationJobsProcessor,
       OnlineAttendanceNotificationJobsProcessor,
+      LgpdStorageCleanupProcessor,
     ];
 const schedulerProviders = useInMemoryTestInfra
   ? []
   : [
       CalendarFeedMaintenanceScheduler,
       PublicationScheduler,
-      DashboardInsightsSchedulerService,
-      PublicPlatformStatsScheduler,
       EventFormsScheduler,
       WeatherSchedulerService,
       OnlineAttendanceNotificationScheduler,
@@ -315,8 +321,10 @@ const schedulerProviders = useInMemoryTestInfra
         path: '/graphql',
         useGlobalPrefix: true,
         playground: false,
+        allowBatchedHttpRequests: false,
         introspection: true,
         plugins: [
+          createGraphqlResourceLimitsPlugin(),
           ApolloServerPluginLandingPageLocalDefault({
             embed: {
               endpointIsEditable: false,
@@ -339,6 +347,7 @@ const schedulerProviders = useInMemoryTestInfra
   ],
   controllers: [
     AppController,
+    HealthController,
     AccountMergeController,
     LgpdController,
     CurrentUserRealtimeEventsController,
@@ -364,11 +373,13 @@ const schedulerProviders = useInMemoryTestInfra
     SportsMatchOverlayController,
   ],
   providers: [
+    HealthService,
     NovuNotificationsService,
     BackendFeatureFlagService,
     OnlineAttendanceNotificationJobsService,
     AccountMergeService,
     LgpdService,
+    LgpdStorageCleanupService,
     MajorEventsResolver,
     PublicMajorEventsResolver,
     EventGroupsResolver,
@@ -506,6 +517,7 @@ const schedulerProviders = useInMemoryTestInfra
     CertificateSportsEligibility,
     CertificateIssuingService,
     CertificateNotificationJobsService,
+    LegacyRepeatableJobsMigrationService,
     PublicCertificateValidationService,
     WeatherService,
     FrozenResourceService,

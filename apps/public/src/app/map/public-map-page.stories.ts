@@ -357,7 +357,8 @@ export const OfflineCache: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
     await expectReadyMap(canvasElement, args.eventCount);
-    await expect(await canvas.findByText('Mapa salvo. As informações podem estar desatualizadas.')).toBeVisible();
+    await expect(await within(document.body).findByText(/dados exibidos no mapa podem estar desatualizados/i)).toBeVisible();
+    await expect(canvas.getByRole('button', { name: 'Você está off-line' })).toBeVisible();
   },
 };
 
@@ -377,8 +378,8 @@ export const ApiError: Story = {
 
 export const Empty: Story = {
   args: { eventCount: 0 },
-  play: async ({ canvasElement }) => {
-    await expect(await within(canvasElement).findByText('Nenhum evento com localização disponível.')).toBeVisible();
+  play: async () => {
+    await expect(await within(document.body).findByText('Nenhum evento com localização disponível.')).toBeVisible();
   },
 };
 

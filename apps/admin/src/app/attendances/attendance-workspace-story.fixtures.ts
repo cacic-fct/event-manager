@@ -1,6 +1,7 @@
 import { FormBuilder } from '@angular/forms';
 import type {
   AttendanceCategory,
+  AttendanceCurrentAssessment,
   Event,
   EventAttendanceScannerFeedItem,
   MajorEvent,
@@ -177,6 +178,20 @@ function createAttendanceWorkspaceMock(
     selectMajorEventAttendancesById: fn(async () => undefined),
     selectMajorEventUserAttendance: fn(() => undefined),
     getAttendanceCategoryLabel: categoryLabel,
+    getAttendanceCategoryHistoricalExplanation: (category: AttendanceCategory) =>
+      category === 'UNKNOWN' ? 'Registro anterior à classificação automática.' : null,
+    getAttendanceCurrentAssessmentLabel: currentAssessmentLabel,
+    getMajorEventCurrentAssessmentLabel: (attendance: MajorEventUserAttendance) => {
+      const assessments = [
+        ...new Set(
+          attendance.attendances
+            .filter((eventAttendance) => eventAttendance.attended && eventAttendance.category === 'UNKNOWN')
+            .map((eventAttendance) => eventAttendance.currentAssessment)
+            .filter((assessment): assessment is AttendanceCurrentAssessment => Boolean(assessment)),
+        ),
+      ];
+      return assessments.length === 1 ? currentAssessmentLabel(assessments[0]) : null;
+    },
   };
 
   return mock as unknown as AttendancesService;
@@ -235,6 +250,8 @@ function createAttendances(controls: AttendanceWorkspaceStoryControls, event: Ev
     createdAt: now.toISOString(),
     createdByMethod: ['SCANNER', 'MANUAL_INPUT', 'CSV_IMPORT', 'ONLINE_CODE'][index % 4],
     category: categories[index % categories.length],
+    currentAssessment:
+      categories[index % categories.length] === 'UNKNOWN' ? 'ACTIVITY_SUBSCRIPTION_MISSING' : undefined,
     status: 'PRESENT' as const,
   }));
 }
@@ -295,6 +312,10 @@ function createMajorEventAttendances(controls: AttendanceWorkspaceStoryControls)
       attended: eventIndex < activityCount,
       attendedAt: eventIndex < activityCount ? new Date().toISOString() : null,
       category: categories[(personIndex + eventIndex) % categories.length],
+      currentAssessment:
+        categories[(personIndex + eventIndex) % categories.length] === 'UNKNOWN'
+          ? 'ACTIVITY_SUBSCRIPTION_MISSING'
+          : undefined,
     })),
   }));
 }
@@ -354,8 +375,26 @@ function categoryDescription(category: AttendanceCategory): string {
     REGULAR: 'Presenças esperadas para inscrição e pagamento atuais.',
     NON_SUBSCRIBED: 'Presenças em atividades com inscrição obrigatória.',
     NON_PAYING: 'Presenças em grande evento pago sem pagamento confirmado.',
-    UNKNOWN: 'Registros antigos ou sem dados suficientes para classificar.',
+    UNKNOWN: 'Registros anteriores à classificação automática. A situação atual aparece em cada presença.',
   }[category];
+}
+
+function currentAssessmentLabel(assessment: AttendanceCurrentAssessment | null | undefined): string | null {
+  switch (assessment) {
+    case 'ACTIVITY_SUBSCRIPTION_MISSING':
+      return 'Sem inscrição ativa na atividade.';
+    case 'MAJOR_EVENT_PAYMENT_AWAITING_RECEIPT':
+      return 'Pagamento do grande evento aguardando comprovante.';
+    case 'MAJOR_EVENT_PAYMENT_UNDER_REVIEW':
+      return 'Comprovante de pagamento do grande evento em análise.';
+    case 'MAJOR_EVENT_PAYMENT_NOT_CONFIRMED':
+      return 'Pagamento do grande evento não confirmado.';
+    case 'REQUIREMENTS_CURRENTLY_MET':
+      return 'Requisitos atuais atendidos.';
+    case null:
+    case undefined:
+      return null;
+  }
 }
 
 function clamp(value: number, max: number): number {

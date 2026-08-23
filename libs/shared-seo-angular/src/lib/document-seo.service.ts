@@ -50,7 +50,7 @@ export class DocumentSeoService {
       script.type = 'application/ld+json';
       this.document.head.appendChild(script);
     }
-    script.replaceChildren(this.document.createTextNode(JSON.stringify(data)));
+    script.textContent = JSON.stringify(data);
   }
 
   removeJsonLd(id: string): void {

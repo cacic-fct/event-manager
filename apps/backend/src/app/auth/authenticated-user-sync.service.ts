@@ -60,8 +60,8 @@ export class AuthenticatedUserSyncService {
       fullname: this.readStringClaim(authenticatedUser.claims, 'set_fullname'),
       email,
       phone: this.readStringClaim(authenticatedUser.claims, 'phone'),
-      identityDocument: this.readStringClaim(authenticatedUser.claims, 'identity_document'),
-      academicId: this.readStringClaim(authenticatedUser.claims, 'enrollment_number'),
+      identityDocument: this.readStringClaim(authenticatedUser.claims, 'identity_document', 'identityDocument'),
+      academicId: this.readStringClaim(authenticatedUser.claims, 'enrollment_number', 'enrollmentNumber'),
       unespRole: this.readStringArrayClaim(authenticatedUser.claims, 'unesp_role'),
       externalRef: authenticatedUser.sub?.trim() ? `kc:${authenticatedUser.sub.trim()}` : null,
     };
@@ -96,8 +96,8 @@ export class AuthenticatedUserSyncService {
     return normalizedEmail;
   }
 
-  private readStringClaim(claims: Record<string, unknown>, claimName: string): string | undefined {
-    const value = claims[claimName];
+  private readStringClaim(claims: Record<string, unknown>, ...claimNames: string[]): string | undefined {
+    const value = claimNames.map((claimName) => claims[claimName]).find((candidate) => candidate !== undefined);
     if (typeof value === 'string') {
       return this.trimToUndefined(value);
     }

@@ -116,7 +116,11 @@ export class ServiceWorkerService {
 
     const registrations = await navigator.serviceWorker.getRegistrations();
 
-    await Promise.all(registrations.map((registration) => registration.unregister()));
+    await Promise.all(
+      registrations
+        .filter((registration) => registration.scope === this.serviceWorkerScope())
+        .map((registration) => registration.unregister()),
+    );
 
     this.reload();
   }
@@ -313,7 +317,7 @@ export class ServiceWorkerService {
 
     dialogRef.afterClosed().subscribe((result: 'reload' | 'unregister' | undefined) => {
       if (result === 'unregister') {
-        void this.unregisterServiceWorker().finally(() => this.reload());
+        void this.unregisterServiceWorker();
         return;
       }
 

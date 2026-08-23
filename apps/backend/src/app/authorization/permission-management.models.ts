@@ -1,5 +1,6 @@
 import { Field, InputType, Int, ObjectType, registerEnumType } from '@nestjs/graphql';
 import { EventManagerPermissionScope } from '@prisma/client';
+import { ArrayMaxSize, MaxLength } from 'class-validator';
 
 registerEnumType(EventManagerPermissionScope, { name: 'EventManagerPermissionScope' });
 
@@ -255,6 +256,7 @@ export class PermissionRoleAssignmentInput {
   unlimited!: boolean;
 
   @Field(() => [PermissionRoleScopeInput])
+  @ArrayMaxSize(100)
   scopes!: PermissionRoleScopeInput[];
 }
 
@@ -267,21 +269,29 @@ export class PermissionRoleSaveInput {
   expectedVersion?: number | null;
 
   @Field(() => String)
+  @MaxLength(200)
   name!: string;
 
   @Field(() => String)
+  @MaxLength(2_000)
   description!: string;
 
   @Field(() => String)
+  @MaxLength(32)
   emoji!: string;
 
   @Field(() => [String])
+  @ArrayMaxSize(500)
+  @MaxLength(128, { each: true })
   permissions!: string[];
 
   @Field(() => [String])
+  @ArrayMaxSize(100)
+  @MaxLength(128, { each: true })
   parentRoleIds!: string[];
 
   @Field(() => [PermissionRoleAssignmentInput])
+  @ArrayMaxSize(100)
   assignments!: PermissionRoleAssignmentInput[];
 }
 
@@ -321,5 +331,6 @@ export class PermissionGroupSaveInput {
   emoji!: string;
 
   @Field(() => [PermissionGroupMemberInput])
+  @ArrayMaxSize(500)
   members!: PermissionGroupMemberInput[];
 }
