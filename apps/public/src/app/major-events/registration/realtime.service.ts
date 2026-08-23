@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { Observable, filter, map } from 'rxjs';
 import { RealtimeEventsService } from '../../shared/realtime-events.service';
 import type { PublicEventSubscriptionSummary } from './subscription-api.service';
@@ -30,7 +30,7 @@ interface MajorEventSubscriptionRealtimeMessage {
 
 const MAJOR_EVENT_SUBSCRIPTION_CHANNEL = 'public.major-event-subscription';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class MajorEventSubscriptionRealtimeService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly realtime = inject(RealtimeEventsService);

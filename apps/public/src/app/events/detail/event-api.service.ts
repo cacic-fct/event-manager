@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   PUBLIC_EVENT_PAGE_FIELDS,
   PUBLIC_EVENT_SUBSCRIPTION_SUMMARY_FIELDS,
@@ -30,7 +30,7 @@ export interface EventPageData {
   } | null;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class EventApiService {
   private readonly http = inject(HttpClient);
 

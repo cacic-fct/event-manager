@@ -25,6 +25,7 @@ interface WorkerMessageEvent extends WaitUntilEvent {
   }>;
   source?: {
     id?: string;
+    url?: string;
   };
 }
 
@@ -39,12 +40,16 @@ interface WorkerNotificationEvent extends WaitUntilEvent {
 
 interface WorkerListenerMap {
   install: Array<(event: WaitUntilEvent) => void>;
+  activate: Array<(event: WaitUntilEvent) => void>;
   message: Array<(event: WorkerMessageEvent) => void>;
   notificationclick: Array<(event: WorkerNotificationEvent) => void>;
 }
 
 interface MockCache {
+  keys: ReturnType<typeof vi.fn<() => Promise<Request[]>>>;
+  match: ReturnType<typeof vi.fn<(request: Request) => Promise<Response | undefined>>>;
   put: ReturnType<typeof vi.fn<(request: Request, response: Response) => Promise<void>>>;
+  delete: ReturnType<typeof vi.fn<(request: Request) => Promise<boolean>>>;
 }
 
 interface MockCacheExpiration {
@@ -110,6 +115,7 @@ function loadWorkerSource(): string {
 function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean } = {}): WorkerHarness {
   const listeners: WorkerListenerMap = {
     install: [],
+    activate: [],
     message: [],
     notificationclick: [],
   };
@@ -130,7 +136,10 @@ function createWorkerHarness({ trustedTypes = false }: { trustedTypes?: boolean 
       }
 
       const cache: MockCache = {
+        keys: vi.fn<() => Promise<Request[]>>(async () => []),
+        match: vi.fn<(request: Request) => Promise<Response | undefined>>(async () => undefined),
         put: vi.fn<(request: Request, response: Response) => Promise<void>>(async () => undefined),
+        delete: vi.fn<(request: Request) => Promise<boolean>>(async () => true),
       };
       openedCaches.set(cacheName, cache);
       return cache;
@@ -313,6 +322,17 @@ async function dispatchMessage(harness: WorkerHarness, event: Omit<WorkerMessage
   await Promise.all(pending);
 }
 
+async function dispatchActivate(harness: WorkerHarness): Promise<void> {
+  const pending: Array<Promise<unknown>> = [];
+  harness.listeners.activate[0]({
+    waitUntil: (promise) => {
+      pending.push(promise);
+    },
+  });
+
+  await Promise.all(pending);
+}
+
 describe('cacic-public-worker', () => {
   it('loads worker dependencies without requiring Trusted Types support in service workers', () => {
     const harness = createWorkerHarness({ trustedTypes: true });
@@ -421,6 +441,18 @@ describe('cacic-public-worker', () => {
       maxAgeSeconds: 60 * 60 * 24 * 7,
       purgeOnQuotaError: true,
     });
+
+    const cachePlugin = (tileHandler.options['plugins'] as Array<{
+      cacheWillUpdate?: (context: { response: Response }) => Promise<Response | null>;
+    }>)[0];
+    const blockedResponse = new Response('blocked', {
+      status: 200,
+      headers: {
+        'Content-Type': 'image/png',
+        'X-Blocked': 'Access denied',
+      },
+    });
+    await expect(cachePlugin.cacheWillUpdate?.({ response: blockedResponse })).resolves.toBeNull();
   });
 
   it('warms validated map tiles into the shared runtime cache', async () => {
@@ -430,15 +462,25 @@ describe('cacic-public-worker', () => {
       'https://tile.openstreetmap.org/16/23456/34567.png',
       'https://tile.openstreetmap.org/18/93824/138268.png',
     ];
-    harness.fetchMock.mockResolvedValue(new Response('tile', { status: 200 }));
+    harness.fetchMock.mockResolvedValue(
+      new Response('tile', {
+        status: 200,
+        headers: { 'Content-Type': 'image/png' },
+      }),
+    );
 
     await dispatchMessage(harness, {
       data: { type: 'CACHE_MAP_TILES', urls },
       ports: [{ postMessage: (message) => replies.push(message) }],
+      source: { url: 'https://eventos.example/app/map' },
     });
 
     expect(replies).toEqual([{ type: 'CACHE_MAP_TILES_RESULT', ok: true }]);
     expect(harness.fetchMock).toHaveBeenCalledTimes(2);
+    expect(harness.fetchMock.mock.calls.map(([request]) => [request.referrer, request.referrerPolicy])).toEqual([
+      ['https://eventos.example/app/map', 'strict-origin-when-cross-origin'],
+      ['https://eventos.example/app/map', 'strict-origin-when-cross-origin'],
+    ]);
     expect(harness.caches.open).toHaveBeenCalledWith('openstreetmap-tiles');
     expect(harness.openedCaches.get('openstreetmap-tiles')?.put).toHaveBeenCalledTimes(2);
     expect(harness.cacheExpirations).toHaveLength(2);
@@ -446,6 +488,51 @@ describe('cacic-public-worker', () => {
     expect(harness.cacheExpirations.every(({ updateTimestamp }) => updateTimestamp.mock.calls.length === 1)).toBe(
       true,
     );
+  });
+
+  it('does not cache blocked OpenStreetMap responses that return HTTP 200', async () => {
+    const harness = createWorkerHarness();
+    const replies: unknown[] = [];
+    harness.fetchMock.mockResolvedValue(
+      new Response('blocked', {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/png',
+          'X-Blocked': 'Access denied',
+        },
+      }),
+    );
+
+    await dispatchMessage(harness, {
+      data: {
+        type: 'CACHE_MAP_TILES',
+        urls: ['https://tile.openstreetmap.org/16/23456/34567.png'],
+      },
+      ports: [{ postMessage: (message) => replies.push(message) }],
+    });
+
+    expect(replies).toEqual([{ type: 'CACHE_MAP_TILES_RESULT', ok: false }]);
+    expect(harness.caches.open).not.toHaveBeenCalled();
+  });
+
+  it('removes previously cached blocked OpenStreetMap responses during activation', async () => {
+    const harness = createWorkerHarness();
+    const cache = await harness.caches.open('openstreetmap-tiles');
+    const request = new Request('https://tile.openstreetmap.org/16/23456/34567.png');
+    cache.keys.mockResolvedValue([request]);
+    cache.match.mockResolvedValue(
+      new Response('blocked', {
+        status: 200,
+        headers: {
+          'Content-Type': 'image/png',
+          'X-Blocked': 'Access denied',
+        },
+      }),
+    );
+
+    await dispatchActivate(harness);
+
+    expect(cache.delete).toHaveBeenCalledWith(request);
   });
 
   it.each([

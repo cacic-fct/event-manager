@@ -1,7 +1,5 @@
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import { PeopleRecords } from './people-records';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class PeopleService extends PeopleRecords {}

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
@@ -30,7 +30,7 @@ import {
   MAJOR_EVENT_CERTIFICATE_TARGET_FIELDS,
 } from './graphql-query-fragments';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class CertificateApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 

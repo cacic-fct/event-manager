@@ -1,8 +1,8 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import type { CertificateDownload } from '@cacic-fct/event-manager-public-contracts';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class CertificateFileDownloadService {
   private readonly document = inject(DOCUMENT);
   private readonly platformId = inject(PLATFORM_ID);

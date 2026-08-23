@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { liveQuery } from 'dexie';
 import { Observable, from, of } from 'rxjs';
 import { OfflineOralAttendanceDecision, OfflineOralAttendancePerson } from './public-data-schema';
@@ -6,7 +6,7 @@ import { PublicDatabaseProvider } from './public-database-provider';
 
 const SYNCED_DECISION_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class OralAttendanceOfflineService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
 

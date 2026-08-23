@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, Service, inject, signal } from '@angular/core';
 import { AbstractControl, FormArray, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -29,9 +29,7 @@ const DEFAULT_DRAFT_MAJOR_EVENT_NAME = 'Grande evento sem título';
 const DEFAULT_DRAFT_MAJOR_EVENT_EMOJI = '📌';
 const DEFAULT_MAJOR_EVENT_DURATION_DAYS = 1;
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class MajorEventsService {
   private readonly api = inject(MajorEventApiService);
   private readonly eventsApi = inject(EventApiService);

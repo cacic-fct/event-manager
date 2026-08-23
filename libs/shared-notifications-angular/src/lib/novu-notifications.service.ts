@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { DestroyRef, Injectable, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Service, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import type {
   ChannelPreference,
   ChannelEndpointResponse,
@@ -42,7 +42,7 @@ type NovuFilterCountResponse = {
   count: number;
 };
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class NovuNotificationsService {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);

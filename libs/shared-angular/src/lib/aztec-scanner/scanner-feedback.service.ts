@@ -1,5 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { ScannerSoundKind, ScannerSoundsService } from './scanner-sounds.service';
 
 export type ScannerFeedbackKind = ScannerSoundKind;
@@ -12,9 +12,7 @@ const FEEDBACK_COLORS: Record<ScannerFeedbackKind, string> = {
   nonSubscribed: 'rgba(123, 31, 162, 0.38)',
 };
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class ScannerFeedbackService {
   private readonly document = inject(DOCUMENT);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

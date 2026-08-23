@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AttendanceOfflineQueueService } from '@cacic-fct/public-indexed-db';
 import { AuthService } from '@cacic-fct/shared-angular';
@@ -13,7 +13,7 @@ import {
 
 export const MAX_ATTENDANCE_COLLECTION_LOCATION_ACCURACY_METERS = 100;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AttendanceCollectionAccessService {
   private readonly platformId = inject(PLATFORM_ID);
 

@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { DestroyRef, computed, Injectable, inject, signal } from '@angular/core';
+import { DestroyRef, computed, Service, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -121,9 +121,7 @@ function mapAttendanceListItem(attendance: EventAttendance): AttendanceListItem 
   };
 }
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class AttendancesService {
   private readonly api = inject(AttendanceApiService);
   private readonly eventApi = inject(EventApiService);

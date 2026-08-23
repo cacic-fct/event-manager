@@ -11,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { PublicMapTileCacheWarmupService } from '../../shared/map/public-map-tile-cache-warmup.service';
+import { OPENSTREETMAP_TILE_REFERRER_POLICY } from '../../shared/map/public-map-tile.constants';
 
 @Component({
   selector: 'app-event-location-map',
@@ -118,7 +119,7 @@ export class EventLocationMap implements OnDestroy {
       target,
       layers: [
         new TileLayer({
-          source: new OSM(),
+          source: new OSM({ referrerPolicy: OPENSTREETMAP_TILE_REFERRER_POLICY }),
         }),
         new VectorLayer({
           source: new VectorSource({

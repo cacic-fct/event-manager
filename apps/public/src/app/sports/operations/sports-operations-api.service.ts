@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
 import {
   CurrentUserSportsPlayerApplication,
@@ -33,7 +33,7 @@ export interface QueuedSportsTeamLogo {
   height: number;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SportsOperationsApiService {
   private readonly http = inject(HttpClient);
 

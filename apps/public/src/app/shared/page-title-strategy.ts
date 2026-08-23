@@ -1,10 +1,10 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
 
 export const PAGE_TITLE_SUFFIX = 'CACiC Eventos';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PageTitleStrategy extends TitleStrategy {
   private readonly title = inject(Title);
 

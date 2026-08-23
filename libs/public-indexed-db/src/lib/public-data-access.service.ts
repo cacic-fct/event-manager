@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { EventTargetType, PublicEvent, PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { CalendarDataCacheService } from './calendar-data-cache.service';
@@ -6,7 +6,7 @@ import { OfflineAttendanceDetail, OfflineRestaurantCard, OfflineUserSnapshot } f
 import { UserOfflineDataService } from './user-offline-data.service';
 import { PublicMapDataCacheService } from './public-map-data-cache.service';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicDataAccessService {
   private readonly calendarData = inject(CalendarDataCacheService);
   private readonly userData = inject(UserOfflineDataService);

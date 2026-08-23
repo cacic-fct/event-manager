@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Observable, catchError, map, of, take } from 'rxjs';
@@ -12,7 +12,7 @@ import {
   type InterruptionFlow,
 } from '../../interruption/interruption-flow';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SportsAutorouteInterruptionFlow implements InterruptionFlow {
   private readonly api = inject(DefaultRedirectApiService);
   private readonly auth = inject(AuthService);

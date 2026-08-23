@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { form, required, submit, type FieldTree } from '@angular/forms/signals';
 import { MatDialog } from '@angular/material/dialog';
@@ -77,9 +77,7 @@ type CertificateTemplatesLoadState = 'loading' | 'ready' | 'empty' | 'error';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class CertificatesService {
   private readonly api = inject(CertificateApiService);
   private readonly eventsApi = inject(EventApiService);

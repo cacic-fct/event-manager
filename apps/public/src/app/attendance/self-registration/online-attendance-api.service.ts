@@ -1,6 +1,6 @@
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { CurrentUserEventAttendance } from '@cacic-fct/shared-utils';
 import { Observable, map } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';
@@ -26,7 +26,7 @@ const PUBLIC_EVENT_FIELDS = `
   }
 `;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class OnlineAttendanceApiService {
   private readonly http = inject(HttpClient);
 

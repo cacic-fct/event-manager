@@ -1,9 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, OnDestroy, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Service, OnDestroy, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class SportsBreathingAnimationService implements OnDestroy {
   private animationFrameId: number | null = null;
   private subscriberCount = 0;

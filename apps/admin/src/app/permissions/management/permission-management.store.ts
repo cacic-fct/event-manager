@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Service, computed, inject, signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import type {
@@ -54,7 +54,7 @@ export type GroupDraft = {
   members: PermissionGroupSaveInput['members'];
 };
 
-@Injectable()
+@Service({ autoProvided: false })
 export class PermissionManagementStore {
   private readonly api = inject(PermissionManagementApiService);
   private readonly dialog = inject(MatDialog);

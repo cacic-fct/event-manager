@@ -1,9 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { filter, startWith } from 'rxjs';
 import { NetworkConnectionStatus, NetworkStatusService } from './network-status.service';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class NetworkStatusSnackbarService {
   private readonly networkStatus = inject(NetworkStatusService);
   private readonly snackBar = inject(MatSnackBar);

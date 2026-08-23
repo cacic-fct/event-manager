@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, effect, inject } from '@angular/core';
+import { DestroyRef, Service, effect, inject } from '@angular/core';
 import Feature from 'ol/Feature';
 import Map from 'ol/Map';
 import { EventsKey } from 'ol/events';
@@ -22,7 +22,7 @@ export type PublicUserLocationStartResult =
   | Readonly<{ success: true }>
   | Readonly<{ success: false; error: string }>;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicUserLocationLayerService {
   private readonly geolocation = inject(PublicMapGeolocationService);
   private readonly destroyRef = inject(DestroyRef);

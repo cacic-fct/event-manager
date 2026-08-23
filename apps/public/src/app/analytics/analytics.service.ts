@@ -1,9 +1,9 @@
 import type { PublicMajorEvent } from '@cacic-fct/event-manager-public-contracts';
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import { CacicAnalyticsService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMajorEventSubscription } from '@cacic-fct/shared-utils';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AnalyticsService extends CacicAnalyticsService {
   trackMajorEventSubscription(input: {
     action: 'created' | 'updated';

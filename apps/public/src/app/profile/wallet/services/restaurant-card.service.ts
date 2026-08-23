@@ -1,8 +1,8 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject, signal } from '@angular/core';
+import { Service, PLATFORM_ID, inject, signal } from '@angular/core';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class RestaurantCardService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly offlineData = inject(PublicDataAccessService);

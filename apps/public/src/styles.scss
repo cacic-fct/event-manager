@@ -23,6 +23,10 @@
   @include meta.load-css('highlight.js/scss/atom-one-dark');
 }
 
+.developer {
+  @include meta.load-css('highlight.js/scss/atom-one-dark');
+}
+
 .markdown-body pre.markdown-code-block {
   color: inherit;
 }

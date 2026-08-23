@@ -1,5 +1,5 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
+import { Service, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 
 import { UpdateModalComponent } from './dialog-components/update.component';
@@ -10,7 +10,7 @@ type UpdateState = 'idle' | 'checking' | 'downloading' | 'ready' | 'failed' | 'u
 const SERVICE_WORKER_RELOAD_KEY = 'cacic-eventos:service-worker-reload';
 const SERVICE_WORKER_RELOAD_COOLDOWN_MS = 60000;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ServiceWorkerService {
   private readonly dialog: MatDialog = inject(MatDialog);
   private readonly document: Document = inject(DOCUMENT);

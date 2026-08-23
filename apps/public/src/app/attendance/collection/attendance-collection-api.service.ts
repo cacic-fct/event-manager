@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { Observable, map } from 'rxjs';
@@ -105,7 +105,7 @@ const PUBLIC_EVENT_FIELDS = `
   }
 `;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AttendanceCollectionApiService {
   private readonly http = inject(HttpClient);
 

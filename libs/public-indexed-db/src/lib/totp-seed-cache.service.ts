@@ -1,8 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { PublicDatabaseProvider } from './public-database-provider';
 import { OfflineTotpSeedRecord } from './public-data-schema';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class TotpSeedCacheService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
 

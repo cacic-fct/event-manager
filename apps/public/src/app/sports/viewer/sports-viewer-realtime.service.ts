@@ -1,9 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import type { Observable } from 'rxjs';
 import type { SportsViewerInvalidation } from './sports-viewer.types';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SportsViewerRealtimeService {
   watchTournament(tournamentId: string): Observable<SportsViewerInvalidation> {
     return this.watch(

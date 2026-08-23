@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
+import { Service, PLATFORM_ID, effect, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import {
@@ -24,7 +24,7 @@ const MAX_SYNC_ATTEMPTS = 3;
 const INITIAL_SYNC_RETRY_DELAY_MS = 1000;
 const MAX_SYNC_RETRY_DELAY_MS = 8000;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AttendanceOfflineSyncService {
   private readonly api = inject(AttendanceCollectionApiService);
   private readonly auth = inject(AuthService);

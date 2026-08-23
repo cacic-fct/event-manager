@@ -3,6 +3,13 @@ import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject, signal } from 
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import hljs from 'highlight.js/lib/core';
+import bash from 'highlight.js/lib/languages/bash';
+import graphql from 'highlight.js/lib/languages/graphql';
+
+const highlighter = hljs.newInstance();
+highlighter.registerLanguage('bash', bash);
+highlighter.registerLanguage('graphql', graphql);
 
 @Component({
   selector: 'app-developer',
@@ -27,6 +34,16 @@ export class Developer {
   readonly publicApiCurl = `curl --request POST 'https://eventos.cacic.com.br/api/graphql' \\
   --header 'content-type: application/json' \\
   --data '{"query":"query EventosPublicos { publicEvents(take: 3) { id name startDate locationDescription } }"}'`;
+
+  readonly publicApiQueryHtml = highlighter.highlight(this.publicApiQuery, {
+    language: 'graphql',
+    ignoreIllegals: true,
+  }).value;
+
+  readonly publicApiCurlHtml = highlighter.highlight(this.publicApiCurl, {
+    language: 'bash',
+    ignoreIllegals: true,
+  }).value;
 
   readonly curlCopied = signal(false);
 

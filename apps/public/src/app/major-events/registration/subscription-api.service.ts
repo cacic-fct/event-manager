@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   PUBLIC_EVENT_PAGE_FIELDS,
   PUBLIC_MAJOR_EVENTS_QUERY,
@@ -34,7 +34,7 @@ export interface PublicationGroupPreview {
   events: PublicEvent[];
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class MajorEventSubscriptionApiService {
   private readonly http = inject(HttpClient);
 

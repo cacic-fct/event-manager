@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 
 const OPENSTREETMAP_TILE_ORIGIN = 'https://tile.openstreetmap.org';
 const WEB_MERCATOR_MAX_LATITUDE = 85.05112878;
@@ -12,7 +12,7 @@ const WARMUP_OFFSETS = [
   [0, 1],
 ] as const;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicMapTileCacheWarmupService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly warmedUrls = new Set<string>();

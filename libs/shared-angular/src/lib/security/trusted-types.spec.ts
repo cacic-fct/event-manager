@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   assertTrustedExternalScriptUrl,
   assertTrustedServiceWorkerUrl,
+  assertTrustedWorkerBlobUrl,
   CacicTrustedTypesService,
   trustedServiceWorkerUrl,
 } from './trusted-types';
@@ -48,6 +49,23 @@ describe('assertTrustedServiceWorkerUrl', () => {
     );
     expect(() => assertTrustedServiceWorkerUrl(`${serviceWorkerUrl}#fragment`)).toThrow(
       'Service worker URL is not approved',
+    );
+  });
+});
+
+describe('assertTrustedWorkerBlobUrl', () => {
+  it('accepts same-origin blob URLs generated for bundled workers', () => {
+    const url = `blob:${location.origin}/openlayers-worker`;
+
+    expect(assertTrustedWorkerBlobUrl(url)).toBe(url);
+  });
+
+  it('rejects non-blob and cross-origin worker URLs', () => {
+    expect(() => assertTrustedWorkerBlobUrl('https://example.com/worker.js')).toThrow(
+      'Worker blob URL is not approved',
+    );
+    expect(() => assertTrustedWorkerBlobUrl('blob:https://example.com/worker')).toThrow(
+      'Worker blob URL is not approved',
     );
   });
 });
@@ -134,6 +152,22 @@ describe('CacicTrustedTypesService', () => {
     service.initialize();
 
     expect(createPolicy.mock.calls[1][1]).not.toHaveProperty('createScript');
+  });
+
+  it('allows only approved script URLs and same-origin worker blobs', () => {
+    const createPolicy = vi.fn((_name: string, rules: { createScriptURL: (value: string) => string }) => rules);
+    vi.stubGlobal('trustedTypes', { createPolicy });
+
+    const service = createService('browser');
+    service.initialize();
+    const rules = createPolicy.mock.calls[1]?.[1] as { createScriptURL: (value: string) => string };
+
+    expect(rules.createScriptURL(`blob:${location.origin}/openlayers-worker`)).toBe(
+      `blob:${location.origin}/openlayers-worker`,
+    );
+    expect(() => rules.createScriptURL('https://example.com/worker.js')).toThrow(
+      'Worker blob URL is not approved',
+    );
   });
 
   it('keeps contextual errors for failures other than duplicate policies', () => {

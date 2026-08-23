@@ -1,7 +1,7 @@
 import {
   ErrorHandler,
   EnvironmentProviders,
-  Injectable,
+  Service,
   Injector,
   PLATFORM_ID,
   Provider,
@@ -58,7 +58,7 @@ const DEFAULT_UMAMI_REPLAY_SAMPLE_RATE = 1;
 const DEFAULT_UMAMI_REPLAY_MASK_LEVEL = 'moderate';
 const DEFAULT_UMAMI_REPLAY_MAX_DURATION = 1_200_000;
 
-@Injectable()
+@Service({ autoProvided: false })
 class CacicSentryErrorHandler implements ErrorHandler {
   private readonly fallbackErrorHandler = new ErrorHandler();
 
@@ -68,7 +68,7 @@ class CacicSentryErrorHandler implements ErrorHandler {
   }
 }
 
-@Injectable()
+@Service({ autoProvided: false })
 class CacicObservabilityConsentService {
   private readonly injector = inject(Injector);
 
@@ -97,7 +97,7 @@ class CacicObservabilityConsentService {
   }
 }
 
-@Injectable()
+@Service({ autoProvided: false })
 class CacicUmamiReplayScriptLoader {
   private readonly auth = inject(AuthService);
   private readonly consent = inject(CacicObservabilityConsentService);

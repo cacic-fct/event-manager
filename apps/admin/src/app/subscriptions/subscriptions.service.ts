@@ -1,6 +1,6 @@
 import { DOCUMENT } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { DestroyRef, computed, inject, Injectable, signal } from '@angular/core';
+import { DestroyRef, computed, inject, Service, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
@@ -53,9 +53,7 @@ import type {
 const DEFAULT_SUBSCRIPTION_STATUS: SubscriptionStatus = 'CONFIRMED';
 const EXPORT_PAGE_SIZE = 1000;
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class SubscriptionsService {
   private readonly api = inject(SubscriptionApiService);
   private readonly eventApi = inject(EventApiService);

@@ -60,6 +60,7 @@ export class ToolbarLayoutComponent {
 
   readonly items = computed<ToolbarItem[]>(() => {
     const isAuthenticated = this.authService.isAuthenticated();
+    const myDayAvailability = this.myDay.hasAvailableContent();
 
     return [
       {
@@ -84,8 +85,8 @@ export class ToolbarLayoutComponent {
         hidden:
           !isAuthenticated ||
           !this.isEnabled('myDayTabEnabled', this.myDayTabEnabledOverride()) ||
-          this.myDay.hasAvailableContent() === false,
-        pending: isAuthenticated && this.myDay.hasAvailableContent() === null,
+          myDayAvailability !== true,
+        pending: isAuthenticated && myDayAvailability === null,
       },
       {
         label: 'Notificações',

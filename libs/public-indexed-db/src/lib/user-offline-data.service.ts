@@ -1,10 +1,10 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { EventTargetType } from '@cacic-fct/event-manager-public-contracts';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { OfflineAttendanceDetail, OfflineRestaurantCard, OfflineUserSnapshot } from './public-data-schema';
 import { PublicDatabaseProvider } from './public-database-provider';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class UserOfflineDataService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
 

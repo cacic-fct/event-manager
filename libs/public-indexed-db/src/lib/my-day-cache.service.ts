@@ -1,8 +1,8 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { CurrentUserMyDay } from '@cacic-fct/event-manager-public-contracts';
 import { PublicDatabaseProvider } from './public-database-provider';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class MyDayCacheService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
 

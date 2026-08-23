@@ -1,5 +1,5 @@
 import { CdkDragDrop, moveItemInArray, transferArrayItem } from '@angular/cdk/drag-drop';
-import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
+import { DestroyRef, Service, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -51,7 +51,7 @@ export interface RankedItem {
   events: PublicEvent[];
 }
 
-@Injectable()
+@Service({ autoProvided: false })
 export class RankedSubscriptionStore {
   private readonly api = inject(MajorEventSubscriptionApiService);
   private readonly analytics = inject(AnalyticsService);

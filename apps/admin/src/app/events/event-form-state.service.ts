@@ -1,9 +1,7 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, Validators } from '@angular/forms';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class EventFormStateService {
   private readonly formBuilder = inject(FormBuilder);
 

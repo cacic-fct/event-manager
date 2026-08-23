@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   DOWNLOAD_PUBLIC_CERTIFICATE_QUERY,
   PUBLIC_CERTIFICATE_VALIDATION_QUERY,
@@ -13,7 +13,7 @@ import {
 import { Observable, map } from 'rxjs';
 import { graphqlError } from '../../shared/rate-limit-error';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class CertificateValidationApiService {
   private readonly http = inject(HttpClient);
 

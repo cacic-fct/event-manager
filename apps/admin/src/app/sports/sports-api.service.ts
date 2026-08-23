@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from '../graphql/graphql-http.service';
@@ -131,7 +131,7 @@ const REGISTRATION_FIELDS = `
   }
 `;
 
-@Injectable()
+@Service({ autoProvided: false })
 export class SportsApiService {
   private readonly graphql = inject(GraphqlHttpService);
   private readonly http = inject(HttpClient);

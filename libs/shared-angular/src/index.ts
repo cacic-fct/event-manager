@@ -32,7 +32,6 @@ export * from './lib/service-worker/service-worker.service';
 export * from './lib/sitemap/sitemap.utils';
 export * from './lib/security/trusted-types';
 export * from './lib/sports-bracket/sports-bracket.component';
-export * from './lib/sports-bracket/sports-bracket.fixtures';
 export * from './lib/sports-bracket/sports-bracket.models';
 export * from './lib/sports-team-logo/sports-team-logo.component';
 export * from './lib/sports-live-dot/sports-breathing-animation.service';

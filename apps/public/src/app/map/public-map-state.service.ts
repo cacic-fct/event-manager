@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import { PublicMapFilters } from './public-map.models';
 
 export interface StoredPublicMapState {
@@ -8,7 +8,7 @@ export interface StoredPublicMapState {
   filters: PublicMapFilters;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicMapStateService {
   // Intentionally memory-only: a centered user location must not leak into
   // URLs, browser history, logs, or durable web storage.

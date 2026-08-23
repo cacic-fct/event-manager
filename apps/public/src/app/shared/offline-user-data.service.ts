@@ -1,9 +1,9 @@
-import { Injectable, effect, inject } from '@angular/core';
+import { Service, effect, inject } from '@angular/core';
 import { AuthService, AuthenticatedUser } from '@cacic-fct/shared-angular';
 import { PublicDataAccessService, OfflineUserSnapshot } from '@cacic-fct/public-indexed-db';
 import { NetworkStatusService } from './network-status.service';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class OfflineUserDataService {
   private readonly auth = inject(AuthService);
   private readonly networkStatus = inject(NetworkStatusService);

@@ -1,10 +1,10 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { type AuditLogEntityType } from '@cacic-fct/event-manager-admin-contracts';
 import { AuditLogDialogComponent } from './dialogs/audit-log-dialog.component';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AuditLogService {
   private readonly dialog = inject(MatDialog);
   private readonly platformId = inject(PLATFORM_ID);

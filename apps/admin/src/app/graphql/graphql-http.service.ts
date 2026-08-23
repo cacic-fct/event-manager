@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { map } from 'rxjs';
 
 interface GraphqlResponse<TData> {
@@ -7,7 +7,7 @@ interface GraphqlResponse<TData> {
   errors?: { message: string }[];
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class GraphqlHttpService {
   private readonly http = inject(HttpClient);
 

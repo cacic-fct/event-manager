@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { DestroyRef, Injectable, NgZone, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Service, NgZone, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 
 export type PublicMapLocationPermission = 'prompt' | 'granted' | 'denied' | 'unsupported';
 export type PublicMapOrientationPermission = PublicMapLocationPermission;
@@ -63,7 +63,7 @@ type DeviceOrientationEventConstructorWithPermission = typeof DeviceOrientationE
  * for permission; consumers must call requestLocation() or startTracking() from
  * an explicit user action.
  */
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicMapGeolocationService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly zone = inject(NgZone);

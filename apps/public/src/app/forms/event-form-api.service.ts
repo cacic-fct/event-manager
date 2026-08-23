@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   type EventFormTargetType,
   type GraphqlResponse,
@@ -84,7 +84,7 @@ const PUBLIC_EVENT_FORM_RESULTS_FIELDS = `
   }
 `;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicEventFormApiService {
   private readonly http = inject(HttpClient);
 

@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -28,9 +28,7 @@ const DEFAULT_EVENT_GROUP_EMOJI = '❔';
 const DEFAULT_DRAFT_EVENT_GROUP_NAME = 'Grupo sem título';
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class EventGroupsService {
   private readonly api = inject(EventGroupApiService);
   private readonly eventsApi = inject(EventApiService);

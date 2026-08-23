@@ -1,7 +1,7 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Service, OnDestroy } from '@angular/core';
 import { ActivatedRouteSnapshot, DetachedRouteHandle, RouteReuseStrategy } from '@angular/router';
 
-@Injectable()
+@Service({ autoProvided: false })
 export class AppRouteReuseStrategy implements RouteReuseStrategy, OnDestroy {
   private readonly handles = new Map<string, DetachedRouteHandle>();
 

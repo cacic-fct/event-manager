@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Service, inject, signal } from '@angular/core';
 import { FormBuilder } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -17,9 +17,7 @@ import {
 } from '../pagination/list-pagination';
 import { PeopleService } from '../people/people.service';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class MergeCandidatesService {
   private readonly api = inject(MergeCandidateApiService);
   private readonly snackbar = inject(MatSnackBar);

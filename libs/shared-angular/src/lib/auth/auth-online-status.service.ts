@@ -1,7 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AuthOnlineStatusService {
   private readonly platformId = inject(PLATFORM_ID);
 

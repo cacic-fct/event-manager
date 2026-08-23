@@ -1,8 +1,8 @@
 import { DOCUMENT } from '@angular/common';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class DocumentSeoService {
   private readonly document = inject(DOCUMENT);
   private readonly meta = inject(Meta);

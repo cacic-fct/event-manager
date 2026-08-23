@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Service } from '@angular/core';
 import { parse } from '@twemoji/parser';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class EmojiService {
   getTwemojiUrl(emoji: string | null | undefined): string {
     const parsedEmoji = this.parseEmoji(emoji);

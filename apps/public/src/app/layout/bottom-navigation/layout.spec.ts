@@ -76,6 +76,24 @@ describe('ToolbarLayoutComponent', () => {
     expect(fixture.componentInstance.items()[2].hidden).toBe(true);
   });
 
+  it('keeps My Day hidden until associated content is confirmed', () => {
+    myDayAvailable.set(null);
+
+    expect(fixture.componentInstance.items()[2]).toMatchObject({
+      route: '/my-day',
+      hidden: true,
+      pending: true,
+    });
+
+    myDayAvailable.set(true);
+
+    expect(fixture.componentInstance.items()[2]).toMatchObject({
+      route: '/my-day',
+      hidden: false,
+      pending: false,
+    });
+  });
+
   it('hides non-menu tabs disabled by feature flags', () => {
     flags['calendarTabEnabled'] = false;
     flags['notificationsTabEnabled'] = false;

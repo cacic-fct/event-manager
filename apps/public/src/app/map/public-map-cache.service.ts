@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import type { PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
 
@@ -10,7 +10,7 @@ interface CacheEntry<T> {
 
 const CACHE_PREFIX = 'cacic-eventos:public-map:v1:';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicMapCacheService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly offlineData = inject(PublicDataAccessService);

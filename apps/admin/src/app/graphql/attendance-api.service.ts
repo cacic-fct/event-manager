@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { Observable, map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
@@ -35,7 +35,7 @@ export interface AttendanceAnalyticsTimeWindow {
   end: string;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AttendanceApiService {
   private readonly http = inject(HttpClient);
   private readonly graphqlHttp = inject(GraphqlHttpService);

@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, Injector, PLATFORM_ID, effect, inject, isDevMode, signal } from '@angular/core';
+import { Service, Injector, PLATFORM_ID, effect, inject, isDevMode, signal } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { UmamiService } from '@cacic-fct/ngx-umami';
 import type { UmamiEventData, UmamiIdentifyData } from '@cacic-fct/ngx-umami';
@@ -14,7 +14,7 @@ const MAX_PENDING_ACTIONS = 50;
 const FLUSH_INTERVAL_MS = 250;
 const MAX_FLUSH_ATTEMPTS = 40;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class CacicAnalyticsService {
   private readonly auth = inject(AuthService);
   private readonly config = inject(CACIC_ANALYTICS_CONFIG);

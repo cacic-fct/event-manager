@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { liveQuery } from 'dexie';
 import { Observable, from, of } from 'rxjs';
 import {
@@ -16,7 +16,7 @@ export interface OfflineAttendanceCommitResultLike {
   message?: string | null;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AttendanceOfflineQueueService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
   private readonly startupSyncingResetByUserId = new Map<string, Promise<void>>();

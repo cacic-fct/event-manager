@@ -1,12 +1,12 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { AttendanceIncognitoWarningDialog } from './dialog';
 
 const WARNING_SESSION_KEY = 'cacic-eventos:attendance-incognito-warning-shown';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AttendanceIncognitoWarningService {
   private readonly dialog = inject(MatDialog);
   private readonly platformId = inject(PLATFORM_ID);

@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, OnDestroy, PLATFORM_ID, effect, inject } from '@angular/core';
+import { Service, OnDestroy, PLATFORM_ID, effect, inject } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Observable, Subject, Subscription, catchError, defer, filter, forkJoin, map, of, switchMap } from 'rxjs';
@@ -55,7 +55,7 @@ function canApplyInterruption(interruption: Interruption, context: InterruptionC
   );
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class InterruptionCoordinatorService implements OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly featureFlags = inject(PublicFeatureFlagService);

@@ -1,6 +1,6 @@
 import '@angular/compiler';
 import { WindowLike } from 'dompurify';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderMarkdown } from './markdown.service';
 
 describe('MarkdownService', () => {
@@ -67,5 +67,34 @@ describe('MarkdownService', () => {
   it('returns an empty document for missing descriptions', () => {
     expect(renderMarkdown(null, window as unknown as WindowLike)).toBe('');
     expect(renderMarkdown(undefined, window as unknown as WindowLike)).toBe('');
+  });
+
+  it('reuses the DOMPurify Trusted Types policy across renders', () => {
+    let policyWasCreated = false;
+    const createPolicy = vi.fn(() => {
+      if (policyWasCreated) {
+        throw new TypeError('Policy with name dompurify already exists.');
+      }
+
+      policyWasCreated = true;
+      return {
+        createHTML: (value: string) => value,
+        createScriptURL: (value: string) => value,
+      };
+    });
+    const windowWithTrustedTypes = Object.create(window) as WindowLike;
+
+    Object.defineProperty(windowWithTrustedTypes, 'trustedTypes', {
+      configurable: true,
+      value: { createPolicy },
+    });
+
+    expect(renderMarkdown('**Primeira pré-visualização**', windowWithTrustedTypes)).toContain(
+      '<strong>Primeira pré-visualização</strong>',
+    );
+    expect(renderMarkdown('**Segunda pré-visualização**', windowWithTrustedTypes)).toContain(
+      '<strong>Segunda pré-visualização</strong>',
+    );
+    expect(createPolicy).toHaveBeenCalledTimes(1);
   });
 });

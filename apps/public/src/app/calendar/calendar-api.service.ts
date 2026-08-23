@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   PUBLIC_CALENDAR_EVENTS_QUERY,
   type EventType,
@@ -25,7 +25,7 @@ interface CurrentUserSubscribedItem {
   events?: Array<{ id: string }> | null;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class CalendarApiService {
   private readonly http = inject(HttpClient);
 

@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   PUBLIC_PLATFORM_STATS_QUERY,
   type GraphqlResponse,
@@ -8,7 +8,7 @@ import {
 import { Observable, map } from 'rxjs';
 import { graphqlError } from '../shared/rate-limit-error';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PlatformStatsApiService {
   private readonly http = inject(HttpClient);
 

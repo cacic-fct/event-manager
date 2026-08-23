@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Observable, catchError, map, of, take } from 'rxjs';
@@ -10,7 +10,7 @@ import {
 } from '../interruption/interruption-flow';
 import { PublicEventFormApiService } from './event-form-api.service';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class RequiredSubscriptionFormInterruptionFlow implements InterruptionFlow {
   private readonly api = inject(PublicEventFormApiService);
   private readonly auth = inject(AuthService);

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
@@ -33,7 +33,7 @@ export interface AuditLogExplorerInput {
   take?: number;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AuditLogApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
@@ -24,7 +24,7 @@ export type PeopleFilters = {
   hasLecturerProfile?: boolean;
 };
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PeopleApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 

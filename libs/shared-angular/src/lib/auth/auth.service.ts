@@ -1,6 +1,6 @@
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
+import { Service, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { CacicAccountPrivacyService } from '@cacic-fct/account-manager-privacy';
 import type { Permission } from '@cacic-fct/shared-permissions';
 import {
@@ -21,7 +21,7 @@ import { AuthenticatedUser, AuthRefreshResult, PasswordLoginResult } from './aut
 import type { LoginOptions } from './auth.types';
 import { AUTH_ONBOARDING_ENFORCEMENT_ENABLED } from './auth-onboarding-enforcement.token';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AuthService {
   private readonly accountLoginUrl = 'https://account.cacic.com.br/api/auth/login';
   private readonly onboardingReturnStorageKey = 'cacic-eventos:onboarding-return-url';

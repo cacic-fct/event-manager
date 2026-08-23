@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   CURRENT_USER_DEFAULT_REDIRECT_QUERY,
   type CurrentUserDefaultRedirectQuery,
@@ -24,7 +24,7 @@ const DEFAULT_REDIRECT_ROUTES = {
   WALLET: true,
 } satisfies Record<DefaultRedirectRoute, true>;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class DefaultRedirectApiService {
   private readonly http = inject(HttpClient);
 

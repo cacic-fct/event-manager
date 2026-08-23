@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { PublicMapEvent } from '@cacic-fct/event-manager-public-contracts';
 import type { SubscriptionsFeed } from '@cacic-fct/shared-utils';
 import { CachedPublicMapEvent } from './public-data-schema';
@@ -6,7 +6,7 @@ import { PublicDatabaseProvider } from './public-database-provider';
 
 const PUBLIC_MAP_EVENTS_METADATA_KEY = 'publicMapEvents';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicMapDataCacheService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
 

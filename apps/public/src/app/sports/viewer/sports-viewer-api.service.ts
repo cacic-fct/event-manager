@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { GraphqlResponse, GraphqlVariables } from '@cacic-fct/event-manager-public-contracts';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Observable, map } from 'rxjs';
@@ -142,7 +142,7 @@ const PUBLIC_TOURNAMENT_FIELDS = `
   }
 `;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SportsViewerApiService {
   private readonly auth = inject(AuthService);
   private readonly http = inject(HttpClient);

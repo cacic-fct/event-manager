@@ -1,10 +1,10 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Service, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 
 export type NetworkConnectionStatus = 'online' | 'offline';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class NetworkStatusService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);

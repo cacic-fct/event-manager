@@ -1,11 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { PublicEvent } from '@cacic-fct/event-manager-public-contracts';
 import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { subMonths } from 'date-fns';
 import { CachedCalendarEvent } from './public-data-schema';
 import { PublicDatabaseProvider } from './public-database-provider';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class CalendarDataCacheService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
 

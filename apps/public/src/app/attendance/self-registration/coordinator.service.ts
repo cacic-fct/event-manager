@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, effect, inject } from '@angular/core';
+import { Service, PLATFORM_ID, effect, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Observable, catchError, filter, map, of, take } from 'rxjs';
@@ -14,7 +14,7 @@ import { OnlineAttendanceApiService, PendingOnlineAttendanceEvent } from './onli
 
 const ONLINE_ATTENDANCE_CHANNEL = 'current-user.online-attendance';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class OnlineAttendanceCoordinatorService implements InterruptionFlow {
   private readonly api = inject(OnlineAttendanceApiService);
   private readonly auth = inject(AuthService);

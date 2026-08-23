@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { WalletTotpSeed } from './totp.types';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class TotpApiService {
   private readonly http = inject(HttpClient);
 

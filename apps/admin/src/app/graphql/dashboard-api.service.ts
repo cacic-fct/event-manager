@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { WorkspaceDashboardInsights } from '@cacic-fct/shared-frontend-types';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
@@ -6,7 +6,7 @@ import { DASHBOARD_INCONSISTENCY_FIELDS } from './graphql-query-fragments';
 
 type WorkspaceDashboardHomeInsights = Omit<WorkspaceDashboardInsights, 'permissions'>;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class DashboardApiService {
   private readonly graphql = inject(GraphqlHttpService);
 

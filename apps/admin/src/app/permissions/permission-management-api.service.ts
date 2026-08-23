@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type {
   PermissionGroup,
   PermissionGroupSaveInput,
@@ -11,7 +11,7 @@ import type {
 import { map } from 'rxjs';
 import { GraphqlHttpService } from '../graphql/graphql-http.service';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PermissionManagementApiService {
   private readonly graphql = inject(GraphqlHttpService);
 

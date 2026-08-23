@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { DashboardInconsistency } from '@cacic-fct/shared-frontend-types';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
@@ -87,7 +87,7 @@ const PUBLIC_CONTENT_NODE_FIELDS = `
   childCount
 `;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicationApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 

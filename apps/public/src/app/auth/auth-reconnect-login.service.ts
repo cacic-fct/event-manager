@@ -1,9 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Subscription } from 'rxjs';
 import { NetworkStatusService } from '../shared/network-status.service';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AuthReconnectLoginService {
   private readonly auth = inject(AuthService);
   private readonly networkStatus = inject(NetworkStatusService);

@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   CURRENT_USER_MY_DAY_QUERY,
   type CurrentUserMyDay,
@@ -14,7 +14,7 @@ interface GraphqlResponse<TData> {
   errors?: Array<{ message: string }>;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class MyDayApiService {
   private readonly http = inject(HttpClient);
 

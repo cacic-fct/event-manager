@@ -1,5 +1,5 @@
 import { isPlatformBrowser, Location } from '@angular/common';
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { DefaultUrlSerializer, NavigationEnd, Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { Observable, catchError, defer, filter, from, map, of } from 'rxjs';
@@ -15,7 +15,7 @@ const TAB_ROUTES = new Set(['/calendar', '/major-event', '/notifications', '/men
 export const NO_REDIRECT_QUERY_PARAM = 'noredirect';
 const URL_SERIALIZER = new DefaultUrlSerializer();
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class DefaultRedirectOnTabEntryService implements InterruptionFlow {
   readonly isFallback = true;
 

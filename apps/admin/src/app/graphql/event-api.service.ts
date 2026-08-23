@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
@@ -18,7 +18,7 @@ import {
   PERSON_SEARCH_FIELDS,
 } from './graphql-query-fragments';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class EventApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 

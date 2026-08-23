@@ -7,6 +7,7 @@ import {
   OnDestroy,
   PLATFORM_ID,
   ViewChild,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -72,10 +73,11 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   private readonly eventId = this.route.snapshot.paramMap.get('eventId') ?? '';
   private streamSubscription?: Subscription;
   private readonly charts = new Map<ChartName, ECharts>();
-  private readonly observers = new Map<ChartName, ResizeObserver>();
+  private readonly observers = new Map<ChartName, { element: HTMLElement; observer: ResizeObserver }>();
   private stopObservingTheme?: () => void;
   private throughputSelectionChart?: ECharts;
   private throughputSelectionInProgress = false;
+  private chartRenderFrame?: number;
 
   readonly Permission = Permission;
   readonly selectedTimeWindow = signal<AttendanceAnalyticsTimeWindow | null>(null);
@@ -100,7 +102,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
           this.snapshot.set(snapshot);
           this.loading.set(false);
           this.connectionError.set(null);
-          queueMicrotask(() => this.renderCharts());
+          this.scheduleChartRender();
         },
         error: (error: unknown) => {
           this.connectionError.set(error instanceof Error ? error.message : 'A atualização ao vivo foi interrompida.');
@@ -109,17 +111,20 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
       });
       onCleanup(() => this.streamSubscription?.unsubscribe());
     });
+
+    afterNextRender(() => this.scheduleChartRender());
   }
 
   ngAfterViewInit(): void {
-    this.renderCharts();
+    this.scheduleChartRender();
   }
 
   ngOnDestroy(): void {
     this.streamSubscription?.unsubscribe();
     this.stopObservingTheme?.();
     for (const chart of this.charts.values()) chart.dispose();
-    for (const observer of this.observers.values()) observer.disconnect();
+    for (const { observer } of this.observers.values()) observer.disconnect();
+    if (this.chartRenderFrame !== undefined) cancelAnimationFrame(this.chartRenderFrame);
   }
 
   resetTimeWindow(): void {
@@ -136,7 +141,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
           this.api.getEventAttendanceAnalytics(this.eventId, this.selectedTimeWindow()),
         ),
       );
-      queueMicrotask(() => this.renderCharts());
+      this.scheduleChartRender();
     } catch (error: unknown) {
       this.connectionError.set(error instanceof Error ? error.message : 'Não foi possível atualizar as estatísticas.');
     } finally {
@@ -200,6 +205,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
       this.disposeChart(name);
       return;
     }
+    this.observeChartElement(name, element);
     if (element.clientWidth === 0 || element.clientHeight === 0) return;
     const existing = this.charts.get(name);
     if (existing && existing.getDom() !== element) {
@@ -210,11 +216,33 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
     chart.setOption(option, true);
     if (name === 'throughput') this.configureThroughputSelection(chart);
     this.stopObservingTheme ??= observeEChartsTheme(element, () => this.renderCharts());
-    if (!this.observers.has(name)) {
-      const observer = new ResizeObserver(() => chart.resize());
-      observer.observe(element);
-      this.observers.set(name, observer);
-    }
+  }
+
+  private scheduleChartRender(): void {
+    if (!this.isBrowser || this.chartRenderFrame !== undefined) return;
+
+    this.chartRenderFrame = requestAnimationFrame(() => {
+      this.chartRenderFrame = undefined;
+      this.renderCharts();
+    });
+  }
+
+  private observeChartElement(name: ChartName, element: HTMLElement): void {
+    if (!('ResizeObserver' in globalThis)) return;
+    const existing = this.observers.get(name);
+    if (existing?.element === element) return;
+
+    existing?.observer.disconnect();
+    const observer = new ResizeObserver(() => {
+      const chart = this.charts.get(name);
+      if (chart) {
+        chart.resize();
+      } else {
+        this.scheduleChartRender();
+      }
+    });
+    observer.observe(element);
+    this.observers.set(name, { element, observer });
   }
 
   private chartColors(element?: HTMLElement) {
@@ -334,7 +362,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   }
 
   private disposeChart(name: ChartName): void {
-    this.observers.get(name)?.disconnect();
+    this.observers.get(name)?.observer.disconnect();
     this.observers.delete(name);
     const chart = this.charts.get(name);
     chart?.dispose();

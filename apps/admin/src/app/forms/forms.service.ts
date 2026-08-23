@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Service, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -45,7 +45,7 @@ export interface EventFormLinkDraft {
   allowLecturerManualPublish?: boolean | null;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class FormsService {
   private readonly api = inject(EventFormApiService);
   private readonly eventApi = inject(EventApiService);

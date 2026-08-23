@@ -20,6 +20,7 @@ const turnstileSiteKeyMetaName = 'cacic-turnstile-site-key';
 const turnstileSiteKey = process.env['TURNSTILE_SITE_KEY']?.trim() ?? '';
 const publicAppVersion = 'APP_VERSION_PLACEHOLDER';
 const publicAppOrigin = 'https://eventos.cacic.com.br';
+const publicReferrerPolicy = 'strict-origin-when-cross-origin';
 const sitemapGraphqlUrl =
   process.env['SITEMAP_API_URL']?.trim() ||
   (process.env['NODE_ENV'] === 'production' ? 'http://backend:3000/api/graphql' : 'http://localhost:3000/api/graphql');
@@ -45,6 +46,11 @@ const angularApp = new AngularNodeAppEngine({
     'x-forwarded-for',
     'x-forwarded-port',
   ],
+});
+
+app.use((_req, res, next) => {
+  res.setHeader('Referrer-Policy', publicReferrerPolicy);
+  next();
 });
 
 app.get('/app/api/version', (_req, res) => {

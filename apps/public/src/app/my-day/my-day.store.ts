@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Service, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@cacic-fct/shared-angular';
 import type { CurrentUserMyDay } from '@cacic-fct/event-manager-public-contracts';
@@ -16,7 +16,7 @@ export type MyDayLoadState =
   | { status: 'ready'; data: CurrentUserMyDay; offline: boolean }
   | { status: 'error'; data: CurrentUserMyDay | null; offline: boolean; message: string };
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class MyDayStore {
   private readonly api = inject(MyDayApiService);
   private readonly auth = inject(AuthService);

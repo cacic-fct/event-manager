@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
+import { Service, inject, signal } from '@angular/core';
 import {
   CURRENT_USER_MAP_EVENT_IDS_QUERY,
   type GraphqlResponse,
@@ -14,7 +14,7 @@ import { PublicMapCacheService } from './public-map-cache.service';
 const MAP_CACHE_TTL_MS = 5 * 60 * 1000;
 const MAP_OFFLINE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicMapApiService {
   private readonly http = inject(HttpClient);
   private readonly cache = inject(PublicMapCacheService);

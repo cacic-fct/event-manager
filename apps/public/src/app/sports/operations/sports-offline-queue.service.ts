@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Injectable, OnDestroy, PLATFORM_ID, effect, inject, signal } from '@angular/core';
+import { Service, OnDestroy, PLATFORM_ID, effect, inject, signal } from '@angular/core';
 import {
   hasOfflineSportsAttendanceCollectorProof,
   isOfflineSportsOfficialCheckIn,
@@ -24,7 +24,7 @@ import {
 
 const MAX_ATTEMPTS_PER_SYNC = 3;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SportsOfflineQueueService implements OnDestroy {
   private readonly api = inject(SportsOperationsApiService);
   private readonly auth = inject(AuthService);

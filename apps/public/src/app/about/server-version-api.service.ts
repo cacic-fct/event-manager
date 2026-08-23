@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   SERVER_VERSION_QUERY,
   type GraphqlResponse,
@@ -8,7 +8,7 @@ import {
 import { Observable, map } from 'rxjs';
 import { graphqlError } from '../shared/rate-limit-error';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ServerVersionApiService {
   private readonly http = inject(HttpClient);
 

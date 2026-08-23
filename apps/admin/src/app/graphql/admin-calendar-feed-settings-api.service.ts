@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 
@@ -32,7 +32,7 @@ const SUPER_ADMIN_CALENDAR_FEED_SETTINGS_FIELDS = `
   updatedAt
 `;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AdminCalendarFeedSettingsApiService {
   private readonly graphql = inject(GraphqlHttpService);
 

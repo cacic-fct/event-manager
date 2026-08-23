@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
+import { Service, PLATFORM_ID, computed, inject, isDevMode, signal } from '@angular/core';
 import { FeatureFlagCacheRecord, PublicDatabaseProvider } from '@cacic-fct/public-indexed-db';
 import { UnleashClient, type IToggle, type IVariant, type IStorageProvider } from 'unleash-proxy-client';
 import { PUBLIC_FEATURE_FLAG_CONFIG } from './public-feature-flag.config';
@@ -15,7 +15,7 @@ const CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 92;
 const UNLEASH_REPOSITORY_KEY = 'repo';
 const DEVELOPMENT_COOKIE_BANNER_ENABLED_STORAGE_KEY = 'cacic.cookieBanner.enabled';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PublicFeatureFlagService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly databaseProvider = inject(PublicDatabaseProvider);

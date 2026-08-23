@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   hasOfflineSportsAttendanceCollectorProof,
   type OfflineSportsCollectorCredential,
@@ -7,7 +7,7 @@ import {
 } from './public-data-schema';
 import { PublicDatabaseProvider } from './public-database-provider';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SportsOperationOfflineQueueService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
 

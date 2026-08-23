@@ -1,4 +1,4 @@
-import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Service, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
 export type ScannerSoundKind = 'valid' | 'invalid' | 'duplicate' | 'nonPaying' | 'nonSubscribed';
@@ -20,9 +20,7 @@ declare global {
   }
 }
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class ScannerSoundsService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cacic-fct/shared-angular';
 import { PublicDataAccessService } from '@cacic-fct/public-indexed-db';
@@ -20,7 +20,7 @@ const APP_ROUTE_BY_REDIRECT: Record<DefaultRedirectRoute, string> = {
   WALLET: '/profile/wallet',
 };
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class DefaultRedirectService {
   private readonly auth = inject(AuthService);
   private readonly api = inject(DefaultRedirectApiService);

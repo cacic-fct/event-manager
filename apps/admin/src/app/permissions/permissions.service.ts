@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Service, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import {
   EVENT_MANAGER_PERMISSION_SET,
   Permission,
@@ -17,9 +17,7 @@ const TAB_PERMISSIONS_BY_ID = new Map<WorkspacePermissionTab, WorkspaceTabPermis
   WORKSPACE_TAB_PERMISSIONS.map((tab) => [tab.id, tab]),
 );
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class PermissionsService {
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);

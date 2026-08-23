@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { DestroyRef, Injectable, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
+import { DestroyRef, Service, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { OfflineTotpSeedRecord } from '@cacic-fct/public-indexed-db';
 import { TOTP_PERIOD_SECONDS, generateTotpCode } from '@cacic-fct/account-manager-m2m-contracts';
 import { TotpSeedSessionService } from '../../../../shared/totp/totp-seed-session.service';
@@ -11,7 +11,7 @@ type OfflineCodeState =
   | { status: 'ready'; seed: OfflineTotpSeedRecord }
   | { status: 'error'; message: string };
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class OfflineCodeStateService {
   private readonly session = inject(TotpSeedSessionService);
   private readonly destroyRef = inject(DestroyRef);

@@ -36,7 +36,7 @@
         </p>
         <div class="developer-api-query">
           <p class="developer-api-language">GraphQL</p>
-          <pre class="developer-api-code"><code>{{ publicApiQuery }}</code></pre>
+          <pre class="developer-api-code"><code class="hljs language-graphql" [innerHTML]="publicApiQueryHtml"></code></pre>
         </div>
         <div class="developer-api-curl">
           <div class="developer-api-curl-heading">
@@ -50,7 +50,7 @@
               <mat-icon aria-hidden="true">{{ curlCopied() ? 'check' : 'content_copy' }}</mat-icon>
             </button>
           </div>
-          <pre class="developer-api-code"><code>{{ publicApiCurl }}</code></pre>
+          <pre class="developer-api-code"><code class="hljs language-bash" [innerHTML]="publicApiCurlHtml"></code></pre>
         </div>
       </div>
     </div>

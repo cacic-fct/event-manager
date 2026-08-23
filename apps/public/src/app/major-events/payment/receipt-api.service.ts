@@ -1,5 +1,5 @@
 import { HttpClient, HttpEvent, HttpEventType } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Observable, catchError, filter, map, throwError } from 'rxjs';
 import { graphqlError, rateLimitFromHttpError } from '../../shared/rate-limit-error';
 
@@ -23,7 +23,7 @@ interface GraphqlResponse<TData> {
   errors?: Array<{ message: string }>;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PaymentReceiptApiService {
   private readonly http = inject(HttpClient);
 

@@ -27,6 +27,10 @@ self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
 });
 
+self.addEventListener('activate', (event) => {
+  event.waitUntil(removeInvalidOpenStreetMapTiles());
+});
+
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') {
     event.waitUntil(skipWaitingForTrustedClient(event));
@@ -52,7 +56,7 @@ async function cacheAttendanceScannerUrlsForClient(event) {
 }
 
 async function cacheMapTileUrlsForClient(event) {
-  const ok = await cacheMapTileUrls(event.data.urls);
+  const ok = await cacheMapTileUrls(event.data.urls, getMessageClientReferrer(event));
   event.ports?.[0]?.postMessage({
     type: 'CACHE_MAP_TILES_RESULT',
     ok,
@@ -99,6 +103,20 @@ const isOpenStreetMapTileUrl = (url) =>
 const hasPrivateCacheControl = (response) => {
   const cacheControl = response.headers.get('Cache-Control')?.toLowerCase() ?? '';
   return cacheControl.includes('no-store') || cacheControl.includes('private');
+};
+const isCacheableOpenStreetMapTileResponse = (response) => {
+  if (response.status === 0) {
+    return true;
+  }
+
+  if (response.status !== 200 || hasPrivateCacheControl(response) || response.headers.has('x-blocked')) {
+    return false;
+  }
+
+  return response.headers.get('content-type')?.toLowerCase().startsWith('image/') ?? false;
+};
+const openStreetMapTileCachePlugin = {
+  cacheWillUpdate: async ({ response }) => (isCacheableOpenStreetMapTileResponse(response) ? response : null),
 };
 const zxingWasmCacheName = 'zxing-wasm';
 const zxingWasmExpirationConfig = {
@@ -247,9 +265,7 @@ workbox.routing.registerRoute(
   new workbox.strategies.StaleWhileRevalidate({
     cacheName: openStreetMapTileCacheName,
     plugins: [
-      new workbox.cacheableResponse.CacheableResponsePlugin({
-        statuses: [0, 200],
-      }),
+      openStreetMapTileCachePlugin,
       new workbox.expiration.ExpirationPlugin({
         ...openStreetMapTileExpirationConfig,
         purgeOnQuotaError: true,
@@ -258,7 +274,7 @@ workbox.routing.registerRoute(
   }),
 );
 
-async function cacheMapTileUrls(urls) {
+async function cacheMapTileUrls(urls, referrer) {
   if (!Array.isArray(urls) || urls.length === 0 || urls.length > 20) {
     return false;
   }
@@ -268,7 +284,7 @@ async function cacheMapTileUrls(urls) {
     return false;
   }
 
-  const results = await Promise.allSettled(uniqueUrls.map((url) => cacheMapTileUrl(url)));
+  const results = await Promise.allSettled(uniqueUrls.map((url) => cacheMapTileUrl(url, referrer)));
   return results.every((result) => result.status === 'fulfilled' && result.value);
 }
 
@@ -283,10 +299,15 @@ function isMapTileWarmupUrl(rawUrl) {
   }
 }
 
-async function cacheMapTileUrl(url) {
-  const request = new Request(url, { credentials: 'omit', mode: 'cors' });
+async function cacheMapTileUrl(url, referrer) {
+  const request = new Request(url, {
+    credentials: 'omit',
+    mode: 'cors',
+    referrer: referrer || self.location.href,
+    referrerPolicy: 'strict-origin-when-cross-origin',
+  });
   const response = await fetch(request);
-  if (!response || ![0, 200].includes(response.status) || hasPrivateCacheControl(response)) {
+  if (!response || !isCacheableOpenStreetMapTileResponse(response)) {
     return false;
   }
 
@@ -298,6 +319,33 @@ async function cacheMapTileUrl(url) {
   );
   await expiration.updateTimestamp(request.url);
   return true;
+}
+
+function getMessageClientReferrer(event) {
+  const sourceUrl = event.source?.url;
+  if (typeof sourceUrl !== 'string') {
+    return self.location.href;
+  }
+
+  try {
+    const url = new URL(sourceUrl);
+    return sameOrigin(url) ? url.href : self.location.href;
+  } catch {
+    return self.location.href;
+  }
+}
+
+async function removeInvalidOpenStreetMapTiles() {
+  const cache = await caches.open(openStreetMapTileCacheName);
+  const requests = await cache.keys();
+  await Promise.all(
+    requests.map(async (request) => {
+      const response = await cache.match(request);
+      if (!response || !isCacheableOpenStreetMapTileResponse(response)) {
+        await cache.delete(request);
+      }
+    }),
+  );
 }
 
 workbox.routing.registerRoute(

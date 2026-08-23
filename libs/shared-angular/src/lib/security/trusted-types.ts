@@ -1,6 +1,6 @@
 import { isPlatformBrowser } from '@angular/common';
 import {
-  Injectable,
+  Service,
   PLATFORM_ID,
   inject,
   makeEnvironmentProviders,
@@ -72,6 +72,23 @@ export function assertTrustedServiceWorkerUrl(value: string): string {
 }
 
 /**
+ * Validates same-origin blob URLs used by bundled libraries for Web Workers.
+ *
+ * OpenLayers generates its own static worker source as a Blob. The CSP already
+ * restricts workers to `self` and `blob:`; Trusted Types still needs to allow
+ * that browser-generated URL at the Worker constructor sink.
+ */
+export function assertTrustedWorkerBlobUrl(value: string): string {
+  const url = new URL(value);
+
+  if (url.protocol !== 'blob:' || url.origin !== location.origin) {
+    throw new Error(`Worker blob URL is not approved by the Trusted Types policy: ${url.href}`);
+  }
+
+  return url.href;
+}
+
+/**
  * Produces a TrustedScriptURL for the public app's same-origin service worker.
  */
 export function trustedServiceWorkerUrl(value: string): string {
@@ -79,7 +96,7 @@ export function trustedServiceWorkerUrl(value: string): string {
   return externalScriptPolicy?.createScriptURL(url) ?? url;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class CacicTrustedTypesService {
   private readonly platformId = inject(PLATFORM_ID);
   private initialized = false;
@@ -100,7 +117,11 @@ export class CacicTrustedTypesService {
       try {
         return assertTrustedExternalScriptUrl(value);
       } catch {
-        return assertTrustedServiceWorkerUrl(value);
+        try {
+          return assertTrustedServiceWorkerUrl(value);
+        } catch {
+          return assertTrustedWorkerBlobUrl(value);
+        }
       }
     };
 

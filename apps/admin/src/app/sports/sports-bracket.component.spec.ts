@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { SPORTS_BRACKET_FIXTURES, SportsBracketComponent } from '@cacic-fct/shared-angular';
+import { SportsBracketComponent } from '@cacic-fct/shared-angular';
+import { SPORTS_BRACKET_FIXTURES } from '@cacic-fct/shared-angular/testing';
 
 describe('SportsBracketComponent', () => {
   it('groups elimination matches into readable rounds', async () => {

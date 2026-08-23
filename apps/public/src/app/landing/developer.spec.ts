@@ -25,6 +25,20 @@ describe('Developer', () => {
     expect(component).toBeTruthy();
   });
 
+  it('syntax highlights the API examples', () => {
+    fixture.detectChanges();
+
+    const queryCode = fixture.nativeElement.querySelector('code.language-graphql');
+    const curlCode = fixture.nativeElement.querySelector('code.language-bash');
+
+    expect(queryCode).not.toBeNull();
+    expect(queryCode?.classList.contains('hljs')).toBe(true);
+    expect(queryCode?.innerHTML).toContain('<span class="hljs-keyword">query</span>');
+    expect(curlCode).not.toBeNull();
+    expect(curlCode?.classList.contains('hljs')).toBe(true);
+    expect(curlCode?.innerHTML).toContain('<span class="hljs-string">');
+  });
+
   it('copies the public curl example', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {

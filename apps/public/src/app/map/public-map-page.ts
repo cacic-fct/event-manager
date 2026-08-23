@@ -34,6 +34,7 @@ import { catchError, forkJoin, of } from 'rxjs';
 import { EmojiService } from '../shared/emoji.service';
 import { PublicMapGeolocationService } from '../shared/map/public-map-geolocation.service';
 import { PublicUserLocationLayerService } from '../shared/map/public-user-location-layer.service';
+import { OPENSTREETMAP_TILE_REFERRER_POLICY } from '../shared/map/public-map-tile.constants';
 import { PublicMapTileCacheWarmupService } from '../shared/map/public-map-tile-cache-warmup.service';
 import { PublicMapApiService } from './public-map-api.service';
 import {
@@ -452,7 +453,12 @@ export class PublicMapPage implements AfterViewInit {
     const map = new OlMap({
       target,
       controls: [],
-      layers: [new TileLayer({ source: new OSM() }), clusterLayer, spreadLayer, deepLinkLayer],
+      layers: [
+        new TileLayer({ source: new OSM({ referrerPolicy: OPENSTREETMAP_TILE_REFERRER_POLICY }) }),
+        clusterLayer,
+        spreadLayer,
+        deepLinkLayer,
+      ],
       view,
     });
     Object.assign(globalThis, { __eventMap: map });

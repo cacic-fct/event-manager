@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { Permission, WorkspacePermissionTab } from '@cacic-fct/shared-permissions';
 import { EventGroupsService } from '../event-groups/event-groups.service';
 import { EventsService } from '../events/events.service';
@@ -10,9 +10,7 @@ import { CertificatesService } from '../certificates/certificates.service';
 import { PermissionsService } from '../permissions/permissions.service';
 import { ShellUiService } from './ui.service';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class ShellService {
   private readonly ui = inject(ShellUiService);
   private readonly eventsService = inject(EventsService);

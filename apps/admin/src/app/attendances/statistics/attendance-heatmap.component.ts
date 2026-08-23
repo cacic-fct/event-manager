@@ -5,6 +5,7 @@ import {
   ElementRef,
   OnDestroy,
   PLATFORM_ID,
+  afterNextRender,
   computed,
   effect,
   inject,
@@ -63,28 +64,46 @@ export class AttendanceHeatmapComponent implements OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly mapTarget = viewChild<ElementRef<HTMLElement>>('mapTarget');
   private map: Map | null = null;
+  private hasRendered = false;
+  private mapRenderFrame?: number;
 
   constructor() {
-    effect(() => {
-      const target = this.mapTarget()?.nativeElement;
-      const points = this.points();
-      const eventLatitude = this.eventLatitude();
-      const eventLongitude = this.eventLongitude();
+    afterNextRender(() => {
+      this.hasRendered = true;
+      this.scheduleMapRender();
+    });
 
-      this.render(target, points, eventLatitude, eventLongitude);
+    effect(() => {
+      this.points();
+      this.eventLatitude();
+      this.eventLongitude();
+
+      if (this.hasRendered) {
+        this.scheduleMapRender();
+      }
     });
   }
 
   ngOnDestroy(): void {
+    if (this.mapRenderFrame !== undefined) cancelAnimationFrame(this.mapRenderFrame);
     this.destroyMap();
   }
 
-  private render(
-    target: HTMLElement | undefined,
-    points: AttendanceHeatmapPoint[],
-    eventLatitude: number | null | undefined,
-    eventLongitude: number | null | undefined,
-  ): void {
+  private scheduleMapRender(): void {
+    if (!this.isBrowser || this.mapRenderFrame !== undefined) return;
+
+    this.mapRenderFrame = requestAnimationFrame(() => {
+      this.mapRenderFrame = undefined;
+      this.renderCurrentMap();
+    });
+  }
+
+  private renderCurrentMap(): void {
+    const target = this.mapTarget()?.nativeElement;
+    const points = this.points();
+    const eventLatitude = this.eventLatitude();
+    const eventLongitude = this.eventLongitude();
+
     if (!this.isBrowser || !target) {
       this.destroyMap();
       return;

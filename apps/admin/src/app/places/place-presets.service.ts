@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -21,9 +21,7 @@ import {
   resetPagination,
 } from '../pagination/list-pagination';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class PlacePresetsService {
   private readonly api = inject(PlacePresetApiService);
   private readonly formBuilder = inject(FormBuilder);

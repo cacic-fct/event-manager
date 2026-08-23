@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { DestroyRef, Service, computed, inject, signal } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -70,9 +70,7 @@ import { createEventCloneDialogData } from './event-clone-dialog-data';
 type CreationPublicationAction = 'DRAFT' | 'PUBLISH' | 'SCHEDULE';
 type EventSelectionOptions = { draftId?: string; forceOriginal?: boolean; skipIfCurrent?: boolean };
 type DraftSelectionResult = EventDraft | null | undefined;
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class EventsService {
   private readonly api = inject(EventApiService);
   private readonly publicationApi = inject(PublicationApiService);

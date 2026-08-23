@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import {
   PUBLIC_ATTENDANCE_EVENT_FIELDS,
   PUBLIC_EVENT_GROUP_DETAIL_FIELDS,
@@ -156,7 +156,7 @@ const LECTURER_PROFILE_FIELDS = `
   whatsapp
 `;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AttendancesApiService {
   private readonly http = inject(HttpClient);
 

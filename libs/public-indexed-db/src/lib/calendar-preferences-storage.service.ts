@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { liveQuery } from 'dexie';
 import { Observable, from, map, of } from 'rxjs';
 import type { CalendarDefaultItemViewPreference } from './public-data-schema';
@@ -7,7 +7,7 @@ import { PublicDatabaseProvider } from './public-database-provider';
 const CALENDAR_PREFERENCES_KEY = 'calendar';
 const DEFAULT_ITEM_VIEW: CalendarDefaultItemViewPreference = 'automatic';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class CalendarPreferencesStorageService {
   private readonly databaseProvider = inject(PublicDatabaseProvider);
 

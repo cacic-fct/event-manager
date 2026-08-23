@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import type { EventAttendanceCollector, EventLecturer, Person } from '@cacic-fct/event-manager-admin-contracts';
 import { firstValueFrom } from 'rxjs';
 import { EventApiService } from '../graphql/event-api.service';
@@ -10,9 +10,7 @@ export interface EventPersonLink {
   name: string;
 }
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class EventPeopleService {
   private readonly eventsApi = inject(EventApiService);
   private readonly peopleApi = inject(PeopleApiService);

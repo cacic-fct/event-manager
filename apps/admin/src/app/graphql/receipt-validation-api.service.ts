@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { decodeTypedSseEvent, watchReplayableEventSource } from '@cacic-fct/shared-angular';
 import { Observable, map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
@@ -72,7 +72,7 @@ export interface ReceiptValidationResult {
   item: ReceiptValidationQueueItem;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class ReceiptValidationApiService {
   private readonly http = inject(HttpClient);
   private readonly graphqlHttp = inject(GraphqlHttpService);

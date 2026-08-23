@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { inject, Injectable } from '@angular/core';
+import { inject, Service } from '@angular/core';
 
 export interface Mailto {
   to?: string | string[];
@@ -9,9 +9,7 @@ export interface Mailto {
   body?: string;
 }
 
-@Injectable({
-  providedIn: 'root',
-})
+@Service()
 export class MailtoService {
   private readonly document = inject(DOCUMENT);
 

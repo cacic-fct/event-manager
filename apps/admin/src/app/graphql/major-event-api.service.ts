@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { map } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
@@ -9,7 +9,7 @@ import {
 } from '@cacic-fct/event-manager-admin-contracts';
 import { MAJOR_EVENT_DETAIL_FIELDS, MAJOR_EVENT_LIST_FIELDS } from './graphql-query-fragments';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class MajorEventApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
 

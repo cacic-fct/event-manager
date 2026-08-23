@@ -1,9 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { getErrorMessage } from './error-message';
 import { AdminErrorDialogComponent, type AdminErrorDialogData } from './error-dialog.component';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class AdminFeedbackService {
   private readonly dialog = inject(MatDialog);
   private readonly queue: AdminErrorDialogData[] = [];

@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { map, of, switchMap } from 'rxjs';
 import { GraphqlHttpService } from './graphql-http.service';
 import {
@@ -82,7 +82,7 @@ const WORKSPACE_MAJOR_EVENT_SUBSCRIPTION_FIELDS = `
   }
 `;
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SubscriptionApiService {
   private readonly graphqlHttp = inject(GraphqlHttpService);
   private readonly http = inject(HttpClient);

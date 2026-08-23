@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Injectable, inject } from '@angular/core';
+import { Service, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import markdownItKatex from '@vscode/markdown-it-katex';
 import createDOMPurify, { WindowLike } from 'dompurify';
@@ -120,14 +120,29 @@ markdown.renderer.rules['fence'] = (tokens, index, options, env, renderer) => {
   );
 };
 
-export function renderMarkdown(markdownSource: string | null | undefined, windowLike: WindowLike): string {
+const purifiersByWindow = new WeakMap<object, ReturnType<typeof createDOMPurify>>();
+
+function getPurifier(windowLike: WindowLike): ReturnType<typeof createDOMPurify> {
+  const cacheKey = windowLike as object;
+  const cachedPurifier = purifiersByWindow.get(cacheKey);
+
+  if (cachedPurifier) {
+    return cachedPurifier;
+  }
+
   const purifier = createDOMPurify(windowLike);
-  return purifier.sanitize(markdown.render(markdownSource ?? ''), {
+  purifiersByWindow.set(cacheKey, purifier);
+
+  return purifier;
+}
+
+export function renderMarkdown(markdownSource: string | null | undefined, windowLike: WindowLike): string {
+  return getPurifier(windowLike).sanitize(markdown.render(markdownSource ?? ''), {
     USE_PROFILES: { html: true },
   });
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class MarkdownService {
   private readonly angularSanitizer = inject(DomSanitizer);
   private readonly windowLike = this.getWindowLike(inject(DOCUMENT));

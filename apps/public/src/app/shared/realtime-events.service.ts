@@ -1,5 +1,5 @@
 import { isPlatformBrowser } from '@angular/common';
-import { Injectable, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
+import { Service, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 
 export interface RealtimeEventMessage<TPayload = unknown> {
@@ -11,7 +11,7 @@ export interface RealtimeEventMessage<TPayload = unknown> {
   payload?: TPayload;
 }
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class RealtimeEventsService implements OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly messages = new Subject<RealtimeEventMessage>();
