@@ -5,6 +5,7 @@ import { EligibleCertificateRecipient } from './certificate-eligibility.service'
 import { sportsCertificateTypeLabel, sportsParticipationText } from './certificate-sports-roles';
 
 const LECTURER_EVENT_CATEGORY_FIELD = '__lecturerEventCategory';
+const CERTIFICATE_TIME_ZONE = 'America/Sao_Paulo';
 
 type LecturerEventCategory = 'PALESTRA' | 'MINICURSO' | 'OTHER';
 
@@ -178,12 +179,12 @@ function sortEvents(events: EventRecord[]): EventRecord[] {
 
 function formatIssueDate(date: Date, month: '2-digit' | 'long' | 'numeric'): string {
   if (month === '2-digit') {
-    return new Intl.DateTimeFormat('pt-BR', { day: month }).format(date);
+    return new Intl.DateTimeFormat('pt-BR', { day: month, timeZone: CERTIFICATE_TIME_ZONE }).format(date);
   }
   if (month === 'long') {
-    return new Intl.DateTimeFormat('pt-BR', { month }).format(date);
+    return new Intl.DateTimeFormat('pt-BR', { month, timeZone: CERTIFICATE_TIME_ZONE }).format(date);
   }
-  return new Intl.DateTimeFormat('pt-BR', { year: month }).format(date);
+  return new Intl.DateTimeFormat('pt-BR', { year: month, timeZone: CERTIFICATE_TIME_ZONE }).format(date);
 }
 
 function buildEventSection(label: string, lines: string[], events: EventRecord[]) {
