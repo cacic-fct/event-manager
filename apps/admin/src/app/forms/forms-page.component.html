@@ -379,10 +379,7 @@
                       (input)="updateLinkDate(link.localId, 'availableUntil', $event)" />
                   </mat-form-field>
                   @if (workspace.hasInvalidLinkDateRange(link.localId)) {
-                    <mat-error
-                      class="span-2"
-                      [id]="'form-link-date-range-' + link.localId"
-                      aria-live="polite">
+                    <mat-error class="span-2" [id]="'form-link-date-range-' + link.localId" aria-live="polite">
                       O encerramento das respostas deve ser igual ou posterior ao início.
                     </mat-error>
                   }
@@ -402,9 +399,9 @@
                   </mat-checkbox>
                   <mat-checkbox
                     [checked]="link.enforceRequiredAnswers ?? true"
-                    matTooltip="Impede envio sem responder perguntas marcadas como obrigatórias no editor."
+                    matTooltip="Exige respostas para todas as perguntas marcadas como obrigatórias antes de enviar o formulário. Quando o formulário for obrigatório na inscrição, também impede a conclusão da inscrição sem essas respostas."
                     (change)="workspace.updateLink(link.localId, { enforceRequiredAnswers: $event.checked })">
-                    Validar obrigatórias
+                    Exigir respostas em perguntas obrigatórias para completar inscrição
                   </mat-checkbox>
                   @if (!(link.insertInSubscriptionFlow ?? false) || !(link.requiredInSubscriptionFlow ?? false)) {
                     <mat-checkbox

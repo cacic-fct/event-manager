@@ -96,7 +96,7 @@ export const Playground: Story = {
     await expect(await canvas.findByText('Tamanho da camiseta')).toBeVisible();
     await userEvent.click(canvas.getByRole('button', { name: 'Adicionar' }));
     await expect(args.elementsChange).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ type: 'shortText', title: 'Pergunta 5' })]),
+      expect.arrayContaining([expect.objectContaining({ type: 'shortText', title: '' })]),
     );
   },
 };

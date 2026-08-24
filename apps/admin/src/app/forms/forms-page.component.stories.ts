@@ -496,7 +496,7 @@ function createEditorForm(formBuilder: FormBuilder) {
 function patchForm(form: ReturnType<typeof createEditorForm>, selectedForm: EventForm | null): void {
   form.reset({
     id: selectedForm?.id ?? '',
-    name: selectedForm?.name ?? 'Novo formulário',
+    name: selectedForm?.name ?? '',
     description: selectedForm?.description ?? '',
     ownerType: selectedForm ? (selectedForm.ownerEventId ? 'EVENT' : 'MAJOR_EVENT') : 'EVENT',
     ownerEventId: selectedForm?.ownerEventId ?? '',

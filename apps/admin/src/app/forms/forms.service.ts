@@ -201,7 +201,7 @@ export class FormsService {
     const owner = this.defaultOwner();
     this.form.reset({
       id: '',
-      name: 'Novo formulário',
+      name: '',
       description: '',
       ownerType: owner.type,
       ownerEventId: owner.type === 'EVENT' ? owner.id : '',

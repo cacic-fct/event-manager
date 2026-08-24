@@ -17,15 +17,17 @@ describe('event form utilities', () => {
     expect(parseFormElementsJson('{}')).toEqual([]);
   });
 
-  it('creates default answer and non-answer elements with localized titles', () => {
-    const shortText = createEventFormElement('shortText', 0);
-    const statement = createEventFormElement('statement', 1);
-    const singleChoice = createEventFormElement('singleChoice', 2);
+  it('creates answer and non-answer elements without placeholder content', () => {
+    const shortText = createEventFormElement('shortText');
+    const statement = createEventFormElement('statement');
+    const singleChoice = createEventFormElement('singleChoice');
+    const grid = createEventFormElement('singleSelectionGrid');
+    const linearScale = createEventFormElement('linearScale');
 
     expect(shortText).toEqual(
       expect.objectContaining({
         type: 'shortText',
-        title: 'Pergunta 1',
+        title: '',
         required: true,
         options: [],
         settings: undefined,
@@ -34,20 +36,25 @@ describe('event form utilities', () => {
     expect(statement).toEqual(
       expect.objectContaining({
         type: 'statement',
-        title: 'Texto informativo',
+        title: '',
         required: false,
       }),
     );
-    expect(singleChoice.options.map((option) => option.label)).toEqual(['Opção 1', 'Opção 2']);
+    expect(singleChoice.options.map((option) => option.label)).toEqual(['', '']);
+    expect(grid.settings?.grid).toEqual({
+      rows: [expect.objectContaining({ label: '' }), expect.objectContaining({ label: '' })],
+      columns: [expect.objectContaining({ label: '' }), expect.objectContaining({ label: '' })],
+    });
+    expect(linearScale.settings?.linearScale).toMatchObject({ minLabel: undefined, maxLabel: undefined });
   });
 
   it('clones and serializes form elements without preserving object references', () => {
-    const elements = [createEventFormElement('longText', 0)];
+    const elements = [createEventFormElement('longText')];
     const cloned = cloneFormElements(elements);
 
     cloned[0].title = 'Titulo clonado';
 
-    expect(elements[0].title).toBe('Pergunta 1');
+    expect(elements[0].title).toBe('');
     expect(parseFormElementsJson(serializeFormElements(cloned))).toEqual(cloned);
     expect(parseFormAnswersJson(serializeFormAnswers([{ elementId: 'answer-1', value: ['a', 'b'] }]))).toEqual([
       { elementId: 'answer-1', value: ['a', 'b'] },

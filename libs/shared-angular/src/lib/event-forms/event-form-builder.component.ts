@@ -502,7 +502,7 @@ export class EventFormBuilderComponent {
 
   addElement(): void {
     const next = cloneFormElements(this.elements());
-    next.push(createEventFormElement(this.addType(), next.length));
+    next.push(createEventFormElement(this.addType()));
     this.elementsChange.emit(next);
   }
 
@@ -560,7 +560,7 @@ export class EventFormBuilderComponent {
 
   addOption(elementId: string, collection: OptionCollection): void {
     this.updateElement(elementId, (element) =>
-      this.updateCollection(element, collection, (items) => [...items, this.newOption(collection, items.length)]),
+      this.updateCollection(element, collection, (items) => [...items, this.newOption(collection)]),
     );
   }
 
@@ -778,7 +778,7 @@ export class EventFormBuilderComponent {
     };
   }
 
-  private newOption(collection: OptionCollection, index: number): FormChoiceOption {
+  private newOption(collection: OptionCollection): FormChoiceOption {
     if (collection === 'availability') {
       return {
         id: crypto.randomUUID(),
@@ -786,10 +786,9 @@ export class EventFormBuilderComponent {
       };
     }
 
-    const labelPrefix = collection === 'gridRows' ? 'Linha' : collection === 'gridColumns' ? 'Coluna' : 'Opção';
     return {
       id: crypto.randomUUID(),
-      label: `${labelPrefix} ${index + 1}`,
+      label: '',
     };
   }
 

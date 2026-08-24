@@ -52,11 +52,12 @@ export type EventFormSchedulingSlot = {
   label: string;
 };
 
-export function createEventFormElement(type: FormElementType, index: number): FormElement {
+export function createEventFormElement(type: FormElementType, _index?: number): FormElement {
+  void _index;
   const base: FormElement = {
     id: crypto.randomUUID(),
     type,
-    title: defaultTitle(type, index),
+    title: '',
     required: isFormAnswerElementType(type),
     options: defaultOptions(type),
     settings: defaultSettings(type),
@@ -236,18 +237,6 @@ function isSchedulingAnswer(value: FormAnswerValue): value is FormSchedulingAnsw
   return isRecord(value) && typeof value['slotId'] === 'string' && Array.isArray(value['invitees']);
 }
 
-function defaultTitle(type: FormElementType, index: number): string {
-  if (type === 'section') {
-    return `Seção ${index + 1}`;
-  }
-
-  if (type === 'statement') {
-    return 'Texto informativo';
-  }
-
-  return `Pergunta ${index + 1}`;
-}
-
 function defaultOptions(type: FormElementType): FormChoiceOption[] {
   if (
     type === 'singleChoice' ||
@@ -257,8 +246,8 @@ function defaultOptions(type: FormElementType): FormChoiceOption[] {
     type === 'multipleSelectionGrid'
   ) {
     return [
-      { id: crypto.randomUUID(), label: 'Opção 1' },
-      { id: crypto.randomUUID(), label: 'Opção 2' },
+      { id: crypto.randomUUID(), label: '' },
+      { id: crypto.randomUUID(), label: '' },
     ];
   }
 
@@ -270,12 +259,12 @@ function defaultSettings(type: FormElementType): FormElement['settings'] | undef
     return {
       grid: {
         rows: [
-          { id: crypto.randomUUID(), label: 'Linha 1' },
-          { id: crypto.randomUUID(), label: 'Linha 2' },
+          { id: crypto.randomUUID(), label: '' },
+          { id: crypto.randomUUID(), label: '' },
         ],
         columns: [
-          { id: crypto.randomUUID(), label: 'Coluna 1' },
-          { id: crypto.randomUUID(), label: 'Coluna 2' },
+          { id: crypto.randomUUID(), label: '' },
+          { id: crypto.randomUUID(), label: '' },
         ],
       },
     };
@@ -286,8 +275,8 @@ function defaultSettings(type: FormElementType): FormElement['settings'] | undef
       linearScale: {
         min: 1,
         max: 5,
-        minLabel: 'Menor',
-        maxLabel: 'Maior',
+        minLabel: undefined,
+        maxLabel: undefined,
       },
     };
   }
