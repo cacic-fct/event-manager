@@ -6,5 +6,6 @@ describe('certificate validation route wiring', () => {
 
     expect(validationRoutes).toHaveLength(2);
     expect(validationRoutes.every((route) => route.data?.['reuseTab'] === true)).toBe(true);
+    expect(validationRoutes.every((route) => route.data?.['reuseTabForEventNavigation'] === true)).toBe(true);
   });
 });
