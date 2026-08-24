@@ -19,7 +19,7 @@ describe('shared event form builder operations', () => {
     component.addType.set('longText');
     component.addElement();
     expect(changes).toHaveBeenLastCalledWith(
-      expect.arrayContaining([expect.objectContaining({ type: 'longText', title: 'Pergunta 3' })]),
+      expect.arrayContaining([expect.objectContaining({ type: 'longText', title: '' })]),
     );
     expect(original).toEqual([element('first', 'shortText', 'Primeira'), element('second', 'statement', 'Segundo')]);
 
@@ -115,11 +115,11 @@ describe('shared event form builder operations', () => {
     const changed = changes.mock.lastCall?.[0][0] as FormElement;
     expect(changed.settings?.grid?.rows).toEqual([
       option('row-a', 'Linha atualizada'),
-      expect.objectContaining({ label: expect.stringContaining('Linha') }),
+      expect.objectContaining({ label: '' }),
     ]);
     expect(changed.settings?.grid?.columns).toEqual([
       option('column-a', 'Coluna atualizada'),
-      expect.objectContaining({ label: expect.stringContaining('Coluna') }),
+      expect.objectContaining({ label: '' }),
     ]);
 
     component.removeOption('grid', 'gridRows', 'row-a');
