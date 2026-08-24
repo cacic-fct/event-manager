@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
-import { provideRouter, RouteReuseStrategy, TitleStrategy } from '@angular/router';
+import { provideRouter, RouteReuseStrategy, Router, TitleStrategy } from '@angular/router';
 import { appRoutes } from './app.routes';
 import { provideClientHydration, withNoIncrementalHydration } from '@angular/platform-browser';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -170,6 +170,9 @@ export const appConfig: ApplicationConfig = {
       registry.setDefaultFontSetClass('material-symbols-outlined');
     }),
     provideAppInitializer(() => {
+      inject(AppRouteReuseStrategy).start(inject(Router));
+    }),
+    provideAppInitializer(() => {
       const featureFlags = inject(PublicFeatureFlagService);
       return featureFlags.initialize();
     }),
@@ -210,8 +213,12 @@ export const appConfig: ApplicationConfig = {
       },
     },
     {
-      provide: RouteReuseStrategy,
+      provide: AppRouteReuseStrategy,
       useClass: AppRouteReuseStrategy,
+    },
+    {
+      provide: RouteReuseStrategy,
+      useExisting: AppRouteReuseStrategy,
     },
   ],
 };

@@ -16,6 +16,7 @@ describe('AppRouteReuseStrategy', () => {
       providers: [AppRouteReuseStrategy, { provide: Router, useValue: router }],
     });
     strategy = TestBed.inject(AppRouteReuseStrategy);
+    strategy.start(router);
   });
 
   it('detaches, stores, and retrieves reusable tab routes by path from root', () => {

@@ -208,7 +208,7 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
       throw new BadRequestException('O formulário de inscrição configurado não está disponível.');
     }
     const elements = this.readFormElements(form.elements, 'O formulário de inscrição possui uma estrutura inválida.');
-    const answers = normalizeAnswers(JSON.stringify(submittedAnswers ?? []), elements, true);
+    const answers = normalizeAnswers(JSON.stringify(submittedAnswers ?? []), elements);
     return {
       formAnswers: answers as unknown as Prisma.InputJsonValue,
       formSchemaSnapshot: {
@@ -238,7 +238,7 @@ export abstract class SportsAdminBaseService extends SportsAdminLookupService {
       (snapshot as Record<string, Prisma.JsonValue>)['elements'],
       'O retrato do formulário da inscrição está inválido.',
     );
-    return normalizeAnswers(JSON.stringify(submittedAnswers ?? []), elements, true) as unknown as Prisma.InputJsonValue;
+    return normalizeAnswers(JSON.stringify(submittedAnswers ?? []), elements) as unknown as Prisma.InputJsonValue;
   }
 
   protected readFormElements(value: Prisma.JsonValue | undefined, errorMessage: string): FormElement[] {

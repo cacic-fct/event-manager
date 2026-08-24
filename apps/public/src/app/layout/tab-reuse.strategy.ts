@@ -1,4 +1,4 @@
-import { inject, Service, OnDestroy } from '@angular/core';
+import { Service, OnDestroy } from '@angular/core';
 import { ActivatedRouteSnapshot, DetachedRouteHandle, NavigationStart, RouteReuseStrategy, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
@@ -10,18 +10,21 @@ type StoredHandle = {
 @Service({ autoProvided: false })
 export class AppRouteReuseStrategy implements RouteReuseStrategy, OnDestroy {
   private readonly handles = new Map<string, StoredHandle>();
-  private readonly router = inject(Router);
   private navigationSourceUrl = '';
   private navigationTargetUrl = '';
-  private readonly navigationSubscription: Subscription;
+  private navigationSubscription: Subscription | null = null;
 
-  constructor() {
-    this.navigationSubscription = this.router.events.subscribe((event) => {
+  start(router: Pick<Router, 'events' | 'url'>): void {
+    if (this.navigationSubscription) {
+      return;
+    }
+
+    this.navigationSubscription = router.events.subscribe((event) => {
       if (!(event instanceof NavigationStart)) {
         return;
       }
 
-      this.navigationSourceUrl = this.router.url;
+      this.navigationSourceUrl = router.url;
       this.navigationTargetUrl = event.url;
       this.destroyHandlesThatCannotBeRestored(event.url);
     });
@@ -66,7 +69,7 @@ export class AppRouteReuseStrategy implements RouteReuseStrategy, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.navigationSubscription.unsubscribe();
+    this.navigationSubscription?.unsubscribe();
 
     for (const { handle } of this.handles.values()) {
       this.destroyHandle(handle);
