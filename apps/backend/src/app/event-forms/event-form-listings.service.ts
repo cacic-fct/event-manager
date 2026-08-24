@@ -92,7 +92,11 @@ export class EventFormListingsService {
 
   async listFormsForTarget(
     input: TargetInput,
-    options: { subscriptionFlowOnly?: boolean; includeReleasedResults?: boolean } = {},
+    options: {
+      subscriptionFlowOnly?: boolean;
+      includeReleasedResults?: boolean;
+      selectedPriceTierId?: string | null;
+    } = {},
   ): Promise<EventFormModel[]> {
     const target = normalizeTarget(input);
     const now = new Date();
@@ -100,17 +104,32 @@ export class EventFormListingsService {
       target.targetType === EventFormTargetType.EVENT
         ? { eventId: target.eventId }
         : { majorEventId: target.majorEventId };
+    const priceTierScopeWhere =
+      options.subscriptionFlowOnly && target.targetType === EventFormTargetType.MAJOR_EVENT
+        ? {
+            OR: [
+              { priceTiers: { none: {} } },
+              ...(options.selectedPriceTierId
+                ? [{ priceTiers: { some: { priceTierId: options.selectedPriceTierId } } }]
+                : []),
+            ],
+          }
+        : null;
     const activeLinkWhere = {
       deletedAt: null,
       ...targetWhere,
       ...(options.subscriptionFlowOnly ? { insertInSubscriptionFlow: true } : {}),
-      OR: [{ availableFrom: null }, { availableFrom: { lte: now } }],
-      AND: [{ OR: [{ availableUntil: null }, { availableUntil: { gt: now } }] }],
+      AND: [
+        { OR: [{ availableFrom: null }, { availableFrom: { lte: now } }] },
+        { OR: [{ availableUntil: null }, { availableUntil: { gt: now } }] },
+        ...(priceTierScopeWhere ? [priceTierScopeWhere] : []),
+      ],
     } satisfies Prisma.EventFormLinkWhereInput;
     const targetLinkWhere = {
       deletedAt: null,
       ...targetWhere,
       ...(options.subscriptionFlowOnly ? { insertInSubscriptionFlow: true } : {}),
+      ...(priceTierScopeWhere ? { AND: [priceTierScopeWhere] } : {}),
     } satisfies Prisma.EventFormLinkWhereInput;
     const linkAvailabilityWhere: Prisma.EventFormWhereInput = options.includeReleasedResults
       ? {
@@ -157,7 +176,7 @@ export class EventFormListingsService {
   async listCurrentUserForms(
     context: GraphqlContext,
     input: TargetInput,
-    options: { subscriptionFlowOnly?: boolean } = {},
+    options: { subscriptionFlowOnly?: boolean; selectedPriceTierId?: string | null } = {},
   ): Promise<EventFormModel[]> {
     const authenticatedUser = this.currentUserContext.getAuthenticatedUser(context);
     const { person } = await this.currentUserContext.resolveCurrentUserContext(authenticatedUser);
@@ -239,6 +258,22 @@ export class EventFormListingsService {
         eventId: true,
         majorEventId: true,
         displayOrder: true,
+        priceTiers: {
+          select: {
+            priceTier: {
+              select: { name: true },
+            },
+          },
+        },
+        majorEvent: {
+          select: {
+            subscriptions: {
+              where: { personId: person.id, deletedAt: null },
+              select: { paymentTier: true },
+              take: 1,
+            },
+          },
+        },
         form: {
           select: {
             id: true,
@@ -249,7 +284,17 @@ export class EventFormListingsService {
       orderBy: [{ displayOrder: 'asc' }, { createdAt: 'asc' }],
     });
 
-    const responseLookups = links.map((link) => {
+    const eligibleLinks = links.filter((link) => {
+      if ((link.priceTiers?.length ?? 0) === 0) {
+        return true;
+      }
+      const paymentTier = link.majorEvent?.subscriptions[0]?.paymentTier?.trim().toLocaleLowerCase('pt-BR');
+      return Boolean(
+        paymentTier &&
+          link.priceTiers?.some(({ priceTier }) => priceTier.name.trim().toLocaleLowerCase('pt-BR') === paymentTier),
+      );
+    });
+    const responseLookups = eligibleLinks.map((link) => {
       const target = normalizeTarget(link);
       return {
         link,
@@ -346,6 +391,11 @@ export class EventFormListingsService {
         targetType: true,
         eventId: true,
         majorEventId: true,
+        priceTiers: {
+          select: {
+            priceTier: { select: { name: true } },
+          },
+        },
         form: {
           select: {
             id: true,
@@ -370,6 +420,9 @@ export class EventFormListingsService {
           where: {
             majorEventId: link.majorEventId ?? '',
             deletedAt: null,
+            ...(link.priceTiers.length > 0
+              ? { paymentTier: { in: link.priceTiers.map(({ priceTier }) => priceTier.name) } }
+              : {}),
           },
           select: { personId: true },
         });

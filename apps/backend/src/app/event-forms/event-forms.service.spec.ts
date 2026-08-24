@@ -796,6 +796,73 @@ describe('EventFormsService', () => {
     );
   });
 
+  it('rejects a crafted subscription-flow response for a different price tier', async () => {
+    prisma.eventForm.findFirst.mockResolvedValue(
+      formRecord({
+        links: [
+          linkRecord({
+            targetType: EventFormTargetType.MAJOR_EVENT,
+            majorEventId: 'major-1',
+            insertInSubscriptionFlow: true,
+            priceTierIds: ['tier-student'],
+          }),
+        ],
+      }),
+    );
+
+    await expect(
+      service.submitSubscriptionFlowResponses(
+        prisma as never,
+        'person-1',
+        [
+          {
+            formId: 'form-1',
+            linkId: 'link-1',
+            targetType: EventFormTargetType.MAJOR_EVENT,
+            majorEventId: 'major-1',
+            answersJson: '[]',
+          },
+        ],
+        {
+          majorEventId: 'major-1',
+          selectedEventIds: new Set(),
+          selectedPriceTierId: 'tier-professor',
+        },
+      ),
+    ).rejects.toThrow('Formulário não disponível para a faixa de preço selecionada.');
+
+    expect(prisma.eventFormResponse.create).not.toHaveBeenCalled();
+  });
+
+  it('filters major-event subscription forms by the selected price tier', async () => {
+    prisma.eventForm.findMany.mockResolvedValue([]);
+
+    await service.listCurrentUserForms(
+      context,
+      { targetType: EventFormTargetType.MAJOR_EVENT, majorEventId: 'major-1' },
+      { subscriptionFlowOnly: true, selectedPriceTierId: 'tier-student' },
+    );
+
+    expect(prisma.eventForm.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          links: {
+            some: expect.objectContaining({
+              AND: expect.arrayContaining([
+                {
+                  OR: [
+                    { priceTiers: { none: {} } },
+                    { priceTiers: { some: { priceTierId: 'tier-student' } } },
+                  ],
+                },
+              ]),
+            }),
+          },
+        }),
+      }),
+    );
+  });
+
   it('restores archived subscription-flow responses without submitted edits during resubscribe', async () => {
     prisma.eventFormResponse.findMany.mockResolvedValue([{ id: 'response-1', formId: 'form-1' }]);
     prisma.eventFormLink.findMany.mockResolvedValue([]);
@@ -878,7 +945,6 @@ describe('EventFormsService', () => {
         targetType: EventFormTargetType.EVENT,
         eventId: 'event-1',
         majorEventId: null,
-        enforceRequiredAnswers: true,
         form: {
           id: 'form-1',
           name: 'Pesquisa de camiseta',
@@ -1154,7 +1220,6 @@ describe('EventFormsService', () => {
         targetType: EventFormTargetType.EVENT,
         eventId: 'event-1',
         majorEventId: null,
-        enforceRequiredAnswers: true,
         form: {
           id: 'form-1',
           name: 'Pesquisa de camiseta',
@@ -1181,7 +1246,6 @@ describe('EventFormsService', () => {
         targetType: EventFormTargetType.EVENT,
         eventId: 'event-1',
         majorEventId: null,
-        enforceRequiredAnswers: true,
         form: {
           id: 'form-1',
           name: 'Pesquisa de camiseta',
@@ -1825,6 +1889,7 @@ function formRecord(
     responseMode?: EventFormResponseMode;
     allowResponseEdits?: boolean;
     responseCount?: number;
+    priceTierIds?: string[];
     linkResponseCount?: number;
     elements?: unknown[];
     links?: ReturnType<typeof linkRecord>[];
@@ -1915,6 +1980,10 @@ function linkRecord(
     targetType,
     eventId,
     majorEventId,
+    priceTiers: (options.priceTierIds ?? []).map((priceTierId) => ({
+      priceTierId,
+      priceTier: { name: priceTierId },
+    })),
     event: eventId
       ? {
           id: eventId,
@@ -1936,7 +2005,6 @@ function linkRecord(
     audience: options.audience ?? EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
     insertInSubscriptionFlow: options.insertInSubscriptionFlow ?? false,
     requiredInSubscriptionFlow: options.requiredInSubscriptionFlow ?? false,
-    enforceRequiredAnswers: true,
     displayOrder: 0,
     availableFrom: options.availableFrom === undefined ? null : options.availableFrom,
     availableUntil: options.availableUntil === undefined ? null : options.availableUntil,

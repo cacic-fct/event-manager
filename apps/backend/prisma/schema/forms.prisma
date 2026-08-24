@@ -91,7 +91,6 @@ model EventFormLink {
 
   insertInSubscriptionFlow   Boolean @default(false)
   requiredInSubscriptionFlow Boolean @default(false)
-  enforceRequiredAnswers     Boolean @default(true)
 
   displayOrder Int @default(0)
 
@@ -109,6 +108,7 @@ model EventFormLink {
   updatedById String?
 
   responses EventFormResponse[]
+  priceTiers EventFormLinkPriceTier[]
 
   @@unique([formId, eventId], map: "event_form_links_formId_eventId_active_key", where: raw("\"eventId\" IS NOT NULL AND \"deletedAt\" IS NULL"))
   @@unique([formId, majorEventId], map: "event_form_links_formId_majorEventId_active_key", where: raw("\"majorEventId\" IS NOT NULL AND \"deletedAt\" IS NULL"))
@@ -120,6 +120,20 @@ model EventFormLink {
   @@index([availableFrom])
   @@index([availableUntil])
   @@map("event_form_links")
+}
+
+model EventFormLinkPriceTier {
+  link   EventFormLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  linkId String
+
+  priceTier   PriceTier @relation(fields: [priceTierId], references: [id], onDelete: Restrict)
+  priceTierId String
+
+  createdAt DateTime @default(now())
+
+  @@id([linkId, priceTierId])
+  @@index([priceTierId])
+  @@map("event_form_link_price_tiers")
 }
 
 model EventFormResponse {

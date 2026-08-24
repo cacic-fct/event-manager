@@ -584,6 +584,7 @@ describe('MajorEventsResolver', () => {
     prisma.majorEvent.findFirst.mockResolvedValue(existing);
     tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
     tx.majorEvent.findUniqueOrThrow.mockResolvedValue(updated);
+    tx.priceTier.findMany.mockResolvedValue([{ id: 'tier-student' }, { id: 'tier-professor' }]);
 
     await expect(
       resolver.updateMajorEvent(
@@ -619,8 +620,8 @@ describe('MajorEventsResolver', () => {
           price: {
             type: 'TIERED',
             tiers: [
-              { name: 'Aluno', value: 4000 },
-              { name: 'Professor', value: 6000 },
+              { id: 'tier-student', name: 'Aluno', value: 4000 },
+              { id: 'tier-professor', name: 'Professor', value: 6000 },
             ],
           },
         } as never,
@@ -649,16 +650,26 @@ describe('MajorEventsResolver', () => {
     );
     expect(tx.majorEventPrice.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({
-          tiers: {
-            create: [
-              { name: 'Aluno', value: 4000 },
-              { name: 'Professor', value: 6000 },
-            ],
-          },
-        }),
+        create: { majorEventId: 'major-1', type: 'TIERED' },
+        update: { type: 'TIERED' },
+        select: { id: true },
       }),
     );
+    expect(tx.priceTier.update).toHaveBeenCalledTimes(2);
+    expect(tx.priceTier.update).toHaveBeenNthCalledWith(1, {
+      where: { id: 'tier-student' },
+      data: { name: 'Aluno', value: 4000 },
+    });
+    expect(tx.priceTier.update).toHaveBeenNthCalledWith(2, {
+      where: { id: 'tier-professor' },
+      data: { name: 'Professor', value: 6000 },
+    });
+    expect(tx.priceTier.deleteMany).toHaveBeenCalledWith({
+      where: {
+        priceId: 'price-1',
+        id: { notIn: ['tier-student', 'tier-professor'] },
+      },
+    });
     expect(typesenseSearch.upsertMajorEvent).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'major-1', publicationState: 'DRAFT' }),
     );
@@ -726,6 +737,20 @@ describe('MajorEventsResolver', () => {
         majorEventId: 'major-1',
       },
     });
+  });
+
+  it('does not remove a price tier while a subscription form is attached to it', async () => {
+    const { resolver, prisma, tx } = createResolver();
+    prisma.majorEvent.findFirst.mockResolvedValue(majorEventRecord());
+    tx.majorEvent.update.mockResolvedValue({ id: 'major-1' });
+    tx.eventFormLinkPriceTier.count.mockResolvedValue(1);
+
+    await expect(
+      resolver.updateMajorEvent('major-1', { price: null } as never, context() as never),
+    ).rejects.toThrow('Detach forms from the affected price tiers');
+
+    expect(tx.priceTier.deleteMany).not.toHaveBeenCalled();
+    expect(tx.majorEventPrice.deleteMany).not.toHaveBeenCalled();
   });
 
   it('clears existing payment info and price tiers when update inputs are empty', async () => {
@@ -854,11 +879,17 @@ function createResolver(options: { paymentInfoTableExists?: boolean } = {}) {
       findUniqueOrThrow: jest.fn(),
     },
     majorEventPrice: {
-      upsert: jest.fn(),
+      upsert: jest.fn().mockResolvedValue({ id: 'price-1' }),
       deleteMany: jest.fn(),
     },
     priceTier: {
       deleteMany: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+      update: jest.fn(),
+    },
+    eventFormLinkPriceTier: {
+      count: jest.fn().mockResolvedValue(0),
     },
     certificateConfig: {
       create: jest.fn(),

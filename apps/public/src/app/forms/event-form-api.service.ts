@@ -30,6 +30,7 @@ const PUBLIC_EVENT_FORM_FIELDS = `
     targetType
     eventId
     majorEventId
+    priceTierIds
     target {
       type
       id
@@ -39,7 +40,6 @@ const PUBLIC_EVENT_FORM_FIELDS = `
     audience
     insertInSubscriptionFlow
     requiredInSubscriptionFlow
-    enforceRequiredAnswers
     displayOrder
     availableFrom
     availableUntil
@@ -93,6 +93,7 @@ export class PublicEventFormApiService {
     eventId?: string | null;
     majorEventId?: string | null;
     subscriptionFlowOnly?: boolean;
+    selectedPriceTierId?: string | null;
   }): Observable<PublicEventForm[]> {
     return this.query<{ currentUserEventForms: PublicEventForm[] }>(
       `
@@ -101,12 +102,14 @@ export class PublicEventFormApiService {
           $eventId: String
           $majorEventId: String
           $subscriptionFlowOnly: Boolean
+          $selectedPriceTierId: String
         ) {
           currentUserEventForms(
             targetType: $targetType
             eventId: $eventId
             majorEventId: $majorEventId
             subscriptionFlowOnly: $subscriptionFlowOnly
+            selectedPriceTierId: $selectedPriceTierId
           ) {
             ${PUBLIC_EVENT_FORM_FIELDS}
           }

@@ -45,7 +45,6 @@ function createLinkRecord(overrides: Partial<EventFormRecord['links'][number]> =
     audience: 'ATTENDEES',
     insertInSubscriptionFlow: false,
     requiredInSubscriptionFlow: false,
-    enforceRequiredAnswers: false,
     displayOrder: 0,
     availableFrom: null,
     availableUntil: null,

@@ -255,6 +255,7 @@ describe('MajorEventsService', () => {
     expect(service.majorEventForm.controls.priceType.value).toBe('SINGLE');
     expect(service.priceTiers.length).toBe(1);
     expect(service.priceTiers.at(0).getRawValue()).toEqual({
+      id: 'major-event-1-price-tier-1',
       name: 'Preço único',
       value: '30.00',
       includesSportsRegistration: false,
@@ -286,8 +287,25 @@ describe('MajorEventsService', () => {
 
     expect(service.majorEventForm.controls.priceType.value).toBe('TIERED');
     expect(service.priceTiers.getRawValue()).toEqual([
-      { name: 'Aluno', value: '30.00', includesSportsRegistration: false },
-      { name: 'Professor', value: '60.50', includesSportsRegistration: false },
+      {
+        id: 'major-event-1-price-tier-1',
+        name: 'Aluno',
+        value: '30.00',
+        includesSportsRegistration: false,
+      },
+      {
+        id: 'major-event-1-price-tier-2',
+        name: 'Professor',
+        value: '60.50',
+        includesSportsRegistration: false,
+      },
+    ]);
+
+    await service.saveMajorEvent();
+
+    expect(lastPayload?.price?.tiers).toEqual([
+      { id: 'major-event-1-price-tier-1', name: 'Aluno', value: 3000 },
+      { id: 'major-event-1-price-tier-2', name: 'Professor', value: 6050 },
     ]);
   });
 });

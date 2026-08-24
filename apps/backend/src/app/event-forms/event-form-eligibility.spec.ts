@@ -213,7 +213,6 @@ function createLinkRecord(overrides: Partial<EventFormLinkRecord> = {}): EventFo
     audience: EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
     insertInSubscriptionFlow: false,
     requiredInSubscriptionFlow: false,
-    enforceRequiredAnswers: false,
     displayOrder: 0,
     availableFrom: null,
     availableUntil: null,

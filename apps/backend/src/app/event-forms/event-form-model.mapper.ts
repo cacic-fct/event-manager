@@ -73,6 +73,7 @@ export function toLinkModel(link: EventFormLinkRecord): EventFormLinkModel {
     targetType: link.targetType,
     eventId: link.eventId,
     majorEventId: link.majorEventId,
+    priceTierIds: link.priceTiers?.map(({ priceTierId }) => priceTierId) ?? [],
     target: link.event
       ? toTargetSummary(EventFormTargetType.EVENT, link.event)
       : link.majorEvent
@@ -81,7 +82,6 @@ export function toLinkModel(link: EventFormLinkRecord): EventFormLinkModel {
     audience: link.audience,
     insertInSubscriptionFlow: link.insertInSubscriptionFlow,
     requiredInSubscriptionFlow: link.requiredInSubscriptionFlow,
-    enforceRequiredAnswers: link.enforceRequiredAnswers,
     displayOrder: link.displayOrder,
     availableFrom: link.availableFrom,
     availableUntil: link.availableUntil,

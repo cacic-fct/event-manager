@@ -1,4 +1,5 @@
 import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { FakeEventSource, installFakeEventSource } from '@cacic-fct/shared-angular/testing';
 import { firstValueFrom } from 'rxjs';
@@ -43,5 +44,33 @@ describe('PublicEventFormApiService', () => {
 
     subscription.unsubscribe();
     expect(source.close).toHaveBeenCalledOnce();
+  });
+
+  it('sends the selected price-tier scope when loading subscription forms', async () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const service = TestBed.inject(PublicEventFormApiService);
+    const http = TestBed.inject(HttpTestingController);
+    const result = firstValueFrom(
+      service.listCurrentUserForms({
+        targetType: 'MAJOR_EVENT',
+        majorEventId: 'major-1',
+        subscriptionFlowOnly: true,
+        selectedPriceTierId: 'tier-student',
+      }),
+    );
+    const request = http.expectOne('/api/graphql');
+
+    expect(request.request.body.query).toContain('selectedPriceTierId: $selectedPriceTierId');
+    expect(request.request.body.query).toContain('priceTierIds');
+    expect(request.request.body.variables).toEqual({
+      targetType: 'MAJOR_EVENT',
+      majorEventId: 'major-1',
+      subscriptionFlowOnly: true,
+      selectedPriceTierId: 'tier-student',
+    });
+    request.flush({ data: { currentUserEventForms: [] } });
+
+    await expect(result).resolves.toEqual([]);
+    http.verify();
   });
 });

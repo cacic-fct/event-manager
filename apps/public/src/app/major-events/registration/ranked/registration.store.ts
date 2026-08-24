@@ -497,6 +497,7 @@ export class RankedSubscriptionStore {
             eventId: target.targetType === 'EVENT' ? target.targetId : null,
             majorEventId: target.targetType === 'MAJOR_EVENT' ? target.targetId : null,
             subscriptionFlowOnly: true,
+            selectedPriceTierId: target.targetType === 'MAJOR_EVENT' ? (this.selectedPriceTier()?.id ?? null) : null,
           })
           .pipe(map((forms) => forms.flatMap((form) => this.toSubscriptionFormContexts(form, target)))),
       ),
@@ -537,7 +538,6 @@ export class RankedSubscriptionStore {
       targetName: target.targetName,
       linkId: link?.id ?? null,
       requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
-      enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
       initialAnswers: [],
       submitted: false,
       editable: true,
@@ -576,6 +576,13 @@ export class RankedSubscriptionStore {
       link.targetType !== target.targetType ||
       (link.eventId ?? null) !== (target.targetType === 'EVENT' ? target.targetId : null) ||
       (link.majorEventId ?? null) !== (target.targetType === 'MAJOR_EVENT' ? target.targetId : null)
+    ) {
+      return false;
+    }
+    if (
+      target.targetType === 'MAJOR_EVENT' &&
+      link.priceTierIds.length > 0 &&
+      !link.priceTierIds.includes(this.selectedPriceTier()?.id ?? '')
     ) {
       return false;
     }

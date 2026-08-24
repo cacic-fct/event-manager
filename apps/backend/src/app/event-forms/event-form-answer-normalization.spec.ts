@@ -50,7 +50,6 @@ describe('event form answer normalization', () => {
           { elementId: 'time', value: '09:30' },
         ]),
         elements,
-        true,
       ),
     ).toEqual([
       { elementId: 'name', value: 'Ana' },
@@ -59,7 +58,7 @@ describe('event form answer normalization', () => {
       { elementId: 'time', value: '09:30' },
     ]);
 
-    expect(() => normalizeAnswers(JSON.stringify([{ elementId: 'tracks', value: ['vue'] }]), elements, false)).toThrow(
+    expect(() => normalizeAnswers(JSON.stringify([{ elementId: 'tracks', value: ['vue'] }]), elements)).toThrow(
       BadRequestException,
     );
   });
@@ -164,7 +163,7 @@ describe('event form answer normalization', () => {
     ).toThrow('no máximo 100 itens');
   });
 
-  it('normalizes optional empty values to null without enforcing required answers', () => {
+  it('normalizes empty optional values to null', () => {
     const elements: FormElement[] = [
       textElement('name', 'shortText'),
       choiceElement('track', 'selectionDropdown'),
@@ -206,7 +205,6 @@ describe('event form answer normalization', () => {
           } as FormElement,
           schedulingElement('empty-schedule', 'optional'),
         ],
-        false,
       ),
     ).toEqual([
       { elementId: 'name', value: null },
@@ -257,7 +255,6 @@ describe('event form answer normalization', () => {
           },
         ]),
         elements,
-        true,
       ),
     ).toEqual([
       { elementId: 'track', value: 'angular' },
@@ -323,7 +320,7 @@ describe('event form answer normalization', () => {
 
     for (const item of cases) {
       expect(() =>
-        normalizeAnswers(JSON.stringify([{ elementId: item.element.id, value: item.value }]), [item.element], false),
+        normalizeAnswers(JSON.stringify([{ elementId: item.element.id, value: item.value }]), [item.element]),
       ).toThrow(item.message);
     }
   });
@@ -333,7 +330,6 @@ describe('event form answer normalization', () => {
       normalizeAnswers(
         JSON.stringify([{ elementId: 'single-grid', value: 'yes' }]),
         [gridElement('single-grid', 'singleSelectionGrid', true)],
-        true,
       ),
     ).toThrow('A pergunta "single-grid" é obrigatória.');
 
@@ -341,7 +337,6 @@ describe('event form answer normalization', () => {
       normalizeAnswers(
         JSON.stringify([{ elementId: 'single-grid', value: { row1: 'yes' } }]),
         [gridElement('single-grid', 'singleSelectionGrid', true)],
-        true,
       ),
     ).toThrow('A pergunta "single-grid" é obrigatória.');
 
@@ -349,7 +344,6 @@ describe('event form answer normalization', () => {
       normalizeAnswers(
         JSON.stringify([{ elementId: 'schedule', value: { slotId: 'window-1:09:00-09:30', invitees: [] } }]),
         [schedulingElement('schedule', 'required', true)],
-        true,
       ),
     ).toThrow('A pergunta "schedule" é obrigatória.');
   });

@@ -91,7 +91,14 @@ describe('EventFormsResolver', () => {
   });
 
   it('maps every current-user and lecturer query without replacing its GraphQL context', () => {
-    resolver.currentUserEventForms(reqContext as never, EventFormTargetType.EVENT, 'event-1', undefined, true);
+    resolver.currentUserEventForms(
+      reqContext as never,
+      EventFormTargetType.EVENT,
+      'event-1',
+      undefined,
+      true,
+      'tier-1',
+    );
     resolver.currentUserRequiredSubscriptionFormInterruptions(reqContext as never);
     resolver.currentUserEventFormResponse(
       reqContext as never,
@@ -114,7 +121,7 @@ describe('EventFormsResolver', () => {
     expect(forms.listCurrentUserForms).toHaveBeenCalledWith(
       reqContext,
       { targetType: EventFormTargetType.EVENT, eventId: 'event-1', majorEventId: undefined },
-      { subscriptionFlowOnly: true },
+      { subscriptionFlowOnly: true, selectedPriceTierId: 'tier-1' },
     );
     expect(forms.listCurrentUserRequiredSubscriptionFormInterruptions).toHaveBeenCalledWith(reqContext);
     expect(forms.getCurrentUserResponse).toHaveBeenCalledWith(reqContext, {

@@ -177,6 +177,7 @@ function subscriptionFormFixture(): PublicEventForm {
         targetType: 'EVENT',
         eventId: 'event-1',
         majorEventId: null,
+        priceTierIds: [],
         target: {
           type: 'EVENT',
           id: 'event-1',
@@ -186,7 +187,6 @@ function subscriptionFormFixture(): PublicEventForm {
         audience: 'SUBSCRIBERS_OR_ATTENDEES',
         insertInSubscriptionFlow: true,
         requiredInSubscriptionFlow: true,
-        enforceRequiredAnswers: true,
         displayOrder: 0,
         availableFrom: null,
         availableUntil: null,

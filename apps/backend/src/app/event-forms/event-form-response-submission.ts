@@ -35,7 +35,7 @@ export async function submitResponseForPerson(
   tx: Prisma.TransactionClient,
   personId: string,
   input: SubmitEventFormResponseInput,
-  options: { requireSubscriptionFlowLink: boolean },
+  options: { requireSubscriptionFlowLink: boolean; selectedPriceTierId?: string | null },
 ): Promise<{
   form: Awaited<ReturnType<typeof requirePublishedEventFormWithClient>>;
   formId: string;
@@ -50,13 +50,19 @@ export async function submitResponseForPerson(
   if (options.requireSubscriptionFlowLink && !link.insertInSubscriptionFlow) {
     throw new NotFoundException('Formulário não disponível no fluxo de inscrição.');
   }
+  if (
+    options.requireSubscriptionFlowLink &&
+    (link.priceTiers?.length ?? 0) > 0 &&
+    !link.priceTiers?.some(({ priceTierId }) => priceTierId === options.selectedPriceTierId)
+  ) {
+    throw new NotFoundException('Formulário não disponível para a faixa de preço selecionada.');
+  }
   await assertPersonCanAnswerLink(prisma, personId, link, {
     allowFutureSubscriber: options.requireSubscriptionFlowLink && link.insertInSubscriptionFlow,
   });
   const answers = normalizeAnswers(
     input.answersJson,
     form.elements as unknown as FormElement[],
-    link.enforceRequiredAnswers,
   );
   const responseSource = link.insertInSubscriptionFlow
     ? ContractResponseSource.SUBSCRIPTION_FLOW
@@ -138,6 +144,12 @@ export async function assertRequiredSubscriptionFlowResponses(
         {
           targetType: EventFormTargetType.MAJOR_EVENT,
           majorEventId: scope.majorEventId,
+          OR: [
+            { priceTiers: { none: {} } },
+            ...(scope.selectedPriceTierId
+              ? [{ priceTiers: { some: { priceTierId: scope.selectedPriceTierId } } }]
+              : []),
+          ],
         },
         {
           targetType: EventFormTargetType.EVENT,
@@ -188,9 +200,7 @@ export async function assertRequiredSubscriptionFlowResponses(
     if (!response) {
       throw new BadRequestException(`Responda o formulário obrigatório "${link.form.name}" para concluir a inscrição.`);
     }
-    if (link.enforceRequiredAnswers) {
-      assertStoredResponseHasCurrentRequiredAnswers(link.form, response.answers);
-    }
+    assertStoredResponseHasCurrentRequiredAnswers(link.form, response.answers);
   }
 }
 

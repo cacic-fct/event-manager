@@ -41,6 +41,9 @@ export class EventFormLink {
   @Field(() => String, { nullable: true })
   majorEventId?: string | null;
 
+  @Field(() => [String])
+  priceTierIds!: string[];
+
   @Field(() => EventFormTargetSummary, { nullable: true })
   target?: EventFormTargetSummary | null;
 
@@ -52,9 +55,6 @@ export class EventFormLink {
 
   @Field(() => Boolean)
   requiredInSubscriptionFlow!: boolean;
-
-  @Field(() => Boolean)
-  enforceRequiredAnswers!: boolean;
 
   @Field(() => Int)
   displayOrder!: number;
@@ -323,9 +323,6 @@ export class EventFormLinkInput {
   @Field(() => Boolean, { nullable: true })
   requiredInSubscriptionFlow?: boolean | null;
 
-  @Field(() => Boolean, { nullable: true })
-  enforceRequiredAnswers?: boolean | null;
-
   @Field(() => Int, { nullable: true })
   displayOrder?: number | null;
 
@@ -340,6 +337,10 @@ export class EventFormLinkInput {
 
   @Field(() => Boolean, { nullable: true })
   allowLecturerManualPublish?: boolean | null;
+
+  @Field(() => [String], { nullable: true })
+  @ArrayMaxSize(100)
+  priceTierIds?: string[] | null;
 }
 
 @InputType()

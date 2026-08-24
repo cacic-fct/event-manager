@@ -748,6 +748,10 @@ export class CurrentUserMajorEventSubscriptionsResolver {
           {
             majorEventId: input.majorEventId,
             selectedEventIds: selectedEventIdSet,
+            selectedPriceTierId:
+              transactionMajorEvent.majorEventPrices
+                .flatMap((price) => price.tiers)
+                .find((tier) => tier.name === selfServicePayment.paymentTier)?.id ?? null,
           },
           authenticatedUser,
         )),

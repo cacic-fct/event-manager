@@ -24,7 +24,6 @@ Cada vínculo aponta para um evento ou grande evento e define:
 - Ordem de exibição;
 - Se o formulário entra no fluxo de inscrição;
 - Se ele é obrigatório para concluir a inscrição;
-- Se perguntas obrigatórias devem ser validadas;
 - Se pessoas elegíveis devem ser notificadas quando o formulário ficar disponível;
 - Se ministrantes podem publicar manualmente, quando o vínculo é de evento.
 

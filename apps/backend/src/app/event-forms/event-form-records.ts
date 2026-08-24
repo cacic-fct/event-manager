@@ -41,6 +41,16 @@ export const eventFormInclude = {
           endDate: true,
         },
       },
+      priceTiers: {
+        select: {
+          priceTierId: true,
+          priceTier: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
       _count: {
         select: {
           responses: {
@@ -95,4 +105,5 @@ export type ResultViewer = 'admin' | 'lecturer' | 'public' | 'self';
 export type SubscriptionFlowTargetScope = {
   majorEventId: string | null;
   selectedEventIds: Set<string>;
+  selectedPriceTierId?: string | null;
 };

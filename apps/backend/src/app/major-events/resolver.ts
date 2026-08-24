@@ -910,28 +910,55 @@ export class MajorEventsResolver {
       throw new BadRequestException('Single price requires exactly one tier.');
     }
 
-    await tx.majorEventPrice.upsert({
+    const price = await tx.majorEventPrice.upsert({
       where: {
         majorEventId,
       },
       create: {
         majorEventId,
         type: input.type,
-        tiers: {
-          create: tiers,
-        },
       },
       update: {
         type: input.type,
-        tiers: {
-          deleteMany: {},
-          create: tiers,
-        },
       },
+      select: { id: true },
     });
+
+    const requestedIds = input.tiers.flatMap((tier) => (tier.id ? [tier.id] : []));
+    if (new Set(requestedIds).size !== requestedIds.length) {
+      throw new BadRequestException('Price tier identifiers must be unique.');
+    }
+    const existingRequestedTiers =
+      requestedIds.length > 0
+        ? await tx.priceTier.findMany({
+            where: { id: { in: requestedIds }, priceId: price.id },
+            select: { id: true },
+          })
+        : [];
+    if (existingRequestedTiers.length !== requestedIds.length) {
+      throw new BadRequestException('A price tier does not belong to this major event.');
+    }
+
+    const tiersToDeleteWhere = {
+      priceId: price.id,
+      ...(requestedIds.length > 0 ? { id: { notIn: requestedIds } } : {}),
+    } satisfies Prisma.PriceTierWhereInput;
+    await this.assertPriceTiersAreNotAttachedToForms(tx, tiersToDeleteWhere);
+    await tx.priceTier.deleteMany({ where: tiersToDeleteWhere });
+    for (const [index, tier] of tiers.entries()) {
+      const tierId = input.tiers[index]?.id;
+      if (tierId) {
+        await tx.priceTier.update({ where: { id: tierId }, data: tier });
+      } else {
+        await tx.priceTier.create({ data: { ...tier, priceId: price.id } });
+      }
+    }
   }
 
   private async deleteMajorEventPrice(tx: Prisma.TransactionClient, majorEventId: string): Promise<void> {
+    await this.assertPriceTiersAreNotAttachedToForms(tx, {
+      price: { majorEventId },
+    });
     await tx.priceTier.deleteMany({
       where: {
         price: {
@@ -944,6 +971,20 @@ export class MajorEventsResolver {
         majorEventId,
       },
     });
+  }
+
+  private async assertPriceTiersAreNotAttachedToForms(
+    tx: Prisma.TransactionClient,
+    where: Prisma.PriceTierWhereInput,
+  ): Promise<void> {
+    const attachedTierCount = await tx.eventFormLinkPriceTier.count({
+      where: { priceTier: where },
+    });
+    if (attachedTierCount > 0) {
+      throw new BadRequestException(
+        'Detach forms from the affected price tiers before removing those tiers or the major-event price.',
+      );
+    }
   }
 
   private buildPriceTierPayloads(input: MajorEventPriceInput): Prisma.PriceTierCreateWithoutPriceInput[] {

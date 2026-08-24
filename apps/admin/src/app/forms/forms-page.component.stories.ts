@@ -297,7 +297,6 @@ function createFormsStoryService(formBuilder: FormBuilder, args: FormsStoryArgs)
           audience: 'SUBSCRIBERS_OR_ATTENDEES',
           insertInSubscriptionFlow: false,
           requiredInSubscriptionFlow: false,
-          enforceRequiredAnswers: true,
           displayOrder: current.length,
           notifyOnPublish: true,
           allowLecturerManualPublish: false,
@@ -394,6 +393,7 @@ function buildForms(args: FormsStoryArgs, events: Event[], majorEvents: MajorEve
           targetType,
           eventId: targetType === 'EVENT' ? event.id : null,
           majorEventId: targetType === 'MAJOR_EVENT' ? majorEvent.id : null,
+          priceTierIds: [],
           target: {
             type: targetType,
             id: targetType === 'EVENT' ? event.id : majorEvent.id,
@@ -403,7 +403,6 @@ function buildForms(args: FormsStoryArgs, events: Event[], majorEvents: MajorEve
           audience: index % 2 === 0 ? 'SUBSCRIBERS_OR_ATTENDEES' : 'ATTENDEES',
           insertInSubscriptionFlow: index === 0,
           requiredInSubscriptionFlow: index === 0,
-          enforceRequiredAnswers: true,
           displayOrder: index,
           availableFrom: null,
           availableUntil: null,

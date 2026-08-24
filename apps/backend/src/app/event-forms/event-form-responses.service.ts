@@ -78,6 +78,7 @@ export class EventFormResponsesService {
       assertSubscriptionFlowTargetAllowed(input, scope);
       const result = await submitResponseForPerson(this.prisma, tx, personId, input, {
         requireSubscriptionFlowLink: true,
+        selectedPriceTierId: scope.selectedPriceTierId,
       });
       await this.auditLog.record(
         eventFormResponseAuditRecord(result.form, result.response, result.operation, actor, result.previousResponse),

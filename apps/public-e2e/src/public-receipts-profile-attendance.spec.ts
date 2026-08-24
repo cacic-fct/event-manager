@@ -630,7 +630,6 @@ function publicEventFormFixture(): Record<string, unknown> {
         audience: 'SUBSCRIBERS_OR_ATTENDEES',
         insertInSubscriptionFlow: false,
         requiredInSubscriptionFlow: false,
-        enforceRequiredAnswers: true,
         displayOrder: 0,
         availableFrom: null,
         availableUntil: null,

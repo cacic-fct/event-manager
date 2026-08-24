@@ -390,18 +390,30 @@
                     (change)="workspace.updateLink(link.localId, { insertInSubscriptionFlow: $event.checked })">
                     Inserir na inscrição
                   </mat-checkbox>
+                  @if (
+                    link.targetType === 'MAJOR_EVENT' &&
+                    (link.insertInSubscriptionFlow ?? false) &&
+                    workspace.priceTiersForLink(link).length > 1
+                  ) {
+                    <mat-form-field class="span-2">
+                      <mat-label>Faixas de preço que exibem este formulário</mat-label>
+                      <mat-select
+                        multiple
+                        [value]="link.priceTierIds ?? []"
+                        (selectionChange)="workspace.updateLink(link.localId, { priceTierIds: $event.value })">
+                        @for (tier of workspace.priceTiersForLink(link); track tier.id) {
+                          <mat-option [value]="tier.id">{{ tier.name }}</mat-option>
+                        }
+                      </mat-select>
+                      <mat-hint>Sem seleção, o formulário aparece para todas as faixas.</mat-hint>
+                    </mat-form-field>
+                  }
                   <mat-checkbox
                     [checked]="link.requiredInSubscriptionFlow ?? false"
                     [disabled]="!(link.insertInSubscriptionFlow ?? false)"
                     matTooltip="Só vale para formulários inseridos na inscrição. A pessoa não conclui a inscrição enquanto não responder."
                     (change)="workspace.updateLink(link.localId, { requiredInSubscriptionFlow: $event.checked })">
                     Obrigatório para concluir inscrição
-                  </mat-checkbox>
-                  <mat-checkbox
-                    [checked]="link.enforceRequiredAnswers ?? true"
-                    matTooltip="Exige respostas para todas as perguntas marcadas como obrigatórias antes de enviar o formulário. Quando o formulário for obrigatório na inscrição, também impede a conclusão da inscrição sem essas respostas."
-                    (change)="workspace.updateLink(link.localId, { enforceRequiredAnswers: $event.checked })">
-                    Exigir respostas em perguntas obrigatórias para completar inscrição
                   </mat-checkbox>
                   @if (!(link.insertInSubscriptionFlow ?? false) || !(link.requiredInSubscriptionFlow ?? false)) {
                     <mat-checkbox

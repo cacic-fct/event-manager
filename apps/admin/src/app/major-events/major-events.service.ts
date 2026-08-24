@@ -82,7 +82,7 @@ export class MajorEventsService {
       pixKey: [''],
       pixCity: [''],
       priceType: ['SINGLE' as PriceType],
-      priceTiers: this.formBuilder.array([this.createPriceTierGroup('Preço único', '', false)]),
+      priceTiers: this.formBuilder.array([this.createPriceTierGroup(null, 'Preço único', '', false)]),
     },
     {
       validators: [
@@ -116,7 +116,7 @@ export class MajorEventsService {
   }
 
   addPriceTier(): void {
-    this.priceTiers.push(this.createPriceTierGroup('', '', false));
+    this.priceTiers.push(this.createPriceTierGroup(null, '', '', false));
     this.syncPriceTierControls(this.majorEventForm.controls.priceType.value);
   }
 
@@ -283,7 +283,7 @@ export class MajorEventsService {
       pixCity: '',
       priceType: 'SINGLE',
     });
-    this.resetPriceTiers([this.createPriceTierGroup('Preço único', '', false)]);
+    this.resetPriceTiers([this.createPriceTierGroup(null, 'Preço único', '', false)]);
     this.syncCertificateExceptionControls();
   }
 
@@ -351,12 +351,13 @@ export class MajorEventsService {
       price?.tiers.length
         ? price.tiers.map((tier) =>
             this.createPriceTierGroup(
+              tier.id,
               tier.name,
               this.fromCentsToCurrencyInput(tier.value),
               Boolean(majorEvent.sportsTournament && tier.includesSportsRegistration),
             ),
           )
-        : [this.createPriceTierGroup('Preço único', '', false)],
+        : [this.createPriceTierGroup(null, 'Preço único', '', false)],
     );
     this.syncCertificateExceptionControls();
     void this.loadEventsForMajorEvent(majorEvent.id);
@@ -464,6 +465,7 @@ export class MajorEventsService {
     const priceTiers = this.priceTiers.controls
       .map((tierControl) => tierControl.getRawValue())
       .map((tier) => ({
+        ...(tier.id ? { id: tier.id } : {}),
         name: tier.name.trim(),
         value: this.toCents(tier.value),
         ...(Boolean(this.selectedMajorEvent()?.sportsTournament) && tier.includesSportsRegistration
@@ -585,8 +587,14 @@ export class MajorEventsService {
     return (value / 100).toFixed(2);
   }
 
-  private createPriceTierGroup(name: string, value: string, includesSportsRegistration: boolean) {
+  private createPriceTierGroup(
+    id: string | null,
+    name: string,
+    value: string,
+    includesSportsRegistration: boolean,
+  ) {
     return this.formBuilder.nonNullable.group({
+      id: [id],
       name: [name],
       value: [value],
       includesSportsRegistration: [includesSportsRegistration],

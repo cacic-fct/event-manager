@@ -21,6 +21,7 @@ type EventFormNotificationLink = {
   availableUntil: Date | null;
   event: { name: string; endDate: Date | null } | null;
   majorEvent: { name: string; endDate: Date | null } | null;
+  priceTiers?: readonly { priceTier: { name: string } }[];
 };
 
 type EventFormNotificationRecord = {
@@ -163,6 +164,9 @@ export class EventFormNotificationService {
           where: {
             majorEventId: link.majorEventId,
             deletedAt: null,
+            ...((link.priceTiers?.length ?? 0) > 0
+              ? { paymentTier: { in: link.priceTiers?.map(({ priceTier }) => priceTier.name) } }
+              : {}),
           },
           select: {
             person: this.notificationPersonSelect(),
@@ -209,6 +213,9 @@ export class EventFormNotificationService {
             where: {
               majorEventId: link.majorEventId,
               deletedAt: null,
+              ...((link.priceTiers?.length ?? 0) > 0
+                ? { paymentTier: { in: link.priceTiers?.map(({ priceTier }) => priceTier.name) } }
+                : {}),
             },
             select: {
               person: this.notificationPersonSelect(),

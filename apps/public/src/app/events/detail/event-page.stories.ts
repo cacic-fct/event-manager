@@ -349,6 +349,7 @@ function publicEventForm(event: PublicEvent): PublicEventForm {
         targetType: 'EVENT',
         eventId: event.id,
         majorEventId: null,
+        priceTierIds: [],
         target: {
           type: 'EVENT',
           id: event.id,
@@ -358,7 +359,6 @@ function publicEventForm(event: PublicEvent): PublicEventForm {
         audience: 'ATTENDEES',
         insertInSubscriptionFlow: false,
         requiredInSubscriptionFlow: false,
-        enforceRequiredAnswers: true,
         displayOrder: 0,
         availableFrom: null,
         availableUntil: null,

@@ -166,6 +166,7 @@ export function createPublicEventFormLink(overrides: Partial<PublicEventFormLink
     targetType,
     eventId,
     majorEventId,
+    priceTierIds: [],
     target: {
       type: targetType,
       id: targetType === 'EVENT' ? (eventId ?? 'event-1') : (majorEventId ?? 'major-1'),
@@ -175,7 +176,6 @@ export function createPublicEventFormLink(overrides: Partial<PublicEventFormLink
     audience: 'SUBSCRIBERS_OR_ATTENDEES',
     insertInSubscriptionFlow: true,
     requiredInSubscriptionFlow: true,
-    enforceRequiredAnswers: true,
     displayOrder: 0,
     availableFrom: null,
     availableUntil: null,

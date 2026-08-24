@@ -29,7 +29,6 @@ export interface SubscriptionFormContext {
   targetName: string;
   linkId: string | null;
   requiredInSubscriptionFlow: boolean;
-  enforceRequiredAnswers: boolean;
   initialAnswers: FormResponseAnswer[];
   submitted: boolean;
   editable: boolean;
@@ -147,7 +146,7 @@ export class ConfirmSubscriptionDialog {
   }
 
   hasMissingRequired(form: SubscriptionFormContext): boolean {
-    if (!form.requiredInSubscriptionFlow || !form.enforceRequiredAnswers) {
+    if (!form.requiredInSubscriptionFlow) {
       return false;
     }
 

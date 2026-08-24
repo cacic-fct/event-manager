@@ -799,7 +799,6 @@ export function createAdminE2EEventForm(overrides: Partial<AdminE2EEventFormFixt
         audience: 'SUBSCRIBERS_OR_ATTENDEES',
         insertInSubscriptionFlow: true,
         requiredInSubscriptionFlow: true,
-        enforceRequiredAnswers: true,
         displayOrder: 0,
         availableFrom: null,
         availableUntil: null,

@@ -331,7 +331,6 @@ describe('FormsService integration', () => {
       audience: 'ATTENDEES',
       insertInSubscriptionFlow: false,
       requiredInSubscriptionFlow: false,
-      enforceRequiredAnswers: true,
       displayOrder: 3,
       allowLecturerManualPublish: false,
     });
@@ -355,6 +354,46 @@ describe('FormsService integration', () => {
       requiredInSubscriptionFlow: true,
       notifyOnPublish: true,
       allowLecturerManualPublish: false,
+    });
+  });
+
+  it('saves a major-event form for one or more selected tiered prices', async () => {
+    const tieredMajorEvent = createAdminMajorEvent({
+      id: 'major-event-1',
+      name: 'Semana da Computação',
+      majorEventPrices: [
+        {
+          id: 'price-1',
+          type: 'TIERED',
+          tiers: [
+            { id: 'tier-student', name: 'Aluno', value: 4000, includesSportsRegistration: false },
+            { id: 'tier-professor', name: 'Professor', value: 6000, includesSportsRegistration: false },
+          ],
+        },
+      ],
+    });
+    majorEventApi.listMajorEvents.mockReturnValue(of([tieredMajorEvent]));
+    await service.initialize();
+    await service.selectForm(service.forms()[0]);
+
+    service.updateLink('form-link-1', {
+      targetType: 'MAJOR_EVENT',
+      eventId: null,
+      majorEventId: 'major-event-1',
+      insertInSubscriptionFlow: true,
+      priceTierIds: ['tier-student', 'tier-professor'],
+    });
+    expect(service.priceTiersForLink(service.links()[0]).map((tier) => tier.id)).toEqual([
+      'tier-student',
+      'tier-professor',
+    ]);
+    await service.save();
+
+    expect(savedInput?.links?.[0]).toMatchObject({
+      targetType: 'MAJOR_EVENT',
+      majorEventId: 'major-event-1',
+      insertInSubscriptionFlow: true,
+      priceTierIds: ['tier-student', 'tier-professor'],
     });
   });
 

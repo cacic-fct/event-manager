@@ -52,7 +52,6 @@ Em cada vínculo, revise:
 - Data de início e fim;
 - Se o formulário entra na inscrição;
 - Se a resposta é obrigatória para concluir a inscrição;
-- Se perguntas obrigatórias serão validadas;
 - Se pessoas elegíveis serão notificadas;
 - Se ministrantes podem publicar manualmente, quando aplicável.
 

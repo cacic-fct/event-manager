@@ -48,7 +48,7 @@ export class EventFormsService {
 
   async listFormsForTarget(
     input: TargetInput,
-    options: { subscriptionFlowOnly?: boolean } = {},
+    options: { subscriptionFlowOnly?: boolean; selectedPriceTierId?: string | null } = {},
   ): Promise<EventFormModel[]> {
     return this.listings.listFormsForTarget(input, options);
   }
@@ -56,7 +56,7 @@ export class EventFormsService {
   async listCurrentUserForms(
     context: GraphqlContext,
     input: TargetInput,
-    options: { subscriptionFlowOnly?: boolean } = {},
+    options: { subscriptionFlowOnly?: boolean; selectedPriceTierId?: string | null } = {},
   ): Promise<EventFormModel[]> {
     return this.listings.listCurrentUserForms(context, input, options);
   }

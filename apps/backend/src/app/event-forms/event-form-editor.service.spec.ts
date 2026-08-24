@@ -430,6 +430,10 @@ type PrismaMock = {
     updateMany: jest.Mock;
     create: jest.Mock;
   };
+  eventFormLinkPriceTier: {
+    deleteMany: jest.Mock;
+    createMany: jest.Mock;
+  };
   eventFormDraft: {
     create: jest.Mock;
     updateMany: jest.Mock;
@@ -449,7 +453,11 @@ function createPrisma(): PrismaMock {
     },
     eventFormLink: {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-      create: jest.fn(),
+      create: jest.fn().mockResolvedValue({ id: 'link-created' }),
+    },
+    eventFormLinkPriceTier: {
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
     },
     eventFormDraft: {
       create: jest.fn(),
@@ -499,7 +507,6 @@ function linkInput(overrides: Partial<EventFormLinkInput> = {}): EventFormLinkIn
     audience: ContractAudience.SUBSCRIBERS_OR_ATTENDEES,
     insertInSubscriptionFlow: false,
     requiredInSubscriptionFlow: false,
-    enforceRequiredAnswers: true,
     displayOrder: 0,
     availableFrom: null,
     availableUntil: null,
@@ -627,7 +634,6 @@ function linkRecord(
     audience: options.audience ?? EventFormAudience.SUBSCRIBERS_OR_ATTENDEES,
     insertInSubscriptionFlow: options.insertInSubscriptionFlow ?? false,
     requiredInSubscriptionFlow: options.requiredInSubscriptionFlow ?? false,
-    enforceRequiredAnswers: true,
     displayOrder: 0,
     availableFrom: null,
     availableUntil: null,

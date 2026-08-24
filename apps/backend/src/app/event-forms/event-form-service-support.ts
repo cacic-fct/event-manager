@@ -134,6 +134,23 @@ export async function replaceEventFormLinks(
   for (const link of links) {
     const target = normalizeTarget(link);
     const previous = link.id ? previousLinksById.get(link.id) : undefined;
+    const priceTierIds = [...new Set((link.priceTierIds ?? []).map((id) => id.trim()).filter(Boolean))];
+    if (priceTierIds.length > 0 && (target.targetType !== EventFormTargetType.MAJOR_EVENT || !link.insertInSubscriptionFlow)) {
+      throw new BadRequestException(
+        'Faixas de preço só podem ser vinculadas a formulários inseridos na inscrição de um grande evento.',
+      );
+    }
+    if (priceTierIds.length > 0) {
+      const matchingTierCount = await tx.priceTier.count({
+        where: {
+          id: { in: priceTierIds },
+          price: { majorEventId: target.majorEventId ?? '' },
+        },
+      });
+      if (matchingTierCount !== priceTierIds.length) {
+        throw new BadRequestException('Uma ou mais faixas de preço não pertencem ao grande evento vinculado.');
+      }
+    }
     const requiresPreviousSubscriberNotification =
       link.insertInSubscriptionFlow === true &&
       link.requiredInSubscriptionFlow === true &&
@@ -145,7 +162,11 @@ export async function replaceEventFormLinks(
       !previous.notifyOnPublish ||
       previous.targetType !== target.targetType ||
       previous.eventId !== target.eventId ||
-      previous.majorEventId !== target.majorEventId;
+      previous.majorEventId !== target.majorEventId ||
+      !sameStringSet(
+        previous.priceTiers?.map(({ priceTierId }) => priceTierId) ?? [],
+        priceTierIds,
+      );
     const data = {
       targetType: target.targetType,
       eventId: target.eventId,
@@ -153,7 +174,6 @@ export async function replaceEventFormLinks(
       audience: toDbAudience(link.audience ?? ContractAudience.SUBSCRIBERS_OR_ATTENDEES),
       insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
       requiredInSubscriptionFlow: link.insertInSubscriptionFlow ? (link.requiredInSubscriptionFlow ?? false) : false,
-      enforceRequiredAnswers: link.enforceRequiredAnswers ?? true,
       displayOrder: link.displayOrder ?? 0,
       availableFrom: link.availableFrom ?? null,
       availableUntil: link.availableUntil ?? null,
@@ -179,16 +199,35 @@ export async function replaceEventFormLinks(
       if (updated.count === 0) {
         throw new BadRequestException('Vínculo de formulário inválido para este formulário.');
       }
+      await replaceLinkPriceTiers(tx, link.id, priceTierIds);
     } else {
-      await tx.eventFormLink.create({
+      const created = await tx.eventFormLink.create({
         data: {
           formId,
           ...data,
           createdById: actorId,
         },
       });
+      await replaceLinkPriceTiers(tx, created.id, priceTierIds);
     }
   }
+}
+
+async function replaceLinkPriceTiers(
+  tx: Prisma.TransactionClient,
+  linkId: string,
+  priceTierIds: readonly string[],
+): Promise<void> {
+  await tx.eventFormLinkPriceTier.deleteMany({ where: { linkId } });
+  if (priceTierIds.length > 0) {
+    await tx.eventFormLinkPriceTier.createMany({
+      data: priceTierIds.map((priceTierId) => ({ linkId, priceTierId })),
+    });
+  }
+}
+
+function sameStringSet(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value) => right.includes(value));
 }
 
 export async function assertCanManageLinkedTargets(

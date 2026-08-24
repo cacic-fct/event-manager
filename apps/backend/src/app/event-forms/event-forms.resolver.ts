@@ -69,8 +69,13 @@ export class EventFormsResolver {
     @Args('eventId', { type: () => String, nullable: true }) eventId?: string,
     @Args('majorEventId', { type: () => String, nullable: true }) majorEventId?: string,
     @Args('subscriptionFlowOnly', { type: () => Boolean, nullable: true }) subscriptionFlowOnly?: boolean,
+    @Args('selectedPriceTierId', { type: () => String, nullable: true }) selectedPriceTierId?: string,
   ): Promise<EventForm[]> {
-    return this.forms.listCurrentUserForms(context, { targetType, eventId, majorEventId }, { subscriptionFlowOnly });
+    return this.forms.listCurrentUserForms(
+      context,
+      { targetType, eventId, majorEventId },
+      { subscriptionFlowOnly, selectedPriceTierId },
+    );
   }
 
   @Query(() => [RequiredSubscriptionFormInterruption], { name: 'currentUserRequiredSubscriptionFormInterruptions' })

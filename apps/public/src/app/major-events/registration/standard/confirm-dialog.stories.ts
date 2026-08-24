@@ -68,7 +68,6 @@ const meta: Meta<ConfirmSubscriptionDialog> = {
                 targetName: 'SECOMPP',
                 linkId: 'link-1',
                 requiredInSubscriptionFlow: true,
-                enforceRequiredAnswers: true,
                 initialAnswers: [],
                 submitted: false,
                 editable: true,

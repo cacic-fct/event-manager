@@ -38,12 +38,12 @@ export interface EventFormLinkDraft {
   audience?: EventFormAudience | null;
   insertInSubscriptionFlow?: boolean | null;
   requiredInSubscriptionFlow?: boolean | null;
-  enforceRequiredAnswers?: boolean | null;
   displayOrder?: number | null;
   availableFrom?: string | null;
   availableUntil?: string | null;
   notifyOnPublish?: boolean | null;
   allowLecturerManualPublish?: boolean | null;
+  priceTierIds?: string[] | null;
 }
 
 @Service()
@@ -285,6 +285,16 @@ export class FormsService {
 
   updateLinkDate(localId: string, key: 'availableFrom' | 'availableUntil', value: string): void {
     this.updateLink(localId, { [key]: value || null });
+  }
+
+  priceTiersForLink(link: EventFormLinkDraft) {
+    if (link.targetType !== 'MAJOR_EVENT' || !link.majorEventId) {
+      return [];
+    }
+    const price = this.majorEvents()
+      .find((majorEvent) => majorEvent.id === link.majorEventId)
+      ?.majorEventPrices.find((candidate) => candidate.type === 'TIERED');
+    return price?.tiers ?? [];
   }
 
   hasInvalidLinkDateRange(localId?: string): boolean {
@@ -585,6 +595,17 @@ export class FormsService {
     const fallbackEventId = link.eventId || previous?.eventId || (this.selectableEvents()[0]?.id ?? '');
     const fallbackMajorEventId =
       link.majorEventId || previous?.majorEventId || (this.selectableMajorEvents()[0]?.id ?? '');
+    const selectedMajorEventId = targetType === 'MAJOR_EVENT' ? fallbackMajorEventId : null;
+    const availableTierIds = new Set(
+      this.majorEvents()
+        .find((majorEvent) => majorEvent.id === selectedMajorEventId)
+        ?.majorEventPrices.filter((price) => price.type === 'TIERED')
+        .flatMap((price) => price.tiers.map((tier) => tier.id)) ?? [],
+    );
+    const priceTierIds =
+      targetType === 'MAJOR_EVENT' && insertInSubscriptionFlow
+        ? [...new Set(link.priceTierIds ?? [])].filter((id) => availableTierIds.has(id))
+        : [];
 
     const base = {
       ...link,
@@ -593,6 +614,7 @@ export class FormsService {
       notifyOnPublish: insertInSubscriptionFlow ? notifyPreviousSubscribers : (link.notifyOnPublish ?? true),
       allowLecturerManualPublish:
         targetType === 'EVENT' && !insertInSubscriptionFlow ? (link.allowLecturerManualPublish ?? false) : false,
+      priceTierIds,
     };
     if (targetType === 'EVENT') {
       return {
@@ -617,10 +639,10 @@ export class FormsService {
       audience: 'SUBSCRIBERS_OR_ATTENDEES' as const,
       insertInSubscriptionFlow: false,
       requiredInSubscriptionFlow: false,
-      enforceRequiredAnswers: true,
       displayOrder,
       notifyOnPublish: true,
       allowLecturerManualPublish: false,
+      priceTierIds: [],
     };
 
     if (targetType === 'EVENT') {
@@ -650,12 +672,12 @@ export class FormsService {
       audience: link.audience,
       insertInSubscriptionFlow: link.insertInSubscriptionFlow,
       requiredInSubscriptionFlow: link.requiredInSubscriptionFlow,
-      enforceRequiredAnswers: link.enforceRequiredAnswers,
       displayOrder: link.displayOrder,
       availableFrom: link.availableFrom ? this.toLocalInput(link.availableFrom) : null,
       availableUntil: link.availableUntil ? this.toLocalInput(link.availableUntil) : null,
       notifyOnPublish: link.notifyOnPublish,
       allowLecturerManualPublish: link.allowLecturerManualPublish,
+      priceTierIds: link.priceTierIds,
     };
   }
 
@@ -665,7 +687,6 @@ export class FormsService {
       audience: link.audience ?? 'SUBSCRIBERS_OR_ATTENDEES',
       insertInSubscriptionFlow: link.insertInSubscriptionFlow ?? false,
       requiredInSubscriptionFlow: link.requiredInSubscriptionFlow ?? false,
-      enforceRequiredAnswers: link.enforceRequiredAnswers ?? true,
       displayOrder: link.displayOrder ?? index,
       availableFrom: this.localInputToIso(link.availableFrom),
       availableUntil: this.localInputToIso(link.availableUntil),
@@ -679,6 +700,8 @@ export class FormsService {
         link.targetType === 'EVENT' && !link.insertInSubscriptionFlow
           ? (link.allowLecturerManualPublish ?? false)
           : false,
+      priceTierIds:
+        link.targetType === 'MAJOR_EVENT' && link.insertInSubscriptionFlow ? (link.priceTierIds ?? []) : [],
     };
 
     if (link.targetType === 'EVENT') {

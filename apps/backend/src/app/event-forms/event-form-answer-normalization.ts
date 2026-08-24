@@ -41,7 +41,6 @@ export function parseElementsJson(value: string): FormElement[] {
 export function normalizeAnswers(
   answersJson: string,
   elements: readonly FormElement[],
-  enforceRequiredAnswers: boolean,
 ): FormResponseAnswer[] {
   const answers = parseAnswersJson(answersJson);
   const normalized = normalizeFormResponseAnswers(answers);
@@ -57,11 +56,9 @@ export function normalizeAnswers(
     answersById.set(answer.elementId, normalizeAnswerValue(element, answer.value));
   }
 
-  if (enforceRequiredAnswers) {
-    for (const element of answerElements) {
-      if (element.required && isMissingRequiredAnswer(element, answersById.get(element.id) ?? null)) {
-        throw new BadRequestException(`A pergunta "${element.title}" é obrigatória.`);
-      }
+  for (const element of answerElements) {
+    if (element.required && isMissingRequiredAnswer(element, answersById.get(element.id) ?? null)) {
+      throw new BadRequestException(`A pergunta "${element.title}" é obrigatória.`);
     }
   }
 

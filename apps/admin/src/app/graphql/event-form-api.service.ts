@@ -9,6 +9,7 @@ const EVENT_FORM_LINK_FIELDS = `
   targetType
   eventId
   majorEventId
+  priceTierIds
   target {
     type
     id
@@ -18,7 +19,6 @@ const EVENT_FORM_LINK_FIELDS = `
   audience
   insertInSubscriptionFlow
   requiredInSubscriptionFlow
-  enforceRequiredAnswers
   displayOrder
   availableFrom
   availableUntil

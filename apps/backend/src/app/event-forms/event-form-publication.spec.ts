@@ -90,7 +90,11 @@ describe('event form publication and service support helpers', () => {
     const tx = {
       eventFormLink: {
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
-        create: jest.fn(),
+        create: jest.fn().mockResolvedValue({ id: 'link-1' }),
+      },
+      eventFormLinkPriceTier: {
+        deleteMany: jest.fn(),
+        createMany: jest.fn(),
       },
     };
 

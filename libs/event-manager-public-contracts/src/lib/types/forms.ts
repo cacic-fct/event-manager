@@ -20,11 +20,11 @@ export interface PublicEventFormLink {
   targetType: EventFormTargetType;
   eventId?: string | null;
   majorEventId?: string | null;
+  priceTierIds: string[];
   target?: PublicEventFormTargetSummary | null;
   audience: EventFormAudience;
   insertInSubscriptionFlow: boolean;
   requiredInSubscriptionFlow: boolean;
-  enforceRequiredAnswers: boolean;
   displayOrder: number;
   availableFrom?: DateTimeString | null;
   availableUntil?: DateTimeString | null;

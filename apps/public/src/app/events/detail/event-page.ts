@@ -995,7 +995,6 @@ export class Event {
       targetName: target.targetName,
       linkId: link?.id ?? null,
       requiredInSubscriptionFlow: link?.requiredInSubscriptionFlow ?? false,
-      enforceRequiredAnswers: link?.enforceRequiredAnswers ?? true,
       initialAnswers: [],
       submitted: false,
       editable: true,

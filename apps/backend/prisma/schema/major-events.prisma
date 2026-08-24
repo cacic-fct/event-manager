@@ -191,6 +191,8 @@ model PriceTier {
   value                      Int
   includesSportsRegistration Boolean @default(false)
 
+  eventFormLinks EventFormLinkPriceTier[]
+
   @@index([priceId])
   @@map("price_tiers")
 }

@@ -20,11 +20,11 @@ export interface EventFormLink {
   targetType: EventFormTargetType;
   eventId?: string | null;
   majorEventId?: string | null;
+  priceTierIds: string[];
   target?: EventFormTargetSummary | null;
   audience: EventFormAudience;
   insertInSubscriptionFlow: boolean;
   requiredInSubscriptionFlow: boolean;
-  enforceRequiredAnswers: boolean;
   displayOrder: number;
   availableFrom?: string | null;
   availableUntil?: string | null;
@@ -108,12 +108,12 @@ interface EventFormLinkInputBase {
   audience?: EventFormAudience | null;
   insertInSubscriptionFlow?: boolean | null;
   requiredInSubscriptionFlow?: boolean | null;
-  enforceRequiredAnswers?: boolean | null;
   displayOrder?: number | null;
   availableFrom?: string | null;
   availableUntil?: string | null;
   notifyOnPublish?: boolean | null;
   allowLecturerManualPublish?: boolean | null;
+  priceTierIds?: string[] | null;
 }
 
 export type EventFormLinkInput =
