@@ -3,7 +3,7 @@
 </mat-toolbar>
 
 <main class="global-container">
-  <section>
+  <section class="menu-account-section">
     <div>
       @if (displayUser(); as user) {
         <mat-list>
@@ -30,7 +30,9 @@
             (keydown.space)="authService.login(); $event.preventDefault()">
             <mat-icon matListItemIcon class="avatar-placeholder">account_circle</mat-icon>
             <span matListItemTitle>Entrar</span>
-            <mat-icon matListItemMeta aria-hidden="true">login</mat-icon>
+            <span matListItemMeta>
+              <mat-icon aria-hidden="true">login</mat-icon>
+            </span>
           </mat-list-item>
         </mat-nav-list>
       }
@@ -39,50 +41,72 @@
   </section>
 
   <section>
-    @if (isProfileAvailable()) {
-      <mat-nav-list>
-        <h3 matSubheader>Perfil</h3>
+    <div
+      class="menu-section"
+      [class.menu-section-collapsed]="!isProfileAvailable()"
+      [attr.aria-hidden]="!isProfileAvailable()"
+      [attr.inert]="!isProfileAvailable() ? '' : null">
+      <div class="menu-section-content">
+        @if (isProfileAvailable()) {
+          <mat-nav-list>
+            <h3 matSubheader>Perfil</h3>
 
-        <a mat-list-item routerLink="/profile/wallet">
-          <mat-icon matListItemIcon>badge</mat-icon>
-          <span matListItemTitle>Carteira</span>
-          <!-- https://github.com/cacic-fct/event-manager/discussions/247 -->
-          <span matListItemLine>Crachá e QR Code</span>
-        </a>
+            <a mat-list-item routerLink="/profile/wallet">
+              <mat-icon matListItemIcon>badge</mat-icon>
+              <span matListItemTitle>Carteira</span>
+              <!-- https://github.com/cacic-fct/event-manager/discussions/247 -->
+              <span matListItemLine>Crachá e QR Code</span>
+            </a>
 
-        <a mat-list-item routerLink="/profile/attendances">
-          <mat-icon matListItemIcon>list</mat-icon>
-          <span matListItemTitle>Participações</span>
-          <span matListItemLine>Presenças e certificados</span>
-        </a>
+            <a mat-list-item routerLink="/profile/attendances">
+              <mat-icon matListItemIcon>list</mat-icon>
+              <span matListItemTitle>Participações</span>
+              <span matListItemLine>Presenças e certificados</span>
+            </a>
 
-        @if (hasSportsShortcut()) {
-          <a mat-list-item routerLink="/sports">
-            <mat-icon matListItemIcon>sports_score</mat-icon>
-            <span matListItemTitle>Minha próxima partida</span>
-            <span matListItemLine>Atleta, equipe e arbitragem</span>
-          </a>
+            <div class="menu-item-shell" [class.menu-item-shell-collapsed]="!hasSportsShortcut()">
+              @if (hasSportsShortcut()) {
+                <a mat-list-item routerLink="/sports">
+                  <mat-icon matListItemIcon>sports_score</mat-icon>
+                  <span matListItemTitle>Minha próxima partida</span>
+                  <span matListItemLine>Atleta, equipe e arbitragem</span>
+                </a>
+              }
+            </div>
+          </mat-nav-list>
         }
-      </mat-nav-list>
-    }
+      </div>
+    </div>
 
-    @if (hasCollaborationLinks()) {
-      <mat-nav-list>
-        <h3 matSubheader>Colaboração</h3>
-        @if (canCollectAttendances()) {
-          <a mat-list-item routerLink="/attendance/collect">
-            <mat-icon matListItemIcon>qr_code_scanner</mat-icon>
-            <span matListItemTitle>Coletar presenças</span>
-          </a>
+    <div
+      class="menu-section"
+      [class.menu-section-collapsed]="!hasCollaborationLinks()"
+      [attr.aria-hidden]="!hasCollaborationLinks()"
+      [attr.inert]="!hasCollaborationLinks() ? '' : null">
+      <div class="menu-section-content">
+        @if (hasCollaborationLinks()) {
+          <mat-nav-list>
+            <h3 matSubheader>Colaboração</h3>
+            <div class="menu-item-shell" [class.menu-item-shell-collapsed]="!canCollectAttendances()">
+              @if (canCollectAttendances()) {
+                <a mat-list-item routerLink="/attendance/collect">
+                  <mat-icon matListItemIcon>qr_code_scanner</mat-icon>
+                  <span matListItemTitle>Coletar presenças</span>
+                </a>
+              }
+            </div>
+            <div class="menu-item-shell" [class.menu-item-shell-collapsed]="!canAccessWorkspace()">
+              @if (canAccessWorkspace()) {
+                <a mat-list-item href="/admin">
+                  <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
+                  <span matListItemTitle>Painel administrativo</span>
+                </a>
+              }
+            </div>
+          </mat-nav-list>
         }
-        @if (canAccessWorkspace()) {
-          <a mat-list-item href="/admin">
-            <mat-icon matListItemIcon>admin_panel_settings</mat-icon>
-            <span matListItemTitle>Painel administrativo</span>
-          </a>
-        }
-      </mat-nav-list>
-    }
+      </div>
+    </div>
 
     <mat-nav-list>
       <h3 matSubheader>Utilitários</h3>

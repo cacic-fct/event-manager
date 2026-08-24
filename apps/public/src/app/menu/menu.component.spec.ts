@@ -92,6 +92,13 @@ describe('MenuComponent', () => {
     expect(fixture.nativeElement.querySelector('a[href="https://account.cacic.com.br/app/"]')).toBeNull();
   });
 
+  it('keeps the login icon inside the trailing metadata wrapper', () => {
+    const loginIcon = fixture.nativeElement.querySelector('[matListItemMeta] mat-icon');
+
+    expect(loginIcon?.textContent).toContain('login');
+    expect(loginIcon?.hasAttribute('matListItemMeta')).toBe(false);
+  });
+
   it('shows the map first in the Utilities list', () => {
     const utilityList = [...fixture.nativeElement.querySelectorAll('mat-nav-list')].find((list: Element) =>
       list.textContent?.includes('Utilitários'),
@@ -100,6 +107,16 @@ describe('MenuComponent', () => {
 
     expect(links?.[0]?.getAttribute('href')).toBe('/map');
     expect(links?.[0]?.textContent).toContain('Mapa');
+  });
+
+  it('keeps async menu sections mounted while collapsing unavailable content', () => {
+    const sections = fixture.nativeElement.querySelectorAll('.menu-section');
+
+    expect(sections).toHaveLength(2);
+    expect(sections[0].classList.contains('menu-section-collapsed')).toBe(true);
+    expect(sections[1].classList.contains('menu-section-collapsed')).toBe(true);
+    expect(sections[0].querySelector('mat-nav-list')).toBeNull();
+    expect(sections[1].querySelector('mat-nav-list')).toBeNull();
   });
 
   it('shows the admin panel link for users with workspace entry permissions', async () => {
@@ -126,6 +143,7 @@ describe('MenuComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Colaboração');
     expect(fixture.nativeElement.textContent).toContain('Painel administrativo');
+    expect(fixture.nativeElement.querySelector('.menu-section:not(.menu-section-collapsed)')).not.toBeNull();
     expect(adminLink).not.toBeNull();
   });
 

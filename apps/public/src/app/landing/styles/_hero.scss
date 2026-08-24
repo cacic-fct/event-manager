@@ -38,22 +38,24 @@
     @include mixins.container;
 
     display: grid;
-    grid-template-columns: 1.25fr 1.2fr;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.2fr);
     grid-template-areas: 'visual text';
     gap: 2rem;
     align-items: center;
     position: relative;
     width: 100%;
+    min-width: 0;
 
     .hero-visual {
       grid-area: visual;
+      min-width: 0;
     }
 
     .hero-text {
       grid-area: text;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 1000px) {
       grid-template-columns: 1fr;
       grid-template-areas: 'text';
 
@@ -69,9 +71,13 @@
     top: 10%;
     z-index: 2;
 
-    @media (max-width: 768px) {
-      font-size: 2.5rem;
+    @media (max-width: 1000px) {
+      left: 0;
+      right: 0;
+      max-width: 38rem;
+      margin: 0 auto;
       padding: 0 1rem;
+      text-align: center;
     }
 
     .hero-title {
@@ -80,7 +86,7 @@
       margin-bottom: 1rem;
       line-height: 1;
 
-      @media (max-width: 768px) {
+      @media (max-width: 1000px) {
         line-height: 3rem;
       }
 
@@ -103,7 +109,7 @@
         font-weight: 500;
       }
 
-      @media (max-width: 768px) {
+      @media (max-width: 1000px) {
         font-size: 1.2rem;
       }
     }
@@ -115,7 +121,7 @@
       opacity: 0.8;
       max-width: 500px;
 
-      @media (max-width: 768px) {
+      @media (max-width: 1000px) {
         font-size: 1rem;
       }
     }
@@ -127,7 +133,7 @@
     gap: 1rem;
     align-items: center;
 
-    @media (max-width: 768px) {
+    @media (max-width: 1000px) {
       flex-direction: column;
     }
 
@@ -225,7 +231,7 @@
       }
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 1000px) {
       position: absolute;
       left: 0;
       right: 0;

@@ -188,6 +188,15 @@ export const Mobile: Story = {
   },
 };
 
+export const Tablet: Story = {
+  parameters: { viewport: { defaultViewport: 'tablet' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('button', { name: 'Entrar com o Google' })).toBeVisible();
+    await expect(canvas.getByRole('link', { name: 'Explorar' })).toBeVisible();
+  },
+};
+
 function platformStatsHandler() {
   return http.post('/api/graphql', async ({ request }) => {
     const body = (await request.json()) as { query?: string };

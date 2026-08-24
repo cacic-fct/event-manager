@@ -26,3 +26,70 @@ lib-cacic-logo {
   aspect-ratio: 427.97 / 248.98;
   margin-top: 0.5rem;
 }
+
+.menu-section {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  overflow: hidden;
+  transition:
+    grid-template-rows 260ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 160ms ease,
+    visibility 0s linear;
+}
+
+.menu-section-content {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.menu-section-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    grid-template-rows 200ms ease,
+    opacity 140ms ease,
+    visibility 0s linear 200ms;
+}
+
+.menu-item-shell {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  overflow: hidden;
+  transition:
+    grid-template-rows 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 160ms ease,
+    visibility 0s linear;
+}
+
+.menu-item-shell-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    grid-template-rows 180ms ease,
+    opacity 140ms ease,
+    visibility 0s linear 180ms;
+}
+
+.menu-item-shell-collapsed > a {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.menu-item-shell > a {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-section,
+  .menu-section-collapsed,
+  .menu-item-shell,
+  .menu-item-shell-collapsed {
+    transition-duration: 1ms;
+  }
+}
