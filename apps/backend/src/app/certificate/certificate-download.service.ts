@@ -106,7 +106,10 @@ export class CertificateDownloadService {
       certificate.id,
     );
     const renderedHtml = this.renderTemplate(
-      this.inlineCss(certificate.certificateTemplate.htmlTemplate, certificate.certificateTemplate.cssTemplate ?? undefined),
+      this.inlineCss(
+        certificate.certificateTemplate.htmlTemplate,
+        certificate.certificateTemplate.cssTemplate ?? undefined,
+      ),
       templateVariables,
     );
     const pdf = await this.renderPdf(renderedHtml, browser);
@@ -185,7 +188,7 @@ export class CertificateDownloadService {
 
   private buildVerificationUrl(certificateId: string): string {
     const configuredOrigin = process.env.PUBLIC_APP_ORIGIN?.trim() || 'http://localhost:4200';
-    return new URL(`/app/validate/${encodeURIComponent(certificateId)}`, new URL(configuredOrigin).origin).toString();
+    return new URL(`/validar/${encodeURIComponent(certificateId)}`, new URL(configuredOrigin).origin).toString();
   }
 
   private async buildTemplateVariables(
@@ -215,8 +218,10 @@ export class CertificateDownloadService {
       variables[key] = this.stringifyJsonValue(value);
     }
 
+    const displayedVerificationUrl = verificationUrl.replace(/^https?:\/\//, '');
     variables.certificateID = certificateId;
     variables.verificationUrl = verificationUrl;
+    variables.verificationUrlText = displayedVerificationUrl;
     variables.qrcode = verificationUrl;
     variables.url = verificationUrl;
 

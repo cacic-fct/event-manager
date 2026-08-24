@@ -36,6 +36,8 @@ describe('certificate rendered data', () => {
       issue_month: 'agosto',
       issue_year: '2026',
       date: '19 de agosto de 2026',
+      verificationUrl: '/validar/{certificateID}',
+      verificationUrlText: '/validar/{certificateID}',
     });
   });
 });

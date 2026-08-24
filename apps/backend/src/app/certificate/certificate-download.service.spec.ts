@@ -130,7 +130,7 @@ describe('CertificateDownloadService', () => {
     });
     expect(toBuffer).toHaveBeenCalledWith({
       bcid: 'qrcode',
-      text: 'https://eventos.example.test/app/validate/certificate-1',
+      text: 'https://eventos.example.test/validar/certificate-1',
       scale: 3,
       includetext: false,
     });
@@ -181,7 +181,8 @@ describe('CertificateDownloadService', () => {
             name: '!!!',
           },
           certificateTemplate: {
-            htmlTemplate: '<html><body>{{ verificationUrl }} {{ missing }}</body></html>',
+            htmlTemplate:
+              '<html><body><a href="{{ verificationUrl }}">{{ verificationUrlText }}</a> {{ missing }}</body></html>',
             cssTemplate: null,
           },
         }),
@@ -212,10 +213,10 @@ describe('CertificateDownloadService', () => {
       }),
     );
     expect(toBuffer).toHaveBeenCalledWith(
-      expect.objectContaining({ text: 'https://eventos.example.test/app/validate/certificate-2' }),
+      expect.objectContaining({ text: 'https://eventos.example.test/validar/certificate-2' }),
     );
     expect(setContent).toHaveBeenCalledWith(
-      '<html><body>https://eventos.example.test/app/validate/certificate-2 </body></html>',
+      '<html><body><a href="https://eventos.example.test/validar/certificate-2">eventos.example.test/validar/certificate-2</a> </body></html>',
       { waitUntil: 'networkidle' },
     );
     expect(close).toHaveBeenCalledTimes(1);

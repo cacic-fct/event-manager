@@ -96,7 +96,7 @@ function buildExampleTemplateData(
   const issueDay = formatIssueDate(issuedAt, '2-digit');
   const issueMonth = formatIssueDate(issuedAt, 'long');
   const issueYear = formatIssueDate(issuedAt, 'numeric');
-  const verificationUrl = '/app/validate/{certificateID}';
+  const verificationUrl = '/validar/{certificateID}';
   const formattedDocument = formatIdentityDocument(recipient.person.identityDocument);
   const sortedEvents = sortEvents(recipient.events);
   const minicursos = sortedEvents.filter((event) => event.type === EventType.MINICURSO);
@@ -113,15 +113,13 @@ function buildExampleTemplateData(
     ...contentSectionLines(sections.minicursos),
     ...contentSectionLines(sections.palestras),
     ...contentSectionLines(sections.other),
-    'Observações:',
-    'Datas em formato "dia/mês/ano".',
+    'Observações:\nDatas em formato "dia/mês/ano".',
   ];
   const secondPageEventContent = [
     sections.minicursos.text,
     sections.palestras.text,
     sections.other.text,
-    'Observações:',
-    'Datas em formato "dia/mês/ano".',
+    'Observações:\nDatas em formato "dia/mês/ano".',
   ]
     .filter((line) => line.trim().length > 0)
     .join('\n\n');
@@ -151,6 +149,8 @@ function buildExampleTemplateData(
     event_name: targetName,
     'majorEvent or event name': targetName,
     additional_text: config.certificateText ?? '',
+    verificationUrl,
+    verificationUrlText: verificationUrl,
     qrcode: verificationUrl,
     url: verificationUrl,
     identity_document: formattedDocument,
