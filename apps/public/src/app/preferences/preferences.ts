@@ -38,6 +38,9 @@ import { AuthService, ServiceWorkerService } from '@cacic-fct/shared-angular';
           <a mat-list-item href="https://account.cacic.com.br/app/">
             <mat-icon matListItemIcon>person_edit</mat-icon>
             <span matListItemTitle>Editar informações da conta</span>
+            <div matListItemMeta>
+              <mat-icon>arrow_outward</mat-icon>
+            </div>
           </a>
 
           <mat-list-item
