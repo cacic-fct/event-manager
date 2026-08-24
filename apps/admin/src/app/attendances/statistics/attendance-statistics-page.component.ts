@@ -72,6 +72,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eventId = this.route.snapshot.paramMap.get('eventId') ?? '';
   private streamSubscription?: Subscription;
+  private readonly liveUpdateGeneration = signal(0);
   private readonly charts = new Map<ChartName, ECharts>();
   private readonly observers = new Map<ChartName, { element: HTMLElement; observer: ResizeObserver }>();
   private stopObservingTheme?: () => void;
@@ -94,6 +95,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
   constructor() {
     effect((onCleanup) => {
       const selectedTimeWindow = this.selectedTimeWindow();
+      this.liveUpdateGeneration();
       this.loading.set(true);
       this.connectionError.set(null);
       this.streamSubscription?.unsubscribe();
@@ -105,6 +107,10 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
           this.scheduleChartRender();
         },
         error: (error: unknown) => {
+          if (!this.snapshot()) {
+            void this.reload();
+            return;
+          }
           this.connectionError.set(error instanceof Error ? error.message : 'A atualização ao vivo foi interrompida.');
           this.loading.set(false);
         },
@@ -141,6 +147,7 @@ export class AttendanceStatisticsPageComponent implements AfterViewInit, OnDestr
           this.api.getEventAttendanceAnalytics(this.eventId, this.selectedTimeWindow()),
         ),
       );
+      this.liveUpdateGeneration.update((generation) => generation + 1);
       this.scheduleChartRender();
     } catch (error: unknown) {
       this.connectionError.set(error instanceof Error ? error.message : 'Não foi possível atualizar as estatísticas.');

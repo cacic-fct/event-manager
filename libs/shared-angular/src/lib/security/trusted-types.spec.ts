@@ -154,6 +154,23 @@ describe('CacicTrustedTypesService', () => {
     expect(createPolicy.mock.calls[1][1]).not.toHaveProperty('createScript');
   });
 
+  it('allows libraries to clear a DOM host without accepting HTML', () => {
+    const createPolicy = vi.fn((_name: string, rules: {
+      createHTML: (value: string) => string;
+      createScriptURL: (value: string) => string;
+    }) => rules);
+    vi.stubGlobal('trustedTypes', { createPolicy });
+
+    const service = createService('browser');
+    service.initialize();
+    const rules = createPolicy.mock.calls[1]?.[1] as { createHTML: (value: string) => string };
+
+    expect(rules.createHTML('')).toBe('');
+    expect(() => rules.createHTML('<img src=x onerror=alert(1)>')).toThrow(
+      'Only empty HTML is approved',
+    );
+  });
+
   it('allows only approved script URLs and same-origin worker blobs', () => {
     const createPolicy = vi.fn((_name: string, rules: { createScriptURL: (value: string) => string }) => rules);
     vi.stubGlobal('trustedTypes', { createPolicy });

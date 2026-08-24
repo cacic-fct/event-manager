@@ -117,6 +117,23 @@ describe('AttendanceStatisticsPageComponent flow', () => {
     expect(component.loading()).toBe(false);
   });
 
+  it('recovers the initial analytics snapshot through HTTP and reopens live updates when SSE closes', async () => {
+    api.watchEventAttendanceAnalytics
+      .mockReturnValueOnce(throwError(() => new Error('Fluxo em tempo real indisponível')))
+      .mockReturnValue(stream.asObservable());
+
+    const fixture = TestBed.createComponent(AttendanceStatisticsPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(api.getEventAttendanceAnalytics).toHaveBeenCalledWith(snapshot.eventId, null);
+    expect(api.watchEventAttendanceAnalytics).toHaveBeenCalledTimes(2);
+    expect(fixture.componentInstance.snapshot()).toEqual(snapshot);
+    expect(fixture.componentInstance.connectionError()).toBeNull();
+  });
+
   it('does not mutate review state when the item delegates to a dedicated deep link', async () => {
     const component = TestBed.createComponent(AttendanceStatisticsPageComponent).componentInstance;
     const fixtureItem = snapshot.reviewItems[0];

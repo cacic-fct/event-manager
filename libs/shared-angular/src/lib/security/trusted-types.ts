@@ -21,6 +21,7 @@ type TrustedTypesPolicyFactory = {
   createPolicy: (
     name: string,
     rules: {
+      createHTML?: (value: string) => string;
       createScriptURL: (value: string) => string;
     },
   ) => {
@@ -29,6 +30,14 @@ type TrustedTypesPolicyFactory = {
 };
 
 let externalScriptPolicy: ReturnType<TrustedTypesPolicyFactory['createPolicy']> | null = null;
+
+function assertTrustedEmptyHtml(value: string): string {
+  if (value !== '') {
+    throw new Error('Only empty HTML is approved by the Trusted Types policy.');
+  }
+
+  return value;
+}
 
 /**
  * Validates the exact external scripts approved by the frontend CSP.
@@ -139,6 +148,10 @@ export class CacicTrustedTypesService {
 
     try {
       trustedTypes.createPolicy(DEFAULT_POLICY_NAME, {
+        // zrender's canvas renderer clears its chart host with
+        // `element.innerHTML = ''`. Accepting only that exact value preserves
+        // the strict DOM-XSS boundary for every non-empty HTML assignment.
+        createHTML: assertTrustedEmptyHtml,
         createScriptURL: createTrustedScriptUrl,
       });
     } catch (error: unknown) {
