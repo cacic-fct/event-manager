@@ -240,7 +240,7 @@ describe('SubscriptionsService', () => {
     service.setSelectedEvent('event-1', true);
     service.majorEventEditForm.patchValue({
       subscriptionStatus: 'CONFIRMED',
-      amountPaid: 120,
+      amountPaid: 1.2,
       paymentDate: adminFixtureDateFromNow(2).slice(0, 10),
       paymentTier: 'Aluno',
       imageLicenseAgreementAccepted: true,
@@ -271,6 +271,56 @@ describe('SubscriptionsService', () => {
 
     service.cancelMajorEventSubscriptionEdit();
     expect(service.editMode()).toBe(false);
+  });
+
+  it('converts stored cents to reais in the editor and back to cents when saving', async () => {
+    const storedSubscription = createAdminWorkspaceMajorEventSubscription({ amountPaid: 4_000 });
+
+    service.selectMajorEventSubscription(storedSubscription, false);
+
+    expect(service.majorEventEditForm.controls.amountPaid.value).toBe(40);
+
+    service.enableMajorEventEdit();
+    service.majorEventEditForm.controls.amountPaid.setValue(40.5);
+    await service.saveMajorEventSubscription();
+
+    expect(api.updateMajorEventSubscription).toHaveBeenCalledWith(
+      storedSubscription.id,
+      expect.objectContaining({ amountPaid: 4_050 }),
+    );
+  });
+
+  it('keeps all selected-subscription edits in a draft until the pencil enables saving', async () => {
+    service.selectMajorEventSubscription(majorSubscription, false);
+
+    expect(service.majorEventEditForm.disabled).toBe(true);
+    expect(service.editMode()).toBe(false);
+
+    service.toggleSelectedEvent('event-2');
+    service.setSelectedEvent('event-2', true);
+    service.selectMajorEventPerson(person);
+    service.majorEventEditForm.controls.imageLicenseAgreementAccepted.setValue(true);
+    await service.saveMajorEventSubscription();
+
+    expect(service.selectedEventIds()).toEqual(new Set(['event-1']));
+    expect(service.selectedMajorEventPerson()).toBeNull();
+    expect(api.updateMajorEventSubscription).not.toHaveBeenCalled();
+
+    service.majorEventEditForm.controls.imageLicenseAgreementAccepted.setValue(false);
+    service.enableMajorEventEdit();
+    expect(service.majorEventEditForm.enabled).toBe(true);
+
+    service.setSelectedEvent('event-2', true);
+    service.majorEventEditForm.controls.imageLicenseAgreementAccepted.setValue(true);
+    await service.saveMajorEventSubscription();
+
+    expect(api.updateMajorEventSubscription).toHaveBeenCalledWith(
+      majorSubscription.id,
+      expect.objectContaining({
+        imageLicenseAgreementAccepted: true,
+        selectedEventIds: expect.arrayContaining(['event-1', 'event-2']),
+      }),
+    );
   });
 
   it('reports missing-person major subscription validation and clears selection safely', async () => {

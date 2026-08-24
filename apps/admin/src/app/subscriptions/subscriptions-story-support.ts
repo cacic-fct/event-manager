@@ -175,6 +175,22 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
   const majorEventSearchQuery = signal('');
   majorEventSearchForm.controls.query.valueChanges.subscribe((query) => majorEventSearchQuery.set(query));
   const editMode = signal(false);
+  const majorEventEditForm = new FormGroup({
+    subscriptionStatus: new FormControl<SubscriptionStatus>('CONFIRMED', { nonNullable: true }),
+    amountPaid: new FormControl<number | null>(1.2),
+    paymentDate: new FormControl<string | null>('2026-05-19'),
+    paymentTier: new FormControl<string | null>('Estudante'),
+    imageLicenseAgreementAccepted: new FormControl(false, { nonNullable: true }),
+  });
+  const setMajorEventEditMode = (enabled: boolean) => {
+    editMode.set(enabled);
+    if (enabled) {
+      majorEventEditForm.enable({ emitEvent: false });
+      return;
+    }
+    majorEventEditForm.disable({ emitEvent: false });
+  };
+  setMajorEventEditMode(false);
 
   const service = {
     majorEvents,
@@ -221,12 +237,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       identifierType: new FormControl('email', { nonNullable: true }),
       identifier: new FormControl('', { nonNullable: true }),
     }),
-    majorEventEditForm: new FormGroup({
-      subscriptionStatus: new FormControl<SubscriptionStatus>('CONFIRMED', { nonNullable: true }),
-      amountPaid: new FormControl<number | null>(120),
-      paymentDate: new FormControl<string | null>('2026-05-19'),
-      paymentTier: new FormControl<string | null>('Estudante'),
-    }),
+    majorEventEditForm,
     majorEventSubscriptions,
     majorEventSubscriptionsPagination: createStoryPagination(majorEventSubscriptions().length),
     majorEventEvents,
@@ -256,7 +267,7 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       majorEventForm.controls.majorEventId.setValue(majorEventId);
       selectedMajorEventIdSignal.set(majorEventId);
       selectedMajorEventSubscription.set(null);
-      editMode.set(false);
+      setMajorEventEditMode(false);
       return Promise.resolve();
     },
     loadMajorEventSubscriptions: () => Promise.resolve(),
@@ -266,7 +277,14 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     selectMajorEventSubscriptionById: (_majorEventId: string, subscriptionId: string): Promise<void> => {
       const subscription = majorEventSubscriptions().find((item) => item.id === subscriptionId) ?? null;
       selectedMajorEventSubscription.set(subscription);
-      editMode.set(false);
+      setMajorEventEditMode(false);
+      majorEventEditForm.patchValue({
+        subscriptionStatus: subscription?.subscriptionStatus ?? 'CONFIRMED',
+        amountPaid: subscription?.amountPaid == null ? null : subscription.amountPaid / 100,
+        paymentDate: subscription?.paymentDate?.slice(0, 10) ?? null,
+        paymentTier: subscription?.paymentTier ?? null,
+        imageLicenseAgreementAccepted: Boolean(subscription?.imageLicenseAgreementAccepted),
+      });
       selectedEventIds.set(
         new Set(subscription?.events.filter((event) => event.subscribed).map((event) => event.eventId) ?? []),
       );
@@ -274,27 +292,44 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
     },
     closeMajorEventSubscriptionDetail: () => {
       selectedMajorEventSubscription.set(null);
-      editMode.set(false);
+      setMajorEventEditMode(false);
     },
     exportMajorEventSubscriptionsCsv: () => Promise.resolve(),
     startNewMajorEventSubscription: () => {
       selectedMajorEventSubscription.set(null);
-      editMode.set(true);
+      setMajorEventEditMode(true);
+      majorEventEditForm.reset({
+        subscriptionStatus: 'CONFIRMED',
+        amountPaid: null,
+        paymentDate: null,
+        paymentTier: null,
+        imageLicenseAgreementAccepted: false,
+      });
     },
     importMajorEventSubscriptionsFromCsv: () => Promise.resolve(),
     selectMajorEventSubscription: (subscription: WorkspaceMajorEventSubscription | null) => {
       selectedMajorEventSubscription.set(subscription);
-      editMode.set(false);
+      setMajorEventEditMode(false);
+      majorEventEditForm.patchValue({
+        subscriptionStatus: subscription?.subscriptionStatus ?? 'CONFIRMED',
+        amountPaid: subscription?.amountPaid == null ? null : subscription.amountPaid / 100,
+        paymentDate: subscription?.paymentDate?.slice(0, 10) ?? null,
+        paymentTier: subscription?.paymentTier ?? null,
+        imageLicenseAgreementAccepted: Boolean(subscription?.imageLicenseAgreementAccepted),
+      });
       selectedEventIds.set(
         new Set(subscription?.events.filter((event) => event.subscribed).map((event) => event.eventId) ?? []),
       );
     },
-    enableMajorEventEdit: () => editMode.set(true),
-    cancelMajorEventSubscriptionEdit: () => editMode.set(false),
+    enableMajorEventEdit: () => setMajorEventEditMode(true),
+    cancelMajorEventSubscriptionEdit: () => setMajorEventEditMode(false),
     saveMajorEventSubscription: () => Promise.resolve(),
     findMajorEventPerson: () => Promise.resolve(),
     selectMajorEventPerson: () => undefined,
     toggleSelectedEvent: (eventId: string) => {
+      if (!editMode()) {
+        return;
+      }
       const next = new Set(selectedEventIds());
       if (next.has(eventId)) {
         next.delete(eventId);
@@ -304,6 +339,9 @@ function createWorkspaceSubscriptionsStoryService(options: StoryWorkspaceOptions
       selectedEventIds.set(next);
     },
     setSelectedEvent: (eventId: string, selected: boolean) => {
+      if (!editMode()) {
+        return;
+      }
       const next = new Set(selectedEventIds());
       if (selected) {
         next.add(eventId);

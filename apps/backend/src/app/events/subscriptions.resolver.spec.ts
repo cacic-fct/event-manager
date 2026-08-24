@@ -221,7 +221,7 @@ describe('EventSubscriptionsResolver', () => {
     });
   });
 
-  it('attaches event selection and lecturer state to major-event subscriptions', async () => {
+  it('attaches event selection and lecturer state to major-event subscriptions, including closed events', async () => {
     const createdAt = new Date('2026-06-22T12:00:00.000Z');
     const subscription = {
       id: 'major-subscription-1',
@@ -267,9 +267,7 @@ describe('EventSubscriptionsResolver', () => {
         findMany: jest.fn().mockResolvedValue([
           {
             eventId: 'event-1',
-            subscription: {
-              personId: 'person-1',
-            },
+            subscriptionId: 'major-subscription-1',
           },
         ]),
       },
@@ -312,14 +310,13 @@ describe('EventSubscriptionsResolver', () => {
           eventId: {
             in: ['event-1', 'event-2'],
           },
-          subscription: expect.objectContaining({
-            personId: {
-              in: ['person-1'],
-            },
-            majorEventId: 'major-1',
-            deletedAt: null,
-          }),
+          subscriptionId: { in: ['major-subscription-1'] },
         }),
+      }),
+    );
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({ allowSubscription: true }),
       }),
     );
   });
@@ -614,8 +611,8 @@ describe('EventSubscriptionsResolver', () => {
       majorEventSubscriptionEventSelection: {
         createMany: jest.fn().mockResolvedValue({ count: 2 }),
         findMany: jest.fn().mockResolvedValue([
-          { eventId: 'event-1', subscription: { personId: 'person-1' } },
-          { eventId: 'event-2', subscription: { personId: 'person-1' } },
+          { eventId: 'event-1', subscriptionId: 'major-subscription-1' },
+          { eventId: 'event-2', subscriptionId: 'major-subscription-1' },
         ]),
       },
       event: {
@@ -697,6 +694,11 @@ describe('EventSubscriptionsResolver', () => {
           majorEventId: 'major-1',
           deletedAt: null,
         }),
+      }),
+    );
+    expect(prisma.event.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.not.objectContaining({ allowSubscription: true }),
       }),
     );
     expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
@@ -785,11 +787,11 @@ describe('EventSubscriptionsResolver', () => {
       majorEventSubscriptionEventSelection: {
         findMany: jest
           .fn()
-          .mockResolvedValueOnce([{ eventId: 'event-1', subscription: { personId: 'person-1' } }])
+          .mockResolvedValueOnce([{ eventId: 'event-1', subscriptionId: 'major-subscription-1' }])
           .mockResolvedValueOnce([{ eventId: 'event-1' }, { eventId: 'event-2' }])
           .mockResolvedValueOnce([
-            { eventId: 'event-2', subscription: { personId: 'person-1' } },
-            { eventId: 'event-3', subscription: { personId: 'person-1' } },
+            { eventId: 'event-2', subscriptionId: 'major-subscription-1' },
+            { eventId: 'event-3', subscriptionId: 'major-subscription-1' },
           ]),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         createMany: jest.fn().mockResolvedValue({ count: 1 }),

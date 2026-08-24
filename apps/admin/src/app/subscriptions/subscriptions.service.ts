@@ -169,6 +169,7 @@ export class SubscriptionsService {
   readonly isImportingCsv = signal(false);
 
   constructor() {
+    this.setMajorEventEditMode(false);
     this.majorEventForm.controls.majorEventId.valueChanges
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((majorEventId) => this.selectedMajorEventId.set(majorEventId));
@@ -298,7 +299,7 @@ export class SubscriptionsService {
     if (!majorEventId) {
       this.majorEventSubscriptions.set([]);
       this.majorEventEvents.set([]);
-      this.selectedMajorEventSubscription.set(null);
+      this.selectMajorEventSubscription(null, false);
       this.majorEventSportsWorkspace.set(null);
       this.sportsAssignedTeams.set({});
       this.sportsParticipantTeams.set({});
@@ -456,7 +457,7 @@ export class SubscriptionsService {
   selectMajorEventSubscription(subscription: WorkspaceMajorEventSubscription | null, navigate = true): void {
     this.selectedMajorEventSubscription.set(subscription);
     this.selectedMajorEventPerson.set(null);
-    this.editMode.set(false);
+    this.setMajorEventEditMode(false);
     if (!subscription) {
       this.selectedEventIds.set(new Set());
       return;
@@ -471,7 +472,7 @@ export class SubscriptionsService {
     }
     this.majorEventEditForm.reset({
       subscriptionStatus: subscription.subscriptionStatus,
-      amountPaid: subscription.amountPaid ?? null,
+      amountPaid: this.fromCentsToCurrencyInput(subscription.amountPaid),
       paymentDate: subscription.paymentDate?.slice(0, 10) ?? null,
       paymentTier: subscription.paymentTier ?? null,
       imageLicenseAgreementAccepted: Boolean(subscription.imageLicenseAgreementAccepted),
@@ -492,7 +493,7 @@ export class SubscriptionsService {
     this.selectedMajorEventSubscription.set(null);
     this.selectedMajorEventPerson.set(null);
     this.majorEventPersonMatches.set([]);
-    this.editMode.set(true);
+    this.setMajorEventEditMode(true);
     this.majorEventEditForm.reset({
       subscriptionStatus: DEFAULT_SUBSCRIPTION_STATUS,
       amountPaid: null,
@@ -508,7 +509,10 @@ export class SubscriptionsService {
   );
 
   enableMajorEventEdit(): void {
-    this.editMode.set(true);
+    if (!this.selectedMajorEventSubscription()) {
+      return;
+    }
+    this.setMajorEventEditMode(true);
   }
 
   cancelMajorEventSubscriptionEdit(): void {
@@ -516,6 +520,9 @@ export class SubscriptionsService {
   }
 
   toggleSelectedEvent(eventId: string): void {
+    if (!this.editMode()) {
+      return;
+    }
     const selectedEventIds = new Set(this.selectedEventIds());
     if (selectedEventIds.has(eventId)) {
       selectedEventIds.delete(eventId);
@@ -549,17 +556,23 @@ export class SubscriptionsService {
   }
 
   selectMajorEventPerson(person: Person): void {
+    if (!this.editMode()) {
+      return;
+    }
     this.selectedMajorEventPerson.set(person);
     this.majorEventPersonMatches.set([]);
   }
 
   async saveMajorEventSubscription(): Promise<void> {
+    if (!this.editMode()) {
+      return;
+    }
     const selected = this.selectedMajorEventSubscription();
     const selectedEventIds = [...this.selectedEventIds()];
     const formValue = this.majorEventEditForm.getRawValue();
     const input = {
       subscriptionStatus: formValue.subscriptionStatus,
-      amountPaid: formValue.amountPaid,
+      amountPaid: this.toCents(formValue.amountPaid),
       paymentDate: formValue.paymentDate,
       paymentTier: formValue.paymentTier,
       imageLicenseAgreementAccepted: formValue.imageLicenseAgreementAccepted,
@@ -601,6 +614,23 @@ export class SubscriptionsService {
         ...input,
       }),
     );
+  }
+
+  private toCents(value: number | null): number | null {
+    return value === null || !Number.isFinite(value) ? null : Math.round(value * 100);
+  }
+
+  private fromCentsToCurrencyInput(value: number | null | undefined): number | null {
+    return value === null || value === undefined ? null : value / 100;
+  }
+
+  private setMajorEventEditMode(enabled: boolean): void {
+    this.editMode.set(enabled);
+    if (enabled) {
+      this.majorEventEditForm.enable({ emitEvent: false });
+      return;
+    }
+    this.majorEventEditForm.disable({ emitEvent: false });
   }
 
   private replaceMajorEventSubscription(subscription: WorkspaceMajorEventSubscription): void {

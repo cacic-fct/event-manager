@@ -109,6 +109,7 @@ export const SubscriberDetail: Story = {
     await waitFor(() => expect(canvas.getByRole('button', { name: /voltar para lista de inscrições/i })).toBeVisible());
     await userEvent.click(await canvas.findByText('Grace Hopper'));
     await waitFor(() => expect(canvas.getByRole('heading', { name: 'Grace Hopper' })).toBeVisible());
+    await expect(canvas.getByDisplayValue(/R\$\s*1,20/)).toBeVisible();
   },
 };
 

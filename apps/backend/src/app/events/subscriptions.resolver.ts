@@ -697,7 +697,6 @@ export class EventSubscriptionsResolver {
       where: {
         majorEventId,
         deletedAt: null,
-        allowSubscription: true,
         sportsMatch: { is: null },
       },
       select: {
@@ -715,16 +714,12 @@ export class EventSubscriptionsResolver {
       },
     });
     const eventIds = events.map((event) => event.id);
-    const personIds = subscriptions.map((subscription) => subscription.personId);
+    const subscriptionIds = subscriptions.map((subscription) => subscription.id);
     const eventSelections = await prisma.majorEventSubscriptionEventSelection.findMany({
       where: {
         deletedAt: null,
-        subscription: {
-          personId: {
-            in: personIds,
-          },
-          majorEventId,
-          deletedAt: null,
+        subscriptionId: {
+          in: subscriptionIds,
         },
         eventId: {
           in: eventIds,
@@ -732,15 +727,11 @@ export class EventSubscriptionsResolver {
       },
       select: {
         eventId: true,
-        subscription: {
-          select: {
-            personId: true,
-          },
-        },
+        subscriptionId: true,
       },
     });
     const subscribedKeys = new Set(
-      eventSelections.map((selection) => `${selection.subscription.personId}:${selection.eventId}`),
+      eventSelections.map((selection) => `${selection.subscriptionId}:${selection.eventId}`),
     );
 
     return subscriptions.map((subscription) => ({
@@ -749,7 +740,7 @@ export class EventSubscriptionsResolver {
         eventId: event.id,
         eventName: event.name,
         eventStartDate: event.startDate,
-        subscribed: subscribedKeys.has(`${subscription.personId}:${event.id}`),
+        subscribed: subscribedKeys.has(`${subscription.id}:${event.id}`),
         isLecturerSubscription: event.lecturers.some((lecturer) => lecturer.personId === subscription.personId),
       })),
     }));
@@ -885,7 +876,6 @@ export class EventSubscriptionsResolver {
         },
         majorEventId,
         deletedAt: null,
-        allowSubscription: true,
         sportsMatch: { is: null },
       },
       select: {
