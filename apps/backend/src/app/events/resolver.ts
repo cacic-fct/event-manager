@@ -792,6 +792,11 @@ export class EventsResolver {
     input: Pick<EventCreateInput, 'majorEventId' | 'eventGroupId'>,
     user: AuthenticatedUser | undefined,
   ): Promise<void> {
+    if (!input.majorEventId && !input.eventGroupId) {
+      await this.authorizationPolicy.assertPermissions(user, [Permission.Event.Create], {});
+      return;
+    }
+
     await this.assertEventRelationPermissions(Permission.Event.Create, user, {
       majorEventId: input.majorEventId,
       eventGroupId: input.eventGroupId,

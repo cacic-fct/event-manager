@@ -579,4 +579,41 @@ describe('EventsResolver', () => {
       tx,
     );
   });
+
+  it('requires global create permission when cloning a standalone event', async () => {
+    const prisma = {
+      event: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'event-source',
+          name: 'Evento independente',
+          majorEventId: null,
+          eventGroupId: null,
+          lecturers: [],
+        }),
+      },
+      $transaction: jest.fn(),
+    };
+    const authorizationPolicy = {
+      assertPermissions: jest.fn().mockRejectedValue(new Error('Missing Event.Create permission')),
+    };
+    const frozenResources = {
+      assertEventCreateTargetsMutable: jest.fn(),
+    };
+    const resolver = new EventsResolver(
+      prisma as never,
+      {} as never,
+      {} as never,
+      frozenResources as never,
+      authorizationPolicy as never,
+    );
+    const user = { sub: 'event-reader' };
+
+    await expect(resolver.cloneEvent('event-source', null, { req: { user } } as never)).rejects.toThrow(
+      'Missing Event.Create permission',
+    );
+
+    expect(authorizationPolicy.assertPermissions).toHaveBeenCalledWith(user, [Permission.Event.Create], {});
+    expect(frozenResources.assertEventCreateTargetsMutable).not.toHaveBeenCalled();
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
 });
