@@ -12,7 +12,7 @@ mat-toolbar {
 .subscription-page {
   margin: 0 auto;
   max-width: 980px;
-  padding: 24px 16px 128px;
+  padding: 24px 16px;
 }
 
 .page-header {
@@ -98,11 +98,20 @@ mat-chip-set {
   margin: 20px 0 0;
 }
 
-.subscribe-fab {
-  bottom: 24px;
-  position: fixed;
-  right: max(24px, calc((100vw - 980px) / 2 + 24px));
-  z-index: 3;
+.selection-actions {
+  border-top: 1px solid var(--mat-sys-outline-variant);
+  gap: 12px;
+  margin: 24px calc(50% - 50vw) -24px;
+  padding-inline: max(16px, calc((100vw - 980px) / 2 + 16px));
+}
+
+.selection-summary {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-large);
+}
+
+.action-spacer {
+  flex: 1 1 auto;
 }
 
 .empty-section {
@@ -115,9 +124,13 @@ mat-chip-set {
   text-align: center;
 }
 
+.empty-section.compact {
+  min-height: 180px;
+}
+
 @media (max-width: 640px) {
   .subscription-page {
-    padding: 16px 8px 128px;
+    padding: 16px 8px;
   }
 
   .page-header {
@@ -128,8 +141,13 @@ mat-chip-set {
     font: var(--mat-sys-title-large);
   }
 
-  .subscribe-fab {
-    bottom: 88px;
-    right: 16px;
+  .selection-actions {
+    margin-bottom: -16px;
+    min-height: 72px;
+    padding-inline: 8px;
+  }
+
+  .selection-summary {
+    font: var(--mat-sys-label-medium);
   }
 }

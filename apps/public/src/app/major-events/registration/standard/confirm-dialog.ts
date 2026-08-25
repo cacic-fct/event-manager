@@ -6,7 +6,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
 import type {
-  EventFormTargetType,
   PublicEvent,
   PublicEventForm,
   PublicMajorEvent,
@@ -22,26 +21,15 @@ import { compareIsoDateAsc } from '@cacic-fct/shared-utils';
 import { type FormElement, type FormResponseAnswer } from '@cacic-fct/form-contracts';
 import { isSameDay, isSameMonth, parseISO } from 'date-fns';
 import { EmojiService } from '../../../shared/emoji.service';
+import {
+  subscriptionFormKey,
+  toSubscriptionFormAnswers,
+  type SubscriptionFlowDraft,
+  type SubscriptionFormAnswer,
+  type SubscriptionFormContext,
+} from './subscription-flow.models';
 
-export interface SubscriptionFormContext {
-  form: PublicEventForm;
-  targetType: EventFormTargetType;
-  targetId: string;
-  targetName: string;
-  linkId: string | null;
-  requiredInSubscriptionFlow: boolean;
-  initialAnswers: FormResponseAnswer[];
-  submitted: boolean;
-  editable: boolean;
-}
-
-export interface SubscriptionFormAnswer {
-  formId: string;
-  linkId: string | null;
-  targetType: EventFormTargetType;
-  targetId: string;
-  answers: FormResponseAnswer[];
-}
+export type { SubscriptionFormAnswer, SubscriptionFormContext } from './subscription-flow.models';
 
 export interface ConfirmSubscriptionDialogResult {
   confirmed: boolean;
@@ -106,24 +94,14 @@ export class ConfirmSubscriptionDialog {
   readonly subscriptionTarget = computed(() => this.data.majorEvent ?? this.data.event ?? this.data.events[0]);
 
   confirm(): void {
-    const answers = this.data.forms
-      .map((form) => ({
-        form,
-        answers: this.answersByKey()[this.formKey(form)] ?? [],
-      }))
-      .filter(({ form, answers }) => form.requiredInSubscriptionFlow || answers.length > 0)
-      .filter(({ form }) => !form.submitted || form.editable)
-      .map(({ form, answers }) => ({
-        formId: form.form.id,
-        linkId: form.linkId,
-        targetType: form.targetType,
-        targetId: form.targetId,
-        answers,
-      }));
+    const draft: SubscriptionFlowDraft = {
+      answersByKey: this.answersByKey(),
+      imageLicenseAgreementAccepted: this.imageLicenseAgreementAccepted(),
+    };
 
     this.dialogRef.close({
       confirmed: true,
-      answers,
+      answers: toSubscriptionFormAnswers(this.data.forms, draft),
       imageLicenseAgreementAccepted: this.imageLicenseAgreementAccepted(),
     } satisfies ConfirmSubscriptionDialogResult);
   }
@@ -159,7 +137,7 @@ export class ConfirmSubscriptionDialog {
   }
 
   formKey(form: SubscriptionFormContext): string {
-    return `${form.form.id}:${form.linkId ?? 'sem-vinculo'}:${form.targetType}:${form.targetId}`;
+    return subscriptionFormKey(form);
   }
 
   private groupByMonthAndDay(events: PublicEvent[]): ConfirmSubscriptionListMonth[] {

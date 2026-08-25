@@ -50,10 +50,11 @@
     }
   </mat-chip-set>
 
-  @if (majorEvent.description) {
+  @if (majorEvent.description && flowPhase() === 'selection') {
   <lib-markdown class="description" [content]="majorEvent.description" />
   }
 
+  @if (flowPhase() === 'selection') {
   <app-subscription-event-list
     [events]="sortedEvents()"
     [summariesByEventId]="summariesByEventId()"
@@ -88,23 +89,42 @@
   <p class="rate-limit-message">Aguarde {{ subscriptionCooldownSeconds() }}s para alterar a inscrição novamente.</p>
   }
 
-  <button
-    mat-fab
-    extended
-    type="button"
-    class="subscribe-fab"
-    [disabled]="
-      isSubmitting() ||
-      selectedEvents().length === 0 ||
-      (currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
-        !confirmedSportsOnlySubscription() &&
-        !needsImageLicenseAgreement()) ||
-      subscriptionCooldownSeconds() > 0
-    "
-    (click)="submit()">
-    <mat-icon>{{ submitButtonIcon() }}</mat-icon>
-    {{ submitButtonLabel() }}
-  </button>
+  <mat-toolbar class="selection-actions" aria-label="Ações da seleção de eventos">
+    <span class="selection-summary">
+      {{ selectedEvents().length }} {{ selectedEvents().length === 1 ? 'evento selecionado' : 'eventos selecionados' }}
+    </span>
+    <span class="action-spacer"></span>
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="
+        isSubmitting() ||
+        selectedEvents().length === 0 ||
+        (currentUserSubscription()?.subscriptionStatus === 'CONFIRMED' &&
+          !confirmedSportsOnlySubscription() &&
+          !needsImageLicenseAgreement()) ||
+        subscriptionCooldownSeconds() > 0
+      "
+      (click)="startSubscriptionFlow()">
+      {{ submitButtonLabel() }}
+      <mat-icon>{{ submitButtonIcon() }}</mat-icon>
+    </button>
+  </mat-toolbar>
+  } @else if (flowPhase() === 'loading-forms') {
+  <mat-progress-bar mode="indeterminate" aria-label="Carregando formulários"></mat-progress-bar>
+  <section class="empty-section compact" aria-live="polite">
+    <mat-icon aria-hidden="true">description</mat-icon>
+    <p>Preparando as próximas etapas...</p>
+  </section>
+  } @else {
+  <app-subscription-form-flow
+    [forms]="subscriptionForms()"
+    [requireImageLicenseAgreement]="majorEvent.requiresImageLicenseAgreement === true"
+    [imageLicenseAgreementAccepted]="currentUserSubscription()?.imageLicenseAgreementAccepted === true"
+    [initialDraft]="subscriptionFlowDraft()"
+    (backToSelection)="returnToSelection($event)"
+    (reviewRequested)="reviewSubscription($event)" />
+  }
   }
 </main>
 }

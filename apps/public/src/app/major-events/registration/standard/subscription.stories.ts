@@ -27,6 +27,7 @@ interface SubscriptionStoryArgs {
   majorEventName: string;
   description: string;
   requiresPayment: boolean;
+  requiresLicenseAgreement: boolean;
   slotsAvailable: number;
   fullEvery: number;
   queueCount: number;
@@ -49,6 +50,7 @@ const defaultArgs: SubscriptionStoryArgs = {
   majorEventName: 'CACiC Inscrições',
   description: 'Grande evento de demonstração com seleção de atividades e formulários condicionais.',
   requiresPayment: false,
+  requiresLicenseAgreement: true,
   slotsAvailable: 18,
   fullEvery: 4,
   queueCount: 3,
@@ -83,6 +85,7 @@ const meta: Meta<SubscriptionStoryArgs> = {
     majorEventName: { control: 'text' },
     description: { control: 'text' },
     requiresPayment: { control: 'boolean' },
+    requiresLicenseAgreement: { control: 'boolean' },
     slotsAvailable: { control: { type: 'range', min: 0, max: 100, step: 1 } },
     fullEvery: { control: { type: 'range', min: 0, max: 10, step: 1 } },
     queueCount: { control: { type: 'range', min: 0, max: 50, step: 1 } },
@@ -104,7 +107,7 @@ const meta: Meta<SubscriptionStoryArgs> = {
   ],
   parameters: {
     layout: 'fullscreen',
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     msw: { handlers: { graphql: [subscriptionHandler()] } },
   },
 };
@@ -165,10 +168,20 @@ export const ReceiptUploadRequired: Story = {
 };
 
 export const NoForms: Story = {
-  args: { formMode: 'none', eventCount: 6 },
+  args: { formMode: 'none', eventCount: 6, requiresLicenseAgreement: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await expect(await canvas.findAllByRole('checkbox')).toHaveLength(6);
+  },
+};
+
+export const LicenseAgreementOnly: Story = {
+  args: { formMode: 'none', eventCount: 4, requiresLicenseAgreement: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole('checkbox', { name: /Selecionar Oficina de Angular/i }));
+    await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
+    await expect(await canvas.findByRole('heading', { name: 'Contrato de concessão de licença' })).toBeVisible();
   },
 };
 
@@ -302,6 +315,7 @@ function createStoryData(args: SubscriptionStoryArgs): SubscriptionStoryData {
     subscriptionEndDate: isoDaysFromNow(10, 23),
     rankedSubscriptionEnabled: false,
     isPaymentRequired: args.requiresPayment,
+    requiresImageLicenseAgreement: args.requiresLicenseAgreement,
     majorEventPrices: [],
   });
   const count = Math.min(Math.max(Math.trunc(args.eventCount), 0), 30);
@@ -413,14 +427,20 @@ function buildExistingSubscription(storyData: SubscriptionStoryData) {
 async function completeSubscriptionFlow(canvasElement: HTMLElement): Promise<void> {
   const canvas = within(canvasElement);
   await userEvent.click(await canvas.findByRole('checkbox', { name: /Selecionar Oficina de Angular/i }));
-  await userEvent.click(await canvas.findByRole('button', { name: /Inscrever-se/i }));
-  const dialog = within(await screen.findByRole('dialog', { name: /Confirmar inscrição/i }));
-  await expect(await dialog.findByText('Formulários')).toBeVisible();
-  await expect(await dialog.findByText('Camiseta do evento')).toBeVisible();
-  await expect(await dialog.findByText('Preferência da oficina')).toBeVisible();
-  await userEvent.click(await dialog.findByRole('radio', { name: 'M' }));
-  await userEvent.click(await dialog.findByRole('radio', { name: 'Sim' }));
-  await userEvent.click(await dialog.findByRole('button', { name: /Inscrever-se/i }));
+  await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
+  await userEvent.click(await canvas.findByRole('radio', { name: 'M' }));
+  await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
+  await expect(await canvas.findByRole('heading', { name: 'Preferência da oficina' })).toBeVisible();
+  await userEvent.click(await canvas.findByRole('radio', { name: 'Sim' }));
+  await userEvent.click(await canvas.findByRole('button', { name: /Continuar/i }));
+  await userEvent.click(
+    await canvas.findByRole('checkbox', { name: /Li e concordo com o contrato de concessão de licença/i }),
+  );
+  await userEvent.click(await canvas.findByRole('button', { name: /Revisar inscrição/i }));
+  const dialog = within(await screen.findByRole('dialog', { name: /Revise sua inscrição/i }));
+  await expect(await dialog.findByText('Tamanho da camiseta')).toBeVisible();
+  await expect(await dialog.findByText('Precisa de opção vegetariana?')).toBeVisible();
+  await userEvent.click(await dialog.findByRole('button', { name: /Confirmar inscrição/i }));
 }
 
 function isoDaysFromNow(days: number, hour: number): string {
